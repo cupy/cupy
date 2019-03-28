@@ -1,19 +1,21 @@
 import functools
 import six
 import string
-import threading
 import warnings
 
 import numpy
 
 import cupy
 from cupy.core._dtype import get_dtype
+from cupy.core import _errors
+from cupy.core import _kernel
 from cupy.core import core
+from cupy.core._kernel import _is_fusing
 
 
-_thread_local = threading.local()
+_thread_local = _kernel._thread_local
 
-_kind_score = {
+cdef dict _kind_score = {
     'b': 0,
     'u': 1,
     'i': 1,
@@ -21,7 +23,7 @@ _kind_score = {
     'c': 2,
 }
 
-_dtype_to_ctype = {
+cdef dict _dtype_to_ctype = {
     numpy.dtype('float64'): 'double',
     numpy.dtype('float32'): 'float',
     numpy.dtype('float16'): 'float16',
@@ -38,7 +40,11 @@ _dtype_to_ctype = {
     numpy.dtype('bool'): 'bool',
 }
 
-_dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
+cdef list _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
+
+cdef tuple _acceptable_types = six.integer_types + (
+    core.ndarray, numpy.ndarray, numpy.generic,
+    float, complex, bool, type(None))
 
 
 class _Submodule(object):
@@ -97,13 +103,13 @@ class _FusionVarCUDA(object):
     Attributes:
         index (int): The name of the variable.
         dtype (dtype): The dtype of the variable.
-        const (any of primitive types): The constant value (or None)
+        const_value (any of primitive types): The constant value (or None)
     """
 
-    def __init__(self, index, dtype, const=None):
+    def __init__(self, index, dtype, const_value=None):
         self.index = index
         self.dtype = dtype
-        self.const = const
+        self.const_value = const_value
         self.mutable = False
 
     def __repr__(self):
@@ -113,11 +119,11 @@ class _FusionVarCUDA(object):
         self.mutable = True
 
     def declaration(self):
-        c = self.const
-        val = numpy.asscalar(c) if hasattr(c, 'dtype') else c
+        c = self.const_value
+        val = c.item() if hasattr(c, 'dtype') else c
         ctype = _dtype_to_ctype[self.dtype]
 
-        if self.const is None:
+        if self.const_value is None:
             return '{} v{};\n'.format(ctype, self.index)
 
         if isinstance(val, bool):
@@ -310,7 +316,7 @@ class _FusionVarScalar(object):
     def __setitem__(self, slices, value):
         if slices is Ellipsis or (isinstance(slices, slice) and
                                   slices == slice(None)):
-            cupy.copy(value, self)
+            _call_ufunc(core.elementwise_copy, value, out=self)
         else:
             raise ValueError('The fusion supports `[...]` or `[:]`.')
 
@@ -526,7 +532,7 @@ class _FusionHistory(object):
                 raise Exception('Shape mismatch')
         if isinstance(arg, six.integer_types +
                       (float, bool, complex, numpy.generic)):
-            var = self._fresh_local(numpy.dtype(type(arg)), const=arg)
+            var = self._fresh_local(numpy.dtype(type(arg)), const_value=arg)
             return _FusionVarScalar(var, -1, self._has_reduction())
         raise Exception('Unsupported type {}'.format(type(type)))
 
@@ -557,7 +563,7 @@ class _FusionHistory(object):
                     if not numpy.can_cast(arg.dtype, in_dtypes[i]):
                         return False
                 elif isinstance(arg, _FusionVarScalar):
-                    scalar_value = arg._var.const
+                    scalar_value = arg._var.const_value
                     if scalar_value is None:
                         # This typecast is not safe.
                         # The result of a typecast of an element-wise operation
@@ -584,34 +590,38 @@ class _FusionHistory(object):
                 return _FusionVarArray(var, ndim, self._has_reduction())
 
         # Make FusionVar list
-        var_list = [self._get_fusion_var(_) for _ in args]
-        if 'out' in kwargs:
-            out_var = self._get_fusion_var(kwargs.pop('out'))
-            var_list.append(out_var)
-        if kwargs:
-            raise TypeError('Wrong arguments {}'.format(kwargs))
-
-        assert nin <= len(var_list) <= nin + nout
+        var_list = [self._get_fusion_var(arg) for arg in args]
         in_vars = var_list[:nin]
         out_vars = var_list[nin:]
-
-        if not all(isinstance(_, _FusionVarArray) for _ in out_vars):
+        if 'out' in kwargs:
+            out = kwargs.pop('out')
+            if out_vars:
+                raise ValueError('cannot specify \'out\' as both a positional '
+                                 'and keyword argument')
+            if isinstance(out, _FusionVarArray):
+                out_vars.append(self._get_fusion_var(out))
+            elif out is not None:
+                raise ValueError('The \'out\' tuple must have exactly one '
+                                 'entry per ufunc output')
+        if kwargs:
+            raise TypeError('Wrong arguments {}'.format(kwargs))
+        if len(in_vars) != nin or len(out_vars) > nout:
+            raise ValueError('invalid number of arguments')
+        if not all([isinstance(v, _FusionVarArray) for v in out_vars]):
             raise TypeError('return arrays must be of ArrayType')
+        var_list = in_vars + out_vars
 
         # Broadcast
-        if max(v.ndim for v in in_vars) < self.ndim:
-            # TODO(imanishi): warning message
-            warnings.warn("warning")
-        ndim = max(v.ndim for v in var_list)
-        if len(out_vars) >= 1 and min(v.ndim for v in out_vars) < ndim:
+        ndim = max([v.ndim for v in in_vars])
+        if any([v.ndim < ndim for v in out_vars]):
             raise ValueError('non-broadcastable output operand')
 
         # Typecast and add an operation
-        can_cast = can_cast1 if _should_use_min_scalar(in_vars) else can_cast2
+        can_cast = can_cast1 if _should_use_min_scalar(var_list) else can_cast2
         for in_dtypes, out_dtypes, op in ufunc._ops:
             in_dtypes = [numpy.dtype(t) for t in in_dtypes]
             out_dtypes = [numpy.dtype(t) for t in out_dtypes]
-            if can_cast(in_vars, in_dtypes):
+            if can_cast(var_list, in_dtypes):
                 ret = []
                 for i in six.moves.range(nout):
                     if i >= len(out_vars):
@@ -705,7 +715,19 @@ class _FusionHistory(object):
             operation=operation)
         return module_code
 
-    def get_fusion(self, func, in_params_info, name):
+    def _gen_abstracted_args(self, a):
+        if isinstance(a, core.ndarray):
+            cuda_var = self._fresh_premap_param(a.dtype)
+            python_var = _FusionVarArray(cuda_var, a.ndim, False)
+        elif a is None:
+            cuda_var = None
+            python_var = None
+        else:
+            cuda_var = self._fresh_premap_param(numpy.dtype(type(a)))
+            python_var = _FusionVarScalar(cuda_var, -1, False)
+        return cuda_var, python_var
+
+    def get_fusion(self, func, args, name):
         """This generates CUDA kernel from the given function and dtypes.
 
         This function generates ElementwiseKernel or ReductioKernel from the
@@ -713,22 +735,24 @@ class _FusionHistory(object):
 
         Args:
             func (function): The function to be fused.
-            in_types (list of dtypes): The list of dtypes of input parameters.
+            args (tuple): The tuple of arguments.
             name (str): The name of the kernel.
 
         Return value (tuple of ElementwiseKernel/ReductionKernel and dict):
             The second element of return values is kwargs that will give into
             the elementwise kernel or reduction kernel.
         """
-        in_dtypes = [t for t, d in in_params_info]
-        in_ndims = [d for t, d in in_params_info]
-        self.ndim = max(in_ndims)
-        in_params = [self._fresh_premap_param(t) for t in in_dtypes]
-        in_pvars = [_FusionVarScalar(v, d, False)
-                    if d == -1
-                    else _FusionVarArray(v, d, False)
-                    for v, d in zip(in_params, in_ndims)]
-        return_value = func(*in_pvars)
+        self.ndim = max([a.ndim for a in args if isinstance(a, core.ndarray)])
+
+        in_params = []
+        function_args = []
+        for a in args:
+            cuda_var, python_var = self._gen_abstracted_args(a)
+            if cuda_var is not None:
+                in_params.append(cuda_var)
+            function_args.append(python_var)
+
+        return_value = func(*function_args)
 
         if isinstance(return_value, tuple):
             return_tuple = True
@@ -763,7 +787,7 @@ class _FusionHistory(object):
         if self.reduce_op is None:
             operation += ' '.join('{} = {};'.format(t, s)
                                   for s, t in zip(out_cvars, out_params))
-            kernel = core.ElementwiseKernel(
+            kernel = _kernel.ElementwiseKernel(
                 in_params_code, out_params_code, operation,
                 preamble=submodule_code,
                 return_tuple=return_tuple,
@@ -798,7 +822,7 @@ class _FusionHistory(object):
                 reduce_ctype, postmap_dtype, postmap_cast_code)
             submodule_code += self._emit_postmap_code(out_params, postmap_code)
 
-            kernel = core.ReductionKernel(
+            kernel = _kernel.ReductionKernel(
                 in_params_code,
                 out_params_code,
                 '_pre_map({})'.format(', '.join([repr(p) for p in in_params])),
@@ -832,66 +856,92 @@ class Fusion(object):
     def __repr__(self):
         return '<Fusion \'{}\'>'.format(self.name)
 
-    def _is_cupy_data(self, a):
-        return isinstance(a, (core.ndarray, numpy.generic))
-
-    def _get_param_info(self, arg):
-        if isinstance(arg, core.ndarray):
-            return arg.dtype, arg.ndim
-        elif isinstance(arg, numpy.generic):
-            return arg.dtype, -1
-        else:
-            return numpy.array(arg).dtype, -1
-
     def __call__(self, *args):
         # Inner function of composition of multiple fused functions.
-        if hasattr(_thread_local, 'history'):
+        if _is_fusing():
             return self.func(*args)
 
-        # Fails to fuse
-        if cupy.get_array_module(*args) is not cupy:
+        exec_cupy = False
+        for a in args:
+            if isinstance(a, core.ndarray):
+                exec_cupy = True
+                break
+        if not exec_cupy:
+            # No cupy ndarray exists in the arguments
             return self.func(*args)
 
-        # Checks argument types
-        acceptable_types = six.integer_types + (
-            core.ndarray, numpy.ndarray, numpy.generic, float, complex, bool)
-        if not all(isinstance(p, acceptable_types) for p in args):
-            raise TypeError('Invalid argument type for \'{}\': ({})'.format(
-                self.name,
-                ', '.join(repr(type(_)) for _ in args)))
+        # Invalid argument types
+        for arg in args:
+            if not isinstance(arg, _acceptable_types):
+                mes = 'Invalid argument type for \'{}\': ({})'
+                arg_types = ', '.join(repr(type(a)) for a in args)
+                raise TypeError(mes.format(self.name, arg_types))
 
-        # Caches the result of execution path analysis
-        params_info = tuple(self._get_param_info(p) for p in args)
-        if params_info not in self._memo:
+        # Cache the result of execution path analysis
+        cdef list params_info = []
+        for arg in args:
+            if isinstance(arg, core.ndarray):
+                params_info.append(arg.dtype.char)
+                params_info.append(arg.ndim)
+            elif isinstance(arg, numpy.generic):
+                params_info.append(arg.dtype.char)
+            elif arg is None:
+                params_info.append(None)
+            elif isinstance(arg, float):
+                params_info.append('d')
+            elif isinstance(arg, six.integer_types):
+                params_info.append('l')
+            elif isinstance(arg, bool):
+                params_info.append('?')
+            elif isinstance(arg, complex):
+                params_info.append('D')
+            else:
+                assert False
+
+        cdef tuple key = tuple(params_info)
+        if key not in self._memo:
             try:
-                _thread_local.history = _FusionHistory()
-                self._memo[params_info] = _thread_local.history.get_fusion(
-                    self.func, params_info, self.name)
+                history = _FusionHistory()
+                _thread_local.history = history
+                self._memo[key] = history.get_fusion(
+                    self.func, args, self.name)
             finally:
-                del _thread_local.history
-        kernel, kwargs = self._memo[params_info]
-        return kernel(*args, **kwargs)
+                _thread_local.history = None
+        kernel, kwargs = self._memo[key]
+
+        return kernel(
+            *[a for a in args if a is not None],
+            **kwargs)
 
     def clear_cache(self):
         self._memo = {}
 
 
 def fuse(*args, **kwargs):
-    """Function fusing decorator.
+    """Decorator that fuses a function.
 
     This decorator can be used to define an elementwise or reduction kernel
-    more easily than `ElementwiseKernel` class or `ReductionKernel` class.
+    more easily than :class:`~cupy.ElementwiseKernel` or
+    :class:`~cupy.ReductionKernel`.
 
-    This decorator makes `Fusion` class from the given function.
+    Since the fused kernels are cached and reused, it is recommended to reuse
+    the same decorated functions instead of e.g. decorating local functions
+    that are defined multiple times.
 
     Args:
         kernel_name (str): Name of the fused kernel function.
             If omitted, the name of the decorated function is used.
 
-    .. note::
-       This API is currently experimental and the interface may be changed in
-       the future version.
+    Example:
 
+        >>> @cupy.fuse(kernel_name='squared_diff')
+        ... def squared_diff(x, y):
+        ...     return (x - y) * (x - y)
+        ...
+        >>> x = cupy.arange(10)
+        >>> y = cupy.arange(10)[::-1]
+        >>> squared_diff(x, y)
+        array([81, 49, 25,  9,  1,  1,  9, 25, 49, 81])
     """
 
     def wrapper(f, kernel_name=None):
@@ -904,58 +954,44 @@ def fuse(*args, **kwargs):
             wrapper(f, *args, **kwargs), f)
 
 
-def _ufunc_wrapper(fusion_op):
-    def func(f):
-        def call(*args, **kwargs):
-            if not hasattr(_thread_local, 'history'):
-                return f(*args, **kwargs)
-            return _thread_local.history.call_ufunc(fusion_op, args, kwargs)
-        return functools.update_wrapper(call, f)
-    return func
+def _call_ufunc(fusion_op, *args, **kwargs):
+    return _thread_local.history.call_ufunc(fusion_op, args, kwargs)
 
 
-def _reduction_wrapper(fusion_op):
-    def func(f):
-        def call(*args, **kwargs):
-            if not hasattr(_thread_local, 'history'):
-                return f(*args, **kwargs)
+def _call_reduction(fusion_op, *args, **kwargs):
+    if len(args) != 1:
+        mes = '{}() takes 1 positional argument but {} were given'
+        raise TypeError(mes.format(fusion_op._ops.name, len(args)))
 
-            if len(args) != 1:
-                mes = '{}() takes 1 positional argument but {} were given'
-                raise TypeError(mes.format(fusion_op._ops.name, len(args)))
+    arg = args[0]
+    kwargs = dict([(key, value) for key, value in kwargs.items()
+                   if (key in ('axis', 'out') and value is not None)])
 
-            arg = args[0]
-            kwargs = dict([(key, value) for key, value in kwargs.items()
-                           if (key in ('axis', 'out') and value is not None)])
+    if arg._is_postmap:
+        # Multiple reduction
+        raise NotImplementedError(
+            'Multiple reduction is not implemented yet')
 
-            if arg._is_postmap:
-                # Multiple reduction
-                raise NotImplementedError(
-                    'Multiple reduction is not implemented yet')
+    var = _thread_local.history.set_reduce_op(fusion_op, arg, kwargs)
 
-            var = _thread_local.history.set_reduce_op(fusion_op, arg, kwargs)
+    src_ndim = max(0, arg.ndim)
+    if 'axis' in kwargs:
+        axis = kwargs['axis']
+        if isinstance(axis, (tuple, list)):
+            ndim = src_ndim - len(axis)
+        else:
+            ndim = src_ndim - 1
+    else:
+        ndim = 0
+    if ndim < 0:
+        mes = 'axis {} is out of bounds for array of dimension {}'
+        raise _errors._AxisError(mes.format(axis, src_ndim))
 
-            src_ndim = max(0, arg.ndim)
-            if 'axis' in kwargs:
-                axis = kwargs['axis']
-                if isinstance(axis, (tuple, list)):
-                    ndim = src_ndim - len(axis)
-                else:
-                    ndim = src_ndim - 1
-            else:
-                ndim = 0
-            if ndim < 0:
-                mes = 'axis {} is out of bounds for array of dimension {}'
-                raise core._AxisError(mes.format(axis, src_ndim))
-
-            _thread_local.history.ndim = ndim
-            if ndim >= 1:
-                return _FusionVarArray(var, ndim, True)
-            else:
-                return _FusionVarScalar(var, -1, True)
-
-        return functools.update_wrapper(call, f)
-    return func
+    _thread_local.history.ndim = ndim
+    if ndim >= 1:
+        return _FusionVarArray(var, ndim, True)
+    else:
+        return _FusionVarScalar(var, -1, True)
 
 
 def _create_astype_ufunc(dtype):

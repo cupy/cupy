@@ -232,6 +232,7 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(...) {
 
 
 typedef enum {} cudnnBatchNormMode_t;
+typedef enum {} cudnnBatchNormOps_t;
 typedef enum {} cudnnNanPropagation_t;
 
 
@@ -264,6 +265,26 @@ cudnnStatus_t cudnnBatchNormalizationForwardInference(...) {
 
 cudnnStatus_t cudnnBatchNormalizationBackward(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnBatchNormalizationForwardTrainingEx(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnBatchNormalizationBackwardEx(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetBatchNormalizationBackwardExWorkspaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetBatchNormalizationTrainingExReserveSpaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
 }
 
 cudnnStatus_t cudnnSetPooling2dDescriptor_v4(...) {
@@ -829,6 +850,32 @@ cudnnStatus_t cudnnQueryRuntimeError(...) {
 }
 
 #endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7000)
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7400)
+
+typedef enum {} cudnnBatchNormOps_t;
+
+cudnnStatus_t cudnnBatchNormalizationForwardTrainingEx(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnBatchNormalizationBackwardEx(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetBatchNormalizationBackwardExWorkspaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetBatchNormalizationTrainingExReserveSpaceSize(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+#endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7400)
 
 } // extern "C"
 

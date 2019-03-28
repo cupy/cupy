@@ -8,6 +8,7 @@ from libc.stdint cimport int8_t
 from libc.stdint cimport int16_t
 from libc.stdint cimport int32_t
 from libc.stdint cimport int64_t
+from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
 
@@ -114,7 +115,7 @@ cdef inline size_t _get_stream(stream) except *:
         return stream.ptr
 
 
-cdef _launch(size_t func, Py_ssize_t grid0, int grid1, int grid2,
+cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
              Py_ssize_t block0, int block1, int block2,
              args, Py_ssize_t shared_mem, size_t stream):
     cdef list pargs = []
@@ -129,7 +130,7 @@ cdef _launch(size_t func, Py_ssize_t grid0, int grid1, int grid2,
     runtime._ensure_context()
     driver.launchKernel(
         func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
-        <int>shared_mem, stream, <size_t>&(kargs[0]), <size_t>0)
+        <int>shared_mem, stream, <intptr_t>&(kargs[0]), <intptr_t>0)
 
 
 cdef class Function:
@@ -174,7 +175,9 @@ cdef class Module:
             driver.moduleUnload(self.ptr)
             self.ptr = 0
 
-    cpdef load_file(self, str filename):
+    cpdef load_file(self, filename):
+        if isinstance(filename, six.binary_type):
+            filename = six.u(filename)
         runtime._ensure_context()
         self.ptr = driver.moduleLoad(filename)
 
@@ -182,10 +185,14 @@ cdef class Module:
         runtime._ensure_context()
         self.ptr = driver.moduleLoadData(cubin)
 
-    cpdef get_global_var(self, str name):
+    cpdef get_global_var(self, name):
+        if isinstance(name, six.binary_type):
+            name = six.u(name)
         return driver.moduleGetGlobal(self.ptr, name)
 
-    cpdef get_function(self, str name):
+    cpdef get_function(self, name):
+        if isinstance(name, six.binary_type):
+            name = six.u(name)
         return Function(self, name)
 
 

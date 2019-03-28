@@ -24,7 +24,11 @@ def iscomplex(x):
     array([ True, False, False, False, False,  True])
 
     """
-    if issubclass(x.dtype.type, numpy.complexfloating):
+    if numpy.isscalar(x):
+        return numpy.iscomplex(x)
+    if not isinstance(x, cupy.ndarray):
+        return cupy.asarray(numpy.iscomplex(x))
+    if x.dtype.kind == 'c':
         return x.imag != 0
     return cupy.zeros(x.shape, bool)
 
@@ -53,7 +57,9 @@ def iscomplexobj(x):
     False
 
     """
-    return issubclass(x.dtype.type, numpy.complexfloating)
+    if not isinstance(x, cupy.ndarray):
+        return numpy.iscomplexobj(x)
+    return x.dtype.kind == 'c'
 
 
 def isfortran(a):
@@ -139,7 +145,13 @@ def isreal(x):
     array([False,  True,  True,  True,  True, False])
 
     """
-    return x.imag == 0
+    if numpy.isscalar(x):
+        return numpy.isreal(x)
+    if not isinstance(x, cupy.ndarray):
+        return cupy.asarray(numpy.isreal(x))
+    if x.dtype.kind == 'c':
+        return x.imag == 0
+    return cupy.ones(x.shape, bool)
 
 
 def isrealobj(x):
@@ -166,4 +178,6 @@ def isrealobj(x):
     True
 
     """
-    return not iscomplexobj(x)
+    if not isinstance(x, cupy.ndarray):
+        return numpy.isrealobj(x)
+    return x.dtype.kind != 'c'

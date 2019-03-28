@@ -1,12 +1,6 @@
 import cupy
-from cupy.core import core
+from cupy.core import _routines_logic as _logic
 from cupy.core import fusion
-
-
-@fusion._reduction_wrapper(core._all)
-def _all(a, axis, out, keepdims):
-    assert isinstance(a, cupy.ndarray)
-    return a.all(axis=axis, out=out, keepdims=keepdims)
 
 
 def all(a, axis=None, out=None, keepdims=False):
@@ -26,13 +20,15 @@ def all(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.all`
 
     """
-    return _all(a, axis=axis, out=out, keepdims=keepdims)
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.all does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(
+            _logic.all, a, axis=axis, out=out)
 
-
-@fusion._reduction_wrapper(core._any)
-def _any(a, axis, out, keepdims):
     assert isinstance(a, cupy.ndarray)
-    return a.any(axis=axis, out=out, keepdims=keepdims)
+    return a.all(axis=axis, out=out, keepdims=keepdims)
 
 
 def any(a, axis=None, out=None, keepdims=False):
@@ -52,4 +48,12 @@ def any(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.any`
 
     """
-    return _any(a, axis=axis, out=out, keepdims=keepdims)
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.any does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(
+            _logic.any, a, axis=axis, out=out)
+
+    assert isinstance(a, cupy.ndarray)
+    return a.any(axis=axis, out=out, keepdims=keepdims)

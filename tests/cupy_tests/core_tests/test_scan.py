@@ -4,6 +4,7 @@ import unittest
 
 import cupy
 from cupy import cuda
+from cupy.core._routines_math import _scan_for_test as scan
 from cupy import testing
 
 
@@ -18,7 +19,7 @@ class TestScan(unittest.TestCase):
             element_num = 100
 
         a = cupy.ones((element_num,), dtype=dtype)
-        prefix_sum = cupy.core.core.scan(a)
+        prefix_sum = scan(a)
         expect = cupy.arange(start=1, stop=element_num + 1).astype(dtype)
 
         testing.assert_array_equal(prefix_sum, expect)
@@ -26,16 +27,16 @@ class TestScan(unittest.TestCase):
     def test_check_1d_array(self):
         with self.assertRaises(TypeError):
             a = cupy.zeros((2, 2))
-            cupy.core.core.scan(a)
+            scan(a)
 
     @testing.multi_gpu(2)
     def test_multi_gpu(self):
         with cuda.Device(0):
             a = cupy.zeros((10,))
-            cupy.core.core.scan(a)
+            scan(a)
         with cuda.Device(1):
             a = cupy.zeros((10,))
-            cupy.core.core.scan(a)
+            scan(a)
 
     @testing.for_all_dtypes()
     def test_scan_out(self, dtype):
@@ -46,10 +47,10 @@ class TestScan(unittest.TestCase):
 
         a = cupy.ones((element_num,), dtype=dtype)
         b = cupy.zeros_like(a)
-        cupy.core.core.scan(a, b)
+        scan(a, b)
         expect = cupy.arange(start=1, stop=element_num + 1).astype(dtype)
 
         testing.assert_array_equal(b, expect)
 
-        cupy.core.core.scan(a, a)
+        scan(a, a)
         testing.assert_array_equal(a, expect)

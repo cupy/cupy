@@ -22,6 +22,18 @@ def _make(xp, sp, dtype):
     return sp.csc_matrix((data, indices, indptr), shape=(3, 4))
 
 
+def _make_complex(xp, sp, dtype):
+    data = xp.array([0, 1, 2, 3], dtype)
+    if dtype in [numpy.complex64, numpy.complex128]:
+        data = data - 1j
+    indices = xp.array([0, 1, 3, 2], 'i')
+    indptr = xp.array([0, 2, 3, 4], 'i')
+    # 0, 1 - 1j, 0, 0
+    # 0, 0, 0, 2 - 1j
+    # 0, 0, 3 - 1j, 0
+    return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
+
+
 def _make2(xp, sp, dtype):
     data = xp.array([2, 1, 3, 4], dtype)
     indices = xp.array([1, 0, 1, 2], 'i')
@@ -203,6 +215,10 @@ class TestCscMatrix(unittest.TestCase):
     def test_nnz(self):
         self.assertEqual(self.m.nnz, 4)
 
+    def test_conj(self):
+        n = _make_complex(cupy, sparse, self.dtype)
+        cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
+
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_get(self):
         m = self.m.get()
@@ -298,6 +314,15 @@ class TestCscMatrixInit(unittest.TestCase):
         self.assertEqual(s.size, 0)
         return s
 
+    @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
+    def test_intlike_shape(self, xp, sp):
+        s = sp.csc_matrix((self.data(xp), self.indices(xp), self.indptr(xp)),
+                          shape=(xp.array(self.shape[0]),
+                                 xp.int32(self.shape[1])))
+        assert isinstance(s.shape[0], int)
+        assert isinstance(s.shape[1], int)
+        return s
+
     @testing.numpy_cupy_raises(sp_name='sp')
     def test_shape_invalid(self, xp, sp):
         sp.csc_matrix(
@@ -353,6 +378,11 @@ class TestCscMatrixInit(unittest.TestCase):
             sparse.csc_matrix(
                 (self.data(cupy), self.indices(cupy), self.indptr(cupy)),
                 shape=self.shape, dtype='i')
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_conj(self, xp, sp):
+        n = _make_complex(xp, sp, self.dtype)
+        cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
 
 @testing.parameterize(*testing.product({

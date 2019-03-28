@@ -8,6 +8,7 @@ import cupy
 from cupy import core
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import data
+from cupyx.scipy.sparse import util
 
 
 class dia_matrix(data._data_matrix):
@@ -64,10 +65,18 @@ class dia_matrix(data._data_matrix):
 
         self.data = data
         self.offsets = offsets
-        self._shape = shape
+        if not util.isshape(shape):
+            raise ValueError('invalid shape (must be a 2-tuple of int)')
+        self._shape = int(shape[0]), int(shape[1])
 
-    def _with_data(self, data):
-        return dia_matrix((data, self.offsets), shape=self.shape)
+    def _with_data(self, data, copy=True):
+        """Returns a matrix with the same sparsity structure as self,
+        but with different data.  By default the structure arrays are copied.
+        """
+        if copy:
+            return dia_matrix((data, self.offsets.copy()), shape=self.shape)
+        else:
+            return dia_matrix((data, self.offsets), shape=self.shape)
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.

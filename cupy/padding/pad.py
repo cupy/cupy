@@ -289,8 +289,8 @@ def pad(array, pad_width, mode, **keywords):
             if narray.shape[axis] == 0:
                 # Axes with non-zero padding cannot be empty.
                 if pad_before > 0 or pad_after > 0:
-                    raise ValueError("There aren't any elements to reflect"
-                                     " in axis {} of `array`".format(axis))
+                    raise ValueError('There aren\'t any elements to reflect'
+                                     ' in axis {} of `array`'.format(axis))
                 # Skip zero padding on empty axes.
                 continue
 

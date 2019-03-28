@@ -13,12 +13,38 @@ def _pin_memory(array):
     return ret
 
 
-x_cpu = numpy.array([1, 2, 3], dtype=numpy.float32)
-x_pinned_cpu = _pin_memory(x_cpu)
-x_gpu = cupy.core.ndarray((3,), dtype=numpy.float32)
-with cupy.cuda.stream.Stream():
-    x_gpu.set(x_pinned_cpu)
+SIZE = 1024 * 1024
+x_cpu_src = numpy.arange(SIZE, dtype=numpy.float32)
+x_gpu_src = cupy.arange(SIZE, dtype=numpy.float32)
 
-stream = cupy.cuda.stream.Stream()
-stream.use()
-x_pinned_cpu = x_gpu.get()
+
+# synchronous
+stream = cupy.cuda.Stream.null
+start = stream.record()
+x_gpu_dst = cupy.empty(x_cpu_src.shape, x_cpu_src.dtype)
+x_gpu_dst.set(x_cpu_src)
+x_cpu_dst = x_gpu_src.get()
+end = stream.record()
+
+print('Synchronous Device to Host / Host to Device (ms)')
+print(cupy.cuda.get_elapsed_time(start, end))
+
+
+# asynchronous
+x_gpu_dst = cupy.empty(x_cpu_src.shape, x_cpu_src.dtype)
+x_cpu_dst = numpy.empty(x_gpu_src.shape, x_gpu_src.dtype)
+
+x_pinned_cpu_src = _pin_memory(x_cpu_src)
+x_pinned_cpu_dst = _pin_memory(x_cpu_dst)
+
+with cupy.cuda.stream.Stream() as stream_htod:
+    start = stream_htod.record()
+    x_gpu_dst.set(x_pinned_cpu_src)
+    with cupy.cuda.stream.Stream() as stream_dtoh:
+        x_gpu_src.get(out=x_pinned_cpu_dst)
+        stream_dtoh.synchronize()
+    stream_htod.synchronize()
+    end = stream_htod.record()
+
+print('Asynchronous Device to Host / Host to Device (ms)')
+print(cupy.cuda.get_elapsed_time(start, end))

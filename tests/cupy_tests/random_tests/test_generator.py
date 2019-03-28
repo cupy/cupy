@@ -219,7 +219,7 @@ class TestRandomState(unittest.TestCase):
             self.rs.seed(dtype(0))
 
     def test_array_seed(self):
-        self.check_seed(numpy.random.randint(0, 2**32, size=40))
+        self.check_seed(numpy.random.randint(0, 2**31, size=40))
 
 
 @testing.parameterize(
@@ -1189,6 +1189,9 @@ class TestRandint(RandomGeneratorTestCase):
 
     def test_randint_2(self):
         self.generate(3, 4, size=(3, 2))
+
+    def test_randint_3(self):
+        self.generate(3, 10, size=0)
 
 
 @testing.gpu

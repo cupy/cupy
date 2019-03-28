@@ -104,7 +104,6 @@ _where_ufunc = core.create_ufunc(
     'out0 = in0 ? in1 : in2')
 
 
-@fusion._ufunc_wrapper(_where_ufunc)
 def where(condition, x=None, y=None):
     """Return elements, either from x or y, depending on condition.
 
@@ -128,10 +127,12 @@ def where(condition, x=None, y=None):
     missing = (x is None, y is None).count(True)
 
     if missing == 1:
-        raise ValueError("Must provide both 'x' and 'y' or neither.")
+        raise ValueError('Must provide both \'x\' and \'y\' or neither.')
     if missing == 2:
         return nonzero(condition)
 
+    if fusion._is_fusing():
+        return fusion._call_ufunc(_where_ufunc, condition, x, y)
     return _where_ufunc(condition.astype('?'), x, y)
 
 
