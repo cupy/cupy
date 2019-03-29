@@ -722,7 +722,6 @@ cdef BaseMemory _try_malloc(SingleDeviceMemoryPool pool, size_t size):
     return mem
 
 
-
 cdef _append_to_free_list(list arena, vector.vector[size_t]* a_index,
                           vector.vector[int8_t]* a_flag, _Chunk chunk):
     # need self._free_lock
@@ -1089,7 +1088,7 @@ cdef class SingleDeviceMemoryPool:
                 if not 0 <= fraction <= 1:
                     raise ValueError(
                         'memory limit fraction out of range: {}'.format(
-                        fraction))
+                            fraction))
                 _, total = runtime.memGetInfo()
                 size = fraction * total
             self.set_limit(size=size)

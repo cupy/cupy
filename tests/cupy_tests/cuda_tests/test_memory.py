@@ -282,6 +282,7 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
 
         self.pool.set_limit(size=(self.unit * 7))
         p3 = self.pool.malloc(self.unit)
+        del p1, p2, p3
 
     def test_free(self):
         p1 = self.pool.malloc(self.unit * 4)
