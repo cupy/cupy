@@ -1,75 +1,53 @@
 #ifndef INCLUDE_GUARD_CUPY_CUDA_CUB_H
 #define INCLUDE_GUARD_CUPY_CUDA_CUB_H
 
+#define CUPY_CUB_INT8     0
+#define CUPY_CUB_UINT8    1
+#define CUPY_CUB_INT16    2
+#define CUPY_CUB_UINT16   3
+#define CUPY_CUB_INT32    4
+#define CUPY_CUB_UINT32   5
+#define CUPY_CUB_INT64    6
+#define CUPY_CUB_UINT64   7
+#define CUPY_CUB_FLOAT16  8
+#define CUPY_CUB_FLOAT32  9
+#define CUPY_CUB_FLOAT64 10
+
 #ifndef CUPY_NO_CUDA
 
-namespace cupy {
+void cub_reduce_sum(void *, void *, int, void *, size_t &, int);
+void cub_reduce_min(void *, void *, int, void *, size_t &, int);
+void cub_reduce_max(void *, void *, int, void *, size_t &, int);
 
-namespace cub {
-
-template <typename T>
-void _reduce_sum(void *, void *, int, void *, size_t);
-
-template <typename T>
-void _reduce_min(void *, void *, int, void *, size_t);
-
-template <typename T>
-void _reduce_max(void *, void *, int, void *, size_t);
-
-template <typename T>
-size_t _reduce_sum_get_workspace_size(void *, void *, int);
-
-template <typename T>
-size_t _reduce_min_get_workspace_size(void *, void *, int);
-
-template <typename T>
-size_t _reduce_max_get_workspace_size(void *, void *, int);
-
-} // namespace cub
-
-} // namespace cupy
+size_t cub_reduce_sum_get_workspace_size(void *, void *, int, int);
+size_t cub_reduce_min_get_workspace_size(void *, void *, int, int);
+size_t cub_reduce_max_get_workspace_size(void *, void *, int, int);
 
 #else // CUPY_NO_CUDA
 
-#include "cupy_common.h"
-
-namespace cupy {
-
-namespace cub {
-
-template <typename T>
-void _reduce_sum(void *, void *, int, void *, size_t) {
+void _reduce_sum(void *, void *, int, void *, size_t &, int) {
     return;
 }
 
-template <typename T>
-void _reduce_min(void *, void *, int, void *, size_t) {
+void _reduce_min(void *, void *, int, void *, size_t &, int) {
     return;
 }
 
-template <typename T>
-void _reduce_max(void *, void *, int, void *, size_t) {
+void _reduce_max(void *, void *, int, void *, size_t &, int) {
     return;
 }
 
-template <typename T>
-size_t _reduce_sum_get_workspace_size(void *, void *, int) {
+size_t _reduce_sum_get_workspace_size(void *, void *, int, int) {
     return 0;
 }
 
-template <typename T>
-size_t _reduce_min_get_workspace_size(void *, void *, int) {
+size_t _reduce_min_get_workspace_size(void *, void *, int, int) {
     return 0;
 }
 
-template <typename T>
-size_t _reduce_max_get_workspace_size(void *, void *, int) {
+size_t _reduce_max_get_workspace_size(void *, void *, int, int) {
     return 0;
 }
-
-} // namespace cub
-
-} // namespace cupy
 
 #endif // #ifndef CUPY_NO_CUDA
 
