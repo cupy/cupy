@@ -19,6 +19,7 @@ from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
 from cupy.core._routines_manipulation cimport _broadcast_core
 from cupy.core._scalar import get_typename as _get_typename
+from cupy.core.core cimport _convert_object_with_cuda_array_interface
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
@@ -81,6 +82,10 @@ cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
 
     for arg in args:
         typ = type(arg)
+        if typ is not ndarray and hasattr(arg, '__cuda_array_interface__'):
+            arg = _convert_object_with_cuda_array_interface(arg)
+            typ = ndarray
+
         if typ is ndarray:
             arr_dev_id = (<ndarray?>arg).data.device_id
             if arr_dev_id != dev_id:

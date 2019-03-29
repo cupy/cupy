@@ -157,25 +157,25 @@ def can_use_reduce_max(x_dtype, dtype=None):
 
 def _get_dtype_id(dtype):
     if dtype == numpy.int8:
-        dtype_id = CUPY_CUB_INT8
+        ret = CUPY_CUB_INT8
     elif dtype == numpy.uint8:
-        dtype_id = CUPY_CUB_UINT8
+        ret = CUPY_CUB_UINT8
     elif dtype == numpy.int16:
-        dtype_id = CUPY_CUB_INT16
+        ret = CUPY_CUB_INT16
     elif dtype == numpy.uint16:
-        dtype_id = CUPY_CUB_UINT16
+        ret = CUPY_CUB_UINT16
     elif dtype == numpy.int32:
-        dtype_id = CUPY_CUB_INT32
+        ret = CUPY_CUB_INT32
     elif dtype == numpy.uint32:
-        dtype_id = CUPY_CUB_UINT32
+        ret = CUPY_CUB_UINT32
     elif dtype == numpy.int64:
-        dtype_id = CUPY_CUB_INT64
+        ret = CUPY_CUB_INT64
     elif dtype == numpy.uint64:
-        dtype_id = CUPY_CUB_UINT64
+        ret = CUPY_CUB_UINT64
     elif dtype == numpy.float32:
-        dtype_id = CUPY_CUB_FLOAT32
+        ret = CUPY_CUB_FLOAT32
     elif dtype == numpy.float64:
-        dtype_id = CUPY_CUB_FLOAT64
+        ret = CUPY_CUB_FLOAT64
     else:
         raise ValueError('Unsupported dtype ({})'.format(dtype))
-    return dtype_id
+    return ret
