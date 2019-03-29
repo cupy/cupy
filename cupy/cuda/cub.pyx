@@ -9,109 +9,77 @@ from cupy.cuda cimport common
 
 cimport cython
 
+###############################################################################
+# Const
+###############################################################################
+
+cdef enum:
+    CUPY_CUB_INT8 = 0
+    CUPY_CUB_UINT8 = 1
+    CUPY_CUB_INT16 = 2
+    CUPY_CUB_UINT16 = 3
+    CUPY_CUB_INT32 = 4
+    CUPY_CUB_UINT32 = 5
+    CUPY_CUB_INT64 = 6
+    CUPY_CUB_UINT64 = 7
+    CUPY_CUB_FLOAT16 = 8
+    CUPY_CUB_FLOAT32 = 9
+    CUPY_CUB_FLOAT64 = 10
 
 ###############################################################################
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_cub.h' namespace 'cupy::cub':
-    void _reduce_sum[T](void *, void *, int, void *, size_t)
-    void _reduce_min[T](void *, void *, int, void *, size_t)
-    void _reduce_max[T](void *, void *, int, void *, size_t)
-    size_t _reduce_sum_get_workspace_size[T](void *, void *, int)
-    size_t _reduce_min_get_workspace_size[T](void *, void *, int)
-    size_t _reduce_max_get_workspace_size[T](void *, void *, int)
-
+cdef extern from 'cupy_cub.h':
+    void cub_reduce_sum(void*, void*, int, void*, size_t&, int)
+    void cub_reduce_min(void*, void*, int, void*, size_t&, int)
+    void cub_reduce_max(void*, void*, int, void*, size_t&, int)
+    size_t cub_reduce_sum_get_workspace_size(void*, void*, int, int)
+    size_t cub_reduce_min_get_workspace_size(void*, void*, int, int)
+    size_t cub_reduce_max_get_workspace_size(void*, void*, int, int)
 
 ###############################################################################
 # Python interface
 ###############################################################################
 
+
 def reduce_sum(core.ndarray x, out=None):
     cdef core.ndarray y
     cdef core.ndarray ws
+    cdef int dtype_id
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *y_ptr
     cdef void *ws_ptr
     x = core.ascontiguousarray(x)
-    if out is None:
-        y = core.ndarray((), x.dtype)
-    else:
-        y = out
+    y = core.ndarray((), x.dtype)
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
-    if x.dtype == numpy.int8:
-        ws_size = _reduce_sum_get_workspace_size[common.cpy_byte](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_sum[common.cpy_byte](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.uint8:
-        ws_size = _reduce_sum_get_workspace_size[common.cpy_ubyte](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_sum[common.cpy_ubyte](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.int16:
-        ws_size = _reduce_sum_get_workspace_size[common.cpy_short](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_sum[common.cpy_short](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.uint16:
-        ws_size = _reduce_sum_get_workspace_size[common.cpy_ushort](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_sum[common.cpy_ushort](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.int32:
-        ws_size = _reduce_sum_get_workspace_size[common.cpy_int](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_sum[common.cpy_int](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.uint32:
-        ws_size = _reduce_sum_get_workspace_size[common.cpy_uint](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_sum[common.cpy_uint](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.int64:
-        ws_size = _reduce_sum_get_workspace_size[common.cpy_long](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_sum[common.cpy_long](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.uint64:
-        ws_size = _reduce_sum_get_workspace_size[common.cpy_ulong](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_sum[common.cpy_ulong](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.float32:
-        ws_size = _reduce_sum_get_workspace_size[common.cpy_float](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_sum[common.cpy_float](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.float64:
-        ws_size = _reduce_sum_get_workspace_size[common.cpy_double](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_sum[common.cpy_double](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    else:
-        raise TypeError('Unsupported dtype: {}'.format(x.dtype))
+    dtype_id = _get_dtype_id(x.dtype)
+    ws_size = cub_reduce_sum_get_workspace_size(x_ptr, y_ptr, x.size, dtype_id)
+    ws = core.ndarray(ws_size, numpy.int8)
+    ws_ptr = <void *>ws.data.ptr
+    cub_reduce_sum(x_ptr, y_ptr, x.size, ws_ptr, ws_size, dtype_id)
+    if out is not None:
+        out[...] = y
+        y = out
     return y
 
 
-def can_use_reduce_sum(x_dtype, y_dtype=None):
-    if y_dtype is not None and y_dtype != x_dtype:
+def can_use_reduce_sum(x_dtype, dtype=None):
+    if dtype is None:
+        # auto dtype:
+        # CUB reduce_sum does not support dtype promotion.
+        # See _sum_auto_dtype in cupy/core/_routines_math.pyx for which dtypes
+        # are promoted.
+        support_dtype = [numpy.int64, numpy.uint64,
+                         numpy.float32, numpy.float64]
+    elif dtype == x_dtype:
+        support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
+                         numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
+                         numpy.float32, numpy.float64]
+    else:
         return False
-    support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
-                     numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
-                     numpy.float32, numpy.float64]
     if x_dtype not in support_dtype:
         return False
     return True
@@ -120,88 +88,33 @@ def can_use_reduce_sum(x_dtype, y_dtype=None):
 def reduce_min(core.ndarray x, out=None):
     cdef core.ndarray y
     cdef core.ndarray ws
+    cdef int dtype_id
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *y_ptr
     cdef void *ws_ptr
     x = core.ascontiguousarray(x)
-    if out is None:
-        y = core.ndarray((), x.dtype)
-    else:
-        y = out
+    y = core.ndarray((), x.dtype)
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
-    if x.dtype == numpy.int8:
-        ws_size = _reduce_min_get_workspace_size[common.cpy_byte](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_min[common.cpy_byte](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.uint8:
-        ws_size = _reduce_min_get_workspace_size[common.cpy_ubyte](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_min[common.cpy_ubyte](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.int16:
-        ws_size = _reduce_min_get_workspace_size[common.cpy_short](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_min[common.cpy_short](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.uint16:
-        ws_size = _reduce_min_get_workspace_size[common.cpy_ushort](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_min[common.cpy_ushort](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.int32:
-        ws_size = _reduce_min_get_workspace_size[common.cpy_int](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_min[common.cpy_int](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.uint32:
-        ws_size = _reduce_min_get_workspace_size[common.cpy_uint](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_min[common.cpy_uint](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.int64:
-        ws_size = _reduce_min_get_workspace_size[common.cpy_long](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_min[common.cpy_long](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.uint64:
-        ws_size = _reduce_min_get_workspace_size[common.cpy_ulong](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_min[common.cpy_ulong](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.float32:
-        ws_size = _reduce_min_get_workspace_size[common.cpy_float](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_min[common.cpy_float](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.float64:
-        ws_size = _reduce_min_get_workspace_size[common.cpy_double](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_min[common.cpy_double](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    else:
-        raise TypeError('Unsupported dtype: {}'.format(x.dtype))
+    dtype_id = _get_dtype_id(x.dtype)
+    ws_size = cub_reduce_min_get_workspace_size(x_ptr, y_ptr, x.size, dtype_id)
+    ws = core.ndarray(ws_size, numpy.int8)
+    ws_ptr = <void *>ws.data.ptr
+    cub_reduce_min(x_ptr, y_ptr, x.size, ws_ptr, ws_size, dtype_id)
+    if out is not None:
+        out[...] = y
+        y = out
     return y
 
 
-def can_use_reduce_min(x_dtype, y_dtype=None):
-    if y_dtype is not None and y_dtype != x_dtype:
+def can_use_reduce_min(x_dtype, dtype=None):
+    if dtype is None or dtype == x_dtype:
+        support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
+                         numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
+                         numpy.float32, numpy.float64]
+    else:
         return False
-    support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
-                     numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
-                     numpy.float32, numpy.float64]
     if x_dtype not in support_dtype:
         return False
     return True
@@ -210,88 +123,59 @@ def can_use_reduce_min(x_dtype, y_dtype=None):
 def reduce_max(core.ndarray x, out=None):
     cdef core.ndarray y
     cdef core.ndarray ws
+    cdef int dtype_id
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *y_ptr
     cdef void *ws_ptr
     x = core.ascontiguousarray(x)
-    if out is None:
-        y = core.ndarray((), x.dtype)
-    else:
-        y = out
+    y = core.ndarray((), x.dtype)
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
-    if x.dtype == numpy.int8:
-        ws_size = _reduce_max_get_workspace_size[common.cpy_byte](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_max[common.cpy_byte](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.uint8:
-        ws_size = _reduce_max_get_workspace_size[common.cpy_ubyte](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_max[common.cpy_ubyte](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.int16:
-        ws_size = _reduce_max_get_workspace_size[common.cpy_short](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_max[common.cpy_short](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.uint16:
-        ws_size = _reduce_max_get_workspace_size[common.cpy_ushort](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_max[common.cpy_ushort](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.int32:
-        ws_size = _reduce_max_get_workspace_size[common.cpy_int](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_max[common.cpy_int](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.uint32:
-        ws_size = _reduce_max_get_workspace_size[common.cpy_uint](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_max[common.cpy_uint](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.int64:
-        ws_size = _reduce_max_get_workspace_size[common.cpy_long](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_max[common.cpy_long](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.uint64:
-        ws_size = _reduce_max_get_workspace_size[common.cpy_ulong](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_max[common.cpy_ulong](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.float32:
-        ws_size = _reduce_max_get_workspace_size[common.cpy_float](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_max[common.cpy_float](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    elif x.dtype == numpy.float64:
-        ws_size = _reduce_max_get_workspace_size[common.cpy_double](
-            x_ptr, y_ptr, x.size)
-        ws = core.ndarray(ws_size, numpy.int8)
-        ws_ptr = <void *>ws.data.ptr
-        _reduce_max[common.cpy_double](x_ptr, y_ptr, x.size, ws_ptr, ws_size)
-    else:
-        raise TypeError('Unsupported dtype: {}'.format(x.dtype))
+    dtype_id = _get_dtype_id(x.dtype)
+    ws_size = cub_reduce_max_get_workspace_size(x_ptr, y_ptr, x.size, dtype_id)
+    ws = core.ndarray(ws_size, numpy.int8)
+    ws_ptr = <void *>ws.data.ptr
+    cub_reduce_max(x_ptr, y_ptr, x.size, ws_ptr, ws_size, dtype_id)
+    if out is not None:
+        out[...] = y
+        y = out
     return y
 
 
-def can_use_reduce_max(x_dtype, y_dtype=None):
-    if y_dtype is not None and y_dtype != x_dtype:
+def can_use_reduce_max(x_dtype, dtype=None):
+    if dtype is None or dtype == x_dtype:
+        support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
+                         numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
+                         numpy.float32, numpy.float64]
+    else:
         return False
-    support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
-                     numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
-                     numpy.float32, numpy.float64]
     if x_dtype not in support_dtype:
         return False
     return True
+
+
+def _get_dtype_id(dtype):
+    if dtype == numpy.int8:
+        dtype_id = CUPY_CUB_INT8
+    elif dtype == numpy.uint8:
+        dtype_id = CUPY_CUB_UINT8
+    elif dtype == numpy.int16:
+        dtype_id = CUPY_CUB_INT16
+    elif dtype == numpy.uint16:
+        dtype_id = CUPY_CUB_UINT16
+    elif dtype == numpy.int32:
+        dtype_id = CUPY_CUB_INT32
+    elif dtype == numpy.uint32:
+        dtype_id = CUPY_CUB_UINT32
+    elif dtype == numpy.int64:
+        dtype_id = CUPY_CUB_INT64
+    elif dtype == numpy.uint64:
+        dtype_id = CUPY_CUB_UINT64
+    elif dtype == numpy.float32:
+        dtype_id = CUPY_CUB_FLOAT32
+    elif dtype == numpy.float64:
+        dtype_id = CUPY_CUB_FLOAT64
+    else:
+        raise ValueError('Unsupported dtype ({})'.format(dtype))
+    return dtype_id
