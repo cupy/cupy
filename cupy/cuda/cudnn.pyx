@@ -679,6 +679,9 @@ cdef extern from 'cupy_cudnn.h' nogil:
     # Build-time version
     int CUDNN_VERSION
 
+    # Constants
+    float _CUDNN_BN_MIN_EPSILON 'CUDNN_BN_MIN_EPSILON'
+
 
 cdef class CuDNNAlgoPerf:
 
@@ -1516,7 +1519,7 @@ cpdef poolingBackward(
 # Batch Normalization
 ###############################################################################
 
-CUDNN_BN_MIN_EPSILON = 1e-5
+CUDNN_BN_MIN_EPSILON = _CUDNN_BN_MIN_EPSILON
 
 cpdef deriveBNTensorDescriptor(
         size_t derivedBnDesc, size_t xDesc, int mode):
