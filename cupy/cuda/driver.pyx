@@ -254,6 +254,7 @@ cpdef int funcGetAttribute(int attribute, intptr_t f):
     check_attribute_status(status, &pi)
     return pi
 
+
 cpdef funcSetAttribute(intptr_t f, int attribute, int value):
     with nogil:
         status = cuFuncSetAttribute(

@@ -25,20 +25,19 @@ class TestRaw(unittest.TestCase):
         assert (y == x1 + x2).all()
 
     def test_kernel_attributes(self):
-        attributes = self.kern.attributes
 
-        for key in ['binaryVersion',
-                    'cacheModeCA',
-                    'constSizeBytes',
-                    'localSizeBytes',
-                    'maxDynamicSharedSizeBytes',
-                    'maxThreadsPerBlock',
-                    'numRegs',
-                    'preferredShmemCarveout',
-                    'ptxVersion',
-                    'sharedSizeBytes']:
-            assert key in attributes
+        for attribute in ['binary_version',
+                          'cache_mode_ca',
+                          'const_size_bytes',
+                          'local_size_bytes',
+                          'max_dynamic_shared_size_bytes',
+                          'max_threads_per_block',
+                          'num_regs',
+                          'preferred_shared_memory_carveout',
+                          'ptx_version',
+                          'shared_size_bytes']:
+            assert hasattr(self.kern.attributes, attribute)
 
-        assert attributes['numRegs'] > 0
-        assert attributes['maxThreadsPerBlock'] > 0
-        assert attributes['sharedSizeBytes'] == 0
+        assert self.kern.attributes.num_regs > 0
+        assert self.kern.attributes.max_threads_per_block > 0
+        assert self.kern.attributes.shared_size_bytes == 0
