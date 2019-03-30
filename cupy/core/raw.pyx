@@ -49,20 +49,22 @@ cdef class RawKernel:
                 bytes.
 
         """
-        kern = _get_raw_kernel(self.code, self.name, self.options)
-        kern(grid, block, args, **kwargs)
+        self.kernel(grid, block, args, **kwargs)
 
     @property
     def attributes(self):
         """Returns an object containing runtime kernel attributes.
 
         Returns:
-            attributes (FuncAttributes): A python class containing the
-                kernel's attributes. For example, ``attributes.numRegs``
+            attributes (FunctionAttributes): A python class containing the
+                kernel's attributes. For example, ``attributes.num_regs``
                 corresponds to the number of registers used by the kernel.
         """
-        kern = _get_raw_kernel(self.code, self.name, self.options)
-        return _get_func_attributes(kern.ptr)
+        return FunctionAttributes(self.kernel)
+
+    @property
+    def kernel(self):
+        return _get_raw_kernel(self.code, self.name, self.options)
 
 
 @cupy.util.memoize(for_each_device=True)
@@ -72,41 +74,29 @@ def _get_raw_kernel(code, name, options=()):
     return module.get_function(name)
 
 
-@cupy.util.memoize(for_each_device=True)
-def _get_func_attributes(func):
-    cdef:
-        int sharedSizeBytes, constSizeBytes, localSizeBytes
-        int maxThreadsPerBlock, numRegs, ptxVersion, binaryVersion
-        int cacheModeCA, maxDynamicSharedSizeBytes, preferredShmemCarveout
+class FunctionAttributes:
 
-    sharedSizeBytes = driver.funcGetAttribute(
-        driver.CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, func)
-    constSizeBytes = driver.funcGetAttribute(
-        driver.CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES, func)
-    localSizeBytes = driver.funcGetAttribute(
-        driver.CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES, func)
-    maxThreadsPerBlock = driver.funcGetAttribute(
-        driver.CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK, func)
-    numRegs = driver.funcGetAttribute(
-        driver.CU_FUNC_ATTRIBUTE_NUM_REGS, func)
-    ptxVersion = driver.funcGetAttribute(
-        driver.CU_FUNC_ATTRIBUTE_PTX_VERSION, func)
-    binaryVersion = driver.funcGetAttribute(
-        driver.CU_FUNC_ATTRIBUTE_BINARY_VERSION, func)
-    cacheModeCA = driver.funcGetAttribute(
-        driver.CU_FUNC_ATTRIBUTE_CACHE_MODE_CA, func)
-    maxDynamicSharedSizeBytes = driver.funcGetAttribute(
-        driver.CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES, func)
-    preferredShmemCarveout = driver.funcGetAttribute(
-        driver.CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT, func)
+    class Read:
+        def __init__(self, func_attribute):
+            self.func_attribute = func_attribute
 
-    return dict(sharedSizeBytes=sharedSizeBytes,
-                constSizeBytes=constSizeBytes,
-                localSizeBytes=localSizeBytes,
-                maxThreadsPerBlock=maxThreadsPerBlock,
-                numRegs=numRegs,
-                ptxVersion=ptxVersion,
-                binaryVersion=binaryVersion,
-                cacheModeCA=cacheModeCA,
-                maxDynamicSharedSizeBytes=maxDynamicSharedSizeBytes,
-                preferredShmemCarveout=preferredShmemCarveout)
+        def __get__(self, instance, owner):
+            return driver.funcGetAttribute(self.func_attribute, instance.kern.ptr)
+
+    class ReadWrite(Read):
+        def __set__(self, instance, value):
+            driver.funcSetAttribute(instance.kern.ptr, self.func_attribute, value)
+
+    shared_size_bytes = Read(driver.CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES)
+    const_size_bytes = Read(driver.CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES)
+    local_size_bytes = Read(driver.CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES)
+    max_threads_per_block = Read(driver.CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK)
+    num_regs = Read(driver.CU_FUNC_ATTRIBUTE_NUM_REGS)
+    ptx_version = Read(driver.CU_FUNC_ATTRIBUTE_PTX_VERSION)
+    binary_version = Read(driver.CU_FUNC_ATTRIBUTE_BINARY_VERSION)
+    cache_mode_ca = Read(driver.CU_FUNC_ATTRIBUTE_CACHE_MODE_CA)
+    max_dynamic_shared_size_bytes = ReadWrite(driver.CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES)
+    preferred_shared_memory_carveout = ReadWrite(driver.CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT)
+    
+    def __init__(self, kern):
+        self.kern = kern

@@ -58,6 +58,9 @@ cdef extern from "cupy_cuda.h" nogil:
     int cuFuncGetAttribute(int *pi, CUfunction_attribute attrib,
                            Function hfunc)
 
+    int cuFuncSetAttribute(Function hfunc, CUfunction_attribute attrib,
+                           int value)
+
     # Build-time version
     int CUDA_VERSION
 
@@ -241,12 +244,20 @@ cpdef launchKernel(
     check_status(status)
 
 
-cpdef int funcGetAttribute(int attribute, intptr_t func):
+cpdef int funcGetAttribute(int attribute, intptr_t f):
     cdef int pi
     with nogil:
         status = cuFuncGetAttribute(
             &pi,
             <CUfunction_attribute> attribute,
-            <Function> func)
+            <Function> f)
     check_attribute_status(status, &pi)
     return pi
+
+cpdef funcSetAttribute(intptr_t f, int attribute, int value):
+    with nogil:
+        status = cuFuncSetAttribute(
+            <Function> f,
+            <CUfunction_attribute> attribute,
+            value)
+    check_status(status)
