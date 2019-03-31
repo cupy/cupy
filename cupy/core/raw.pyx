@@ -74,9 +74,9 @@ def _get_raw_kernel(code, name, options=()):
     return module.get_function(name)
 
 
-class FunctionAttributes:
+class FunctionAttributes(object):
 
-    class Read:
+    class Read(object):
         def __init__(self, func_attribute):
             self.func_attribute = func_attribute
 
