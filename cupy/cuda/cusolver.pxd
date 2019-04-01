@@ -42,6 +42,7 @@ cpdef enum:
 cpdef size_t create() except? 0
 cpdef size_t spCreate() except? 0
 cpdef destroy(size_t handle)
+cpdef spDestroy(size_t handle)
 
 ###############################################################################
 # Stream
