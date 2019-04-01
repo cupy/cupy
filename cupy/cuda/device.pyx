@@ -1,14 +1,11 @@
 # distutils: language = c++
 
-import atexit
 import threading
-
-import six
 
 from cupy.cuda import cublas
 from cupy.cuda import cusparse
-from cupy.cuda import runtime
-from cupy.cuda import runtime
+from cupy.cuda cimport runtime
+from cupy.cuda import runtime as runtime_module
 from cupy import util
 
 try:
@@ -74,12 +71,12 @@ cpdef str get_compute_capability():
 def _get_attributes(device_id):
     """Return a dict containing all device attributes."""
     d = {}
-    for k, v in runtime.__dict__.items():
+    for k, v in runtime_module.__dict__.items():
         if k.startswith('cudaDevAttr'):
             try:
                 name = k.replace('cudaDevAttr', '', 1)
                 d[name] = runtime.deviceGetAttribute(v, device_id)
-            except runtime.CUDARuntimeError as e:
+            except runtime_module.CUDARuntimeError as e:
                 if e.status != runtime.errorInvalidValue:
                     raise
     return d
