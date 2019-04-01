@@ -285,7 +285,7 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
             else:
                 strides.push_back(a.itemsize)
         elif ndim <= j:
-            raise IndexError("too many indices for array")
+            raise IndexError('too many indices for array')
         elif isinstance(s, slice):
             ss = internal.complete_slice(s, a._shape[j])
             s_start = ss.start
@@ -623,7 +623,7 @@ cdef _scatter_op_single(
     ndim = a._shape.size()
 
     if ndim == 0:
-        raise ValueError("requires a.ndim >= 1")
+        raise ValueError('requires a.ndim >= 1')
     if not (-ndim <= li < ndim and -ndim <= ri < ndim):
         raise ValueError('Axis overrun')
 

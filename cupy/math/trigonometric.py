@@ -1,4 +1,8 @@
+import numpy
+
+import cupy
 from cupy import core
+from cupy.math import sumprod
 from cupy.math import ufunc
 
 
@@ -99,7 +103,40 @@ rad2deg = core.create_ufunc(
     ''')
 
 
-# TODO(okuta): Implement unwrap
+@core.fusion.fuse()
+def _unwrap_correct(dd, discont):
+    ddmod = cupy.mod(dd + numpy.pi, 2*numpy.pi) - numpy.pi
+    cupy.copyto(ddmod, numpy.pi, where=(ddmod == -numpy.pi) & (dd > 0))
+    ph_correct = ddmod - dd
+    cupy.copyto(ph_correct, 0., where=cupy.abs(dd) < discont)
+    return ph_correct
+
+
+def unwrap(p, discont=numpy.pi, axis=-1):
+    """Unwrap by changing deltas between values to 2*pi complement.
+
+    Args:
+        p (cupy.ndarray): Input array.
+        discont (float): Maximum discontinuity between values, default is
+            ``pi``.
+        axis (int): Axis along which unwrap will operate, default is the last
+            axis.
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.unwrap`
+    """
+
+    p = cupy.asarray(p)
+    nd = p.ndim
+    dd = sumprod.diff(p, axis=axis)
+    slice1 = [slice(None, None)]*nd     # full slices
+    slice1[axis] = slice(1, None)
+    slice1 = tuple(slice1)
+    ph_correct = _unwrap_correct(dd, discont)
+    up = cupy.array(p, copy=True, dtype='d')
+    up[slice1] = p[slice1] + cupy.cumsum(ph_correct, axis=axis)
+    return up
 
 
 degrees = rad2deg

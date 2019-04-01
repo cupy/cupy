@@ -19,6 +19,7 @@ from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
 from cupy.core._routines_manipulation cimport _broadcast_core
 from cupy.core._scalar import get_typename as _get_typename
+from cupy.core.core cimport _convert_object_with_cuda_array_interface
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
@@ -81,6 +82,10 @@ cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
 
     for arg in args:
         typ = type(arg)
+        if typ is not ndarray and hasattr(arg, '__cuda_array_interface__'):
+            arg = _convert_object_with_cuda_array_interface(arg)
+            typ = ndarray
+
         if typ is ndarray:
             arr_dev_id = (<ndarray?>arg).data.device_id
             if arr_dev_id != dev_id:
@@ -317,8 +322,8 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
 
     if use_size:
         if not is_none:
-            raise ValueError("Specified 'size' can be used only "
-                             "if all of the ndarray are 'raw'.")
+            raise ValueError('Specified \'size\' can be used only '
+                             'if all of the ndarray are \'raw\'.')
     else:
         if not is_not_none:
             raise ValueError('Loop size is Undecided')
@@ -482,7 +487,7 @@ cdef class ElementwiseKernel:
         self._params_type_memo = {}
         names = [p.name for p in self.in_params + self.out_params]
         if 'i' in names:
-            raise ValueError("Can not use 'i' as a parameter name")
+            raise ValueError('Can not use \'i\' as a parameter name')
 
     def __call__(self, *args, **kwargs):
         """Compiles and invokes the elementwise kernel.
@@ -755,7 +760,7 @@ cdef class ufunc:
         self._kernel_memo = {}
 
     def __repr__(self):
-        return "<ufunc '%s'>" % self.name
+        return '<ufunc \'%s\'>' % self.name
 
     @property
     def types(self):
@@ -814,10 +819,10 @@ cdef class ufunc:
             out_args = args[self.nin:]
         else:
             if self.nout != 1:
-                raise ValueError("Cannot use 'out' in %s" % self.name)
+                raise ValueError('Cannot use \'out\' in %s' % self.name)
             if n_args != self.nin:
-                raise ValueError("Cannot specify 'out' as both "
-                                 "a positional and keyword argument")
+                raise ValueError('Cannot specify \'out\' as both '
+                                 'a positional and keyword argument')
 
             in_args = list(args)
             out_args = _preprocess_args(dev_id, (out,), False)
@@ -890,4 +895,4 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
                 loop_prep, doc, default_casting=default_casting)
     return ret
 
-include "reduction.pxi"
+include 'reduction.pxi'

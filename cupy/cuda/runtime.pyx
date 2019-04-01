@@ -38,7 +38,7 @@ cdef extern from *:
     ctypedef StreamCallbackDef* StreamCallback 'cudaStreamCallback_t'
 
 
-cdef extern from "cupy_cuda.h" nogil:
+cdef extern from 'cupy_cuda.h' nogil:
     # Types
     struct _PointerAttributes 'cudaPointerAttributes':
         int device

@@ -26,7 +26,7 @@ import cupyx.scipy.sparse
 def _call_func(self, impl, args, kw):
     try:
         result = impl(self, *args, **kw)
-        self.assertIsNotNone(result)
+        assert result is not None
         error = None
         tb_str = None
     except Exception as e:
@@ -122,7 +122,7 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
                                         accept_error=accept_error)
                 return
 
-            self.assertEqual(cupy_result.shape, numpy_result.shape)
+            assert cupy_result.shape == numpy_result.shape
 
             # Behavior of assigning a negative value to an unsigned integer
             # variable is undefined.
@@ -142,8 +142,7 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
             if not skip:
                 check_func(cupy_result, numpy_result)
             if type_check:
-                self.assertEqual(cupy_result.dtype, numpy_result.dtype,
-                                 'cupy dtype is not equal to numpy dtype')
+                assert cupy_result.dtype == numpy_result.dtype
         return test_func
     return decorator
 
@@ -422,8 +421,8 @@ def numpy_cupy_array_list_equal(
                 kw[scipy_name] = scipy
             kw[name] = numpy
             y = impl(self, *args, **kw)
-            self.assertIsNotNone(x)
-            self.assertIsNotNone(y)
+            assert x is not None
+            assert y is not None
             array.assert_array_list_equal(x, y, err_msg, verbose)
         return test_func
     return decorator
@@ -1143,22 +1142,18 @@ class NumpyAliasBasicTestBase(NumpyAliasTestBase):
             f = inspect.getargspec
         else:
             f = inspect.signature
-        self.assertEqual(
-            f(self.cupy_func),
-            f(self.numpy_func))
+        assert f(self.cupy_func) == f(self.numpy_func)
 
     def test_docstring(self):
         cupy_func = self.cupy_func
         numpy_func = self.numpy_func
-        self.assertTrue(hasattr(cupy_func, '__doc__'))
-        self.assertNotEqual(cupy_func.__doc__, None)
-        self.assertNotEqual(cupy_func.__doc__, '')
-        self.assertIsNot(cupy_func.__doc__, numpy_func.__doc__)
+        assert hasattr(cupy_func, '__doc__')
+        assert cupy_func.__doc__ is not None
+        assert cupy_func.__doc__ != ''
+        assert cupy_func.__doc__ is not numpy_func.__doc__
 
 
 class NumpyAliasValuesTestBase(NumpyAliasTestBase):
 
     def test_values(self):
-        self.assertEqual(
-            self.cupy_func(*self.args),
-            self.numpy_func(*self.args))
+        assert self.cupy_func(*self.args) == self.numpy_func(*self.args)

@@ -12,7 +12,7 @@ from cupy.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cudnn.h" nogil:
+cdef extern from 'cupy_cudnn.h' nogil:
     # Types
     ctypedef int ActivationMode 'cudnnActivationMode_t'
     ctypedef int AddMode 'cudnnAddMode_t'

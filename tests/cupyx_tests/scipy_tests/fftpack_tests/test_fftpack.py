@@ -35,6 +35,42 @@ class TestFft(unittest.TestCase):
         return scp.fftpack.fft(x, n=self.n, axis=self.axis,
                                overwrite_x=True)
 
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_fft_plan(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        # hack: avoid testing the cases when the output array is of size 0
+        # because cuFFT and numpy raise different kinds of exceptions
+        if self.n == 0:
+            return x
+        x_orig = x.copy()
+        if scp is cupyx.scipy:
+            plan = scp.fftpack.get_fft_plan(x, shape=self.n, axes=self.axis)
+            out = scp.fftpack.fft(x, n=self.n, axis=self.axis, plan=plan)
+        else:  # scipy
+            out = scp.fftpack.fft(x, n=self.n, axis=self.axis)
+        testing.assert_array_equal(x, x_orig)
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_fft_overwrite_plan(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        # hack: avoid testing the cases when the output array is of size 0
+        # because cuFFT and numpy raise different kinds of exceptions
+        if self.n == 0:
+            return x
+        if scp is cupyx.scipy:
+            plan = scp.fftpack.get_fft_plan(x, shape=self.n, axes=self.axis)
+            x = scp.fftpack.fft(x, n=self.n, axis=self.axis,
+                                overwrite_x=True, plan=plan)
+        else:  # scipy
+            x = scp.fftpack.fft(x, n=self.n, axis=self.axis,
+                                overwrite_x=True)
+        return x
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False, scipy_name='scp')
@@ -52,6 +88,42 @@ class TestFft(unittest.TestCase):
         x = testing.shaped_random(self.shape, xp, dtype)
         return scp.fftpack.ifft(x, n=self.n, axis=self.axis,
                                 overwrite_x=True)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_ifft_plan(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        # hack: avoid testing the cases when the output array is of size 0
+        # because cuFFT and numpy raise different kinds of exceptions
+        if self.n == 0:
+            return x
+        x_orig = x.copy()
+        if scp is cupyx.scipy:
+            plan = scp.fftpack.get_fft_plan(x, shape=self.n, axes=self.axis)
+            out = scp.fftpack.ifft(x, n=self.n, axis=self.axis, plan=plan)
+        else:  # scipy
+            out = scp.fftpack.ifft(x, n=self.n, axis=self.axis)
+        testing.assert_array_equal(x, x_orig)
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_ifft_overwrite_plan(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        # hack: avoid testing the cases when the output array is of size 0
+        # because cuFFT and numpy raise different kinds of exceptions
+        if self.n == 0:
+            return x
+        if scp is cupyx.scipy:
+            plan = scp.fftpack.get_fft_plan(x, shape=self.n, axes=self.axis)
+            x = scp.fftpack.ifft(x, n=self.n, axis=self.axis,
+                                 overwrite_x=True, plan=plan)
+        else:  # scipy
+            x = scp.fftpack.ifft(x, n=self.n, axis=self.axis,
+                                 overwrite_x=True)
+        return x
 
 
 @testing.parameterize(

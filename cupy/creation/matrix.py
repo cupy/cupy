@@ -40,7 +40,7 @@ def diag(v, k=0):
     elif ndim == 2:
         return cupy.array(v.diagonal(k))
     else:
-        raise ValueError("Input must be 1- or 2-d.")
+        raise ValueError('Input must be 1- or 2-d.')
 
 
 def diagflat(v, k=0):

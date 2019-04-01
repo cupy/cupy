@@ -310,11 +310,11 @@ class RandomState(object):
             shape = size,
 
         if mean.ndim != 1:
-            raise ValueError("mean must be 1 dimensional")
+            raise ValueError('mean must be 1 dimensional')
         if (cov.ndim != 2) or (cov.shape[0] != cov.shape[1]):
-            raise ValueError("cov must be 2 dimensional and square")
+            raise ValueError('cov must be 2 dimensional and square')
         if len(mean) != len(cov):
-            raise ValueError("mean and cov must have same length")
+            raise ValueError('mean and cov must have same length')
         shape += (len(mean),)
 
         x = self.standard_normal(size=shape, dtype=dtype)
@@ -324,7 +324,8 @@ class RandomState(object):
         if check_valid != 'ignore':
             if check_valid != 'warn' and check_valid != 'raise':
                 raise ValueError(
-                    "check_valid must equal 'warn', 'raise', or 'ignore'")
+                    'check_valid must equal \'warn\', \'raise\', or '
+                    '\'ignore\'')
 
             a = cupy.dot(v.T * s, v)
             b = cov
@@ -332,11 +333,11 @@ class RandomState(object):
             if not psd:
                 if check_valid == 'warn':
                     warnings.warn(
-                        "covariance is not symmetric positive-semidefinite.",
+                        'covariance is not symmetric positive-semidefinite.',
                         RuntimeWarning)
                 else:
                     raise ValueError(
-                        "covariance is not symmetric positive-semidefinite.")
+                        'covariance is not symmetric positive-semidefinite.')
 
         x = cupy.dot(x, cupy.sqrt(s)[:, None] * v)
         x += mean
@@ -352,11 +353,11 @@ class RandomState(object):
         n = cupy.asarray(n)
         p = cupy.asarray(p)
         if cupy.any(n <= 0):
-            raise ValueError("n <= 0")
+            raise ValueError('n <= 0')
         if cupy.any(p < 0):
-            raise ValueError("p < 0")
+            raise ValueError('p < 0')
         if cupy.any(p > 1):
-            raise ValueError("p > 1")
+            raise ValueError('p > 1')
         y = self.gamma(n, (1-p)/p, size)
         return self.poisson(y, dtype=dtype)
 
@@ -398,9 +399,9 @@ class RandomState(object):
         """
         df, nonc = cupy.asarray(df), cupy.asarray(nonc)
         if cupy.any(df <= 0):
-            raise ValueError("df <= 0")
+            raise ValueError('df <= 0')
         if cupy.any(nonc < 0):
-            raise ValueError("nonc < 0")
+            raise ValueError('nonc < 0')
         if size is None:
             size = cupy.broadcast(df, nonc).shape
         y = cupy.empty(shape=size, dtype=dtype)
@@ -418,11 +419,11 @@ class RandomState(object):
         dfnum, dfden, nonc = \
             cupy.asarray(dfnum), cupy.asarray(dfden), cupy.asarray(nonc)
         if cupy.any(dfnum <= 0):
-            raise ValueError("dfnum <= 0")
+            raise ValueError('dfnum <= 0')
         if cupy.any(dfden <= 0):
-            raise ValueError("dfden <= 0")
+            raise ValueError('dfden <= 0')
         if cupy.any(nonc < 0):
-            raise ValueError("nonc < 0")
+            raise ValueError('nonc < 0')
         if size is None:
             size = cupy.broadcast(dfnum, dfden, nonc).shape
         y = cupy.empty(shape=size, dtype=dtype)
@@ -749,11 +750,11 @@ class RandomState(object):
         left, mode, right = \
             cupy.asarray(left), cupy.asarray(mode), cupy.asarray(right)
         if cupy.any(left > mode):
-            raise ValueError("left > mode")
+            raise ValueError('left > mode')
         if cupy.any(mode > right):
-            raise ValueError("mode > right")
+            raise ValueError('mode > right')
         if cupy.any(left == right):
-            raise ValueError("left == right")
+            raise ValueError('left == right')
         if size is None:
             size = cupy.broadcast(left, mode, right).shape
         x = self.random_sample(size=size, dtype=dtype)
@@ -834,7 +835,7 @@ class RandomState(object):
         """
         a = cupy.asarray(a)
         if cupy.any(a < 0):
-            raise ValueError("a < 0")
+            raise ValueError('a < 0')
         x = self.standard_exponential(size, dtype)
         cupy.power(x, 1./a, out=x)
         return x
@@ -848,7 +849,7 @@ class RandomState(object):
         """
         a = cupy.asarray(a)
         if cupy.any(a <= 1.0):
-            raise ValueError("'a' must be a valid float > 1.0")
+            raise ValueError('\'a\' must be a valid float > 1.0')
         if size is None:
             size = a.shape
         y = cupy.empty(shape=size, dtype=dtype)
