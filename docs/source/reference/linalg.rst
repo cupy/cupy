@@ -68,4 +68,6 @@ Solving linear equations
    cupy.linalg.pinv
    cupy.linalg.tensorinv
 
+   cupyx.scipy.linalg.lu_factor
+   cupyx.scipy.linalg.lu_solve
    cupyx.scipy.linalg.solve_triangular

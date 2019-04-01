@@ -119,13 +119,13 @@ cdef class PinnedMemoryPointer:
 
     def __getreadbuffer__(self, Py_ssize_t idx, void **p):
         if idx != 0:
-            raise SystemError("accessing non-existent buffer segment")
+            raise SystemError('accessing non-existent buffer segment')
         p[0] = <void*>self.ptr
         return self.size()
 
     def __getwritebuffer__(self, Py_ssize_t idx, void **p):
         if idx != 0:
-            raise SystemError("accessing non-existent buffer segment")
+            raise SystemError('accessing non-existent buffer segment')
         p[0] = <void*>self.ptr
         return self.size()
 

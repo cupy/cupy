@@ -3,14 +3,14 @@ cimport cython  # NOQA
 from cupy.cuda cimport driver
 from cupy.cuda cimport stream as stream_module
 
-cdef extern from "cupy_cuComplex.h":
+cdef extern from 'cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from "cupy_cusparse.h":
+cdef extern from 'cupy_cusparse.h':
 
     # cuSPARSE Helper Function
     Status cusparseCreate(Handle *handle)
