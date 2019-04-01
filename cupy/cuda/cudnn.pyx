@@ -680,7 +680,7 @@ cdef extern from 'cupy_cudnn.h' nogil:
     int CUDNN_VERSION
 
     # Constants
-    float _CUDNN_BN_MIN_EPSILON 'CUDNN_BN_MIN_EPSILON'
+    double _CUDNN_BN_MIN_EPSILON 'CUDNN_BN_MIN_EPSILON'
 
 
 cdef class CuDNNAlgoPerf:
