@@ -1,4 +1,3 @@
-import ctypes
 import numpy.testing
 
 import cupy
@@ -129,18 +128,6 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
             verbose=verbose)
 
 
-def _get_underlying_bytes(a):
-    if isinstance(a, cupy.ndarray):
-        # copy the array to host memory while preserving order
-        buf = ctypes.create_string_buffer(a.nbytes)
-        a.data.copy_to_host(ctypes.c_void_p(ctypes.addressof(buf)), a.nbytes)
-        arr = bytearray(a.nbytes)
-        arr[:] = buf.raw
-        return arr
-    else:
-        return ctypes.string_at(a.ctypes.data, a.nbytes)
-
-
 def assert_array_exactly_equal(x, y, err_msg='', verbose=True):
     """Raises an AssertionError if two array_like objects are not equal in the
     sense of its underlying memory layout.
@@ -157,16 +144,6 @@ def assert_array_exactly_equal(x, y, err_msg='', verbose=True):
         cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
         verbose=verbose)
 
-    xbytes = _get_underlying_bytes(x)
-    ybytes = _get_underlying_bytes(y)
-    if xbytes != ybytes:
-        msg = ["Underlying arrays are not same:"]
-        if err_msg:
-            msg = [msg[0] + ' ' + err_msg]
-        if verbose:
-            msg.append(" x: {}".format(xbytes))
-            msg.append(" y: {}".format(ybytes))
-        raise AssertionError('\n'.join(msg))
     if x.strides != y.strides:
         msg = ["Strides are not equal:"]
         if err_msg:

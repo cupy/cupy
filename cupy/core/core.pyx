@@ -1710,7 +1710,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
         else:
             a = src.copy(order=order).astype(dtype, copy=False)
 
-        ndim = len(a._shape)
+        ndim = a._shape.size()
         if ndmin > ndim:
             if a is obj:
                 # When `copy` is False, `a` is same as `obj`.
@@ -1720,7 +1720,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
         return array(_convert_object_with_cuda_array_interface(obj),
                      dtype, copy, order, subok, ndmin)
     else:  # obj is sequence, numpy array, scalar or the other type of object
-        shape, elem_dtype, head = _get_concat_shape(obj)
+        shape, elem_type, elem_dtype = _get_concat_shape(obj)
         if shape is not None and shape[-1] != 0:
             # obj is a non-empty sequence of ndarrays which share same shape
             # and dtype
@@ -1739,16 +1739,18 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
 
             if dtype is None:
                 dtype = elem_dtype
-            if isinstance(head, numpy.ndarray):  # obj is Seq[numpy.ndarray]
+            if issubclass(elem_type, numpy.ndarray):
+                # obj is Seq[numpy.ndarray]
                 a = _send_numpy_array_list_to_gpu(
                     obj, dtype, shape, order, ndmin)
-            elif isinstance(head, ndarray):  # obj is Seq[cupy.ndarray]
+            elif issubclass(elem_type, ndarray):
+                # obj is Seq[cupy.ndarray]
                 a = (_manipulation.concatenate_method(_flatten_list(obj), 0)
                                   .reshape(shape)
                                   .astype(dtype, order=order, copy=False))
             else:  # should not be reached here
                 raise ValueError(
-                    "The elements of obj are unsupported type(s)")
+                    'The elements of obj are unsupported type(s)')
         else:
             # obj is:
             # - numpy array
@@ -1769,42 +1771,43 @@ cdef tuple _get_concat_shape(object obj):
     #    just concatenating it (i.e., the object is a (nested) sequence only
     #    which contains NumPy/CuPy array(s) with same shape and dtype).
     #    Returns None otherwise.
-    # 2. dtype if the object is an array
-    # 3. a first element in the object
+    # 2. type of the first item in the object
+    # 3. dtype if the object is an array
     return (_get_concat_shape_impl(obj) if isinstance(obj, (list, tuple))
             else (None, None, None))
 
 
 cdef tuple _get_concat_shape_impl(object obj):
-    if isinstance(obj, (numpy.ndarray, ndarray)):
-        return (obj.shape, obj.dtype, obj)
+    cdef obj_type = type(obj)
+    if issubclass(obj_type, (numpy.ndarray, ndarray)):
+        return (obj.shape, obj_type, obj.dtype)
     elif isinstance(obj, (list, tuple)):
         shape = None
+        typ = None
         dtype = None
-        head = None
         for elem in obj:
             # Find the head recursively if obj is a nested built-in list
-            elem_shape, elem_dtype, elem_head = _get_concat_shape_impl(elem)
+            elem_shape, elem_type, elem_dtype = _get_concat_shape_impl(elem)
 
             # Use shape of the first element as the common shape.
             if shape is None:
                 shape = elem_shape
+                typ = elem_type
                 dtype = elem_dtype
-                head = elem_head
 
             # `elem` is not concatable or the shape and dtype does not match
             # with siblings.
             if (elem_shape is None or
                     shape != elem_shape or
                     dtype != elem_dtype):
-                return (None, None, obj)
+                return (None, obj_type, None)
 
         return (
             (len(obj),) + shape if shape is not None else (len(obj),),
-            dtype,
-            head)
+            typ,
+            dtype)
     else:  # scalar or object
-        return (None, None, obj)
+        return (None, obj_type, None)
 
 
 cdef list _flatten_list(object obj):
@@ -1828,10 +1831,10 @@ cdef ndarray _send_object_to_gpu(obj, dtype, str order, Py_ssize_t ndmin):
     a_dtype = a_cpu.dtype
     if a_dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_dtype)
-    cdef vector.vector[Py_ssize_t] a_shape = (<object>a_cpu).shape
+    cdef vector.vector[Py_ssize_t] a_shape = a_cpu.shape
     cdef ndarray a = ndarray(a_shape, dtype=a_dtype, order=order)
     if a_cpu.ndim == 0:
-        a.fill(a_cpu[()])
+        a.fill(a_cpu)
         return a
     cdef Py_ssize_t nbytes = a.nbytes
 
@@ -1852,6 +1855,9 @@ cdef ndarray _send_object_to_gpu(obj, dtype, str order, Py_ssize_t ndmin):
 cdef ndarray _send_numpy_array_list_to_gpu(
     list arrays, dtype, const vector.vector[Py_ssize_t]& shape, str order,
         Py_ssize_t ndmin):
+    if dtype.char not in '?bhilqBHILQefdFD':
+        raise ValueError('Unsupported dtype %s' % dtype)
+
     cdef ndarray a  # allocate it after pinned memory is secured
     cdef size_t itemcount = internal.prod(shape)
     cdef size_t nbytes = itemcount * get_dtype(dtype).itemsize
@@ -1869,7 +1875,12 @@ cdef ndarray _send_numpy_array_list_to_gpu(
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
         # fallback to numpy array and send it to GPU
-        a = _send_object_to_gpu(arrays, dtype, order, ndmin)
+        # Note: a_cpu.ndim is always >= 1
+        a_cpu = numpy.array(arrays, dtype=dtype, copy=False, order=order,
+                            ndmin=ndmin)
+        a = ndarray(shape, dtype=dtype, order=order)
+        a.data.copy_from_host(
+            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
 
     return a
 
