@@ -114,6 +114,10 @@ def get_compiler_setting():
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
+    cub_path = os.environ.get('CUB_PATH', '')
+    if os.path.exists(cub_path):
+        include_dirs.append(cub_path)
+
     return {
         'include_dirs': include_dirs,
         'library_dirs': library_dirs,
