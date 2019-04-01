@@ -1,12 +1,13 @@
 # distutils: language = c++
 
 import atexit
+import threading
 
 import six
 
-from cupy.cuda cimport cublas
-from cupy.cuda cimport cusparse
-from cupy.cuda cimport runtime
+from cupy.cuda import cublas
+from cupy.cuda import cusparse
+from cupy.cuda import runtime
 from cupy.cuda import runtime
 from cupy import util
 
@@ -17,46 +18,48 @@ except ImportError:
     cusolver_enabled = False
 
 
+cdef object _thread_local = threading.local()
+
+cdef dict _devices = {}
+cdef dict _compute_capabilities = {}
+
+
 cpdef int get_device_id() except? -1:
     return runtime.getDevice()
 
 
-cdef dict _cublas_handles = {}
-cdef dict _cusolver_handles = {}
-cdef dict _cusolver_sp_handles = {}
-cdef dict _cusparse_handles = {}
-cdef dict _compute_capabilities = {}
+cpdef Device _get_device():
+    dev_id = runtime.getDevice()
+    ret = _devices.get(dev_id, None)
+    if ret is None:
+        ret = Device()
+        _devices[dev_id] = ret
+    return ret
+
+
+cdef class Handle:
+    def __init__(self, handle, destroy_func):
+        self.handle = handle
+        self._destroy_func = destroy_func
+
+    def __dealloc__(self):
+        self._destroy_func(self.handle)
 
 
 cpdef size_t get_cublas_handle() except? 0:
-    dev_id = get_device_id()
-    ret = _cublas_handles.get(dev_id, None)
-    if ret is not None:
-        return ret
-    return Device().cublas_handle
+    return _get_device().cublas_handle
 
 
 cpdef size_t get_cusolver_handle() except? 0:
-    dev_id = get_device_id()
-    ret = _cusolver_handles.get(dev_id, None)
-    if ret is not None:
-        return ret
-    return Device().cusolver_handle
+    return _get_device().cusolver_handle
 
 
 cpdef get_cusolver_sp_handle():
-    dev_id = get_device_id()
-    if dev_id in _cusolver_sp_handles:
-        return _cusolver_sp_handles[dev_id]
-    return Device().cusolver_sp_handle
+    return _get_device().cusolver_sp_handle
 
 
 cpdef size_t get_cusparse_handle() except? 0:
-    dev_id = get_device_id()
-    ret = _cusparse_handles.get(dev_id, None)
-    if ret is not None:
-        return ret
-    return Device().cusparse_handle
+    return _get_device().cusparse_handle
 
 
 cpdef str get_compute_capability():
@@ -163,6 +166,19 @@ cdef class Device:
             _compute_capabilities[self.id] = cc
             return cc
 
+    def _get_handle(self, name, create_func, destroy_func):
+        handles = getattr(_thread_local, name, None)
+        if handles is None:
+            handles = {}
+            setattr(_thread_local, name, handles)
+        handle = handles.get(self.id, None)
+        if handle is not None:
+            return handle.handle
+        with self:
+            handle = create_func()
+            handles[self.id] = Handle(handle, destroy_func)
+            return handle
+
     @property
     def cublas_handle(self):
         """The cuBLAS handle for this device.
@@ -171,12 +187,8 @@ cdef class Device:
         itself is different.
 
         """
-        if self.id in _cublas_handles:
-            return _cublas_handles[self.id]
-        with self:
-            handle = cublas.create()
-            _cublas_handles[self.id] = handle
-            return handle
+        return self._get_handle(
+            'cublas_handles', cublas.create, cublas.destroy)
 
     @property
     def cusolver_handle(self):
@@ -186,15 +198,8 @@ cdef class Device:
         itself is different.
 
         """
-        if not cusolver_enabled:
-            raise RuntimeError(
-                'Current cupy only supports cusolver in CUDA 8.0')
-        if self.id in _cusolver_handles:
-            return _cusolver_handles[self.id]
-        with self:
-            handle = cusolver.create()
-            _cusolver_handles[self.id] = handle
-            return handle
+        return self._get_handle(
+            'cusolver_handles', cusolver.create, cusolver.destroy)
 
     @property
     def cusolver_sp_handle(self):
@@ -204,15 +209,8 @@ cdef class Device:
         itself is different.
 
         """
-        if not cusolver_enabled:
-            raise RuntimeError(
-                'Current cupy only supports cusolver in CUDA 8.0')
-        if self.id in _cusolver_sp_handles:
-            return _cusolver_sp_handles[self.id]
-        with self:
-            handle = cusolver.spCreate()
-            _cusolver_sp_handles[self.id] = handle
-            return handle
+        return self._get_handle(
+            'cusolver_sp_handles', cusolver.spCreate, cusolver.spDestroy)
 
     @property
     def cusparse_handle(self):
@@ -222,12 +220,8 @@ cdef class Device:
         itself is different.
 
         """
-        if self.id in _cusparse_handles:
-            return _cusparse_handles[self.id]
-        with self:
-            handle = cusparse.create()
-            _cusparse_handles[self.id] = handle
-            return handle
+        return self._get_handle(
+            'cusparse_sp_handles', cusparse.create, cusparse.destroy)
 
     @property
     def mem_info(self):
@@ -284,21 +278,3 @@ def from_pointer(ptr):
     """
     attrs = runtime.pointerGetAttributes(ptr)
     return Device(attrs.device)
-
-
-@atexit.register
-def destroy_cublas_handles():
-    """Destroys the cuBLAS handles for all devices."""
-    global _cublas_handles
-    for handle in _cublas_handles.itervalues():
-        cublas.destroy(handle)
-    _cublas_handles = {}
-
-
-@atexit.register
-def destroy_cusparse_handles():
-    """Destroys the cuSPARSE handles for all devices."""
-    global _cusparse_handles
-    for handle in six.itervalues(_cusparse_handles):
-        cusparse.destroy(handle)
-    _cusparse_handles = {}
