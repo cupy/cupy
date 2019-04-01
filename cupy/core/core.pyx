@@ -1839,7 +1839,8 @@ cdef ndarray _send_object_to_gpu(obj, dtype, str order, Py_ssize_t ndmin):
     cdef Py_ssize_t nbytes = a.nbytes
 
     stream = stream_module.get_current_stream()
-    cdef pinned_memory.PinnedMemoryPointer mem = _alloc_pinned_memory(nbytes)
+    cdef pinned_memory.PinnedMemoryPointer mem = \
+        _alloc_async_transfer_buffer(nbytes)
     if mem is not None:
         src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
         src_cpu[:] = a_cpu.ravel(order)
@@ -1863,7 +1864,8 @@ cdef ndarray _send_numpy_array_list_to_gpu(
     cdef size_t nbytes = itemcount * get_dtype(dtype).itemsize
 
     stream = stream_module.get_current_stream()
-    cdef pinned_memory.PinnedMemoryPointer mem = _alloc_pinned_memory(nbytes)
+    cdef pinned_memory.PinnedMemoryPointer mem = \
+        _alloc_async_transfer_buffer(nbytes)
     cdef size_t offset, length
     if mem is not None:
         # write concatenated arrays to the pinned memory directly
@@ -1885,7 +1887,7 @@ cdef ndarray _send_numpy_array_list_to_gpu(
     return a
 
 
-cpdef inline _alloc_pinned_memory(Py_ssize_t nbytes):
+cpdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
     try:
         return pinned_memory.alloc_pinned_memory(nbytes)
     except CUDARuntimeError as e:
