@@ -253,6 +253,10 @@ cusolverStatus_t cusolverSpCreate(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverSpDestroy(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverSpScsrlsvqr(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
