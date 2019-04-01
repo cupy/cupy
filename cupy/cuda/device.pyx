@@ -1,14 +1,11 @@
 # distutils: language = c++
 
-import atexit
 import threading
-
-import six
 
 from cupy.cuda import cublas
 from cupy.cuda import cusparse
-from cupy.cuda import runtime
-from cupy.cuda import runtime
+from cupy.cuda cimport runtime
+from cupy.cuda import runtime as runtime_module
 from cupy import util
 
 try:
