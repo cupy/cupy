@@ -150,6 +150,8 @@ CUresult cuLaunchKernel(...) {
 
 typedef enum {
     cudaSuccess = 0,
+    cudaErrorInvalidValue = 1,
+    cudaErrorMemoryAllocation = 2,
 } cudaError_t;
 typedef enum {} cudaDataType;
 enum cudaDeviceAttr {};

@@ -77,7 +77,7 @@ def _get_attributes(device_id):
                 name = k.replace('cudaDevAttr', '', 1)
                 d[name] = runtime.deviceGetAttribute(v, device_id)
             except runtime_module.CUDARuntimeError as e:
-                if e.status != runtime.errorInvalidValue:
+                if e.status != runtime.cudaErrorInvalidValue:
                     raise
     return d
 
