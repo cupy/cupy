@@ -34,7 +34,7 @@ class TestFromData(unittest.TestCase):
     @testing.for_orders('CFAK', name='src_order')
     @testing.for_orders('CFAK', name='dst_order')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_exactly_equal()
+    @testing.numpy_cupy_array_equal(strides_check=True)
     def test_array_from_list_of_numpy(self, xp, dtype, src_order, dst_order):
         # compares numpy.array(<list of numpy.ndarray>) with
         # cupy.array(<list of numpy.ndarray>)
@@ -46,7 +46,7 @@ class TestFromData(unittest.TestCase):
     @testing.for_orders('CFAK', name='src_order')
     @testing.for_orders('CFAK', name='dst_order')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_exactly_equal()
+    @testing.numpy_cupy_array_equal(strides_check=True)
     def test_array_from_list_of_numpy_view(self, xp, dtype, src_order,
                                            dst_order):
         # compares numpy.array(<list of numpy.ndarray>) with
@@ -62,7 +62,7 @@ class TestFromData(unittest.TestCase):
     @testing.for_orders('CFAK', name='src_order')
     @testing.for_orders('CFAK', name='dst_order')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_exactly_equal()
+    @testing.numpy_cupy_array_equal(strides_check=True)
     def test_array_from_list_of_cupy(self, xp, dtype, src_order, dst_order):
         # compares numpy.array(<list of numpy.ndarray>) with
         # cupy.array(<list of cupy.ndarray>)
@@ -74,7 +74,7 @@ class TestFromData(unittest.TestCase):
     @testing.for_orders('CFAK', name='src_order')
     @testing.for_orders('CFAK', name='dst_order')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_exactly_equal()
+    @testing.numpy_cupy_array_equal(strides_check=True)
     def test_array_from_list_of_cupy_view(self, xp, dtype, src_order,
                                           dst_order):
         # compares numpy.array(<list of numpy.ndarray>) with

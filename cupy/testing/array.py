@@ -74,12 +74,14 @@ def assert_array_max_ulp(a, b, maxulp=1, dtype=None):
         cupy.asnumpy(a), cupy.asnumpy(b), maxulp=maxulp, dtype=dtype)
 
 
-def assert_array_equal(x, y, err_msg='', verbose=True):
+def assert_array_equal(x, y, strides_check=False, err_msg='', verbose=True):
     """Raises an AssertionError if two array_like objects are not equal.
 
     Args:
          x(numpy.ndarray or cupy.ndarray): The actual object to check.
          y(numpy.ndarray or cupy.ndarray): The desired, expected object.
+         strides_check(bool): If ``True``, consistency of strides is also
+             checked.
          err_msg(str): The error message to be printed in case of failure.
          verbose(bool): If ``True``, the conflicting values
              are appended to the error message.
@@ -89,6 +91,32 @@ def assert_array_equal(x, y, err_msg='', verbose=True):
     numpy.testing.assert_array_equal(
         cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
         verbose=verbose)
+
+    if strides_check:
+        if x.strides != y.strides:
+            msg = ["Strides are not equal:"]
+            if err_msg:
+                msg = [msg[0] + ' ' + err_msg]
+            if verbose:
+                msg.append(" x: {}".format(x.strides))
+                msg.append(" y: {}".format(y.strides))
+            raise AssertionError('\n'.join(msg))
+        if x.flags.c_contiguous != y.flags.c_contiguous:
+            msg = ["c_contiguous are not equal:"]
+            if err_msg:
+                msg = [msg[0] + ' ' + err_msg]
+            if verbose:
+                msg.append(" x: {}".format(x.c_contiguous))
+                msg.append(" y: {}".format(y.c_contiguous))
+            raise AssertionError('\n'.join(msg))
+        if x.flags.f_contiguous != y.flags.f_contiguous:
+            msg = ["f_contiguous are not equal:"]
+            if err_msg:
+                msg = [msg[0] + ' ' + err_msg]
+            if verbose:
+                msg.append(" x: {}".format(x.f_contiguous))
+                msg.append(" y: {}".format(y.f_contiguous))
+            raise AssertionError('\n'.join(msg))
 
 
 def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
@@ -126,48 +154,6 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
         numpy.testing.assert_array_equal(
             cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
             verbose=verbose)
-
-
-def assert_array_exactly_equal(x, y, err_msg='', verbose=True):
-    """Raises an AssertionError if two array_like objects are not equal in the
-    sense of its underlying memory layout.
-
-    Args:
-         x(numpy.ndarray or cupy.ndarray): The actual object to check.
-         y(numpy.ndarray or cupy.ndarray): The desired, expected object.
-         err_msg(str): The error message to be printed in case of failure.
-         verbose(bool): If ``True``, the conflicting values
-             are appended to the error message.
-    """
-    # checks an equality of the representation of two arrays
-    numpy.testing.assert_array_equal(
-        cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
-        verbose=verbose)
-
-    if x.strides != y.strides:
-        msg = ["Strides are not equal:"]
-        if err_msg:
-            msg = [msg[0] + ' ' + err_msg]
-        if verbose:
-            msg.append(" x: {}".format(x.strides))
-            msg.append(" y: {}".format(y.strides))
-        raise AssertionError('\n'.join(msg))
-    if x.flags.c_contiguous != y.flags.c_contiguous:
-        msg = ["c_contiguous are not equal:"]
-        if err_msg:
-            msg = [msg[0] + ' ' + err_msg]
-        if verbose:
-            msg.append(" x: {}".format(x.c_contiguous))
-            msg.append(" y: {}".format(y.c_contiguous))
-        raise AssertionError('\n'.join(msg))
-    if x.flags.f_contiguous != y.flags.f_contiguous:
-        msg = ["f_contiguous are not equal:"]
-        if err_msg:
-            msg = [msg[0] + ' ' + err_msg]
-        if verbose:
-            msg.append(" x: {}".format(x.f_contiguous))
-            msg.append(" y: {}".format(y.f_contiguous))
-        raise AssertionError('\n'.join(msg))
 
 
 def assert_array_less(x, y, err_msg='', verbose=True):
