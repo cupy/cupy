@@ -43,7 +43,6 @@ between CuPy's functions and corresponding NumPy's ones.
    cupy.testing.numpy_cupy_array_almost_equal_nulp
    cupy.testing.numpy_cupy_array_max_ulp
    cupy.testing.numpy_cupy_array_equal
-   cupy.testing.numpy_cupy_array_exactly_equal
    cupy.testing.numpy_cupy_array_list_equal
    cupy.testing.numpy_cupy_array_less
    cupy.testing.numpy_cupy_raises
