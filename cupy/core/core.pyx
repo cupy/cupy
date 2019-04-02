@@ -1740,7 +1740,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
         try:
             mem = pinned_memory.alloc_pinned_memory(nbytes)
         except CUDARuntimeError as e:
-            if e.status != runtime.errorMemoryAllocation:
+            if e.status != runtime.cudaErrorMemoryAllocation:
                 raise
             error = e
 

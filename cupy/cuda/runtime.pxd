@@ -68,9 +68,6 @@ cpdef enum:
     CUDA_R_8U = 8  # 8 bit real as a signed integer
     CUDA_C_8U = 9  # 8 bit complex as a pair of signed integers
 
-    errorMemoryAllocation = 2
-    errorInvalidValue = 11
-
     cudaDevAttrMaxThreadsPerBlock = 1
     cudaDevAttrMaxBlockDimX = 2
     cudaDevAttrMaxBlockDimY = 3
@@ -171,6 +168,16 @@ cpdef enum:
     cudaDevAttrHostRegisterSupported = 99
     cudaDevAttrPageableMemoryAccessUsesHostPageTables = 100
     cudaDevAttrDirectManagedMemAccessFromHost = 101
+
+
+###############################################################################
+# Error codes
+###############################################################################
+
+cdef extern from '../cuda/cupy_cuda.h':  # thru parent to import in core
+    int cudaErrorMemoryAllocation
+    int cudaErrorInvalidValue
+
 
 ###############################################################################
 # Error handling

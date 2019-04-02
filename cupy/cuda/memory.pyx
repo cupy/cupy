@@ -690,20 +690,20 @@ cdef BaseMemory _try_malloc(SingleDeviceMemoryPool pool, size_t size):
     try:
         mem = pool._alloc(size).mem
     except runtime.CUDARuntimeError as e:
-        if e.status != runtime.errorMemoryAllocation:
+        if e.status != runtime.cudaErrorMemoryAllocation:
             raise
         pool.free_all_blocks()
         try:
             mem = pool._alloc(size).mem
         except runtime.CUDARuntimeError as e:
-            if e.status != runtime.errorMemoryAllocation:
+            if e.status != runtime.cudaErrorMemoryAllocation:
                 raise
             gc.collect()
             pool.free_all_blocks()
             try:
                 mem = pool._alloc(size).mem
             except runtime.CUDARuntimeError as e:
-                if e.status != runtime.errorMemoryAllocation:
+                if e.status != runtime.cudaErrorMemoryAllocation:
                     raise
 
     if mem is None:
@@ -813,7 +813,12 @@ cdef class LockAndNoGc:
 
     def __enter__(self):
         rlock.lock_fastrlock(self._lock, -1, True)
-        if gc.isenabled():
+
+        # This method may be called from the context of finalizer
+        # (e.g., `__dealloc__` of PooledMemory class).
+        # If the process is going to be terminated, the module itself may
+        # already been unavailable.
+        if gc is not None and gc.isenabled():
             self._gc = True
             gc.disable()
 

@@ -39,6 +39,7 @@ cdef extern from *:
 
 
 cdef extern from 'cupy_cuda.h' nogil:
+
     # Types
     struct _PointerAttributes 'cudaPointerAttributes':
         int device
@@ -112,6 +113,14 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaEventQuery(driver.Event event)
     int cudaEventRecord(driver.Event event, driver.Stream stream)
     int cudaEventSynchronize(driver.Event event)
+
+
+###############################################################################
+# Error codes
+###############################################################################
+
+errorInvalidValue = cudaErrorInvalidValue
+errorMemoryAllocation = cudaErrorMemoryAllocation
 
 
 ###############################################################################
