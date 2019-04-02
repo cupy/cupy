@@ -843,19 +843,19 @@ cdef class SingleDeviceMemoryPool:
         # Map from memory pointer of the chunk (size_t) to the corresponding
         # Chunk object. All chunks currently allocated to the application from
         # this pool are stored.
-        # `_in_use_lock` must be acquired to access.
+        # `_in_use_lock` must be acquired to access it.
         dict _in_use
 
         # Map from stream pointer (int) to its arena (list) for the stream.
-        # `_free_lock` must be acquired to access.
+        # `_free_lock` must be acquired to access it.
         dict _free
 
         # Number of total bytes actually allocated on GPU.
-        # `_total_bytes_lock` must be acquired to access.
+        # `_total_bytes_lock` must be acquired to access it.
         size_t _total_bytes
 
         # Upper limit of the amount to be allocated by this pool.
-        # `_total_bytes_lock` must be acquired to access.
+        # `_total_bytes_lock` must be acquired to access it.
         size_t _total_bytes_limit
 
         object __weakref__
@@ -866,7 +866,7 @@ cdef class SingleDeviceMemoryPool:
         readonly int _device_id
 
         # Map from stream pointer to its arena index.
-        # `_free_lock` must be acquired to access.
+        # `_free_lock` must be acquired to access it.
         map.map[size_t, vector.vector[size_t]] _index
         map.map[size_t, vector.vector[int8_t]] _flag
 
