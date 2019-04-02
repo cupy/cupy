@@ -337,8 +337,8 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
 
 
 def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
-                           type_check=True, strides_check=False, accept_error=False,
-                           sp_name=None, scipy_name=None):
+                           type_check=True, strides_check=False,
+                           accept_error=False, sp_name=None, scipy_name=None):
     """Decorator that checks NumPy results and CuPy ones are equal.
 
     Args:
