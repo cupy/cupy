@@ -851,10 +851,11 @@ cdef class SingleDeviceMemoryPool:
         dict _free
 
         # Number of total bytes actually allocated on GPU.
-        # `_total_bytes_lock` must be acquired to modify.
+        # `_total_bytes_lock` must be acquired to access.
         size_t _total_bytes
 
         # Upper limit of the amount to be allocated by this pool.
+        # `_total_bytes_lock` must be acquired to access.
         size_t _total_bytes_limit
 
         object __weakref__
@@ -1103,10 +1104,12 @@ cdef class SingleDeviceMemoryPool:
             raise ValueError(
                 'memory limit size out of range: {}'.format(size))
 
-        self._total_bytes_limit = size
+        with LockAndNoGc(self._total_bytes_lock):
+            self._total_bytes_limit = size
 
     cpdef size_t get_limit(self):
-        return self._total_bytes_limit
+        with LockAndNoGc(self._total_bytes_lock):
+            return self._total_bytes_limit
 
     cpdef dict _parse_limit_string(sefl, limit=None):
         if limit is None:
