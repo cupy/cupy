@@ -35,13 +35,13 @@ struct _cub_reduce_sum {
     template <typename T>
     void operator()(void *x, void *y, int num_items, void *workspace,
 		    size_t &workspace_size) {
-	DeviceReduce::Sum(workspace, workspace_size, reinterpret_cast<T*>(x),
-			  reinterpret_cast<T*>(y), num_items);
+	DeviceReduce::Sum(workspace, workspace_size, static_cast<T*>(x),
+			  static_cast<T*>(y), num_items);
     }
 };
 
 void cub_reduce_sum(void *x, void *y, int num_items,
-		    void *workspace, size_t &workspace_size, int dtype_id)
+		    void *workspace=NULL, size_t &workspace_size, int dtype_id)
 {
     dtype_dispatcher(dtype_id, _cub_reduce_sum(),
 		     x, y, num_items, workspace, workspace_size);
@@ -50,7 +50,7 @@ void cub_reduce_sum(void *x, void *y, int num_items,
 size_t cub_reduce_sum_get_workspace_size(void *x, void *y, int num_items,
 					 int dtype_id)
 {
-    size_t workspace_size;
+    size_t workspace_size = 0;
     cub_reduce_sum(x, y, num_items, NULL, workspace_size, dtype_id);
     return workspace_size;
 }
@@ -62,13 +62,13 @@ struct _cub_reduce_min {
     template <typename T>
     void operator()(void *x, void *y, int num_items, void *workspace,
 		    size_t &workspace_size) {
-	DeviceReduce::Min(workspace, workspace_size, reinterpret_cast<T*>(x),
-			  reinterpret_cast<T*>(y), num_items);
+	DeviceReduce::Min(workspace, workspace_size, static_cast<T*>(x),
+			  static_cast<T*>(y), num_items);
     }
 };
 
 void cub_reduce_min(void *x, void *y, int num_items,
-		    void *workspace, size_t &workspace_size, int dtype_id)
+		    void *workspace=NULL, size_t &workspace_size, int dtype_id)
 {
     dtype_dispatcher(dtype_id, _cub_reduce_min(),
 		     x, y, num_items, workspace, workspace_size);
@@ -77,7 +77,7 @@ void cub_reduce_min(void *x, void *y, int num_items,
 size_t cub_reduce_min_get_workspace_size(void *x, void *y, int num_items,
 					 int dtype_id)
 {
-    size_t workspace_size;
+    size_t workspace_size = 0;
     cub_reduce_min(x, y, num_items, NULL, workspace_size, dtype_id);
     return workspace_size;
 }
@@ -89,13 +89,13 @@ struct _cub_reduce_max {
     template <typename T>
     void operator()(void *x, void *y, int num_items, void *workspace,
 		    size_t &workspace_size) {
-	DeviceReduce::Max(workspace, workspace_size, reinterpret_cast<T*>(x),
-			  reinterpret_cast<T*>(y), num_items);
+	DeviceReduce::Max(workspace, workspace_size, static_cast<T*>(x),
+			  static_cast<T*>(y), num_items);
     }
 };
 
 void cub_reduce_max(void *x, void *y, int num_items,
-		    void *workspace, size_t &workspace_size, int dtype_id)
+		    void *workspace=NULL, size_t &workspace_size, int dtype_id)
 {
     dtype_dispatcher(dtype_id, _cub_reduce_max(),
 		     x, y, num_items, workspace, workspace_size);
@@ -104,7 +104,7 @@ void cub_reduce_max(void *x, void *y, int num_items,
 size_t cub_reduce_max_get_workspace_size(void *x, void *y, int num_items,
 					 int dtype_id)
 {
-    size_t workspace_size;
+    size_t workspace_size = 0;
     cub_reduce_max(x, y, num_items, NULL, workspace_size, dtype_id);
     return workspace_size;
 }
