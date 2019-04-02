@@ -119,7 +119,6 @@ cdef extern from "cupy_cuda.h" nogil:
 # Error codes
 ###############################################################################
 
-errorInvalidValue = cudaErrorInvalidValue
 errorMemoryAllocation = cudaErrorMemoryAllocation
 
 
