@@ -337,8 +337,8 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
 
 
 def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
-                           type_check=True, strides_check=False,
-                           accept_error=False, sp_name=None, scipy_name=None):
+                           type_check=True, accept_error=False, sp_name=None,
+                           scipy_name=None, strides_check=False):
     """Decorator that checks NumPy results and CuPy ones are equal.
 
     Args:
@@ -348,8 +348,6 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         strides_check(bool): If ``True``, consistency of strides is also
-             checked.
          accept_error(bool, Exception or tuple of Exception): Specify
              acceptable errors. When both NumPy test and CuPy test raises the
              same type of errors, and the type of the errors is specified with
@@ -362,6 +360,8 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
              the modules.
+         strides_check(bool): If ``True``, consistency of strides is also
+             checked.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`numpy_cupy_array_equal`
@@ -377,7 +377,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
             if scipy.sparse.issparse(y):
                 y = y.A
 
-        array.assert_array_equal(x, y, strides_check, err_msg, verbose)
+        array.assert_array_equal(x, y, err_msg, verbose, strides_check)
 
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
                            scipy_name)

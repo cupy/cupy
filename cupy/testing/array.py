@@ -74,7 +74,7 @@ def assert_array_max_ulp(a, b, maxulp=1, dtype=None):
         cupy.asnumpy(a), cupy.asnumpy(b), maxulp=maxulp, dtype=dtype)
 
 
-def assert_array_equal(x, y, strides_check=False, err_msg='', verbose=True):
+def assert_array_equal(x, y, err_msg='', verbose=True, strides_check=False):
     """Raises an AssertionError if two array_like objects are not equal.
 
     Args:
@@ -94,28 +94,12 @@ def assert_array_equal(x, y, strides_check=False, err_msg='', verbose=True):
 
     if strides_check:
         if x.strides != y.strides:
-            msg = ["Strides are not equal:"]
+            msg = ['Strides are not equal:']
             if err_msg:
                 msg = [msg[0] + ' ' + err_msg]
             if verbose:
-                msg.append(" x: {}".format(x.strides))
-                msg.append(" y: {}".format(y.strides))
-            raise AssertionError('\n'.join(msg))
-        if x.flags.c_contiguous != y.flags.c_contiguous:
-            msg = ["c_contiguous are not equal:"]
-            if err_msg:
-                msg = [msg[0] + ' ' + err_msg]
-            if verbose:
-                msg.append(" x: {}".format(x.c_contiguous))
-                msg.append(" y: {}".format(y.c_contiguous))
-            raise AssertionError('\n'.join(msg))
-        if x.flags.f_contiguous != y.flags.f_contiguous:
-            msg = ["f_contiguous are not equal:"]
-            if err_msg:
-                msg = [msg[0] + ' ' + err_msg]
-            if verbose:
-                msg.append(" x: {}".format(x.f_contiguous))
-                msg.append(" y: {}".format(y.f_contiguous))
+                msg.append(' x: {}'.format(x.strides))
+                msg.append(' y: {}'.format(y.strides))
             raise AssertionError('\n'.join(msg))
 
 
