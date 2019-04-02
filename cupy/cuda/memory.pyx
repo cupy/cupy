@@ -1081,7 +1081,8 @@ cdef class SingleDeviceMemoryPool:
         return size
 
     cpdef size_t total_bytes(self):
-        return self._total_bytes
+        with LockAndNoGc(self._total_bytes_lock):
+            return self._total_bytes
 
     cpdef set_limit(self, size=None, fraction=None):
         if size is None:
