@@ -681,12 +681,15 @@ cdef object _get_chunk(SingleDeviceMemoryPool pool, size_t size,
 
 
 cdef BaseMemory _try_malloc(SingleDeviceMemoryPool pool, size_t size):
-    # Be optimistic to avoid locking the entire malloc section.
-    total = pool._total_bytes + size
-    if pool._total_bytes_limit != 0 and pool._total_bytes_limit < total:
-        raise OutOfMemoryError(size, total, pool._total_bytes_limit)
+    with LockAndNoGc(pool._total_bytes_lock):
+        total_bytes_limit = pool._total_bytes_limit
+        total = pool._total_bytes + size
+        if total_bytes_limit != 0 and total_bytes_limit < total:
+            raise OutOfMemoryError(size, total, total_bytes_limit)
+        pool._total_bytes = total
 
     mem = None
+    oom_error = False
     try:
         mem = pool._alloc(size).mem
     except runtime.CUDARuntimeError as e:
@@ -705,19 +708,13 @@ cdef BaseMemory _try_malloc(SingleDeviceMemoryPool pool, size_t size):
             except runtime.CUDARuntimeError as e:
                 if e.status != runtime.cudaErrorMemoryAllocation:
                     raise
-
-    if mem is None:
-        raise OutOfMemoryError(size, total)
-
-    rlock.lock_fastrlock(pool._total_bytes_lock, -1, True)
-    try:
-        total = pool._total_bytes + size
-        if pool._total_bytes_limit != 0 and pool._total_bytes_limit < total:
-            del mem
-            raise OutOfMemoryError(size, total, pool._total_bytes_limit)
-        pool._total_bytes = total
+                oom_error = True
     finally:
-        rlock.unlock_fastrlock(pool._total_bytes_lock)
+        if mem is None:
+            with LockAndNoGc(pool._total_bytes_lock):
+                pool._total_bytes -= size
+            if oom_error:
+                raise OutOfMemoryError(size, total, total_bytes_limit)
 
     return mem
 
