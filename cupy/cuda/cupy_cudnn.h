@@ -13,6 +13,8 @@
 
 #define CUDNN_VERSION 0
 
+#define CUDNN_BN_MIN_EPSILON 0.0
+
 extern "C" {
 
 typedef enum {

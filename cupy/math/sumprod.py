@@ -210,7 +210,68 @@ def cumprod(a, axis=None, dtype=None, out=None):
     return _cum_core(a, axis, dtype, out, _cumprod_kern, _cumprod_batch_kern)
 
 
-# TODO(okuta): Implement diff
+def diff(a, n=1, axis=-1, prepend=None, append=None):
+    """Calculate the n-th discrete difference along the given axis.
+
+    Args:
+        a (cupy.ndarray): Input array.
+        n (int): The number of times values are differenced. If zero, the input
+            is returned as-is.
+        axis (int): The axis along which the difference is taken, default is
+            the last axis.
+        prepend (int, float, cupy.ndarray): Value to prepend to ``a``.
+        append (int, float, cupy.ndarray): Value to append to ``a``.
+
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.diff`
+    """
+
+    if n == 0:
+        return a
+    if n < 0:
+        raise ValueError(
+            "order must be non-negative but got " + repr(n))
+
+    a = cupy.asanyarray(a)
+    nd = a.ndim
+
+    combined = []
+
+    if prepend is not None:
+        prepend = cupy.asanyarray(prepend)
+        if prepend.ndim == 0:
+            shape = list(a.shape)
+            shape[axis] = 1
+            prepend = cupy.broadcast_to(prepend, tuple(shape))
+        combined.append(prepend)
+
+    combined.append(a)
+
+    if append is not None:
+        append = cupy.asanyarray(append)
+        if append.ndim == 0:
+            shape = list(a.shape)
+            shape[axis] = 1
+            append = cupy.broadcast_to(append, tuple(shape))
+        combined.append(append)
+
+    if len(combined) > 1:
+        a = cupy.concatenate(combined, axis)
+
+    slice1 = [slice(None)] * nd
+    slice2 = [slice(None)] * nd
+    slice1[axis] = slice(1, None)
+    slice2[axis] = slice(None, -1)
+    slice1 = tuple(slice1)
+    slice2 = tuple(slice2)
+
+    op = cupy.not_equal if a.dtype == numpy.bool_ else cupy.subtract
+    for _ in range(n):
+        a = op(a[slice1], a[slice2])
+
+    return a
 
 
 # TODO(okuta): Implement ediff1d

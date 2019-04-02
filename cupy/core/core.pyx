@@ -1891,7 +1891,7 @@ cpdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
     try:
         return pinned_memory.alloc_pinned_memory(nbytes)
     except CUDARuntimeError as e:
-        if e.status != runtime.errorMemoryAllocation:
+        if e.status != runtime.cudaErrorMemoryAllocation:
             raise
         warnings.warn(
             'Using synchronous transfer as pinned memory ({} bytes) '
