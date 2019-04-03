@@ -143,9 +143,9 @@ class TestSlicingMemoryPointer(unittest.TestCase):
     def test_shape_with_strides(self, dtype, order):
         x = cupy.zeros(self.shape, dtype=dtype, order=order)
 
-        start = [x.start for x in self.slices]
+        start = [s.start for s in self.slices]
         itemsize = cupy.dtype(dtype).itemsize
-        dimsize = [x * itemsize for x in start]
+        dimsize = [s * itemsize for s in start]
         if len(self.shape) == 1:
             offset = start[0] * itemsize
         else:
