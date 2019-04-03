@@ -145,16 +145,14 @@ class TestSlicingMemoryPointer(unittest.TestCase):
 
         start = [x.start for x in self.slices]
         itemsize = cupy.dtype(dtype).itemsize
-        if order == 'C':
-            if len(self.shape) == 1:
-                offset = start[0] * itemsize
-            elif len(self.shape) == 2:
-                offset = self.shape[0] * start[0] * itemsize + start[1] * itemsize
+        dimsize = [x * itemsize for x in start]
+        if len(self.shape) == 1:
+            offset = start[0] * itemsize
         else:
-            if len(self.shape) == 1:
-                offset = start[0] * itemsize
-            elif len(self.shape) == 2:
-                offset = self.shape[0] * start[1] * itemsize + start[0] * itemsize
+            if order == 'C':
+                offset = self.shape[0] * dimsize[0] + dimsize[1]
+            else:
+                offset = self.shape[0] * dimsize[1] + dimsize[0]
 
         cai_ptr, _ = x.__cuda_array_interface__['data']
         slice_cai_ptr, _ = x[self.slices].__cuda_array_interface__['data']
