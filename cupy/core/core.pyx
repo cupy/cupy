@@ -1745,7 +1745,12 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                     obj, dtype, shape, order, ndmin)
             elif issubclass(elem_type, ndarray):
                 # obj is Seq[cupy.ndarray]
-                a = (_manipulation.concatenate_method(_flatten_list(obj), 0)
+                lst = _flatten_list(obj)
+                if len(shape) == 1:
+                    # convert each scalar (0-dim) ndarray to 1-dim
+                    lst = [cupy.expand_dims(x, 0) for x in lst]
+
+                a = (_manipulation.concatenate_method(lst, 0)
                                   .reshape(shape)
                                   .astype(dtype, order=order, copy=False))
             else:  # should not be reached here
@@ -1780,6 +1785,7 @@ cdef tuple _get_concat_shape(object obj):
 cdef tuple _get_concat_shape_impl(object obj):
     cdef obj_type = type(obj)
     if issubclass(obj_type, (numpy.ndarray, ndarray)):
+        # obj.shape is () when obj.ndim == 0
         return (obj.shape, obj_type, obj.dtype)
     elif isinstance(obj, (list, tuple)):
         shape = None
@@ -1820,7 +1826,7 @@ cdef list _flatten_list(object obj):
         return [obj]
 
 
-cdef ndarray _send_object_to_gpu(obj, dtype, str order, Py_ssize_t ndmin):
+cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
     if order is not None and len(order) >= 1 and order[0] in 'KAka':
         if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
             order = 'F'
@@ -1854,7 +1860,7 @@ cdef ndarray _send_object_to_gpu(obj, dtype, str order, Py_ssize_t ndmin):
 
 
 cdef ndarray _send_numpy_array_list_to_gpu(
-    list arrays, dtype, const vector.vector[Py_ssize_t]& shape, str order,
+    list arrays, dtype, const vector.vector[Py_ssize_t]& shape, order,
         Py_ssize_t ndmin):
     if dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % dtype)
