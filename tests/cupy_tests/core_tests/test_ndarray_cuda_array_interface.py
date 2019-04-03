@@ -127,13 +127,13 @@ class TestReductionKernel(unittest.TestCase):
 
 
 @testing.parameterize(
-        {'shape': (10,), 'slices': (slice(0, None),)},
-        {'shape': (10,), 'slices': (slice(2, None),)},
-        {'shape': (10, 10), 'slices': (slice(0, None), slice(0, None))},
-        {'shape': (10, 10), 'slices': (slice(0, None), slice(2, None))},
-        {'shape': (10, 10), 'slices': (slice(2, None), slice(0, None))},
-        {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None))},
-        {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
+    {'shape': (10,), 'slices': (slice(0, None),)},
+    {'shape': (10,), 'slices': (slice(2, None),)},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(0, None))},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(2, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(0, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
 )
 @testing.gpu
 class TestSlicingMemoryPointer(unittest.TestCase):
