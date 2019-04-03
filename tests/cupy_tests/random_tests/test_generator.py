@@ -100,8 +100,7 @@ class RandomGeneratorTestCase(unittest.TestCase):
         y = func()
         testing.assert_array_equal(
             x, y,
-            err_msg='Randomly generated arrays with the same seed did not '
-                    'match')
+            'Randomly generated arrays with the same seed did not match')
         return x
 
     def generate(self, *args, **kwargs):
