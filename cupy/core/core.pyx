@@ -1877,7 +1877,7 @@ cdef ndarray _send_numpy_array_list_to_gpu(
         # write concatenated arrays to the pinned memory directly
         src_cpu = numpy.frombuffer(mem, dtype, itemcount).reshape(
             shape, order=order)
-        numpy.concatenate(
+        _concatenate_numpy_array(
             [numpy.expand_dims(e, 0) for e in arrays], 0, src_cpu)
         a = ndarray(shape, dtype=dtype, order=order)
         a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
@@ -1892,6 +1892,18 @@ cdef ndarray _send_numpy_array_list_to_gpu(
             ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
 
     return a
+
+
+cdef bint _is_outable_numpy_concatenate = (
+    numpy.lib.NumpyVersion(numpy.__version__) >= '1.14.0')
+
+
+cdef inline _concatenate_numpy_array(arrays, axis, out):
+    if _is_outable_numpy_concatenate:
+        numpy.concatenate(arrays, axis, out)
+    else:
+        ret = numpy.concatenate(arrays, axis)
+        out[:] = ret
 
 
 cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):

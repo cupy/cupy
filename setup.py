@@ -24,7 +24,7 @@ requirements = {
         'fastrlock>=0.3',
     ],
     'install': [
-        'numpy>=1.14.0',
+        'numpy>=1.9.0',
         'six>=1.9.0',
         'fastrlock>=0.3',
     ],
