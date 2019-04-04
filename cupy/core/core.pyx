@@ -1877,7 +1877,8 @@ cdef ndarray _send_numpy_array_list_to_gpu(
         # write concatenated arrays to the pinned memory directly
         src_cpu = numpy.frombuffer(mem, dtype, itemcount).reshape(
             shape, order=order)
-        numpy.concatenate([e[None] for e in arrays], 0, src_cpu)
+        numpy.concatenate(
+            [numpy.expand_dims(e, 0) for e in arrays], 0, src_cpu)
         a = ndarray(shape, dtype=dtype, order=order)
         a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
