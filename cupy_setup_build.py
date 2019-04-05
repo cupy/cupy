@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import argparse
+import copy
 from distutils import ccompiler
 from distutils import errors
 from distutils import msvccompiler
@@ -33,11 +34,18 @@ MODULES = [
         'file': [
             'cupy.core._dtype',
             'cupy.core._kernel',
+            'cupy.core._routines_indexing',
+            'cupy.core._routines_logic',
+            'cupy.core._routines_manipulation',
+            'cupy.core._routines_math',
+            'cupy.core._routines_sorting',
+            'cupy.core._routines_statistics',
             'cupy.core._scalar',
             'cupy.core.core',
             'cupy.core.dlpack',
             'cupy.core.flags',
             'cupy.core.internal',
+            'cupy.core.fusion',
             'cupy.core.raw',
             'cupy.cuda.cublas',
             'cupy.cuda.cufft',
@@ -407,7 +415,9 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
+        original_s = s
         for f in module['file']:
+            s = copy.deepcopy(original_s)
             name = module_extension_name(f)
 
             rpath = []
@@ -425,16 +435,19 @@ def make_extensions(options, compiler, use_cython):
                 depth = name.count('.') - 1
                 rpath.append('{}{}/_lib'.format(_rpath_base(), '/..' * depth))
 
-            if not PLATFORM_WIN32:
+            if not PLATFORM_WIN32 and not PLATFORM_LINUX:
                 s['runtime_library_dirs'] = rpath
-            if PLATFORM_DARWIN:
+            if (PLATFORM_LINUX and s['library_dirs']) or PLATFORM_DARWIN:
+                ldflag = '-Wl,'
+                if PLATFORM_LINUX:
+                    ldflag += '--disable-new-dtags,'
+                ldflag += ','.join('-rpath,' + p for p in rpath)
                 args = s.setdefault('extra_link_args', [])
-                args.append(
-                    '-Wl,' + ','.join('-rpath,' + p
-                                      for p in s['library_dirs']))
-                # -rpath is only supported when targetting Mac OS X 10.5 or
-                # later
-                args.append('-mmacosx-version-min=10.5')
+                args.append(ldflag)
+                if PLATFORM_DARWIN:
+                    # -rpath is only supported when targetting Mac OS X 10.5 or
+                    # later
+                    args.append('-mmacosx-version-min=10.5')
 
             sources = module_extension_sources(f, use_cython, no_cuda)
             extension = setuptools.Extension(name, sources, **s)
@@ -515,14 +528,14 @@ def prepare_wheel_libs():
         # Clean up existing libraries.
         libfiles = glob.glob('cupy/{}/*.dll'.format(libdirname))
         for libfile in libfiles:
-            print("Removing file: {}".format(libfile))
+            print('Removing file: {}'.format(libfile))
             os.remove(libfile)
     else:
         libdirname = '_lib'
         # Clean up the library directory.
         libdir = 'cupy/{}'.format(libdirname)
         if os.path.exists(libdir):
-            print("Removing directory: {}".format(libdir))
+            print('Removing directory: {}'.format(libdir))
             shutil.rmtree(libdir)
         os.mkdir(libdir)
 
@@ -530,7 +543,7 @@ def prepare_wheel_libs():
     libs = []
     for lib in cupy_setup_options['wheel_libs']:
         # Note: symlink is resolved by shutil.copy2.
-        print("Copying library for wheel: {}".format(lib))
+        print('Copying library for wheel: {}'.format(lib))
         libname = path.basename(lib)
         libpath = 'cupy/{}/{}'.format(libdirname, libname)
         shutil.copy2(lib, libpath)
@@ -561,7 +574,7 @@ def cythonize(extensions, arg_options):
                          for key in cythonize_option_keys}
 
     return Cython.Build.cythonize(
-        extensions, verbose=True,
+        extensions, verbose=True, language_level=3,
         compiler_directives=directives, **cythonize_options)
 
 
@@ -623,7 +636,13 @@ def _nvcc_gencode_options(cuda_version):
     arch_list = ['compute_30',
                  'compute_50']
 
-    if cuda_version >= 9000:
+    if cuda_version >= 10000:
+        arch_list += [('compute_60', 'sm_60'),
+                      ('compute_61', 'sm_61'),
+                      ('compute_70', 'sm_70'),
+                      ('compute_75', 'sm_75'),
+                      'compute_70']
+    elif cuda_version >= 9000:
         arch_list += [('compute_60', 'sm_60'),
                       ('compute_61', 'sm_61'),
                       ('compute_70', 'sm_70'),

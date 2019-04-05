@@ -6,12 +6,14 @@ import warnings
 
 import numpy
 
+from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport core
 from cupy.cuda cimport cudnn
 from cupy.cuda cimport device
 from cupy.core cimport internal
 from cupy.cuda cimport memory
 
+from cupy import util
 from cupy.cuda import cudnn as py_cudnn
 
 
@@ -76,25 +78,28 @@ cpdef set_max_workspace_size(size):
     _max_workspace_size = size
 
 
-class Descriptor(object):
+cdef class Descriptor:
+
+    cdef public size_t value
+    cdef object destroy
 
     def __init__(self, descriptor, destroyer):
         self.value = descriptor
         self.destroy = destroyer
 
-    def __del__(self):
+    def __dealloc__(self):
         if self.value:
             self.destroy(self.value)
-            self.value = None
+            self.value = 0
 
 
 cpdef int get_data_type(dtype) except? -1:
     cdef char t = ord(dtype.char)
-    if t == 'f':
+    if t == b'f':
         return cudnn.CUDNN_DATA_FLOAT
-    elif t == 'd':
+    elif t == b'd':
         return cudnn.CUDNN_DATA_DOUBLE
-    elif t == 'e':
+    elif t == b'e':
         return cudnn.CUDNN_DATA_HALF
     else:
         raise TypeError('Dtype {} is not supported in cuDNN'.format(dtype))
@@ -239,6 +244,8 @@ def create_uninitialized_tensor_descriptor():
 
 def create_tensor_nd_descriptor(core.ndarray arr):
     cdef dict cache
+    if arr.size == 0:
+        return Descriptor(0, None)
     if not arr.flags.c_contiguous:
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     data_type = get_data_type(arr.dtype)
@@ -302,6 +309,267 @@ def create_pooling_descriptor(ksize, stride, pad, int mode):
                       py_cudnn.destroyPoolingDescriptor)
     _create_pooling_descriptor(desc.value, ksize, stride, pad, mode)
     return desc
+
+
+cdef Descriptor _create_rnn_data_descriptor():
+    return Descriptor(cudnn.createRNNDataDescriptor(),
+                      py_cudnn.destroyRNNDataDescriptor)
+
+
+cdef Descriptor _make_unpacked_rnn_data_descriptor(core.ndarray xs, lengths):
+    cdef Descriptor descriptor = _create_rnn_data_descriptor()
+    cdef int data_type = get_data_type(xs.dtype)
+    cdef max_length, batch, n_dim
+    max_length, batch, n_dim = xs.shape
+    cudnn.setRNNDataDescriptor(
+        descriptor.value, data_type,
+        cudnn.CUDNN_RNN_DATA_LAYOUT_SEQ_MAJOR_UNPACKED,
+        max_length, batch, n_dim,
+        lengths.ctypes.data, 0)
+    return descriptor
+
+
+def rnn_forward_inference_ex(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray hx, core.ndarray cx, core.ndarray w,
+        core.ndarray xs, lengths):
+    hx = core.ascontiguousarray(hx)
+    if cx is not None:
+        cx = core.ascontiguousarray(cx)
+    w = core.ascontiguousarray(w)
+    xs = core.ascontiguousarray(xs)
+
+    cdef int length = xs._shape[0]
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
+    cdef int n_units = hx._shape[2]
+
+    cdef core.ndarray ys = _make_rnn_result_array(direction_mode, n_units, xs)
+    cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
+    if cx is None:
+        cx = core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray cy = core.ndarray(cx.shape, cx.dtype)
+
+    cdef size_t handle = get_handle()
+
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+    cudnn.setRNNPaddingMode(
+        rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
+
+    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(
+        xs, lengths)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+    cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
+    cdef Descriptor w_desc = create_filter_descriptor(w)
+    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(
+        ys, lengths)
+    cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
+    cdef Descriptor cy_desc = create_tensor_nd_descriptor(cy)
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(
+        xs)
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+        rnn_desc, length, xs_descs)
+
+    cudnn.RNNForwardInferenceEx(
+        handle, rnn_desc.value,
+        x_data_desc.value, xs.data.ptr,
+        hx_desc.value, hx.data.ptr,
+        cx_desc.value, cx.data.ptr,
+        w_desc.value, w.data.ptr,
+        y_data_desc.value, ys.data.ptr,
+        hy_desc.value, hy.data.ptr,
+        cy_desc.value, cy.data.ptr,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        workspace.ptr, workspace.mem.size)
+
+    return hy, cy, ys
+
+
+def rnn_forward_training_ex(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
+        lengths):
+    hx = core.ascontiguousarray(hx)
+    if cx is not None:
+        cx = core.ascontiguousarray(cx)
+    w = core.ascontiguousarray(w)
+    xs = core.ascontiguousarray(xs)
+
+    cdef int length = xs._shape[0]
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
+    cdef int n_units = hx._shape[2]
+
+    cdef size_t handle = get_handle()
+
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+    cudnn.setRNNPaddingMode(
+        rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
+
+    cdef core.ndarray ys = _make_rnn_result_array(direction_mode, n_units, xs)
+    cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
+    if cx is None:
+        cx = core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray cy = core.ndarray(cx.shape, cx.dtype)
+
+    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(
+        xs, lengths)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+    cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
+    cdef Descriptor w_desc = create_filter_descriptor(w)
+    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(
+        ys, lengths)
+    cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
+    cdef Descriptor cy_desc = create_tensor_nd_descriptor(cy)
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(
+        xs)
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+        rnn_desc, length, xs_descs)
+    cdef memory.MemoryPointer reserve_space = _make_rnn_reserve_space(
+        rnn_desc, length, xs_descs)
+
+    cudnn.RNNForwardTrainingEx(
+        handle, rnn_desc.value,
+        x_data_desc.value, xs.data.ptr,
+        hx_desc.value, hx.data.ptr,
+        cx_desc.value, cx.data.ptr,
+        w_desc.value, w.data.ptr,
+        y_data_desc.value, ys.data.ptr,
+        hy_desc.value, hy.data.ptr,
+        cy_desc.value, cy.data.ptr,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        workspace.ptr, workspace.mem.size,
+        reserve_space.ptr, reserve_space.mem.size)
+
+    return reserve_space, hy, cy, ys
+
+
+def rnn_backward_data_ex(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
+        core.ndarray ys, memory.MemoryPointer reserve_space,
+        core.ndarray dhy, core.ndarray dcy, core.ndarray dys,
+        lengths):
+    hx = core.ascontiguousarray(hx)
+    if cx is not None:
+        cx = core.ascontiguousarray(cx)
+    w = core.ascontiguousarray(w)
+    xs = core.ascontiguousarray(xs)
+    ys = core.ascontiguousarray(ys)
+    dhy = core.ascontiguousarray(dhy)
+    if dcy is not None:
+        dcy = core.ascontiguousarray(dcy)
+    dys = core.ascontiguousarray(dys)
+
+    cdef int length = xs._shape[0]
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
+    cdef int n_units = hx._shape[2]
+
+    cdef size_t handle = get_handle()
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+    cudnn.setRNNPaddingMode(
+        rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
+
+    cdef core.ndarray dxs = core.ndarray(xs.shape, xs.dtype)
+    cdef core.ndarray dhx = core.ndarray(hx.shape, hx.dtype)
+    if cx is None:
+        cx = dcy = core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray dcx = core.ndarray(cx.shape, cx.dtype)
+
+    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(
+        ys, lengths)
+    cdef Descriptor dy_data_desc = _make_unpacked_rnn_data_descriptor(
+        dys, lengths)
+    cdef Descriptor dhy_desc = create_tensor_nd_descriptor(dhy)
+    cdef Descriptor dcy_desc = create_tensor_nd_descriptor(dcy)
+    cdef Descriptor w_desc = create_filter_descriptor(w)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+    cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
+    cdef Descriptor dx_data_desc = _make_unpacked_rnn_data_descriptor(
+        dxs, lengths)
+    cdef Descriptor dhx_desc = create_tensor_nd_descriptor(dhx)
+    cdef Descriptor dcx_desc = create_tensor_nd_descriptor(dcx)
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(
+        xs)
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+        rnn_desc, length, xs_descs)
+
+    cudnn.RNNBackwardDataEx(
+        handle, rnn_desc.value,
+        y_data_desc.value, ys.data.ptr,
+        dy_data_desc.value, dys.data.ptr,
+        0, 0,
+        dhy_desc.value, dhy.data.ptr,
+        dcy_desc.value, dcy.data.ptr,
+        w_desc.value, w.data.ptr,
+        hx_desc.value, hx.data.ptr,
+        cx_desc.value, cx.data.ptr,
+        dx_data_desc.value, dxs.data.ptr,
+        dhx_desc.value, dhx.data.ptr,
+        dcx_desc.value, dcx.data.ptr,
+        0, 0,
+        workspace.ptr, workspace.mem.size,
+        reserve_space.ptr, reserve_space.mem.size)
+
+    return dhx, dcx, dxs
+
+
+def rnn_backward_weights_ex(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray xs, core.ndarray hx, core.ndarray ys,
+        core.ndarray w,
+        memory.MemoryPointer reserve_space, lengths):
+    xs = core.ascontiguousarray(xs)
+    hx = core.ascontiguousarray(hx)
+    ys = core.ascontiguousarray(ys)
+    w = core.ascontiguousarray(w)
+
+    cdef int length = xs._shape[0]
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
+    cdef int n_units = hx._shape[2]
+
+    cdef size_t handle = get_handle()
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+    cudnn.setRNNPaddingMode(
+        rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
+
+    cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(
+        xs, lengths)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+    cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(
+        ys, lengths)
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(
+        xs)
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+        rnn_desc, length, xs_descs)
+
+    cdef core.ndarray dw = core.ndarray(w.shape, w.dtype)
+    dw.fill(0)
+    cdef Descriptor dw_desc = create_filter_descriptor(dw)
+
+    cudnn.RNNBackwardWeightsEx(
+        handle, rnn_desc.value,
+        x_data_desc.value, xs.data.ptr,
+        hx_desc.value, hx.data.ptr,
+        y_data_desc.value, ys.data.ptr,
+        workspace.ptr, workspace.mem.size,
+        dw_desc.value, dw.data.ptr,
+        reserve_space.ptr, reserve_space.mem.size)
+    return dw
 
 
 def activation_forward(core.ndarray x, int mode, double coef=0.0):
@@ -520,7 +788,6 @@ def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
 def get_rnn_lin_layer_matrix_params(
         handle, rnn_desc, layer, x_desc, w_desc, core.ndarray w, lin_layer_id):
     cdef size_t ptr = 0
-    w_data_ptr = w.data.ptr
     mat_desc = cudnn.createFilterDescriptor()
     try:
         cudnn.getRNNLinLayerMatrixParams(
@@ -532,7 +799,7 @@ def get_rnn_lin_layer_matrix_params(
     byte_size = _get_byte_size(data_type)
     offset = (ptr - w.data.ptr) // byte_size
     size = internal.prod(dim)
-    mat = w[offset: offset + size]
+    mat = w[offset:offset + size]
     return mat
 
 
@@ -550,8 +817,322 @@ def get_rnn_lin_layer_bias_params(
     byte_size = _get_byte_size(data_type)
     offset = (ptr - w.data.ptr) // byte_size
     size = internal.prod(dim)
-    bias = w[offset: offset + size]
+    bias = w[offset:offset + size]
     return bias
+
+
+cdef class _DescriptorArray:
+
+    cdef:
+        vector.vector[size_t] _value
+        object _destroy
+
+    def __init__(self, destroyer):
+        self._destroy = destroyer
+
+    def __dealloc__(self):
+        for desc in self._value:
+            self._destroy(desc)
+
+    def append(self, desc):
+        self._value.push_back(desc)
+
+    @property
+    def data(self):
+        return <size_t>&self._value[0]
+
+
+cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
+    """Make an array of pointers denoting pointers of tensor descriptors.
+
+    """
+    cdef _DescriptorArray descs = _DescriptorArray(
+        py_cudnn.destroyTensorDescriptor)
+    cdef size_t desc
+    cdef int data_type = get_data_type(xs.dtype)
+    cdef vector.vector[int] c_shape, c_strides
+    cdef Py_ssize_t itemsize = xs.itemsize
+    cdef Py_ssize_t s
+    cdef int length
+
+    # RNN APIs assumes ndim == 3.
+    for s in xs._strides:
+        c_strides.push_back(s // itemsize)
+    for _ in range(3 - len(xs._strides)):
+        c_strides.push_back(1)
+    for s in xs._shape:
+        c_shape.push_back(s)
+    for _ in range(3 - len(xs._strides)):
+        c_shape.push_back(1)
+
+    for length in lengths:
+        c_shape[0] = length
+        desc = cudnn.createTensorDescriptor()
+        descs.append(desc)
+        cudnn.setTensorNdDescriptor(
+            desc, data_type, 3, <size_t>&c_shape[0], <size_t>&c_strides[0])
+
+    return descs
+
+
+cdef _DescriptorArray _make_tensor_descriptor_array_for_padded(xs):
+    assert xs.ndim == 3
+
+    cdef _DescriptorArray descs = _DescriptorArray(
+        py_cudnn.destroyTensorDescriptor)
+    cdef size_t desc
+    cdef int data_type = get_data_type(xs.dtype)
+    cdef Py_ssize_t itemsize = xs.itemsize
+
+    # RNN APIs assumes ndim == 3.
+    cdef vector.vector[int] c_shape = [xs._shape[1], xs._shape[2], 1]
+    cdef vector.vector[int] c_strides = [
+        xs._strides[1] // itemsize, xs._strides[2] // itemsize, 1]
+
+    for _ in range(xs._shape[0]):
+        desc = cudnn.createTensorDescriptor()
+        descs.append(desc)
+        cudnn.setTensorNdDescriptor(
+            desc, data_type, 3, <size_t>&c_shape[0], <size_t>&c_strides[0])
+
+    return descs
+
+
+cdef memory.MemoryPointer _make_rnn_workspace(
+        Descriptor rnn_desc, int length, _DescriptorArray descs):
+    cdef size_t handle = get_handle()
+    cdef size_t work_size = cudnn.getRNNWorkspaceSize(
+        handle, rnn_desc.value, length, descs.data)
+    return memory.alloc(work_size)
+
+
+cdef memory.MemoryPointer _make_rnn_reserve_space(
+        Descriptor rnn_desc, int length, _DescriptorArray descs):
+    cdef size_t handle = get_handle()
+    cdef size_t reserve_size = cudnn.getRNNTrainingReserveSize(
+        handle, rnn_desc.value, length, descs.data)
+    return memory.alloc(reserve_size)
+
+
+cdef Py_ssize_t _get_n_layers(int direction_mode, core.ndarray hx):
+    if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
+        return hx._shape[0] // 2
+    else:  # cudnn.CUDNN_UNIDIRECTIONAL
+        return hx._shape[0]
+
+
+cdef core.ndarray _make_rnn_result_array(
+        int direction_mode, Py_ssize_t n_units, core.ndarray xs):
+    cdef int output_units
+    if direction_mode == cudnn.CUDNN_BIDIRECTIONAL:
+        output_units = n_units * 2
+    else:  # cudnn.CUDNN_UNIDIRECTIONAL
+        output_units = n_units
+
+    shape = xs.shape[:-1] + (output_units,)
+    return core.ndarray(shape, dtype=xs.dtype)
+
+
+def rnn_forward_inference(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
+        lengths):
+    hx = core.ascontiguousarray(hx)
+    if cx is not None:
+        cx = core.ascontiguousarray(cx)
+    w = core.ascontiguousarray(w)
+    xs = core.ascontiguousarray(xs)
+
+    cdef int length = len(lengths)
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
+    cdef int n_units = hx.shape[2]
+
+    cdef size_t handle = get_handle()
+
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+
+    cdef core.ndarray ys = _make_rnn_result_array(direction_mode, n_units, xs)
+    cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
+    if cx is None:
+        cx = core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray cy = core.ndarray(cx.shape, cx.dtype)
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+    cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
+    cdef Descriptor w_desc = create_filter_descriptor(w)
+    cdef _DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
+    cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
+    cdef Descriptor cy_desc = create_tensor_nd_descriptor(cy)
+
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+        rnn_desc, length, xs_descs)
+
+    cudnn.RNNForwardInference(
+        handle, rnn_desc.value, length,
+        xs_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
+        cx_desc.value, cx.data.ptr, w_desc.value, w.data.ptr,
+        ys_descs.data, ys.data.ptr, hy_desc.value, hy.data.ptr,
+        cy_desc.value, cy.data.ptr, workspace.ptr, workspace.mem.size)
+
+    return hy, cy, ys
+
+
+def rnn_forward_training(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
+        lengths):
+    hx = core.ascontiguousarray(hx)
+    if cx is not None:
+        cx = core.ascontiguousarray(cx)
+    w = core.ascontiguousarray(w)
+    xs = core.ascontiguousarray(xs)
+
+    cdef int length = len(lengths)
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
+    cdef int n_units = hx.shape[2]
+
+    cdef size_t handle = get_handle()
+
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+
+    cdef core.ndarray ys = _make_rnn_result_array(direction_mode, n_units, xs)
+    cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
+    if cx is None:
+        cx = core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray cy = core.ndarray(cx.shape, cx.dtype)
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+    cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
+    cdef Descriptor w_desc = create_filter_descriptor(w)
+    cdef _DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
+    cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
+    cdef Descriptor cy_desc = create_tensor_nd_descriptor(cy)
+
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+        rnn_desc, length, xs_descs)
+    cdef memory.MemoryPointer reserve_space = _make_rnn_reserve_space(
+        rnn_desc, length, xs_descs)
+
+    cudnn.RNNForwardTraining(
+        handle, rnn_desc.value, length,
+        xs_descs.data, xs.data.ptr, hx_desc.value, hx.data.ptr,
+        cx_desc.value, cx.data.ptr, w_desc.value, w.data.ptr,
+        ys_descs.data, ys.data.ptr, hy_desc.value, hy.data.ptr,
+        cy_desc.value, cy.data.ptr, workspace.ptr, workspace.mem.size,
+        reserve_space.ptr, reserve_space.mem.size)
+
+    return reserve_space, hy, cy, ys
+
+
+def rnn_backward_data(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
+        core.ndarray ys, memory.MemoryPointer reserve_space,
+        core.ndarray dhy, core.ndarray dcy, core.ndarray dys,
+        lengths):
+    hx = core.ascontiguousarray(hx)
+    if cx is not None:
+        cx = core.ascontiguousarray(cx)
+    w = core.ascontiguousarray(w)
+    xs = core.ascontiguousarray(xs)
+    ys = core.ascontiguousarray(ys)
+    dhy = core.ascontiguousarray(dhy)
+    if dcy is not None:
+        dcy = core.ascontiguousarray(dcy)
+    dys = core.ascontiguousarray(dys)
+
+    cdef int length = len(lengths)
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
+    cdef int n_units = hx.shape[2]
+
+    cdef size_t handle = get_handle()
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+
+    cdef core.ndarray dxs = core.ndarray(xs.shape, xs.dtype)
+    cdef core.ndarray dhx = core.ndarray(hx.shape, hx.dtype)
+    if cx is None:
+        cx = dcy = core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray dcx = core.ndarray(cx.shape, cx.dtype)
+
+    cdef _DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
+    cdef _DescriptorArray dys_descs = _make_tensor_descriptor_array(
+        dys, lengths)
+    cdef Descriptor dhy_desc = create_tensor_nd_descriptor(dhy)
+    cdef Descriptor dcy_desc = create_tensor_nd_descriptor(dcy)
+    cdef Descriptor w_desc = create_filter_descriptor(w)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+    cdef Descriptor cx_desc = create_tensor_nd_descriptor(cx)
+    cdef _DescriptorArray dxs_descs = _make_tensor_descriptor_array(
+        dxs, lengths)
+    cdef Descriptor dhx_desc = create_tensor_nd_descriptor(dhx)
+    cdef Descriptor dcx_desc = create_tensor_nd_descriptor(dcx)
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+        rnn_desc, length, xs_descs)
+
+    cudnn.RNNBackwardData(
+        handle, rnn_desc.value, length,
+        ys_descs.data, ys.data.ptr,
+        dys_descs.data, dys.data.ptr, dhy_desc.value, dhy.data.ptr,
+        dcy_desc.value, dcy.data.ptr, w_desc.value, w.data.ptr,
+        hx_desc.value, hx.data.ptr, cx_desc.value, cx.data.ptr,
+        dxs_descs.data, dxs.data.ptr, dhx_desc.value, dhx.data.ptr,
+        dcx_desc.value, dcx.data.ptr, workspace.ptr, workspace.mem.size,
+        reserve_space.ptr, reserve_space.mem.size)
+
+    return dhx, dcx, dxs
+
+
+def rnn_backward_weights(
+        DropoutStates states, int direction_mode, int rnn_mode,
+        core.ndarray xs, core.ndarray hx, core.ndarray ys,
+        core.ndarray w,
+        memory.MemoryPointer reserve_space, lengths):
+    xs = core.ascontiguousarray(xs)
+    hx = core.ascontiguousarray(hx)
+    ys = core.ascontiguousarray(ys)
+    w = core.ascontiguousarray(w)
+
+    cdef int length = len(lengths)
+    cdef int n_layers = _get_n_layers(direction_mode, hx)
+    cdef int n_units = hx.shape[2]
+
+    cdef size_t handle = get_handle()
+    cdef Descriptor rnn_desc = create_rnn_descriptor(
+        n_units, n_layers, states._desc,
+        cudnn.CUDNN_LINEAR_INPUT, direction_mode,
+        rnn_mode, get_data_type(xs.dtype))
+
+    cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
+    cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
+    cdef _DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
+
+    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+        rnn_desc, length, xs_descs)
+
+    cdef core.ndarray dw = core.ndarray(w.shape, w.dtype)
+    dw[...] = 0
+    cdef Descriptor dw_desc = create_filter_descriptor(dw)
+
+    cudnn.RNNBackwardWeights(
+        handle, rnn_desc.value, length,
+        xs_descs.data, xs.data.ptr,
+        hx_desc.value, hx.data.ptr, ys_descs.data, ys.data.ptr,
+        workspace.ptr, workspace.mem.size, dw_desc.value, dw.data.ptr,
+        reserve_space.ptr, reserve_space.mem.size)
+    return dw
 
 
 def create_dropout_states(handle):
@@ -611,7 +1192,13 @@ cpdef bint is_tensor_core_available(dtype) except *:
             int(device.get_compute_capability()) == 70)
 
 
-class DropoutStates(object):
+cdef class DropoutStates:
+
+    cdef public:
+        # TODO(unno): Make these attributes private. This is for backward
+        # compatibility.
+        memory.MemoryPointer _states
+        Descriptor _desc
 
     def __init__(self, handle, seed):
         cdef size_t cudnn_handle
@@ -688,15 +1275,15 @@ cdef class _Algorithm:
         int mathType
         size_t memory
 
-
-cdef _Algorithm _get_algorithm(int algo, size_t memory, int mathType=0):
-    cdef _Algorithm ret = _Algorithm.__new__(_Algorithm)
-    ret.algo = algo
-    ret.mathType = mathType
-    ret.memory = memory
-    return ret
+    def __cinit__(self, int algo, size_t memory, int mathType=0):
+        self.algo = algo
+        self.memory = memory
+        self.mathType = mathType
 
 
+cdef dict _get_algorithm_fwd_cache = {}
+cdef dict _get_algorithm_bwd_filter_cache = {}
+cdef dict _get_algorithm_bwd_data_cache = {}
 cdef dict _algorithm_fwd_cache = {}
 cdef dict _algorithm_bwd_filter_cache = {}
 cdef dict _algorithm_bwd_data_cache = {}
@@ -710,14 +1297,14 @@ cpdef _warn_algorithm_fwd(
         'This might be due to lack of workspace memory. '
         'x.shape:{}, W.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(x.shape, W.shape, y.shape, conv_param[0], conv_param[1]),
-        RuntimeWarning)
+        util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_fwd(
         core.ndarray x, core.ndarray W, core.ndarray y, tuple conv_param,
         size_t handle, size_t x_desc, size_t filter_desc, size_t conv_desc,
         size_t y_desc, size_t max_workspace_size, bint use_tensor_core):
-    cdef _Algorithm algo
+    cdef cudnn.CuDNNAlgoPerf perf
     key = (x.data.device.id, x.shape, W.shape, y.shape, conv_param,
            max_workspace_size)
     algo = _algorithm_fwd_cache.get(key, None)
@@ -730,13 +1317,11 @@ cpdef _Algorithm _find_algorithm_fwd(
             y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
         if use_tensor_core and perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_fwd(x, W, y, conv_param)
-        algo = _get_algorithm(perf.algo, perf.memory, perf.mathType)
     else:
-        perf_old = cudnn.findConvolutionForwardAlgorithmEx(
+        perf = cudnn.findConvolutionForwardAlgorithmEx(
             handle, x_desc, x.data.ptr, filter_desc, W.data.ptr, conv_desc,
             y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
-        algo = _get_algorithm(
-            perf_old['algo'], perf_old['memory'], cudnn.CUDNN_DEFAULT_MATH)
+    algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     _algorithm_fwd_cache[key] = algo
     return algo
 
@@ -745,7 +1330,12 @@ cpdef _Algorithm _get_algorithm_fwd(
         core.ndarray x, core.ndarray W, core.ndarray y, tuple conv_param,
         size_t handle, size_t x_desc, size_t filter_desc, size_t conv_desc,
         size_t y_desc, size_t max_workspace_size, bint use_tensor_core):
-    cdef list ret
+    cdef cudnn.CuDNNAlgoPerf perf
+    key = (x.data.device.id, x.shape, W.shape, y.shape, conv_param,
+           max_workspace_size)
+    algo = _get_algorithm_fwd_cache.get(key, None)
+    if algo is not None:
+        return algo
     if use_tensor_core and _cudnn_version >= 7000:
         ret = cudnn.getConvolutionForwardAlgorithm_v7(
             handle, x_desc, filter_desc, conv_desc, y_desc, 10)
@@ -758,21 +1348,21 @@ cpdef _Algorithm _get_algorithm_fwd(
         if i != 0:
             warnings.warn(
                 'The best algo of conv fwd might not be selected due to '
-                'lack of workspace size ({})'.format(max_workspace_size))
-        algo = perf.algo
-        workspace_size = perf.memory
-        math_type = perf.mathType
-        if math_type != cudnn.CUDNN_TENSOR_OP_MATH:
+                'lack of workspace size ({})'.format(max_workspace_size),
+                util.PerformanceWarning)
+        if perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_fwd(x, W, y, conv_param)
+        algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     else:
-        algo = cudnn.getConvolutionForwardAlgorithm_v6(
+        algo_no = cudnn.getConvolutionForwardAlgorithm_v6(
             handle, x_desc, filter_desc, conv_desc, y_desc,
             cudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
             max_workspace_size)
         workspace_size = cudnn.getConvolutionForwardWorkspaceSize(
-            handle, x_desc, filter_desc, conv_desc, y_desc, algo)
-        math_type = cudnn.CUDNN_DEFAULT_MATH
-    return _get_algorithm(algo, workspace_size, math_type)
+            handle, x_desc, filter_desc, conv_desc, y_desc, algo_no)
+        algo = _Algorithm(algo_no, workspace_size)
+    _get_algorithm_fwd_cache[key] = algo
+    return algo
 
 
 cpdef _warn_algorithm_bwd_filter(
@@ -783,14 +1373,14 @@ cpdef _warn_algorithm_bwd_filter(
         'This might be due to lack of workspace memory. '
         'x.shape:{}, dy.shape:{}, dW.shape:{}, pad:{}, stride:{}'
         .format(x.shape, dy.shape, dW.shape, conv_param[0], conv_param[1]),
-        RuntimeWarning)
+        util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_bwd_filter(
         core.ndarray x, core.ndarray dy, core.ndarray dW, tuple conv_param,
         size_t handle, size_t x_desc, size_t dy_desc, size_t conv_desc,
         size_t filter_desc, size_t max_workspace_size, bint use_tensor_core):
-    cdef _Algorithm algo
+    cdef cudnn.CuDNNAlgoPerf perf
     key = (x.data.device.id, x.shape, dW.shape, dy.shape, conv_param,
            max_workspace_size)
     algo = _algorithm_bwd_filter_cache.get(key, None)
@@ -801,15 +1391,13 @@ cpdef _Algorithm _find_algorithm_bwd_filter(
         perf = cudnn.findConvolutionBackwardFilterAlgorithmEx_v7(
             handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
             filter_desc, dW.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
-        algo = _get_algorithm(perf.algo, perf.memory, perf.mathType)
         if use_tensor_core and perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_filter(x, dy, dW, conv_param)
     else:
-        perf_old = cudnn.findConvolutionBackwardFilterAlgorithmEx(
+        perf = cudnn.findConvolutionBackwardFilterAlgorithmEx(
             handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
             filter_desc, dW.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
-        algo = _get_algorithm(
-            perf_old['algo'], perf_old['memory'], cudnn.CUDNN_DEFAULT_MATH)
+    algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     _algorithm_bwd_filter_cache[key] = algo
     return algo
 
@@ -818,7 +1406,12 @@ cpdef _Algorithm _get_algorithm_bwd_filter(
         core.ndarray x, core.ndarray dy, core.ndarray dW, tuple conv_param,
         size_t handle, size_t x_desc, size_t gy_desc, size_t conv_desc,
         size_t filter_desc, size_t max_workspace_size, bint use_tensor_core):
-    cdef list ret
+    cdef cudnn.CuDNNAlgoPerf perf
+    key = (x.data.device.id, x.shape, dW.shape, dy.shape, conv_param,
+           max_workspace_size)
+    algo = _get_algorithm_bwd_filter_cache.get(key, None)
+    if algo is not None:
+        return algo
     if use_tensor_core and _cudnn_version >= 7000:
         ret = cudnn.getConvolutionBackwardFilterAlgorithm_v7(
             handle, x_desc, gy_desc, conv_desc, filter_desc, 10)
@@ -832,21 +1425,21 @@ cpdef _Algorithm _get_algorithm_bwd_filter(
         if i != 0:
             warnings.warn(
                 'The best algo of conv bwd filter might not not selected due '
-                'to lack of workspace size ({})'.format(max_workspace_size))
-        algo = perf.algo
-        workspace_size = perf.memory
-        math_type = perf.mathType
-        if math_type != cudnn.CUDNN_TENSOR_OP_MATH:
+                'to lack of workspace size ({})'.format(max_workspace_size),
+                util.PerformanceWarning)
+        if perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_filter(x, dy, dW, conv_param)
+        algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     else:
-        algo = cudnn.getConvolutionBackwardFilterAlgorithm_v6(
+        algo_no = cudnn.getConvolutionBackwardFilterAlgorithm_v6(
             handle, x_desc, gy_desc, conv_desc, filter_desc,
             cudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
             max_workspace_size)
         workspace_size = cudnn.getConvolutionBackwardFilterWorkspaceSize(
-            handle, x_desc, gy_desc, conv_desc, filter_desc, algo)
-        math_type = cudnn.CUDNN_DEFAULT_MATH
-    return _get_algorithm(algo, workspace_size, math_type)
+            handle, x_desc, gy_desc, conv_desc, filter_desc, algo_no)
+        algo = _Algorithm(algo_no, workspace_size)
+    _get_algorithm_bwd_filter_cache[key] = algo
+    return algo
 
 
 cpdef _warn_algorithm_bwd_data(
@@ -857,14 +1450,14 @@ cpdef _warn_algorithm_bwd_data(
         'This might be due to lack of workspace memory. '
         'W.shape:{}, x.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(W.shape, x.shape, y.shape, conv_param[0], conv_param[1]),
-        RuntimeWarning)
+        util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param,
         size_t handle, size_t filter_desc, size_t x_desc, size_t conv_desc,
         size_t y_desc, size_t max_workspace_size, bint use_tensor_core):
-    cdef _Algorithm algo
+    cdef cudnn.CuDNNAlgoPerf perf
     key = (x.data.device.id, W.shape, x.shape, y.shape, conv_param,
            max_workspace_size)
     algo = _algorithm_bwd_data_cache.get(key, None)
@@ -875,16 +1468,13 @@ cpdef _Algorithm _find_algorithm_bwd_data(
         perf = cudnn.findConvolutionBackwardDataAlgorithmEx_v7(
             handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
             y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
-        if use_tensor_core:
-            if perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
-                _warn_algorithm_bwd_data(W, x, y, conv_param)
-        algo = _get_algorithm(perf.algo, perf.memory, perf.mathType)
+        if use_tensor_core and perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
+            _warn_algorithm_bwd_data(W, x, y, conv_param)
     else:
-        perf_old = cudnn.findConvolutionBackwardDataAlgorithmEx(
+        perf = cudnn.findConvolutionBackwardDataAlgorithmEx(
             handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
             y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
-        algo = _get_algorithm(
-            perf_old['algo'], perf_old['memory'], cudnn.CUDNN_DEFAULT_MATH)
+    algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     _algorithm_bwd_data_cache[key] = algo
     return algo
 
@@ -893,7 +1483,12 @@ cpdef _Algorithm _get_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param,
         size_t handle, size_t filter_desc, size_t x_desc, size_t conv_desc,
         size_t y_desc, size_t max_workspace_size, bint use_tensor_core):
-    cdef list ret
+    cdef cudnn.CuDNNAlgoPerf perf
+    key = (x.data.device.id, W.shape, x.shape, y.shape, conv_param,
+           max_workspace_size)
+    algo = _algorithm_bwd_data_cache.get(key, None)
+    if algo is not None:
+        return algo
     if use_tensor_core and _cudnn_version >= 7000:
         ret = cudnn.getConvolutionBackwardDataAlgorithm_v7(
             handle, filter_desc, x_desc, conv_desc, y_desc, 10)
@@ -907,25 +1502,25 @@ cpdef _Algorithm _get_algorithm_bwd_data(
         if i != 0:
             warnings.warn(
                 'The best algo of conv bwd data might not not selected due '
-                'to lack of workspace size ({})'.format(max_workspace_size))
-        algo = perf.algo
-        workspace_size = perf.memory
-        math_type = perf.mathType
-        if math_type != cudnn.CUDNN_TENSOR_OP_MATH:
+                'to lack of workspace size ({})'.format(max_workspace_size),
+                util.PerformanceWarning)
+        if perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_data(W, x, y, conv_param)
+        algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     else:
-        algo = cudnn.getConvolutionBackwardDataAlgorithm_v6(
+        algo_no = cudnn.getConvolutionBackwardDataAlgorithm_v6(
             handle, filter_desc, x_desc, conv_desc, y_desc,
             cudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
             max_workspace_size)
         workspace_size = cudnn.getConvolutionBackwardDataWorkspaceSize(
-            handle, filter_desc, x_desc, conv_desc, y_desc, algo)
-        math_type = cudnn.CUDNN_DEFAULT_MATH
-    return _get_algorithm(algo, workspace_size, math_type)
+            handle, filter_desc, x_desc, conv_desc, y_desc, algo_no)
+        algo = _Algorithm(algo_no, workspace_size)
+    _get_algorithm_bwd_data_cache[key] = algo
+    return algo
 
 
 cpdef bint _should_use_tensor_core(
-        str tensor_core_mode, object dtype) except *:
+        tensor_core_mode, object dtype) except *:
     if tensor_core_mode == 'auto':
         return is_tensor_core_available(dtype)
     elif tensor_core_mode == 'always':
@@ -941,7 +1536,7 @@ cpdef bint _should_use_tensor_core(
 def convolution_forward(
         core.ndarray x, core.ndarray W, core.ndarray b, core.ndarray y,
         tuple pad, tuple stride, tuple dilation, int groups, *,
-        bint auto_tune, str tensor_core):
+        bint auto_tune, tensor_core):
     cdef int dev_id = x.data.device.id
     assert dev_id == W.data.device.id
     assert dev_id == y.data.device.id
@@ -1013,7 +1608,7 @@ def convolution_forward(
             assert dev_id == b.data.device.id
             b_shape.assign(y._shape.size(), 1)
             b_shape[1] = -1
-            b = core.ascontiguousarray(b)._reshape(b_shape)
+            b = _manipulation._reshape(core.ascontiguousarray(b), b_shape)
             _create_tensor_nd_descriptor(b_desc, b, -1)
             cudnn.addTensor_v3(handle, one, b_desc,
                                b.data.ptr, one, y_desc, y.data.ptr)
@@ -1028,7 +1623,7 @@ def convolution_forward(
 def convolution_backward_filter(
         core.ndarray x, core.ndarray gy, core.ndarray gW,
         tuple pad, tuple stride, tuple dilation, int groups, *,
-        bint deterministic, bint auto_tune, str tensor_core):
+        bint deterministic, bint auto_tune, tensor_core):
     cdef int dev_id = x.data.device.id
     assert dev_id == gy.data.device.id
     assert dev_id == gW.data.device.id
@@ -1106,7 +1701,7 @@ def convolution_backward_filter(
 def convolution_backward_data(
         core.ndarray W, core.ndarray x, core.ndarray b, core.ndarray y,
         tuple pad, tuple stride, tuple dilation, int groups, *,
-        bint deterministic, bint auto_tune, str tensor_core):
+        bint deterministic, bint auto_tune, tensor_core):
     cdef int dev_id = W.data.device.id
     assert dev_id == x.data.device.id
     assert dev_id == y.data.device.id
@@ -1191,7 +1786,7 @@ def convolution_backward_data(
             assert dev_id == b.data.device.id
             b_shape.assign(y._shape.size(), 1)
             b_shape[1] = -1
-            b = core.ascontiguousarray(b)._reshape(b_shape)
+            b = _manipulation._reshape(core.ascontiguousarray(b), b_shape)
             _create_tensor_nd_descriptor(b_desc, b, -1)
             cudnn.addTensor_v3(handle, one, b_desc, b.data.ptr, one, y_desc,
                                y.data.ptr)
@@ -1303,9 +1898,13 @@ cdef _get_dtype_of_tensor_descriptor(size_t desc):
 def batch_normalization_forward_training(
         core.ndarray x, core.ndarray gamma, core.ndarray beta,
         core.ndarray running_mean, core.ndarray running_var,
-        core.ndarray mean, core.ndarray inv_std,
-        double eps, double decay,
+        mean, inv_std, double eps, double decay,
         bint is_for_conv2d, int cudnn_mode, bint debug):
+    # Usually supply None to mean and inv_std, which are left for backward
+    # compatibility. See cupy#2060 and cupy#2070.
+    if (mean is None) != (inv_std is None):
+        raise ValueError('Both mean and inv_std must be None if one is.')
+
     x = core.ascontiguousarray(x)
     dtype = x.dtype
     y = core.ndarray(x._shape, dtype)
@@ -1325,7 +1924,7 @@ def batch_normalization_forward_training(
         _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
-        if dtype_param != dtype:
+        if gamma.dtype != dtype_param:
             gamma = gamma.astype(dtype_param)
             beta = beta.astype(dtype_param)
             running_mean_tmp = running_mean.astype(dtype_param)
@@ -1335,6 +1934,12 @@ def batch_normalization_forward_training(
             running_var_tmp = running_var
             gamma = core.ascontiguousarray(gamma)
             beta = core.ascontiguousarray(beta)
+        if mean is None:
+            save_mean = core.ndarray(gamma.shape, dtype_param)
+            save_inv_std = core.ndarray(gamma.shape, dtype_param)
+        else:
+            save_mean = mean
+            save_inv_std = inv_std
 
         # Factor used in the moving average
         factor = 1.0 - decay
@@ -1352,7 +1957,7 @@ def batch_normalization_forward_training(
             derivedBnDesc, gamma.data.ptr,
             beta.data.ptr, factor, running_mean_tmp.data.ptr,
             running_var_tmp.data.ptr, eps,
-            mean.data.ptr, inv_std.data.ptr)
+            save_mean.data.ptr, save_inv_std.data.ptr)
 
         # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
         # there is a possibility of numerical overflow. You can use
@@ -1371,7 +1976,10 @@ def batch_normalization_forward_training(
     if running_mean is not running_mean_tmp:
         running_mean[...] = running_mean_tmp
         running_var[...] = running_var_tmp
-    return y
+    if mean is None:
+        return y, save_mean, save_inv_std
+    else:
+        return y
 
 
 def batch_normalization_forward_inference(
@@ -1397,7 +2005,7 @@ def batch_normalization_forward_inference(
         _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
-        if dtype_param != dtype:
+        if gamma.dtype != dtype_param:
             gamma = gamma.astype(dtype_param)
             beta = beta.astype(dtype_param)
             mean = mean.astype(dtype_param)
@@ -1421,11 +2029,12 @@ def batch_normalization_backward(
         core.ndarray x, core.ndarray gamma, core.ndarray gy,
         core.ndarray mean, core.ndarray inv_std,
         double eps, bint is_for_conv2d, int cudnn_mode, bint debug):
+    cdef core.ndarray ggamma, gbeta
+    cdef bint need_cast
     x = core.ascontiguousarray(x)
+    gy = core.ascontiguousarray(gy)
     dtype = x.dtype
     gx = core.ndarray(x._shape, dtype)
-    ggamma = core.ndarray(gamma._shape, gamma.dtype)
-    gbeta = core.ndarray(gamma._shape, gamma.dtype)
 
     cdef float float_one = 1
     cdef double double_zero = 0, double_one = 1
@@ -1442,11 +2051,13 @@ def batch_normalization_backward(
         _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
-        if dtype_param != dtype:
+        need_cast = gamma.dtype != dtype_param
+        if need_cast:
             gamma = gamma.astype(dtype_param)
         else:
             gamma = core.ascontiguousarray(gamma)
-            gy = core.ascontiguousarray(gy)
+        ggamma = core.ndarray(gamma._shape, dtype_param)
+        gbeta = core.ndarray(gamma._shape, dtype_param)
 
         cudnn.batchNormalizationBackward(
             handle, cudnn_mode, one, zero, one, zero,
@@ -1470,7 +2081,7 @@ def batch_normalization_backward(
         cudnn.destroyTensorDescriptor(x_desc)
         cudnn.destroyTensorDescriptor(derivedBnDesc)
 
-    if dtype_param is not dtype:
+    if need_cast:
         ggamma = ggamma.astype(dtype)
         gbeta = gbeta.astype(dtype)
     return gx, ggamma, gbeta

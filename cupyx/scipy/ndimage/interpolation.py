@@ -11,7 +11,7 @@ def _get_output(output, input, shape=None):
         shape = input.shape
     if isinstance(output, cupy.ndarray):
         if output.shape != tuple(shape):
-            raise ValueError("output shape is not correct")
+            raise ValueError('output shape is not correct')
     else:
         dtype = output
         if dtype is None:

@@ -8,6 +8,7 @@ NumPy
 
 :class:`cupy.ndarray` implements ``__array_ufunc__`` interface (see `NEP 13 — A Mechanism for Overriding Ufuncs <http://www.numpy.org/neps/nep-0013-ufunc-overrides.html>`_ for details).
 This enables NumPy ufuncs to be directly operated on CuPy arrays.
+``__array_ufunc__`` feature requires NumPy 1.13 or later.
 
 .. code:: python
 
@@ -17,6 +18,10 @@ This enables NumPy ufuncs to be directly operated on CuPy arrays.
     arr = cupy.random.randn(1, 2, 3, 4).astype(cupy.float32)
     result = numpy.sum(arr)
     print(type(result))  # => <class 'cupy.core.core.ndarray'>
+
+:class:`cupy.ndarray` also implements ``__array_function__`` interface (see `NEP 18 — A dispatch mechanism for NumPy’s high level array functions <http://www.numpy.org/neps/nep-0018-array-function-protocol.html>`_ for details).
+This enables code using NumPy to be directly operated on CuPy arrays.
+``__array_function__`` feature requires NumPy 1.16 or later; note that this is currently defined as an experimental feature of NumPy and you need to specify the environment variable to enable it.
 
 Numba
 -----
@@ -48,6 +53,18 @@ The folowing is a simple example code borrowed from `numba/numba#2860 <https://g
 	add[1, 32](a, b, out)
 
 	print(out)  # => [ 0  3  6  9 12 15 18 21 24 27]
+
+In addition, :func:`cupy.asarray` supports zero-copy conversion from Numba CUDA array to CuPy array.
+
+.. code:: python
+
+    import numpy
+    import numba
+    import cupy
+
+    x = numpy.arange(10)  # type: numpy.ndarray
+    x_numba = numba.cuda.to_device(x)  # type: numba.cuda.cudadrv.devicearray.DeviceNDArray
+    x_cupy = cupy.asarray(x_numba)  # type: cupy.ndarray
 
 DLPack
 ------

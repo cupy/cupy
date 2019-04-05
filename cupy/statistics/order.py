@@ -2,11 +2,11 @@ import warnings
 
 import cupy
 from cupy import core
+from cupy.core import _routines_statistics as _statistics
 from cupy.core import fusion
 from cupy.logic import content
 
 
-@fusion._reduction_wrapper(core.core._amin)
 def amin(a, axis=None, out=None, keepdims=False, dtype=None):
     """Returns the minimum of an array or the minimum along an axis.
 
@@ -30,11 +30,17 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
     .. seealso:: :func:`numpy.amin`
 
     """
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.amin does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(_statistics.amin,
+                                      a, axis=axis, dtype=dtype, out=out)
+
     # TODO(okuta): check type
     return a.min(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-@fusion._reduction_wrapper(core.core._amax)
 def amax(a, axis=None, out=None, keepdims=False, dtype=None):
     """Returns the maximum of an array or the maximum along an axis.
 
@@ -58,6 +64,13 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
     .. seealso:: :func:`numpy.amax`
 
     """
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.amax does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(_statistics.amax,
+                                      a, axis=axis, dtype=dtype, out=out)
+
     # TODO(okuta): check type
     return a.max(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
@@ -188,14 +201,14 @@ def percentile(a, q, axis=None, out=None, interpolation='linear',
         indices = 0.5 * (cupy.floor(indices) + cupy.ceil(indices))
     elif interpolation == 'nearest':
         # TODO(hvy): Implement nearest using around
-        raise ValueError("'nearest' interpolation is not yet supported. "
+        raise ValueError('\'nearest\' interpolation is not yet supported. '
                          'Please use any other interpolation method.')
     elif interpolation == 'linear':
         pass
     else:
         raise ValueError('Unexpected interpolation method.\n'
-                         "Actual: '{0}' not in ('linear', 'lower', 'higher', "
-                         "'midpoint')".format(interpolation))
+                         'Actual: \'{0}\' not in (\'linear\', \'lower\', '
+                         '\'higher\', \'midpoint\')'.format(interpolation))
 
     if indices.dtype == cupy.int32:
         ret = cupy.rollaxis(ap, axis)

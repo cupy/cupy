@@ -41,7 +41,7 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
     return core.array(obj, dtype, copy, order, subok, ndmin)
 
 
-def asarray(a, dtype=None):
+def asarray(a, dtype=None, order=None):
     """Converts an object to array.
 
     This is equivalent to ``array(a, dtype, copy=False)``.
@@ -50,6 +50,11 @@ def asarray(a, dtype=None):
     Args:
         a: The source object.
         dtype: Data type specifier. It is inferred from the input by default.
+        order ({'C', 'F'}):
+            Whether to use row-major (C-style) or column-major (Fortran-style)
+            memory representation. Defaults to 'C'. ``order`` is ignored for
+            objects that are not a ``cupy.ndarray``, but have a
+            ``__cuda_array_interface__ attribute``.
 
     Returns:
         cupy.ndarray: An array on the current device. If ``a`` is already on
@@ -58,10 +63,10 @@ def asarray(a, dtype=None):
     .. seealso:: :func:`numpy.asarray`
 
     """
-    return core.array(a, dtype, False)
+    return core.array(a, dtype, False, order)
 
 
-def asanyarray(a, dtype=None):
+def asanyarray(a, dtype=None, order=None):
     """Converts an object to array.
 
     This is currently equivalent to :func:`~cupy.asarray`, since there is no
@@ -72,7 +77,7 @@ def asanyarray(a, dtype=None):
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 
     """
-    return core.array(a, dtype, False)
+    return core.array(a, dtype, False, order)
 
 
 def ascontiguousarray(a, dtype=None):
@@ -95,7 +100,6 @@ def ascontiguousarray(a, dtype=None):
 # TODO(okuta): Implement asmatrix
 
 
-@fusion._ufunc_wrapper(core.elementwise_copy)
 def copy(a, order='K'):
     """Creates a copy of a given array on the current device.
 
@@ -118,6 +122,12 @@ def copy(a, order='K'):
     See: :func:`numpy.copy`, :meth:`cupy.ndarray.copy`
 
     """
+    if fusion._is_fusing():
+        if order != 'K':
+            raise NotImplementedError(
+                'cupy.copy does not support `order` in fusion yet.')
+        return fusion._call_ufunc(core.elementwise_copy, a)
+
     # If the current device is different from the device of ``a``, then this
     # function allocates a new array on the current device, and copies the
     # contents over the devices.

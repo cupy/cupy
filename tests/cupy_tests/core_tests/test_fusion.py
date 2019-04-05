@@ -1,8 +1,10 @@
+import copy
+import threading
+import unittest
+
 import mock
 import numpy
 import six
-import threading
-import unittest
 
 import cupy
 from cupy import testing
@@ -604,7 +606,7 @@ class TestFusionUfunc(unittest.TestCase):
         if not isinstance(gen, tuple):
             gen = (gen,) * n
         data0 = tuple([g(*a) for g, a in zip(gen, args)])
-        data1 = tuple([_.copy() for _ in data0])
+        data1 = tuple([copy.copy(_) for _ in data0])
 
         # Invoke non-fused function
         try:
@@ -658,7 +660,7 @@ class TestFusionUfunc(unittest.TestCase):
 
             # Test they have same values
             for nf, f in zip(arrs0, arrs1):
-                numpy.testing.assert_array_almost_equal(nf.get(), f.get())
+                testing.assert_array_almost_equal(nf, f)
 
         return err0 is not None, (arrs0, arrs1)
 
@@ -862,21 +864,43 @@ class TestFusionUfunc(unittest.TestCase):
         self.check(cupy.fmax, 2, self.random_real)
         self.check(cupy.fmin, 2, self.random_real)
 
-    def test_special(self):
+    def test_where(self):
         self.check(cupy.where, 3,
                    (self.random_bool,
                     lambda *args: self.random_int(*args, seed=0),
                     lambda *args: self.random_int(*args, seed=1)),
                    ((), (0, 100), (0, 100)))
+
+    def test_clip(self):
         self.check(cupy.clip, 3,
                    (lambda *args: self.random_real(*args, seed=0),
                     lambda *args: self.random_real(*args, seed=1),
                     lambda *args: self.random_real(*args, seed=2)),
                    ((0, 1000), (0, 500), (500, 1000)))
+
+    def test_around(self):
         self.check(cupy.around, 2,
                    (self.random_bool,
                     self.random_int,
                     self.random_real))
+
+    def test_copyto(self):
+        def f(dst, src):
+            cupy.copyto(dst, src)
+            return dst
+
+        self.check(f, 2, (self.random_int, self.random_int))
+        self.check(f, 2, (self.random_real, lambda *args: 0))
+
+    def test_copyto_with_where(self):
+        def f(dst, src, where):
+            cupy.copyto(dst, src, where=where)
+            return dst
+
+        self.check(f, 3,
+                   (self.random_real, lambda *args: 0, self.random_bool))
+        self.check(f, 3,
+                   (self.random_int, self.random_int, self.random_bool))
 
     def test_reduce(self):
         self.check_reduce(cupy.bitwise_and, 2, cupy.sum, self.random_int)
@@ -885,6 +909,9 @@ class TestFusionUfunc(unittest.TestCase):
 
         self.check_reduce(lambda x: x, 1, cupy.amax, self.random_int)
         self.check_reduce(lambda x: x, 1, cupy.amin, self.random_int)
+
+        self.check_reduce(lambda x: x, 1, cupy.all, self.random_bool)
+        self.check_reduce(lambda x: x, 1, cupy.any, self.random_bool)
 
 
 @testing.gpu
@@ -1000,7 +1027,9 @@ class TestFusionMisc(unittest.TestCase):
         self.check_binary_nan('fmin')
 
     @testing.for_all_dtypes_combination(
-        names=['src_dtype', 'dst_dtype'], no_complex=True)
+        names=['src_dtype'], no_complex=True)
+    @testing.for_all_dtypes_combination(
+        names=['dst_dtype'])
     @testing.numpy_cupy_array_equal()
     def test_astype_class(self, xp, src_dtype, dst_dtype):
 
@@ -1354,8 +1383,8 @@ class TestFusionKernelName(unittest.TestCase):
         # Test kernel name (with mock)
         if xp is cupy:
             target = (
-                'cupy.core.core.ElementwiseKernel' if is_elementwise
-                else 'cupy.core.core.ReductionKernel')
+                'cupy.core._kernel.ElementwiseKernel' if is_elementwise
+                else 'cupy.core._kernel.ReductionKernel')
 
             with mock.patch(target) as Kernel:
                 func(a, b, c)
@@ -1433,7 +1462,7 @@ class TestFusionKernelName(unittest.TestCase):
 
 
 @testing.gpu
-class TestFusionPythonConstant(unittest.TestCase):
+class TestFusionScalar(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal()
@@ -1441,7 +1470,7 @@ class TestFusionPythonConstant(unittest.TestCase):
 
         @cupy.fuse()
         def f(x):
-            return x * numpy.asscalar(dtype2(1))
+            return x * dtype2(1).item()
         return f(testing.shaped_arange((1,), xp, dtype1))
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
@@ -1452,6 +1481,102 @@ class TestFusionPythonConstant(unittest.TestCase):
         def f(x):
             return x * dtype2(1)
         return f(testing.shaped_arange((1,), xp, dtype1))
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal()
+    def test_param_python_scalar(self, xp, dtype1, dtype2):
+
+        @cupy.fuse()
+        def f(x, y):
+            return x + y
+        x = testing.shaped_arange((10,), xp, dtype1)
+        y = dtype2(1).item()
+        return f(x, y)
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal()
+    def test_param_numpy_scalar(self, xp, dtype1, dtype2):
+
+        @cupy.fuse()
+        def f(x, y):
+            return x + y
+        x = testing.shaped_arange((10,), xp, dtype1)
+        y = dtype2(1)
+        return f(x, y)
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal()
+    def test_param_numpy_scalar_binop(self, xp, dtype1, dtype2):
+
+        @cupy.fuse()
+        def f(x, y, z):
+            dtype = (x + y).dtype
+            return z.astype(dtype)
+        x = dtype1(1)
+        y = dtype2(1)
+        z = xp.zeros(10)
+        return f(x, y, z)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_broadcastable(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x, y):
+            z = x
+            x += y
+            return x + z
+
+        x = testing.shaped_arange((4, 4), xp, dtype)
+        y = testing.shaped_arange((4,), xp, dtype)
+        return f(x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_non_broadcastable(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x, y):
+            z = x
+            x += y
+            return x + z
+
+        x = testing.shaped_arange((4,), xp, dtype)
+        y = testing.shaped_arange((4, 4), xp, dtype)
+        return f(x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_scalar_update_with_broadcast(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x, y):
+            z = x
+            x += y
+            return x + z
+
+        x = numpy.dtype(dtype).type(1)
+        y = testing.shaped_arange((4, 4), xp, dtype)
+        return f(x, y)
+
+
+@testing.gpu
+class TestFusionNone(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_python_none_parameter(self, xp, dtype):
+
+        @cupy.fuse()
+        def f(x, y, z):
+            if y is None:
+                return x * z
+            return x + y + z
+
+        x = testing.shaped_arange((10,), xp, dtype)
+        y = testing.shaped_arange((10,), xp, dtype)
+        z = testing.shaped_arange((10,), xp, dtype)
+        return f(x, None, z) + f(x, y, z)
 
 
 @testing.gpu
@@ -1554,17 +1679,19 @@ class TestFusionComposition(unittest.TestCase):
 
 class TestFusionCompile(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_equal()
-    def test_compile_from_dtypes(self, xp, dtype):
-        @cupy.fuse()
-        def f(x, y):
-            return x - y * 2
+    # TODO(asi1024): Support it
 
-        x = testing.shaped_arange((3, 3), xp, dtype)
-        y = testing.shaped_arange((3, 3), xp, dtype)
-        f._compile_from_dtypes(x.dtype, y.dtype)
-        return f(x, y)
+    # @testing.for_all_dtypes(no_bool=True)
+    # @testing.numpy_cupy_array_equal()
+    # def test_compile_from_dtypes(self, xp, dtype):
+    #     @cupy.fuse()
+    #     def f(x, y):
+    #         return x - y * 2
+
+    #     x = testing.shaped_arange((3, 3), xp, dtype)
+    #     y = testing.shaped_arange((3, 3), xp, dtype)
+    #     f._compile_from_dtypes(x.dtype, y.dtype)
+    #     return f(x, y)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()

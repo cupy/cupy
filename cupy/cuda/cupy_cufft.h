@@ -66,11 +66,14 @@ cufftResult_t cufftSetStream(...) {
     return CUFFT_SUCCESS;
 }
 
-// cuFFT Plan Function
+// cuFFT Plan Functions
 cufftResult_t cufftMakePlan1d(...) {
     return CUFFT_SUCCESS;
 }
 
+cufftResult_t cufftMakePlanMany(...) {
+    return CUFFT_SUCCESS;
+}
 
 // cuFFT Exec Function
 cufftResult_t cufftExecC2C(...) {

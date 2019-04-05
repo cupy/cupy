@@ -287,9 +287,10 @@ class TestConvolutionBackwardData(unittest.TestCase):
         if ((self.dilate > 1 and version < 6000) or
                 (self.groups > 1 and version < 7000)):
             self.err = ValueError
-        elif deterministic and (self.dilate > 1 or
-                                (ndim > 2 and version < 6000) or
-                                (ndim > 2 and self.dtype == numpy.float64)):
+        elif deterministic and (
+                (self.dilate > 1 and (ndim != 2 or version < 7300)) or
+                (ndim > 2 and version < 6000) or
+                (ndim > 2 and self.dtype == numpy.float64)):
             self.err = libcudnn.CuDNNError
         self._workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)

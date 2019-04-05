@@ -1,6 +1,8 @@
 import cupy
 import numpy
 
+from cupy.core.core import _update_order_char, _get_strides_for_order_K
+
 
 def empty(shape, dtype=float, order='C'):
     """Returns an array without initializing the elements.
@@ -20,7 +22,28 @@ def empty(shape, dtype=float, order='C'):
     return cupy.ndarray(shape, dtype, order=order)
 
 
-def empty_like(a, dtype=None):
+def _new_like_order_and_strides(a, dtype, order):
+    """
+    Determine order and strides as in NumPy's PyArray_NewLikeArray.
+
+    (see: numpy/core/src/multiarray/ctors.c)
+    """
+    order = order.upper()
+    if order not in ['C', 'F', 'K', 'A']:
+        raise TypeError('order not understood: {}'.format(order))
+
+    order = chr(_update_order_char(a, ord(order)))
+
+    if order == 'K':
+        strides = _get_strides_for_order_K(a, numpy.dtype(dtype))
+        order = 'C'
+        memptr = cupy.empty(a.size, dtype=dtype).data
+        return order, strides, memptr
+    else:
+        return order, None, None
+
+
+def empty_like(a, dtype=None, order='K'):
     """Returns a new array with same shape and dtype of a given array.
 
     This function currently does not support ``order`` and ``subok`` options.
@@ -28,6 +51,10 @@ def empty_like(a, dtype=None):
     Args:
         a (cupy.ndarray): Base array.
         dtype: Data type specifier. The data type of ``a`` is used by default.
+        order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
+            result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
+            ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
+            layout of ``a`` as closely as possible.
 
     Returns:
         cupy.ndarray: A new array with same shape and dtype of ``a`` with
@@ -36,10 +63,11 @@ def empty_like(a, dtype=None):
     .. seealso:: :func:`numpy.empty_like`
 
     """
-    # TODO(beam2d): Support ordering option
     if dtype is None:
         dtype = a.dtype
-    return cupy.ndarray(a.shape, dtype)
+
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order)
+    return cupy.ndarray(a.shape, dtype, memptr, strides, order)
 
 
 def eye(N, M=None, k=0, dtype=float):
@@ -106,7 +134,7 @@ def ones(shape, dtype=float):
     return a
 
 
-def ones_like(a, dtype=None):
+def ones_like(a, dtype=None, order='K'):
     """Returns an array of ones with same shape and dtype as a given array.
 
     This function currently does not support ``order`` and ``subok`` options.
@@ -114,6 +142,10 @@ def ones_like(a, dtype=None):
     Args:
         a (cupy.ndarray): Base array.
         dtype: Data type specifier. The dtype of ``a`` is used by default.
+        order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
+            result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
+            ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
+            layout of ``a`` as closely as possible.
 
     Returns:
         cupy.ndarray: An array filled with ones.
@@ -121,10 +153,10 @@ def ones_like(a, dtype=None):
     .. seealso:: :func:`numpy.ones_like`
 
     """
-    # TODO(beam2d): Support ordering option
     if dtype is None:
         dtype = a.dtype
-    a = cupy.ndarray(a.shape, dtype)
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order)
+    a = cupy.ndarray(a.shape, dtype, memptr, strides, order)
     a.fill(1)
     return a
 
@@ -149,7 +181,7 @@ def zeros(shape, dtype=float, order='C'):
     return a
 
 
-def zeros_like(a, dtype=None):
+def zeros_like(a, dtype=None, order='K'):
     """Returns an array of zeros with same shape and dtype as a given array.
 
     This function currently does not support ``order`` and ``subok`` options.
@@ -157,6 +189,10 @@ def zeros_like(a, dtype=None):
     Args:
         a (cupy.ndarray): Base array.
         dtype: Data type specifier. The dtype of ``a`` is used by default.
+        order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
+            result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
+            ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
+            layout of ``a`` as closely as possible.\
 
     Returns:
         cupy.ndarray: An array filled with zeros.
@@ -164,10 +200,10 @@ def zeros_like(a, dtype=None):
     .. seealso:: :func:`numpy.zeros_like`
 
     """
-    # TODO(beam2d): Support ordering option
     if dtype is None:
         dtype = a.dtype
-    a = cupy.ndarray(a.shape, dtype)
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order)
+    a = cupy.ndarray(a.shape, dtype, memptr, strides, order)
     a.data.memset_async(0, a.nbytes)
     return a
 
@@ -199,7 +235,7 @@ def full(shape, fill_value, dtype=None):
     return a
 
 
-def full_like(a, fill_value, dtype=None):
+def full_like(a, fill_value, dtype=None, order='K'):
     """Returns a full array with same shape and dtype as a given array.
 
     This function currently does not support ``order`` and ``subok`` options.
@@ -208,6 +244,10 @@ def full_like(a, fill_value, dtype=None):
         a (cupy.ndarray): Base array.
         fill_value: A scalar value to fill a new array.
         dtype: Data type specifier. The dtype of ``a`` is used by default.
+        order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
+            result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
+            ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
+            layout of ``a`` as closely as possible.
 
     Returns:
         cupy.ndarray: An array filled with ``fill_value``.
@@ -215,9 +255,9 @@ def full_like(a, fill_value, dtype=None):
     .. seealso:: :func:`numpy.full_like`
 
     """
-    # TODO(beam2d): Support ordering option
     if dtype is None:
         dtype = a.dtype
-    a = cupy.ndarray(a.shape, dtype)
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order)
+    a = cupy.ndarray(a.shape, dtype, memptr, strides, order)
     a.fill(fill_value)
     return a

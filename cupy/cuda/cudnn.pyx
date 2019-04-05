@@ -12,11 +12,12 @@ from cupy.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cudnn.h" nogil:
+cdef extern from 'cupy_cudnn.h' nogil:
     # Types
     ctypedef int ActivationMode 'cudnnActivationMode_t'
     ctypedef int AddMode 'cudnnAddMode_t'
     ctypedef int BatchNormMode 'cudnnBatchNormMode_t'
+    ctypedef int BatchNormOps 'cudnnBatchNormOps_t'
     ctypedef int ConvolutionBwdDataAlgo 'cudnnConvolutionBwdDataAlgo_t'
     ctypedef int ConvolutionBwdDataPreference \
         'cudnnConvolutionBwdDataPreference_t'
@@ -400,6 +401,69 @@ cdef extern from "cupy_cudnn.h" nogil:
         void* dBnScaleResult, void* dBnBiasResult,
         double epsilon, void* savedMean, void* savedInvVariance)
 
+    int cudnnBatchNormalizationForwardTrainingEx(
+        Handle handle,
+        BatchNormMode mode, BatchNormOps bnOps,
+        void* alpha, void* beta,
+        TensorDescriptor xDesc, void* x,
+        TensorDescriptor zDesc, void* z,
+        TensorDescriptor yDesc, void* y,
+        TensorDescriptor bnScaleBiasMeanVarDesc,
+        void* bnScale, void* bnBias,
+        double exponentialAverageFactor,
+        void* resultRunningMean, void* resultRunningVariance,
+        double epsilon,
+        void* resultSaveMean, void* resultSaveInvVariance,
+        ActivationDescriptor activationDesc,
+        void* workspace, size_t workSpaceSizeInBytes,
+        void* reserveSpace, size_t reserveSpaceSizeInBytes)
+    int cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
+        Handle handle,
+        BatchNormMode mode, BatchNormOps bnOps,
+        TensorDescriptor xDesc,
+        TensorDescriptor zDesc,
+        TensorDescriptor yDesc,
+        TensorDescriptor bnScaleBiasMeanVarDesc,
+        ActivationDescriptor activationDesc,
+        size_t* sizeInBytes)
+    int cudnnBatchNormalizationBackwardEx(
+        Handle handle,
+        BatchNormMode mode, BatchNormOps bnops,
+        void* alphaDataDiff, void* betaDataDiff,
+        void* alphaParamDiff, void* betaParamDiff,
+        TensorDescriptor xDesc, void* x,
+        TensorDescriptor yDesc, void* y,
+        TensorDescriptor dyDesc, void* dy,
+        TensorDescriptor dzDesc, void* dz,
+        TensorDescriptor dxDesc, void* dx,
+        TensorDescriptor dBnScaleBiasDesc,
+        void* bnScaleData, void* bnBiasData,
+        void* dBnScaleData, void* dBnBiasData,
+        double epsilon,
+        void* savedMean, void* savedInvVariance,
+        ActivationDescriptor activationDesc,
+        void* workspace, size_t workSpaceSizeInBytes,
+        void* reserveSpace, size_t reserveSpaceSizeInBytes)
+    int cudnnGetBatchNormalizationBackwardExWorkspaceSize(
+        Handle handle,
+        BatchNormMode mode,
+        BatchNormOps bnOps,
+        TensorDescriptor xDesc,
+        TensorDescriptor yDesc,
+        TensorDescriptor dyDesc,
+        TensorDescriptor dzDesc,
+        TensorDescriptor dxDesc,
+        TensorDescriptor dBnScaleBiasDesc,
+        ActivationDescriptor activationDesc,
+        size_t* sizeInBytes)
+    int cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
+        Handle handle,
+        BatchNormMode mode,
+        BatchNormOps bnOps,
+        ActivationDescriptor activationDesc,
+        TensorDescriptor xDesc,
+        size_t* sizeInBytes)
+
     # Activation
     int cudnnCreateActivationDescriptor(
         ActivationDescriptor* activationDesc)
@@ -635,8 +699,11 @@ cdef extern from "cupy_cudnn.h" nogil:
     # Build-time version
     int CUDNN_VERSION
 
+    # Constants
+    double _CUDNN_BN_MIN_EPSILON 'CUDNN_BN_MIN_EPSILON'
 
-class CuDNNAlgoPerf(object):
+
+cdef class CuDNNAlgoPerf:
 
     def __init__(self, algo, status, time, memory, determinism, mathType):
         self.algo = algo
@@ -1062,7 +1129,7 @@ cpdef findConvolutionForwardAlgorithm(
     return perfResults
 
 
-cpdef findConvolutionForwardAlgorithmEx(
+cpdef list findConvolutionForwardAlgorithmEx(
         size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
         size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
         size_t workSpace, size_t workSpaceSizeInBytes):
@@ -1077,10 +1144,11 @@ cpdef findConvolutionForwardAlgorithmEx(
         workSpaceSizeInBytes)
     check_status(status)
     perfResults.resize(returnedAlgoCount)
-    return perfResults
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory, -1, -1)
+            for p in perfResults]
 
 
-cpdef findConvolutionForwardAlgorithmEx_v7(
+cpdef list findConvolutionForwardAlgorithmEx_v7(
         size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
         size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
         size_t workSpace, size_t workSpaceSizeInBytes):
@@ -1094,12 +1162,10 @@ cpdef findConvolutionForwardAlgorithmEx_v7(
         &returnedAlgoCount, &perfResults[0], <void*>workSpace,
         workSpaceSizeInBytes)
     check_status(status)
-    ret = []
-    for i in range(returnedAlgoCount):
-        p = perfResults[i]
-        ret.append(CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
-                                 p.determinism, p.mathType))
-    return ret
+    perfResults.resize(returnedAlgoCount)
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
+                          p.determinism, p.mathType)
+            for p in perfResults]
 
 
 cpdef int getConvolutionForwardAlgorithm_v6(
@@ -1115,7 +1181,7 @@ cpdef int getConvolutionForwardAlgorithm_v6(
     return algo
 
 
-cpdef getConvolutionForwardAlgorithm_v7(
+cpdef list getConvolutionForwardAlgorithm_v7(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
         size_t destDesc, int requestedAlgoCount):
     cdef vector.vector[ConvolutionFwdAlgoPerf_v7] perfResults
@@ -1127,12 +1193,10 @@ cpdef getConvolutionForwardAlgorithm_v7(
         <TensorDescriptor>destDesc, requestedAlgoCount,
         &returnedAlgoCount, &perfResults[0])
     check_status(status)
-    ret = []
-    for i in range(returnedAlgoCount):
-        p = perfResults[i]
-        ret.append(CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
-                                 p.determinism, p.mathType))
-    return ret
+    perfResults.resize(returnedAlgoCount)
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
+                          p.determinism, p.mathType)
+            for p in perfResults]
 
 
 cpdef Py_ssize_t getConvolutionForwardWorkspaceSize(
@@ -1191,7 +1255,7 @@ cpdef findConvolutionBackwardFilterAlgorithm(
     return perfResults
 
 
-cpdef findConvolutionBackwardFilterAlgorithmEx(
+cpdef list findConvolutionBackwardFilterAlgorithmEx(
         size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
         size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
         size_t workSpace, size_t workSpaceSizeInBytes):
@@ -1206,10 +1270,11 @@ cpdef findConvolutionBackwardFilterAlgorithmEx(
         <void*>workSpace, workSpaceSizeInBytes)
     check_status(status)
     perfResults.resize(returnedAlgoCount)
-    return perfResults
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory, -1, -1)
+            for p in perfResults]
 
 
-cpdef findConvolutionBackwardFilterAlgorithmEx_v7(
+cpdef list findConvolutionBackwardFilterAlgorithmEx_v7(
         size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
         size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
         size_t workSpace, size_t workSpaceSizeInBytes):
@@ -1223,12 +1288,10 @@ cpdef findConvolutionBackwardFilterAlgorithmEx_v7(
         requestedAlgoCount, &returnedAlgoCount, &perfResults[0],
         <void*>workSpace, workSpaceSizeInBytes)
     check_status(status)
-    ret = []
-    for i in range(returnedAlgoCount):
-        p = perfResults[i]
-        ret.append(CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
-                                 p.determinism, p.mathType))
-    return ret
+    perfResults.resize(returnedAlgoCount)
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
+                          p.determinism, p.mathType)
+            for p in perfResults]
 
 
 cpdef int getConvolutionBackwardFilterAlgorithm_v6(
@@ -1246,7 +1309,7 @@ cpdef int getConvolutionBackwardFilterAlgorithm_v6(
     return algo
 
 
-cpdef getConvolutionBackwardFilterAlgorithm_v7(
+cpdef list getConvolutionBackwardFilterAlgorithm_v7(
         size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
         size_t gradDesc, int requestedAlgoCount):
     cdef vector.vector[ConvolutionBwdFilterAlgoPerf_v7] perfResults
@@ -1257,12 +1320,10 @@ cpdef getConvolutionBackwardFilterAlgorithm_v7(
         <ConvolutionDescriptor>convDesc, <FilterDescriptor>gradDesc,
         requestedAlgoCount, &returnedAlgoCount, &perfResults[0])
     check_status(status)
-    ret = []
-    for i in range(returnedAlgoCount):
-        p = perfResults[i]
-        ret.append(CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
-                                 p.determinism, p.mathType))
-    return ret
+    perfResults.resize(returnedAlgoCount)
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
+                          p.determinism, p.mathType)
+            for p in perfResults]
 
 
 cpdef Py_ssize_t getConvolutionBackwardFilterWorkspaceSize(
@@ -1310,7 +1371,7 @@ cpdef findConvolutionBackwardDataAlgorithm(
     return perfResults
 
 
-cpdef findConvolutionBackwardDataAlgorithmEx(
+cpdef list findConvolutionBackwardDataAlgorithmEx(
         size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
         size_t convDesc, size_t dxDesc, size_t dx,
         int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes):
@@ -1325,10 +1386,11 @@ cpdef findConvolutionBackwardDataAlgorithmEx(
         <void*>workSpace, workSpaceSizeInBytes)
     check_status(status)
     perfResults.resize(returnedAlgoCount)
-    return perfResults
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory, -1, -1)
+            for p in perfResults]
 
 
-cpdef findConvolutionBackwardDataAlgorithmEx_v7(
+cpdef list findConvolutionBackwardDataAlgorithmEx_v7(
         size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
         size_t convDesc, size_t dxDesc, size_t dx,
         int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes):
@@ -1342,12 +1404,10 @@ cpdef findConvolutionBackwardDataAlgorithmEx_v7(
         requestedAlgoCount, &returnedAlgoCount, &perfResults[0],
         <void*>workSpace, workSpaceSizeInBytes)
     check_status(status)
-    ret = []
-    for i in range(returnedAlgoCount):
-        p = perfResults[i]
-        ret.append(CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
-                                 p.determinism, p.mathType))
-    return ret
+    perfResults.resize(returnedAlgoCount)
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
+                          p.determinism, p.mathType)
+            for p in perfResults]
 
 
 cpdef int getConvolutionBackwardDataAlgorithm_v6(
@@ -1364,7 +1424,7 @@ cpdef int getConvolutionBackwardDataAlgorithm_v6(
     return algo
 
 
-cpdef getConvolutionBackwardDataAlgorithm_v7(
+cpdef list getConvolutionBackwardDataAlgorithm_v7(
         size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
         size_t gradDesc, int requestedAlgoCount):
     cdef vector.vector[ConvolutionBwdDataAlgoPerf_v7] perfResults
@@ -1376,12 +1436,10 @@ cpdef getConvolutionBackwardDataAlgorithm_v7(
         <TensorDescriptor>gradDesc, requestedAlgoCount,
         &returnedAlgoCount, &perfResults[0])
     check_status(status)
-    ret = []
-    for i in range(returnedAlgoCount):
-        p = perfResults[i]
-        ret.append(CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
-                                 p.determinism, p.mathType))
-    return ret
+    perfResults.resize(returnedAlgoCount)
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
+                          p.determinism, p.mathType)
+            for p in perfResults]
 
 
 cpdef Py_ssize_t getConvolutionBackwardDataWorkspaceSize(
@@ -1481,7 +1539,7 @@ cpdef poolingBackward(
 # Batch Normalization
 ###############################################################################
 
-CUDNN_BN_MIN_EPSILON = 1e-5
+CUDNN_BN_MIN_EPSILON = _CUDNN_BN_MIN_EPSILON
 
 cpdef deriveBNTensorDescriptor(
         size_t derivedBnDesc, size_t xDesc, int mode):
@@ -1553,6 +1611,143 @@ cpdef batchNormalizationBackward(
             <void*>dBnScaleResult, <void*>dBnBiasResult,
             epsilon, <void*>savedMean, <void*>savedInvVariance)
     check_status(status)
+
+
+cpdef batchNormalizationForwardTrainingEx(
+        size_t handle, int mode, int bnOps,
+        size_t alpha, size_t beta,
+        size_t xDesc, size_t x,
+        size_t zDesc, size_t z,
+        size_t yDesc, size_t y,
+        size_t bnScaleBiasMeanVarDesc,
+        size_t bnScale, size_t bnBias,
+        double exponentialAverageFactor,
+        size_t resultRunningMean, size_t resultRunningVariance,
+        double epsilon, size_t resultSaveMean, size_t resultSaveInvVariance,
+        size_t activationDesc,
+        size_t workSpace, size_t workSpaceSizeInBytes,
+        size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnBatchNormalizationForwardTrainingEx(
+            <Handle>handle, <BatchNormMode> mode, <BatchNormOps> bnOps,
+            <void*>alpha, <void*>beta,
+            <TensorDescriptor>xDesc, <void*>x,
+            <TensorDescriptor>zDesc, <void*>z,
+            <TensorDescriptor>yDesc, <void*>y,
+            <TensorDescriptor>bnScaleBiasMeanVarDesc,
+            <void*>bnScale, <void*>bnBias,
+            exponentialAverageFactor,
+            <void*>resultRunningMean, <void*>resultRunningVariance,
+            epsilon, <void*>resultSaveMean, <void*>resultSaveInvVariance,
+            <ActivationDescriptor>activationDesc,
+            <void*>workSpace, workSpaceSizeInBytes,
+            <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+cpdef size_t getBatchNormalizationForwardTrainingExWorkspaceSize(
+        size_t handle, int mode, int bnOps,
+        size_t xDesc,
+        size_t zDesc,
+        size_t yDesc,
+        size_t bnScaleBiasMeanVarDesc,
+        size_t activationDesc) except? 0:
+    cdef size_t sizeInBytes
+    status = cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
+        <Handle> handle,
+        <BatchNormMode> mode, <BatchNormOps> bnOps,
+        <TensorDescriptor> xDesc,
+        <TensorDescriptor> zDesc,
+        <TensorDescriptor> yDesc,
+        <TensorDescriptor> bnScaleBiasMeanVarDesc,
+        <ActivationDescriptor> activationDesc,
+        &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
+
+cpdef batchNormalizationBackwardEx(
+        size_t handle, int mode, int bnops,
+        size_t alphaDataDiff, size_t betaDataDiff,
+        size_t alphaParamDiff, size_t betaParamDiff,
+        size_t xDesc, size_t x,
+        size_t yDesc, size_t y,
+        size_t dyDesc, size_t dy,
+        size_t dzDesc, size_t dz,
+        size_t dxDesc, size_t dx,
+        size_t dBnScaleBiasDesc,
+        size_t bnScaleData, size_t bnBiasData,
+        size_t dBnScaleData, size_t dBnBiasData,
+        double epsilon,
+        size_t savedMean, size_t savedInvVariance,
+        size_t activationDesc,
+        size_t workSpace, size_t workSpaceSizeInBytes,
+        size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnBatchNormalizationBackwardEx(
+            <Handle> handle,
+            <BatchNormMode> mode, <BatchNormOps> bnops,
+            <void*> alphaDataDiff, <void*> betaDataDiff,
+            <void*> alphaParamDiff, <void*> betaParamDiff,
+            <TensorDescriptor> xDesc, <void*> x,
+            <TensorDescriptor> yDesc, <void*> y,
+            <TensorDescriptor> dyDesc, <void*> dy,
+            <TensorDescriptor> dzDesc, <void*> dz,
+            <TensorDescriptor> dxDesc, <void*> dx,
+            <TensorDescriptor> dBnScaleBiasDesc,
+            <void*> bnScaleData, <void*> bnBiasData,
+            <void*> dBnScaleData, <void*> dBnBiasData,
+            epsilon,
+            <void*> savedMean, <void*> savedInvVariance,
+            <ActivationDescriptor> activationDesc,
+            <void*> workSpace, workSpaceSizeInBytes,
+            <void*> reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+cpdef size_t getBatchNormalizationBackwardExWorkspaceSize(
+        size_t handle, int mode, int bnOps,
+        size_t xDesc,
+        size_t yDesc,
+        size_t dyDesc,
+        size_t dzDesc,
+        size_t dxDesc,
+        size_t dBnScaleBiasDesc,
+        size_t activationDesc) except? 0:
+    cdef size_t sizeInBytes
+    status = cudnnGetBatchNormalizationBackwardExWorkspaceSize(
+        <Handle> handle,
+        <BatchNormMode> mode,
+        <BatchNormOps> bnOps,
+        <TensorDescriptor> xDesc,
+        <TensorDescriptor> yDesc,
+        <TensorDescriptor> dyDesc,
+        <TensorDescriptor> dzDesc,
+        <TensorDescriptor> dxDesc,
+        <TensorDescriptor> dBnScaleBiasDesc,
+        <ActivationDescriptor> activationDesc,
+        &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
+
+cpdef size_t getBatchNormalizationTrainingExReserveSpaceSize(
+        size_t handle, int mode, int bnOps,
+        size_t activationDesc,
+        size_t xDesc) except? 0:
+    cdef size_t sizeInBytes
+    status = cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
+        <Handle> handle,
+        <BatchNormMode> mode,
+        <BatchNormOps> bnOps,
+        <ActivationDescriptor> activationDesc,
+        <TensorDescriptor> xDesc,
+        &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
 
 ###############################################################################
 # Activation

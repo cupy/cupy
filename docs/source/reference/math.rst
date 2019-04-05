@@ -1,6 +1,8 @@
 Mathematical Functions
 ======================
 
+.. https://docs.scipy.org/doc/numpy/reference/routines.math.html
+
 Trigonometric functions
 -----------------------
 
@@ -16,10 +18,11 @@ Trigonometric functions
    cupy.arctan
    cupy.hypot
    cupy.arctan2
-   cupy.deg2rad
-   cupy.rad2deg
    cupy.degrees
    cupy.radians
+   cupy.unwrap
+   cupy.deg2rad
+   cupy.rad2deg
 
 
 Hyperbolic functions
@@ -47,27 +50,28 @@ Rounding
    cupy.around
    cupy.round_
    cupy.rint
+   cupy.fix
    cupy.floor
    cupy.ceil
    cupy.trunc
-   cupy.fix
 
 
-Sums and products
------------------
+Sums, products, differences
+---------------------------
 
 .. autosummary::
    :toctree: generated/
    :nosignatures:
 
-   cupy.sum
    cupy.prod
-   cupy.cumsum
+   cupy.sum
    cupy.cumprod
+   cupy.cumsum
+   cupy.diff
 
 
-Exponential and logarithm functions
------------------------------------
+Exponents and logarithms
+------------------------
 
 .. autosummary::
    :toctree: generated/
@@ -95,8 +99,8 @@ Other special functions
    cupy.sinc
 
 
-Floating point manipulations
-----------------------------
+Floating point routines
+-----------------------
 
 .. autosummary::
    :toctree: generated/
@@ -104,8 +108,8 @@ Floating point manipulations
 
    cupy.signbit
    cupy.copysign
-   cupy.ldexp
    cupy.frexp
+   cupy.ldexp
    cupy.nextafter
 
 
@@ -116,19 +120,20 @@ Arithmetic operations
    :toctree: generated/
    :nosignatures:
 
-   cupy.negative
    cupy.add
-   cupy.subtract
+   cupy.reciprocal
+   cupy.negative
    cupy.multiply
    cupy.divide
+   cupy.power
+   cupy.subtract
    cupy.true_divide
    cupy.floor_divide
-   cupy.power
    cupy.fmod
    cupy.mod
-   cupy.remainder
    cupy.modf
-   cupy.reciprocal
+   cupy.remainder
+   cupy.divmod
 
 
 Handling complex numbers
@@ -153,6 +158,7 @@ Miscellaneous
 
    cupy.clip
    cupy.sqrt
+   cupy.cbrt
    cupy.square
    cupy.absolute
    cupy.sign

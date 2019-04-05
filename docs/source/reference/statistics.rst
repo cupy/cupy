@@ -1,5 +1,7 @@
-Statistics
-==========
+Statistical Functions
+=====================
+
+.. https://docs.scipy.org/doc/scipy/reference/stats.html
 
 Order statistics
 ----------------

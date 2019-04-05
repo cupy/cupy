@@ -1,6 +1,8 @@
 import cupy
 from cupy import util
 
+import six
+
 
 cdef class RawKernel:
 
@@ -23,6 +25,10 @@ cdef class RawKernel:
     """
 
     def __init__(self, code, name, options=()):
+        if isinstance(code, six.binary_type):
+            code = code.decode('UTF-8')
+        if isinstance(name, six.binary_type):
+            name = name.decode('UTF-8')
         self.code = code
         self.name = name
         self.options = options

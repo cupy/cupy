@@ -58,6 +58,7 @@ from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
+from cupy import lib  # NOQA
 
 
 # import class and function
@@ -387,6 +388,8 @@ from cupy.indexing.indexing import choose  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
 from cupy.indexing.indexing import take  # NOQA
 
+from cupy.indexing.insert import place  # NOQA
+from cupy.indexing.insert import put  # NOQA
 from cupy.indexing.insert import fill_diagonal  # NOQA
 # -----------------------------------------------------------------------------
 # Input and output
@@ -478,6 +481,7 @@ from cupy.math.trigonometric import rad2deg  # NOQA
 from cupy.math.trigonometric import radians  # NOQA
 from cupy.math.trigonometric import sin  # NOQA
 from cupy.math.trigonometric import tan  # NOQA
+from cupy.math.trigonometric import unwrap  # NOQA
 
 from cupy.math.hyperbolic import arccosh  # NOQA
 from cupy.math.hyperbolic import arcsinh  # NOQA
@@ -498,6 +502,7 @@ from cupy.math.sumprod import prod  # NOQA
 from cupy.math.sumprod import sum  # NOQA
 from cupy.math.sumprod import cumprod  # NOQA
 from cupy.math.sumprod import cumsum  # NOQA
+from cupy.math.sumprod import diff  # NOQA
 from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA
 from cupy.math.window import hanning  # NOQA
@@ -627,7 +632,7 @@ from cupy.core import fromDlpack  # NOQA
 from cupy.ext.scatter import scatter_add  # NOQA
 
 
-def asnumpy(a, stream=None):
+def asnumpy(a, stream=None, order='C'):
     """Returns an array on the host memory from an arbitrary source array.
 
     Args:
@@ -636,15 +641,17 @@ def asnumpy(a, stream=None):
             the device-to-host copy runs asynchronously. Otherwise, the copy is
             synchronous. Note that if ``a`` is not a :class:`cupy.ndarray`
             object, then this argument has no effect.
-
+        order ({'C', 'F', 'A'}): The desired memory layout of the host
+            array. When ``order`` is 'A', it uses 'F' if ``a`` is
+            fortran-contiguous and 'C' otherwise.
     Returns:
         numpy.ndarray: Converted array on the host memory.
 
     """
     if isinstance(a, ndarray):
-        return a.get(stream=stream)
+        return a.get(stream=stream, order=order)
     else:
-        return numpy.asarray(a)
+        return numpy.asarray(a, order=order)
 
 
 _cupy = sys.modules[__name__]
@@ -675,7 +682,8 @@ def get_array_module(*args):
     """
     for arg in args:
         if isinstance(arg, (ndarray, sparse.spmatrix,
-                            cupy.core.fusion.FusionVarPython)):
+                            cupy.core.fusion._FusionVarScalar,
+                            cupy.core.fusion._FusionVarArray)):
             return _cupy
     return numpy
 

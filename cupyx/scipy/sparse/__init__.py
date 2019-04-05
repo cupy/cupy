@@ -15,6 +15,7 @@ from cupyx.scipy.sparse.construct import identity  # NOQA
 from cupyx.scipy.sparse.construct import rand  # NOQA
 from cupyx.scipy.sparse.construct import random  # NOQA
 from cupyx.scipy.sparse.construct import spdiags  # NOQA
+from cupyx.scipy.sparse.construct import diags  # NOQA
 
 # TODO(unno): implement bsr_matrix
 # TODO(unno): implement dok_matrix

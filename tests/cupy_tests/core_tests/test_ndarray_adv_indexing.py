@@ -313,9 +313,22 @@ class TestArrayInvalidIndexAdvGetitem2(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': [1, [1, [1]]]},
 )
 @testing.gpu
+@testing.with_requires('numpy>=1.16')
 class TestArrayInvalidValueAdvGetitem(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=ValueError)
+    @testing.numpy_cupy_raises(accept_error=IndexError)
+    def test_invalid_adv_getitem(self, xp):
+        a = testing.shaped_arange(self.shape, xp)
+        a[self.indexes]
+
+
+@testing.parameterize(
+    {'shape': (2, 3, 4), 'indexes': [1, [1, [1]]]},
+)
+@testing.gpu
+class TestArrayInvalidValueAdvGetitemForOldVersion(unittest.TestCase):
+
+    @testing.numpy_cupy_raises()
     def test_invalid_adv_getitem(self, xp):
         a = testing.shaped_arange(self.shape, xp)
         a[self.indexes]

@@ -26,6 +26,11 @@ Here are the environment variables CuPy uses.
 |                                    | CuPy dumps CUDA kernel code to standard error.     |
 |                                    | It is disabled by default.                         |
 +------------------------------------+----------------------------------------------------+
+| ``CUPY_CUDA_COMPILE_WITH_DEBUG``   | If set to 1, CUDA kernel will be compiled with     |
+|                                    | debug information (``--device-debug`` and          |
+|                                    | ``--generate-line-info``).                         |
+|                                    | It is disabled by default.                         |
++------------------------------------+----------------------------------------------------+
 
 
 For install
