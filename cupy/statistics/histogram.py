@@ -122,13 +122,70 @@ def bincount(x, weights=None, minlength=None):
         b = b.astype(numpy.intp)
     else:
         # atomicAdd for float64 is not provided
-        b = cupy.zeros((size,), dtype=cupy.float32)
-        cupy.ElementwiseKernel(
-            'S x, T w', 'raw U bin',
-            'atomicAdd(&bin[x], w)',
-            'bincount_with_weight_kernel'
-        )(x, weights, b)
-        b = b.astype(cupy.float64)
+        # Checking if the weights are complex by using string search for "j"
+        is_complex = False
+        for iter_comp in weights:
+            complex_pos = str(iter_comp).find("j")
+            if complex_pos != -1:
+                is_complex = True
+                break
+        # If the weights are not complex, the earlier method is followed, otherwise the
+        # weights are calculated with the imaginary part seperately
+        if not is_complex:
+            b = cupy.zeros((size,), dtype=cupy.float32)
+            cupy.ElementwiseKernel(
+                'S x, T w', 'raw U bin',
+                'atomicAdd(&bin[x], w)',
+                'bincount_with_weight_kernel'
+            )(x, weights, b)
+
+            b = b.astype(cupy.float64)
+        else:
+            weights_real = []
+            weights_imag = []
+            for iter_compx in weights:
+                iter_compx = str(iter_compx).replace(" ", "")
+                if iter_compx.find("j") == -1:
+                    weights_imag.append(0)  # If a value does not contain an imaginary part, then it would be set to "0j"
+                    weights_real.append(float(iter_compx[1:-1]))
+                    break
+                sign_pos = iter_compx.rfind("+")
+                if sign_pos == -1:
+                    sign_pos = iter_compx.rfind("-")
+                    weights_imag.append(float(iter_compx[sign_pos:-2]))  # Keeping the -ve sign
+                    weights_real.append(float(iter_compx[1:sign_pos]))
+                else:
+                    weights_imag.append(float(iter_compx[sign_pos + 1:-2]))  # Discarding the +ve sign
+                    weights_real.append(float(iter_compx[1:sign_pos]))
+
+            # Real :
+            b = cupy.zeros((size,), dtype=cupy.float32)
+            cupy.ElementwiseKernel(
+                'S x, T w', 'raw U bin',
+                'atomicAdd(&bin[x], w)',
+                'bincount_with_weight_kernel'
+            )(x, cupy.array(weights_real), b)
+
+            real_part = b.astype(cupy.float64)
+            # Imag :
+            b = cupy.zeros((size,), dtype=cupy.float32)
+            cupy.ElementwiseKernel(
+                'S x, T w', 'raw U bin',
+                'atomicAdd(&bin[x], w)',
+                'bincount_with_weight_kernel'
+            )(x, cupy.array(weights_imag), b)
+
+            imag_part = b.astype(cupy.float64)
+
+            result = []
+            for res_iter in range(real_part.size):
+                if str(imag_part[res_iter])[0] == "-":
+                    result.append(complex(str(real_part[res_iter]) + str(imag_part[res_iter]) + "j"))
+                else:
+                    result.append(complex(str(real_part[res_iter]) + "+" + str(imag_part[res_iter]) + "j"))
+
+            b = cupy.array((result))
+
 
     return b
 
