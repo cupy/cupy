@@ -106,7 +106,7 @@ class FunctionAttributes(object):
     used by the function. This is separate from any dynamically-allocated
     shared memory, which must be specified when the function is called.
     """
-    
+
     const_size_bytes = Read(driver.CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES)
     "The size in bytes of constant memory used by the function."
 
@@ -115,7 +115,7 @@ class FunctionAttributes(object):
 
     num_regs = Read(driver.CU_FUNC_ATTRIBUTE_NUM_REGS)
     "The number of registers used by the function."
-    
+
     ptx_version = Read(driver.CU_FUNC_ATTRIBUTE_PTX_VERSION)
     """The PTX virtual architecture version that was used during compilation,
     in the format: major*10 + minor.
