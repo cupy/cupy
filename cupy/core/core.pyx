@@ -141,7 +141,7 @@ cdef class ndarray:
             'shape': self.shape,
             'typestr': self.dtype.str,
             'descr': self.dtype.descr,
-            'data': (self.data.mem.ptr, False),
+            'data': (self.data.ptr, False),
             'version': 0,
         }
         if not self._c_contiguous:
