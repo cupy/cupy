@@ -1742,7 +1742,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
             if issubclass(elem_type, numpy.ndarray):
                 # obj is Seq[numpy.ndarray]
                 a = _send_numpy_array_list_to_gpu(
-                    obj, dtype, shape, order, ndmin)
+                    obj, elem_dtype, dtype, shape, order, ndmin)
             elif issubclass(elem_type, ndarray):
                 # obj is Seq[cupy.ndarray]
                 lst = _flatten_list(obj)
@@ -1861,9 +1861,9 @@ cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
 
 
 cdef ndarray _send_numpy_array_list_to_gpu(
-    list arrays, dtype, const vector.vector[Py_ssize_t]& shape, order,
-        Py_ssize_t ndmin):
-    a_dtype = get_dtype(dtype)  # convert to numpy.dtype
+    list arrays, src_dtype, dst_dtype, const vector.vector[Py_ssize_t]& shape,
+        order, Py_ssize_t ndmin):
+    a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
     if a_dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_dtype)
     cdef ndarray a  # allocate it after pinned memory is secured
@@ -1879,7 +1879,8 @@ cdef ndarray _send_numpy_array_list_to_gpu(
         src_cpu = numpy.frombuffer(mem, a_dtype, itemcount).reshape(
             shape, order=order)
         _concatenate_numpy_array(
-            [numpy.expand_dims(e, 0) for e in arrays], 0, src_cpu)
+            [numpy.expand_dims(e, 0) for e in arrays], 0,
+            get_dtype(src_dtype), a_dtype, src_cpu)
         a = ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
@@ -1899,12 +1900,14 @@ cdef bint _is_outable_numpy_concatenate = (
     numpy.lib.NumpyVersion(numpy.__version__) >= '1.14.0')
 
 
-cdef inline _concatenate_numpy_array(arrays, axis, out):
-    if _is_outable_numpy_concatenate:
+cdef inline _concatenate_numpy_array(arrays, axis, src_dtype, dst_dtype, out):
+    # type(*_dtype) must be numpy.dtype
+
+    if _is_outable_numpy_concatenate and src_dtype.kind == dst_dtype.kind:
+        # concatenate only accepts same_kind casting
         numpy.concatenate(arrays, axis, out)
     else:
-        ret = numpy.concatenate(arrays, axis)
-        out[:] = ret
+        out[:] = numpy.concatenate(arrays, axis)
 
 
 cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):

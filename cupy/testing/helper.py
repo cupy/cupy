@@ -691,7 +691,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
     .. seealso:: :func:`cupy.testing.for_dtypes`
     """
     return for_dtypes(_make_all_dtypes(no_float16, no_bool, no_complex,
-                      no_char_code), name=name)
+                                       no_char_code), name=name)
 
 
 def for_float_dtypes(name='dtype', no_float16=False):
