@@ -612,7 +612,7 @@ _regular_dtypes = _regular_float_dtypes + _int_bool_dtypes
 _dtypes = _float_dtypes + _int_bool_dtypes
 
 
-def _make_all_dtypes(no_float16, no_bool, no_complex):
+def _make_all_dtypes(no_float16, no_bool, no_complex, no_char_code):
     if no_float16:
         dtypes = _regular_float_dtypes
     else:
@@ -626,11 +626,14 @@ def _make_all_dtypes(no_float16, no_bool, no_complex):
     if not no_complex:
         dtypes += _complex_dtypes
 
+    if not no_char_code:
+        dtypes += tuple([numpy.dtype(t).char for t in dtypes])
+
     return dtypes
 
 
 def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
-                   no_complex=False):
+                   no_complex=False, no_char_code=True):
     """Decorator that checks the fixture with all dtypes.
 
     Args:
@@ -641,6 +644,8 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
              omitted from candidate dtypes.
          no_complex(bool): If ``True``, ``numpy.complex64`` and
              ``numpy.complex128`` are omitted from candidate dtypes.
+         no_char_code(bool): If ``True``, character codes are omitted from
+             candidates.
 
     dtypes to be tested: ``numpy.complex64`` (optional),
     ``numpy.complex128`` (optional),
@@ -685,8 +690,8 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
 
     .. seealso:: :func:`cupy.testing.for_dtypes`
     """
-    return for_dtypes(_make_all_dtypes(no_float16, no_bool, no_complex),
-                      name=name)
+    return for_dtypes(_make_all_dtypes(no_float16, no_bool, no_complex,
+                      no_char_code), name=name)
 
 
 def for_float_dtypes(name='dtype', no_float16=False):
@@ -851,7 +856,7 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
 
 def for_all_dtypes_combination(names=('dtyes',),
                                no_float16=False, no_bool=False, full=None,
-                               no_complex=False):
+                               no_complex=False, no_char_code=True):
     """Decorator that checks the fixture with a product set of all dtypes.
 
     Args:
@@ -866,10 +871,12 @@ def for_all_dtypes_combination(names=('dtyes',),
              (see description in :func:`cupy.testing.for_dtypes_combination`).
          no_complex(bool): If, True, ``numpy.complex64`` and
              ``numpy.complex128`` are omitted from candidate dtypes.
+         no_char_code(bool): If ``True``, character codes are omitted from
+             candidates.
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
     """
-    types = _make_all_dtypes(no_float16, no_bool, no_complex)
+    types = _make_all_dtypes(no_float16, no_bool, no_complex, no_char_code)
     return for_dtypes_combination(types, names, full)
 
 

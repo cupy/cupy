@@ -1731,14 +1731,14 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 'F'
                 if order is not None and len(order) >= 1 and order[0] in 'Ff'
                 else 'C')
-            if elem_dtype.char not in '?bhilqBHILQefdFD':
-                raise ValueError('Unsupported dtype %s' % elem_dtype)
             ndim = len(shape)
             if ndmin > ndim:
                 shape = (1,) * (ndmin - ndim) + shape
 
             if dtype is None:
                 dtype = elem_dtype
+            # Note: dtype might not be numpy.dtype in this place
+
             if issubclass(elem_type, numpy.ndarray):
                 # obj is Seq[numpy.ndarray]
                 a = _send_numpy_array_list_to_gpu(
@@ -1765,6 +1765,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
             # - the other type of object
 
             # fallback to numpy array and send it to GPU
+            # Note: dtype might not be numpy.dtype in this place
             a = _send_object_to_gpu(obj, dtype, order, ndmin)
 
     return a
@@ -1834,7 +1835,7 @@ cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
             order = 'C'
     a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                         ndmin=ndmin)
-    a_dtype = a_cpu.dtype
+    a_dtype = a_cpu.dtype  # converted to numpy.dtype
     if a_dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_dtype)
     cdef vector.vector[Py_ssize_t] a_shape = a_cpu.shape
@@ -1862,12 +1863,12 @@ cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
 cdef ndarray _send_numpy_array_list_to_gpu(
     list arrays, dtype, const vector.vector[Py_ssize_t]& shape, order,
         Py_ssize_t ndmin):
-    if dtype.char not in '?bhilqBHILQefdFD':
-        raise ValueError('Unsupported dtype %s' % dtype)
-
+    a_dtype = get_dtype(dtype)  # convert to numpy.dtype
+    if a_dtype.char not in '?bhilqBHILQefdFD':
+        raise ValueError('Unsupported dtype %s' % a_dtype)
     cdef ndarray a  # allocate it after pinned memory is secured
     cdef size_t itemcount = internal.prod(shape)
-    cdef size_t nbytes = itemcount * get_dtype(dtype).itemsize
+    cdef size_t nbytes = itemcount * a_dtype.itemsize
 
     stream = stream_module.get_current_stream()
     cdef pinned_memory.PinnedMemoryPointer mem = (
@@ -1875,19 +1876,19 @@ cdef ndarray _send_numpy_array_list_to_gpu(
     cdef size_t offset, length
     if mem is not None:
         # write concatenated arrays to the pinned memory directly
-        src_cpu = numpy.frombuffer(mem, dtype, itemcount).reshape(
+        src_cpu = numpy.frombuffer(mem, a_dtype, itemcount).reshape(
             shape, order=order)
         _concatenate_numpy_array(
             [numpy.expand_dims(e, 0) for e in arrays], 0, src_cpu)
-        a = ndarray(shape, dtype=dtype, order=order)
+        a = ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
         # fallback to numpy array and send it to GPU
         # Note: a_cpu.ndim is always >= 1
-        a_cpu = numpy.array(arrays, dtype=dtype, copy=False, order=order,
+        a_cpu = numpy.array(arrays, dtype=a_dtype, copy=False, order=order,
                             ndmin=ndmin)
-        a = ndarray(shape, dtype=dtype, order=order)
+        a = ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host(
             ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
 
