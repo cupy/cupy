@@ -18,6 +18,18 @@ class TestFromData(unittest.TestCase):
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_array_from_empty_list(self, xp, dtype, order):
+        return xp.array([], dtype=dtype, order=order)
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_array_from_nested_empty_list(self, xp, dtype, order):
+        return xp.array([[], []], dtype=dtype, order=order)
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_array_from_numpy(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), numpy, dtype)
         return xp.array(a, order=order)
