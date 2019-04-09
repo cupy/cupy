@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import argparse
+import copy
 from distutils import ccompiler
 from distutils import errors
 from distutils import msvccompiler
@@ -414,8 +415,9 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
+        original_s = s
         for f in module['file']:
-            s = s.copy()
+            s = copy.deepcopy(original_s)
             name = module_extension_name(f)
 
             rpath = []
@@ -634,7 +636,13 @@ def _nvcc_gencode_options(cuda_version):
     arch_list = ['compute_30',
                  'compute_50']
 
-    if cuda_version >= 9000:
+    if cuda_version >= 10000:
+        arch_list += [('compute_60', 'sm_60'),
+                      ('compute_61', 'sm_61'),
+                      ('compute_70', 'sm_70'),
+                      ('compute_75', 'sm_75'),
+                      'compute_70']
+    elif cuda_version >= 9000:
         arch_list += [('compute_60', 'sm_60'),
                       ('compute_61', 'sm_61'),
                       ('compute_70', 'sm_70'),
