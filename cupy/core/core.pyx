@@ -1786,18 +1786,27 @@ cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
 cpdef ndarray asfortranarray(ndarray a, dtype=None):
     cdef ndarray newarray
     cdef int m, n
+    cdef bint same_dtype = False
+    zero_dim = a._shape.size() == 0
 
     if dtype is None:
-        if a._f_contiguous:
-            return a
         dtype = a.dtype
+        same_dtype = True
     else:
         dtype = get_dtype(dtype)
-        if a._f_contiguous and dtype == a.dtype:
-            return a
+        same_dtype = dtype == a.dtype
+
+    if same_dtype and a._f_contiguous:
+        if zero_dim:
+            return _manipulation._ndarray_ravel(a, 'F')
+        return a
+    if zero_dim:
+        newarray = ndarray((1,), dtype, order='F')
+        elementwise_copy(a, newarray)
+        return newarray
 
     newarray = ndarray(a.shape, dtype, order='F')
-    if (a.flags.c_contiguous and
+    if (a._c_contiguous and
             (a.dtype == numpy.float32 or a.dtype == numpy.float64) and
             a.ndim == 2 and dtype == a.dtype):
         m, n = a.shape
