@@ -21,8 +21,6 @@ PID3=$!
 
 wait ${PID2} ${PID3}
 
-if [ -n "${CI_COMMIT_ID:-}" ]; then
-    gsutil cp -q ${TEMP2}/dist/* gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/
-    gsutil cp -q ${TEMP3}/dist/* gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/
-    echo ${CI_COMMIT_ID} | gsutil cp -q - gs://tmp-pfn-public-ci/cupy/wheel/master
-fi
+gsutil cp -q ${TEMP2}/dist/* gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/
+gsutil cp -q ${TEMP3}/dist/* gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/
+echo ${CI_COMMIT_ID} | gsutil cp -q - gs://tmp-pfn-public-ci/cupy/wheel/master
