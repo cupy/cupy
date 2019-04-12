@@ -4,17 +4,17 @@ set -eux
 docker build -t devel .pfnci/docker/devel/
 
 TEMP2=$(mktemp -d)
-cp -r . ${TEMP2}
+cp -r . ${TEMP2}/
 docker run --rm \
-       --volume ${TEMP2}:/cupy/ --workdir /cupy/ \
+       --volume ${TEMP2}/:/cupy/ --workdir /cupy/ \
        devel \
        python2 setup.py bdist_wheel &
 PID2=$!
 
 TEMP3=$(mktemp -d)
-cp -r . ${TEMP3}
+cp -r . ${TEMP3}/
 docker run --rm \
-       --volume ${TEMP3}:/cupy/ --workdir /cupy/ \
+       --volume ${TEMP3}/:/cupy/ --workdir /cupy/ \
        devel \
        python3 setup.py bdist_wheel &
 PID3=$!
