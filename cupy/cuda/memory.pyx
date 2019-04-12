@@ -1240,10 +1240,10 @@ cdef class MemoryPool(object):
         When `fraction` is specified, its value will become a fraction of the
         amount of GPU memory that is available for allocation.
         For example, if you have a GPU with 2 GiB memory, you can either use
-        `set_limit(fraction=0.5)` or `set_limit(size=1024**3)` to limit the
-        memory size to 1 GiB.
+        ``set_limit(fraction=0.5)`` or ``set_limit(size=1024**3)`` to limit
+        the memory size to 1 GiB.
 
-        `size` and `fraction` cannot be specified at one time.
+        ``size`` and ``fraction`` cannot be specified at one time.
         If both of them are **not** specified or ``0`` is specified, the
         limit will be disabled.
 
@@ -1251,7 +1251,7 @@ cdef class MemoryPool(object):
             You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
             environment variable.
             See :ref:`environment` for the details.
-            The limit set by this method supersedes the value specified in```
+            The limit set by this method supersedes the value specified in
             the environment variable.
 
             Also note that this method only changes the limit for the current
