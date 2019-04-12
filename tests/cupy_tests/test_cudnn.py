@@ -189,6 +189,8 @@ class TestConvolutionForward(unittest.TestCase):
                 return unittest.SkipTest()
             if self.dilate > 1 and version < 7300:
                 return unittest.SkipTest()
+            if self.dtype is numpy.float64 and version < 7100:
+                return unittest.SkipTest()
         if self.err is None:
             self.call()
             self.assertTrue((self.y == 0).all())
