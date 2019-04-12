@@ -45,8 +45,6 @@ def fit(X, n_clusters, max_iter, use_custom_kernel):
     initial_indexes = np.random.choice(len(X), n_clusters,
                                        replace=False).astype(np.int32)
     centers = X[initial_indexes]
-    data_num = X.shape[0]
-    data_dim = X.shape[1]
 
     for _ in six.moves.range(max_iter):
         # calculate distances and label
