@@ -184,7 +184,10 @@ class TestConvolutionForward(unittest.TestCase):
 
     def test_call(self):
         if self.layout == libcudnn.CUDNN_TENSOR_NHWC:
+            version = libcudnn.getVersion()
             if self.groups > 1:
+                return unittest.SkipTest()
+            if self.dilate > 1 and version < 7300:
                 return unittest.SkipTest()
         if self.err is None:
             self.call()
