@@ -32,6 +32,6 @@ wait ${PID2} ${PID3}
 
 tar -cf - -C ${CCACHE}/ -R . | gsutil -q cp - gs://tmp-pfn-public-ci/cupy/ccache.tar
 
-gsutil cp -q ${TEMP2}/dist/* gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/
-gsutil cp -q ${TEMP3}/dist/* gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/
-echo ${CI_COMMIT_ID} | gsutil cp -q - gs://tmp-pfn-public-ci/cupy/wheel/master
+gsutil -q cp ${TEMP2}/dist/* gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/
+gsutil -q cp ${TEMP3}/dist/* gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/
+echo ${CI_COMMIT_ID} | gsutil -q cp - gs://tmp-pfn-public-ci/cupy/wheel/master
