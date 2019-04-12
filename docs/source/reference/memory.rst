@@ -71,7 +71,7 @@ See the example code below for details:
 See :class:`cupy.cuda.MemoryPool` and :class:`cupy.cuda.PinnedMemoryPool` for details.
 
 Limiting GPU Memory Usage
---------------------------
+-------------------------
 
 You can hard-limit the amount of GPU memory that can be allocated by using ``CUPY_GPU_MEMORY_LIMIT`` environment variable (see :doc:`environment` for details).
 
@@ -88,7 +88,7 @@ You can hard-limit the amount of GPU memory that can be allocated by using ``CUP
    import cupy
    print(cupy.get_default_memory_pool().get_limit())  # 1073741824
 
-You can also set the limit (or override the value specified via the environment variable) using :meth:`cupy.cuda.MemoryPool.set_limit()`.
+You can also set the limit (or override the value specified via the environment variable) using :meth:`cupy.cuda.MemoryPool.set_limit`.
 In this way, you can use a different limit for each GPU device.
 
 .. code-block:: py
