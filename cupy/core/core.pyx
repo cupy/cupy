@@ -141,7 +141,7 @@ cdef class ndarray:
             'shape': self.shape,
             'typestr': self.dtype.str,
             'descr': self.dtype.descr,
-            'data': (self.data.mem.ptr, False),
+            'data': (self.data.ptr, False),
             'version': 0,
         }
         if not self._c_contiguous:
@@ -1740,7 +1740,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
         try:
             mem = pinned_memory.alloc_pinned_memory(nbytes)
         except CUDARuntimeError as e:
-            if e.status != runtime.errorMemoryAllocation:
+            if e.status != runtime.cudaErrorMemoryAllocation:
                 raise
             error = e
 
