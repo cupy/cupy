@@ -1,3 +1,5 @@
+.. _environment:
+
 Environment variables
 =====================
 
