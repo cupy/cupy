@@ -66,8 +66,9 @@ def fit(X, n_clusters, max_iter, use_custom_kernel):
         i = xp.arange(n_clusters)
         mask = pred == i[:, None]
         if not use_custom_kernel or xp == np:
-            centers = xp.stack([X[pred == i].mean(axis=0)
-                                for i in six.moves.range(n_clusters)])
+            sums = xp.where(mask[:, :, None], X, 0).sum(axis=1)
+            counts = xp.count_nonzero(mask, axis=1)
+            centers = sums / counts
         else:
             sums = sum_kernel(X, mask[:, :, None], axis=1)
             counts = count_kernel(mask, axis=1)
