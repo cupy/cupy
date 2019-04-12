@@ -19,26 +19,22 @@ def timer(message):
     print('%s:  %f sec' % (message, end - start))
 
 
-_fit_calc_distances = cupy.ElementwiseKernel(
-    'S data, raw S centers, int32 n_clusters, int32 dim', 'raw S dist',
-    '''
-    for (int j = 0; j < n_clusters; j++){
-        int cent_ind[] = {j, i % dim};
-        int dist_ind[] = {i / dim, j};
-        double diff = centers[cent_ind] - data;
-        atomicAdd(&dist[dist_ind], diff * diff);
-    }
-    ''',
-    'calc_distances'
+var_kernel = cupy.ElementwiseKernel(
+    'T x0, T x1, T c0, T c1', 'T out',
+    'out = (x0 - c0) * (x0 - c0) + (x1 - c1) * (x1 - c1)',
+    'var_kernel'
 )
-_fit_calc_center = cupy.ElementwiseKernel(
-    'S data, T label, int32 dim', 'raw S centers, raw S group',
-    '''
-    int cent_ind[] = {label, i % dim};
-    atomicAdd(&centers[cent_ind], data);
-    atomicAdd(&group[label], 1);
-    ''',
-    'calc_center'
+sum_kernel = cupy.ReductionKernel(
+    'T x, S mask', 'T out',
+    'mask ? x : 0',
+    'a + b', 'out = a', '0',
+    'sum_kernel'
+)
+count_kernel = cupy.ReductionKernel(
+    'T mask', 'float32 out',
+    'mask ? 1.0 : 0.0',
+    'a + b', 'out = a', '0.0',
+    'count_kernel'
 )
 
 
@@ -58,8 +54,8 @@ def fit(X, n_clusters, max_iter, use_custom_kernel):
             distances = xp.linalg.norm(X[:, None, :] - centers[None, :, :],
                                        axis=2)
         else:
-            distances = xp.zeros((data_num, n_clusters), dtype=np.float32)
-            _fit_calc_distances(X, centers, n_clusters, data_dim, distances)
+            distances = var_kernel(X[:, None, 0], X[:, None, 1],
+                                   centers[None, :, 1], centers[None, :, 0])
 
         new_pred = xp.argmin(distances, axis=1).astype(np.int32)
         if xp.all(new_pred == pred):
@@ -67,17 +63,15 @@ def fit(X, n_clusters, max_iter, use_custom_kernel):
         pred = new_pred
 
         # calculate centers
+        i = xp.arange(n_clusters)
+        mask = pred == i[:, None]
         if not use_custom_kernel or xp == np:
             centers = xp.stack([X[pred == i].mean(axis=0)
                                 for i in six.moves.range(n_clusters)])
         else:
-            centers = xp.zeros((n_clusters, data_dim),
-                               dtype=np.float32)
-            group = xp.zeros(n_clusters, dtype=np.float32)
-            label = pred[:, None]
-            _fit_calc_center(X, label, data_dim, centers, group)
-            group /= data_dim
-            centers /= group[:, None]
+            sums = sum_kernel(X, mask[:, :, None], axis=1)
+            counts = count_kernel(mask, axis=1)
+            centers = sums / counts
 
     return centers, pred
 
