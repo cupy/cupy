@@ -12,7 +12,7 @@ gsutil -q cp gs://tmp-pfn-public-ci/cupy/ccache.tar - | tar -xf - -C ${CCACHE}/ 
 docker run --rm \
        --volume ${CCACHE}/:/root/.ccache/ \
        devel \
-       ccache --max-size=256Mi
+       ccache --max-size=1Gi --set-config=compiler_check=content
 
 TEMP2=$(mktemp -d)
 cp -r . ${TEMP2}/
