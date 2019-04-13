@@ -9,6 +9,10 @@ docker build -t devel .pfnci/docker/devel/
 CCACHE=$(mktemp -d)
 mount -t tmpfs tmpfs ${CCACHE}/ -o size=75%
 gsutil -q cp gs://tmp-pfn-public-ci/cupy/ccache.tar - | tar -xf - -C ${CCACHE}/ || true
+docker run --rm \
+       --volume ${CCACHE}/:/root/.ccache/ \
+       devel \
+       ccache --max-size=256Mi
 
 TEMP2=$(mktemp -d)
 cp -r . ${TEMP2}/
