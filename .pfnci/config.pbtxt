@@ -4,7 +4,6 @@ configs {
     requirement {
       cpu: 2
       memory: 12
-      disk: 20
     }
     time_limit {
       seconds: 1800

@@ -2,11 +2,12 @@
 set -eux
 
 systemctl stop docker.service
-mount -t tmpfs tmpfs /var/lib/docker/ -o size=75%
+mount -t tmpfs tmpfs /var/lib/docker/
 systemctl start docker.service
 docker build -t devel .pfnci/docker/devel/
 
 TEMP2=$(mktemp -d)
+mount -t tmpfs tmpfs ${TEMP2}/
 cp -r . ${TEMP2}/
 docker run --rm \
        --volume ${TEMP2}/:/cupy/ --workdir /cupy/ \
@@ -15,6 +16,7 @@ docker run --rm \
 PID2=$!
 
 TEMP3=$(mktemp -d)
+mount -t tmpfs tmpfs ${TEMP3}/
 cp -r . ${TEMP3}/
 docker run --rm \
        --volume ${TEMP3}/:/cupy/ --workdir /cupy/ \
