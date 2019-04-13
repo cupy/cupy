@@ -2,7 +2,6 @@ FROM nvidia/cuda:9.2-cudnn7-devel-ubuntu18.04
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     ca-certificates \
-    ccache \
     curl \
     python-dev \
     python3-dev \
@@ -16,6 +15,3 @@ RUN curl -LO https://bootstrap.pypa.io/get-pip.py \
 
 RUN pip2 install --no-cache-dir cython \
     && pip3 install --no-cache-dir cython
-
-ENV PATH=/usr/lib/ccache:${PATH} \
-    NVCC='ccache nvcc'
