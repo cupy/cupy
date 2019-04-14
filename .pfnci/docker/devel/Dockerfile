@@ -1,17 +1,15 @@
 FROM nvidia/cuda:9.2-cudnn7-devel-ubuntu18.04
 
-RUN apt-get update -y && apt-get install -y --no-install-recommends \
+ARG PYTHON
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
-    python-dev \
-    python3-dev \
+    python${PYTHON%%.*}-dev \
+    python${PYTHON}-dev \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN curl -LO https://bootstrap.pypa.io/get-pip.py \
-    && python2.7 get-pip.py --no-cache-dir \
-    && python3.6 get-pip.py --no-cache-dir \
-    && rm get-pip.py
-
-RUN pip2.7 install --no-cache-dir cython \
-    && pip3.6 install --no-cache-dir cython
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -LO https://bootstrap.pypa.io/get-pip.py \
+    && python${PYTHON} get-pip.py --no-cache-dir \
+    && rm get-pip.py \
+    && pip${PYTHON} install --no-cache-dir cython

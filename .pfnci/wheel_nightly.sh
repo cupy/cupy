@@ -4,28 +4,25 @@ set -eux
 systemctl stop docker.service
 mount -t tmpfs tmpfs /var/lib/docker/
 systemctl start docker.service
-docker build -t devel .pfnci/docker/devel/
 
-TEMP27=$(mktemp -d)
-mount -t tmpfs tmpfs ${TEMP27}/
-cp -r . ${TEMP27}/
+echo -n 2.7 3.6 | xargs -i -d ' ' -P $(nproc) sh -euxc '
+PYTHON={}
+
+docker build \
+       --build-arg PYTHON=${PYTHON} \
+       -t devel:py${PYTHON//.} \
+       .pfnci/docker/devel/
+
+TEMP=$(mktemp -d)
+mount -t tmpfs tmpfs ${TEMP}/
+cp -r . ${TEMP}/
 docker run --rm \
-       --volume ${TEMP27}/:/cupy/ --workdir /cupy/ \
-       devel \
-       python2.7 setup.py bdist_wheel &
-PID27=$!
+       --volume ${TEMP}/:/cupy/ --workdir /cupy/ \
+       devel:py${PYTHON//.} \
+       python${PYTHON} setup.py bdist_wheel
 
-TEMP36=$(mktemp -d)
-mount -t tmpfs tmpfs ${TEMP36}/
-cp -r . ${TEMP36}/
-docker run --rm \
-       --volume ${TEMP36}/:/cupy/ --workdir /cupy/ \
-       devel \
-       python3.6 setup.py bdist_wheel &
-PID36=$!
+gsutil -q cp ${TEMP}/dist/cupy-*.whl \
+       gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/cupy-cuda92-py${PYTHON//.}.whl
+'
 
-wait ${PID27} ${PID36}
-
-gsutil -q cp ${TEMP27}/dist/cupy-*.whl gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/cupy-cuda92-py27.whl
-gsutil -q cp ${TEMP36}/dist/cupy-*.whl gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/cupy-cuda92-py36.whl
 echo ${CI_COMMIT_ID} | gsutil -q cp - gs://tmp-pfn-public-ci/cupy/wheel/master
