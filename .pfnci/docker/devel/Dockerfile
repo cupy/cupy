@@ -9,9 +9,9 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -LO https://bootstrap.pypa.io/get-pip.py \
-    && python2 get-pip.py --no-cache-dir \
-    && python3 get-pip.py --no-cache-dir \
+    && python2.7 get-pip.py --no-cache-dir \
+    && python3.6 get-pip.py --no-cache-dir \
     && rm get-pip.py
 
-RUN pip2 install --no-cache-dir cython \
-    && pip3 install --no-cache-dir cython
+RUN pip2.7 install --no-cache-dir cython \
+    && pip3.6 install --no-cache-dir cython

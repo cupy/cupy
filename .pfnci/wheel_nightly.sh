@@ -6,26 +6,26 @@ mount -t tmpfs tmpfs /var/lib/docker/
 systemctl start docker.service
 docker build -t devel .pfnci/docker/devel/
 
-TEMP2=$(mktemp -d)
-mount -t tmpfs tmpfs ${TEMP2}/
-cp -r . ${TEMP2}/
+TEMP27=$(mktemp -d)
+mount -t tmpfs tmpfs ${TEMP27}/
+cp -r . ${TEMP27}/
 docker run --rm \
-       --volume ${TEMP2}/:/cupy/ --workdir /cupy/ \
+       --volume ${TEMP27}/:/cupy/ --workdir /cupy/ \
        devel \
-       python2 setup.py bdist_wheel &
-PID2=$!
+       python2.7 setup.py bdist_wheel &
+PID27=$!
 
-TEMP3=$(mktemp -d)
-mount -t tmpfs tmpfs ${TEMP3}/
-cp -r . ${TEMP3}/
+TEMP36=$(mktemp -d)
+mount -t tmpfs tmpfs ${TEMP36}/
+cp -r . ${TEMP36}/
 docker run --rm \
-       --volume ${TEMP3}/:/cupy/ --workdir /cupy/ \
+       --volume ${TEMP36}/:/cupy/ --workdir /cupy/ \
        devel \
-       python3 setup.py bdist_wheel &
-PID3=$!
+       python3.6 setup.py bdist_wheel &
+PID36=$!
 
-wait ${PID2} ${PID3}
+wait ${PID27} ${PID36}
 
-gsutil -q cp ${TEMP2}/dist/* gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/
-gsutil -q cp ${TEMP3}/dist/* gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/
+gsutil -q cp ${TEMP27}/dist/cupy-*.whl gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/cupy-cuda92-py27.whl
+gsutil -q cp ${TEMP36}/dist/cupy-*.whl gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/cupy-cuda92-py36.whl
 echo ${CI_COMMIT_ID} | gsutil -q cp - gs://tmp-pfn-public-ci/cupy/wheel/master
