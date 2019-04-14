@@ -5,7 +5,7 @@ systemctl stop docker.service
 mount -t tmpfs tmpfs /var/lib/docker/
 systemctl start docker.service
 
-echo -n 2.7 3.6 | xargs -i -d ' ' -P $(nproc) sh -euxc '
+echo -n 2.7 3.6 | xargs -i -d ' ' -P $(nproc) bash -euxc '
 PYTHON={}
 
 docker build \
