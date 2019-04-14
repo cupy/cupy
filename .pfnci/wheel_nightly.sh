@@ -5,7 +5,7 @@ systemctl stop docker.service
 mount -t tmpfs tmpfs /var/lib/docker/
 systemctl start docker.service
 
-TEMP=$(mktemp -d)
+export TEMP=$(mktemp -d)
 mount -t tmpfs tmpfs ${TEMP}/
 cp -r . ${TEMP}/
 
