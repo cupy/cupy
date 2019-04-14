@@ -12,16 +12,11 @@ docker build \
        --build-arg PYTHON=${PYTHON} \
        -t devel:py${PYTHON//.} \
        .pfnci/docker/devel/
-
-TEMP=$(mktemp -d)
-mount -t tmpfs tmpfs ${TEMP}/
-cp -r . ${TEMP}/
 docker run --rm \
-       --volume ${TEMP}/:/cupy/ --workdir /cupy/ \
+       --volume $(pwd):/cupy/ --workdir /cupy/ \
        devel:py${PYTHON//.} \
-       python${PYTHON} setup.py bdist_wheel
-
-gsutil -q cp ${TEMP}/dist/cupy-*.whl \
+       pip${PYTHON} wheel -e . -b /tmp/
+gsutil -q cp cupy-*-cp${PYTHON//.}-*.whl \
        gs://tmp-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/cupy-cuda92-py${PYTHON//.}.whl
 '
 
