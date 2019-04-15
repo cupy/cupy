@@ -269,7 +269,8 @@ class TestFromData(unittest.TestCase):
         a = xp.ones(())
         return xp.asfortranarray(a)
 
-    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'],
+                                        no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_asfortranarray_cuda_array_zero_dim_dtype(
             self, xp, dtype_a, dtype_b):
