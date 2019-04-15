@@ -1414,7 +1414,7 @@ cpdef _Algorithm _find_algorithm_bwd_filter(
                 handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
                 filter_desc, dW.data.ptr, 1, workspace.ptr,
                 max_workspace_size)[0]
-        algo = _get_algorithm(perf.algo, perf.memory, perf.mathType)
+        algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
         if use_tensor_core and perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_filter(x, dy, dW, conv_param)
     else:
@@ -1518,7 +1518,7 @@ cpdef _Algorithm _find_algorithm_bwd_data(
                 y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
         if use_tensor_core and perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_data(W, x, y, conv_param)
-        algo = _get_algorithm(perf.algo, perf.memory, perf.mathType)
+        algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     else:
         perf = cudnn.findConvolutionBackwardDataAlgorithmEx(
             handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
@@ -1611,8 +1611,7 @@ def convolution_forward(
         one = <size_t>&float_one
 
     cdef bint use_tensor_core = _should_use_tensor_core(tensor_core, x.dtype)
-    cdef tuple conv_param = (
-        pad, stride, x.dtype, use_tensor_core, deterministic)
+    cdef tuple conv_param = (pad, stride, x.dtype, use_tensor_core)
 
     # cuDNN 7 supports dilation only in *_FWD_ALGO_IMPLICIT_GEMM, but
     # it supports Tensor Cores only in *_FWD_ALGO_IMPLICIT_PRECOMP_GEMM.
