@@ -36,6 +36,13 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_array_from_numpy_scalar(self, xp, dtype, order):
+        a = numpy.array(2, dtype=dtype)
+        return xp.array(a, order=order)
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
     @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_array_equal()
     def test_array_from_numpy_broad_cast(self, xp, dtype, order):

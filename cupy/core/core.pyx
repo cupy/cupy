@@ -1896,14 +1896,15 @@ cdef ndarray _send_numpy_array_list_to_gpu(
     return a
 
 
-cdef bint _is_outable_numpy_concatenate = (
+cdef bint _numpy_concatenate_has_out_argument = (
     numpy.lib.NumpyVersion(numpy.__version__) >= '1.14.0')
 
 
 cdef inline _concatenate_numpy_array(arrays, axis, src_dtype, dst_dtype, out):
     # type(*_dtype) must be numpy.dtype
 
-    if _is_outable_numpy_concatenate and src_dtype.kind == dst_dtype.kind:
+    if (_numpy_concatenate_has_out_argument and
+            src_dtype.kind == dst_dtype.kind):
         # concatenate only accepts same_kind casting
         numpy.concatenate(arrays, axis, out)
     else:
