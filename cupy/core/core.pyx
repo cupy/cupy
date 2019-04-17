@@ -1755,14 +1755,14 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                                   .astype(dtype, order=order, copy=False))
             else:  # should not be reached here
                 raise ValueError(
-                    'The elements of obj are unsupported type(s)')
+                    'Elements of obj have unsupported type(s)')
         else:
             # obj is:
             # - numpy array
             # - scalar or sequence of scalar
             # - empty sequence or sequence with elements whose shapes or
             #   dtypes are unmatched
-            # - the other type of object
+            # - other types
 
             # fallback to numpy array and send it to GPU
             # Note: dtype might not be numpy.dtype in this place
