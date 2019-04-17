@@ -1762,6 +1762,45 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
     return a
 
 
+cpdef ndarray _internal_ascontiguousarray(ndarray a):
+    if a._c_contiguous:
+        return a
+    newarray = ndarray(a.shape, a.dtype)
+    elementwise_copy(a, newarray)
+    return newarray
+
+
+cpdef ndarray _internal_asfortranarray(ndarray a):
+    cdef ndarray newarray
+    cdef int m, n
+
+    if a._f_contiguous:
+        return a
+
+    newarray = ndarray(a.shape, a.dtype, order='F')
+    if (a._c_contiguous and a._shape.size() == 2 and
+            (a.dtype == numpy.float32 or a.dtype == numpy.float64)):
+        m, n = a.shape
+        handle = device.get_cublas_handle()
+        if a.dtype == numpy.float32:
+            cublas.sgeam(
+                handle,
+                1,  # transpose a
+                1,  # transpose newarray
+                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
+                newarray.data.ptr, m)
+        elif a.dtype == numpy.float64:
+            cublas.dgeam(
+                handle,
+                1,  # transpose a
+                1,  # transpose newarray
+                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
+                newarray.data.ptr, m)
+    else:
+        elementwise_copy(a, newarray)
+    return newarray
+
+
 cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
     cdef bint same_dtype = False
     zero_dim = a._shape.size() == 0
@@ -1800,35 +1839,13 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
         if zero_dim:
             return _manipulation._ndarray_ravel(a, 'F')
         return a
-    if zero_dim:
-        newarray = ndarray((1,), dtype, order='F')
-        elementwise_copy(a, newarray)
-        return newarray
 
-    newarray = ndarray(a.shape, dtype, order='F')
-    if (a._c_contiguous and
-            (a.dtype == numpy.float32 or a.dtype == numpy.float64) and
-            a.ndim == 2 and dtype == a.dtype):
-        m, n = a.shape
-        handle = device.get_cublas_handle()
-        if a.dtype == numpy.float32:
-            cublas.sgeam(
-                handle,
-                1,  # transpose a
-                1,  # transpose newarray
-                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
-                newarray.data.ptr, m)
-        elif a.dtype == numpy.float64:
-            cublas.dgeam(
-                handle,
-                1,  # transpose a
-                1,  # transpose newarray
-                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
-                newarray.data.ptr, m)
-        return newarray
-    else:
-        elementwise_copy(a, newarray)
-        return newarray
+    if same_dtype and not zero_dim:
+        return _internal_asfortranarray(a)
+
+    newarray = ndarray((1,) if zero_dim else a.shape, dtype, order='F')
+    elementwise_copy(a, newarray)
+    return newarray
 
 
 # -----------------------------------------------------------------------------
