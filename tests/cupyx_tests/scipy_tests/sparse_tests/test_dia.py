@@ -55,6 +55,20 @@ class TestDiaMatrix(unittest.TestCase):
         testing.assert_array_equal(
             self.m.data, cupy.array([[0, 1, 2], [3, 4, 5]], self.dtype))
 
+    def test_diagonal(self):
+        testing.assert_array_equal(
+            self.m.diagonal(-2), cupy.array([0], self.dtype))
+        testing.assert_array_equal(
+            self.m.diagonal(-1), cupy.array([3, 4], self.dtype))
+        testing.assert_array_equal(
+            self.m.diagonal(), cupy.array([0, 1, 2], self.dtype))
+        testing.assert_array_equal(
+            self.m.diagonal(1), cupy.array([0, 0, 0], self.dtype))
+        testing.assert_array_equal(
+            self.m.diagonal(2), cupy.array([0, 0], self.dtype))
+        testing.assert_array_equal(
+            self.m.diagonal(3), cupy.array([0], self.dtype))
+
     def test_offsets(self):
         self.assertEqual(self.m.offsets.dtype, numpy.int32)
         testing.assert_array_equal(
@@ -245,6 +259,12 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     def test_transpose(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.transpose()
+
+    @testing.with_requires('scipy>=1.0.0')
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_diagonal_error(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.diagonal(k=10)  # out of range
 
 
 @testing.parameterize(*testing.product({
