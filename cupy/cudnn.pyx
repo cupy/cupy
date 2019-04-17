@@ -133,14 +133,18 @@ cpdef _create_tensor_nd_descriptor(
 
 
 cpdef _create_tensor_descriptor(size_t desc, core.ndarray arr,
-                                int format):
+                                int format=cudnn.CUDNN_TENSOR_NCHW):
     if not arr._c_contiguous:
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     if arr._shape.size() == 4:
         data_type = get_data_type(arr.dtype)
-        cudnn.setTensor4dDescriptor(desc, format, data_type,
-                                    arr._shape[0], arr._shape[1],
-                                    arr._shape[2], arr._shape[3])
+        if format == cudnn.CUDNN_TENSOR_NCHW:
+            n, c, h, w = arr._shape
+        elif format == cudnn.CUDNN_TENSOR_NHWC:
+            n, h, w, c = arr._shape
+        else:
+            raise ValueError('unknown cudnnTensorFormat: {}'.format(format))
+        cudnn.setTensor4dDescriptor(desc, format, data_type, n, c, h, w)
     else:
         _create_tensor_nd_descriptor(desc, arr)
 
@@ -164,9 +168,14 @@ cpdef _create_filter_descriptor(
     cdef Py_ssize_t s, ndim = arr._shape.size()
     data_type = get_data_type(arr.dtype)
     if ndim == 4:
+        if format == cudnn.CUDNN_TENSOR_NCHW:
+            k, c, h, w = arr._shape
+        elif format == cudnn.CUDNN_TENSOR_NHWC:
+            k, h, w, c = arr._shape
+        else:
+            raise ValueError('unknown cudnnTensorFormat: {}'.format(format))
         cudnn.setFilter4dDescriptor_v4(
-            desc, data_type, format,
-            arr._shape[0], arr._shape[1], arr._shape[2], arr._shape[3])
+            desc, data_type, format, k, c, h, w)
     else:
         for s in arr._shape:
             c_shape.push_back(s)
@@ -727,6 +736,44 @@ def create_dropout_descriptor(
 def set_dropout_descriptor(desc, handle, dropout):
     # When the fourth argument is NULL, random state is not updated.
     cudnn.setDropoutDescriptor(desc.value, handle, dropout, 0, 0, 0)
+
+
+def _create_ctc_loss_descriptor(data_type):
+    desc = Descriptor(cudnn.createCTCLossDescriptor(),
+                      py_cudnn.destroyCTCLossDescriptor)
+    cudnn.setCTCLossDescriptor(desc.value, data_type)
+    return desc
+
+
+def ctc_loss(core.ndarray probs, labels,
+             label_length, input_length, int algo):
+    batch_size = probs.shape[1]
+    labels_ptr = labels.ctypes.data
+    label_length_ptr = label_length.ctypes.data
+    input_length_ptr = input_length.ctypes.data
+    handle = get_handle()
+    data_type = get_data_type(probs.dtype)
+    ctc_desc = Descriptor(cudnn.createCTCLossDescriptor(),
+                          py_cudnn.destroyCTCLossDescriptor)
+    cudnn.setCTCLossDescriptor(ctc_desc.value, data_type)
+
+    gradients = core.ndarray(probs._shape, probs.dtype)
+    loss = core.ndarray((batch_size, ), 'f')
+    probs_desc = create_tensor_descriptor(probs)
+    gradients_desc = create_tensor_descriptor(gradients)
+
+    work_size = cudnn.getCTCLossWorkspaceSize(
+        handle, probs_desc.value, gradients_desc.value,
+        labels_ptr, label_length_ptr,
+        input_length_ptr, algo, ctc_desc.value)
+    workspace = core.ndarray((work_size,), 'b')
+
+    cudnn.CTCLoss(handle, probs_desc.value, probs.data.ptr,
+                  labels_ptr, label_length_ptr,
+                  input_length_ptr, loss.data.ptr, gradients_desc.value,
+                  gradients.data.ptr, algo, ctc_desc.value,
+                  workspace.data.ptr, work_size)
+    return loss, gradients
 
 
 def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
@@ -1498,7 +1545,9 @@ cpdef bint _should_use_tensor_core(
 def convolution_forward(
         core.ndarray x, core.ndarray W, core.ndarray b, core.ndarray y,
         tuple pad, tuple stride, tuple dilation, int groups, *,
-        bint auto_tune, tensor_core):
+        bint auto_tune, tensor_core,
+        int d_layout=cudnn.CUDNN_TENSOR_NCHW,
+        int w_layout=cudnn.CUDNN_TENSOR_NCHW):
     cdef int dev_id = x.data.device.id
     assert dev_id == W.data.device.id
     assert dev_id == y.data.device.id
@@ -1539,9 +1588,9 @@ def convolution_forward(
     cdef vector.vector[Py_ssize_t] b_shape
     cdef _Algorithm perf
     try:
-        _create_tensor_nd_descriptor(x_desc, x, -1)
-        _create_tensor_nd_descriptor(y_desc, y, -1)
-        _create_filter_descriptor(filter_desc, W, cudnn.CUDNN_TENSOR_NCHW)
+        _create_tensor_descriptor(x_desc, x, format=d_layout)
+        _create_tensor_descriptor(y_desc, y, format=d_layout)
+        _create_filter_descriptor(filter_desc, W, w_layout)
         _create_convolution_descriptor(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
@@ -1585,7 +1634,9 @@ def convolution_forward(
 def convolution_backward_filter(
         core.ndarray x, core.ndarray gy, core.ndarray gW,
         tuple pad, tuple stride, tuple dilation, int groups, *,
-        bint deterministic, bint auto_tune, tensor_core):
+        bint deterministic, bint auto_tune, tensor_core,
+        int d_layout=cudnn.CUDNN_TENSOR_NCHW,
+        int w_layout=cudnn.CUDNN_TENSOR_NCHW):
     cdef int dev_id = x.data.device.id
     assert dev_id == gy.data.device.id
     assert dev_id == gW.data.device.id
@@ -1618,9 +1669,9 @@ def convolution_backward_filter(
     cdef size_t max_workspace_size = get_max_workspace_size()
     cdef size_t workspace_size = 0
     try:
-        _create_tensor_nd_descriptor(x_desc, x, -1)
-        _create_tensor_nd_descriptor(gy_desc, gy, -1)
-        _create_filter_descriptor(filter_desc, gW, cudnn.CUDNN_TENSOR_NCHW)
+        _create_tensor_descriptor(x_desc, x, format=d_layout)
+        _create_tensor_descriptor(gy_desc, gy, format=d_layout)
+        _create_filter_descriptor(filter_desc, gW, w_layout)
         _create_convolution_descriptor(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
@@ -1663,7 +1714,9 @@ def convolution_backward_filter(
 def convolution_backward_data(
         core.ndarray W, core.ndarray x, core.ndarray b, core.ndarray y,
         tuple pad, tuple stride, tuple dilation, int groups, *,
-        bint deterministic, bint auto_tune, tensor_core):
+        bint deterministic, bint auto_tune, tensor_core,
+        int d_layout=cudnn.CUDNN_TENSOR_NCHW,
+        int w_layout=cudnn.CUDNN_TENSOR_NCHW):
     cdef int dev_id = W.data.device.id
     assert dev_id == x.data.device.id
     assert dev_id == y.data.device.id
@@ -1706,9 +1759,9 @@ def convolution_backward_data(
     cdef size_t workspace_size = 0
     cdef vector.vector[Py_ssize_t] b_shape
     try:
-        _create_tensor_nd_descriptor(x_desc, x, -1)
-        _create_tensor_nd_descriptor(y_desc, y, -1)
-        _create_filter_descriptor(filter_desc, W, cudnn.CUDNN_TENSOR_NCHW)
+        _create_tensor_descriptor(x_desc, x, format=d_layout)
+        _create_tensor_descriptor(y_desc, y, format=d_layout)
+        _create_filter_descriptor(filter_desc, W, w_layout)
         _create_convolution_descriptor(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)

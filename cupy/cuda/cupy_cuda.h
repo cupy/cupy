@@ -239,6 +239,14 @@ cudaError_t cudaHostAlloc(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaHostRegister(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaHostUnregister(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaMallocManaged(...) {
     return cudaSuccess;
 }
