@@ -275,6 +275,18 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         self.assertEqual(ptr, head.ptr)
         self.assertEqual(ptr + self.unit * 2, tail.ptr)
 
+    def test_alloc_limit(self):
+        self.pool.set_limit(size=(self.unit * 6))
+
+        p1 = self.pool.malloc(self.unit * 5)
+        p2 = self.pool.malloc(self.unit * 1)
+        with self.assertRaises(memory.OutOfMemoryError):
+            self.pool.malloc(self.unit)
+
+        self.pool.set_limit(size=(self.unit * 7))
+        p3 = self.pool.malloc(self.unit)
+        del p1, p2, p3
+
     def test_free(self):
         p1 = self.pool.malloc(self.unit * 4)
         ptr1 = p1.ptr
@@ -440,6 +452,11 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         self.assertEqual(self.unit * 6, self.pool.total_bytes())
         p3 = self.pool.malloc(self.unit * 1)
         self.assertEqual(self.unit * 6, self.pool.total_bytes())
+
+        self.assertEqual(
+            self.pool.used_bytes() + self.pool.free_bytes(),
+            self.pool.total_bytes())
+
         del p3
 
     def test_total_bytes_stream(self):
@@ -449,6 +466,70 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
             p2 = self.pool.malloc(self.unit * 2)
         self.assertEqual(self.unit * 6, self.pool.total_bytes())
         del p2
+
+    def test_get_limit(self):
+        # limit is disabled by default
+        self.assertEqual(0, self.pool.get_limit())
+
+    def test_set_limit_size(self):
+        self.pool.set_limit(size=1024)
+        self.assertEqual(1024, self.pool.get_limit())
+
+        self.pool.set_limit(size=2**33)
+        self.assertEqual(2**33, self.pool.get_limit())
+
+        self.pool.set_limit(size=0)
+        self.assertEqual(0, self.pool.get_limit())
+
+        with self.assertRaises(ValueError):
+            self.pool.set_limit(size=-1)
+
+    def test_set_limit_fraction(self):
+        _, total = cupy.cuda.runtime.memGetInfo()
+
+        self.pool.set_limit(fraction=0)
+        self.assertEqual(0, self.pool.get_limit())
+
+        self.pool.set_limit(fraction=0.5)
+        self.assertEqual(total * 0.5, self.pool.get_limit())
+
+        self.pool.set_limit(fraction=1.0)
+        self.assertEqual(total, self.pool.get_limit())
+
+        with self.assertRaises(ValueError):
+            self.pool.set_limit(fraction=-1)
+
+        with self.assertRaises(ValueError):
+            self.pool.set_limit(fraction=1.1)
+
+    def test_parse_limit_string(self):
+        parse_limit_string = self.pool._parse_limit_string
+
+        # size
+        param = parse_limit_string('0')
+        self.assertEqual(0, param['size'])
+        self.assertEqual(None, param['fraction'])
+
+        param = parse_limit_string('1073741824')
+        self.assertEqual(1073741824, param['size'])
+        self.assertEqual(None, param['fraction'])
+
+        # fraction
+        param = parse_limit_string('0%')
+        self.assertEqual(None, param['size'])
+        self.assertEqual(0.0, param['fraction'])
+
+        param = parse_limit_string('40%')
+        self.assertEqual(None, param['size'])
+        self.assertEqual(0.4, param['fraction'])
+
+        param = parse_limit_string('70.5%')
+        self.assertEqual(None, param['size'])
+        self.assertEqual(0.705, param['fraction'])
+
+        param = parse_limit_string('100%')
+        self.assertEqual(None, param['size'])
+        self.assertEqual(1.0, param['fraction'])
 
 
 @testing.parameterize(*testing.product({
