@@ -53,8 +53,8 @@ def _parse_int_subscript(list_subscript):
             str_subscript += einsum_symbols[s]
         else:
             raise ValueError(
-                "each subscript must be either an integer or an ellipsis"
-                " to provide subscripts strings as lists")
+                'each subscript must be either an integer or an ellipsis'
+                ' to provide subscripts strings as lists')
     return str_subscript
 
 
@@ -93,9 +93,9 @@ def _parse_einsum_input(args):
 
     if len(args) == 0:
         raise ValueError(
-            "must specify the einstein sum subscripts string and at least one "
-            "operand, or at least one operand and its corresponding "
-            "subscripts list")
+            'must specify the einstein sum subscripts string and at least one '
+            'operand, or at least one operand and its corresponding '
+            'subscripts list')
 
     if isinstance(args[0], str):
         subscripts = args[0]
@@ -107,15 +107,15 @@ def _parse_einsum_input(args):
                 continue
             if s not in einsum_symbols:
                 raise ValueError(
-                    "invalid subscript '%s' in einstein sum subscripts string,"
-                    " subscripts must be letters" % s)
+                    'invalid subscript \'%s\' in einstein sum subscripts '
+                    'string, subscripts must be letters' % s)
 
         # Parse '...'
         subscripts = subscripts.replace('...', '@')
         if '.' in subscripts:
             raise ValueError(
-                "einstein sum subscripts string contains a '.' that is not "
-                "part of an ellipsis ('...')")
+                'einstein sum subscripts string contains a \'.\' that is not '
+                'part of an ellipsis (\'...\')')
 
         # Parse '->'
         if ('-' in subscripts) or ('>' in subscripts):
@@ -124,8 +124,8 @@ def _parse_einsum_input(args):
             subscripts = subscripts.split('->')
             if invalid or len(subscripts) != 2:
                 raise ValueError(
-                    "einstein sum subscript string does not contain proper "
-                    "'->' output specified")
+                    'einstein sum subscript string does not contain proper '
+                    '\'->\' output specified')
             input_subscripts, output_subscript = subscripts
             output_subscript = output_subscript.replace(' ', '')
 
@@ -135,10 +135,10 @@ def _parse_einsum_input(args):
 
         input_subscripts = input_subscripts.replace(' ', '').split(',')
         if len(input_subscripts) != len(operands):
-            msg = "more" if len(operands) > len(input_subscripts) else "fewer"
+            msg = 'more' if len(operands) > len(input_subscripts) else 'fewer'
             raise ValueError(
-                msg + " operands provided to einstein sum function than "
-                "specified in the subscripts string")
+                msg + ' operands provided to einstein sum function than '
+                'specified in the subscripts string')
 
     else:
         args = list(args)
@@ -184,12 +184,12 @@ def _parse_ellipsis_subscript(subscript, idx, ndim=None, ellipsis_len=None):
         if ndim is not None and len(sub) != ndim:
             if len(sub) > ndim:
                 raise ValueError(
-                    "einstein sum subscripts string %s contains too many "
-                    "subscripts for operand %d" % (sub, idx))
+                    'einstein sum subscripts string %s contains too many '
+                    'subscripts for operand %d' % (sub, idx))
             raise ValueError(
-                "operand %d has more dimensions than subscripts string %s "
-                "given in einstein sum, but no '...' ellipsis provided to "
-                "broadcast the extra dimensions." % (idx, sub))
+                'operand %d has more dimensions than subscripts string %s '
+                'given in einstein sum, but no \'...\' ellipsis provided to '
+                'broadcast the extra dimensions.' % (idx, sub))
         return [ord(label) for label in sub]
     elif len(subs) == 2:
         left_sub, right_sub = subs
@@ -197,8 +197,8 @@ def _parse_ellipsis_subscript(subscript, idx, ndim=None, ellipsis_len=None):
             ellipsis_len = ndim - (len(left_sub) + len(right_sub))
         if ellipsis_len < 0:
             raise ValueError(
-                "einstein sum subscripts string %s...%s contains too many "
-                "subscripts for operand %d" % (left_sub, right_sub, idx))
+                'einstein sum subscripts string %s...%s contains too many '
+                'subscripts for operand %d' % (left_sub, right_sub, idx))
         ret = []
         ret.extend(ord(label) for label in left_sub)
         ret.extend(six.moves.range(-ellipsis_len, 0))
@@ -207,9 +207,9 @@ def _parse_ellipsis_subscript(subscript, idx, ndim=None, ellipsis_len=None):
     else:
         # >= 2 ellipses for an operand
         raise ValueError(
-            "einstein sum subscripts string contains a '.' that is not "
-            "part of an ellipsis ('...') " +
-            ("in the output" if idx is None else "for operand %d" % idx))
+            'einstein sum subscripts string contains a \'.\' that is not '
+            'part of an ellipsis (\'...\') ' +
+            ('in the output' if idx is None else 'for operand %d' % idx))
 
 
 def _einsum_diagonals(input_subscripts, operands):
@@ -236,8 +236,8 @@ def _einsum_diagonals(input_subscripts, operands):
                     dim0 = dims.pop()
                     dim1 = dims.pop()
                     raise ValueError(
-                        "dimensions in operand %d"
-                        " for collapsing index '%s' don't match (%d != %d)"
+                        'dimensions in operand %d'
+                        ' for collapsing index \'%s\' don\'t match (%d != %d)'
                         % (idx, _chr(label), dim0, dim1)
                     )
 
@@ -294,8 +294,8 @@ def _flatten_transpose(a, axeses):
 def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     set0 = set(sub0)
     set1 = set(sub1)
-    assert len(set0) == len(sub0), "operand 0 should be reduced: diagonal"
-    assert len(set1) == len(sub1), "operand 1 should be reduced: diagonal"
+    assert len(set0) == len(sub0), 'operand 0 should be reduced: diagonal'
+    assert len(set1) == len(sub1), 'operand 1 should be reduced: diagonal'
 
     set_others = set(sub_others)
     shared = set0 & set1
@@ -317,7 +317,7 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     sub_r = [sub1[axis] for axis in ts1]
 
     sub_out = sub_b + sub_l + sub_r
-    assert set(sub_out) <= set_others, "operands should be reduced: unary sum"
+    assert set(sub_out) <= set_others, 'operands should be reduced: unary sum'
 
     return arr_out, sub_out
 
@@ -383,7 +383,7 @@ def einsum(*operands, **kwargs):
     if optimize is True:
         optimize = 'greedy'
     if kwargs:
-        raise TypeError("Did not understand the following kwargs: %s"
+        raise TypeError('Did not understand the following kwargs: %s'
                         % list(kwargs.keys))
 
     result_dtype = cupy.result_type(*operands) if dtype is None else dtype
@@ -409,9 +409,10 @@ def einsum(*operands, **kwargs):
                     dimension_dict[label] = dim
                 elif dim not in (1, dimension_dict[label]):
                     dim_old = dimension_dict[label]
-                    raise ValueError("Size of label '%s' for operand %d (%d) "
-                                     "does not match previous terms (%d)."
-                                     % (_chr(label), idx, dim, dim_old))
+                    raise ValueError(
+                        'Size of label \'%s\' for operand %d (%d) '
+                        'does not match previous terms (%d).'
+                        % (_chr(label), idx, dim, dim_old))
             else:
                 dimension_dict[label] = dim
 
@@ -427,9 +428,9 @@ def einsum(*operands, **kwargs):
         if not options['sum_ellipsis']:
             if '@' not in output_subscript and -1 in dimension_dict:
                 raise ValueError(
-                    "output has more dimensions than subscripts "
-                    "given in einstein sum, but no '...' ellipsis "
-                    "provided to broadcast the extra dimensions.")
+                    'output has more dimensions than subscripts '
+                    'given in einstein sum, but no \'...\' ellipsis '
+                    'provided to broadcast the extra dimensions.')
         output_subscript = _parse_ellipsis_subscript(
             output_subscript, None,
             ellipsis_len=sum(label < 0 for label in dimension_dict.keys())
@@ -440,14 +441,14 @@ def einsum(*operands, **kwargs):
         for label in output_subscript:
             if label not in tmp_subscripts:
                 raise ValueError(
-                    "einstein sum subscripts string included output subscript "
-                    "'%s' which never appeared in an input" % _chr(label))
+                    'einstein sum subscripts string included output subscript '
+                    '\'%s\' which never appeared in an input' % _chr(label))
         if len(output_subscript) != len(set(output_subscript)):
             for label in output_subscript:
                 if output_subscript.count(label) >= 2:
                     raise ValueError(
-                        "einstein sum subscripts string includes output "
-                        "subscript '%s' multiple times" % _chr(label))
+                        'einstein sum subscripts string includes output '
+                        'subscript \'%s\' multiple times' % _chr(label))
 
     _einsum_diagonals(input_subscripts, operands)
 
@@ -528,7 +529,7 @@ def einsum(*operands, **kwargs):
                 algo = optimize_algorithms[optimize]
                 memory_limit = 2 ** 31  # TODO(kataoka): fix?
         except (TypeError, KeyError):  # unhashable type or not found
-            raise TypeError("Did not understand the path (optimize): %s"
+            raise TypeError('Did not understand the path (optimize): %s'
                             % str(optimize))
         input_sets = [set(sub) for sub in input_subscripts]
         output_set = set(output_subscript)

@@ -9,7 +9,7 @@ from cupy.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cuComplex.h":
+cdef extern from 'cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
@@ -21,6 +21,7 @@ cdef extern from 'cupy_cusolver.h' nogil:
     int cusolverDnCreate(Handle* handle)
     int cusolverSpCreate(SpHandle* handle)
     int cusolverDnDestroy(Handle handle)
+    int cusolverSpDestroy(SpHandle handle)
 
     # Stream
     int cusolverDnGetStream(Handle handle, driver.Stream* streamId)
@@ -267,6 +268,13 @@ cpdef destroy(size_t handle):
     with nogil:
         status = cusolverDnDestroy(<Handle>handle)
     check_status(status)
+
+
+cpdef spDestroy(size_t handle):
+    with nogil:
+        status = cusolverSpDestroy(<SpHandle>handle)
+    check_status(status)
+
 
 ###############################################################################
 # Stream

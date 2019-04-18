@@ -388,6 +388,8 @@ from cupy.indexing.indexing import choose  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
 from cupy.indexing.indexing import take  # NOQA
 
+from cupy.indexing.insert import place  # NOQA
+from cupy.indexing.insert import put  # NOQA
 from cupy.indexing.insert import fill_diagonal  # NOQA
 # -----------------------------------------------------------------------------
 # Input and output
@@ -479,6 +481,7 @@ from cupy.math.trigonometric import rad2deg  # NOQA
 from cupy.math.trigonometric import radians  # NOQA
 from cupy.math.trigonometric import sin  # NOQA
 from cupy.math.trigonometric import tan  # NOQA
+from cupy.math.trigonometric import unwrap  # NOQA
 
 from cupy.math.hyperbolic import arccosh  # NOQA
 from cupy.math.hyperbolic import arcsinh  # NOQA
@@ -499,6 +502,7 @@ from cupy.math.sumprod import prod  # NOQA
 from cupy.math.sumprod import sum  # NOQA
 from cupy.math.sumprod import cumprod  # NOQA
 from cupy.math.sumprod import cumsum  # NOQA
+from cupy.math.sumprod import diff  # NOQA
 from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA
 from cupy.math.window import hanning  # NOQA

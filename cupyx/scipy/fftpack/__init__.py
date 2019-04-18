@@ -6,3 +6,4 @@ from cupyx.scipy.fftpack.fft import ifft2  # NOQA
 from cupyx.scipy.fftpack.fft import ifftn  # NOQA
 from cupyx.scipy.fftpack.fft import irfft  # NOQA
 from cupyx.scipy.fftpack.fft import rfft  # NOQA
+from cupyx.scipy.fftpack.fft import get_fft_plan  # NOQA

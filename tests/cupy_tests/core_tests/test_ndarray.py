@@ -35,7 +35,7 @@ class TestGetSize(unittest.TestCase):
 
 def wrap_take(array, *args, **kwargs):
     if get_array_module(array) == numpy:
-        kwargs["mode"] = "wrap"
+        kwargs['mode'] = 'wrap'
 
     return array.take(*args, **kwargs)
 
@@ -125,7 +125,7 @@ class TestNdarrayInitRaise(unittest.TestCase):
     })
 )
 @testing.gpu
-class TestNdarrayCopy(unittest.TestCase):
+class TestNdarrayDeepCopy(unittest.TestCase):
 
     def _check_deepcopy(self, arr, arr2):
         assert arr.data is not arr2.data
@@ -147,6 +147,27 @@ class TestNdarrayCopy(unittest.TestCase):
             arr2 = copy.deepcopy(arr)
         self._check_deepcopy(arr, arr2)
         assert arr2.device == arr.device
+
+
+@testing.gpu
+class TestNdarrayCopy(unittest.TestCase):
+
+    @testing.multi_gpu(2)
+    @testing.for_orders('CFA')
+    def test_copy_multi_device_non_contiguous(self, order):
+        arr = core.ndarray((20,))[::2]
+        dev1 = cuda.Device(1)
+        with dev1:
+            arr2 = arr.copy(order)
+        assert arr2.device == dev1
+        testing.assert_array_equal(arr, arr2)
+
+    @testing.multi_gpu(2)
+    def test_copy_multi_device_non_contiguous_K(self):
+        arr = core.ndarray((20,))[::2]
+        with cuda.Device(1):
+            with self.assertRaises(NotImplementedError):
+                arr.copy('K')
 
 
 @testing.gpu
@@ -291,8 +312,8 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (3, 4, 5), "indices": (2,), "axis": 3},
-    {"shape": (), "indices": (0,), "axis": 2}
+    {'shape': (3, 4, 5), 'indices': (2,), 'axis': 3},
+    {'shape': (), 'indices': (0,), 'axis': 2}
 )
 @testing.gpu
 class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
@@ -310,8 +331,8 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (3, 4, 5), "indices": (2, 3), "out_shape": (2, 4)},
-    {"shape": (), "indices": 0, "out_shape": (1,)}
+    {'shape': (3, 4, 5), 'indices': (2, 3), 'out_shape': (2, 4)},
+    {'shape': (), 'indices': 0, 'out_shape': (1,)}
 )
 @testing.gpu
 class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
@@ -325,8 +346,8 @@ class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (3, 4, 5), "indices": (2, 3), "out_shape": (2, 3)},
-    {"shape": (), "indices": 0, "out_shape": ()}
+    {'shape': (3, 4, 5), 'indices': (2, 3), 'out_shape': (2, 3)},
+    {'shape': (), 'indices': 0, 'out_shape': ()}
 )
 @testing.gpu
 class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
@@ -340,8 +361,8 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (0,), "indices": (0,)},
-    {"shape": (0,), "indices": (0, 1)},
+    {'shape': (0,), 'indices': (0,)},
+    {'shape': (0,), 'indices': (0, 1)},
 )
 @testing.gpu
 class TestZeroSizedNdarrayTake(unittest.TestCase):
@@ -354,8 +375,8 @@ class TestZeroSizedNdarrayTake(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (0,), "indices": (1,)},
-    {"shape": (0,), "indices": (1, 1)},
+    {'shape': (0,), 'indices': (1,)},
+    {'shape': (0,), 'indices': (1, 1)},
 )
 @testing.gpu
 class TestZeroSizedNdarrayTakeIndexError(unittest.TestCase):

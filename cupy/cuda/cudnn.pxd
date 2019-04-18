@@ -116,6 +116,9 @@ cpdef enum:
     CUDNN_BATCHNORM_SPATIAL = 1
     CUDNN_BATCHNORM_SPATIAL_PERSISTENT = 2
 
+    CUDNN_CTC_LOSS_ALGO_DETERMINISTIC = 0
+    CUDNN_CTC_LOSS_ALGO_NON_DETERMINISTIC = 1
+
     CUDNN_BATCHNORM_OPS_BN = 0
     CUDNN_BATCHNORM_OPS_BN_ACTIVATION = 1
     CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION = 2
@@ -152,6 +155,21 @@ cpdef enum:
     CUDNN_ERRQUERY_RAWCODE = 0
     CUDNN_ERRQUERY_NONBLOCKING = 1
     CUDNN_ERRQUERY_BLOCKING = 2
+
+
+###############################################################################
+# Class
+###############################################################################
+
+cdef class CuDNNAlgoPerf:
+    cdef:
+        int algo
+        int status
+        float time
+        size_t memory
+        int determinism
+        int mathType
+
 
 ###############################################################################
 # Version
@@ -269,18 +287,18 @@ cpdef destroyConvolutionDescriptor(size_t convDesc)
 cpdef findConvolutionForwardAlgorithm(
     size_t handle, size_t xDesc, size_t wDesc, size_t convDesc, size_t yDesc,
     int requestedAlgoCount)
-cpdef findConvolutionForwardAlgorithmEx(
+cpdef list findConvolutionForwardAlgorithmEx(
     size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
     size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
     size_t workSpace, size_t workSpaceSizeInBytes)
-cpdef findConvolutionForwardAlgorithmEx_v7(
+cpdef list findConvolutionForwardAlgorithmEx_v7(
     size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
     size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
     size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionForwardAlgorithm_v6(
     size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
     size_t destDesc, int preference, size_t memoryLimitInbytes) except? -1
-cpdef getConvolutionForwardAlgorithm_v7(
+cpdef list getConvolutionForwardAlgorithm_v7(
     size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
     size_t destDesc, int requestedAlgoCount)
 cpdef Py_ssize_t getConvolutionForwardWorkspaceSize(
@@ -297,18 +315,18 @@ cpdef convolutionBackwardBias(
 cpdef findConvolutionBackwardFilterAlgorithm(
     size_t handle, size_t xDesc, size_t dyDesc, size_t convDesc, size_t dwDesc,
     int requestedAlgoCount)
-cpdef findConvolutionBackwardFilterAlgorithmEx(
+cpdef list findConvolutionBackwardFilterAlgorithmEx(
     size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
     size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
     size_t workSpace, size_t workSpaceSizeInBytes)
-cpdef findConvolutionBackwardFilterAlgorithmEx_v7(
+cpdef list findConvolutionBackwardFilterAlgorithmEx_v7(
     size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
     size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
     size_t workSpace, size_t workSpaceSizeInBytes)
 cpdef int getConvolutionBackwardFilterAlgorithm_v6(
     size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
     size_t filterDesc, int preference, size_t memoryLimitInbytes) except? -1
-cpdef getConvolutionBackwardFilterAlgorithm_v7(
+cpdef list getConvolutionBackwardFilterAlgorithm_v7(
     size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
     size_t gradDesc, int requestedAlgoCount)
 cpdef Py_ssize_t getConvolutionBackwardFilterWorkspaceSize(
@@ -322,11 +340,11 @@ cpdef convolutionBackwardFilter_v3(
 cpdef findConvolutionBackwardDataAlgorithm(
     size_t handle, size_t wDesc, size_t dyDesc, size_t convDesc, size_t dxDesc,
     int requestedAlgoCount)
-cpdef findConvolutionBackwardDataAlgorithmEx(
+cpdef list findConvolutionBackwardDataAlgorithmEx(
     size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
     size_t convDesc, size_t dxDesc, size_t dx,
     int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes)
-cpdef findConvolutionBackwardDataAlgorithmEx_v7(
+cpdef list findConvolutionBackwardDataAlgorithmEx_v7(
     size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
     size_t convDesc, size_t dxDesc, size_t dx,
     int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes)
@@ -334,7 +352,7 @@ cpdef int getConvolutionBackwardDataAlgorithm_v6(
     size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
     size_t gradDesc, size_t preference,
     size_t memoryLimitInbytes) except? -1
-cpdef getConvolutionBackwardDataAlgorithm_v7(
+cpdef list getConvolutionBackwardDataAlgorithm_v7(
     size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
     size_t gradDesc, int requestedAlgoCount)
 cpdef Py_ssize_t getConvolutionBackwardDataWorkspaceSize(
@@ -505,6 +523,25 @@ cpdef dropoutBackward(
     size_t dyDesc, size_t dyData,
     size_t dxtDesc, size_t dxData,
     size_t reserveSpace, size_t reserveSpaceSizeInBytes)
+
+
+###############################################################################
+# CTC
+###############################################################################
+
+cpdef size_t createCTCLossDescriptor() except? 0
+cpdef destroyCTCLossDescriptor(size_t ctcLossDesc)
+cpdef setCTCLossDescriptor(size_t ctcLossDesc, int dataType)
+cpdef getCTCLossDescriptor(size_t ctcLossDesc)
+cpdef size_t getCTCLossWorkspaceSize(
+    size_t handle, size_t probsDesc, size_t gradientsDesc,
+    size_t labels, size_t labelLengths, size_t inputLengths,
+    int algo, size_t ctcLossDesc) except? 0
+cpdef CTCLoss(
+    size_t handle, size_t probsDesc,
+    size_t probs, size_t labels, size_t labelLengths, size_t inputLengths,
+    size_t costs, size_t gradientsDesc, size_t gradients, int algo,
+    size_t ctcLossDesc, size_t workspace, size_t workSpaceSizeInBytes)
 
 
 ###############################################################################

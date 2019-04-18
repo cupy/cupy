@@ -1190,6 +1190,9 @@ class TestRandint(RandomGeneratorTestCase):
     def test_randint_2(self):
         self.generate(3, 4, size=(3, 2))
 
+    def test_randint_3(self):
+        self.generate(3, 10, size=0)
+
 
 @testing.gpu
 @testing.fix_random()

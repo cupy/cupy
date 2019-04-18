@@ -127,7 +127,7 @@ def where(condition, x=None, y=None):
     missing = (x is None, y is None).count(True)
 
     if missing == 1:
-        raise ValueError("Must provide both 'x' and 'y' or neither.")
+        raise ValueError('Must provide both \'x\' and \'y\' or neither.')
     if missing == 2:
         return nonzero(condition)
 

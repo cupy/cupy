@@ -32,6 +32,7 @@ cdef class ndarray:
     cpdef ndarray ravel(self, order=*)
     cpdef ndarray squeeze(self, axis=*)
     cpdef ndarray take(self, indices, axis=*, out=*)
+    cpdef put(self, indices, values, mode=*)
     cpdef repeat(self, repeats, axis=*)
     cpdef choose(self, choices, out=*, mode=*)
     cpdef sort(self, int axis=*)
@@ -60,24 +61,27 @@ cdef class ndarray:
     cpdef ndarray std(self, axis=*, dtype=*, out=*, ddof=*,
                       keepdims=*)
     cpdef ndarray prod(self, axis=*, dtype=*, out=*, keepdims=*)
-    cpdef ndarray cumprod(a, axis=*, dtype=*, out=*)
+    cpdef ndarray cumprod(self, axis=*, dtype=*, out=*)
 
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)
     cpdef ndarray conj(self)
-    cpdef get(self, stream=*, order=*)
+    cpdef get(self, stream=*, order=*, out=*)
     cpdef set(self, arr, stream=*)
     cpdef ndarray reduced_view(self, dtype=*)
     cpdef _update_c_contiguity(self)
     cpdef _update_f_contiguity(self)
     cpdef _update_contiguity(self)
-    cpdef _set_shape_and_strides(self, vector.vector[Py_ssize_t]& shape,
-                                 vector.vector[Py_ssize_t]& strides,
+    cpdef _set_shape_and_strides(self, const vector.vector[Py_ssize_t]& shape,
+                                 const vector.vector[Py_ssize_t]& strides,
                                  bint update_c_contiguity,
                                  bint update_f_contiguity)
-    cpdef _set_shape_and_contiguous_strides(
-        self, vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
-        bint is_c_contiguous)
+    cdef ndarray _view(self, const vector.vector[Py_ssize_t]& shape,
+                       const vector.vector[Py_ssize_t]& strides,
+                       bint update_c_contiguity,
+                       bint update_f_contiguity)
+    cpdef _set_contiguous_strides(
+        self, Py_ssize_t itemsize, bint is_c_contiguous)
     cdef CPointer get_pointer(self)
     cpdef object toDlpack(self)
 
@@ -95,6 +99,7 @@ cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*)
 
 
+# TODO(niboshi): Move to _routines_creation.pyx
 cpdef ndarray array(obj, dtype=*, bint copy=*, order=*, bint subok=*,
                     Py_ssize_t ndmin=*)
-cdef ndarray _simple_getitem(ndarray a, list slice_list)
+cpdef ndarray _convert_object_with_cuda_array_interface(a)

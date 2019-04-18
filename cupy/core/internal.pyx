@@ -6,26 +6,17 @@ from libcpp cimport bool as cpp_bool
 from libc.stdint cimport uint32_t
 
 
-cdef extern from "halffloat.h":
+cdef extern from 'halffloat.h':
     uint16_t npy_floatbits_to_halfbits(uint32_t f)
     uint32_t npy_halfbits_to_floatbits(uint16_t h)
 
 
 @cython.profile(False)
-cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except? -1:
-    cdef Py_ssize_t arg
-    for arg in args:
-        init *= arg
-    return init
-
-
-@cython.profile(False)
-cpdef inline Py_ssize_t prod_ssize_t(
-        vector.vector[Py_ssize_t]& arr, Py_ssize_t init=1):
-    cdef Py_ssize_t a
-    for a in arr:
-        init *= a
-    return init
+cpdef inline Py_ssize_t prod(const vector.vector[Py_ssize_t]& args):
+    cdef Py_ssize_t n = 1
+    for i in range(args.size()):
+        n *= args[i]
+    return n
 
 
 @cython.profile(False)
@@ -93,7 +84,7 @@ cdef void get_reduced_dims(
 
 @cython.profile(False)
 cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
-        vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
+        const vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
         bint is_c_contiguous):
     cdef vector.vector[Py_ssize_t] strides
     set_contiguous_strides(shape, strides, itemsize, is_c_contiguous)
@@ -102,7 +93,8 @@ cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
 
 @cython.profile(False)
 cdef inline Py_ssize_t set_contiguous_strides(
-        vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
+        const vector.vector[Py_ssize_t]& shape,
+        vector.vector[Py_ssize_t]& strides,
         Py_ssize_t itemsize, bint is_c_contiguous):
     cdef Py_ssize_t st, sh
     cdef Py_ssize_t is_nonzero_size = 1
@@ -141,7 +133,7 @@ cpdef inline bint get_c_contiguity(
 
 @cython.profile(False)
 cpdef vector.vector[Py_ssize_t] infer_unknown_dimension(
-        vector.vector[Py_ssize_t]& shape, Py_ssize_t size) except *:
+        const vector.vector[Py_ssize_t]& shape, Py_ssize_t size) except *:
     cdef vector.vector[Py_ssize_t] ret = shape
     cdef Py_ssize_t cnt=0, index=-1, new_size=1
     for i in range(shape.size()):

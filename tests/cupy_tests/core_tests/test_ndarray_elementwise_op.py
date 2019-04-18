@@ -159,9 +159,13 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
-    def check_array_array_op(self, op, xp, x_type, y_type, no_bool=False):
-        if no_bool and (numpy.dtype(x_type) == '?' and
-                        numpy.dtype(y_type) == '?'):
+    def check_array_array_op(self, op, xp, x_type, y_type,
+                             no_bool=False, no_complex=False):
+        x_dtype = numpy.dtype(x_type)
+        y_dtype = numpy.dtype(y_type)
+        if no_bool and x_dtype == '?' and y_dtype == '?':
+            return xp.array(True)
+        if no_complex and (x_dtype.kind == 'c' or y_dtype.kind == 'c'):
             return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[6, 5, 4], [3, 2, 1]], y_type)
@@ -214,7 +218,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.floordiv, no_complex=True)
 
-    @testing.with_requires('numpy>=1.10')
+    # TODO(kataoka): Check NumPy Issue #12927
+    @testing.with_requires('numpy>=1.10,<1.16.1')
     def test_ifloordiv_array(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.ifloordiv, no_complex=True)
@@ -262,13 +267,12 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_broadcasted_op(self, op, xp, x_type, y_type,
-                                   no_complex=False, no_bool=False):
-        if no_complex:
-            if numpy.dtype(x_type).kind == 'c' \
-                    or numpy.dtype(y_type).kind == 'c':
-                return xp.array(True)
-        if no_bool and (numpy.dtype(x_type) == '?' and
-                        numpy.dtype(y_type) == '?'):
+                                   no_bool=False, no_complex=False):
+        x_dtype = numpy.dtype(x_type)
+        y_dtype = numpy.dtype(y_type)
+        if no_bool and x_dtype == '?' and y_dtype == '?':
+            return xp.array(True)
+        if no_complex and (x_dtype.kind == 'c' or y_dtype.kind == 'c'):
             return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[1], [2]], y_type)
@@ -323,7 +327,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.floordiv, no_complex=True)
 
-    @testing.with_requires('numpy>=1.10')
+    # TODO(kataoka): Check NumPy Issue #12927
+    @testing.with_requires('numpy>=1.10,<1.16.1')
     def test_broadcasted_ifloordiv(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.ifloordiv,
@@ -375,14 +380,13 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_doubly_broadcasted_op(self, op, xp, x_type, y_type,
-                                          no_complex=False, no_bool=False):
-        if no_complex:
-            if numpy.dtype(x_type).kind == 'c' \
-                    or numpy.dtype(y_type).kind == 'c':
-                return x_type(True)
-        if no_bool and (numpy.dtype(x_type) == '?' and
-                        numpy.dtype(y_type) == '?'):
-            return x_type(True)
+                                          no_bool=False, no_complex=False):
+        x_dtype = numpy.dtype(x_type)
+        y_dtype = numpy.dtype(y_type)
+        if no_bool and x_dtype == '?' and y_dtype == '?':
+            return xp.array(True)
+        if no_complex and (x_dtype.kind == 'c' or y_dtype.kind == 'c'):
+            return xp.array(True)
         a = xp.array([[[1, 2, 3]], [[4, 5, 6]]], x_type)
         b = xp.array([[1], [2], [3]], y_type)
         return op(a, b)

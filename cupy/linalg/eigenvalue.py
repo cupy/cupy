@@ -9,7 +9,7 @@ if cuda.cusolver_enabled:
 
 def _syevd(a, UPLO, with_eigen_vector):
     if UPLO not in ('L', 'U'):
-        raise ValueError("UPLO argument must be 'L' or 'U'")
+        raise ValueError('UPLO argument must be \'L\' or \'U\'')
 
     if a.dtype == 'f' or a.dtype == 'e':
         dtype = 'f'

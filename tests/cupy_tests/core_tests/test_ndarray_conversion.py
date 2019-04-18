@@ -4,9 +4,9 @@ from cupy import testing
 
 
 @testing.parameterize(
-    {"shape": ()},
-    {"shape": (1,)},
-    {"shape": (1, 1, 1)},
+    {'shape': ()},
+    {'shape': (1,)},
+    {'shape': (1, 1, 1)},
 )
 class TestNdarrayItem(unittest.TestCase):
 
@@ -18,9 +18,9 @@ class TestNdarrayItem(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (0,)},
-    {"shape": (2, 3)},
-    {"shape": (1, 0, 1)},
+    {'shape': (0,)},
+    {'shape': (2, 3)},
+    {'shape': (1, 0, 1)},
 )
 class TestNdarrayItemRaise(unittest.TestCase):
 

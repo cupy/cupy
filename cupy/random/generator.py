@@ -87,7 +87,7 @@ class RandomState(object):
             size = cupy.broadcast(a, b).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.beta_kernel(a, b, self.rk_seed, y)
-        self.rk_seed += y.size
+        self.rk_seed += numpy.prod(y.size, dtype=self.rk_seed.dtype)
         return y
 
     def binomial(self, n, p, size=None, dtype=int):
@@ -102,7 +102,7 @@ class RandomState(object):
             size = cupy.broadcast(n, p).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.binomial_kernel(n, p, self.rk_seed, y)
-        self.rk_seed += y.size
+        self.rk_seed += numpy.prod(y.size, dtype=self.rk_seed.dtype)
         return y
 
     def chisquare(self, df, size=None, dtype=float):
@@ -117,7 +117,7 @@ class RandomState(object):
             size = df.shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.chisquare_kernel(df, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     def dirichlet(self, alpha, size=None, dtype=float):
@@ -135,7 +135,7 @@ class RandomState(object):
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.standard_gamma_kernel(alpha, self.rk_seed, y)
         y /= y.sum(axis=-1, keepdims=True)
-        self.rk_seed += cupy.core.internal.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     def exponential(self, scale=1.0, size=None, dtype=float):
@@ -166,7 +166,7 @@ class RandomState(object):
             size = cupy.broadcast(dfnum, dfden).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.f_kernel(dfnum, dfden, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     def gamma(self, shape, scale=1.0, size=None, dtype=float):
@@ -182,7 +182,7 @@ class RandomState(object):
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.standard_gamma_kernel(shape, self.rk_seed, y)
         y *= scale
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     def geometric(self, p, size=None, dtype=int):
@@ -197,7 +197,7 @@ class RandomState(object):
             size = p.shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.geometric_kernel(p, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     def hypergeometric(self, ngood, nbad, nsample, size=None, dtype=int):
@@ -213,7 +213,7 @@ class RandomState(object):
             size = cupy.broadcast(ngood, nbad, nsample).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.hypergeometric_kernel(ngood, nbad, nsample, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     _laplace_kernel = core.ElementwiseKernel(
@@ -248,7 +248,7 @@ class RandomState(object):
             size = cupy.broadcast(loc, scale).shape
         x = cupy.empty(shape=size, dtype=dtype)
         _kernels.open_uniform_kernel(self.rk_seed, x)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         x = (1.0 - x) / x
         cupy.log(x, out=x)
         cupy.multiply(x, scale, out=x)
@@ -287,7 +287,7 @@ class RandomState(object):
             size = p.shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.logseries_kernel(p, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     def multivariate_normal(self, mean, cov, size=None, check_valid='ignore',
@@ -310,11 +310,11 @@ class RandomState(object):
             shape = size,
 
         if mean.ndim != 1:
-            raise ValueError("mean must be 1 dimensional")
+            raise ValueError('mean must be 1 dimensional')
         if (cov.ndim != 2) or (cov.shape[0] != cov.shape[1]):
-            raise ValueError("cov must be 2 dimensional and square")
+            raise ValueError('cov must be 2 dimensional and square')
         if len(mean) != len(cov):
-            raise ValueError("mean and cov must have same length")
+            raise ValueError('mean and cov must have same length')
         shape += (len(mean),)
 
         x = self.standard_normal(size=shape, dtype=dtype)
@@ -324,7 +324,8 @@ class RandomState(object):
         if check_valid != 'ignore':
             if check_valid != 'warn' and check_valid != 'raise':
                 raise ValueError(
-                    "check_valid must equal 'warn', 'raise', or 'ignore'")
+                    'check_valid must equal \'warn\', \'raise\', or '
+                    '\'ignore\'')
 
             a = cupy.dot(v.T * s, v)
             b = cov
@@ -332,11 +333,11 @@ class RandomState(object):
             if not psd:
                 if check_valid == 'warn':
                     warnings.warn(
-                        "covariance is not symmetric positive-semidefinite.",
+                        'covariance is not symmetric positive-semidefinite.',
                         RuntimeWarning)
                 else:
                     raise ValueError(
-                        "covariance is not symmetric positive-semidefinite.")
+                        'covariance is not symmetric positive-semidefinite.')
 
         x = cupy.dot(x, cupy.sqrt(s)[:, None] * v)
         x += mean
@@ -352,11 +353,11 @@ class RandomState(object):
         n = cupy.asarray(n)
         p = cupy.asarray(p)
         if cupy.any(n <= 0):
-            raise ValueError("n <= 0")
+            raise ValueError('n <= 0')
         if cupy.any(p < 0):
-            raise ValueError("p < 0")
+            raise ValueError('p < 0')
         if cupy.any(p > 1):
-            raise ValueError("p > 1")
+            raise ValueError('p > 1')
         y = self.gamma(n, (1-p)/p, size)
         return self.poisson(y, dtype=dtype)
 
@@ -398,14 +399,14 @@ class RandomState(object):
         """
         df, nonc = cupy.asarray(df), cupy.asarray(nonc)
         if cupy.any(df <= 0):
-            raise ValueError("df <= 0")
+            raise ValueError('df <= 0')
         if cupy.any(nonc < 0):
-            raise ValueError("nonc < 0")
+            raise ValueError('nonc < 0')
         if size is None:
             size = cupy.broadcast(df, nonc).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.noncentral_chisquare_kernel(df, nonc, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     def noncentral_f(self, dfnum, dfden, nonc, size=None, dtype=float):
@@ -418,16 +419,16 @@ class RandomState(object):
         dfnum, dfden, nonc = \
             cupy.asarray(dfnum), cupy.asarray(dfden), cupy.asarray(nonc)
         if cupy.any(dfnum <= 0):
-            raise ValueError("dfnum <= 0")
+            raise ValueError('dfnum <= 0')
         if cupy.any(dfden <= 0):
-            raise ValueError("dfden <= 0")
+            raise ValueError('dfden <= 0')
         if cupy.any(nonc < 0):
-            raise ValueError("nonc < 0")
+            raise ValueError('nonc < 0')
         if size is None:
             size = cupy.broadcast(dfnum, dfden, nonc).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.noncentral_f_kernel(dfnum, dfden, nonc, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     def poisson(self, lam=1.0, size=None, dtype=int):
@@ -442,7 +443,7 @@ class RandomState(object):
             size = lam.shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.poisson_kernel(lam, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     def power(self, a, size=None, dtype=float):
@@ -556,6 +557,8 @@ class RandomState(object):
         """  # NOQA
         if size is None:
             return self._interval(mx, 1).reshape(())
+        elif size == 0:
+            return cupy.array(())
         elif isinstance(size, int):
             size = (size, )
 
@@ -662,7 +665,7 @@ class RandomState(object):
             size = shape.shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.standard_gamma_kernel(shape, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     def standard_normal(self, size=None, dtype=float):
@@ -687,7 +690,7 @@ class RandomState(object):
             size = df.shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.standard_t_kernel(df, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     def tomaxint(self, size=None):
@@ -747,11 +750,11 @@ class RandomState(object):
         left, mode, right = \
             cupy.asarray(left), cupy.asarray(mode), cupy.asarray(right)
         if cupy.any(left > mode):
-            raise ValueError("left > mode")
+            raise ValueError('left > mode')
         if cupy.any(mode > right):
-            raise ValueError("mode > right")
+            raise ValueError('mode > right')
         if cupy.any(left == right):
-            raise ValueError("left == right")
+            raise ValueError('left == right')
         if size is None:
             size = cupy.broadcast(left, mode, right).shape
         x = self.random_sample(size=size, dtype=dtype)
@@ -790,7 +793,7 @@ class RandomState(object):
             size = cupy.broadcast(mu, kappa).shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.vonmises_kernel(mu, kappa, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     _wald_kernel = core.ElementwiseKernel(
@@ -832,7 +835,7 @@ class RandomState(object):
         """
         a = cupy.asarray(a)
         if cupy.any(a < 0):
-            raise ValueError("a < 0")
+            raise ValueError('a < 0')
         x = self.standard_exponential(size, dtype)
         cupy.power(x, 1./a, out=x)
         return x
@@ -846,12 +849,12 @@ class RandomState(object):
         """
         a = cupy.asarray(a)
         if cupy.any(a <= 1.0):
-            raise ValueError("'a' must be a valid float > 1.0")
+            raise ValueError('\'a\' must be a valid float > 1.0')
         if size is None:
             size = a.shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.zipf_kernel(a, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size)
+        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
     def choice(self, a, size=None, replace=True, p=None):
