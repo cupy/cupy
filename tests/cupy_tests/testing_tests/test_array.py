@@ -82,6 +82,29 @@ class TestListEqualityAssertion(unittest.TestCase):
     })
 )
 @testing.gpu
+class TestStridesEqualityAssertion(unittest.TestCase):
+
+    def setUp(self):
+        val = numpy.random.uniform(-1, 1, (2, 3))
+        self.x = self.array_module_x.array(val, val.dtype, copy=True)
+        self.y = self.array_module_y.array(val, val.dtype, copy=True)
+
+    def test_equality_numpy(self):
+        testing.assert_array_equal(self.x, self.y, strides_check=True)
+
+    def test_inequality_numpy(self):
+        self.y = self.array_module_y.asfortranarray(self.y)
+        with self.assertRaises(AssertionError):
+            testing.assert_array_equal(self.x, self.y, strides_check=True)
+
+
+@testing.parameterize(
+    *testing.product({
+        'array_module_x': [numpy, cupy],
+        'array_module_y': [numpy, cupy]
+    })
+)
+@testing.gpu
 class TestLessAssertion(unittest.TestCase):
 
     def setUp(self):
