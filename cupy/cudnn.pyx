@@ -1414,7 +1414,6 @@ cpdef _Algorithm _find_algorithm_bwd_filter(
                 handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
                 filter_desc, dW.data.ptr, 1, workspace.ptr,
                 max_workspace_size)[0]
-        algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
         if use_tensor_core and perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_filter(x, dy, dW, conv_param)
     else:
@@ -1518,7 +1517,6 @@ cpdef _Algorithm _find_algorithm_bwd_data(
                 y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
         if use_tensor_core and perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_data(W, x, y, conv_param)
-        algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     else:
         perf = cudnn.findConvolutionBackwardDataAlgorithmEx(
             handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
@@ -1536,7 +1534,7 @@ cpdef _Algorithm _get_algorithm_bwd_data(
     cdef cudnn.CuDNNAlgoPerf perf
     key = (x.data.device.id, W.shape, x.shape, y.shape, conv_param,
            max_workspace_size)
-    algo = _algorithm_bwd_data_cache.get(key, None)
+    algo = _get_algorithm_bwd_data_cache.get(key, None)
     if algo is not None:
         return algo
     cdef list ret
@@ -1733,7 +1731,7 @@ def convolution_backward_filter(
                     'No conv bwd filter algo available with workspace size '
                     'less equal {}'.format(max_workspace_size))
         else:
-            if auto_tune:
+            if auto_tune and not deterministic:
                 perf = _find_algorithm_bwd_filter(
                     x, gy, gW, conv_param, handle, x_desc, gy_desc, conv_desc,
                     filter_desc, max_workspace_size, use_tensor_core,
@@ -1826,7 +1824,7 @@ def convolution_backward_data(
                     'No conv bwd data algo available with workspace size less '
                     'equal {}'.format(max_workspace_size))
         else:
-            if auto_tune:
+            if auto_tune and not deterministic:
                 perf = _find_algorithm_bwd_data(
                     W, x, y, conv_param, handle, filter_desc, x_desc,
                     conv_desc, y_desc, max_workspace_size, use_tensor_core,
