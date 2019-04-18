@@ -1391,7 +1391,7 @@ cpdef _Algorithm _find_algorithm_bwd_filter(
     cdef cudnn.CuDNNAlgoPerf perf
     cdef _Algorithm algo
     key = (x.data.device.id, x.shape, dW.shape, dy.shape, conv_param,
-           max_workspace_size, deterministic)
+           max_workspace_size)
     algo = _algorithm_bwd_filter_cache.get(key, None)
     if algo is not None:
         return algo
@@ -1494,7 +1494,7 @@ cpdef _Algorithm _find_algorithm_bwd_data(
     cdef _Algorithm algo
     cdef cudnn.CuDNNAlgoPerf perf
     key = (x.data.device.id, W.shape, x.shape, y.shape, conv_param,
-           max_workspace_size, deterministic)
+           max_workspace_size)
     algo = _algorithm_bwd_data_cache.get(key, None)
     if algo is not None:
         return algo
@@ -1780,7 +1780,8 @@ def convolution_backward_data(
         one = <size_t>&float_one
 
     cdef bint use_tensor_core = _should_use_tensor_core(tensor_core, x.dtype)
-    cdef tuple conv_param = (pad, stride, x.dtype, use_tensor_core)
+    cdef tuple conv_param = (
+        pad, stride, x.dtype, use_tensor_core, deterministic)
 
     # cuDNN 7 supports dilation only in *_FWD_ALGO_IMPLICIT_GEMM, but
     # it supports Tensor Cores only in *_FWD_ALGO_IMPLICIT_PRECOMP_GEMM.
