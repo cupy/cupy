@@ -1753,9 +1753,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 a = (_manipulation.concatenate_method(lst, 0)
                                   .reshape(shape)
                                   .astype(dtype, order=order, copy=False))
-            else:  # should not be reached here
-                raise ValueError(
-                    'Elements of obj have unsupported type(s)')
+            else:
+                # should not be reached here
+                assert issubclass(elem_type, (numpy.ndarray, ndarray))
         else:
             # obj is:
             # - numpy array
