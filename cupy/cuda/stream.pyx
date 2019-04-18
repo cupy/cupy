@@ -6,7 +6,7 @@ import weakref
 cdef object _thread_local = threading.local()
 
 
-cdef class _StreamThreadLocal(object):
+cdef class _StreamThreadLocal:
     cdef void* current_stream
     cdef object current_stream_ref
     cdef list prev_stream_ref_stack
@@ -180,7 +180,7 @@ class Stream(object):
         if self.ptr:
             tls = _StreamThreadLocal.get()
             current_ptr = tls.get_current_stream_ptr()
-            if self.ptr == <size_t>current_ptr:
+            if <size_t>self.ptr == <size_t>current_ptr:
                 tls.set_current_stream(self.null)
             runtime.streamDestroy(self.ptr)
         # Note that we can not release memory pool of the stream held in CPU
