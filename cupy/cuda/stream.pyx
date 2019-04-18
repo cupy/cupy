@@ -24,8 +24,9 @@ cpdef get_current_stream():
     Returns:
         cupy.cuda.Stream: The current CUDA stream.
     """
-    if not hasattr(_thread_local, 'current_stream_ref'):
-        _thread_local.current_stream_ref = weakref.ref(Stream.null)
+    if get_current_stream_ptr() == 0:
+        # To avoid overhead
+        return Stream.null
     return _thread_local.current_stream_ref()
 
 
@@ -41,6 +42,9 @@ cpdef _set_current_stream(stream):
         stream_ptr = 0
     else:
         stream_ptr = stream.ptr
+    if get_current_stream_ptr() == stream_ptr:
+        return
+
     pythread.PyThread_delete_key_value(_current_stream_key)
     pythread.PyThread_set_key_value(_current_stream_key, <void *>stream_ptr)
     _thread_local.current_stream_ref = weakref.ref(stream)
