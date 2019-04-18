@@ -1347,9 +1347,9 @@ cdef class ndarray:
                     out.flags.f_contiguous and self._f_contiguous):
                 with self.device:
                     if out.flags.c_contiguous:
-                        a_gpu = ascontiguousarray(self)
+                        a_gpu = _internal_ascontiguousarray(self)
                     elif out.flags.f_contiguous:
-                        a_gpu = asfortranarray(self)
+                        a_gpu = _internal_asfortranarray(self)
                     else:
                         raise RuntimeError(
                             '`out` cannot be specified when copying to '
@@ -1371,9 +1371,9 @@ cdef class ndarray:
                     order == 'F' and self._f_contiguous):
                 with self.device:
                     if order == 'C':
-                        a_gpu = ascontiguousarray(self)
+                        a_gpu = _internal_ascontiguousarray(self)
                     elif order == 'F':
-                        a_gpu = asfortranarray(self)
+                        a_gpu = _internal_asfortranarray(self)
                     else:
                         raise ValueError('unsupported order: {}'.format(order))
             else:
