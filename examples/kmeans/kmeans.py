@@ -69,7 +69,7 @@ def fit(X, n_clusters, max_iter, use_custom_kernel):
             centers = sums / counts
         else:
             sums = sum_kernel(X, pred[:, None], i[:, None, None], axis=1)
-            counts = count_kernel(pred, i[:,None], axis=1)
+            counts = count_kernel(pred, i[:, None], axis=1)
             centers = sums / counts
 
     return centers, pred
