@@ -25,14 +25,14 @@ var_kernel = cupy.ElementwiseKernel(
     'var_kernel'
 )
 sum_kernel = cupy.ReductionKernel(
-    'T x, S mask', 'T out',
-    'mask ? x : 0',
+    'T x, S p, S i', 'T out',
+    'p == i ? x : 0',
     'a + b', 'out = a', '0',
     'sum_kernel'
 )
 count_kernel = cupy.ReductionKernel(
-    'T mask', 'float32 out',
-    'mask ? 1.0 : 0.0',
+    'T p, S i', 'float32 out',
+    'p == i ? 1.0 : 0.0',
     'a + b', 'out = a', '0.0',
     'count_kernel'
 )
@@ -61,15 +61,15 @@ def fit(X, n_clusters, max_iter, use_custom_kernel):
         pred = new_pred
 
         # calculate centers
-        i = xp.arange(n_clusters)
-        mask = pred == i[:, None]
+        i = xp.arange(n_clusters, dtype=np.int32)
         if not use_custom_kernel or xp == np:
+            mask = pred == i[:, None]
             sums = xp.where(mask[:, :, None], X, 0).sum(axis=1)
             counts = xp.count_nonzero(mask, axis=1)
             centers = sums / counts
         else:
-            sums = sum_kernel(X, mask[:, :, None], axis=1)
-            counts = count_kernel(mask, axis=1)
+            sums = sum_kernel(X, pred[:, None], i[:, None, None], axis=1)
+            counts = count_kernel(pred, i[:,None], axis=1)
             centers = sums / counts
 
     return centers, pred
