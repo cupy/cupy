@@ -364,11 +364,6 @@ def make_extensions(options, compiler, use_cython):
     use_wheel_libs_rpath = (
         0 < len(options['wheel_libs']) and not PLATFORM_WIN32)
 
-    # This is a workaround for Anaconda.
-    # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
-    # with GCC 5's new ABI.
-    settings['define_macros'].append(('_GLIBCXX_USE_CXX11_ABI', '0'))
-
     # In the environment with CUDA 7.5 on Ubuntu 16.04, gcc5.3 does not
     # automatically deal with memcpy because string.h header file has
     # been changed. This is a workaround for that environment.
