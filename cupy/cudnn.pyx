@@ -342,11 +342,11 @@ def rnn_forward_inference_ex(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w,
         core.ndarray xs, lengths):
-    hx = core.ascontiguousarray(hx)
+    hx = core._internal_ascontiguousarray(hx)
     if cx is not None:
-        cx = core.ascontiguousarray(cx)
-    w = core.ascontiguousarray(w)
-    xs = core.ascontiguousarray(xs)
+        cx = core._internal_ascontiguousarray(cx)
+    w = core._internal_ascontiguousarray(w)
+    xs = core._internal_ascontiguousarray(xs)
 
     cdef int length = xs._shape[0]
     cdef int n_layers = _get_n_layers(direction_mode, hx)
@@ -401,11 +401,11 @@ def rnn_forward_training_ex(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
         lengths):
-    hx = core.ascontiguousarray(hx)
+    hx = core._internal_ascontiguousarray(hx)
     if cx is not None:
-        cx = core.ascontiguousarray(cx)
-    w = core.ascontiguousarray(w)
-    xs = core.ascontiguousarray(xs)
+        cx = core._internal_ascontiguousarray(cx)
+    w = core._internal_ascontiguousarray(w)
+    xs = core._internal_ascontiguousarray(xs)
 
     cdef int length = xs._shape[0]
     cdef int n_layers = _get_n_layers(direction_mode, hx)
@@ -465,16 +465,16 @@ def rnn_backward_data_ex(
         core.ndarray ys, memory.MemoryPointer reserve_space,
         core.ndarray dhy, core.ndarray dcy, core.ndarray dys,
         lengths):
-    hx = core.ascontiguousarray(hx)
+    hx = core._internal_ascontiguousarray(hx)
     if cx is not None:
-        cx = core.ascontiguousarray(cx)
-    w = core.ascontiguousarray(w)
-    xs = core.ascontiguousarray(xs)
-    ys = core.ascontiguousarray(ys)
-    dhy = core.ascontiguousarray(dhy)
+        cx = core._internal_ascontiguousarray(cx)
+    w = core._internal_ascontiguousarray(w)
+    xs = core._internal_ascontiguousarray(xs)
+    ys = core._internal_ascontiguousarray(ys)
+    dhy = core._internal_ascontiguousarray(dhy)
     if dcy is not None:
-        dcy = core.ascontiguousarray(dcy)
-    dys = core.ascontiguousarray(dys)
+        dcy = core._internal_ascontiguousarray(dcy)
+    dys = core._internal_ascontiguousarray(dys)
 
     cdef int length = xs._shape[0]
     cdef int n_layers = _get_n_layers(direction_mode, hx)
@@ -538,10 +538,10 @@ def rnn_backward_weights_ex(
         core.ndarray xs, core.ndarray hx, core.ndarray ys,
         core.ndarray w,
         memory.MemoryPointer reserve_space, lengths):
-    xs = core.ascontiguousarray(xs)
-    hx = core.ascontiguousarray(hx)
-    ys = core.ascontiguousarray(ys)
-    w = core.ascontiguousarray(w)
+    xs = core._internal_ascontiguousarray(xs)
+    hx = core._internal_ascontiguousarray(hx)
+    ys = core._internal_ascontiguousarray(ys)
+    w = core._internal_ascontiguousarray(w)
 
     cdef int length = xs._shape[0]
     cdef int n_layers = _get_n_layers(direction_mode, hx)
@@ -593,7 +593,7 @@ def activation_forward(core.ndarray x, int mode, double coef=0.0):
         zero = <size_t>&float_zero
         one = <size_t>&float_one
 
-    x = core.ascontiguousarray(x)
+    x = core._internal_ascontiguousarray(x)
     y = core.ndarray(x._shape, x.dtype)
 
     handle = get_handle()
@@ -626,9 +626,9 @@ def activation_backward(core.ndarray x, core.ndarray y, core.ndarray gy,
         one = <size_t>&float_one
 
     gx = core.ndarray(x._shape, x.dtype)
-    x = core.ascontiguousarray(x)
-    y = core.ascontiguousarray(y)
-    gy = core.ascontiguousarray(gy)
+    x = core._internal_ascontiguousarray(x)
+    y = core._internal_ascontiguousarray(y)
+    gy = core._internal_ascontiguousarray(gy)
 
     handle = get_handle()
     desc = cudnn.createTensorDescriptor()
@@ -681,7 +681,7 @@ def softmax_forward(core.ndarray x, int axis, int algorithm):
         zero = <size_t>&float_zero
         one = <size_t>&float_one
 
-    x = core.ascontiguousarray(x)
+    x = core._internal_ascontiguousarray(x)
     y = core.ndarray(x._shape, x.dtype)
 
     handle = get_handle()
@@ -709,8 +709,8 @@ def softmax_backward(core.ndarray y, core.ndarray gy, int axis, int algorithm):
         one = <size_t>&float_one
 
     gx = core.ndarray(y._shape, y.dtype)
-    y = core.ascontiguousarray(y)
-    gy = core.ascontiguousarray(gy)
+    y = core._internal_ascontiguousarray(y)
+    gy = core._internal_ascontiguousarray(gy)
 
     handle = get_handle()
     desc = cudnn.createTensorDescriptor()
@@ -946,11 +946,11 @@ def rnn_forward_inference(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
         lengths):
-    hx = core.ascontiguousarray(hx)
+    hx = core._internal_ascontiguousarray(hx)
     if cx is not None:
-        cx = core.ascontiguousarray(cx)
-    w = core.ascontiguousarray(w)
-    xs = core.ascontiguousarray(xs)
+        cx = core._internal_ascontiguousarray(cx)
+    w = core._internal_ascontiguousarray(w)
+    xs = core._internal_ascontiguousarray(xs)
 
     cdef int length = len(lengths)
     cdef int n_layers = _get_n_layers(direction_mode, hx)
@@ -994,11 +994,11 @@ def rnn_forward_training(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
         lengths):
-    hx = core.ascontiguousarray(hx)
+    hx = core._internal_ascontiguousarray(hx)
     if cx is not None:
-        cx = core.ascontiguousarray(cx)
-    w = core.ascontiguousarray(w)
-    xs = core.ascontiguousarray(xs)
+        cx = core._internal_ascontiguousarray(cx)
+    w = core._internal_ascontiguousarray(w)
+    xs = core._internal_ascontiguousarray(xs)
 
     cdef int length = len(lengths)
     cdef int n_layers = _get_n_layers(direction_mode, hx)
@@ -1047,16 +1047,16 @@ def rnn_backward_data(
         core.ndarray ys, memory.MemoryPointer reserve_space,
         core.ndarray dhy, core.ndarray dcy, core.ndarray dys,
         lengths):
-    hx = core.ascontiguousarray(hx)
+    hx = core._internal_ascontiguousarray(hx)
     if cx is not None:
-        cx = core.ascontiguousarray(cx)
-    w = core.ascontiguousarray(w)
-    xs = core.ascontiguousarray(xs)
-    ys = core.ascontiguousarray(ys)
-    dhy = core.ascontiguousarray(dhy)
+        cx = core._internal_ascontiguousarray(cx)
+    w = core._internal_ascontiguousarray(w)
+    xs = core._internal_ascontiguousarray(xs)
+    ys = core._internal_ascontiguousarray(ys)
+    dhy = core._internal_ascontiguousarray(dhy)
     if dcy is not None:
-        dcy = core.ascontiguousarray(dcy)
-    dys = core.ascontiguousarray(dys)
+        dcy = core._internal_ascontiguousarray(dcy)
+    dys = core._internal_ascontiguousarray(dys)
 
     cdef int length = len(lengths)
     cdef int n_layers = _get_n_layers(direction_mode, hx)
@@ -1109,10 +1109,10 @@ def rnn_backward_weights(
         core.ndarray xs, core.ndarray hx, core.ndarray ys,
         core.ndarray w,
         memory.MemoryPointer reserve_space, lengths):
-    xs = core.ascontiguousarray(xs)
-    hx = core.ascontiguousarray(hx)
-    ys = core.ascontiguousarray(ys)
-    w = core.ascontiguousarray(w)
+    xs = core._internal_ascontiguousarray(xs)
+    hx = core._internal_ascontiguousarray(hx)
+    ys = core._internal_ascontiguousarray(ys)
+    w = core._internal_ascontiguousarray(w)
 
     cdef int length = len(lengths)
     cdef int n_layers = _get_n_layers(direction_mode, hx)
@@ -1235,7 +1235,7 @@ cdef class DropoutStates:
             cudnn_handle = handle
         set_dropout_descriptor(self._desc, cudnn_handle, dropout_ratio)
 
-        x = core.ascontiguousarray(x)
+        x = core._internal_ascontiguousarray(x)
         y = core.ndarray(x._shape, x.dtype)
 
         x_desc = cudnn.createTensorDescriptor()
@@ -1262,7 +1262,7 @@ cdef class DropoutStates:
             cudnn_handle = handle
         set_dropout_descriptor(self._desc, cudnn_handle, dropout_ratio)
 
-        dy = core.ascontiguousarray(dy)
+        dy = core._internal_ascontiguousarray(dy)
         dx = core.ndarray(dy._shape, dy.dtype)
 
         dy_desc = cudnn.createTensorDescriptor()
@@ -1574,8 +1574,8 @@ def convolution_forward(
                 break
 
     handle = get_handle()
-    x = core.ascontiguousarray(x)
-    W = core.ascontiguousarray(W)
+    x = core._internal_ascontiguousarray(x)
+    W = core._internal_ascontiguousarray(W)
 
     # TODO(okuta) check performance
     cdef size_t x_desc = cudnn.createTensorDescriptor()
@@ -1619,7 +1619,8 @@ def convolution_forward(
             assert dev_id == b.data.device.id
             b_shape.assign(y._shape.size(), 1)
             b_shape[1] = -1
-            b = _manipulation._reshape(core.ascontiguousarray(b), b_shape)
+            b = _manipulation._reshape(
+                core._internal_ascontiguousarray(b), b_shape)
             _create_tensor_nd_descriptor(b_desc, b, -1)
             cudnn.addTensor_v3(handle, one, b_desc,
                                b.data.ptr, one, y_desc, y.data.ptr)
@@ -1655,8 +1656,8 @@ def convolution_backward_filter(
     cdef tuple conv_param = (pad, stride, x.dtype, use_tensor_core)
 
     handle = get_handle()
-    x = core.ascontiguousarray(x)
-    gy = core.ascontiguousarray(gy)
+    x = core._internal_ascontiguousarray(x)
+    gy = core._internal_ascontiguousarray(gy)
 
     # TODO(okuta) check performance
     cdef size_t x_desc = cudnn.createTensorDescriptor()
@@ -1743,8 +1744,8 @@ def convolution_backward_data(
                 break
 
     handle = get_handle()
-    x = core.ascontiguousarray(x)
-    W = core.ascontiguousarray(W)
+    x = core._internal_ascontiguousarray(x)
+    W = core._internal_ascontiguousarray(W)
 
     # TODO(okuta) check performance
     cdef size_t x_desc = cudnn.createTensorDescriptor()
@@ -1801,7 +1802,8 @@ def convolution_backward_data(
             assert dev_id == b.data.device.id
             b_shape.assign(y._shape.size(), 1)
             b_shape[1] = -1
-            b = _manipulation._reshape(core.ascontiguousarray(b), b_shape)
+            b = _manipulation._reshape(
+                core._internal_ascontiguousarray(b), b_shape)
             _create_tensor_nd_descriptor(b_desc, b, -1)
             cudnn.addTensor_v3(handle, one, b_desc, b.data.ptr, one, y_desc,
                                y.data.ptr)
@@ -1825,7 +1827,7 @@ def pooling_forward(
     else:
         zero = <size_t>&float_zero
         one = <size_t>&float_one
-    x = core.ascontiguousarray(x)
+    x = core._internal_ascontiguousarray(x)
     handle = get_handle()
     x_desc = cudnn.createTensorDescriptor()
     y_desc = cudnn.createTensorDescriptor()
@@ -1859,8 +1861,8 @@ def pooling_backward(
         one = <size_t>&float_one
 
     gx = core.ndarray(x._shape, x.dtype)
-    x = core.ascontiguousarray(x)
-    gy = core.ascontiguousarray(gy)
+    x = core._internal_ascontiguousarray(x)
+    gy = core._internal_ascontiguousarray(gy)
 
     handle = get_handle()
     x_desc = cudnn.createTensorDescriptor()
@@ -1920,7 +1922,7 @@ def batch_normalization_forward_training(
     if (mean is None) != (inv_std is None):
         raise ValueError('Both mean and inv_std must be None if one is.')
 
-    x = core.ascontiguousarray(x)
+    x = core._internal_ascontiguousarray(x)
     dtype = x.dtype
     y = core.ndarray(x._shape, dtype)
 
@@ -1947,8 +1949,8 @@ def batch_normalization_forward_training(
         else:
             running_mean_tmp = running_mean
             running_var_tmp = running_var
-            gamma = core.ascontiguousarray(gamma)
-            beta = core.ascontiguousarray(beta)
+            gamma = core._internal_ascontiguousarray(gamma)
+            beta = core._internal_ascontiguousarray(beta)
         if mean is None:
             save_mean = core.ndarray(gamma.shape, dtype_param)
             save_inv_std = core.ndarray(gamma.shape, dtype_param)
@@ -2001,7 +2003,7 @@ def batch_normalization_forward_inference(
         core.ndarray x, core.ndarray gamma, core.ndarray beta,
         core.ndarray mean, core.ndarray var,
         double eps, bint is_for_conv2d, int cudnn_mode):
-    x = core.ascontiguousarray(x)
+    x = core._internal_ascontiguousarray(x)
     dtype = x.dtype
     y = core.ndarray(x._shape, dtype)
 
@@ -2026,8 +2028,8 @@ def batch_normalization_forward_inference(
             mean = mean.astype(dtype_param)
             var = var.astype(dtype_param)
         else:
-            gamma = core.ascontiguousarray(gamma)
-            beta = core.ascontiguousarray(beta)
+            gamma = core._internal_ascontiguousarray(gamma)
+            beta = core._internal_ascontiguousarray(beta)
 
         cudnn.batchNormalizationForwardInference(
             handle, cudnn_mode, one, zero,
@@ -2046,8 +2048,8 @@ def batch_normalization_backward(
         double eps, bint is_for_conv2d, int cudnn_mode, bint debug):
     cdef core.ndarray ggamma, gbeta
     cdef bint need_cast
-    x = core.ascontiguousarray(x)
-    gy = core.ascontiguousarray(gy)
+    x = core._internal_ascontiguousarray(x)
+    gy = core._internal_ascontiguousarray(gy)
     dtype = x.dtype
     gx = core.ndarray(x._shape, dtype)
 
@@ -2070,7 +2072,7 @@ def batch_normalization_backward(
         if need_cast:
             gamma = gamma.astype(dtype_param)
         else:
-            gamma = core.ascontiguousarray(gamma)
+            gamma = core._internal_ascontiguousarray(gamma)
         ggamma = core.ndarray(gamma._shape, dtype_param)
         gbeta = core.ndarray(gamma._shape, dtype_param)
 

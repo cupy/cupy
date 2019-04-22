@@ -1347,9 +1347,9 @@ cdef class ndarray:
                     out.flags.f_contiguous and self._f_contiguous):
                 with self.device:
                     if out.flags.c_contiguous:
-                        a_gpu = ascontiguousarray(self)
+                        a_gpu = _internal_ascontiguousarray(self)
                     elif out.flags.f_contiguous:
-                        a_gpu = asfortranarray(self)
+                        a_gpu = _internal_asfortranarray(self)
                     else:
                         raise RuntimeError(
                             '`out` cannot be specified when copying to '
@@ -1371,9 +1371,9 @@ cdef class ndarray:
                     order == 'F' and self._f_contiguous):
                 with self.device:
                     if order == 'C':
-                        a_gpu = ascontiguousarray(self)
+                        a_gpu = _internal_ascontiguousarray(self)
                     elif order == 'F':
-                        a_gpu = asfortranarray(self)
+                        a_gpu = _internal_asfortranarray(self)
                     else:
                         raise ValueError('unsupported order: {}'.format(order))
             else:
@@ -1762,38 +1762,24 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
     return a
 
 
-cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
-    if dtype is None:
-        if a._c_contiguous:
-            return a
-        dtype = a.dtype
-    else:
-        dtype = get_dtype(dtype)
-        if a._c_contiguous and dtype == a.dtype:
-            return a
-
-    newarray = ndarray(a.shape, dtype)
+cpdef ndarray _internal_ascontiguousarray(ndarray a):
+    if a._c_contiguous:
+        return a
+    newarray = ndarray(a.shape, a.dtype)
     elementwise_copy(a, newarray)
     return newarray
 
 
-cpdef ndarray asfortranarray(ndarray a, dtype=None):
+cpdef ndarray _internal_asfortranarray(ndarray a):
     cdef ndarray newarray
     cdef int m, n
 
-    if dtype is None:
-        if a._f_contiguous:
-            return a
-        dtype = a.dtype
-    else:
-        dtype = get_dtype(dtype)
-        if a._f_contiguous and dtype == a.dtype:
-            return a
+    if a._f_contiguous:
+        return a
 
-    newarray = ndarray(a.shape, dtype, order='F')
-    if (a.flags.c_contiguous and
-            (a.dtype == numpy.float32 or a.dtype == numpy.float64) and
-            a.ndim == 2 and dtype == a.dtype):
+    newarray = ndarray(a.shape, a.dtype, order='F')
+    if (a._c_contiguous and a._shape.size() == 2 and
+            (a.dtype == numpy.float32 or a.dtype == numpy.float64)):
         m, n = a.shape
         handle = device.get_cublas_handle()
         if a.dtype == numpy.float32:
@@ -1810,10 +1796,56 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
                 1,  # transpose newarray
                 m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
                 newarray.data.ptr, m)
-        return newarray
     else:
         elementwise_copy(a, newarray)
-        return newarray
+    return newarray
+
+
+cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
+    cdef bint same_dtype = False
+    zero_dim = a._shape.size() == 0
+    if dtype is None:
+        same_dtype = True
+        dtype = a.dtype
+    else:
+        dtype = get_dtype(dtype)
+        same_dtype = dtype == a.dtype
+
+    if same_dtype and a._c_contiguous:
+        if zero_dim:
+            return _manipulation._ndarray_ravel(a, 'C')
+        return a
+
+    shape = (1,) if zero_dim else a.shape
+    newarray = ndarray(shape, dtype)
+    elementwise_copy(a, newarray)
+    return newarray
+
+
+cpdef ndarray asfortranarray(ndarray a, dtype=None):
+    cdef ndarray newarray
+    cdef int m, n
+    cdef bint same_dtype = False
+    zero_dim = a._shape.size() == 0
+
+    if dtype is None:
+        dtype = a.dtype
+        same_dtype = True
+    else:
+        dtype = get_dtype(dtype)
+        same_dtype = dtype == a.dtype
+
+    if same_dtype and a._f_contiguous:
+        if zero_dim:
+            return _manipulation._ndarray_ravel(a, 'F')
+        return a
+
+    if same_dtype and not zero_dim:
+        return _internal_asfortranarray(a)
+
+    newarray = ndarray((1,) if zero_dim else a.shape, dtype, order='F')
+    elementwise_copy(a, newarray)
+    return newarray
 
 
 # -----------------------------------------------------------------------------
