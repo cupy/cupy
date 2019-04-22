@@ -50,8 +50,8 @@ cdef class RawKernel:
         kern = _get_raw_kernel(self.code, self.name, self.options)
         kern(grid, block, args, **kwargs)
 
-    def compile(self, code=None, options=()):
-        """compile(self, code=None, options=())
+    def compile(self, code=None, options=(), backend='nvrtc'):
+        """compile(self, code=None, options=(), backend='nvrtc')
 
         Compiles the kernels in code, and returns a Module instance. If the
         arguments are not given, the corresponding attributes of the RawKernel
@@ -66,7 +66,8 @@ cdef class RawKernel:
             options = self.options
 
         module = cupy.core.core.compile_with_cache(
-            code, options, prepend_cupy_headers=False)
+            code, options, prepend_cupy_headers=False, backend=backend)
+
         return module
 
 
