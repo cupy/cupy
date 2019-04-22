@@ -1619,7 +1619,8 @@ def convolution_forward(
             assert dev_id == b.data.device.id
             b_shape.assign(y._shape.size(), 1)
             b_shape[1] = -1
-            b = _manipulation._reshape(core._internal_ascontiguousarray(b), b_shape)
+            b = _manipulation._reshape(
+                core._internal_ascontiguousarray(b), b_shape)
             _create_tensor_nd_descriptor(b_desc, b, -1)
             cudnn.addTensor_v3(handle, one, b_desc,
                                b.data.ptr, one, y_desc, y.data.ptr)
@@ -1801,7 +1802,8 @@ def convolution_backward_data(
             assert dev_id == b.data.device.id
             b_shape.assign(y._shape.size(), 1)
             b_shape[1] = -1
-            b = _manipulation._reshape(core._internal_ascontiguousarray(b), b_shape)
+            b = _manipulation._reshape(
+                core._internal_ascontiguousarray(b), b_shape)
             _create_tensor_nd_descriptor(b_desc, b, -1)
             cudnn.addTensor_v3(handle, one, b_desc, b.data.ptr, one, y_desc,
                                y.data.ptr)
