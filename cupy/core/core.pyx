@@ -1187,9 +1187,12 @@ cdef class ndarray:
                 isinstance(value, numpy.ndarray)):
             if (self.dtype == value.dtype and
                     self.shape == value.shape):
-                order = 'F' if self.flags.f_contiguous else 'C'
-                tmp = value.ravel(order)
-                ptr = ctypes.c_void_p(tmp.__array_interface__['data'][0])
+                if self.strides == value.strides:
+                    ptr = ctypes.c_void_p(value.__array_interface__['data'][0])
+                else:
+                    order = 'F' if self.flags.f_contiguous else 'C'
+                    tmp = value.ravel(order)
+                    ptr = ctypes.c_void_p(tmp.__array_interface__['data'][0])
                 stream_ptr = stream_module.get_current_stream_ptr()
                 if stream_ptr == 0:
                     self.data.copy_from_host(ptr, self.nbytes)
