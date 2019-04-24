@@ -189,8 +189,21 @@ class TestArrayCopyAndView(unittest.TestCase):
         b = cupy.empty(100, dtype=a.dtype)
         b[:] = a
 
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_isinstance_numpy_copy_wrong_order(self, xp):
-        a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10, order='C')
-        b = cupy.empty(a.shape, dtype=a.dtype, order='F')
+
+@testing.parameterize(
+    {'src_order': 'C'},
+    {'src_order': 'F'},
+)
+@testing.gpu
+class TestNumPyArrayCopyView(unittest.TestCase):
+    @testing.for_orders('CF')
+    @testing.for_dtypes([numpy.int16, numpy.int64,
+                         numpy.float16, numpy.float64])
+    @testing.numpy_cupy_array_equal()
+    def test_isinstance_numpy_view_copy_f(self, xp, dtype, order):
+        a = numpy.arange(100, dtype=dtype).reshape(
+                10, 10, order=self.src_order)
+        a = a[2:5, 1:8]
+        b = xp.empty(a.shape, dtype=dtype, order=order)
         b[:] = a
+        return b
