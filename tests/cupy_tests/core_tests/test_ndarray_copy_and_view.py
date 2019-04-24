@@ -202,7 +202,7 @@ class TestNumPyArrayCopyView(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_isinstance_numpy_view_copy_f(self, xp, dtype, order):
         a = numpy.arange(100, dtype=dtype).reshape(
-                10, 10, order=self.src_order)
+            10, 10, order=self.src_order)
         a = a[2:5, 1:8]
         b = xp.empty(a.shape, dtype=dtype, order=order)
         b[:] = a
