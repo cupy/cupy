@@ -1186,9 +1186,10 @@ cdef class ndarray:
         if (slices == slice(None, None, None) and
                 isinstance(value, numpy.ndarray)):
             if (self.dtype == value.dtype and
-                    self.shape == value.shape and
-                    self.strides == value.strides):
-                ptr = ctypes.c_void_p(value.__array_interface__['data'][0])
+                    self.shape == value.shape):
+                order = 'F' if self.flags.f_contiguous else 'C'
+                tmp = value.ravel(order)
+                ptr = ctypes.c_void_p(tmp.__array_interface__['data'][0])
                 stream_ptr = stream_module.get_current_stream_ptr()
                 if stream_ptr == 0:
                     self.data.copy_from_host(ptr, self.nbytes)
@@ -1197,8 +1198,7 @@ cdef class ndarray:
             else:
                 raise ValueError(
                     "copying a numpy.ndarray to a cupy.ndarray by empty slice "
-                    "assignment must ensure arrays exact same shape, strides "
-                    "and dtype")
+                    "assignment must ensure arrays exact same shape and dtype")
         else:
             _indexing._ndarray_setitem(self, slices, value)
 
