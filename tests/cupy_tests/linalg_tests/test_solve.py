@@ -151,6 +151,58 @@ class TestPinv(unittest.TestCase):
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
+class TestLstsq(unittest.TestCase):
+
+    @testing.for_float_dtypes(no_float16=True)
+    @condition.retry(10)
+    def check_x(self, a_shape, b_shape, rcond, dtype):
+        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
+        b_cpu = numpy.random.randint(0, 10, size=b_shape).astype(dtype)
+        a_gpu = cupy.asarray(a_cpu)
+        b_gpu = cupy.asarray(b_cpu)
+        a_gpu_copy = a_gpu.copy()
+        b_gpu_copy = b_gpu.copy()
+        result_cpu, _, _, _ = numpy.linalg.lstsq(a_cpu, b_cpu, rcond=rcond)
+        result_gpu = cupy.linalg.lstsq(a_gpu, b_gpu, rcond=rcond)
+
+        self.assertEqual(result_cpu.dtype, result_gpu.dtype)
+        cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
+        cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
+        cupy.testing.assert_array_equal(b_gpu_copy, b_gpu)
+
+    def check_shape(self, a_shape, b_shape):
+        a = cupy.random.rand(*a_shape)
+        b = cupy.random.rand(*b_shape)
+        with self.assertRaises(ValueError):
+            cupy.linalg.lstsq(a, b)
+
+    def test_lstsq(self):
+        # Test skinny
+        self.check_x((10, 3), (10, ), rcond=1e-15)
+        self.check_x((10, 3), (10, 2), rcond=1e-15)
+        # Test square
+        self.check_x((4, 4), (4, ), rcond=1e-15)
+        self.check_x((4, 4), (4, 2), rcond=1e-15)
+        # Test more unknowns than data
+        self.check_x((3, 10), (3, ), rcond=1e-15)
+        self.check_x((3, 10), (3, 3), rcond=1e-15)
+        # Test large rcond
+        self.check_x((4, 4), (4,), rcond=0.3)
+        self.check_x((2, 5), (2,), rcond=0.5)
+        self.check_x((5, 3), (5,), rcond=0.6)
+
+    def test_invalid_shape(self):
+        # test ValueError('Axis dimension mismatch')
+        self.check_shape((4, 3), (3, ))
+        self.check_shape((4, 3), (2, 2))
+        self.check_shape((4, 3), (3, 2, 3))
+        self.check_shape((4, 3), (10, 3, 3))
+        # Note that invalid shapes of a are already tested with pinv
+
+
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
 class TestTensorInv(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)

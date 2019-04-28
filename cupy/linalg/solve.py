@@ -166,7 +166,46 @@ def tensorsolve(a, b, axes=None):
     return result.reshape(oldshape)
 
 
-# TODO(okuta): Implement lstsq
+def lstsq(a, b, rcond=1e-15):
+    """Return the least-squares solution to a linear matrix equation.
+
+    Solves the equation `a x = b` by computing a vector `x` that
+    minimizes the Euclidean 2-norm `|| b - a x ||^2`.  The equation may
+    be under-, well-, or over- determined (i.e., the number of
+    linearly independent rows of `a` can be less than, equal to, or
+    greater than its number of linearly independent columns).  If `a`
+    is square and of full rank, then `x` (but for round-off error) is
+    the "exact" solution of the equation.
+
+    Args:
+        a (cupy.ndarray): "Coefficient" matrix with dimension ``(M, N)``
+        b (cupy.ndarray): "Dependent variable" values with dimension ``(M,)``
+            or ``(M, K)``
+        rcond (float): Cutoff parameter for small singular values.
+            For stability it computes the largest singular value denoted by
+            ``s``, and sets all singular values smaller than ``s`` to zero.
+
+    Returns:
+        cupy.ndarray: The least-squares solution with shape ``(N,)`` or
+            ``(N, K)`` depending if ``b`` was two-dimensional.
+
+    Notes:
+        This only returns the least-squares solution! Note that
+        `numpy.linalg.lstsq` returns the residuals, rank, and singular values
+        in addition to the least-squares solution.
+
+    .. seealso:: :func:`numpy.linalg.lstsq`
+    """
+    b_shape = b.shape
+    u, s, vt = decomposition.svd(a, full_matrices=False)
+    cutoff = rcond * s.max()
+    s1 = 1 / s
+    s1[s <= cutoff] = 0
+    if len(b_shape) > 1:
+        s1 = cupy.repeat(s1.reshape(-1, 1), b_shape[1], axis=1)
+    z = core.dot(u.transpose(), b) * s1
+    x = core.dot(vt.transpose(), z)
+    return x
 
 
 def inv(a):
