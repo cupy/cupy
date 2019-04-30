@@ -8,6 +8,7 @@ from cupy import testing
 
 _bool_ok = testing.numpy_satisfies('>=1.10')  # after numpy PR #5946
 _float16_ok = testing.numpy_satisfies('>=1.15')  # after numpy PR #10911
+# require numpy!=1.14.0 because of numpy issue #10343
 
 
 def _dec_shape(shape, dec):

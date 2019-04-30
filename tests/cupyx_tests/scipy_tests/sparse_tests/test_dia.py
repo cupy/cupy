@@ -122,6 +122,15 @@ class TestDiaMatrixInit(unittest.TestCase):
         sp.dia_matrix(
             (self.data(xp), self.offsets(xp)), shape=None)
 
+    @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
+    def test_intlike_shape(self, xp, sp):
+        s = sp.dia_matrix((self.data(xp), self.offsets(xp)),
+                          shape=(xp.array(self.shape[0]),
+                                 xp.int32(self.shape[1])))
+        assert isinstance(s.shape[0], int)
+        assert isinstance(s.shape[1], int)
+        return s
+
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
     def test_large_rank_offset(self, xp, sp):
         sp.dia_matrix(
