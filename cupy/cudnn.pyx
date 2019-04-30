@@ -1438,7 +1438,7 @@ cpdef _Algorithm _get_algorithm_bwd_filter(
         return algo
     cdef list ret
     cdef bint skip
-    if use_tensor_core and _cudnn_version >= 7000:
+    if _cudnn_version >= 7000:
         ret = cudnn.getConvolutionBackwardFilterAlgorithm_v7(
             handle, x_desc, gy_desc, conv_desc, filter_desc, 10)
         skip = False
@@ -1452,7 +1452,7 @@ cpdef _Algorithm _get_algorithm_bwd_filter(
             raise RuntimeError(
                 'No conv bwd filter algo available with workspace size less '
                 'equal {}'.format(max_workspace_size))
-        if skip:
+        if use_tensor_core and skip:
             warnings.warn(
                 'The best algo of conv bwd filter might not not selected due '
                 'to lack of workspace size ({})'.format(max_workspace_size),
@@ -1539,7 +1539,7 @@ cpdef _Algorithm _get_algorithm_bwd_data(
         return algo
     cdef list ret
     cdef bint skip
-    if use_tensor_core and _cudnn_version >= 7000:
+    if _cudnn_version >= 7000:
         ret = cudnn.getConvolutionBackwardDataAlgorithm_v7(
             handle, filter_desc, x_desc, conv_desc, y_desc, 10)
         skip = False
@@ -1553,7 +1553,7 @@ cpdef _Algorithm _get_algorithm_bwd_data(
             raise RuntimeError(
                 'No conv bwd data algo available with workspace size less '
                 'equal {}'.format(max_workspace_size))
-        if skip:
+        if use_tensor_core and skip:
             warnings.warn(
                 'The best algo of conv bwd data might not not selected due '
                 'to lack of workspace size ({})'.format(max_workspace_size),
