@@ -146,7 +146,16 @@ class TestComplex(unittest.TestCase):
                  for d in negative_types
                  ] + [0, 0.0, 0j, 2, 2.0, 2j, -2, -2.0, -2j, True, False],
         'name': ['divide', 'true_divide', 'subtract'],
-        'dtype': [numpy.complex64],
+        'dtype': [None],
+    }) + testing.product({
+        'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+                 for d in int_types
+                 ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
+        'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
+                 for d in int_types
+                 ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
+        'name': ['true_divide'],
+        'dtype': [numpy.float64],
     }) + testing.product({
         'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in float_types] + [0.0, 2.0, -2.0],
@@ -249,13 +258,9 @@ class TestArithmeticBinary(unittest.TestCase):
     def test_binary(self):
         self.use_dtype = False
         self.check_binary()
-
-    def test_binary_with_dtype(self):
-        if self.dtype is None:
-            self.skipTest('dtype is None')
-            return
-        self.use_dtype = True
-        self.check_binary()
+        if self.dtype is not None:
+            self.use_dtype = True
+            self.check_binary()
 
 
 class TestArithmeticModf(unittest.TestCase):
