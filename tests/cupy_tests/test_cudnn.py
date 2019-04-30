@@ -292,7 +292,7 @@ class TestConvolutionBackwardData(unittest.TestCase):
                 (self.groups > 1 and version < 7000)):
             self.err = ValueError
         elif deterministic and (
-                (self.dilate > 1 and (ndim != 2 or version < 7000)) or
+                (self.dilate > 1 and (ndim != 2 or version < 7300)) or
                 (ndim > 2 and version < 6000) or
                 (ndim > 2 and self.dtype == numpy.float64)):
             self.err = libcudnn.CuDNNError
