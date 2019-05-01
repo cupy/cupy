@@ -84,15 +84,13 @@ class FunctionAttributes(object):
             self.func_attribute = func_attribute
 
         def __get__(self, instance, owner):
-            if instance is not None:
-                return driver.funcGetAttribute(self.func_attribute,
-                                               instance.kern.ptr)
+            return driver.funcGetAttribute(self.func_attribute,
+                                           instance.kern.ptr)
 
     class ReadWrite(Read):
         def __set__(self, instance, value):
-            if instance is not None:
-                driver.funcSetAttribute(instance.kern.ptr, self.func_attribute,
-                                        value)
+            driver.funcSetAttribute(instance.kern.ptr, self.func_attribute,
+                                    value)
 
     max_threads_per_block = Read(
         driver.CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK)
@@ -137,9 +135,12 @@ class FunctionAttributes(object):
 
     preferred_shared_memory_carveout = ReadWrite(
         driver.CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT)
-    """On devices that have a unified L1 cache and shared memory, specifies the
-    preferred amount devoted to shared memory as a percentage of the total.
-    Can be set.
+    """On devices that have a unified L1 cache and shared memory,
+    indicates the fraction to be used for shared memory as a
+    percentage of the total. If the fraction does not exactly equal a
+    supported shared memory capacity, then the next larger supported
+    capacity is used. Can be set.
+
     """
 
     def __init__(self, kern):
