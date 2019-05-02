@@ -1380,14 +1380,15 @@ cdef class ndarray:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
         ptr = ctypes.c_void_p(a_cpu.__array_interface__['data'][0])
-        if stream is not None:
-            a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
-        else:
-            stream_ptr = stream_module.get_current_stream_ptr()
-            if stream_ptr == 0:
-                a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
+        with self.device:
+            if stream is not None:
+                a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
             else:
-                a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes)
+                stream_ptr = stream_module.get_current_stream_ptr()
+                if stream_ptr == 0:
+                    a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
+                else:
+                    a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes)
         return a_cpu
 
     cpdef set(self, arr, stream=None):
@@ -1417,14 +1418,15 @@ cdef class ndarray:
             raise RuntimeError('Cannot set to non-contiguous array')
 
         ptr = ctypes.c_void_p(arr.__array_interface__['data'][0])
-        if stream is not None:
-            self.data.copy_from_host_async(ptr, self.nbytes, stream)
-        else:
-            stream_ptr = stream_module.get_current_stream_ptr()
-            if stream_ptr == 0:
-                self.data.copy_from_host(ptr, self.nbytes)
+        with self.device:
+            if stream is not None:
+                self.data.copy_from_host_async(ptr, self.nbytes, stream)
             else:
-                self.data.copy_from_host_async(ptr, self.nbytes)
+                stream_ptr = stream_module.get_current_stream_ptr()
+                if stream_ptr == 0:
+                    self.data.copy_from_host(ptr, self.nbytes)
+                else:
+                    self.data.copy_from_host_async(ptr, self.nbytes)
 
     cpdef ndarray reduced_view(self, dtype=None):
         """Returns a view of the array with minimum number of dimensions.
