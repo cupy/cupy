@@ -123,7 +123,7 @@ def compile_using_nvcc(source, options=(), arch=None, filename='kern.cu'):
     cmd = ['nvcc', '--cubin', arch_str] + list(options)
 
     with TemporaryDirectory() as root_dir:
-        first_part = filename.split(".")[0]
+        first_part = filename.split('.')[0]
 
         path = os.path.join(root_dir, first_part)
         cu_path = '%s.cu' % path
@@ -174,7 +174,7 @@ def _preprocess(source, options, arch, backend):
                 e.dump(sys.stderr)
             raise
     else:
-        raise ValueError("Invalid backend %s" % backend)
+        raise ValueError('Invalid backend %s' % backend)
 
     assert isinstance(result, six.text_type)
     return result
@@ -191,7 +191,7 @@ _empty_file_preprocess_cache = {}
 
 
 def compile_with_cache(source, options=(), arch=None, cache_dir=None,
-                       extra_source=None, backend="nvrtc"):
+                       extra_source=None, backend='nvrtc'):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -237,15 +237,15 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
                 mod.load(cubin)
                 return mod
 
-    if backend == "nvrtc":
+    if backend == 'nvrtc':
         ptx = compile_using_nvrtc(source, options, arch, name + '.cu')
         ls = function.LinkState()
         ls.add_ptr_data(ptx, u'cupy.ptx')
         cubin = ls.complete()
-    elif backend == "nvcc":
+    elif backend == 'nvcc':
         cubin = compile_using_nvcc(source, options, arch, name + '.cu')
     else:
-        raise ValueError("Invalid backend %s" % backend)
+        raise ValueError('Invalid backend %s' % backend)
 
     cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
 

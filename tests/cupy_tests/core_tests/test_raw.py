@@ -169,7 +169,7 @@ class TestRaw(unittest.TestCase):
 
     def test_backends(self):
         for backend in ("nvrtc", "nvcc"):
-            kern = cupy.RawKernel(_test_source4, 'test_sum', backend=backend)
+            kern = cupy.RawKernel(_test_source4, 'test_sub', backend=backend)
             x1 = cupy.arange(100, dtype=cupy.float32).reshape(10, 10)
             x2 = cupy.ones((10, 10), dtype=cupy.float32)
             y = cupy.zeros((10, 10), dtype=cupy.float32)

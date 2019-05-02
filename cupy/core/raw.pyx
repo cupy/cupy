@@ -27,7 +27,7 @@ cdef class RawKernel:
 
     """
 
-    def __init__(self, code, name, options=(), backend="nvrtc"):
+    def __init__(self, code, name, options=(), backend='nvrtc'):
         if isinstance(code, six.binary_type):
             code = code.decode('UTF-8')
         if isinstance(name, six.binary_type):
@@ -184,7 +184,7 @@ cdef class RawKernel:
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_raw_kernel(code, name, options=(), backend="nvrtc"):
+def _get_raw_kernel(code, name, options=(), backend='nvrtc'):
     module = cupy.core.core.compile_with_cache(
         code, options, prepend_cupy_headers=False, backend=backend)
     return module.get_function(name)
