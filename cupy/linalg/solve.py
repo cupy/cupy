@@ -196,11 +196,6 @@ def lstsq(a, b, rcond=1e-15):
             the shape is (K,). The ``rank`` of matrix ``a`` is an integer. The
             singular values of ``a`` are ``s``.
 
-    Notes:
-        This only returns the least-squares solution! Note that
-        `numpy.linalg.lstsq` returns the residuals, rank, and singular values
-        in addition to the least-squares solution.
-
     .. seealso:: :func:`numpy.linalg.lstsq`
     """
     m, n = a.shape[-2:]
