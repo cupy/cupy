@@ -186,8 +186,15 @@ def lstsq(a, b, rcond=1e-15):
             ``s``, and sets all singular values smaller than ``s`` to zero.
 
     Returns:
-        cupy.ndarray: The least-squares solution with shape ``(N,)`` or
-            ``(N, K)`` depending if ``b`` was two-dimensional.
+        tuple:
+            A tuple of ``(x, residuals, rank, s)``. Note ``x`` is the
+            least-squares solution with shape ``(N,)`` or ``(N, K)`` depending
+            if ``b`` was two-dimensional. The sums of ``residuals`` is the
+            squared Euclidean 2-norm for each column in b - a*x. The
+            ``residuals`` is an empty array if the rank of a is < N or M <= N,
+            but  iff b is 1-dimensional, this is a (1,) shape array, Otherwise
+            the shape is (K,). The ``rank`` of matrix ``a`` is an integer. The
+            singular values of ``a`` are ``s``.
 
     Notes:
         This only returns the least-squares solution! Note that
@@ -196,16 +203,29 @@ def lstsq(a, b, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.lstsq`
     """
-    b_shape = b.shape
-    u, s, vt = decomposition.svd(a, full_matrices=False)
+    m, n = a.shape[-2:]
+    u, s, vt = cupy.linalg.svd(a, full_matrices=False)
     cutoff = rcond * s.max()
     s1 = 1 / s
-    s1[s <= cutoff] = 0
-    if len(b_shape) > 1:
-        s1 = cupy.repeat(s1.reshape(-1, 1), b_shape[1], axis=1)
+    sing_vals = s <= cutoff
+    s1[sing_vals] = 0
+    rank = s.size - sing_vals.sum()
+    if b.ndim > 1:
+        s1 = cupy.repeat(s1.reshape(-1, 1), b.shape[1], axis=1)
     z = core.dot(u.transpose(), b) * s1
     x = core.dot(vt.transpose(), z)
-    return x
+    if rank != n or m <= n:
+        resids = cupy.array([], dtype=a.dtype)
+    elif b.ndim > 1:
+        k = b.shape[1]
+        resids = cupy.zeros(k, dtype=a.dtype)
+        for i in range(k):
+            e = b[:, i] - core.dot(a, x[:, i])
+            resids[i] = core.dot(e.T, e)
+    else:
+        e = b - core.dot(a, x)
+        resids = core.dot(e.T, e).reshape(-1)
+    return x, resids, rank, s
 
 
 def inv(a):

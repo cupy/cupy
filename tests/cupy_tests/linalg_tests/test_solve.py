@@ -162,11 +162,18 @@ class TestLstsq(unittest.TestCase):
         b_gpu = cupy.asarray(b_cpu)
         a_gpu_copy = a_gpu.copy()
         b_gpu_copy = b_gpu.copy()
-        result_cpu, _, _, _ = numpy.linalg.lstsq(a_cpu, b_cpu, rcond=rcond)
-        result_gpu = cupy.linalg.lstsq(a_gpu, b_gpu, rcond=rcond)
+        result_cpu, resids_cpu, rank_cpu, s_cpu = numpy.linalg.lstsq(a_cpu,
+                                                                     b_cpu,
+                                                                     rcond=rcond)  # noqa E501
+        result_gpu, resids_gpu, rank_gpu, s_gpu = cupy.linalg.lstsq(a_gpu,
+                                                                    b_gpu,
+                                                                    rcond=rcond)  # noqa E501
 
         self.assertEqual(result_cpu.dtype, result_gpu.dtype)
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
+        cupy.testing.assert_allclose(resids_cpu, resids_gpu, atol=1e-3)
+        cupy.testing.assert_allclose(rank_cpu, rank_gpu, atol=1e-3)
+        cupy.testing.assert_allclose(s_cpu, s_gpu, atol=1e-3)
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
         cupy.testing.assert_array_equal(b_gpu_copy, b_gpu)
 
