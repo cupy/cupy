@@ -60,6 +60,9 @@ def empty_like(a, dtype=None, order='K', shape=None):
             result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
+        shape (tuple of ints): Overrides the shape of the result. If order='K'
+            and the number of dimensions is unchanged, will try to keep order,
+            otherwise, order='C' is implied.
 
 
     Returns:
@@ -154,6 +157,9 @@ def ones_like(a, dtype=None, order='K', shape=None):
             result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
+        shape (tuple of ints): Overrides the shape of the result. If order='K'
+            and the number of dimensions is unchanged, will try to keep order,
+            otherwise, order='C' is implied.
 
     Returns:
         cupy.ndarray: An array filled with ones.
@@ -204,6 +210,9 @@ def zeros_like(a, dtype=None, order='K', shape=None):
             result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
+        shape (tuple of ints): Overrides the shape of the result. If order='K'
+            and the number of dimensions is unchanged, will try to keep order,
+            otherwise, order='C' is implied.
 
     Returns:
         cupy.ndarray: An array filled with zeros.
@@ -262,6 +271,9 @@ def full_like(a, fill_value, dtype=None, order='K', shape=None):
             result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
+        shape (tuple of ints): Overrides the shape of the result. If order='K'
+            and the number of dimensions is unchanged, will try to keep order,
+            otherwise, order='C' is implied.
 
     Returns:
         cupy.ndarray: An array filled with ``fill_value``.
