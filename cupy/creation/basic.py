@@ -32,10 +32,15 @@ def _new_like_order_and_strides(a, dtype, order, shape=None):
     if order not in ['C', 'F', 'K', 'A']:
         raise TypeError('order not understood: {}'.format(order))
 
+    # Fallback to c_contiguous if keep order and number of dimensions
+    # of new shape mismatch
+    if order == 'K' and shape is not None and len(shape) != a.ndim:
+        return 'C', None, None
+
     order = chr(_update_order_char(a, ord(order)))
 
-    if order == 'K' and shape is None:
-        strides = _get_strides_for_order_K(a, numpy.dtype(dtype))
+    if order == 'K':
+        strides = _get_strides_for_order_K(a, numpy.dtype(dtype), shape)
         order = 'C'
         memptr = cupy.empty(a.size, dtype=dtype).data
         return order, strides, memptr
@@ -56,6 +61,7 @@ def empty_like(a, dtype=None, order='K', shape=None):
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
 
+
     Returns:
         cupy.ndarray: A new array with same shape and dtype of ``a`` with
         elements not initialized.
@@ -66,8 +72,9 @@ def empty_like(a, dtype=None, order='K', shape=None):
     if dtype is None:
         dtype = a.dtype
 
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order, shape)
-    shape = a.shape if shape is None else shape
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
+                                                         shape)
+    shape = shape if shape else a.shape
     return cupy.ndarray(shape, dtype, memptr, strides, order)
 
 
@@ -157,8 +164,9 @@ def ones_like(a, dtype=None, order='K', shape=None):
     if dtype is None:
         dtype = a.dtype
 
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order, shape)
-    shape = a.shape if shape is None else shape
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
+                                                         shape)
+    shape = shape if shape else a.shape
     a = cupy.ndarray(shape, dtype, memptr, strides, order)
     a.fill(1)
     return a
@@ -195,7 +203,7 @@ def zeros_like(a, dtype=None, order='K', shape=None):
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
             result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
-            layout of ``a`` as closely as possible.\
+            layout of ``a`` as closely as possible.
 
     Returns:
         cupy.ndarray: An array filled with zeros.
@@ -206,8 +214,9 @@ def zeros_like(a, dtype=None, order='K', shape=None):
     if dtype is None:
         dtype = a.dtype
 
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order, shape)
-    shape = a.shape if shape is None else shape
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
+                                                         shape)
+    shape = shape if shape else a.shape
     a = cupy.ndarray(shape, dtype, memptr, strides, order)
     a.data.memset_async(0, a.nbytes)
     return a
@@ -263,8 +272,9 @@ def full_like(a, fill_value, dtype=None, order='K', shape=None):
     if dtype is None:
         dtype = a.dtype
 
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order, shape)
-    shape = a.shape if shape is None else shape
+    order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
+                                                         shape)
+    shape = shape if shape else a.shape
     a = cupy.ndarray(shape, dtype, memptr, strides, order)
     a.fill(fill_value)
     return a
