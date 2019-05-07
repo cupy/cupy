@@ -68,7 +68,7 @@ class TestUserkernel(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'value': [-1, 2 * 32, 2 ** 63 - 1, -(2 ** 63)],
+    'value': [-1, 2 ** 32, 2 ** 63 - 1, -(2 ** 63)],
 }))
 class TestUserkernelScalar(unittest.TestCase):
 
@@ -77,7 +77,8 @@ class TestUserkernelScalar(unittest.TestCase):
     def test_scalar(self, xp, dtype):
         x = testing.shaped_arange((2, 3, 4), xp, dtype)
         if xp is numpy:
-            return x + numpy.dtype(dtype).type(self.value)
+            y = numpy.array(self.value).astype(dtype)
+            return x + y
         else:
             kernel = cupy.ElementwiseKernel('T x, T y', 'T z', 'z = x + y')
             return kernel(x, self.value)

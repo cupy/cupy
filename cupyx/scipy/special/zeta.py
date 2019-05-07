@@ -8,11 +8,7 @@
 
 # TODO(YoshikawaMasashi): float implementation of zeta function
 
-import cupy
 from cupy import core
-
-
-_zeta_kernel = None
 
 
 zeta_definition = '''
@@ -115,22 +111,11 @@ double __device__ zeta(double x, double q)
 '''
 
 
-def _get_zeta_kernel():
-    global _zeta_kernel
-    if _zeta_kernel is None:
-        _zeta_kernel = core.ElementwiseKernel(
-            'T x, T q', 'T y',
-            """
-            y = zeta(x, q)
-            """,
-            'zeta_kernel',
-            preamble=zeta_definition
-        )
-    return _zeta_kernel
-
-
-def zeta(x, q):
-    """Hurwitz zeta function.
+zeta = core.create_ufunc(
+    'cupyx_scipy_zeta', ('ff->f', 'dd->d'),
+    'out0 = zeta(in0, in1)',
+    preamble=zeta_definition,
+    doc="""Hurwitz zeta function.
 
     Args:
         x (cupy.ndarray): Input data, must be real.
@@ -141,13 +126,4 @@ def zeta(x, q):
 
     .. seealso:: :data:`scipy.special.zeta`
 
-    """
-    if x.dtype.char in '?ebBhH':
-        x = x.astype(cupy.float32)
-    elif x.dtype.char in 'iIlLqQ':
-        x = x.astype(cupy.float64)
-    q = q.astype(x.dtype)
-    x, q = cupy.broadcast_arrays(x, q)
-    y = cupy.zeros_like(x)
-    _get_zeta_kernel()(x, q, y)
-    return y
+    """)

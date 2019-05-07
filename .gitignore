@@ -21,3 +21,4 @@ htmlcov/
 .cache/
 .pytest_cache/
 cupy/_lib/
+cupy/cuda/thrust.h

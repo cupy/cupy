@@ -76,7 +76,7 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
     tensor.manager_ctx = NULL
 
 
-# The name of this function is following the framwork integration guide of
+# The name of this function is following the framework integration guide of
 # TensorComprehensions.
 cpdef object toDlpack(ndarray array) except +:
     cdef DLManagedTensor* dlm_tensor = \
@@ -121,7 +121,7 @@ cpdef object toDlpack(ndarray array) except +:
     return cpython.PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_deleter)
 
 
-cdef class DLPackMemory(memory.Memory):
+cdef class DLPackMemory(memory.BaseMemory):
 
     """Memory object for a dlpack tensor.
 
@@ -149,12 +149,10 @@ cdef class DLPackMemory(memory.Memory):
         cpython.PyCapsule_SetName(dltensor, 'used_dltensor')
 
     def __dealloc__(self):
-        # DLPack tensor should be managed by the original creator
-        self.ptr = 0
         self.dlm_tensor.deleter(self.dlm_tensor)
 
 
-# The name of this function is following the framwork integration guide of
+# The name of this function is following the framework integration guide of
 # TensorComprehensions.
 cpdef ndarray fromDlpack(object dltensor) except +:
     """Zero-copy conversion from a DLPack tensor to a :class:`~cupy.ndarray`.
@@ -235,12 +233,11 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     cdef vector[Py_ssize_t] shape_vec
     shape_vec.assign(shape, shape + ndim)
 
+    if mem.dlm_tensor.dl_tensor.strides is NULL:
+        return ndarray(shape_vec, cp_dtype, mem_ptr, strides=None)
     cdef int64_t* strides = mem.dlm_tensor.dl_tensor.strides
     cdef vector[Py_ssize_t] strides_vec
     for i in range(ndim):
         strides_vec.push_back(strides[i] * (bits // 8))
 
-    cupy_array = ndarray(shape_vec, cp_dtype, mem_ptr)
-    cupy_array._set_shape_and_strides(shape_vec, strides_vec)
-
-    return cupy_array
+    return ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)

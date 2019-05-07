@@ -33,9 +33,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         'compress_getitem_complex')
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
-        if shape is not None and len(shape) != 2:
-            raise ValueError(
-                'Only two-dimensional sparse arrays are supported.')
+        if shape is not None:
+            if not util.isshape(shape):
+                raise ValueError('invalid shape (must be a 2-tuple of int)')
+            shape = int(shape[0]), int(shape[1])
 
         if base.issparse(arg1):
             x = arg1.asformat(self.format)
@@ -133,9 +134,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
         self._shape = shape
         self._has_canonical_format = has_canonical_format
 
-    def _with_data(self, data):
-        return self.__class__(
-            (data, self.indices.copy(), self.indptr.copy()), shape=self.shape)
+    def _with_data(self, data, copy=True):
+        if copy:
+            return self.__class__(
+                (data, self.indices.copy(), self.indptr.copy()),
+                shape=self.shape,
+                dtype=data.dtype)
+        else:
+            return self.__class__(
+                (data, self.indices, self.indptr),
+                shape=self.shape,
+                dtype=data.dtype)
 
     def _convert_dense(self, x):
         raise NotImplementedError
@@ -269,13 +278,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             major_start += major_size
         if major_stop < 0:
             major_stop += major_size
+        major_start = max(min(major_start, major_size), 0)
+        major_stop = max(min(major_stop, major_size), 0)
 
         if major_step != 1:
             raise ValueError('slicing with step != 1 not supported')
 
-        if not (0 <= major_start <= major_size and
-                0 <= major_stop <= major_size and
-                major_start <= major_stop):
+        if not (major_start <= major_stop):
             raise IndexError('index out of bounds')
 
         start = self.indptr[major_start]

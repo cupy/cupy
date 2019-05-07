@@ -19,6 +19,10 @@ import six
 import sys
 
 
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+import _comparison_generator
+
+
 __version__ = pkg_resources.get_distribution('cupy').version
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
@@ -32,6 +36,11 @@ extlinks = {
     'blob': ('https://github.com/cupy/cupy/blob/{}/%s'.format(tag), ''),
     'tree': ('https://github.com/cupy/cupy/tree/{}/%s'.format(tag), ''),
 }
+
+
+# Generate comparison table.
+with open('reference/comparison_table.rst.inc', 'w') as f:
+    f.write(_comparison_generator.generate())
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the

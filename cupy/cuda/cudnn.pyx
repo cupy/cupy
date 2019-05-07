@@ -12,11 +12,12 @@ from cupy.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cudnn.h" nogil:
+cdef extern from 'cupy_cudnn.h' nogil:
     # Types
     ctypedef int ActivationMode 'cudnnActivationMode_t'
     ctypedef int AddMode 'cudnnAddMode_t'
     ctypedef int BatchNormMode 'cudnnBatchNormMode_t'
+    ctypedef int BatchNormOps 'cudnnBatchNormOps_t'
     ctypedef int ConvolutionBwdDataAlgo 'cudnnConvolutionBwdDataAlgo_t'
     ctypedef int ConvolutionBwdDataPreference \
         'cudnnConvolutionBwdDataPreference_t'
@@ -73,8 +74,11 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef int NanPropagation 'cudnnNanPropagation_t'
     ctypedef int PoolingMode 'cudnnPoolingMode_t'
     ctypedef int RNNInputMode 'cudnnRNNInputMode_t'
+    ctypedef int CTCLossAlgo 'cudnnCTCLossAlgo_t'
     ctypedef int RNNMode 'cudnnRNNMode_t'
     ctypedef int RNNAlgo 'cudnnRNNAlgo_t'
+    ctypedef int RNNDataLayout 'cudnnRNNDataLayout_t'
+    ctypedef int RNNPaddingMode 'cudnnRNNPaddingMode_t'
     ctypedef int SoftmaxAlgorithm 'cudnnSoftmaxAlgorithm_t'
     ctypedef int SoftmaxMode 'cudnnSoftmaxMode_t'
     ctypedef int Status 'cudnnStatus_t'
@@ -92,7 +96,9 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef void* FilterDescriptor 'cudnnFilterDescriptor_t'
     ctypedef void* Handle 'cudnnHandle_t'
     ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
+    ctypedef void* CTCLossDescriptor 'cudnnCTCLossDescriptor_t'
     ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
+    ctypedef void* RNNDataDescriptor 'cudnnRNNDataDescriptor_t'
     ctypedef void* PersistentRNNPlan 'cudnnPersistentRNNPlan_t'
     ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
     ctypedef void* OpTensorDescriptor 'cudnnOpTensorDescriptor_t'
@@ -395,6 +401,69 @@ cdef extern from "cupy_cudnn.h" nogil:
         void* dBnScaleResult, void* dBnBiasResult,
         double epsilon, void* savedMean, void* savedInvVariance)
 
+    int cudnnBatchNormalizationForwardTrainingEx(
+        Handle handle,
+        BatchNormMode mode, BatchNormOps bnOps,
+        void* alpha, void* beta,
+        TensorDescriptor xDesc, void* x,
+        TensorDescriptor zDesc, void* z,
+        TensorDescriptor yDesc, void* y,
+        TensorDescriptor bnScaleBiasMeanVarDesc,
+        void* bnScale, void* bnBias,
+        double exponentialAverageFactor,
+        void* resultRunningMean, void* resultRunningVariance,
+        double epsilon,
+        void* resultSaveMean, void* resultSaveInvVariance,
+        ActivationDescriptor activationDesc,
+        void* workspace, size_t workSpaceSizeInBytes,
+        void* reserveSpace, size_t reserveSpaceSizeInBytes)
+    int cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
+        Handle handle,
+        BatchNormMode mode, BatchNormOps bnOps,
+        TensorDescriptor xDesc,
+        TensorDescriptor zDesc,
+        TensorDescriptor yDesc,
+        TensorDescriptor bnScaleBiasMeanVarDesc,
+        ActivationDescriptor activationDesc,
+        size_t* sizeInBytes)
+    int cudnnBatchNormalizationBackwardEx(
+        Handle handle,
+        BatchNormMode mode, BatchNormOps bnops,
+        void* alphaDataDiff, void* betaDataDiff,
+        void* alphaParamDiff, void* betaParamDiff,
+        TensorDescriptor xDesc, void* x,
+        TensorDescriptor yDesc, void* y,
+        TensorDescriptor dyDesc, void* dy,
+        TensorDescriptor dzDesc, void* dz,
+        TensorDescriptor dxDesc, void* dx,
+        TensorDescriptor dBnScaleBiasDesc,
+        void* bnScaleData, void* bnBiasData,
+        void* dBnScaleData, void* dBnBiasData,
+        double epsilon,
+        void* savedMean, void* savedInvVariance,
+        ActivationDescriptor activationDesc,
+        void* workspace, size_t workSpaceSizeInBytes,
+        void* reserveSpace, size_t reserveSpaceSizeInBytes)
+    int cudnnGetBatchNormalizationBackwardExWorkspaceSize(
+        Handle handle,
+        BatchNormMode mode,
+        BatchNormOps bnOps,
+        TensorDescriptor xDesc,
+        TensorDescriptor yDesc,
+        TensorDescriptor dyDesc,
+        TensorDescriptor dzDesc,
+        TensorDescriptor dxDesc,
+        TensorDescriptor dBnScaleBiasDesc,
+        ActivationDescriptor activationDesc,
+        size_t* sizeInBytes)
+    int cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
+        Handle handle,
+        BatchNormMode mode,
+        BatchNormOps bnOps,
+        ActivationDescriptor activationDesc,
+        TensorDescriptor xDesc,
+        size_t* sizeInBytes)
+
     # Activation
     int cudnnCreateActivationDescriptor(
         ActivationDescriptor* activationDesc)
@@ -442,6 +511,24 @@ cdef extern from "cupy_cudnn.h" nogil:
         TensorDescriptor dydesc, void* dy, TensorDescriptor dxdesc,
         void* dx, void* reserveSpace, size_t reserveSpaceSizeInBytes)
 
+    # CTC
+    int cudnnCreateCTCLossDescriptor(CTCLossDescriptor* ctcLossDesc)
+    int cudnnDestroyCTCLossDescriptor(CTCLossDescriptor ctcLossDesc)
+    int cudnnSetCTCLossDescriptor(
+        CTCLossDescriptor ctcLossDesc, DataType dataType)
+    int cudnnGetCTCLossDescriptor(
+        CTCLossDescriptor ctcLossDesc, DataType* dataType)
+    int cudnnGetCTCLossWorkspaceSize(
+        Handle handle, TensorDescriptor probsDesc,
+        TensorDescriptor gradientsDesc, int* labels,
+        int* labelLengths, int* inputLengths, CTCLossAlgo algo,
+        CTCLossDescriptor ctcLossDesc, size_t* sizeInBytes)
+    int cudnnCTCLoss(
+        Handle handle, TensorDescriptor probsDesc,
+        void* probs, int* labels, int* labelLengths, int* inputLengths,
+        void* costs, TensorDescriptor gradientsDesc, void* gradients,
+        CTCLossAlgo algo, CTCLossDescriptor ctcLossDesc,
+        void* workspace, size_t workSpaceSizeInBytes)
     # RNN
     int cudnnCreateRNNDescriptor(RNNDescriptor* rnnDesc)
     int cudnnDestroyRNNDescriptor(RNNDescriptor rnnDesc)
@@ -460,6 +547,21 @@ cdef extern from "cupy_cudnn.h" nogil:
         Handle handle, RNNDescriptor rnnDesc, int hiddenSize,
         int numLayers, DropoutDescriptor dropoutDesc, RNNInputMode inputMode,
         DirectionMode direction, RNNMode mode, RNNAlgo algo, DataType dataType)
+    int cudnnSetRNNPaddingMode(
+        RNNDescriptor rnnDesc, RNNPaddingMode paddingMode)
+    int cudnnGetRNNPaddingMode(
+        RNNDescriptor rnnDesc, RNNPaddingMode* paddingMode)
+    int cudnnCreateRNNDataDescriptor(RNNDataDescriptor* RNNDataDesc)
+    int cudnnDestroyRNNDataDescriptor(RNNDataDescriptor RNNDataDesc)
+    int cudnnSetRNNDataDescriptor(
+        RNNDataDescriptor RNNDataDesc, DataType dataType, RNNDataLayout layout,
+        int maxSeqLength, int batchSize, int vectorSize,
+        const int seqLengthArray[], void *paddingFill)
+    int cudnnGetRNNDataDescriptor(
+        RNNDataDescriptor RNNDataDesc, DataType* dataType,
+        RNNDataLayout* layout, int* maxSeqLength, int* batchSize,
+        int* vectorSize, int arrayLengthRequested, int seqLengthArray[],
+        void* paddingFill)
     int cudnnGetRNNWorkspaceSize(
         Handle handle, RNNDescriptor rnnDesc, int seqLength,
         TensorDescriptor* xDesc, size_t* sizeInBytes)
@@ -515,6 +617,60 @@ cdef extern from "cupy_cudnn.h" nogil:
         void* workspace, size_t workSpaceSizeInBytes, FilterDescriptor dwDesc,
         void* dw, void* reserveSpace, size_t reserveSpaceSizeInBytes)
 
+    int cudnnRNNForwardInferenceEx(
+        Handle handle, RNNDescriptor rnnDesc,
+        RNNDataDescriptor xDesc, const void* x,
+        TensorDescriptor hxDesc, const void* hx,
+        TensorDescriptor cxDesc, const void* cx,
+        FilterDescriptor wDesc, const void* w,
+        RNNDataDescriptor yDesc, void* y,
+        TensorDescriptor hyDesc, void* hy,
+        TensorDescriptor cyDesc, void* cy,
+        RNNDataDescriptor kDesc, const void* keys,
+        RNNDataDescriptor cDesc, void* cAttn,
+        RNNDataDescriptor iDesc, void* iAttn,
+        RNNDataDescriptor qDesc, void* queries,
+        void* workSpace, size_t workSpaceSizeInBytes)
+    int cudnnRNNForwardTrainingEx(
+        Handle handle, RNNDescriptor rnnDesc,
+        RNNDataDescriptor xDesc, const void* x,
+        TensorDescriptor hxDesc, const void* hx,
+        TensorDescriptor cxDesc, const void* cx,
+        FilterDescriptor wDesc, const void* w,
+        RNNDataDescriptor yDesc, void* y,
+        TensorDescriptor hyDesc, void* hy,
+        TensorDescriptor cyDesc, void* cy,
+        RNNDataDescriptor kDesc, const void* keys,
+        RNNDataDescriptor cDesc, void* cAttn,
+        RNNDataDescriptor iDesc, void* iAttn,
+        RNNDataDescriptor qDesc, void* queries,
+        void* workSpace, size_t workSpaceSizeInBytes,
+        void* reserveSpace, size_t reserveSpaceSizeInBytes)
+    int cudnnRNNBackwardDataEx(
+        Handle handle, RNNDescriptor rnnDesc,
+        RNNDataDescriptor yDesc, const void* y,
+        RNNDataDescriptor dyDesc, const void* dy,
+        RNNDataDescriptor dcDesc, const void* dcAttn,
+        TensorDescriptor dhyDesc, const void* dhy,
+        TensorDescriptor dcyDesc, const void* dcy,
+        FilterDescriptor wDesc, const void* w,
+        TensorDescriptor hxDesc, const void* hx,
+        TensorDescriptor cxDesc, const void* cx,
+        RNNDataDescriptor dxDesc, void* dx,
+        TensorDescriptor dhxDesc, void* dhx,
+        TensorDescriptor dcxDesc, void* dcx,
+        RNNDataDescriptor dkDesc, void* dkeys,
+        void* workSpace, size_t workSpaceSizeInBytes,
+        void* reserveSpace, size_t reserveSpaceSizeInBytes)
+    int cudnnRNNBackwardWeightsEx(
+        Handle handle, RNNDescriptor rnnDesc,
+        RNNDataDescriptor xDesc, const void* x,
+        TensorDescriptor hxDesc, const void* hx,
+        RNNDataDescriptor yDesc, const void* y,
+        void* workSpace, size_t workSpaceSizeInBytes,
+        FilterDescriptor dwDesc, void* dw,
+        void* reserveSpace, size_t reserveSpaceSizeInBytes)
+
     # Spatial Transformer
     int cudnnCreateSpatialTransformerDescriptor(
         SpatialTransformerDescriptor* stDesc)
@@ -543,8 +699,11 @@ cdef extern from "cupy_cudnn.h" nogil:
     # Build-time version
     int CUDNN_VERSION
 
+    # Constants
+    double _CUDNN_BN_MIN_EPSILON 'CUDNN_BN_MIN_EPSILON'
 
-class CuDNNAlgoPerf(object):
+
+cdef class CuDNNAlgoPerf:
 
     def __init__(self, algo, status, time, memory, determinism, mathType):
         self.algo = algo
@@ -585,7 +744,7 @@ def get_build_version():
 # Version
 ###############################################################################
 
-cpdef size_t getVersion() except *:
+cpdef size_t getVersion() except? 0:
     return cudnnGetVersion()
 
 
@@ -606,7 +765,7 @@ cpdef queryRuntimeError(size_t handle, int mode):
 # Initialization and CUDA cooperation
 ###############################################################################
 
-cpdef size_t create() except *:
+cpdef size_t create() except? 0:
     cdef Handle handle
     with nogil:
         status = cudnnCreate(&handle)
@@ -625,7 +784,7 @@ cpdef setStream(size_t handle, size_t stream):
     check_status(status)
 
 
-cpdef size_t getStream(size_t handle) except *:
+cpdef size_t getStream(size_t handle) except? 0:
     cdef driver.Stream stream
     status = cudnnGetStream(<Handle>handle, &stream)
     check_status(status)
@@ -636,7 +795,7 @@ cpdef size_t getStream(size_t handle) except *:
 # Tensor manipulation
 ###############################################################################
 
-cpdef size_t createTensorDescriptor() except *:
+cpdef size_t createTensorDescriptor() except? 0:
     cdef TensorDescriptor descriptor
     status = cudnnCreateTensorDescriptor(&descriptor)
     check_status(status)
@@ -660,7 +819,7 @@ cpdef setTensor4dDescriptorEx(size_t tensorDesc, int dataType,
     check_status(status)
 
 
-cpdef getTensor4dDescriptor(size_t tensorDesc):
+cpdef tuple getTensor4dDescriptor(size_t tensorDesc):
     cdef DataType dataType
     cdef int n, c, h, w, nStride, cStride, hStride, wStride
     status = cudnnGetTensor4dDescriptor(
@@ -840,7 +999,7 @@ cpdef scaleTensor(size_t handle, size_t yDesc, size_t y, size_t alpha):
 # Filter manipulation
 ###############################################################################
 
-cpdef size_t createFilterDescriptor() except *:
+cpdef size_t createFilterDescriptor() except? 0:
     cdef FilterDescriptor desc
     status = cudnnCreateFilterDescriptor(&desc)
     check_status(status)
@@ -888,7 +1047,7 @@ cpdef destroyFilterDescriptor(size_t filterDesc):
 # Convolution
 ###############################################################################
 
-cpdef size_t createConvolutionDescriptor() except *:
+cpdef size_t createConvolutionDescriptor() except? 0:
     cdef ConvolutionDescriptor desc
     status = cudnnCreateConvolutionDescriptor(&desc)
     check_status(status)
@@ -901,7 +1060,7 @@ cpdef setConvolutionMathType(size_t convDesc, size_t mathType):
     check_status(status)
 
 
-cpdef size_t getConvolutionMathType(size_t convDesc) except *:
+cpdef size_t getConvolutionMathType(size_t convDesc) except? 0:
     cdef MathType mathType
     status = cudnnGetConvolutionMathType(
         <ConvolutionDescriptor>convDesc, &mathType)
@@ -914,7 +1073,7 @@ cpdef setConvolutionGroupCount(size_t convDesc, int groupCount):
     check_status(status)
 
 
-cpdef int getConvolutionGroupCount(size_t convDesc) except *:
+cpdef int getConvolutionGroupCount(size_t convDesc) except? -1:
     cdef int groupCount
     status = cudnnGetConvolutionGroupCount(
         <ConvolutionDescriptor>convDesc, &groupCount)
@@ -970,7 +1129,7 @@ cpdef findConvolutionForwardAlgorithm(
     return perfResults
 
 
-cpdef findConvolutionForwardAlgorithmEx(
+cpdef list findConvolutionForwardAlgorithmEx(
         size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
         size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
         size_t workSpace, size_t workSpaceSizeInBytes):
@@ -985,10 +1144,11 @@ cpdef findConvolutionForwardAlgorithmEx(
         workSpaceSizeInBytes)
     check_status(status)
     perfResults.resize(returnedAlgoCount)
-    return perfResults
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory, -1, -1)
+            for p in perfResults]
 
 
-cpdef findConvolutionForwardAlgorithmEx_v7(
+cpdef list findConvolutionForwardAlgorithmEx_v7(
         size_t handle, size_t xDesc, size_t x, size_t wDesc, size_t w,
         size_t convDesc, size_t yDesc, size_t y, int requestedAlgoCount,
         size_t workSpace, size_t workSpaceSizeInBytes):
@@ -1002,17 +1162,15 @@ cpdef findConvolutionForwardAlgorithmEx_v7(
         &returnedAlgoCount, &perfResults[0], <void*>workSpace,
         workSpaceSizeInBytes)
     check_status(status)
-    ret = []
-    for i in range(returnedAlgoCount):
-        p = perfResults[i]
-        ret.append(CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
-                                 p.determinism, p.mathType))
-    return ret
+    perfResults.resize(returnedAlgoCount)
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
+                          p.determinism, p.mathType)
+            for p in perfResults]
 
 
 cpdef int getConvolutionForwardAlgorithm_v6(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-        size_t destDesc, int preference, size_t memoryLimitInbytes) except *:
+        size_t destDesc, int preference, size_t memoryLimitInbytes) except? -1:
     cdef ConvolutionFwdAlgo algo
     status = cudnnGetConvolutionForwardAlgorithm_v6(
         <Handle>handle, <TensorDescriptor>srcDesc,
@@ -1023,7 +1181,7 @@ cpdef int getConvolutionForwardAlgorithm_v6(
     return algo
 
 
-cpdef getConvolutionForwardAlgorithm_v7(
+cpdef list getConvolutionForwardAlgorithm_v7(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
         size_t destDesc, int requestedAlgoCount):
     cdef vector.vector[ConvolutionFwdAlgoPerf_v7] perfResults
@@ -1035,24 +1193,22 @@ cpdef getConvolutionForwardAlgorithm_v7(
         <TensorDescriptor>destDesc, requestedAlgoCount,
         &returnedAlgoCount, &perfResults[0])
     check_status(status)
-    ret = []
-    for i in range(returnedAlgoCount):
-        p = perfResults[i]
-        ret.append(CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
-                                 p.determinism, p.mathType))
-    return ret
+    perfResults.resize(returnedAlgoCount)
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
+                          p.determinism, p.mathType)
+            for p in perfResults]
 
 
-cpdef size_t getConvolutionForwardWorkspaceSize(
+cpdef Py_ssize_t getConvolutionForwardWorkspaceSize(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-        size_t destDesc, int algo) except *:
+        size_t destDesc, int algo) except? -1:
     cdef size_t sizeInBytes
     status = cudnnGetConvolutionForwardWorkspaceSize(
         <Handle>handle, <TensorDescriptor>srcDesc,
         <FilterDescriptor>filterDesc, <ConvolutionDescriptor> convDesc,
         <TensorDescriptor>destDesc, <ConvolutionFwdAlgo>algo, &sizeInBytes)
     check_status(status)
-    return sizeInBytes
+    return <Py_ssize_t>sizeInBytes
 
 
 cpdef convolutionForward(
@@ -1099,7 +1255,7 @@ cpdef findConvolutionBackwardFilterAlgorithm(
     return perfResults
 
 
-cpdef findConvolutionBackwardFilterAlgorithmEx(
+cpdef list findConvolutionBackwardFilterAlgorithmEx(
         size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
         size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
         size_t workSpace, size_t workSpaceSizeInBytes):
@@ -1114,10 +1270,11 @@ cpdef findConvolutionBackwardFilterAlgorithmEx(
         <void*>workSpace, workSpaceSizeInBytes)
     check_status(status)
     perfResults.resize(returnedAlgoCount)
-    return perfResults
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory, -1, -1)
+            for p in perfResults]
 
 
-cpdef findConvolutionBackwardFilterAlgorithmEx_v7(
+cpdef list findConvolutionBackwardFilterAlgorithmEx_v7(
         size_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
         size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
         size_t workSpace, size_t workSpaceSizeInBytes):
@@ -1131,17 +1288,16 @@ cpdef findConvolutionBackwardFilterAlgorithmEx_v7(
         requestedAlgoCount, &returnedAlgoCount, &perfResults[0],
         <void*>workSpace, workSpaceSizeInBytes)
     check_status(status)
-    ret = []
-    for i in range(returnedAlgoCount):
-        p = perfResults[i]
-        ret.append(CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
-                                 p.determinism, p.mathType))
-    return ret
+    perfResults.resize(returnedAlgoCount)
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
+                          p.determinism, p.mathType)
+            for p in perfResults]
 
 
 cpdef int getConvolutionBackwardFilterAlgorithm_v6(
         size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
-        size_t filterDesc, int preference, size_t memoryLimitInbytes) except *:
+        size_t filterDesc, int preference,
+        size_t memoryLimitInbytes) except? -1:
     cdef ConvolutionBwdFilterAlgo algo
     status = cudnnGetConvolutionBackwardFilterAlgorithm_v6(
         <Handle>handle, <TensorDescriptor>srcDesc,
@@ -1153,7 +1309,7 @@ cpdef int getConvolutionBackwardFilterAlgorithm_v6(
     return algo
 
 
-cpdef getConvolutionBackwardFilterAlgorithm_v7(
+cpdef list getConvolutionBackwardFilterAlgorithm_v7(
         size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
         size_t gradDesc, int requestedAlgoCount):
     cdef vector.vector[ConvolutionBwdFilterAlgoPerf_v7] perfResults
@@ -1164,17 +1320,15 @@ cpdef getConvolutionBackwardFilterAlgorithm_v7(
         <ConvolutionDescriptor>convDesc, <FilterDescriptor>gradDesc,
         requestedAlgoCount, &returnedAlgoCount, &perfResults[0])
     check_status(status)
-    ret = []
-    for i in range(returnedAlgoCount):
-        p = perfResults[i]
-        ret.append(CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
-                                 p.determinism, p.mathType))
-    return ret
+    perfResults.resize(returnedAlgoCount)
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
+                          p.determinism, p.mathType)
+            for p in perfResults]
 
 
-cpdef size_t getConvolutionBackwardFilterWorkspaceSize(
+cpdef Py_ssize_t getConvolutionBackwardFilterWorkspaceSize(
         size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
-        size_t filterDesc, int algo) except *:
+        size_t filterDesc, int algo) except? -1:
     cdef size_t sizeInBytes
     status = cudnnGetConvolutionBackwardFilterWorkspaceSize(
         <Handle>handle, <TensorDescriptor>srcDesc,
@@ -1182,7 +1336,7 @@ cpdef size_t getConvolutionBackwardFilterWorkspaceSize(
         <FilterDescriptor>filterDesc, <ConvolutionBwdFilterAlgo>algo,
         &sizeInBytes)
     check_status(status)
-    return sizeInBytes
+    return <Py_ssize_t>sizeInBytes
 
 
 cpdef convolutionBackwardFilter_v3(
@@ -1217,7 +1371,7 @@ cpdef findConvolutionBackwardDataAlgorithm(
     return perfResults
 
 
-cpdef findConvolutionBackwardDataAlgorithmEx(
+cpdef list findConvolutionBackwardDataAlgorithmEx(
         size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
         size_t convDesc, size_t dxDesc, size_t dx,
         int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes):
@@ -1232,10 +1386,11 @@ cpdef findConvolutionBackwardDataAlgorithmEx(
         <void*>workSpace, workSpaceSizeInBytes)
     check_status(status)
     perfResults.resize(returnedAlgoCount)
-    return perfResults
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory, -1, -1)
+            for p in perfResults]
 
 
-cpdef findConvolutionBackwardDataAlgorithmEx_v7(
+cpdef list findConvolutionBackwardDataAlgorithmEx_v7(
         size_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
         size_t convDesc, size_t dxDesc, size_t dx,
         int requestedAlgoCount, size_t workSpace, size_t workSpaceSizeInBytes):
@@ -1249,18 +1404,16 @@ cpdef findConvolutionBackwardDataAlgorithmEx_v7(
         requestedAlgoCount, &returnedAlgoCount, &perfResults[0],
         <void*>workSpace, workSpaceSizeInBytes)
     check_status(status)
-    ret = []
-    for i in range(returnedAlgoCount):
-        p = perfResults[i]
-        ret.append(CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
-                                 p.determinism, p.mathType))
-    return ret
+    perfResults.resize(returnedAlgoCount)
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
+                          p.determinism, p.mathType)
+            for p in perfResults]
 
 
 cpdef int getConvolutionBackwardDataAlgorithm_v6(
         size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
         size_t gradDesc, size_t preference,
-        size_t memoryLimitInbytes) except *:
+        size_t memoryLimitInbytes) except? -1:
     cdef ConvolutionBwdDataAlgo algo
     status = cudnnGetConvolutionBackwardDataAlgorithm_v6(
         <Handle>handle, <FilterDescriptor>filterDesc,
@@ -1271,7 +1424,7 @@ cpdef int getConvolutionBackwardDataAlgorithm_v6(
     return algo
 
 
-cpdef getConvolutionBackwardDataAlgorithm_v7(
+cpdef list getConvolutionBackwardDataAlgorithm_v7(
         size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
         size_t gradDesc, int requestedAlgoCount):
     cdef vector.vector[ConvolutionBwdDataAlgoPerf_v7] perfResults
@@ -1283,17 +1436,15 @@ cpdef getConvolutionBackwardDataAlgorithm_v7(
         <TensorDescriptor>gradDesc, requestedAlgoCount,
         &returnedAlgoCount, &perfResults[0])
     check_status(status)
-    ret = []
-    for i in range(returnedAlgoCount):
-        p = perfResults[i]
-        ret.append(CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
-                                 p.determinism, p.mathType))
-    return ret
+    perfResults.resize(returnedAlgoCount)
+    return [CuDNNAlgoPerf(p.algo, p.status, p.time, p.memory,
+                          p.determinism, p.mathType)
+            for p in perfResults]
 
 
-cpdef size_t getConvolutionBackwardDataWorkspaceSize(
+cpdef Py_ssize_t getConvolutionBackwardDataWorkspaceSize(
         size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
-        size_t gradDesc, int algo) except *:
+        size_t gradDesc, int algo) except? -1:
     cdef size_t sizeInBytes
     status = cudnnGetConvolutionBackwardDataWorkspaceSize(
         <Handle>handle, <FilterDescriptor>filterDesc,
@@ -1301,7 +1452,7 @@ cpdef size_t getConvolutionBackwardDataWorkspaceSize(
         <ConvolutionDescriptor>convDesc, <TensorDescriptor>gradDesc,
         <ConvolutionBwdDataAlgo>algo, &sizeInBytes)
     check_status(status)
-    return sizeInBytes
+    return <Py_ssize_t>sizeInBytes
 
 
 cpdef convolutionBackwardData_v3(
@@ -1324,7 +1475,7 @@ cpdef convolutionBackwardData_v3(
 # Pooling
 ###############################################################################
 
-cpdef size_t createPoolingDescriptor() except *:
+cpdef size_t createPoolingDescriptor() except? 0:
     cdef PoolingDescriptor desc
     status = cudnnCreatePoolingDescriptor(&desc)
     check_status(status)
@@ -1388,7 +1539,7 @@ cpdef poolingBackward(
 # Batch Normalization
 ###############################################################################
 
-CUDNN_BN_MIN_EPSILON = 1e-5
+CUDNN_BN_MIN_EPSILON = _CUDNN_BN_MIN_EPSILON
 
 cpdef deriveBNTensorDescriptor(
         size_t derivedBnDesc, size_t xDesc, int mode):
@@ -1461,11 +1612,148 @@ cpdef batchNormalizationBackward(
             epsilon, <void*>savedMean, <void*>savedInvVariance)
     check_status(status)
 
+
+cpdef batchNormalizationForwardTrainingEx(
+        size_t handle, int mode, int bnOps,
+        size_t alpha, size_t beta,
+        size_t xDesc, size_t x,
+        size_t zDesc, size_t z,
+        size_t yDesc, size_t y,
+        size_t bnScaleBiasMeanVarDesc,
+        size_t bnScale, size_t bnBias,
+        double exponentialAverageFactor,
+        size_t resultRunningMean, size_t resultRunningVariance,
+        double epsilon, size_t resultSaveMean, size_t resultSaveInvVariance,
+        size_t activationDesc,
+        size_t workSpace, size_t workSpaceSizeInBytes,
+        size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnBatchNormalizationForwardTrainingEx(
+            <Handle>handle, <BatchNormMode> mode, <BatchNormOps> bnOps,
+            <void*>alpha, <void*>beta,
+            <TensorDescriptor>xDesc, <void*>x,
+            <TensorDescriptor>zDesc, <void*>z,
+            <TensorDescriptor>yDesc, <void*>y,
+            <TensorDescriptor>bnScaleBiasMeanVarDesc,
+            <void*>bnScale, <void*>bnBias,
+            exponentialAverageFactor,
+            <void*>resultRunningMean, <void*>resultRunningVariance,
+            epsilon, <void*>resultSaveMean, <void*>resultSaveInvVariance,
+            <ActivationDescriptor>activationDesc,
+            <void*>workSpace, workSpaceSizeInBytes,
+            <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+cpdef size_t getBatchNormalizationForwardTrainingExWorkspaceSize(
+        size_t handle, int mode, int bnOps,
+        size_t xDesc,
+        size_t zDesc,
+        size_t yDesc,
+        size_t bnScaleBiasMeanVarDesc,
+        size_t activationDesc) except? 0:
+    cdef size_t sizeInBytes
+    status = cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
+        <Handle> handle,
+        <BatchNormMode> mode, <BatchNormOps> bnOps,
+        <TensorDescriptor> xDesc,
+        <TensorDescriptor> zDesc,
+        <TensorDescriptor> yDesc,
+        <TensorDescriptor> bnScaleBiasMeanVarDesc,
+        <ActivationDescriptor> activationDesc,
+        &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
+
+cpdef batchNormalizationBackwardEx(
+        size_t handle, int mode, int bnops,
+        size_t alphaDataDiff, size_t betaDataDiff,
+        size_t alphaParamDiff, size_t betaParamDiff,
+        size_t xDesc, size_t x,
+        size_t yDesc, size_t y,
+        size_t dyDesc, size_t dy,
+        size_t dzDesc, size_t dz,
+        size_t dxDesc, size_t dx,
+        size_t dBnScaleBiasDesc,
+        size_t bnScaleData, size_t bnBiasData,
+        size_t dBnScaleData, size_t dBnBiasData,
+        double epsilon,
+        size_t savedMean, size_t savedInvVariance,
+        size_t activationDesc,
+        size_t workSpace, size_t workSpaceSizeInBytes,
+        size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnBatchNormalizationBackwardEx(
+            <Handle> handle,
+            <BatchNormMode> mode, <BatchNormOps> bnops,
+            <void*> alphaDataDiff, <void*> betaDataDiff,
+            <void*> alphaParamDiff, <void*> betaParamDiff,
+            <TensorDescriptor> xDesc, <void*> x,
+            <TensorDescriptor> yDesc, <void*> y,
+            <TensorDescriptor> dyDesc, <void*> dy,
+            <TensorDescriptor> dzDesc, <void*> dz,
+            <TensorDescriptor> dxDesc, <void*> dx,
+            <TensorDescriptor> dBnScaleBiasDesc,
+            <void*> bnScaleData, <void*> bnBiasData,
+            <void*> dBnScaleData, <void*> dBnBiasData,
+            epsilon,
+            <void*> savedMean, <void*> savedInvVariance,
+            <ActivationDescriptor> activationDesc,
+            <void*> workSpace, workSpaceSizeInBytes,
+            <void*> reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+cpdef size_t getBatchNormalizationBackwardExWorkspaceSize(
+        size_t handle, int mode, int bnOps,
+        size_t xDesc,
+        size_t yDesc,
+        size_t dyDesc,
+        size_t dzDesc,
+        size_t dxDesc,
+        size_t dBnScaleBiasDesc,
+        size_t activationDesc) except? 0:
+    cdef size_t sizeInBytes
+    status = cudnnGetBatchNormalizationBackwardExWorkspaceSize(
+        <Handle> handle,
+        <BatchNormMode> mode,
+        <BatchNormOps> bnOps,
+        <TensorDescriptor> xDesc,
+        <TensorDescriptor> yDesc,
+        <TensorDescriptor> dyDesc,
+        <TensorDescriptor> dzDesc,
+        <TensorDescriptor> dxDesc,
+        <TensorDescriptor> dBnScaleBiasDesc,
+        <ActivationDescriptor> activationDesc,
+        &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
+
+cpdef size_t getBatchNormalizationTrainingExReserveSpaceSize(
+        size_t handle, int mode, int bnOps,
+        size_t activationDesc,
+        size_t xDesc) except? 0:
+    cdef size_t sizeInBytes
+    status = cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
+        <Handle> handle,
+        <BatchNormMode> mode,
+        <BatchNormOps> bnOps,
+        <ActivationDescriptor> activationDesc,
+        <TensorDescriptor> xDesc,
+        &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
+
 ###############################################################################
 # Activation
 ###############################################################################
 
-cpdef size_t createActivationDescriptor() except *:
+cpdef size_t createActivationDescriptor() except? 0:
     cdef ActivationDescriptor activationDesc
     status = cudnnCreateActivationDescriptor(&activationDesc)
     check_status(status)
@@ -1544,7 +1832,7 @@ cpdef activationBackward_v4(
 # Dropout
 ###############################################################################
 
-cpdef size_t createDropoutDescriptor() except *:
+cpdef size_t createDropoutDescriptor() except? 0:
     cdef DropoutDescriptor desc
     status = cudnnCreateDropoutDescriptor(&desc)
     check_status(status)
@@ -1556,12 +1844,12 @@ cpdef destroyDropoutDescriptor(size_t dropoutDesc):
     check_status(status)
 
 
-cpdef size_t dropoutGetStatesSize(size_t handle) except *:
+cpdef Py_ssize_t dropoutGetStatesSize(size_t handle) except? -1:
     cdef size_t sizeInBytes
     status = cudnnDropoutGetStatesSize(
         <Handle>handle, &sizeInBytes)
     check_status(status)
-    return sizeInBytes
+    return <Py_ssize_t>sizeInBytes
 
 
 cpdef setDropoutDescriptor(
@@ -1573,7 +1861,7 @@ cpdef setDropoutDescriptor(
     check_status(status)
 
 
-cpdef size_t getDropoutReserveSpaceSize(size_t xDesc):
+cpdef size_t getDropoutReserveSpaceSize(size_t xDesc) except? 0:
     cdef size_t sizeInBytes
     status = cudnnDropoutGetReserveSpaceSize(
         <TensorDescriptor>xDesc, &sizeInBytes)
@@ -1612,10 +1900,63 @@ cpdef dropoutBackward(
 
 
 ###############################################################################
+# CTC
+###############################################################################
+cpdef size_t createCTCLossDescriptor() except? 0:
+    cdef CTCLossDescriptor desc
+    status = cudnnCreateCTCLossDescriptor(&desc)
+    check_status(status)
+    return <size_t>desc
+
+cpdef destroyCTCLossDescriptor(size_t ctcLossDesc):
+    status = cudnnDestroyCTCLossDescriptor(<CTCLossDescriptor>ctcLossDesc)
+    check_status(status)
+
+cpdef setCTCLossDescriptor(size_t ctcLossDesc, int dataType):
+    status = cudnnSetCTCLossDescriptor(
+        <CTCLossDescriptor>ctcLossDesc, <DataType>dataType)
+    check_status(status)
+
+cpdef getCTCLossDescriptor(size_t ctcLossDesc):
+    cdef DataType compType
+    status = cudnnGetCTCLossDescriptor(
+        <CTCLossDescriptor>ctcLossDesc, &compType)
+    check_status(status)
+    return compType
+
+cpdef size_t getCTCLossWorkspaceSize(
+        size_t handle, size_t probsDesc, size_t gradientsDesc,
+        size_t labels, size_t labelLengths, size_t inputLengths,
+        int algo, size_t ctcLossDesc) except? 0:
+    cdef size_t sizeInBytes
+    status = cudnnGetCTCLossWorkspaceSize(
+        <Handle>handle, <TensorDescriptor>probsDesc,
+        <TensorDescriptor>gradientsDesc,
+        <int*>labels, <int*>labelLengths, <int*>inputLengths,
+        <CTCLossAlgo>algo, <CTCLossDescriptor>ctcLossDesc, &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
+cpdef CTCLoss(
+        size_t handle, size_t probsDesc,
+        size_t probs, size_t labels, size_t labelLengths, size_t inputLengths,
+        size_t costs, size_t gradientsDesc, size_t gradients,
+        int algo, size_t ctcLossDesc,
+        size_t workspace, size_t workSpaceSizeInBytes):
+    status = cudnnCTCLoss(
+        <Handle>handle, <TensorDescriptor>probsDesc, <void*>probs,
+        <int*>labels, <int*>labelLengths, <int*>inputLengths,
+        <void*>costs, <TensorDescriptor>gradientsDesc, <void*>gradients,
+        <CTCLossAlgo>algo, <CTCLossDescriptor>ctcLossDesc,
+        <void*>workspace, <size_t>workSpaceSizeInBytes)
+    check_status(status)
+
+
+###############################################################################
 # RNN
 ###############################################################################
 
-cpdef size_t createRNNDescriptor() except *:
+cpdef size_t createRNNDescriptor() except? 0:
     cdef RNNDescriptor desc
     status = cudnnCreateRNNDescriptor(&desc)
     check_status(status)
@@ -1628,7 +1969,7 @@ cpdef destroyRNNDescriptor(size_t rnnDesc):
 
 
 cpdef size_t createPersistentRNNPlan(size_t rnnDesc, int minibatch,
-                                     int dataType) except *:
+                                     int dataType) except? 0:
     cdef PersistentRNNPlan plan
     status = cudnnCreatePersistentRNNPlan(
         <RNNDescriptor>rnnDesc,
@@ -1668,6 +2009,57 @@ cpdef setRNNDescriptor_v6(
         <DropoutDescriptor>dropoutDesc, <RNNInputMode>inputMode,
         <DirectionMode>direction, <RNNMode>mode, <RNNAlgo>algo,
         <DataType>dataType)
+    check_status(status)
+
+
+cpdef setRNNPaddingMode(
+        size_t rnnDesc, int paddingMode):
+    status = cudnnSetRNNPaddingMode(
+        <RNNDescriptor>rnnDesc, <RNNPaddingMode>paddingMode)
+    check_status(status)
+
+
+cpdef getRNNPaddingMode(size_t rnnDesc):
+    cdef RNNPaddingMode paddingMode
+    status = cudnnGetRNNPaddingMode(
+        <RNNDescriptor>rnnDesc, &paddingMode)
+    check_status(status)
+    return paddingMode
+
+
+cpdef size_t createRNNDataDescriptor() except? 0:
+    cdef RNNDataDescriptor desc
+    status = cudnnCreateRNNDataDescriptor(&desc)
+    check_status(status)
+    return <size_t>desc
+
+
+cpdef destroyRNNDataDescriptor(size_t RNNDataDesc):
+    status = cudnnDestroyRNNDataDescriptor(<RNNDataDescriptor>RNNDataDesc)
+    check_status(status)
+
+
+cpdef setRNNDataDescriptor(
+        size_t RNNDataDesc, int dataType, size_t layout,
+        int maxSeqLength, int batchSize, int vectorSize,
+        size_t seqLengthArray, size_t paddingFill):
+    status = cudnnSetRNNDataDescriptor(
+        <RNNDataDescriptor>RNNDataDesc, <DataType>dataType,
+        <RNNDataLayout>layout, maxSeqLength, batchSize, vectorSize,
+        <const int*>seqLengthArray, <void*>paddingFill)
+    check_status(status)
+
+
+cpdef getRNNDataDescriptor(
+        size_t RNNDataDesc, size_t dataType,
+        size_t layout, size_t maxSeqLength, size_t batchSize,
+        size_t vectorSize, int arrayLengthRequested, size_t seqLengthArray,
+        size_t paddingFill):
+    status = cudnnGetRNNDataDescriptor(
+        <RNNDataDescriptor>RNNDataDesc, <DataType*>dataType,
+        <RNNDataLayout*>layout, <int*>maxSeqLength, <int*>batchSize,
+        <int*>vectorSize, arrayLengthRequested, <int*>seqLengthArray,
+        <void*>paddingFill)
     check_status(status)
 
 
@@ -1812,11 +2204,114 @@ cpdef RNNBackwardWeights(
     check_status(status)
 
 
+cpdef RNNForwardInferenceEx(
+        size_t handle, size_t rnnDesc, size_t xDesc, size_t x, size_t hxDesc,
+        size_t hx, size_t cxDesc, size_t cx, size_t wDesc, size_t w,
+        size_t yDesc, size_t y, size_t hyDesc, size_t hy, size_t cyDesc,
+        size_t cy, size_t kDesc, size_t keys, size_t cDesc, size_t cAttn,
+        size_t iDesc, size_t iAttn, size_t qDesc, size_t queries,
+        size_t workSpace, size_t workSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnRNNForwardInferenceEx(
+            <Handle>handle, <RNNDescriptor>rnnDesc,
+            <RNNDataDescriptor>xDesc, <const void*>x,
+            <TensorDescriptor>hxDesc, <const void*>hx,
+            <TensorDescriptor>cxDesc, <const void*>cx,
+            <FilterDescriptor>wDesc, <const void*>w,
+            <RNNDataDescriptor>yDesc, <void*>y,
+            <TensorDescriptor>hyDesc, <void*>hy,
+            <TensorDescriptor>cyDesc, <void*>cy,
+            <RNNDataDescriptor>kDesc, <const void*>keys,
+            <RNNDataDescriptor>cDesc, <void*>cAttn,
+            <RNNDataDescriptor>iDesc, <void*>iAttn,
+            <RNNDataDescriptor>qDesc, <void*>queries,
+            <void*>workSpace, workSpaceSizeInBytes)
+    check_status(status)
+
+
+cpdef RNNForwardTrainingEx(
+        size_t handle, size_t rnnDesc, size_t xDesc, size_t x, size_t hxDesc,
+        size_t hx, size_t cxDesc, size_t cx, size_t wDesc, size_t w,
+        size_t yDesc, size_t y, size_t hyDesc, size_t hy, size_t cyDesc,
+        size_t cy, size_t kDesc, size_t keys, size_t cDesc, size_t cAttn,
+        size_t iDesc, size_t iAttn, size_t qDesc, size_t queries,
+        size_t workSpace, size_t workSpaceSizeInBytes,
+        size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnRNNForwardTrainingEx(
+            <Handle>handle, <RNNDescriptor>rnnDesc,
+            <RNNDataDescriptor>xDesc, <const void*>x,
+            <TensorDescriptor>hxDesc, <const void*>hx,
+            <TensorDescriptor>cxDesc, <const void*>cx,
+            <FilterDescriptor>wDesc, <const void*>w,
+            <RNNDataDescriptor>yDesc, <void*>y,
+            <TensorDescriptor>hyDesc, <void*>hy,
+            <TensorDescriptor>cyDesc, <void*>cy,
+            <RNNDataDescriptor>kDesc, <const void*>keys,
+            <RNNDataDescriptor>cDesc, <void*>cAttn,
+            <RNNDataDescriptor>iDesc, <void*>iAttn,
+            <RNNDataDescriptor>qDesc, <void*>queries,
+            <void*>workSpace, workSpaceSizeInBytes,
+            <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+cpdef RNNBackwardDataEx(
+        size_t handle, size_t rnnDesc, size_t yDesc, size_t y, size_t dyDesc,
+        size_t dy, size_t dcDesc, size_t dcAttn, size_t dhyDesc, size_t dhy,
+        size_t dcyDesc, size_t dcy, size_t wDesc, size_t w, size_t hxDesc,
+        size_t hx, size_t cxDesc, size_t cx, size_t dxDesc, size_t dx,
+        size_t dhxDesc, size_t dhx, size_t dcxDesc, size_t dcx,
+        size_t dkDesc, size_t dkeys,
+        size_t workSpace, size_t workSpaceSizeInBytes,
+        size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnRNNBackwardDataEx(
+            <Handle>handle, <RNNDescriptor>rnnDesc,
+            <RNNDataDescriptor>yDesc, <const void*>y,
+            <RNNDataDescriptor>dyDesc, <const void*>dy,
+            <RNNDataDescriptor>dcDesc, <const void*>dcAttn,
+            <TensorDescriptor>dhyDesc, <const void*>dhy,
+            <TensorDescriptor>dcyDesc, <const void*>dcy,
+            <FilterDescriptor>wDesc, <const void*>w,
+            <TensorDescriptor>hxDesc, <const void*>hx,
+            <TensorDescriptor>cxDesc, <const void*>cx,
+            <RNNDataDescriptor>dxDesc, <void*>dx,
+            <TensorDescriptor>dhxDesc, <void*>dhx,
+            <TensorDescriptor>dcxDesc, <void*>dcx,
+            <RNNDataDescriptor>dkDesc, <void*>dkeys,
+            <void*>workSpace, workSpaceSizeInBytes,
+            <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+cpdef RNNBackwardWeightsEx(
+        size_t handle, size_t rnnDesc, size_t xDesc, size_t x,
+        size_t hxDesc, size_t hx, size_t yDesc, size_t y,
+        size_t workSpace, size_t workSpaceSizeInBytes,
+        size_t dwDesc, size_t dw,
+        size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnRNNBackwardWeightsEx(
+            <Handle>handle, <RNNDescriptor>rnnDesc,
+            <RNNDataDescriptor>xDesc, <const void*>x,
+            <TensorDescriptor>hxDesc, <const void*>hx,
+            <RNNDataDescriptor>yDesc, <const void*>y,
+            <void*>workSpace, workSpaceSizeInBytes,
+            <FilterDescriptor>dwDesc, <void*>dw,
+            <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
 ###############################################################################
 # Spatial Transformer
 ###############################################################################
 
-cpdef size_t createSpatialTransformerDescriptor() except *:
+cpdef size_t createSpatialTransformerDescriptor() except? 0:
     cdef SpatialTransformerDescriptor stDesc
     status = cudnnCreateSpatialTransformerDescriptor(&stDesc)
     check_status(status)

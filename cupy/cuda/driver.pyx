@@ -12,13 +12,14 @@ There are four differences compared to the original C API.
 
 """
 cimport cython  # NOQA
+from libc.stdint cimport intptr_t
 
 
 ###############################################################################
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cuda.h" nogil:
+cdef extern from 'cupy_cuda.h' nogil:
     # Error handling
     int cuGetErrorName(Result error, const char** pStr)
     int cuGetErrorString(Result error, const char** pStr)
@@ -102,7 +103,7 @@ cpdef devicePrimaryCtxRelease(Device dev):
 # Context management
 ###############################################################################
 
-cpdef size_t ctxGetCurrent() except *:
+cpdef size_t ctxGetCurrent() except? 0:
     cdef Context ctx
     with nogil:
         status = cuCtxGetCurrent(&ctx)
@@ -114,7 +115,7 @@ cpdef ctxSetCurrent(size_t ctx):
         status = cuCtxSetCurrent(<Context>ctx)
     check_status(status)
 
-cpdef size_t ctxCreate(Device dev) except *:
+cpdef size_t ctxCreate(Device dev) except? 0:
     cdef Context ctx
     cdef unsigned int flags = 0
     with nogil:
@@ -132,7 +133,7 @@ cpdef ctxDestroy(size_t ctx):
 # Module load and kernel execution
 ###############################################################################
 
-cpdef size_t linkCreate() except *:
+cpdef size_t linkCreate() except? 0:
     cpdef LinkState state
     with nogil:
         status = cuLinkCreate(0, <CUjit_option*>0, <void**>0, &state)
@@ -167,7 +168,7 @@ cpdef linkDestroy(size_t state):
     check_status(status)
 
 
-cpdef size_t moduleLoad(str filename) except *:
+cpdef size_t moduleLoad(str filename) except? 0:
     cdef Module module
     cdef bytes b_filename = filename.encode()
     cdef char* b_filename_ptr = b_filename
@@ -177,7 +178,7 @@ cpdef size_t moduleLoad(str filename) except *:
     return <size_t>module
 
 
-cpdef size_t moduleLoadData(bytes image) except *:
+cpdef size_t moduleLoadData(bytes image) except? 0:
     cdef Module module
     cdef char* image_ptr = image
     with nogil:
@@ -192,7 +193,7 @@ cpdef moduleUnload(size_t module):
     check_status(status)
 
 
-cpdef size_t moduleGetFunction(size_t module, str funcname) except *:
+cpdef size_t moduleGetFunction(size_t module, str funcname) except? 0:
     cdef Function func
     cdef bytes b_funcname = funcname.encode()
     cdef char* b_funcname_ptr = b_funcname
@@ -202,7 +203,7 @@ cpdef size_t moduleGetFunction(size_t module, str funcname) except *:
     return <size_t>func
 
 
-cpdef size_t moduleGetGlobal(size_t module, str varname) except *:
+cpdef size_t moduleGetGlobal(size_t module, str varname) except? 0:
     cdef Deviceptr var
     cdef size_t size
     cdef bytes b_varname = varname.encode()
@@ -214,11 +215,11 @@ cpdef size_t moduleGetGlobal(size_t module, str varname) except *:
 
 
 cpdef launchKernel(
-        size_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
+        intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
         unsigned int grid_dim_z, unsigned int block_dim_x,
         unsigned int block_dim_y, unsigned int block_dim_z,
-        unsigned int shared_mem_bytes, size_t stream, size_t kernel_params,
-        size_t extra):
+        unsigned int shared_mem_bytes, size_t stream, intptr_t kernel_params,
+        intptr_t extra):
     with nogil:
         status = cuLaunchKernel(
             <Function>f, grid_dim_x, grid_dim_y, grid_dim_z,

@@ -296,8 +296,14 @@ class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
         else:
             return xp.array(-2, dtype=numpy.float32)
 
+    @testing.with_requires('numpy>=1.16.1')
     def test_correct_failure(self):
-        with six.assertRaisesRegex(self, AssertionError, 'mismatch 100.0%'):
+        with six.assertRaisesRegex(self, AssertionError, 'Mismatch: 100%'):
+            self.correct_failure()
+
+    @testing.with_requires('numpy<1.16.1')
+    def test_correct_failure_old_np(self):
+        with six.assertRaisesRegex(self, AssertionError, 'mismatch 100\\.0%'):
             self.correct_failure()
 
     @helper.for_unsigned_dtypes('dtype1')

@@ -57,13 +57,14 @@ install:
   - "pip install -U setuptools"
   - "pip install -U Cython"
 
+
 build_script:
   # Build the compiled extension
   - "%CMD_IN_ENV% python setup.py build install -vvvv"
 
 test_script:
   # Installation test
-  - "%CMD_IN_ENV% pip install -U -e ."
+  - "%CMD_IN_ENV% pip install -U -e .[appveyor]"
   # Import test
   #- python -c "import cupy"
   #- python -c "import cupy.cuda.nvtx"

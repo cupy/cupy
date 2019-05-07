@@ -179,17 +179,17 @@ In other words, you have control over grid size, block size, shared memory size 
 
 .. doctest::
 
-   >>> sum_kernel = cp.RawKernel(r'''
+   >>> add_kernel = cp.RawKernel(r'''
    ... extern "C" __global__
-   ... void my_sum(const float* x1, const float* x2, float* y) {
+   ... void my_add(const float* x1, const float* x2, float* y) {
    ...     int tid = blockDim.x * blockIdx.x + threadIdx.x;
    ...     y[tid] = x1[tid] + x2[tid];
    ... }
-   ... ''', 'my_sum')
+   ... ''', 'my_add')
    >>> x1 = cupy.arange(25, dtype=cupy.float32).reshape(5, 5)
    >>> x2 = cupy.arange(25, dtype=cupy.float32).reshape(5, 5)
    >>> y = cupy.zeros((5, 5), dtype=cupy.float32)
-   >>> sum_kernel((5,), (5,), (x1, x2, y))  # grid, block and arguments
+   >>> add_kernel((5,), (5,), (x1, x2, y))  # grid, block and arguments
    >>> y
    array([[ 0.,  2.,  4.,  6.,  8.],
           [10., 12., 14., 16., 18.],
@@ -210,3 +210,51 @@ In other words, you have control over grid size, block size, shared memory size 
 .. note::
     When using ``printf()`` in your CUDA kernel, you may need to synchronize the stream to see the output.
     You can use ``cupy.cuda.Stream.null.synchronize()`` if you are using the default stream.
+
+
+Kernel fusion
+--------------------
+
+:func:`cupy.fuse` is a decorator that fuses functions.  This decorator can be used to define an elementwise or reduction kernel more easily than :class:`~cupy.ElementwiseKernel` or :class:`~cupy.ReductionKernel`.
+
+By using this decorator, we can define the ``squared_diff`` kernel as follows:
+
+.. doctest::
+
+   >>> @cp.fuse()
+   ... def squared_diff(x, y):
+   ...     return (x - y) * (x - y)
+
+The above kernel can be called on either scalars, NumPy arrays or CuPy arrays likes the original function.
+
+.. doctest::
+
+   >>> x_cp = cp.arange(10)
+   >>> y_cp = cp.arange(10)[::-1]
+   >>> squared_diff(x_cp, y_cp)
+   array([81, 49, 25,  9,  1,  1,  9, 25, 49, 81])
+   >>> x_np = np.arange(10)
+   >>> y_np = np.arange(10)[::-1]
+   >>> squared_diff(x_np, y_np)
+   array([81, 49, 25,  9,  1,  1,  9, 25, 49, 81])
+
+At the first function call, the fused function analyzes the original function based on the abstracted information of arguments (e.g. their dtypes and ndims) and creates and caches an actual CUDA kernel.  From the second function call with the same input types, the fused function calls the previously cached kernel, so it is highly recommended to reuse the same decorated functions instead of decorating local functions that are defined multiple times.
+
+:func:`cupy.fuse` also supports simple reduction kernel.
+
+.. doctest::
+
+   >>> @cp.fuse()
+   ... def sum_of_products(x, y):
+   ...     return cupy.sum(x * y, axis = -1)
+
+You can specify the kernel name by using the ``kernel_name`` keyword argument as follows:
+
+.. doctest::
+
+   >>> @cp.fuse(kernel_name='squared_diff')
+   ... def squared_diff(x, y):
+   ...     return (x - y) * (x - y)
+
+.. note::
+   Currently, :func:`cupy.fuse` can fuse only simple elementwise and reduction operations.  Most other routines (e.g. :func:`cupy.matmul`, :func:`cupy.reshape`) are not supported.

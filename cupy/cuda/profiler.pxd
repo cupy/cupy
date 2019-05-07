@@ -6,7 +6,6 @@ cpdef enum:
     cudaKeyValuePair = 0
     cudaCSV = 1
 
-cpdef void initialize(
-    str config_file, str output_file, int output_mode) except *
-cpdef void start() except *
-cpdef void stop() except *
+cpdef initialize(str config_file, str output_file, int output_mode)
+cpdef start()
+cpdef stop()

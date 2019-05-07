@@ -27,9 +27,9 @@ class TestIterInvalid(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
-    def test_list(self, xp, dtype):
+    def test_iter(self, xp, dtype):
         x = testing.shaped_arange((), xp, dtype)
-        list(x)
+        iter(x)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()

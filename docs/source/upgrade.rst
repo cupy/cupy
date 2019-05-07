@@ -17,6 +17,20 @@ CuPy v5
 :mod:`cupyx.scipy` namespace has been introduced to provide CUDA-enabled SciPy functions.
 :mod:`cupy.sparse` module has been renamed to :mod:`cupyx.scipy.sparse`; :mod:`cupy.sparse` will be kept as an alias for backward compatibility.
 
+Dropped Support for CUDA 7.0 / 7.5
+----------------------------------
+
+CuPy v5 no longer supports CUDA 7.0 / 7.5.
+
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 9.2 and cuDNN 7.
+
+To use these images, you may need to upgrade the NVIDIA driver on your host.
+See `Requirements of nvidia-docker <https://github.com/NVIDIA/nvidia-docker/wiki/CUDA#requirements>`_ for details.
+
+
 CuPy v4
 =======
 

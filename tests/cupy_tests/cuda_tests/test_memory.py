@@ -1,9 +1,13 @@
 import ctypes
+import gc
 import sys
 import threading
 import unittest
 
+import fastrlock
+
 import cupy.cuda
+from cupy.cuda import device
 from cupy.cuda import memory
 from cupy.cuda import stream as stream_module
 from cupy import testing
@@ -27,8 +31,53 @@ def mock_alloc(size):
     mem = MockMemory(size)
     return memory.MemoryPointer(mem, 0)
 
-# -----------------------------------------------------------------------------
-# Memory pointer
+
+class TestUnownedMemoryClass(unittest.TestCase):
+
+    def test_inherits_base_memory(self):
+        assert issubclass(memory.UnownedMemory, memory.BaseMemory)
+
+
+@testing.parameterize(*testing.product({
+    'allocator': [memory._malloc, memory.malloc_managed],
+    'specify_device_id': [True, False],
+}))
+@testing.gpu
+class TestUnownedMemory(unittest.TestCase):
+
+    def check(self, device_id):
+        size = 24
+        shape = (2, 3)
+        dtype = cupy.float32
+        with device.Device(device_id):
+            src_mem_ptr = self.allocator(size)
+        src_ptr = src_mem_ptr.ptr
+
+        args = (src_ptr, size, src_mem_ptr)
+        kwargs = {}
+        if self.specify_device_id:
+            kwargs = {'device_id': device_id}
+
+        unowned_mem = memory.UnownedMemory(*args, **kwargs)
+        assert unowned_mem.size == size
+        assert unowned_mem.ptr == src_ptr
+        assert unowned_mem.device_id == device_id
+
+        arr = cupy.ndarray(shape, dtype, memory.MemoryPointer(unowned_mem, 0))
+
+        # Delete the source object
+        del src_mem_ptr
+
+        with device.Device(device_id):
+            arr[:] = 2
+            assert (arr == 2).all()
+
+    def test_device0(self):
+        self.check(0)
+
+    @testing.multi_gpu(2)
+    def test_device1(self):
+        self.check(1)
 
 
 @testing.gpu
@@ -226,6 +275,18 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         self.assertEqual(ptr, head.ptr)
         self.assertEqual(ptr + self.unit * 2, tail.ptr)
 
+    def test_alloc_limit(self):
+        self.pool.set_limit(size=(self.unit * 6))
+
+        p1 = self.pool.malloc(self.unit * 5)
+        p2 = self.pool.malloc(self.unit * 1)
+        with self.assertRaises(memory.OutOfMemoryError):
+            self.pool.malloc(self.unit)
+
+        self.pool.set_limit(size=(self.unit * 7))
+        p3 = self.pool.malloc(self.unit)
+        del p1, p2, p3
+
     def test_free(self):
         p1 = self.pool.malloc(self.unit * 4)
         ptr1 = p1.ptr
@@ -391,6 +452,11 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         self.assertEqual(self.unit * 6, self.pool.total_bytes())
         p3 = self.pool.malloc(self.unit * 1)
         self.assertEqual(self.unit * 6, self.pool.total_bytes())
+
+        self.assertEqual(
+            self.pool.used_bytes() + self.pool.free_bytes(),
+            self.pool.total_bytes())
+
         del p3
 
     def test_total_bytes_stream(self):
@@ -400,6 +466,70 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
             p2 = self.pool.malloc(self.unit * 2)
         self.assertEqual(self.unit * 6, self.pool.total_bytes())
         del p2
+
+    def test_get_limit(self):
+        # limit is disabled by default
+        self.assertEqual(0, self.pool.get_limit())
+
+    def test_set_limit_size(self):
+        self.pool.set_limit(size=1024)
+        self.assertEqual(1024, self.pool.get_limit())
+
+        self.pool.set_limit(size=2**33)
+        self.assertEqual(2**33, self.pool.get_limit())
+
+        self.pool.set_limit(size=0)
+        self.assertEqual(0, self.pool.get_limit())
+
+        with self.assertRaises(ValueError):
+            self.pool.set_limit(size=-1)
+
+    def test_set_limit_fraction(self):
+        _, total = cupy.cuda.runtime.memGetInfo()
+
+        self.pool.set_limit(fraction=0)
+        self.assertEqual(0, self.pool.get_limit())
+
+        self.pool.set_limit(fraction=0.5)
+        self.assertEqual(total * 0.5, self.pool.get_limit())
+
+        self.pool.set_limit(fraction=1.0)
+        self.assertEqual(total, self.pool.get_limit())
+
+        with self.assertRaises(ValueError):
+            self.pool.set_limit(fraction=-1)
+
+        with self.assertRaises(ValueError):
+            self.pool.set_limit(fraction=1.1)
+
+    def test_parse_limit_string(self):
+        parse_limit_string = self.pool._parse_limit_string
+
+        # size
+        param = parse_limit_string('0')
+        self.assertEqual(0, param['size'])
+        self.assertEqual(None, param['fraction'])
+
+        param = parse_limit_string('1073741824')
+        self.assertEqual(1073741824, param['size'])
+        self.assertEqual(None, param['fraction'])
+
+        # fraction
+        param = parse_limit_string('0%')
+        self.assertEqual(None, param['size'])
+        self.assertEqual(0.0, param['fraction'])
+
+        param = parse_limit_string('40%')
+        self.assertEqual(None, param['size'])
+        self.assertEqual(0.4, param['fraction'])
+
+        param = parse_limit_string('70.5%')
+        self.assertEqual(None, param['size'])
+        self.assertEqual(0.705, param['fraction'])
+
+        param = parse_limit_string('100%')
+        self.assertEqual(None, param['size'])
+        self.assertEqual(1.0, param['fraction'])
 
 
 @testing.parameterize(*testing.product({
@@ -426,7 +556,7 @@ class TestMemoryPool(unittest.TestCase):
     def test_free_all_blocks(self):
         with cupy.cuda.Device(0):
             mem = self.pool.malloc(1).mem
-            self.assertIsInstance(mem, memory.Memory)
+            self.assertIsInstance(mem, memory.BaseMemory)
             self.assertIsInstance(mem, memory.PooledMemory)
             self.assertEqual(self.pool.n_free_blocks(), 0)
             mem.free()
@@ -443,7 +573,7 @@ class TestMemoryPool(unittest.TestCase):
     def test_free_all_free(self):
         with cupy.cuda.Device(0):
             mem = self.pool.malloc(1).mem
-            self.assertIsInstance(mem, memory.Memory)
+            self.assertIsInstance(mem, memory.BaseMemory)
             self.assertIsInstance(mem, memory.PooledMemory)
             self.assertEqual(self.pool.n_free_blocks(), 0)
             mem.free()
@@ -552,3 +682,20 @@ class TestMemInfo(unittest.TestCase):
         assert len(mem_info) == 2
         assert all(isinstance(m, int) for m in mem_info)
         assert all(m > 0 for m in mem_info)
+
+
+@testing.gpu
+class TestLockAndNoGc(unittest.TestCase):
+
+    def test(self):
+        lock = fastrlock.rlock.FastRLock()
+        ctx = memory.LockAndNoGc(lock)
+
+        assert gc.isenabled()
+        self.assertRaises(Exception, lock.release)
+        with ctx:
+            assert not gc.isenabled()
+            lock.release()
+            lock.acquire()
+        assert gc.isenabled()
+        self.assertRaises(Exception, lock.release)

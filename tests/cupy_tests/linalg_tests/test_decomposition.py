@@ -9,26 +9,59 @@ from cupy import testing
 from cupy.testing import condition
 
 
+def random_matrix(shape, dtype, scale, sym=False):
+    m, n = shape[-2:]
+    dtype = numpy.dtype(dtype)
+    assert dtype.kind in 'iufc'
+    low_s, high_s = scale
+    bias = None
+    if dtype.kind in 'iu':
+        # For an m \times n matrix M whose element is in [-0.5, 0.5], it holds
+        # (singular value of M) <= \sqrt{mn} / 2
+        err = numpy.sqrt(m * n) / 2.
+        low_s += err
+        high_s -= err
+        if dtype.kind in 'u':
+            assert sym, (
+                'generating nonsymmetric matrix with uint cells is not'
+                ' supported')
+            # (singular value of numpy.ones((m, n))) <= \sqrt{mn}
+            high_s = bias = high_s / (1 + numpy.sqrt(m * n))
+    assert low_s <= high_s
+    a = numpy.random.standard_normal(shape)
+    u, s, vh = numpy.linalg.svd(a)
+    new_s = numpy.random.uniform(low_s, high_s, s.shape)
+    if sym:
+        assert m == n
+        new_a = numpy.einsum('...ij,...j,...kj', u, new_s, u)
+    else:
+        new_a = numpy.einsum('...ij,...j,...jk', u, new_s, vh)
+    if bias is not None:
+        new_a += bias
+    if dtype.kind in 'iu':
+        new_a = numpy.rint(new_a)
+    return new_a.astype(dtype)
+
+
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestCholeskyDecomposition(unittest.TestCase):
 
+    @testing.numpy_cupy_allclose(atol=1e-3)
+    def check_L(self, array, xp):
+        a = xp.asarray(array)
+        return xp.linalg.cholesky(a)
+
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
         numpy.float32, numpy.float64])
-    @testing.numpy_cupy_allclose(atol=1e-3)
-    def check_L(self, array, xp, dtype):
-        a = xp.asarray(array, dtype=dtype)
-        return xp.linalg.cholesky(a)
-
-    def test_decomposition(self):
-        # A normal positive definite matrix
-        A = numpy.random.randint(0, 100, size=(5, 5))
-        A = numpy.dot(A, A.transpose())
+    def test_decomposition(self, dtype):
+        # A positive definite matrix
+        A = random_matrix((5, 5), dtype, scale=(10, 10000), sym=True)
         self.check_L(A)
         # np.linalg.cholesky only uses a lower triangle of an array
-        self.check_L(numpy.array([[1, 2], [1, 9]]))
+        self.check_L(numpy.array([[1, 2], [1, 9]], dtype))
 
 
 @testing.parameterize(*testing.product({
@@ -70,8 +103,13 @@ class TestQRDecomposition(unittest.TestCase):
 @testing.gpu
 class TestSVD(unittest.TestCase):
 
+    def setUp(self):
+        self.seed = testing.generate_seed()
+
     @testing.for_float_dtypes(no_float16=True)
-    def check_usv(self, array, dtype):
+    def check_usv(self, shape, dtype):
+        array = testing.shaped_random(
+            shape, numpy, dtype=dtype, seed=self.seed)
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
         result_cpu = numpy.linalg.svd(a_cpu, full_matrices=self.full_matrices)
@@ -84,7 +122,8 @@ class TestSVD(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(atol=1e-4)
-    def check_singular(self, array, xp, dtype):
+    def check_singular(self, shape, xp, dtype):
+        array = testing.shaped_random(shape, xp, dtype=dtype, seed=self.seed)
         a = xp.asarray(array, dtype=dtype)
         a_copy = a.copy()
         result = xp.linalg.svd(
@@ -99,15 +138,15 @@ class TestSVD(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_svd(self):
-        self.check_usv(numpy.random.randn(2, 3))
-        self.check_usv(numpy.random.randn(2, 2))
-        self.check_usv(numpy.random.randn(3, 2))
+        self.check_usv((2, 3))
+        self.check_usv((2, 2))
+        self.check_usv((3, 2))
 
     @condition.repeat(3, 10)
     def test_svd_no_uv(self):
-        self.check_singular(numpy.random.randn(2, 3))
-        self.check_singular(numpy.random.randn(2, 2))
-        self.check_singular(numpy.random.randn(3, 2))
+        self.check_singular((2, 3))
+        self.check_singular((2, 2))
+        self.check_singular((3, 2))
 
     @condition.repeat(3, 10)
     def test_rank2(self):

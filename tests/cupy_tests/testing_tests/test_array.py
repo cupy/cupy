@@ -39,10 +39,15 @@ def _convert_array(xs, array_module):
     if array_module == 'all_numpy':
         return xs
     elif array_module == 'all_cupy':
-        return cupy.asarray(xs)
+        return [
+            cupy.asarray(x)
+            for x in xs
+        ]
     else:
-        return [cupy.asarray(x) if numpy.random.randint(0, 2)
-                else x for x in xs]
+        return [
+            cupy.asarray(x) if numpy.random.randint(0, 2) else x
+            for x in xs
+        ]
 
 
 @testing.parameterize(
@@ -61,13 +66,36 @@ class TestListEqualityAssertion(unittest.TestCase):
         self.ys = _convert_array(ys, self.array_module_y)
 
     def test_equality_numpy(self):
-        testing.assert_array_equal(self.xs, self.ys)
+        testing.assert_array_list_equal(self.xs, self.ys)
 
     def test_inequality_numpy(self):
         self.xs[0] += 1
         with six.assertRaisesRegex(self, AssertionError,
                                    '^\nArrays are not equal'):
-            testing.assert_array_equal(self.xs, self.ys)
+            testing.assert_array_list_equal(self.xs, self.ys)
+
+
+@testing.parameterize(
+    *testing.product({
+        'array_module_x': [numpy, cupy],
+        'array_module_y': [numpy, cupy]
+    })
+)
+@testing.gpu
+class TestStridesEqualityAssertion(unittest.TestCase):
+
+    def setUp(self):
+        val = numpy.random.uniform(-1, 1, (2, 3))
+        self.x = self.array_module_x.array(val, val.dtype, copy=True)
+        self.y = self.array_module_y.array(val, val.dtype, copy=True)
+
+    def test_equality_numpy(self):
+        testing.assert_array_equal(self.x, self.y, strides_check=True)
+
+    def test_inequality_numpy(self):
+        self.y = self.array_module_y.asfortranarray(self.y)
+        with self.assertRaises(AssertionError):
+            testing.assert_array_equal(self.x, self.y, strides_check=True)
 
 
 @testing.parameterize(

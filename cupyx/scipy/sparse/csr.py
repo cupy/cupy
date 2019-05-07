@@ -146,13 +146,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     def eliminate_zeros(self):
         """Removes zero entories in place."""
-        if cupy.cuda.runtime.runtimeGetVersion() >= 8000:
-            compress = cusparse.csr2csr_compress(self, 0)
-        else:
-            coo = self.tocoo()
-            coo.eliminate_zeros()
-            # Because tocsr sums duplicated entries, it cannot keep nnz
-            compress = coo.tocsr()
+        compress = cusparse.csr2csr_compress(self, 0)
         self.data = compress.data
         self.indices = compress.indices
         self.indptr = compress.indptr

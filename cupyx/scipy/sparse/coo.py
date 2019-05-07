@@ -139,12 +139,24 @@ class coo_matrix(sparse_data._data_matrix):
         sparse_data._data_matrix.__init__(self, data)
         self.row = row
         self.col = col
-        self._shape = shape
+        if not util.isshape(shape):
+            raise ValueError('invalid shape (must be a 2-tuple of int)')
+        self._shape = int(shape[0]), int(shape[1])
         self._has_canonical_format = has_canonical_format
 
-    def _with_data(self, data):
-        return coo_matrix(
-            (data, (self.row.copy(), self.col.copy())), shape=self.shape)
+    def _with_data(self, data, copy=True):
+        """Returns a matrix with the same sparsity structure as self,
+        but with different data.  By default the index arrays
+        (i.e. .row and .col) are copied.
+        """
+        if copy:
+            return coo_matrix(
+                (data, (self.row.copy(), self.col.copy())),
+                shape=self.shape, dtype=data.dtype)
+        else:
+            return coo_matrix(
+                (data, (self.row, self.col)), shape=self.shape,
+                dtype=data.dtype)
 
     def eliminate_zeros(self):
         """Removes zero entories in place."""

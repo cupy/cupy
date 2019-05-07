@@ -1,3 +1,0 @@
-[pep8]
-exclude=.eggs,*.egg,build
-

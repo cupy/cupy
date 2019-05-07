@@ -10,7 +10,7 @@ from cupy.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cuda.h" nogil:
+cdef extern from 'cupy_cuda.h' nogil:
     # Generator
     int curandCreateGenerator(Generator* generator, int rng_type)
     int curandDestroyGenerator(Generator generator)
@@ -87,7 +87,7 @@ cpdef inline check_status(int status):
 # Generator
 ###############################################################################
 
-cpdef size_t createGenerator(int rng_type) except *:
+cpdef size_t createGenerator(int rng_type) except? 0:
     cdef Generator generator
     with nogil:
         status = curandCreateGenerator(&generator, <RngType>rng_type)
@@ -100,7 +100,7 @@ cpdef destroyGenerator(size_t generator):
     check_status(status)
 
 
-cpdef int getVersion() except *:
+cpdef int getVersion() except? -1:
     cdef int version
     status = curandGetVersion(&version)
     check_status(status)

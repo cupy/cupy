@@ -7,6 +7,7 @@ import inspect
 import os
 import pkg_resources
 import random
+import sys
 import traceback
 import unittest
 import warnings
@@ -25,15 +26,19 @@ import cupyx.scipy.sparse
 def _call_func(self, impl, args, kw):
     try:
         result = impl(self, *args, **kw)
-        self.assertIsNotNone(result)
+        assert result is not None
         error = None
-        tb = None
+        tb_str = None
     except Exception as e:
+        _, _, tb = sys.exc_info()  # e.__traceback__ is py3 only
+        if tb.tb_next is None:
+            # failed before impl is called, e.g. invalid kw
+            raise e
         result = None
         error = e
-        tb = traceback.format_exc()
+        tb_str = traceback.format_exc()
 
-    return result, error, tb
+    return result, error, tb_str
 
 
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
@@ -117,7 +122,7 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
                                         accept_error=accept_error)
                 return
 
-            self.assertEqual(cupy_result.shape, numpy_result.shape)
+            assert cupy_result.shape == numpy_result.shape
 
             # Behavior of assigning a negative value to an unsigned integer
             # variable is undefined.
@@ -137,8 +142,7 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
             if not skip:
                 check_func(cupy_result, numpy_result)
             if type_check:
-                self.assertEqual(cupy_result.dtype, numpy_result.dtype,
-                                 'cupy dtype is not equal to numpy dtype')
+                assert cupy_result.dtype == numpy_result.dtype
         return test_func
     return decorator
 
@@ -193,10 +197,16 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     .. seealso:: :func:`cupy.testing.assert_allclose`
     """
-    def check_func(cupy_result, numpy_result):
-        c = cupy_result
-        n = numpy_result
-        array.assert_allclose(c, n, rtol, atol, err_msg, verbose)
+    def check_func(c, n):
+        c_array = c
+        n_array = n
+        if sp_name is not None:
+            import scipy.sparse
+            if cupyx.scipy.sparse.issparse(c):
+                c_array = c.A
+            if scipy.sparse.issparse(n):
+                n_array = n.A
+        array.assert_allclose(c_array, n_array, rtol, atol, err_msg, verbose)
         if contiguous_check and isinstance(n, numpy.ndarray):
             if n.flags.c_contiguous and not c.flags.c_contiguous:
                 raise AssertionError(
@@ -328,7 +338,7 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
 
 def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
                            type_check=True, accept_error=False, sp_name=None,
-                           scipy_name=None):
+                           scipy_name=None, strides_check=False):
     """Decorator that checks NumPy results and CuPy ones are equal.
 
     Args:
@@ -350,6 +360,8 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
              the modules.
+         strides_check(bool): If ``True``, consistency of strides is also
+             checked.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`numpy_cupy_array_equal`
@@ -358,7 +370,14 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     .. seealso:: :func:`cupy.testing.assert_array_equal`
     """
     def check_func(x, y):
-        array.assert_array_equal(x, y, err_msg, verbose)
+        if sp_name is not None:
+            import scipy.sparse
+            if cupyx.scipy.sparse.issparse(x):
+                x = x.A
+            if scipy.sparse.issparse(y):
+                y = y.A
+
+        array.assert_array_equal(x, y, err_msg, verbose, strides_check)
 
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
                            scipy_name)
@@ -404,8 +423,8 @@ def numpy_cupy_array_list_equal(
                 kw[scipy_name] = scipy
             kw[name] = numpy
             y = impl(self, *args, **kw)
-            self.assertIsNotNone(x)
-            self.assertIsNotNone(y)
+            assert x is not None
+            assert y is not None
             array.assert_array_list_equal(x, y, err_msg, verbose)
         return test_func
     return decorator
@@ -572,6 +591,8 @@ def for_dtypes(dtypes, name='dtype'):
                 try:
                     kw[name] = numpy.dtype(dtype).type
                     impl(self, *args, **kw)
+                except unittest.SkipTest as e:
+                    print('skipped: {} = {} ({})'.format(name, dtype, e))
                 except Exception:
                     print(name, 'is', dtype)
                     raise
@@ -985,13 +1006,14 @@ def numpy_satisfies(version_range):
     return True
 
 
-def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
+def shaped_arange(shape, xp=cupy, dtype=numpy.float32, order='C'):
     """Returns an array with given shape, array module, and dtype.
 
     Args:
          shape(tuple of int): Shape of returned ndarray.
          xp(numpy or cupy): Array module to use.
          dtype(dtype): Dtype of returned ndarray.
+         order({'C', 'F'}): Order of returned ndarray.
 
     Returns:
          numpy.ndarray or cupy.ndarray:
@@ -1008,7 +1030,7 @@ def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
         a = a % 2 == 0
     elif dtype.kind == 'c':
         a = a + a * 1j
-    return xp.array(a.astype(dtype).reshape(shape))
+    return xp.array(a.astype(dtype).reshape(shape), order=order)
 
 
 def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
@@ -1122,22 +1144,18 @@ class NumpyAliasBasicTestBase(NumpyAliasTestBase):
             f = inspect.getargspec
         else:
             f = inspect.signature
-        self.assertEqual(
-            f(self.cupy_func),
-            f(self.numpy_func))
+        assert f(self.cupy_func) == f(self.numpy_func)
 
     def test_docstring(self):
         cupy_func = self.cupy_func
         numpy_func = self.numpy_func
-        self.assertTrue(hasattr(cupy_func, '__doc__'))
-        self.assertNotEqual(cupy_func.__doc__, None)
-        self.assertNotEqual(cupy_func.__doc__, '')
-        self.assertIsNot(cupy_func.__doc__, numpy_func.__doc__)
+        assert hasattr(cupy_func, '__doc__')
+        assert cupy_func.__doc__ is not None
+        assert cupy_func.__doc__ != ''
+        assert cupy_func.__doc__ is not numpy_func.__doc__
 
 
 class NumpyAliasValuesTestBase(NumpyAliasTestBase):
 
     def test_values(self):
-        self.assertEqual(
-            self.cupy_func(*self.args),
-            self.numpy_func(*self.args))
+        assert self.cupy_func(*self.args) == self.numpy_func(*self.args)
