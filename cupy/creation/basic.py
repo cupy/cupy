@@ -48,10 +48,10 @@ def _new_like_order_and_strides(a, dtype, order, shape=None):
         return order, None, None
 
 
-def empty_like(a, dtype=None, order='K', shape=None):
+def empty_like(a, dtype=None, order='K', subok=None, shape=None):
     """Returns a new array with same shape and dtype of a given array.
 
-    This function currently does not support ``order`` and ``subok`` options.
+    This function currently does not support ``subok`` option.
 
     Args:
         a (cupy.ndarray): Base array.
@@ -60,6 +60,7 @@ def empty_like(a, dtype=None, order='K', shape=None):
             result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
+        subok: Not supported yet, must be None.
         shape (tuple of ints): Overrides the shape of the result. If order='K'
             and the number of dimensions is unchanged, will try to keep order,
             otherwise, order='C' is implied.
@@ -72,6 +73,8 @@ def empty_like(a, dtype=None, order='K', shape=None):
     .. seealso:: :func:`numpy.empty_like`
 
     """
+    if subok is not None:
+        raise TypeError('subok is not supported yet')
     if dtype is None:
         dtype = a.dtype
 
@@ -145,10 +148,10 @@ def ones(shape, dtype=float):
     return a
 
 
-def ones_like(a, dtype=None, order='K', shape=None):
+def ones_like(a, dtype=None, order='K', subok=None, shape=None):
     """Returns an array of ones with same shape and dtype as a given array.
 
-    This function currently does not support ``order`` and ``subok`` options.
+    This function currently does not support ``subok`` option.
 
     Args:
         a (cupy.ndarray): Base array.
@@ -157,6 +160,7 @@ def ones_like(a, dtype=None, order='K', shape=None):
             result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
+        subok: Not supported yet, must be None.
         shape (tuple of ints): Overrides the shape of the result. If order='K'
             and the number of dimensions is unchanged, will try to keep order,
             otherwise, order='C' is implied.
@@ -167,6 +171,8 @@ def ones_like(a, dtype=None, order='K', shape=None):
     .. seealso:: :func:`numpy.ones_like`
 
     """
+    if subok is not None:
+        raise TypeError('subok is not supported yet')
     if dtype is None:
         dtype = a.dtype
 
@@ -198,10 +204,10 @@ def zeros(shape, dtype=float, order='C'):
     return a
 
 
-def zeros_like(a, dtype=None, order='K', shape=None):
+def zeros_like(a, dtype=None, order='K', subok=None, shape=None):
     """Returns an array of zeros with same shape and dtype as a given array.
 
-    This function currently does not support ``order`` and ``subok`` options.
+    This function currently does not support ``subok`` option.
 
     Args:
         a (cupy.ndarray): Base array.
@@ -210,6 +216,7 @@ def zeros_like(a, dtype=None, order='K', shape=None):
             result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
+        subok: Not supported yet, must be None.
         shape (tuple of ints): Overrides the shape of the result. If order='K'
             and the number of dimensions is unchanged, will try to keep order,
             otherwise, order='C' is implied.
@@ -220,6 +227,8 @@ def zeros_like(a, dtype=None, order='K', shape=None):
     .. seealso:: :func:`numpy.zeros_like`
 
     """
+    if subok is not None:
+        raise TypeError('subok is not supported yet')
     if dtype is None:
         dtype = a.dtype
 
@@ -258,10 +267,10 @@ def full(shape, fill_value, dtype=None):
     return a
 
 
-def full_like(a, fill_value, dtype=None, order='K', shape=None):
+def full_like(a, fill_value, dtype=None, order='K', subok=None, shape=None):
     """Returns a full array with same shape and dtype as a given array.
 
-    This function currently does not support ``order`` and ``subok`` options.
+    This function currently does not support ``subok`` option.
 
     Args:
         a (cupy.ndarray): Base array.
@@ -271,6 +280,7 @@ def full_like(a, fill_value, dtype=None, order='K', shape=None):
             result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
+        subok: Not supported yet, must be None.
         shape (tuple of ints): Overrides the shape of the result. If order='K'
             and the number of dimensions is unchanged, will try to keep order,
             otherwise, order='C' is implied.
@@ -281,6 +291,8 @@ def full_like(a, fill_value, dtype=None, order='K', shape=None):
     .. seealso:: :func:`numpy.full_like`
 
     """
+    if subok is not None:
+        raise TypeError('subok is not supported yet')
     if dtype is None:
         dtype = a.dtype
 
