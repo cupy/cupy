@@ -155,7 +155,7 @@ class TestLstsq(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     @condition.retry(10)
-    def check_x(self, a_shape, b_shape, rcond, dtype):
+    def check_lstsq_solution(self, a_shape, b_shape, rcond, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
         b_cpu = numpy.random.randint(0, 10, size=b_shape).astype(dtype)
         a_gpu = cupy.asarray(a_cpu)
@@ -168,43 +168,45 @@ class TestLstsq(unittest.TestCase):
         result_gpu, resids_gpu, rank_gpu, s_gpu = cupy.linalg.lstsq(a_gpu,
                                                                     b_gpu,
                                                                     rcond=rcond)  # noqa E501
-
         self.assertEqual(result_cpu.dtype, result_gpu.dtype)
+        # check the least squares solutions are close
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
         cupy.testing.assert_allclose(resids_cpu, resids_gpu, atol=1e-3)
         cupy.testing.assert_allclose(rank_cpu, rank_gpu, atol=1e-3)
         cupy.testing.assert_allclose(s_cpu, s_gpu, atol=1e-3)
+        # check that lstsq did not modify arrays
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
         cupy.testing.assert_array_equal(b_gpu_copy, b_gpu)
 
-    def check_shape(self, a_shape, b_shape):
+    def check_invalid_shapes(self, a_shape, b_shape):
         a = cupy.random.rand(*a_shape)
         b = cupy.random.rand(*b_shape)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(numpy.linalg.LinAlgError):
             cupy.linalg.lstsq(a, b)
 
-    def test_lstsq(self):
+    def test_lstsq_solutions(self):
         # Test skinny
-        self.check_x((10, 3), (10, ), rcond=1e-15)
-        self.check_x((10, 3), (10, 2), rcond=1e-15)
+        self.check_lstsq_solution((10, 3), (10, ), rcond=1e-15)
+        self.check_lstsq_solution((10, 3), (10, 2), rcond=1e-15)
         # Test square
-        self.check_x((4, 4), (4, ), rcond=1e-15)
-        self.check_x((4, 4), (4, 2), rcond=1e-15)
+        self.check_lstsq_solution((4, 4), (4, ), rcond=1e-15)
+        self.check_lstsq_solution((4, 4), (4, 2), rcond=1e-15)
         # Test more unknowns than data
-        self.check_x((3, 10), (3, ), rcond=1e-15)
-        self.check_x((3, 10), (3, 3), rcond=1e-15)
+        self.check_lstsq_solution((3, 10), (3, ), rcond=1e-15)
+        self.check_lstsq_solution((3, 10), (3, 3), rcond=1e-15)
         # Test large rcond
-        self.check_x((4, 4), (4,), rcond=0.3)
-        self.check_x((2, 5), (2,), rcond=0.5)
-        self.check_x((5, 3), (5,), rcond=0.6)
+        self.check_lstsq_solution((4, 4), (4,), rcond=0.3)
+        self.check_lstsq_solution((2, 5), (2,), rcond=0.5)
+        self.check_lstsq_solution((5, 3), (5,), rcond=0.6)
 
-    def test_invalid_shape(self):
-        # test ValueError('Axis dimension mismatch')
-        self.check_shape((4, 3), (3, ))
-        self.check_shape((4, 3), (2, 2))
-        self.check_shape((4, 3), (3, 2, 3))
-        self.check_shape((4, 3), (10, 3, 3))
-        # Note that invalid shapes of a are already tested with pinv
+    def test_invalid_shapes(self):
+        self.check_invalid_shapes((4, 3), (3, ))
+        self.check_invalid_shapes((3, 3, 3), (2, 2))
+        self.check_invalid_shapes((3, 3, 3), (3, 3))
+        self.check_invalid_shapes((3, 3), (3, 3, 3))
+        self.check_invalid_shapes((2, 2), (10, ))
+        self.check_invalid_shapes((3, 3), (2, 2))
+        self.check_invalid_shapes((4, 3), (10, 3, 3))
 
 
 @unittest.skipUnless(

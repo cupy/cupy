@@ -198,28 +198,38 @@ def lstsq(a, b, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.lstsq`
     """
+    util._assert_cupy_array(a, b)
+    util._assert_rank2(a)
+    if b.ndim > 2:
+        raise linalg.LinAlgError('{}-dimensional array given. Array must be at'
+                                 ' most two-dimensional'.format(b.ndim))
     m, n = a.shape[-2:]
+    m2 = b.shape[0]
+    if m != m2:
+        raise linalg.LinAlgError('Incompatible dimensions')
+
     u, s, vt = cupy.linalg.svd(a, full_matrices=False)
+    # number of singular values and matrix rank
     cutoff = rcond * s.max()
     s1 = 1 / s
     sing_vals = s <= cutoff
     s1[sing_vals] = 0
     rank = s.size - sing_vals.sum()
-    if b.ndim > 1:
+
+    if b.ndim == 2:
         s1 = cupy.repeat(s1.reshape(-1, 1), b.shape[1], axis=1)
+    # Solve the least-squares solution
     z = core.dot(u.transpose(), b) * s1
     x = core.dot(vt.transpose(), z)
+    # Calculate squared Euclidean 2-norm for each column in b - a*x
     if rank != n or m <= n:
         resids = cupy.array([], dtype=a.dtype)
-    elif b.ndim > 1:
-        k = b.shape[1]
-        resids = cupy.zeros(k, dtype=a.dtype)
-        for i in range(k):
-            e = b[:, i] - core.dot(a, x[:, i])
-            resids[i] = core.dot(e.T, e)
-    else:
+    elif b.ndim == 2:
         e = b - core.dot(a, x)
-        resids = core.dot(e.T, e).reshape(-1)
+        resids = cupy.sum(cupy.square(e), axis=0)
+    else:
+        e = b - cupy.dot(a, x)
+        resids = cupy.dot(e.T, e).reshape(-1)
     return x, resids, rank, s
 
 
