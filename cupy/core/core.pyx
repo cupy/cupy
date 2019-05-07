@@ -2319,7 +2319,7 @@ cpdef ndarray tensordot_core(
                    (ret_dtype == 'e' or ret_dtype == 'f'))
     use_tensor_core = (use_sgemmEx and
                        _cuda_runtime_version >= 9000 and
-                       int(device.get_compute_capability()) == 70)
+                       int(device.get_compute_capability()) >= 70)
 
     if use_sgemmEx or ret_dtype in 'fdFD':
         dtype = ret_dtype
