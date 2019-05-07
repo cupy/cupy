@@ -458,4 +458,3 @@ class TestBasicReshape(unittest.TestCase):
         c = cupy.full(self.shape, 1, dtype=dtype)
 
         testing.assert_array_equal(b, c)
-
