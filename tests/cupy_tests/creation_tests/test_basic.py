@@ -8,7 +8,6 @@ from cupy import testing
 
 @testing.gpu
 class TestBasic(unittest.TestCase):
-
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -261,6 +260,7 @@ class TestBasic(unittest.TestCase):
 )
 @testing.gpu
 class TestBasicReshape(unittest.TestCase):
+
     @testing.with_requires('numpy>=1.17.0')
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
