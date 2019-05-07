@@ -149,6 +149,12 @@ class TestBasic(unittest.TestCase):
         b = xp.empty_like(a, order='Q')
         return b
 
+    @testing.numpy_cupy_raises()
+    def test_empty_like_subok(self):
+        a = testing.shaped_arange((2, 3, 4), cupy)
+        b = cupy.empty_like(a, subok=True)
+        return b
+
     @testing.for_CF_orders()
     def test_empty_zero_sized_array_strides(self, order):
         a = numpy.empty((1, 0, 2), dtype='d', order=order)
@@ -196,6 +202,11 @@ class TestBasic(unittest.TestCase):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
         return xp.zeros_like(a, order=order)
 
+    @testing.numpy_cupy_raises()
+    def test_zeros_like_subok(self):
+        a = cupy.ndarray((2, 3, 4))
+        return cupy.zeros_like(a, subok=True)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_ones(self, xp, dtype):
@@ -207,6 +218,11 @@ class TestBasic(unittest.TestCase):
     def test_ones_like(self, xp, dtype, order):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
         return xp.ones_like(a, order=order)
+
+    @testing.numpy_cupy_raises()
+    def test_ones_like_subok(self):
+        a = cupy.ndarray((2, 3, 4))
+        return cupy.ones_like(a, subok=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -231,6 +247,11 @@ class TestBasic(unittest.TestCase):
     def test_full_like(self, xp, dtype, order):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
         return xp.full_like(a, 1, order=order)
+
+    @testing.numpy_cupy_raises()
+    def test_full_like_subok(self):
+        a = cupy.ndarray((2, 3, 4))
+        return cupy.full_like(a, 1)
 
 
 @testing.parameterize(
