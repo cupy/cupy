@@ -172,7 +172,7 @@ class TestLstsq(unittest.TestCase):
         # check the least squares solutions are close
         cupy.testing.assert_allclose(x_cpu, x_gpu, atol=1e-5)
         cupy.testing.assert_allclose(resids_cpu, resids_gpu, atol=1e-5)
-        cupy.testing.assert_allclose(rank_cpu, rank_gpu, atol=1e-5)
+        self.assertEqual(rank_cpu, rank_gpu)
         cupy.testing.assert_allclose(s_cpu, s_gpu, atol=1e-5)
         # check that lstsq did not modify arrays
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
