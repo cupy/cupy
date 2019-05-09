@@ -115,19 +115,23 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
         return ptx
 
 
-def compile_using_nvcc(source, options=(), arch=None, filename='kern.cu'):
+def compile_using_nvcc(source, options=(), arch=None,
+                       filename='kern.cu', code_type='cubin'):
     if not arch:
         arch = _get_arch()
 
+    if code_type not in ('cubin', 'ptx'):
+        raise ValueError("gencode not in ('cubin', 'ptx')")
+
     arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
-    cmd = ['nvcc', '--cubin', arch_str] + list(options)
+    cmd = ['nvcc', '--%s' % code_type, arch_str] + list(options)
 
     with TemporaryDirectory() as root_dir:
         first_part = filename.split('.')[0]
 
         path = os.path.join(root_dir, first_part)
         cu_path = '%s.cu' % path
-        cubin_path = '%s.cubin' % path
+        result_path = '%s.%s' % (path, code_type)
 
         with open(cu_path, 'w') as cu_file:
             cu_file.write(source)
@@ -146,8 +150,14 @@ def compile_using_nvcc(source, options=(), arch=None, filename='kern.cu'):
 
             raise cex
 
-        with open(cubin_path, 'rb') as bin_file:
-            return bin_file.read()
+        if code_type == 'ptx':
+            with open(result_path, 'rb') as ptx_file:
+                return ptx_file.read().decode('utf-8')
+        elif code_type == 'cubin':
+            with open(result_path, 'rb') as bin_file:
+                return bin_file.read()
+        else:
+            raise ValueError("Invalid code_type '%s'" % code_type)
 
 
 def _preprocess(source, options, arch, backend):
@@ -166,7 +176,8 @@ def _preprocess(source, options, arch, backend):
 
     elif backend == 'nvcc':
         try:
-            result = compile_using_nvcc(source, options, arch, 'preprocess.cu')
+            result = compile_using_nvcc(source, options, arch, 'preprocess.cu',
+                                        code_type='ptx')
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -210,6 +221,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
         # This is checking of NVRTC compiler internal version
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
+
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
 
     key_src = key_src.encode('utf-8')
@@ -243,7 +255,8 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
         ls.add_ptr_data(ptx, u'cupy.ptx')
         cubin = ls.complete()
     elif backend == 'nvcc':
-        cubin = compile_using_nvcc(source, options, arch, name + '.cu')
+        cubin = compile_using_nvcc(source, options, arch, name + '.cu',
+                                   code_type='cubin')
     else:
         raise ValueError('Invalid backend %s' % backend)
 
