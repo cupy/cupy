@@ -121,7 +121,7 @@ def compile_using_nvcc(source, options=(), arch=None,
         arch = _get_arch()
 
     if code_type not in ('cubin', 'ptx'):
-        raise ValueError("gencode not in ('cubin', 'ptx')")
+        raise ValueError("code_type not in ('cubin', 'ptx')")
 
     arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
     cmd = ['nvcc', '--%s' % code_type, arch_str] + list(options)
