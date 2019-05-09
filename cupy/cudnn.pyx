@@ -1652,6 +1652,8 @@ def convolution_backward_filter(
         zero = <size_t>&float_zero
         one = <size_t>&float_one
 
+    # Disable use_tensor_core in deterministic mode because
+    # CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 does not use Tensor Core.
     cdef bint use_tensor_core = (
         not deterministic and _should_use_tensor_core(tensor_core, x.dtype))
     cdef tuple conv_param = (pad, stride, x.dtype, use_tensor_core)
@@ -1679,6 +1681,7 @@ def convolution_backward_filter(
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
         if deterministic:
+            # TODO(imanishi): Support Tensor Core in deterministic mode.
             algo = cudnn.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1
             workspace_size = cudnn.getConvolutionBackwardFilterWorkspaceSize(
                 handle, x_desc, gy_desc, conv_desc, filter_desc, algo)
@@ -1733,6 +1736,8 @@ def convolution_backward_data(
         zero = <size_t>&float_zero
         one = <size_t>&float_one
 
+    # Disable use_tensor_core in deterministic mode because
+    # CUDNN_CONVOLUTION_BWD_DATA_ALGO_1 does not use Tensor Core.
     cdef bint use_tensor_core = (
         not deterministic and _should_use_tensor_core(tensor_core, x.dtype))
     cdef tuple conv_param = (pad, stride, x.dtype, use_tensor_core)
@@ -1770,6 +1775,7 @@ def convolution_backward_data(
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
         if deterministic:
+            # TODO(imanishi): Support Tensor Core in deterministic mode.
             algo = cudnn.CUDNN_CONVOLUTION_BWD_DATA_ALGO_1
             workspace_size = cudnn.getConvolutionBackwardDataWorkspaceSize(
                 handle, filter_desc, x_desc, conv_desc, y_desc, algo)
