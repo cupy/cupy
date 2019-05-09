@@ -1652,7 +1652,8 @@ def convolution_backward_filter(
         zero = <size_t>&float_zero
         one = <size_t>&float_one
 
-    cdef bint use_tensor_core = _should_use_tensor_core(tensor_core, x.dtype)
+    cdef bint use_tensor_core = (
+        not deterministic and _should_use_tensor_core(tensor_core, x.dtype))
     cdef tuple conv_param = (pad, stride, x.dtype, use_tensor_core)
 
     handle = get_handle()
@@ -1732,7 +1733,8 @@ def convolution_backward_data(
         zero = <size_t>&float_zero
         one = <size_t>&float_one
 
-    cdef bint use_tensor_core = _should_use_tensor_core(tensor_core, x.dtype)
+    cdef bint use_tensor_core = (
+        not deterministic and _should_use_tensor_core(tensor_core, x.dtype))
     cdef tuple conv_param = (pad, stride, x.dtype, use_tensor_core)
 
     # cuDNN 7 supports dilation only in *_FWD_ALGO_IMPLICIT_GEMM, but
