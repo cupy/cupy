@@ -121,7 +121,7 @@ def compile_using_nvcc(source, options=(), arch=None,
         arch = _get_arch()
 
     if code_type not in ('cubin', 'ptx'):
-        raise ValueError("code_type not in ('cubin', 'ptx')")
+        raise ValueError('Invalid code_type %s. Should be cubin or ptx')
 
     arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
     cmd = ['nvcc', '--%s' % code_type, arch_str] + list(options)
@@ -157,7 +157,7 @@ def compile_using_nvcc(source, options=(), arch=None,
             with open(result_path, 'rb') as bin_file:
                 return bin_file.read()
         else:
-            raise ValueError("Invalid code_type '%s'" % code_type)
+            assert False, code_type
 
 
 def _preprocess(source, options, arch, backend):
