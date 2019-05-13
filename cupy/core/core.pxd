@@ -1,8 +1,9 @@
 from libcpp cimport vector
-from cupy.cuda cimport memory
 
 from cupy.cuda.function cimport CPointer
 from cupy.cuda.function cimport Module
+from cupy.cuda cimport memory
+
 
 cdef class ndarray:
     cdef:
