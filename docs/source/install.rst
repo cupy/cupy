@@ -38,6 +38,10 @@ Before installing CuPy, we recommend you to upgrade ``setuptools`` and ``pip``::
 
   $ pip install -U setuptools pip
 
+.. note::
+
+   On Windows, CuPy only supports Python 3.6.0 or later.
+
 Optional Libraries
 ~~~~~~~~~~~~~~~~~~
 
