@@ -52,7 +52,7 @@ Some features in CuPy will only be enabled if the corresponding libraries are in
 Install CuPy
 ------------
 
-Wheels (precompiled binary packages) are available for the recommended environments above.
+Wheels (precompiled binary packages) are available for Linux (Python 2.7 or later) and Windows (Python 3.6 or later).
 Package names are different depending on the CUDA version you have installed on your host.
 
 ::
