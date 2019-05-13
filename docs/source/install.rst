@@ -8,7 +8,7 @@ Recommended Environments
 
 We recommend the following Linux distributions.
 
-* `Ubuntu <https://www.ubuntu.com/>`_ 14.04 / 16.04 LTS (64-bit)
+* `Ubuntu <https://www.ubuntu.com/>`_ 16.04 / 18.04 LTS (64-bit)
 * `CentOS <https://www.centos.org/>`_ 7 (64-bit)
 
 .. note::
@@ -97,7 +97,7 @@ When installing from source, C++ compiler such as ``g++`` is required.
 You need to install it before installing CuPy.
 This is typical installation method for each platform::
 
-  # Ubuntu 14.04
+  # Ubuntu 16.04
   $ apt-get install g++
 
   # CentOS 7
