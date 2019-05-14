@@ -154,9 +154,13 @@ class TestPinv(unittest.TestCase):
 class TestLstsq(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
-    @condition.retry(10)
-    def check_lstsq_solution(self, a_shape, b_shape, rcond, dtype):
-        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
+    def check_lstsq_solution(self, a_shape, b_shape, seed, rcond, dtype,
+                             singular=False):
+        numpy.random.seed(seed)
+        if singular:
+            a_cpu = numpy.zeros(a_shape).astype(dtype)
+        else:
+            a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
         b_cpu = numpy.random.randint(0, 10, size=b_shape).astype(dtype)
         a_gpu = cupy.asarray(a_cpu)
         b_gpu = cupy.asarray(b_cpu)
@@ -185,19 +189,26 @@ class TestLstsq(unittest.TestCase):
             cupy.linalg.lstsq(a, b)
 
     def test_lstsq_solutions(self):
-        # Test skinny
-        self.check_lstsq_solution((10, 3), (10, ), rcond=1e-15)
-        self.check_lstsq_solution((10, 3), (10, 2), rcond=1e-15)
-        # Test square
-        self.check_lstsq_solution((4, 4), (4, ), rcond=1e-15)
-        self.check_lstsq_solution((4, 4), (4, 2), rcond=1e-15)
-        # Test more unknowns than data
-        self.check_lstsq_solution((3, 10), (3, ), rcond=1e-15)
-        self.check_lstsq_solution((3, 10), (3, 3), rcond=1e-15)
-        # Test large rcond
-        self.check_lstsq_solution((4, 4), (4,), rcond=0.3)
-        self.check_lstsq_solution((2, 5), (2,), rcond=0.5)
-        self.check_lstsq_solution((5, 3), (5,), rcond=0.6)
+        # Comapres numpy.linalg.lstsq and cupy.linalg.lstsq solutions for:
+        #   a shapes range from (3, 3) to (5, 3) and (3, 5)
+        #   b shapes range from (i, 3) to (i, )
+        #   sets a random seed for deterministic testing
+        for i in range(3, 6):
+            for j in range(3, 6):
+                for k in range(2, 4):
+                    seed = i + j + k
+                    # check when b has shape (i, k)
+                    self.check_lstsq_solution((i, j), (i, k), seed,
+                                              rcond=1e-15)
+                    self.check_lstsq_solution((i, j), (i, k), seed,
+                                              rcond=0.5)
+                    self.check_lstsq_solution((i, j), (i, k), seed,
+                                              rcond=1e-15, singular=True)
+                # check when b has shape (i, )
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-15)
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=0.5)
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-15,
+                                          singular=True)
 
     def test_invalid_shapes(self):
         self.check_invalid_shapes((4, 3), (3, ))
