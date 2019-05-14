@@ -57,6 +57,8 @@ cdef class MemoryPool:
     cpdef size_t used_bytes(self)
     cpdef size_t free_bytes(self)
     cpdef size_t total_bytes(self)
+    cpdef set_limit(self, size=?, fraction=?)
+    cpdef size_t get_limit(self)
 
 
 @cython.no_gc

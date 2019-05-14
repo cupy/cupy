@@ -163,7 +163,7 @@ class TestSearch(unittest.TestCase):
 class TestWhereTwoArrays(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(
-        names=['cond_type', 'x_type', 'y_type'], no_complex=True)
+        names=['cond_type', 'x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def test_where_two_arrays(self, xp, cond_type, x_type, y_type):
         m = testing.shaped_random(self.cond_shape, xp, xp.bool_)
@@ -184,7 +184,7 @@ class TestWhereTwoArrays(unittest.TestCase):
 @testing.gpu
 class TestWhereCond(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_where_cond(self, xp, dtype):
         m = testing.shaped_random(self.cond_shape, xp, xp.bool_)

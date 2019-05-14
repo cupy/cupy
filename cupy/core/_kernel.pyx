@@ -858,6 +858,16 @@ cdef class ufunc:
         kern.linear_launch(indexer.size, inout_args)
         return ret
 
+    cdef str _get_name_with_type(self, tuple args_info):
+        inout_type_words = []
+        for t, dtype, ndim in args_info:
+            dtype = str(numpy.dtype(dtype))
+            if t is _scalar.CScalar:
+                inout_type_words.append(dtype.rstrip('0123456789'))
+            elif t is not Indexer:
+                inout_type_words.append(dtype)
+        return '{}__{}'.format(self.name, '_'.join(inout_type_words))
+
     cdef function.Function _get_ufunc_kernel(
             self, int dev_id, tuple op, tuple args_info):
         cdef function.Function kern
@@ -865,9 +875,10 @@ cdef class ufunc:
         kern = self._kernel_memo.get(key, None)
         if kern is None:
             in_types, out_types, routine = op
+            name = self._get_name_with_type(args_info)
             kern = _get_ufunc_kernel(
                 in_types, out_types, routine, args_info,
-                self._params, self.name, self._preamble, self._loop_prep)
+                self._params, name, self._preamble, self._loop_prep)
             self._kernel_memo[key] = kern
         return kern
 

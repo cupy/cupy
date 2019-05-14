@@ -240,4 +240,4 @@ def percentile(a, q, axis=None, out=None, interpolation='linear',
             keepdim = (-1,) + keepdim
         ret = ret.reshape(keepdim)
 
-    return cupy.ascontiguousarray(ret)
+    return core._internal_ascontiguousarray(ret)

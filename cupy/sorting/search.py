@@ -100,7 +100,7 @@ _where_ufunc = core.create_ufunc(
      # works).
      # See issue #551.
      '?hd->d', '?Hd->d',
-     '?dd->d'),
+     '?dd->d', '?FF->F', '?DD->D'),
     'out0 = in0 ? in1 : in2')
 
 
