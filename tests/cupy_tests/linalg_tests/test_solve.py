@@ -157,10 +157,10 @@ class TestLstsq(unittest.TestCase):
     def check_lstsq_solution(self, a_shape, b_shape, seed, rcond, dtype,
                              singular=False):
         numpy.random.seed(seed)
+        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
         if singular:
-            a_cpu = numpy.zeros(a_shape).astype(dtype)
-        else:
-            a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
+            # make one row a linear combination of the others
+            a_cpu[-1] = numpy.sum(a_cpu[0:-1], axis=0)
         b_cpu = numpy.random.randint(0, 10, size=b_shape).astype(dtype)
         a_gpu = cupy.asarray(a_cpu)
         b_gpu = cupy.asarray(b_cpu)
@@ -174,7 +174,9 @@ class TestLstsq(unittest.TestCase):
                                                                rcond=rcond)
         self.assertEqual(x_cpu.dtype, x_gpu.dtype)
         # check the least squares solutions are close
-        cupy.testing.assert_allclose(x_cpu, x_gpu, atol=1e-3)
+        # if a is singular, no guarantee that x_cpu will be close to x_gpu
+        if not singular:
+            cupy.testing.assert_allclose(x_cpu, x_gpu, atol=1e-3)
         cupy.testing.assert_allclose(resids_cpu, resids_gpu, atol=1e-3)
         self.assertEqual(rank_cpu, rank_gpu)
         cupy.testing.assert_allclose(s_cpu, s_gpu, atol=1e-3)
@@ -203,11 +205,11 @@ class TestLstsq(unittest.TestCase):
                     self.check_lstsq_solution((i, j), (i, k), seed,
                                               rcond=0.5)
                     self.check_lstsq_solution((i, j), (i, k), seed,
-                                              rcond=1e-15, singular=True)
+                                              rcond=1e-7, singular=True)
                 # check when b has shape (i, )
                 self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-15)
                 self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=0.5)
-                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-15,
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-7,
                                           singular=True)
 
     def test_invalid_shapes(self):
