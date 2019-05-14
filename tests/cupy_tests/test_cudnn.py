@@ -18,7 +18,7 @@ try:
     layouts = [
         libcudnn.CUDNN_TENSOR_NCHW,
         libcudnn.CUDNN_TENSOR_NHWC,
-    ],
+    ]
     if libcudnn.getVersion() >= 6000:
         coef_modes.append(libcudnn.CUDNN_ACTIVATION_ELU)
 
