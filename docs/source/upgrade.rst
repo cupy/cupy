@@ -7,6 +7,14 @@ Upgrade Guide
 This is a list of changes introduced in each release that users should be aware of when migrating from older versions.
 Most changes are carefully designed not to break existing code; however changes that may possibly break them are highlighted with a box.
 
+CuPy v6
+=======
+
+Binary Packages Ignore ``LD_LIBRARY_PATH``
+------------------------------------------
+
+Prior to CuPy v6, ``LD_LIBRARY_PATH`` environment variable can be used to override cuDNN / NCCL libraries bundled in the binary distribution (also known as wheels).
+In CuPy v6, ``LD_LIBRARY_PATH`` will be ignored during discovery of cuDNN / NCCL; CuPy binary distributions always use libraries that comes with the package to avoid errors caused by unexpected override.
 
 CuPy v5
 =======
