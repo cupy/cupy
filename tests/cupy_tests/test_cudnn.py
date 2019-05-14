@@ -3,6 +3,7 @@ import unittest
 import numpy
 
 import cupy
+
 try:
     import cupy.cuda.cudnn as libcudnn
     cudnn_enabled = True
@@ -14,6 +15,10 @@ try:
     coef_modes = [
         libcudnn.CUDNN_ACTIVATION_CLIPPED_RELU,
     ]
+    layouts = [
+        libcudnn.CUDNN_TENSOR_NCHW,
+        libcudnn.CUDNN_TENSOR_NHWC,
+    ]
     if libcudnn.getVersion() >= 6000:
         coef_modes.append(libcudnn.CUDNN_ACTIVATION_ELU)
 
@@ -22,6 +27,8 @@ except ImportError:
     cudnn_enabled = False
     modes = []
     coef_modes = []
+    layouts = []
+
 from cupy import testing
 
 
@@ -120,7 +127,7 @@ class TestCudnnDropout(unittest.TestCase):
     'max_workspace_size': [0, 2 ** 22],
     'auto_tune': [True, False],
     'bias': [True, False],
-    'layout': [libcudnn.CUDNN_TENSOR_NCHW, libcudnn.CUDNN_TENSOR_NHWC],
+    'layout': layouts,
 })))
 @unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
 class TestConvolutionForward(unittest.TestCase):
