@@ -11,3 +11,111 @@ configs {
     command: "sh .pfnci/wheel_nightly.sh"
   }
 }
+configs {
+  key: "cupy.py2.cv.gpu"
+  value {
+    requirement {
+      cpu: 4
+      memory: 24
+      disk: 10
+      gpu: 1
+    }
+    time_limit {
+      seconds: 1800
+    }
+    command: "git clone https://github.com/Hakuyume/chainercv.git --branch pfnci-cupy --depth 1 && sh chainercv/.pfnci/tests_gpu.sh"
+    environment_variables {
+      key: "REPOSITORY"
+      value: "cupy"
+    }
+    environment_variables {
+      key: "PYTHON"
+      value: "2"
+    }
+    environment_variables {
+      key: "OPTIONAL_MODULES"
+      value: "1"
+    }
+  }
+}
+configs {
+  key: "cupy.py2.cv.examples"
+  value {
+    requirement {
+      cpu: 4
+      memory: 24
+      disk: 10
+      gpu: 2
+    }
+    time_limit {
+      seconds: 3600
+    }
+    command: "git clone https://github.com/Hakuyume/chainercv.git --branch pfnci-cupy --depth 1 && sh chainercv/.pfnci/examples_tests.sh"
+    environment_variables {
+      key: "REPOSITORY"
+      value: "cupy"
+    }
+    environment_variables {
+      key: "PYTHON"
+      value: "2"
+    }
+    environment_variables {
+      key: "OPTIONAL_MODULES"
+      value: "1"
+    }
+  }
+}
+configs {
+  key: "cupy.py3.cv.gpu"
+  value {
+    requirement {
+      cpu: 4
+      memory: 24
+      disk: 10
+      gpu: 1
+    }
+    time_limit {
+      seconds: 1800
+    }
+    command: "git clone https://github.com/Hakuyume/chainercv.git --branch pfnci-cupy --depth 1 && sh chainercv/.pfnci/tests_gpu.sh"
+    environment_variables {
+      key: "REPOSITORY"
+      value: "cupy"
+    }
+    environment_variables {
+      key: "PYTHON"
+      value: "3"
+    }
+    environment_variables {
+      key: "OPTIONAL_MODULES"
+      value: "1"
+    }
+  }
+}
+configs {
+  key: "cupy.py3.cv.examples"
+  value {
+    requirement {
+      cpu: 4
+      memory: 24
+      disk: 10
+      gpu: 2
+    }
+    time_limit {
+      seconds: 3600
+    }
+    command: "git clone https://github.com/Hakuyume/chainercv.git --branch pfnci-cupy --depth 1 && sh chainercv/.pfnci/examples_tests.sh"
+    environment_variables {
+      key: "REPOSITORY"
+      value: "cupy"
+    }
+    environment_variables {
+      key: "PYTHON"
+      value: "3"
+    }
+    environment_variables {
+      key: "OPTIONAL_MODULES"
+      value: "1"
+    }
+  }
+}
