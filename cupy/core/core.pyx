@@ -2,7 +2,6 @@
 
 from __future__ import division
 import sys
-import warnings
 
 import ctypes
 import numpy
