@@ -1198,7 +1198,7 @@ def create_reduce_tensor_descriptor(reduce_type, dtype):
 cpdef bint is_tensor_core_available(dtype) except *:
     return (_cudnn_version >= 7000 and
             (<str>dtype.char) == 'e' and
-            int(device.get_compute_capability()) >= 70)
+            int(device.get_compute_capability()) == 70)
 
 
 cdef class DropoutStates:
