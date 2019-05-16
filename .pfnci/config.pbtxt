@@ -23,7 +23,7 @@ configs {
     time_limit {
       seconds: 1800
     }
-    command: "git clone https://github.com/Hakuyume/chainercv.git --branch pfnci-cupy --depth 1 && sh chainercv/.pfnci/tests_gpu.sh"
+    command: "git clone https://github.com/chainer/chainercv.git --depth 1 && sh chainercv/.pfnci/tests_gpu.sh"
     environment_variables {
       key: "REPOSITORY"
       value: "cupy"
@@ -50,7 +50,7 @@ configs {
     time_limit {
       seconds: 3600
     }
-    command: "git clone https://github.com/Hakuyume/chainercv.git --branch pfnci-cupy --depth 1 && sh chainercv/.pfnci/examples_tests.sh"
+    command: "git clone https://github.com/chainer/chainercv.git --depth 1 && sh chainercv/.pfnci/examples_tests.sh"
     environment_variables {
       key: "REPOSITORY"
       value: "cupy"
@@ -77,7 +77,7 @@ configs {
     time_limit {
       seconds: 1800
     }
-    command: "git clone https://github.com/Hakuyume/chainercv.git --branch pfnci-cupy --depth 1 && sh chainercv/.pfnci/tests_gpu.sh"
+    command: "git clone https://github.com/chainer/chainercv.git --depth 1 && sh chainercv/.pfnci/tests_gpu.sh"
     environment_variables {
       key: "REPOSITORY"
       value: "cupy"
@@ -104,7 +104,7 @@ configs {
     time_limit {
       seconds: 3600
     }
-    command: "git clone https://github.com/Hakuyume/chainercv.git --branch pfnci-cupy --depth 1 && sh chainercv/.pfnci/examples_tests.sh"
+    command: "git clone https://github.com/chainer/chainercv.git --depth 1 && sh chainercv/.pfnci/examples_tests.sh"
     environment_variables {
       key: "REPOSITORY"
       value: "cupy"
