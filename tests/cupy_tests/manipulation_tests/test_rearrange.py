@@ -138,6 +138,7 @@ class TestRoll(unittest.TestCase):
         x = testing.shaped_arange((5, 2, 2), xp)
         return cupy.roll(x, shift=(1, 0), axis=(0, 1, 2))
 
+    @testing.with_requires('numpy>=1.13')  # issue #2125
     @testing.numpy_cupy_raises()
     def test_roll_invalid_axis_type(self, xp):
         x = testing.shaped_arange((5, 2), xp)
