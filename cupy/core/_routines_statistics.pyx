@@ -268,7 +268,7 @@ cdef ndarray _var(
     items = 1
     for ax in axis:
         items *= shape[ax]
-    alpha = 1. / max(items - ddof, 0)
+    alpha = 1. / max(items - ddof, 1)
     arrmean = a.mean(axis=axis, dtype=dtype, out=None, keepdims=True)
     if out is None:
         return _var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
