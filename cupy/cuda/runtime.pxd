@@ -68,9 +68,6 @@ cpdef enum:
     CUDA_R_8U = 8  # 8 bit real as a signed integer
     CUDA_C_8U = 9  # 8 bit complex as a pair of signed integers
 
-    errorMemoryAllocation = 2
-    errorInvalidValue = 11
-
     cudaDevAttrMaxThreadsPerBlock = 1
     cudaDevAttrMaxBlockDimX = 2
     cudaDevAttrMaxBlockDimY = 3
@@ -172,6 +169,16 @@ cpdef enum:
     cudaDevAttrPageableMemoryAccessUsesHostPageTables = 100
     cudaDevAttrDirectManagedMemAccessFromHost = 101
 
+
+###############################################################################
+# Error codes
+###############################################################################
+
+cdef extern from '../cuda/cupy_cuda.h':  # thru parent to import in core
+    int cudaErrorMemoryAllocation
+    int cudaErrorInvalidValue
+
+
 ###############################################################################
 # Error handling
 ###############################################################################
@@ -208,6 +215,8 @@ cpdef deviceEnablePeerAccess(int peerDevice)
 cpdef intptr_t malloc(size_t size) except? 0
 cpdef intptr_t mallocManaged(size_t size, unsigned int flags=*) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
+cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
+cpdef hostUnregister(intptr_t ptr)
 cpdef free(intptr_t ptr)
 cpdef freeHost(intptr_t ptr)
 cpdef memGetInfo()

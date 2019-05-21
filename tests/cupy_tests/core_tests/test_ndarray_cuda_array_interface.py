@@ -17,7 +17,7 @@ class DummyObjectWithCudaArrayInterface(object):
             'strides': self.a.strides,
             'typestr': self.a.dtype.str,
             'descr': self.a.dtype.descr,
-            'data': (self.a.data.mem.ptr, False),
+            'data': (self.a.data.ptr, False),
             'version': 0,
         }
         return desc
@@ -124,3 +124,41 @@ class TestReductionKernel(unittest.TestCase):
 
     def test_shape_with_strides(self):
         self.check_int8_sum((2 ** 10, 16), trans=True)
+
+
+@testing.parameterize(
+    {'shape': (10,), 'slices': (slice(0, None),)},
+    {'shape': (10,), 'slices': (slice(2, None),)},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(0, None))},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(2, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(0, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
+)
+@testing.gpu
+class TestSlicingMemoryPointer(unittest.TestCase):
+
+    @testing.for_all_dtypes_combination(names=['dtype'])
+    @testing.for_orders('CF')
+    def test_shape_with_strides(self, dtype, order):
+        x = cupy.zeros(self.shape, dtype=dtype, order=order)
+
+        start = [s.start for s in self.slices]
+        itemsize = cupy.dtype(dtype).itemsize
+        dimsize = [s * itemsize for s in start]
+        if len(self.shape) == 1:
+            offset = start[0] * itemsize
+        else:
+            if order == 'C':
+                offset = self.shape[0] * dimsize[0] + dimsize[1]
+            else:
+                offset = self.shape[0] * dimsize[1] + dimsize[0]
+
+        cai_ptr, _ = x.__cuda_array_interface__['data']
+        slice_cai_ptr, _ = x[self.slices].__cuda_array_interface__['data']
+        cupy_data_ptr = x.data.ptr
+        sliced_cupy_data_ptr = x[self.slices].data.ptr
+
+        assert cai_ptr == cupy_data_ptr
+        assert slice_cai_ptr == sliced_cupy_data_ptr
+        assert slice_cai_ptr == cai_ptr+offset

@@ -228,6 +228,16 @@ class TestFromData(unittest.TestCase):
         b = cupy.ascontiguousarray(a)
         assert a is b
 
+    @testing.numpy_cupy_array_equal()
+    def test_asarray_cuda_array_zero_dim(self, xp):
+        a = xp.ones(())
+        return xp.ascontiguousarray(a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_asarray_cuda_array_zero_dim_dtype(self, xp):
+        a = xp.ones((), dtype=numpy.float64)
+        return xp.ascontiguousarray(a, dtype=numpy.int64)
+
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -253,6 +263,19 @@ class TestFromData(unittest.TestCase):
         a = xp.zeros((2, 3, 4), order=order)
         b = xp.copy(a)
         return (b.flags.c_contiguous, b.flags.f_contiguous)
+
+    @testing.numpy_cupy_array_equal()
+    def test_asfortranarray_cuda_array_zero_dim(self, xp):
+        a = xp.ones(())
+        return xp.asfortranarray(a)
+
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'],
+                                        no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_asfortranarray_cuda_array_zero_dim_dtype(
+            self, xp, dtype_a, dtype_b):
+        a = xp.ones((), dtype=dtype_a)
+        return xp.asfortranarray(a, dtype=dtype_b)
 
 
 class DummyObjectWithCudaArrayInterface(object):

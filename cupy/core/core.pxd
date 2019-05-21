@@ -94,7 +94,11 @@ cdef class Indexer:
     cdef CPointer get_pointer(self)
 
 
+cpdef ndarray _internal_ascontiguousarray(ndarray a)
+cpdef ndarray _internal_asfortranarray(ndarray a)
 cpdef ndarray ascontiguousarray(ndarray a, dtype=*)
+cpdef ndarray asfortranarray(ndarray a, dtype=*)
+
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*)
 

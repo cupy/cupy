@@ -3,6 +3,7 @@ import unittest
 import numpy
 
 import cupy
+
 try:
     import cupy.cuda.cudnn as libcudnn
     cudnn_enabled = True
@@ -14,6 +15,10 @@ try:
     coef_modes = [
         libcudnn.CUDNN_ACTIVATION_CLIPPED_RELU,
     ]
+    layouts = [
+        libcudnn.CUDNN_TENSOR_NCHW,
+        libcudnn.CUDNN_TENSOR_NHWC,
+    ]
     if libcudnn.getVersion() >= 6000:
         coef_modes.append(libcudnn.CUDNN_ACTIVATION_ELU)
 
@@ -22,6 +27,8 @@ except ImportError:
     cudnn_enabled = False
     modes = []
     coef_modes = []
+    layouts = []
+
 from cupy import testing
 
 
@@ -120,6 +127,7 @@ class TestCudnnDropout(unittest.TestCase):
     'max_workspace_size': [0, 2 ** 22],
     'auto_tune': [True, False],
     'bias': [True, False],
+    'layout': layouts,
 })))
 @unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
 class TestConvolutionForward(unittest.TestCase):
@@ -128,8 +136,13 @@ class TestConvolutionForward(unittest.TestCase):
         ndim = self.ndim
         dtype = self.dtype
         batches = 2
-        in_channels_a_group = 3
-        out_channels_a_group = 2
+        if self.layout == libcudnn.CUDNN_TENSOR_NHWC:
+            # channel size must be multiple of 4
+            in_channels_a_group = 4
+            out_channels_a_group = 4
+        else:
+            in_channels_a_group = 3
+            out_channels_a_group = 2
         in_channels = in_channels_a_group * self.groups
         out_channels = out_channels_a_group * self.groups
         ksize = 3
@@ -138,15 +151,23 @@ class TestConvolutionForward(unittest.TestCase):
         self.strides = (stride,) * ndim
         self.pads = (pad,) * ndim
         self.dilations = (self.dilate,) * ndim
-        self.x = cupy.zeros(
-            (batches, in_channels) + (ksize,) * ndim, dtype)
-        self.W = cupy.zeros(
-            (out_channels, in_channels_a_group) + (ksize,) * ndim, dtype)
+        if self.layout == libcudnn.CUDNN_TENSOR_NHWC:
+            self.x = cupy.zeros(
+                (batches,) + (ksize,) * ndim + (in_channels,), dtype)
+            self.W = cupy.zeros(
+                (out_channels,) + (ksize,) * ndim + (in_channels_a_group,),
+                dtype)
+            self.y = cupy.ones(
+                (batches,) + (2,) * ndim + (out_channels,), dtype)
+        else:
+            self.x = cupy.zeros(
+                (batches, in_channels) + (ksize,) * ndim, dtype)
+            self.W = cupy.zeros(
+                (out_channels, in_channels_a_group) + (ksize,) * ndim, dtype)
+            self.y = cupy.ones((batches, out_channels) + (2,) * ndim, dtype)
         self.b = None
         if self.bias:
             self.b = cupy.zeros((out_channels,), dtype)
-
-        self.y = cupy.ones((batches, out_channels) + (2,) * ndim, dtype)
 
         version = libcudnn.getVersion()
         self.err = None
@@ -165,9 +186,18 @@ class TestConvolutionForward(unittest.TestCase):
         cudnn.convolution_forward(
             self.x, self.W, self.b, self.y,
             self.pads, self.strides, self.dilations, self.groups,
-            auto_tune=self.auto_tune, tensor_core=self.tensor_core)
+            auto_tune=self.auto_tune, tensor_core=self.tensor_core,
+            d_layout=self.layout, w_layout=self.layout)
 
     def test_call(self):
+        if self.layout == libcudnn.CUDNN_TENSOR_NHWC:
+            version = libcudnn.getVersion()
+            if self.groups > 1:
+                return unittest.SkipTest()
+            if self.dilate > 1 and version < 7300:
+                return unittest.SkipTest()
+            if self.dtype is numpy.float64 and version < 7100:
+                return unittest.SkipTest()
         if self.err is None:
             self.call()
             self.assertTrue((self.y == 0).all())

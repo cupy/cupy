@@ -36,7 +36,7 @@ def get_cuda_path():
 
     # Use a magic word to represent the cache not filled because None is a
     # valid return value.
-    if _cuda_path is not 'NOT_INITIALIZED':
+    if _cuda_path != 'NOT_INITIALIZED':
         return _cuda_path
 
     nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
