@@ -193,6 +193,7 @@ class TestArrayCopyAndView(unittest.TestCase):
         b = cupy.empty(100, dtype=a.dtype)
         b[:] = a
 
+
 @testing.parameterize(
     {'src_order': 'C'},
     {'src_order': 'F'},
