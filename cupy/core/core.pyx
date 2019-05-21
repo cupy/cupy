@@ -1183,7 +1183,7 @@ cdef class ndarray:
             array([9998., 9999.])
 
         """
-        if (slices == slice(None, None, None) and
+        if (util.ENABLE_SLICE_COPY and slices == slice(None, None, None) and
                 isinstance(value, numpy.ndarray)):
             if (self.dtype == value.dtype and
                     self.shape == value.shape):
