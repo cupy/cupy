@@ -400,6 +400,21 @@ _divide = create_ufunc(
     ''')
 
 
+cdef _power_preamble = '''
+template <typename T>
+inline __device__ T _integral_power(T in0, T in1) {
+    T out0 = 1;
+    while (in1 > 0) {
+        if (in1 & 1) {
+            out0 *= in0;
+        }
+        in0 *= in0;
+        in1 >>= 1;
+    }
+    return out0;
+}
+'''
+
 _power = create_ufunc(
     'cupy_power',
     ('??->b', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
@@ -409,7 +424,8 @@ _power = create_ufunc(
      ('dd->d', 'out0 = pow(in0, in1)'),
      ('FF->F', 'out0 = pow(in0, in1)'),
      ('DD->D', 'out0 = pow(in0, in1)')),
-    'out0 = rint(pow((double)in0, (double)in1))',
+    'out0 = _integral_power(in0, in1)',
+    preamble=_power_preamble,
     doc='''Computes ``x1 ** x2`` elementwise.
 
     .. seealso:: :data:`numpy.power`
