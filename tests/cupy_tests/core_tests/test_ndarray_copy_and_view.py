@@ -4,6 +4,7 @@ import numpy
 
 import cupy
 from cupy import testing
+from cupy import util
 
 
 def astype_without_warning(x, dtype, *args, **kwargs):
@@ -167,6 +168,7 @@ class TestArrayCopyAndView(unittest.TestCase):
         a = testing.shaped_arange((3, 4, 5), xp, dtype)
         return a.diagonal(-1, 2, 0)
 
+    @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
     @testing.for_orders('CF')
     @testing.for_dtypes([numpy.int16, numpy.int64,
                          numpy.float16, numpy.float64])
@@ -177,18 +179,19 @@ class TestArrayCopyAndView(unittest.TestCase):
         b[:] = a
         return b
 
+    @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_isinstance_numpy_copy_wrong_dtype(self, xp):
         a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
         b = cupy.empty(a.shape, dtype=numpy.int32)
         b[:] = a
 
+    @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_isinstance_numpy_copy_wrong_shape(self, xp):
         a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
         b = cupy.empty(100, dtype=a.dtype)
         b[:] = a
-
 
 @testing.parameterize(
     {'src_order': 'C'},
@@ -196,6 +199,7 @@ class TestArrayCopyAndView(unittest.TestCase):
 )
 @testing.gpu
 class TestNumPyArrayCopyView(unittest.TestCase):
+    @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
     @testing.for_orders('CF')
     @testing.for_dtypes([numpy.int16, numpy.int64,
                          numpy.float16, numpy.float64])
