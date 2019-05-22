@@ -163,7 +163,22 @@ MODULES = [
             'cudart',
         ],
         'check_method': build.check_cuda_version,
-    }
+    },
+    {
+        'name': 'cutensor',
+        'file': [
+            'cupy.cuda.cutensor',
+        ],
+        'include': [
+            'cutensor.h',
+        ],
+        'libraries': [
+            'cutensor',
+            'cublas',
+        ],
+        'check_method': build.check_cutensor_version,
+        'version_method': build.get_cutensor_version,
+    },
 ]
 
 
