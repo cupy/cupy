@@ -398,6 +398,7 @@ cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes):
 
 cpdef array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
     cdef Py_ssize_t i, ndim, size, each_size, index, prev, offset, stride
+    cdef Py_ssize_t num_large
     cdef vector.vector[Py_ssize_t] shape
 
     ndim = ary.ndim
@@ -408,8 +409,9 @@ cpdef array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
     size = ary._shape[axis]
 
     if numpy.isscalar(indices_or_sections):
-        each_size = (size - 1) // indices_or_sections + 1
-        indices = [i * each_size
+        each_size = (size - 1) // indices_or_sections
+        num_large = (size - 1) % indices_or_sections + 1
+        indices = [i * each_size + min(i, num_large)
                    for i in range(1, indices_or_sections)]
     else:
         indices = [i if i >= 0 else size + i for i in indices_or_sections]

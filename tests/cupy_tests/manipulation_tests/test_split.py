@@ -1,4 +1,3 @@
-import itertools
 import unittest
 
 from cupy import testing
@@ -27,6 +26,11 @@ class TestSplit(unittest.TestCase):
     def test_array_split_empty_sections(self, xp):
         a = testing.shaped_arange((3, 11), xp)
         return xp.array_split(a, [])
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_array_split_non_divisible(self, xp):
+        a = testing.shaped_arange((5, 3), xp)
+        return xp.array_split(a, 4)
 
     @testing.numpy_cupy_array_list_equal()
     def test_dsplit(self, xp):
