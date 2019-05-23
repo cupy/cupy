@@ -18,8 +18,27 @@ class TestFromData(unittest.TestCase):
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_array_from_empty_list(self, xp, dtype, order):
+        return xp.array([], dtype=dtype, order=order)
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_array_from_nested_empty_list(self, xp, dtype, order):
+        return xp.array([[], []], dtype=dtype, order=order)
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_array_from_numpy(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        return xp.array(a, order=order)
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_array_from_numpy_scalar(self, xp, dtype, order):
+        a = numpy.array(2, dtype=dtype)
         return xp.array(a, order=order)
 
     @testing.for_orders('CFAK')
@@ -29,6 +48,107 @@ class TestFromData(unittest.TestCase):
     def test_array_from_numpy_broad_cast(self, xp, dtype, order):
         a = testing.shaped_arange((2, 1, 4), numpy, dtype)
         a = numpy.broadcast_to(a, (2, 3, 4))
+        return xp.array(a, order=order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_array_from_list_of_numpy(self, xp, dtype, src_order, dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of numpy.ndarray>)
+        a = [
+            testing.shaped_arange((3, 4), numpy, dtype, src_order) + (12 * i)
+            for i in range(2)]
+        return xp.array(a, order=dst_order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_array_from_list_of_numpy_view(self, xp, dtype, src_order,
+                                           dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of numpy.ndarray>)
+
+        # create a list of view of ndarrays
+        a = [
+            (testing.shaped_arange((3, 8), numpy,
+                                   dtype, src_order) + (24 * i))[:, ::2]
+            for i in range(2)]
+        return xp.array(a, order=dst_order)
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_array_from_list_of_numpy_scalar(self, xp, dtype, order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of numpy.ndarray>)
+        a = [numpy.array(i, dtype=dtype) for i in range(2)]
+        return xp.array(a, order=order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_array_from_nested_list_of_numpy(self, xp, dtype, src_order,
+                                             dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of numpy.ndarray>)
+        a = [
+            [testing.shaped_arange(
+                (3, 4), numpy, dtype, src_order) + (12 * i)]
+            for i in range(2)]
+        return xp.array(a, order=dst_order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_array_from_list_of_cupy(self, xp, dtype, src_order, dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of cupy.ndarray>)
+        a = [
+            testing.shaped_arange((3, 4), xp, dtype, src_order) + (12 * i)
+            for i in range(2)]
+        return xp.array(a, order=dst_order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_array_from_list_of_cupy_view(self, xp, dtype, src_order,
+                                          dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of cupy.ndarray>)
+
+        # create a list of view of ndarrays
+        a = [
+            (testing.shaped_arange((3, 8), xp,
+                                   dtype, src_order) + (24 * i))[:, ::2]
+            for i in range(2)]
+        return xp.array(a, order=dst_order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_array_from_nested_list_of_cupy(self, xp, dtype, src_order,
+                                            dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of cupy.ndarray>)
+        a = [
+            [testing.shaped_arange((3, 4), xp, dtype, src_order) + (12 * i)]
+            for i in range(2)]
+        return xp.array(a, order=dst_order)
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_array_from_list_of_cupy_scalar(self, xp, dtype, order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of cupy.ndarray>)
+        a = [xp.array(i, dtype=dtype) for i in range(2)]
         return xp.array(a, order=order)
 
     @testing.for_orders('CFAK')
@@ -57,10 +177,76 @@ class TestFromData(unittest.TestCase):
         return xp.array(a, dtype=dtype2, order=order)
 
     @testing.for_orders('CFAK')
+    @testing.for_all_dtypes(name='dtype1', no_complex=True)
+    @testing.for_all_dtypes(name='dtype2')
+    @testing.numpy_cupy_array_equal()
+    def test_array_copy_with_dtype_char(self, xp, dtype1, dtype2, order):
+        # complex to real makes no sense
+        a = testing.shaped_arange((2, 3, 4), xp, dtype1)
+        return xp.array(a, dtype=numpy.dtype(dtype2).char, order=order)
+
+    @testing.for_orders('CFAK')
     @testing.numpy_cupy_array_equal()
     def test_array_copy_with_dtype_being_none(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
         return xp.array(a, dtype=None, order=order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes(name='dtype1', no_complex=True)
+    @testing.for_all_dtypes(name='dtype2')
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_array_copy_list_of_numpy_with_dtype(self, xp, dtype1, dtype2,
+                                                 src_order, dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of numpy.ndarray>)
+        a = [
+            testing.shaped_arange((3, 4), numpy, dtype1, src_order) + (12 * i)
+            for i in range(2)]
+        return xp.array(a, dtype=dtype2, order=dst_order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes(name='dtype1', no_complex=True)
+    @testing.for_all_dtypes(name='dtype2')
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_array_copy_list_of_numpy_with_dtype_char(self, xp, dtype1,
+                                                      dtype2, src_order,
+                                                      dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of numpy.ndarray>)
+        a = [
+            testing.shaped_arange((3, 4), numpy, dtype1, src_order) + (12 * i)
+            for i in range(2)]
+        return xp.array(a, dtype=numpy.dtype(dtype2).char, order=dst_order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes(name='dtype1', no_complex=True)
+    @testing.for_all_dtypes(name='dtype2')
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_array_copy_list_of_cupy_with_dtype(self, xp, dtype1, dtype2,
+                                                src_order, dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of cupy.ndarray>)
+        a = [
+            testing.shaped_arange((3, 4), xp, dtype1, src_order) + (12 * i)
+            for i in range(2)]
+        return xp.array(a, dtype=dtype2, order=dst_order)
+
+    @testing.for_orders('CFAK', name='src_order')
+    @testing.for_orders('CFAK', name='dst_order')
+    @testing.for_all_dtypes(name='dtype1', no_complex=True)
+    @testing.for_all_dtypes(name='dtype2')
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_array_copy_list_of_cupy_with_dtype_char(self, xp, dtype1, dtype2,
+                                                     src_order, dst_order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of cupy.ndarray>)
+        a = [
+            testing.shaped_arange((3, 4), xp, dtype1, src_order) + (12 * i)
+            for i in range(2)]
+        return xp.array(a, dtype=numpy.dtype(dtype2).char, order=dst_order)
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
