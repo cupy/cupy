@@ -400,12 +400,12 @@ _divide = create_ufunc(
     ''')
 
 
-# `_integral_power` should return somewhat appropriate values for negative
+# `integral_power` should return somewhat appropriate values for negative
 # integral powers (for which NumPy would raise errors). Hence the branches in
 # the beginning. This behavior is not officially documented and could change.
 cdef _power_preamble = '''
 template <typename T>
-inline __device__ T _integral_power(T in0, T in1) {
+inline __device__ T integral_power(T in0, T in1) {
     if (in1 < 0) {
         switch (in0) {
             case -1:
@@ -437,7 +437,7 @@ _power = create_ufunc(
      ('dd->d', 'out0 = pow(in0, in1)'),
      ('FF->F', 'out0 = pow(in0, in1)'),
      ('DD->D', 'out0 = pow(in0, in1)')),
-    'out0 = _integral_power(in0, in1)',
+    'out0 = integral_power(in0, in1)',
     preamble=_power_preamble,
     doc='''Computes ``x1 ** x2`` elementwise.
 
