@@ -4,6 +4,8 @@ from cupy.core._kernel import ReductionKernel
 from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray
 
+from numpy import nan
+
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
@@ -268,7 +270,13 @@ cdef ndarray _var(
     items = 1
     for ax in axis:
         items *= shape[ax]
-    alpha = 1. / max(items - ddof, 1)
+
+    # Make alpha NaN when array is empty, mimics NumPy behavior, resulting in
+    # NaN. See https://github.com/numpy/numpy/issues/13582 for an explanation
+    # on why NaN is the result.
+    div = max(items - ddof, 0)
+    alpha = 1. / div if div != 0 else nan
+
     arrmean = a.mean(axis=axis, dtype=dtype, out=None, keepdims=True)
     if out is None:
         return _var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
