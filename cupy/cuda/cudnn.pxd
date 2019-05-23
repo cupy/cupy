@@ -147,6 +147,20 @@ cpdef enum:
 
     CUDNN_SAMPLER_BILINEAR = 0
 
+    CUDNN_MH_ATTN_Q_WEIGHTS = 0
+    CUDNN_MH_ATTN_K_WEIGHTS = 1
+    CUDNN_MH_ATTN_V_WEIGHTS = 2
+    CUDNN_MH_ATTN_O_WEIGHTS = 3
+
+    CUDNN_SEQDATA_TIME_DIM = 0
+    CUDNN_SEQDATA_BATCH_DIM = 1
+    CUDNN_SEQDATA_BEAM_DIM = 2
+    CUDNN_SEQDATA_VECT_DIM = 3
+    CUDNN_SEQDATA_DIM_COUNT = 4
+
+    CUDNN_WGRAD_MODE_ADD = 0
+    CUDNN_WGRAD_MODE_SET = 1
+
     CUDNN_STATUS_SUCCESS = 0
     CUDNN_STATUS_RUNTIME_PREREQUISITE_MISSING = 11
     CUDNN_STATUS_RUNTIME_IN_PROGRESS = 12
@@ -667,3 +681,86 @@ cpdef spatialTfSamplerBackward(
     size_t handle, size_t stDesc, size_t alpha, size_t xDesc,
     size_t x, size_t beta, size_t dxDesc, size_t dx, size_t alphaDgrid,
     size_t dyDesc, size_t dy, size_t grid, size_t betaDgrid, size_t dgrid)
+
+
+###############################################################################
+# Attention
+###############################################################################
+
+cpdef size_t createAttnDescriptor() except? 0
+cpdef destroyAttnDescriptor(size_t attnDesc)
+cpdef setAttnDescriptor(
+    size_t attnDesc, size_t queryMap, int nHeads, double smScaler,
+    size_t dataType, size_t computePrec, size_t mathType,
+    size_t attnDropoutDesc, size_t postDropoutDesc,
+    int qSize, int kSize, int vSize,
+    int qProjSize, int kProjSize, int vProjSize, int oProjSize,
+    int qoMaxSeqLength, int kvMaxSeqLength, int maxBatchSize, int maxBeamSize)
+cpdef getAttnDescriptor(
+    size_t attnDesc, size_t queryMap, int nHeads, double smScaler,
+    size_t dataType, size_t computePrec, size_t mathType,
+    size_t attnDropoutDesc, size_t postDropoutDesc,
+    int qSize, int kSize, int vSize,
+    int qProjSize, int kProjSize, int vProjSize, int oProjSize,
+    int qoMaxSeqLength, int kvMaxSeqLength,
+    int maxBatchSize, int maxBeamSize)
+cpdef getMultiHeadAttnBuffers(
+    size_t handle, size_t attnDesc,
+    size_t weightSizeInBytes,
+    size_t workSpaceSizeInBytes,
+    size_t reserveSpaceSizeInBytes)
+cpdef getMultiHeadAttnWeights(
+    size_t handle, size_t attnDesc,
+    size_t wKind,
+    size_t weightSizeInBytes, size_t w,
+    size_t wDesc, size_t wAddr)
+cpdef multiHeadAttnForward(
+    size_t handle, size_t attnDesc, int currIdx,
+    int loWinIdx, int hiWinIdx,
+    int seqLengthArrayQRO, int seqLengthArrayKV,
+    size_t qDesc, size_t queries,
+    size_t residuals,
+    size_t kDesc, size_t keys,
+    size_t vDesc, size_t values,
+    size_t oDesc, size_t out,
+    size_t weightSizeInBytes, size_t w,
+    size_t workSpaceSizeInBytes, size_t workSpace,
+    size_t reserveSpaceSizeInBytes, size_t reserveSpace)
+cpdef multiHeadAttnBackwardData(
+    size_t handle, size_t attnDesc,
+    int loWinIdx, int hiWinIdx,
+    int seqLengthArrayDQDO, int segLengthArrayDKDV,
+    size_t doDesc, size_t dout,
+    size_t dqDesc, size_t dqueries, size_t queries,
+    size_t dkDesc, size_t dkeys, size_t keys,
+    size_t dvDesc, size_t dvalues, size_t values,
+    size_t weightSizeInBytes, size_t w,
+    size_t workSpacesizeInBytes, size_t workSpace,
+    size_t reserveSpaceSizeInBytes, size_t reserveSpace)
+cpdef multiHeadAttnBackwardWeights(
+    size_t handle, size_t attnDesc, size_t addGrad,
+    size_t qDesc, size_t queries,
+    size_t kDesc, size_t keys,
+    size_t vDesc, size_t values,
+    size_t doDesc, size_t dout,
+    size_t weightSizeInBytes, size_t w, size_t dw,
+    size_t workSpaceSizeInBytes, size_t workSpace,
+    size_t reserveSpaceSizeInBytes, size_t reserveSpace)
+
+
+###############################################################################
+# Sequential data
+###############################################################################
+
+cpdef size_t createSeqDataDescriptor() except? 0
+cpdef destroySeqDataDescriptor(size_t seqDataDesc)
+cpdef setSeqDataDescriptor(
+    size_t seqDataDesc, size_t dataType,
+    int nbDims, size_t dimA, size_t axes,
+    size_t seqLengthArraySize, size_t seqLengthArray, size_t paddingFill)
+cpdef getSeqDataDescriptor(
+    size_t seqDataDesc, size_t dataType,
+    int nbDims, int nbDimsRequested, size_t dimA, size_t axes,
+    size_t seqLengthArraySize,
+    size_t seqLengthSizeRequested,
+    size_t seqLengthArray, size_t paddingFill)
