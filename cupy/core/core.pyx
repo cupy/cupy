@@ -1200,8 +1200,8 @@ cdef class ndarray:
                     self.data.copy_from_host_async(ptr, self.nbytes)
             else:
                 raise ValueError(
-                    "copying a numpy.ndarray to a cupy.ndarray by empty slice "
-                    "assignment must ensure arrays exact same shape and dtype")
+                    'copying a numpy.ndarray to a cupy.ndarray by empty slice '
+                    'assignment must ensure arrays have same shape and dtype')
         else:
             _indexing._ndarray_setitem(self, slices, value)
 
