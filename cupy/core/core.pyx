@@ -1183,7 +1183,27 @@ cdef class ndarray:
             array([9998., 9999.])
 
         """
-        _indexing._ndarray_setitem(self, slices, value)
+        if (util.ENABLE_SLICE_COPY and slices == slice(None, None, None) and
+                isinstance(value, numpy.ndarray)):
+            if (self.dtype == value.dtype and
+                    self.shape == value.shape):
+                if self.strides == value.strides:
+                    ptr = ctypes.c_void_p(value.__array_interface__['data'][0])
+                else:
+                    order = 'F' if self.flags.f_contiguous else 'C'
+                    tmp = value.ravel(order)
+                    ptr = ctypes.c_void_p(tmp.__array_interface__['data'][0])
+                stream_ptr = stream_module.get_current_stream_ptr()
+                if stream_ptr == 0:
+                    self.data.copy_from_host(ptr, self.nbytes)
+                else:
+                    self.data.copy_from_host_async(ptr, self.nbytes)
+            else:
+                raise ValueError(
+                    'copying a numpy.ndarray to a cupy.ndarray by empty slice '
+                    'assignment must ensure arrays have same shape and dtype')
+        else:
+            _indexing._ndarray_setitem(self, slices, value)
 
     def scatter_add(self, slices, value):
         """Adds given values to specified elements of an array.
