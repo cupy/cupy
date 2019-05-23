@@ -41,19 +41,19 @@ extern "C" {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensroStatus_t cutensorElementwiseTrinary(...) {
+    cutensorStatus_t cutensorElementwiseTrinary(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensroStatus_t cutensorElementwiseBinary(...) {
+    cutensorStatus_t cutensorElementwiseBinary(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensroStatus_t cutensorContraction(...) {
+    cutensorStatus_t cutensorContraction(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensroStatus_t cutensorContractionGetWorkspace(...) {
+    cutensorStatus_t cutensorContractionGetWorkspace(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
