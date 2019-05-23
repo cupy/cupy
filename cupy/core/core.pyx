@@ -1779,8 +1779,9 @@ cdef tuple _get_concat_shape(object obj):
     #    Returns None otherwise.
     # 2. type of the first item in the object
     # 3. dtype if the object is an array
-    return (_get_concat_shape_impl(obj) if isinstance(obj, (list, tuple))
-            else (None, None, None))
+    if isinstance(obj, (list, tuple)):
+        return _get_concat_shape_impl(obj)
+    return (None, None, None)
 
 
 cdef tuple _get_concat_shape_impl(object obj):
@@ -1788,7 +1789,7 @@ cdef tuple _get_concat_shape_impl(object obj):
     if issubclass(obj_type, (numpy.ndarray, ndarray)):
         # obj.shape is () when obj.ndim == 0
         return (obj.shape, obj_type, obj.dtype)
-    elif isinstance(obj, (list, tuple)):
+    if isinstance(obj, (list, tuple)):
         shape = None
         typ = None
         dtype = None
@@ -1804,17 +1805,19 @@ cdef tuple _get_concat_shape_impl(object obj):
 
             # `elem` is not concatable or the shape and dtype does not match
             # with siblings.
-            if (elem_shape is None or
-                    shape != elem_shape or
-                    dtype != elem_dtype):
+            if (elem_shape is None
+                    or shape != elem_shape
+                    or dtype != elem_dtype):
                 return (None, obj_type, None)
 
+        if shape is None:
+            shape = ()
         return (
-            (len(obj),) + shape if shape is not None else (len(obj),),
+            (len(obj),) + shape,
             typ,
             dtype)
-    else:  # scalar or object
-        return (None, obj_type, None)
+    # scalar or object
+    return (None, obj_type, None)
 
 
 cdef list _flatten_list(object obj):
@@ -1823,8 +1826,7 @@ cdef list _flatten_list(object obj):
         for elem in obj:
             ret += _flatten_list(elem)
         return ret
-    else:
-        return [obj]
+    return [obj]
 
 
 cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
@@ -1855,14 +1857,17 @@ cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
         a.data.copy_from_host(
-            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
+            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]),
+            nbytes)
 
     return a
 
 
 cdef ndarray _send_numpy_array_list_to_gpu(
-    list arrays, src_dtype, dst_dtype, const vector.vector[Py_ssize_t]& shape,
+        list arrays, src_dtype, dst_dtype,
+        const vector.vector[Py_ssize_t]& shape,
         order, Py_ssize_t ndmin):
+
     a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
     if a_dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_dtype)
@@ -1876,11 +1881,15 @@ cdef ndarray _send_numpy_array_list_to_gpu(
     cdef size_t offset, length
     if mem is not None:
         # write concatenated arrays to the pinned memory directly
-        src_cpu = numpy.frombuffer(mem, a_dtype, itemcount).reshape(
-            shape, order=order)
+        src_cpu = (
+            numpy.frombuffer(mem, a_dtype, itemcount)
+            .reshape(shape, order=order))
         _concatenate_numpy_array(
-            [numpy.expand_dims(e, 0) for e in arrays], 0,
-            get_dtype(src_dtype), a_dtype, src_cpu)
+            [numpy.expand_dims(e, 0) for e in arrays],
+            0,
+            get_dtype(src_dtype),
+            a_dtype,
+            src_cpu)
         a = ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
@@ -1891,7 +1900,8 @@ cdef ndarray _send_numpy_array_list_to_gpu(
                             ndmin=ndmin)
         a = ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host(
-            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
+            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]),
+            nbytes)
 
     return a
 
@@ -1903,8 +1913,8 @@ cdef bint _numpy_concatenate_has_out_argument = (
 cdef inline _concatenate_numpy_array(arrays, axis, src_dtype, dst_dtype, out):
     # type(*_dtype) must be numpy.dtype
 
-    if (_numpy_concatenate_has_out_argument and
-            src_dtype.kind == dst_dtype.kind):
+    if (_numpy_concatenate_has_out_argument
+            and src_dtype.kind == dst_dtype.kind):
         # concatenate only accepts same_kind casting
         numpy.concatenate(arrays, axis, out)
     else:
