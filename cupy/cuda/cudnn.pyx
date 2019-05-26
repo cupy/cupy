@@ -105,7 +105,7 @@ cdef extern from 'cupy_cudnn.h' nogil:
     ctypedef void* PersistentRNNPlan 'cudnnPersistentRNNPlan_t'
     ctypedef void* AttnDescriptor 'cudnnAttnDescriptor_t'
     ctypedef void* MultiHeadAttnWeightKind 'cudnnMultiHeadAttnWeightKind_t'
-    ctypedef void* SeqDataDescriptor 'cudnnSeqDataDescriptor'
+    ctypedef void* SeqDataDescriptor 'cudnnSeqDataDescriptor_t'
     ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
     ctypedef void* OpTensorDescriptor 'cudnnOpTensorDescriptor_t'
     ctypedef void* ReduceTensorDescriptor 'cudnnReduceTensorDescriptor_t'
@@ -762,7 +762,7 @@ cdef extern from 'cupy_cudnn.h' nogil:
     int cudnnCreateSeqDataDescriptor(
         SeqDataDescriptor* seqDataDesc)
     int cudnnDestroySeqDataDescriptor(
-        SeqDataDescriptor* seqDataDesc)
+        SeqDataDescriptor seqDataDesc)
     int cudnnSetSeqDataDescriptor(
         SeqDataDescriptor seqDataDesc,
         DataType dataType,
@@ -2444,25 +2444,29 @@ cpdef setAttnDescriptor(
     status = cudnnSetAttnDescriptor(
         <AttnDescriptor>attnDesc, <AttnQueryMap>queryMap,
         nHeads, smScaler,
-        <DataType>dataType, <DataType>computePrec, <DataType>mathType,
+        <DataType>dataType, <DataType>computePrec, <MathType>mathType,
         <DropoutDescriptor>attnDropoutDesc, <DropoutDescriptor>postDropoutDesc,
-        qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize,
-        qoMaxSeqLength, kvMaxSeqLength, maxBatchSize, maxBeamSize)
+        qSize, kSize, vSize,
+        qProjSize, kProjSize, vProjSize,
+        oProjSize,
+        qoMaxSeqLength, kvMaxSeqLength,
+        maxBatchSize, maxBeamSize)
     check_status(status)
 
 
 cpdef getAttnDescriptor(
-        size_t attnDesc, size_t queryMap, int nHeads, double smScaler,
+        size_t attnDesc, size_t queryMap, size_t nHeads, size_t smScaler,
         size_t dataType, size_t computePrec, size_t mathType,
         size_t attnDropoutDesc, size_t postDropoutDesc,
-        int qSize, int kSize, int vSize,
-        int qProjSize, int kProjSize, int vProjSize, int oProjSize,
-        int qoMaxSeqLength, int kvMaxSeqLength,
-        int maxBatchSize, int maxBeamSize):
+        size_t qSize, size_t kSize, size_t vSize,
+        size_t qProjSize, size_t kProjSize, size_t vProjSize,
+        size_t oProjSize,
+        size_t qoMaxSeqLength, size_t kvMaxSeqLength,
+        size_t maxBatchSize, size_t maxBeamSize):
     status = cudnnGetAttnDescriptor(
         <AttnDescriptor>attnDesc, <AttnQueryMap*>queryMap,
         <int*>nHeads, <double*>smScaler,
-        <DataType*>dataType, <DataType*>computePrec, <DataType*>mathType,
+        <DataType*>dataType, <DataType*>computePrec, <MathType*>mathType,
         <DropoutDescriptor*>attnDropoutDesc,
         <DropoutDescriptor*>postDropoutDesc,
         <int*>qSize, <int*>kSize, <int*>vSize,
@@ -2478,7 +2482,7 @@ cpdef getMultiHeadAttnBuffers(
         size_t workSpaceSizeInBytes,
         size_t reserveSpaceSizeInBytes):
     status = cudnnGetMultiHeadAttnBuffers(
-        <Handle> handle, <AttnDescriptor>attnDesc,
+        <Handle> handle, <const AttnDescriptor>attnDesc,
         <size_t*>weightSizeInBytes,
         <size_t*>workSpaceSizeInBytes,
         <size_t*>reserveSpaceSizeInBytes)
@@ -2491,7 +2495,7 @@ cpdef getMultiHeadAttnWeights(
         size_t weightSizeInBytes, size_t w,
         size_t wDesc, size_t wAddr):
     status = cudnnGetMultiHeadAttnWeights(
-        <Handle> handle, <AttnDescriptor>attnDesc,
+        <Handle> handle, <const AttnDescriptor>attnDesc,
         <MultiHeadAttnWeightKind>wKind, weightSizeInBytes,
         <const void*>w, <TensorDescriptor>wDesc, <void**>wAddr)
     check_status(status)
@@ -2499,8 +2503,8 @@ cpdef getMultiHeadAttnWeights(
 
 cpdef multiHeadAttnForward(
         size_t handle, size_t attnDesc, int currIdx,
-        int loWinIdx, int hiWinIdx,
-        int seqLengthArrayQRO, int seqLengthArrayKV,
+        size_t loWinIdx, size_t hiWinIdx,
+        size_t seqLengthArrayQRO, size_t seqLengthArrayKV,
         size_t qDesc, size_t queries,
         size_t residuals,
         size_t kDesc, size_t keys,
@@ -2519,7 +2523,7 @@ cpdef multiHeadAttnForward(
             <const void*>residuals,
             <const SeqDataDescriptor>kDesc, <const void*>keys,
             <const SeqDataDescriptor>vDesc, <const void*>values,
-            <const SeqDataDescriptor>oDesc, <const void*>out,
+            <const SeqDataDescriptor>oDesc, <void*>out,
             weightSizeInBytes, <const void*>w,
             workSpaceSizeInBytes, <void*>workSpace,
             reserveSpaceSizeInBytes, <void*>reserveSpace)
@@ -2528,8 +2532,8 @@ cpdef multiHeadAttnForward(
 
 cpdef multiHeadAttnBackwardData(
         size_t handle, size_t attnDesc,
-        int loWinIdx, int hiWinIdx,
-        int seqLengthArrayDQDO, int seqLengthArrayDKDV,
+        size_t loWinIdx, size_t hiWinIdx,
+        size_t seqLengthArrayDQDO, size_t seqLengthArrayDKDV,
         size_t doDesc, size_t dout,
         size_t dqDesc, size_t dqueries,size_t queries,
         size_t dkDesc, size_t dkeys,size_t keys,
@@ -2591,7 +2595,7 @@ cpdef size_t createSeqDataDescriptor() except? 0:
     return <size_t>status
 
 cpdef destroySeqDataDescriptor(size_t seqDataDesc):
-    status = cudnnDestroyDropoutDescriptor(<SeqDataDescriptor>seqDataDesc)
+    status = cudnnDestroySeqDataDescriptor(<SeqDataDescriptor>seqDataDesc)
     check_status(status)
 
 cpdef setSeqDataDescriptor(
@@ -2607,7 +2611,7 @@ cpdef setSeqDataDescriptor(
 
 cpdef getSeqDataDescriptor(
         size_t seqDataDesc, size_t dataType,
-        int nbDims, int nbDimsRequested, size_t dimA, size_t axes,
+        size_t nbDims, int nbDimsRequested, size_t dimA, size_t axes,
         size_t seqLengthArraySize,
         size_t seqLengthSizeRequested,
         size_t seqLengthArray, size_t paddingFill):

@@ -697,13 +697,13 @@ cpdef setAttnDescriptor(
     int qProjSize, int kProjSize, int vProjSize, int oProjSize,
     int qoMaxSeqLength, int kvMaxSeqLength, int maxBatchSize, int maxBeamSize)
 cpdef getAttnDescriptor(
-    size_t attnDesc, size_t queryMap, int nHeads, double smScaler,
+    size_t attnDesc, size_t queryMap, size_t nHeads, size_t smScaler,
     size_t dataType, size_t computePrec, size_t mathType,
     size_t attnDropoutDesc, size_t postDropoutDesc,
-    int qSize, int kSize, int vSize,
-    int qProjSize, int kProjSize, int vProjSize, int oProjSize,
-    int qoMaxSeqLength, int kvMaxSeqLength,
-    int maxBatchSize, int maxBeamSize)
+    size_t qSize, size_t kSize, size_t vSize,
+    size_t qProjSize, size_t kProjSize, size_t vProjSize, size_t oProjSize,
+    size_t qoMaxSeqLength, size_t kvMaxSeqLength,
+    size_t maxBatchSize, size_t maxBeamSize)
 cpdef getMultiHeadAttnBuffers(
     size_t handle, size_t attnDesc,
     size_t weightSizeInBytes,
@@ -716,8 +716,8 @@ cpdef getMultiHeadAttnWeights(
     size_t wDesc, size_t wAddr)
 cpdef multiHeadAttnForward(
     size_t handle, size_t attnDesc, int currIdx,
-    int loWinIdx, int hiWinIdx,
-    int seqLengthArrayQRO, int seqLengthArrayKV,
+    size_t loWinIdx, size_t hiWinIdx,
+    size_t seqLengthArrayQRO, size_t seqLengthArrayKV,
     size_t qDesc, size_t queries,
     size_t residuals,
     size_t kDesc, size_t keys,
@@ -728,8 +728,8 @@ cpdef multiHeadAttnForward(
     size_t reserveSpaceSizeInBytes, size_t reserveSpace)
 cpdef multiHeadAttnBackwardData(
     size_t handle, size_t attnDesc,
-    int loWinIdx, int hiWinIdx,
-    int seqLengthArrayDQDO, int segLengthArrayDKDV,
+    size_t loWinIdx, size_t hiWinIdx,
+    size_t seqLengthArrayDQDO, size_t segLengthArrayDKDV,
     size_t doDesc, size_t dout,
     size_t dqDesc, size_t dqueries, size_t queries,
     size_t dkDesc, size_t dkeys, size_t keys,
@@ -760,7 +760,7 @@ cpdef setSeqDataDescriptor(
     size_t seqLengthArraySize, size_t seqLengthArray, size_t paddingFill)
 cpdef getSeqDataDescriptor(
     size_t seqDataDesc, size_t dataType,
-    int nbDims, int nbDimsRequested, size_t dimA, size_t axes,
+    size_t nbDims, int nbDimsRequested, size_t dimA, size_t axes,
     size_t seqLengthArraySize,
     size_t seqLengthSizeRequested,
     size_t seqLengthArray, size_t paddingFill)
