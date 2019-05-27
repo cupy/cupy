@@ -192,6 +192,17 @@ def choice(a, size=None, replace=True, p=None):
     return rs.choice(a, size, replace, p)
 
 
+_multinominal_kernel = core.ElementwiseKernel(
+    'int64 x, int32 p, int32 n', 'raw U ys',
+    'atomicAdd(&ys[i / n * p + x], U(1))',
+    'cupy_random_multinomial',
+    preamble='''
+__device__ long long atomicAdd(long long *address, long long val) {
+    return atomicAdd(reinterpret_cast<unsigned long long*>(address),
+                     static_cast<unsigned long long>(val));
+}''')
+
+
 def multinomial(n, pvals, size=None):
     """Returns an array from multinomial distribution.
 
@@ -228,12 +239,8 @@ def multinomial(n, pvals, size=None):
 
     p = len(pvals)
     shape = size + (p,)
-    # atomicAdd only supports int32
-    ys = basic.zeros(shape, 'i')
+    ys = basic.zeros(shape, 'l')
     if ys.size > 0:
         xs = choice(p, p=pvals, size=n * m)
-        core.ElementwiseKernel(
-            'int64 x, int32 p, int32 n', 'raw int32 ys',
-            'atomicAdd(&ys[i / n * p + x], 1)',
-            'cupy_random_multinomial')(xs, p, n, ys)
-    return ys.astype('l')
+        _multinominal_kernel(xs, p, n, ys)
+    return ys
