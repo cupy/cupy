@@ -107,6 +107,8 @@ def _replace_nan(a, val):
     Note that scalars will end up as array scalars, which is important
     for using the result as the value of the out argument in some
     operations.
+    
+    dtype checking with cupy.object_ not supported yet.
     Parameters
     ----------
     a : array-like
@@ -122,7 +124,8 @@ def _replace_nan(a, val):
         If `a` is of inexact type, return a boolean mask marking locations of
         NaNs, otherwise return None.
     """
-    ## dtype checking of a with cupy.object_ not supported yet.
+    
+
 
     a = cupy.array(a, copy=True)
 
