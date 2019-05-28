@@ -124,9 +124,6 @@ def _replace_nan(a, val):
         If `a` is of inexact type, return a boolean mask marking locations of
         NaNs, otherwise return None.
     """
-    
-
-
     a = cupy.array(a, copy=True)
 
     if issubclass(a.dtype.type, cupy.inexact):
