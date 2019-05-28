@@ -122,17 +122,17 @@ def _replace_nan(a, val):
         If `a` is of inexact type, return a boolean mask marking locations of
         NaNs, otherwise return None.
     """
-    ## dtype checking of a with cp.object_ not supported yet.
+    ## dtype checking of a with cupy.object_ not supported yet.
 
-    a = cp.array(a, copy=True)
+    a = cupy.array(a, copy=True)
 
-    if issubclass(a.dtype.type, cp.inexact):
-        mask = cp.isnan(a)
+    if issubclass(a.dtype.type, cupy.inexact):
+        mask = cupy.isnan(a)
     else:
         mask = None
 
     if mask is not None:
-        cp.copyto(a, val, where=mask)
+        cupy.copyto(a, val, where=mask)
 
     return a, mask
 # TODO(okuta): Implement argwhere
