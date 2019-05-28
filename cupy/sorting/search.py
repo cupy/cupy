@@ -1,3 +1,4 @@
+import cupy
 from cupy import core
 from cupy.core import fusion
 
@@ -24,7 +25,28 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.argmax(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-# TODO(okuta): Implement nanargmax
+def nanargmax(a, axis=None):
+    """Return the indices of the maximum values in the specified axis ignoring
+    NaNs. For all-NaN slice ``ValueError`` is raised.
+    Subclass cannot be passed yet, subok=True still unsupported
+    Args:
+        a (cupy.ndarray): Array to take nanargmax.
+        axis (int): Along which axis to find the maximum. ``a`` is flattened by
+            default.
+    Returns:
+        cupy.ndarray: The indices of the maximum of ``a``
+        along an axis ignoring NaN values.
+    .. seealso:: :func:`numpy.nanargmax`
+    """
+    a, mask = _replace_nan(a, -cupy.inf)
+    res = argmax(a, axis=axis)
+
+    if mask is not None:
+        mask = cupy.all(mask, axis=axis)
+        if cupy.any(mask):
+            raise ValueError('All-NaN slice encountered')
+
+    return res
 
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -49,9 +71,66 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.argmin(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-# TODO(okuta): Implement nanargmin
+def nanargmin(a, axis=None):
+    """Return the indices of the minimum values in the specified axis ignoring
+    NaNs. For all-NaN slice ``ValueError`` is raised.
+    Subclass cannot be passed yet, subok=True still unsupported
+    Args:
+        a (cupy.ndarray): Array to take nanargmin.
+        axis (int): Along which axis to find the minimum. ``a`` is flattened by
+            default.
+    Returns:
+        cupy.ndarray: The indices of the minimum of ``a``
+        along an axis ignoring NaN values.
+    .. seealso:: :func:`numpy.nanargmin`
+    """
+    a, mask = _replace_nan(a, cupy.inf)
+    res = argmin(a, axis=axis)
+
+    if mask is not None:
+        mask = cupy.all(mask, axis=axis)
+        if cupy.any(mask):
+            raise ValueError('All-NaN slice encountered')
+
+    return res
 
 
+def _replace_nan(a, val):
+    """
+    If `a` is of inexact type, make a copy of `a`, replace NaNs with
+    the `val` value, and return the copy together with a boolean mask
+    marking the locations where NaNs were present. If `a` is not of
+    inexact type, do nothing and return `a` together with a mask of None.
+    Note that scalars will end up as array scalars, which is important
+    for using the result as the value of the out argument in some
+    operations.
+        dtype checking with cupy.object_ not supported yet.
+    Parameters
+    ----------
+    a : array-like
+        Input array.
+    val : float
+        NaN values are set to val before doing the operation.
+    Returns
+    -------
+    y : cupy.ndarray
+        If `a` is of inexact type, return a copy of `a` with the NaNs
+        replaced by the fill value, otherwise return `a`.
+    mask: {bool, None}
+        If `a` is of inexact type, return a boolean mask marking locations of
+        NaNs, otherwise return None.
+    """
+    a = cupy.array(a, copy=True)
+
+    if issubclass(a.dtype.type, cupy.inexact):
+        mask = cupy.isnan(a)
+    else:
+        mask = None
+
+    if mask is not None:
+        cupy.copyto(a, val, where=mask)
+
+    return a, mask
 # TODO(okuta): Implement argwhere
 
 
