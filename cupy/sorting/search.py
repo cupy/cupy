@@ -24,8 +24,31 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.argmax(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-# TODO(okuta): Implement nanargmax
 
+def nanargmax(a, axis=None):
+    """Return the indices of the maximum values in the specified axis ignoring
+    NaNs. For all-NaN slice ``ValueError`` is raised.
+    
+    Subclass cannot be passed yet, subok=True still unsupported
+
+    Args:
+        a (cupy.ndarray): Array to take nanargmax.
+        axis (int): Along which axis to find the maximum. ``a`` is flattened by
+            default.
+    Returns:
+        cupy.ndarray: The indices of the maximum of ``a`` along an axis ignoring NaN values.
+    .. seealso:: :func:`numpy.nanargmax`
+    
+    """
+    a, mask = _replace_nan(a, -cupy.inf)
+    res = argmax(a, axis=axis)
+
+    if mask is not None:
+        mask = cupy.all(mask, axis=axis)
+        if cupy.any(mask):
+            raise ValueError('All-NaN slice encountered')
+
+    return res
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the indices of the minimum along an axis.
@@ -49,8 +72,30 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.argmin(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-# TODO(okuta): Implement nanargmin
 
+def nanargmin(a, axis=None):
+    """Return the indices of the minimum values in the specified axis ignoring
+    NaNs. For all-NaN slice ``ValueError`` is raised.
+    
+    Subclass cannot be passed yet, subok=True still unsupported
+
+    Args:
+        a (cupy.ndarray): Array to take nanargmin.
+        axis (int): Along which axis to find the minimum. ``a`` is flattened by
+            default.
+    Returns:
+        cupy.ndarray: The indices of the minimum of ``a`` along an axis ignoring NaN values.
+    .. seealso:: :func:`numpy.nanargmin`
+    """
+    a, mask = _replace_nan(a, cupy.inf)
+    res = argmin(a, axis=axis)
+
+    if mask is not None:
+        mask = cupy.all(mask, axis=axis)
+        if cupy.any(mask):
+            raise ValueError('All-NaN slice encountered')
+
+    return res
 
 # TODO(okuta): Implement argwhere
 
