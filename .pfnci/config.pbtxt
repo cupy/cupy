@@ -42,8 +42,8 @@ configs {
   key: "cupy.py2.cv.examples"
   value {
     requirement {
-      cpu: 4
-      memory: 24
+      cpu: 6
+      memory: 36
       disk: 10
       gpu: 2
     }
@@ -96,8 +96,8 @@ configs {
   key: "cupy.py3.cv.examples"
   value {
     requirement {
-      cpu: 4
-      memory: 24
+      cpu: 6
+      memory: 36
       disk: 10
       gpu: 2
     }
