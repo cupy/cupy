@@ -360,6 +360,7 @@ class TestProduct(unittest.TestCase):
     ],
 }))
 @testing.gpu
+@testing.with_requires('numpy>=1.14.0')
 class TestProductZeroLength(unittest.TestCase):
 
     @testing.for_all_dtypes()
