@@ -255,7 +255,7 @@ class TestBasic(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
-        'shape': [(4, ), (4, 2), (4, 2, 3), (5, 4, 2, 3)],
+        'shape': [4, (4, ), (4, 2), (4, 2, 3), (5, 4, 2, 3)],
     })
 )
 @testing.gpu
@@ -319,8 +319,9 @@ class TestBasicReshape(unittest.TestCase):
         a = xp.asfortranarray(a)
         b = xp.empty_like(a, order=order, shape=self.shape)
         b.fill(0)
+        shape = self.shape if not numpy.isscalar(self.shape) else (self.shape,)
         if (order in ['c', 'C'] or
-                (order in ['k', 'K', None] and len(self.shape) != a.ndim)):
+                (order in ['k', 'K', None] and len(shape) != a.ndim)):
             self.assertTrue(b.flags.c_contiguous)
         else:
             self.assertTrue(b.flags.f_contiguous)
@@ -335,8 +336,9 @@ class TestBasicReshape(unittest.TestCase):
         b.fill(0)
         c = cupy.empty(self.shape)
         c.fill(0)
+        shape = self.shape if not numpy.isscalar(self.shape) else (self.shape,)
         if (order in ['c', 'C'] or
-                (order in ['k', 'K', None] and len(self.shape) != a.ndim)):
+                (order in ['k', 'K', None] and len(shape) != a.ndim)):
             self.assertTrue(b.flags.c_contiguous)
         else:
             self.assertTrue(b.flags.f_contiguous)
@@ -352,10 +354,11 @@ class TestBasicReshape(unittest.TestCase):
         a = a[:, ::2, :].swapaxes(0, 1)
         b = xp.empty_like(a, order=order, shape=self.shape)
         b.fill(0)
-        if len(self.shape) == 1:
+        shape = self.shape if not numpy.isscalar(self.shape) else (self.shape,)
+        if len(shape) == 1:
             self.assertTrue(b.flags.c_contiguous)
             self.assertTrue(b.flags.f_contiguous)
-        elif order in ['k', 'K', None] and len(self.shape) == a.ndim:
+        elif order in ['k', 'K', None] and len(shape) == a.ndim:
             self.assertFalse(b.flags.c_contiguous)
             self.assertFalse(b.flags.f_contiguous)
         elif order in ['f', 'F']:
@@ -374,10 +377,11 @@ class TestBasicReshape(unittest.TestCase):
         a = a[:, ::2, :].swapaxes(0, 1)
         b = cupy.empty_like(a, order=order, shape=self.shape)
         b.fill(0)
-        if len(self.shape) == 1:
+        shape = self.shape if not numpy.isscalar(self.shape) else (self.shape,)
+        if len(shape) == 1:
             self.assertTrue(b.flags.c_contiguous)
             self.assertTrue(b.flags.f_contiguous)
-        elif order in ['k', 'K', None] and len(self.shape) == a.ndim:
+        elif order in ['k', 'K', None] and len(shape) == a.ndim:
             self.assertFalse(b.flags.c_contiguous)
             self.assertFalse(b.flags.f_contiguous)
         elif order in ['f', 'F']:
