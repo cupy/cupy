@@ -189,7 +189,8 @@ def tensordot(a, b, axes=2):
     ret_shape = a.shape[sum_ndim:] + b.shape[sum_ndim:]
 
     k = internal.prod(a.shape[:sum_ndim])
-    # Avoid division by zero, allowing 0-length dimensions to work
+    # Avoid division by zero: core.tensordot_core returns zeros without
+    # checking n, m consistency, thus allowing 0-length dimensions to work
     n = a.size // k if k != 0 else 0
     m = b.size // k if k != 0 else 0
 
