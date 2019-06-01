@@ -30,13 +30,17 @@ class FallbackUtil:
 
     @classmethod
     def create_fallback_object(cls, name):
-
+        """
+        Not being used. I implemented it for another approach.
+        """
         exec(name + ' = FallbackUtil()')
         return eval(name)
 
     @classmethod
     def search_and_setattr(cls, set_from, module):
-
+        """
+        Currently not being used anywhere. Ran into recursion limit exceeded.
+        """
         for attr_name, attr in set_from.__dict__.items():
 
             if isinstance(attr, FunctionType):
@@ -49,7 +53,9 @@ class FallbackUtil:
 
     @classmethod
     def search_and_getattr(cls, name, get_from, primary=True):
-
+        """
+        Currently not being used anywhere. Ran into recursion limit exceeded.
+        """
         if hasattr(get_from, '__dict__'):
             for attr_name, attr in get_from.__dict__.items():
                 if name == attr_name:
@@ -63,11 +69,17 @@ class FallbackUtil:
 
     @classmethod
     def clear_attrs(cls):
+        """
+        Initializes new attr_list.
+        """
         global attr_list
         attr_list = []
 
     @classmethod
     def add_attrs(cls, attr):
+        """
+        Add given attr to attr_list
+        """
         global attr_list
         attr_list.append(attr)
 
@@ -79,6 +91,9 @@ class FallbackUtil:
 
     @classmethod
     def get_last_and_rest(cls):
+        """
+        Provides sub-module and function name using attr_list
+        """
         global attr_list
         path = ".".join(attr_list[:-1])
         return path, attr_list[-1]
@@ -87,7 +102,12 @@ class FallbackUtil:
 class Fallback(FallbackUtil):
 
     def __getattribute__(self, attr):
-
+        """
+        All operations of fallback_mode will be done in this area.
+        Currently it just supports finding appropriate function.
+        
+        Gets called by Recursive_attr object if function definition is found.
+        """
         numpy_func = None
         cupy_func = None
         sub_module, func_name = FallbackUtil.get_last_and_rest()
@@ -122,6 +142,10 @@ class Fallback(FallbackUtil):
 class Recursive_attr:
 
     def __getattribute__(self, attr):
+        """
+        Helps in creating attr_list and finding apporiate function.
+        Once function definition is found, calls Fallback object now_fallback.
+        """
         FallbackUtil.add_attrs(attr)
         sub_module, func_name = FallbackUtil.get_last_and_rest()
         try:
