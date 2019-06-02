@@ -3,7 +3,7 @@ Main fallback class and helper functions. Also numpy is a instance of Fallback c
 
 TODO: Capturing function with __getattribute__() OK??
 """
-from types import FunctionType, ModuleType
+from types import FunctionType, ModuleType, MethodType, BuiltinFunctionType, BuiltinMethodType
 import numpy as np
 import cupy as cp
 
@@ -157,7 +157,7 @@ class Recursive_attr:
         except AttributeError as error:
             FallbackUtil.clear_attrs()
             raise error
-        if isinstance(func, FunctionType):
+        if isinstance(func, (FunctionType, MethodType, BuiltinFunctionType, BuiltinMethodType)):
             return now_fallback.attr
         elif isinstance(func, ModuleType):
             exec(attr + " = Recursive_attr()")
