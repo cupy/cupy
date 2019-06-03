@@ -1,117 +1,34 @@
 """
-Main fallback class and helper functions. Also numpy is a instance of Fallback class.
+Main fallback class.
 
-TODO: Capturing function with __getattribute__() OK??
+TODO: dispatching function for execution
 """
-from types import FunctionType, ModuleType, MethodType, BuiltinFunctionType, BuiltinMethodType
-import numpy as np
-import cupy as cp
+import cupy as cp # NOQA
+import numpy as np # NOQA
+from types import ModuleType
 
-attr_list = []
+from utils import FallbackUtil
+from utils import get_last_and_rest
+from utils import join_attrs
 
 
-class FallbackUtil:
+class Recursive_attr:
 
-    notifications = True
+    def __getattr__(self, attr):
+        FallbackUtil.add_attrs(attr)
+        return self
 
-    @property
-    @classmethod
-    def notification_status(cls):
-        return cls.notifications
-
-    @classmethod
-    def get_notification_status(cls):
-        print("Notification status is currently {}".format(cls.notifications))
-
-    @classmethod
-    def set_notification_status(cls, status):
-        cls.notifications = status
-        print("Notification status is now {}".format(cls.notifications))
-
-    @classmethod
-    def create_fallback_object(cls, name):
-        """
-        Not being used. I implemented it for another approach.
-        """
-        exec(name + ' = FallbackUtil()')
-        return eval(name)
-
-    @classmethod
-    def search_and_setattr(cls, set_from, module):
-        """
-        Currently not being used anywhere. Ran into recursion limit exceeded.
-        """
-        for attr_name, attr in set_from.__dict__.items():
-
-            if isinstance(attr, FunctionType):
-                setattr(module, attr_name, attr)
-
-            elif isinstance(attr, ModuleType):
-                sub_module = cls.create_fallback_object(attr_name)
-                cls.search_and_setattr(getattr(set_from, attr_name), sub_module)
-                setattr(module, attr_name, sub_module)
-
-    @classmethod
-    def search_and_getattr(cls, name, get_from, primary=True):
-        """
-        Currently not being used anywhere. Ran into recursion limit exceeded.
-        """
-        if hasattr(get_from, '__dict__'):
-            for attr_name, attr in get_from.__dict__.items():
-                if name == attr_name:
-                    return attr
-
-                elif isinstance(attr, ModuleType):
-                    cls.search_and_getattr(name, attr, primary=False)
-
-        if primary:
-            return AttributeError
-
-    @classmethod
-    def clear_attrs(cls):
-        """
-        Initializes new attr_list.
-        """
-        global attr_list
-        attr_list = []
-
-    @classmethod
-    def add_attrs(cls, attr):
-        """
-        Add given attr to attr_list
-        """
-        global attr_list
-        attr_list.append(attr)
-
-    @classmethod
-    def join_attrs(cls):
-        global attr_list
-        path = ".".join(attr_list)
-        return path
-
-    @classmethod
-    def get_last_and_rest(cls):
-        """
-        Provides sub-module and function name using attr_list
-        """
-        global attr_list
-        path = ".".join(attr_list[:-1])
-        return path, attr_list[-1]
+    def __call__(self, *args, **kwargs):
+        return now_fallback(*args, **kwargs)
 
 
 class Fallback(FallbackUtil):
 
-    def __getattribute__(self, attr):
-        """
-        All operations of fallback_mode will be done in this area.
-        Currently it just supports finding appropriate function.
-        
-        Gets called by Recursive_attr object if function definition is found.
-        """
-        numpy_func = None
-        cupy_func = None
-        sub_module, func_name = FallbackUtil.get_last_and_rest()
+    def __call__(self, *args, **kwargs):
+        attributes = FallbackUtil.get_attr_list_copy()
         FallbackUtil.clear_attrs()
+
+        sub_module, func_name = get_last_and_rest(attributes)
 
         # trying cupy
         try:
@@ -121,51 +38,39 @@ class Fallback(FallbackUtil):
                 cupy_path = 'cp' + '.' + sub_module
             cupy_func = getattr(eval(cupy_path), func_name)
 
+            # call_cupy() will be called here when Implemented
+            if isinstance(cupy_func, ModuleType):
+                return cupy_func
+            print("fallback to be applied on '{}' which is in '{}' with arguments:\n{}\n{}"
+                  .format(cupy_func.__name__, cupy_func.__module__, args, kwargs))
+
         except AttributeError:
             # trying numpy
             if FallbackUtil.notifications:
-                print("no attribute '{}.{}' found in cupy. Falling back to numpy".format(sub_module, func_name))
+                if sub_module == "":
+                    print("no attribute '{}' found in cupy. Falling back to numpy"
+                          .format(func_name))
+                else:
+                    print("no attribute '{}.{}' found in cupy. Falling back to numpy"
+                          .format(sub_module, func_name))
             if sub_module == '':
                 numpy_path = 'np'
             else:
                 numpy_path = 'np' + '.' + sub_module
             numpy_func = getattr(eval(numpy_path), func_name)
 
-        print("performing other fallback steps")
+            # call_numpy() will be called here when Implemented
+            if isinstance(numpy_func, ModuleType):
+                return numpy_func
+            print("fallback to be applied on '{}' which is in '{}' with arguments:\n{}\n{}"
+                  .format(numpy_func.__name__, numpy_func.__module__, args, kwargs))
 
-        if cupy_func is not None:
-            return cupy_func
-        elif numpy_func is not None:
-            return numpy_func
+        except AttributeError:
+            raise AttributeError("{} neither in cupy nor numpy"
+                                 .format(join_attrs(attributes)))
 
-
-class Recursive_attr:
-
-    def __getattribute__(self, attr):
-        """
-        Helps in creating attr_list and finding apporiate function.
-        Once function definition is found, calls Fallback object now_fallback.
-        """
-        FallbackUtil.add_attrs(attr)
-        sub_module, func_name = FallbackUtil.get_last_and_rest()
-        try:
-            if sub_module == '':
-                path = 'np'
-            else:
-                path = 'np' + '.' + sub_module
-            func = getattr(eval(path), func_name)
-        except AttributeError as error:
-            FallbackUtil.clear_attrs()
-            raise error
-        if isinstance(func, (FunctionType, MethodType, BuiltinFunctionType, BuiltinMethodType)):
-            return now_fallback.attr
-        elif isinstance(func, ModuleType):
-            exec(attr + " = Recursive_attr()")
-            return eval(attr)
-        else:
-            raise AttributeError("neither FunctionType nor ModuleType")
+        print("other steps")
 
 
 numpy = Recursive_attr()
-
 now_fallback = Fallback()
