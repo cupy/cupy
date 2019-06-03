@@ -142,6 +142,7 @@ setup(
         'cupy.cuda',
         'cupy.cuda.memory_hooks',
         'cupy.ext',
+        'cupy.fallback_mode',
         'cupy.fft',
         'cupy.indexing',
         'cupy.io',
