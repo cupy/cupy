@@ -14,9 +14,14 @@ from cupy.fallback_mode.utils import join_attrs
 
 class Recursive_attr:
 
+    def __init__(self, name):
+        self.name = name
+
     def __getattr__(self, attr):
+        if self.name == 'numpy':
+            FallbackUtil.clear_attrs()
         FallbackUtil.add_attrs(attr)
-        return self
+        return dummy
 
     def __call__(self, *args, **kwargs):
         return fallback(*args, **kwargs)
@@ -26,7 +31,6 @@ class Fallback(FallbackUtil):
 
     def __call__(self, *args, **kwargs):
         attributes = FallbackUtil.get_attr_list_copy()
-        FallbackUtil.clear_attrs()
 
         sub_module, func_name = get_last_and_rest(attributes)
 
@@ -72,5 +76,6 @@ class Fallback(FallbackUtil):
         print("other steps")
 
 
-numpy = Recursive_attr()
+numpy = Recursive_attr('numpy')
+dummy = Recursive_attr('dummy')
 fallback = Fallback()
