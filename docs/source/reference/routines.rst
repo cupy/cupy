@@ -6,7 +6,7 @@ The following pages describe NumPy-compatible routines.
 These functions cover a subset of
 `NumPy routines <https://docs.scipy.org/doc/numpy/reference/routines.html>`_.
 
-.. module:: cupy
+.. currentmodule:: cupy
 
 .. toctree::
    :maxdepth: 2
