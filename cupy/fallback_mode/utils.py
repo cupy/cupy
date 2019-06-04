@@ -8,17 +8,17 @@ TODO: call_numpy()
 
 class FallbackUtil:
 
-    notifications = True
     attr_list = []
 
-    @classmethod
-    def notification_status(cls):
-        return cls.notifications
+    def __init__(self):
+        self.notifications = True
 
-    @classmethod
-    def set_notification_status(cls, status):
-        cls.notifications = status
-        print("Notification status is now {}".format(cls.notifications))
+    def notification_status(self):
+        return self.notifications
+
+    def set_notification_status(self, status):
+        self.notifications = status
+        print("Notification status is now {}".format(self.notifications))
 
     @classmethod
     def clear_attrs(cls):

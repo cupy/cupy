@@ -7,9 +7,9 @@ import cupy as cp # NOQA
 import numpy as np # NOQA
 from types import ModuleType
 
-from utils import FallbackUtil
-from utils import get_last_and_rest
-from utils import join_attrs
+from cupy.fallback_mode.utils import FallbackUtil
+from cupy.fallback_mode.utils import get_last_and_rest
+from cupy.fallback_mode.utils import join_attrs
 
 
 class Recursive_attr:
@@ -19,7 +19,7 @@ class Recursive_attr:
         return self
 
     def __call__(self, *args, **kwargs):
-        return now_fallback(*args, **kwargs)
+        return fallback(*args, **kwargs)
 
 
 class Fallback(FallbackUtil):
@@ -41,12 +41,12 @@ class Fallback(FallbackUtil):
             # call_cupy() will be called here when Implemented
             if isinstance(cupy_func, ModuleType):
                 return cupy_func
-            print("fallback to be applied on '{}' which is in '{}' with arguments:\n{}\n{}"
+            print("fallback to be applied on '{}' which is in '{}' with arguments:\n{} {}"
                   .format(cupy_func.__name__, cupy_func.__module__, args, kwargs))
 
         except AttributeError:
             # trying numpy
-            if FallbackUtil.notifications:
+            if fallback.notifications:
                 if sub_module == "":
                     print("no attribute '{}' found in cupy. Falling back to numpy"
                           .format(func_name))
@@ -62,7 +62,7 @@ class Fallback(FallbackUtil):
             # call_numpy() will be called here when Implemented
             if isinstance(numpy_func, ModuleType):
                 return numpy_func
-            print("fallback to be applied on '{}' which is in '{}' with arguments:\n{}\n{}"
+            print("fallback to be applied on '{}' which is in '{}' with arguments:\n{} {}"
                   .format(numpy_func.__name__, numpy_func.__module__, args, kwargs))
 
         except AttributeError:
@@ -73,4 +73,4 @@ class Fallback(FallbackUtil):
 
 
 numpy = Recursive_attr()
-now_fallback = Fallback()
+fallback = Fallback()
