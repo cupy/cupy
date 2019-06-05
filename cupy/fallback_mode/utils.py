@@ -1,9 +1,9 @@
 """
 Utilities needed for fallback_mode.
-
-TODO: call_cupy()
-TODO: call_numpy()
 """
+from types import ModuleType
+from cupy.fallback_mode.data_tranfer import vram2ram
+from cupy.fallback_mode.data_tranfer import ram2vram
 
 
 class FallbackUtil:
@@ -41,3 +41,25 @@ def get_last_and_rest(attr_list):
 def join_attrs(attr_list):
     path = ".".join(attr_list)
     return path
+
+
+def call_cupy(func, args, kwargs):
+
+    if isinstance(func, ModuleType):
+        return func
+
+    return func(*args, **kwargs)
+
+
+def call_numpy(func, args, kwargs):
+
+    if isinstance(func, ModuleType):
+        return func
+
+    cpu_args, cpu_kwargs = vram2ram(args, kwargs)
+
+    cpu_res = func(*cpu_args, **cpu_kwargs)
+
+    gpu_res = ram2vram(cpu_res)
+
+    return gpu_res

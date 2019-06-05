@@ -1,5 +1,42 @@
 """
 Data transfer methods
-TODO: ram2vram()
-TODO: vram2ram()
 """
+
+import cupy as cp
+import numpy as np
+
+
+def vram2ram(args, kwargs):
+
+    cpu_args = []
+    cpu_kwargs = {}
+
+    for arg in args:
+        if isinstance(arg, cp.ndarray):
+            cpu_args.append(cp.asnumpy(arg))
+        else:
+            cpu_args.append(arg)
+
+    for arg_name, arg in kwargs.items():
+        if isinstance(arg, cp.ndarray):
+            cpu_kwargs[arg_name] = cp.asnumpy(arg)
+        else:
+            cpu_kwargs[arg_name] = arg
+
+    return tuple(cpu_args), cpu_kwargs
+
+
+def ram2vram(res):
+
+    if isinstance(res, (list, tuple)):
+        gpu_res = []
+        for r in res:
+            if isinstance(r, np.ndarray):
+                gpu_res.append(cp.array(r))
+            else:
+                gpu_res.append(r)
+    else:
+        if isinstance(res, np.ndarray):
+            return cp.array(res)
+        else:
+            return res
