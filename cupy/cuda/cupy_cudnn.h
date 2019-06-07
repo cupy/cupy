@@ -588,6 +588,64 @@ cudnnStatus_t cudnnOpTensor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
+// fused ops
+typedef void* cudnnFusedOpsConstParamPack_t;
+typedef void* cudnnFusedOpsVariantParamPack_t;
+typedef void* cudnnFusedOpsPlan_t;
+
+typedef enum {} cudnnFusedOps_t;
+typedef enum {} cudnnFusedOpsConstParamLabel_t;
+typedef enum {} cudnnFusedOpsPointerPlaceHolder_t;
+typedef enum {} cudnnFusedOpsVariantParamLabel_t;
+
+cudnnStatus_t cudnnCreateFusedOpsConstParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyFusedOpsConstParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetFusedOpsConstParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetFusedOpsConstParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateFusedOpsVariantParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyFusedOpsVariantParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetFusedOpsVariantParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetFusedOpsVariantParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateFusedOpsPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyFusedOpsPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnMakeFusedOpsPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFusedOpsExecute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 } // extern "C"
 
 #endif // #ifdef CUPY_NO_CUDA
@@ -922,6 +980,68 @@ cudnnStatus_t cudnnGetBatchNormalizationTrainingExReserveSpaceSize(...) {
 }
 
 #endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7400)
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7600)
+
+// fused ops
+typedef void* cudnnFusedOpsConstParamPack_t;
+typedef void* cudnnFusedOpsVariantParamPack_t;
+typedef void* cudnnFusedOpsPlan_t;
+
+typedef enum {} cudnnFusedOps_t;
+typedef enum {} cudnnFusedOpsConstParamLabel_t;
+typedef enum {} cudnnFusedOpsPointerPlaceHolder_t;
+typedef enum {} cudnnFusedOpsVariantParamLabel_t;
+
+cudnnStatus_t cudnnCreateFusedOpsConstParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyFusedOpsConstParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetFusedOpsConstParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetFusedOpsConstParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateFusedOpsVariantParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyFusedOpsVariantParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetFusedOpsVariantParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetFusedOpsVariantParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateFusedOpsPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyFusedOpsPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnMakeFusedOpsPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFusedOpsExecute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+#endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7600)
 
 } // extern "C"
 
