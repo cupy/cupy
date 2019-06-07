@@ -2153,8 +2153,8 @@ def fused_ops_execute(plan, var_pack):
     cudnn.fusedOpsExecute(handle, plan.value, var_pack.value)
 
 
-cpdef set_fused_ops_const_param_pack_attribute(Descriptor const_pack,
-                                               int param_label, desc_or_scalar):
+cpdef set_fused_ops_const_param_pack_attribute(
+        Descriptor const_pack, int param_label, desc_or_scalar):
     cdef int scaler
     cdef Descriptor desc
     if param_label in (cudnn.CUDNN_PARAM_XDATA_PLACEHOLDER,
@@ -2236,8 +2236,8 @@ cpdef get_fused_ops_const_param_pack_attribute(Descriptor const_pack,
         return param_desc, is_null
 
 
-cpdef set_fused_ops_variant_param_pack_attribute(Descriptor var_pack,
-                                                 int param_label, arr_or_scaler):
+cpdef set_fused_ops_variant_param_pack_attribute(
+        Descriptor var_pack, int param_label, arr_or_scaler):
     cdef size_t scalar_size_t
     cdef int64_t scalar_int64_t
     cdef double scalar_double
@@ -2257,7 +2257,8 @@ cpdef set_fused_ops_variant_param_pack_attribute(Descriptor var_pack,
                                                    <size_t>&scalar_double)
     else:
         ptr = <size_t>arr_or_scaler.data.ptr
-        cudnn.setFusedOpsVariantParamPackAttribute(var_pack.value, param_label, ptr)
+        cudnn.setFusedOpsVariantParamPackAttribute(var_pack.value, param_label,
+                                                   ptr)
 
 
 cpdef get_fused_ops_variant_param_pack_attribute(size_t var_pack,
