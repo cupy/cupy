@@ -7,7 +7,17 @@ import numpy as np
 
 
 def vram2ram(args, kwargs):
+    """
+    Transfers ndarrays in *args, **kwargs from GPU to CPU.
 
+    Args:
+        args (tuple): Arguments.
+        kwargs (dict): Keyword arguments.
+
+    Returns:
+        cpu_args (tuple): Arguments in CPU.
+        cpu_kwargs (dict): Keyword arguments in CPU.
+    """
     cpu_args = []
     cpu_kwargs = {}
 
@@ -27,7 +37,15 @@ def vram2ram(args, kwargs):
 
 
 def ram2vram(res):
+    """
+    Transfers ndarrays in *args, **kwargs from CPU to GPU.
 
+    Args:
+        res (tuple, list, numpy-ndarray): Result by executing numpy_func.
+
+    Returns:
+        gpu_res (tuple, list, cupy-ndarray): Result transfered to GPU.
+    """
     if isinstance(res, (list, tuple)):
         gpu_res = []
         for r in res:
