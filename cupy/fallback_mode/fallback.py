@@ -81,11 +81,11 @@ class Fallback(FallbackUtil):
             # trying numpy
             if fallback.notifications:
                 if sub_module == "":
-                    print("Attribute '{}' not found in cupy. falling back to\
-                           numpy".format(func_name))
+                    print("'{}' not found in cupy. falling back to numpy"
+                          .format(func_name))
                 else:
-                    print("Attribute '{}.{}' not found in cupy. falling back\
-                           to numpy".format(sub_module, func_name))
+                    print("'{}.{}' not found in cupy. falling back to numpy"
+                          .format(sub_module, func_name))
 
             numpy_path = get_path('np', sub_module)
             numpy_func = getattr(eval(numpy_path), func_name)

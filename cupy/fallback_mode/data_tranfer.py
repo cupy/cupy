@@ -56,5 +56,4 @@ def ram2vram(res):
     else:
         if isinstance(res, np.ndarray):
             return cp.array(res)
-        else:
-            return res
+        return res
