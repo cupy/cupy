@@ -74,6 +74,24 @@ def join_attrs(attr_list):
     return path
 
 
+def get_path(lib, sub_module):
+    """
+    Returns sub-module path for required library.
+
+    Args:
+        lib (str): 'cp' (cupy) or 'np' (numpy).
+
+    Returns:
+        path (str): sub-module path.
+    """
+    if sub_module == '':
+        path = lib
+    else:
+        path = lib + '.' + sub_module
+
+    return path
+
+
 def call_cupy(func, args, kwargs):
     """
     Calls cupy function with *args and **kwargs.

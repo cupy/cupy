@@ -10,6 +10,7 @@ from cupy.fallback_mode.utils import get_last_and_rest
 from cupy.fallback_mode.utils import join_attrs
 from cupy.fallback_mode.utils import call_cupy
 from cupy.fallback_mode.utils import call_numpy
+from cupy.fallback_mode.utils import get_path
 
 
 class Recursive_attr:
@@ -71,11 +72,7 @@ class Fallback(FallbackUtil):
 
         # trying cupy
         try:
-            if sub_module == '':
-                cupy_path = 'cp'
-            else:
-                cupy_path = 'cp' + '.' + sub_module
-
+            cupy_path = get_path('cp', sub_module)
             cupy_func = getattr(eval(cupy_path), func_name)
 
             return call_cupy(cupy_func, args, kwargs)
@@ -90,11 +87,7 @@ class Fallback(FallbackUtil):
                     print("Attribute '{}.{}' not found in cupy. falling back\
                            to numpy".format(sub_module, func_name))
 
-            if sub_module == '':
-                numpy_path = 'np'
-            else:
-                numpy_path = 'np' + '.' + sub_module
-
+            numpy_path = get_path('np', sub_module)
             numpy_func = getattr(eval(numpy_path), func_name)
 
             return call_numpy(numpy_func, args, kwargs)
