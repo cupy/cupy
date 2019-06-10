@@ -3,6 +3,7 @@ import sys
 
 import numpy
 import six
+from functools import partial
 
 from cupy import _version
 
@@ -341,12 +342,20 @@ def binary_repr(num, width=None):
 # -----------------------------------------------------------------------------
 # Data type routines (borrowed from NumPy)
 # -----------------------------------------------------------------------------
-from numpy import can_cast  # NOQA
-from numpy import common_type  # NOQA
+def numpy_implementation(func, *args, **kwargs):
+    if hasattr(func, '_implementation'):
+        return func._implementation(*args, *kwargs)
+    else:
+        return func(*args, *kwargs)
+
+
+can_cast = partial(numpy_implementation, numpy.can_cast)
+common_type = partial(numpy_implementation, numpy.common_type)
+result_type = partial(numpy_implementation, numpy.result_type)
+
 from numpy import min_scalar_type  # NOQA
 from numpy import obj2sctype  # NOQA
 from numpy import promote_types  # NOQA
-from numpy import result_type  # NOQA
 
 from numpy import dtype  # NOQA
 from numpy import format_parser  # NOQA
