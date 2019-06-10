@@ -360,7 +360,7 @@ def make_extensions(options, compiler, use_cython):
     settings['library_dirs'] = [
         x for x in settings['library_dirs'] if path.exists(x)]
 
-    # Adjust rpath to use CUDA libraries in `cupy/_lib/*.so`) from CuPy.
+    # Adjust rpath to use CUDA libraries in `cupy/.data/lib/*.so`) from CuPy.
     use_wheel_libs_rpath = (
         0 < len(options['wheel_libs']) and not PLATFORM_WIN32)
 
@@ -422,13 +422,14 @@ def make_extensions(options, compiler, use_cython):
                 rpath += s['library_dirs']
 
             if use_wheel_libs_rpath:
-                # Add `cupy/_lib` (where shared libraries included in wheels
-                # reside) to RPATH.
+                # Add `cupy/.data/lib` (where shared libraries included in
+                # wheels reside) to RPATH.
                 # The path is resolved relative to the module, e.g., use
-                # `$ORIGIN/_lib` for `cupy/cudnn.so` and `$ORIGIN/../_lib` for
-                # `cupy/cuda/cudnn.so`.
+                # `$ORIGIN/.data/lib` for `cupy/cudnn.so` and
+                # `$ORIGIN/../.data/lib` for `cupy/cuda/cudnn.so`.
                 depth = name.count('.') - 1
-                rpath.append('{}{}/_lib'.format(_rpath_base(), '/..' * depth))
+                rpath.append(
+                    '{}{}/.data/lib'.format(_rpath_base(), '/..' * depth))
 
             if not PLATFORM_WIN32 and not PLATFORM_LINUX:
                 s['runtime_library_dirs'] = rpath
@@ -465,6 +466,13 @@ def parse_args():
         help='shared library to copy into the wheel '
              '(can be specified for multiple times)')
     parser.add_argument(
+        '--cupy-wheel-include', type=str, action='append', default=[],
+        help='An include file to copy into the wheel. '
+             'Delimited by a colon. '
+             'The former part is a full path of the source include file and '
+             'the latter is the relative path within cupy wheel. '
+             '(can be specified for multiple times)')
+    parser.add_argument(
         '--cupy-no-rpath', action='store_true', default=False,
         help='disable adding default library directories to RPATH')
     parser.add_argument(
@@ -483,6 +491,7 @@ def parse_args():
         'package_name': opts.cupy_package_name,
         'long_description': opts.cupy_long_description,
         'wheel_libs': opts.cupy_wheel_lib,  # list
+        'wheel_includes': opts.cupy_wheel_include,  # list
         'no_rpath': opts.cupy_no_rpath,
         'profile': opts.cupy_profile,
         'linetrace': opts.cupy_coverage,
@@ -511,39 +520,66 @@ def get_long_description():
 
 
 def prepare_wheel_libs():
-    """Prepare shared libraries for wheels.
+    """Prepare shared libraries and include files for wheels.
 
     On Windows, DLLs will be placed under `cupy/cuda`.
-    On other platforms, shared libraries are placed under `cupy/_libs` and
+    On other platforms, shared libraries are placed under `cupy/.data/lib` and
     RUNPATH will be set to this directory later.
+    Include files are placed under `cupy/.data/include`.
     """
-    libdirname = None
+    data_dir = '.data'
+    if os.path.exists(data_dir):
+        print('Removing directory: {}'.format(data_dir))
+        shutil.rmtree(data_dir)
+
     if PLATFORM_WIN32:
-        libdirname = 'cuda'
+        lib_dirname = 'cuda'
         # Clean up existing libraries.
-        libfiles = glob.glob('cupy/{}/*.dll'.format(libdirname))
+        libfiles = glob.glob('cupy/{}/*.dll'.format(lib_dirname))
         for libfile in libfiles:
             print('Removing file: {}'.format(libfile))
             os.remove(libfile)
     else:
-        libdirname = '_lib'
-        # Clean up the library directory.
-        libdir = 'cupy/{}'.format(libdirname)
-        if os.path.exists(libdir):
-            print('Removing directory: {}'.format(libdir))
-            shutil.rmtree(libdir)
-        os.mkdir(libdir)
+        lib_dirname = os.path.join(data_dir, 'lib')
 
-    # Copy specified libraries to the library directory.
-    libs = []
-    for lib in cupy_setup_options['wheel_libs']:
+    include_dirname = os.path.join(data_dir, 'include')
+
+    # Collect files to copy
+    files_to_copy = []
+
+    # Library files
+    lib_base_path = os.path.join('cupy', lib_dirname)
+    for srcpath in cupy_setup_options['wheel_libs']:
+        relpath = os.path.basename(srcpath)
+        dstpath = path.join(lib_base_path, relpath)
+        files_to_copy.append((
+            srcpath,
+            dstpath,
+            path.join(lib_dirname, relpath)))
+
+    # Include files
+    include_base_path = os.path.join('cupy', include_dirname)
+    for include_path_spec in cupy_setup_options['wheel_includes']:
+        # TODO(niboshi): Consider using platform-dependent path delimiter.
+        srcpath, relpath = include_path_spec.rsplit(':', 1)
+        dstpath = os.path.join(include_base_path, relpath)
+        files_to_copy.append((
+            srcpath,
+            dstpath,
+            path.join(include_dirname, relpath)))
+
+    # Copy
+    package_data = []
+    for srcpath, dstpath, package_path in files_to_copy:
         # Note: symlink is resolved by shutil.copy2.
-        print('Copying library for wheel: {}'.format(lib))
-        libname = path.basename(lib)
-        libpath = 'cupy/{}/{}'.format(libdirname, libname)
-        shutil.copy2(lib, libpath)
-        libs.append('{}/{}'.format(libdirname, libname))
-    return libs
+        print('Copying file for wheel: {}'.format(srcpath))
+        dirpath = os.path.dirname(dstpath)
+        if not os.path.isdir(dirpath):
+            os.makedirs(dirpath)
+        shutil.copy2(srcpath, dstpath)
+        package_data.append(package_path)
+
+    return package_data
 
 
 try:
