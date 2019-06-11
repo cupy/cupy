@@ -344,9 +344,9 @@ def binary_repr(num, width=None):
 # -----------------------------------------------------------------------------
 def numpy_implementation(func, *args, **kwargs):
     if hasattr(func, '_implementation'):
-        return func._implementation(*args, *kwargs)
+        return func._implementation(*args, **kwargs)
     else:
-        return func(*args, *kwargs)
+        return func(*args, **kwargs)
 
 
 can_cast = partial(numpy_implementation, numpy.can_cast)

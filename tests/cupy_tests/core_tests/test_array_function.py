@@ -35,7 +35,8 @@ class TestArrayFunction(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
     def test_array_function_common_type(self, xp):
-        return numpy.common_type(xp.arange(2, dtype='f8'), xp.arange(2, dtype='f4'))
+        return numpy.common_type(xp.arange(2, dtype='f8'),
+                                 xp.arange(2, dtype='f4'))
 
     @testing.numpy_cupy_equal()
     def test_array_function_result_type(self, xp):
