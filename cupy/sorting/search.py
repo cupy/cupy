@@ -38,15 +38,15 @@ def nanargmax(a, axis=None):
         along an axis ignoring NaN values.
     .. seealso:: :func:`numpy.nanargmax`
     """
-    a, mask = _replace_nan(a, -cupy.inf)
-    res = argmax(a, axis=axis)
+    if a.dtype.kind in 'biu':
+        return argmin(a, axis=axis)
 
-    if mask is not None:
-        mask = cupy.all(mask, axis=axis)
-        if cupy.any(mask):
-            raise ValueError('All-NaN slice encountered')
+    mask = cupy.isnan(a)
 
-    return res
+    if cupy.any(cupy.all(mask, axis=axis)):
+        raise ValueError('All-NaN slice encountered')
+
+    return argmax(cupy.where(mask, cupy.inf, a), axis=axis)
 
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -84,53 +84,16 @@ def nanargmin(a, axis=None):
         along an axis ignoring NaN values.
     .. seealso:: :func:`numpy.nanargmin`
     """
-    a, mask = _replace_nan(a, cupy.inf)
-    res = argmin(a, axis=axis)
+    if a.dtype.kind in 'biu':
+        return argmin(a, axis=axis)
 
-    if mask is not None:
-        mask = cupy.all(mask, axis=axis)
-        if cupy.any(mask):
-            raise ValueError('All-NaN slice encountered')
+    mask = cupy.isnan(a)
 
-    return res
+    if cupy.any(cupy.all(mask, axis=axis)):
+        raise ValueError('All-NaN slice encountered')
 
+    return argmin(cupy.where(mask, cupy.inf, a), axis=axis)
 
-def _replace_nan(a, val):
-    """
-    If `a` is of inexact type, make a copy of `a`, replace NaNs with
-    the `val` value, and return the copy together with a boolean mask
-    marking the locations where NaNs were present. If `a` is not of
-    inexact type, do nothing and return `a` together with a mask of None.
-    Note that scalars will end up as array scalars, which is important
-    for using the result as the value of the out argument in some
-    operations.
-        dtype checking with cupy.object_ not supported yet.
-    Parameters
-    ----------
-    a : array-like
-        Input array.
-    val : float
-        NaN values are set to val before doing the operation.
-    Returns
-    -------
-    y : cupy.ndarray
-        If `a` is of inexact type, return a copy of `a` with the NaNs
-        replaced by the fill value, otherwise return `a`.
-    mask: {bool, None}
-        If `a` is of inexact type, return a boolean mask marking locations of
-        NaNs, otherwise return None.
-    """
-    a = cupy.array(a, copy=True)
-
-    if issubclass(a.dtype.type, cupy.inexact):
-        mask = cupy.isnan(a)
-    else:
-        mask = None
-
-    if mask is not None:
-        cupy.copyto(a, val, where=mask)
-
-    return a, mask
 # TODO(okuta): Implement argwhere
 
 
