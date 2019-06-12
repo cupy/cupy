@@ -12,22 +12,22 @@ class FallbackUtil:
     Contains utilities needed for fallback.
     """
     attr_list = []
+    notifications = True
 
-    def __init__(self):
-        self.notifications = True
-
-    def notification_status(self):
+    @classmethod
+    def notification_status(cls):
         """
         Returns notification status.
         """
-        return self.notifications
+        return cls.notifications
 
-    def set_notification_status(self, status):
+    @classmethod
+    def set_notification_status(cls, status):
         """
         Sets notification status.
         """
-        self.notifications = status
-        print("Notification status is now {}".format(self.notifications))
+        cls.notifications = status
+        print("Notification status is now {}".format(cls.notifications))
 
     @classmethod
     def clear_attrs(cls):

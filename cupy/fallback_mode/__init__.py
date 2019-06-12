@@ -3,8 +3,6 @@
 
 # "NOQA" to suppress flake8 warning
 from cupy.fallback_mode.fallback import numpy # NOQA
-from cupy.fallback_mode.fallback import fallback # NOQA
 
-
-notification_status = fallback.notification_status
-set_notification_status = fallback.set_notification_status
+notification_status = numpy.notification_status
+set_notification_status = numpy.set_notification_status
