@@ -179,7 +179,7 @@ class TestSumprod(unittest.TestCase):
 
 
 @testing.gpu
-class TestNansum(unittest.TestCase):
+class TestNansumNanprod(unittest.TestCase):
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
@@ -324,6 +324,34 @@ class TestNansum(unittest.TestCase):
         b = cupy.empty((2, 3))
         with self.assertRaises(ValueError):
             cupy.nansum(a, axis=1, out=b)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nanprod_all(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        a[:, 1] = xp.nan
+        return xp.nanprod(a)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_external_nanprod_all(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        a[:, 1] = xp.nan
+        return xp.nanprod(a)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nanprod_axis(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a[:, 1] = xp.nan
+        return xp.nanprod(a, axis=1)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_external_nanprod_axis(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a[:, 1] = xp.nan
+        return xp.nanprod(a, axis=1)
 
 
 axes = [0, 1, 2]
