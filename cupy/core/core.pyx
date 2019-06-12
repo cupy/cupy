@@ -810,6 +810,16 @@ cdef class ndarray:
         """
         return _math._ndarray_cumsum(self, axis, dtype, out)
 
+    cpdef ndarray nansum(self, axis=None, dtype=None, out=None, keepdims=False):
+        """Returns the sum along a given axis treating Not as Numbers (NaNs) as zero.
+
+        .. seealso::
+           :func:`cupy.nansum` for full documentation,
+           :meth:`numpy.ndarray.nansum`
+
+        """
+        return _math._ndarray_nansum(self, axis, dtype, out, keepdims)
+
     cpdef ndarray mean(self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the mean along a given axis.
 
