@@ -178,6 +178,154 @@ class TestSumprod(unittest.TestCase):
         return a.prod(dtype=dst_dtype)
 
 
+@testing.gpu
+class TestNansum(unittest.TestCase):
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_external_nansum_all(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a[:, 1] = xp.nan
+        return xp.nansum(a)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nansum_all2(self, xp, dtype):
+        a = testing.shaped_arange((20, 30, 40), xp, dtype)
+        a[:, 1] = xp.nan
+        return xp.nansum(a)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nansum_all_transposed(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype).transpose(2, 0, 1)
+        a[:, 1] = xp.nan
+        return xp.nansum(a)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nansum_all_transposed2(self, xp, dtype):
+        a = testing.shaped_arange((20, 30, 40), xp, dtype).transpose(2, 0, 1)
+        a[:, 1] = xp.nan
+        return xp.nansum(a)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nansum_axis(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a[:, 1] = xp.nan
+        return xp.nansum(a, axis=1)
+
+    @testing.slow
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_allclose(atol=1e-1)
+    def test_nansum_axis_huge(self, xp):
+        a = testing.shaped_random((2048, 1, 1024), xp, 'f')
+        a[:, :, 1] = xp.nan
+        a = xp.broadcast_to(a, (2048, 1024, 1024))
+        return xp.nansum(a, axis=2)
+
+    @testing.slow
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_allclose(atol=1e-2)
+    def test_nansum_axis_huge_halfnan(self, xp):
+        a = testing.shaped_random((2048, 1, 1024), xp, 'f')
+        a[:, :, 0:512] = xp.nan
+        a = xp.broadcast_to(a, (2048, 1024, 1024))
+        return xp.nansum(a, axis=2)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_external_nansum_axis(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a[:, 1] = xp.nan
+        return xp.nansum(a, axis=1)
+
+    # float16 is omitted, since NumPy's nansum on float16 arrays has more error
+    # than CuPy's.
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nansum_axis2(self, xp, dtype):
+        a = testing.shaped_arange((20, 30, 40), xp, dtype)
+        a[:, 1] = xp.nan
+        return xp.nansum(a, axis=1)
+
+    def test_nansum_axis2_float16(self):
+        # Note that the above test example overflows in float16. We use a
+        # smaller array instead.
+        a = testing.shaped_arange((2, 30, 4), dtype='e')
+        a[:, 1] = cupy.nan
+        sa = cupy.nansum(a, axis=1)
+        b = testing.shaped_arange((2, 30, 4), numpy, dtype='f')
+        b[:, 1] = numpy.nan
+        sb = numpy.nansum(b, axis=1)
+        testing.assert_allclose(sa, sb.astype('e'))
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_nansum_axis_transposed(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype).transpose(2, 0, 1)
+        a[:, 1] = cupy.nan
+        return xp.nansum(a, axis=1)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_nansum_axis_transposed2(self, xp, dtype):
+        a = testing.shaped_arange((20, 30, 40), xp, dtype).transpose(2, 0, 1)
+        a[:, 1] = cupy.nan
+        return xp.nansum(a, axis=1)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nansum_axes(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)
+        a[:, 1] = cupy.nan
+        return xp.nansum(a, axis=(1, 3))
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_nansum_axes2(self, xp, dtype):
+        a = testing.shaped_arange((20, 30, 40, 50), xp, dtype)
+        a[:, 1] = cupy.nan
+        return xp.nansum(a, axis=(1, 3))
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nansum_axes3(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)
+        a[:, 1] = cupy.nan
+        return xp.nansum(a, axis=(0, 2, 3))
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nansum_axes4(self, xp, dtype):
+        a = testing.shaped_arange((20, 30, 40, 50), xp, dtype)
+        a[:, 1] = cupy.nan
+        return xp.nansum(a, axis=(0, 2, 3))
+
+    @testing.numpy_cupy_allclose()
+    def test_nansum_keepdims(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        a[:, 1] = cupy.nan
+        return xp.nansum(a, axis=1, keepdims=True)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nansum_out(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a[:, 1] = cupy.nan
+        b = xp.empty((2, 4), dtype=dtype)
+        xp.nansum(a, axis=1, out=b)
+        return b
+
+    def test_nansum_out_wrong_shape(self):
+        a = testing.shaped_arange((2, 3, 4))
+        a[:, 1] = cupy.nan
+        b = cupy.empty((2, 3))
+        with self.assertRaises(ValueError):
+            cupy.nansum(a, axis=1, out=b)
+
+
 axes = [0, 1, 2]
 
 
