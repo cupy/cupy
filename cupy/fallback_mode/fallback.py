@@ -62,6 +62,9 @@ class RecursiveAttr(FallbackUtil):
             (module, res, ndarray): Returns of call_cupy() or call_numpy
             Raise AttributeError: If cupy_func and numpy_func is not found.
         """
+        if self.name == 'numpy':
+            raise TypeError("'module' object is not callable")
+
         attributes = super().get_attr_list_copy()
         sub_module, func_name = get_last_and_rest(attributes)
 
