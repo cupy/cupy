@@ -13,9 +13,9 @@ from cupy.fallback_mode.utils import call_numpy
 from cupy.fallback_mode.utils import get_path
 
 
-class Recursive_attr:
+class RecursiveAttr:
     """
-    Recursive_attr class to catch all attributes corresponding to numpy,
+    RecursiveAttr class to catch all attributes corresponding to numpy,
     when user calls fallback_mode. numpy is an instance of this class.
     """
     def __init__(self, name):
@@ -29,10 +29,10 @@ class Recursive_attr:
         dummy object of this class.
 
         Args:
-            attr (str): Attribute of Recursive_attr class object.
+            attr (str): Attribute of RecursiveAttr class object.
 
         Returns:
-            dummy : Recursive_attr object.
+            dummy : RecursiveAttr object.
         """
         if self.name == 'numpy':
             FallbackUtil.clear_attrs()
@@ -81,10 +81,10 @@ class Fallback(FallbackUtil):
             # trying numpy
             if fallback.notifications:
                 if sub_module == "":
-                    print("'{}' not found in cupy. falling back to numpy"
+                    print("'{}' not found in cupy, falling back to numpy"
                           .format(func_name))
                 else:
-                    print("'{}.{}' not found in cupy. falling back to numpy"
+                    print("'{}.{}' not found in cupy, falling back to numpy"
                           .format(sub_module, func_name))
 
             numpy_path = get_path('np', sub_module)
@@ -97,6 +97,6 @@ class Fallback(FallbackUtil):
                                  .format(join_attrs(attributes)))
 
 
-numpy = Recursive_attr('numpy')
-dummy = Recursive_attr('dummy')
+numpy = RecursiveAttr('numpy')
+dummy = RecursiveAttr('dummy')
 fallback = Fallback()
