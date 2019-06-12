@@ -503,6 +503,7 @@ from cupy.math.sumprod import sum  # NOQA
 from cupy.math.sumprod import cumprod  # NOQA
 from cupy.math.sumprod import cumsum  # NOQA
 from cupy.math.sumprod import nansum  # NOQA
+from cupy.math.sumprod import nanprod  # NOQA
 from cupy.math.sumprod import diff  # NOQA
 from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA

@@ -811,7 +811,7 @@ cdef class ndarray:
         return _math._ndarray_cumsum(self, axis, dtype, out)
 
     cpdef ndarray nansum(self, axis=None, dtype=None, out=None, keepdims=False):
-        """Returns the sum along a given axis treating Not as Numbers (NaNs) as zero.
+        """Returns the sum along a given axis treating Not a Numbers (NaNs) as zero.
 
         .. seealso::
            :func:`cupy.nansum` for full documentation,
@@ -872,6 +872,16 @@ cdef class ndarray:
 
         """
         return _math._ndarray_cumprod(self, axis, dtype, out)
+
+    cpdef ndarray nanprod(self, axis=None, dtype=None, out=None, keepdims=None):
+        """Returns the product along a given axis treating Not a Numbers (NaNs) as zero.
+
+        .. seealso::
+           :func:`cupy.nanprod` for full documentation,
+           :meth:`numpy.ndarray.nanprod`
+
+        """
+        return _math._ndarray_nanprod(self, axis, dtype, out, keepdims)
 
     cpdef ndarray all(self, axis=None, out=None, keepdims=False):
         # TODO(niboshi): Write docstring
