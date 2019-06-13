@@ -1,6 +1,8 @@
 """
 Main fallback class.
 """
+import types
+
 from cupy.fallback_mode.utils import FallbackUtil
 from cupy.fallback_mode.utils import call_cupy
 from cupy.fallback_mode.utils import call_numpy
@@ -42,10 +44,21 @@ class RecursiveAttr(FallbackUtil):
         if attr == '_numpy_module' or attr == '_cupy_module':
             attributes = super().get_attr_list_copy()
 
+            # retrieving cupy module
             if attr == '_cupy_module':
-                return super().get_func('cp', attributes)
+                func = super().get_func('cp', attributes)
 
-            return super().get_func('np', attributes)
+                if isinstance(func, types.ModuleType):
+                    return func
+                raise TypeError("'{}' is not a module"
+                                .format(".".join(attributes)))
+
+            # retrieving numpy module
+            func = super().get_func('np', attributes)
+            if isinstance(func, types.ModuleType):
+                return func
+            raise TypeError("'{}' is not a module"
+                            .format(".".join(attributes)))
 
         super().add_attrs(attr)
         return dummy
