@@ -1,7 +1,9 @@
 """
 Utilities needed for fallback_mode.
 """
-from types import ModuleType
+import cupy as cp # NOQA
+import numpy as np # NOQA
+
 from cupy.fallback_mode.data_tranfer import vram2ram
 from cupy.fallback_mode.data_tranfer import ram2vram
 
@@ -30,6 +32,10 @@ class FallbackUtil:
         print("Notification status is now {}".format(cls.notifications))
 
     @classmethod
+    def get_attr_list_copy(cls):
+        return cls.attr_list.copy()
+
+    @classmethod
     def clear_attrs(cls):
         """
         Initialize empty attr_list.
@@ -44,52 +50,19 @@ class FallbackUtil:
         cls.attr_list.append(attr)
 
     @classmethod
-    def get_attr_list_copy(cls):
-        """
-        Returns copy of attr_list.
-        """
-        return cls.attr_list.copy()
+    def get_func(cls, lib, attr_list):
 
+        sub_module = ".".join(attr_list[:-1])
+        func_name = attr_list[-1]
 
-def get_last_and_rest(attr_list):
-    """
-    Returns sub-module and function name using attr_list.
+        if sub_module == '':
+            path = lib
+        else:
+            path = lib + '.' + sub_module
 
-    Args:
-        attr_list (list): List which is used for keeping track of attributes.
+        func = getattr(eval(path), func_name)
 
-    Returns:
-        path (str): Sub-module
-        attr_list[-1] (str): Function name
-    """
-    path = ".".join(attr_list[:-1])
-    return path, attr_list[-1]
-
-
-def join_attrs(attr_list):
-    """
-    Returns joined attributes in attr_list.
-    """
-    path = ".".join(attr_list)
-    return path
-
-
-def get_path(lib, sub_module):
-    """
-    Returns sub-module path for required library.
-
-    Args:
-        lib (str): 'cp' (cupy) or 'np' (numpy).
-
-    Returns:
-        path (str): sub-module path.
-    """
-    if sub_module == '':
-        path = lib
-    else:
-        path = lib + '.' + sub_module
-
-    return path
+        return func
 
 
 def call_cupy(func, args, kwargs):
@@ -102,10 +75,8 @@ def call_cupy(func, args, kwargs):
         kwargs (dict): Keyword arguments.
 
     Returns:
-        cupy module OR result after calling func.
+        Result after calling func.
     """
-    if isinstance(func, ModuleType):
-        return func
 
     return func(*args, **kwargs)
 
@@ -120,10 +91,8 @@ def call_numpy(func, args, kwargs):
         kwargs (dict): Keyword arguments.
 
     Returns:
-        numpy module OR result after calling func.
+        Result after calling func.
     """
-    if isinstance(func, ModuleType):
-        return func
 
     cpu_args, cpu_kwargs = vram2ram(args, kwargs)
     cpu_res = func(*cpu_args, **cpu_kwargs)
