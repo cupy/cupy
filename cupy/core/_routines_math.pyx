@@ -273,7 +273,7 @@ _nansum_auto_dtype = create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', '(a == a) * a + (b == b) * b', 'out0 = type_out0_raw(a)', None), 0)
+    ('(in0 == in0) * in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
 
 _nansum_keep_dtype = create_reduction_func(
@@ -282,7 +282,7 @@ _nansum_keep_dtype = create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', '(a == a) * a + (b == b) * b', 'out0 = type_out0_raw(a)', None), 0)
+    ('(in0 == in0) * in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
 
 _prod_auto_dtype = create_reduction_func(
@@ -309,8 +309,7 @@ _nanprod_auto_dtype = create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', '((a == a) ? a : 1) * ((b == b) ? b : 1)',
-     'out0 = type_out0_raw(a)', None), 1)
+    ('(in0 == in0) ? in0 : 1', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 
 _nanprod_keep_dtype = create_reduction_func(
@@ -319,8 +318,7 @@ _nanprod_keep_dtype = create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', '((a == a) ? a : 1) * ((b == b) ? b : 1)',
-     'out0 = type_out0_raw(a)', None), 1)
+    ('(in0 == in0) ? in0: 1', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 
 cdef create_arithmetic(name, op, boolop, doc):
