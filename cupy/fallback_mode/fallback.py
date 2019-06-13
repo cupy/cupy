@@ -73,34 +73,35 @@ class RecursiveAttr(FallbackUtil):
         if self.name == 'numpy':
             raise TypeError("'module' object is not callable")
 
-        # trying cupy
         try:
-
+            # trying cupy
             cupy_func = super().get_func('cp', attributes)
 
             return call_cupy(cupy_func, args, kwargs)
 
         except AttributeError:
-            # trying numpy
-            if super().notification_status():
 
-                sub_module = ".".join(attributes[:-1])
-                func_name = attributes[-1]
+            try:
+                # trying numpy
+                if super().notification_status():
 
-                if sub_module == "":
-                    print("'{}' not found in cupy, falling back to numpy"
-                          .format(func_name))
-                else:
-                    print("'{}.{}' not found in cupy, falling back to numpy"
-                          .format(sub_module, func_name))
+                    sub_module = ".".join(attributes[:-1])
+                    func_name = attributes[-1]
 
-            numpy_func = super().get_func('np', attributes)
+                    if sub_module == "":
+                        print("'{}' not found in cupy, falling back to numpy"
+                              .format(func_name))
+                    else:
+                        print("'{}' not found in cupy, falling back to numpy"
+                              .format(sub_module + '.' + func_name))
 
-            return call_numpy(numpy_func, args, kwargs)
+                numpy_func = super().get_func('np', attributes)
 
-        except AttributeError:
-            raise AttributeError("Attribute {} neither in cupy nor numpy"
-                                 .format(".".join(attributes)))
+                return call_numpy(numpy_func, args, kwargs)
+
+            except AttributeError:
+                raise AttributeError("Attribute '{}' neither in cupy nor numpy"
+                                     .format(".".join(attributes)))
 
 
 numpy = RecursiveAttr('numpy')
