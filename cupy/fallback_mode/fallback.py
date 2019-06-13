@@ -42,6 +42,14 @@ class RecursiveAttr(FallbackUtil):
         if self.name == 'numpy':
             super().clear_attrs()
 
+        # direct retrieval of numpy scalars
+        if self.name == 'numpy':
+            scalar = None
+            if hasattr(np, attr):
+                scalar = getattr(np, attr)
+            if scalar is not None and isinstance(scalar, np.ScalarType):
+                return scalar
+
         # Requesting module
         if attr == '_numpy_module' or attr == '_cupy_module':
             attributes = super().get_attr_list_copy()
