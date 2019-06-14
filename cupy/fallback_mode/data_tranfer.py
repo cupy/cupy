@@ -6,54 +6,30 @@ import cupy as cp
 import numpy as np
 
 
-def vram2ram(args, kwargs):
-    """
-    Transfers ndarrays in *args, **kwargs from GPU to CPU.
+def _get_xp_args(org_module, to_xp, arg):
 
-    Args:
-        args (tuple): Arguments.
-        kwargs (dict): Keyword arguments.
+    if isinstance(arg, org_module.ndarray):
+        return to_xp(arg)
 
-    Returns:
-        cpu_args (tuple): Arguments in CPU.
-        cpu_kwargs (dict): Keyword arguments in CPU.
-    """
-    cpu_args = []
-    cpu_kwargs = {}
+    if isinstance(arg, tuple):
+        return tuple([_get_xp_args(org_module, to_xp, x) for x in arg])
 
-    for arg in args:
-        if isinstance(arg, cp.ndarray):
-            cpu_args.append(cp.asnumpy(arg))
-        else:
-            cpu_args.append(arg)
+    if isinstance(arg, dict):
+        return {x_name: _get_xp_args(org_module, to_xp, x)
+                for x_name, x in arg.items()}
 
-    for arg_name, arg in kwargs.items():
-        if isinstance(arg, cp.ndarray):
-            cpu_kwargs[arg_name] = cp.asnumpy(arg)
-        else:
-            cpu_kwargs[arg_name] = arg
+    if isinstance(arg, list):
+        return [_get_xp_args(org_module, to_xp, x) for x in arg]
 
-    return tuple(cpu_args), cpu_kwargs
+    if isinstance(arg, np.ScalarType) or callable(arg):
+        return arg
+
+    raise NotImplementedError
 
 
-def ram2vram(res):
-    """
-    Transfers ndarrays in *args, **kwargs from CPU to GPU.
+def _get_cupy_result(numpy_res):
+    return _get_xp_args(np, cp.array, numpy_res)
 
-    Args:
-        res (tuple, list, numpy-ndarray): Result by executing numpy_func.
 
-    Returns:
-        gpu_res (tuple, list, cupy-ndarray): Result transfered to GPU.
-    """
-    if isinstance(res, (list, tuple)):
-        gpu_res = []
-        for r in res:
-            if isinstance(r, np.ndarray):
-                gpu_res.append(cp.array(r))
-            else:
-                gpu_res.append(r)
-    else:
-        if isinstance(res, np.ndarray):
-            return cp.array(res)
-        return res
+def _get_numpy_args(args, kwargs):
+    return _get_xp_args(cp, cp.asnumpy, (args, kwargs))
