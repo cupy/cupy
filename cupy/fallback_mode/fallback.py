@@ -5,83 +5,85 @@ import types
 import cupy as cp
 import numpy as np
 
-from cupy.fallback_mode.utils import FallbackUtil
-from cupy.fallback_mode.utils import call_cupy
-from cupy.fallback_mode.utils import call_numpy
+
+from cupy.fallback_mode.utils import _call_cupy
+from cupy.fallback_mode.utils import _call_numpy
 
 
-class RecursiveAttr(FallbackUtil):
+class _RecursiveAttr:
     """
     RecursiveAttr class to catch all attributes corresponding to numpy,
     when user calls fallback_mode. numpy is an instance of this class.
     """
-    def __init__(self, name):
-        self.name = name
 
-    def notification_status(self):
-        return super().notification_status()
+    to_notify = True
 
-    def set_notification_status(self, status):
-        return super().set_notification_status(status)
+    @classmethod
+    def notifications(cls):
+        """
+        Return notification status
+        """
+        return cls.to_notify
+
+    @classmethod
+    def set_notifications(cls, set_to):
+        """
+        Set notification status to bool set_to.
+        """
+        cls.to_notify = set_to
+
+        if cls.to_notify:
+            print("Notifications are Enabled")
+        else:
+            print("Notifications are Disabled")
+
+    def __init__(self, numpy_object, cupy_object):
+
+        self._numpy_object = numpy_object
+        self._cupy_object = cupy_object
+
+    @property
+    def _cupy_module(self):
+        if isinstance(self._cupy_object, types.ModuleType):
+            return self._cupy_object
+        raise TypeError("'{}' is not a module"
+                        .format(self._cupy_object.__name__))
+
+    @property
+    def _numpy_module(self):
+        if isinstance(self._numpy_object, types.ModuleType):
+            return self._numpy_object
+        raise TypeError("'{}' is not a module"
+                        .format(self._numpy_object.__name__))
 
     def __getattr__(self, attr):
         """
-        Catches and appends attributes corresponding to numpy
-        to attr_list.
-        Runs recursively till attribute gets called by returning
-        dummy object of this class. Or module is requested.
+        Catches attributes corresponding to numpy.
+
+        Runs recursively till attribute gets called.
+        Or numpy ScalarType is retrieved.
 
         Args:
-            attr (str): Attribute of RecursiveAttr class object.
+            attr (str): Attribute of _RecursiveAttr class object.
 
         Returns:
-            (dummy, module, scalars): dummy RecursiveAttr object.
-                                      Returns module, scalars if requested.
+            (_RecursiveAttr object, NumPy scalar):
+            Returns_RecursiveAttr object with new numpy_object, cupy_object.
+            Returns module, scalars if requested.
         """
-        # Initialize attr_list
-        if self.name == 'numpy':
-            super().clear_attrs()
+        # getting attr
+        numpy_object = None if self._numpy_object is None else getattr(self._numpy_object, attr, None)
+        cupy_object = None if self._cupy_object is None else getattr(self._cupy_object, attr, None)
 
-        # direct retrieval of numpy scalars
-        if self.name == 'numpy':
-            scalar = None
-            if hasattr(np, attr):
-                scalar = getattr(np, attr)
-            if scalar is not None and isinstance(scalar, np.ScalarType):
-                return scalar
+        # Retrieval of NumPy scalars
+        if isinstance(numpy_object, np.ScalarType):
+            return numpy_object
 
-        # Requesting module
-        if attr == '_numpy_module' or attr == '_cupy_module':
-            attributes = super().get_attr_list_copy()
-
-            # retrieving cupy module
-            if attr == '_cupy_module':
-                if self.name == 'numpy':
-                    return cp
-
-                func = super().get_func('cp', attributes)
-
-                if isinstance(func, types.ModuleType):
-                    return func
-                raise TypeError("'{}' is not a module"
-                                .format(".".join(attributes)))
-
-            # retrieving numpy module
-            if self.name == 'numpy':
-                return np
-
-            func = super().get_func('np', attributes)
-            if isinstance(func, types.ModuleType):
-                return func
-            raise TypeError("'{}' is not a module"
-                            .format(".".join(attributes)))
-
-        super().add_attrs(attr)
-        return dummy
+        return _RecursiveAttr(numpy_object, cupy_object)
 
     def __call__(self, *args, **kwargs):
         """
-        Gets invoked when last dummy attribute gets called.
+        Gets invoked when last attribute of _RecursiveAttr class gets called.
 
         Search for attributes from attr_list in cupy.
         If failed, search in numpy.
@@ -96,42 +98,23 @@ class RecursiveAttr(FallbackUtil):
             (module, res, ndarray): Returns of call_cupy() or call_numpy
             Raise AttributeError: If cupy_func and numpy_func is not found.
         """
-        attributes = super().get_attr_list_copy()
+        # Not callable objects
+        if not callable(self._numpy_object) and self._numpy_object is not None:
+            raise TypeError("'{}' object is not callable"
+                            .format(type(self._numpy_object).__name__))
 
-        # don't call numpy module
-        if self.name == 'numpy':
-            raise TypeError("'module' object is not callable")
+        # Execute cupy method
+        if self._cupy_object is not None:
+            return _call_cupy(self._cupy_object, args, kwargs)
 
-        try:
-            # trying cupy
-            cupy_func = super().get_func('cp', attributes)
+        # Notify and execute numpy method
+        if self._numpy_object is not None:
+            if _RecursiveAttr.to_notify:
+                print("'{}' not found in cupy, falling back to numpy"
+                      .format(self._numpy_object.__name__))
+            return _call_numpy(self._numpy_object, args, kwargs)
 
-            return call_cupy(cupy_func, args, kwargs)
-
-        except AttributeError:
-
-            try:
-                # trying numpy
-                if super().notification_status():
-
-                    sub_module = ".".join(attributes[:-1])
-                    func_name = attributes[-1]
-
-                    if sub_module == "":
-                        print("'{}' not found in cupy, falling back to numpy"
-                              .format(func_name))
-                    else:
-                        print("'{}' not found in cupy, falling back to numpy"
-                              .format(sub_module + '.' + func_name))
-
-                numpy_func = super().get_func('np', attributes)
-
-                return call_numpy(numpy_func, args, kwargs)
-
-            except AttributeError:
-                raise AttributeError("Attribute '{}' neither in cupy nor numpy"
-                                     .format(".".join(attributes)))
+        raise AttributeError("Attribute neither in cupy nor numpy")
 
 
-numpy = RecursiveAttr('numpy')
-dummy = RecursiveAttr('dummy')
+numpy = _RecursiveAttr(np, cp)
