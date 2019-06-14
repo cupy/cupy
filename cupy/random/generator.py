@@ -948,13 +948,17 @@ class RandomState(object):
         if a.ndim == 0:
             raise TypeError('An array whose ndim is 0 is not supported')
 
-        a[:] = a[self.permutation(len(a))]
+        a[:] = a[self._permutation(len(a))]
 
-    def permutation(self, num):
+    def permutation(self, a):
+        """Returns a permuted range or a permutation of an array."""
+        if isinstance(a, six.integer_types):
+            return self._permutation(a)
+        else:
+            return a[self._permutation(len(a))]
+
+    def _permutation(self, num):
         """Returns a permuted range."""
-        if not isinstance(num, six.integer_types):
-            raise TypeError('The data type of argument "num" must be integer')
-
         sample = cupy.empty((num), dtype=numpy.int32)
         curand.generate(self._generator, sample.data.ptr, num)
         if 128 < num <= 32 * 1024 * 1024:
