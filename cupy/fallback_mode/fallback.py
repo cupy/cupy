@@ -81,6 +81,15 @@ class _RecursiveAttr:
 
         return _RecursiveAttr(numpy_object, cupy_object)
 
+    def __repr__(self):
+        if self._cupy_object is not None:
+            return "{} from {}".format(self._cupy_object.__repr__(),
+                                       self._cupy_object.__module__)
+        if self._numpy_object is not None:
+            return "{} from {}".format(self._numpy_object.__repr__(),
+                                       self._numpy_object.__module__)
+        return "Attribute neither in cupy nor numpy"
+
     def __call__(self, *args, **kwargs):
         """
         Gets invoked when last attribute of _RecursiveAttr class gets called.
