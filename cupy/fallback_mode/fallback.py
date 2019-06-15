@@ -72,8 +72,8 @@ class _RecursiveAttr:
             Returns module, scalars if requested.
         """
         # getting attr
-        numpy_object = None if self._numpy_object is None else getattr(self._numpy_object, attr, None)
-        cupy_object = None if self._cupy_object is None else getattr(self._cupy_object, attr, None)
+        numpy_object = getattr(self._numpy_object, attr, None)
+        cupy_object = getattr(self._cupy_object, attr, None)
 
         # Retrieval of NumPy scalars
         if isinstance(numpy_object, np.ScalarType):
