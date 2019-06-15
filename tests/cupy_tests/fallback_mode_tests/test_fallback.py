@@ -2,6 +2,8 @@ import unittest
 
 import cupy
 from cupy import testing
+from cupy.fallback_mode import notifications
+from cupy.fallback_mode import set_notifications
 from cupy.fallback_mode import numpy as fb
 
 import numpy
@@ -99,6 +101,7 @@ class TestFallbackMode(unittest.TestCase):
 
         self.check_func_returning_non_array('array_equal', cupy_args, kwargs, numpy_args, kwargs)
 
+    # Both cupy and numpy return 0-d array
     def test_convolve_zero_dim_array(self):
 
         args = ([1, 2, 3], [0, 1, 0.5], 'valid')
@@ -160,3 +163,57 @@ class TestFallbackMode(unittest.TestCase):
         assert isinstance(expected, numpy.ndarray)
 
         numpy.testing.assert_array_equal(cupy.asnumpy(expected), actual)
+
+    def test_notifications_enabled(self):
+
+        import contextlib
+        from io import StringIO
+
+        saved_stdout = StringIO()
+        with contextlib.redirect_stdout(saved_stdout):
+            res = fb.nanargmin([1, 2, 3]) # NOQA
+
+        output = saved_stdout.getvalue().strip()
+        assert output == "'nanargmin' not found in cupy, falling back to numpy"
+        assert len(saved_stdout.getvalue().splitlines()) == 1
+
+    def test_notifications_disabled(self):
+
+        import contextlib
+        from io import StringIO
+
+        saved_stdout = StringIO()
+        with contextlib.redirect_stdout(saved_stdout):
+            set_notifications(False)
+            res = fb.nanargmax([1, 2, 3]) # NOQA
+
+        output = saved_stdout.getvalue().strip()
+        assert output == "Notifications are Disabled"
+        assert len(saved_stdout.getvalue().splitlines()) == 1
+        set_notifications(True)
+
+    def test_module_not_callable(self):
+
+        # numpy()
+        self.assertRaises(TypeError, fb)
+
+        # numpy.linalg()
+        self.assertRaises(TypeError, fb.linalg)
+
+        # numpy.linalg._cupy_module()
+        self.assertRaises(TypeError, fb.linalg._cupy_module)
+
+    def test_numpy_scalars(self):
+
+        # numpy.inf
+        assert fb.inf == numpy.inf
+
+        # numpy.pi
+        assert fb.pi == numpy.pi
+
+        # cannot assert nan, nan is meant not be compared
+        assert fb.nan != numpy.nan
+
+    def test_no_func_for_fallback(self):
+
+        self.assertRaises(AttributeError, fb.dummy.attr)
