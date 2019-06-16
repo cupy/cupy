@@ -82,10 +82,18 @@ class _RecursiveAttr:
         return _RecursiveAttr(numpy_object, cupy_object)
 
     def __repr__(self):
+
         if self._cupy_object is not None:
+            if isinstance(self._cupy_object, types.ModuleType):
+                return "<module {} from cupy>".format(self._cupy_object.__name__)
+
             return "{} from {}".format(self._cupy_object.__repr__(),
                                        self._cupy_object.__module__)
+
         if self._numpy_object is not None:
+            if isinstance(self._numpy_object, types.ModuleType):
+                return "<module {} from numpy>".format(self._numpy_object.__name__)
+
             return "{} from {}".format(self._numpy_object.__repr__(),
                                        self._numpy_object.__module__)
         return "Attribute neither in cupy nor numpy"
