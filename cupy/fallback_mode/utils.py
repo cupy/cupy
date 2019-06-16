@@ -1,8 +1,8 @@
 """
 Utilities needed for fallback_mode.
 """
-import cupy as cp # NOQA
-import numpy as np # NOQA
+import cupy as cp  # NOQA
+import numpy as np  # NOQA
 
 from cupy.fallback_mode.data_tranfer import _get_cupy_result
 from cupy.fallback_mode.data_tranfer import _get_numpy_args

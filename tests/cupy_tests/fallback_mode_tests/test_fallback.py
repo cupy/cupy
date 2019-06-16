@@ -119,6 +119,7 @@ class TestFallbackMode(unittest.TestCase):
     if used `check_func_returning_array`.
     Because, cupy returns 0-d array and numpy returns scalar value.
     """
+
     def test_argmin_zero_dim_array_vs_scalar(self):
 
         a = ([
@@ -175,7 +176,7 @@ class TestFallbackMode(unittest.TestCase):
 
         saved_stdout = StringIO()
         with contextlib.redirect_stdout(saved_stdout):
-            res = fb.nanargmin([1, 2, 3]) # NOQA
+            res = fb.nanargmin([1, 2, 3])  # NOQA
 
         output = saved_stdout.getvalue().strip()
         assert output == "'nanargmin' not found in cupy, falling back to numpy"
@@ -190,7 +191,7 @@ class TestFallbackMode(unittest.TestCase):
         with contextlib.redirect_stdout(saved_stdout):
             set_notifications(False)
             assert not notifications()
-            res = fb.nanargmax([1, 2, 3]) # NOQA
+            res = fb.nanargmax([1, 2, 3])  # NOQA
 
         output = saved_stdout.getvalue().strip()
         assert output == "Notifications are Disabled"
