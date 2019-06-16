@@ -12,7 +12,8 @@ import numpy
 @testing.gpu
 class TestFallbackMode(unittest.TestCase):
 
-    def check_func_returning_array(self, func_name, cupy_args, cupy_kwargs, numpy_args, numpy_kwargs):
+    def check_func_returning_array(self, func_name, cupy_args, cupy_kwargs,
+                                   numpy_args, numpy_kwargs):
         """
         Check functions which returns ndarrays for equal arrays.
         Raises an AssertionError if two ndarray objects are not equal.
@@ -29,7 +30,8 @@ class TestFallbackMode(unittest.TestCase):
 
         numpy.testing.assert_array_equal(cupy.asnumpy(x), y)
 
-    def check_func_returning_non_array(self, func_name, cupy_args, cupy_kwargs, numpy_args, numpy_kwargs):
+    def check_func_returning_non_array(self, func_name, cupy_args, cupy_kwargs,
+                                       numpy_args, numpy_kwargs):
         """
         Check functions which does not returns ndarrays.
         Raises AssertionError if two returned objects are not equal.
@@ -99,7 +101,8 @@ class TestFallbackMode(unittest.TestCase):
 
         kwargs = {}
 
-        self.check_func_returning_non_array('array_equal', cupy_args, kwargs, numpy_args, kwargs)
+        self.check_func_returning_non_array('array_equal', cupy_args, kwargs,
+                                            numpy_args, kwargs)
 
     # Both cupy and numpy return 0-d array
     def test_convolve_zero_dim_array(self):
@@ -158,7 +161,8 @@ class TestFallbackMode(unittest.TestCase):
 
         assert isinstance(actual, numpy.ndarray)
 
-        # ([1,2,3,4], 2) are arguments to numpy.vectorize(function), not numpy.vectorize
+        # ([1,2,3,4], 2) are arguments to numpy.vectorize(function),
+        # not numpy.vectorize
         # returns as numpy.ndarray
         assert isinstance(expected, numpy.ndarray)
 
@@ -185,12 +189,14 @@ class TestFallbackMode(unittest.TestCase):
         saved_stdout = StringIO()
         with contextlib.redirect_stdout(saved_stdout):
             set_notifications(False)
+            assert not notifications()
             res = fb.nanargmax([1, 2, 3]) # NOQA
 
         output = saved_stdout.getvalue().strip()
         assert output == "Notifications are Disabled"
         assert len(saved_stdout.getvalue().splitlines()) == 1
         set_notifications(True)
+        assert notifications()
 
     def test_module_not_callable(self):
 
