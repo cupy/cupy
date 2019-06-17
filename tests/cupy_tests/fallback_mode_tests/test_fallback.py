@@ -169,30 +169,31 @@ class TestFallbackMode(unittest.TestCase):
 
     def test_module_not_callable(self):
 
-        # numpy()
         self.assertRaises(TypeError, fb)
 
-        # numpy.linalg()
         self.assertRaises(TypeError, fb.linalg)
 
-        # numpy.linalg._cupy_module()
         self.assertRaises(TypeError, fb.linalg._cupy_module)
 
     def test_numpy_scalars(self):
 
-        # numpy.inf
-        assert fb.inf == numpy.inf
+        assert fb.inf is numpy.inf
 
-        # numpy.pi
-        assert fb.pi == numpy.pi
+        assert fb.pi is numpy.pi
 
-        # cannot assert nan, nan is meant not be compared
+        # True, because is checks for reference
+        # fb.nan abd numpy.nan both have same reference
+        assert fb.nan is numpy.nan
+
+        # But as nan is not comparable
         assert fb.nan != numpy.nan
 
     def test_cupy_specific_func(self):
 
-        self.assertRaises(AttributeError, fb.ElementwiseKernel)
+        with self.assertRaises(AttributeError):
+            func = fb.ElementwiseKernel  # NOQA
 
     def test_func_not_in_numpy(self):
 
-        self.assertRaises(AttributeError, fb.dummy)
+        with self.assertRaises(AttributeError):
+            func = fb.dummy  # NOQA
