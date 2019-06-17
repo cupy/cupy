@@ -189,6 +189,10 @@ class TestFallbackMode(unittest.TestCase):
         # cannot assert nan, nan is meant not be compared
         assert fb.nan != numpy.nan
 
-    def test_no_func_for_fallback(self):
+    def test_cupy_specific_func(self):
 
-        self.assertRaises(AttributeError, fb.dummy.attr)
+        self.assertRaises(AttributeError, fb.ElementwiseKernel)
+
+    def test_func_not_in_numpy(self):
+
+        self.assertRaises(AttributeError, fb.dummy)

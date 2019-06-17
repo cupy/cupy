@@ -54,7 +54,7 @@ class _RecursiveAttr:
         """
 
         # getting attr
-        numpy_object = getattr(self._numpy_object, attr, None)
+        numpy_object = getattr(self._numpy_object, attr)
         cupy_object = getattr(self._cupy_object, attr, None)
 
         # Retrieval of NumPy scalars
@@ -100,11 +100,8 @@ class _RecursiveAttr:
         if self._cupy_object is not None:
             return _call_cupy(self._cupy_object, args, kwargs)
 
-        # Notify and execute numpy method
-        if self._numpy_object is not None:
-            return _call_numpy(self._numpy_object, args, kwargs)
-
-        raise AttributeError("Attribute neither in cupy nor numpy")
+        # Execute numpy method
+        return _call_numpy(self._numpy_object, args, kwargs)
 
 
 numpy = _RecursiveAttr(np, cp)
