@@ -2,8 +2,6 @@ import unittest
 
 import cupy
 from cupy import testing
-from cupy.fallback_mode import notifications
-from cupy.fallback_mode import set_notifications
 from cupy.fallback_mode import numpy as fb
 
 import numpy
@@ -168,36 +166,6 @@ class TestFallbackMode(unittest.TestCase):
         assert isinstance(expected, numpy.ndarray)
 
         numpy.testing.assert_array_equal(cupy.asnumpy(expected), actual)
-
-    def test_notifications_enabled(self):
-
-        import contextlib
-        from io import StringIO
-
-        saved_stdout = StringIO()
-        with contextlib.redirect_stdout(saved_stdout):
-            res = fb.nanargmin([1, 2, 3])  # NOQA
-
-        output = saved_stdout.getvalue().strip()
-        assert output == "'nanargmin' not found in cupy, falling back to numpy"
-        assert len(saved_stdout.getvalue().splitlines()) == 1
-
-    def test_notifications_disabled(self):
-
-        import contextlib
-        from io import StringIO
-
-        saved_stdout = StringIO()
-        with contextlib.redirect_stdout(saved_stdout):
-            set_notifications(False)
-            assert not notifications()
-            res = fb.nanargmax([1, 2, 3])  # NOQA
-
-        output = saved_stdout.getvalue().strip()
-        assert output == "Notifications are Disabled"
-        assert len(saved_stdout.getvalue().splitlines()) == 1
-        set_notifications(True)
-        assert notifications()
 
     def test_module_not_callable(self):
 

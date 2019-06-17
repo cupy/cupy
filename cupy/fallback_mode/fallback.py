@@ -16,27 +16,6 @@ class _RecursiveAttr:
     when user calls fallback_mode. numpy is an instance of this class.
     """
 
-    to_notify = True
-
-    @classmethod
-    def notifications(cls):
-        """
-        Return notification status
-        """
-        return cls.to_notify
-
-    @classmethod
-    def set_notifications(cls, set_to):
-        """
-        Set notification status to bool set_to.
-        """
-        cls.to_notify = set_to
-
-        if cls.to_notify:
-            print("Notifications are Enabled")
-        else:
-            print("Notifications are Disabled")
-
     def __init__(self, numpy_object, cupy_object):
 
         self._numpy_object = numpy_object
@@ -44,6 +23,7 @@ class _RecursiveAttr:
 
     @property
     def _cupy_module(self):
+
         if isinstance(self._cupy_object, types.ModuleType):
             return self._cupy_object
         raise TypeError("'{}' is not a module"
@@ -51,6 +31,7 @@ class _RecursiveAttr:
 
     @property
     def _numpy_module(self):
+
         if isinstance(self._numpy_object, types.ModuleType):
             return self._numpy_object
         raise TypeError("'{}' is not a module"
@@ -71,6 +52,7 @@ class _RecursiveAttr:
             Returns_RecursiveAttr object with new numpy_object, cupy_object.
             Returns module, scalars if requested.
         """
+
         # getting attr
         numpy_object = getattr(self._numpy_object, attr, None)
         cupy_object = getattr(self._cupy_object, attr, None)
@@ -108,6 +90,7 @@ class _RecursiveAttr:
             (module, res, ndarray): Returns of call_cupy() or call_numpy
             Raise AttributeError: If cupy_func and numpy_func is not found.
         """
+
         # Not callable objects
         if not callable(self._numpy_object) and self._numpy_object is not None:
             raise TypeError("'{}' object is not callable"
@@ -119,9 +102,6 @@ class _RecursiveAttr:
 
         # Notify and execute numpy method
         if self._numpy_object is not None:
-            if _RecursiveAttr.to_notify:
-                print("'{}' not found in cupy, falling back to numpy"
-                      .format(self._numpy_object.__name__))
             return _call_numpy(self._numpy_object, args, kwargs)
 
         raise AttributeError("Attribute neither in cupy nor numpy")
