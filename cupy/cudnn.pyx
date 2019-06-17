@@ -1459,7 +1459,7 @@ cpdef _warn_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param):
     warnings.warn(
         'Tensor Core mode is set but the selected convolution backward '
-        'filter algorithm is not a Tensor Core enabled algorithm. '
+        'data algorithm is not a Tensor Core enabled algorithm. '
         'This might be due to lack of workspace memory. '
         'W.shape:{}, x.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(W.shape, x.shape, y.shape, conv_param[0], conv_param[1]),
