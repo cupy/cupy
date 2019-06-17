@@ -356,6 +356,13 @@ class TestConvolutionBackwardData(unittest.TestCase):
 class TestConvolutionInvalid(unittest.TestCase):
 
     def setUp(self):
+        self._workspace_size = cudnn.get_max_workspace_size()
+        if libcudnn.getVersion() < 7500:
+            self.skip = True
+            self.skip_msg = "cuDNN version is older than 7.5.0"
+            return
+        else:
+            self.skip = False
         n = 16
         x_c, y_c = 64, 64
         x_h, x_w = 32, 32
@@ -375,16 +382,12 @@ class TestConvolutionInvalid(unittest.TestCase):
         self.gx = cupy.empty(x_shape, dtype=self.dtype)
         self.gW = cupy.empty(W_shape, dtype=self.dtype)
         self.gy = cupy.ones(y_shape, dtype=self.dtype)
-        self._workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(0)
-        self.cudnn_version = libcudnn.getVersion()
 
     def tearDown(self):
         cudnn.set_max_workspace_size(self._workspace_size)
 
-    def test_forward(self):
-        if self.cudnn_version < 7500:
-            return unittest.SkipTest("cuDNN version is older than 7.5.0")
+    def call_forward(self):
         cudnn.convolution_forward(
             self.x, self.W, None, self.y,
             pad=(self.pad, self.pad), stride=(self.stride, self.stride),
@@ -392,9 +395,22 @@ class TestConvolutionInvalid(unittest.TestCase):
             auto_tune=self.auto_tune, tensor_core="always",
             d_layout=self.layout, w_layout=self.layout)
 
+    def test_forward(self):
+        if self.skip:
+            return unittest.SkipTest(self.skip_msg)
+        self.call_forward()
+
+    def call_backward_filter(self):
+        cudnn.convolution_backward_filter(
+            self.x, self.gy, self.gW,
+            pad=(self.pad, self.pad), stride=(self.stride, self.stride),
+            dilation=(1, 1), groups=1, deterministic=0,
+            auto_tune=self.auto_tune, tensor_core="always",
+            d_layout=self.layout, w_layout=self.layout)
+
     def test_backward_filter(self):
-        if self.cudnn_version < 7500:
-            return unittest.SkipTest("cuDNN version is older than 7.5.0")
+        if self.skip:
+            return unittest.SkipTest(self.skip_msg)
         err = None
         if (self.layout == libcudnn.CUDNN_TENSOR_NHWC and
                 self.dtype == numpy.float64):
@@ -405,25 +421,21 @@ class TestConvolutionInvalid(unittest.TestCase):
         # Notice that the error above may not occur with cuDNN newer than 7.6
         if err is not None:
             with self.assertRaises(err):
-                cudnn.convolution_backward_filter(
-                    self.x, self.gy, self.gW,
-                    pad=(self.pad, self.pad),
-                    stride=(self.stride, self.stride),
-                    dilation=(1, 1), groups=1, deterministic=0,
-                    auto_tune=self.auto_tune, tensor_core="always",
-                    d_layout=self.layout, w_layout=self.layout)
+                self.call_backward_filter()
         else:
-            cudnn.convolution_backward_filter(
-                self.x, self.gy, self.gW,
-                pad=(self.pad, self.pad),
-                stride=(self.stride, self.stride),
-                dilation=(1, 1), groups=1, deterministic=0,
-                auto_tune=self.auto_tune, tensor_core="always",
-                d_layout=self.layout, w_layout=self.layout)
+            self.call_backward_filter()
+
+    def call_backward_data(self):
+        cudnn.convolution_backward_data(
+            self.W, self.gy, None, self.gx,
+            pad=(self.pad, self.pad), stride=(self.stride, self.stride),
+            dilation=(1, 1), groups=1, deterministic=0,
+            auto_tune=self.auto_tune, tensor_core="always",
+            d_layout=self.layout, w_layout=self.layout)
 
     def test_backward_data(self):
-        if self.cudnn_version < 7500:
-            return unittest.SkipTest("cuDNN version is older than 7.5.0")
+        if self.skip:
+            return unittest.SkipTest(self.skip_msg)
         err = None
         if self.layout == libcudnn.CUDNN_TENSOR_NHWC:
             if self.auto_tune:
@@ -440,18 +452,6 @@ class TestConvolutionInvalid(unittest.TestCase):
         # Notice that the error above may not occur with cuDNN newer than 7.6
         if err is not None:
             with self.assertRaises(err):
-                cudnn.convolution_backward_data(
-                    self.W, self.gy, None, self.gx,
-                    pad=(self.pad, self.pad),
-                    stride=(self.stride, self.stride),
-                    dilation=(1, 1), groups=1, deterministic=0,
-                    auto_tune=self.auto_tune, tensor_core="always",
-                    d_layout=self.layout, w_layout=self.layout)
+                self.call_backward_data()
         else:
-            cudnn.convolution_backward_data(
-                self.W, self.gy, None, self.gx,
-                pad=(self.pad, self.pad),
-                stride=(self.stride, self.stride),
-                dilation=(1, 1), groups=1, deterministic=0,
-                auto_tune=self.auto_tune, tensor_core="always",
-                d_layout=self.layout, w_layout=self.layout)
+            self.call_backward_data()
