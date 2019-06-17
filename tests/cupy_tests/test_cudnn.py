@@ -343,3 +343,115 @@ class TestConvolutionBackwardData(unittest.TestCase):
         else:
             with self.assertRaises(self.err):
                 self.call()
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+    'ksize': [1, 3, 5],
+    'stride': [1, 2, 4],
+    'auto_tune': [True, False],
+    'layout': layouts
+}))
+@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
+class TestConvolutionInvalid(unittest.TestCase):
+
+    def setUp(self):
+        n = 16
+        x_c, y_c = 64, 64
+        x_h, x_w = 32, 32
+        y_h, y_w = x_h // self.stride, x_w // self.stride
+        self.pad = (self.ksize - 1) // 2
+        if self.layout == libcudnn.CUDNN_TENSOR_NHWC:
+            x_shape = (n, x_h, x_w, x_c)
+            y_shape = (n, y_h, y_w, y_c)
+            W_shape = (y_c, self.ksize, self.ksize, x_c)
+        else:
+            x_shape = (n, x_c, x_h, x_w)
+            y_shape = (n, y_c, y_h, y_w)
+            W_shape = (y_c, x_c, self.ksize, self.ksize)
+        self.x = cupy.ones(x_shape, dtype=self.dtype)
+        self.W = cupy.ones(W_shape, dtype=self.dtype)
+        self.y = cupy.empty(y_shape, dtype=self.dtype)
+        self.gx = cupy.empty(x_shape, dtype=self.dtype)
+        self.gW = cupy.empty(W_shape, dtype=self.dtype)
+        self.gy = cupy.ones(y_shape, dtype=self.dtype)
+        self._workspace_size = cudnn.get_max_workspace_size()
+        cudnn.set_max_workspace_size(0)
+        self.cudnn_version = libcudnn.getVersion()
+
+    def tearDown(self):
+        cudnn.set_max_workspace_size(self._workspace_size)
+
+    def test_forward(self):
+        if self.cudnn_version < 7500:
+            return unittest.SkipTest("cuDNN version is older than 7.5.0")
+        cudnn.convolution_forward(
+            self.x, self.W, None, self.y,
+            pad=(self.pad, self.pad), stride=(self.stride, self.stride),
+            dilation=(1, 1), groups=1,
+            auto_tune=self.auto_tune, tensor_core="always",
+            d_layout=self.layout, w_layout=self.layout)
+
+    def test_backward_filter(self):
+        if self.cudnn_version < 7500:
+            return unittest.SkipTest("cuDNN version is older than 7.5.0")
+        err = None
+        if (self.layout == libcudnn.CUDNN_TENSOR_NHWC and
+                self.dtype == numpy.float64):
+            if self.auto_tune:
+                err = RuntimeError
+            else:
+                err = libcudnn.CuDNNError
+        # Notice that the error above may not occur with cuDNN newer than 7.6
+        if err is not None:
+            with self.assertRaises(err):
+                cudnn.convolution_backward_filter(
+                    self.x, self.gy, self.gW,
+                    pad=(self.pad, self.pad),
+                    stride=(self.stride, self.stride),
+                    dilation=(1, 1), groups=1, deterministic=0,
+                    auto_tune=self.auto_tune, tensor_core="always",
+                    d_layout=self.layout, w_layout=self.layout)
+        else:
+            cudnn.convolution_backward_filter(
+                self.x, self.gy, self.gW,
+                pad=(self.pad, self.pad),
+                stride=(self.stride, self.stride),
+                dilation=(1, 1), groups=1, deterministic=0,
+                auto_tune=self.auto_tune, tensor_core="always",
+                d_layout=self.layout, w_layout=self.layout)
+
+    def test_backward_data(self):
+        if self.cudnn_version < 7500:
+            return unittest.SkipTest("cuDNN version is older than 7.5.0")
+        err = None
+        if self.layout == libcudnn.CUDNN_TENSOR_NHWC:
+            if self.auto_tune:
+                err_type = RuntimeError
+            else:
+                err_type = libcudnn.CuDNNError
+            if self.dtype == numpy.float16:
+                if self.stride == 4:
+                    err = err_type
+                elif self.stride == 2 and self.ksize == 5:
+                    err = err_type
+            else:
+                err = err_type
+        # Notice that the error above may not occur with cuDNN newer than 7.6
+        if err is not None:
+            with self.assertRaises(err):
+                cudnn.convolution_backward_data(
+                    self.W, self.gy, None, self.gx,
+                    pad=(self.pad, self.pad),
+                    stride=(self.stride, self.stride),
+                    dilation=(1, 1), groups=1, deterministic=0,
+                    auto_tune=self.auto_tune, tensor_core="always",
+                    d_layout=self.layout, w_layout=self.layout)
+        else:
+            cudnn.convolution_backward_data(
+                self.W, self.gy, None, self.gx,
+                pad=(self.pad, self.pad),
+                stride=(self.stride, self.stride),
+                dilation=(1, 1), groups=1, deterministic=0,
+                auto_tune=self.auto_tune, tensor_core="always",
+                d_layout=self.layout, w_layout=self.layout)
