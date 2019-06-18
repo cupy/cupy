@@ -59,7 +59,6 @@ from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
 from cupy import lib  # NOQA
-from cupy import fallback_mode  # NOQA
 
 
 # import class and function
