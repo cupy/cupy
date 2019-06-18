@@ -145,7 +145,7 @@ cdef class ndarray:
             'version': 0,
         }
         if not self._c_contiguous:
-            desc['strides'] = tuple(self._strides)
+            desc['strides'] = self.strides
 
         return desc
 
