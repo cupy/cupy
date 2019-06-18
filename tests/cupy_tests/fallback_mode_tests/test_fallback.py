@@ -17,7 +17,7 @@ class TestFallbackMode(unittest.TestCase):
 
         Args:
             name(str): Argument name whose value is either
-                ``numpy`` or ``cupy`` module.
+            ``numpy`` or ``cupy`` module.
         """
         def decorator(impl):
             @functools.wraps(impl)
@@ -137,9 +137,6 @@ class TestFallbackMode(unittest.TestCase):
         # True, because 'is' checks for reference
         # fallback_mode.numpy.nan and numpy.nan both have same reference
         assert fallback_mode.numpy.nan is numpy.nan
-
-        # But as 'nan' is not comparable
-        assert fallback_mode.numpy.nan != numpy.nan
 
     def test_cupy_specific_func(self):
 

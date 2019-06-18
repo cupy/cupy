@@ -6,8 +6,7 @@ import cupy as cp
 import numpy as np
 
 
-from cupy.fallback_mode.utils import _call_cupy
-from cupy.fallback_mode.utils import _call_numpy
+from cupy.fallback_mode import utils
 
 
 class _RecursiveAttr:
@@ -34,7 +33,7 @@ class _RecursiveAttr:
         Returns:
             (_RecursiveAttr object, NumPy scalar):
             Returns_RecursiveAttr object with new numpy_object, cupy_object.
-            Returns module, scalars if requested.
+            Returns scalars if requested.
         """
 
         # getting attr
@@ -60,32 +59,27 @@ class _RecursiveAttr:
     def __call__(self, *args, **kwargs):
         """
         Gets invoked when last attribute of _RecursiveAttr class gets called.
-
-        Search for attributes from attr_list in cupy.
-        If failed, search in numpy.
-        If method is found, calls respective library
-        Else, raise AttributeError.
+        Calls _cupy_object if not None else call _numpy_object.
 
         Args:
             args (tuple): Arguments.
             kwargs (dict): Keyword arguments.
 
         Returns:
-            (module, res, ndarray): Returns of call_cupy() or call_numpy
-            Raise AttributeError: If cupy_func and numpy_func is not found.
+            (res, ndarray): Returns of methods call_cupy or call_numpy
         """
 
         # Not callable objects
-        if not callable(self._numpy_object) and self._numpy_object is not None:
+        if not callable(self._numpy_object):
             raise TypeError("'{}' object is not callable"
                             .format(type(self._numpy_object).__name__))
 
         # Execute cupy method
         if self._cupy_object is not None:
-            return _call_cupy(self._cupy_object, args, kwargs)
+            return utils._call_cupy(self._cupy_object, args, kwargs)
 
         # Execute numpy method
-        return _call_numpy(self._numpy_object, args, kwargs)
+        return utils._call_numpy(self._numpy_object, args, kwargs)
 
 
 numpy = _RecursiveAttr(np, cp)
