@@ -49,38 +49,6 @@ class TestFallbackMode(unittest.TestCase):
             return test_func
         return decorator
 
-    def check_cupy_module(self, module_name):
-        """
-        Checks for cupy module using fallback mode.
-        Therefore compares with cupy module.
-        Raises AssertionError if two modules are not same.
-        """
-
-        # getting via fallback_mode
-        name = 'fallback_mode.numpy.' + module_name + '._cupy_module'
-        expected_module = eval(name)
-
-        # getting via native cupy
-        actual_module = getattr(cupy, module_name)
-
-        assert expected_module == actual_module
-
-    def check_numpy_module(self, module_name):
-        """
-        Checks for numpy module using fallback mode.
-        Therefore compares with numpy module.
-        Raises AssertionError if two modules are not same.
-        """
-
-        # getting via fallback_mode
-        name = 'fallback_mode.numpy.' + module_name + '._numpy_module'
-        expected_module = eval(name)
-
-        # getting via native numpy
-        actual_module = getattr(numpy, module_name)
-
-        assert expected_module == actual_module
-
     @numpy_fallback_equal()
     def test_argmin(self, xp):
 
@@ -135,15 +103,6 @@ class TestFallbackMode(unittest.TestCase):
 
         return xp.convolve(a, b, 'valid')
 
-    def test_linalg_module(self):
-        self.check_cupy_module('linalg')
-
-    def test_random_module(self):
-        self.check_numpy_module('random')
-
-    def test_matrixlib_module(self):
-        self.check_numpy_module('matrixlib')
-
     def test_vectorize(self):
 
         def function(a, b):
@@ -168,8 +127,6 @@ class TestFallbackMode(unittest.TestCase):
         self.assertRaises(TypeError, fallback_mode.numpy)
 
         self.assertRaises(TypeError, fallback_mode.numpy.linalg)
-
-        self.assertRaises(TypeError, fallback_mode.numpy.linalg._cupy_module)
 
     def test_numpy_scalars(self):
 

@@ -21,22 +21,6 @@ class _RecursiveAttr:
         self._numpy_object = numpy_object
         self._cupy_object = cupy_object
 
-    @property
-    def _cupy_module(self):
-
-        if isinstance(self._cupy_object, types.ModuleType):
-            return self._cupy_object
-        raise TypeError("'{}' is not a module"
-                        .format(self._cupy_object.__name__))
-
-    @property
-    def _numpy_module(self):
-
-        if isinstance(self._numpy_object, types.ModuleType):
-            return self._numpy_object
-        raise TypeError("'{}' is not a module"
-                        .format(self._numpy_object.__name__))
-
     def __getattr__(self, attr):
         """
         Catches attributes corresponding to numpy.
