@@ -1052,11 +1052,11 @@ def rnn_backward_data(
         cx = core._internal_ascontiguousarray(cx)
     w = core._internal_ascontiguousarray(w)
     xs = core._internal_ascontiguousarray(xs)
-    ys = core._internal_ascontiguousarray(ys)
+    ys = core._internal_ascontiguousarray(ys.copy())
     dhy = core._internal_ascontiguousarray(dhy)
     if dcy is not None:
         dcy = core._internal_ascontiguousarray(dcy)
-    dys = core._internal_ascontiguousarray(dys)
+    dys = core._internal_ascontiguousarray(dys.copy())
 
     cdef int length = len(lengths)
     cdef int n_layers = _get_n_layers(direction_mode, hx)
