@@ -120,7 +120,7 @@ class TestFallbackMode(unittest.TestCase):
         # So, it returns numpy.ndarray
         assert isinstance(expected, numpy.ndarray)
 
-        numpy.testing.assert_array_equal(cupy.asnumpy(expected), actual)
+        testing.assert_array_equal(expected, actual)
 
     def test_module_not_callable(self):
 
