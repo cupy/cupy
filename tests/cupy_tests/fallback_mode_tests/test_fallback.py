@@ -1,11 +1,11 @@
 import unittest
 import functools
 
+import numpy
+
 import cupy
 from cupy import testing
 from cupy import fallback_mode
-
-import numpy
 
 
 @testing.gpu

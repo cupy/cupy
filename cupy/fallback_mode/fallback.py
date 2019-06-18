@@ -1,9 +1,11 @@
 """
 Main fallback class.
 """
+
 import types
-import cupy as cp
 import numpy as np
+
+import cupy as cp
 
 
 from cupy.fallback_mode import utils
@@ -49,12 +51,12 @@ class _RecursiveAttr:
     def __repr__(self):
 
         if isinstance(self._numpy_object, types.ModuleType):
-            return ("<numpy = module {}, cupy = module {}>"
-                    .format(self._numpy_object.__name__,
-                            getattr(self._cupy_object, '__name__', None)))
+            return "<numpy = module {}, cupy = module {}>".format(
+                self._numpy_object.__name__,
+                getattr(self._cupy_object, '__name__', None))
 
-        return ("<numpy = {}, cupy = {}>"
-                .format(self._numpy_object, self._cupy_object))
+        return "<numpy = {}, cupy = {}>".format(
+            self._numpy_object, self._cupy_object)
 
     def __call__(self, *args, **kwargs):
         """
@@ -71,8 +73,8 @@ class _RecursiveAttr:
 
         # Not callable objects
         if not callable(self._numpy_object):
-            raise TypeError("'{}' object is not callable"
-                            .format(type(self._numpy_object).__name__))
+            raise TypeError("'{}' object is not callable".format(
+                type(self._numpy_object).__name__))
 
         # Execute cupy method
         if self._cupy_object is not None:
