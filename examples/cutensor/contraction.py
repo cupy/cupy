@@ -1,5 +1,5 @@
 #
-# C_{m,u,n,v} = alpha * A_{m,h,k,n} * B_{u,k,v,h} + gamma * C_{m,u,n,v}
+# C_{m,u,n,v} = alpha * A_{m,h,k,n} * B_{u,k,v,h} + beta * C_{m,u,n,v}
 #
 import numpy
 import cupy
@@ -26,11 +26,11 @@ desc_b = cutensor.create_tensor_descriptor(b)
 desc_c = cutensor.create_tensor_descriptor(c)
 
 alpha = 1.1
-gamma = 1.0
+beta = 1.0
 
 # rehearsal
 c = cutensor.contraction(alpha, a, desc_a, mode_a, b, desc_b, mode_b,
-                         gamma, c, desc_c, mode_c)
+                         beta, c, desc_c, mode_c)
 
 ev_start = stream.Event()
 ev_end = stream.Event()
@@ -39,7 +39,7 @@ with st:
     # measurement
     ev_start.record()
     c = cutensor.contraction(alpha, a, desc_a, mode_a, b, desc_b, mode_b,
-                             gamma, c, desc_c, mode_c)
+                             beta, c, desc_c, mode_c)
     ev_end.record()
 st.synchronize()
 
