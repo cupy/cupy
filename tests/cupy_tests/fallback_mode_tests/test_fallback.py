@@ -1,8 +1,9 @@
 import unittest
+import functools
 
 import cupy
 from cupy import testing
-from cupy.fallback_mode import numpy as fb
+from cupy import fallback_mode
 
 import numpy
 
@@ -10,41 +11,43 @@ import numpy
 @testing.gpu
 class TestFallbackMode(unittest.TestCase):
 
-    def check_func_returning_array(self, func_name, cupy_args, cupy_kwargs,
-                                   numpy_args, numpy_kwargs):
+    def numpy_fallback_equal(name='xp'):
         """
-        Check functions which returns ndarrays for equal arrays.
-        Raises an AssertionError if two ndarray objects are not equal.
+        Decorator that checks fallback_mode results are equal to NumPy ones.
+
+        Args:
+            name(str): Argument name whose value is either
+                ``numpy`` or ``cupy`` module.
         """
+        def decorator(impl):
+            @functools.wraps(impl)
+            def test_func(self, *args, **kwargs):
 
-        # getting via fallback_mode
-        x = getattr(fb, func_name)(*cupy_args, **cupy_kwargs)
+                kwargs[name] = cupy.fallback_mode.numpy
+                fallback_result = impl(self, *args, **kwargs)
 
-        # getting via native numpy
-        y = getattr(numpy, func_name)(*numpy_args, **numpy_kwargs)
+                kwargs[name] = numpy
+                numpy_result = impl(self, *args, **kwargs)
 
-        assert isinstance(x, cupy.ndarray)
-        assert isinstance(y, numpy.ndarray)
+                if isinstance(numpy_result, numpy.ndarray):
+                    # if numpy returns ndarray, cupy must return ndarray
+                    assert isinstance(fallback_result, cupy.ndarray)
+                    testing.assert_array_equal(numpy_result, fallback_result)
 
-        numpy.testing.assert_array_equal(cupy.asnumpy(x), y)
+                elif isinstance(numpy_result, numpy.ScalarType):
+                    # if numpy returns scalar
+                    # cupy must return scalar or 0-dim array
+                    if isinstance(fallback_result, numpy.ScalarType):
+                        assert numpy_result == fallback_result
 
-    def check_func_returning_non_array(self, func_name, cupy_args, cupy_kwargs,
-                                       numpy_args, numpy_kwargs):
-        """
-        Check functions which does not returns ndarrays.
-        Raises AssertionError if two returned objects are not equal.
-        """
+                    else:
+                        # cupy 0-dim array
+                        assert numpy_result == int(fallback_result)
+                else:
+                    raise NotImplementedError
 
-        # getting via fallback_mode
-        x = getattr(fb, func_name)(*cupy_args, **cupy_kwargs)
-
-        # getting via native numpy
-        y = getattr(numpy, func_name)(*numpy_args, **numpy_kwargs)
-
-        assert not isinstance(x, cupy.ndarray)
-        assert not isinstance(y, numpy.ndarray)
-
-        assert x == y
+            return test_func
+        return decorator
 
     def check_cupy_module(self, module_name):
         """
@@ -54,7 +57,8 @@ class TestFallbackMode(unittest.TestCase):
         """
 
         # getting via fallback_mode
-        expected_module = eval('fb.' + module_name + '._cupy_module')
+        name = 'fallback_mode.numpy.' + module_name + '._cupy_module'
+        expected_module = eval(name)
 
         # getting via native cupy
         actual_module = getattr(cupy, module_name)
@@ -69,12 +73,35 @@ class TestFallbackMode(unittest.TestCase):
         """
 
         # getting via fallback_mode
-        expected_module = eval('fb.' + module_name + '._numpy_module')
+        name = 'fallback_mode.numpy.' + module_name + '._numpy_module'
+        expected_module = eval(name)
 
         # getting via native numpy
         actual_module = getattr(numpy, module_name)
 
         assert expected_module == actual_module
+
+    @numpy_fallback_equal()
+    def test_argmin(self, xp):
+
+        a = xp.array([
+            [13, 5, 45, 23, 9],
+            [-5, 41, 0, 22, 4],
+            [2, 6, 43, 11, -1]
+        ])
+
+        return xp.argmin(a, axis=1)
+
+    @numpy_fallback_equal()
+    def test_argmin_zero_dim_array_vs_scalar(self, xp):
+
+        a = xp.array([
+            [13, 5, 45, 23, 9],
+            [-5, 41, 0, 22, 4],
+            [2, 6, 43, 11, -1]
+        ])
+
+        return xp.argmin(a)
 
     # cupy.argmin raises error if list passed, numpy does not
     def test_argmin_list(self):
@@ -85,59 +112,28 @@ class TestFallbackMode(unittest.TestCase):
             [2, 6, 43, 11, -1]
         ]
 
-        self.assertRaises(AttributeError, fb.argmin, a)
+        with self.assertRaises(AttributeError):
+            fallback_mode.numpy.argmin(a)
+
         assert numpy.argmin([1, 0, 3]) == 1
 
     # Non-existing function
-    def test_array_equal(self):
+    @numpy_fallback_equal()
+    def test_array_equal(self, xp):
 
-        a = [1, 2]
-        b = [1, 2]
+        a = xp.array([1, 2])
+        b = xp.array([1, 2])
 
-        cupy_args = (cupy.array(a), cupy.array(b))
-        numpy_args = (numpy.array(a), numpy.array(b))
-
-        kwargs = {}
-
-        self.check_func_returning_non_array('array_equal', cupy_args, kwargs,
-                                            numpy_args, kwargs)
+        return xp.array_equal(a, b)
 
     # Both cupy and numpy return 0-d array
-    def test_convolve_zero_dim_array(self):
+    @numpy_fallback_equal()
+    def test_convolve_zero_dim_array(self, xp):
 
-        args = ([1, 2, 3], [0, 1, 0.5], 'valid')
+        a = xp.array([1, 2, 3])
+        b = xp.array([0, 1, 0.5])
 
-        kwargs = {}
-
-        self.check_func_returning_array('convolve', args, kwargs, args, kwargs)
-
-    # Existing function
-    """
-    This test is going to fail as argmin exist in cupy,
-    if used `check_func_returning_array`.
-    Because, cupy returns 0-d array and numpy returns scalar value.
-    """
-
-    def test_argmin_zero_dim_array_vs_scalar(self):
-
-        a = ([
-            [13, 5, 45, 23, 9],
-            [-5, 41, 0, 22, 4],
-            [2, 6, 43, 11, -1]
-        ],)
-
-        cupy_args = (cupy.array(a),)
-        numpy_args = (numpy.array(a),)
-
-        kwargs = {}
-
-        # getting via fallback_mode (cupy)
-        x = getattr(fb, 'argmin')(*cupy_args, **kwargs)
-
-        # getting via native numpy
-        y = getattr(numpy, 'argmin')(*numpy_args, **kwargs)
-
-        assert int(x) == y
+        return xp.convolve(a, b, 'valid')
 
     def test_linalg_module(self):
         self.check_cupy_module('linalg')
@@ -156,44 +152,44 @@ class TestFallbackMode(unittest.TestCase):
             return a + b
 
         actual = numpy.vectorize(function)([1, 2, 3, 4], 2)
-        expected = fb.vectorize(function)([1, 2, 3, 4], 2)
+        expected = fallback_mode.numpy.vectorize(function)([1, 2, 3, 4], 2)
 
         assert isinstance(actual, numpy.ndarray)
 
-        # ([1,2,3,4], 2) are arguments to numpy.vectorize(function),
-        # not numpy.vectorize
-        # returns as numpy.ndarray
+        # ([1,2,3,4], 2) are arguments to
+        # numpy.vectorize(function), not numpy.vectorize
+        # So, it returns numpy.ndarray
         assert isinstance(expected, numpy.ndarray)
 
         numpy.testing.assert_array_equal(cupy.asnumpy(expected), actual)
 
     def test_module_not_callable(self):
 
-        self.assertRaises(TypeError, fb)
+        self.assertRaises(TypeError, fallback_mode.numpy)
 
-        self.assertRaises(TypeError, fb.linalg)
+        self.assertRaises(TypeError, fallback_mode.numpy.linalg)
 
-        self.assertRaises(TypeError, fb.linalg._cupy_module)
+        self.assertRaises(TypeError, fallback_mode.numpy.linalg._cupy_module)
 
     def test_numpy_scalars(self):
 
-        assert fb.inf is numpy.inf
+        assert fallback_mode.numpy.inf is numpy.inf
 
-        assert fb.pi is numpy.pi
+        assert fallback_mode.numpy.pi is numpy.pi
 
-        # True, because is checks for reference
-        # fb.nan abd numpy.nan both have same reference
-        assert fb.nan is numpy.nan
+        # True, because 'is' checks for reference
+        # fallback_mode.numpy.nan and numpy.nan both have same reference
+        assert fallback_mode.numpy.nan is numpy.nan
 
-        # But as nan is not comparable
-        assert fb.nan != numpy.nan
+        # But as 'nan' is not comparable
+        assert fallback_mode.numpy.nan != numpy.nan
 
     def test_cupy_specific_func(self):
 
         with self.assertRaises(AttributeError):
-            func = fb.ElementwiseKernel  # NOQA
+            func = fallback_mode.numpy.ElementwiseKernel  # NOQA
 
     def test_func_not_in_numpy(self):
 
         with self.assertRaises(AttributeError):
-            func = fb.dummy  # NOQA
+            func = fallback_mode.numpy.dummy  # NOQA
