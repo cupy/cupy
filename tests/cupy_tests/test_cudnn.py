@@ -145,6 +145,7 @@ class TestConvolutionForward(unittest.TestCase):
             out_channels_a_group = 2
         in_channels = in_channels_a_group * self.groups
         out_channels = out_channels_a_group * self.groups
+        # TODO(anaruse): increase test cases.
         ksize = 3
         stride = 2
         pad = ksize // stride * self.dilate
@@ -227,6 +228,7 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
         out_channels_a_group = 2
         in_channels = in_channels_a_group * self.groups
         out_channels = out_channels_a_group * self.groups
+        # TODO(anaruse): increase test cases.
         ksize = 3
         stride = 2
         pad = ksize // stride * self.dilate
@@ -295,6 +297,7 @@ class TestConvolutionBackwardData(unittest.TestCase):
         out_channels_a_group = 2
         in_channels = in_channels_a_group * self.groups
         out_channels = out_channels_a_group * self.groups
+        # TODO(anaruse): increase test cases.
         ksize = 3
         stride = 2
         pad = ksize // stride * self.dilate
