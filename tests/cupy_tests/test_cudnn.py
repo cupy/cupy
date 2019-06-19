@@ -349,9 +349,9 @@ class TestConvolutionBackwardData(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64],
     'ksize': [1, 3, 5],
-    'stride': [1, 2, 4],
+    'stride': [2, 4],
     'auto_tune': [True, False],
 }))
 @unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
@@ -414,13 +414,7 @@ class TestConvolutionNoAvailableAlgorithm(unittest.TestCase):
     def test_backward_data(self):
         err = None
         if self.layout == libcudnn.CUDNN_TENSOR_NHWC:
-            if self.dtype == numpy.float16:
-                if self.stride == 4:
-                    err = self._get_error_type()
-                elif self.stride == 2 and self.ksize == 5:
-                    err = self._get_error_type()
-            else:
-                err = self._get_error_type()
+            err = self._get_error_type()
         if err is None:
             return unittest.SkipTest()
         with self.assertRaises(err):
