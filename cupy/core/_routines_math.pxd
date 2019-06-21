@@ -16,7 +16,6 @@ cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out)
 
 cdef ndarray scan(ndarray a, ndarray out=*)
 cdef object _sum_auto_dtype
-cdef object _nansum_auto_dtype
 cdef object _add
 cdef object _conj
 cdef object _angle
