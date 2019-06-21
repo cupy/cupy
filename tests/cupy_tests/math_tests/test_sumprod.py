@@ -181,48 +181,51 @@ class TestSumprod(unittest.TestCase):
 @testing.parameterize(
     *testing.product({
         'shape': [(2, 3, 4), (20, 30, 40)],
+        'axis': [0, 1],
+        'transpose_axes': [True, False],
+        'keepdims': [True, False],
+        'func': ['nansum', 'nanprod']
     })
 )
 @testing.gpu
-class TestNansumNanprod(unittest.TestCase):
+class TestNansumNanprodLong(unittest.TestCase):
+
+    def _do_transposed_axis_test(self):
+        return not self.transpose_axes and self.axis != 1
+
+    def _test(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        if self.transpose_axes:
+            a = a.transpose(2, 0, 1)
+        if not issubclass(dtype, xp.integer):
+            a[:, 1] = xp.nan
+        func = getattr(xp, self.func)
+        return func(a, axis=self.axis, keepdims=self.keepdims)
 
     @testing.for_float_dtypes()
     @testing.for_int_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nansum_all(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        if not issubclass(dtype, xp.integer):
-            a[:, 1] = xp.nan
-        return xp.nansum(a)
+        if not self._do_transposed_axis_test():
+            return xp.array(())
+        return self._test(xp, dtype)
 
     @testing.for_float_dtypes()
     @testing.for_int_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_nansum_all_transposed(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype).transpose(2, 0, 1)
-        if not issubclass(dtype, xp.integer):
-            a[:, 1] = xp.nan
-        return xp.nansum(a)
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_nansum_axis_transposed(self, xp, dtype):
+        if self._do_transposed_axis_test():
+            return xp.array(())
+        return self._test(xp, dtype)
 
-    @testing.for_float_dtypes()
-    @testing.for_int_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_nansum_axis(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        if not issubclass(dtype, xp.integer):
-            a[:, 1] = xp.nan
-        return xp.nansum(a, axis=1)
 
-    # float16 is omitted, since NumPy's nansum on float16 arrays has more error
-    # than CuPy's.
-    @testing.for_float_dtypes(no_float16=True)
-    @testing.for_int_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_nansum_axis2(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        if not issubclass(dtype, xp.integer):
-            a[:, 1] = xp.nan
-        return xp.nansum(a, axis=1)
+@testing.parameterize(
+    *testing.product({
+        'shape': [(2, 3, 4), (20, 30, 40)],
+    })
+)
+@testing.gpu
+class TestNansumNanprodExtra(unittest.TestCase):
 
     def test_nansum_axis2_float16(self):
         # Note that the above test example overflows in float16. We use a
@@ -236,24 +239,6 @@ class TestNansumNanprod(unittest.TestCase):
         b[:, 1] = numpy.nan
         sb = numpy.nansum(b, axis=1)
         testing.assert_allclose(sa, sb.astype('e'))
-
-    @testing.for_float_dtypes()
-    @testing.for_int_dtypes()
-    @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_nansum_axis_transposed(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype).transpose(2, 0, 1)
-        if not issubclass(dtype, xp.integer):
-            a[:, 1] = xp.nan
-        return xp.nansum(a, axis=1)
-
-    @testing.for_float_dtypes()
-    @testing.for_int_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_nansum_keepdims(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        if not issubclass(dtype, xp.integer):
-            a[:, 1] = xp.nan
-        return xp.nansum(a, axis=1, keepdims=True)
 
     @testing.for_float_dtypes()
     @testing.for_int_dtypes()
@@ -273,28 +258,10 @@ class TestNansumNanprod(unittest.TestCase):
         with self.assertRaises(ValueError):
             cupy.nansum(a, axis=1, out=b)
 
-    @testing.for_float_dtypes()
-    @testing.for_int_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_nanprod_all(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        if not issubclass(dtype, xp.integer):
-            a[:, 1] = xp.nan
-        return xp.nanprod(a)
-
-    @testing.for_float_dtypes()
-    @testing.for_int_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_nanprod_axis(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        if not issubclass(dtype, xp.integer):
-            a[:, 1] = xp.nan
-        return xp.nanprod(a, axis=1)
-
 
 @testing.parameterize(
     *testing.product({
-        'shape': [(2, 3, 4, 5)],
+        'shape': [(2, 3, 4, 5), (20, 30, 40, 50)],
         'axis': [(1, 3), (0, 2, 3)],
     })
 )
@@ -309,62 +276,28 @@ class TestNansumNanprodAxes(unittest.TestCase):
             a[:, 1] = xp.nan
         return xp.nansum(a, axis=self.axis)
 
-    @testing.for_float_dtypes()
-    @testing.for_int_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_nansum_axes3(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        if not issubclass(dtype, xp.integer):
-            a[:, 1] = xp.nan
-        return xp.nansum(a, axis=self.axis)
-
-
-@testing.parameterize(
-    *testing.product({
-        'shape': [(20, 30, 40, 50)],
-        'axis': [(1, 3), (0, 2, 3)],
-    })
-)
-@testing.gpu
-class TestNansumNanprodAxesLarge(unittest.TestCase):
-    @testing.for_float_dtypes()
-    @testing.for_int_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4)
-    def test_nansum_axes2(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        if not issubclass(dtype, xp.integer):
-            a[:, 1] = xp.nan
-        return xp.nansum(a, axis=self.axis)
-
-    @testing.for_float_dtypes()
-    @testing.for_int_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_nansum_axes4(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        if not issubclass(dtype, xp.integer):
-            a[:, 1] = xp.nan
-        return xp.nansum(a, axis=self.axis)
-
 
 @testing.gpu
 class TestNansumNanprodHuge(unittest.TestCase):
+    def _test(self, xp, nan_slice):
+        a = testing.shaped_random((2048, 1, 1024), xp, 'f')
+        a[nan_slice] = xp.nan
+        a = xp.broadcast_to(a, (2048, 1024, 1024))
+        return xp.nansum(a, axis=2)
+
     @testing.slow
     @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_allclose(atol=1e-1)
     def test_nansum_axis_huge(self, xp):
-        a = testing.shaped_random((2048, 1, 1024), xp, 'f')
-        a[:, :, 1] = xp.nan
-        a = xp.broadcast_to(a, (2048, 1024, 1024))
-        return xp.nansum(a, axis=2)
+        return self._test(
+            xp, (slice(None, None), slice(None, None), slice(1, 2)))
 
     @testing.slow
     @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_allclose(atol=1e-2)
     def test_nansum_axis_huge_halfnan(self, xp):
-        a = testing.shaped_random((2048, 1, 1024), xp, 'f')
-        a[:, :, 0:512] = xp.nan
-        a = xp.broadcast_to(a, (2048, 1024, 1024))
-        return xp.nansum(a, axis=2)
+        return self._test(
+            xp, (slice(None, None), slice(None, None), slice(0, 512)))
 
 
 axes = [0, 1, 2]
