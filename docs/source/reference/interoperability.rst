@@ -69,7 +69,7 @@ In addition, :func:`cupy.asarray` supports zero-copy conversion from Numba CUDA 
 mpi4py
 ------
 
-`MPI for Python (mpi4py) <https://mpi4py.readthedocs.io/>`_ is a Python wrapper for the Message Passing Interface (MPI) libraries.
+`MPI for Python (mpi4py) <https://mpi4py.readthedocs.io/en/latest/>`_ is a Python wrapper for the Message Passing Interface (MPI) libraries.
 
 MPI is the *de facto* standard for high-performance inter-process communications. Recently several MPI vendors, including Open MPI and MVAPICH, have extended their support beyond the v3.1 standard to enable "CUDA-awareness"; that is, passing CUDA device pointers directly to MPI calls to avoid explicit data movement between the host and the device.
 
