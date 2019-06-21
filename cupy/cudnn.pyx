@@ -1330,6 +1330,8 @@ cpdef _Algorithm _find_algorithm_fwd(
         perf = cudnn.findConvolutionForwardAlgorithmEx(
             handle, x_desc, x.data.ptr, filter_desc, W.data.ptr, conv_desc,
             y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
+    if perf.status != cudnn.CUDNN_STATUS_SUCCESS:
+        raise RuntimeError('No available algorithm found.')
     algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     _algorithm_fwd_cache[key] = algo
     return algo
@@ -1406,6 +1408,8 @@ cpdef _Algorithm _find_algorithm_bwd_filter(
         perf = cudnn.findConvolutionBackwardFilterAlgorithmEx(
             handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
             filter_desc, dW.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
+    if perf.status != cudnn.CUDNN_STATUS_SUCCESS:
+        raise RuntimeError('No available algorithm found.')
     algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     _algorithm_bwd_filter_cache[key] = algo
     return algo
@@ -1455,7 +1459,7 @@ cpdef _warn_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param):
     warnings.warn(
         'Tensor Core mode is set but the selected convolution backward '
-        'filter algorithm is not a Tensor Core enabled algorithm. '
+        'data algorithm is not a Tensor Core enabled algorithm. '
         'This might be due to lack of workspace memory. '
         'W.shape:{}, x.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(W.shape, x.shape, y.shape, conv_param[0], conv_param[1]),
@@ -1483,6 +1487,8 @@ cpdef _Algorithm _find_algorithm_bwd_data(
         perf = cudnn.findConvolutionBackwardDataAlgorithmEx(
             handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
             y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
+    if perf.status != cudnn.CUDNN_STATUS_SUCCESS:
+        raise RuntimeError('No available algorithm found.')
     algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     _algorithm_bwd_data_cache[key] = algo
     return algo
