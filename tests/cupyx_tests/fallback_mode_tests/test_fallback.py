@@ -3,9 +3,9 @@ import functools
 
 import numpy
 
-import cupy
 from cupy import testing
 from cupyx import fallback_mode
+from cupyx.fallback_mode import ndarray
 
 
 @testing.gpu
@@ -31,8 +31,9 @@ class TestFallbackMode(unittest.TestCase):
 
                 if isinstance(numpy_result, numpy.ndarray):
                     # if numpy returns ndarray, cupy must return ndarray
-                    assert isinstance(fallback_result, cupy.ndarray)
-                    testing.assert_array_equal(numpy_result, fallback_result)
+                    assert isinstance(fallback_result, ndarray.ndarray)
+                    testing.assert_array_equal(
+                        numpy_result, fallback_result._array)
 
                 elif isinstance(numpy_result, numpy.ScalarType):
                     # if numpy returns scalar
@@ -42,7 +43,7 @@ class TestFallbackMode(unittest.TestCase):
 
                     else:
                         # cupy 0-dim array
-                        assert numpy_result == int(fallback_result)
+                        assert numpy_result == int(fallback_result._array)
                 else:
                     raise NotImplementedError
 

@@ -2,8 +2,9 @@
 Data transfer methods
 """
 
-import cupy as cp
 import numpy as np
+
+import cupy as cp
 
 
 def _get_xp_args(org_module, to_xp, arg):
