@@ -3,6 +3,7 @@ import functools
 
 import numpy
 
+import cupy
 from cupy import testing
 from cupyx import fallback_mode
 from cupyx.fallback_mode import ndarray
@@ -148,3 +149,41 @@ class TestFallbackMode(unittest.TestCase):
 
         with self.assertRaises(AttributeError):
             func = fallback_mode.numpy.dummy  # NOQA
+
+    def test_ndarray_creation(self):
+
+        a = fallback_mode.numpy.array([[1, 2], [3, 4]])
+        assert isinstance(a, ndarray.ndarray)
+
+        b = fallback_mode.numpy.arange(9)
+        assert isinstance(b, ndarray.ndarray)
+        assert isinstance(b._array, cupy.ndarray)
+
+    # ndarray fallback method
+    @numpy_fallback_equal()
+    def test_ndarray_tobytes(self, xp):
+
+        a = xp.array([1, 2, 3])
+
+        return a.tobytes()
+
+    @numpy_fallback_equal()
+    def test_ndarray_min(self, xp):
+
+        a = xp.array([1, 2, 0, 4])
+
+        return a.min()
+
+    @numpy_fallback_equal()
+    def test_ndarray_argmin(self, xp):
+
+        a = xp.array([[1, 2, 3], [7, 8, 9]])
+
+        return a.argmin()
+
+    @numpy_fallback_equal()
+    def test_ndarray_argmin_kwargs(self, xp):
+
+        a = xp.array([[1, 2, 3], [7, 8, 9]])
+
+        return a.argmin(axis=0)
