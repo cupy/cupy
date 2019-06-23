@@ -6,7 +6,7 @@ import numpy
 import cupy
 from cupy import testing
 from cupyx import fallback_mode
-from cupyx.fallback_mode import ndarray
+from cupyx.fallback_mode import utils
 
 
 @testing.gpu
@@ -32,7 +32,7 @@ class TestFallbackMode(unittest.TestCase):
 
                 if isinstance(numpy_result, numpy.ndarray):
                     # if numpy returns ndarray, cupy must return ndarray
-                    assert isinstance(fallback_result, ndarray.ndarray)
+                    assert isinstance(fallback_result, utils.ndarray)
                     testing.assert_array_equal(
                         numpy_result, fallback_result._array)
 
@@ -153,10 +153,10 @@ class TestFallbackMode(unittest.TestCase):
     def test_ndarray_creation(self):
 
         a = fallback_mode.numpy.array([[1, 2], [3, 4]])
-        assert isinstance(a, ndarray.ndarray)
+        assert isinstance(a, utils.ndarray)
 
         b = fallback_mode.numpy.arange(9)
-        assert isinstance(b, ndarray.ndarray)
+        assert isinstance(b, utils.ndarray)
         assert isinstance(b._array, cupy.ndarray)
 
     # ndarray fallback method
@@ -196,7 +196,7 @@ class TestFallbackMode(unittest.TestCase):
         # __add__
         x = a + b
         res = cupy.array([10, 10, 10])
-        assert isinstance(x, ndarray.ndarray)
+        assert isinstance(x, utils.ndarray)
         testing.assert_array_equal(x._array, res)
 
         # __iadd__

@@ -4,7 +4,7 @@
 # "NOQA" to suppress flake8 warning
 from cupyx.fallback_mode.fallback import numpy  # NOQA
 
-from cupyx.fallback_mode import ndarray
+from cupyx.fallback_mode import utils
 
 
-ndarray._create_magic_methods()
+utils._create_magic_methods()
