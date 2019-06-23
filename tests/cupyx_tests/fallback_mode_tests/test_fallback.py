@@ -187,3 +187,63 @@ class TestFallbackMode(unittest.TestCase):
         a = xp.array([[1, 2, 3], [7, 8, 9]])
 
         return a.argmin(axis=0)
+
+    def test_magic_methods(self):
+
+        a = fallback_mode.numpy.array([1, 2, 3])
+        b = fallback_mode.numpy.array([9, 8, 7])
+
+        # __add__
+        x = a + b
+        res = cupy.array([10, 10, 10])
+        assert isinstance(x, ndarray.ndarray)
+        testing.assert_array_equal(x._array, res)
+
+        # __iadd__
+        x += x
+        res += res
+        testing.assert_array_equal(x._array, res)
+
+        # __mul__ with integer
+        x = x * 5
+        res = res * 5
+        testing.assert_array_equal(x._array, res)
+
+        # __str__
+        assert str(x) == str(res)
+
+        # __neg__ single arg: self
+        testing.assert_array_equal((-x)._array, -res)
+
+        # __len__
+        assert len(x) == len(res)
+
+        # conversion __int__, __float__
+        assert int(fallback_mode.numpy.array([3])) == 3
+        assert float(fallback_mode.numpy.array([3])) == 3.0
+
+    def test_getitem(self):
+
+        x = fallback_mode.numpy.array([1, 2, 3])
+
+        # single element
+        assert int(x[2]) == 3
+
+        # slicing
+        res = cupy.array([1, 2, 3])
+        testing.assert_array_equal(x[:2]._array, res[:2])
+
+    def test_setitem(self):
+
+        x = fallback_mode.numpy.array([1, 2, 3])
+
+        # single element
+        x[2] = 99
+        res = cupy.array([1, 2, 99])
+        testing.assert_array_equal(x._array, res)
+
+        # slicing
+        y = fallback_mode.numpy.array([11, 22])
+        x[:2] = y
+        res = cupy.array([11, 22, 99])
+        testing.assert_array_equal(x._array, res)
