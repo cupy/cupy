@@ -222,7 +222,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert iface['data'][0] == arr.data.ptr
         assert not iface['data'][1]
         assert iface['version'] == 0
-        assert iface['strides'] == [320, 40]
+        assert iface['strides'] == (320, 40)
         assert iface['descr'] == [('', '<f8')]
 
 
