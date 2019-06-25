@@ -41,12 +41,7 @@ def nanargmax(a, axis=None):
     if a.dtype.kind in 'biu':
         return argmin(a, axis=axis)
 
-    mask = cupy.isnan(a)
-
-    if cupy.any(cupy.all(mask, axis=axis)):
-        raise ValueError('All-NaN slice encountered')
-
-    return argmax(cupy.where(mask, cupy.inf, a), axis=axis)
+    return argmax(cupy.where(cupy.isnan(a), cupy.inf, a), axis=axis)
 
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -87,12 +82,7 @@ def nanargmin(a, axis=None):
     if a.dtype.kind in 'biu':
         return argmin(a, axis=axis)
 
-    mask = cupy.isnan(a)
-
-    if cupy.any(cupy.all(mask, axis=axis)):
-        raise ValueError('All-NaN slice encountered')
-
-    return argmin(cupy.where(mask, cupy.inf, a), axis=axis)
+    return argmin(cupy.where(cupy.isnan(a), cupy.inf, a), axis=axis)
 
 # TODO(okuta): Implement argwhere
 
