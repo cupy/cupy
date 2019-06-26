@@ -239,46 +239,56 @@ def svd(a, full_matrices=True, compute_uv=True):
     if compute_uv:
         if full_matrices:
             u = cupy.empty((m, m), dtype=a_dtype)
-            vt = cupy.empty((n, n), dtype=a_dtype)
+            # vt = cupy.empty((n, n), dtype=a_dtype)
+            vt = x
+            jobu = ord('A')
+            jobvt = ord('O')
+            u_ptr = u.data.ptr
+            vt_ptr = x.data.ptr # Overwrite VT on copied X
         else:
-            u = cupy.empty((mn, m), dtype=a_dtype)
+            #u = cupy.empty((mn, m), dtype=a_dtype)
+            u = x
             vt = cupy.empty((mn, n), dtype=a_dtype)
-        u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
+            jobu = ord('O')
+            jobvt = ord('S')
+            u_ptr = x.data.ptr  # Overwrite U on copied X
+            vt_ptr = vt.data.ptr
     else:
         u_ptr, vt_ptr = 0, 0  # Use nullptr
+        jobu = ord('N')
+        jobvt = ord('N')
+        
     s = cupy.empty(mn, dtype=s_dtype)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
-    if compute_uv:
-        job = ord('A') if full_matrices else ord('S')
-    else:
-        job = ord('N')
+
+        
     if a_dtype == 'f':
         buffersize = cusolver.sgesvd_bufferSize(handle, m, n)
         workspace = cupy.empty(buffersize, dtype=a_dtype)
         cusolver.sgesvd(
-            handle, job, job, m, n, x.data.ptr, m,
+            handle, jobu, jobvt, m, n, x.data.ptr, m,
             s.data.ptr, u_ptr, m, vt_ptr, n,
             workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
     elif a_dtype == 'd':
         buffersize = cusolver.dgesvd_bufferSize(handle, m, n)
         workspace = cupy.empty(buffersize, dtype=a_dtype)
         cusolver.dgesvd(
-            handle, job, job, m, n, x.data.ptr, m,
+            handle, jobu, jobvt, m, n, x.data.ptr, m,
             s.data.ptr, u_ptr, m, vt_ptr, n,
             workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
     elif a_dtype == 'F':
         buffersize = cusolver.cgesvd_bufferSize(handle, m, n)
         workspace = cupy.empty(buffersize, dtype=a_dtype)
         cusolver.cgesvd(
-            handle, job, job, m, n, x.data.ptr, m,
+            handle, jobu, jobvt, m, n, x.data.ptr, m,
             s.data.ptr, u_ptr, m, vt_ptr, n,
             workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
     else:  # a_dtype == 'D':
         buffersize = cusolver.zgesvd_bufferSize(handle, m, n)
         workspace = cupy.empty(buffersize, dtype=a_dtype)
         cusolver.zgesvd(
-            handle, job, job, m, n, x.data.ptr, m,
+            handle, jobu, jobvt, m, n, x.data.ptr, m,
             s.data.ptr, u_ptr, m, vt_ptr, n,
             workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
 
