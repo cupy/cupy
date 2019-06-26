@@ -255,3 +255,10 @@ class TestFallbackMode(unittest.TestCase):
         x = x.reshape(4, 5)
 
         return x.shape
+
+    def test_ndarray_shape_creation(self):
+
+        a = fallback_mode.numpy.ndarray((4, 5))
+        b = cupy.ndarray((4, 5))
+
+        testing.assert_array_almost_equal(a._array, b)
