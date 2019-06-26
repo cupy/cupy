@@ -224,73 +224,82 @@ def svd(a, full_matrices=True, compute_uv=True):
     # Remark 2: gesvd only supports jobu = 'A' and jobvt = 'A'
     # Remark 3: gesvd returns matrix U and V^H
     # Remark 4: Remark 2 is removed since cuda 8.0 (new!)
-    n, m = a.shape
-
-    # `a` must be copied because xgesvd destroys the matrix
-    if m >= n:
-        x = a.astype(a_dtype, order='C', copy=True)
-        trans_flag = False
-    else:
-        m, n = a.shape
-        x = a.transpose().astype(a_dtype, order='C', copy=True)
+    
+    n, p = a.shape
+    if p > n:
         trans_flag = True
-    mn = min(m, n)
+        # Perform SVD(X.T) not SVD(X) This reduces complexity from
+        # O(np^2) to O(n^2p) if p > n
+        if a.flags.c_contiguous:
+            X = a.astype(a_dtype, order = 'C', copy = True).transpose()
+        else:
+            X = a.transpose().astype(a_dtype, order = 'F', copy = True)
+        n, p = X.shape
+    else:
+        trans_flag = False
+        X = a.astype(a_dtype, order = 'F', copy = True)
+
+
+    MIN = min(n, p)
 
     if compute_uv:
         if full_matrices:
-            u = cupy.empty((m, m), dtype=a_dtype)
-            # vt = cupy.empty((n, n), dtype=a_dtype)
-            vt = x
-            jobu = ord('A')
-            jobvt = ord('O')
-            u_ptr = u.data.ptr
-            vt_ptr = x.data.ptr # Overwrite VT on copied X
+            U = cupy.empty((n, n), dtype = a_dtype, order = 'F')
+            VT = X
+            jobU = ord('A')
+            jobVT = ord('O')
+            U_ptr = U.data.ptr
+            VT_ptr = X.data.ptr
         else:
-            #u = cupy.empty((mn, m), dtype=a_dtype)
-            u = x
-            vt = cupy.empty((mn, n), dtype=a_dtype)
-            jobu = ord('O')
-            jobvt = ord('S')
-            u_ptr = x.data.ptr  # Overwrite U on copied X
-            vt_ptr = vt.data.ptr
+            U = X
+            VT = cupy.empty((MIN, p), dtype = a_dtype, order = 'F')
+            jobU = ord('O')
+            jobVT = ord('S')
+            U_ptr = X.data.ptr
+            VT_ptr = VT.data.ptr
     else:
-        u_ptr, vt_ptr = 0, 0  # Use nullptr
-        jobu = ord('N')
-        jobvt = ord('N')
+        U_ptr, VT_ptr = 0, 0  # Use nullptr
+        jobU = ord('N')
+        jobVT = ord('N')
+
         
-    s = cupy.empty(mn, dtype=s_dtype)
+    S = cupy.empty(MIN, dtype = s_dtype)
     handle = device.get_cusolver_handle()
-    dev_info = cupy.empty(1, dtype=numpy.int32)
+    dev_info = cupy.empty(1, dtype = numpy.int32)
 
         
     if a_dtype == 'f':
-        buffersize = cusolver.sgesvd_bufferSize(handle, m, n)
-        workspace = cupy.empty(buffersize, dtype=a_dtype)
+        buffersize = cusolver.sgesvd_bufferSize(handle, n, p)
+        workspace = cupy.empty(buffersize, dtype = a_dtype)
         cusolver.sgesvd(
-            handle, jobu, jobvt, m, n, x.data.ptr, m,
-            s.data.ptr, u_ptr, m, vt_ptr, n,
+            handle, jobU, jobVT, n, p, X.data.ptr, n,
+            S.data.ptr, U_ptr, n, VT_ptr, p,
             workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
+
     elif a_dtype == 'd':
-        buffersize = cusolver.dgesvd_bufferSize(handle, m, n)
-        workspace = cupy.empty(buffersize, dtype=a_dtype)
+        buffersize = cusolver.dgesvd_bufferSize(handle, n, p)
+        workspace = cupy.empty(buffersize, dtype = a_dtype)
         cusolver.dgesvd(
-            handle, jobu, jobvt, m, n, x.data.ptr, m,
-            s.data.ptr, u_ptr, m, vt_ptr, n,
+            handle, jobU, jobVT, n, p, X.data.ptr, n,
+            S.data.ptr, U_ptr, n, VT_ptr, p,
             workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
+
     elif a_dtype == 'F':
-        buffersize = cusolver.cgesvd_bufferSize(handle, m, n)
-        workspace = cupy.empty(buffersize, dtype=a_dtype)
+        buffersize = cusolver.cgesvd_bufferSize(handle, n, p)
+        workspace = cupy.empty(buffersize, dtype = a_dtype)
         cusolver.cgesvd(
-            handle, jobu, jobvt, m, n, x.data.ptr, m,
-            s.data.ptr, u_ptr, m, vt_ptr, n,
+            handle, jobU, jobVT, n, p, X.data.ptr, n,
+            S.data.ptr, U_ptr, n, VT_ptr, p,
             workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
+
     else:  # a_dtype == 'D':
-        buffersize = cusolver.zgesvd_bufferSize(handle, m, n)
-        workspace = cupy.empty(buffersize, dtype=a_dtype)
+        buffersize = cusolver.zgesvd_bufferSize(handle, n, p)
+        workspace = cupy.empty(buffersize, dtype = a_dtype)
         cusolver.zgesvd(
-            handle, jobu, jobvt, m, n, x.data.ptr, m,
-            s.data.ptr, u_ptr, m, vt_ptr, n,
+            handle, jobU, jobVT, n, p, X.data.ptr, n,
+            S.data.ptr, U_ptr, n, VT_ptr, p,
             workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
+
 
     status = int(dev_info[0])
     if status > 0:
@@ -300,12 +309,12 @@ def svd(a, full_matrices=True, compute_uv=True):
         raise linalg.LinAlgError(
             'Parameter error (maybe caused by a bug in cupy.linalg?)')
 
-    # Note that the returned array may need to be transporsed
+    # Note that the returned array may need to be transprosed
     # depending on the structure of an input
     if compute_uv:
         if trans_flag:
-            return u.transpose(), s, vt.transpose()
+            return VT.transpose(), S, U.transpose()
         else:
-            return vt, s, u
+            return U, S, VT
     else:
-        return s
+        return S
