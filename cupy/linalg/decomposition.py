@@ -312,9 +312,11 @@ def svd(a, full_matrices=True, compute_uv=True):
     # Note that the returned array may need to be transprosed
     # depending on the structure of an input
     if compute_uv:
+        if full_matrices:
+            # VT overwrites only top MIN rows on X
+            VT = VT[:MIN]
         if trans_flag:
-            return VT.transpose(), S, U.transpose()
-        else:
-            return U, S, VT
+            U, VT = VT.transpose(), U.transpose()
+        return U, S, VT
     else:
         return S
