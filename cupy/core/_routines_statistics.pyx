@@ -16,10 +16,14 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
+cdef ndarray _ndarray_nanargmax(ndarray self, axis, out, dtype, keepdims):
+    return _nanargmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
+cdef ndarray _ndarray_nanargmin(ndarray self, axis, out, dtype, keepdims):
+    return _nanargmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
     return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
@@ -250,6 +254,22 @@ cdef _argmax = create_reduction_func(
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
+nanargmin = create_reduction_func(
+    'cupy_nanargmin',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
+    ('min_max_st<type_in0_raw>(in0)', 'my_argmin(a, b)', 'out0 = a.value',
+     'min_max_st<type_in0_raw>'),
+    None, _min_max_preamble)
+
+
+nanargmax = create_reduction_func(
+    'cupy_nanargmax',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
+    ('min_max_st<type_in0_raw>(in0)', 'my_argmax(a, b)', 'out0 = a.value',
+     'min_max_st<type_in0_raw>'),
+    None, _min_max_preamble)
 
 cdef ndarray _var(
         ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
