@@ -2,7 +2,6 @@
 Utilities needed for fallback_mode.
 """
 
-import logging
 import warnings
 import threading
 
@@ -69,16 +68,48 @@ def seterr(new_dispatch):
     raise ValueError('{} is not valid dispatch type'.format(new_dispatch))
 
 
+class FallbackLogger:
+
+    logger = None
+
+    @classmethod
+    def setlogger(cls, logger):
+        cls.logger = logger
+
+    @classmethod
+    def getlogger(cls):
+
+        if cls.logger is None:
+            raise AttributeError('Logger not initiated')
+
+        return cls.logger
+
+
 def dispatch_notification(func):
 
-    msg = "Requested method not in cupy, falling back to '{}.{}'".format(
-        func.__module__, func.__name__)
+    msg = "'{}' method not in cupy, falling back to '{}.{}'".format(
+        func.__name__, func.__module__, func.__name__)
 
     if _thread_locals.dispatch_type == 'print':
         print("Warning: {}".format(msg))
 
     elif _thread_locals.dispatch_type == 'warn':
-        warnings.warn(msg, FallbackWarning)
+        warnings.warn(msg, FallbackWarning, stacklevel=3)
 
     elif _thread_locals.dispatch_type == 'log':
-        logging.warning(msg)
+        logger = FallbackLogger.getlogger()
+        logger.warning(msg)
+
+
+class errstate:
+
+    def __init__(self, new_dispatch):
+        self.old = None
+        self.new = new_dispatch
+
+    def __enter__(self):
+        self.old = _thread_locals.dispatch_type
+        seterr(self.new)
+
+    def __exit__(self, *exc_info):
+        seterr(self.old)
