@@ -46,7 +46,7 @@ class TestFallbackMode(unittest.TestCase):
                         # cupy 0-dim array
                         assert numpy_result == int(fallback_result._array)
                 else:
-                    raise NotImplementedError
+                    assert numpy_result == fallback_result
 
             return test_func
         return decorator
@@ -247,3 +247,11 @@ class TestFallbackMode(unittest.TestCase):
         x[:2] = y
         res = cupy.array([11, 22, 99])
         testing.assert_array_equal(x._array, res)
+
+    @numpy_fallback_equal()
+    def test_ndarray_shape(self, xp):
+
+        x = xp.arange(20)
+        x = x.reshape(4, 5)
+
+        return x.shape

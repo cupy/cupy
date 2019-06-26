@@ -23,11 +23,11 @@ def _call_cupy(func, args, kwargs):
     Returns:
         Result after calling func.
     """
-    args = _convert_ndarrays(args)
+    args, kwargs = data_transfer._get_cupy_ndarray(ndarray, args, kwargs)
 
     res = func(*args, **kwargs)
 
-    return _get_fallback_ndarray(res)
+    return data_transfer._get_fallback_ndarray(ndarray, res)
 
 
 def _call_numpy(func, args, kwargs):
@@ -42,7 +42,7 @@ def _call_numpy(func, args, kwargs):
     Returns:
         Result after calling func.
     """
-    args = _convert_ndarrays(args)
+    args, kwargs = data_transfer._get_cupy_ndarray(ndarray, args, kwargs)
 
     numpy_args, numpy_kwargs = data_transfer._get_numpy_args(args, kwargs)
 
@@ -50,32 +50,19 @@ def _call_numpy(func, args, kwargs):
 
     cupy_res = data_transfer._get_cupy_result(numpy_res)
 
-    return _get_fallback_ndarray(cupy_res)
-
-
-def _convert_ndarrays(args):
-    return tuple(
-        [i._array if isinstance(i, ndarray) else i for i in args])
-
-
-def _get_fallback_ndarray(res):
-
-    if isinstance(res, cp.ndarray):
-        return ndarray(res)
-
-    return res
+    return data_transfer._get_fallback_ndarray(ndarray, cupy_res)
 
 
 def make_method(name):
     def method(self, *args, **kwargs):
 
-        args = _convert_ndarrays(args)
+        args, kwargs = data_transfer._get_cupy_ndarray(ndarray, args, kwargs)
 
         cupy_method = getattr(cp.ndarray, name)
 
         res = cupy_method(self._array, *args, **kwargs)
 
-        return _get_fallback_ndarray(res)
+        return data_transfer._get_fallback_ndarray(ndarray, res)
 
     return method
 
@@ -125,32 +112,31 @@ class ndarray:
     def __init__(self, array):
         self._array = array
         self.func = None
+        self._numpy_func = False
 
     def __getattr__(self, attr):
 
+        self._numpy_func = False
+
         self.func = getattr(cp.ndarray, attr, None)
+
         if not callable(self.func) and self.func is not None:
             return getattr(self._array, attr)
-
         if self.func is not None:
-            return self._call_cupy_ndarray
+            return self.__call
 
         self.func = getattr(np.ndarray, attr)
-        return self._call_numpy_ndarray
+        self._numpy_func = True
+        return self.__call
 
-    def _call_cupy_ndarray(self, *args, **kwargs):
+    def __call(self, *args, **kwargs):
 
-        res = self.func(self._array, *args, **kwargs)
+        args = ((self,) + args)
 
-        return _get_fallback_ndarray(res)
+        if not self._numpy_func:
+            return _call_cupy(self.func, args, kwargs)
 
-    def _call_numpy_ndarray(self, *args, **kwargs):
+        return _call_numpy(self.func, args, kwargs)
 
-        numpy_args, numpy_kwargs = data_transfer._get_numpy_args(args, kwargs)
-
-        numpy_array = cp.asnumpy(self._array)
-        numpy_res = self.func(numpy_array, *numpy_args, **numpy_kwargs)
-
-        cupy_res = data_transfer._get_cupy_result(numpy_res)
-
-        return _get_fallback_ndarray(cupy_res)
+    def _get_array(self):
+        return self._array
