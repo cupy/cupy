@@ -25,7 +25,7 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.argmax(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-def nanargmax(a, axis=None):
+def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
     """Return the indices of the maximum values in the specified axis ignoring
     NaNs. For all-NaN slice ``ValueError`` is raised.
     Subclass cannot be passed yet, subok=True still unsupported
@@ -39,9 +39,9 @@ def nanargmax(a, axis=None):
     .. seealso:: :func:`numpy.nanargmax`
     """
     if a.dtype.kind in 'biu':
-        return argmin(a, axis=axis)
+        return argmax(a, axis=axis)
 
-    return argmax(cupy.where(cupy.isnan(a), cupy.inf, a), axis=axis)
+    return argmax(cupy.where(cupy.isnan(a), cupy.inf, a), axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -66,7 +66,7 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.argmin(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-def nanargmin(a, axis=None):
+def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
     """Return the indices of the minimum values in the specified axis ignoring
     NaNs. For all-NaN slice ``ValueError`` is raised.
     Subclass cannot be passed yet, subok=True still unsupported
@@ -82,7 +82,7 @@ def nanargmin(a, axis=None):
     if a.dtype.kind in 'biu':
         return argmin(a, axis=axis)
 
-    return argmin(cupy.where(cupy.isnan(a), cupy.inf, a), axis=axis)
+    return argmin(cupy.where(cupy.isnan(a), cupy.inf, a), axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 # TODO(okuta): Implement argwhere
 
