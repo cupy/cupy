@@ -140,3 +140,6 @@ class ndarray:
 
     def _get_array(self):
         return self._array
+
+
+_create_magic_methods()

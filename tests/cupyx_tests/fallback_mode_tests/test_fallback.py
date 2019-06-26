@@ -261,4 +261,4 @@ class TestFallbackMode(unittest.TestCase):
         a = fallback_mode.numpy.ndarray((4, 5))
         b = cupy.ndarray((4, 5))
 
-        testing.assert_array_almost_equal(a._array, b)
+        testing.assert_array_almost_equal(a._array, b, decimal=5)
