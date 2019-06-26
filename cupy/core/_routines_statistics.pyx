@@ -254,22 +254,33 @@ cdef _argmax = create_reduction_func(
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
-nanargmin = create_reduction_func(
+cdef _nanargmin = create_reduction_func(
     'cupy_nanargmin',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
-    ('min_max_st<type_in0_raw>(in0)', 'my_argmin(a, b)', 'out0 = a.value',
+    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
+     'q->q', 'Q->q',
+     ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmin_complex(a, b)', None, None)),
+     ('D->q', (None, 'my_argmin_complex(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
 
-nanargmax = create_reduction_func(
+cdef _nanargmax = create_reduction_func(
     'cupy_nanargmax',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
-    ('min_max_st<type_in0_raw>(in0)', 'my_argmax(a, b)', 'out0 = a.value',
+    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
+     'q->q', 'Q->q',
+     ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmax_complex(a, b)', None, None)),
+     ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
+
 
 cdef ndarray _var(
         ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
