@@ -90,6 +90,9 @@ def dispatch_notification(func):
     msg = "'{}' method not in cupy, falling back to '{}.{}'".format(
         func.__name__, func.__module__, func.__name__)
 
+    raise_msg = "'{}' method not found in cupy".format(
+        func.__name__)
+
     if _thread_locals.dispatch_type == 'print':
         print("Warning: {}".format(msg))
 
@@ -101,7 +104,7 @@ def dispatch_notification(func):
         logger.warning(msg)
 
     elif _thread_locals.dispatch_type == 'raise':
-        raise AttributeError(msg)
+        raise AttributeError(raise_msg)
 
 
 class errstate:
