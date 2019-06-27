@@ -544,10 +544,6 @@ cdef class ElementwiseKernel:
             shape = size,
             is_size_specified = True
 
-        for i in range(self.nin):
-            if not (self.params[i].is_const or args[i].shape == shape):
-                raise ValueError('Shape is mismatched')
-
         out_args = _get_out_args_with_params(
             out_args, out_types, shape, self.out_params, is_size_specified)
         if self.no_return:
