@@ -147,3 +147,46 @@ class TestFallbackMode(unittest.TestCase):
 
         with self.assertRaises(AttributeError):
             func = fallback_mode.numpy.dummy  # NOQA
+
+    def test_seterr_geterr(self):
+
+        default = fallback_mode.geterr()
+        assert default == 'warn'
+
+        old = fallback_mode.seterr('ignore')
+        current = fallback_mode.geterr()
+        assert old == 'warn'
+        assert current == 'ignore'
+
+    def test_notification_ignore(self):
+
+        import contextlib
+        from io import StringIO
+
+        saved_stdout = StringIO()
+        with contextlib.redirect_stdout(saved_stdout):
+            fallback_mode.seterr('ignore')
+            res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+
+        output = saved_stdout.getvalue().strip()
+        assert output == ""
+
+    def test_notification_print(self):
+
+        import contextlib
+        from io import StringIO
+
+        saved_stdout = StringIO()
+        with contextlib.redirect_stdout(saved_stdout):
+            fallback_mode.seterr('print')
+            res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+
+        output = saved_stdout.getvalue().strip()
+        assert output == ("Warning: 'nanargmin' method not in cupy, " +
+                          "falling back to 'numpy.nanargmin'")
+
+    def test_notification_warn(self):
+
+        with self.assertWarns(fallback_mode.utils.FallbackWarning):
+            fallback_mode.seterr('warn')
+            res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
