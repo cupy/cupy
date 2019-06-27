@@ -22,6 +22,12 @@ class _RecursiveAttr:
         self._numpy_object = numpy_object
         self._cupy_object = cupy_object
 
+    def __instancecheck__(self, instance):
+        if self._cupy_object is not None:
+            return isinstance(instance, self._cupy_object)
+
+        return isinstance(instance, self._numpy_object)
+
     def __getattr__(self, attr):
         """
         Catches attributes corresponding to numpy.

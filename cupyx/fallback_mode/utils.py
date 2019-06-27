@@ -141,5 +141,9 @@ class ndarray:
     def _get_array(self):
         return self._array
 
+    @property
+    def __class__(self):
+        return cp.ndarray
+
 
 _create_magic_methods()
