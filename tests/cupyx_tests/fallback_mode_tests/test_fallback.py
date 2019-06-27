@@ -190,3 +190,21 @@ class TestFallbackMode(unittest.TestCase):
         with self.assertWarns(fallback_mode.utils.FallbackWarning):
             fallback_mode.seterr('warn')
             res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+
+    def test_notification_raise(self):
+
+        with self.assertRaises(AttributeError):
+            fallback_mode.seterr('raise')
+            res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+
+    def test_errstate(self):
+
+        fallback_mode.seterr('print')
+        before = fallback_mode.geterr()
+
+        with fallback_mode.errstate('log'):
+            inside = fallback_mode.geterr()
+            assert inside == 'log'
+
+        after = fallback_mode.geterr()
+        assert before == after

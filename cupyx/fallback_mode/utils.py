@@ -61,7 +61,7 @@ def seterr(new_dispatch):
 
     old = _thread_locals.dispatch_type
 
-    if new_dispatch in ['print', 'warn', 'log', 'ignore']:
+    if new_dispatch in ['print', 'warn', 'log', 'ignore', 'raise']:
         _thread_locals.dispatch_type = new_dispatch
         return old
 
@@ -99,6 +99,9 @@ def dispatch_notification(func):
     elif _thread_locals.dispatch_type == 'log':
         logger = FallbackLogger.getlogger()
         logger.warning(msg)
+
+    elif _thread_locals.dispatch_type == 'raise':
+        raise AttributeError(msg)
 
 
 class errstate:
