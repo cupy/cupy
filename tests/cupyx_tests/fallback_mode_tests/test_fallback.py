@@ -197,6 +197,27 @@ class TestFallbackMode(unittest.TestCase):
             fallback_mode.seterr('raise')
             res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
 
+    def test_logger_not_set(self):
+
+        with self.assertRaises(AttributeError):
+            fallback_mode.seterr('log')
+            res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+
+    def test_notification_log(self):
+
+        import logging
+
+        logger = logging.getLogger()
+        fallback_mode.setlogger(logger)
+        fallback_mode.seterr('log')
+
+        with self.assertLogs(logger) as logs:
+            res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+
+            assert logs.output[0] == (
+                "WARNING:root:'nanargmin' method not in cupy, " +
+                "falling back to 'numpy.nanargmin'")
+
     def test_errstate(self):
 
         fallback_mode.seterr('print')
