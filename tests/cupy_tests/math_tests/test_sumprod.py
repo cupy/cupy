@@ -202,19 +202,17 @@ class TestNansumNanprodLong(unittest.TestCase):
         func = getattr(xp, self.func)
         return func(a, axis=self.axis, keepdims=self.keepdims)
 
-    @testing.for_float_dtypes()
-    @testing.for_int_dtypes()
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose()
     def test_nansum_all(self, xp, dtype):
         if not self._do_transposed_axis_test():
             return xp.array(())
         return self._test(xp, dtype)
 
-    @testing.for_float_dtypes()
-    @testing.for_int_dtypes()
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_nansum_axis_transposed(self, xp, dtype):
-        if self._do_transposed_axis_test():
+        if not self._do_transposed_axis_test():
             return xp.array(())
         return self._test(xp, dtype)
 
@@ -227,7 +225,7 @@ class TestNansumNanprodLong(unittest.TestCase):
 @testing.gpu
 class TestNansumNanprodExtra(unittest.TestCase):
 
-    def test_nansum_axis2_float16(self):
+    def test_nansum_axis_float16(self):
         # Note that the above test example overflows in float16. We use a
         # smaller array instead, return True if array is too large.
         if (numpy.prod(self.shape) > 24):
@@ -240,8 +238,7 @@ class TestNansumNanprodExtra(unittest.TestCase):
         sb = numpy.nansum(b, axis=1)
         testing.assert_allclose(sa, sb.astype('e'))
 
-    @testing.for_float_dtypes()
-    @testing.for_int_dtypes()
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose()
     def test_nansum_out(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
@@ -267,9 +264,8 @@ class TestNansumNanprodExtra(unittest.TestCase):
 )
 @testing.gpu
 class TestNansumNanprodAxes(unittest.TestCase):
-    @testing.for_float_dtypes()
-    @testing.for_int_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nansum_axes(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         if not issubclass(dtype, xp.integer):
