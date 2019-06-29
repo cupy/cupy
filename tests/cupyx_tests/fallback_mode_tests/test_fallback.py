@@ -260,5 +260,22 @@ class TestFallbackMode(unittest.TestCase):
 
         a = fallback_mode.numpy.ndarray((4, 5))
         b = cupy.ndarray((4, 5))
-
+        assert a.shape == (4, 5)
         testing.assert_array_almost_equal(a._array, b, decimal=5)
+
+    def test_instancecheck_ndarray(self):
+
+        a = fallback_mode.numpy.array([1, 2, 3])
+        assert isinstance(a, fallback_mode.numpy.ndarray)
+
+        b = fallback_mode.numpy.ndarray((2, 3))
+        assert isinstance(b, fallback_mode.numpy.ndarray)
+
+    def test_instancecheck_dtypes(self):
+
+        a = fallback_mode.numpy.int32(3)
+        b = fallback_mode.numpy.int64(6)
+
+        assert isinstance(1, fallback_mode.numpy.int)
+        assert isinstance(a, fallback_mode.numpy.int32)
+        assert isinstance(b, fallback_mode.numpy.int64)
