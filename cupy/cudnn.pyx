@@ -236,6 +236,8 @@ cpdef _create_convolution_descriptor(
 
 
 cpdef core.ndarray _ascontiguousarray_normalized_strides(core.ndarray a):
+    cdef core.ndarray newarray
+
     if a._c_contiguous:
         newarray = a.view()
         newarray._set_contiguous_strides(newarray.itemsize, True)
