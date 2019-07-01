@@ -73,7 +73,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement __getitem__
 
     def rmatvec(self,v):
-        return cusparse.csrmv(self.T, cupy.asfortranarray(v))
+        return cusparse.csrmvEx(self.T, cupy.asfortranarray(v))
     
     def __mul__(self, other):
         if cupy.isscalar(other):

@@ -96,7 +96,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def matvec(self,v):
-        return cusparse.csrmv(self, cupy.asfortranarray(v))
+        return cusparse.csrmvEx(self, cupy.asfortranarray(v))
 
     def __mul__(self, other):
         if cupy.isscalar(other):
