@@ -663,17 +663,6 @@ cpdef csrmvEx(
         <DataType>executiontype, <void *>buffer)
     check_status(status)
 
-# cpdef size_t xcoosort_bufferSizeExt(
-#         size_t handle, int m, int n, int nnz, size_t cooRows,
-#         size_t cooCols):
-#     cdef size_t bufferSizeInBytes
-#     setStream(handle, stream_module.get_current_stream_ptr())
-#     status = cusparseXcoosort_bufferSizeExt(
-#         <Handle>handle, m, n, nnz, <const int *>cooRows,
-#         <const int *>cooCols, &bufferSizeInBytes)
-#     check_status(status)
-#     return bufferSizeInBytes
-
 ########################################
 # cuSPARSE Level3 Function
 
