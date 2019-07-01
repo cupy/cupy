@@ -2,6 +2,7 @@ cimport cython  # NOQA
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport stream as stream_module
+from cupy.cuda.runtime cimport DataType
 
 cdef extern from 'cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':
@@ -73,6 +74,24 @@ cdef extern from 'cupy_cusparse.h':
         const cuDoubleComplex *x, const cuDoubleComplex *beta,
         cuDoubleComplex *y)
 
+    Status cusparseCsrmvEx_bufferSize(
+        Handle handle, AlgMode alg, Operation transA, int m, int n,
+        int nnz, const void *alpha, DataType alphatype,
+        MatDescr descrA, const void *csrValA, DataType csrValAtype,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const void *x, DataType xtype, const void *beta,
+        DataType betatype, const void *y, DataType ytype,
+        DataType executiontype, size_t *bufferSizeInBytes)
+
+    Status cusparseCsrmvEx(
+        Handle handle, AlgMode alg, Operation transA, int m, int n, 
+        int nnz, const void *alpha, DataType alphatype,
+        MatDescr descrA, const void *csrValA, DataType csrValAtype,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const void *x, DataType xtype, const void *beta,
+        DataType betatype, void *y, DataType ytype,
+        DataType executiontype, void* buffer);
+    
     # cuSPARSE Level3 Function
     Status cusparseScsrmm(
         Handle handle, Operation transA, int m, int n, int k, int nnz,
