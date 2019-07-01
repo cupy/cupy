@@ -54,6 +54,7 @@ cdef class ndarray:
                         out=*)
     cpdef ndarray sum(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray cumsum(self, axis=*, dtype=*, out=*)
+    cpdef ndarray nansum(self, axis=*, dtype=*, out=*, keepdims=*)
 
     cpdef ndarray mean(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray var(self, axis=*, dtype=*, out=*, ddof=*,
@@ -62,6 +63,7 @@ cdef class ndarray:
                       keepdims=*)
     cpdef ndarray prod(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray cumprod(self, axis=*, dtype=*, out=*)
+    cpdef ndarray nanprod(self, axis=*, dtype=*, out=*, keepdims=*)
 
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)

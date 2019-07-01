@@ -63,7 +63,62 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.prod(axis, dtype, out, keepdims)
 
 
-# TODO(okuta): Implement nansum
+def nansum(a, axis=None, dtype=None, out=None, keepdims=False):
+    """Returns the sum of an array along given axes treating Not a Numbers
+    (NaNs) as zero.
+
+    Args:
+        a (cupy.ndarray): Array to take sum.
+        axis (int or sequence of ints): Axes along which the sum is taken.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+        keepdims (bool): If ``True``, the specified axes are remained as axes
+            of length one.
+
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.nansum`
+
+    """
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.nansum does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(_math.nansum_auto_dtype,
+                                      a, axis=axis, dtype=dtype, out=out)
+
+    # TODO(okuta): check type
+    return a.nansum(axis, dtype, out, keepdims)
+
+
+def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
+    """Returns the product of an array along given axes treating Not a Numbers
+    (NaNs) as zero.
+
+    Args:
+        a (cupy.ndarray): Array to take product.
+        axis (int or sequence of ints): Axes along which the product is taken.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+        keepdims (bool): If ``True``, the specified axes are remained as axes
+            of length one.
+
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.nanprod`
+
+    """
+    if fusion._is_fusing():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.nanprod does not support `keepdims` in fusion yet.')
+        return fusion._call_reduction(_math.nanprod_auto_dtype,
+                                      a, axis=axis, dtype=dtype, out=out)
+
+    # TODO(okuta): check type
+    return a.nanprod(axis, dtype, out, keepdims)
 
 
 def _axis_to_first(x, axis):

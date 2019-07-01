@@ -178,6 +178,130 @@ class TestSumprod(unittest.TestCase):
         return a.prod(dtype=dst_dtype)
 
 
+@testing.parameterize(
+    *testing.product({
+        'shape': [(2, 3, 4), (20, 30, 40)],
+        'axis': [0, 1],
+        'transpose_axes': [True, False],
+        'keepdims': [True, False],
+        'func': ['nansum', 'nanprod']
+    })
+)
+@testing.gpu
+class TestNansumNanprodLong(unittest.TestCase):
+
+    def _do_transposed_axis_test(self):
+        return not self.transpose_axes and self.axis != 1
+
+    def _numpy_nanprod_implemented(self):
+        return (self.func == 'nanprod' and
+                numpy.__version__ >= numpy.lib.NumpyVersion('1.10.0'))
+
+    def _test(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        if self.transpose_axes:
+            a = a.transpose(2, 0, 1)
+        if not issubclass(dtype, xp.integer):
+            a[:, 1] = xp.nan
+        func = getattr(xp, self.func)
+        return func(a, axis=self.axis, keepdims=self.keepdims)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nansum_all(self, xp, dtype):
+        if (not self._numpy_nanprod_implemented() or
+                not self._do_transposed_axis_test()):
+            return xp.array(())
+        return self._test(xp, dtype)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_nansum_axis_transposed(self, xp, dtype):
+        if (not self._numpy_nanprod_implemented() or
+                not self._do_transposed_axis_test()):
+            return xp.array(())
+        return self._test(xp, dtype)
+
+
+@testing.parameterize(
+    *testing.product({
+        'shape': [(2, 3, 4), (20, 30, 40)],
+    })
+)
+@testing.gpu
+class TestNansumNanprodExtra(unittest.TestCase):
+
+    def test_nansum_axis_float16(self):
+        # Note that the above test example overflows in float16. We use a
+        # smaller array instead, return True if array is too large.
+        if (numpy.prod(self.shape) > 24):
+            return True
+        a = testing.shaped_arange(self.shape, dtype='e')
+        a[:, 1] = cupy.nan
+        sa = cupy.nansum(a, axis=1)
+        b = testing.shaped_arange(self.shape, numpy, dtype='f')
+        b[:, 1] = numpy.nan
+        sb = numpy.nansum(b, axis=1)
+        testing.assert_allclose(sa, sb.astype('e'))
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nansum_out(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        if not issubclass(dtype, xp.integer):
+            a[:, 1] = xp.nan
+        b = xp.empty((self.shape[0], self.shape[2]), dtype=dtype)
+        xp.nansum(a, axis=1, out=b)
+        return b
+
+    def test_nansum_out_wrong_shape(self):
+        a = testing.shaped_arange(self.shape)
+        a[:, 1] = cupy.nan
+        b = cupy.empty((2, 3))
+        with self.assertRaises(ValueError):
+            cupy.nansum(a, axis=1, out=b)
+
+
+@testing.parameterize(
+    *testing.product({
+        'shape': [(2, 3, 4, 5), (20, 30, 40, 50)],
+        'axis': [(1, 3), (0, 2, 3)],
+    })
+)
+@testing.gpu
+class TestNansumNanprodAxes(unittest.TestCase):
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nansum_axes(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        if not issubclass(dtype, xp.integer):
+            a[:, 1] = xp.nan
+        return xp.nansum(a, axis=self.axis)
+
+
+@testing.gpu
+class TestNansumNanprodHuge(unittest.TestCase):
+    def _test(self, xp, nan_slice):
+        a = testing.shaped_random((2048, 1, 1024), xp, 'f')
+        a[nan_slice] = xp.nan
+        a = xp.broadcast_to(a, (2048, 1024, 1024))
+        return xp.nansum(a, axis=2)
+
+    @testing.slow
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_allclose(atol=1e-1)
+    def test_nansum_axis_huge(self, xp):
+        return self._test(
+            xp, (slice(None, None), slice(None, None), slice(1, 2)))
+
+    @testing.slow
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_allclose(atol=1e-2)
+    def test_nansum_axis_huge_halfnan(self, xp):
+        return self._test(
+            xp, (slice(None, None), slice(None, None), slice(0, 512)))
+
+
 axes = [0, 1, 2]
 
 
