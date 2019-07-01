@@ -98,9 +98,6 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     def matvec(self,v):
         return cusparse.csrmv(self, cupy.asfortranarray(v))
 
-    def rmatvec(self,v):
-        return cusparse.csrmv(self, cupy.asfortranarray(v),transa=True)
-    
     def __mul__(self, other):
         if cupy.isscalar(other):
             self.sum_duplicates()
@@ -121,8 +118,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 return self._with_data(self.data * other)
             elif other.ndim == 1:
                 self.sum_duplicates()
-                return self.matvec(other)
-                # return cusparse.csrmv(self, cupy.asfortranarray(other))
+                return cusparse.csrmv(self, cupy.asfortranarray(other))
             elif other.ndim == 2:
                 self.sum_duplicates()
                 return cusparse.csrmm2(self, cupy.asfortranarray(other))

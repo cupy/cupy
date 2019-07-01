@@ -72,9 +72,6 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
     # TODO(unno): Implement __getitem__
 
-    def matvec(self,v):
-        return cusparse.csrmv(self.T, cupy.asfortranarray(v),transa=True)
-
     def rmatvec(self,v):
         return cusparse.csrmv(self.T, cupy.asfortranarray(v))
     
@@ -98,9 +95,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 return self._with_data(self.data * other)
             elif other.ndim == 1:
                 self.sum_duplicates()
-                return self.T.matvec(other)
-                # return cusparse.csrmv(
-                #     self.T, cupy.asfortranarray(other), transa=True)
+                return cusparse.csrmv(
+                    self.T, cupy.asfortranarray(other), transa=True)
             elif other.ndim == 2:
                 self.sum_duplicates()
                 return cusparse.csrmm2(

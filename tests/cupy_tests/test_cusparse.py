@@ -156,3 +156,25 @@ class TestCsrmv(unittest.TestCase):
         expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
         self.assertIs(y, z)
         testing.assert_array_almost_equal(y, expect)
+
+    def test_csrmvEx(self):
+        if self.transa:
+            return # skip transa=True
+        
+        a = sparse.csr_matrix(self.a)
+        x = cupy.array(self.x, order='f')
+        y = cupy.cusparse.csrmvEx(a, x, alpha=self.alpha)
+        expect = self.alpha * self.op_a.dot(self.x)
+        testing.assert_array_almost_equal(y, expect)
+        
+    def test_csrmvEx_with_y(self):
+        if self.transa:
+            return # skip transa=True
+        a = sparse.csr_matrix(self.a)
+        x = cupy.array(self.x, order='f')
+        y = cupy.array(self.y, order='f')
+        z = cupy.cusparse.csrmv(
+            a, x, y=y, alpha=self.alpha, beta=self.beta, transa=self.transa)
+        expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
+        self.assertIs(y, z)
+        testing.assert_array_almost_equal(y, expect)

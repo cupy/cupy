@@ -114,15 +114,14 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
 
     return y
 
-def csrmvEx(a, x, y=None, alpha=1, beta=0, transa=False, merge_path=True):
+def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
     assert y is None or y.flags.f_contiguous
 
-    a_shape = a.shape if not transa else a.shape[::-1]
-    if a_shape[1] != len(x):
+    if a.shape[1] != len(x):
         raise ValueError('dimension mismatch')
 
     handle = device.get_cusparse_handle()
-    m, n = a_shape
+    m, n = a.shape
     a, x, y = _cast_common_type(a, x, y)
     dtype = a.dtype
     if y is None:
@@ -130,7 +129,7 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, transa=False, merge_path=True):
 
     datatype = _dtype_to_DataType(dtype)
     algmode = cusparse.CUSPARSE_ALG_MERGE_PATH if merge_path else cusparse.CUSPARSE_ALG_NAIVE
-    transa_flag = _transpose_flag(transa)
+    transa_flag = cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
     
     alpha = numpy.array(alpha, dtype).ctypes
     beta = numpy.array(beta, dtype).ctypes
@@ -140,7 +139,7 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, transa=False, merge_path=True):
         a.shape[0], a.shape[1], a.nnz, alpha.data, datatype,
         a._descr.descriptor, a.data.data.ptr, datatype,
         a.indptr.data.ptr, a.indices.data.ptr,
-        x.data.data.ptr, datatype, beta.data, datatype,
+        x.data.ptr, datatype, beta.data, datatype,
         y.data.ptr, datatype, datatype)
 
     buf = cupy.empty(bufferSize,dtype)
@@ -148,8 +147,8 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, transa=False, merge_path=True):
         a.shape[0], a.shape[1], a.nnz, alpha.data, datatype,
         a._descr.descriptor, a.data.data.ptr, datatype,
         a.indptr.data.ptr, a.indices.data.ptr,
-        x.data.data.ptr, datatype, beta.data, datatype,
-        y.data.ptr, datatype, datatype
+        x.data.ptr, datatype, beta.data, datatype,
+        y.data.ptr, datatype, datatype, buf.data.ptr)
 
     return y
     
