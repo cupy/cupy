@@ -14,6 +14,7 @@ from cupy.core cimport internal
 from cupy.cuda cimport memory
 
 from cupy import util
+from cupy.core._ufuncs import elementwise_copy
 from cupy.cuda import cudnn as py_cudnn
 
 
@@ -223,6 +224,18 @@ cpdef _create_convolution_descriptor(
             cudnn.setConvolutionGroupCount(desc, groups)
     elif groups > 1:
         raise ValueError('groups must be one when cuDNN < 7.0')
+
+
+cpdef core.ndarray _ascontiguousarray_normalized_strides(core.ndarray a):
+    cdef core.ndarray newarray
+
+    if a._c_contiguous:
+        newarray = a.view()
+        newarray._set_contiguous_strides(newarray.itemsize, True)
+    else:
+        newarray = core.ndarray(a.shape, a.dtype)
+        elementwise_copy(a, newarray)
+    return newarray
 
 
 def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
@@ -1005,11 +1018,11 @@ def rnn_backward_data(
         cx = core.ascontiguousarray(cx)
     w = core.ascontiguousarray(w)
     xs = core.ascontiguousarray(xs)
-    ys = core.ascontiguousarray(ys)
+    ys = _ascontiguousarray_normalized_strides(ys)
     dhy = core.ascontiguousarray(dhy)
     if dcy is not None:
         dcy = core.ascontiguousarray(dcy)
-    dys = core.ascontiguousarray(dys)
+    dys = _ascontiguousarray_normalized_strides(dys)
 
     cdef int length = len(lengths)
     cdef int n_layers = _get_n_layers(direction_mode, hx)
