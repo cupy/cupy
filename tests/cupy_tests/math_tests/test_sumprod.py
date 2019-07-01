@@ -193,6 +193,10 @@ class TestNansumNanprodLong(unittest.TestCase):
     def _do_transposed_axis_test(self):
         return not self.transpose_axes and self.axis != 1
 
+    def _numpy_nanprod_implemented(self):
+        return (self.func == 'nanprod' and
+                numpy.__version__ >= numpy.lib.NumpyVersion('1.10.0'))
+
     def _test(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         if self.transpose_axes:
@@ -205,14 +209,16 @@ class TestNansumNanprodLong(unittest.TestCase):
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose()
     def test_nansum_all(self, xp, dtype):
-        if not self._do_transposed_axis_test():
+        if (not self._numpy_nanprod_implemented() or
+                not self._do_transposed_axis_test()):
             return xp.array(())
         return self._test(xp, dtype)
 
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_nansum_axis_transposed(self, xp, dtype):
-        if not self._do_transposed_axis_test():
+        if (not self._numpy_nanprod_implemented() or
+                not self._do_transposed_axis_test()):
             return xp.array(())
         return self._test(xp, dtype)
 
