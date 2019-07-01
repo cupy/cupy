@@ -85,7 +85,7 @@ cdef ndarray _ndarray_cumprod(ndarray self, axis, dtype, out):
 
 
 cdef ndarray _ndarray_nansum(ndarray self, axis, dtype, out, keepdims):
-    if numpy.iscomplexobj(self):
+    if cupy.iscomplexobj(self):
         return _nansum_complex_dtype(self, axis, dtype, out, keepdims)
     elif dtype is None:
         return _nansum_auto_dtype(self, axis, dtype, out, keepdims)
@@ -94,7 +94,7 @@ cdef ndarray _ndarray_nansum(ndarray self, axis, dtype, out, keepdims):
 
 
 cdef ndarray _ndarray_nanprod(ndarray self, axis, dtype, out, keepdims):
-    if numpy.iscomplexobj(self):
+    if cupy.iscomplexobj(self):
         return _nanprod_complex_dtype(self, axis, dtype, out, keepdims)
     elif dtype is None:
         return _nanprod_auto_dtype(self, axis, dtype, out, keepdims)
