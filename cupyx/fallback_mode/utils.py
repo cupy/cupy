@@ -8,6 +8,7 @@ to support fallback of methods of type `ndarray.func()`
 import numpy as np
 
 import cupy as cp
+from cupyx.fallback_mode import fallback
 from cupyx.fallback_mode import data_transfer
 
 
@@ -111,32 +112,17 @@ class ndarray:
 
     def __init__(self, array):
         self._array = array
-        self.func = None
-        self._numpy_func = False
 
     def __getattr__(self, attr):
 
-        self._numpy_func = False
+        cupy_object = getattr(cp.ndarray, attr, None)
 
-        self.func = getattr(cp.ndarray, attr, None)
+        numpy_object = getattr(np.ndarray, attr)
 
-        if not callable(self.func) and self.func is not None:
+        if not callable(numpy_object):
             return getattr(self._array, attr)
-        if self.func is not None:
-            return self.__call
 
-        self.func = getattr(np.ndarray, attr)
-        self._numpy_func = True
-        return self.__call
-
-    def __call(self, *args, **kwargs):
-
-        args = ((self,) + args)
-
-        if not self._numpy_func:
-            return _call_cupy(self.func, args, kwargs)
-
-        return _call_numpy(self.func, args, kwargs)
+        return fallback._RecursiveAttr(numpy_object, cupy_object, self)
 
     def _get_array(self):
         return self._array

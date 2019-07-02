@@ -17,10 +17,11 @@ class _RecursiveAttr:
     when user calls fallback_mode. numpy is an instance of this class.
     """
 
-    def __init__(self, numpy_object, cupy_object):
+    def __init__(self, numpy_object, cupy_object, array=None):
 
         self._numpy_object = numpy_object
         self._cupy_object = cupy_object
+        self._fallback_array = array
 
     def __instancecheck__(self, instance):
         if self._cupy_object is not None:
@@ -81,6 +82,9 @@ class _RecursiveAttr:
         if not callable(self._numpy_object):
             raise TypeError("'{}' object is not callable".format(
                 type(self._numpy_object).__name__))
+
+        if self._fallback_array is not None:
+            args = ((self._fallback_array,) + args)
 
         # Execute cupy method
         if self._cupy_object is not None:
