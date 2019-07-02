@@ -269,9 +269,8 @@ class FallbackArray(unittest.TestCase):
     def test_ndarray_shape_creation(self):
 
         a = fallback_mode.numpy.ndarray((4, 5))
-        b = cupy.ndarray((4, 5))
+
         assert a.shape == (4, 5)
-        testing.assert_array_almost_equal(a._array, b, decimal=5)
 
     def test_instancecheck_ndarray(self):
 
