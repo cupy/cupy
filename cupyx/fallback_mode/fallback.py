@@ -49,9 +49,11 @@ class _RecursiveAttr:
         numpy_object = getattr(self._numpy_object, attr)
         cupy_object = getattr(self._cupy_object, attr, None)
 
-        # Retrieval of NumPy scalars
-        if isinstance(numpy_object, np.ScalarType):
+        # if same objects, then return
+        if numpy_object is cupy_object:
             return numpy_object
+
+        
 
         return _RecursiveAttr(numpy_object, cupy_object)
 
