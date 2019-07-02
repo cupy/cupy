@@ -116,11 +116,10 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             elif other.ndim == 1:
                 self.sum_duplicates()
                 other = cupy.asfortranarray(other)
-                return cusparse.csrmvEx(self, other)
-                # if cusparse.csrmvExIsAligned(self, other):
-                #     return cusparse.csrmvEx(self, other)
-                # else:
-                #     return cusparse.csrmv(self, other)
+                if cusparse.csrmvExIsAligned(self, other):
+                    return cusparse.csrmvEx(self, other)
+                else:
+                    return cusparse.csrmv(self, other)
             elif other.ndim == 2:
                 self.sum_duplicates()
                 return cusparse.csrmm2(self, cupy.asfortranarray(other))

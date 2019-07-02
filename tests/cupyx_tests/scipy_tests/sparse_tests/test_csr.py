@@ -12,7 +12,6 @@ import cupy
 from cupy import testing
 from cupyx.scipy import sparse
 
-
 def _make(xp, sp, dtype):
     data = xp.array([0, 1, 2, 3], dtype)
     indices = xp.array([0, 1, 3, 2], 'i')

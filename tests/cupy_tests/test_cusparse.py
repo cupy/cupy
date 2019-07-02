@@ -179,7 +179,7 @@ class TestCsrmv(unittest.TestCase):
         y = cupy.cusparse.csrmvEx(a, x, alpha=self.alpha)
         expect = self.alpha * self.op_a.dot(self.x)
         testing.assert_array_almost_equal(y, expect)
-        
+
     def test_csrmvEx_with_y(self):
         if self.transa:
             return # skip transa=True

@@ -6,7 +6,6 @@ from cupy.cuda import runtime
 from cupy.cuda import device
 import cupyx.scipy.sparse
 
-
 class MatDescriptor(object):
 
     def __init__(self, descriptor):
@@ -105,6 +104,7 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
         y = cupy.zeros(m, dtype)
     alpha = numpy.array(alpha, dtype).ctypes
     beta = numpy.array(beta, dtype).ctypes
+
     _call_cusparse(
         'csrmv', dtype,
         handle, _transpose_flag(transa),
@@ -115,6 +115,37 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     return y
 
 def csrmvExIsAligned(a,x,y=None):
+    """Check if the pointers of arguments for csrmvEx are aligned or not
+
+    Args:
+        a (cupy.cusparse.csr_matrix): Matrix A.
+        x (cupy.ndarray): Vector x.
+        y (cupy.ndarray or None): Vector y.
+
+        All pointers must be aligned with 128 bytes.
+        Check if a, x, y data is aligned by csrmvExIsAligned
+
+    Returns:
+        bool: ``True`` if all pointers are aligned.
+              ``False`` if otherwise.
+
+    """
+    if a.data.data.ptr == 0:
+        print("Null pointer #1")
+        return False
+    if a.indptr.data.ptr == 0:
+        print("Null pointer #2")
+        return False
+    if a.indices.data.ptr == 0:
+        print("Null pointer #3")
+        return False
+    if x.data.ptr == 0:
+        print("Null pointer #4")
+        return False
+    if y is not None and y.data.ptr == 0:
+        print("Null pointer #5")
+        return False
+
     if a.data.data.ptr%128 != 0:
         return False
     if a.indptr.data.ptr%128 != 0:
@@ -142,6 +173,30 @@ def _aligned_constant(a,dtype,alignment=128):
     return aa
 
 def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
+    """Matrix-vector product for a CSR-matrix and a dense vector.
+
+    .. math::
+
+       y = \\alpha * o_a(A) x + \\beta y,
+
+    where :math:`o_a` is a transpose function when ``transa`` is ``True`` and
+    is an identity function otherwise.
+
+    Args:
+        a (cupy.cusparse.csr_matrix): Matrix A.
+        x (cupy.ndarray): Vector x.
+        y (cupy.ndarray or None): Vector y. It must be F-contiguous.
+        alpha (float): Coefficient for x.
+        beta (float): Coefficient for y.
+        merge_path (bool): If ``True``, merge path algoritm is used.
+
+        All pointers must be aligned with 128 bytes.
+        Check if a, x, y data is aligned by csrmvExIsAligned
+
+    Returns:
+        cupy.ndarray: Calculated ``y``.
+
+    """
     assert y is None or y.flags.f_contiguous
 
     if a.shape[1] != len(x):
@@ -149,11 +204,12 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
 
     handle = device.get_cusparse_handle()
     m, n = a.shape
+    
     a, x, y = _cast_common_type(a, x, y)
     dtype = a.dtype
     if y is None:
         y = cupy.zeros(m, dtype)
-
+        
     datatype = _dtype_to_DataType(dtype)
     algmode = cusparse.CUSPARSE_ALG_MERGE_PATH if merge_path else cusparse.CUSPARSE_ALG_NAIVE
     transa_flag = cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
@@ -182,13 +238,13 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
     buf = cupy.empty(bufferSize,'b')
     assert buf.data.ptr%128 == 0
 
-    cusparse.csrmvEx(handle, algmode, transa_flag,
+    cusparse.csrmvEx(
+        handle, algmode, transa_flag,
         a.shape[0], a.shape[1], a.nnz, alpha.data, datatype,
         a._descr.descriptor, a.data.data.ptr, datatype,
         a.indptr.data.ptr, a.indices.data.ptr,
         x.data.ptr, datatype, beta.data, datatype,
         y.data.ptr, datatype, datatype, buf.data.ptr)
-
     return y
     
 def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
