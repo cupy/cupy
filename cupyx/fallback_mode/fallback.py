@@ -24,6 +24,10 @@ class _RecursiveAttr:
         self._fallback_array = array
 
     def __instancecheck__(self, instance):
+        """
+        Enable support for isinstance(instance, _RecursiveAttr instance)
+        by redirecting it to appropriate isinstance method.
+        """
         if self._cupy_object is not None:
             return isinstance(instance, self._cupy_object)
 
@@ -43,6 +47,7 @@ class _RecursiveAttr:
             (_RecursiveAttr object, NumPy scalar):
             Returns_RecursiveAttr object with new numpy_object, cupy_object.
             Returns scalars if requested.
+            Returns objects in cupy which is an alias of numpy object.
         """
 
         # getting attr
@@ -52,8 +57,6 @@ class _RecursiveAttr:
         # if same objects, then return
         if numpy_object is cupy_object:
             return numpy_object
-
-        
 
         return _RecursiveAttr(numpy_object, cupy_object)
 
@@ -85,6 +88,7 @@ class _RecursiveAttr:
             raise TypeError("'{}' object is not callable".format(
                 type(self._numpy_object).__name__))
 
+        # if ndarray method
         if self._fallback_array is not None:
             args = ((self._fallback_array,) + args)
 

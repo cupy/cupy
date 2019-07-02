@@ -9,12 +9,13 @@ import cupy as cp
 
 def _get_xp_args(ndarray_instance, to_xp, arg):
     """
-    Converts org_module.ndarray object using to_xp.
+    Converts ndarray_instance type object to target object using to_xp.
+    ndarray_instance: numpy.ndarray, cupy.ndarray or utils.ndarray
 
     Args:
-        (org_module.ndarray, tuple, list, dict): These will be returned by
+        (ndarray_instance, tuple, list, dict): These will be returned by
         either converting the object or it's elements if object is iterable.
-        (int, float, str, numpy.ScalarType (constant)): Returned as it is.
+        Everything else is returned as it is.
 
     Returns:
         Return data structure will be same as before after converting ndarrays.

@@ -14,7 +14,8 @@ from cupyx.fallback_mode import data_transfer
 
 def _call_cupy(func, args, kwargs):
     """
-    Calls cupy function with *args and **kwargs.
+    Calls cupy function with *args and **kwargs and
+    does necessary data transfers.
 
     Args:
         func: A cupy function that needs to be called.
@@ -22,8 +23,9 @@ def _call_cupy(func, args, kwargs):
         kwargs (dict): Keyword arguments.
 
     Returns:
-        Result after calling func.
+        Result after calling func and performing data transfers.
     """
+
     args, kwargs = data_transfer._get_cupy_ndarray(ndarray, args, kwargs)
 
     res = func(*args, **kwargs)
@@ -33,7 +35,8 @@ def _call_cupy(func, args, kwargs):
 
 def _call_numpy(func, args, kwargs):
     """
-    Calls numpy function with *args and **kwargs.
+    Calls numpy function with *args and **kwargs and
+    does necessary data transfers.
 
     Args:
         func: A numpy function that needs to be called.
@@ -41,8 +44,9 @@ def _call_numpy(func, args, kwargs):
         kwargs (dict): Keyword arguments.
 
     Returns:
-        Result after calling func.
+        Result after calling func and performing data transfers.
     """
+
     args, kwargs = data_transfer._get_cupy_ndarray(ndarray, args, kwargs)
 
     numpy_args, numpy_kwargs = data_transfer._get_numpy_args(args, kwargs)
@@ -54,6 +58,7 @@ def _call_numpy(func, args, kwargs):
     return data_transfer._get_fallback_ndarray(ndarray, cupy_res)
 
 
+# Decorator for ndarray magic methods
 def make_method(name):
     def method(self, *args, **kwargs):
 
@@ -69,6 +74,9 @@ def make_method(name):
 
 
 def _create_magic_methods():
+    """
+    Set magic methods of cupy.ndarray as methods of utils.ndarray.
+    """
 
     _magic_methods = [
 
@@ -109,11 +117,26 @@ def _create_magic_methods():
 
 
 class ndarray:
+    """
+    Wrapper around cupy.ndarray
+    Gets initialized with a cupy ndarray.
+    """
 
     def __init__(self, array):
         self._array = array
 
     def __getattr__(self, attr):
+        """
+        Catches attributes corresponding to ndarray.
+
+        Args:
+            attr (str): Attribute of ndarray class.
+
+        Returns:
+            (_RecursiveAttr object, self._array.attr):
+            Returns_RecursiveAttr object with numpy_object, cupy_object.
+            Returns self._array.attr if attr is not callable.
+        """
 
         cupy_object = getattr(cp.ndarray, attr, None)
 
@@ -125,10 +148,17 @@ class ndarray:
         return fallback._RecursiveAttr(numpy_object, cupy_object, self)
 
     def _get_array(self):
+        """
+        Returns _array (cupy.ndarray) of ndarray object.
+        """
         return self._array
 
     @property
     def __class__(self):
+        """
+        Redirects __class__ of ndarray object to cupy.ndarray
+        Used while execution of isinstance() method.
+        """
         return cp.ndarray
 
 
