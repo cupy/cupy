@@ -1038,4 +1038,3 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_stop_too_large(self, xp, sp):
         return _make(xp, sp, self.dtype)[:, None:5]
-
