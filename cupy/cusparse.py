@@ -130,20 +130,28 @@ def csrmvExIsAligned(a,x,y=None):
               ``False`` if otherwise.
 
     """
+    def debug():
+        print("a.data.data.ptr = %d" % a.data.data.ptr)
+        print("a.indptr.data.ptr = %d" % a.indptr.data.ptr)
+        print("a.indices.data.ptr = %d" % a.indices.data.ptr)
+        print("x.data.data.ptr = %d" % x.data.ptr)
+        if y is not None:
+            print("y.data.data.ptr = %d" % y.data.ptr)
+            
     if a.data.data.ptr == 0:
-        print("Null pointer #1")
+        debug()
         return False
     if a.indptr.data.ptr == 0:
-        print("Null pointer #2")
+        debug()
         return False
     if a.indices.data.ptr == 0:
-        print("Null pointer #3")
+        debug()
         return False
     if x.data.ptr == 0:
-        print("Null pointer #4")
+        debug()
         return False
     if y is not None and y.data.ptr == 0:
-        print("Null pointer #5")
+        debug()
         return False
 
     if a.data.data.ptr%128 != 0:
