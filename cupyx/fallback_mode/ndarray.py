@@ -6,7 +6,12 @@ import numpy as np
 
 import cupy as cp
 from cupyx.fallback_mode import data_transfer
-import cupyx.fallback_mode.fallback as fallback
+
+try:
+    from cupyx.fallback_mode import fallback
+except ImportError:
+    import sys
+    fallback = sys.modules[__package__ + '.fallback']
 
 
 class ndarray:
