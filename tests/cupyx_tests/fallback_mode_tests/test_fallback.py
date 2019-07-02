@@ -151,14 +151,11 @@ class TestFallbackMode(unittest.TestCase):
         with self.assertRaises(AttributeError):
             func = fallback_mode.numpy.dummy  # NOQA
 
-    def test_instancecheck_dtypes(self):
+    def test_same_reference(self):
 
-        a = fallback_mode.numpy.int32(3)
-        b = fallback_mode.numpy.int64(6)
+        assert fallback_mode.numpy.int64 is numpy.int64
 
-        assert isinstance(1, fallback_mode.numpy.int)
-        assert isinstance(a, fallback_mode.numpy.int32)
-        assert isinstance(b, fallback_mode.numpy.int64)
+        assert fallback_mode.numpy.float32 is numpy.float32
 
 
 class FallbackArray(unittest.TestCase):
