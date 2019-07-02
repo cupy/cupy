@@ -279,3 +279,35 @@ class TestFallbackMode(unittest.TestCase):
         assert isinstance(1, fallback_mode.numpy.int)
         assert isinstance(a, fallback_mode.numpy.int32)
         assert isinstance(b, fallback_mode.numpy.int64)
+
+    @numpy_fallback_equal()
+    def test_ndarray_comparison_eq(self, xp):
+
+        a = xp.array([1, 2, 3])
+        b = xp.array([3, 2, 1])
+
+        return a == b
+
+    @numpy_fallback_equal()
+    def test_ndarray_comparison_nq(self, xp):
+
+        a = xp.array([1, 2, 3])
+        b = xp.array([3, 2, 1])
+
+        return a != b
+
+    @numpy_fallback_equal()
+    def test_ndarray_comparison_lt(self, xp):
+
+        a = xp.array([1, 2, 3])
+        b = xp.array([3, 2, 1])
+
+        return a < b
+
+    @numpy_fallback_equal()
+    def test_ndarray_comparison_ge(self, xp):
+
+        a = xp.array([1, 2, 3])
+        b = xp.array([3, 2, 1])
+
+        return a >= b

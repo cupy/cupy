@@ -73,7 +73,7 @@ def _create_magic_methods():
     _magic_methods = [
 
         # Comparison operators:
-        '__richcmp__',
+        '__eq__', '__ne__', '__lt__', '__gt__', '__le__', '__ge__',
 
         # Truth value of an array (bool):
         '__nonzero__',
