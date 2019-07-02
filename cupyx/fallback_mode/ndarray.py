@@ -5,8 +5,8 @@ to support fallback of methods of type `ndarray.func()`
 import numpy as np
 
 import cupy as cp
-import cupyx.fallback_mode as fallback_mode
 from cupyx.fallback_mode import data_transfer
+import cupyx.fallback_mode.fallback as fallback
 
 
 class ndarray:
@@ -38,7 +38,7 @@ class ndarray:
         if not callable(numpy_object):
             return getattr(self._array, attr)
 
-        return fallback_mode.fallback._RecursiveAttr(numpy_object, cupy_object, self)
+        return fallback._RecursiveAttr(numpy_object, cupy_object, self)
 
     def _get_array(self):
         """
