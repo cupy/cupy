@@ -168,10 +168,7 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
 
     .. math::
 
-       y = \\alpha * o_a(A) x + \\beta y,
-
-    where :math:`o_a` is a transpose function when ``transa`` is ``True`` and
-    is an identity function otherwise.
+       y = \\alpha * A x + \\beta y,
 
     Args:
         a (cupy.cusparse.csr_matrix): Matrix A.
