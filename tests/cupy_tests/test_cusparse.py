@@ -161,19 +161,20 @@ class TestCsrmv(unittest.TestCase):
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
 
-        self.assertTrue(cupy.cusparse.csrmvExIsAligned(a,x))
+        self.assertTrue(cupy.cusparse.csrmvExIsAligned(a, x))
 
     def test_csrmvEx_not_aligned(self):
         a = sparse.csr_matrix(self.a)
-        tmp = cupy.array(numpy.hstack([self.x,self.y]), order='f')
+        tmp = cupy.array(numpy.hstack([self.x, self.y]), order='f')
         x = tmp[0:len(self.x)]
         y = tmp[len(self.x):]
-        self.assertFalse(cupy.cusparse.csrmvExIsAligned(a,x,y))
-        
+        self.assertFalse(cupy.cusparse.csrmvExIsAligned(a, x, y))
+
     def test_csrmvEx(self):
         if self.transa:
-            return # skip transa=True
-        
+            # no support for transa
+            return
+
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
         y = cupy.cusparse.csrmvEx(a, x, alpha=self.alpha)
@@ -182,7 +183,8 @@ class TestCsrmv(unittest.TestCase):
 
     def test_csrmvEx_with_y(self):
         if self.transa:
-            return # skip transa=True
+            # no support for transa
+            return
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
         y = cupy.array(self.y, order='f')
