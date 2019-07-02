@@ -114,6 +114,33 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
 
     return y
 
+def csrmvExIsAligned(a,x,y=None):
+    if a.data.data.ptr%128 != 0:
+        return False
+    if a.indptr.data.ptr%128 != 0:
+        return False
+    if a.indices.data.ptr%128 != 0:
+        return False
+    if x.data.ptr%128 != 0:
+        return False
+    if y is not None and y.data.ptr%128 != 0:
+        return False
+    return True
+
+def _aligned_constant(a,dtype,alignment=128):
+    a = numpy.array(a,dtype)
+    if a.ctypes.data%alignment == 0:
+        return a
+    N = alignment // a.itemsize
+    aa = numpy.full((N,),a,dtype=a.dtype)
+    offset = aa.ctypes.data%alignment
+    if offset > 0:
+        idx = N - offset//a.itemsize
+        assert 0 <= idx and idx < N
+        aa = aa[idx:]
+    assert aa.ctypes.data%alignment == 0
+    return aa
+
 def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
     assert y is None or y.flags.f_contiguous
 
@@ -130,9 +157,19 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
     datatype = _dtype_to_DataType(dtype)
     algmode = cusparse.CUSPARSE_ALG_MERGE_PATH if merge_path else cusparse.CUSPARSE_ALG_NAIVE
     transa_flag = cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
-    
-    alpha = numpy.array(alpha, dtype).ctypes
-    beta = numpy.array(beta, dtype).ctypes
+
+    alpha_A = _aligned_constant(alpha,dtype)
+    beta_A = _aligned_constant(beta,dtype)
+    alpha = alpha_A.ctypes
+    beta = beta_A.ctypes
+
+    assert a.data.data.ptr%128 == 0
+    assert a.indptr.data.ptr%128 == 0
+    assert a.indices.data.ptr%128 == 0
+    assert x.data.ptr%128 == 0
+    assert y.data.ptr%128 == 0
+    assert alpha.data%128 == 0
+    assert beta.data%128 == 0
 
     bufferSize = cusparse.csrmvEx_bufferSize(
         handle, algmode, transa_flag,
@@ -142,7 +179,9 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
         x.data.ptr, datatype, beta.data, datatype,
         y.data.ptr, datatype, datatype)
 
-    buf = cupy.empty(bufferSize,dtype)
+    buf = cupy.empty(bufferSize,'b')
+    assert buf.data.ptr%128 == 0
+
     cusparse.csrmvEx(handle, algmode, transa_flag,
         a.shape[0], a.shape[1], a.nnz, alpha.data, datatype,
         a._descr.descriptor, a.data.data.ptr, datatype,

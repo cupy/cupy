@@ -71,10 +71,6 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         return (y, x)
 
     # TODO(unno): Implement __getitem__
-
-    def rmatvec(self,v):
-        return cusparse.csrmvEx(self.T, cupy.asfortranarray(v))
-    
     def __mul__(self, other):
         if cupy.isscalar(other):
             self.sum_duplicates()

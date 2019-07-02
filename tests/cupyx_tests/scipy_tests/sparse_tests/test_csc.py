@@ -1039,18 +1039,3 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
     def test_getitem_slice_stop_too_large(self, xp, sp):
         return _make(xp, sp, self.dtype)[:, None:5]
 
-@testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-}))
-@testing.with_requires('scipy')
-class TestCscMatrixMatVec(unittest.TestCase):
-    def setUp(self):
-        self.a = scipy.sparse.random(4, 5, density=0.5, dtype=self.dtype)
-        self.b = numpy.random.uniform(-1, 1, (4, )).astype(self.dtype)
-        
-    def test_matvec(self):
-        a = sparse.csc_matrix(self.a)
-        b = cupy.array(self.b,order='f')
-        y = a.rmatvec(b)
-        expect = self.a.T.dot(self.b)
-        testing.assert_array_almost_equal(y,expect)
