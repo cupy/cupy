@@ -19,12 +19,14 @@ try:
         libcudnn.CUDNN_TENSOR_NCHW,
         libcudnn.CUDNN_TENSOR_NHWC,
     ]
-    if libcudnn.getVersion() >= 6000:
+    cudnn_version = libcudnn.getVersion()
+    if cudnn_version >= 6000:
         coef_modes.append(libcudnn.CUDNN_ACTIVATION_ELU)
 
     from cupy import cudnn
 except ImportError:
     cudnn_enabled = False
+    cudnn_version = -1
     modes = []
     coef_modes = []
     layouts = []
@@ -354,9 +356,8 @@ class TestConvolutionBackwardData(unittest.TestCase):
     'stride': [2, 4],
     'auto_tune': [True, False],
 }))
-@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
-@unittest.skipIf(libcudnn.getVersion() < 7500,
-                 'cuDNN version is older than 7.5.0')
+@unittest.skipIf(not cudnn_enabled or cudnn_version < 7500,
+                 'cuDNN 7.5.0 or later is required')
 class TestConvolutionNoAvailableAlgorithm(unittest.TestCase):
     '''Checks if an expected error is raised.
 
