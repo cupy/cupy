@@ -122,8 +122,8 @@ def csrmvExIsAligned(a,x,y=None):
         x (cupy.ndarray): Vector x.
         y (cupy.ndarray or None): Vector y.
 
-        All pointers must be aligned with 128 bytes.
-        Check if a, x, y data is aligned by csrmvExIsAligned
+        Check if a, x, y pointers are aligned by 128 bytes as
+        required by csrmvEx.
 
     Returns:
         bool: ``True`` if all pointers are aligned.
@@ -199,7 +199,6 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
         merge_path (bool): If ``True``, merge path algoritm is used.
 
         All pointers must be aligned with 128 bytes.
-        Check if a, x, y data is aligned by csrmvExIsAligned
 
     Returns:
         cupy.ndarray: Calculated ``y``.
