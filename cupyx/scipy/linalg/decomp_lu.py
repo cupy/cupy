@@ -37,7 +37,7 @@ def lu_factor(a, overwrite_a=False, check_finite=True):
             storing ``U`` in its upper triangle, and ``L`` without
             unit diagonal elements in its lower triangle, and ``piv`` is
             a :class:`cupy.ndarray` storing pivot indices representing
-            permutation matrix ``P``. For ``1 <= i <= min(M,N)``, row
+            permutation matrix ``P``. For ``0 <= i < min(M,N)``, row
             ``i`` of the matrix was interchanged with row ``piv[i]``
 
     .. seealso:: :func:`scipy.linalg.lu_factor`
