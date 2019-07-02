@@ -43,11 +43,3 @@ def _get_cupy_result(numpy_res):
 
 def _get_numpy_args(args, kwargs):
     return _get_xp_args(cp.ndarray, cp.asnumpy, (args, kwargs))
-
-
-def _get_cupy_ndarray(ndarray, args, kwargs):
-    return _get_xp_args(ndarray, ndarray._get_array, (args, kwargs))
-
-
-def _get_fallback_ndarray(ndarray, cupy_res):
-    return _get_xp_args(cp.ndarray, ndarray, cupy_res)

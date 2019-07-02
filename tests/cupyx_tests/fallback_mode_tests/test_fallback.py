@@ -6,7 +6,7 @@ import numpy
 import cupy
 from cupy import testing
 from cupyx import fallback_mode
-from cupyx.fallback_mode import utils
+from cupyx.fallback_mode import ndarray
 
 
 def numpy_fallback_equal(name='xp'):
@@ -29,7 +29,7 @@ def numpy_fallback_equal(name='xp'):
 
             if isinstance(numpy_result, numpy.ndarray):
                 # if numpy returns ndarray, cupy must return ndarray
-                assert isinstance(fallback_result, utils.ndarray)
+                assert isinstance(fallback_result, ndarray.ndarray)
                 testing.assert_array_equal(
                     numpy_result, fallback_result._array)
 
@@ -163,10 +163,10 @@ class FallbackArray(unittest.TestCase):
     def test_ndarray_creation(self):
 
         a = fallback_mode.numpy.array([[1, 2], [3, 4]])
-        assert isinstance(a, utils.ndarray)
+        assert isinstance(a, ndarray.ndarray)
 
         b = fallback_mode.numpy.arange(9)
-        assert isinstance(b, utils.ndarray)
+        assert isinstance(b, ndarray.ndarray)
         assert isinstance(b._array, cupy.ndarray)
 
     # ndarray fallback method
@@ -206,7 +206,7 @@ class FallbackArray(unittest.TestCase):
         # __add__
         x = a + b
         res = cupy.array([10, 10, 10])
-        assert isinstance(x, utils.ndarray)
+        assert isinstance(x, ndarray.ndarray)
         testing.assert_array_equal(x._array, res)
 
         # __iadd__
