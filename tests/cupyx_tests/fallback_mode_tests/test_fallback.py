@@ -9,47 +9,48 @@ from cupyx import fallback_mode
 from cupyx.fallback_mode import utils
 
 
-@testing.gpu
-class TestFallbackMode(unittest.TestCase):
+def numpy_fallback_equal(name='xp'):
+    """
+    Decorator that checks fallback_mode results are equal to NumPy ones.
 
-    def numpy_fallback_equal(name='xp'):
-        """
-        Decorator that checks fallback_mode results are equal to NumPy ones.
+    Args:
+        name(str): Argument name whose value is either
+        ``numpy`` or ``cupy`` module.
+    """
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kwargs):
 
-        Args:
-            name(str): Argument name whose value is either
-            ``numpy`` or ``cupy`` module.
-        """
-        def decorator(impl):
-            @functools.wraps(impl)
-            def test_func(self, *args, **kwargs):
+            kwargs[name] = fallback_mode.numpy
+            fallback_result = impl(self, *args, **kwargs)
 
-                kwargs[name] = fallback_mode.numpy
-                fallback_result = impl(self, *args, **kwargs)
+            kwargs[name] = numpy
+            numpy_result = impl(self, *args, **kwargs)
 
-                kwargs[name] = numpy
-                numpy_result = impl(self, *args, **kwargs)
+            if isinstance(numpy_result, numpy.ndarray):
+                # if numpy returns ndarray, cupy must return ndarray
+                assert isinstance(fallback_result, utils.ndarray)
+                testing.assert_array_equal(
+                    numpy_result, fallback_result._array)
 
-                if isinstance(numpy_result, numpy.ndarray):
-                    # if numpy returns ndarray, cupy must return ndarray
-                    assert isinstance(fallback_result, utils.ndarray)
-                    testing.assert_array_equal(
-                        numpy_result, fallback_result._array)
-
-                elif isinstance(numpy_result, numpy.ScalarType):
-                    # if numpy returns scalar
-                    # cupy must return scalar or 0-dim array
-                    if isinstance(fallback_result, numpy.ScalarType):
-                        assert numpy_result == fallback_result
-
-                    else:
-                        # cupy 0-dim array
-                        assert numpy_result == int(fallback_result._array)
-                else:
+            elif isinstance(numpy_result, numpy.ScalarType):
+                # if numpy returns scalar
+                # cupy must return scalar or 0-dim array
+                if isinstance(fallback_result, numpy.ScalarType):
                     assert numpy_result == fallback_result
 
-            return test_func
-        return decorator
+                else:
+                    # cupy 0-dim array
+                    assert numpy_result == int(fallback_result._array)
+            else:
+                assert numpy_result == fallback_result
+
+        return test_func
+    return decorator
+
+
+@testing.gpu
+class TestFallbackMode(unittest.TestCase):
 
     @numpy_fallback_equal()
     def test_argmin(self, xp):
@@ -149,6 +150,18 @@ class TestFallbackMode(unittest.TestCase):
 
         with self.assertRaises(AttributeError):
             func = fallback_mode.numpy.dummy  # NOQA
+
+    def test_instancecheck_dtypes(self):
+
+        a = fallback_mode.numpy.int32(3)
+        b = fallback_mode.numpy.int64(6)
+
+        assert isinstance(1, fallback_mode.numpy.int)
+        assert isinstance(a, fallback_mode.numpy.int32)
+        assert isinstance(b, fallback_mode.numpy.int64)
+
+
+class FallbackArray(unittest.TestCase):
 
     def test_ndarray_creation(self):
 
@@ -270,15 +283,6 @@ class TestFallbackMode(unittest.TestCase):
 
         b = fallback_mode.numpy.ndarray((2, 3))
         assert isinstance(b, fallback_mode.numpy.ndarray)
-
-    def test_instancecheck_dtypes(self):
-
-        a = fallback_mode.numpy.int32(3)
-        b = fallback_mode.numpy.int64(6)
-
-        assert isinstance(1, fallback_mode.numpy.int)
-        assert isinstance(a, fallback_mode.numpy.int32)
-        assert isinstance(b, fallback_mode.numpy.int64)
 
     @numpy_fallback_equal()
     def test_ndarray_comparison_eq(self, xp):
