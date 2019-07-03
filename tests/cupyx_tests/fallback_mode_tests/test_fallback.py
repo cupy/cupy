@@ -158,6 +158,7 @@ class TestFallbackMode(unittest.TestCase):
         assert fallback_mode.numpy.float32 is numpy.float32
 
 
+@testing.gpu
 class FallbackArray(unittest.TestCase):
 
     def test_ndarray_creation(self):
