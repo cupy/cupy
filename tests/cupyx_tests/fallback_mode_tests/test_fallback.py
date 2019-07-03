@@ -148,7 +148,11 @@ class TestFallbackMode(unittest.TestCase):
         with self.assertRaises(AttributeError):
             func = fallback_mode.numpy.dummy  # NOQA
 
-    def test_seterr_geterr(self):
+
+@testing.gpu
+class TestNotifications(unittest.TestCase):
+
+    def test_1_seterr_geterr(self):
 
         default = fallback_mode.geterr()
         assert default == 'warn'
@@ -196,29 +200,52 @@ class TestFallbackMode(unittest.TestCase):
         with self.assertRaises(AttributeError):
             fallback_mode.seterr('raise')
             res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
-        
-        fallback_mode.seterr('warn')
 
-    def test_logger_not_set(self):
+    def test_geterrcall(self):
 
-        with self.assertRaises(AttributeError):
-            fallback_mode.seterr('log')
+        def f(func):
+            pass
+
+        fallback_mode.seterrcall(f)
+        current = fallback_mode.geterrcall()
+
+        assert current == f
+
+    def test_notification_call(self):
+
+        def custom_callback(func):
+            print("'{}' fallbacked".format(func.__name__))
+
+        import contextlib
+        from io import StringIO
+
+        saved_stdout = StringIO()
+        with contextlib.redirect_stdout(saved_stdout):
+            fallback_mode.seterrcall(custom_callback)
+            fallback_mode.seterr('call')
             res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+
+        output = saved_stdout.getvalue().strip()
+        assert output == ("'nanargmin' fallbacked")
 
     def test_notification_log(self):
 
-        import logging
+        class Log:
+            def write(self, msg):
+                print("LOG: {}".format(msg))
 
-        logger = logging.getLogger()
-        fallback_mode.setlogger(logger)
-        fallback_mode.seterr('log')
+        import contextlib
+        from io import StringIO
 
-        with self.assertLogs(logger) as logs:
+        saved_stdout = StringIO()
+        with contextlib.redirect_stdout(saved_stdout):
+            fallback_mode.seterrcall(Log())
+            fallback_mode.seterr('log')
             res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
 
-            assert logs.output[0] == (
-                "WARNING:root:'nanargmin' method not in cupy, " +
-                "falling back to 'numpy.nanargmin'")
+        output = saved_stdout.getvalue().strip()
+        assert output == ("LOG: 'nanargmin' method not in cupy, " +
+                          "falling back to 'numpy.nanargmin'")
 
     def test_errstate(self):
 

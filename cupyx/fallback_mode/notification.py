@@ -7,6 +7,7 @@ import threading
 
 _thread_locals = threading.local()
 _thread_locals.dispatch_type = 'warn'
+_thread_locals.callback = None
 
 FallbackWarning = type('FallbackWarning', (Warning,), {})
 warnings.simplefilter(action='always', category=FallbackWarning)
@@ -20,28 +21,26 @@ def seterr(new_dispatch):
 
     old = _thread_locals.dispatch_type
 
-    if new_dispatch in ['print', 'warn', 'log', 'ignore', 'raise']:
+    if new_dispatch in ['print', 'warn', 'log', 'ignore', 'raise', 'call']:
         _thread_locals.dispatch_type = new_dispatch
         return old
 
     raise ValueError('{} is not valid dispatch type'.format(new_dispatch))
 
 
-class FallbackLogger:
+def geterrcall():
+    return _thread_locals.callback
 
-    logger = None
 
-    @classmethod
-    def setlogger(cls, logger):
-        cls.logger = logger
+def seterrcall(func):
 
-    @classmethod
-    def getlogger(cls):
+    if not callable(func):
+        if not hasattr(func, 'write') or not callable(func.write):
+            raise ValueError('Only callable can be used as Callback')
 
-        if cls.logger is None:
-            raise AttributeError('Logger not initiated')
-
-        return cls.logger
+    old = _thread_locals.callback
+    _thread_locals.callback = func
+    return old
 
 
 def dispatch_notification(func):
@@ -62,11 +61,30 @@ def dispatch_notification(func):
         pass
 
     elif _thread_locals.dispatch_type == 'log':
-        logger = FallbackLogger.getlogger()
-        logger.warning(msg)
+
+        callback_func = _thread_locals.callback
+
+        if hasattr(callback_func, 'write') and callable(callback_func.write):
+            callback_func.write(msg)
+        else:
+            raise ValueError(
+                "Callback object must have a callable 'write' method, " +
+                "if it is to be used for 'log'")
 
     elif _thread_locals.dispatch_type == 'raise':
         raise AttributeError(raise_msg)
+
+    elif _thread_locals.dispatch_type == 'call':
+
+        callback_func = _thread_locals.callback
+
+        if callable(callback_func):
+            callback_func(func)
+
+        else:
+            raise ValueError(
+                "Callback method must be callable, " +
+                "if it is to be used for 'call'")
 
     else:
         assert False
