@@ -58,12 +58,18 @@ def dispatch_notification(func):
     elif _thread_locals.dispatch_type == 'warn':
         warnings.warn(msg, FallbackWarning, stacklevel=3)
 
+    elif _thread_locals.dispatch_type == 'ignore':
+        pass
+
     elif _thread_locals.dispatch_type == 'log':
         logger = FallbackLogger.getlogger()
         logger.warning(msg)
 
     elif _thread_locals.dispatch_type == 'raise':
         raise AttributeError(raise_msg)
+
+    else:
+        assert False
 
 
 class errstate:
