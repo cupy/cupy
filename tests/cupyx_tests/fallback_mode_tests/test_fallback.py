@@ -187,7 +187,7 @@ class TestFallbackMode(unittest.TestCase):
 
     def test_notification_warn(self):
 
-        with self.assertWarns(fallback_mode.utils.FallbackWarning):
+        with self.assertWarns(fallback_mode.notification.FallbackWarning):
             fallback_mode.seterr('warn')
             res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
 
@@ -196,6 +196,8 @@ class TestFallbackMode(unittest.TestCase):
         with self.assertRaises(AttributeError):
             fallback_mode.seterr('raise')
             res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+        
+        fallback_mode.seterr('warn')
 
     def test_logger_not_set(self):
 

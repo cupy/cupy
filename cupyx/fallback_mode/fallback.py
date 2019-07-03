@@ -9,6 +9,7 @@ import cupy as cp
 
 
 from cupyx.fallback_mode import utils
+from cupyx.fallback_mode import notification
 
 
 class _RecursiveAttr:
@@ -81,7 +82,7 @@ class _RecursiveAttr:
             return utils._call_cupy(self._cupy_object, args, kwargs)
 
         # Execute numpy method
-        utils.dispatch_notification(self._numpy_object)
+        notification.dispatch_notification(self._numpy_object)
         return utils._call_numpy(self._numpy_object, args, kwargs)
 
 

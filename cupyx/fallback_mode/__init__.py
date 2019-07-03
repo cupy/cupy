@@ -4,9 +4,10 @@
 # "NOQA" to suppress flake8 warning
 from cupyx.fallback_mode.fallback import numpy  # NOQA
 
-from cupyx.fallback_mode import utils
-from cupyx.fallback_mode.utils import seterr  # NOQA
-from cupyx.fallback_mode.utils import geterr  # NOQA
-from cupyx.fallback_mode.utils import errstate  # NOQA
+from cupyx.fallback_mode import notification
 
-setlogger = utils.FallbackLogger.setlogger
+from cupyx.fallback_mode.notification import seterr  # NOQA
+from cupyx.fallback_mode.notification import geterr  # NOQA
+from cupyx.fallback_mode.notification import errstate  # NOQA
+
+setlogger = notification.FallbackLogger.setlogger
