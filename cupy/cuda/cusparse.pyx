@@ -91,7 +91,7 @@ cdef extern from 'cupy_cusparse.h':
         const void *x, DataType xtype, const void *beta,
         DataType betatype, void *y, DataType ytype,
         DataType executiontype, void* buffer)
-    
+
     # cuSPARSE Level3 Function
     Status cusparseScsrmm(
         Handle handle, Operation transA, int m, int n, int k, int nnz,
