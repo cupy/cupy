@@ -41,6 +41,6 @@ cpdef enum:
 
     CUSPARSE_ALG_NAIVE = 0
     CUSPARSE_ALG_MERGE_PATH = 1
-    
+
 cpdef size_t create() except? 0
 cpdef destroy(size_t handle)

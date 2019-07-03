@@ -151,14 +151,15 @@ def csrmvExIsAligned(a, x, y=None):
 def _aligned_constant(a, dtype, alignment=128):
     a = numpy.array(a, dtype)
     if a.ctypes.data % alignment == 0:
+        # don't waste time if the pointer is aligned
         return a
-    N = alignment // a.itemsize
-    aa = numpy.full((N, ), a, dtype=a.dtype)
-    offset = aa.ctypes.data % alignment
+    b = numpy.empty((alignment+a.itemsize, ), 'b')
+    offset = b.ctypes.data % alignment
     if offset > 0:
-        idx = N - offset//a.itemsize
-        assert 0 <= idx and idx < N
-        aa = aa[idx:]
+        idx = alignment - offset
+        b = b[idx:]
+    aa = b.view(dtype)
+    aa[0] = a
     assert aa.ctypes.data % alignment == 0
     return aa
 
@@ -202,10 +203,8 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
         merge_path else cusparse.CUSPARSE_ALG_NAIVE
     transa_flag = cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
 
-    alpha_A = _aligned_constant(alpha, dtype)
-    beta_A = _aligned_constant(beta, dtype)
-    alpha = alpha_A.ctypes
-    beta = beta_A.ctypes
+    alpha = _aligned_constant(alpha, dtype).ctypes
+    beta = _aligned_constant(beta, dtype).ctypes
 
     assert a.data.data.ptr % 128 == 0
     assert a.indptr.data.ptr % 128 == 0
