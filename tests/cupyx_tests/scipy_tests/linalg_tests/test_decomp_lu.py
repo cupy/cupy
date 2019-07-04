@@ -23,7 +23,7 @@ class TestLUFactor(unittest.TestCase):
     def test_lu_factor(self, dtype):
         if self.shape[0] != self.shape[1]:
             # skip non-square tests since scipy.lu_factor requires square
-            return
+            return unittest.SkipTest()
         array = numpy.random.randn(*self.shape)
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
