@@ -190,7 +190,7 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
     alpha = numpy.array(alpha, dtype).ctypes
     beta = numpy.array(beta, dtype).ctypes
 
-    assert csrmvExIsAligned(a,x,y)
+    assert csrmvExIsAligned(a, x, y)
 
     bufferSize = cusparse.csrmvEx_bufferSize(
         handle, algmode, transa_flag,
