@@ -206,13 +206,7 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
     alpha = _aligned_constant(alpha, dtype).ctypes
     beta = _aligned_constant(beta, dtype).ctypes
 
-    assert a.data.data.ptr % 128 == 0
-    assert a.indptr.data.ptr % 128 == 0
-    assert a.indices.data.ptr % 128 == 0
-    assert x.data.ptr % 128 == 0
-    assert y.data.ptr % 128 == 0
-    assert alpha.data % 128 == 0
-    assert beta.data % 128 == 0
+    assert csrmvExIsAligned(a,x,y)
 
     bufferSize = cusparse.csrmvEx_bufferSize(
         handle, algmode, transa_flag,
