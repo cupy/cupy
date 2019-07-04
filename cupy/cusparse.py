@@ -148,22 +148,6 @@ def csrmvExIsAligned(a, x, y=None):
     return True
 
 
-def _aligned_constant(a, dtype, alignment=128):
-    a = numpy.array(a, dtype)
-    if a.ctypes.data % alignment == 0:
-        # don't waste time if the pointer is aligned
-        return a
-    b = numpy.empty((alignment+a.itemsize, ), 'b')
-    offset = b.ctypes.data % alignment
-    if offset > 0:
-        idx = alignment - offset
-        b = b[idx:]
-    aa = b.view(dtype)
-    aa[0] = a
-    assert aa.ctypes.data % alignment == 0
-    return aa
-
-
 def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
     """Matrix-vector product for a CSR-matrix and a dense vector.
 
@@ -203,8 +187,8 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
         merge_path else cusparse.CUSPARSE_ALG_NAIVE
     transa_flag = cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
 
-    alpha = _aligned_constant(alpha, dtype).ctypes
-    beta = _aligned_constant(beta, dtype).ctypes
+    alpha = numpy.array(alpha, dtype).ctypes
+    beta = numpy.array(beta, dtype).ctypes
 
     assert csrmvExIsAligned(a,x,y)
 
