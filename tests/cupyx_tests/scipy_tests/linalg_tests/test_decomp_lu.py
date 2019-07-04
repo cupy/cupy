@@ -38,30 +38,29 @@ class TestLUFactor(unittest.TestCase):
     @testing.for_float_dtypes(no_float16=True)
     def test_lu_factor_reconstruction(self, dtype):
         m, n = self.shape
-        array = cupy.random.randn(m, n, dtype=dtype)
-        lu, piv = cupyx.scipy.linalg.lu_factor(array)
+        A = cupy.random.randn(m, n, dtype=dtype)
+        lu, piv = cupyx.scipy.linalg.lu_factor(A)
         # extract ``L`` and ``U`` from ``lu``
         L = cupy.tril(lu, k=-1)
         cupy.fill_diagonal(L, 1.)
-        if m < n:
-            L = L[:, :m]
+        L = L[:, :m]
         U = cupy.triu(lu)
-        if m > n:
-            U = U[:n, :]
+        U = U[:n, :]
+        # check output shapes
+        assert lu.shape == (m, n)
+        assert L.shape == (m, min(m, n))
+        assert U.shape == (min(m, n), n)
+        assert piv.shape == (min(m, n),)
         # apply pivot (on CPU since slaswp is not available in cupy)
         piv = cupy.asnumpy(piv)
-        rows = numpy.arange(array.shape[0])
+        rows = numpy.arange(m)
         for i, row in enumerate(piv):
             if i != row:
                 rows[i], rows[row] = rows[row], rows[i]
-        # revert pivot
-        reversed_piv = numpy.empty_like(rows)
-        reversed_piv[rows] = numpy.arange(rows.size)
-        # swap L
-        L = L[reversed_piv]
+        PA = A[rows]
         # check that reconstruction is close to original
-        reconstructed = L.dot(U)
-        cupy.testing.assert_allclose(reconstructed, array, atol=1e-5)
+        LU = L.dot(U)
+        cupy.testing.assert_allclose(LU, PA, atol=1e-5)
 
 
 @testing.gpu
