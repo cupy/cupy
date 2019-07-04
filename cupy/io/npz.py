@@ -23,7 +23,7 @@ class NpzFile(object):
         self.npz_file.close()
 
 
-def load(file, mmap_mode=None):
+def load(file, mmap_mode=None, allow_pickle=False):
     """Loads arrays or pickled objects from ``.npy``, ``.npz`` or pickled file.
 
     This function just calls ``numpy.load`` and then sends the arrays to the
@@ -35,6 +35,12 @@ def load(file, mmap_mode=None):
         mmap_mode (None, 'r+', 'r', 'w+', 'c'): If not ``None``, memory-map the
             file to construct an intermediate :class:`numpy.ndarray` object and
             transfer it to the current device.
+        allow_pickle (bool): Allow loading pickled object arrays stored in npy
+            files. Reasons for disallowing pickles include security, as
+            loading pickled data can execute arbitrary code. If pickles are
+            disallowed, loading object arrays will fail.
+            Please be aware that CuPy does not support arrays with dtype of
+            `object`.
 
     Returns:
         CuPy array or NpzFile object depending on the type of the file. NpzFile
@@ -44,7 +50,7 @@ def load(file, mmap_mode=None):
     .. seealso:: :func:`numpy.load`
 
     """
-    obj = numpy.load(file, mmap_mode)
+    obj = numpy.load(file, mmap_mode, allow_pickle)
     if isinstance(obj, numpy.ndarray):
         return cupy.array(obj)
     elif isinstance(obj, numpy.lib.npyio.NpzFile):
@@ -53,18 +59,25 @@ def load(file, mmap_mode=None):
         return obj
 
 
-def save(file, arr):
+def save(file, arr, allow_pickle=True):
     """Saves an array to a binary file in ``.npy`` format.
 
     Args:
         file (file or str): File or filename to save.
         arr (array_like): Array to save. It should be able to feed to
             :func:`cupy.asnumpy`.
+        allow_pickle (bool): Allow saving object arrays using Python pickles.
+            Reasons for disallowing pickles include security (loading pickled
+            data can execute arbitrary code) and portability (pickled objects
+            may not be loadable on different Python installations, for example
+            if the stored objects require libraries that are not available,
+            and not all pickled data is compatible between Python 2 and Python
+            3).
 
     .. seealso:: :func:`numpy.save`
 
     """
-    numpy.save(file, cupy.asnumpy(arr))
+    numpy.save(file, cupy.asnumpy(arr), allow_pickle)
 
 
 def savez(file, *args, **kwds):
