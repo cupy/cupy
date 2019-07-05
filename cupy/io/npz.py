@@ -28,7 +28,7 @@ class NpzFile(object):
         self.npz_file.close()
 
 
-def load(file, mmap_mode=None, allow_pickle=None):
+def load(file, mmap_mode=None, allow_pickle=True):
     """Loads arrays or pickled objects from ``.npy``, ``.npz`` or pickled file.
 
     This function just calls ``numpy.load`` and then sends the arrays to the
