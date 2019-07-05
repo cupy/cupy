@@ -82,7 +82,7 @@ class _RecursiveAttr:
             return utils._call_cupy(self._cupy_object, args, kwargs)
 
         # Execute numpy method
-        notification.dispatch_notification(self._numpy_object)
+        notification._dispatch_notification(self._numpy_object)
         return utils._call_numpy(self._numpy_object, args, kwargs)
 
 
