@@ -170,7 +170,7 @@ class TestNotifications(unittest.TestCase):
         saved_stdout = StringIO()
         with contextlib.redirect_stdout(saved_stdout):
             fallback_mode.seterr('ignore')
-            res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+            fallback_mode.numpy.nanargmin([1, 2, 3])
 
         output = saved_stdout.getvalue().strip()
         assert output == ""
