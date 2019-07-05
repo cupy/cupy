@@ -147,16 +147,23 @@ class errstate:
     Args:
         new_dispatch (str): Notification dispatch type to be set.
     """
-    def __init__(self, new_dispatch):
+    def __init__(self, new_dispatch, func=None):
         self.old = None
+        self.old_func = None
         self.new = new_dispatch
+        self.callback_func = func
 
     def __enter__(self):
-        self.old = _thread_locals.dispatch_type
-        seterr(self.new)
+        self.old = seterr(self.new)
+        if self.callback_func is not None:
+            self.old_func = seterrcall(self.callback_func)
 
     def __exit__(self, *exc_info):
         seterr(self.old)
+        if self.old_func is not None:
+            seterrcall(self.old_func)
+        if self.callback_func is not None and self.old_func is None:
+            _thread_locals.callback = None
 
 
 FallbackWarning = _init_warnings()
