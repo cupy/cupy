@@ -23,6 +23,38 @@ class TestNpz(unittest.TestCase):
 
         testing.assert_array_equal(a, b)
 
+    @testing.with_requires('numpy>=1.10')
+    def test_save_pickle(self):
+        data = object()
+
+        sio = six.BytesIO()
+        with self.assertRaises(ValueError):
+            cupy.save(sio, data, allow_pickle=False)
+        sio.close()
+
+        sio = six.BytesIO()
+        cupy.save(sio, data, allow_pickle=True)
+        sio.close()
+
+    @testing.with_requires('numpy>=1.10')
+    def test_load_pickle(self):
+        a = testing.shaped_arange((2, 3, 4), dtype=cupy.float32)
+
+        sio = six.BytesIO()
+        a.dump(sio)
+        s = sio.getvalue()
+        sio.close()
+
+        sio = six.BytesIO(s)
+        b = cupy.load(sio, allow_pickle=True)
+        testing.assert_array_equal(a, b)
+        sio.close()
+
+        sio = six.BytesIO(s)
+        with self.assertRaises(ValueError):
+            cupy.load(sio, allow_pickle=False)
+        sio.close()
+
     @testing.for_all_dtypes()
     def check_savez(self, savez, dtype):
         a1 = testing.shaped_arange((2, 3, 4), dtype=dtype)
@@ -56,6 +88,7 @@ class TestNpz(unittest.TestCase):
         testing.assert_array_equal(a, b)
 
     @testing.for_all_dtypes()
+    @testing.with_requires('numpy>=1.10')
     def test_dump(self, dtype):
         a = testing.shaped_arange((2, 3, 4), dtype=dtype)
 
@@ -65,7 +98,7 @@ class TestNpz(unittest.TestCase):
         sio.close()
 
         sio = six.BytesIO(s)
-        b = cupy.load(sio)
+        b = cupy.load(sio, allow_pickle=True)
         sio.close()
 
         testing.assert_array_equal(a, b)
