@@ -281,6 +281,11 @@ class FallbackArray(unittest.TestCase):
         b = fallback_mode.numpy.ndarray((2, 3))
         assert isinstance(b, fallback_mode.numpy.ndarray)
 
+    def test_instancecheck_type(self):
+
+        a = fallback_mode.numpy.arange(3)
+        assert isinstance(a, type(a))
+
     @numpy_fallback_equal()
     def test_ndarray_comparison_eq(self, xp):
 
