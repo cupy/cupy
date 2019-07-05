@@ -141,12 +141,12 @@ class TestFallbackMode(unittest.TestCase):
     def test_cupy_specific_func(self):
 
         with self.assertRaises(AttributeError):
-            func = fallback_mode.numpy.ElementwiseKernel  # NOQA
+            fallback_mode.numpy.ElementwiseKernel
 
     def test_func_not_in_numpy(self):
 
         with self.assertRaises(AttributeError):
-            func = fallback_mode.numpy.dummy  # NOQA
+            fallback_mode.numpy.dummy
 
 
 @testing.gpu
@@ -183,7 +183,7 @@ class TestNotifications(unittest.TestCase):
         saved_stdout = StringIO()
         with contextlib.redirect_stdout(saved_stdout):
             fallback_mode.seterr('print')
-            res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+            fallback_mode.numpy.nanargmin([1, 2, 3])
 
         output = saved_stdout.getvalue().strip()
         assert output == ("Warning: 'nanargmin' method not in cupy, " +
@@ -193,13 +193,13 @@ class TestNotifications(unittest.TestCase):
 
         with self.assertWarns(fallback_mode.notification.FallbackWarning):
             fallback_mode.seterr('warn')
-            res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+            fallback_mode.numpy.nanargmin([1, 2, 3])
 
     def test_notification_raise(self):
 
         with self.assertRaises(AttributeError):
             fallback_mode.seterr('raise')
-            res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+            fallback_mode.numpy.nanargmin([1, 2, 3])
 
     def test_geterrcall(self):
 
@@ -223,7 +223,7 @@ class TestNotifications(unittest.TestCase):
         with contextlib.redirect_stdout(saved_stdout):
             fallback_mode.seterrcall(custom_callback)
             fallback_mode.seterr('call')
-            res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+            fallback_mode.numpy.nanargmin([1, 2, 3])
 
         output = saved_stdout.getvalue().strip()
         assert output == ("'nanargmin' fallbacked")
@@ -241,7 +241,7 @@ class TestNotifications(unittest.TestCase):
         with contextlib.redirect_stdout(saved_stdout):
             fallback_mode.seterrcall(Log())
             fallback_mode.seterr('log')
-            res = fallback_mode.numpy.nanargmin([1, 2, 3])  # NOQA
+            fallback_mode.numpy.nanargmin([1, 2, 3])
 
         output = saved_stdout.getvalue().strip()
         assert output == ("LOG: 'nanargmin' method not in cupy, " +
