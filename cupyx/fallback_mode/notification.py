@@ -147,6 +147,7 @@ class errstate:
     Args:
         new_dispatch (str): Notification dispatch type to be set.
     """
+
     def __init__(self, new_dispatch, func=None):
         self.old = None
         self.old_func = None
