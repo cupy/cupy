@@ -258,3 +258,33 @@ class TestNotifications(unittest.TestCase):
 
         after = fallback_mode.geterr()
         assert before == after
+
+    def test_errstate_func(self):
+
+        def f(func):
+            pass
+
+        fallback_mode.seterr('call')
+        fallback_mode.seterrcall(f)
+
+        before = fallback_mode.geterr()
+        before_func = fallback_mode.geterrcall()
+
+        class L:
+            def write(msg):
+                pass
+
+        log_obj = L()
+
+        with fallback_mode.errstate('log', log_obj):
+            inside = fallback_mode.geterr()
+            inside_func = fallback_mode.geterrcall()
+
+            assert inside == 'log'
+            assert inside_func is log_obj
+
+        after = fallback_mode.geterr()
+        after_func = fallback_mode.geterrcall()
+
+        assert before == after
+        assert before_func is after_func
