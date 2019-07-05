@@ -12,6 +12,32 @@ from cupyx.fallback_mode import ndarray
 def numpy_fallback_equal(name='xp'):
     """
     Decorator that checks fallback_mode results are equal to NumPy ones.
+    Checks results that are non-ndarray.
+
+    Args:
+        name(str): Argument name whose value is either
+        ``numpy`` or ``cupy`` module.
+    """
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kwargs):
+
+            kwargs[name] = fallback_mode.numpy
+            fallback_result = impl(self, *args, **kwargs)
+
+            kwargs[name] = numpy
+            numpy_result = impl(self, *args, **kwargs)
+
+            assert numpy_result == fallback_result
+
+        return test_func
+    return decorator
+
+
+def numpy_fallback_array_equal(name='xp'):
+    """
+    Decorator that checks fallback_mode results are equal to NumPy ones.
+    Checks ndarrays.
 
     Args:
         name(str): Argument name whose value is either
@@ -30,20 +56,14 @@ def numpy_fallback_equal(name='xp'):
             if isinstance(numpy_result, numpy.ndarray):
                 # if numpy returns ndarray, cupy must return ndarray
                 assert isinstance(fallback_result, ndarray.ndarray)
+                assert fallback_result.dtype is numpy_result.dtype
                 testing.assert_array_equal(
                     numpy_result, fallback_result._array)
 
             elif isinstance(numpy_result, numpy.ScalarType):
                 # if numpy returns scalar
-                # cupy must return scalar or 0-dim array
-                if isinstance(fallback_result, numpy.ScalarType):
-                    assert numpy_result == fallback_result
-
-                else:
-                    # cupy 0-dim array
-                    assert numpy_result == int(fallback_result._array)
-            else:
-                assert numpy_result == fallback_result
+                # cupy may return 0-dim array
+                assert numpy_result == fallback_result._array.item()
 
         return test_func
     return decorator
@@ -52,7 +72,7 @@ def numpy_fallback_equal(name='xp'):
 @testing.gpu
 class TestFallbackMode(unittest.TestCase):
 
-    @numpy_fallback_equal()
+    @numpy_fallback_array_equal()
     def test_argmin(self, xp):
 
         a = xp.array([
@@ -63,7 +83,7 @@ class TestFallbackMode(unittest.TestCase):
 
         return xp.argmin(a, axis=1)
 
-    @numpy_fallback_equal()
+    @numpy_fallback_array_equal()
     def test_argmin_zero_dim_array_vs_scalar(self, xp):
 
         a = xp.array([
@@ -98,7 +118,7 @@ class TestFallbackMode(unittest.TestCase):
         return xp.array_equal(a, b)
 
     # Both cupy and numpy return 0-d array
-    @numpy_fallback_equal()
+    @numpy_fallback_array_equal()
     def test_convolve_zero_dim_array(self, xp):
 
         a = xp.array([1, 2, 3])
@@ -178,21 +198,21 @@ class FallbackArray(unittest.TestCase):
 
         return a.tobytes()
 
-    @numpy_fallback_equal()
+    @numpy_fallback_array_equal()
     def test_ndarray_min(self, xp):
 
         a = xp.array([1, 2, 0, 4])
 
         return a.min()
 
-    @numpy_fallback_equal()
+    @numpy_fallback_array_equal()
     def test_ndarray_argmin(self, xp):
 
         a = xp.array([[1, 2, 3], [7, 8, 9]])
 
         return a.argmin()
 
-    @numpy_fallback_equal()
+    @numpy_fallback_array_equal()
     def test_ndarray_argmin_kwargs(self, xp):
 
         a = xp.array([[1, 2, 3], [7, 8, 9]])
@@ -286,7 +306,7 @@ class FallbackArray(unittest.TestCase):
         a = fallback_mode.numpy.arange(3)
         assert isinstance(a, type(a))
 
-    @numpy_fallback_equal()
+    @numpy_fallback_array_equal()
     def test_ndarray_comparison_eq(self, xp):
 
         a = xp.array([1, 2, 3])
@@ -294,7 +314,7 @@ class FallbackArray(unittest.TestCase):
 
         return a == b
 
-    @numpy_fallback_equal()
+    @numpy_fallback_array_equal()
     def test_ndarray_comparison_nq(self, xp):
 
         a = xp.array([1, 2, 3])
@@ -302,7 +322,7 @@ class FallbackArray(unittest.TestCase):
 
         return a != b
 
-    @numpy_fallback_equal()
+    @numpy_fallback_array_equal()
     def test_ndarray_comparison_lt(self, xp):
 
         a = xp.array([1, 2, 3])
@@ -310,7 +330,7 @@ class FallbackArray(unittest.TestCase):
 
         return a < b
 
-    @numpy_fallback_equal()
+    @numpy_fallback_array_equal()
     def test_ndarray_comparison_ge(self, xp):
 
         a = xp.array([1, 2, 3])
