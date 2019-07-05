@@ -8,7 +8,7 @@ def empty(shape, dtype=float, order='C'):
     """Returns an array without initializing the elements.
 
     Args:
-        shape (tuple of ints): Dimensionalities of the array.
+        shape (int or tuple of ints): Dimensionalities of the array.
         dtype: Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
@@ -63,9 +63,9 @@ def empty_like(a, dtype=None, order='K', subok=None, shape=None):
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
         subok: Not supported yet, must be None.
-        shape (tuple of ints): Overrides the shape of the result. If order='K'
-            and the number of dimensions is unchanged, will try to keep order,
-            otherwise, order='C' is implied.
+        shape (int or tuple of ints): Overrides the shape of the result. If
+            order='K' and the number of dimensions is unchanged, will try to
+            keep order, otherwise, order='C' is implied.
 
 
     Returns:
@@ -135,7 +135,7 @@ def ones(shape, dtype=float):
     This function currently does not support ``order`` option.
 
     Args:
-        shape (tuple of ints): Dimensionalities of the array.
+        shape (int or tuple of ints): Dimensionalities of the array.
         dtype: Data type specifier.
 
     Returns:
@@ -163,9 +163,9 @@ def ones_like(a, dtype=None, order='K', subok=None, shape=None):
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
         subok: Not supported yet, must be None.
-        shape (tuple of ints): Overrides the shape of the result. If order='K'
-            and the number of dimensions is unchanged, will try to keep order,
-            otherwise, order='C' is implied.
+        shape (int or tuple of ints): Overrides the shape of the result. If
+            order='K' and the number of dimensions is unchanged, will try to
+            keep order, otherwise, order='C' is implied.
 
     Returns:
         cupy.ndarray: An array filled with ones.
@@ -190,7 +190,7 @@ def zeros(shape, dtype=float, order='C'):
     """Returns a new array of given shape and dtype, filled with zeros.
 
     Args:
-        shape (tuple of ints): Dimensionalities of the array.
+        shape (int or tuple of ints): Dimensionalities of the array.
         dtype: Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
@@ -219,9 +219,9 @@ def zeros_like(a, dtype=None, order='K', subok=None, shape=None):
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
         subok: Not supported yet, must be None.
-        shape (tuple of ints): Overrides the shape of the result. If order='K'
-            and the number of dimensions is unchanged, will try to keep order,
-            otherwise, order='C' is implied.
+        shape (int or tuple of ints): Overrides the shape of the result. If
+            order='K' and the number of dimensions is unchanged, will try to
+            keep order, otherwise, order='C' is implied.
 
     Returns:
         cupy.ndarray: An array filled with zeros.
@@ -248,7 +248,7 @@ def full(shape, fill_value, dtype=None):
     This function currently does not support ``order`` option.
 
     Args:
-        shape (tuple of ints): Dimensionalities of the array.
+        shape (int or tuple of ints): Dimensionalities of the array.
         fill_value: A scalar value to fill a new array.
         dtype: Data type specifier.
 
@@ -283,9 +283,9 @@ def full_like(a, fill_value, dtype=None, order='K', subok=None, shape=None):
             ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
             layout of ``a`` as closely as possible.
         subok: Not supported yet, must be None.
-        shape (tuple of ints): Overrides the shape of the result. If order='K'
-            and the number of dimensions is unchanged, will try to keep order,
-            otherwise, order='C' is implied.
+        shape (int or tuple of ints): Overrides the shape of the result. If
+            order='K' and the number of dimensions is unchanged, will try to
+            keep order, otherwise, order='C' is implied.
 
     Returns:
         cupy.ndarray: An array filled with ``fill_value``.
