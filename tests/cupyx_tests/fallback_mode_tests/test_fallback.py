@@ -297,7 +297,7 @@ class TestNotificationModes(unittest.TestCase):
         fallback_mode.seterr(old)
         nf = self.func._numpy_object
         output = saved_stdout.getvalue().strip()
-        assert output == f"'{nf.__name__}' fallbacked"
+        assert output == "'{}' fallbacked".format(nf.__name__)
 
     def test_notification_log(self):
 
