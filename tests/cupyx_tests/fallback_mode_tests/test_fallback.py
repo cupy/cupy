@@ -256,8 +256,9 @@ class TestNotificationModes(unittest.TestCase):
         fallback_mode.seterr(old)
         nf = self.func._numpy_object
         output = saved_stdout.getvalue().strip()
-        assert output == (f"Warning: '{nf.__name__}' method not in cupy, " +
-                          f"falling back to '{nf.__module__}.{nf.__name__}'")
+        msg1 = f"'{nf.__name__}' method not in cupy, "
+        msg2 = f"falling back to '{nf.__module__}.{nf.__name__}'"
+        assert output == ("Warning: " + msg1 + msg2)
 
     def test_notification_warn(self):
 
@@ -296,7 +297,7 @@ class TestNotificationModes(unittest.TestCase):
         fallback_mode.seterr(old)
         nf = self.func._numpy_object
         output = saved_stdout.getvalue().strip()
-        assert output == (f"'{nf.__name__}' fallbacked")
+        assert output == f"'{nf.__name__}' fallbacked"
 
     def test_notification_log(self):
 
@@ -317,5 +318,6 @@ class TestNotificationModes(unittest.TestCase):
         fallback_mode.seterr(old)
         nf = self.func._numpy_object
         output = saved_stdout.getvalue().strip()
-        assert output == (f"LOG: '{nf.__name__}' method not in cupy, " +
-                          f"falling back to '{nf.__module__}.{nf.__name__}'")
+        msg1 = f"'{nf.__name__}' method not in cupy, "
+        msg2 = f"falling back to '{nf.__module__}.{nf.__name__}'"
+        assert output == ("LOG: " + msg1 + msg2)
