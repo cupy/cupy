@@ -1,4 +1,3 @@
-import cupy
 from cupy import core
 from cupy.core import fusion
 
@@ -29,20 +28,23 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
     """Return the indices of the maximum values in the specified axis ignoring
     NaNs. For all-NaN slice ``ValueError`` is raised.
     Subclass cannot be passed yet, subok=True still unsupported
+
     Args:
         a (cupy.ndarray): Array to take nanargmax.
         axis (int): Along which axis to find the maximum. ``a`` is flattened by
             default.
+
     Returns:
         cupy.ndarray: The indices of the maximum of ``a``
-        along an axis ignoring NaN values.
+            along an axis ignoring NaN values.
+            Returns -1 if all-NaNs encountered
+
     .. seealso:: :func:`numpy.nanargmax`
     """
     if a.dtype.kind in 'biu':
         return argmax(a, axis=axis)
 
-    return argmax(cupy.where(cupy.isnan(a), cupy.inf, a), axis=axis,
-                  dtype=dtype, out=out, keepdims=keepdims)
+    return a.nanargmax(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -71,20 +73,23 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
     """Return the indices of the minimum values in the specified axis ignoring
     NaNs. For all-NaN slice ``ValueError`` is raised.
     Subclass cannot be passed yet, subok=True still unsupported
+
     Args:
         a (cupy.ndarray): Array to take nanargmin.
         axis (int): Along which axis to find the minimum. ``a`` is flattened by
             default.
+
     Returns:
         cupy.ndarray: The indices of the minimum of ``a``
-        along an axis ignoring NaN values.
+            along an axis ignoring NaN values.
+            Returns -1 if all-NaNs encountered
+
     .. seealso:: :func:`numpy.nanargmin`
     """
     if a.dtype.kind in 'biu':
         return argmin(a, axis=axis)
 
-    return argmin(cupy.where(cupy.isnan(a), cupy.inf, a), axis=axis,
-                  dtype=dtype, out=out, keepdims=keepdims)
+    return a.nanargmin(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 # TODO(okuta): Implement argwhere
 
