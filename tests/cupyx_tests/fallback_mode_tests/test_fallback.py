@@ -1,5 +1,7 @@
 import unittest
 import functools
+import contextlib
+from io import StringIO
 
 import numpy
 
@@ -152,7 +154,7 @@ class TestFallbackMode(unittest.TestCase):
 @testing.gpu
 class TestNotifications(unittest.TestCase):
 
-    def test_1_seterr_geterr(self):
+    def test_seterr_geterr(self):
 
         default = fallback_mode.geterr()
         assert default == 'warn'
@@ -161,45 +163,7 @@ class TestNotifications(unittest.TestCase):
         current = fallback_mode.geterr()
         assert old == 'warn'
         assert current == 'ignore'
-
-    def test_notification_ignore(self):
-
-        import contextlib
-        from io import StringIO
-
-        saved_stdout = StringIO()
-        with contextlib.redirect_stdout(saved_stdout):
-            fallback_mode.seterr('ignore')
-            fallback_mode.numpy.nanargmin([1, 2, 3])
-
-        output = saved_stdout.getvalue().strip()
-        assert output == ""
-
-    def test_notification_print(self):
-
-        import contextlib
-        from io import StringIO
-
-        saved_stdout = StringIO()
-        with contextlib.redirect_stdout(saved_stdout):
-            fallback_mode.seterr('print')
-            fallback_mode.numpy.nanargmin([1, 2, 3])
-
-        output = saved_stdout.getvalue().strip()
-        assert output == ("Warning: 'nanargmin' method not in cupy, " +
-                          "falling back to 'numpy.nanargmin'")
-
-    def test_notification_warn(self):
-
-        with self.assertWarns(fallback_mode.notification.FallbackWarning):
-            fallback_mode.seterr('warn')
-            fallback_mode.numpy.nanargmin([1, 2, 3])
-
-    def test_notification_raise(self):
-
-        with self.assertRaises(AttributeError):
-            fallback_mode.seterr('raise')
-            fallback_mode.numpy.nanargmin([1, 2, 3])
+        fallback_mode.seterr(old)
 
     def test_geterrcall(self):
 
@@ -211,45 +175,9 @@ class TestNotifications(unittest.TestCase):
 
         assert current == f
 
-    def test_notification_call(self):
-
-        def custom_callback(func):
-            print("'{}' fallbacked".format(func.__name__))
-
-        import contextlib
-        from io import StringIO
-
-        saved_stdout = StringIO()
-        with contextlib.redirect_stdout(saved_stdout):
-            fallback_mode.seterrcall(custom_callback)
-            fallback_mode.seterr('call')
-            fallback_mode.numpy.nanargmin([1, 2, 3])
-
-        output = saved_stdout.getvalue().strip()
-        assert output == ("'nanargmin' fallbacked")
-
-    def test_notification_log(self):
-
-        class Log:
-            def write(self, msg):
-                print("LOG: {}".format(msg))
-
-        import contextlib
-        from io import StringIO
-
-        saved_stdout = StringIO()
-        with contextlib.redirect_stdout(saved_stdout):
-            fallback_mode.seterrcall(Log())
-            fallback_mode.seterr('log')
-            fallback_mode.numpy.nanargmin([1, 2, 3])
-
-        output = saved_stdout.getvalue().strip()
-        assert output == ("LOG: 'nanargmin' method not in cupy, " +
-                          "falling back to 'numpy.nanargmin'")
-
     def test_errstate(self):
 
-        fallback_mode.seterr('print')
+        old = fallback_mode.seterr('print')
         before = fallback_mode.geterr()
 
         with fallback_mode.errstate('log'):
@@ -258,13 +186,14 @@ class TestNotifications(unittest.TestCase):
 
         after = fallback_mode.geterr()
         assert before == after
+        fallback_mode.seterr(old)
 
     def test_errstate_func(self):
 
         def f(func):
             pass
 
-        fallback_mode.seterr('call')
+        old = fallback_mode.seterr('call')
         fallback_mode.seterrcall(f)
 
         before = fallback_mode.geterr()
@@ -288,3 +217,105 @@ class TestNotifications(unittest.TestCase):
 
         assert before == after
         assert before_func is after_func
+        fallback_mode.seterr(old)
+
+
+@testing.parameterize(
+    {'func': fallback_mode.numpy.array_equal, 'shape': (3, 4)},
+    {'func': fallback_mode.numpy.array_equiv, 'shape': (3, 4)},
+    {'func': fallback_mode.numpy.cross, 'shape': (2, 3)},
+    {'func': fallback_mode.numpy.convolve, 'shape': (5,)}
+)
+@testing.gpu
+class TestNotificationModes(unittest.TestCase):
+
+    def test_notification_ignore(self):
+
+        old = fallback_mode.seterr('ignore')
+        saved_stdout = StringIO()
+
+        with contextlib.redirect_stdout(saved_stdout):
+            a = testing.shaped_random(self.shape, fallback_mode.numpy)
+            b = testing.shaped_random(self.shape, fallback_mode.numpy)
+            self.func(a, b)
+
+        fallback_mode.seterr(old)
+        output = saved_stdout.getvalue().strip()
+        assert output == ""
+
+    def test_notification_print(self):
+
+        old = fallback_mode.seterr('print')
+        saved_stdout = StringIO()
+
+        with contextlib.redirect_stdout(saved_stdout):
+            a = testing.shaped_random(self.shape, fallback_mode.numpy)
+            b = testing.shaped_random(self.shape, fallback_mode.numpy)
+            self.func(a, b)
+
+        fallback_mode.seterr(old)
+        nf = self.func._numpy_object
+        output = saved_stdout.getvalue().strip()
+        assert output == (f"Warning: '{nf.__name__}' method not in cupy, " +
+                          f"falling back to '{nf.__module__}.{nf.__name__}'")
+
+    def test_notification_warn(self):
+
+        fallback_mode.seterr('warn')
+
+        with self.assertWarns(fallback_mode.notification.FallbackWarning):
+            a = testing.shaped_random(self.shape, fallback_mode.numpy)
+            b = testing.shaped_random(self.shape, fallback_mode.numpy)
+            self.func(a, b)
+
+    def test_notification_raise(self):
+
+        old = fallback_mode.seterr('raise')
+
+        with self.assertRaises(AttributeError):
+            a = testing.shaped_random(self.shape, fallback_mode.numpy)
+            b = testing.shaped_random(self.shape, fallback_mode.numpy)
+            self.func(a, b)
+
+        fallback_mode.seterr(old)
+
+    def test_notification_call(self):
+
+        def custom_callback(func):
+            print("'{}' fallbacked".format(func.__name__))
+
+        old = fallback_mode.seterr('call')
+        fallback_mode.seterrcall(custom_callback)
+        saved_stdout = StringIO()
+
+        with contextlib.redirect_stdout(saved_stdout):
+            a = testing.shaped_random(self.shape, fallback_mode.numpy)
+            b = testing.shaped_random(self.shape, fallback_mode.numpy)
+            self.func(a, b)
+
+        fallback_mode.seterr(old)
+        nf = self.func._numpy_object
+        output = saved_stdout.getvalue().strip()
+        assert output == (f"'{nf.__name__}' fallbacked")
+
+    def test_notification_log(self):
+
+        class Log:
+            def write(self, msg):
+                print("LOG: {}".format(msg))
+
+        log_obj = Log()
+        old = fallback_mode.seterr('log')
+        fallback_mode.seterrcall(log_obj)
+        saved_stdout = StringIO()
+
+        with contextlib.redirect_stdout(saved_stdout):
+            a = testing.shaped_random(self.shape, fallback_mode.numpy)
+            b = testing.shaped_random(self.shape, fallback_mode.numpy)
+            self.func(a, b)
+
+        fallback_mode.seterr(old)
+        nf = self.func._numpy_object
+        output = saved_stdout.getvalue().strip()
+        assert output == (f"LOG: '{nf.__name__}' method not in cupy, " +
+                          f"falling back to '{nf.__module__}.{nf.__name__}'")
