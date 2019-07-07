@@ -306,34 +306,22 @@ class FallbackArray(unittest.TestCase):
         a = fallback_mode.numpy.arange(3)
         assert isinstance(a, type(a))
 
-    @numpy_fallback_array_equal()
-    def test_ndarray_comparison_eq(self, xp):
 
-        a = xp.array([1, 2, 3])
-        b = xp.array([3, 2, 1])
-
-        return a == b
-
-    @numpy_fallback_array_equal()
-    def test_ndarray_comparison_nq(self, xp):
-
-        a = xp.array([1, 2, 3])
-        b = xp.array([3, 2, 1])
-
-        return a != b
+@testing.parameterize(
+    {'func': '__eq__', 'shape': (3, 4)},
+    {'func': '__ne__', 'shape': (3, 1)},
+    {'func': '__gt__', 'shape': (4,)},
+    {'func': '__lt__', 'shape': (1, 1)},
+    {'func': '__ge__', 'shape': (1, 2)},
+    {'func': '__le__', 'shape': (1,)}
+)
+@testing.gpu
+class TestArrayComparison(unittest.TestCase):
 
     @numpy_fallback_array_equal()
-    def test_ndarray_comparison_lt(self, xp):
+    def test_ndarray_comparison(self, xp):
 
-        a = xp.array([1, 2, 3])
-        b = xp.array([3, 2, 1])
+        a = testing.shaped_random(self.shape, xp=xp)
+        b = testing.shaped_random(self.shape, xp=xp)
 
-        return a < b
-
-    @numpy_fallback_array_equal()
-    def test_ndarray_comparison_ge(self, xp):
-
-        a = xp.array([1, 2, 3])
-        b = xp.array([3, 2, 1])
-
-        return a >= b
+        return getattr(a, self.func)(b)
