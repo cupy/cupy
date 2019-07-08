@@ -70,6 +70,10 @@ class _RecursiveAttr:
         return "<numpy = {}, cupy = {}>".format(
             self._numpy_object, self._cupy_object)
 
+    @property
+    def __doc__(self):
+        return self._numpy_object.__doc__
+
     def __call__(self, *args, **kwargs):
         """
         Gets invoked when last attribute of _RecursiveAttr class gets called.

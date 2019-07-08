@@ -178,6 +178,20 @@ class TestFallbackMode(unittest.TestCase):
         assert fallback_mode.numpy.float32 is numpy.float32
 
 
+@testing.parameterize(
+    {'object': fallback_mode.numpy.ndarray},
+    {'object': fallback_mode.numpy.ndarray.__add__},
+    {'object': fallback_mode.numpy.vectorize},
+    {'object': fallback_mode.numpy.linalg.eig},
+)
+@testing.gpu
+class TestDocs(unittest.TestCase):
+
+    @numpy_fallback_equal()
+    def test_docs(self, xp):
+        return getattr(self.object, '__doc__')
+
+
 @testing.gpu
 class FallbackArray(unittest.TestCase):
 
