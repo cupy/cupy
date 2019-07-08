@@ -45,7 +45,7 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
     if a.dtype.kind in 'biu':
         return argmax(a, axis=axis)
 
-    return a.nanargmax(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return a._nanargmax(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -91,7 +91,7 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
     if a.dtype.kind in 'biu':
         return argmin(a, axis=axis)
 
-    return a.nanargmin(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return a._nanargmin(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 # TODO(okuta): Implement argwhere
 

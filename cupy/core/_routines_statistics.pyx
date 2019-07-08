@@ -337,6 +337,7 @@ cdef _argmax = create_reduction_func(
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
+
 cdef _nanargmin = create_reduction_func(
     'cupy_nanargmin',
     ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
