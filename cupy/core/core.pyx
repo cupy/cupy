@@ -810,7 +810,7 @@ cdef class ndarray:
         """
         return _math._ndarray_cumsum(self, axis, dtype, out)
 
-    cpdef ndarray nansum(
+    cpdef ndarray _nansum(
             self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the sum along a given axis treating Not a Numbers (NaNs) as zero.
 
@@ -874,7 +874,7 @@ cdef class ndarray:
         """
         return _math._ndarray_cumprod(self, axis, dtype, out)
 
-    cpdef ndarray nanprod(
+    cpdef ndarray _nanprod(
             self, axis=None, dtype=None, out=None, keepdims=None):
         """Returns the product along a given axis treating Not a Numbers (NaNs)
         as zero.
