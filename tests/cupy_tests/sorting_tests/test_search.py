@@ -5,6 +5,7 @@ import cupy
 
 from cupy import testing
 
+
 @testing.gpu
 class TestSearch(unittest.TestCase):
 
