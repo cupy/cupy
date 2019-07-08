@@ -26,7 +26,7 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
 
 def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
     """Return the indices of the maximum values in the specified axis ignoring
-    NaNs. For all-NaN slice ``ValueError`` is raised.
+    NaNs. For all-NaN slice ``-1`` is returned.
     Subclass cannot be passed yet, subok=True still unsupported
 
     Args:
@@ -37,8 +37,9 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
     Returns:
         cupy.ndarray: The indices of the maximum of ``a``
             along an axis ignoring NaN values.
-            Returns -1 if all-NaNs encountered
 
+    .. note:: For performance reasons, ``cupy.nanargmax`` returns ``-1`` for
+            for all-NaN slice whereas ``numpy.nanargmax`` raises ``ValueError``
     .. seealso:: :func:`numpy.nanargmax`
     """
     if a.dtype.kind in 'biu':
@@ -71,7 +72,7 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
 
 def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
     """Return the indices of the minimum values in the specified axis ignoring
-    NaNs. For all-NaN slice ``ValueError`` is raised.
+    NaNs. For all-NaN slice ``-1`` is returned.
     Subclass cannot be passed yet, subok=True still unsupported
 
     Args:
@@ -82,8 +83,9 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
     Returns:
         cupy.ndarray: The indices of the minimum of ``a``
             along an axis ignoring NaN values.
-            Returns -1 if all-NaNs encountered
 
+    .. note:: For performance reasons, ``cupy.nanargmin`` returns ``-1`` for
+            for all-NaN slice whereas ``numpy.nanargmin`` raises ``ValueError``
     .. seealso:: :func:`numpy.nanargmin`
     """
     if a.dtype.kind in 'biu':

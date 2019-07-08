@@ -735,8 +735,8 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmax(self, axis, out, dtype, keepdims)
 
-    cpdef ndarray nanargmax(self, axis=None, out=None, dtype=None,
-                            keepdims=False):
+    cpdef ndarray _nanargmax(self, axis=None, out=None, dtype=None,
+                             keepdims=False):
         """Returns the indices of the maximum with nan along a given axis.
 
         .. seealso::
@@ -767,8 +767,8 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
 
-    cpdef ndarray nanargmin(self, axis=None, out=None, dtype=None,
-                            keepdims=False):
+    cpdef ndarray _nanargmin(self, axis=None, out=None, dtype=None,
+                             keepdims=False):
         """Returns the indices of the minimum with nan along a given axis.
 
         .. seealso::
