@@ -51,14 +51,6 @@ class ndarray:
         """
         return self._array
 
-    @property
-    def __class__(self):
-        """
-        Redirects __class__ of ndarray object to cupy.ndarray
-        Used while execution of isinstance() method.
-        """
-        return cp.ndarray
-
 
 def _get_cupy_ndarray(args, kwargs):
     return data_transfer._get_xp_args(

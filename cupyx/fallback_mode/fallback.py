@@ -9,6 +9,7 @@ import cupy as cp
 
 
 from cupyx.fallback_mode import utils
+from cupyx.fallback_mode import ndarray
 
 
 class _RecursiveAttr:
@@ -27,7 +28,12 @@ class _RecursiveAttr:
         """
         Enable support for isinstance(instance, _RecursiveAttr instance)
         by redirecting it to appropriate isinstance method.
+        Since, we've ndarray wrapper, we need to handle it's __instancecheck__
+        separately.
         """
+        if self._cupy_object is cp.ndarray:
+            return isinstance(instance, ndarray.ndarray)
+
         if self._cupy_object is not None:
             return isinstance(instance, self._cupy_object)
 
