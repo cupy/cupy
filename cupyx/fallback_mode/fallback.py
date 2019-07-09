@@ -8,7 +8,6 @@ import types
 import numpy as np
 
 import cupy as cp
-from cupyx.fallback_mode import data_transfer
 
 # -----------------------------------------------------------------------------
 # _RecursiveAttr
@@ -134,11 +133,11 @@ def _call_cupy(func, args, kwargs):
         Result after calling func and performing data transfers.
     """
 
-    args, kwargs = _get_cupy_ndarray(args, kwargs)
+    args, kwargs = _get_cupy_args(args, kwargs)
 
     res = func(*args, **kwargs)
 
-    return _get_fallback_ndarray(res)
+    return _get_fallback_result(res)
 
 
 def _call_numpy(func, args, kwargs):
@@ -155,15 +154,15 @@ def _call_numpy(func, args, kwargs):
         Result after calling func and performing data transfers.
     """
 
-    args, kwargs = _get_cupy_ndarray(args, kwargs)
+    args, kwargs = _get_cupy_args(args, kwargs)
 
-    numpy_args, numpy_kwargs = data_transfer._get_numpy_args(args, kwargs)
+    numpy_args, numpy_kwargs = _get_numpy_args(args, kwargs)
 
     numpy_res = func(*numpy_args, **numpy_kwargs)
 
-    cupy_res = data_transfer._get_cupy_result(numpy_res)
+    cupy_res = _get_cupy_result(numpy_res)
 
-    return _get_fallback_ndarray(cupy_res)
+    return _get_fallback_result(cupy_res)
 
 
 # -----------------------------------------------------------------------------
@@ -209,33 +208,24 @@ class ndarray:
         return self._array
 
 
-def _get_cupy_ndarray(args, kwargs):
-    return data_transfer._get_xp_args(
-        ndarray, ndarray._get_array, (args, kwargs))
-
-
-def _get_fallback_ndarray(cupy_res):
-    return data_transfer._get_xp_args(cp.ndarray, ndarray, cupy_res)
-
-
 # Decorator for ndarray magic methods
 def make_method(name):
     def method(self, *args, **kwargs):
 
-        args, kwargs = _get_cupy_ndarray(args, kwargs)
+        args, kwargs = _get_cupy_args(args, kwargs)
 
         cupy_method = getattr(cp.ndarray, name)
 
         res = cupy_method(self._array, *args, **kwargs)
 
-        return _get_fallback_ndarray(res)
+        return _get_fallback_result(res)
 
     return method
 
 
 def _create_magic_methods():
     """
-    Set magic methods of cupy.ndarray as methods of utils.ndarray.
+    Set magic methods of cupy.ndarray as methods of fallback.ndarray.
     """
 
     _common = [
@@ -292,3 +282,57 @@ def _create_magic_methods():
 
 
 _create_magic_methods()
+
+
+# -----------------------------------------------------------------------------
+# Data Transfer methods
+# -----------------------------------------------------------------------------
+
+
+def _get_xp_args(ndarray_instance, to_xp, arg):
+    """
+    Converts ndarray_instance type object to target object using to_xp.
+
+    Args:
+        ndarray_instance (numpy.ndarray, cupy.ndarray or fallback.ndarray):
+        Objects of type `ndarray_instance` will be converted using `to_xp`.
+        to_xp (FunctionType): Method to convert ndarray_instance type objects.
+        arg (object): `ndarray_instance`, `tuple`, `list` and `dict` type
+        objects will be returned by either converting the object or it's
+        elements, if object is iterable.
+        Objects of other types is returned as it is.
+
+    Returns:
+        Return data structure will be same as before after converting ndarrays.
+    """
+
+    if isinstance(arg, ndarray_instance):
+        return to_xp(arg)
+
+    if isinstance(arg, tuple):
+        return tuple([_get_xp_args(ndarray_instance, to_xp, x) for x in arg])
+
+    if isinstance(arg, dict):
+        return {x_name: _get_xp_args(ndarray_instance, to_xp, x)
+                for x_name, x in arg.items()}
+
+    if isinstance(arg, list):
+        return [_get_xp_args(ndarray_instance, to_xp, x) for x in arg]
+
+    return arg
+
+
+def _get_cupy_result(numpy_res):
+    return _get_xp_args(np.ndarray, cp.array, numpy_res)
+
+
+def _get_numpy_args(args, kwargs):
+    return _get_xp_args(cp.ndarray, cp.asnumpy, (args, kwargs))
+
+
+def _get_cupy_args(args, kwargs):
+    return _get_xp_args(ndarray, ndarray._get_array, (args, kwargs))
+
+
+def _get_fallback_result(cupy_res):
+    return _get_xp_args(cp.ndarray, ndarray, cupy_res)
