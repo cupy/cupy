@@ -41,7 +41,7 @@ struct _cub_reduce_sum {
 };
 
 void cub_reduce_sum(void *x, void *y, int num_items,
-		    void *workspace=NULL, size_t &workspace_size, int dtype_id)
+		    void *workspace, size_t &workspace_size, int dtype_id)
 {
     dtype_dispatcher(dtype_id, _cub_reduce_sum(),
 		     x, y, num_items, workspace, workspace_size);
@@ -68,7 +68,7 @@ struct _cub_reduce_min {
 };
 
 void cub_reduce_min(void *x, void *y, int num_items,
-		    void *workspace=NULL, size_t &workspace_size, int dtype_id)
+		    void *workspace, size_t &workspace_size, int dtype_id)
 {
     dtype_dispatcher(dtype_id, _cub_reduce_min(),
 		     x, y, num_items, workspace, workspace_size);
@@ -95,7 +95,7 @@ struct _cub_reduce_max {
 };
 
 void cub_reduce_max(void *x, void *y, int num_items,
-		    void *workspace=NULL, size_t &workspace_size, int dtype_id)
+		    void *workspace, size_t &workspace_size, int dtype_id)
 {
     dtype_dispatcher(dtype_id, _cub_reduce_max(),
 		     x, y, num_items, workspace, workspace_size);
