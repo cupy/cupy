@@ -637,6 +637,13 @@ def get_ext_modules(use_cython=False):
 def _nvcc_gencode_options(cuda_version):
     """Returns NVCC GPU code generation options."""
 
+    if sys.argv == ['setup.py', 'develop']:
+        return []
+
+    envcfg = os.getenv('CUPY_NVCC_GENERATE_CODE', None)
+    if envcfg:
+        return ['--generate-code={}'.format(envcfg)]
+
     # The arch_list specifies virtual architectures, such as 'compute_61', and
     # real architectures, such as 'sm_61', for which the CUDA input files are
     # to be compiled.
@@ -693,10 +700,7 @@ def _nvcc_gencode_options(cuda_version):
             options.append('--generate-code=arch={},code={}'.format(
                 arch, arch))
 
-    if sys.argv == ['setup.py', 'develop']:
-        return []
-    else:
-        return options
+    return options
 
 
 class _UnixCCompiler(unixccompiler.UnixCCompiler):
