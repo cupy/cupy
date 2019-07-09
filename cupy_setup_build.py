@@ -641,7 +641,7 @@ def _nvcc_gencode_options(cuda_version):
         return []
 
     envcfg = os.getenv('CUPY_NVCC_GENERATE_CODE', None)
-    if envcfg is not None:
+    if envcfg:
         return ['--generate-code={}'.format(envcfg)]
 
     # The arch_list specifies virtual architectures, such as 'compute_61', and
