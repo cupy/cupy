@@ -2,6 +2,8 @@
 class ndarray is wrapper around cupy.ndarray
 to support fallback of methods of type `ndarray.func()`
 """
+import sys
+
 import numpy as np
 
 import cupy as cp
@@ -81,24 +83,21 @@ def _create_magic_methods():
     Set magic methods of cupy.ndarray as methods of utils.ndarray.
     """
 
-    _magic_methods = [
+    _common = [
 
         # Comparison operators:
         '__eq__', '__ne__', '__lt__', '__gt__', '__le__', '__ge__',
-
-        # Truth value of an array (bool):
-        '__nonzero__',
 
         # Unary operations:
         '__neg__', '__pos__', '__abs__', '__invert__',
 
         # Arithmetic:
-        '__add__', '__sub__', '__mul__', '__matmul__', '__div__',
+        '__add__', '__sub__', '__mul__',
         '__truediv__', '__floordiv__', '__mod__', '__divmod__', '__pow__',
         '__lshift__', '__rshift__', '__and__', '__or__', '__xor__',
 
         # Arithmetic, in-place:
-        '__iadd__', '__isub__', '__imul__', '__idiv__', '__itruediv__',
+        '__iadd__', '__isub__', '__imul__', '__itruediv__',
         '__ifloordiv__', '__imod__', '__ipow__', '__ilshift__', '__irshift__',
         '__iand__', '__ior__', '__ixor__',
 
@@ -109,13 +108,22 @@ def _create_magic_methods():
         '__iter__', '__len__', '__getitem__', '__setitem__',
 
         # Conversion:
-        '__int__', '__float__', '__complex__', '__oct__', '__hex__',
+        '__int__', '__float__', '__complex__',
 
         # String representations:
         '__repr__', '__str__'
     ]
 
-    for method in _magic_methods:
+    _py3 = ['__matmul__', '__bool__']
+
+    _py2 = [
+        '__div__', '__idiv__', '__nonzero__', '__long__', '__hex__', '__oct__']
+
+    _specific = _py3
+    if sys.version_info[0] == 2:
+        _specific = _py2
+
+    for method in _common + _specific:
         setattr(ndarray, method, make_method(method))
 
 
