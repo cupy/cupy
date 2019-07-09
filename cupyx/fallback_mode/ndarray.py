@@ -92,14 +92,19 @@ def _create_magic_methods():
         '__neg__', '__pos__', '__abs__', '__invert__',
 
         # Arithmetic:
-        '__add__', '__sub__', '__mul__',
-        '__truediv__', '__floordiv__', '__mod__', '__divmod__', '__pow__',
-        '__lshift__', '__rshift__', '__and__', '__or__', '__xor__',
+        '__add__', '__sub__', '__mul__', '__truediv__', '__floordiv__',
+        '__mod__', '__divmod__', '__pow__', '__lshift__', '__rshift__',
+        '__and__', '__or__', '__xor__',
 
         # Arithmetic, in-place:
-        '__iadd__', '__isub__', '__imul__', '__itruediv__',
-        '__ifloordiv__', '__imod__', '__ipow__', '__ilshift__', '__irshift__',
+        '__iadd__', '__isub__', '__imul__', '__itruediv__', '__ifloordiv__',
+        '__imod__', '__ipow__', '__ilshift__', '__irshift__',
         '__iand__', '__ior__', '__ixor__',
+
+        # reflected-methods:
+        '__radd__', '__rsub__', '__rmul__', '__rtruediv__', '__rfloordiv__',
+        '__rmod__', '__rdivmod__', '__rpow__', '__rlshift__', '__rrshift__',
+        '__rand__', '__ror__', '__rxor__',
 
         # For standard library functions:
         '__copy__', '__deepcopy__', '__reduce__',
@@ -114,10 +119,14 @@ def _create_magic_methods():
         '__repr__', '__str__'
     ]
 
-    _py3 = ['__matmul__', '__bool__']
+    _py3 = [
+        '__matmul__', '__rmatmul__', '__bool__'
+    ]
 
     _py2 = [
-        '__div__', '__idiv__', '__nonzero__', '__long__', '__hex__', '__oct__']
+        '__div__', '__rdiv__', '__idiv__', '__nonzero__',
+        '__long__', '__hex__', '__oct__'
+    ]
 
     _specific = _py3
     if sys.version_info[0] == 2:
