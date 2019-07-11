@@ -274,7 +274,7 @@ class TestFallbackArrayMethods(unittest.TestCase):
 
         a = testing.shaped_random(self.shape, xp=xp)
 
-        return getattr(a, self.func)()
+        return getattr(a, self.func)(*self.args, **self.kwargs)
 
 
 @testing.parameterize(
