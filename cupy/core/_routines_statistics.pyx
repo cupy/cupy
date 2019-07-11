@@ -347,8 +347,8 @@ cdef _nanargmin = create_reduction_func(
      ('d->q', (None, 'my_nanargmin_float(a, b)', None, None)),
      ('F->q', (None, 'my_nanargmin_complex(a, b)', None, None)),
      ('D->q', (None, 'my_nanargmin_complex(a, b)', None, None))),
-    ('min_max_st<type_in0_raw>(in0, is_nan(in0) ? -1 : _J)', 'my_nanargmin(a, b)',
-     'out0 = a.index', 'min_max_st<type_in0_raw>'),
+    ('min_max_st<type_in0_raw>(in0, is_nan(in0) ? -1 : _J)',
+     'my_nanargmin(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
 
@@ -361,8 +361,8 @@ cdef _nanargmax = create_reduction_func(
      ('d->q', (None, 'my_nanargmax_float(a, b)', None, None)),
      ('F->q', (None, 'my_nanargmax_complex(a, b)', None, None)),
      ('D->q', (None, 'my_nanargmax_complex(a, b)', None, None))),
-    ('min_max_st<type_in0_raw>(in0, is_nan(in0) ? -1 : _J)', 'my_nanargmax(a, b)',
-     'out0 = a.index', 'min_max_st<type_in0_raw>'),
+    ('min_max_st<type_in0_raw>(in0, is_nan(in0) ? -1 : _J)',
+     'my_nanargmax(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
 
