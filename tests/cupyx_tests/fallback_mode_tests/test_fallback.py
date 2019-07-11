@@ -76,60 +76,6 @@ def numpy_fallback_array_equal(name='xp'):
 @testing.gpu
 class TestFallbackMode(unittest.TestCase):
 
-    @numpy_fallback_array_equal()
-    def test_argmin(self, xp):
-
-        a = xp.array([
-            [13, 5, 45, 23, 9],
-            [-5, 41, 0, 22, 4],
-            [2, 6, 43, 11, -1]
-        ])
-
-        return xp.argmin(a, axis=1)
-
-    @numpy_fallback_array_equal()
-    def test_argmin_zero_dim_array_vs_scalar(self, xp):
-
-        a = xp.array([
-            [13, 5, 45, 23, 9],
-            [-5, 41, 0, 22, 4],
-            [2, 6, 43, 11, -1]
-        ])
-
-        return xp.argmin(a)
-
-    # cupy.argmin raises error if list passed, numpy does not
-    def test_argmin_list(self):
-
-        a = [
-            [13, 5, 45, 23, 9],
-            [-5, 41, 0, 22, 4],
-            [2, 6, 43, 11, -1]
-        ]
-
-        with self.assertRaises(AttributeError):
-            fallback_mode.numpy.argmin(a)
-
-        assert numpy.argmin([1, 0, 3]) == 1
-
-    # Non-existing function
-    @numpy_fallback_equal()
-    def test_array_equal(self, xp):
-
-        a = xp.array([1, 2])
-        b = xp.array([1, 2])
-
-        return xp.array_equal(a, b)
-
-    # Both cupy and numpy return 0-d array
-    @numpy_fallback_array_equal()
-    def test_convolve_zero_dim_array(self, xp):
-
-        a = xp.array([1, 2, 3])
-        b = xp.array([0, 1, 0.5])
-
-        return xp.convolve(a, b, 'valid')
-
     def test_vectorize(self):
 
         def function(a, b):
@@ -180,6 +126,29 @@ class TestFallbackMode(unittest.TestCase):
         assert fallback_mode.numpy.int64 is numpy.int64
 
         assert fallback_mode.numpy.float32 is numpy.float32
+
+
+@testing.parameterize(
+    {'func': 'min', 'shape': (3, 4), 'args': (), 'kwargs': {'axis': 0}},
+    {'func': 'argmin', 'shape': (3, 4), 'args': (), 'kwargs': {}},
+    {'func': 'roots', 'shape': (3,), 'args': (), 'kwargs': {}},
+    {'func': 'resize', 'shape': (2, 6), 'args': ((6, 2),), 'kwargs': {}},
+    {'func': 'resize', 'shape': (3, 4), 'args': ((4, 9),), 'kwargs': {}},
+    {'func': 'delete', 'shape': (5, 4), 'args': (1, 0), 'kwargs': {}},
+    {'func': 'append', 'shape': (2, 3), 'args': ([[7, 8, 9]],),
+     'kwargs': {'axis': 0}},
+    {'func': 'asarray_chkfinite', 'shape': (2, 4), 'args': (),
+     'kwargs': {'dtype': numpy.float64}}
+)
+@testing.gpu
+class TestFallbackMethodsArray(unittest.TestCase):
+
+    @numpy_fallback_array_equal()
+    def test_fallback_methods_array(self, xp):
+
+        a = testing.shaped_random(self.shape, xp=xp, dtype=numpy.int64)
+
+        return getattr(xp, self.func)(a, *self.args, **self.kwargs)
 
 
 @testing.parameterize(
