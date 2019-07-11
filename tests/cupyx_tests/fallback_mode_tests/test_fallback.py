@@ -66,6 +66,9 @@ def numpy_fallback_array_equal(name='xp'):
                 # cupy may return 0-dim array
                 assert numpy_result == fallback_result._array.item()
 
+            else:
+                assert False
+
         return test_func
     return decorator
 
@@ -298,15 +301,11 @@ class TestArrayComparison(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'func': '__abs__', 'shape': (3, 4), 'v': None},
-    {'func': '__neg__', 'shape': (2, 2), 'v': None},
     {'func': '__str__', 'shape': (5, 6), 'v': None},
     {'func': '__repr__', 'shape': (3, 4), 'v': None},
     {'func': '__int__', 'shape': (1,), 'v': None},
     {'func': '__float__', 'shape': (1, 1), 'v': None},
     {'func': '__len__', 'shape': (3, 3), 'v': None},
-    {'func': '__invert__', 'shape': (4, 5), 'v': None},
-    {'func': '__copy__', 'shape': (4, 4), 'v': None},
     {'func': '__bool__', 'shape': (1,), 'v': 3},
     {'func': '__nonzero__', 'shape': (1,), 'v': 2},
     {'func': '__long__', 'shape': (1,), 'v': 2}
@@ -314,7 +313,7 @@ class TestArrayComparison(unittest.TestCase):
 @testing.gpu
 class TestArrayUnaryMethods(unittest.TestCase):
 
-    @numpy_fallback_array_equal()
+    @numpy_fallback_equal()
     def test_unary_methods(self, xp):
 
         version = sys.version_info[0]
@@ -324,7 +323,24 @@ class TestArrayUnaryMethods(unittest.TestCase):
 
         a = testing.shaped_random(self.shape, xp=xp)
 
-        return getattr(a, self.func)
+        return getattr(a, self.func)()
+
+
+@testing.parameterize(
+    {'func': '__abs__', 'shape': (5, 6), 'dtype': numpy.float32},
+    {'func': '__copy__', 'shape': (3, 4), 'dtype': numpy.float32},
+    {'func': '__neg__', 'shape': (3, 3), 'dtype': numpy.float32},
+    {'func': '__invert__', 'shape': (2, 4), 'dtype': numpy.int32}
+)
+@testing.gpu
+class TestArrayUnaryMethodsArray(unittest.TestCase):
+
+    @numpy_fallback_array_equal()
+    def test_unary_methods_array(self, xp):
+
+        a = testing.shaped_random(self.shape, xp=xp, dtype=self.dtype)
+
+        return getattr(a, self.func)()
 
 
 @testing.parameterize(
