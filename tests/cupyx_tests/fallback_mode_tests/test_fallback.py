@@ -205,35 +205,6 @@ class FallbackArray(unittest.TestCase):
         assert isinstance(b, fallback.ndarray)
         assert isinstance(b._array, cupy.ndarray)
 
-    # ndarray fallback method
-    @numpy_fallback_equal()
-    def test_ndarray_tobytes(self, xp):
-
-        a = xp.array([1, 2, 3])
-
-        return a.tobytes()
-
-    @numpy_fallback_array_equal()
-    def test_ndarray_min(self, xp):
-
-        a = xp.array([1, 2, 0, 4])
-
-        return a.min()
-
-    @numpy_fallback_array_equal()
-    def test_ndarray_argmin(self, xp):
-
-        a = xp.array([[1, 2, 3], [7, 8, 9]])
-
-        return a.argmin()
-
-    @numpy_fallback_array_equal()
-    def test_ndarray_argmin_kwargs(self, xp):
-
-        a = xp.array([[1, 2, 3], [7, 8, 9]])
-
-        return a.argmin(axis=0)
-
     def test_getitem(self):
 
         x = fallback_mode.numpy.array([1, 2, 3])
@@ -286,6 +257,24 @@ class FallbackArray(unittest.TestCase):
 
         a = fallback_mode.numpy.arange(3)
         assert isinstance(a, type(a))
+
+
+@testing.parameterize(
+    {'func': 'min', 'shape': (5,), 'args': (), 'kwargs': {}},
+    {'func': 'argmax', 'shape': (5, 3), 'args': (), 'kwargs': {'axis': 0}},
+    {'func': 'ptp', 'shape': (3, 3), 'args': (), 'kwargs': {'axis': 1}},
+    {'func': 'compress', 'shape': (3, 2), 'args': ([False, True]),
+     'kwargs': {'axis': 0}}
+)
+@testing.gpu
+class TestFallbackArrayMethods(unittest.TestCase):
+
+    @numpy_fallback_array_equal
+    def test_fallback_array_methods(self, xp):
+
+        a = testing.shaped_random(self.shape, xp=xp)
+
+        return getattr(a, self.func)()
 
 
 @testing.parameterize(
