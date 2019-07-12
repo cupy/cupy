@@ -177,88 +177,6 @@ __device__ min_max_st<T> my_argmax_complex(
     if (is_nan(b.value.imag())) return b;
     return (a.value >= b.value) ? a : b;
 }
-template <typename T>
-__device__ min_max_st<T> my_nanargmax(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value && !is_nan(a.value) && !is_nan(b.value))
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (!is_nan(a.value) && !is_nan(b.value) && a.value >= b.value) return a;
-    if (!is_nan(b.value) && !is_nan(a.value) && b.value >= a.value) return b;
-    if (!is_nan(a.value) && is_nan(b.value)) return a;
-    if (!is_nan(b.value) && is_nan(a.value)) return b;
-    return min_max_st<T>(-1, -1);
-}
-template <typename T>
-__device__ min_max_st<T> my_nanargmax_float(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value && !is_nan(a.value) && !is_nan(b.value))
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (!is_nan(a.value) && !is_nan(b.value) && a.value >= b.value) return a;
-    if (!is_nan(b.value) && !is_nan(a.value) && b.value >= a.value) return b;
-    if (!is_nan(a.value) && is_nan(b.value)) return a;
-    if (!is_nan(b.value) && is_nan(a.value)) return b;
-    return min_max_st<T>(-1, -1);
-}
-template <typename T>
-__device__ min_max_st<T> my_nanargmax_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value  && !is_nan(a.value) && !is_nan(b.value))
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (!a.value.real() && !a.value.imag()) return b;
-    if (!b.value.real() && !b.value.imag()) return a;
-    if (!is_nan(a.value) && !is_nan(b.value) && a.value >= b.value) return a;
-    if (!is_nan(b.value) && !is_nan(a.value) && b.value >= a.value) return b;
-    if (!is_nan(a.value) && is_nan(b.value)) return a;
-    if (!is_nan(b.value) && is_nan(a.value)) return b;
-    return min_max_st<T>(-1, -1);
-}
-template <typename T>
-__device__ min_max_st<T> my_nanargmin(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value && !is_nan(a.value) && !is_nan(b.value))
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (!is_nan(a.value) && !is_nan(b.value) && a.value <= b.value) return a;
-    if (!is_nan(b.value) && !is_nan(a.value) && b.value <= a.value) return b;
-    if (!is_nan(a.value) && is_nan(b.value)) return a;
-    if (!is_nan(b.value) && is_nan(a.value)) return b;
-    return min_max_st<T>(-1, -1);
-}
-template <typename T>
-__device__ min_max_st<T> my_nanargmin_float(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value && !is_nan(a.value) && !is_nan(b.value))
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (!is_nan(a.value) && !is_nan(b.value) && a.value <= b.value) return a;
-    if (!is_nan(b.value) && !is_nan(a.value) && b.value <= a.value) return b;
-    if (!is_nan(a.value) && is_nan(b.value)) return a;
-    if (!is_nan(b.value) && is_nan(a.value)) return b;
-    return min_max_st<T>(-1, -1);
-}
-template <typename T>
-__device__ min_max_st<T> my_nanargmin_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value  && !is_nan(a.value) && !is_nan(b.value))
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (!a.value.real() && !a.value.imag()) return b;
-    if (!b.value.real() && !b.value.imag()) return a;
-    if (!is_nan(a.value) && !is_nan(b.value) && a.value <= b.value) return a;
-    if (!is_nan(b.value) && !is_nan(a.value) && b.value <= a.value) return b;
-    if (!is_nan(a.value) && is_nan(b.value)) return a;
-    if (!is_nan(b.value) && is_nan(a.value)) return b;
-    return min_max_st<T>(-1, -1);
-}
 
 '''
 
@@ -342,13 +260,13 @@ cdef _nanargmin = create_reduction_func(
     'cupy_nanargmin',
     ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
      'q->q', 'Q->q',
-     ('e->q', (None, 'my_nanargmin_float(a, b)', None, None)),
-     ('f->q', (None, 'my_nanargmin_float(a, b)', None, None)),
-     ('d->q', (None, 'my_nanargmin_float(a, b)', None, None)),
-     ('F->q', (None, 'my_nanargmin_complex(a, b)', None, None)),
-     ('D->q', (None, 'my_nanargmin_complex(a, b)', None, None))),
+     ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmin_complex(a, b)', None, None)),
+     ('D->q', (None, 'my_argmin_complex(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, is_nan(in0) ? -1 : _J)',
-     'my_nanargmin(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
+     'my_argmin(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
 
@@ -356,13 +274,13 @@ cdef _nanargmax = create_reduction_func(
     'cupy_nanargmax',
     ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
      'q->q', 'Q->q',
-     ('e->q', (None, 'my_nanargmax_float(a, b)', None, None)),
-     ('f->q', (None, 'my_nanargmax_float(a, b)', None, None)),
-     ('d->q', (None, 'my_nanargmax_float(a, b)', None, None)),
-     ('F->q', (None, 'my_nanargmax_complex(a, b)', None, None)),
-     ('D->q', (None, 'my_nanargmax_complex(a, b)', None, None))),
+     ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmax_complex(a, b)', None, None)),
+     ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, is_nan(in0) ? -1 : _J)',
-     'my_nanargmax(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
+     'my_argmax(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
 
