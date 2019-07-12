@@ -294,6 +294,57 @@ def inv(a):
     return b
 
 
+def batched_inv(a):
+
+    assert(a.ndim == 3)
+    util._assert_cupy_array(a)
+    util._assert_nd_squareness(a)
+
+    a = a.copy()
+
+    if a.dtype == cupy.float32:
+        getrf = cupy.cuda.cublas.sgetrfBatched
+        getri = cupy.cuda.cublas.sgetriBatched
+    elif a.dtype == cupy.float64:
+        getrf = cupy.cuda.cublas.dgetrfBatched
+        getri = cupy.cuda.cublas.dgetriBatched
+    elif a.dtype == cupy.complex64:
+        getrf = cupy.cuda.cublas.cgetrfBatched
+        getri = cupy.cuda.cublas.cgetriBatched
+    elif a.dtype == cupy.complex128:
+        getrf = cupy.cuda.cublas.zgetrfBatched
+        getri = cupy.cuda.cublas.zgetriBatched
+    else:
+        msg = 'dtype must be float32/64 or complex64/128 (actual: {})'.format(a.dtype)
+        raise ValueError(msg)
+
+    handle = device.get_cublas_handle()
+    batch_size = a.shape[0]
+    n = a.shape[1]
+    lda = n
+    pivot_array = cupy.empty((batch_size, n), dtype=cupy.int32)
+    info_array = cupy.empty((n,), dtype=cupy.int32)
+    a_array = numpy.empty((batch_size,), dtype=cupy.uint64)
+    a_array = a.data.ptr
+    a_array += numpy.arange(batch_size) * n * n * a.itemsize
+    a_array = cupy.asarray(a_array)
+
+    getrf(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
+          info_array.data.ptr, batch_size)
+
+    ldc = n
+    c = cupy.empty_like(a)
+    c_array = numpy.empty((batch_size,), dtype=cupy.uint64)
+    c_array = c.data.ptr
+    c_array += numpy.arange(batch_size) * n * n * c.itemsize
+    c_array = cupy.asarray(c_array)
+
+    getri(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
+          c_array.data.ptr, ldc, info_array.data.ptr, batch_size)
+
+    return c
+
+
 def pinv(a, rcond=1e-15):
     """Compute the Moore-Penrose pseudoinverse of a matrix.
 
