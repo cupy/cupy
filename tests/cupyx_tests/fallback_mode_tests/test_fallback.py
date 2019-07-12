@@ -1,4 +1,5 @@
 import sys
+import pytest
 import unittest
 import functools
 
@@ -97,9 +98,9 @@ class TestFallbackMode(unittest.TestCase):
 
     def test_module_not_callable(self):
 
-        self.assertRaises(TypeError, fallback_mode.numpy)
+        pytest.raises(TypeError, fallback_mode.numpy)
 
-        self.assertRaises(TypeError, fallback_mode.numpy.linalg)
+        pytest.raises(TypeError, fallback_mode.numpy.linalg)
 
     def test_numpy_scalars(self):
 
@@ -113,12 +114,12 @@ class TestFallbackMode(unittest.TestCase):
 
     def test_cupy_specific_func(self):
 
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             func = fallback_mode.numpy.ElementwiseKernel  # NOQA
 
     def test_func_not_in_numpy(self):
 
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             func = fallback_mode.numpy.dummy  # NOQA
 
     def test_same_reference(self):
