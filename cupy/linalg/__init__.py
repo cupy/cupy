@@ -26,6 +26,5 @@ from cupy.linalg.solve import pinv  # NOQA
 from cupy.linalg.solve import solve  # NOQA
 from cupy.linalg.solve import tensorinv  # NOQA
 from cupy.linalg.solve import tensorsolve  # NOQA
-from cupy.linalg.solve import batched_inv  # NOQA
 
 from cupy.linalg.product import matrix_power  # NOQA

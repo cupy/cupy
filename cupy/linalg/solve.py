@@ -247,6 +247,9 @@ def inv(a):
 
     .. seealso:: :func:`numpy.linalg.inv`
     """
+    if a.ndim == 3:
+        return _batched_inv(a)
+
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
@@ -294,7 +297,7 @@ def inv(a):
     return b
 
 
-def batched_inv(a):
+def _batched_inv(a):
 
     assert(a.ndim == 3)
     util._assert_cupy_array(a)
@@ -323,25 +326,46 @@ def batched_inv(a):
     batch_size = a.shape[0]
     n = a.shape[1]
     lda = n
+    step = n * lda * a.itemsize
+    start = a.data.ptr
+    stop = start + step * batch_size
+    a_array = cupy.arange(start, stop, step, dtype=cupy.uintp)
     pivot_array = cupy.empty((batch_size, n), dtype=cupy.int32)
     info_array = cupy.empty((n,), dtype=cupy.int32)
-    a_array = numpy.empty((batch_size,), dtype=cupy.uint64)
-    a_array = a.data.ptr
-    a_array += numpy.arange(batch_size) * n * n * a.itemsize
-    a_array = cupy.asarray(a_array)
 
     getrf(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
           info_array.data.ptr, batch_size)
 
-    ldc = n
+    err = False
+    for i in range(batch_size):
+        info = info_array[i]
+        if info < 0:
+            err = True
+            print('matrix[{}]: illegal value at {}-the parameter.'.
+                  format(i, info))
+        if info > 0:
+            err = True
+            print('matrix[{}]: U is singular.'.format(i))
+    if err:
+        raise RuntimeError('matrix inversion failed at getrf.')
+
     c = cupy.empty_like(a)
-    c_array = numpy.empty((batch_size,), dtype=cupy.uint64)
-    c_array = c.data.ptr
-    c_array += numpy.arange(batch_size) * n * n * c.itemsize
-    c_array = cupy.asarray(c_array)
+    ldc = lda
+    step = n * ldc * c.itemsize
+    start = c.data.ptr
+    stop = start + step * batch_size
+    c_array = cupy.arange(start, stop, step, dtype=cupy.uintp)
 
     getri(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
           c_array.data.ptr, ldc, info_array.data.ptr, batch_size)
+
+    for i in range(batch_size):
+        info = info_array[i]
+        if info > 0:
+            print('matrix[{}]: U is singular.'.format(i))
+            err = True
+    if err:
+        raise RuntimeError('matrix inversion failed at getri.')
 
     return c
 
