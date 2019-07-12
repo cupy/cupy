@@ -1,3 +1,4 @@
+import pytest
 import unittest
 import functools
 import contextlib
@@ -264,7 +265,7 @@ class TestNotificationModes(unittest.TestCase):
 
         fallback_mode.seterr('warn')
 
-        with self.assertWarns(fallback_mode.notification.FallbackWarning):
+        with pytest.warns(fallback_mode.notification.FallbackWarning):
             a = testing.shaped_random(self.shape, fallback_mode.numpy)
             b = testing.shaped_random(self.shape, fallback_mode.numpy)
             self.func(a, b)
@@ -273,7 +274,7 @@ class TestNotificationModes(unittest.TestCase):
 
         old = fallback_mode.seterr('raise')
 
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             a = testing.shaped_random(self.shape, fallback_mode.numpy)
             b = testing.shaped_random(self.shape, fallback_mode.numpy)
             self.func(a, b)
