@@ -3,7 +3,6 @@ import sys
 
 import numpy
 import six
-from functools import partial
 
 from cupy import _version
 
@@ -342,16 +341,35 @@ def binary_repr(num, width=None):
 # -----------------------------------------------------------------------------
 # Data type routines (borrowed from NumPy)
 # -----------------------------------------------------------------------------
-def numpy_implementation(func, *args, **kwargs):
-    if hasattr(func, '_implementation'):
-        return func._implementation(*args, **kwargs)
-    else:
-        return func(*args, **kwargs)
+def can_cast(from_, to, casting='safe'):
+    """Returns True if cast between data types can occur according to the
+    casting rule. If from is a scalar or array scalar, also returns True if the
+    scalar value can be cast without overflow or truncation to an integer.
+
+    .. seealso:: :func:`numpy.can_cast`
+    """
+    from_dtype = getattr(from_, 'dtype', from_)
+    return numpy.can_cast(from_dtype, to, casting=casting)
 
 
-can_cast = partial(numpy_implementation, numpy.can_cast)
-common_type = partial(numpy_implementation, numpy.common_type)
-result_type = partial(numpy_implementation, numpy.result_type)
+def common_type(*arrays):
+    """Return a scalar type which is common to the input arrays.
+
+    .. seealso:: :func:`numpy.common_type`
+    """
+    dtype_arrays = [numpy.empty((), a.dtype) for a in arrays]
+    return numpy.common_type(*dtype_arrays)
+
+
+def result_type(*arrays_and_dtypes):
+    """Returns the type that results from applying the NumPy type promotion
+    rules to the arguments.
+
+    .. seealso:: :func:`numpy.result_type`
+    """
+    dtype_arrays = [getattr(a, 'dtype', a) for a in arrays_and_dtypes]
+    return numpy.result_type(*dtype_arrays)
+
 
 from numpy import min_scalar_type  # NOQA
 from numpy import obj2sctype  # NOQA
