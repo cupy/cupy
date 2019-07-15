@@ -1,6 +1,7 @@
 import numpy
 
 import cupy
+from cupy.core import _routines_statistics as _statistics
 
 
 # TODO(okuta): Implement median
@@ -138,7 +139,11 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
                  keepdims=keepdims)
 
 
-# TODO(okuta): Implement nanmean
+def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
+
+    # TODO(okuta): check type
+    return _statistics._ndarray_nanmean(
+        axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 # TODO(okuta): Implement nanstd

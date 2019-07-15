@@ -35,6 +35,10 @@ cdef ndarray _ndarray_std(ndarray self, axis, dtype, out, ddof, keepdims):
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
+cdef ndarray _ndarray_nanmean(ndarray self, axis, dtype, out, keepdims):
+    return _nanmean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+
 cdef _min_max_preamble = '''
 template <typename T>
 struct min_max_st{
@@ -303,6 +307,48 @@ cdef _mean = create_reduction_func(
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b',
      'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
+
+
+cdef _nan_mean_var_preamble = '''
+template <typename T>
+struct nan_mean_var_st{
+	T value;
+	int count;
+	__device__ nan_mean_var_st(T v, int c) : value(v), count(c) { }
+};
+
+template <typename T>
+inline __device__ bool is_nan(T x) {
+    return x != x;
+}
+
+template <typename T>
+__device__ nan_mean_var_st<T> my_nanmean(
+		const nan_mean_var_st<T>& a, const nan_mean_var_st<T>& b) {
+	return nan_mean_var_st<T> (a.value + b.value, a.count)
+}
+
+template <typename T>
+__device__ nan_mean_var_st<T> my_nanmean_float(
+		const nan_mean_var_st<T>& a, const nan_mean_var_st<T>& b) {
+	if (is_nan(a.value) && is_nan(b.value)) return nan_mean_var_st<T> (0, a.count + 1)
+	if (is_nan(a.value)) return nan_mean_var_st<T> (b.value, a.count + 1)
+	if (is_nan(b.value)) return nan_mean_var_st<T> (a.value, a.count + 1)
+	return nan_mean_var_st<T> (a.value + b.value, a.count)
+}
+'''
+
+
+cdef _nanmean = create_reduction_func(
+	'cupy_nanmean',
+	('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
+     'q->d', 'Q->d',
+     ('e->d', (None, 'my_nanmean_float(a, b)', None, None)),
+     ('f->d', (None, 'my_nanmean_float(a, b)', None, None)),
+     ('d->d', (None, 'my_nanmean_float(a, b)', None, None))),
+	('nan_mean_var_st<type_in0_raw>(in0, 0)', 'my_nanmean(a, b)', 'out0 = a.value / a.count',
+     'nan_mean_var_st<type_in0_raw>'),
+    None, _nan_mean_var_preamble)
 
 
 # Variables to expose to Python
