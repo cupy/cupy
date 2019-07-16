@@ -103,10 +103,15 @@ class TestInv(unittest.TestCase):
         self.check_x((3, 3))
         self.check_x((4, 4))
         self.check_x((5, 5))
+        self.check_x((2, 5, 5))
+        self.check_x((3, 4, 4))
+        self.check_x((4, 2, 3, 3))
 
     def test_invalid_shape(self):
         self.check_shape((2, 3))
         self.check_shape((4, 1))
+        self.check_shape((4, 3, 2))
+        self.check_shape((2, 4, 3))
 
 
 @unittest.skipUnless(
