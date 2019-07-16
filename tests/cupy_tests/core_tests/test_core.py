@@ -56,19 +56,3 @@ class TestOrder(unittest.TestCase):
         expect_f = order_expect == 'F'
         assert a.flags.c_contiguous == expect_c
         assert a.flags.f_contiguous == expect_f
-
-
-class TestNumPyWrappers(unittest.TestCase):
-
-    @testing.numpy_cupy_equal()
-    def test_array_function_can_cast(self, xp):
-        return xp.can_cast(xp.arange(2), 'f4')
-
-    @testing.numpy_cupy_equal()
-    def test_array_function_common_type(self, xp):
-        return xp.common_type(xp.arange(2, dtype='f8'),
-                              xp.arange(2, dtype='f4'))
-
-    @testing.numpy_cupy_equal()
-    def test_array_function_result_type(self, xp):
-        return xp.result_type(3, xp.arange(2, dtype='f8'))
