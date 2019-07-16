@@ -314,6 +314,8 @@ template <typename T>
 struct nan_mean_var_st{
 	T value;
 	int count;
+    __device__ nan_mean_var_st() : count(-1) { }
+    __device__ nan_mean_var_st(T v) : value(v), count(is_nan(v) ? 0 : 1) { }
 	__device__ nan_mean_var_st(T v, int c) : value(v), count(c) { }
 };
 
@@ -325,16 +327,19 @@ inline __device__ bool is_nan(T x) {
 template <typename T>
 __device__ nan_mean_var_st<T> my_nanmean(
 		const nan_mean_var_st<T>& a, const nan_mean_var_st<T>& b) {
-	return nan_mean_var_st<T> (a.value + b.value, a.count)
+    if (a.count == -1) return nan_mean_var_st<T>(b.value, b.count);
+    if (b.count == -1) return nan_mean_var_st<T>(a.value, a.count);
+	return nan_mean_var_st<T>(a.value + b.value, a.count + b.count);
 }
 
 template <typename T>
 __device__ nan_mean_var_st<T> my_nanmean_float(
 		const nan_mean_var_st<T>& a, const nan_mean_var_st<T>& b) {
-	if (is_nan(a.value) && is_nan(b.value)) return nan_mean_var_st<T> (0, a.count + 1)
-	if (is_nan(a.value)) return nan_mean_var_st<T> (b.value, a.count + 1)
-	if (is_nan(b.value)) return nan_mean_var_st<T> (a.value, a.count + 1)
-	return nan_mean_var_st<T> (a.value + b.value, a.count)
+    if (a.count == -1) return nan_mean_var_st<T>(b.value, b.count);
+    if (b.count == -1) return nan_mean_var_st<T>(a.value, a.count);
+	if (is_nan(a.value)) return nan_mean_var_st<T>(b.value, b.count);
+	if (is_nan(b.value)) return nan_mean_var_st<T>(a.value, a.count);
+	return nan_mean_var_st<T>(a.value + b.value, a.count + b.count);
 }
 '''
 
@@ -346,7 +351,7 @@ cdef _nanmean = create_reduction_func(
      ('e->d', (None, 'my_nanmean_float(a, b)', None, None)),
      ('f->d', (None, 'my_nanmean_float(a, b)', None, None)),
      ('d->d', (None, 'my_nanmean_float(a, b)', None, None))),
-	('nan_mean_var_st<type_in0_raw>(in0, 0)', 'my_nanmean(a, b)', 'out0 = a.value / a.count',
+	('nan_mean_var_st<type_in0_raw>(in0)', 'my_nanmean(a, b)', 'out0 = a.value / a.count',
      'nan_mean_var_st<type_in0_raw>'),
     None, _nan_mean_var_preamble)
 

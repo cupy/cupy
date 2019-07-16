@@ -143,7 +143,7 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
 
     # TODO(okuta): check type
     return _statistics._ndarray_nanmean(
-        axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+        a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 # TODO(okuta): Implement nanstd
