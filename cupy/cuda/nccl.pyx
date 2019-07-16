@@ -6,6 +6,7 @@ Wrapper for NCCL: Optimized primiteive for collective multi-GPU communication
 cimport cython  # NOQA
 
 from cupy.cuda cimport driver
+from cupy.cuda cimport runtime
 
 cdef extern from 'cupy_nccl.h':
     ctypedef struct ncclComm:
@@ -40,6 +41,10 @@ cdef extern from 'cupy_nccl.h':
     ncclResult_t _ncclReduce(const void* sendbuff, void* recvbuf, size_t count,
                              ncclDataType_t datatype, ncclRedOp_t op, int root,
                              ncclComm_t comm, driver.Stream stream) nogil
+    ncclResult_t _ncclBroadcast(const void* sendbuff, void* recvbuff,
+                                size_t count, ncclDataType_t datatype,
+                                int root, ncclComm_t comm,
+                                driver.Stream stream) nogil
     ncclResult_t _ncclBcast(void* buff, size_t count, ncclDataType_t datatype,
                             int root, ncclComm_t comm,
                             driver.Stream stream) nogil
@@ -128,6 +133,21 @@ def get_unique_id():
     return ret
 
 
+def _bytesize(datatype):
+    bytesize = {NCCL_INT8: 1,
+                NCCL_UINT8: 1,
+                NCCL_INT32: 4,
+                NCCL_UINT32: 4,
+                NCCL_INT64: 8,
+                NCCL_UINT64: 8,
+                NCCL_FLOAT16: 2,
+                NCCL_FLOAT32: 4,
+                NCCL_FLOAT64: 8}
+    if datatype not in bytesize:
+        raise ValueError('Unknow datatype {}'.format(datatype))
+    return bytesize[datatype]
+
+
 cdef class NcclCommunicator:
 
     cdef:
@@ -186,6 +206,22 @@ cdef class NcclCommunicator:
                                  count, <ncclDataType_t>datatype,
                                  <ncclRedOp_t>op, root, self._comm,
                                  <driver.Stream>stream)
+        check_status(status)
+
+    def broadcast(self, size_t sendbuff, size_t recvbuff, int count,
+                  int datatype, int root, size_t stream):
+        if NCCL_VERSION_CODE < 2200:
+            # ncclBroadcast is not available in NCCL 2.1 or older.
+            if self.rank_id() == root:
+                runtime.memcpyAsync(recvbuff, sendbuff,
+                                    count * _bytesize(datatype),
+                                    runtime.memcpyDeviceToDevice, stream)
+            self.bcast(recvbuff, count, datatype, root, stream)
+            return
+        with nogil:
+            status = _ncclBroadcast(<const void*>sendbuff, <void*>recvbuff,
+                                    count, <ncclDataType_t>datatype, root,
+                                    self._comm, <driver.Stream>stream)
         check_status(status)
 
     def bcast(self, size_t buff, int count, int datatype,
