@@ -8,7 +8,7 @@ Recommended Environments
 
 We recommend the following Linux distributions.
 
-* `Ubuntu <https://www.ubuntu.com/>`_ 14.04 / 16.04 LTS (64-bit)
+* `Ubuntu <https://www.ubuntu.com/>`_ 16.04 / 18.04 LTS (64-bit)
 * `CentOS <https://www.centos.org/>`_ 7 (64-bit)
 
 .. note::
@@ -38,6 +38,10 @@ Before installing CuPy, we recommend you to upgrade ``setuptools`` and ``pip``::
 
   $ pip install -U setuptools pip
 
+.. note::
+
+   On Windows, CuPy only supports Python 3.6.0 or later.
+
 Optional Libraries
 ~~~~~~~~~~~~~~~~~~
 
@@ -52,7 +56,7 @@ Some features in CuPy will only be enabled if the corresponding libraries are in
 Install CuPy
 ------------
 
-Wheels (precompiled binary packages) are available for the recommended environments above.
+Wheels (precompiled binary packages) are available for Linux (Python 2.7 or later) and Windows (Python 3.6 or later).
 Package names are different depending on the CUDA version you have installed on your host.
 
 ::
@@ -97,7 +101,7 @@ When installing from source, C++ compiler such as ``g++`` is required.
 You need to install it before installing CuPy.
 This is typical installation method for each platform::
 
-  # Ubuntu 14.04
+  # Ubuntu 16.04
   $ apt-get install g++
 
   # CentOS 7
