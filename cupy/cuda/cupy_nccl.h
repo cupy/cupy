@@ -224,7 +224,9 @@ void ncclCommAbort(ncclComm_t comm) {
 
 #if (NCCL_VERSION_CODE < 2200)
 // New function in 2.2
-ncclResult_t ncclBroadcast(...) {
+ncclResult_t ncclBroadcast(const void* sendbuff, void* recvbuff, size_t count,
+			   ncclDataType_t datatype, int root, ncclComm_t comm,
+			   cudaStream_t stream) {
     return ncclSuccess;
 }
 #endif
