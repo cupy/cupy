@@ -247,7 +247,7 @@ def inv(a):
 
     .. seealso:: :func:`numpy.linalg.inv`
     """
-    if a.ndim == 3:
+    if a.ndim >= 3:
         return _batched_inv(a)
 
     if not cuda.cusolver_enabled:
@@ -299,11 +299,11 @@ def inv(a):
 
 def _batched_inv(a):
 
-    assert(a.ndim == 3)
+    assert(a.ndim >= 3)
+    a_shape = a.shape
+    a = a.copy().reshape(-1, a_shape[-2], a_shape[-1])
     util._assert_cupy_array(a)
     util._assert_nd_squareness(a)
-
-    a = a.copy()
 
     if a.dtype == cupy.float32:
         getrf = cupy.cuda.cublas.sgetrfBatched
@@ -331,23 +331,24 @@ def _batched_inv(a):
     stop = start + step * batch_size
     a_array = cupy.arange(start, stop, step, dtype=cupy.uintp)
     pivot_array = cupy.empty((batch_size, n), dtype=cupy.int32)
-    info_array = cupy.empty((n,), dtype=cupy.int32)
+    info_array = cupy.empty((batch_size,), dtype=cupy.int32)
 
     getrf(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
           info_array.data.ptr, batch_size)
 
     err = False
+    err_detail = ''
     for i in range(batch_size):
         info = info_array[i]
         if info < 0:
             err = True
-            print('matrix[{}]: illegal value at {}-the parameter.'.
-                  format(i, info))
+            err_detail += ('\tmatrix[{}]: illegal value at {}-the parameter.'
+                           '\n'.format(i, -info))
         if info > 0:
             err = True
-            print('matrix[{}]: U is singular.'.format(i))
+            err_detail += '\tmatrix[{}]: matrix is singular.\n'.format(i)
     if err:
-        raise RuntimeError('matrix inversion failed at getrf.')
+        raise RuntimeError('matrix inversion failed at getrf.\n' + err_detail)
 
     c = cupy.empty_like(a)
     ldc = lda
@@ -362,12 +363,12 @@ def _batched_inv(a):
     for i in range(batch_size):
         info = info_array[i]
         if info > 0:
-            print('matrix[{}]: U is singular.'.format(i))
             err = True
+            err_detail += '\tmatrix[{}]: matrix is singular.\n'.format(i)
     if err:
-        raise RuntimeError('matrix inversion failed at getri.')
+        raise RuntimeError('matrix inversion failed at getri.\n' + err_detail)
 
-    return c
+    return c.reshape(a_shape)
 
 
 def pinv(a, rcond=1e-15):
