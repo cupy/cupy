@@ -35,7 +35,7 @@ cdef ndarray _ndarray_std(ndarray self, axis, dtype, out, ddof, keepdims):
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
-cdef ndarray _ndarray_nanmean(ndarray self, axis, dtype, out, keepdims):
+cpdef ndarray _ndarray_nanmean(ndarray self, axis, dtype, out, keepdims):
     return _nanmean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
