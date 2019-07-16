@@ -367,8 +367,9 @@ def result_type(*arrays_and_dtypes):
 
     .. seealso:: :func:`numpy.result_type`
     """
-    dtype_arrays = [getattr(a, 'dtype', a) for a in arrays_and_dtypes]
-    return numpy.result_type(*dtype_arrays)
+    dtypes = [a.dtype if isinstance(a, cupy.ndarray)
+              else a for a in arrays_and_dtypes]
+    return numpy.result_type(*dtypes)
 
 
 from numpy import min_scalar_type  # NOQA
