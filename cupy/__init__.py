@@ -348,8 +348,8 @@ def can_cast(from_, to, casting='safe'):
 
     .. seealso:: :func:`numpy.can_cast`
     """
-    from_dtype = getattr(from_, 'dtype', from_)
-    return numpy.can_cast(from_dtype, to, casting=casting)
+    from_ = from_.dtype if isinstance(from_, cupy.ndarray) else from_
+    return numpy.can_cast(from_, to, casting=casting)
 
 
 def common_type(*arrays):
@@ -369,7 +369,6 @@ def result_type(*arrays_and_dtypes):
     """
     dtype_arrays = [getattr(a, 'dtype', a) for a in arrays_and_dtypes]
     return numpy.result_type(*dtype_arrays)
-
 
 from numpy import min_scalar_type  # NOQA
 from numpy import obj2sctype  # NOQA
