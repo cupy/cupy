@@ -41,10 +41,7 @@ def get_cuda_path():
 
     nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
     cuda_path_default = None
-    if nvcc_path is None:
-        utils.print_warning('nvcc not in path.',
-                            'Please set path to nvcc.')
-    else:
+    if nvcc_path is not None:
         cuda_path_default = os.path.normpath(
             os.path.join(os.path.dirname(nvcc_path), '..'))
 
