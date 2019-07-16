@@ -370,6 +370,7 @@ def result_type(*arrays_and_dtypes):
     dtype_arrays = [getattr(a, 'dtype', a) for a in arrays_and_dtypes]
     return numpy.result_type(*dtype_arrays)
 
+
 from numpy import min_scalar_type  # NOQA
 from numpy import obj2sctype  # NOQA
 from numpy import promote_types  # NOQA
