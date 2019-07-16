@@ -13,6 +13,8 @@
 
 #define CUDNN_VERSION 0
 
+#define CUDNN_BN_MIN_EPSILON 0.0
+
 extern "C" {
 
 typedef enum {
@@ -24,6 +26,7 @@ typedef enum {} cudnnActivationMode_t;
 typedef enum {} cudnnConvolutionFwdAlgo_t;
 typedef enum {} cudnnConvolutionFwdPreference_t;
 typedef enum {} cudnnConvolutionMode_t;
+typedef enum {} cudnnCTCLossAlgo_t;
 typedef enum {} cudnnDataType_t;
 typedef enum {} cudnnPoolingMode_t;
 typedef enum {} cudnnSoftmaxAlgorithm_t;
@@ -33,6 +36,7 @@ typedef enum {} cudnnErrQueryMode_t;
 typedef struct cudnnRuntimeTag_t cudnnRuntimeTag_t;
 
 typedef void* cudnnConvolutionDescriptor_t;
+typedef void* cudnnCTCLossDescriptor_t;
 typedef void* cudnnFilterDescriptor_t;
 typedef void* cudnnHandle_t;
 typedef void* cudnnPoolingDescriptor_t;
@@ -312,6 +316,26 @@ cudnnStatus_t cudnnActivationForward_v4(...) {
 }
 
 cudnnStatus_t cudnnActivationBackward_v4(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+// CTC
+cudnnStatus_t cudnnCreateCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnDestroyCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnSetCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnGetCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnGetCTCLossWorkspaceSize(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnCTCLoss(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
@@ -672,6 +696,28 @@ cudnnStatus_t cudnnReduceTensor(...) {
 #define cudnnSetRNNDescriptor_v5 cudnnSetRNNDescriptor
 
 typedef enum {} cudnnMathType_t;
+typedef enum {} cudnnCTCLossAlgo_t;
+typedef void* cudnnCTCLossDescriptor_t;
+
+// CTC
+cudnnStatus_t cudnnCreateCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnDestroyCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnSetCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnGetCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnGetCTCLossWorkspaceSize(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnCTCLoss(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
 
 cudnnStatus_t cudnnSetConvolutionMathType(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
@@ -787,7 +833,7 @@ typedef void* cudnnRNNDataDescriptor_t;
 
 typedef enum {} cudnnRNNDataLayout_t;
 typedef enum {} cudnnRNNPaddingMode_t;
-  
+
 cudnnStatus_t cudnnSetRNNPaddingMode(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }

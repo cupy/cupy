@@ -349,6 +349,28 @@ class TestProduct(unittest.TestCase):
         return xp.kron(a, b)
 
 
+@testing.parameterize(*testing.product({
+    'params': [
+        ((0, 0), 2),
+        ((0, 0), (1, 0)),
+        ((0, 0, 0), 2),
+        ((0, 0, 0), 3),
+        ((0, 0, 0), ([2, 1], [0, 2])),
+        ((0, 0, 0), ([0, 2, 1], [1, 2, 0])),
+    ],
+}))
+@testing.gpu
+@testing.with_requires('numpy>=1.14.0')
+class TestProductZeroLength(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_tensordot_zero_length(self, xp, dtype):
+        shape, axes = self.params
+        a = testing.shaped_arange(shape, xp, dtype)
+        return xp.tensordot(a, a, axes=axes)
+
+
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Requires CUDA 8.0 for cuSOLVER')
 class TestMatrixPower(unittest.TestCase):

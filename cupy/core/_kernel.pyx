@@ -78,26 +78,25 @@ cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     - Converts Python scalars into NumPy scalars
     """
     cdef list ret = []
-    cdef type typ
 
     for arg in args:
-        typ = type(arg)
-        if typ is not ndarray and hasattr(arg, '__cuda_array_interface__'):
+        if type(arg) is not ndarray:
+            s = _scalar.convert_scalar(arg, use_c_scalar)
+            if s is not None:
+                ret.append(s)
+                continue
+            if not hasattr(arg, '__cuda_array_interface__'):
+                raise TypeError('Unsupported type %s' % type(arg))
             arg = _convert_object_with_cuda_array_interface(arg)
-            typ = ndarray
 
-        if typ is ndarray:
-            arr_dev_id = (<ndarray?>arg).data.device_id
-            if arr_dev_id != dev_id:
-                raise ValueError(
-                    'Array device must be same as the current '
-                    'device: array device = %d while current = %d'
-                    % (arr_dev_id, dev_id))
-        else:
-            arg = _scalar.convert_scalar(arg, use_c_scalar)
-            if arg is None:
-                raise TypeError('Unsupported type %s' % typ)
+        arr_dev_id = (<ndarray>arg).data.device_id
+        if arr_dev_id != dev_id:
+            raise ValueError(
+                'Array device must be same as the current '
+                'device: array device = %d while current = %d'
+                % (arr_dev_id, dev_id))
         ret.append(arg)
+
     return ret
 
 
@@ -545,10 +544,6 @@ cdef class ElementwiseKernel:
             shape = size,
             is_size_specified = True
 
-        for i in range(self.nin):
-            if not (self.params[i].is_const or args[i].shape == shape):
-                raise ValueError('Shape is mismatched')
-
         out_args = _get_out_args_with_params(
             out_args, out_types, shape, self.out_params, is_size_specified)
         if self.no_return:
@@ -858,6 +853,16 @@ cdef class ufunc:
         kern.linear_launch(indexer.size, inout_args)
         return ret
 
+    cdef str _get_name_with_type(self, tuple args_info):
+        inout_type_words = []
+        for t, dtype, ndim in args_info:
+            dtype = str(numpy.dtype(dtype))
+            if t is _scalar.CScalar:
+                inout_type_words.append(dtype.rstrip('0123456789'))
+            elif t is not Indexer:
+                inout_type_words.append(dtype)
+        return '{}__{}'.format(self.name, '_'.join(inout_type_words))
+
     cdef function.Function _get_ufunc_kernel(
             self, int dev_id, tuple op, tuple args_info):
         cdef function.Function kern
@@ -865,9 +870,10 @@ cdef class ufunc:
         kern = self._kernel_memo.get(key, None)
         if kern is None:
             in_types, out_types, routine = op
+            name = self._get_name_with_type(args_info)
             kern = _get_ufunc_kernel(
                 in_types, out_types, routine, args_info,
-                self._params, self.name, self._preamble, self._loop_prep)
+                self._params, name, self._preamble, self._loop_prep)
             self._kernel_memo[key] = kern
         return kern
 

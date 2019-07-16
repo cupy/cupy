@@ -17,7 +17,7 @@ class DummyObjectWithCudaArrayInterface(object):
             'strides': self.a.strides,
             'typestr': self.a.dtype.str,
             'descr': self.a.dtype.descr,
-            'data': (self.a.data.mem.ptr, False),
+            'data': (self.a.data.ptr, False),
             'version': 0,
         }
         return desc
@@ -124,3 +124,88 @@ class TestReductionKernel(unittest.TestCase):
 
     def test_shape_with_strides(self):
         self.check_int8_sum((2 ** 10, 16), trans=True)
+
+
+@testing.parameterize(
+    {'shape': (10,), 'slices': (slice(0, None),)},
+    {'shape': (10,), 'slices': (slice(2, None),)},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(0, None))},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(2, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(0, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
+)
+@testing.gpu
+class TestSlicingMemoryPointer(unittest.TestCase):
+
+    @testing.for_all_dtypes_combination(names=['dtype'])
+    @testing.for_orders('CF')
+    def test_shape_with_strides(self, dtype, order):
+        x = cupy.zeros(self.shape, dtype=dtype, order=order)
+
+        start = [s.start for s in self.slices]
+        itemsize = cupy.dtype(dtype).itemsize
+        dimsize = [s * itemsize for s in start]
+        if len(self.shape) == 1:
+            offset = start[0] * itemsize
+        else:
+            if order == 'C':
+                offset = self.shape[0] * dimsize[0] + dimsize[1]
+            else:
+                offset = self.shape[0] * dimsize[1] + dimsize[0]
+
+        cai_ptr, _ = x.__cuda_array_interface__['data']
+        slice_cai_ptr, _ = x[self.slices].__cuda_array_interface__['data']
+        cupy_data_ptr = x.data.ptr
+        sliced_cupy_data_ptr = x[self.slices].data.ptr
+
+        assert cai_ptr == cupy_data_ptr
+        assert slice_cai_ptr == sliced_cupy_data_ptr
+        assert slice_cai_ptr == cai_ptr+offset
+
+
+@testing.parameterize(
+    {'shape': (10,), 'slices': (slice(0, None),)},
+    {'shape': (10,), 'slices': (slice(2, None),)},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(0, None))},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(2, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(0, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
+)
+@testing.gpu
+class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
+
+    @testing.for_all_dtypes_combination(names=['dtype'])
+    @testing.for_orders('CF')
+    def test_value_type(self, dtype, order):
+        x = cupy.zeros(self.shape, dtype=dtype, order=order)
+        y = x[self.slices]
+
+        # mandatory entries
+        shape = y.__cuda_array_interface__['shape']
+        typestr = y.__cuda_array_interface__['typestr']
+        ptr, readonly = y.__cuda_array_interface__['data']
+        version = y.__cuda_array_interface__['version']
+
+        # optional entries
+        if 'strides' in y.__cuda_array_interface__:
+            strides = y.__cuda_array_interface__['strides']
+        else:
+            strides = None
+        if 'descr' in y.__cuda_array_interface__:
+            descr = y.__cuda_array_interface__['descr']
+        else:
+            descr = None
+
+        # Don't validate correctness of data here, just their types
+        assert isinstance(shape, tuple)
+        assert isinstance(typestr, str)
+        assert isinstance(ptr, int)
+        assert isinstance(readonly, bool)
+        assert version == 0  # update this when the standard is updated!
+        assert (strides is None) or isinstance(strides, tuple)
+        assert (descr is None) or isinstance(descr, list)
+        if isinstance(descr, list):
+            for item in descr:
+                assert isinstance(item, tuple)

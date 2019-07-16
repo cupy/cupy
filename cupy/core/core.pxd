@@ -54,6 +54,7 @@ cdef class ndarray:
                         out=*)
     cpdef ndarray sum(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray cumsum(self, axis=*, dtype=*, out=*)
+    cpdef ndarray _nansum(self, axis=*, dtype=*, out=*, keepdims=*)
 
     cpdef ndarray mean(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray var(self, axis=*, dtype=*, out=*, ddof=*,
@@ -62,6 +63,7 @@ cdef class ndarray:
                       keepdims=*)
     cpdef ndarray prod(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray cumprod(self, axis=*, dtype=*, out=*)
+    cpdef ndarray _nanprod(self, axis=*, dtype=*, out=*, keepdims=*)
 
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)
@@ -94,7 +96,11 @@ cdef class Indexer:
     cdef CPointer get_pointer(self)
 
 
+cpdef ndarray _internal_ascontiguousarray(ndarray a)
+cpdef ndarray _internal_asfortranarray(ndarray a)
 cpdef ndarray ascontiguousarray(ndarray a, dtype=*)
+cpdef ndarray asfortranarray(ndarray a, dtype=*)
+
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*)
 

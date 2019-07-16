@@ -100,6 +100,7 @@ cpdef enum:
     CUDNN_POOLING_MAX = 0
     CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING = 1
     CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING = 2
+    CUDNN_POOLING_MAX_DETERMINISTIC = 3
 
     CUDNN_ACTIVATION_SIGMOID = 0
     CUDNN_ACTIVATION_RELU = 1
@@ -115,6 +116,9 @@ cpdef enum:
     CUDNN_BATCHNORM_PER_ACTIVATION = 0
     CUDNN_BATCHNORM_SPATIAL = 1
     CUDNN_BATCHNORM_SPATIAL_PERSISTENT = 2
+
+    CUDNN_CTC_LOSS_ALGO_DETERMINISTIC = 0
+    CUDNN_CTC_LOSS_ALGO_NON_DETERMINISTIC = 1
 
     CUDNN_BATCHNORM_OPS_BN = 0
     CUDNN_BATCHNORM_OPS_BN_ACTIVATION = 1
@@ -520,6 +524,25 @@ cpdef dropoutBackward(
     size_t dyDesc, size_t dyData,
     size_t dxtDesc, size_t dxData,
     size_t reserveSpace, size_t reserveSpaceSizeInBytes)
+
+
+###############################################################################
+# CTC
+###############################################################################
+
+cpdef size_t createCTCLossDescriptor() except? 0
+cpdef destroyCTCLossDescriptor(size_t ctcLossDesc)
+cpdef setCTCLossDescriptor(size_t ctcLossDesc, int dataType)
+cpdef getCTCLossDescriptor(size_t ctcLossDesc)
+cpdef size_t getCTCLossWorkspaceSize(
+    size_t handle, size_t probsDesc, size_t gradientsDesc,
+    size_t labels, size_t labelLengths, size_t inputLengths,
+    int algo, size_t ctcLossDesc) except? 0
+cpdef CTCLoss(
+    size_t handle, size_t probsDesc,
+    size_t probs, size_t labels, size_t labelLengths, size_t inputLengths,
+    size_t costs, size_t gradientsDesc, size_t gradients, int algo,
+    size_t ctcLossDesc, size_t workspace, size_t workSpaceSizeInBytes)
 
 
 ###############################################################################

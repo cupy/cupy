@@ -166,7 +166,71 @@ def tensorsolve(a, b, axes=None):
     return result.reshape(oldshape)
 
 
-# TODO(okuta): Implement lstsq
+def lstsq(a, b, rcond=1e-15):
+    """Return the least-squares solution to a linear matrix equation.
+
+    Solves the equation `a x = b` by computing a vector `x` that
+    minimizes the Euclidean 2-norm `|| b - a x ||^2`.  The equation may
+    be under-, well-, or over- determined (i.e., the number of
+    linearly independent rows of `a` can be less than, equal to, or
+    greater than its number of linearly independent columns).  If `a`
+    is square and of full rank, then `x` (but for round-off error) is
+    the "exact" solution of the equation.
+
+    Args:
+        a (cupy.ndarray): "Coefficient" matrix with dimension ``(M, N)``
+        b (cupy.ndarray): "Dependent variable" values with dimension ``(M,)``
+            or ``(M, K)``
+        rcond (float): Cutoff parameter for small singular values.
+            For stability it computes the largest singular value denoted by
+            ``s``, and sets all singular values smaller than ``s`` to zero.
+
+    Returns:
+        tuple:
+            A tuple of ``(x, residuals, rank, s)``. Note ``x`` is the
+            least-squares solution with shape ``(N,)`` or ``(N, K)`` depending
+            if ``b`` was two-dimensional. The sums of ``residuals`` is the
+            squared Euclidean 2-norm for each column in b - a*x. The
+            ``residuals`` is an empty array if the rank of a is < N or M <= N,
+            but  iff b is 1-dimensional, this is a (1,) shape array, Otherwise
+            the shape is (K,). The ``rank`` of matrix ``a`` is an integer. The
+            singular values of ``a`` are ``s``.
+
+    .. seealso:: :func:`numpy.linalg.lstsq`
+    """
+    util._assert_cupy_array(a, b)
+    util._assert_rank2(a)
+    if b.ndim > 2:
+        raise linalg.LinAlgError('{}-dimensional array given. Array must be at'
+                                 ' most two-dimensional'.format(b.ndim))
+    m, n = a.shape[-2:]
+    m2 = b.shape[0]
+    if m != m2:
+        raise linalg.LinAlgError('Incompatible dimensions')
+
+    u, s, vt = cupy.linalg.svd(a, full_matrices=False)
+    # number of singular values and matrix rank
+    cutoff = rcond * s.max()
+    s1 = 1 / s
+    sing_vals = s <= cutoff
+    s1[sing_vals] = 0
+    rank = s.size - sing_vals.sum()
+
+    if b.ndim == 2:
+        s1 = cupy.repeat(s1.reshape(-1, 1), b.shape[1], axis=1)
+    # Solve the least-squares solution
+    z = core.dot(u.transpose(), b) * s1
+    x = core.dot(vt.transpose(), z)
+    # Calculate squared Euclidean 2-norm for each column in b - a*x
+    if rank != n or m <= n:
+        resids = cupy.array([], dtype=a.dtype)
+    elif b.ndim == 2:
+        e = b - core.dot(a, x)
+        resids = cupy.sum(cupy.square(e), axis=0)
+    else:
+        e = b - cupy.dot(a, x)
+        resids = cupy.dot(e.T, e).reshape(-1)
+    return x, resids, rank, s
 
 
 def inv(a):

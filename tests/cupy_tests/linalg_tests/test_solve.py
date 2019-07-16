@@ -151,6 +151,80 @@ class TestPinv(unittest.TestCase):
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
+class TestLstsq(unittest.TestCase):
+
+    @testing.for_float_dtypes(no_float16=True)
+    def check_lstsq_solution(self, a_shape, b_shape, seed, rcond, dtype,
+                             singular=False):
+        numpy.random.seed(seed)
+        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
+        if singular:
+            # make one row a linear combination of the others
+            a_cpu[-1] = numpy.sum(a_cpu[0:-1], axis=0)
+        b_cpu = numpy.random.randint(0, 10, size=b_shape).astype(dtype)
+        a_gpu = cupy.asarray(a_cpu)
+        b_gpu = cupy.asarray(b_cpu)
+        a_gpu_copy = a_gpu.copy()
+        b_gpu_copy = b_gpu.copy()
+        x_cpu, resids_cpu, rank_cpu, s_cpu = numpy.linalg.lstsq(a_cpu,
+                                                                b_cpu,
+                                                                rcond=rcond)
+        x_gpu, resids_gpu, rank_gpu, s_gpu = cupy.linalg.lstsq(a_gpu,
+                                                               b_gpu,
+                                                               rcond=rcond)
+        self.assertEqual(x_cpu.dtype, x_gpu.dtype)
+        # check the least squares solutions are close
+        # if a is singular, no guarantee that x_cpu will be close to x_gpu
+        if not singular:
+            cupy.testing.assert_allclose(x_cpu, x_gpu, atol=1e-3)
+        cupy.testing.assert_allclose(resids_cpu, resids_gpu, atol=1e-3)
+        self.assertEqual(rank_cpu, rank_gpu)
+        cupy.testing.assert_allclose(s_cpu, s_gpu, atol=1e-3)
+        # check that lstsq did not modify arrays
+        cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
+        cupy.testing.assert_array_equal(b_gpu_copy, b_gpu)
+
+    def check_invalid_shapes(self, a_shape, b_shape):
+        a = cupy.random.rand(*a_shape)
+        b = cupy.random.rand(*b_shape)
+        with self.assertRaises(numpy.linalg.LinAlgError):
+            cupy.linalg.lstsq(a, b)
+
+    def test_lstsq_solutions(self):
+        # Comapres numpy.linalg.lstsq and cupy.linalg.lstsq solutions for:
+        #   a shapes range from (3, 3) to (5, 3) and (3, 5)
+        #   b shapes range from (i, 3) to (i, )
+        #   sets a random seed for deterministic testing
+        for i in range(3, 6):
+            for j in range(3, 6):
+                for k in range(2, 4):
+                    seed = i + j + k
+                    # check when b has shape (i, k)
+                    self.check_lstsq_solution((i, j), (i, k), seed,
+                                              rcond=1e-15)
+                    self.check_lstsq_solution((i, j), (i, k), seed,
+                                              rcond=0.5)
+                    self.check_lstsq_solution((i, j), (i, k), seed,
+                                              rcond=1e-7, singular=True)
+                # check when b has shape (i, )
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-15)
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=0.5)
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-7,
+                                          singular=True)
+
+    def test_invalid_shapes(self):
+        self.check_invalid_shapes((4, 3), (3, ))
+        self.check_invalid_shapes((3, 3, 3), (2, 2))
+        self.check_invalid_shapes((3, 3, 3), (3, 3))
+        self.check_invalid_shapes((3, 3), (3, 3, 3))
+        self.check_invalid_shapes((2, 2), (10, ))
+        self.check_invalid_shapes((3, 3), (2, 2))
+        self.check_invalid_shapes((4, 3), (10, 3, 3))
+
+
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
 class TestTensorInv(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
