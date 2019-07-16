@@ -733,7 +733,3 @@ def show_config():
     """Prints the current runtime configuration to standard output."""
     sys.stdout.write(str(cupyx.get_runtime_info()))
     sys.stdout.flush()
-
-
-def allow_non_determinism():
-    return cuda.allow_non_determinism()

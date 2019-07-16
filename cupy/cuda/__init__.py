@@ -16,7 +16,7 @@ from cupy.cuda import stream  # NOQA
 
 _available = None
 _cuda_path = None
-_cupy_deterministic = None
+_cub_disabled = None
 
 
 from cupy.cuda import cusolver  # NOQA
@@ -82,18 +82,18 @@ def get_cuda_path():
     return _cuda_path
 
 
-def allow_non_determinism():
-    global _cupy_deterministic
-    if _cupy_deterministic is None:
-        _cupy_deterministic = os.getenv('CUPY_DETERMINISTIC', False)
-        if _cupy_deterministic not in ('0', '1', True, False):
-            msg = 'CUPY_DETERMINISTIC must be \'0\' or \'1\'.'
+def use_cub():
+    global _cub_disabled
+    if _cub_disabled is None:
+        _cub_disabled = os.getenv('CUB_DISABLED', False)
+        if _cub_disabled not in ('0', '1', True, False):
+            msg = 'CUB_DISABLED must be \'0\' or \'1\'.'
             raise ValueError(msg)
-        if _cupy_deterministic == '0':
-            _cupy_deterministic = False
-        elif _cupy_deterministic == '1':
-            _cupy_deterministic = True
-    return not _cupy_deterministic
+        if _cub_disabled == '0':
+            _cub_disabled = False
+        elif _cub_disabled == '1':
+            _cub_disabled = True
+    return cub_enabled and not _cub_disabled
 
 
 # import class and function
