@@ -140,7 +140,23 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
 
 def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
+    """Returns the arithmetic mean along an axis ignoring NaN values.
 
+    Args:
+        a (cupy.ndarray): Array to compute mean.
+        axis (int): Along which axis to compute mean. The flattened array is
+            used by default.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
+
+    Returns:
+        cupy.ndarray: The mean of the input array along the axis ignoring NaNs.
+
+    .. seealso:: :func:`numpy.nanmean`
+
+    """
     # TODO(okuta): check type
     return _statistics._ndarray_nanmean(
         a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)

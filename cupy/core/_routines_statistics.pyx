@@ -312,11 +312,11 @@ cdef _mean = create_reduction_func(
 cdef _nan_mean_var_preamble = '''
 template <typename T>
 struct nan_mean_var_st{
-	T value;
-	int count;
+    T value;
+    int count;
     __device__ nan_mean_var_st() : count(-1) { }
     __device__ nan_mean_var_st(T v) : value(v), count(is_nan(v) ? 0 : 1) { }
-	__device__ nan_mean_var_st(T v, int c) : value(v), count(c) { }
+    __device__ nan_mean_var_st(T v, int c) : value(v), count(c) { }
 };
 
 template <typename T>
@@ -326,33 +326,47 @@ inline __device__ bool is_nan(T x) {
 
 template <typename T>
 __device__ nan_mean_var_st<T> my_nanmean(
-		const nan_mean_var_st<T>& a, const nan_mean_var_st<T>& b) {
-    if (a.count == -1) return nan_mean_var_st<T>(b.value, b.count);
-    if (b.count == -1) return nan_mean_var_st<T>(a.value, a.count);
-	return nan_mean_var_st<T>(a.value + b.value, a.count + b.count);
+        const nan_mean_var_st<T>& a, const nan_mean_var_st<T>& b) {
+    if (a.count == -1) return b;
+    if (b.count == -1) return a;
+    return nan_mean_var_st<T>(a.value + b.value, a.count + b.count);
 }
 
 template <typename T>
 __device__ nan_mean_var_st<T> my_nanmean_float(
-		const nan_mean_var_st<T>& a, const nan_mean_var_st<T>& b) {
-    if (a.count == -1) return nan_mean_var_st<T>(b.value, b.count);
-    if (b.count == -1) return nan_mean_var_st<T>(a.value, a.count);
-	if (is_nan(a.value)) return nan_mean_var_st<T>(b.value, b.count);
-	if (is_nan(b.value)) return nan_mean_var_st<T>(a.value, a.count);
-	return nan_mean_var_st<T>(a.value + b.value, a.count + b.count);
+        const nan_mean_var_st<T>& a, const nan_mean_var_st<T>& b) {
+    if (a.count == -1) return b;
+    if (b.count == -1) return a;
+    if (is_nan(a.value)) return b;
+    if (is_nan(b.value)) return a;
+    return nan_mean_var_st<T>(a.value + b.value, a.count + b.count);
+}
+
+template <typename T>
+__device__ nan_mean_var_st<T> my_nanmean_complex(
+        const nan_mean_var_st<T>& a, const nan_mean_var_st<T>& b) {
+    if (a.count == -1) return b;
+    if (b.count == -1) return a;
+    if (is_nan(a.value.real())) return b;
+    if (is_nan(a.value.imag())) return b;
+    if (is_nan(b.value.real())) return a;
+    if (is_nan(b.value.imag())) return a;
+    return nan_mean_var_st<T>(a.value + b.value, a.count + b.count);
 }
 '''
 
 
 cdef _nanmean = create_reduction_func(
-	'cupy_nanmean',
-	('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
+    'cupy_nanmean',
+    ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
-     ('e->d', (None, 'my_nanmean_float(a, b)', None, None)),
-     ('f->d', (None, 'my_nanmean_float(a, b)', None, None)),
-     ('d->d', (None, 'my_nanmean_float(a, b)', None, None))),
-	('nan_mean_var_st<type_in0_raw>(in0)', 'my_nanmean(a, b)', 'out0 = a.value / a.count',
-     'nan_mean_var_st<type_in0_raw>'),
+     ('e->e', (None, 'my_nanmean_float(a, b)', None, None)),
+     ('f->f', (None, 'my_nanmean_float(a, b)', None, None)),
+     ('d->d', (None, 'my_nanmean_float(a, b)', None, None)),
+     ('F->F', (None, 'my_nanmean_complex(a, b)', None, None)),
+     ('D->D', (None, 'my_nanmean_complex(a, b)', None, None))),
+    ('nan_mean_var_st<type_in0_raw>(in0)', 'my_nanmean(a, b)',
+     'out0 = a.value / type_out0_raw(a.count)', 'nan_mean_var_st<type_in0_raw>'),
     None, _nan_mean_var_preamble)
 
 
