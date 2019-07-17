@@ -21,6 +21,17 @@ class _RecursiveAttr:
     """
 
     def __init__(self, numpy_object, cupy_object, array=None):
+        """
+        _RecursiveAttr initializer.
+
+        Args:
+            numpy_object (method): NumPy method.
+            cupy_method (method): Corresponding CuPy method.
+            array (ndarray): Acts as flag to know if _RecursiveAttr object
+            is called from ``ndarray`` class. Also, acts as container for
+            modifying args in case it is called from ``ndarray``.
+            None otherwise.
+        """
 
         self._numpy_object = numpy_object
         self._cupy_object = cupy_object
