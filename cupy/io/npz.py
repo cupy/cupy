@@ -60,7 +60,7 @@ def load(file, mmap_mode=None, allow_pickle=True):
 
     """
     if _support_allow_pickle:
-        allow_pickle = False if allow_pickle is None else allow_pickle
+        allow_pickle = True if allow_pickle is None else allow_pickle
         obj = numpy.load(file, mmap_mode, allow_pickle)
     else:
         if allow_pickle is not None:
