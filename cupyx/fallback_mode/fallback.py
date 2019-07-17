@@ -134,7 +134,6 @@ def _call_cupy(func, args, kwargs):
     """
 
     args, kwargs = _get_cupy_args(args, kwargs)
-
     res = func(*args, **kwargs)
 
     return _get_fallback_result(res)
@@ -155,11 +154,8 @@ def _call_numpy(func, args, kwargs):
     """
 
     args, kwargs = _get_cupy_args(args, kwargs)
-
     numpy_args, numpy_kwargs = _get_numpy_args(args, kwargs)
-
     numpy_res = func(*numpy_args, **numpy_kwargs)
-
     cupy_res = _get_cupy_result(numpy_res)
 
     return _get_fallback_result(cupy_res)
@@ -193,7 +189,6 @@ class ndarray:
         """
 
         cupy_object = getattr(cp.ndarray, attr, None)
-
         numpy_object = getattr(np.ndarray, attr)
 
         if not callable(numpy_object):
@@ -208,25 +203,19 @@ class ndarray:
         return self._array
 
 
-# Decorator for ndarray magic methods
-def make_method(name):
-    def method(self, *args, **kwargs):
-
-        args, kwargs = _get_cupy_args(args, kwargs)
-
-        cupy_method = getattr(cp.ndarray, name)
-
-        res = cupy_method(self._array, *args, **kwargs)
-
-        return _get_fallback_result(res)
-
-    return method
-
-
 def _create_magic_methods():
     """
     Set magic methods of cupy.ndarray as methods of fallback.ndarray.
     """
+
+    # Decorator for ndarray magic methods
+    def make_method(name):
+        def method(self, *args, **kwargs):
+            args, kwargs = _get_cupy_args(args, kwargs)
+            cupy_method = getattr(cp.ndarray, name)
+            res = cupy_method(self._array, *args, **kwargs)
+            return _get_fallback_result(res)
+        return method
 
     _common = [
 
