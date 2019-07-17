@@ -74,6 +74,34 @@ def numpy_fallback_array_equal(name='xp'):
     return decorator
 
 
+def numpy_fallback_array_allclose(name='xp'):
+    """
+    Decorator that checks fallback_mode results are almost equal to NumPy ones.
+    Checks ndarrays.
+
+    Args:
+        name(str): Argument name whose value is either
+        ``numpy`` or ``cupy`` module.
+    """
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kwargs):
+
+            kwargs[name] = fallback_mode.numpy
+            fallback_result = impl(self, *args, **kwargs)
+
+            kwargs[name] = numpy
+            numpy_result = impl(self, *args, **kwargs)
+
+            assert isinstance(fallback_result, fallback.ndarray)
+            assert fallback_result.dtype is numpy_result.dtype
+            testing.numpy_cupy_allclose(
+                numpy_result, fallback_result._array)
+
+        return test_func
+    return decorator
+
+
 @testing.gpu
 class TestFallbackMode(unittest.TestCase):
 
@@ -212,11 +240,14 @@ class FallbackArray(unittest.TestCase):
 
         return x.shape
 
-    def test_ndarray_shape_creation(self):
+    @numpy_fallback_array_allclose()
+    def test_ndarray_init(self, xp):
+        return xp.ndarray((3, 4))
 
-        a = fallback_mode.numpy.ndarray((4, 5))
-
-        assert a.shape == (4, 5)
+    @numpy_fallback_equal()
+    def test_ndarray_shape_creation(self, xp):
+        a = xp.ndarray((4, 5))
+        return a.shape
 
     def test_instancecheck_ndarray(self):
 
@@ -227,9 +258,18 @@ class FallbackArray(unittest.TestCase):
         assert isinstance(b, fallback_mode.numpy.ndarray)
 
     def test_instancecheck_type(self):
-
         a = fallback_mode.numpy.arange(3)
         assert isinstance(a, type(a))
+
+    @numpy_fallback_array_allclose()
+    def test_type_call(self, xp):
+        a = xp.array([1])
+        return type(a)((2, 3))
+
+    @numpy_fallback_equal
+    def test_type_assert(self, xp):
+        a = xp.array([1, 2, 3])
+        return type(a) == xp.ndarray
 
 
 @testing.parameterize(

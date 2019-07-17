@@ -73,6 +73,10 @@ class _RecursiveAttr:
         numpy_object = getattr(self._numpy_object, attr)
         cupy_object = getattr(self._cupy_object, attr, None)
 
+        # redirect numpy.ndarray to wrapper ndarray
+        if numpy_object is np.ndarray:
+            return ndarray
+
         # if same objects, then return
         if numpy_object is cupy_object:
             return numpy_object
@@ -180,11 +184,31 @@ def _call_numpy(func, args, kwargs):
 class ndarray:
     """
     Wrapper around cupy.ndarray
-    Gets initialized with a cupy ndarray.
+    Supports cupy.ndarray.__init__ as well as,
+    gets initialized with a cupy ndarray.
     """
 
-    def __init__(self, array):
-        self._array = array
+    def __new__(cls, *args, **kwargs):
+        """
+        If `_stored` is an argument, initialize cls(ndarray).
+        Else get cupy.ndarray from provided arguments,
+        then initialize cls(ndarray).
+        """
+        _stored = kwargs.get('_stored', None)
+        if _stored is not None:
+            return object.__new__(cls)
+
+        cupy_ndarray_init = cp.ndarray(*args, **kwargs)
+        return cls(_stored=cupy_ndarray_init)
+
+    def __init__(self, *args, **kwargs):
+        _stored = kwargs.pop('_stored', None)
+        if _stored is not None:
+            self._array = _stored
+
+    @classmethod
+    def _store(cls, array):
+        return cls(_stored=array)
 
     def __getattr__(self, attr):
         """
@@ -335,4 +359,4 @@ def _get_cupy_args(args, kwargs):
 
 
 def _get_fallback_result(cupy_res):
-    return _get_xp_args(cp.ndarray, ndarray, cupy_res)
+    return _get_xp_args(cp.ndarray, ndarray._store, cupy_res)
