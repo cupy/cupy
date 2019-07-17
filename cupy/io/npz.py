@@ -46,7 +46,7 @@ def load(file, mmap_mode=None, allow_pickle=True):
             disallowed, loading object arrays will fail.
             Please be aware that CuPy does not support arrays with dtype of
             `object`.
-            The default is False.
+            The default is True.
             This option is available only for NumPy 1.10 or later.
             In NumPy 1.9, this option cannot be specified (loading pickled
             objects is always allowed).
