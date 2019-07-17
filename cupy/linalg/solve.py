@@ -302,11 +302,6 @@ def _batched_inv(a):
     assert(a.ndim >= 3)
     util._assert_cupy_array(a)
     util._assert_nd_squareness(a)
-    a_shape = a.shape
-    if 0 in a_shape:
-        return a
-    # copy is necessary to present `a` to be overwritten.
-    a = a.copy().reshape(-1, a_shape[-2], a_shape[-1])
 
     if a.dtype == cupy.float32:
         getrf = cupy.cuda.cublas.sgetrfBatched
@@ -324,6 +319,13 @@ def _batched_inv(a):
         msg = ('dtype must be float32, float64, complex64 or float128'
                ' (actual: {})'.format(a.dtype))
         raise ValueError(msg)
+
+    if 0 in a.shape:
+        return cupy.empty_like(a)
+    a_shape = a.shape
+
+    # copy is necessary to present `a` to be overwritten.
+    a = a.copy().reshape(-1, a_shape[-2], a_shape[-1])
 
     handle = device.get_cublas_handle()
     batch_size = a.shape[0]
