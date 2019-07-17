@@ -212,7 +212,7 @@ cdef class NcclCommunicator:
                   int datatype, int root, size_t stream):
         if NCCL_VERSION_CODE < 2200:
             # ncclBroadcast is not available in NCCL 2.1 or older.
-            if self.rank_id() == root and sendbuf != recvbuf:
+            if self.rank_id() == root and sendbuff != recvbuff:
                 runtime.memcpyAsync(recvbuff, sendbuff,
                                     count * _bytesize(datatype),
                                     runtime.memcpyDeviceToDevice, stream)
