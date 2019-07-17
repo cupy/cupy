@@ -357,8 +357,13 @@ def common_type(*arrays):
 
     .. seealso:: :func:`numpy.common_type`
     """
-    dtype_arrays = [numpy.empty((), a.dtype) for a in arrays]
-    return numpy.common_type(*dtype_arrays)
+    if len(arrays) == 0:
+        return numpy.float16
+
+    return numpy.find_common_type(
+        [(numpy.float64 if a.dtype.kind in 'iu' else a.dtype) for a in arrays],
+        []
+    ).type
 
 
 def result_type(*arrays_and_dtypes):
