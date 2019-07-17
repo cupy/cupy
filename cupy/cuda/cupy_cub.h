@@ -25,27 +25,27 @@ size_t cub_reduce_max_get_workspace_size(void *, void *, int, int);
 
 #else // CUPY_NO_CUDA
 
-void _reduce_sum(void *, void *, int, void *, size_t &, int) {
+void cub_reduce_sum(void *, void *, int, void *, size_t &, int) {
     return;
 }
 
-void _reduce_min(void *, void *, int, void *, size_t &, int) {
+void cub_reduce_min(void *, void *, int, void *, size_t &, int) {
     return;
 }
 
-void _reduce_max(void *, void *, int, void *, size_t &, int) {
+void cub_reduce_max(void *, void *, int, void *, size_t &, int) {
     return;
 }
 
-size_t _reduce_sum_get_workspace_size(void *, void *, int, int) {
+size_t cub_reduce_sum_get_workspace_size(void *, void *, int, int) {
     return 0;
 }
 
-size_t _reduce_min_get_workspace_size(void *, void *, int, int) {
+size_t cub_reduce_min_get_workspace_size(void *, void *, int, int) {
     return 0;
 }
 
-size_t _reduce_max_get_workspace_size(void *, void *, int, int) {
+size_t cub_reduce_max_get_workspace_size(void *, void *, int, int) {
     return 0;
 }
 
