@@ -156,6 +156,17 @@ class TestFallbackMode(unittest.TestCase):
 
         assert fallback_mode.numpy.float32 is numpy.float32
 
+    def test_isinstance(self):
+
+        a = fallback_mode.numpy.float64(3)
+        assert isinstance(a, fallback_mode.numpy.float64)
+
+        lcm = fallback_mode.numpy.vectorize(fallback_mode.numpy.lcm)
+        assert isinstance(lcm, fallback_mode.numpy.vectorize)
+
+        date = fallback_mode.numpy.datetime64('2019-07-18')
+        assert isinstance(date, fallback_mode.numpy.datetime64)
+
 
 @testing.parameterize(
     {'func': 'min', 'shape': (3, 4), 'args': (), 'kwargs': {'axis': 0}},
