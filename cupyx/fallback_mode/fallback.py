@@ -9,10 +9,6 @@ import numpy as np
 
 import cupy as cp
 
-# -----------------------------------------------------------------------------
-# _RecursiveAttr
-# -----------------------------------------------------------------------------
-
 
 class _RecursiveAttr:
     """
@@ -65,19 +61,15 @@ class _RecursiveAttr:
         Returns:
             (_RecursiveAttr object, NumPy scalar):
             Returns_RecursiveAttr object with new numpy_object, cupy_object.
-            Returns scalars if requested.
             Returns objects in cupy which is an alias of numpy object.
         """
 
-        # getting attr
         numpy_object = getattr(self._numpy_object, attr)
         cupy_object = getattr(self._cupy_object, attr, None)
 
-        # redirect numpy.ndarray to wrapper ndarray
         if numpy_object is np.ndarray:
             return ndarray
 
-        # if same objects, then return
         if numpy_object is cupy_object:
             return numpy_object
 
@@ -110,74 +102,25 @@ class _RecursiveAttr:
             (res, ndarray): Returns of methods call_cupy or call_numpy
         """
 
-        # Not callable objects
         if not callable(self._numpy_object):
             raise TypeError("'{}' object is not callable".format(
                 type(self._numpy_object).__name__))
 
-        # if ndarray method
+        # _RecursiveAttr gets called from ndarray
         if self._fallback_array is not None:
             args = ((self._fallback_array,) + args)
 
-        # Execute cupy method
         if self._cupy_object is not None:
             return _call_cupy(self._cupy_object, args, kwargs)
 
-        # Execute numpy method
         return _call_numpy(self._numpy_object, args, kwargs)
 
 
 numpy = _RecursiveAttr(np, cp)
 
-# -----------------------------------------------------------------------------
-# utils
-# -----------------------------------------------------------------------------
-
-
-def _call_cupy(func, args, kwargs):
-    """
-    Calls cupy function with *args and **kwargs and
-    does necessary data transfers.
-
-    Args:
-        func: A cupy function that needs to be called.
-        args (tuple): Arguments.
-        kwargs (dict): Keyword arguments.
-
-    Returns:
-        Result after calling func and performing data transfers.
-    """
-
-    args, kwargs = _get_cupy_args(args, kwargs)
-    res = func(*args, **kwargs)
-
-    return _get_fallback_result(res)
-
-
-def _call_numpy(func, args, kwargs):
-    """
-    Calls numpy function with *args and **kwargs and
-    does necessary data transfers.
-
-    Args:
-        func: A numpy function that needs to be called.
-        args (tuple): Arguments.
-        kwargs (dict): Keyword arguments.
-
-    Returns:
-        Result after calling func and performing data transfers.
-    """
-
-    args, kwargs = _get_cupy_args(args, kwargs)
-    numpy_args, numpy_kwargs = _get_numpy_args(args, kwargs)
-    numpy_res = func(*numpy_args, **numpy_kwargs)
-    cupy_res = _get_cupy_result(numpy_res)
-
-    return _get_fallback_result(cupy_res)
-
 
 # -----------------------------------------------------------------------------
-# ndarray wrapper and proxy magic methods
+# ndarray wrapper and proxying of magic methods
 # -----------------------------------------------------------------------------
 
 
@@ -360,3 +303,50 @@ def _get_cupy_args(args, kwargs):
 
 def _get_fallback_result(cupy_res):
     return _get_xp_args(cp.ndarray, ndarray._store, cupy_res)
+
+
+# -----------------------------------------------------------------------------
+# utils
+# -----------------------------------------------------------------------------
+
+
+def _call_cupy(func, args, kwargs):
+    """
+    Calls cupy function with *args and **kwargs and
+    does necessary data transfers.
+
+    Args:
+        func: A cupy function that needs to be called.
+        args (tuple): Arguments.
+        kwargs (dict): Keyword arguments.
+
+    Returns:
+        Result after calling func and performing data transfers.
+    """
+
+    args, kwargs = _get_cupy_args(args, kwargs)
+    res = func(*args, **kwargs)
+
+    return _get_fallback_result(res)
+
+
+def _call_numpy(func, args, kwargs):
+    """
+    Calls numpy function with *args and **kwargs and
+    does necessary data transfers.
+
+    Args:
+        func: A numpy function that needs to be called.
+        args (tuple): Arguments.
+        kwargs (dict): Keyword arguments.
+
+    Returns:
+        Result after calling func and performing data transfers.
+    """
+
+    args, kwargs = _get_cupy_args(args, kwargs)
+    numpy_args, numpy_kwargs = _get_numpy_args(args, kwargs)
+    numpy_res = func(*numpy_args, **numpy_kwargs)
+    cupy_res = _get_cupy_result(numpy_res)
+
+    return _get_fallback_result(cupy_res)
