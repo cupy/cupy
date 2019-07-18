@@ -97,7 +97,7 @@ cdef extern from 'cupy_cutensor.h' nogil:
         void* C, TensorDescriptor descC, int32_t* modeC,
         void* D, TensorDescriptor descD, int32_t* modeD,
         Operator opReduce, DataType typeCompute,
-        uint64_t* workspaceSize);
+        uint64_t* workspaceSize)
 
 
 ###############################################################################

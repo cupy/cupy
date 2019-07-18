@@ -374,13 +374,13 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
         C.data.ptr, desc_C.value, mode_C.ctypes.data,
         out.data.ptr, desc_C.value, mode_C.ctypes.data,
         reduce_op, compute_dtype)
-    if ws_size > 0:
-        try:
-            ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
-        except Exception:
-            warnings.warn('cuTENSOR: failed to allocate memory of workspace.')
-            ws_size = 0
-            ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
+    try:
+        ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
+    except Exception:
+        warnings.warn('cuTENSOR: failed to allocate memory of workspace '
+                      '(size: {}).'.format(ws_size))
+        ws_size = 0
+        ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
     cutensor.reduction(handle,
                        alpha.ctypes.data,
                        A.data.ptr, desc_A.value, mode_A.ctypes.data,
