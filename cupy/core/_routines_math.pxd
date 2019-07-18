@@ -10,6 +10,8 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims)
 cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims)
 cdef ndarray _ndarray_cumsum(ndarray self, axis, dtype, out)
 cdef ndarray _ndarray_cumprod(ndarray self, axis, dtype, out)
+cdef ndarray _ndarray_nansum(ndarray self, axis, dtype, out, keepdims)
+cdef ndarray _ndarray_nanprod(ndarray self, axis, dtype, out, keepdims)
 cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out)
 
 cdef ndarray scan(ndarray a, ndarray out=*)

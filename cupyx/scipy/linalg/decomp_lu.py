@@ -23,7 +23,7 @@ def lu_factor(a, overwrite_a=False, check_finite=True):
     are supported.
 
     Args:
-        a (cupy.ndarray): The input matrix with dimension ``(N, N)``
+        a (cupy.ndarray): The input matrix with dimension ``(M, N)``
         overwrite_a (bool): Allow overwriting data in ``a`` (may enhance
             performance)
         check_finite (bool): Whether to check that the input matrices contain
@@ -35,9 +35,10 @@ def lu_factor(a, overwrite_a=False, check_finite=True):
         tuple:
             ``(lu, piv)`` where ``lu`` is a :class:`cupy.ndarray`
             storing ``U`` in its upper triangle, and ``L`` without
-            unit diagonal elements in its lower triangle, and `piv` is
+            unit diagonal elements in its lower triangle, and ``piv`` is
             a :class:`cupy.ndarray` storing pivot indices representing
-            permutation matrix ``P``.
+            permutation matrix ``P``. For ``0 <= i < min(M,N)``, row
+            ``i`` of the matrix was interchanged with row ``piv[i]``
 
     .. seealso:: :func:`scipy.linalg.lu_factor`
 
@@ -67,7 +68,6 @@ dtype=cp.float32))
 
     a = cupy.asarray(a)
     util._assert_rank2(a)
-    util._assert_nd_squareness(a)
 
     dtype = a.dtype
 
@@ -90,15 +90,15 @@ dtype=cp.float32))
     cusolver_handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.intc)
 
-    ipiv = cupy.empty((a.shape[0],), dtype=numpy.intc)
+    m, n = a.shape
 
-    m = a.shape[0]
+    ipiv = cupy.empty((min(m, n),), dtype=numpy.intc)
 
-    buffersize = getrf_bufferSize(cusolver_handle, m, m, a.data.ptr, m)
+    buffersize = getrf_bufferSize(cusolver_handle, m, n, a.data.ptr, m)
     workspace = cupy.empty(buffersize, dtype=dtype)
 
     # LU factorization
-    getrf(cusolver_handle, m, m, a.data.ptr, m, workspace.data.ptr,
+    getrf(cusolver_handle, m, n, a.data.ptr, m, workspace.data.ptr,
           ipiv.data.ptr, dev_info.data.ptr)
 
     if dev_info[0] < 0:
@@ -118,7 +118,7 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     """Solve an equation system, ``a * x = b``, given the LU factorization of ``a``
 
     Args:
-        lu_and_piv (tuple): LU factorization of matrix ``a`` (``(M, N)``)
+        lu_and_piv (tuple): LU factorization of matrix ``a`` (``(M, M)``)
             together with pivot indices.
         b (cupy.ndarray): The matrix with dimension ``(M,)`` or
             ``(M, N)``.

@@ -2,6 +2,7 @@ cimport cython  # NOQA
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport stream as stream_module
+from cupy.cuda.runtime cimport DataType
 
 cdef extern from 'cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':
@@ -72,6 +73,24 @@ cdef extern from 'cupy_cusparse.h':
         const int *csrSortedRowPtrA, const int *csrSortedColIndA,
         const cuDoubleComplex *x, const cuDoubleComplex *beta,
         cuDoubleComplex *y)
+
+    Status cusparseCsrmvEx_bufferSize(
+        Handle handle, AlgMode alg, Operation transA, int m, int n,
+        int nnz, const void *alpha, DataType alphatype,
+        MatDescr descrA, const void *csrValA, DataType csrValAtype,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const void *x, DataType xtype, const void *beta,
+        DataType betatype, void *y, DataType ytype,
+        DataType executiontype, size_t *bufferSizeInBytes)
+
+    Status cusparseCsrmvEx(
+        Handle handle, AlgMode alg, Operation transA, int m, int n,
+        int nnz, const void *alpha, DataType alphatype,
+        MatDescr descrA, const void *csrValA, DataType csrValAtype,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const void *x, DataType xtype, const void *beta,
+        DataType betatype, void *y, DataType ytype,
+        DataType executiontype, void* buffer)
 
     # cuSPARSE Level3 Function
     Status cusparseScsrmm(
@@ -605,6 +624,43 @@ cpdef zcsrmv(
         <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA,
         <const cuDoubleComplex *>x, <const cuDoubleComplex *>beta,
         <cuDoubleComplex *>y)
+    check_status(status)
+
+cpdef size_t csrmvEx_bufferSize(
+        size_t handle, int alg, int transA, int m, int n,
+        int nnz, size_t alpha, int alphatype, size_t descrA,
+        size_t csrValA, int csrValAtype, size_t csrRowPtrA,
+        size_t csrColIndA, size_t x, int xtype, size_t beta,
+        int betatype, size_t y, int ytype, int executiontype):
+    cdef size_t bufferSizeInBytes
+    setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseCsrmvEx_bufferSize(
+        <Handle>handle, <AlgMode>alg, <Operation>transA, m,
+        n, nnz, <const void *>alpha, <DataType>alphatype,
+        <MatDescr>descrA, <const void *>csrValA, <DataType>csrValAtype,
+        <const int *>csrRowPtrA, <const int *>csrColIndA,
+        <const void *>x, <DataType>xtype, <const void *>beta,
+        <DataType>betatype, <void *>y, <DataType>ytype,
+        <DataType>executiontype, &bufferSizeInBytes)
+    check_status(status)
+    return bufferSizeInBytes
+
+cpdef csrmvEx(
+        size_t handle, int alg, int transA, int m, int n,
+        int nnz, size_t alpha, int alphatype, size_t descrA,
+        size_t csrValA, int csrValAtype, size_t csrRowPtrA,
+        size_t csrColIndA, size_t x, int xtype, size_t beta,
+        int betatype, size_t y, int ytype, int executiontype,
+        size_t buffer):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseCsrmvEx(
+        <Handle>handle, <AlgMode>alg, <Operation>transA, m,
+        n, nnz, <const void *>alpha, <DataType>alphatype,
+        <MatDescr>descrA, <const void *>csrValA, <DataType>csrValAtype,
+        <const int *>csrRowPtrA, <const int *>csrColIndA,
+        <const void *>x, <DataType>xtype, <const void *>beta,
+        <DataType>betatype, <void *>y, <DataType>ytype,
+        <DataType>executiontype, <void *>buffer)
     check_status(status)
 
 ########################################
