@@ -39,7 +39,7 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
             along an axis ignoring NaN values.
 
     .. note:: For performance reasons, ``cupy.nanargmax`` returns
-            ``out of order values`` for all-NaN slice
+            ``out of range values`` for all-NaN slice
             whereas ``numpy.nanargmax`` raises ``ValueError``
     .. seealso:: :func:`numpy.nanargmax`
     """
@@ -86,7 +86,7 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
             along an axis ignoring NaN values.
 
     .. note:: For performance reasons, ``cupy.nanargmin`` returns
-            ``out of order values`` for all-NaN slice
+            ``out of range values`` for all-NaN slice
             whereas ``numpy.nanargmin`` raises ``ValueError``
     .. seealso:: :func:`numpy.nanargmin`
     """
