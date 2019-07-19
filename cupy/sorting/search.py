@@ -38,8 +38,9 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
         cupy.ndarray: The indices of the maximum of ``a``
             along an axis ignoring NaN values.
 
-    .. note:: For performance reasons, ``cupy.nanargmax`` returns ``-1`` for
-            for all-NaN slice whereas ``numpy.nanargmax`` raises ``ValueError``
+    .. note:: For performance reasons, ``cupy.nanargmax`` returns
+            ``out of order values`` for all-NaN slice
+            whereas ``numpy.nanargmax`` raises ``ValueError``
     .. seealso:: :func:`numpy.nanargmax`
     """
     if a.dtype.kind in 'biu':
@@ -84,8 +85,9 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
         cupy.ndarray: The indices of the minimum of ``a``
             along an axis ignoring NaN values.
 
-    .. note:: For performance reasons, ``cupy.nanargmin`` returns ``-1`` for
-            for all-NaN slice whereas ``numpy.nanargmin`` raises ``ValueError``
+    .. note:: For performance reasons, ``cupy.nanargmin`` returns
+            ``out of order values`` for all-NaN slice
+            whereas ``numpy.nanargmin`` raises ``ValueError``
     .. seealso:: :func:`numpy.nanargmin`
     """
     if a.dtype.kind in 'biu':
