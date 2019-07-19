@@ -44,9 +44,13 @@ cdef class ndarray:
     cpdef ndarray max(self, axis=*, out=*, dtype=*, keepdims=*)
     cpdef ndarray argmax(self, axis=*, out=*, dtype=*,
                          keepdims=*)
+    cpdef ndarray _nanargmax(self, axis=*, out=*, dtype=*,
+                             keepdims=*)
     cpdef ndarray min(self, axis=*, out=*, dtype=*, keepdims=*)
     cpdef ndarray argmin(self, axis=*, out=*, dtype=*,
                          keepdims=*)
+    cpdef ndarray _nanargmin(self, axis=*, out=*, dtype=*,
+                             keepdims=*)
     cpdef ndarray clip(self, a_min=*, a_max=*, out=*)
     cpdef ndarray round(self, decimals=*, out=*)
 
