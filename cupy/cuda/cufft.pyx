@@ -69,6 +69,9 @@ class CuFFTError(RuntimeError):
         self.result = result
         super(CuFFTError, self).__init__('%s' % (RESULT[result]))
 
+    def __reduce__(self):
+        return (type(self), (self.result,))
+
 
 @cython.profile(False)
 cpdef inline check_result(int result):
