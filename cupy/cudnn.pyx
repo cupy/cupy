@@ -1,4 +1,5 @@
 from libcpp cimport vector
+from libc.stdint cimport int64_t
 
 import atexit
 import threading
@@ -2144,3 +2145,176 @@ def batch_normalization_backward(
         ggamma = ggamma.astype(dtype)
         gbeta = gbeta.astype(dtype)
     return gx, ggamma, gbeta
+
+
+def create_activation_descriptor(mode, relu_nan_opt=cudnn.CUDNN_PROPAGATE_NAN,
+                                 coef=0.0):
+    desc = Descriptor(cudnn.createActivationDescriptor(),
+                      py_cudnn.destroyActivationDescriptor)
+    cudnn.setActivationDescriptor(desc.value, mode, relu_nan_opt, coef)
+    return desc
+
+
+def create_fused_ops_plan(ops):
+    plan = Descriptor(cudnn.createFusedOpsPlan(ops),
+                      py_cudnn.destroyFusedOpsPlan)
+    return plan
+
+
+def create_fused_ops_const_param_pack(ops, list_attr_param):
+    const_pack = Descriptor(cudnn.createFusedOpsConstParamPack(ops),
+                            py_cudnn.destroyFusedOpsConstParamPack)
+    for attr, param in list_attr_param:
+        set_fused_ops_const_param_pack_attribute(const_pack, attr, param)
+    return const_pack
+
+
+def make_fused_ops_plan(plan, const_pack):
+    handle = get_handle()
+    return cudnn.makeFusedOpsPlan(handle, plan.value, const_pack.value)
+
+
+def create_fused_ops_variant_param_pack(ops, list_attr_param):
+    var_pack = Descriptor(cudnn.createFusedOpsVariantParamPack(ops),
+                          py_cudnn.destroyFusedOpsVariantParamPack)
+    for attr, param in list_attr_param:
+        set_fused_ops_variant_param_pack_attribute(var_pack, attr, param)
+    return var_pack
+
+
+def fused_ops_execute(plan, var_pack):
+    handle = get_handle()
+    cudnn.fusedOpsExecute(handle, plan.value, var_pack.value)
+
+
+cpdef set_fused_ops_const_param_pack_attribute(
+        Descriptor const_pack, int param_label, desc_or_scalar):
+    cdef int scaler
+    cdef Descriptor desc
+    if param_label in (cudnn.CUDNN_PARAM_XDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_MODE,
+                       cudnn.CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_WDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DWDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_YDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DYDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_YSUM_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_YSQSUM_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_SCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_BIAS_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_SAVED_MEAN_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_SAVED_INVSTD_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_RUNNING_MEAN_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_RUNNING_VAR_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_ZDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_Z_EQSCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DXDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DZDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_DSCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_DBIAS_PLACEHOLDER):
+        scalar = <int>desc_or_scalar
+        cudnn.setFusedOpsConstParamPackAttribute(const_pack.value, param_label,
+                                                 <size_t>&scalar)
+    else:
+        desc = <Descriptor>desc_or_scalar
+        cudnn.setFusedOpsConstParamPackAttribute(const_pack.value, param_label,
+                                                 <size_t>desc.value)
+
+
+cpdef get_fused_ops_const_param_pack_attribute(Descriptor const_pack,
+                                               int param_label):
+    cdef int param_int
+    cdef size_t param_desc
+    if param_label in (cudnn.CUDNN_PARAM_XDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_MODE,
+                       cudnn.CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_WDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DWDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_YDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DYDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_YSUM_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_YSQSUM_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_SCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_BIAS_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_SAVED_MEAN_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_SAVED_INVSTD_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_RUNNING_MEAN_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_RUNNING_VAR_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_ZDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_Z_EQSCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DXDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DZDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_DSCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_DBIAS_PLACEHOLDER):
+        is_null = cudnn.getFusedOpsConstParamPackAttribute(
+            const_pack.value, param_label, <size_t>&param_int)
+        return <size_t>param_int, is_null
+    else:
+        if param_label == cudnn.CUDNN_PARAM_ACTIVATION_DESC:
+            param_desc = cudnn.createActivationDescriptor()
+        elif param_label == cudnn.CUDNN_PARAM_CONV_DESC:
+            param_desc = cudnn.createConvolutionDescriptor()
+        elif param_label in (cudnn.CUDNN_PARAM_WDESC,
+                             cudnn.CUDNN_PARAM_DWDESC,):
+            param_desc = cudnn.createFilterDescriptor()
+        else:
+            param_desc = cudnn.createTensorDescriptor()
+        is_null = cudnn.getFusedOpsConstParamPackAttribute(
+            const_pack.value, param_label, param_desc)
+        return param_desc, is_null
+
+
+cpdef set_fused_ops_variant_param_pack_attribute(
+        Descriptor var_pack, int param_label, arr_or_scaler):
+    cdef size_t scalar_size_t
+    cdef int64_t scalar_int64_t
+    cdef double scalar_double
+    cdef size_t ptr
+    if param_label == cudnn.CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES:
+        scalar_size_t = <size_t>arr_or_scaler
+        cudnn.setFusedOpsVariantParamPackAttribute(var_pack.value, param_label,
+                                                   <size_t>&scalar_size_t)
+    elif param_label == cudnn.CUDNN_SCALAR_INT64_T_BN_ACCUMULATION_COUNT:
+        scalar_int64_t = <int64_t>arr_or_scaler
+        cudnn.setFusedOpsVariantParamPackAttribute(var_pack.value, param_label,
+                                                   <size_t>&scalar_int64_t)
+    elif param_label in (cudnn.CUDNN_SCALAR_DOUBLE_BN_EPSILON,
+                         cudnn.CUDNN_SCALAR_DOUBLE_BN_EXP_AVG_FACTOR):
+        scalar_double = <double>arr_or_scaler
+        cudnn.setFusedOpsVariantParamPackAttribute(var_pack.value, param_label,
+                                                   <size_t>&scalar_double)
+    else:
+        ptr = <size_t>arr_or_scaler.data.ptr
+        cudnn.setFusedOpsVariantParamPackAttribute(var_pack.value, param_label,
+                                                   ptr)
+
+
+cpdef get_fused_ops_variant_param_pack_attribute(size_t var_pack,
+                                                 int param_label):
+    cdef size_t scalar_size_t
+    cdef int64_t scalar_int64_t
+    cdef double scalar_double
+    cdef size_t ptr
+    if param_label == cudnn.CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES:
+        cudnn.getFusedOpsVariantParamPackAttribute(var_pack, param_label,
+                                                   <size_t>&scalar_size_t)
+        return <size_t>scalar_size_t
+    elif param_label == cudnn.CUDNN_SCALAR_INT64_T_BN_ACCUMULATION_COUNT:
+        cudnn.getFusedOpsVariantParamPackAttribute(var_pack, param_label,
+                                                   <size_t>&scalar_int64_t)
+        return <size_t>scalar_int64_t
+    elif param_label in (cudnn.CUDNN_SCALAR_DOUBLE_BN_EPSILON,
+                         cudnn.CUDNN_SCALAR_DOUBLE_BN_EXP_AVG_FACTOR):
+        cudnn.getFusedOpsVariantParamPackAttribute(var_pack, param_label,
+                                                   <size_t>&scalar_double)
+        return <size_t>scalar_double
+    else:
+        cudnn.getFusedOpsVariantParamPackAttribute(var_pack, param_label,
+                                                   <size_t>&ptr)
+        return <size_t>ptr
