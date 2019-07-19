@@ -29,6 +29,20 @@ class TestIndexing(unittest.TestCase):
         b = xp.array([[10, 5], [3, 20]])
         return a.take(b)
 
+    @testing.with_requires('numpy>=1.15')
+    @testing.numpy_cupy_array_equal()
+    def test_take_along_axis(self, xp):
+        a = testing.shaped_random((2, 4, 3), xp, dtype='float32')
+        b = testing.shaped_random((2, 6, 3), xp, dtype='int64', scale=4)
+        return xp.take_along_axis(a, b, axis=-2)
+
+    @testing.with_requires('numpy>=1.15')
+    @testing.numpy_cupy_array_equal()
+    def test_take_along_axis_none_axis(self, xp):
+        a = testing.shaped_random((2, 4, 3), xp, dtype='float32')
+        b = testing.shaped_random((30,), xp, dtype='int64', scale=24)
+        return xp.take_along_axis(a, b, axis=None)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_diagonal(self, xp, dtype):
