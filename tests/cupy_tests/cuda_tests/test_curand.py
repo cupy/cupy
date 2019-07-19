@@ -1,3 +1,4 @@
+import pickle
 import unittest
 
 import numpy
@@ -35,3 +36,12 @@ class TestGenerateNormal(unittest.TestCase):
         with self.assertRaises(ValueError):
             curand.generateLogNormalDouble(
                 self.generator, out.data.ptr, 1, 0.0, 1.0)
+
+
+class TestExceptionPicklable(unittest.TestCase):
+
+    def test(self):
+        e1 = curand.CURANDError(100)
+        e2 = pickle.loads(pickle.dumps(e1))
+        assert e1.args == e2.args
+        assert str(e1) == str(e2)
