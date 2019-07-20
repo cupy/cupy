@@ -179,3 +179,59 @@ class TestMeanVar(unittest.TestCase):
     def test_external_std_axis_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.std(a, axis=1, ddof=1)
+
+
+@testing.parameterize(
+    *testing.product({
+        'shape': [(3, 4), (30, 40, 50)],
+        'axis': [None, 0, 1],
+        'keepdims': [True, False]
+    })
+)
+@testing.gpu
+class TestNanMean(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_nanmean_without_nan(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        return xp.nanmean(a, axis=self.axis, keepdims=self.keepdims)
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_nanmean_with_nan_float(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+
+        if a.dtype.kind not in 'biu':
+            a[1, :] = xp.nan
+            a[:, 3] = xp.nan
+
+        return xp.nanmean(a, axis=self.axis, keepdims=self.keepdims)
+
+
+@testing.gpu
+class TestNanMeanAdditional(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_nanmean_out(self, xp, dtype):
+        a = testing.shaped_random((10, 20, 30), xp, dtype)
+        z = xp.zeros((20, 30), dtype=dtype)
+
+        if a.dtype.kind not in 'biu':
+            a[1, :] = xp.nan
+            a[:, 3] = xp.nan
+
+        xp.nanmean(a, axis=0, out=z)
+        return z
+
+    @testing.slow
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_nanmean_huge(self, xp, dtype):
+        a = testing.shaped_random((1024, 512), xp, dtype)
+
+        if a.dtype.kind not in 'biu':
+            a[:512, :256] = xp.nan
+
+        return xp.nanmean(a, axis=1)

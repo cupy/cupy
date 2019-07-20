@@ -157,6 +157,9 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanmean`
 
     """
+    if a.dtype.kind in 'biu':
+        return a.mean(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
     # TODO(okuta): check type
     return _statistics._ndarray_nanmean(
         a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
