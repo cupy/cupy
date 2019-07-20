@@ -353,8 +353,10 @@ cdef _nanmean = create_reduction_func(
     (('e->e', (None, 'my_nanmean_float(a, b)', None, None)),
      ('f->f', (None, 'my_nanmean_float(a, b)', None, None)),
      ('d->d', (None, 'my_nanmean_float(a, b)', None, None)),
-     ('F->F', (None, 'my_nanmean_complex(a, b)', 'out0 = a.value / type_out0_raw(a.count)', None)),
-     ('D->D', (None, 'my_nanmean_complex(a, b)', 'out0 = a.value / type_out0_raw(a.count)', None))),
+     ('F->F', (None, 'my_nanmean_complex(a, b)',
+      'out0 = a.value / type_out0_raw(a.count)', None)),
+     ('D->D', (None, 'my_nanmean_complex(a, b)',
+      'out0 = a.value / type_out0_raw(a.count)', None))),
     ('in0', None,
      'out0 = a.value / a.count', 'nan_mean_var_st<type_out0_raw>'),
     None, _nan_mean_var_preamble)
