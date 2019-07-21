@@ -10,7 +10,7 @@ import numpy as np
 import cupy as cp
 
 
-class _RecursiveAttr:
+class _RecursiveAttr(object):
     """
     RecursiveAttr class to catch all attributes corresponding to numpy,
     when user calls fallback_mode. numpy is an instance of this class.
@@ -120,7 +120,7 @@ numpy = _RecursiveAttr(np, cp)
 # -----------------------------------------------------------------------------
 
 
-class ndarray:
+class ndarray(object):
     """
     Wrapper around cupy.ndarray
     Supports cupy.ndarray.__init__ as well as,

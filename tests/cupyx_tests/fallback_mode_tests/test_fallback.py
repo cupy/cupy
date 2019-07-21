@@ -161,7 +161,7 @@ class TestFallbackMode(unittest.TestCase):
         a = fallback_mode.numpy.float64(3)
         assert isinstance(a, fallback_mode.numpy.float64)
 
-        lcm = fallback_mode.numpy.vectorize(fallback_mode.numpy.lcm)
+        lcm = fallback_mode.numpy.vectorize(fallback_mode.numpy.abs)
         assert isinstance(lcm, fallback_mode.numpy.vectorize)
 
         date = fallback_mode.numpy.datetime64('2019-07-18')
@@ -181,10 +181,10 @@ class TestFallbackMode(unittest.TestCase):
      'kwargs': {'dtype': numpy.float64}}
 )
 @testing.gpu
-class TestFallbackMethodsArray(unittest.TestCase):
+class TestFallbackMethodsArrayExternal(unittest.TestCase):
 
     @numpy_fallback_array_equal()
-    def test_fallback_methods_array(self, xp):
+    def test_fallback_methods_array_external(self, xp):
 
         a = testing.shaped_random(self.shape, xp=xp, dtype=numpy.int64)
 
@@ -291,10 +291,10 @@ class FallbackArray(unittest.TestCase):
      'kwargs': {'axis': 0}}
 )
 @testing.gpu
-class TestFallbackArrayMethods(unittest.TestCase):
+class TestFallbackArrayMethodsInternal(unittest.TestCase):
 
     @numpy_fallback_array_equal
-    def test_fallback_array_methods(self, xp):
+    def test_fallback_array_methods_internal(self, xp):
 
         a = testing.shaped_random(self.shape, xp=xp)
 
@@ -376,7 +376,6 @@ class TestArrayUnaryMethodsArray(unittest.TestCase):
     {'func': '__xor__', 'shape': (4, 4), 'dtype': numpy.int32, 'v': None},
     {'func': '__lshift__', 'shape': (2,), 'dtype': numpy.int32, 'v': None},
     {'func': '__irshift__', 'shape': (3, 2), 'dtype': numpy.int32, 'v': None},
-    {'func': '__matmul__', 'shape': (4, 4), 'dtype': numpy.int32, 'v': 3},
     {'func': '__div__', 'shape': (4, 3), 'dtype': numpy.float32, 'v': 2},
     {'func': '__idiv__', 'shape': (3, 4), 'dtype': numpy.float32, 'v': 2}
 )
@@ -395,3 +394,17 @@ class TestArrayArithmeticMethods(unittest.TestCase):
         b = testing.shaped_random(self.shape, xp=xp, dtype=self.dtype, seed=5)
 
         return getattr(a, self.func)(b)
+
+
+@testing.gpu
+class TestArrayMatmul(unittest.TestCase):
+
+    @unittest.skipUnless(sys.version_info >= (3, 5),
+                         '__matmul__ only for Python==3.5 or above')
+    @testing.with_requires('numpy>=1.16')
+    @numpy_fallback_array_allclose()
+    def test_mm_matmul(self, xp):
+        a = testing.shaped_random((4, 5), xp)
+        b = testing.shaped_random((5, 3), xp, seed=5)
+
+        return a.__matmul__(b)
