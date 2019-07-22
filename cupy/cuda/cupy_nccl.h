@@ -152,6 +152,15 @@ ncclDataType_t _get_proper_datatype(ncclDataType_t datatype) {
 
 #endif // #if (NCCL_VERSION_CODE < 2000)
 
+#if (NCCL_VERSION_CODE < 2200)
+// New function in 2.2
+ncclResult_t ncclBroadcast(const void* sendbuff, void* recvbuff, size_t count,
+			   ncclDataType_t datatype, int root, ncclComm_t comm,
+			   cudaStream_t stream) {
+    return ncclSuccess;
+}
+#endif // #if (NCCL_VERSION_CODE < 2200)
+
 #if (NCCL_VERSION_CODE < 2304)
 
 ncclResult_t ncclGetVersion(int *version) {
@@ -160,7 +169,6 @@ ncclResult_t ncclGetVersion(int *version) {
 }
 
 #endif // #if (NCCL_VERSION_CODE < 2304)
-
 
 ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
                             ncclDataType_t datatype, ncclRedOp_t op, ncclComm_t comm,
@@ -221,15 +229,5 @@ ncclResult_t ncclCommGetAsyncError(ncclComm_t comm, ncclResult_t *asyncError) {
 void ncclCommAbort(ncclComm_t comm) {
 }
 #endif
-
-#if (NCCL_VERSION_CODE < 2200)
-// New function in 2.2
-ncclResult_t ncclBroadcast(const void* sendbuff, void* recvbuff, size_t count,
-			   ncclDataType_t datatype, int root, ncclComm_t comm,
-			   cudaStream_t stream) {
-    return ncclSuccess;
-}
-#endif
-
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_NCCL_H
