@@ -30,3 +30,9 @@ class TestNCCL(unittest.TestCase):
         comm = cuda.nccl.NcclCommunicator(1, id, 0)
         comm.check_async_error()
         comm.destroy()
+
+    @attr.gpu
+    def test_init_all(self):
+        comm = cuda.nccl.NcclCommunicator.initAll(1)
+        assert 0 == comm.rank_id()
+        comm.destroy()
