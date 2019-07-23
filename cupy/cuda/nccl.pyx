@@ -30,6 +30,7 @@ cdef extern from 'cupy_nccl.h':
     ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId)
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank)
+    ncclResult_t ncclCommInitAll(ncclComm_t* comm, int ndev, const int* devlist)
     void ncclCommDestroy(ncclComm_t comm)
     void ncclCommAbort(ncclComm_t comm)
     ncclResult_t ncclCommCuDevice(const ncclComm_t comm, int* device)
@@ -60,6 +61,8 @@ cdef extern from 'cupy_nccl.h':
     # Build-time version
     int NCCL_VERSION_CODE
 
+from cpython cimport array
+import array
 
 cdef dict ERROR1 = {
     0: 'NCCL_ERROR_SUCCESS',
@@ -153,9 +156,11 @@ cdef class NcclCommunicator:
     cdef:
         ncclComm_t _comm
 
+    def __cinit__(self):
+        self._comm = <ncclComm_t>0
+
     def __init__(self, int ndev, tuple commId, int rank):
         cdef ncclUniqueId _uniqueId
-        self._comm = <ncclComm_t>0
         assert len(commId) == NCCL_UNIQUE_ID_BYTES
         for i in range(NCCL_UNIQUE_ID_BYTES):
             _uniqueId.internal[i] = commId[i]
@@ -164,6 +169,46 @@ cdef class NcclCommunicator:
 
     def __dealloc__(self):
         self.destroy()
+
+    @staticmethod
+    def initAll(int ndev, list devlist=None):
+        """ Initialize NCCL communicator in a single process.
+
+        Args:
+            ndev (int): Number of GPUs to be used.
+            devlist (None or list): A list of integers that label the GPUs to be
+                used. The default is None, meaning that the first ndev GPUs will
+                be chosen.
+
+        Returns:
+            NcclCommunicator: An NcclCommunicator instance.
+
+        .. note::
+            This method is to be used to create an NCCL communicator in a single
+            process like this:
+
+            .. code-block:: python
+
+                from cupy.cuda import nccl
+                # Use GPU #0, #2, and #3
+                comm = nccl.NcclCommunicator.initAll(3, [0, 2, 3])
+
+            In a multi-process setup, use the default initializer instead.
+        """
+        cdef array.array devices
+        cdef int * devices_ptr
+        # Call to __new__ bypasses __init__ constructor
+        cdef NcclCommunicator NcclComm = \
+            NcclCommunicator.__new__(NcclCommunicator)
+        if devlist is not None:
+            assert len(devlist) == ndev
+            devices = array.array('i', devlist)
+            devices_ptr = devices.data.as_ints
+        else:
+            devices_ptr = NULL
+        status = ncclCommInitAll(&NcclComm._comm, ndev, devices_ptr)
+        check_status(status)
+        return NcclComm
 
     cpdef destroy(self):
         if self._comm:
