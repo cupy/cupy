@@ -5,6 +5,8 @@ Wrapper for NCCL: Optimized primiteive for collective multi-GPU communication
 """
 cimport cython  # NOQA
 
+from libcpp cimport vector
+
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 
@@ -30,7 +32,10 @@ cdef extern from 'cupy_nccl.h':
     ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId)
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank)
-    ncclResult_t ncclCommInitAll(ncclComm_t* comm, int ndev, const int* devlist)
+    ncclResult_t ncclCommInitAll(ncclComm_t* comm, int ndev,
+                                 const int* devlist)
+    ncclResult_t ncclGroupStart() nogil
+    ncclResult_t ncclGroupEnd() nogil
     void ncclCommDestroy(ncclComm_t comm)
     void ncclCommAbort(ncclComm_t comm)
     ncclResult_t ncclCommCuDevice(const ncclComm_t comm, int* device)
@@ -61,8 +66,6 @@ cdef extern from 'cupy_nccl.h':
     # Build-time version
     int NCCL_VERSION_CODE
 
-from cpython cimport array
-import array
 
 cdef dict ERROR1 = {
     0: 'NCCL_ERROR_SUCCESS',
@@ -154,18 +157,25 @@ def _bytesize(datatype):
 cdef class NcclCommunicator:
 
     cdef:
-        ncclComm_t _comm
+        ncclComm_t* _current_comm
+        vector.vector[ncclComm_t] _comm
+        bint _initialized
 
     def __cinit__(self):
-        self._comm = <ncclComm_t>0
+        self._current_comm = NULL
+        self._initialized = 0
 
     def __init__(self, int ndev, tuple commId, int rank):
         cdef ncclUniqueId _uniqueId
+        assert self._comm.size() == 0
+        self._comm.push_back(<ncclComm_t>0)
+        self._current_comm = &self._comm[0]
         assert len(commId) == NCCL_UNIQUE_ID_BYTES
         for i in range(NCCL_UNIQUE_ID_BYTES):
             _uniqueId.internal[i] = commId[i]
-        status = ncclCommInitRank(&self._comm, ndev, _uniqueId, rank)
+        status = ncclCommInitRank(self._current_comm, ndev, _uniqueId, rank)
         check_status(status)
+        self._initialized = 1
 
     def __dealloc__(self):
         self.destroy()
@@ -176,80 +186,164 @@ cdef class NcclCommunicator:
 
         Args:
             ndev (int): Number of GPUs to be used.
-            devlist (None or list): A list of integers that label the GPUs to be
-                used. The default is None, meaning that the first ndev GPUs will
-                be chosen.
+            devlist (None or list): A list of integers that label the GPUs to
+                be used. The default is `None`, meaning that the first `ndev`
+                GPUs will be chosen.
 
         Returns:
-            NcclCommunicator: An NcclCommunicator instance.
+            NcclCommunicator: An `NcclCommunicator` instance.
 
         .. note::
-            This method is to be used to create an NCCL communicator in a single
+            This method is for creating an NCCL communicator in a single
             process like this:
 
             .. code-block:: python
 
                 from cupy.cuda import nccl
-                # Use GPU #0, #2, and #3
+                # Use 3 GPUs: #0, #2, and #3
                 comm = nccl.NcclCommunicator.initAll(3, [0, 2, 3])
 
             In a multi-process setup, use the default initializer instead.
         """
-        cdef array.array devices
-        cdef int * devices_ptr
+        cdef vector.vector[int] devices
+        cdef int i, *devices_ptr
+
+        if devlist is not None:
+            assert len(devlist) == ndev
+            for i in range(ndev):
+                devices.push_back(devlist[i])
+            devices_ptr = devices.data()
+        else:
+            devices_ptr = NULL
+
         # Call to __new__ bypasses __init__ constructor
         cdef NcclCommunicator NcclComm = \
             NcclCommunicator.__new__(NcclCommunicator)
-        if devlist is not None:
-            assert len(devlist) == ndev
-            devices = array.array('i', devlist)
-            devices_ptr = devices.data.as_ints
-        else:
-            devices_ptr = NULL
-        status = ncclCommInitAll(&NcclComm._comm, ndev, devices_ptr)
+
+        for i in range(ndev):
+            NcclComm._comm.push_back(<ncclComm_t>0)
+        assert NcclComm._comm.size() == ndev
+        status = ncclCommInitAll(NcclComm._comm.data(), ndev, devices_ptr)
         check_status(status)
+        NcclComm._initialized = 1
         return NcclComm
 
     cpdef destroy(self):
-        if self._comm:
-            ncclCommDestroy(self._comm)
-            self._comm = <ncclComm_t>0
+        cdef int i, ndev
+        ndev = self._comm.size()
+        if self._initialized:
+            for i in range(ndev):
+                ncclCommDestroy(self._comm[i])
+            if ndev > 1:
+                self._comm.resize(0)
+            else:
+                # for backward compatibility
+                self._comm[0] = <ncclComm_t>0
+            self._initialized = 0
 
     cpdef abort(self):
         if NCCL_VERSION_CODE < 2400:
             raise RuntimeError('ncclCommAbort is not available'
                                ' in this version')
-        if self._comm:
-            ncclCommAbort(self._comm)
-            self._comm = <ncclComm_t>0
+        cdef int i, ndev
+        ndev = self._comm.size()
+        if self._initialized:
+            for i in range(ndev):
+                ncclCommAbort(self._comm[i])
+            if ndev > 1:
+                self._comm.resize(0)
+            else:
+                # for backward compatibility
+                self._comm[0] = <ncclComm_t>0
+            self._initialized = 0
 
     def device_id(self):
-        cdef int device_id
-        status = ncclCommCuDevice(self._comm, &device_id)
-        check_status(status)
-        return device_id
+        cdef int device_id, i, ndev
+        cdef vector.vector[int] device_ids
+        ndev = self._comm.size()
+        for i in range(ndev):
+            status = ncclCommCuDevice(self._comm[i], &device_id)
+            check_status(status)
+            device_ids.push_back(device_id)
+        if ndev == 1:
+            # for backward compatibility
+            return device_ids[0]
+        else:
+            # for single process
+            return list(device_ids)
 
     def rank_id(self):
-        cdef int rank_id
-        status = ncclCommUserRank(self._comm, &rank_id)
-        check_status(status)
-        return rank_id
+        cdef int rank_id, i, ndev
+        cdef vector.vector[int] rank_ids
+        ndev = self._comm.size()
+        for i in range(ndev):
+            status = ncclCommUserRank(self._comm[i], &rank_id)
+            check_status(status)
+            rank_ids.push_back(rank_id)
+        if ndev == 1:
+            # for backward compatibility
+            return rank_ids[0]
+        else:
+            # for single process
+            return list(rank_ids)
+
+    def groupStart(self):
+        cdef int ndev = self._comm.size()
+        if ndev > 1:
+            with nogil:
+                status = ncclGroupStart()
+            check_status(status)
+
+    def groupEnd(self):
+        cdef int ndev = self._comm.size()
+        if ndev > 1:
+            with nogil:
+                status = ncclGroupEnd()
+            check_status(status)
+
+    def setCurrentComm(self, int rank):
+        """ Set the communicator for the given NCCL rank.
+
+        Args:
+            rank (int): The rank in the NCCL worker pool.
+
+        .. note::
+            This method is only useful in the scenario where multiple devices
+            are controlled by a single process. This method allows switching 
+            among the underlying NCCL communicators, each associated with a 
+            particular device. A typical usage pattern is like this:
+
+            .. code-block:: python
+
+                comm.groupStart()
+                for rank, dev_num in enumerate(dev_list):
+                    comm.setCurrentComm(rank)
+                    # ... do some collective calls ...
+                comm.groupEnd()
+
+            This method has no effect when each process only controls one
+            device.
+        """
+        if self._comm.size() > 1:
+            self._current_comm = &self._comm[rank]
 
     def allReduce(self, size_t sendbuf, size_t recvbuf,
                   size_t count, int datatype, int op, size_t stream):
+        cdef ncclComm_t* comm = self._current_comm
         with nogil:
             status = _ncclAllReduce(<void*>sendbuf, <void*>recvbuf,
                                     count, <ncclDataType_t>datatype,
-                                    <ncclRedOp_t>op, self._comm,
+                                    <ncclRedOp_t>op, comm[0],
                                     <driver.Stream>stream)
         check_status(status)
 
     def reduce(self, size_t sendbuf, size_t recvbuf,
                size_t count, int datatype, int op, int root, size_t stream):
+        cdef ncclComm_t* comm = self._current_comm
         with nogil:
             status = _ncclReduce(<void*>sendbuf, <void*>recvbuf,
                                  count, <ncclDataType_t>datatype,
-                                 <ncclRedOp_t>op, root, self._comm,
+                                 <ncclRedOp_t>op, root, comm[0],
                                  <driver.Stream>stream)
         check_status(status)
 
@@ -271,38 +365,42 @@ cdef class NcclCommunicator:
 
     def bcast(self, size_t buff, int count, int datatype,
               int root, size_t stream):
+        cdef ncclComm_t* comm = self._current_comm
         with nogil:
             status = _ncclBcast(<void*>buff, count,
                                 <ncclDataType_t>datatype, root,
-                                self._comm, <driver.Stream>stream)
+                                comm[0], <driver.Stream>stream)
         check_status(status)
 
     def reduceScatter(self, size_t sendbuf, size_t recvbuf,
                       size_t recvcount, int datatype, int op, size_t stream):
+        cdef ncclComm_t* comm = self._current_comm
         with nogil:
             status = _ncclReduceScatter(<void*>sendbuf, <void*>recvbuf,
                                         recvcount, <ncclDataType_t>datatype,
-                                        <ncclRedOp_t>op, self._comm,
+                                        <ncclRedOp_t>op, comm[0],
                                         <driver.Stream>stream)
         check_status(status)
 
     def allGather(self, size_t sendbuf, size_t recvbuf, size_t count,
                   int datatype, size_t stream):
+        cdef ncclComm_t* comm = self._current_comm
         with nogil:
             status = _ncclAllGather(<void*>sendbuf, <void*>recvbuf,
                                     count, <ncclDataType_t>datatype,
-                                    self._comm, <driver.Stream>stream)
+                                    comm[0], <driver.Stream>stream)
         check_status(status)
 
     def check_async_error(self):
         if NCCL_VERSION_CODE < 2400:
             raise RuntimeError('ncclCommGetAsyncError is not available'
                                ' in this version')
+        cdef ncclComm_t* comm = self._current_comm
         cdef ncclResult_t asyncError = ncclSuccess
         # Releasing GIL as the function *might* block in future and
         # this won't be a hot code path. At least in NCCL 2.4 it does
         # not block so far.
         with nogil:
-            result = ncclCommGetAsyncError(self._comm, &asyncError)
+            result = ncclCommGetAsyncError(comm[0], &asyncError)
         check_status(asyncError)
         check_status(result)
