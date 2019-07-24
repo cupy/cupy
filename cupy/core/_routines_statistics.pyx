@@ -39,6 +39,16 @@ cdef ndarray _ndarray_std(ndarray self, axis, dtype, out, ddof, keepdims):
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
+cpdef ndarray _ndarray_nanvar(ndarray self, axis, dtype, out, ddof, keepdims):
+    return _nanvar(
+        self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+
+
+cpdef ndarray _ndarray_nanstd(ndarray self, axis, dtype, out, ddof, keepdims):
+    return _nanstd(
+        self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+
+
 cdef _min_max_preamble = '''
 template <typename T>
 struct min_max_st{
@@ -336,6 +346,45 @@ cdef _mean = create_reduction_func(
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b',
      'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
+
+
+_count_non_nan = create_reduction_func(
+    'cupy_count_non_nan',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->l', 'f->l', 'd->l'),
+    ('(in0 == in0) ? 1 : 0', 'a + b', 'out0 = a', None),0)
+
+
+cdef ndarray _nanstd(
+    ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    ret = _nanvar(
+        a, axis=axis, dtype=dtype, out=None, ddof=ddof, keepdims=keepdims)
+    return _math._sqrt(ret, dtype=dtype, out=out)
+
+
+cdef ndarray _nanvar(
+    ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+
+    assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
+                                'implemented. Current implemention does not ' \
+                                'convert the dtype'
+    
+    if dtype is None:
+        dtype = 'd'
+
+    _count = _count_non_nan(a, axis=axis)
+    arrmean = a._nansum(axis=axis, dtype=dtype)
+    arrmean = _math._true_divide(arrmean, _count)
+
+    alpha = _count - ddof
+    aplha = alpha.clip(a_min=0, a_max=None)
+    alpha = 1./alpha
+
+    if out is None:
+        return _var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
+    else:
+        return _var_core_out(
+            a, arrmean, alpha, out, axis=axis, keepdims=keepdims) 
 
 
 # Variables to expose to Python

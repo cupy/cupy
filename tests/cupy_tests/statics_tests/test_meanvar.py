@@ -179,3 +179,49 @@ class TestMeanVar(unittest.TestCase):
     def test_external_std_axis_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.std(a, axis=1, ddof=1)
+
+
+@testing.gpu
+class TestCountNonNan(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_complex=True)
+    def test_count_no_axis(self, dtype):
+        a = cupy.array([[1, 2],[3, 4],[5, 6]], dtype=dtype)
+        if a.dtype.kind not in 'biu':
+            a[0,0] = cupy.nan
+            count = cupy.core._routines_statistics._count_non_nan(a)
+            assert count.item() == 5
+        else:
+            count = cupy.core._routines_statistics._count_non_nan(a)
+            assert count.item() == 6
+
+    @testing.for_all_dtypes(no_complex=True)
+    def test_count_axis(self, dtype):
+        a = cupy.array([[1, 2],[3, 4],[5, 6]], dtype=dtype)
+        if a.dtype.kind not in 'biu':
+            a[0,0] = cupy.nan
+            count = cupy.core._routines_statistics._count_non_nan(a, axis=0)
+            assert (count == cupy.array([2, 3])).all()
+        else:
+            count = cupy.core._routines_statistics._count_non_nan(a, axis=0)
+            assert (count == cupy.array([3, 3])).all()
+
+
+@testing.parameterize(
+    *testing.product({
+        'shape': [(3, 4), (4, 3, 2)],
+        'axis': [None, 0, 1],
+        'keepdims': [True, False],
+        'ddof': [0, 1]
+    }))
+@testing.gpu
+class TestNanVarStd(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_nanvar(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp=xp, dtype=dtype)
+        if a.dtype.kind in 'biu':
+            a[:, 1] = xp.nan
+        return xp.nanvar(
+            a, axis=self.axis, ddof=self.ddof, keepdims=self.keepdims)
