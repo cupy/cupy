@@ -1596,6 +1596,14 @@ def convolution_forward(
     # cuDNN 7 supports dilation only in *_FWD_ALGO_IMPLICIT_GEMM, but
     # it supports Tensor Cores only in *_FWD_ALGO_IMPLICIT_PRECOMP_GEMM.
     if use_tensor_core:
+        # Somehow `cudnnConvolutionForward` seems to return an incorrect
+        # value in the following condition:
+        if (groups > 1
+                and x.shape[0] > 1
+                and x.shape[1] == groups * 3
+                and y.shape[1] % 2 == 0
+                and int(device.get_compute_capability()) == 75):
+            use_tensor_core = False
         for i in dilation:
             if i > 1:
                 use_tensor_core = False
