@@ -169,7 +169,8 @@ def _get_compiler_base_options():
         proc = subprocess.Popen(
             nvcc_path + ['-o', test_out_path, test_cu_path],
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+            env=os.environ)
         stdoutdata, stderrdata = proc.communicate()
         stderrlines = stderrdata.split(b'\n')
         if proc.returncode != 0:
