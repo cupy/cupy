@@ -85,9 +85,9 @@ def tri(N, M=None, k=0, dtype=float):
         'int32 m, int32 k',
         'T out',
         '''
-        int row = i % m;
-        int col = i / m;
-        out = (row <= col + k);
+        int row = i / m;
+        int col = i % m;
+        out = (col <= row + k);
         ''',
         'tri',
     )(M, k, out)
