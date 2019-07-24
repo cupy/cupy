@@ -1706,11 +1706,11 @@ template<typename T> __device__ T pow10(long long n){
 
 cdef _round_float = '''
 if (in1 == 0) {
-    out0 = round(in0);
+    out0 = rint(in0);
 } else {
     double x;
     x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
-    out0 = in1 < 0 ? round(in0 / x) * x : round(in0 * x) / x;
+    out0 = in1 < 0 ? rint(in0 / x) * x : rint(in0 * x) / x;
 }'''
 
 cdef _round_complex = '''
@@ -1726,10 +1726,20 @@ if (in1 == 0) {
         inv_x = y;
     }
 }
-out0 = in0_type(round(in0.real() * x) * inv_x,
-                round(in0.imag() * x) * inv_x);'''
+out0 = in0_type(rint(in0.real() * x) * inv_x,
+                rint(in0.imag() * x) * inv_x);'''
 
 
+# There is a known incompatibility with NumPy (as of 1.16.4) such as
+# `numpy.around(2**63, -1) == cupy.around(2**63, -1)` gives `False`.
+#
+# NumPy seems to round integral values via double.  As double has
+# only 53 bit precision, last few bits of (u)int64 value may be lost.
+# As a consequence, `numpy.around(2**63, -1)` does NOT round up the
+# last digit (9223372036854775808 instead of ...810).
+#
+# The following code fixes the problem, so `cupy.around(2**63, -1)`
+# gives `...810`, which (may correct but) is incompatible with NumPy.
 _round_ufunc = create_ufunc(
     'cupy_round',
     ('?q->e',
@@ -1744,8 +1754,16 @@ _round_ufunc = create_ufunc(
     if (in1 < 0) {
         // TODO(okuta): Move before loop
         long long x = pow10<long long>(-in1 - 1);
+
         // TODO(okuta): Check Numpy
-        out0 = ((in0 / x + (in0 > 0 ? 5 : -5)) / 10) * x * 10;
+        // `cupy.around(-123456789, -4)` works as follows:
+        // (1) scale by `x` above: -123456.789
+        // (2) split at the last 2 digits: -123400 + (-5.6789 * 10)
+        // (3) round the latter by `rint()`: -123400 + (-6.0 * 10)
+        // (4) unscale by `x` above: -123460000
+        long long q = in0 / x / 100;
+        double r = (in0 - q*x*100) / static_cast<double>(x);
+        out0 = (q*100 + static_cast<long long>(rint(r/10.0)*10)) * x;
     } else {
         out0 = in0;
     }''', preamble=_round_preamble)
