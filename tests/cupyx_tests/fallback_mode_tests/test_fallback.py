@@ -161,7 +161,7 @@ class TestFallbackMode(unittest.TestCase):
         a = fallback_mode.numpy.float64(3)
         assert isinstance(a, fallback_mode.numpy.float64)
 
-        lcm = fallback_mode.numpy.vectorize(fallback_mode.numpy.abs)
+        abs = fallback_mode.numpy.vectorize(fallback_mode.numpy.abs)
         assert isinstance(lcm, fallback_mode.numpy.vectorize)
 
         date = fallback_mode.numpy.datetime64('2019-07-18')
