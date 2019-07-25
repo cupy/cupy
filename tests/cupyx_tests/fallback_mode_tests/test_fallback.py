@@ -3,7 +3,10 @@ import pytest
 import unittest
 import functools
 import contextlib
-from io import StringIO
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 import numpy
 
@@ -11,6 +14,27 @@ import cupy
 from cupy import testing
 from cupyx import fallback_mode
 from cupyx.fallback_mode import fallback
+
+
+if sys.version_info < (3, 4):
+
+    class redirect_stdout:
+
+        _stream = "stdout"
+
+        def __init__(self, new_target):
+            self._new_target = new_target
+            self._old_targets = []
+
+        def __enter__(self):
+            self._old_targets.append(getattr(sys, self._stream))
+            setattr(sys, self._stream, self._new_target)
+            return self._new_target
+
+        def __exit__(self, exctype, excinst, exctb):
+            setattr(sys, self._stream, self._old_targets.pop())
+
+    setattr(contextlib, 'redirect_stdout', redirect_stdout)
 
 
 def numpy_fallback_equal(name='xp'):
