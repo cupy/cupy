@@ -1947,7 +1947,9 @@ _round_ufunc = create_ufunc(
      ('Fq->F', _round_complex),
      ('Dq->D', _round_complex)),
     '''
-    if (in1 < 0) {
+    if (in1 >= 0) {
+        out0 = in0;
+    } else {
         // TODO(okuta): Move before loop
         long long x = pow10<long long>(-in1 - 1);
 
@@ -1958,10 +1960,8 @@ _round_ufunc = create_ufunc(
         // (3) round the latter by `rint()`: -123400 + (-6.0 * 10)
         // (4) unscale by `x` above: -123460000
         long long q = in0 / x / 100;
-        double r = (in0 - q*x*100) / static_cast<double>(x);
-        out0 = (q*100 + static_cast<long long>(rint(r/10.0)*10)) * x;
-    } else {
-        out0 = in0;
+        int r = in0 - q*x*100;
+        out0 = (q*100 + __float2ll_rn(r/(x*10.0f))*10) * x;
     }''', preamble=_round_preamble)
 
 
