@@ -1,7 +1,6 @@
 import functools
 import six
 import string
-import warnings
 
 import numpy
 
@@ -9,8 +8,8 @@ import cupy
 from cupy.core._dtype import get_dtype
 from cupy.core import _errors
 from cupy.core import _kernel
-from cupy.core import core
 from cupy.core._kernel import _is_fusing
+from cupy.core import core
 
 
 _thread_local = _kernel._thread_local

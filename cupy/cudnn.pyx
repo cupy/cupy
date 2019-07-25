@@ -14,10 +14,9 @@ from cupy.cuda cimport device
 from cupy.core cimport internal
 from cupy.cuda cimport memory
 
-from cupy import util
 from cupy.core._ufuncs import elementwise_copy
 from cupy.cuda import cudnn as py_cudnn
-
+from cupy import util
 
 cdef int _cudnn_version = cudnn.getVersion()
 cdef _thread_local = threading.local()
