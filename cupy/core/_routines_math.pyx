@@ -1,7 +1,7 @@
 import string
 
-import six
 import numpy
+import six
 
 import cupy
 from cupy.core._kernel import create_reduction_func

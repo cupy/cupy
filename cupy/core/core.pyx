@@ -20,8 +20,8 @@ from cupy.cuda import device
 from cupy.cuda import memory as memory_module
 
 
-from cupy import util
 from cupy.cuda.runtime import CUDARuntimeError
+from cupy import util
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
