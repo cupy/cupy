@@ -156,6 +156,11 @@ class TestSVD(unittest.TestCase):
         self.check_usv((0, 2, 2))
         self.check_usv((0, 3, 2))
 
+    # TODO(kataoka): gesvdjBatched requires m, n <= 32
+    @unittest.expectedFailure
+    def test_svd_large(self):
+        self.check_usv((2, 33, 4))
+
     @condition.repeat(3, 10)
     def test_svd_no_uv(self):
         self.check_singular((2, 3))
