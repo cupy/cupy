@@ -204,7 +204,9 @@ def svd(a, full_matrices=True, compute_uv=True):
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
-    # TODO(Saito): Current implementation only accepts two-dimensional arrays
+    if a.ndim >= 3:
+        return _batched_svd(a, full_matrices, compute_uv)
+
     util._assert_cupy_array(a)
     util._assert_rank2(a)
 
@@ -299,3 +301,90 @@ def svd(a, full_matrices=True, compute_uv=True):
             return vt, s, u
     else:
         return s
+
+def _batched_svd(a, full_matrices, compute_uv):
+    util._assert_cupy_array(a)
+
+    # Cast to float32 or float64
+    a_dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+    if a_dtype == 'f':
+        s_dtype = 'f'
+    elif a_dtype == 'd':
+        s_dtype = 'd'
+    elif a_dtype == 'F':
+        s_dtype = 'f'
+    else:  # a_dtype == 'D':
+        a_dtype = 'D'
+        s_dtype = 'd'
+
+    # `a` must be copied because xgesvd destroys the matrix
+    a = a.astype(a_dtype, order='C', copy=True)
+
+    assert a.size != 0  # TODO(kataoka): later
+    a_shape = a.shape
+    n, m = a_shape[-2:]
+    a = a.reshape(-1, n, m)
+    batch_size = a.shape[0]
+
+    mn = min(m, n)
+
+    if compute_uv:
+        if full_matrices:
+            u = cupy.empty((batch_size, m, m), dtype=a_dtype)
+            v = cupy.empty((batch_size, n, n), dtype=a_dtype)
+        else:
+            u = cupy.empty((batch_size, mn, m), dtype=a_dtype)
+            v = cupy.empty((batch_size, mn, n), dtype=a_dtype)
+        u_ptr, v_ptr = u.data.ptr, v.data.ptr
+    else:
+        u_ptr, v_ptr = 0, 0  # Use nullptr
+    s = cupy.empty((batch_size, mn), dtype=s_dtype)
+    handle = device.get_cusolver_handle()
+    if compute_uv:
+        jobz = cusolver.CUSOLVER_EIG_MODE_VECTOR
+    else:
+        jobz = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+    # TODO(kataoka): full_matrices=False is not supported by gesvdjBatched
+    assert full_matrices
+    # econ = 0 if full_matrices else 1
+    lda = m
+    ldu = m
+    ldv = n
+    info = cupy.empty(batch_size, dtype=numpy.int32)
+    if a_dtype == 'f':
+        gesvdjBatched_bufferSize = cusolver.sgesvdjBatched_bufferSize
+        gesvdjBatched = cusolver.sgesvdjBatched
+    elif a_dtype == 'd':
+        gesvdjBatched_bufferSize = cusolver.dgesvdjBatched_bufferSize
+        gesvdjBatched = cusolver.dgesvdjBatched
+    elif a_dtype == 'F':
+        gesvdjBatched_bufferSize = cusolver.cgesvdjBatched_bufferSize
+        gesvdjBatched = cusolver.cgesvdjBatched
+    elif a_dtype == 'D':
+        gesvdjBatched_bufferSize = cusolver.zgesvdjBatched_bufferSize
+        gesvdjBatched = cusolver.zgesvdjBatched
+    else:
+        assert False
+
+    buffersize = numpy.empty(1, numpy.int32)
+    params = cusolver.createGesvdjInfo()
+    buffersize = gesvdjBatched_bufferSize(
+        handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
+        u.data.ptr, ldu, v.data.ptr, ldv, params, batch_size)
+    workspace = cupy.empty(buffersize, dtype=a_dtype)
+    gesvdjBatched(
+        handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
+        u.data.ptr, ldu, v.data.ptr, ldv, workspace.data.ptr, buffersize,
+        info.data.ptr, params, batch_size)
+    cusolver.destroyGesvdjInfo(params)
+
+    if (info < 0).any():
+        raise linalg.LinAlgError(
+            'Parameter error (maybe caused by a bug in cupy.linalg?)')
+    elif (info > 0).any():
+        raise linalg.LinAlgError(
+            'SVD computation does not converge')
+
+    # Note that the returned array may need to be transporsed
+    # depending on the structure of an input
+    return cupy.swapaxes(v, -1, -2), s, u

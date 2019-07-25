@@ -22,6 +22,8 @@ cdef extern from 'cupy_cusolver.h' nogil:
     int cusolverSpCreate(SpHandle* handle)
     int cusolverDnDestroy(Handle handle)
     int cusolverSpDestroy(SpHandle handle)
+    int cusolverDnCreateGesvdjInfo(GesvdjInfo* param)
+    int cusolverDnDestroyGesvdjInfo(GesvdjInfo param)
 
     # Stream
     int cusolverDnGetStream(Handle handle, driver.Stream* streamId)
@@ -164,6 +166,14 @@ cdef extern from 'cupy_cusolver.h' nogil:
                          cuDoubleComplex* U, int ldu, cuDoubleComplex* VT,
                          int ldvt, cuDoubleComplex* Work, int lwork,
                          double* rwork, int* devInfo)
+    int cusolverDnSgesvdjBatched_bufferSize(
+        Handle handle, EigMode jobz, int m, int n, float* A, int lda, float* S,
+        float* U, int ldu, float* V, int ldv, int* lwork,
+        GesvdjInfo params, int batchSize)
+    int cusolverDnSgesvdjBatched(
+        Handle handle, EigMode jobz, int m, int n, float* A, int lda, float* S,
+        float* U, int ldu, float* V, int ldv, float* work, int lwork,
+        int* info, GesvdjInfo params, int batchSize)
 
     int cusolverDnSsyevd_bufferSize(
         Handle handle, EigMode jobz, FillMode uplo, int n, const float* A,
@@ -264,6 +274,13 @@ cpdef size_t spCreate() except? 0:
     return <size_t>handle
 
 
+cpdef size_t createGesvdjInfo() except? 0:
+    cdef GesvdjInfo param
+    status = cusolverDnCreateGesvdjInfo(&param)
+    check_status(status)
+    return <size_t>param
+
+
 cpdef destroy(size_t handle):
     with nogil:
         status = cusolverDnDestroy(<Handle>handle)
@@ -273,6 +290,11 @@ cpdef destroy(size_t handle):
 cpdef spDestroy(size_t handle):
     with nogil:
         status = cusolverSpDestroy(<SpHandle>handle)
+    check_status(status)
+
+
+cpdef destroyGesvdjInfo(size_t param):
+    status = cusolverDnDestroyGesvdjInfo(<GesvdjInfo>param)
     check_status(status)
 
 
@@ -729,6 +751,33 @@ cpdef zgesvd(size_t handle, char jobu, char jobvt, int m, int n, size_t A,
             lda, <double*>S, <cuDoubleComplex*>U, ldu,
             <cuDoubleComplex*>VT, ldvt,
             <cuDoubleComplex*>Work, lwork, <double*>rwork, <int*>devInfo)
+    check_status(status)
+
+cpdef int sgesvdjBatched_bufferSize(
+        size_t handle, int jobz, int m, int n, size_t A,
+        int lda, size_t S, size_t U, int ldu, size_t V, int ldv,
+        size_t params, int batchSize) except? -1:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSgesvdjBatched_bufferSize(
+            <Handle>handle, <EigMode>jobz, m, n, <float*>A, lda,
+            <float*>S, <float*>U, ldu, <float*>V, ldv, &lwork,
+            <GesvdjInfo>params, batchSize)
+    check_status(status)
+    return lwork
+
+cpdef sgesvdjBatched(
+        size_t handle, int jobz, int m, int n, size_t A,
+        int lda, size_t S, size_t U, int ldu, size_t V, int ldv,
+        size_t work, int lwork, size_t info, size_t params, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSgesvdjBatched(
+            <Handle>handle, <EigMode>jobz, m, n, <float*>A, lda,
+            <float*>S, <float*>U, ldu, <float*>V, ldv,
+            <float*>work, lwork, <int*>info,
+            <GesvdjInfo>params, batchSize)
     check_status(status)
 
 cpdef int ssyevd_bufferSize(size_t handle, int jobz, int uplo, int n,

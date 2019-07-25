@@ -18,6 +18,8 @@ cdef extern from *:
     ctypedef int EigType 'cusolverEigType_t'
     ctypedef int EigMode 'cusolverEigMode_t'
 
+    ctypedef void* GesvdjInfo 'gesvdjInfo_t'
+
     ctypedef void* MatDescr 'cusparseMatDescr_t'
 
     ctypedef void* cuComplex 'cuComplex'
@@ -41,8 +43,10 @@ cpdef enum:
 
 cpdef size_t create() except? 0
 cpdef size_t spCreate() except? 0
+cpdef size_t createGesvdjInfo() except? 0
 cpdef destroy(size_t handle)
 cpdef spDestroy(size_t handle)
+cpdef destroyGesvdjInfo(size_t descr)
 
 ###############################################################################
 # Stream
