@@ -341,12 +341,40 @@ def binary_repr(num, width=None):
 # -----------------------------------------------------------------------------
 # Data type routines (borrowed from NumPy)
 # -----------------------------------------------------------------------------
-from numpy import can_cast  # NOQA
-from numpy import common_type  # NOQA
+def can_cast(from_, to, casting='safe'):
+    """Returns True if cast between data types can occur according to the
+    casting rule. If from is a scalar or array scalar, also returns True if the
+    scalar value can be cast without overflow or truncation to an integer.
+
+    .. seealso:: :func:`numpy.can_cast`
+    """
+    from_ = from_.dtype if isinstance(from_, cupy.ndarray) else from_
+    return numpy.can_cast(from_, to, casting=casting)
+
+
+def common_type(*arrays):
+    """Return a scalar type which is common to the input arrays.
+
+    .. seealso:: :func:`numpy.common_type`
+    """
+    dtype_arrays = [numpy.empty((), a.dtype) for a in arrays]
+    return numpy.common_type(*dtype_arrays)
+
+
+def result_type(*arrays_and_dtypes):
+    """Returns the type that results from applying the NumPy type promotion
+    rules to the arguments.
+
+    .. seealso:: :func:`numpy.result_type`
+    """
+    dtypes = [a.dtype if isinstance(a, cupy.ndarray)
+              else a for a in arrays_and_dtypes]
+    return numpy.result_type(*dtypes)
+
+
 from numpy import min_scalar_type  # NOQA
 from numpy import obj2sctype  # NOQA
 from numpy import promote_types  # NOQA
-from numpy import result_type  # NOQA
 
 from numpy import dtype  # NOQA
 from numpy import format_parser  # NOQA
@@ -387,6 +415,7 @@ from cupy.indexing.generate import unravel_index  # NOQA
 from cupy.indexing.indexing import choose  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
 from cupy.indexing.indexing import take  # NOQA
+from cupy.indexing.indexing import take_along_axis  # NOQA
 
 from cupy.indexing.insert import place  # NOQA
 from cupy.indexing.insert import put  # NOQA
@@ -502,6 +531,8 @@ from cupy.math.sumprod import prod  # NOQA
 from cupy.math.sumprod import sum  # NOQA
 from cupy.math.sumprod import cumprod  # NOQA
 from cupy.math.sumprod import cumsum  # NOQA
+from cupy.math.sumprod import nansum  # NOQA
+from cupy.math.sumprod import nanprod  # NOQA
 from cupy.math.sumprod import diff  # NOQA
 from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA
@@ -574,7 +605,9 @@ from cupy.sorting.search import nonzero  # NOQA
 
 from cupy.sorting.search import where  # NOQA
 from cupy.sorting.search import argmax  # NOQA
+from cupy.sorting.search import nanargmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
+from cupy.sorting.search import nanargmin  # NOQA
 
 from cupy.sorting.sort import argpartition  # NOQA
 from cupy.sorting.sort import argsort  # NOQA

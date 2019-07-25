@@ -84,6 +84,24 @@ cdef ndarray _ndarray_cumprod(ndarray self, axis, dtype, out):
     return cupy.cumprod(self, axis, dtype, out)
 
 
+cdef ndarray _ndarray_nansum(ndarray self, axis, dtype, out, keepdims):
+    if cupy.iscomplexobj(self):
+        return _nansum_complex_dtype(self, axis, dtype, out, keepdims)
+    elif dtype is None:
+        return _nansum_auto_dtype(self, axis, dtype, out, keepdims)
+    else:
+        return _nansum_keep_dtype(self, axis, dtype, out, keepdims)
+
+
+cdef ndarray _ndarray_nanprod(ndarray self, axis, dtype, out, keepdims):
+    if cupy.iscomplexobj(self):
+        return _nanprod_complex_dtype(self, axis, dtype, out, keepdims)
+    elif dtype is None:
+        return _nanprod_auto_dtype(self, axis, dtype, out, keepdims)
+    else:
+        return _nanprod_keep_dtype(self, axis, dtype, out, keepdims)
+
+
 cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
     if a_min is None and a_max is None:
         raise ValueError('array_clip: must set either max or min')
@@ -253,6 +271,36 @@ _sum_keep_dtype = create_reduction_func(
     ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
 
+_nansum_auto_dtype = create_reduction_func(
+    'cupy_nansum',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(0)',
+     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+
+
+_nansum_keep_dtype = create_reduction_func(
+    'cupy_nansum_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(0)',
+     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+
+
+_nansum_complex_dtype = create_reduction_func(
+    'cupy_nansum_complex_dtype',
+    ('F->F', 'D->D'),
+    ('''
+    type_in0_raw((in0.real() == in0.real()) ? in0.real() : 0,
+                 (in0.imag() == in0.imag()) ? in0.imag() : 0)
+    ''',
+     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+
+
 _prod_auto_dtype = create_reduction_func(
     'cupy_prod',
     ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
@@ -270,6 +318,35 @@ _prod_keep_dtype = create_reduction_func(
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
+
+_nanprod_auto_dtype = create_reduction_func(
+    'cupy_nanprod',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(1)',
+     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+
+
+_nanprod_keep_dtype = create_reduction_func(
+    'cupy_nanprod_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(1)',
+     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+
+
+_nanprod_complex_dtype = create_reduction_func(
+    'cupy_nanprod_complex_dtype',
+    ('F->F', 'D->D'),
+    ('''
+    type_in0_raw((in0.real() == in0.real()) ? in0.real() : 1,
+                 (in0.imag() == in0.imag()) ? in0.imag() : 1)
+    ''',
+     'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 cdef create_arithmetic(name, op, boolop, doc):
     return create_ufunc(
@@ -556,5 +633,7 @@ absolute = _absolute
 sqrt = _sqrt
 
 sum_auto_dtype = _sum_auto_dtype  # used from cupy/math/sumprod.py
+nansum_auto_dtype = _nansum_auto_dtype  # used from cupy/math/sumprod.py
 prod_auto_dtype = _prod_auto_dtype  # used from cupy/math/sumprod.py
+nanprod_auto_dtype = _nanprod_auto_dtype  # used from cupy/math/sumprod.py
 clip = _clip  # used from cupy/math/misc.py

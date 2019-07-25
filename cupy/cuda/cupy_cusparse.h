@@ -23,6 +23,7 @@ typedef enum {} cusparseOperation_t;
 typedef enum {} cusparsePointerMode_t;
 typedef enum {} cusparseAction_t;
 typedef enum {} cusparseDirection_t;
+typedef enum {} cusparseAlgMode_t;
 
 // cuSPARSE Helper Function
 cusparseStatus_t cusparseCreate(...) {
@@ -97,6 +98,14 @@ cusparseStatus_t cusparseZcsrmv(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseCsrmvEx_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCsrmvEx(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+  
 // cuSPARSE Level3 Function
 cusparseStatus_t cusparseScsrmm(...) {
   return CUSPARSE_STATUS_SUCCESS;

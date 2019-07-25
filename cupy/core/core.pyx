@@ -145,7 +145,7 @@ cdef class ndarray:
             'version': 0,
         }
         if not self._c_contiguous:
-            desc['strides'] = self._strides
+            desc['strides'] = self.strides
 
         return desc
 
@@ -735,6 +735,17 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmax(self, axis, out, dtype, keepdims)
 
+    cpdef ndarray _nanargmax(self, axis=None, out=None, dtype=None,
+                             keepdims=False):
+        """Returns the indices of the maximum with nan along a given axis.
+
+        .. seealso::
+           :func:`cupy.nanargmax` for full documentation,
+           :meth:`numpy.ndarray.nanargmax`
+
+        """
+        return _statistics._ndarray_nanargmax(self, axis, out, dtype, keepdims)
+
     cpdef ndarray min(self, axis=None, out=None, dtype=None, keepdims=False):
         """Returns the minimum along a given axis.
 
@@ -756,6 +767,16 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
 
+    cpdef ndarray _nanargmin(self, axis=None, out=None, dtype=None,
+                             keepdims=False):
+        """Returns the indices of the minimum with nan along a given axis.
+
+        .. seealso::
+           :func:`cupy.nanargmin` for full documentation,
+           :meth:`numpy.ndarray.nanargmin`
+
+        """
+        return _statistics._ndarray_nanargmin(self, axis, out, dtype, keepdims)
     # TODO(okuta): Implement ptp
 
     cpdef ndarray clip(self, a_min=None, a_max=None, out=None):
@@ -810,6 +831,17 @@ cdef class ndarray:
         """
         return _math._ndarray_cumsum(self, axis, dtype, out)
 
+    cpdef ndarray _nansum(
+            self, axis=None, dtype=None, out=None, keepdims=False):
+        """Returns the sum along a given axis treating Not a Numbers (NaNs) as zero.
+
+        .. seealso::
+           :func:`cupy.nansum` for full documentation,
+           :meth:`numpy.ndarray.nansum`
+
+        """
+        return _math._ndarray_nansum(self, axis, dtype, out, keepdims)
+
     cpdef ndarray mean(self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the mean along a given axis.
 
@@ -862,6 +894,18 @@ cdef class ndarray:
 
         """
         return _math._ndarray_cumprod(self, axis, dtype, out)
+
+    cpdef ndarray _nanprod(
+            self, axis=None, dtype=None, out=None, keepdims=None):
+        """Returns the product along a given axis treating Not a Numbers (NaNs)
+        as zero.
+
+        .. seealso::
+           :func:`cupy.nanprod` for full documentation,
+           :meth:`numpy.ndarray.nanprod`
+
+        """
+        return _math._ndarray_nanprod(self, axis, dtype, out, keepdims)
 
     cpdef ndarray all(self, axis=None, out=None, keepdims=False):
         # TODO(niboshi): Write docstring

@@ -247,6 +247,9 @@ def inv(a):
 
     .. seealso:: :func:`numpy.linalg.inv`
     """
+    if a.ndim >= 3:
+        return _batched_inv(a)
+
     if not cuda.cusolver_enabled:
         raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
@@ -292,6 +295,85 @@ def inv(a):
           m, dev_info.data.ptr)
 
     return b
+
+
+def _batched_inv(a):
+
+    assert(a.ndim >= 3)
+    util._assert_cupy_array(a)
+    util._assert_nd_squareness(a)
+
+    if a.dtype == cupy.float32:
+        getrf = cupy.cuda.cublas.sgetrfBatched
+        getri = cupy.cuda.cublas.sgetriBatched
+    elif a.dtype == cupy.float64:
+        getrf = cupy.cuda.cublas.dgetrfBatched
+        getri = cupy.cuda.cublas.dgetriBatched
+    elif a.dtype == cupy.complex64:
+        getrf = cupy.cuda.cublas.cgetrfBatched
+        getri = cupy.cuda.cublas.cgetriBatched
+    elif a.dtype == cupy.complex128:
+        getrf = cupy.cuda.cublas.zgetrfBatched
+        getri = cupy.cuda.cublas.zgetriBatched
+    else:
+        msg = ('dtype must be float32, float64, complex64 or float128'
+               ' (actual: {})'.format(a.dtype))
+        raise ValueError(msg)
+
+    if 0 in a.shape:
+        return cupy.empty_like(a)
+    a_shape = a.shape
+
+    # copy is necessary to present `a` to be overwritten.
+    a = a.copy().reshape(-1, a_shape[-2], a_shape[-1])
+
+    handle = device.get_cublas_handle()
+    batch_size = a.shape[0]
+    n = a.shape[1]
+    lda = n
+    step = n * lda * a.itemsize
+    start = a.data.ptr
+    stop = start + step * batch_size
+    a_array = cupy.arange(start, stop, step, dtype=cupy.uintp)
+    pivot_array = cupy.empty((batch_size, n), dtype=cupy.int32)
+    info_array = cupy.empty((batch_size,), dtype=cupy.int32)
+
+    getrf(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
+          info_array.data.ptr, batch_size)
+
+    err = False
+    err_detail = ''
+    for i in range(batch_size):
+        info = info_array[i]
+        if info < 0:
+            err = True
+            err_detail += ('\tmatrix[{}]: illegal value at {}-the parameter.'
+                           '\n'.format(i, -info))
+        if info > 0:
+            err = True
+            err_detail += '\tmatrix[{}]: matrix is singular.\n'.format(i)
+    if err:
+        raise RuntimeError('matrix inversion failed at getrf.\n' + err_detail)
+
+    c = cupy.empty_like(a)
+    ldc = lda
+    step = n * ldc * c.itemsize
+    start = c.data.ptr
+    stop = start + step * batch_size
+    c_array = cupy.arange(start, stop, step, dtype=cupy.uintp)
+
+    getri(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
+          c_array.data.ptr, ldc, info_array.data.ptr, batch_size)
+
+    for i in range(batch_size):
+        info = info_array[i]
+        if info > 0:
+            err = True
+            err_detail += '\tmatrix[{}]: matrix is singular.\n'.format(i)
+    if err:
+        raise RuntimeError('matrix inversion failed at getri.\n' + err_detail)
+
+    return c.reshape(a_shape)
 
 
 def pinv(a, rcond=1e-15):

@@ -157,6 +157,91 @@ cpdef enum:
     CUDNN_ERRQUERY_NONBLOCKING = 1
     CUDNN_ERRQUERY_BLOCKING = 2
 
+    # cudnnFusedOps_t
+    CUDNN_FUSED_SCALE_BIAS_ACTIVATION_CONV_BNSTATS = 0
+    CUDNN_FUSED_SCALE_BIAS_ACTIVATION_WGRAD = 1
+    CUDNN_FUSED_BN_FINALIZE_STATISTICS_TRAINING = 2
+    CUDNN_FUSED_BN_FINALIZE_STATISTICS_INFERENCE = 3
+    CUDNN_FUSED_CONV_SCALE_BIAS_ADD_ACTIVATION = 4
+    CUDNN_FUSED_SCALE_BIAS_ADD_ACTIVATION_GEN_BITMASK = 5
+    CUDNN_FUSED_DACTIVATION_FORK_DBATCHNORM = 6
+
+    # cudnnFusedOpsConstParamLabel_t
+    CUDNN_PARAM_XDESC = 0
+    CUDNN_PARAM_XDATA_PLACEHOLDER = 1
+    CUDNN_PARAM_BN_MODE = 2
+    CUDNN_PARAM_BN_EQSCALEBIAS_DESC = 3
+    CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER = 4
+    CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER = 5
+    CUDNN_PARAM_ACTIVATION_DESC = 6
+    CUDNN_PARAM_CONV_DESC = 7
+    CUDNN_PARAM_WDESC = 8
+    CUDNN_PARAM_WDATA_PLACEHOLDER = 9
+    CUDNN_PARAM_DWDESC = 10
+    CUDNN_PARAM_DWDATA_PLACEHOLDER = 11
+    CUDNN_PARAM_YDESC = 12
+    CUDNN_PARAM_YDATA_PLACEHOLDER = 13
+    CUDNN_PARAM_DYDESC = 14
+    CUDNN_PARAM_DYDATA_PLACEHOLDER = 15
+    CUDNN_PARAM_YSTATS_DESC = 16
+    CUDNN_PARAM_YSUM_PLACEHOLDER = 17
+    CUDNN_PARAM_YSQSUM_PLACEHOLDER = 18
+    CUDNN_PARAM_BN_SCALEBIAS_MEANVAR_DESC = 19
+    CUDNN_PARAM_BN_SCALE_PLACEHOLDER = 20
+    CUDNN_PARAM_BN_BIAS_PLACEHOLDER = 21
+    CUDNN_PARAM_BN_SAVED_MEAN_PLACEHOLDER = 22
+    CUDNN_PARAM_BN_SAVED_INVSTD_PLACEHOLDER = 23
+    CUDNN_PARAM_BN_RUNNING_MEAN_PLACEHOLDER = 24
+    CUDNN_PARAM_BN_RUNNING_VAR_PLACEHOLDER = 25
+    CUDNN_PARAM_ZDESC = 26
+    CUDNN_PARAM_ZDATA_PLACEHOLDER = 27
+    CUDNN_PARAM_BN_Z_EQSCALEBIAS_DESC = 28
+    CUDNN_PARAM_BN_Z_EQSCALE_PLACEHOLDER = 29
+    CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER = 30
+    CUDNN_PARAM_ACTIVATION_BITMASK_DESC = 31
+    CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER = 32
+    CUDNN_PARAM_DXDESC = 33
+    CUDNN_PARAM_DXDATA_PLACEHOLDER = 34
+    CUDNN_PARAM_DZDESC = 35
+    CUDNN_PARAM_DZDATA_PLACEHOLDER = 36
+    CUDNN_PARAM_BN_DSCALE_PLACEHOLDER = 37
+    CUDNN_PARAM_BN_DBIAS_PLACEHOLDER = 38
+
+    # cudnnFusedOpsPointerPlaceHolder_t
+    CUDNN_PTR_NULL = 0
+    CUDNN_PTR_ELEM_ALIGNED = 1
+    CUDNN_PTR_16B_ALIGNED = 2
+
+    # cudnnFusedOpsVariantParamLabel_t
+    CUDNN_PTR_XDATA = 0
+    CUDNN_PTR_BN_EQSCALE = 1
+    CUDNN_PTR_BN_EQBIAS = 2
+    CUDNN_PTR_WDATA = 3
+    CUDNN_PTR_DWDATA = 4
+    CUDNN_PTR_YDATA = 5
+    CUDNN_PTR_DYDATA = 6
+    CUDNN_PTR_YSUM = 7
+    CUDNN_PTR_YSQSUM = 8
+    CUDNN_PTR_WORKSPACE = 9
+    CUDNN_PTR_BN_SCALE = 10
+    CUDNN_PTR_BN_BIAS = 11
+    CUDNN_PTR_BN_SAVED_MEAN = 12
+    CUDNN_PTR_BN_SAVED_INVSTD = 13
+    CUDNN_PTR_BN_RUNNING_MEAN = 14
+    CUDNN_PTR_BN_RUNNING_VAR = 15
+    CUDNN_PTR_ZDATA = 16
+    CUDNN_PTR_BN_Z_EQSCALE = 17
+    CUDNN_PTR_BN_Z_EQBIAS = 18
+    CUDNN_PTR_ACTIVATION_BITMASK = 19
+    CUDNN_PTR_DXDATA = 20
+    CUDNN_PTR_DZDATA = 21
+    CUDNN_PTR_BN_DSCALE = 22
+    CUDNN_PTR_BN_DBIAS = 23
+    CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES = 100
+    CUDNN_SCALAR_INT64_T_BN_ACCUMULATION_COUNT = 101
+    CUDNN_SCALAR_DOUBLE_BN_EXP_AVG_FACTOR = 102
+    CUDNN_SCALAR_DOUBLE_BN_EPSILON = 103
+
 
 ###############################################################################
 # Class
@@ -668,3 +753,24 @@ cpdef spatialTfSamplerBackward(
     size_t handle, size_t stDesc, size_t alpha, size_t xDesc,
     size_t x, size_t beta, size_t dxDesc, size_t dx, size_t alphaDgrid,
     size_t dyDesc, size_t dy, size_t grid, size_t betaDgrid, size_t dgrid)
+
+###############################################################################
+# Fused Ops
+###############################################################################
+
+cpdef createFusedOpsConstParamPack(int ops)
+cpdef destroyFusedOpsConstParamPack(size_t constPack)
+cpdef setFusedOpsConstParamPackAttribute(size_t constPack, int paramLabel,
+                                         size_t param)
+cpdef getFusedOpsConstParamPackAttribute(size_t constPack, int paramLabel,
+                                         size_t param)
+cpdef createFusedOpsVariantParamPack(int ops)
+cpdef destroyFusedOpsVariantParamPack(size_t varPack)
+cpdef setFusedOpsVariantParamPackAttribute(size_t varPack, int paramLabel,
+                                           size_t ptr)
+cpdef getFusedOpsVariantParamPackAttribute(size_t varPack, int paramLabel,
+                                           size_t ptr)
+cpdef createFusedOpsPlan(int ops)
+cpdef destroyFusedOpsPlan(size_t plan)
+cpdef makeFusedOpsPlan(size_t handle, size_t plan, size_t constPack)
+cpdef fusedOpsExecute(size_t handle, size_t plan, size_t varPack)

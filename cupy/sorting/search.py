@@ -24,7 +24,29 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.argmax(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-# TODO(okuta): Implement nanargmax
+def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
+    """Return the indices of the maximum values in the specified axis ignoring
+    NaNs. For all-NaN slice ``-1`` is returned.
+    Subclass cannot be passed yet, subok=True still unsupported
+
+    Args:
+        a (cupy.ndarray): Array to take nanargmax.
+        axis (int): Along which axis to find the maximum. ``a`` is flattened by
+            default.
+
+    Returns:
+        cupy.ndarray: The indices of the maximum of ``a``
+            along an axis ignoring NaN values.
+
+    .. note:: For performance reasons, ``cupy.nanargmax`` returns
+            ``out of range values`` for all-NaN slice
+            whereas ``numpy.nanargmax`` raises ``ValueError``
+    .. seealso:: :func:`numpy.nanargmax`
+    """
+    if a.dtype.kind in 'biu':
+        return argmax(a, axis=axis)
+
+    return a._nanargmax(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -49,8 +71,29 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.argmin(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-# TODO(okuta): Implement nanargmin
+def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
+    """Return the indices of the minimum values in the specified axis ignoring
+    NaNs. For all-NaN slice ``-1`` is returned.
+    Subclass cannot be passed yet, subok=True still unsupported
 
+    Args:
+        a (cupy.ndarray): Array to take nanargmin.
+        axis (int): Along which axis to find the minimum. ``a`` is flattened by
+            default.
+
+    Returns:
+        cupy.ndarray: The indices of the minimum of ``a``
+            along an axis ignoring NaN values.
+
+    .. note:: For performance reasons, ``cupy.nanargmin`` returns
+            ``out of range values`` for all-NaN slice
+            whereas ``numpy.nanargmin`` raises ``ValueError``
+    .. seealso:: :func:`numpy.nanargmin`
+    """
+    if a.dtype.kind in 'biu':
+        return argmin(a, axis=axis)
+
+    return a._nanargmin(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 # TODO(okuta): Implement argwhere
 

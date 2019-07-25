@@ -16,10 +16,14 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
+cdef ndarray _ndarray_nanargmax(ndarray self, axis, out, dtype, keepdims):
+    return _nanargmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
+cdef ndarray _ndarray_nanargmin(ndarray self, axis, out, dtype, keepdims):
+    return _nanargmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
     return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
@@ -173,6 +177,7 @@ __device__ min_max_st<T> my_argmax_complex(
     if (is_nan(b.value.imag())) return b;
     return (a.value >= b.value) ? a : b;
 }
+
 '''
 
 
@@ -248,6 +253,34 @@ cdef _argmax = create_reduction_func(
      ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
+    None, _min_max_preamble)
+
+
+cdef _nanargmin = create_reduction_func(
+    'cupy_nanargmin',
+    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
+     'q->q', 'Q->q',
+     ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmin_complex(a, b)', None, None)),
+     ('D->q', (None, 'my_argmin_complex(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0, is_nan(in0) ? -1 : _J)',
+     'my_argmin(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
+    None, _min_max_preamble)
+
+
+cdef _nanargmax = create_reduction_func(
+    'cupy_nanargmax',
+    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
+     'q->q', 'Q->q',
+     ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmax_complex(a, b)', None, None)),
+     ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0, is_nan(in0) ? -1 : _J)',
+     'my_argmax(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
 

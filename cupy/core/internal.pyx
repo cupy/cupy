@@ -32,7 +32,8 @@ cpdef inline tuple get_size(object size):
 
 @cython.profile(False)
 cpdef inline bint vector_equal(
-        vector.vector[Py_ssize_t]& x, vector.vector[Py_ssize_t]& y):
+        const vector.vector[Py_ssize_t]& x,
+        const vector.vector[Py_ssize_t]& y):
     cdef Py_ssize_t n = x.size()
     if n != <Py_ssize_t>y.size():
         return False
