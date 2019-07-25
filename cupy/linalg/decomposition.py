@@ -334,7 +334,9 @@ def _batched_svd(a, full_matrices, compute_uv):
         v = cupy.empty(batch_shape + (n, n), dtype=a_dtype)
         u_ptr, v_ptr = u.data.ptr, v.data.ptr
     else:
-        u_ptr, v_ptr = 0, 0  # Use nullptr
+        # Somehow nullptr cannot be used
+        tmp = cupy.empty(1, dtype=a_dtype)
+        u_ptr, v_ptr = tmp.data.ptr, tmp.data.ptr
     s = cupy.empty(batch_shape + (mn,), dtype=s_dtype)
     handle = device.get_cusolver_handle()
     if compute_uv:
@@ -364,11 +366,11 @@ def _batched_svd(a, full_matrices, compute_uv):
     params = cusolver.createGesvdjInfo()
     buffersize = gesvdjBatched_bufferSize(
         handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
-        u.data.ptr, ldu, v.data.ptr, ldv, params, batch_size)
+        u_ptr, ldu, v_ptr, ldv, params, batch_size)
     workspace = cupy.empty(buffersize, dtype=a_dtype)
     gesvdjBatched(
         handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
-        u.data.ptr, ldu, v.data.ptr, ldv, workspace.data.ptr, buffersize,
+        u_ptr, ldu, v_ptr, ldv, workspace.data.ptr, buffersize,
         info.data.ptr, params, batch_size)
     cusolver.destroyGesvdjInfo(params)
 
@@ -379,9 +381,12 @@ def _batched_svd(a, full_matrices, compute_uv):
         raise linalg.LinAlgError(
             'SVD computation does not converge')
 
-    if compute_uv and not full_matrices:
-        u = u[..., :mn, :]
-        v = v[..., :mn, :]
-    # Note that the returned array may need to be transporsed
-    # depending on the structure of an input
-    return cupy.swapaxes(v, -1, -2), s, u
+    if compute_uv:
+        if not full_matrices:
+            u = u[..., :mn, :]
+            v = v[..., :mn, :]
+        # Note that the returned array may need to be transporsed
+        # depending on the structure of an input
+        return cupy.swapaxes(v, -1, -2), s, u
+    else:
+        return s
