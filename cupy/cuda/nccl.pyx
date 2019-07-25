@@ -239,9 +239,11 @@ cdef class NcclCommunicator:
                 ncclCommDestroy(self._comm[i])
             if ndev > 1:
                 self._comm.resize(0)
+                self._current_comm = NULL
             else:
                 # for backward compatibility
                 self._comm[0] = <ncclComm_t>0
+                self._current_comm = &self._comm[0]
             self._initialized = 0
 
     cpdef abort(self):
@@ -255,9 +257,11 @@ cdef class NcclCommunicator:
                 ncclCommAbort(self._comm[i])
             if ndev > 1:
                 self._comm.resize(0)
+                self._current_comm = NULL
             else:
                 # for backward compatibility
                 self._comm[0] = <ncclComm_t>0
+                self._current_comm = &self._comm[0]
             self._initialized = 0
 
     def device_id(self):
