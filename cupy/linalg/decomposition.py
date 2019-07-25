@@ -322,20 +322,20 @@ def _batched_svd(a, full_matrices, compute_uv):
 
     assert a.size != 0  # TODO(kataoka): later
     a_shape = a.shape
+    batch_shape = a_shape[:-2]
     n, m = a_shape[-2:]
-    a = a.reshape(-1, n, m)
-    batch_size = a.shape[0]
+    batch_size = cupy.core.internal.prod(batch_shape)
 
     mn = min(m, n)
 
     # TODO(kataoka): full_matrices=False case is not efficient
     if compute_uv:
-        u = cupy.empty((batch_size, m, m), dtype=a_dtype)
-        v = cupy.empty((batch_size, n, n), dtype=a_dtype)
+        u = cupy.empty(batch_shape + (m, m), dtype=a_dtype)
+        v = cupy.empty(batch_shape + (n, n), dtype=a_dtype)
         u_ptr, v_ptr = u.data.ptr, v.data.ptr
     else:
         u_ptr, v_ptr = 0, 0  # Use nullptr
-    s = cupy.empty((batch_size, mn), dtype=s_dtype)
+    s = cupy.empty(batch_shape + (mn,), dtype=s_dtype)
     handle = device.get_cusolver_handle()
     if compute_uv:
         jobz = cusolver.CUSOLVER_EIG_MODE_VECTOR

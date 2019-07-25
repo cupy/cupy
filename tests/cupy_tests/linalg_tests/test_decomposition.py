@@ -140,6 +140,8 @@ class TestSVD(unittest.TestCase):
         self.check_usv((4, 2, 3))
         self.check_usv((4, 2, 2))
         self.check_usv((4, 3, 2))
+        self.check_usv((2, 3, 4, 5))
+        self.check_usv((5, 4, 3, 2))
 
     @condition.repeat(3, 10)
     def test_svd_no_uv(self):
