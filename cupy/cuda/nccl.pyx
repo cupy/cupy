@@ -205,6 +205,14 @@ cdef class NcclCommunicator:
 
             In a multi-process setup, use the default initializer instead.
         """
+        # Call to __new__ bypasses __init__ constructor
+        cdef NcclCommunicator NcclComm = \
+            NcclCommunicator.__new__(NcclCommunicator)
+        NcclComm._initAll(ndev, devlist)
+        return NcclComm
+
+    def _initAll(self, int ndev, list devlist=None):
+        # A helper function which does not return is favorable
         cdef vector.vector[int] devices
         cdef int i, *devices_ptr
 
@@ -216,17 +224,12 @@ cdef class NcclCommunicator:
         else:
             devices_ptr = NULL
 
-        # Call to __new__ bypasses __init__ constructor
-        cdef NcclCommunicator NcclComm = \
-            NcclCommunicator.__new__(NcclCommunicator)
-
         for i in range(ndev):
-            NcclComm._comm.push_back(<ncclComm_t>0)
-        assert NcclComm._comm.size() == ndev
-        status = ncclCommInitAll(NcclComm._comm.data(), ndev, devices_ptr)
+            self._comm.push_back(<ncclComm_t>0)
+        assert self._comm.size() == ndev
+        status = ncclCommInitAll(self._comm.data(), ndev, devices_ptr)
         check_status(status)
-        NcclComm._initialized = 1
-        return NcclComm
+        self._initialized = 1
 
     cpdef destroy(self):
         cdef int i, ndev
