@@ -328,13 +328,10 @@ def _batched_svd(a, full_matrices, compute_uv):
 
     mn = min(m, n)
 
+    # TODO(kataoka): full_matrices=False case is not efficient
     if compute_uv:
-        if full_matrices:
-            u = cupy.empty((batch_size, m, m), dtype=a_dtype)
-            v = cupy.empty((batch_size, n, n), dtype=a_dtype)
-        else:
-            u = cupy.empty((batch_size, mn, m), dtype=a_dtype)
-            v = cupy.empty((batch_size, mn, n), dtype=a_dtype)
+        u = cupy.empty((batch_size, m, m), dtype=a_dtype)
+        v = cupy.empty((batch_size, n, n), dtype=a_dtype)
         u_ptr, v_ptr = u.data.ptr, v.data.ptr
     else:
         u_ptr, v_ptr = 0, 0  # Use nullptr
@@ -344,9 +341,6 @@ def _batched_svd(a, full_matrices, compute_uv):
         jobz = cusolver.CUSOLVER_EIG_MODE_VECTOR
     else:
         jobz = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
-    # TODO(kataoka): full_matrices=False is not supported by gesvdjBatched
-    assert full_matrices
-    # econ = 0 if full_matrices else 1
     lda = m
     ldu = m
     ldv = n
@@ -385,6 +379,9 @@ def _batched_svd(a, full_matrices, compute_uv):
         raise linalg.LinAlgError(
             'SVD computation does not converge')
 
+    if compute_uv and not full_matrices:
+        u = u[..., :mn, :]
+        v = v[..., :mn, :]
     # Note that the returned array may need to be transporsed
     # depending on the structure of an input
     return cupy.swapaxes(v, -1, -2), s, u
