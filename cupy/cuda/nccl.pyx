@@ -311,10 +311,10 @@ cdef class NcclCommunicator:
             rank (int): The rank in the NCCL worker pool.
 
         .. note::
-            This method is only useful in the scenario where multiple devices
-            are controlled by a single process. This method allows switching 
-            among the underlying NCCL communicators, each associated with a 
-            particular device. A typical usage pattern is like this:
+            This method is only useful when the `NcclCommunicator` instance is
+            created via initAll(). This method allows switching among the
+            underlying NCCL communicators, each associated with a particular
+            device. A typical usage pattern is like this:
 
             .. code-block:: python
 
@@ -324,10 +324,11 @@ cdef class NcclCommunicator:
                     # ... do some collective calls ...
                 comm.groupEnd()
 
-            This method has no effect when each process only controls one
-            device.
         """
         if self._comm.size() > 1:
+            self._current_comm = &self._comm[rank]
+        elif self._comm.size() == 1:  # edge case
+            assert rank == 0
             self._current_comm = &self._comm[rank]
 
     def allReduce(self, size_t sendbuf, size_t recvbuf,
