@@ -106,7 +106,7 @@ class TestSVD(unittest.TestCase):
     def setUp(self):
         self.seed = testing.generate_seed()
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     def check_usv(self, shape, dtype):
         array = testing.shaped_random(
             shape, numpy, dtype=dtype, seed=self.seed)
@@ -120,7 +120,7 @@ class TestSVD(unittest.TestCase):
             cupy.testing.assert_allclose(
                 numpy.abs(b_cpu), cupy.abs(b_gpu), atol=1e-4)
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(atol=1e-4)
     def check_singular(self, shape, xp, dtype):
         array = testing.shaped_random(shape, xp, dtype=dtype, seed=self.seed)
