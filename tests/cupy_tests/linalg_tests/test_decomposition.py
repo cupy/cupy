@@ -132,23 +132,17 @@ class TestSVD(unittest.TestCase):
         assert (a == a_copy).all()
         return result
 
-    def check_rank2(self, array):
-        with self.assertRaises(numpy.linalg.LinAlgError):
-            cupy.linalg.svd(array, full_matrices=self.full_matrices)
-
     @condition.repeat(3, 10)
     def test_svd(self):
         self.check_usv((2, 3))
         self.check_usv((2, 2))
         self.check_usv((3, 2))
+        self.check_usv((4, 2, 3))
+        self.check_usv((4, 2, 2))
+        self.check_usv((4, 3, 2))
 
     @condition.repeat(3, 10)
     def test_svd_no_uv(self):
         self.check_singular((2, 3))
         self.check_singular((2, 2))
         self.check_singular((3, 2))
-
-    @condition.repeat(3, 10)
-    def test_rank2(self):
-        self.check_rank2(cupy.random.randn(2, 3, 4).astype(numpy.float32))
-        self.check_rank2(cupy.random.randn(1, 2, 3, 4).astype(numpy.float64))
