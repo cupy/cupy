@@ -53,3 +53,9 @@ class TestNCCL(unittest.TestCase):
                            cuda.Stream.null.ptr)
         cuda.nccl.groupEnd()
         assert cupy.allclose(sendbuf, recvbuf)
+
+    @attr.gpu
+    def test_comm_size(self):
+        id = cuda.nccl.get_unique_id()
+        comm = cuda.nccl.NcclCommunicator(1, id, 0)
+        assert 1 == comm.size()

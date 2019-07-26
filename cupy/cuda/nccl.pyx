@@ -40,6 +40,7 @@ cdef extern from 'cupy_nccl.h':
     void ncclCommAbort(ncclComm_t comm)
     ncclResult_t ncclCommCuDevice(const ncclComm_t comm, int* device)
     ncclResult_t ncclCommUserRank(const ncclComm_t comm, int* rank)
+    ncclResult_t ncclCommCount(const ncclComm_t comm, int* count)
     ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff,
                                 size_t count,
                                 ncclDataType_t datatype, ncclRedOp_t op,
@@ -351,6 +352,12 @@ cdef class NcclCommunicator:
         status = ncclCommUserRank(self._comm, &rank_id)
         check_status(status)
         return rank_id
+
+    def size(self):
+        cdef int ranks
+        status = ncclCommCount(self._comm, &ranks)
+        check_status(status)
+        return ranks
 
     def allReduce(self, size_t sendbuf, size_t recvbuf,
                   size_t count, int datatype, int op, size_t stream):
