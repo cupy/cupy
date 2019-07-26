@@ -114,11 +114,38 @@ class TestSVD(unittest.TestCase):
         a_gpu = cupy.asarray(array, dtype=dtype)
         result_cpu = numpy.linalg.svd(a_cpu, full_matrices=self.full_matrices)
         result_gpu = cupy.linalg.svd(a_gpu, full_matrices=self.full_matrices)
-        self.assertEqual(len(result_cpu), len(result_gpu))
-        for b_cpu, b_gpu in zip(result_cpu, result_gpu):
-            # Use abs to support an inverse vector
-            cupy.testing.assert_allclose(
-                numpy.abs(b_cpu), cupy.abs(b_gpu), atol=1e-4)
+        # Check if the input matrix is not broken
+        cupy.testing.assert_allclose(a_gpu, a_cpu)
+
+        self.assertEqual(len(result_gpu), len(result_cpu))
+        u_cpu, s_cpu, vh_cpu = result_cpu
+        u_gpu, s_gpu, vh_gpu = result_gpu
+        cupy.testing.assert_allclose(s_gpu, s_cpu, atol=1e-4)
+
+        # assert unitary
+        cupy.testing.assert_allclose(
+            cupy.matmul(u_gpu.T.conj(), u_gpu),
+            numpy.eye(u_gpu.shape[1]),
+            atol=1e-4)
+        cupy.testing.assert_allclose(
+            cupy.matmul(vh_gpu, vh_gpu.T.conj()),
+            numpy.eye(vh_gpu.shape[0]),
+            atol=1e-4)
+
+        k, = s_cpu.shape
+        for j in range(k):
+            # assert corresponding vectors are equal up to rotation
+            uj = cupy.asnumpy(u_gpu[:, j])
+            vhj = cupy.asnumpy(vh_gpu[j, :])
+            with numpy.errstate(invalid='ignore'):
+                sign = numpy.nanmedian(numpy.concatenate([
+                    uj / u_cpu[:, j],
+                    (vhj / vh_cpu[j, :]).conj(),
+                ]))
+            numpy.testing.assert_allclose(abs(sign), 1, atol=1e-4)
+            numpy.testing.assert_allclose(uj, sign * u_cpu[:, j], atol=1e-4)
+            numpy.testing.assert_allclose(
+                vhj, sign.conj() * vh_cpu[j, :], atol=1e-4)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(atol=1e-4)
