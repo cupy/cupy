@@ -34,20 +34,22 @@ class TestNCCL(unittest.TestCase):
 
     @attr.gpu
     def test_init_all(self):
-        comm = cuda.nccl.NcclCommunicator.initAll(1)
-        assert 0 == comm.rank_id()
-        comm.destroy()
+        comms = cuda.nccl.NcclCommunicator.initAll(1)
+        for i, comm in enumerate(comms):
+            assert i == comms[i].rank_id()
+        for i, comm in enumerate(comms):
+            comms[i].destroy()
 
     @attr.gpu
     def test_single_proc_single_dev(self):
-        comm = cuda.nccl.NcclCommunicator.initAll(1)
-        comm.groupStart()
-        for rank in range(1):
-            comm.setCurrentComm(rank)
+        comms = cuda.nccl.NcclCommunicator.initAll(1)
+        cuda.nccl.groupStart()
+        for comm in comms:
+            cuda.Device(comm.device_id()).use()
             sendbuf = cupy.arange(10)
             recvbuf = cupy.zeros_like(sendbuf)
             comm.allReduce(sendbuf.data.ptr, recvbuf.data.ptr, 10,
                            cuda.nccl.NCCL_INT64, cuda.nccl.NCCL_SUM,
                            cuda.Stream.null.ptr)
-        comm.groupEnd()
+        cuda.nccl.groupEnd()
         assert cupy.allclose(sendbuf, recvbuf)
