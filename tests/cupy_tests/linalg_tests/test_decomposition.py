@@ -106,7 +106,10 @@ class TestSVD(unittest.TestCase):
     def setUp(self):
         self.seed = testing.generate_seed()
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes([
+        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    ])
     def check_usv(self, shape, dtype):
         array = testing.shaped_random(
             shape, numpy, dtype=dtype, seed=self.seed)
@@ -147,7 +150,10 @@ class TestSVD(unittest.TestCase):
             numpy.testing.assert_allclose(
                 vhj, sign.conj() * vh_cpu[j, :], atol=1e-4)
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes([
+        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    ])
     @testing.numpy_cupy_allclose(atol=1e-4)
     def check_singular(self, shape, xp, dtype):
         array = testing.shaped_random(shape, xp, dtype=dtype, seed=self.seed)
@@ -165,15 +171,15 @@ class TestSVD(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_svd(self):
-        self.check_usv((2, 3))
+        self.check_usv((3, 7))
         self.check_usv((2, 2))
-        self.check_usv((3, 2))
+        self.check_usv((7, 3))
 
     @condition.repeat(3, 10)
     def test_svd_no_uv(self):
-        self.check_singular((2, 3))
+        self.check_singular((3, 7))
         self.check_singular((2, 2))
-        self.check_singular((3, 2))
+        self.check_singular((7, 3))
 
     @condition.repeat(3, 10)
     def test_rank2(self):
