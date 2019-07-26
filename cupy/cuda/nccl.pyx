@@ -222,7 +222,9 @@ cdef class NcclCommunicator:
 
     .. note::
         This method is for creating an NCCL communicator in a multi-process
-        environment, typically managed by MPI or ``multiprocessing``.
+        environment, typically managed by MPI or ``multiprocessing``. For
+        controlling multiple devices by one process, use :meth:`initAll`
+        instead.
 
     .. seealso:: `ncclCommInitRank`_
 
@@ -248,29 +250,27 @@ cdef class NcclCommunicator:
         self.destroy()
 
     @staticmethod
-    def initAll(int ndev, list devlist=None):
+    def initAll(devices):
         """ Initialize NCCL communicators for multiple devices in a single
         process.
 
         Args:
-            ndev (int): Number of GPUs to be used.
-            devlist (None or list): A list of integers that label the GPUs to
-                be used. The default is ``None``, meaning that the first
-                ``ndev`` GPUs will be chosen.
+            devices (int or list of int): The number of GPUs or a list of GPUs
+                to be used. For the former case, the first ``devices`` GPUs
+                will be used.
 
         Returns:
-            list: A list of ``NcclCommunicator`` instances, each of which
-                controls one device.
+            list: A list of ``NcclCommunicator`` instances.
 
         .. note::
-            This method is for creating NCCL communicators in a single process
-            like this:
+            This method is for creating a group of NCCL communicators, each
+            controlling one device, in a single process like this:
 
             .. code-block:: python
 
                 from cupy.cuda import nccl
                 # Use 3 GPUs: #0, #2, and #3
-                comms = nccl.NcclCommunicator.initAll(3, [0, 2, 3])
+                comms = nccl.NcclCommunicator.initAll([0, 2, 3])
                 assert len(comms) == 3
 
             In a multi-process setup, use the default initializer instead.
@@ -280,15 +280,25 @@ cdef class NcclCommunicator:
         .. _ncclCommInitAll:
             https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/comms.html#ncclcomminitall
         """  # noqa
-        cdef int i
-        cdef list comms = []
-        cdef NcclCommunicator NcclComm
+        cdef int i, ndev
+        cdef list comms = [], devlist = []
+        cdef NcclCommunicator comm
+
+        if isinstance(devices, list):
+            ndev = len(devices)
+            devlist = devices
+        elif isinstance(devices, int):
+            ndev = devices
+            for i in range(ndev):
+                devlist.append(i)
+        else:
+            raise ValueError("\"devices\" should be an int or a list of int.")
 
         for i in range(ndev):
             # Call to __new__ bypasses __init__ constructor
             # these are just placeholders
-            NcclComm = NcclCommunicator.__new__(NcclCommunicator)
-            comms.append(NcclComm)
+            comm = NcclCommunicator.__new__(NcclCommunicator)
+            comms.append(comm)
         NcclCommunicator._initAll(comms, ndev, devlist)
 
         return comms
@@ -298,7 +308,7 @@ cdef class NcclCommunicator:
         # A helper function which does not return is favorable for subclassing
         cdef vector.vector[int] devices
         cdef vector.vector[ncclComm_t] ncclComms
-        cdef NcclCommunicator NcclComm
+        cdef NcclCommunicator comm
         cdef int* devices_ptr
 
         if devlist is not None:
@@ -314,8 +324,8 @@ cdef class NcclCommunicator:
         check_status(status)
         # overwrite the _comm attribute in existing NcclCommunicator instances
         for i in range(ndev):
-            NcclComm = comms[i]
-            NcclComm._comm = ncclComms[i]
+            comm = comms[i]
+            comm._comm = ncclComms[i]
 
     cpdef destroy(self):
         if self._comm:
