@@ -105,24 +105,15 @@ def numpy_fallback_array_allclose(name='xp'):
 @testing.gpu
 class TestFallbackMode(unittest.TestCase):
 
-    def test_vectorize(self):
+    @numpy_fallback_array_equal()
+    def test_vectorize(self, xp):
 
         def function(a, b):
             if a > b:
                 return a - b
             return a + b
 
-        actual = numpy.vectorize(function)([1, 2, 3, 4], 2)
-        expected = fallback_mode.numpy.vectorize(function)([1, 2, 3, 4], 2)
-
-        assert isinstance(actual, numpy.ndarray)
-
-        # ([1,2,3,4], 2) are arguments to
-        # numpy.vectorize(function), not numpy.vectorize
-        # So, it returns numpy.ndarray
-        assert isinstance(expected, numpy.ndarray)
-
-        testing.assert_array_equal(expected, actual)
+        return xp.vectorize(function)([1, 2, 3, 4], 2)
 
     def test_module_not_callable(self):
 

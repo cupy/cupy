@@ -38,6 +38,8 @@ class _RecursiveAttr(object):
         Enable support for isinstance(instance, _RecursiveAttr instance)
         by redirecting it to appropriate isinstance method.
         """
+        if isinstance(instance, _RecursiveAttr):
+            instance = instance._numpy_object
 
         if self._cupy_object is not None:
             return isinstance(instance, self._cupy_object)
@@ -281,6 +283,10 @@ def _get_xp_args(ndarray_instance, to_xp, arg):
 
     if isinstance(arg, list):
         return [_get_xp_args(ndarray_instance, to_xp, x) for x in arg]
+
+    if callable(arg):
+        if isinstance(arg, (np.vectorize, )):
+            return _RecursiveAttr(arg, None)
 
     return arg
 
