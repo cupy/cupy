@@ -146,7 +146,7 @@ cpdef tuple _get_permuted_args(
 cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
         Indexer in_indexer, Indexer out_indexer, Py_ssize_t contiguous_size):
     cdef Py_ssize_t block_size, reduce_block_size, block_stride, out_block_num
-    block_size = 512
+    block_size = 256 if runtime._is_hip_environment else 512
 
     reduce_block_size = max(1, in_indexer.size // out_indexer.size)
     contiguous_size = min(contiguous_size, 32)
@@ -273,16 +273,9 @@ class simple_reduction_function(object):
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
 
-        out_block_num = (
-            out_indexer.size + block_stride - 1) // block_stride
-
         kern.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size)
         return ret
-
-
-if runtime._is_hip_environment:
-    simple_reduction_function._block_size = 256
 
 
 @util.memoize(for_each_device=True)
@@ -453,9 +446,6 @@ class ReductionKernel(object):
             in_args, reduce_axis + out_axis, broad_shape, self.in_params,
             len(out_axis))
 
-        block_size = 512
-        if runtime._is_hip_environment:
-            block_size = 256
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
         block_size, block_stride, out_block_num = _get_block_specs(
@@ -471,9 +461,6 @@ class ReductionKernel(object):
             self.name, block_size, self.reduce_type, self.identity,
             self.map_expr, self.reduce_expr, self.post_map_expr,
             self.preamble, self.options)
-
-        out_block_num = (
-            out_indexer.size + block_stride - 1) // block_stride
 
         kern.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
