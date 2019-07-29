@@ -1,5 +1,6 @@
 from __future__ import division
 import sys
+import warnings
 
 import numpy
 import six
@@ -30,6 +31,18 @@ Check the Installation Guide for details:
 original error: {}'''.format(exc_info[1]))  # NOQA
 
     six.reraise(ImportError, ImportError(msg), exc_info[2])
+
+
+if sys.version_info[:1] == (2,):
+    warnings.warn('''
+--------------------------------------------------------------------------------
+CuPy is going to stop supporting Python 2 in v7.x releases.
+
+Future releases of CuPy v7.x will not run on Python 2.
+If you need to continue using Python 2, consider using CuPy v6.x, which
+will be the last version that runs on Python 2.
+--------------------------------------------------------------------------------
+''')  # NOQA
 
 
 from cupy import cuda
