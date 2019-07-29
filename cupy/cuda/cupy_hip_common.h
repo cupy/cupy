@@ -75,6 +75,7 @@ typedef hipblasPointerMode_t cublasPointerMode_t;
 typedef hipblasSideMode_t cublasSideMode_t;
 typedef enum {} cublasGemmAlgo_t;
 typedef enum {} cublasMath_t;
+typedef int cudaDataType_t;
 typedef hipblasStatus_t cublasStatus_t;
 
 } // extern "C"

@@ -506,8 +506,23 @@ cublasStatus_t cublasZgemmBatched(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
-cublasStatus_t cublasSgemmEx(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSgemmEx(
+        cublasHandle_t handle,
+        cublasOperation_t transa, cublasOperation_t transb,
+        int m, int n, int k,
+        const float *alpha, const void *A, cudaDataType_t Atype, int lda,
+        const void *B, cudaDataType_t Btype, int ldb, const float *beta,
+        void *C, cudaDataType_t Ctype, int ldc) {
+    if (Atype != 0 || Btype != 0 || Ctype != 0) {
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasSgemm(
+        handle,
+        convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
+        m, n, k,
+        alpha, static_cast<const float*>(A), lda,
+        static_cast<const float*>(B), ldb, beta,
+        static_cast<float*>(C), ldc);
 }
 
 cublasStatus_t cublasGemmEx(...) {
