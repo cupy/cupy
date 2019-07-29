@@ -351,18 +351,18 @@ cdef _mean = create_reduction_func(
 _count_non_nan = create_reduction_func(
     'cupy_count_non_nan',
     ('e->e', 'f->f', 'd->d'),
-    ('(in0 == in0) ? 1.0 : 0.0', 'a + b', 'out0 = a', None),0)
+    ('(in0 == in0) ? 1.0 : 0.0', 'a + b', 'out0 = a', None), 0)
 
 
 cdef ndarray _nanstd(
-    ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+        ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     ret = _nanvar(
         a, axis=axis, dtype=dtype, out=None, ddof=ddof, keepdims=keepdims)
     return _math._sqrt(ret, dtype=dtype, out=out)
 
 
 cdef ndarray _nanvar(
-    ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+        ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
     assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
                                 'implemented. Current implemention does not ' \
@@ -392,7 +392,6 @@ cdef _nanvar_core_out = ReductionKernel(
     'S x, T mean, T alpha', 'U out',
     '(x==x) ? ((x - mean) * (x - mean) * alpha) : (0 * alpha)',
     'a + b', 'out = a', '0', '_nanvar_core')
-
 
 
 # Variables to expose to Python
