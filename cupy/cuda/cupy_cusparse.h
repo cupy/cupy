@@ -3,14 +3,19 @@
 #ifndef INCLUDE_GUARD_CUPY_CUSPARSE_H
 #define INCLUDE_GUARD_CUPY_CUSPARSE_H
 
-#include "cupy_cuda.h"
-
 #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 #include <cuda.h>
 #include <cusparse.h>
 
 #else  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+
+#ifdef CUPY_USE_HIP
+#include "cupy_hip_common.h"
+#else // #ifdef CUPY_USE_HIP
+#include "cupy_cuda_common.h"
+#endif // #ifdef CUPY_USE_HIP
+
 extern "C" {
 
 typedef enum {} cusparseIndexBase_t;

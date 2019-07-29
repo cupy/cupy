@@ -18,13 +18,8 @@ _available = None
 _cuda_path = None
 
 
-try:
-    # For HIP support
-    # TODO(okuta): Remove this try block
-    from cupy.cuda import cusolver  # NOQA
-    cusolver_enabled = True
-except ImportError:
-    cusolver_enabled = False
+from cupy.cuda import cusolver  # NOQA
+cusolver_enabled = True
 
 try:
     from cupy.cuda import nvtx  # NOQA

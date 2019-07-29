@@ -87,6 +87,19 @@ MODULES = [
         'version_method': build.get_cuda_version,
     },
     {
+        'name': 'cusolver',
+        'file': [
+            'cupy.cuda.cusolver',
+        ],
+        'include': [
+            'cusolverDn.h',
+        ],
+        'libraries': [
+            'cusolver',
+        ],
+        'check_method': build.check_cuda_version,
+    },
+    {
         'name': 'cudnn',
         'file': [
             'cupy.cuda.cudnn',
@@ -114,19 +127,6 @@ MODULES = [
         ],
         'check_method': build.check_nccl_version,
         'version_method': build.get_nccl_version,
-    },
-    {
-        'name': 'cusolver',
-        'file': [
-            'cupy.cuda.cusolver',
-        ],
-        'include': [
-            'cusolverDn.h',
-        ],
-        'libraries': [
-            'cusolver',
-        ],
-        'check_method': build.check_cuda_version,
     },
     {
         'name': 'nvtx',
@@ -183,12 +183,12 @@ MODULES = [
 ]
 
 if use_hip:
-    MODULES = MODULES[:1]
+    MODULES = MODULES[:2]
     mod_cuda = MODULES[0]
     mod_cuda['include'] = [
         'hip/hip_runtime_api.h',
         'hipblas.h',
-        'hipsparse.h',
+        #        'hipsparse.h',
         #        'cuda.h',
         #        'cuda_profiler_api.h',
         #        'cuda_runtime.h',
@@ -199,7 +199,7 @@ if use_hip:
         'hip_hcc',
         'hipblas',
         'hiprand',
-        'hipsparse',
+        #        'hipsparse',
         #        'cuda',
         #        'cudart',
         #        'cufft',
@@ -207,6 +207,10 @@ if use_hip:
     ]
     del mod_cuda['version_method']
     del mod_cuda['check_method']
+    mod_cusparse = MODULES[1]
+    mod_cusparse['include'] = []
+    mod_cusparse['libraries'] = []
+    del mod_cusparse['check_method']
 
 
 def ensure_module_file(file):

@@ -3,11 +3,7 @@
 #ifndef INCLUDE_GUARD_CUPY_HIP_H
 #define INCLUDE_GUARD_CUPY_HIP_H
 
-#include <hip/hip_runtime_api.h>
-#include <hipblas.h>
-#include <hiprand/hiprand.h>
-
-#define CUDA_VERSION 0
+#include "cupy_hip_common.h"
 
 extern "C" {
 
@@ -16,28 +12,6 @@ bool hip_environment = true;
 ///////////////////////////////////////////////////////////////////////////////
 // cuda.h
 ///////////////////////////////////////////////////////////////////////////////
-
-typedef int CUdevice;
-typedef hipError_t CUresult;
-const CUresult CUDA_SUCCESS=static_cast<CUresult>(0);
-enum CUjit_option {};
-enum CUjitInputType {};
-
-
-typedef hipDeviceptr_t CUdeviceptr;
-//struct CUevent_st;
-//struct CUfunc_st;
-//struct CUmod_st;
-struct CUlinkState_st;
-
-
-typedef hipCtx_t CUcontext;
-typedef hipEvent_t cudaEvent_t;
-typedef hipFunction_t CUfunction;
-typedef hipModule_t CUmodule;
-typedef hipStream_t cudaStream_t;
-typedef struct CUlinkState_st* CUlinkState;
-
 
 // Error handling
 CUresult cuGetErrorName(CUresult hipError, const char** pStr) {
@@ -134,27 +108,6 @@ CUresult cuLaunchKernel(CUfunction f, uint32_t gridDimX, uint32_t gridDimY,
 ///////////////////////////////////////////////////////////////////////////////
 // cuda_runtime.h
 ///////////////////////////////////////////////////////////////////////////////
-
-enum {
-    cudaDevAttrComputeCapabilityMajor
-        = hipDeviceAttributeComputeCapabilityMajor,
-    cudaDevAttrComputeCapabilityMinor
-        = hipDeviceAttributeComputeCapabilityMinor,
-};
-
-typedef hipError_t cudaError_t;
-const CUresult cudaSuccess = static_cast<CUresult>(0);
-const CUresult cudaErrorInvalidValue = hipErrorInvalidValue;
-const CUresult cudaErrorMemoryAllocation = hipErrorMemoryAllocation;
-typedef enum {} cudaDataType;
-typedef hipDeviceAttribute_t cudaDeviceAttr;
-enum cudaMemoryAdvise {};
-typedef hipMemcpyKind cudaMemcpyKind;
-
-
-typedef hipStreamCallback_t cudaStreamCallback_t;
-typedef hipPointerAttribute_t cudaPointerAttributes;
-
 
 // Error handling
 const char* cudaGetErrorName(cudaError_t hipError) {
@@ -352,26 +305,10 @@ cudaError_t cudaEventSynchronize(cudaEvent_t event) {
     return hipEventSynchronize(event);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// cuComplex.h
-///////////////////////////////////////////////////////////////////////////////
-
-#include "cupy_cuComplex.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // blas
 ///////////////////////////////////////////////////////////////////////////////
-
-typedef hipblasHandle_t cublasHandle_t;
-
-typedef hipblasDiagType_t cublasDiagType_t;
-typedef hipblasFillMode_t cublasFillMode_t;
-typedef hipblasOperation_t cublasOperation_t;
-typedef hipblasPointerMode_t cublasPointerMode_t;
-typedef hipblasSideMode_t cublasSideMode_t;
-typedef enum {} cublasGemmAlgo_t;
-typedef enum {} cublasMath_t;
-typedef hipblasStatus_t cublasStatus_t;
 
 static hipblasOperation_t convert_hipblasOperation_t(hipblasOperation_t op) {
     return static_cast<hipblasOperation_t>(static_cast<int>(op) + 111);

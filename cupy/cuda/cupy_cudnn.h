@@ -3,8 +3,6 @@
 #ifndef INCLUDE_GUARD_CUPY_CUDNN_H
 #define INCLUDE_GUARD_CUPY_CUDNN_H
 
-#include "cupy_cuda.h"
-
 #ifndef CUPY_NO_CUDA
 
 #include <cudnn.h>
