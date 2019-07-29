@@ -359,7 +359,6 @@ def preconfigure_modules(compiler, settings):
 
             # Skip checking other modules when CUDA is unavailable.
             if module['name'] == 'cuda':
-                print(errmsg)
                 break
 
     if len(ret) != len(MODULES):
