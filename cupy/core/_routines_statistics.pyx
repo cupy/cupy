@@ -390,7 +390,7 @@ cdef _nanvar_core = ReductionKernel(
 
 cdef _nanvar_core_out = ReductionKernel(
     'S x, T mean, T alpha', 'U out',
-    '(x - mean) * (x - mean) * alpha',
+    '(x==x) ? ((x - mean) * (x - mean) * alpha) : (0 * alpha)',
     'a + b', 'out = a', '0', '_nanvar_core')
 
 
