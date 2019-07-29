@@ -350,9 +350,8 @@ cdef _mean = create_reduction_func(
 
 _count_non_nan = create_reduction_func(
     'cupy_count_non_nan',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->l', 'f->l', 'd->l'),
-    ('(in0 == in0) ? 1 : 0', 'a + b', 'out0 = a', None),0)
+    ('e->e', 'f->f', 'd->d'),
+    ('(in0 == in0) ? 1.0 : 0.0', 'a + b', 'out0 = a', None),0)
 
 
 cdef ndarray _nanstd(
@@ -368,23 +367,32 @@ cdef ndarray _nanvar(
     assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
                                 'implemented. Current implemention does not ' \
                                 'convert the dtype'
-    
-    if dtype is None:
-        dtype = 'd'
 
-    _count = _count_non_nan(a, axis=axis)
-    arrmean = a._nansum(axis=axis, dtype=dtype)
-    arrmean = _math._true_divide(arrmean, _count)
+    _count = _count_non_nan(a, axis=axis, dtype=dtype, keepdims=True)
+    arrmean = a._nansum(axis=axis, dtype=dtype, out=None, keepdims=True)
+    arrmean = arrmean / _count
 
     alpha = _count - ddof
-    aplha = alpha.clip(a_min=0, a_max=None)
+    alpha = alpha.clip(a_min=0, a_max=None)
     alpha = 1./alpha
 
     if out is None:
-        return _var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
+        return _nanvar_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
     else:
-        return _var_core_out(
-            a, arrmean, alpha, out, axis=axis, keepdims=keepdims) 
+        return _nanvar_core_out(
+            a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
+
+
+cdef _nanvar_core = ReductionKernel(
+    'S x, T mean, T alpha', 'T out',
+    '(x==x) ? ((x - mean) * (x - mean) * alpha) : (0 * alpha)',
+    'a + b', 'out = a', '0', '_nanvar_core')
+
+cdef _nanvar_core_out = ReductionKernel(
+    'S x, T mean, T alpha', 'U out',
+    '(x - mean) * (x - mean) * alpha',
+    'a + b', 'out = a', '0', '_nanvar_core')
+
 
 
 # Variables to expose to Python
