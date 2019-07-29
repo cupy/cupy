@@ -13,7 +13,7 @@
 
 #if CUPY_USE_HIP
 
-#include<cupy_hip.h>
+#include "cupy_hip.h"
 
 #elif !defined(CUPY_NO_CUDA)
 
