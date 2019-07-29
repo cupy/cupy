@@ -1,7 +1,6 @@
 import unittest
 
 import cupy
-from cupy.cuda import runtime
 from cupy import testing
 
 
@@ -11,7 +10,6 @@ from cupy import testing
         cupy.int8, cupy.int16, cupy.int32, cupy.int64,
         cupy.float16, cupy.float32, cupy.float64],
 }))
-@unittest.skipIf(runtime.is_hip, "Not support on HIP")
 class TestDLPackConversion(unittest.TestCase):
 
     def setUp(self):
@@ -32,7 +30,6 @@ class TestDLPackConversion(unittest.TestCase):
         testing.assert_array_equal(self.array.data.ptr, array.data.ptr)
 
 
-@unittest.skipIf(runtime.is_hip, "Not support on HIP")
 class TestDLTensorMemory(unittest.TestCase):
 
     def test_deleter(self):
