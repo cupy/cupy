@@ -192,5 +192,5 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
                      keepdims=keepdims)
 
     # TODO(okuta): check type
-    return _statistics._ndarray_nanstd(axis=axis, dtype=dtype, out=out,
+    return _statistics._ndarray_nanstd(a, axis=axis, dtype=dtype, out=out,
                                        ddof=ddof, keepdims=keepdims)

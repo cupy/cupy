@@ -225,3 +225,64 @@ class TestNanVarStd(unittest.TestCase):
             a[0, :] = xp.nan
         return xp.nanvar(
             a, axis=self.axis, ddof=self.ddof, keepdims=self.keepdims)
+
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_nanstd(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp=xp, dtype=dtype)
+        if a.dtype.kind not in 'biu':
+            a[0, :] = xp.nan
+        return xp.nanstd(
+            a, axis=self.axis, ddof=self.ddof, keepdims=self.keepdims)
+
+
+@testing.gpu
+class TestNanVarStdAdditional(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_nanvar_out(self, xp, dtype):
+        a = testing.shaped_random((10, 20, 30), xp, dtype)
+        z = xp.zeros((20, 30))
+
+        if a.dtype.kind not in 'biu':
+            a[1, :] = xp.nan
+            a[:, 3] = xp.nan
+
+        xp.nanvar(a, axis=0, out=z)
+        return z
+
+    @testing.slow
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_nanvar_huge(self, xp, dtype):
+        a = testing.shaped_random((1024, 512), xp, dtype)
+
+        if a.dtype.kind not in 'biu':
+            a[:512, :256] = xp.nan
+
+        return xp.nanvar(a, axis=1)
+
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_nanstd_out(self, xp, dtype):
+        a = testing.shaped_random((10, 20, 30), xp, dtype)
+        z = xp.zeros((20, 30))
+
+        if a.dtype.kind not in 'biu':
+            a[1, :] = xp.nan
+            a[:, 3] = xp.nan
+
+        xp.nanstd(a, axis=0, out=z)
+        return z
+
+    @testing.slow
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_nanstd_huge(self, xp, dtype):
+        a = testing.shaped_random((1024, 512), xp, dtype)
+
+        if a.dtype.kind not in 'biu':
+            a[:512, :256] = xp.nan
+
+        return xp.nanstd(a, axis=1)
