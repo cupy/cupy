@@ -62,6 +62,18 @@ ncclResult_t ncclCommInitRank(...) {
     return ncclSuccess;
 }
 
+ncclResult_t ncclCommInitAll(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclGroupStart(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclGroupEnd(...) {
+    return ncclSuccess;
+}
+
 void ncclCommDestroy(...) {
 }
 
@@ -73,6 +85,10 @@ ncclResult_t ncclCommCuDevice(...) {
 }
 
 ncclResult_t ncclCommUserRank(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclCommCount(...) {
     return ncclSuccess;
 }
 
