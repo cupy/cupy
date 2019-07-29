@@ -2,6 +2,7 @@ import unittest
 
 import cupy
 
+
 _test_source = r'''
 extern "C" __global__
 void test_sum(const float* x1, const float* x2, float* y) {
