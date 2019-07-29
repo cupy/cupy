@@ -266,7 +266,7 @@ def inv(a):
         dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
 
     cusolver_handle = device.get_cusolver_handle()
-    dev_info = cupy.empty(1, dtype=dtype)
+    dev_info = cupy.empty(1, dtype=cupy.int32)
 
     ipiv = cupy.empty((a.shape[0], 1), dtype=numpy.intc)
 
@@ -274,10 +274,22 @@ def inv(a):
         getrf = cusolver.sgetrf
         getrf_bufferSize = cusolver.sgetrf_bufferSize
         getrs = cusolver.sgetrs
-    else:  # dtype == 'd'
+    elif dtype == 'd':
         getrf = cusolver.dgetrf
         getrf_bufferSize = cusolver.dgetrf_bufferSize
         getrs = cusolver.dgetrs
+    elif dtype == 'F':
+        getrf = cusolver.cgetrf
+        getrf_bufferSize = cusolver.cgetrf_bufferSize
+        getrs = cusolver.cgetrs
+    elif dtype == 'D':
+        getrf = cusolver.zgetrf
+        getrf_bufferSize = cusolver.zgetrf_bufferSize
+        getrs = cusolver.zgetrs
+    else:
+        msg = ('dtype must be float32 (\'f\'), float64 (\'d\'), complex64 '
+               '(\'F\') or float128 (\'D\') (actual: {})'.format(dtype))
+        raise ValueError(msg)
 
     m = a.shape[0]
 
