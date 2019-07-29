@@ -7,7 +7,6 @@
 
 #ifdef __HIPCC__
 
-#include <hip/hip_runtime.h>
 #include <hip/hip_fp16.h>
 
 #elif __CUDACC_VER_MAJOR__ >= 9
