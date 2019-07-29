@@ -301,7 +301,7 @@ def _hipcc(source, options, arch):
     with TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         in_path = path + '.cpp'
-        out_path = path + '.hasco'
+        out_path = path + '.hsaco'
 
         with open(in_path, 'w') as f:
             f.write(source)
@@ -359,11 +359,15 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
         source = _convert_to_hip_source(source)
 
     env = (arch, options, _get_hipcc_version())
-    key_src = '%s %s %s' % (
-        env, _preprocess_hipcc(source, options), extra_source)
+    base = _empty_file_preprocess_cache.get(env, None)
+    if base is None:
+        # This is checking of HIPCC compiler internal version
+        base = _preprocess_hipcc('', options)
+        _empty_file_preprocess_cache[env] = base
+    key_src = '%s %s %s %s' % (env, base, source, extra_source)
 
     key_src = key_src.encode('utf-8')
-    name = '%s_2.hsaco' % hashlib.md5(key_src).hexdigest()
+    name = '%s.hsaco' % hashlib.md5(key_src).hexdigest()
 
     if not os.path.isdir(cache_dir):
         try:
