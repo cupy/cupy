@@ -17,7 +17,7 @@ extern "C" {
 
 typedef int CUdevice;
 typedef hipError_t CUresult;
-const CUresult CUDA_SUCCESS=static_cast<CUresult>(0);
+const CUresult CUDA_SUCCESS = static_cast<CUresult>(0);
 enum CUjit_option {};
 enum CUjitInputType {};
 
