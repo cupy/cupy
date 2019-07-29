@@ -187,13 +187,12 @@ if use_hip:
     mod_cuda = MODULES[0]
     mod_cuda['include'] = [
         'hip/hip_runtime_api.h',
+        'hip/hiprtc.h',
         'hipblas.h',
+        'hiprand/hiprand.h',
         #        'hipsparse.h',
-        #        'cuda.h',
         #        'cuda_profiler_api.h',
-        #        'cuda_runtime.h',
         #        'cufft.h',
-        #        'nvrtc.h',
     ]
     mod_cuda['libraries'] = [
         'hiprtc',
@@ -201,8 +200,6 @@ if use_hip:
         'hipblas',
         'hiprand',
         #        'hipsparse',
-        #        'cuda',
-        #        'cudart',
         #        'cufft',
     ]
     del mod_cuda['version_method']

@@ -5,7 +5,6 @@
 
 #include <hip/hip_runtime_api.h>
 #include <hipblas.h>
-#include <hiprand/hiprand.h>
 
 #define CUDA_VERSION 0
 

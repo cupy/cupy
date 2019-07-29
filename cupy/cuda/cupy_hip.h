@@ -3,6 +3,7 @@
 #ifndef INCLUDE_GUARD_CUPY_HIP_H
 #define INCLUDE_GUARD_CUPY_HIP_H
 
+#include <hiprand/hiprand.h>
 #include "cupy_hip_common.h"
 
 extern "C" {

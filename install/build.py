@@ -118,9 +118,7 @@ def get_compiler_setting(use_cpp11):
 
     if rocm_path:
         include_dirs.append(os.path.join(rocm_path, 'include'))
-        include_dirs.append(os.path.join(rocm_path, 'rocrand', 'include'))
         library_dirs.append(os.path.join(rocm_path, 'lib'))
-        library_dirs.append(os.path.join(rocm_path, 'rocrand', 'lib'))
 
     if use_cpp11:
         extra_compile_args.append('-std=c++11')
