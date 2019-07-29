@@ -3,11 +3,15 @@
 #ifndef INCLUDE_GUARD_CUPY_NVRTC_H
 #define INCLUDE_GUARD_CUPY_NVRTC_H
 
-#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#ifdef CUPY_USE_HIP
+
+#include "cupy_hiprtc.h"
+
+#elif !defined(CUPY_NO_CUDA)
 
 #include <nvrtc.h>
 
-#else // #ifndef #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#else
 
 extern "C" {
 
@@ -55,6 +59,6 @@ nvrtcResult nvrtcGetProgramLog(...) {
 
 }
 
-#endif // #ifndef #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#endif
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_NVRTC_H

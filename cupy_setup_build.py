@@ -196,6 +196,7 @@ if use_hip:
         #        'nvrtc.h',
     ]
     mod_cuda['libraries'] = [
+        'hiprtc',
         'hip_hcc',
         'hipblas',
         'hiprand',
@@ -203,7 +204,6 @@ if use_hip:
         #        'cuda',
         #        'cudart',
         #        'cufft',
-        #        'nvrtc',
     ]
     del mod_cuda['version_method']
     del mod_cuda['check_method']
