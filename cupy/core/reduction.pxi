@@ -272,7 +272,6 @@ class simple_reduction_function(object):
             in_args[0].dtype.type, out_args[0].dtype.type, out_types,
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
-
         kern.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size)
         return ret
@@ -461,7 +460,6 @@ class ReductionKernel(object):
             self.name, block_size, self.reduce_type, self.identity,
             self.map_expr, self.reduce_expr, self.post_map_expr,
             self.preamble, self.options)
-
         kern.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
         return ret
