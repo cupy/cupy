@@ -38,8 +38,6 @@ class _RecursiveAttr(object):
         Enable support for isinstance(instance, _RecursiveAttr instance)
         by redirecting it to appropriate isinstance method.
         """
-        if isinstance(instance, _RecursiveAttr):
-            instance = instance._numpy_object
 
         if self._cupy_object is not None:
             return isinstance(instance, self._cupy_object)
@@ -121,7 +119,7 @@ numpy = _RecursiveAttr(np, cp)
 
 
 # -----------------------------------------------------------------------------
-# ndarray wrapper and proxying of magic methods
+# proxying of ndarray magic methods and wrappers
 # -----------------------------------------------------------------------------
 
 
@@ -264,14 +262,14 @@ class vectorize(object):
         return getattr(self.__dict__['vec_obj'], attr)
 
     def __setattr__(self, name, value):
-        return setattr(self.__dict__['vec_obj'], name, value)
+        return setattr(self.vec_obj, name, value)
+
+    @property
+    def __doc__(self):
+        return self.vec_obj.__doc__
 
     def __call__(self, *args, **kwargs):
-        res = self.vec_obj(*args, **kwargs)
-
-        if isinstance(res, np.ndarray):
-            return ndarray._store(cp.array(res))
-        return res
+        return _call_numpy(self.vec_obj, args, kwargs)
 
 
 # -----------------------------------------------------------------------------

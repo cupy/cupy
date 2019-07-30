@@ -105,16 +105,6 @@ def numpy_fallback_array_allclose(name='xp'):
 @testing.gpu
 class TestFallbackMode(unittest.TestCase):
 
-    @numpy_fallback_array_equal()
-    def test_vectorize(self, xp):
-
-        def function(a, b):
-            if a > b:
-                return a - b
-            return a + b
-
-        return xp.vectorize(function)([1, 2, 3, 4], 2)
-
     def test_module_not_callable(self):
 
         pytest.raises(TypeError, fallback_mode.numpy)
@@ -399,3 +389,46 @@ class TestArrayMatmul(unittest.TestCase):
         b = testing.shaped_random((5, 3), xp, seed=5)
 
         return a.__matmul__(b)
+
+
+@testing.gpu
+class TestVectorizeWrapper(unittest.TestCase):
+
+    @numpy_fallback_array_equal()
+    def test_pyfunc_custom_list(self, xp):
+
+        def function(a, b):
+            if a > b:
+                return a - b
+            return a + b
+
+        return xp.vectorize(function)([1, 2, 3, 4], 2)
+
+    @numpy_fallback_array_equal()
+    def test_pyfunc_builtin(self, xp):
+        a = testing.shaped_random((4, 5), xp)
+        vabs = xp.vectorize(abs)
+        return vabs(a)
+
+    @numpy_fallback_array_equal()
+    def test_pyfunc_numpy(self, xp):
+        a = testing.shaped_random((4, 5), xp)
+        vabs = xp.vectorize(numpy.abs)
+        return vabs(a)
+
+    @numpy_fallback_equal()
+    def test_getattr(self, xp):
+        vabs = xp.vectorize(numpy.abs)
+        return vabs.pyfunc
+
+    @numpy_fallback_array_equal()
+    def test_setattr(self, xp):
+        a = xp.array([-1, 2, -3])
+        vabs = xp.vectorize(abs)
+        vabs.otypes = ['float']
+        return vabs(a)
+
+    @numpy_fallback_equal()
+    def test_doc(self, xp):
+        vabs = xp.vectorize(abs)
+        return vabs.__doc__
