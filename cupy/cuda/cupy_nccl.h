@@ -66,11 +66,11 @@ ncclResult_t ncclCommInitAll(...) {
     return ncclSuccess;
 }
 
-ncclResult_t ncclGroupStart() {
+ncclResult_t ncclGroupStart(...) {
     return ncclSuccess;
 }
 
-ncclResult_t ncclGroupEnd() {
+ncclResult_t ncclGroupEnd(...) {
     return ncclSuccess;
 }
 
