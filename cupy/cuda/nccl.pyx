@@ -177,6 +177,8 @@ cpdef groupStart():
     .. _ncclGroupStart:
         https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/group.html#ncclgroupstart
     """  # noqa
+    if NCCL_VERSION_CODE < 2200:
+        raise RuntimeError('ncclGroupStart is not available in this version')
     with nogil:
         status = ncclGroupStart()
     check_status(status)
@@ -204,6 +206,8 @@ cpdef groupEnd():
     .. _ncclGroupEnd:
         https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/group.html#ncclgroupend
     """  # noqa
+    if NCCL_VERSION_CODE < 2200:
+        raise RuntimeError('ncclGroupEnd is not available in this version')
     with nogil:
         status = ncclGroupEnd()
     check_status(status)
