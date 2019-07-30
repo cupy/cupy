@@ -41,6 +41,8 @@ class TestNCCL(unittest.TestCase):
             comms[i].destroy()
 
     @attr.gpu
+    @unittest.skipUnless(cuda.nccl_enabled and
+                         cuda.nccl.get_version() >= 2200, 'Using old NCCL')
     def test_single_proc_single_dev(self):
         comms = cuda.nccl.NcclCommunicator.initAll(1)
         cuda.nccl.groupStart()
