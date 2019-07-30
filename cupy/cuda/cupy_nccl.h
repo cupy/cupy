@@ -186,6 +186,7 @@ ncclResult_t ncclGetVersion(int *version) {
 
 #endif // #if (NCCL_VERSION_CODE < 2304)
 
+#ifndef CUPY_NO_CUDA
 #if (NCCL_VERSION_CODE < 2200)
 // New functions in 2.2
 ncclResult_t ncclGroupStart() {
@@ -196,6 +197,7 @@ ncclResult_t ncclGroupEnd() {
     return ncclSuccess;
 }
 #endif // #if (NCCL_VERSION_CODE < 2200)
+#endif // #ifndef CUPY_NO_CUDA
 
 ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
                             ncclDataType_t datatype, ncclRedOp_t op, ncclComm_t comm,
