@@ -140,12 +140,20 @@ class TestSVD(unittest.TestCase):
             # assert corresponding vectors are equal up to rotation
             uj = cupy.asnumpy(u_gpu[:, j])
             vhj = cupy.asnumpy(vh_gpu[j, :])
-            with numpy.errstate(invalid='ignore'):
-                sign = numpy.nanmedian(numpy.concatenate([
+            with numpy.errstate(all='ignore'):
+                signs = numpy.concatenate([
                     uj / u_cpu[:, j],
                     (vhj / vh_cpu[j, :]).conj(),
-                ]))
+                ])
+            # While signs are ideally the same, robustly choose one of them.
+            if numpy.dtype(dtype).kind == 'c':  # complex
+                sign = dtype(complex(
+                    numpy.nanmedian(signs.real),
+                    numpy.nanmedian(signs.imag)))
+            else:
+                sign = numpy.nanmedian(signs)
             numpy.testing.assert_allclose(abs(sign), 1, atol=1e-4)
+            sign /= abs(sign)
             numpy.testing.assert_allclose(uj, sign * u_cpu[:, j], atol=1e-4)
             numpy.testing.assert_allclose(
                 vhj, sign.conj() * vh_cpu[j, :], atol=1e-4)
