@@ -137,26 +137,20 @@ class TestSVD(unittest.TestCase):
 
         k, = s_cpu.shape
         for j in range(k):
-            # assert corresponding vectors are equal up to rotation
-            uj = cupy.asnumpy(u_gpu[:, j])
-            vhj = cupy.asnumpy(vh_gpu[j, :])
-            with numpy.errstate(all='ignore'):
-                signs = numpy.concatenate([
-                    uj / u_cpu[:, j],
-                    (vhj / vh_cpu[j, :]).conj(),
-                ])
-            # While signs are ideally the same, robustly choose one of them.
-            if numpy.dtype(dtype).kind == 'c':  # complex
-                sign = dtype(complex(
-                    numpy.nanmedian(signs.real),
-                    numpy.nanmedian(signs.imag)))
-            else:
-                sign = numpy.nanmedian(signs)
-            numpy.testing.assert_allclose(abs(sign), 1, atol=1e-4)
+            # assert corresponding vectors are equal up to rotation (`sign`)
+            uj_cpu = u_cpu[:, j]
+            vj_cpu = vh_cpu[j, :].conj()
+            uj_gpu = cupy.asnumpy(u_gpu[:, j])
+            vj_gpu = cupy.asnumpy(vh_gpu[j, :]).conj()
+            # Use least-squares estimation to compute rotation from cpu result
+            # to gpu result. We know norms of uj_cpu, vj_cpu are 1.
+            u_sign = numpy.vdot(uj_cpu, uj_gpu)
+            v_sign = numpy.vdot(vj_cpu, vj_gpu)
+            numpy.testing.assert_allclose(u_sign, v_sign, atol=1e-4)
+            sign = numpy.mean([u_sign, v_sign])
             sign /= abs(sign)
-            numpy.testing.assert_allclose(uj, sign * u_cpu[:, j], atol=1e-4)
-            numpy.testing.assert_allclose(
-                vhj, sign.conj() * vh_cpu[j, :], atol=1e-4)
+            numpy.testing.assert_allclose(uj_gpu, sign * uj_cpu, atol=1e-4)
+            numpy.testing.assert_allclose(vj_gpu, sign * vj_cpu, atol=1e-4)
 
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
