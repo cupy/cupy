@@ -369,28 +369,26 @@ cdef ndarray _nanvar(
                                 'convert the dtype'
 
     _count = _count_non_nan(a, axis=axis, dtype=dtype, keepdims=True)
-    arrmean = a._nansum(axis=axis, dtype=dtype, out=None, keepdims=True)
-    arrmean = arrmean / _count
-
-    alpha = _count - ddof
-    alpha = alpha.clip(a_min=0, a_max=None)
-    alpha = 1./alpha
+    arrsum = a._nansum(axis=axis, dtype=dtype, out=None, keepdims=True)
 
     if out is None:
-        return _nanvar_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
+        return _nanvar_core(
+            a, arrsum, _count, ddof, axis=axis, keepdims=keepdims)
     else:
         return _nanvar_core_out(
-            a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
+            a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
 
 
 cdef _nanvar_core = ReductionKernel(
-    'S x, T mean, T alpha', 'T out',
-    '(x==x) ? ((x - mean) * (x - mean) * alpha) : (0 * alpha)',
+    'S x, T sum, T _count, T ddof', 'T out',
+    '(x == x ? T(pow(x - sum / _count, T(2))) : ' +
+    'T(0)) / max(T(_count - ddof), T(0))',
     'a + b', 'out = a', '0', '_nanvar_core')
 
 cdef _nanvar_core_out = ReductionKernel(
-    'S x, T mean, T alpha', 'U out',
-    '(x==x) ? ((x - mean) * (x - mean) * alpha) : (0 * alpha)',
+    'S x, T sum, T _count, T ddof', 'U out',
+    '(x == x ? T(pow(x - sum / _count, T(2))) : ' +
+    'T(0)) / max(T(_count - ddof), T(0))',
     'a + b', 'out = a', '0', '_nanvar_core')
 
 
