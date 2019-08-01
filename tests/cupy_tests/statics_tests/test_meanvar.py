@@ -181,32 +181,6 @@ class TestMeanVar(unittest.TestCase):
         return xp.std(a, axis=1, ddof=1)
 
 
-@testing.gpu
-class TestCountNonNan(unittest.TestCase):
-
-    @testing.for_all_dtypes(no_complex=True)
-    def test_count_no_axis(self, dtype):
-        a = cupy.array([[1, 2], [3, 4], [5, 6]], dtype=dtype)
-        if a.dtype.kind not in 'biu':
-            a[0, 0] = cupy.nan
-            count = cupy.core._routines_statistics._count_non_nan(a)
-            assert count.item() == 5
-        else:
-            count = cupy.core._routines_statistics._count_non_nan(a)
-            assert count.item() == 6
-
-    @testing.for_all_dtypes(no_complex=True)
-    def test_count_axis(self, dtype):
-        a = cupy.array([[1, 2], [3, 4], [5, 6]], dtype=dtype)
-        if a.dtype.kind not in 'biu':
-            a[0, 0] = cupy.nan
-            count = cupy.core._routines_statistics._count_non_nan(a, axis=0)
-            assert (count == cupy.array([2, 3])).all()
-        else:
-            count = cupy.core._routines_statistics._count_non_nan(a, axis=0)
-            assert (count == cupy.array([3, 3])).all()
-
-
 @testing.parameterize(
     *testing.product({
         'shape': [(3, 4), (4, 3, 5)],
