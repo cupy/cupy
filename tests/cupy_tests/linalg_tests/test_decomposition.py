@@ -125,16 +125,6 @@ class TestSVD(unittest.TestCase):
         u_gpu, s_gpu, vh_gpu = result_gpu
         cupy.testing.assert_allclose(s_gpu, s_cpu, atol=1e-4)
 
-        # assert unitary
-        cupy.testing.assert_allclose(
-            cupy.matmul(u_gpu.T.conj(), u_gpu),
-            numpy.eye(u_gpu.shape[1]),
-            atol=1e-4)
-        cupy.testing.assert_allclose(
-            cupy.matmul(vh_gpu, vh_gpu.T.conj()),
-            numpy.eye(vh_gpu.shape[0]),
-            atol=1e-4)
-
         k, = s_cpu.shape
         for j in range(k):
             # assert corresponding vectors are equal up to rotation (`sign`)
@@ -146,11 +136,21 @@ class TestSVD(unittest.TestCase):
             # to gpu result. We know norms of uj_cpu, vj_cpu are 1.
             u_sign = numpy.vdot(uj_cpu, uj_gpu)
             v_sign = numpy.vdot(vj_cpu, vj_gpu)
+            numpy.testing.assert_allclose(uj_gpu, u_sign * uj_cpu, atol=1e-4)
+            numpy.testing.assert_allclose(vj_gpu, v_sign * vj_cpu, atol=1e-4)
+            numpy.testing.assert_allclose(abs(u_sign), 1, atol=1e-4)
+            numpy.testing.assert_allclose(abs(v_sign), 1, atol=1e-4)
             numpy.testing.assert_allclose(u_sign, v_sign, atol=1e-4)
-            sign = numpy.mean([u_sign, v_sign])
-            sign /= abs(sign)
-            numpy.testing.assert_allclose(uj_gpu, sign * uj_cpu, atol=1e-4)
-            numpy.testing.assert_allclose(vj_gpu, sign * vj_cpu, atol=1e-4)
+
+        # assert unitary
+        cupy.testing.assert_allclose(
+            cupy.matmul(u_gpu.T.conj(), u_gpu),
+            numpy.eye(u_gpu.shape[1]),
+            atol=1e-4)
+        cupy.testing.assert_allclose(
+            cupy.matmul(vh_gpu, vh_gpu.T.conj()),
+            numpy.eye(vh_gpu.shape[0]),
+            atol=1e-4)
 
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
