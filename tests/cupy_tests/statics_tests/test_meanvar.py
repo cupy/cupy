@@ -194,7 +194,7 @@ class TestNanVarStd(unittest.TestCase):
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanvar(self, xp, dtype):
-        a = testing.shaped_random(self.shape, xp=xp, dtype=dtype)
+        a = testing.shaped_random(self.shape, xp, dtype=dtype)
         if a.dtype.kind not in 'biu':
             a[0, :] = xp.nan
         return xp.nanvar(
@@ -203,7 +203,7 @@ class TestNanVarStd(unittest.TestCase):
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd(self, xp, dtype):
-        a = testing.shaped_random(self.shape, xp=xp, dtype=dtype)
+        a = testing.shaped_random(self.shape, xp, dtype=dtype)
         if a.dtype.kind not in 'biu':
             a[0, :] = xp.nan
         return xp.nanstd(
@@ -237,6 +237,12 @@ class TestNanVarStdAdditional(unittest.TestCase):
 
         return xp.nanvar(a, axis=1)
 
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_nanvar_float16(self, xp):
+        a = testing.shaped_arange((4, 5), xp, numpy.float16)
+        a[0][0] = xp.nan
+        return xp.nanvar(a, axis=0)
+
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd_out(self, xp, dtype):
@@ -259,4 +265,10 @@ class TestNanVarStdAdditional(unittest.TestCase):
         if a.dtype.kind not in 'biu':
             a[:512, :256] = xp.nan
 
+        return xp.nanstd(a, axis=1)
+
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_nanstd_float16(self, xp):
+        a = testing.shaped_arange((4, 5), xp, numpy.float16)
+        a[0][0] = xp.nan
         return xp.nanstd(a, axis=1)
