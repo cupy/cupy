@@ -76,6 +76,9 @@ class CURANDError(RuntimeError):
         self.status = status
         super(CURANDError, self).__init__(STATUS[status])
 
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
 
 @cython.profile(False)
 cpdef inline check_status(int status):
