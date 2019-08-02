@@ -187,8 +187,7 @@ ncclResult_t ncclGetVersion(int *version) {
 #endif // #if (NCCL_VERSION_CODE < 2304)
 
 #ifndef CUPY_NO_CUDA
-#if (NCCL_VERSION_CODE < 2200)
-// New functions in 2.2
+#if (NCCL_VERSION_CODE < 2000)
 ncclResult_t ncclGroupStart() {
     return ncclSuccess;
 }
