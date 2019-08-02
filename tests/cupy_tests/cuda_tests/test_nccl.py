@@ -1,3 +1,4 @@
+import pickle
 import unittest
 
 import cupy
@@ -61,3 +62,12 @@ class TestNCCL(unittest.TestCase):
         id = cuda.nccl.get_unique_id()
         comm = cuda.nccl.NcclCommunicator(1, id, 0)
         assert 1 == comm.size()
+
+@unittest.skipUnless(cuda.nccl_enabled, 'nccl is not installed')
+class TestExceptionPicklable(unittest.TestCase):
+
+    def test(self):
+        e1 = cuda.nccl.NcclError(1)
+        e2 = pickle.loads(pickle.dumps(e1))
+        assert e1.args == e2.args
+        assert str(e1) == str(e2)

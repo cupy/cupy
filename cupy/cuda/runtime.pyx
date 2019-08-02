@@ -138,6 +138,9 @@ class CUDARuntimeError(RuntimeError):
         super(CUDARuntimeError, self).__init__(
             '%s: %s' % (name.decode(), msg.decode()))
 
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
 
 @cython.profile(False)
 cpdef inline check_status(int status):
