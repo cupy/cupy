@@ -350,8 +350,8 @@ cdef _mean = create_reduction_func(
 
 _count_non_nan = create_reduction_func(
     'cupy_count_non_nan',
-    ('e->e', 'f->f', 'd->d'),
-    ('(in0 == in0) ? 1.0 : 0.0', 'a + b', 'out0 = a', None), 0)
+    ('e->l', 'f->l', 'd->l'),
+    ('(in0 == in0) ? 1 : 0', 'a + b', 'out0 = a', None), 0)
 
 
 cdef ndarray _nanstd(
@@ -368,7 +368,7 @@ cdef ndarray _nanvar(
                                 'implemented. Current implemention does not ' \
                                 'convert the dtype'
 
-    _count = _count_non_nan(a, axis=axis, dtype=dtype, keepdims=True)
+    _count = _count_non_nan(a, axis=axis, keepdims=True)
     arrsum = a._nansum(axis=axis, dtype=dtype, out=None, keepdims=True)
 
     if out is None:
@@ -379,17 +379,24 @@ cdef ndarray _nanvar(
             a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
 
 
+cdef _nanvar_preamble = '''
+template <typename S, typename T>
+__device__ T nanvar_impl(S x, T mean, long long alpha) {
+    return (x == x ? T((x - mean) * (x - mean)) : T(0)) / alpha;
+}
+'''
+
+
 cdef _nanvar_core = ReductionKernel(
-    'S x, T sum, T _count, T ddof', 'T out',
-    '(x == x ? T(pow(x - sum / _count, T(2))) : ' +
-    'T(0)) / max(T(_count - ddof), T(0))',
-    'a + b', 'out = a', '0', '_nanvar_core')
+    'S x, T sum, int64 _count, int64 ddof', 'S out',
+    'nanvar_impl<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
+    'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
+
 
 cdef _nanvar_core_out = ReductionKernel(
-    'S x, T sum, T _count, T ddof', 'U out',
-    '(x == x ? T(pow(x - sum / _count, T(2))) : ' +
-    'T(0)) / max(T(_count - ddof), T(0))',
-    'a + b', 'out = a', '0', '_nanvar_core')
+    'S x, T sum, int64 _count, int64 ddof', 'U out',
+    'nanvar_impl<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
+    'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
 
 
 # Variables to expose to Python
