@@ -63,6 +63,7 @@ class TestNCCL(unittest.TestCase):
         comm = cuda.nccl.NcclCommunicator(1, id, 0)
         assert 1 == comm.size()
 
+
 @unittest.skipUnless(cuda.nccl_enabled, 'nccl is not installed')
 class TestExceptionPicklable(unittest.TestCase):
 

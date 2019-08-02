@@ -87,4 +87,3 @@ NCCL
    cupy.cuda.nccl.get_unique_id
    cupy.cuda.nccl.groupStart
    cupy.cuda.nccl.groupEnd
-
