@@ -235,3 +235,9 @@ class TestNanMeanAdditional(unittest.TestCase):
             a[:512, :256] = xp.nan
 
         return xp.nanmean(a, axis=1)
+
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_nanmean_float16(self, xp):
+        a = testing.shaped_arange((2, 3), xp, numpy.float16)
+        a[0][0] = xp.nan
+        return xp.nanmean(a)
