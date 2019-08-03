@@ -309,14 +309,15 @@ cdef _mean = create_reduction_func(
      'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
 
 
-cdef _nan_mean_var_preamble = '''
+cdef _nanmean_preamble = '''
+#define ll long long
 template <typename T>
-struct nan_mean_var_st{
+struct nanmean_st{
     T value;
-    int count;
-    __device__ nan_mean_var_st() : count(-1) { }
-    __device__ nan_mean_var_st(T v) : value(v), count(is_nan(v) ? 0 : 1) { }
-    __device__ nan_mean_var_st(T v, int c) : value(v), count(c) { }
+    ll count;
+    __device__ nanmean_st() : count(-1) { }
+    __device__ nanmean_st(T v) : value(v), count(is_nan(v) ? 0 : 1) { }
+    __device__ nanmean_st(T v, ll c) : value(v), count(c) { }
 };
 
 template <typename T>
@@ -325,25 +326,25 @@ inline __device__ bool is_nan(T x) {
 }
 
 template <typename T>
-__device__ nan_mean_var_st<T> my_nanmean_float(
-        const nan_mean_var_st<T>& a, const nan_mean_var_st<T>& b) {
+__device__ nanmean_st<T> my_nanmean_float(
+        const nanmean_st<T>& a, const nanmean_st<T>& b) {
     if (a.count == -1) return b;
     if (b.count == -1) return a;
     if (is_nan(a.value)) return b;
     if (is_nan(b.value)) return a;
-    return nan_mean_var_st<T>(a.value + b.value, a.count + b.count);
+    return nanmean_st<T>(a.value + b.value, a.count + b.count);
 }
 
 template <typename T>
-__device__ nan_mean_var_st<T> my_nanmean_complex(
-        const nan_mean_var_st<T>& a, const nan_mean_var_st<T>& b) {
+__device__ nanmean_st<T> my_nanmean_complex(
+        const nanmean_st<T>& a, const nanmean_st<T>& b) {
     if (a.count == -1) return b;
     if (b.count == -1) return a;
     if (is_nan(a.value.real())) return b;
     if (is_nan(a.value.imag())) return b;
     if (is_nan(b.value.real())) return a;
     if (is_nan(b.value.imag())) return a;
-    return nan_mean_var_st<T>(a.value + b.value, a.count + b.count);
+    return nanmean_st<T>(a.value + b.value, a.count + b.count);
 }
 '''
 
@@ -358,8 +359,8 @@ cdef _nanmean = create_reduction_func(
      ('D->D', (None, 'my_nanmean_complex(a, b)',
       'out0 = a.value / type_out0_raw(a.count)', None))),
     ('in0', None,
-     'out0 = a.value / a.count', 'nan_mean_var_st<type_out0_raw>'),
-    None, _nan_mean_var_preamble)
+     'out0 = a.value / a.count', 'nanmean_st<type_out0_raw>'),
+    None, _nanmean_preamble)
 
 
 # Variables to expose to Python
