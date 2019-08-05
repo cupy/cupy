@@ -92,11 +92,8 @@ class Plan1d(object):
     def __init__(self, int nx, int fft_type, int batch):
         cdef Handle plan
         cdef size_t work_size
-        stream = stream_module.get_current_stream_ptr()
         with nogil:
             result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
             if result == 0:
@@ -138,6 +135,11 @@ class Plan1d(object):
         _current_plan = None
 
     def fft(self, a, out, direction):
+        cdef Handle plan = self.plan
+        stream = stream_module.get_current_stream_ptr()
+        with nogil:
+            result = cufftSetStream(plan, <driver.Stream>stream)
+        check_result(result)
         if self.fft_type == CUFFT_C2C:
             execC2C(self.plan, a.data, out.data, direction)
         elif self.fft_type == CUFFT_R2C:
@@ -222,11 +224,8 @@ class PlanNd(object):
             onembed_arr = numpy.asarray(onembed, dtype=numpy.intc)
             onembed_ptr = &onembed_arr[0]
 
-        stream = stream_module.get_current_stream_ptr()
         with nogil:
             result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
             if result == 0:
@@ -275,6 +274,11 @@ class PlanNd(object):
         _current_plan = None
 
     def fft(self, a, out, direction):
+        cdef Handle plan = self.plan
+        stream = stream_module.get_current_stream_ptr()
+        with nogil:
+            result = cufftSetStream(plan, <driver.Stream>stream)
+        check_result(result)
         if self.fft_type == CUFFT_C2C:
             execC2C(self.plan, a.data, out.data, direction)
         elif self.fft_type == CUFFT_Z2Z:
