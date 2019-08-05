@@ -361,7 +361,7 @@ class TestPlanCtxManagerFftn(unittest.TestCase):
 
         try:
             with plan_wrong:
-                out = fftn(a, s=self.s, axes=self.axes, norm=self.norm)
+                fftn(a, s=self.s, axes=self.axes, norm=self.norm)
         except ValueError as ve:
             # targeting a particular error
             if ve.__str__().startswith('The CUFFT plan and a.shape do'
@@ -375,7 +375,7 @@ class TestPlanCtxManagerFftn(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
-    'shape': [(10,),],
+    'shape': [(10,), ],
     'norm': [None, 'ortho'],
 }))
 @testing.gpu
@@ -438,7 +438,7 @@ class TestPlanCtxManagerFft(unittest.TestCase):
 
         try:
             with plan_wrong:
-                out = fft(a, n=self.n, norm=self.norm)
+                fft(a, n=self.n, norm=self.norm)
         except ValueError as ve:
             # targeting a particular error
             if ve.__str__().startswith('Target array size does not match'
@@ -448,6 +448,7 @@ class TestPlanCtxManagerFft(unittest.TestCase):
                 raise ve
         else:
             raise Exception("No error is raised --- should not happen.")
+
 
 @testing.parameterize(
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
