@@ -283,6 +283,7 @@ class TestNanVarStdAdditional(unittest.TestCase):
         ((0, 0, 0), None),
         ((0, 0, 0), (0, 2)),
     ],
+    'func': ['mean', 'std', 'var'],
 }))
 @testing.gpu
 class TestProductZeroLength(unittest.TestCase):
@@ -292,18 +293,5 @@ class TestProductZeroLength(unittest.TestCase):
     def test_external_mean_zero_len(self, xp, dtype):
         shape, axis = self.params
         a = testing.shaped_arange(shape, xp, dtype)
-        return xp.mean(a, axis=axis)
-
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose()
-    def test_external_std_zero_len(self, xp, dtype):
-        shape, axis = self.params
-        a = testing.shaped_arange(shape, xp, dtype)
-        return xp.std(a, axis=axis)
-
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose()
-    def test_external_var_zero_len(self, xp, dtype):
-        shape, axis = self.params
-        a = testing.shaped_arange(shape, xp, dtype)
-        return xp.var(a, axis=axis)
+        f = getattr(xp, self.func)
+        return f(a, axis=axis)
