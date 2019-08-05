@@ -1,8 +1,9 @@
 import cupy
 from cupy.cuda import cufft
-from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
-                          hfft as _hfft, ihfft as _ihfft)
+from cupy.fft.fft import (_fft, _default_fft_func, hfft as _hfft,
+                          ihfft as _ihfft)
 from cupy.fft.fft import fftshift, ifftshift, fftfreq, rfftfreq
+import numpy as np
 
 
 __all__ = ['fft', 'ifft', 'fft2', 'ifft2', 'fftn', 'ifftn',
@@ -24,6 +25,7 @@ except ImportError:
 
 __ua_domain__ = 'numpy.scipy.fft'
 _implemented = {}
+
 
 def __ua_convert__(dispatchables, coerce):
     if not all(d.dispatch_type == np.ndarray for d in dispatchables):

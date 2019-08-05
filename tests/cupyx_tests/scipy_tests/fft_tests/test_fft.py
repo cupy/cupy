@@ -12,6 +12,7 @@ def _fft_module(xp):
     else:
         return np.fft
 
+
 def _correct_np_dtype(xp, dtype, out):
     # NumPy always transforms in double precision, cast output to correct type
     if xp == np:
@@ -74,20 +75,19 @@ class TestFft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
 
-@testing.parameterize(
-    *testing.product({
+@testing.parameterize(*(
+    testing.product({
         'shape': [(3, 4)],
         's': [None, (1, 5)],
         'axes': [None, (-2, -1), (-1, -2), (0,)],
         'norm': [None, 'ortho']
-        }),
-    *testing.product({
+    })
+    + testing.product({
         'shape': [(2, 3, 4)],
         's': [None, (1, 5), (1, 4, 10)],
         'axes': [None, (-2, -1), (-1, -2, -3)],
         'norm': [None, 'ortho']
-    })
-)
+    })))
 @testing.gpu
 @testing.with_requires('numpy>=1.10.0')
 class TestFft2(unittest.TestCase):
@@ -118,7 +118,8 @@ class TestFft2(unittest.TestCase):
     def test_ifft2(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        out = _fft_module(xp).ifft2(x, s=self.s, axes=self.axes, norm=self.norm)
+        out = _fft_module(xp).ifft2(
+            x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
@@ -133,26 +134,25 @@ class TestFft2(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
 
-@testing.parameterize(
-    *testing.product({
+@testing.parameterize(*(
+    testing.product({
         'shape': [(3, 4)],
         's': [None, (1, 5)],
         'axes': [None, (-2, -1), (-1, -2), (0,)],
         'norm': [None, 'ortho']
-        }),
-    *testing.product({
+    })
+    + testing.product({
         'shape': [(2, 3, 4)],
         's': [None, (1, 5), (1, 4, 10)],
         'axes': [None, (-2, -1), (-1, -2, -3)],
         'norm': [None, 'ortho']
-    }),
-    *testing.product({
+    })
+    + testing.product({
         'shape': [(2, 3, 4, 5)],
         's': [None],
         'axes': [None, (0, 1, 2, 3)],
         'norm': [None, 'ortho']
-    })
-)
+    })))
 @testing.gpu
 @testing.with_requires('numpy>=1.10.0')
 class TestFftn(unittest.TestCase):
@@ -177,7 +177,6 @@ class TestFftn(unittest.TestCase):
         out = _fft_module(xp).fftn(x, s=self.s, axes=self.axes,
                                    norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
-
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -349,7 +348,6 @@ class TestRfftn(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -359,7 +357,6 @@ class TestRfftn(unittest.TestCase):
         out = _fft_module(xp).rfftn(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
-
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
