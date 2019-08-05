@@ -28,6 +28,8 @@ Means and variances
    cupy.mean
    cupy.var
    cupy.std
+   cupy.nanvar
+   cupy.nanstd
 
 
 Histograms
