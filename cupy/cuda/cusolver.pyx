@@ -243,10 +243,10 @@ cdef extern from 'cupy_cusolver.h' nogil:
     ###########################################################################
 
     # Bidiagonal factorization
-    int cusolverDnSgebrd_bufferSize(Handle handle, int m, int n, int* Lwork)
-    int cusolverDnDgebrd_bufferSize(Handle handle, int m, int n, int* Lwork)
-    int cusolverDnCgebrd_bufferSize(Handle handle, int m, int n, int* Lwork)
-    int cusolverDnZgebrd_bufferSize(Handle handle, int m, int n, int* Lwork)
+    int cusolverDnSgebrd_bufferSize(Handle handle, int m, int n, int* lwork)
+    int cusolverDnDgebrd_bufferSize(Handle handle, int m, int n, int* lwork)
+    int cusolverDnCgebrd_bufferSize(Handle handle, int m, int n, int* lwork)
+    int cusolverDnZgebrd_bufferSize(Handle handle, int m, int n, int* lwork)
 
     int cusolverDnSgebrd(Handle handle, int m, int n,
                          float* A, int lda,
