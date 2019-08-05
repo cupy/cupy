@@ -71,6 +71,28 @@ class TestFft(unittest.TestCase):
                                 overwrite_x=True)
         return x
 
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_fft_plan_manager(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        # hack: avoid testing the cases when the output array is of size 0
+        # because cuFFT and numpy raise different kinds of exceptions
+        if self.n == 0:
+            return x
+        x_orig = x.copy()
+        if scp is cupyx.scipy:
+            from cupy.cuda.cufft import get_current_plan
+            plan = scp.fftpack.get_fft_plan(x, shape=self.n, axes=self.axis)
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = scp.fftpack.fft(x, n=self.n, axis=self.axis)
+            assert get_current_plan() is None
+        else:  # scipy
+            out = scp.fftpack.fft(x, n=self.n, axis=self.axis)
+        testing.assert_array_equal(x, x_orig)
+        return out
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False, scipy_name='scp')
@@ -124,6 +146,28 @@ class TestFft(unittest.TestCase):
             x = scp.fftpack.ifft(x, n=self.n, axis=self.axis,
                                  overwrite_x=True)
         return x
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_ifft_plan_manager(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        # hack: avoid testing the cases when the output array is of size 0
+        # because cuFFT and numpy raise different kinds of exceptions
+        if self.n == 0:
+            return x
+        x_orig = x.copy()
+        if scp is cupyx.scipy:
+            from cupy.cuda.cufft import get_current_plan
+            plan = scp.fftpack.get_fft_plan(x, shape=self.n, axes=self.axis)
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = scp.fftpack.ifft(x, n=self.n, axis=self.axis)
+            assert get_current_plan() is None
+        else:  # scipy
+            out = scp.fftpack.ifft(x, n=self.n, axis=self.axis)
+        testing.assert_array_equal(x, x_orig)
+        return out
 
 
 @testing.parameterize(
@@ -199,6 +243,25 @@ class TestFft2(unittest.TestCase):
                                  overwrite_x=True)
         return x
 
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_fft2_plan_manager(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
+        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+            return x
+        if scp is cupyx.scipy:
+            from cupy.cuda.cufft import get_current_plan
+            plan = scp.fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = scp.fftpack.fft2(x, shape=self.s, axes=self.axes)
+            assert get_current_plan() is None
+        else:  # scipy
+            out = scp.fftpack.fft2(x, shape=self.s, axes=self.axes)
+        return out
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False, scipy_name='scp')
@@ -254,6 +317,25 @@ class TestFft2(unittest.TestCase):
             x = scp.fftpack.ifft2(x, shape=self.s, axes=self.axes,
                                   overwrite_x=True)
         return x
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_ifft2_plan_manager(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
+        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+            return x
+        if scp is cupyx.scipy:
+            from cupy.cuda.cufft import get_current_plan
+            plan = scp.fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = scp.fftpack.ifft2(x, shape=self.s, axes=self.axes)
+            assert get_current_plan() is None
+        else:  # scipy
+            out = scp.fftpack.ifft2(x, shape=self.s, axes=self.axes)
+        return out
 
 
 @testing.parameterize(
@@ -329,6 +411,25 @@ class TestFftn(unittest.TestCase):
                                  overwrite_x=True)
         return x
 
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_fftn_plan_manager(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
+        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+            return x
+        if scp is cupyx.scipy:
+            from cupy.cuda.cufft import get_current_plan
+            plan = scp.fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = scp.fftpack.fftn(x, shape=self.s, axes=self.axes)
+            assert get_current_plan() is None
+        else:  # scipy
+            out = scp.fftpack.fftn(x, shape=self.s, axes=self.axes)
+        return out
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False, scipy_name='scp')
@@ -384,6 +485,25 @@ class TestFftn(unittest.TestCase):
             x = scp.fftpack.ifftn(x, shape=self.s, axes=self.axes,
                                   overwrite_x=True)
         return x
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_ifftn_plan_manager(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
+        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+            return x
+        if scp is cupyx.scipy:
+            from cupy.cuda.cufft import get_current_plan
+            plan = scp.fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = scp.fftpack.ifftn(x, shape=self.s, axes=self.axes)
+            assert get_current_plan() is None
+        else:  # scipy
+            out = scp.fftpack.ifftn(x, shape=self.s, axes=self.axes)
+        return out
 
 
 @testing.parameterize(*testing.product({

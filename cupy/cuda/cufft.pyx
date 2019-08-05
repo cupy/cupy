@@ -7,6 +7,18 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 
 
+cdef object _current_plan = None
+
+
+cpdef get_current_plan():
+    """Get current cuFFT plan.
+
+    Returns:
+        None or cupy.cuda.cufft.Plan1d or cupy.cuda.cufft.PlanNd
+    """
+    return _current_plan
+
+
 cdef extern from 'cupy_cufft.h' nogil:
     ctypedef struct Complex 'cufftComplex':
         float x, y
@@ -115,6 +127,15 @@ class Plan1d(object):
         with nogil:
             result = cufftDestroy(plan)
         check_result(result)
+
+    def __enter__(self):
+        global _current_plan
+        _current_plan = self
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        global _current_plan
+        _current_plan = None
 
     def fft(self, a, out, direction):
         if self.fft_type == CUFFT_C2C:
@@ -243,6 +264,15 @@ class PlanNd(object):
         with nogil:
             result = cufftDestroy(plan)
         check_result(result)
+
+    def __enter__(self):
+        global _current_plan
+        _current_plan = self
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        global _current_plan
+        _current_plan = None
 
     def fft(self, a, out, direction):
         if self.fft_type == CUFFT_C2C:
