@@ -25,28 +25,32 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             Currently only complex-to-complex transforms are supported.
 
     Returns:
-        a cuFFT plan for either 1D transform (cupy.cuda.cufft.Plan1d) or N-D
-        transform (cupy.cuda.cufft.PlanNd).
+        a cuFFT plan for either 1D transform (``cupy.cuda.cufft.Plan1d``) or
+        N-D transform (``cupy.cuda.cufft.PlanNd``).
 
     .. note::
-       1. This API is a deviation from SciPy's, is currently experimental, and
-           may be changed in the future version.
-       2. The returned plan can not only be passed as one of the arguments of
-           the functions in `cupyx.scipy.fftpack`, but also be used as a
-           context manager for both `cupy.fft` and `cupyx.scipy.fftpack`
-           functions:
+        The returned plan can not only be passed as one of the arguments of
+        the functions in ``cupyx.scipy.fftpack``, but also be used as a
+        context manager for both ``cupy.fft`` and ``cupyx.scipy.fftpack``
+        functions:
 
-          .. code-block:: python
+        .. code-block:: python
 
-              x = cupy.random.random(16).reshape(4, 4).astype(cupy.complex)
-              plan = cupyx.scipy.fftpack.get_fft_plan(x)
-              with plan:
-                  y = cupy.fft.fftn(x)
-                  # alternatively:
-                  y = cupyx.scipy.fftpack.fftn(x)  # no explicit plan is given!
+            x = cupy.random.random(16).reshape(4, 4).astype(cupy.complex)
+            plan = cupyx.scipy.fftpack.get_fft_plan(x)
+            with plan:
+                y = cupy.fft.fftn(x)
+                # alternatively:
+                y = cupyx.scipy.fftpack.fftn(x)  # no explicit plan is given!
+            # alternatively:
+            y = cupyx.scipy.fftpack.fftn(x, plan=plan)  # pass plan explicitly
 
-          In the first case, no cuFFT plan will be generated automatically,
-          even if `cupy.fft.config.enable_nd_planning = True` is set.
+        In the first case, no cuFFT plan will be generated automatically,
+        even if ``cupy.fft.config.enable_nd_planning = True`` is set.
+
+    .. warning::
+        This API is a deviation from SciPy's, is currently experimental, and
+        may be changed in the future version.
     """
     # check input array
     if a.flags.c_contiguous:
