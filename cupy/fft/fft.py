@@ -373,13 +373,17 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
                          % norm)
 
     a = _convert_dtype(a, value_type)
+
+    if (s is not None) and (axes is not None) and len(s) != len(axes):
+        raise ValueError('Shape and axes have different lengths.')
+
     if axes is None:
-        dim = a.ndim
+        if s is None:
+            dim = a.ndim
+        else:
+            dim = len(s)
         axes = [i for i in six.moves.range(-dim, 0)]
     axes = tuple(axes)
-
-    if (s is not None) and len(s) != len(axes):
-        raise ValueError('Shape and axes have different lengths.')
 
     if order == 'A':
         if a.flags.f_contiguous:
