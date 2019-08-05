@@ -34,11 +34,13 @@ try:
 except ImportError:
     thrust_enabled = False
 
-try:
-    from cupy.cuda import cub  # NOQA
-    cub_enabled = True
-except ImportError:
-    cub_enabled = False
+cub_enabled = False
+if int(os.getenv('CUB_DISABLED', 0)) == 0:
+    try:
+        from cupy.cuda import cub  # NOQA
+        cub_enabled = True
+    except ImportError:
+        pass
 
 try:
     from cupy.cuda import nccl  # NOQA
@@ -86,20 +88,6 @@ def get_cuda_path():
             _cuda_path = '/usr/local/cuda'
 
     return _cuda_path
-
-
-def use_cub():
-    global _cub_disabled
-    if _cub_disabled is None:
-        _cub_disabled = os.getenv('CUB_DISABLED', False)
-        if _cub_disabled not in ('0', '1', True, False):
-            msg = 'CUB_DISABLED must be \'0\' or \'1\'.'
-            raise ValueError(msg)
-        if _cub_disabled == '0':
-            _cub_disabled = False
-        elif _cub_disabled == '1':
-            _cub_disabled = True
-    return cub_enabled and not _cub_disabled
 
 
 # import class and function
