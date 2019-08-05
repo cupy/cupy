@@ -288,7 +288,7 @@ def inv(a):
         getrs = cusolver.zgetrs
     else:
         msg = ('dtype must be float32 (\'f\'), float64 (\'d\'), complex64 '
-               '(\'F\') or float128 (\'D\') (actual: {})'.format(dtype))
+               '(\'F\') or complex128 (\'D\') (actual: {})'.format(dtype))
         raise ValueError(msg)
 
     m = a.shape[0]
