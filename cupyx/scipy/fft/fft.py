@@ -232,7 +232,7 @@ def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
 
 
 @_implements(_scipy_fft.irfft)
-def irfft(x, n=None, axis=-1, overwrite_x=False):
+def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
     """Compute the one-dimensional inverse FFT for real input.
 
     Args:
