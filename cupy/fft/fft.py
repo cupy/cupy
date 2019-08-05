@@ -328,6 +328,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     else:
         raise ValueError('a must be contiguous')
 
+    plan = cufft.get_current_plan()
     if plan is None:
         # generate a plan
         plan = _get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order)
