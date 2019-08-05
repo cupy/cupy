@@ -62,6 +62,18 @@ ncclResult_t ncclCommInitRank(...) {
     return ncclSuccess;
 }
 
+ncclResult_t ncclCommInitAll(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclGroupStart(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclGroupEnd(...) {
+    return ncclSuccess;
+}
+
 void ncclCommDestroy(...) {
 }
 
@@ -76,11 +88,19 @@ ncclResult_t ncclCommUserRank(...) {
     return ncclSuccess;
 }
 
+ncclResult_t ncclCommCount(...) {
+    return ncclSuccess;
+}
+
 ncclResult_t ncclAllReduce(...) {
     return ncclSuccess;
 }
 
 ncclResult_t ncclReduce(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclBroadcast(...) {
     return ncclSuccess;
 }
 
@@ -148,6 +168,15 @@ ncclDataType_t _get_proper_datatype(ncclDataType_t datatype) {
 
 #endif // #if (NCCL_VERSION_CODE < 2000)
 
+#if (NCCL_VERSION_CODE < 2200)
+// New function in 2.2
+ncclResult_t ncclBroadcast(const void* sendbuff, void* recvbuff, size_t count,
+			   ncclDataType_t datatype, int root, ncclComm_t comm,
+			   cudaStream_t stream) {
+    return ncclSuccess;
+}
+#endif // #if (NCCL_VERSION_CODE < 2200)
+
 #if (NCCL_VERSION_CODE < 2304)
 
 ncclResult_t ncclGetVersion(int *version) {
@@ -157,6 +186,17 @@ ncclResult_t ncclGetVersion(int *version) {
 
 #endif // #if (NCCL_VERSION_CODE < 2304)
 
+#ifndef CUPY_NO_CUDA
+#if (NCCL_VERSION_CODE < 2000)
+ncclResult_t ncclGroupStart() {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclGroupEnd() {
+    return ncclSuccess;
+}
+#endif // #if (NCCL_VERSION_CODE < 2200)
+#endif // #ifndef CUPY_NO_CUDA
 
 ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
                             ncclDataType_t datatype, ncclRedOp_t op, ncclComm_t comm,
@@ -171,6 +211,14 @@ ncclResult_t _ncclReduce(const void* sendbuff, void* recvbuff, size_t count,
                          cudaStream_t stream) {
     ncclDataType_t _datatype = _get_proper_datatype(datatype);
     return ncclReduce(sendbuff, recvbuff, count, _datatype, op, root, comm, stream);
+}
+
+
+ncclResult_t _ncclBroadcast(const void* sendbuff, void* recvbuff, size_t count,
+			    ncclDataType_t datatype, int root, ncclComm_t comm,
+			    cudaStream_t stream) {
+    ncclDataType_t _datatype = _get_proper_datatype(datatype);
+    return ncclBroadcast(sendbuff, recvbuff, count, _datatype, root, comm,  stream);
 }
 
 

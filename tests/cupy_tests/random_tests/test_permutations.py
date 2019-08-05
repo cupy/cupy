@@ -7,31 +7,44 @@ from cupy.testing import condition
 import numpy
 
 
+@testing.parameterize(
+    {'seed': None},
+    {'seed': 0},
+)
 @testing.gpu
 class TestPermutations(unittest.TestCase):
+
+    def _xp_random(self, xp):
+        if self.seed is None:
+            return xp.random
+        else:
+            return xp.random.RandomState(seed=self.seed)
 
     # Test ranks
 
     @testing.numpy_cupy_raises()
     def test_permutation_zero_dim(self, xp):
+        xp_random = self._xp_random(xp)
         a = testing.shaped_random((), xp)
-        xp.random.permutation(a)
+        xp_random.permutation(a)
 
     # Test same values
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     def test_permutation_sort_1dim(self, dtype):
+        cupy_random = self._xp_random(cupy)
         a = cupy.arange(10, dtype=dtype)
         b = cupy.copy(a)
-        c = cupy.random.permutation(a)
+        c = cupy_random.permutation(a)
         testing.assert_allclose(a, b)
         testing.assert_allclose(b, cupy.sort(c))
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     def test_permutation_sort_ndim(self, dtype):
+        cupy_random = self._xp_random(cupy)
         a = cupy.arange(15, dtype=dtype).reshape(5, 3)
         b = cupy.copy(a)
-        c = cupy.random.permutation(a)
+        c = cupy_random.permutation(a)
         testing.assert_allclose(a, b)
         testing.assert_allclose(b, cupy.sort(c, axis=0))
 
@@ -41,10 +54,16 @@ class TestPermutations(unittest.TestCase):
     def test_permutation_seed1(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
         b = cupy.copy(a)
-        cupy.random.seed(0)
-        pa = cupy.random.permutation(a)
-        cupy.random.seed(0)
-        pb = cupy.random.permutation(b)
+
+        cupy_random = self._xp_random(cupy)
+        if self.seed is None:
+            cupy_random.seed(0)
+        pa = cupy_random.permutation(a)
+        cupy_random = self._xp_random(cupy)
+        if self.seed is None:
+            cupy_random.seed(0)
+        pb = cupy_random.permutation(b)
+
         testing.assert_allclose(pa, pb)
 
 

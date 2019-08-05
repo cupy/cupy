@@ -5,7 +5,10 @@ Wrapper for NCCL: Optimized primiteive for collective multi-GPU communication
 """
 cimport cython  # NOQA
 
+from libcpp cimport vector
+
 from cupy.cuda cimport driver
+from cupy.cuda cimport runtime
 
 cdef extern from 'cupy_nccl.h':
     ctypedef struct ncclComm:
@@ -29,10 +32,15 @@ cdef extern from 'cupy_nccl.h':
     ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId)
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
                                   ncclUniqueId commId, int rank)
+    ncclResult_t ncclCommInitAll(ncclComm_t* comm, int ndev,
+                                 const int* devlist)
+    ncclResult_t ncclGroupStart() nogil
+    ncclResult_t ncclGroupEnd() nogil
     void ncclCommDestroy(ncclComm_t comm)
     void ncclCommAbort(ncclComm_t comm)
     ncclResult_t ncclCommCuDevice(const ncclComm_t comm, int* device)
     ncclResult_t ncclCommUserRank(const ncclComm_t comm, int* rank)
+    ncclResult_t ncclCommCount(const ncclComm_t comm, int* count)
     ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff,
                                 size_t count,
                                 ncclDataType_t datatype, ncclRedOp_t op,
@@ -40,6 +48,10 @@ cdef extern from 'cupy_nccl.h':
     ncclResult_t _ncclReduce(const void* sendbuff, void* recvbuf, size_t count,
                              ncclDataType_t datatype, ncclRedOp_t op, int root,
                              ncclComm_t comm, driver.Stream stream) nogil
+    ncclResult_t _ncclBroadcast(const void* sendbuff, void* recvbuff,
+                                size_t count, ncclDataType_t datatype,
+                                int root, ncclComm_t comm,
+                                driver.Stream stream) nogil
     ncclResult_t _ncclBcast(void* buff, size_t count, ncclDataType_t datatype,
                             int root, ncclComm_t comm,
                             driver.Stream stream) nogil
@@ -96,6 +108,9 @@ class NcclError(RuntimeError):
         super(NcclError, self).__init__(
             '%s: %s' % (s, msg.decode()))
 
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
 
 @cython.profile(False)
 cpdef inline check_status(ncclResult_t status):
@@ -128,14 +143,111 @@ def get_unique_id():
     return ret
 
 
+def _bytesize(datatype):
+    bytesize = {NCCL_INT8: 1,
+                NCCL_UINT8: 1,
+                NCCL_INT32: 4,
+                NCCL_UINT32: 4,
+                NCCL_INT64: 8,
+                NCCL_UINT64: 8,
+                NCCL_FLOAT16: 2,
+                NCCL_FLOAT32: 4,
+                NCCL_FLOAT64: 8}
+    if datatype not in bytesize:
+        raise ValueError('Unknow datatype {}'.format(datatype))
+    return bytesize[datatype]
+
+
+cpdef groupStart():
+    """Start a group of NCCL calls. Must be paired with :func:`groupEnd()`.
+
+    .. note::
+        This method is only useful when the ``NcclCommunicator`` instances are
+        created via :meth:`~.NcclCommunicator.initAll`. A typical usage pattern
+        is like this:
+
+        .. code-block:: python
+
+            comms = cupy.cuda.nccl.NcclCommunicator.initAll(n, dev_list)
+            # ... do some preparation work
+            cupy.cuda.nccl.groupStart()
+            for rank, comm in enumerate(comms):
+                # ... make some collective calls ...
+            cupy.cuda.nccl.groupEnd()
+
+    .. seealso:: `ncclGroupStart`_
+
+    .. _ncclGroupStart:
+        https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/group.html#ncclgroupstart
+    """  # noqa
+    if NCCL_VERSION_CODE < 2000:
+        raise RuntimeError('ncclGroupStart is not available in this version')
+    with nogil:
+        status = ncclGroupStart()
+    check_status(status)
+
+
+cpdef groupEnd():
+    """End a group of NCCL calls. Must be paired with :func:`groupStart()`.
+
+    .. note::
+        This method is only useful when the ``NcclCommunicator`` instances are
+        created via :meth:`~.NcclCommunicator.initAll`. A typical usage pattern
+        is like this:
+
+        .. code-block:: python
+
+            comms = cupy.cuda.nccl.NcclCommunicator.initAll(n, dev_list)
+            # ... do some preparation work
+            cupy.cuda.nccl.groupStart()
+            for rank, comm in enumerate(comms):
+                # ... make some collective calls ...
+            cupy.cuda.nccl.groupEnd()
+
+    .. seealso:: `ncclGroupEnd`_
+
+    .. _ncclGroupEnd:
+        https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/group.html#ncclgroupend
+    """  # noqa
+    if NCCL_VERSION_CODE < 2000:
+        raise RuntimeError('ncclGroupEnd is not available in this version')
+    with nogil:
+        status = ncclGroupEnd()
+    check_status(status)
+
+
 cdef class NcclCommunicator:
+    """ Initialize an NCCL communicator for one device controlled by one
+    process.
+
+    Args:
+        ndev (int): Total number of GPUs to be used.
+        commId (tuple): The unique ID returned by :func:`get_unique_id`.
+        rank (int): The rank of the GPU managed by the current process.
+
+    Returns:
+        NcclCommunicator: An ``NcclCommunicator`` instance.
+
+    .. note::
+        This method is for creating an NCCL communicator in a multi-process
+        environment, typically managed by MPI or ``multiprocessing``. For
+        controlling multiple devices by one process, use :meth:`initAll`
+        instead.
+
+    .. seealso:: `ncclCommInitRank`_
+
+    .. _ncclCommInitRank:
+        https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/comms.html#ncclcomminitrank
+    """  # noqa
 
     cdef:
         ncclComm_t _comm
 
+    def __cinit__(self):
+        self._comm = <ncclComm_t>0
+
     def __init__(self, int ndev, tuple commId, int rank):
         cdef ncclUniqueId _uniqueId
-        self._comm = <ncclComm_t>0
         assert len(commId) == NCCL_UNIQUE_ID_BYTES
         for i in range(NCCL_UNIQUE_ID_BYTES):
             _uniqueId.internal[i] = commId[i]
@@ -144,6 +256,84 @@ cdef class NcclCommunicator:
 
     def __dealloc__(self):
         self.destroy()
+
+    @staticmethod
+    def initAll(devices):
+        """ Initialize NCCL communicators for multiple devices in a single
+        process.
+
+        Args:
+            devices (int or list of int): The number of GPUs or a list of GPUs
+                to be used. For the former case, the first ``devices`` GPUs
+                will be used.
+
+        Returns:
+            list: A list of ``NcclCommunicator`` instances.
+
+        .. note::
+            This method is for creating a group of NCCL communicators, each
+            controlling one device, in a single process like this:
+
+            .. code-block:: python
+
+                from cupy.cuda import nccl
+                # Use 3 GPUs: #0, #2, and #3
+                comms = nccl.NcclCommunicator.initAll([0, 2, 3])
+                assert len(comms) == 3
+
+            In a multi-process setup, use the default initializer instead.
+
+        .. seealso:: `ncclCommInitAll`_
+
+        .. _ncclCommInitAll:
+            https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/comms.html#ncclcomminitall
+        """  # noqa
+        cdef int i, ndev
+        cdef list comms = [], devlist = []
+        cdef NcclCommunicator comm
+
+        if isinstance(devices, list):
+            ndev = len(devices)
+            devlist = devices
+        elif isinstance(devices, int):
+            ndev = devices
+            for i in range(ndev):
+                devlist.append(i)
+        else:
+            raise ValueError("\"devices\" should be an int or a list of int.")
+
+        for i in range(ndev):
+            # Call to __new__ bypasses __init__ constructor
+            # these are just placeholders
+            comm = NcclCommunicator.__new__(NcclCommunicator)
+            comms.append(comm)
+        NcclCommunicator._initAll(comms, ndev, devlist)
+
+        return comms
+
+    @staticmethod
+    def _initAll(list comms, int ndev, list devlist=None):
+        # A helper function which does not return is favorable for subclassing
+        cdef vector.vector[int] devices
+        cdef vector.vector[ncclComm_t] ncclComms
+        cdef NcclCommunicator comm
+        cdef int* devices_ptr
+
+        if devlist is not None:
+            assert len(devlist) == ndev
+            for i in range(ndev):
+                devices.push_back(devlist[i])
+            devices_ptr = devices.data()
+        else:
+            devices_ptr = NULL
+        for i in range(ndev):
+            ncclComms.push_back(<ncclComm_t>0)
+        status = ncclCommInitAll(ncclComms.data(), ndev, devices_ptr)
+        check_status(status)
+        # overwrite the _comm attribute in existing NcclCommunicator instances
+        for i in range(ndev):
+            comm = comms[i]
+            comm._comm = ncclComms[i]
 
     cpdef destroy(self):
         if self._comm:
@@ -170,6 +360,12 @@ cdef class NcclCommunicator:
         check_status(status)
         return rank_id
 
+    def size(self):
+        cdef int ranks
+        status = ncclCommCount(self._comm, &ranks)
+        check_status(status)
+        return ranks
+
     def allReduce(self, size_t sendbuf, size_t recvbuf,
                   size_t count, int datatype, int op, size_t stream):
         with nogil:
@@ -186,6 +382,22 @@ cdef class NcclCommunicator:
                                  count, <ncclDataType_t>datatype,
                                  <ncclRedOp_t>op, root, self._comm,
                                  <driver.Stream>stream)
+        check_status(status)
+
+    def broadcast(self, size_t sendbuff, size_t recvbuff, int count,
+                  int datatype, int root, size_t stream):
+        if NCCL_VERSION_CODE < 2200:
+            # ncclBroadcast is not available in NCCL 2.1 or older.
+            if self.rank_id() == root and sendbuff != recvbuff:
+                runtime.memcpyAsync(recvbuff, sendbuff,
+                                    count * _bytesize(datatype),
+                                    runtime.memcpyDeviceToDevice, stream)
+            self.bcast(recvbuff, count, datatype, root, stream)
+            return
+        with nogil:
+            status = _ncclBroadcast(<const void*>sendbuff, <void*>recvbuff,
+                                    count, <ncclDataType_t>datatype, root,
+                                    self._comm, <driver.Stream>stream)
         check_status(status)
 
     def bcast(self, size_t buff, int count, int datatype,

@@ -15,6 +15,7 @@ Indexing Routines
    cupy.ix_
    cupy.unravel_index
    cupy.take
+   cupy.take_along_axis
    cupy.choose
    cupy.diag
    cupy.diagonal

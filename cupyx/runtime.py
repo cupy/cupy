@@ -1,3 +1,5 @@
+import inspect
+import os
 import six
 
 import cupy
@@ -21,6 +23,40 @@ def _eval_or_error(func, errors):
         return func()
     except errors as e:
         return repr(e)
+
+
+class _InstallInfo(object):
+
+    # TODO(niboshi): Add is_binary_distribution
+
+    def __init__(self):
+        cupy_package_root = self._get_cupy_package_root()
+        if cupy_package_root is not None:
+            data_root = os.path.join(cupy_package_root, '.data')
+            data_paths = {
+                'lib': _dir_or_none(os.path.join(data_root, 'lib')),
+                'include': _dir_or_none(os.path.join(data_root, 'include')),
+            }
+        else:
+            data_paths = {
+                'lib': None,
+                'include': None,
+            }
+
+        self.cupy_package_root = cupy_package_root
+        self.data_paths = data_paths
+
+    def get_data_path(self, data_type):
+        if data_type not in self.data_paths:
+            raise ValueError('Invalid data type: {}'.format(data_type))
+        return self.data_paths[data_type]
+
+    def _get_cupy_package_root(self):
+        try:
+            cupy_path = inspect.getfile(cupy)
+        except TypeError:
+            return None
+        return os.path.dirname(cupy_path)
 
 
 class _RuntimeInfo(object):
@@ -82,3 +118,14 @@ class _RuntimeInfo(object):
 
 def get_runtime_info():
     return _RuntimeInfo()
+
+
+def get_install_info():
+    return _InstallInfo()
+
+
+def _dir_or_none(path):
+    """Returns None if path does not exist."""
+    if os.path.isdir(path):
+        return path
+    return None

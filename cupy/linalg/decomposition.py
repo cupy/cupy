@@ -193,7 +193,7 @@ def svd(a, full_matrices=True, compute_uv=True):
             ``(M, M)`` and ``(N, N)``. Otherwise, the dimensions of u and v
             are respectively ``(M, K)`` and ``(K, N)``, where
             ``K = min(M, N)``.
-        compute_uv (bool): If True, it only returns singular values.
+        compute_uv (bool): If ``False``, it only returns singular values.
 
     Returns:
         tuple of :class:`cupy.ndarray`:

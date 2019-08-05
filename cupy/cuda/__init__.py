@@ -39,6 +39,12 @@ try:
 except ImportError:
     nccl_enabled = False
 
+try:
+    from cupy.cuda import cutensor  # NOQA
+    cutensor_enabled = True
+except ImportError:
+    cutensor_enabled = False
+
 
 def is_available():
     global _available

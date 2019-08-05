@@ -193,6 +193,10 @@ class CompileException(Exception):
         self.source = source
         self.name = name
         self.options = options
+        super(CompileException, self).__init__()
+
+    def __reduce__(self):
+        return (type(self), (self._msg, self.source, self.name, self.options))
 
     def __repr__(self):
         return str(self)

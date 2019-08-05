@@ -11,7 +11,7 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
 
 ----
 
-.. module:: cupy
+.. currentmodule:: cupy
 
 .. toctree::
    :maxdepth: 2

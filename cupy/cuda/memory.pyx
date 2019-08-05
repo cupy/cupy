@@ -34,16 +34,32 @@ def _exit():
 
 
 class OutOfMemoryError(MemoryError):
+    """Out-of-memory error.
+
+    Args:
+        size (int): Size of memory about to be allocated.
+        total (int): Size of memory successfully allocated so far.
+        limit (int): Allocation limit.
+    """
 
     def __init__(self, size, total, limit=0):
+        self._size = size
+        self._total = total
+        self._limit = limit
+
         if limit == 0:
-            msg = ('out of memory to allocate {} bytes '
-                   '(total {} bytes)'.format(size, total))
+            msg = (
+                'Out of memory allocating {:,} bytes '
+                '(allocated so far: {:,} bytes).'.format(size, total))
         else:
-            msg = ('out of memory to allocate {} bytes '
-                   '(total {} bytes, limit set to {} bytes)'.format(
-                       size, total, limit))
+            msg = (
+                'Out of memory allocating {:,} bytes '
+                '(allocated so far: {:,} bytes, '
+                'limit set to: {:,} bytes).'.format(size, total, limit))
         super(OutOfMemoryError, self).__init__(msg)
+
+    def __reduce__(self):
+        return (type(self), (self._size, self._total, self._limit))
 
 
 @cython.no_gc
@@ -685,7 +701,7 @@ cdef BaseMemory _try_malloc(SingleDeviceMemoryPool pool, size_t size):
         total_bytes_limit = pool._total_bytes_limit
         total = pool._total_bytes + size
         if total_bytes_limit != 0 and total_bytes_limit < total:
-            raise OutOfMemoryError(size, total, total_bytes_limit)
+            raise OutOfMemoryError(size, total - size, total_bytes_limit)
         pool._total_bytes = total
 
     mem = None
@@ -714,7 +730,7 @@ cdef BaseMemory _try_malloc(SingleDeviceMemoryPool pool, size_t size):
             with LockAndNoGc(pool._total_bytes_lock):
                 pool._total_bytes -= size
             if oom_error:
-                raise OutOfMemoryError(size, total, total_bytes_limit)
+                raise OutOfMemoryError(size, total - size, total_bytes_limit)
 
     return mem
 

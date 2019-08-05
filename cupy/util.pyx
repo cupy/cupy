@@ -3,10 +3,15 @@
 import atexit
 import collections
 import functools
+import os
 import warnings
 
 import cupy
 from cupy.cuda cimport device
+
+
+ENABLE_SLICE_COPY = bool(
+    int(os.environ.get('CUPY_EXPERIMENTAL_SLICE_COPY', 0)))
 
 
 # TODO(kmaehashi) remove this when `six.moves.collections_abc` is implemented.

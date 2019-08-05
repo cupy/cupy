@@ -72,3 +72,18 @@ Profiler
    cupy.cuda.nvtx.RangePush
    cupy.cuda.nvtx.RangePushC
    cupy.cuda.nvtx.RangePop
+
+
+NCCL
+----
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.cuda.nccl.NcclCommunicator
+   cupy.cuda.nccl.get_build_version
+   cupy.cuda.nccl.get_version
+   cupy.cuda.nccl.get_unique_id
+   cupy.cuda.nccl.groupStart
+   cupy.cuda.nccl.groupEnd

@@ -78,26 +78,25 @@ cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     - Converts Python scalars into NumPy scalars
     """
     cdef list ret = []
-    cdef type typ
 
     for arg in args:
-        typ = type(arg)
-        if typ is not ndarray and hasattr(arg, '__cuda_array_interface__'):
+        if type(arg) is not ndarray:
+            s = _scalar.convert_scalar(arg, use_c_scalar)
+            if s is not None:
+                ret.append(s)
+                continue
+            if not hasattr(arg, '__cuda_array_interface__'):
+                raise TypeError('Unsupported type %s' % type(arg))
             arg = _convert_object_with_cuda_array_interface(arg)
-            typ = ndarray
 
-        if typ is ndarray:
-            arr_dev_id = (<ndarray?>arg).data.device_id
-            if arr_dev_id != dev_id:
-                raise ValueError(
-                    'Array device must be same as the current '
-                    'device: array device = %d while current = %d'
-                    % (arr_dev_id, dev_id))
-        else:
-            arg = _scalar.convert_scalar(arg, use_c_scalar)
-            if arg is None:
-                raise TypeError('Unsupported type %s' % typ)
+        arr_dev_id = (<ndarray>arg).data.device_id
+        if arr_dev_id != dev_id:
+            raise ValueError(
+                'Array device must be same as the current '
+                'device: array device = %d while current = %d'
+                % (arr_dev_id, dev_id))
         ret.append(arg)
+
     return ret
 
 
@@ -544,10 +543,6 @@ cdef class ElementwiseKernel:
         if size != -1:
             shape = size,
             is_size_specified = True
-
-        for i in range(self.nin):
-            if not (self.params[i].is_const or args[i].shape == shape):
-                raise ValueError('Shape is mismatched')
 
         out_args = _get_out_args_with_params(
             out_args, out_types, shape, self.out_params, is_size_specified)
