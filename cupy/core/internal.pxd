@@ -8,7 +8,7 @@ cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args)
 cpdef tuple get_size(object size)
 
 cpdef bint vector_equal(
-    vector.vector[Py_ssize_t]& x, vector.vector[Py_ssize_t]& y)
+    const vector.vector[Py_ssize_t]& x, const vector.vector[Py_ssize_t]& y)
 
 cdef void get_reduced_dims(
     vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,

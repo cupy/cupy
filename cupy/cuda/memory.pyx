@@ -43,6 +43,10 @@ class OutOfMemoryError(MemoryError):
     """
 
     def __init__(self, size, total, limit=0):
+        self._size = size
+        self._total = total
+        self._limit = limit
+
         if limit == 0:
             msg = (
                 'Out of memory allocating {:,} bytes '
@@ -53,6 +57,9 @@ class OutOfMemoryError(MemoryError):
                 '(allocated so far: {:,} bytes, '
                 'limit set to: {:,} bytes).'.format(size, total, limit))
         super(OutOfMemoryError, self).__init__(msg)
+
+    def __reduce__(self):
+        return (type(self), (self._size, self._total, self._limit))
 
 
 @cython.no_gc

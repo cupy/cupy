@@ -16,10 +16,14 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
+cdef ndarray _ndarray_nanargmax(ndarray self, axis, out, dtype, keepdims):
+    return _nanargmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
+cdef ndarray _ndarray_nanargmin(ndarray self, axis, out, dtype, keepdims):
+    return _nanargmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
     return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
@@ -37,6 +41,16 @@ cdef ndarray _ndarray_std(ndarray self, axis, dtype, out, ddof, keepdims):
 
 cpdef ndarray _ndarray_nanmean(ndarray self, axis, dtype, out, keepdims):
     return _nanmean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+
+cpdef ndarray _ndarray_nanvar(ndarray self, axis, dtype, out, ddof, keepdims):
+    return _nanvar(
+        self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+
+
+cpdef ndarray _ndarray_nanstd(ndarray self, axis, dtype, out, ddof, keepdims):
+    return _nanstd(
+        self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
 cdef _min_max_preamble = '''
@@ -177,6 +191,7 @@ __device__ min_max_st<T> my_argmax_complex(
     if (is_nan(b.value.imag())) return b;
     return (a.value >= b.value) ? a : b;
 }
+
 '''
 
 
@@ -252,6 +267,34 @@ cdef _argmax = create_reduction_func(
      ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
+    None, _min_max_preamble)
+
+
+cdef _nanargmin = create_reduction_func(
+    'cupy_nanargmin',
+    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
+     'q->q', 'Q->q',
+     ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmin_complex(a, b)', None, None)),
+     ('D->q', (None, 'my_argmin_complex(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0, is_nan(in0) ? -1 : _J)',
+     'my_argmin(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
+    None, _min_max_preamble)
+
+
+cdef _nanargmax = create_reduction_func(
+    'cupy_nanargmax',
+    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
+     'q->q', 'Q->q',
+     ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmax_complex(a, b)', None, None)),
+     ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0, is_nan(in0) ? -1 : _J)',
+     'my_argmax(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
 
@@ -361,6 +404,57 @@ cdef _nanmean = create_reduction_func(
     ('in0', None,
      'out0 = a.value / a.count', 'nanmean_st<type_out0_raw>'),
     None, _nanmean_preamble)
+
+
+_count_non_nan = create_reduction_func(
+    'cupy_count_non_nan',
+    ('e->l', 'f->l', 'd->l'),
+    ('(in0 == in0) ? 1 : 0', 'a + b', 'out0 = a', None), 0)
+
+
+cdef ndarray _nanstd(
+        ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    ret = _nanvar(
+        a, axis=axis, dtype=dtype, out=None, ddof=ddof, keepdims=keepdims)
+    return _math._sqrt(ret, dtype=dtype, out=out)
+
+
+cdef ndarray _nanvar(
+        ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+
+    assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
+                                'implemented. Current implemention does not ' \
+                                'convert the dtype'
+
+    _count = _count_non_nan(a, axis=axis, keepdims=True)
+    arrsum = a._nansum(axis=axis, dtype=dtype, out=None, keepdims=True)
+
+    if out is None:
+        return _nanvar_core(
+            a, arrsum, _count, ddof, axis=axis, keepdims=keepdims)
+    else:
+        return _nanvar_core_out(
+            a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
+
+
+cdef _nanvar_preamble = '''
+template <typename S, typename T>
+__device__ T nanvar_impl(S x, T mean, long long alpha) {
+    return (x == x ? T((x - mean) * (x - mean)) : T(0)) / alpha;
+}
+'''
+
+
+cdef _nanvar_core = ReductionKernel(
+    'S x, T sum, int64 _count, int64 ddof', 'S out',
+    'nanvar_impl<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
+    'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
+
+
+cdef _nanvar_core_out = ReductionKernel(
+    'S x, T sum, int64 _count, int64 ddof', 'U out',
+    'nanvar_impl<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
+    'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
 
 
 # Variables to expose to Python

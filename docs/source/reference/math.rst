@@ -67,6 +67,8 @@ Sums, products, differences
    cupy.sum
    cupy.cumprod
    cupy.cumsum
+   cupy.nansum
+   cupy.nanprod
    cupy.diff
 
 

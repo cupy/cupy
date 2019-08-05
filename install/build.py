@@ -41,10 +41,7 @@ def get_cuda_path():
 
     nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
     cuda_path_default = None
-    if nvcc_path is None:
-        utils.print_warning('nvcc not in path.',
-                            'Please set path to nvcc.')
-    else:
+    if nvcc_path is not None:
         cuda_path_default = os.path.normpath(
             os.path.join(os.path.dirname(nvcc_path), '..'))
 
@@ -113,6 +110,11 @@ def get_compiler_setting():
             library_dirs.append(os.path.join(nvtoolsext_path, 'lib', 'x64'))
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
+
+    cutensor_path = os.environ.get('CUTENSOR_PATH', '')
+    if os.path.exists(cutensor_path):
+        include_dirs.append(os.path.join(cutensor_path, 'include'))
+        library_dirs.append(os.path.join(cutensor_path, 'lib'))
 
     return {
         'include_dirs': include_dirs,
@@ -342,6 +344,44 @@ def check_nvtx(compiler, settings):
             return True
         return False
     return True
+
+
+def check_cutensor_version(compiler, settings):
+    global _cutensor_version
+    try:
+        out = build_and_run(compiler, '''
+        #include <cutensor.h>
+        #include <stdio.h>
+        #ifdef CUTENSOR_MAJOR
+        #ifndef CUTENSOR_VERSION
+        #define CUTENSOR_VERSION \
+                (CUTENSOR_MAJOR * 1000 + CUTENSOR_MINOR * 100 + CUTENSOR_PATCH)
+        #endif
+        #else
+        #  define CUTENSOR_VERSION 0
+        #endif
+        int main(int argc, char* argv[]) {
+          printf("%d", CUTENSOR_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+
+    except Exception as e:
+        utils.print_warning('Cannot check cuTENSOR version\n{0}'.format(e))
+        return False
+
+    _cutensor_version = int(out)
+
+    return True
+
+
+def get_cutensor_version(formatted=False):
+    """Return cuTENSOR version cached in check_cutensor_version()."""
+    global _cutensor_version
+    if _cutensor_version is None:
+        msg = 'check_cutensor_version() must be called first.'
+        raise RuntimeError(msg)
+    return _cutensor_version
 
 
 def build_shlib(compiler, source, libraries=(),
