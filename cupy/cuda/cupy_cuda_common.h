@@ -89,5 +89,4 @@ typedef enum {
 
 } // extern "C"
 
-#endif // #ifndef CUPY_NO_CUDA
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_COMMON_H

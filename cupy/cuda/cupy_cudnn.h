@@ -9,6 +9,8 @@
 
 #else // #ifndef CUPY_NO_CUDA
 
+#include "cupy_cuda_common.h"
+
 #define CUDNN_VERSION 0
 
 #define CUDNN_BN_MIN_EPSILON 0.0

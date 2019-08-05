@@ -10,6 +10,8 @@
 
 #else // #ifndef CUPY_NO_CUDA
 
+#include "cupy_cuda_common.h"
+
 extern "C" {
 
     typedef enum {} cudaDataType_t;
