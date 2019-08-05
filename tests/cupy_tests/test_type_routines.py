@@ -31,7 +31,9 @@ class TestCanCast(unittest.TestCase):
     @testing.numpy_cupy_equal()
     def test_can_cast(self, xp, from_dtype, to_dtype):
         from_obj = _generate_type_routines_input(xp, from_dtype, self.obj_type)
-        return xp.can_cast(from_obj, to_dtype)
+        ret = xp.can_cast(from_obj, to_dtype)
+        assert isinstance(ret, bool)
+        return ret
 
 
 class TestCommonType(unittest.TestCase):
@@ -43,7 +45,9 @@ class TestCommonType(unittest.TestCase):
     def test_common_type(self, xp, dtype1, dtype2):
         array1 = _generate_type_routines_input(xp, dtype1, 'array')
         array2 = _generate_type_routines_input(xp, dtype2, 'array')
-        return xp.common_type(array1, array2)
+        ret = xp.common_type(array1, array2)
+        assert type(ret) == type
+        return ret
 
 
 @testing.parameterize(
@@ -59,4 +63,6 @@ class TestResultType(unittest.TestCase):
     def test_result_type(self, xp, dtype1, dtype2):
         input1 = _generate_type_routines_input(xp, dtype1, self.obj_type1)
         input2 = _generate_type_routines_input(xp, dtype2, self.obj_type2)
-        return xp.result_type(input1, input2)
+        ret = xp.result_type(input1, input2)
+        assert isinstance(ret, numpy.dtype)
+        return ret
