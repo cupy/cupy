@@ -754,7 +754,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
 
             cuda_version = build.get_cuda_version()
             postargs = _nvcc_gencode_options(cuda_version) + [
-                '-O2', '--compiler-options="-fPIC"', '--std=c++14']
+                '-O2', '--compiler-options="-fPIC"', '--std=c++11']
             print('NVCC options:', postargs)
 
             return unixccompiler.UnixCCompiler._compile(

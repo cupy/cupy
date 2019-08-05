@@ -10,7 +10,7 @@ using namespace cub;
 // https://github.com/rapidsai/cudf/blob/branch-0.6/cpp/src/utilities/type_dispatcher.hpp
 //
 template <class functor_t, typename... Ts>
-auto dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args)
+void dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args)
 {
     switch (dtype_id) {
     case CUPY_CUB_INT8:	   return f.template operator()<char>(std::forward<Ts>(args)...);
