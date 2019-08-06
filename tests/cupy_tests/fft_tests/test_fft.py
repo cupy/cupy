@@ -364,10 +364,8 @@ class TestPlanCtxManagerFftn(unittest.TestCase):
                 fftn(a, s=self.s, axes=self.axes, norm=self.norm)
         except ValueError as ve:
             # targeting a particular error
-            if ve.__str__().startswith('The CUFFT plan and a.shape do'
-                                       ' not match'):
-                pass
-            else:
+            if not ve.__str__().startswith('The CUFFT plan and a.shape do'
+                                           ' not match'):
                 raise ve
         else:
             raise Exception("No error is raised --- should not happen.")
@@ -441,10 +439,8 @@ class TestPlanCtxManagerFft(unittest.TestCase):
                 fft(a, n=self.n, norm=self.norm)
         except ValueError as ve:
             # targeting a particular error
-            if ve.__str__().startswith('Target array size does not match'
-                                       ' the plan.'):
-                pass
-            else:
+            if not ve.__str__().startswith('Target array size does not match'
+                                           ' the plan.'):
                 raise ve
         else:
             raise Exception("No error is raised --- should not happen.")

@@ -169,6 +169,25 @@ class TestFft(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return out
 
+    @testing.for_complex_dtypes()
+    def test_fft_multiple_plan_error(self, dtype):
+        # hack: avoid testing the cases when the output array is of size 0
+        # because cuFFT and numpy raise different kinds of exceptions
+        if self.n == 0:
+            return
+        import cupy
+        import cupyx.scipy.fftpack as fftpack
+        x = testing.shaped_random(self.shape, cupy, dtype)
+        plan = fftpack.get_fft_plan(x, shape=self.n, axes=self.axis)
+        try:
+            with plan:
+                fftpack.fft(x, n=self.n, axis=self.axis, plan=plan)
+        except RuntimeError as e:
+            if not e.__str__().startswith('Use the cuFFT plan'):
+                raise e
+        else:
+            raise Exception("No error is raised --- should not happen.")
+
 
 @testing.parameterize(
     {'shape': (3, 4), 's': None, 'axes': None},
@@ -504,6 +523,24 @@ class TestFftn(unittest.TestCase):
         else:  # scipy
             out = scp.fftpack.ifftn(x, shape=self.s, axes=self.axes)
         return out
+
+    @testing.for_complex_dtypes()
+    def test_fftn_multiple_plan_error(self, dtype):
+        import cupy
+        import cupyx.scipy.fftpack as fftpack
+        x = testing.shaped_random(self.shape, cupy, dtype)
+        # hack: avoid testing the cases when getting a cuFFT plan is impossible
+        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+            return
+        plan = fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
+        try:
+            with plan:
+                fftpack.fftn(x, shape=self.s, axes=self.axes, plan=plan)
+        except RuntimeError as e:
+            if not e.__str__().startswith('Use the cuFFT plan'):
+                raise e
+        else:
+            raise Exception("No error is raised --- should not happen.")
 
 
 @testing.parameterize(*testing.product({
