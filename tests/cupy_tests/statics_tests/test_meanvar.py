@@ -192,13 +192,13 @@ class TestMeanVar(unittest.TestCase):
 class TestNanMean(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-5)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanmean_without_nan(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         return xp.nanmean(a, axis=self.axis, keepdims=self.keepdims)
 
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-5)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanmean_with_nan_float(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
 
@@ -213,7 +213,7 @@ class TestNanMean(unittest.TestCase):
 class TestNanMeanAdditional(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-5)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanmean_out(self, xp, dtype):
         a = testing.shaped_random((10, 20, 30), xp, dtype)
         z = xp.zeros((20, 30), dtype=dtype)
@@ -227,7 +227,7 @@ class TestNanMeanAdditional(unittest.TestCase):
 
     @testing.slow
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-5)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanmean_huge(self, xp, dtype):
         a = testing.shaped_random((1024, 512), xp, dtype)
 
@@ -240,6 +240,12 @@ class TestNanMeanAdditional(unittest.TestCase):
     def test_nanmean_float16(self, xp):
         a = testing.shaped_arange((2, 3), xp, numpy.float16)
         a[0][0] = xp.nan
+        return xp.nanmean(a)
+
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nanmean_all_nan(self, xp):
+        a = xp.zeros((3, 4))
+        a[:] = xp.nan
         return xp.nanmean(a)
 
 

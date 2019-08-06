@@ -353,12 +353,12 @@ cdef _mean = create_reduction_func(
 
 
 cdef _nanmean_preamble = '''
-#define ll long long
+typedef long long ll;
 template <typename T>
 struct nanmean_st{
     T value;
     ll count;
-    __device__ nanmean_st() : count(-1) { }
+    __device__ nanmean_st() : value(0), count(0) { }
     __device__ nanmean_st(T v) : value(v), count(is_nan(v) ? 0 : 1) { }
     __device__ nanmean_st(T v, ll c) : value(v), count(c) { }
 };
@@ -371,8 +371,6 @@ inline __device__ bool is_nan(T x) {
 template <typename T>
 __device__ nanmean_st<T> my_nanmean_float(
         const nanmean_st<T>& a, const nanmean_st<T>& b) {
-    if (a.count == -1) return b;
-    if (b.count == -1) return a;
     if (is_nan(a.value)) return b;
     if (is_nan(b.value)) return a;
     return nanmean_st<T>(a.value + b.value, a.count + b.count);
@@ -381,8 +379,6 @@ __device__ nanmean_st<T> my_nanmean_float(
 template <typename T>
 __device__ nanmean_st<T> my_nanmean_complex(
         const nanmean_st<T>& a, const nanmean_st<T>& b) {
-    if (a.count == -1) return b;
-    if (b.count == -1) return a;
     if (is_nan(a.value.real())) return b;
     if (is_nan(a.value.imag())) return b;
     if (is_nan(b.value.real())) return a;
