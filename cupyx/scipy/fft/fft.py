@@ -28,7 +28,7 @@ _implemented = {}
 
 
 def __ua_convert__(dispatchables, coerce):
-    if not all(d.dispatch_type == np.ndarray for d in dispatchables):
+    if not all(d.type == np.ndarray for d in dispatchables):
         return NotImplemented
 
     if coerce:
