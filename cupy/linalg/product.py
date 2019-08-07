@@ -1,5 +1,5 @@
 import numpy
-from numpy import polynomial.chebyshev as ch
+from numpy.polynomial import chebyshev as ch
 import six
 
 import cupy
