@@ -15,8 +15,7 @@ try:
     import scipy.fft as _scipy_fft
 except ImportError:
     class _DummyModule:
-        @classmethod
-        def __getattr__(cls, name):
+        def __getattr__(self, name):
             return None
 
     _scipy_fft = _DummyModule()
