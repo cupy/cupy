@@ -1,9 +1,13 @@
 import unittest
+import pytest
 
 import numpy
 
 import cupy
 from cupy import testing
+
+ignore_runtime_warnings = pytest.mark.filterwarnings(
+    "ignore", category=RuntimeWarning)
 
 
 @testing.gpu
@@ -197,6 +201,7 @@ class TestNanMean(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         return xp.nanmean(a, axis=self.axis, keepdims=self.keepdims)
 
+    @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanmean_with_nan_float(self, xp, dtype):
@@ -212,6 +217,7 @@ class TestNanMean(unittest.TestCase):
 @testing.gpu
 class TestNanMeanAdditional(unittest.TestCase):
 
+    @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanmean_out(self, xp, dtype):
@@ -242,6 +248,7 @@ class TestNanMeanAdditional(unittest.TestCase):
         a[0][0] = xp.nan
         return xp.nanmean(a)
 
+    @ignore_runtime_warnings
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanmean_all_nan(self, xp):
         a = xp.zeros((3, 4))
@@ -259,6 +266,7 @@ class TestNanMeanAdditional(unittest.TestCase):
 @testing.gpu
 class TestNanVarStd(unittest.TestCase):
 
+    @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanvar(self, xp, dtype):
@@ -268,6 +276,7 @@ class TestNanVarStd(unittest.TestCase):
         return xp.nanvar(
             a, axis=self.axis, ddof=self.ddof, keepdims=self.keepdims)
 
+    @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd(self, xp, dtype):
@@ -281,6 +290,7 @@ class TestNanVarStd(unittest.TestCase):
 @testing.gpu
 class TestNanVarStdAdditional(unittest.TestCase):
 
+    @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanvar_out(self, xp, dtype):
@@ -311,6 +321,7 @@ class TestNanVarStdAdditional(unittest.TestCase):
         a[0][0] = xp.nan
         return xp.nanvar(a, axis=0)
 
+    @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd_out(self, xp, dtype):
