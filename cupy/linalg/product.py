@@ -58,7 +58,8 @@ def vdot(a, b):
 
     return core.tensordot_core(a, b, None, 1, 1, a.size, ())
 
-def cross(a, b, axisa = -1, axisb = -1, axisc = -1, axis = None):
+
+def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
 
     """Returns the cross product of two vectors.
 
@@ -86,7 +87,7 @@ def cross(a, b, axisa = -1, axisb = -1, axisc = -1, axis = None):
         axis : int, optional
             If defined, the axis of `a`, `b` and `c` that defines the vector(s)
             and cross product(s).  Overrides `axisa`, `axisb` and `axisc`.
-    
+
     Returns:
         c : cupy.ndarray
             Vector cross product(s).
@@ -101,8 +102,10 @@ def cross(a, b, axisa = -1, axisb = -1, axisc = -1, axis = None):
     a = cupy.asarray(a)
     b = cupy.asarray(b)
     # Check axisa and axisb are within bounds
-    axisa = numpy.polynomial.chebyshev.normalize_axis_index(axisa, a.ndim, msg_prefix='axisa')
-    axisb = numpy.polynomial.chebyshev.normalize_axis_index(axisb, b.ndim, msg_prefix='axisb')
+    axisa = numpy.polynomial.chebyshev.normalize_axis_index(axisa, a.ndim, \
+        msg_prefix='axisa')
+    axisb = numpy.polynomial.chebyshev.normalize_axis_index(axisb, b.ndim, \
+        msg_prefix='axisb')
 
     # Move working axis to the end of the shape
     a = cupy.moveaxis(a, axisa, -1)
@@ -178,6 +181,7 @@ def cross(a, b, axisa = -1, axisb = -1, axisc = -1, axis = None):
             cp2 -= a1 * b0
 
     return cupy.moveaxis(cp, -1, axisc)
+
 
 def inner(a, b):
     """Returns the inner product of two arrays.
