@@ -353,36 +353,20 @@ cdef _mean = create_reduction_func(
 
 
 cdef _nanmean_preamble = '''
-typedef long long ll;
 template <typename T>
 struct nanmean_st{
+    typedef long long ll;
     T value;
     ll count;
     __device__ nanmean_st() : value(0), count(0) { }
-    __device__ nanmean_st(T v) : value(v), count(is_nan(v) ? 0 : 1) { }
+    __device__ nanmean_st(T v) :
+        value(isnan(v) ? T(0) : v), count(isnan(v) ? 0 : 1) { }
     __device__ nanmean_st(T v, ll c) : value(v), count(c) { }
 };
 
 template <typename T>
-inline __device__ bool is_nan(T x) {
-    return x != x;
-}
-
-template <typename T>
-__device__ nanmean_st<T> my_nanmean_float(
+__device__ nanmean_st<T> my_nanmean(
         const nanmean_st<T>& a, const nanmean_st<T>& b) {
-    if (is_nan(a.value)) return b;
-    if (is_nan(b.value)) return a;
-    return nanmean_st<T>(a.value + b.value, a.count + b.count);
-}
-
-template <typename T>
-__device__ nanmean_st<T> my_nanmean_complex(
-        const nanmean_st<T>& a, const nanmean_st<T>& b) {
-    if (is_nan(a.value.real())) return b;
-    if (is_nan(a.value.imag())) return b;
-    if (is_nan(b.value.real())) return a;
-    if (is_nan(b.value.imag())) return a;
     return nanmean_st<T>(a.value + b.value, a.count + b.count);
 }
 '''
@@ -390,15 +374,9 @@ __device__ nanmean_st<T> my_nanmean_complex(
 
 cdef _nanmean = create_reduction_func(
     'cupy_nanmean',
-    (('e->e', (None, 'my_nanmean_float(a, b)', None, None)),
-     ('f->f', (None, 'my_nanmean_float(a, b)', None, None)),
-     ('d->d', (None, 'my_nanmean_float(a, b)', None, None)),
-     ('F->F', (None, 'my_nanmean_complex(a, b)',
-      'out0 = a.value / type_out0_raw(a.count)', None)),
-     ('D->D', (None, 'my_nanmean_complex(a, b)',
-      'out0 = a.value / type_out0_raw(a.count)', None))),
-    ('in0', None,
-     'out0 = a.value / a.count', 'nanmean_st<type_out0_raw>'),
+    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'my_nanmean(a, b)',
+     'out0 = a.value / type_out0_raw(a.count)', 'nanmean_st<type_out0_raw>'),
     None, _nanmean_preamble)
 
 
