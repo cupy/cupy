@@ -1,7 +1,7 @@
 .. module:: cupyx.scipy.fftpack
 
-Discrete Fourier transforms
-===========================
+Discrete Fourier transforms (``scipy.fftpack``)
+===============================================
 
 
 Fast Fourier Transforms
