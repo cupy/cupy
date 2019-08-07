@@ -1,14 +1,16 @@
 import unittest
 
 from cupy import testing
-import cupyx.scipy.fft
+import cupyx.scipy.fft as cp_fft
 import numpy as np
+import cupy as cp
+import pytest
 
 
 def _fft_module(xp):
     # Test cupyx.scipy against numpy since scipy.fft is not yet released
     if xp != np:
-        return cupyx.scipy.fft
+        return cp_fft
     else:
         return np.fft
 
@@ -429,3 +431,14 @@ class TestHfft(unittest.TestCase):
         out = _fft_module(xp).ihfft(x, n=self.n, norm=self.norm,
                                     **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
+
+
+@testing.gpu
+@pytest.mark.parametrize('func', [
+    cp_fft.fft2, cp_fft.ifft2, cp_fft.rfft2, cp_fft.irfft2,
+    cp_fft.fftn, cp_fft.ifftn, cp_fft.rfftn, cp_fft.irfftn])
+def test_scalar_shape_axes(func):
+    x = testing.shaped_random((10, 10), cp)
+    y_scalar = func(x, s=5, axes=-1)
+    y_normal = func(x, s=(5,), axes=(-1,))
+    testing.assert_allclose(y_scalar, y_normal)

@@ -4,6 +4,7 @@ from cupy.fft.fft import (_fft, _default_fft_func, hfft as _hfft,
                           ihfft as _ihfft)
 from cupy.fft.fft import fftshift, ifftshift, fftfreq, rfftfreq
 import numpy as np
+from numbers import Number
 
 
 __all__ = ['fft', 'ifft', 'fft2', 'ifft2', 'fftn', 'ifftn',
@@ -59,6 +60,13 @@ def _implements(scipy_func):
         return func
 
     return inner
+
+
+def _asiterable(x):
+    """Convert scalars to iterable, otherwise pass through ``x`` unchanged"""
+    if isinstance(x, Number):
+        return (x,)
+    return x
 
 
 @_implements(_scipy_fft.fft)
@@ -129,8 +137,7 @@ def fft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.fft2`
     """
-    func = _default_fft_func(x, s, axes)
-    return func(x, s, axes, norm, cufft.CUFFT_FORWARD, overwrite_x=overwrite_x)
+    return fftn(x, s, axes, norm, overwrite_x)
 
 
 @_implements(_scipy_fft.ifft2)
@@ -153,8 +160,7 @@ def ifft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.ifft2`
     """
-    func = _default_fft_func(x, s, axes)
-    return func(x, s, axes, norm, cufft.CUFFT_INVERSE, overwrite_x=overwrite_x)
+    return ifftn(x, s, axes, norm, overwrite_x)
 
 
 @_implements(_scipy_fft.fftn)
@@ -177,6 +183,8 @@ def fftn(x, s=None, axes=None, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.fftn`
     """
+    s = _asiterable(s)
+    axes = _asiterable(axes)
     func = _default_fft_func(x, s, axes)
     return func(x, s, axes, norm, cufft.CUFFT_FORWARD, overwrite_x=overwrite_x)
 
@@ -201,6 +209,8 @@ def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.ifftn`
     """
+    s = _asiterable(s)
+    axes = _asiterable(axes)
     func = _default_fft_func(x, s, axes)
     return func(x, s, axes, norm, cufft.CUFFT_INVERSE, overwrite_x=overwrite_x)
 
@@ -276,7 +286,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.rfft2`
     """
-    return _fft(x, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C', overwrite_x)
+    return rfftn(x, s, axes, norm, overwrite_x)
 
 
 @_implements(_scipy_fft.irfft2)
@@ -302,7 +312,7 @@ def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.irfft2`
     """
-    return _fft(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R', overwrite_x)
+    return irfftn(x, s, axes, norm, overwrite_x)
 
 
 @_implements(_scipy_fft.rfftn)
@@ -326,6 +336,8 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.rfftn`
     """
+    s = _asiterable(s)
+    axes = _asiterable(axes)
     return _fft(x, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C', overwrite_x)
 
 
@@ -352,6 +364,8 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.irfftn`
     """
+    s = _asiterable(s)
+    axes = _asiterable(axes)
     return _fft(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R', overwrite_x)
 
 
