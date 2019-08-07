@@ -83,10 +83,10 @@ class TestFusionArrayOperator(FusionArrayTestBase):
 class TestFusionArrayBitwiseOperator(FusionArrayTestBase):
 
     def _is_uint64(self, x):
-        return not isinstance(x, int) and x.dtype == 'uint64'
+        return not isinstance(x, six.integer_types) and x.dtype == 'uint64'
 
     def _is_signed_int(self, x):
-        return isinstance(x, int) or x.dtype.kind == 'i'
+        return isinstance(x, six.integer_types) or x.dtype.kind == 'i'
 
     @testing.for_int_dtypes_combination(
         names=('dtype1', 'dtype2'), no_bool=True)
