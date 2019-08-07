@@ -365,9 +365,56 @@ def _call_numpy(func, args, kwargs):
         Result after calling func and performing data transfers.
     """
 
-    args, kwargs = _get_cupy_args(args, kwargs)
-    numpy_args, numpy_kwargs = _get_numpy_args(args, kwargs)
+    cupy_args, cupy_kwargs = _get_cupy_args(args, kwargs)
+    numpy_args, numpy_kwargs = _get_numpy_args(cupy_args, cupy_kwargs)
     numpy_res = func(*numpy_args, **numpy_kwargs)
+    out = numpy_kwargs.get('out', None)
+
+    _update_inplace(args, numpy_args)
+    _update_inplace(kwargs, numpy_kwargs)
+
+    if isinstance(numpy_res, np.ndarray):
+        # can be view of args[0] or out
+        if numpy_res.base is numpy_args[0]:
+            cupy_view = _create_view(numpy_args[0], numpy_res, cupy_args[0])
+            return ndarray._store(cupy_view)
+
+        if out is not None and numpy_res.base is out:
+            cupy_view = _create_view(out, numpy_res, cupy_kwargs['out'])
+            return ndarray._store(cupy_view)
+
     cupy_res = _get_cupy_result(numpy_res)
 
     return _get_fallback_result(cupy_res)
+
+
+def _create_view(numpy_view_of, numpy_view, cupy_view_of):
+    '''
+    Args:
+        numpy_view_of(numpy.ndarray): numpy original ndarray
+        numpy_view(numpy.ndarray): numpy view ndarray
+        cupy_view_of(cupy.ndarray): Creates view of this ndarray
+
+    Returns:
+        cupy_view(cupy.ndarray): View created from cupy_view_of
+    '''
+    raise NotImplementedError
+
+
+def _update_inplace(to_update, update_from):
+
+    if isinstance(to_update, (tuple, list)):
+        for i in range(len(to_update)):
+            if isinstance(update_from[i], np.ndarray):
+                assert isinstance(to_update[i], ndarray)
+                to_update[i]._array = update_from[i]
+
+    if isinstance(to_update, dict):
+        for key in to_update:
+            if isinstance(update_from[key], np.ndarray):
+                assert isinstance(to_update[key], ndarray)
+                to_update[key]._array = update_from[key]
+
+    if isinstance(update_from, np.ndarray):
+        assert isinstance(to_update, ndarray)
+        to_update._array = update_from
