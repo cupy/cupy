@@ -1,4 +1,5 @@
 import numpy
+from numpy import polynomial.chebyshev as ch
 import six
 
 import cupy
@@ -102,10 +103,8 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     a = cupy.asarray(a)
     b = cupy.asarray(b)
     # Check axisa and axisb are within bounds
-    axisa = numpy.polynomial.chebyshev.normalize_axis_index(axisa, a.ndim, \
-        msg_prefix='axisa')
-    axisb = numpy.polynomial.chebyshev.normalize_axis_index(axisb, b.ndim, \
-        msg_prefix='axisb')
+    axisa = ch.normalize_axis_index(axisa, a.ndim, msg_prefix='axisa')
+    axisb = ch.normalize_axis_index(axisb, b.ndim, msg_prefix='axisb')
 
     # Move working axis to the end of the shape
     a = cupy.moveaxis(a, axisa, -1)
@@ -120,7 +119,7 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     if a.shape[-1] == 3 or b.shape[-1] == 3:
         shape += (3,)
         # Check axisc is within bounds
-        axisc = numpy.polynomial.chebyshev.normalize_axis_index(axisc, len(shape), msg_prefix='axisc')
+        axisc = ch.normalize_axis_index(axisc, len(shape), msg_prefix='axisc')
     dtype = cupy.promote_types(a.dtype, b.dtype)
     cp = cupy.empty(shape, dtype)
 
