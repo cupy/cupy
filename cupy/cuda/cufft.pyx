@@ -1,5 +1,6 @@
 cimport cython  # NOQA
 import numpy
+import threading
 
 import cupy
 from cupy.cuda cimport driver
@@ -7,7 +8,9 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 
 
-cdef object _current_plan = None
+cdef object _thread_local = threading.local()
+if not hasattr(_thread_local, '_current_plan'):
+    _thread_local._current_plan = None
 
 
 cpdef get_current_plan():
@@ -16,7 +19,7 @@ cpdef get_current_plan():
     Returns:
         None or cupy.cuda.cufft.Plan1d or cupy.cuda.cufft.PlanNd
     """
-    return _current_plan
+    return _thread_local._current_plan
 
 
 cdef extern from 'cupy_cufft.h' nogil:
@@ -126,13 +129,11 @@ class Plan1d(object):
         check_result(result)
 
     def __enter__(self):
-        global _current_plan
-        _current_plan = self
+        _thread_local._current_plan = self
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        global _current_plan
-        _current_plan = None
+        _thread_local._current_plan = None
 
     def fft(self, a, out, direction):
         cdef Handle plan = self.plan
@@ -265,13 +266,11 @@ class PlanNd(object):
         check_result(result)
 
     def __enter__(self):
-        global _current_plan
-        _current_plan = self
+        _thread_local._current_plan = self
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        global _current_plan
-        _current_plan = None
+        _thread_local._current_plan = None
 
     def fft(self, a, out, direction):
         cdef Handle plan = self.plan
