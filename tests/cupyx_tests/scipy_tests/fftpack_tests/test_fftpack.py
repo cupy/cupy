@@ -1,4 +1,5 @@
 import unittest
+import pytest
 
 from cupy import testing
 import cupyx.scipy.fftpack  # NOQA
@@ -179,14 +180,9 @@ class TestFft(unittest.TestCase):
         import cupyx.scipy.fftpack as fftpack
         x = testing.shaped_random(self.shape, cupy, dtype)
         plan = fftpack.get_fft_plan(x, shape=self.n, axes=self.axis)
-        try:
-            with plan:
-                fftpack.fft(x, n=self.n, axis=self.axis, plan=plan)
-        except RuntimeError as e:
-            if not e.__str__().startswith('Use the cuFFT plan'):
-                raise e
-        else:
-            raise Exception("No error is raised --- should not happen.")
+        with pytest.raises(RuntimeError) as ex, plan:
+            fftpack.fft(x, n=self.n, axis=self.axis, plan=plan)
+        assert 'Use the cuFFT plan either as' in str(ex.value)
 
 
 @testing.parameterize(
@@ -533,14 +529,9 @@ class TestFftn(unittest.TestCase):
         if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
             return
         plan = fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
-        try:
-            with plan:
-                fftpack.fftn(x, shape=self.s, axes=self.axes, plan=plan)
-        except RuntimeError as e:
-            if not e.__str__().startswith('Use the cuFFT plan'):
-                raise e
-        else:
-            raise Exception("No error is raised --- should not happen.")
+        with pytest.raises(RuntimeError) as ex, plan:
+            fftpack.fftn(x, shape=self.s, axes=self.axes, plan=plan)
+        assert 'Use the cuFFT plan either as' in str(ex.value)
 
 
 @testing.parameterize(*testing.product({

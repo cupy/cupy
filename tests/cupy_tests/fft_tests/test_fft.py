@@ -1,5 +1,6 @@
 import functools
 import unittest
+import pytest
 
 import numpy as np
 
@@ -359,16 +360,10 @@ class TestPlanCtxManagerFftn(unittest.TestCase):
         b = testing.shaped_random(bad_in_shape, cupy, dtype)
         plan_wrong = get_fft_plan(b, bad_out_shape, self.axes)
 
-        try:
-            with plan_wrong:
-                fftn(a, s=self.s, axes=self.axes, norm=self.norm)
-        except ValueError as ve:
-            # targeting a particular error
-            if not ve.__str__().startswith('The CUFFT plan and a.shape do'
-                                           ' not match'):
-                raise ve
-        else:
-            raise Exception("No error is raised --- should not happen.")
+        with pytest.raises(ValueError) as ex, plan_wrong:
+            fftn(a, s=self.s, axes=self.axes, norm=self.norm)
+        # targeting a particular error
+        assert 'The CUFFT plan and a.shape do not match' in str(ex.value)
 
 
 @testing.parameterize(*testing.product({
@@ -434,16 +429,10 @@ class TestPlanCtxManagerFft(unittest.TestCase):
         plan_wrong = get_fft_plan(b)
         assert isinstance(plan_wrong, cupy.cuda.cufft.Plan1d)
 
-        try:
-            with plan_wrong:
-                fft(a, n=self.n, norm=self.norm)
-        except ValueError as ve:
-            # targeting a particular error
-            if not ve.__str__().startswith('Target array size does not match'
-                                           ' the plan.'):
-                raise ve
-        else:
-            raise Exception("No error is raised --- should not happen.")
+        with pytest.raises(ValueError) as ex, plan_wrong:
+            fft(a, n=self.n, norm=self.norm)
+        # targeting a particular error
+        assert 'Target array size does not match the plan.' in str(ex.value)
 
 
 @testing.parameterize(
