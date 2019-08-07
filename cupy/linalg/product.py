@@ -75,7 +75,7 @@ def cross(a, b, axisa = -1, axisb = -1, axisc = -1, axis = None):
         b (cupy.ndarray): The second argument.
 
     Returns:
-        cupy.ndarray: Zero-dimensional array of the dot product result.
+        cupy.ndarray: Returns ndarray of cross product result.
 
     .. seealso:: :func:`numpy.cross`
 
