@@ -33,6 +33,7 @@ cdef class RawKernel:
         self.code = code
         self.name = name
         self.options = options
+        self._kernel = None
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -53,7 +54,13 @@ cdef class RawKernel:
 
     @property
     def kernel(self):
-        return _get_raw_kernel(self.code, self.name, self.options)
+        if self._kernel is None:
+            self._kernel = _get_raw_kernel(self.code, self.name, self.options)
+        return self._kernel
+
+    @kernel.setter
+    def kernel(self, ker):
+        self._kernel = ker
 
     @property
     def attributes(self):
@@ -179,3 +186,23 @@ def _get_raw_kernel(code, name, options=()):
     module = cupy.core.core.compile_with_cache(code, options,
                                                prepend_cupy_headers=False)
     return module.get_function(name)
+
+
+cdef class RawModule:
+    def __init__(self, code, options=()):
+        if isinstance(code, six.binary_type):
+            code = code.decode('UTF-8')
+        self.code = code
+        self.options = options
+        self.kernels = {}
+        self.module = cupy.core.core.compile_with_cache(
+                          code, options, prepend_cupy_headers=False)
+
+    def get_function(self, name):
+        if name in self.kernels:
+            return self.kernels[name]
+        else:
+            ker = RawKernel(None, name, self.options)
+            ker.kernel = self.module.get_function(name)
+            self.kernels[name] = ker
+            return ker
