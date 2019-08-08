@@ -89,6 +89,8 @@ class TestQRDecomposition(unittest.TestCase):
     @testing.fix_random()
     @condition.repeat(3, 10)
     def test_mode(self):
+        self.check_mode(numpy.random.randn(0, 3), mode=self.mode)
+        self.check_mode(numpy.random.randn(3, 0), mode=self.mode)
         self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)

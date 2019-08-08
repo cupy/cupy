@@ -116,22 +116,23 @@ def qr(a, mode='reduced'):
     m, n = a.shape
     x = a.transpose().astype(dtype, order='C', copy=True)
     mn = min(m, n)
+    lda = max(1, m)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
     # compute working space of geqrf and ormqr, and solve R
     if dtype == 'f':
-        buffersize = cusolver.sgeqrf_bufferSize(handle, m, n, x.data.ptr, n)
+        buffersize = cusolver.sgeqrf_bufferSize(handle, m, n, x.data.ptr, lda)
         workspace = cupy.empty(buffersize, dtype=numpy.float32)
         tau = cupy.empty(mn, dtype=numpy.float32)
         cusolver.sgeqrf(
-            handle, m, n, x.data.ptr, m,
+            handle, m, n, x.data.ptr, lda,
             tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
     else:  # dtype == 'd'
-        buffersize = cusolver.dgeqrf_bufferSize(handle, n, m, x.data.ptr, n)
+        buffersize = cusolver.dgeqrf_bufferSize(handle, n, m, x.data.ptr, lda)
         workspace = cupy.empty(buffersize, dtype=numpy.float64)
         tau = cupy.empty(mn, dtype=numpy.float64)
         cusolver.dgeqrf(
-            handle, m, n, x.data.ptr, m,
+            handle, m, n, x.data.ptr, lda,
             tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
     status = int(dev_info[0])
     if status < 0:
@@ -162,21 +163,26 @@ def qr(a, mode='reduced'):
     # solve Q
     if dtype == 'f':
         buffersize = cusolver.sorgqr_bufferSize(
-            handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
+            handle, m, mc, mn, q.data.ptr, lda, tau.data.ptr)
         workspace = cupy.empty(buffersize, dtype=numpy.float32)
         cusolver.sorgqr(
-            handle, m, mc, mn, q.data.ptr, m, tau.data.ptr,
+            handle, m, mc, mn, q.data.ptr, lda, tau.data.ptr,
             workspace.data.ptr, buffersize, dev_info.data.ptr)
     else:
         buffersize = cusolver.dorgqr_bufferSize(
-            handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
+            handle, m, mc, mn, q.data.ptr, lda, tau.data.ptr)
         workspace = cupy.empty(buffersize, dtype=numpy.float64)
         cusolver.dorgqr(
-            handle, m, mc, mn, q.data.ptr, m, tau.data.ptr,
+            handle, m, mc, mn, q.data.ptr, lda, tau.data.ptr,
             workspace.data.ptr, buffersize, dev_info.data.ptr)
 
     q = q[:mc].transpose()
     r = x[:, :mc].transpose()
+
+    # cuSOLVER does not solve Q correctly in this case
+    if mode == 'complete' and n == 0:
+        q = cupy.identity(m, dtype)
+
     return q, util._triu(r)
 
 
