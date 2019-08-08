@@ -25,7 +25,7 @@ class TestRaw(unittest.TestCase):
         assert (y == x1 + x2).all()
 
     def test_kernel_attributes(self):
-
+        attrs = self.kern.attributes
         for attribute in ['binary_version',
                           'cache_mode_ca',
                           'const_size_bytes',
@@ -36,8 +36,7 @@ class TestRaw(unittest.TestCase):
                           'preferred_shared_memory_carveout',
                           'ptx_version',
                           'shared_size_bytes']:
-            assert hasattr(self.kern.attributes, attribute)
-
-        assert self.kern.attributes.num_regs > 0
-        assert self.kern.attributes.max_threads_per_block > 0
-        assert self.kern.attributes.shared_size_bytes == 0
+            assert attribute in attrs
+        assert self.kern.num_regs > 0
+        assert self.kern.max_threads_per_block > 0
+        assert self.kern.shared_size_bytes == 0
