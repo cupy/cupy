@@ -83,7 +83,7 @@ class TestDot(unittest.TestCase):
 @testing.gpu
 class TestCrossProduct(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(['dtype_a','dtype_b'])
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
     def test_cross(self, xp, dtype_a, dtype_b):
         shape_a, shape_b = self.shape
