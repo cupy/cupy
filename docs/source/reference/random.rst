@@ -35,6 +35,17 @@ Simple random data
    cupy.random.bytes
 
 
+Permutations
+------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.random.shuffle
+   cupy.random.permutation
+
+
 Distributions
 -------------
 
@@ -96,14 +107,3 @@ Random generator
     CuPy does not provide ``cupy.random.get_state`` nor ``cupy.random.set_state`` at this time.
     Use :func:`cupy.random.get_random_state` and :func:`cupy.random.set_random_state` instead.
     Note that these functions use :class:`cupy.random.RandomState` instance to represent the internal state, which cannot be serialized.
-
-
-Permutations
-------------
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   cupy.random.shuffle
-   cupy.random.permutation
