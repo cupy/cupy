@@ -1,6 +1,7 @@
 import cupy
 from cupy import util
 from cupy.cuda cimport driver
+from cupy.cuda.function cimport Module
 
 import six
 
@@ -189,14 +190,28 @@ def _get_raw_kernel(code, name, options=()):
 
 
 cdef class RawModule:
-    def __init__(self, code, options=()):
-        if isinstance(code, six.binary_type):
-            code = code.decode('UTF-8')
-        self.code = code
+    def __init__(self, code_or_path, options=()):
+        if isinstance(code_or_path, six.binary_type):
+            code_or_path = code_or_path.decode('UTF-8')
+
+        if code_or_path.endswith('.cubin'):
+            path = code_or_path
+            self.code = None
+            self.cubin_path = path
+        else:
+            code = code_or_path
+            self.code = code
+            self.cubin_path = None
+
+        if self.code is not None:
+            self.module = cupy.core.core.compile_with_cache(
+                              code, options, prepend_cupy_headers=False)
+        elif self.cubin_path is not None:
+            self.module = Module()
+            self.module.load_file(self.cubin_path)
+
         self.options = options
         self.kernels = {}
-        self.module = cupy.core.core.compile_with_cache(
-                          code, options, prepend_cupy_headers=False)
 
     def get_function(self, name):
         if name in self.kernels:
