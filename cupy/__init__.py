@@ -655,7 +655,7 @@ from cupy.util import memoize  # NOQA
 
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import RawKernel  # NOQA
-from cupy.core import RawModule  # NOQA
+from cupy.core import RawModule as Module  # NOQA
 from cupy.core import ReductionKernel  # NOQA
 
 # -----------------------------------------------------------------------------
