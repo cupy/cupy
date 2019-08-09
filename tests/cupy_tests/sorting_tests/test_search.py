@@ -224,11 +224,11 @@ class TestNonzero(unittest.TestCase):
     {'array': numpy.array(1)},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.17.0')
+@testing.with_requires('numpy<1.17.0')
 class TestNonzeroZeroDimension(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
+    @testing.numpy_cupy_array_list_equal()
     def test_nonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
         return xp.nonzero(array)
