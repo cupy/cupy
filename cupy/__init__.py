@@ -472,6 +472,9 @@ from cupy.logic.type_test import isfortran  # NOQA
 from cupy.logic.type_test import isreal  # NOQA
 from cupy.logic.type_test import isrealobj  # NOQA
 
+from cupy.logic.truth import isin  # NOQA
+from cupy.logic.truth import in1d  # NOQA
+
 
 def isscalar(num):
     """Returns True if the type of num is a scalar type.
