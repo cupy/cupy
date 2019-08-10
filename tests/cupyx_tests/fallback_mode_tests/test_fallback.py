@@ -59,13 +59,23 @@ def numpy_fallback_array_equal(name='xp'):
                 # if numpy returns ndarray, cupy must return ndarray
                 assert isinstance(fallback_result, fallback.ndarray)
                 assert fallback_result.dtype is numpy_result.dtype
-                testing.assert_array_equal(
-                    numpy_result, fallback_result._array)
+
+                tested = False
+                if fallback_result._cupy_array is not None:
+                    tested = True
+                    testing.assert_array_equal(
+                        numpy_result, fallback_result._cupy_array)
+                if fallback_result._numpy_array is not None:
+                    tested = True
+                    testing.assert_array_equal(
+                        numpy_result, fallback_result._numpy_array)
+                assert tested is True
 
             elif isinstance(numpy_result, numpy.ScalarType):
                 # if numpy returns scalar
                 # cupy may return 0-dim array
-                assert numpy_result == fallback_result._array.item()
+                assert numpy_result == fallback_result._cupy_array.item() or \
+                       (numpy_result == fallback_result._numpy_array).all()
 
             else:
                 assert False
@@ -95,8 +105,17 @@ def numpy_fallback_array_allclose(name='xp'):
 
             assert isinstance(fallback_result, fallback.ndarray)
             assert fallback_result.dtype is numpy_result.dtype
-            testing.numpy_cupy_allclose(
-                numpy_result, fallback_result._array)
+
+            tested = False
+            if fallback_result._cupy_array is not None:
+                tested = True
+                testing.numpy_cupy_allclose(
+                    numpy_result, fallback_result._cupy_array)
+            if fallback_result._numpy_array is not None:
+                tested = True
+                testing.numpy_cupy_allclose(
+                    numpy_result, fallback_result._numpy_array)
+            assert tested is True
 
         return test_func
     return decorator
@@ -168,8 +187,19 @@ class TestFallbackMethodsArrayExternal(unittest.TestCase):
     def test_fallback_methods_array_external(self, xp):
 
         a = testing.shaped_random(self.shape, xp=xp, dtype=numpy.int64)
-
         return getattr(xp, self.func)(a, *self.args, **self.kwargs)
+
+    @numpy_fallback_array_equal
+    def test_fallback_methods_array_external_out(self, xp):
+
+        a = testing.shaped_random(self.shape, xp=xp)
+        res = getattr(xp, self.func)(a, *self.args, **self.kwargs)
+
+        # to get the shape of out
+        out = xp.zeros(res.shape, dtype=res.dtype)
+        self.kwargs['out'] = out
+        getattr(xp, self.func)(a, *self.args, **self.kwargs)
+        return out
 
 
 @testing.parameterize(
@@ -196,7 +226,6 @@ class FallbackArray(unittest.TestCase):
 
         b = fallback_mode.numpy.arange(9)
         assert isinstance(b, fallback.ndarray)
-        assert isinstance(b._array, cupy.ndarray)
 
     def test_getitem(self):
 
@@ -207,7 +236,7 @@ class FallbackArray(unittest.TestCase):
 
         # slicing
         res = cupy.array([1, 2, 3])
-        testing.assert_array_equal(x[:2]._array, res[:2])
+        testing.assert_array_equal(x[:2]._cupy_array, res[:2])
 
     def test_setitem(self):
 
@@ -216,13 +245,13 @@ class FallbackArray(unittest.TestCase):
         # single element
         x[2] = 99
         res = cupy.array([1, 2, 99])
-        testing.assert_array_equal(x._array, res)
+        testing.assert_array_equal(x._cupy_array, res)
 
         # slicing
         y = fallback_mode.numpy.array([11, 22])
         x[:2] = y
         res = cupy.array([11, 22, 99])
-        testing.assert_array_equal(x._array, res)
+        testing.assert_array_equal(x._cupy_array, res)
 
     @numpy_fallback_equal()
     def test_ndarray_shape(self, xp):
@@ -278,8 +307,19 @@ class TestFallbackArrayMethodsInternal(unittest.TestCase):
     def test_fallback_array_methods_internal(self, xp):
 
         a = testing.shaped_random(self.shape, xp=xp)
-
         return getattr(a, self.func)(*self.args, **self.kwargs)
+
+    @numpy_fallback_array_equal
+    def test_fallback_array_methods_internal_out(self, xp):
+
+        a = testing.shaped_random(self.shape, xp=xp)
+        res = getattr(a, self.func)(*self.args, **self.kwargs)
+
+        # to get the shape of out
+        out = xp.zeros(res.shape, dtype=res.dtype)
+        self.kwargs['out'] = out
+        getattr(a, self.func)(*self.args, **self.kwargs)
+        return out
 
 
 @testing.parameterize(
@@ -432,3 +472,45 @@ class TestVectorizeWrapper(unittest.TestCase):
     def test_doc(self, xp):
         vabs = xp.vectorize(abs)
         return vabs.__doc__
+
+
+@testing.gpu
+class TestInplaceSpecialMethods(unittest.TestCase):
+
+    @numpy_fallback_array_equal
+    def test_resize_internal(self, xp):
+        a = testing.shaped_random((3, 4), xp)
+        a.resize(4, 5)
+        return a
+
+    @numpy_fallback_array_equal
+    def test_ndarray_byteswap(self, xp):
+        a = testing.shaped_random((4,), xp, dtype=xp.int16)
+        return a.byteswap()
+
+    @numpy_fallback_array_equal
+    def test_ndarray_byteswap_inplace(self, xp):
+        a = testing.shaped_random((4,), xp, dtype=xp.int16)
+        a.byteswap(inplace=True)
+        return a
+
+    @numpy_fallback_array_equal
+    def test_putmask(self, xp):
+        a = testing.shaped_random((3, 4), xp, dtype=xp.int8)
+        xp.putmask(a, a > 2, a**2)
+        return a
+
+    @numpy_fallback_array_equal
+    def test_put_along_axis(self, xp):
+        a = xp.array([[10, 30, 20], [60, 40, 50]])
+        ai = xp.expand_dims(xp.argmax(a, axis=1), axis=1)
+        xp.put_along_axis(a, ai, 99, axis=1)
+        return a
+
+    @numpy_fallback_array_equal
+    def test_out_is_returned(self, xp):
+        a = testing.shaped_random((3, 4), xp)
+        z = xp.zeros((4,))
+        res = xp.nancumsum(a, axis=0, out=z)
+        assert res is z
+        return res

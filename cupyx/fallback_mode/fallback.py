@@ -109,7 +109,7 @@ class _RecursiveAttr(object):
         if self._fallback_array is not None:
             args = ((self._fallback_array,) + args)
 
-        if self._cupy_object is not None:
+        if self._cupy_object is not None and _is_cupy_compatible(args, kwargs):
             return _call_cupy(self._cupy_object, args, kwargs)
 
         return _call_numpy(self._numpy_object, args, kwargs)
@@ -141,16 +141,31 @@ class ndarray(object):
             return object.__new__(cls)
 
         cupy_ndarray_init = cp.ndarray(*args, **kwargs)
-        return cls(_stored=cupy_ndarray_init)
+        return cls(_stored=cupy_ndarray_init, _class=cp.ndarray)
 
     def __init__(self, *args, **kwargs):
+        self._cupy_array = None
+        self._numpy_array = None
+        self._class = kwargs.pop('_class', None)
+
         _stored = kwargs.pop('_stored', None)
         if _stored is not None:
-            self._array = _stored
+            if self._class is cp.ndarray:
+                self._cupy_array = _stored
+            else:
+                self._numpy_array = _stored
 
     @classmethod
-    def _store(cls, array):
-        return cls(_stored=array)
+    def _store_cupy_array(cls, array):
+        return cls(_stored=array, _class=cp.ndarray)
+
+    @classmethod
+    def _store_numpy_array(cls, array):
+        if type(array) is np.ndarray and \
+           array.dtype.kind in '?bhilqBHILQefdFD':
+            return cls(_stored=cp.array(array), _class=cp.ndarray)
+
+        return cls(_stored=array, _class=array.__class__)
 
     def __getattr__(self, attr):
         """
@@ -165,19 +180,32 @@ class ndarray(object):
             Returns self._array.attr if attr is not callable.
         """
 
-        cupy_object = getattr(cp.ndarray, attr, None)
-        numpy_object = getattr(np.ndarray, attr)
+        if self._class is cp.ndarray:
+            cupy_object = getattr(cp.ndarray, attr, None)
+            numpy_object = getattr(np.ndarray, attr)
+        else:
+            cupy_object = None
+            numpy_object = getattr(self._class, attr)
 
         if not callable(numpy_object):
-            return getattr(self._array, attr)
+            if self._class is cp.ndarray:
+                return getattr(self._cupy_array, attr)
+            return getattr(self._numpy_array, attr)
 
         return _RecursiveAttr(numpy_object, cupy_object, self)
 
-    def _get_array(self):
+    def _get_cupy_array(self):
         """
-        Returns _array (cupy.ndarray) of ndarray object.
+        Returns _cupy_array (cupy.ndarray) of ndarray object.
         """
-        return self._array
+        return self._cupy_array
+
+    def _get_numpy_array(self):
+        """
+        Returns _numpy_array (ex: np.ndarray, numpy.ma.MaskedArray,
+        numpy.chararray etc.) of ndarray object.
+        """
+        return self._numpy_array
 
 
 def _create_magic_methods():
@@ -188,10 +216,14 @@ def _create_magic_methods():
     # Decorator for ndarray magic methods
     def make_method(name):
         def method(self, *args, **kwargs):
-            args, kwargs = _get_cupy_args(args, kwargs)
-            cupy_method = getattr(cp.ndarray, name)
-            res = cupy_method(self._array, *args, **kwargs)
-            return _get_fallback_result(res)
+            if self._class is cp.ndarray:
+                cupy_method = getattr(cp.ndarray, name)
+                args = ((self._cupy_array,) + args)
+                return _call_cupy(cupy_method, args, kwargs)
+            else:
+                numpy_method = getattr(self._class, name)
+                args = ((self._numpy_array,) + args)
+                return _call_numpy(numpy_method, args, kwargs)
         return method
 
     _common = [
@@ -310,20 +342,20 @@ def _get_xp_args(ndarray_instance, to_xp, arg):
     return arg
 
 
-def _get_cupy_result(numpy_res):
-    return _get_xp_args(np.ndarray, cp.array, numpy_res)
+def _convert_numpy_to_fallback(numpy_res):
+    return _get_xp_args(np.ndarray, ndarray._store_numpy_array, numpy_res)
 
 
-def _get_numpy_args(args, kwargs):
-    return _get_xp_args(cp.ndarray, cp.asnumpy, (args, kwargs))
+def _convert_fallback_to_numpy(args, kwargs):
+    return _get_xp_args(ndarray, ndarray._get_numpy_array, (args, kwargs))
 
 
-def _get_cupy_args(args, kwargs):
-    return _get_xp_args(ndarray, ndarray._get_array, (args, kwargs))
+def _convert_fallback_to_cupy(args, kwargs):
+    return _get_xp_args(ndarray, ndarray._get_cupy_array, (args, kwargs))
 
 
-def _get_fallback_result(cupy_res):
-    return _get_xp_args(cp.ndarray, ndarray._store, cupy_res)
+def _convert_cupy_to_fallback(cupy_res):
+    return _get_xp_args(cp.ndarray, ndarray._store_cupy_array, cupy_res)
 
 
 # -----------------------------------------------------------------------------
@@ -345,10 +377,14 @@ def _call_cupy(func, args, kwargs):
         Result after calling func and performing data transfers.
     """
 
-    args, kwargs = _get_cupy_args(args, kwargs)
-    res = func(*args, **kwargs)
+    cupy_args, cupy_kwargs = _convert_fallback_to_cupy(args, kwargs)
+    cupy_res = func(*cupy_args, **cupy_kwargs)
 
-    return _get_fallback_result(res)
+    cupy_out = cupy_kwargs.get('out', None)
+    if cupy_out is not None and cupy_out is cupy_res:
+        return kwargs.get('out')
+
+    return _convert_cupy_to_fallback(cupy_res)
 
 
 def _call_numpy(func, args, kwargs):
@@ -365,56 +401,77 @@ def _call_numpy(func, args, kwargs):
         Result after calling func and performing data transfers.
     """
 
-    cupy_args, cupy_kwargs = _get_cupy_args(args, kwargs)
-    numpy_args, numpy_kwargs = _get_numpy_args(cupy_args, cupy_kwargs)
+    _make_numpy_compatible(args, kwargs)
+    numpy_args, numpy_kwargs = _convert_fallback_to_numpy(args, kwargs)
     numpy_res = func(*numpy_args, **numpy_kwargs)
-    out = numpy_kwargs.get('out', None)
 
     _update_inplace(args, numpy_args)
     _update_inplace(kwargs, numpy_kwargs)
 
-    if isinstance(numpy_res, np.ndarray):
-        # can be view of args[0] or out
-        if numpy_res.base is numpy_args[0]:
-            cupy_view = _create_view(numpy_args[0], numpy_res, cupy_args[0])
-            return ndarray._store(cupy_view)
+    # Sometimes reference to out(which was inplace updated) is returned
+    # ex: numpy.add, numpy.nanmean
+    # Therefore, to avoid creating separate ndarrays out is returned
+    numpy_out = numpy_kwargs.get('out', None)
+    if numpy_out is not None and numpy_out is numpy_res:
+        return kwargs.get('out')
 
-        if out is not None and numpy_res.base is out:
-            cupy_view = _create_view(out, numpy_res, cupy_kwargs['out'])
-            return ndarray._store(cupy_view)
+    fallback_res = _convert_numpy_to_fallback(numpy_res)
 
-    cupy_res = _get_cupy_result(numpy_res)
-
-    return _get_fallback_result(cupy_res)
-
-
-def _create_view(numpy_view_of, numpy_view, cupy_view_of):
-    '''
-    Args:
-        numpy_view_of(numpy.ndarray): numpy original ndarray
-        numpy_view(numpy.ndarray): numpy view ndarray
-        cupy_view_of(cupy.ndarray): Creates view of this ndarray
-
-    Returns:
-        cupy_view(cupy.ndarray): View created from cupy_view_of
-    '''
-    raise NotImplementedError
+    return fallback_res
 
 
 def _update_inplace(to_update, update_from):
 
     if isinstance(to_update, (tuple, list)):
         for i in range(len(to_update)):
-            if isinstance(update_from[i], np.ndarray):
-                assert isinstance(to_update[i], ndarray)
-                to_update[i]._array = update_from[i]
+            if isinstance(update_from, np.ndarray):
+                _update_inplace(to_update[i], update_from[i])
 
     if isinstance(to_update, dict):
         for key in to_update:
             if isinstance(update_from[key], np.ndarray):
-                assert isinstance(to_update[key], ndarray)
-                to_update[key]._array = update_from[key]
+                _update_inplace(to_update[key], update_from[key])
 
     if isinstance(update_from, np.ndarray):
-        assert isinstance(to_update, ndarray)
-        to_update._array = update_from
+        if to_update._class is cp.ndarray:
+            to_update._cupy_array = cp.array(update_from)
+        else:
+            to_update._numpy_array = update_from
+
+
+def _is_cupy_compatible(args, kwargs):
+
+    check = True
+    for arg in args:
+        if isinstance(arg, ndarray) and arg._class is not cp.ndarray:
+            check = False
+
+    for key in kwargs:
+        if isinstance(kwargs[key], ndarray) and \
+           kwargs[key]._class is not cp.ndarray:
+            check = False
+
+    _compatible_dtypes = [
+        np.bool, np.int8, np.int16, np.int32, np.int64,
+        np.uint8, np.uint16, np.uint32, np.uint64,
+        np.float16, np.float32, np.float64,
+        np.complex64, np.complex128
+    ] + list('?bhilqBHILQefdFD')
+
+    dtype = kwargs.get('dtype', None)
+    if dtype is not None and dtype not in _compatible_dtypes:
+        check = False
+
+    return check
+
+
+def _make_numpy_compatible(args, kwargs):
+
+    for arg in args:
+        if isinstance(arg, ndarray) and arg._numpy_array is None:
+            arg._numpy_array = cp.asnumpy(arg._cupy_array)
+
+    for key in kwargs:
+        if isinstance(kwargs[key], ndarray) and \
+           kwargs[key]._numpy_array is None:
+            kwargs[key]._numpy_array = cp.asnumpy(kwargs[key]._cupy_array)
