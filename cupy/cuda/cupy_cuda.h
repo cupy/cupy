@@ -22,6 +22,10 @@ extern "C" {
 
 #if CUDA_VERSION < 9000
 
+CUresult cuFuncSetAttribute(...) {
+    return CUDA_ERROR_NOT_SUPPORTED;
+}
+
 typedef enum {} cublasMath_t;
 
 cublasStatus_t cublasSetMathMode(...) {
