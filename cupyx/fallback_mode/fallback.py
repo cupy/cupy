@@ -152,6 +152,7 @@ class ndarray(object):
         if _stored is not None:
             if self._class is cp.ndarray:
                 self._cupy_array = _stored
+                self._latest = 'cupy'
             else:
                 self._numpy_array = _stored
 
@@ -207,6 +208,18 @@ class ndarray(object):
         """
         return self._numpy_array
 
+    @classmethod
+    def _cupy_dispatch(cls, array):
+        if array._latest != 'cupy':
+            array._cupy_array = cp.array(array._numpy_array)
+            array._latest = 'cupy'
+
+    @classmethod
+    def _numpy_dispatch(cls, array):
+        if array._class is cp.ndarray and array._latest != 'numpy':
+            array._numpy_array = cp.asnumpy(array._cupy_array)
+            array._latest = 'numpy'
+
 
 def _create_magic_methods():
     """
@@ -216,14 +229,11 @@ def _create_magic_methods():
     # Decorator for ndarray magic methods
     def make_method(name):
         def method(self, *args, **kwargs):
+            _method = getattr(self._class, name)
+            args = ((self,) + args)
             if self._class is cp.ndarray:
-                cupy_method = getattr(cp.ndarray, name)
-                args = ((self._cupy_array,) + args)
-                return _call_cupy(cupy_method, args, kwargs)
-            else:
-                numpy_method = getattr(self._class, name)
-                args = ((self._numpy_array,) + args)
-                return _call_numpy(numpy_method, args, kwargs)
+                return _call_cupy(_method, args, kwargs)
+            return _call_numpy(_method, args, kwargs)
         return method
 
     _common = [
@@ -357,6 +367,11 @@ def _convert_fallback_to_cupy(args, kwargs):
 def _convert_cupy_to_fallback(cupy_res):
     return _get_xp_args(cp.ndarray, ndarray._store_cupy_array, cupy_res)
 
+def _prepare_for_cupy_dispatch(args, kwargs):
+    return _get_xp_args(ndarray, ndarray._cupy_dispatch, (args, kwargs))
+
+def _prepare_for_numpy_dispatch(args, kwargs):
+    return _get_xp_args(ndarray, ndarray._numpy_dispatch, (args, kwargs))
 
 # -----------------------------------------------------------------------------
 # utils
@@ -377,6 +392,7 @@ def _call_cupy(func, args, kwargs):
         Result after calling func and performing data transfers.
     """
 
+    _prepare_for_cupy_dispatch(args, kwargs)
     cupy_args, cupy_kwargs = _convert_fallback_to_cupy(args, kwargs)
     cupy_res = func(*cupy_args, **cupy_kwargs)
 
@@ -401,12 +417,9 @@ def _call_numpy(func, args, kwargs):
         Result after calling func and performing data transfers.
     """
 
-    _make_numpy_compatible(args, kwargs)
+    _prepare_for_numpy_dispatch(args, kwargs)
     numpy_args, numpy_kwargs = _convert_fallback_to_numpy(args, kwargs)
     numpy_res = func(*numpy_args, **numpy_kwargs)
-
-    _update_inplace(args, numpy_args)
-    _update_inplace(kwargs, numpy_kwargs)
 
     # Sometimes reference to out(which was inplace updated) is returned
     # ex: numpy.add, numpy.nanmean
@@ -418,25 +431,6 @@ def _call_numpy(func, args, kwargs):
     fallback_res = _convert_numpy_to_fallback(numpy_res)
 
     return fallback_res
-
-
-def _update_inplace(to_update, update_from):
-
-    if isinstance(to_update, (tuple, list)):
-        for i in range(len(to_update)):
-            if isinstance(update_from, np.ndarray):
-                _update_inplace(to_update[i], update_from[i])
-
-    if isinstance(to_update, dict):
-        for key in to_update:
-            if isinstance(update_from[key], np.ndarray):
-                _update_inplace(to_update[key], update_from[key])
-
-    if isinstance(update_from, np.ndarray):
-        if to_update._class is cp.ndarray:
-            to_update._cupy_array = cp.array(update_from)
-        else:
-            to_update._numpy_array = update_from
 
 
 def _is_cupy_compatible(args, kwargs):
@@ -463,15 +457,3 @@ def _is_cupy_compatible(args, kwargs):
         check = False
 
     return check
-
-
-def _make_numpy_compatible(args, kwargs):
-
-    for arg in args:
-        if isinstance(arg, ndarray) and arg._numpy_array is None:
-            arg._numpy_array = cp.asnumpy(arg._cupy_array)
-
-    for key in kwargs:
-        if isinstance(kwargs[key], ndarray) and \
-           kwargs[key]._numpy_array is None:
-            kwargs[key]._numpy_array = cp.asnumpy(kwargs[key]._cupy_array)
