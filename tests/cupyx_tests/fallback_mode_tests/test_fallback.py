@@ -71,7 +71,7 @@ def numpy_fallback_array_equal(name='xp'):
                 # if numpy returns scalar
                 # cupy may return 0-dim array
                 assert numpy_result == fallback_result._cupy_array.item() or \
-                       (numpy_result == fallback_result._numpy_array).all()
+                    (numpy_result == fallback_result._numpy_array).all()
 
             else:
                 assert False
@@ -228,12 +228,13 @@ class FallbackArray(unittest.TestCase):
         assert a._class is numpy.ndarray
 
         b = fallback_mode.numpy.array(['a', 'b', 'c', 'd'], dtype='|S1')
-        assert isinstance(a, fallback.ndarray)
-        assert a._class is numpy.ndarray
+        assert isinstance(b, fallback.ndarray)
+        assert b._class is numpy.ndarray
 
         # Structured array will automatically be _numpy_array
-        c = fallback_mode.numpy.array([('Rex', 9, 81.0), ('Fido', 3, 27.0)],
-             dtype=[('name', 'U10'), ('age', 'i4'), ('weight', 'f4')])
+        c = fallback_mode.numpy.array(
+            [('Rex', 9, 81.0), ('Fido', 3, 27.0)],
+            dtype=[('name', 'U10'), ('age', 'i4'), ('weight', 'f4')])
 
         assert isinstance(c, fallback.ndarray)
         assert c._class is numpy.ndarray

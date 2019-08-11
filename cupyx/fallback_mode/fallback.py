@@ -367,8 +367,10 @@ def _convert_fallback_to_cupy(args, kwargs):
 def _convert_cupy_to_fallback(cupy_res):
     return _get_xp_args(cp.ndarray, ndarray._store_cupy_array, cupy_res)
 
+
 def _prepare_for_cupy_dispatch(args, kwargs):
     return _get_xp_args(ndarray, ndarray._cupy_dispatch, (args, kwargs))
+
 
 def _prepare_for_numpy_dispatch(args, kwargs):
     return _get_xp_args(ndarray, ndarray._numpy_dispatch, (args, kwargs))
