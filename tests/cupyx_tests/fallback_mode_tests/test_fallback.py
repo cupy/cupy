@@ -211,13 +211,32 @@ class TestDocs(unittest.TestCase):
 @testing.gpu
 class FallbackArray(unittest.TestCase):
 
-    def test_ndarray_creation(self):
+    def test_ndarray_creation_compatible(self):
 
         a = fallback_mode.numpy.array([[1, 2], [3, 4]])
         assert isinstance(a, fallback.ndarray)
+        assert a._class is cupy.ndarray
 
         b = fallback_mode.numpy.arange(9)
         assert isinstance(b, fallback.ndarray)
+        assert a._class is cupy.ndarray
+
+    def test_ndarray_creation_not_compatible(self):
+
+        a = fallback_mode.numpy.array([1, 2, 3], dtype=object)
+        assert isinstance(a, fallback.ndarray)
+        assert a._class is numpy.ndarray
+
+        b = fallback_mode.numpy.array(['a', 'b', 'c', 'd'], dtype='|S1')
+        assert isinstance(a, fallback.ndarray)
+        assert a._class is numpy.ndarray
+
+        # Structured array will automatically be _numpy_array
+        c = fallback_mode.numpy.array([('Rex', 9, 81.0), ('Fido', 3, 27.0)],
+             dtype=[('name', 'U10'), ('age', 'i4'), ('weight', 'f4')])
+
+        assert isinstance(c, fallback.ndarray)
+        assert c._class is numpy.ndarray
 
     def test_getitem(self):
 
@@ -500,10 +519,18 @@ class TestInplaceSpecialMethods(unittest.TestCase):
         return a
 
     @numpy_fallback_array_equal
-    def test_out_is_returned(self, xp):
+    def test_out_is_returned_when_fallbacked(self, xp):
         a = testing.shaped_random((3, 4), xp)
         z = xp.zeros((4,))
         res = xp.nancumsum(a, axis=0, out=z)
+        assert res is z
+        return res
+
+    @numpy_fallback_array_equal
+    def test_out_is_returned_when_not_fallbacked(self, xp):
+        a = testing.shaped_random((3, 4), xp)
+        z = xp.zeros((4,))
+        res = xp.var(a, axis=0, out=z)
         assert res is z
         return res
 
@@ -568,3 +595,20 @@ class TestArrayVariants(unittest.TestCase):
         z = xp.ma.zeros((4,))
         xp.nanmean(mx, axis=0, out=z)
         return z
+
+    @numpy_fallback_array_equal
+    def test_matrix_returned(self, xp):
+        x = xp.random.rand(2, 3)
+        y = xp.asmatrix(x)
+
+        if xp is fallback_mode.numpy:
+            assert x._class is cupy.ndarray
+            assert isinstance(y, fallback.ndarray)
+            assert y._class is numpy.matrix
+
+        return y
+
+    @numpy_fallback_array_equal
+    def test_record_array(self, xp):
+        ra = xp.rec.array([1, 2, 3])
+        return ra

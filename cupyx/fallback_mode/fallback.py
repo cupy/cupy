@@ -428,9 +428,7 @@ def _call_numpy(func, args, kwargs):
     if numpy_out is not None and numpy_out is numpy_res:
         return kwargs.get('out')
 
-    fallback_res = _convert_numpy_to_fallback(numpy_res)
-
-    return fallback_res
+    return _convert_numpy_to_fallback(numpy_res)
 
 
 def _is_cupy_compatible(args, kwargs):
