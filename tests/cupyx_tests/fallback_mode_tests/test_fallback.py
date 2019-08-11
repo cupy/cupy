@@ -60,16 +60,12 @@ def numpy_fallback_array_equal(name='xp'):
                 assert isinstance(fallback_result, fallback.ndarray)
                 assert fallback_result.dtype is numpy_result.dtype
 
-                tested = False
-                if fallback_result._cupy_array is not None:
-                    tested = True
+                if fallback_result._class is cupy.ndarray:
                     testing.assert_array_equal(
                         numpy_result, fallback_result._cupy_array)
-                if fallback_result._numpy_array is not None:
-                    tested = True
+                else:
                     testing.assert_array_equal(
                         numpy_result, fallback_result._numpy_array)
-                assert tested is True
 
             elif isinstance(numpy_result, numpy.ScalarType):
                 # if numpy returns scalar
@@ -106,16 +102,12 @@ def numpy_fallback_array_allclose(name='xp'):
             assert isinstance(fallback_result, fallback.ndarray)
             assert fallback_result.dtype is numpy_result.dtype
 
-            tested = False
-            if fallback_result._cupy_array is not None:
-                tested = True
+            if fallback_result._class is cupy.ndarray:
                 testing.numpy_cupy_allclose(
                     numpy_result, fallback_result._cupy_array)
-            if fallback_result._numpy_array is not None:
-                tested = True
+            else:
                 testing.numpy_cupy_allclose(
                     numpy_result, fallback_result._numpy_array)
-            assert tested is True
 
         return test_func
     return decorator
@@ -514,3 +506,65 @@ class TestInplaceSpecialMethods(unittest.TestCase):
         res = xp.nancumsum(a, axis=0, out=z)
         assert res is z
         return res
+
+
+@testing.gpu
+class TestArrayVariants(unittest.TestCase):
+
+    @numpy_fallback_array_equal
+    def test_creation_masked(self, xp):
+        mx = xp.ma.array([1, 2, 3, 4], mask=[1, 0, 1, 0])
+        return mx
+
+    @numpy_fallback_equal
+    def test_method_internal(self, xp):
+        mx = xp.ma.array([1, 2, 3, 4], mask=[1, 0, 1, 0])
+        return mx.min()
+
+    @numpy_fallback_equal
+    def test_method_internal_not_callable(self, xp):
+        mx = xp.ma.array([1, 2, 3, 4], mask=[1, 0, 1, 0])
+        return mx.shape
+
+    @numpy_fallback_equal
+    def test_method_external_masked(self, xp):
+        mx = xp.ma.array([1, 2, 3, 4], mask=[1, 0, 1, 0])
+        return xp.mean(mx)
+
+    @numpy_fallback_array_equal
+    def test_magic_method_masked(self, xp):
+        mx = xp.ma.array([1, 2, 3, 4], mask=[1, 0, 1, 0])
+        my = xp.ma.array([4, 2, 3, 1], mask=[1, 0, 1, 0])
+        return mx >= my
+
+    @numpy_fallback_array_equal
+    def test_creation_char(self, xp):
+        cx = xp.chararray((3, 4), itemsize=3)
+        cx[:] = 'a'
+        return cx
+
+    @numpy_fallback_array_equal
+    def test_method_external_char(self, xp):
+        cx = xp.chararray((3, 4), itemsize=3)
+        cx[:] = 'a'
+        cy = xp.chararray((3, 4), itemsize=3)
+        cy[:] = 'b'
+        return xp.add(cx, cy)
+
+    @numpy_fallback_array_equal
+    def test_magic_method_char(self, xp):
+        cx = xp.chararray((3, 4), itemsize=3)
+        cx[:] = 'a'
+        cy = xp.chararray((3, 4), itemsize=3)
+        cy[:] = 'b'
+        return cx == cy
+
+    @numpy_fallback_array_equal
+    def test_inplace(self, xp):
+        x = xp.arange(12).reshape((3, 4))
+        mask = xp.zeros_like(x)
+        mask[0, :] = 1
+        mx = xp.ma.array(x, mask)
+        z = xp.ma.zeros((4,))
+        xp.nanmean(mx, axis=0, out=z)
+        return z
