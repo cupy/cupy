@@ -210,12 +210,12 @@ attributes:
    ...     y[tid] = x1[tid] + x2[tid];
    ... }
    ... ''', 'my_add')
-   >>> add_kernel.attributes
+   >>> add_kernel.attributes  # doctest: +SKIP
    {'max_threads_per_block': 1024, 'shared_size_bytes': 0, 'const_size_bytes': 0, 'local_size_bytes': 0, 'num_regs': 10, 'ptx_version': 70, 'binary_version': 70, 'cache_mode_ca': 0, 'max_dynamic_shared_size_bytes': 49152, 'preferred_shared_memory_carveout': -1}
    >>> add_kernel.max_dynamic_shared_size_bytes
    49152
-   >>> add_kernel.max_dynamic_shared_size_bytes = 50000  # set a new value for the attribute
-   >>> add_kernel.max_dynamic_shared_size_bytes
+   >>> add_kernel.max_dynamic_shared_size_bytes = 50000  # set a new value for the attribute  # doctest: +SKIP
+   >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
    50000
 
 .. note::
