@@ -144,17 +144,21 @@ class ndarray(object):
         return cls(_stored=cupy_ndarray_init, _class=cp.ndarray)
 
     def __init__(self, *args, **kwargs):
+
+        _class = kwargs.pop('_class', None)
+        _stored = kwargs.pop('_stored', None)
+        if _stored is None:
+            return
+
         self._cupy_array = None
         self._numpy_array = None
-        self._class = kwargs.pop('_class', None)
+        self._class = _class
 
-        _stored = kwargs.pop('_stored', None)
-        if _stored is not None:
-            if self._class is cp.ndarray:
-                self._cupy_array = _stored
-                self._latest = 'cupy'
-            else:
-                self._numpy_array = _stored
+        if _class is cp.ndarray:
+            self._cupy_array = _stored
+            self._latest = 'cupy'
+        else:
+            self._numpy_array = _stored
 
     @classmethod
     def _store_cupy_array(cls, array):
