@@ -162,7 +162,7 @@ class _FusionOp(object):
 
     def __repr__(self):
         return '<_FusionOp #{}, {} types=[{}]>'.format(
-            self.index, self.submodule.name, ', '.join(self.dtypes))
+            self.index, self.submodule.name, ', '.join(map(str, self.dtypes)))
 
     def declaration_args(self):
         return ' '.join('{} v{}_{};'.format(_dtype_to_ctype[t], self.index, j)
@@ -533,7 +533,7 @@ class _FusionHistory(object):
                       (float, bool, complex, numpy.generic)):
             var = self._fresh_local(numpy.dtype(type(arg)), const_value=arg)
             return _FusionVarScalar(var, -1, self._has_reduction())
-        raise Exception('Unsupported type {}'.format(type(type)))
+        raise Exception('Unsupported type {}'.format(type(arg)))
 
     def call_ufunc(self, ufunc, args, kwargs):
         nin = ufunc.nin
