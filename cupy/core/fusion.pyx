@@ -515,7 +515,7 @@ class _FusionHistory(object):
         self.preamble_set.add(preamble)
 
     def _get_fusion_var(self, arg):
-        """This converts `arg` to _FusionVarScalr or _FusionVarArray data.
+        """This converts `arg` to _FusionVarScalar or _FusionVarArray data.
 
         Args:
             arg (_FusionVarScalar, _FusionVarArray or a primitive type)
