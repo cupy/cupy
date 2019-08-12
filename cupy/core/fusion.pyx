@@ -533,7 +533,7 @@ class _FusionHistory(object):
                       (float, bool, complex, numpy.generic)):
             var = self._fresh_local(numpy.dtype(type(arg)), const_value=arg)
             return _FusionVarScalar(var, -1, self._has_reduction())
-        raise Exception('Unsupported type {}'.format(type(arg)))
+        raise TypeError('Unsupported type {}'.format(type(arg)))
 
     def call_ufunc(self, ufunc, args, kwargs):
         nin = ufunc.nin
