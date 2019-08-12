@@ -186,9 +186,9 @@ In other words, you have control over grid size, block size, shared memory size 
    ...     y[tid] = x1[tid] + x2[tid];
    ... }
    ... ''', 'my_add')
-   >>> x1 = cupy.arange(25, dtype=cupy.float32).reshape(5, 5)
-   >>> x2 = cupy.arange(25, dtype=cupy.float32).reshape(5, 5)
-   >>> y = cupy.zeros((5, 5), dtype=cupy.float32)
+   >>> x1 = cp.arange(25, dtype=cp.float32).reshape(5, 5)
+   >>> x2 = cp.arange(25, dtype=cp.float32).reshape(5, 5)
+   >>> y = cp.zeros((5, 5), dtype=cp.float32)
    >>> add_kernel((5,), (5,), (x1, x2, y))  # grid, block and arguments
    >>> y
    array([[ 0.,  2.,  4.,  6.,  8.],
@@ -246,7 +246,7 @@ At the first function call, the fused function analyzes the original function ba
 
    >>> @cp.fuse()
    ... def sum_of_products(x, y):
-   ...     return cupy.sum(x * y, axis = -1)
+   ...     return cp.sum(x * y, axis = -1)
 
 You can specify the kernel name by using the ``kernel_name`` keyword argument as follows:
 
