@@ -432,8 +432,8 @@ class _FusionHistory(object):
         self.postmap_local_list = []
 
     def __repr__(self):
-        return '<_FusionMem, op_list={}, var_list={}>'.format(
-            self.op_list, self.var_list)
+        return '<_FusionMem, op_list={}, param_list={}, local_list={}>'.format(
+            self.op_list, self.param_list, self.local_list)
 
     def _has_reduction(self):
         return self.reduce_op is not None
