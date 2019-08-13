@@ -1,16 +1,19 @@
-"""
-The arraypad module contains a group of functions to pad values onto the edges
-of an n-dimensional array.
-
-"""
 from __future__ import division, absolute_import, print_function
 
-import numpy as np
-from numpy.core.overrides import array_function_dispatch
+import cupy
+import numpy
 from numpy.lib.index_tricks import ndindex
 
 
 __all__ = ['pad']
+
+
+def median(x, axis=None, out=None, keepdims=False, xp=None):
+    """workaround for missing cupy.median"""
+    return cupy.percentile(
+        x, q=50, axis=(axis,), out=out, keepdims=keepdims,
+        interpolation="linear"
+    )
 
 
 ###############################################################################
@@ -48,19 +51,19 @@ def _linear_ramp(ndim, axis, start, stop, size, reverse=False):
     Returns
     -------
     ramp : ndarray
-        Output array of dtype np.float64 that in- or decrements along the given
-        `axis`.
+        Output array of dtype cupy.float64 that in- or decrements along the
+        given `axis`.
 
     Examples
     --------
-    >>> _linear_ramp(ndim=2, axis=0, start=np.arange(3), stop=10, size=2)
+    >>> _linear_ramp(ndim=2, axis=0, start=cupy.arange(3), stop=10, size=2)
     array([[0. , 1. , 2. ],
            [5. , 5.5, 6. ]])
     >>> _linear_ramp(ndim=3, axis=0, start=2, stop=0, size=0)
     array([], shape=(0, 1, 1), dtype=float64)
     """
     # Create initial ramp
-    ramp = np.arange(size, dtype=np.float64)
+    ramp = cupy.arange(size, dtype=cupy.float64)
     if reverse:
         ramp = ramp[::-1]
 
@@ -88,7 +91,7 @@ def _round_if_needed(arr, dtype):
     dtype : dtype
         The dtype of the destination array.
     """
-    if np.issubdtype(dtype, np.integer):
+    if cupy.issubdtype(dtype, cupy.integer):
         arr.round(out=arr)
 
 
@@ -172,8 +175,8 @@ def _pad_simple(array, pad_width, fill_value=None):
         left + size + right
         for size, (left, right) in zip(array.shape, pad_width)
     )
-    order = 'F' if array.flags.fnc else 'C'  # Fortran and not also C-order
-    padded = np.empty(new_shape, dtype=array.dtype, order=order)
+    order = "F" if array.flags.fnc else "C"  # Fortran and not also C-order
+    padded = cupy.empty(new_shape, dtype=array.dtype, order=order)
 
     if fill_value is not None:
         padded.fill(fill_value)
@@ -209,7 +212,8 @@ def _set_pad_area(padded, axis, width_pair, value_pair):
     padded[left_slice] = value_pair[0]
 
     right_slice = _slice_at_axis(
-        slice(padded.shape[axis] - width_pair[1], None), axis)
+        slice(padded.shape[axis] - width_pair[1], None), axis
+    )
     padded[right_slice] = value_pair[1]
 
 
@@ -270,14 +274,22 @@ def _get_linear_ramps(padded, axis, width_pair, end_value_pair):
     edge_pair = _get_edges(padded, axis, width_pair)
 
     left_ramp = _linear_ramp(
-        padded.ndim, axis, start=end_value_pair[0], stop=edge_pair[0],
-        size=width_pair[0], reverse=False
+        padded.ndim,
+        axis,
+        start=end_value_pair[0],
+        stop=edge_pair[0],
+        size=width_pair[0],
+        reverse=False,
     )
     _round_if_needed(left_ramp, padded.dtype)
 
     right_ramp = _linear_ramp(
-        padded.ndim, axis, start=end_value_pair[1], stop=edge_pair[1],
-        size=width_pair[1], reverse=True
+        padded.ndim,
+        axis,
+        start=end_value_pair[1],
+        stop=edge_pair[1],
+        size=width_pair[1],
+        reverse=True,
     )
     _round_if_needed(right_ramp, padded.dtype)
 
@@ -325,7 +337,8 @@ def _get_stats(padded, axis, width_pair, length_pair, stat_func):
 
     # Calculate statistic for the left side
     left_slice = _slice_at_axis(
-        slice(left_index, left_index + left_length), axis)
+        slice(left_index, left_index + left_length), axis
+    )
     left_chunk = padded[left_slice]
     left_stat = stat_func(left_chunk, axis=axis, keepdims=True)
     _round_if_needed(left_stat, padded.dtype)
@@ -336,7 +349,8 @@ def _get_stats(padded, axis, width_pair, length_pair, stat_func):
 
     # Calculate statistic for the right side
     right_slice = _slice_at_axis(
-        slice(right_index - right_length, right_index), axis)
+        slice(right_index - right_length, right_index), axis
+    )
     right_chunk = padded[right_slice]
     right_stat = stat_func(right_chunk, axis=axis, keepdims=True)
     _round_if_needed(right_stat, padded.dtype)
@@ -414,7 +428,8 @@ def _set_reflect_both(padded, axis, width_pair, method, include_edge=False):
         if method == "odd":
             # Negate chunk and align with edge
             edge_slice = _slice_at_axis(
-                slice(-right_pad - 1, -right_pad), axis)
+                slice(-right_pad - 1, -right_pad), axis
+            )
             right_chunk = 2 * padded[edge_slice] - right_chunk
 
         # Insert chunk into padded area
@@ -464,9 +479,11 @@ def _set_wrap_both(padded, axis, width_pair):
         # Use min(period, left_pad) to ensure that chunk is not larger than
         # pad area
         right_slice = _slice_at_axis(
-            slice(-right_pad - min(period, left_pad),
-                  -right_pad if right_pad != 0 else None),
-            axis
+            slice(
+                -right_pad - min(period, left_pad),
+                -right_pad if right_pad != 0 else None,
+            ),
+            axis,
         )
         right_chunk = padded[right_slice]
 
@@ -485,13 +502,15 @@ def _set_wrap_both(padded, axis, width_pair):
         # Use min(period, right_pad) to ensure that chunk is not larger than
         # pad area
         left_slice = _slice_at_axis(
-            slice(left_pad, left_pad + min(period, right_pad),), axis)
+            slice(left_pad, left_pad + min(period, right_pad)), axis
+        )
         left_chunk = padded[left_slice]
 
         if right_pad > period:
             # Chunk is smaller than pad area
             pad_area = _slice_at_axis(
-                slice(-right_pad, -right_pad + period), axis)
+                slice(-right_pad, -right_pad + period), axis
+            )
             new_right_pad = right_pad - period
         else:
             # Chunk matches pad area
@@ -516,7 +535,7 @@ def _as_pairs(x, ndim, as_index=False):
         Number of pairs the broadcasted `x` will have.
     as_index : bool, optional
         If `x` is not None, try to round each element of `x` to an integer
-        (dtype `np.intp`) and ensure every element is positive.
+        (dtype `cupy.intp`) and ensure every element is positive.
 
     Returns
     -------
@@ -530,17 +549,17 @@ def _as_pairs(x, ndim, as_index=False):
         Or if `x` is not broadcastable to the shape (`ndim`, 2).
     """
     if x is None:
-        # Pass through None as a special case, otherwise np.round(x) fails
+        # Pass through None as a special case, otherwise cupy.round(x) fails
         # with an AttributeError
         return ((None, None),) * ndim
 
-    x = np.array(x)
+    x = numpy.array(x)
     if as_index:
-        x = np.round(x).astype(np.intp, copy=False)
+        x = numpy.round(x).astype(numpy.intp, copy=False)
 
     if x.ndim < 3:
         # Optimization: Possibly use faster paths for cases where `x` has
-        # only 1 or 2 elements. `np.broadcast_to` could handle these as well
+        # only 1 or 2 elements. `numpy.broadcast_to` could handle these as well
         # but is currently slower
 
         if x.size == 1:
@@ -565,19 +584,18 @@ def _as_pairs(x, ndim, as_index=False):
 
     # Converting the array with `tolist` seems to improve performance
     # when iterating and indexing the result (see usage in `pad`)
-    return np.broadcast_to(x, (ndim, 2)).tolist()
+    return numpy.broadcast_to(x, (ndim, 2)).tolist()
 
-
-def _pad_dispatcher(array, pad_width, mode=None, **kwargs):
-    return (array,)
+# def _pad_dispatcher(array, pad_width, mode=None, **kwargs):
+#    return (array,)
 
 
 ###############################################################################
 # Public functions
 
 
-@array_function_dispatch(_pad_dispatcher, module='numpy')
-def pad(array, pad_width, mode='constant', **kwargs):
+# @array_function_dispatch(_pad_dispatcher, module='numpy')
+def pad(array, pad_width, mode="constant", **kwargs):
     """
     Pad an array.
 
@@ -718,26 +736,26 @@ def pad(array, pad_width, mode='constant', **kwargs):
     Examples
     --------
     >>> a = [1, 2, 3, 4, 5]
-    >>> np.pad(a, (2, 3), 'constant', constant_values=(4, 6))
+    >>> cupy.pad(a, (2, 3), 'constant', constant_values=(4, 6))
     array([4, 4, 1, ..., 6, 6, 6])
 
-    >>> np.pad(a, (2, 3), 'edge')
+    >>> cupy.pad(a, (2, 3), 'edge')
     array([1, 1, 1, ..., 5, 5, 5])
 
-    >>> np.pad(a, (2, 3), 'linear_ramp', end_values=(5, -4))
+    >>> cupy.pad(a, (2, 3), 'linear_ramp', end_values=(5, -4))
     array([ 5,  3,  1,  2,  3,  4,  5,  2, -1, -4])
 
-    >>> np.pad(a, (2,), 'maximum')
+    >>> cupy.pad(a, (2,), 'maximum')
     array([5, 5, 1, 2, 3, 4, 5, 5, 5])
 
-    >>> np.pad(a, (2,), 'mean')
+    >>> cupy.pad(a, (2,), 'mean')
     array([3, 3, 1, 2, 3, 4, 5, 3, 3])
 
-    >>> np.pad(a, (2,), 'median')
+    >>> cupy.pad(a, (2,), 'median')
     array([3, 3, 1, 2, 3, 4, 5, 3, 3])
 
     >>> a = [[1, 2], [3, 4]]
-    >>> np.pad(a, ((3, 2), (2, 3)), 'minimum')
+    >>> cupy.pad(a, ((3, 2), (2, 3)), 'minimum')
     array([[1, 1, 1, 2, 1, 1, 1],
            [1, 1, 1, 2, 1, 1, 1],
            [1, 1, 1, 2, 1, 1, 1],
@@ -747,35 +765,35 @@ def pad(array, pad_width, mode='constant', **kwargs):
            [1, 1, 1, 2, 1, 1, 1]])
 
     >>> a = [1, 2, 3, 4, 5]
-    >>> np.pad(a, (2, 3), 'reflect')
+    >>> cupy.pad(a, (2, 3), 'reflect')
     array([3, 2, 1, 2, 3, 4, 5, 4, 3, 2])
 
-    >>> np.pad(a, (2, 3), 'reflect', reflect_type='odd')
+    >>> cupy.pad(a, (2, 3), 'reflect', reflect_type='odd')
     array([-1,  0,  1,  2,  3,  4,  5,  6,  7,  8])
 
-    >>> np.pad(a, (2, 3), 'symmetric')
+    >>> cupy.pad(a, (2, 3), 'symmetric')
     array([2, 1, 1, 2, 3, 4, 5, 5, 4, 3])
 
-    >>> np.pad(a, (2, 3), 'symmetric', reflect_type='odd')
+    >>> cupy.pad(a, (2, 3), 'symmetric', reflect_type='odd')
     array([0, 1, 1, 2, 3, 4, 5, 5, 6, 7])
 
-    >>> np.pad(a, (2, 3), 'wrap')
+    >>> cupy.pad(a, (2, 3), 'wrap')
     array([4, 5, 1, 2, 3, 4, 5, 1, 2, 3])
 
     >>> def pad_with(vector, pad_width, iaxis, kwargs):
     ...     pad_value = kwargs.get('padder', 10)
     ...     vector[:pad_width[0]] = pad_value
     ...     vector[-pad_width[1]:] = pad_value
-    >>> a = np.arange(6)
+    >>> a = cupy.arange(6)
     >>> a = a.reshape((2, 3))
-    >>> np.pad(a, 2, pad_with)
+    >>> cupy.pad(a, 2, pad_with)
     array([[10, 10, 10, 10, 10, 10, 10],
            [10, 10, 10, 10, 10, 10, 10],
            [10, 10,  0,  1,  2, 10, 10],
            [10, 10,  3,  4,  5, 10, 10],
            [10, 10, 10, 10, 10, 10, 10],
            [10, 10, 10, 10, 10, 10, 10]])
-    >>> np.pad(a, 2, pad_with, padder=100)
+    >>> cupy.pad(a, 2, pad_with, padder=100)
     array([[100, 100, 100, 100, 100, 100, 100],
            [100, 100, 100, 100, 100, 100, 100],
            [100, 100,   0,   1,   2, 100, 100],
@@ -783,17 +801,17 @@ def pad(array, pad_width, mode='constant', **kwargs):
            [100, 100, 100, 100, 100, 100, 100],
            [100, 100, 100, 100, 100, 100, 100]])
     """
-    array = np.asarray(array)
-    pad_width = np.asarray(pad_width)
+    array = cupy.asarray(array)
+    pad_width = numpy.asarray(pad_width)
 
-    if not pad_width.dtype.kind == 'i':
-        raise TypeError('`pad_width` must be of integral type.')
+    if not pad_width.dtype.kind == "i":
+        raise TypeError("`pad_width` must be of integral type.")
 
     # Broadcast to shape (array.ndim, 2)
     pad_width = _as_pairs(pad_width, array.ndim, as_index=True)
 
     if callable(mode):
-        # Old behavior: Use user-supplied function with np.apply_along_axis
+        # Old behavior: Use user-supplied function with numpy.apply_along_axis
         function = mode
         # Create a new zero padded array
         padded, _ = _pad_simple(array, pad_width, fill_value=0)
@@ -804,7 +822,7 @@ def pad(array, pad_width, mode='constant', **kwargs):
             # function operates inplace on the padded array.
 
             # view with the iteration axis at the end
-            view = np.moveaxis(padded, axis, -1)
+            view = cupy.moveaxis(padded, axis, -1)
 
             # compute indices for the iteration axes, and append a trailing
             # ellipsis to prevent 0d arrays decaying to scalars (gh-8642)
@@ -817,26 +835,35 @@ def pad(array, pad_width, mode='constant', **kwargs):
 
     # Make sure that no unsupported keywords were passed for the current mode
     allowed_kwargs = {
-        'empty': [], 'edge': [], 'wrap': [],
-        'constant': ['constant_values'],
-        'linear_ramp': ['end_values'],
-        'maximum': ['stat_length'],
-        'mean': ['stat_length'],
-        'median': ['stat_length'],
-        'minimum': ['stat_length'],
-        'reflect': ['reflect_type'],
-        'symmetric': ['reflect_type'],
+        "empty": [],
+        "edge": [],
+        "wrap": [],
+        "constant": ["constant_values"],
+        "linear_ramp": ["end_values"],
+        "maximum": ["stat_length"],
+        "mean": ["stat_length"],
+        "median": ["stat_length"],
+        "minimum": ["stat_length"],
+        "reflect": ["reflect_type"],
+        "symmetric": ["reflect_type"],
     }
     try:
         unsupported_kwargs = set(kwargs) - set(allowed_kwargs[mode])
     except KeyError:
         raise ValueError("mode '{}' is not supported".format(mode))
     if unsupported_kwargs:
-        raise ValueError("unsupported keyword arguments for mode '{}': {}"
-                         .format(mode, unsupported_kwargs))
+        raise ValueError(
+            "unsupported keyword arguments for mode '{}': {}".format(
+                mode, unsupported_kwargs
+            )
+        )
 
-    stat_functions = {"maximum": np.max, "minimum": np.min,
-                      "mean": np.mean, "median": np.median}
+    stat_functions = {
+        "maximum": cupy.max,
+        "minimum": cupy.min,
+        "mean": cupy.mean,
+        "median": median,
+    }
 
     # Create array with final shape and original values
     # (padded area is undefined)
@@ -900,7 +927,8 @@ def pad(array, pad_width, mode='constant', **kwargs):
                 # behavior; it really should raise an error.
                 edge_pair = _get_edges(padded, axis, (left_index, right_index))
                 _set_pad_area(
-                    padded, axis, (left_index, right_index), edge_pair)
+                    padded, axis, (left_index, right_index), edge_pair
+                )
                 continue
 
             roi = _view_roi(padded, original_area_slice, axis)
@@ -909,8 +937,7 @@ def pad(array, pad_width, mode='constant', **kwargs):
                 # values. This is necessary if the pad area is larger than
                 # the length of the original values in the current dimension.
                 left_index, right_index = _set_reflect_both(
-                    roi, axis, (left_index, right_index),
-                    method, include_edge
+                    roi, axis, (left_index, right_index), method, include_edge
                 )
 
     elif mode == "wrap":
@@ -921,6 +948,7 @@ def pad(array, pad_width, mode='constant', **kwargs):
                 # values. This is necessary if the pad area is larger than
                 # the length of the original values in the current dimension.
                 left_index, right_index = _set_wrap_both(
-                    roi, axis, (left_index, right_index))
+                    roi, axis, (left_index, right_index)
+                )
 
     return padded
