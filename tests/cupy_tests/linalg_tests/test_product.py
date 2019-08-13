@@ -73,13 +73,16 @@ class TestDot(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [
+        #  Test for 0 dimension
         ((3, ), (3, )),
+        #  Test for basic cases
         ((1, 2), (1, 2)),
         ((1, 3), (1, 3)),
         ((1, 2), (1, 3)),
         ((2, 2), (1, 3)),
         ((3, 3), (1, 2)),
         ((0, 3), (0, 3)),
+        #  Test for higher dimensions
         ((2, 0, 3), (2, 0, 3)),
         ((2, 4, 5, 3), (2, 4, 5, 3)),
         ((2, 4, 5, 2), (2, 4, 5, 2)),
