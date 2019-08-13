@@ -8,23 +8,6 @@ from numpy.lib.index_tricks import ndindex
 __all__ = ['pad']
 
 
-def median(x, axis=None, out=None, keepdims=False):
-    """workaround for missing cupy.median
-
-    Args:
-      x(ndarray): The array to take the median of.
-      axis (int, optional): The axis along which to take the median.
-          (Default value = None)
-      out(ndarray, optional): destination for the output (Default value = None)
-      keepdims(bool, optional): If True, retain dimensions along which the
-          median was taken.  (Default value = False)
-    """
-    return cupy.percentile(
-        x, q=50, axis=(axis,), out=out, keepdims=keepdims,
-        interpolation="linear"
-    )
-
-
 ###############################################################################
 # Private utility functions.
 
@@ -84,7 +67,7 @@ def _round_if_needed(arr, dtype):
     """Rounds arr inplace if destination dtype is integer.
     """
     if cupy.issubdtype(dtype, cupy.integer):
-        arr.round(out=arr)
+        arr.round(out=arr)  # bug in round so use rint (cupy/cupy#2330)
 
 
 def _slice_at_axis(sl, axis):
@@ -510,7 +493,7 @@ def pad(array, pad_width, mode="constant", **kwargs):
           vector along each axis.
           'median'
           Pads with the median value of all or part of the
-          vector along each axis.
+          vector along each axis. (Not Implemented)
           'minimum'
           Pads with the minimum value of all or part of the
           vector along each axis.
@@ -609,9 +592,6 @@ def pad(array, pad_width, mode="constant", **kwargs):
     >>> cupy.pad(a, (2,), 'mean')
     array([3, 3, 1, 2, 3, 4, 5, 3, 3])
 
-    >>> cupy.pad(a, (2,), 'median')
-    array([3, 3, 1, 2, 3, 4, 5, 3, 3])
-
     >>> a = [[1, 2], [3, 4]]
     >>> cupy.pad(a, ((3, 2), (2, 3)), 'minimum')
     array([[1, 1, 1, 2, 1, 1, 1],
@@ -700,7 +680,7 @@ def pad(array, pad_width, mode="constant", **kwargs):
         "linear_ramp": ["end_values"],
         "maximum": ["stat_length"],
         "mean": ["stat_length"],
-        "median": ["stat_length"],
+        # "median": ["stat_length"],
         "minimum": ["stat_length"],
         "reflect": ["reflect_type"],
         "symmetric": ["reflect_type"],
@@ -720,7 +700,7 @@ def pad(array, pad_width, mode="constant", **kwargs):
         "maximum": cupy.max,
         "minimum": cupy.min,
         "mean": cupy.mean,
-        "median": median,
+        # "median": cupy.median,
     }
 
     # Create array with final shape and original values
