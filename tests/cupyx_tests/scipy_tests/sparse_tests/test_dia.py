@@ -101,6 +101,20 @@ class TestDiaMatrix(unittest.TestCase):
         self.assertTrue(m.flags.c_contiguous)
         cupy.testing.assert_allclose(m, expect)
 
+    def test_diagonal(self):
+        testing.assert_array_equal(
+            self.m.diagonal(-2), cupy.array([0], self.dtype))
+        testing.assert_array_equal(
+            self.m.diagonal(-1), cupy.array([3, 4], self.dtype))
+        testing.assert_array_equal(
+            self.m.diagonal(), cupy.array([0, 1, 2], self.dtype))
+        testing.assert_array_equal(
+            self.m.diagonal(1), cupy.array([0, 0, 0], self.dtype))
+        testing.assert_array_equal(
+            self.m.diagonal(2), cupy.array([0, 0], self.dtype))
+        testing.assert_array_equal(
+            self.m.diagonal(3), cupy.array([0], self.dtype))
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
@@ -245,6 +259,11 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     def test_transpose(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.transpose()
+
+    @testing.numpy_cupy_raises(sp_name='sp')
+    def test_diagonal_error(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        m.diagonal(k=10)  # out of range
 
 
 @testing.parameterize(*testing.product({
