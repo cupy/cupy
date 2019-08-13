@@ -78,10 +78,10 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
         b : cupy.ndarray
             Components of the second vector(s).
         axisa : int, optional
-            Axis of ``a`` that defines the vector(s).  
+            Axis of ``a`` that defines the vector(s).
             By default, the last axis.
         axisb : int, optional
-            Axis of ``b`` that defines the vector(s).  
+            Axis of ``b`` that defines the vector(s).
             By default, the last axis.
         axisc : int, optional
             Axis of ``c`` containing the cross product vector(s).  Ignored if
