@@ -205,7 +205,7 @@ cdef class RawModule:
 
         if self.code is not None:
             self.module = cupy.core.core.compile_with_cache(
-                              code, options, prepend_cupy_headers=False)
+                code, options, prepend_cupy_headers=False)
         elif self.cubin_path is not None:
             self.module = Module()
             self.module.load_file(self.cubin_path)
