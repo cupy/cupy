@@ -6,6 +6,7 @@ except ImportError:
 
 import cupy
 from cupy import core
+from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import data
 from cupyx.scipy.sparse import util
@@ -189,6 +190,8 @@ class dia_matrix(data._data_matrix):
         if idx.size == 0:
             return cupy.zeros(last_col - first_col, dtype=self.data.dtype)
         return self.data[idx[0], first_col:last_col]
+
+    diagonal.__doc__ = base.spmatrix.diagonal.__doc__
 
 
 def isspmatrix_dia(x):

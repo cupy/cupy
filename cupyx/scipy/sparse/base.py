@@ -292,9 +292,9 @@ class spmatrix(object):
         """Number of non-zero entries, equivalent to"""
         raise NotImplementedError
 
-    def diagonal(self):
+    def diagonal(self, k=0):
         """Returns the main diagonal of the matrix"""
-        return self.tocsr().diagonal()
+        return self.tocsr().diagonal(k=k)
 
     def dot(self, other):
         """Ordinary dot product"""

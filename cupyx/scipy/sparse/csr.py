@@ -145,9 +145,11 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement argmin
     # TODO(unno): Implement check_format
 
-    def diagonal(self):
+    def diagonal(self, k=0):
         # TODO(unno): Implement diagonal
         raise NotImplementedError
+
+    diagonal.__doc__ = base.spmatrix.diagonal.__doc__
 
     def eliminate_zeros(self):
         """Removes zero entories in place."""
