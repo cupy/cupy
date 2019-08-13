@@ -41,6 +41,7 @@ def _call_func(self, impl, args, kw):
     return result, error, tb_str
 
 
+# List of exception classes numpy and cupy routines raise.
 _numpy_errors = [
     AttributeError, Exception, IndexError, TypeError, ValueError,
     NotImplementedError, DeprecationWarning,
@@ -65,6 +66,8 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
 
     elif any([isinstance(cupy_error, err) != isinstance(numpy_error, err)
               for err in _numpy_errors]):
+        # Checks if there is no error in `_numpy_errors`, which only one of
+        # `cupy_error` and `numpy_error` is a instance of.
         msg = '''Different types of errors occurred
 
 cupy
