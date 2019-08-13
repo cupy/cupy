@@ -63,8 +63,8 @@ def vdot(a, b):
 def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     """Returns the cross product of two vectors.
 
-    The cross product of `a` and `b` in :math:`R^3` is a vector perpendicular
-    to both `a` and `b`.  If `a` and `b` are arrays of vectors, the vectors
+    The cross product of ``a`` and ``b`` in :math:`R^3` is a vector perpendicular
+    to both ``a`` and ``b``.  If `a` and `b` are arrays of vectors, the vectors
     are defined by the last axis of `a` and `b` by default, and these axes
     can have dimensions 2 or 3.  Where the dimension of either `a` or `b` is
     2, the third component of the input vector is assumed to be zero and the
@@ -91,7 +91,6 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     Returns:
         c : cupy.ndarray
             Vector cross product(s).
-
 
     .. seealso:: :func:`numpy.cross`
 
