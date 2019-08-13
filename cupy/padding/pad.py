@@ -8,8 +8,17 @@ from numpy.lib.index_tricks import ndindex
 __all__ = ['pad']
 
 
-def median(x, axis=None, out=None, keepdims=False, xp=None):
-    """workaround for missing cupy.median"""
+def median(x, axis=None, out=None, keepdims=False):
+    """workaround for missing cupy.median
+
+    Args:
+      x(ndarray): The array to take the median of.
+      axis (int, optional): The axis along which to take the median.
+          (Default value = None)
+      out(ndarray, optional): destination for the output (Default value = None)
+      keepdims(bool, optional): If True, retain dimensions along which the
+          median was taken.  (Default value = False)
+    """
     return cupy.percentile(
         x, q=50, axis=(axis,), out=out, keepdims=keepdims,
         interpolation="linear"
@@ -21,38 +30,29 @@ def median(x, axis=None, out=None, keepdims=False, xp=None):
 
 
 def _linear_ramp(ndim, axis, start, stop, size, reverse=False):
-    """
-    Create a linear ramp of `size` in `axis` with `ndim`.
+    """Create a linear ramp of `size` in `axis` with `ndim`.
 
     This algorithm behaves like a vectorized version of `numpy.linspace`.
     The resulting linear ramp is broadcastable to any array that matches the
     ramp in `shape[axis]` and `ndim`.
 
-    Parameters
-    ----------
-    ndim : int
-        Number of dimensions of the resulting array. All dimensions except
-        the one specified by `axis` will have the size 1.
-    axis : int
-        The dimension that contains the linear ramp of `size`.
-    start : int or ndarray
-        The starting value(s) of the linear ramp. If given as an array, its
-        size must match `size`.
-    stop : int or ndarray
-        The stop value(s) (not included!) of the linear ramp. If given as an
-        array, its size must match `size`.
-    size : int
-        The number of elements in the linear ramp. If this argument is 0 the
-        dimensions of `ramp` will all be of length 1 except for the one given
-        by `axis` which will be 0.
-    reverse : bool
-        If False, increment in a positive fashion, otherwise decrement.
+    Args:
+      ndim(int): Number of dimensions of the resulting array. All dimensions
+          except the one specified by `axis` will have the size 1.
+      axis(int): The dimension that contains the linear ramp of `size`.
+      start(int or ndarray): The starting value(s) of the linear ramp. If given
+          as an array, its size must match `size`.
+      stop(int or ndarray): The stop value(s) (not included!) of the linear
+          ramp. If given as an array, its size must match `size`.
+      size(int): The number of elements in the linear ramp. If this argument is
+          0 the dimensions of `ramp` will all be of length 1 except for the one
+          given by `axis` which will be 0.
+      reverse(bool, optional): If False, increment in a positive fashion,
+          otherwise decrement. (Default value = False)
 
-    Returns
-    -------
-    ramp : ndarray
-        Output array of dtype cupy.float64 that in- or decrements along the
-        given `axis`.
+    Returns:
+      ndarray: Output array of dtype cupy.float64 that in- or decrements along
+      the given `axis`.
 
     Examples
     --------
@@ -81,36 +81,22 @@ def _linear_ramp(ndim, axis, start, stop, size, reverse=False):
 
 
 def _round_if_needed(arr, dtype):
-    """
-    Rounds arr inplace if destination dtype is integer.
-
-    Parameters
-    ----------
-    arr : ndarray
-        Input array.
-    dtype : dtype
-        The dtype of the destination array.
+    """Rounds arr inplace if destination dtype is integer.
     """
     if cupy.issubdtype(dtype, cupy.integer):
         arr.round(out=arr)
 
 
 def _slice_at_axis(sl, axis):
-    """
-    Construct tuple of slices to slice an array in the given dimension.
+    """Construct tuple of slices to slice an array in the given dimension.
 
-    Parameters
-    ----------
-    sl : slice
-        The slice for the given dimension.
-    axis : int
-        The axis to which `sl` is applied. All other dimensions are left
-        "unsliced".
+    Args:
+      sl(slice): The slice for the given dimension.
+      axis(int): The axis to which `sl` is applied. All other dimensions are
+          left "unsliced".
 
-    Returns
-    -------
-    sl : tuple of slices
-        A tuple with slices matching `shape` in length.
+    Returns:
+      tuple of slices: A tuple with slices matching `shape` in length.
 
     Examples
     --------
@@ -121,27 +107,20 @@ def _slice_at_axis(sl, axis):
 
 
 def _view_roi(array, original_area_slice, axis):
-    """
-    Get a view of the current region of interest during iterative padding.
+    """Get a view of the current region of interest during iterative padding.
 
     When padding multiple dimensions iteratively corner values are
     unnecessarily overwritten multiple times. This function reduces the
     working area for the first dimensions so that corners are excluded.
 
-    Parameters
-    ----------
-    array : ndarray
-        The array with the region of interest.
-    original_area_slice : tuple of slices
-        Denotes the area with original values of the unpadded array.
-    axis : int
-        The currently padded dimension assuming that `axis` is padded before
-        `axis` + 1.
+    Args:
+      array(ndarray): The array with the region of interest.
+      original_area_slice(tuple of slices): Denotes the area with original
+          values of the unpadded array.
+      axis(int): The currently padded dimension assuming that `axis` is padded
+          before `axis` + 1.
 
-    Returns
-    -------
-    roi : ndarray
-        The region of interest of the original `array`.
+    Returns:
     """
     axis += 1
     sl = (slice(None),) * axis + original_area_slice[axis:]
@@ -149,26 +128,15 @@ def _view_roi(array, original_area_slice, axis):
 
 
 def _pad_simple(array, pad_width, fill_value=None):
-    """
-    Pad array on all sides with either a single value or undefined values.
+    """Pad array on all sides with either a single value or undefined values.
 
-    Parameters
-    ----------
-    array : ndarray
-        Array to grow.
-    pad_width : sequence of tuple[int, int]
-        Pad width on both sides for each dimension in `arr`.
-    fill_value : scalar, optional
-        If provided the padded area is filled with this value, otherwise
-        the pad area left undefined.
-
-    Returns
-    -------
-    padded : ndarray
-        The padded array with the same dtype as`array`. Its order will default
-        to C-style if `array` is not F-contiguous.
-    original_area_slice : tuple
-        A tuple of slices pointing to the area of the original array.
+    Args:
+      array(ndarray): Array to grow.
+      pad_width(sequence of tuple[int, int]): Pad width on both sides for each
+          dimension in `arr`.
+      fill_value(scalar, optional, optional): If provided the padded area is
+          filled with this value, otherwise the pad area left undefined.
+          (Default value = None)
     """
     # Allocate grown array
     new_shape = tuple(
@@ -192,21 +160,7 @@ def _pad_simple(array, pad_width, fill_value=None):
 
 
 def _set_pad_area(padded, axis, width_pair, value_pair):
-    """
-    Set empty-padded area in given dimension.
-
-    Parameters
-    ----------
-    padded : ndarray
-        Array with the pad area which is modified inplace.
-    axis : int
-        Dimension with the pad area to set.
-    width_pair : (int, int)
-        Pair of widths that mark the pad area on both sides in the given
-        dimension.
-    value_pair : tuple of scalars or ndarrays
-        Values inserted into the pad area on each side. It must match or be
-        broadcastable to the shape of `arr`.
+    """Set empty-padded area in given dimension.
     """
     left_slice = _slice_at_axis(slice(None, width_pair[0]), axis)
     padded[left_slice] = value_pair[0]
@@ -218,25 +172,13 @@ def _set_pad_area(padded, axis, width_pair, value_pair):
 
 
 def _get_edges(padded, axis, width_pair):
-    """
-    Retrieve edge values from empty-padded array in given dimension.
+    """Retrieve edge values from empty-padded array in given dimension.
 
-    Parameters
-    ----------
-    padded : ndarray
-        Empty-padded array.
-    axis : int
-        Dimension in which the edges are considered.
-    width_pair : (int, int)
-        Pair of widths that mark the pad area on both sides in the given
-        dimension.
-
-    Returns
-    -------
-    left_edge, right_edge : ndarray
-        Edge values of the valid area in `padded` in the given dimension. Its
-        shape will always match `padded` except for the dimension given by
-        `axis` which will have a length of 1.
+    Args:
+      padded(ndarray): Empty-padded array.
+      axis(int): Dimension in which the edges are considered.
+      width_pair((int, int)): Pair of widths that mark the pad area on both
+          sides in the given dimension.
     """
     left_index = width_pair[0]
     left_slice = _slice_at_axis(slice(left_index, left_index + 1), axis)
@@ -250,26 +192,16 @@ def _get_edges(padded, axis, width_pair):
 
 
 def _get_linear_ramps(padded, axis, width_pair, end_value_pair):
-    """
-    Construct linear ramps for empty-padded array in given dimension.
+    """Construct linear ramps for empty-padded array in given dimension.
 
-    Parameters
-    ----------
-    padded : ndarray
-        Empty-padded array.
-    axis : int
-        Dimension in which the ramps are constructed.
-    width_pair : (int, int)
-        Pair of widths that mark the pad area on both sides in the given
-        dimension.
-    end_value_pair : (scalar, scalar)
-        End values for the linear ramps which form the edge of the fully padded
-        array. These values are included in the linear ramps.
-
-    Returns
-    -------
-    left_ramp, right_ramp : ndarray
-        Linear ramps to set on both sides of `padded`.
+    Args:
+      padded(ndarray): Empty-padded array.
+      axis(int): Dimension in which the ramps are constructed.
+      width_pair((int, int)): Pair of widths that mark the pad area on both
+          sides in the given dimension.
+      end_value_pair((scalar, scalar)): End values for the linear ramps which
+          form the edge of the fully padded array. These values are included in
+          the linear ramps.
     """
     edge_pair = _get_edges(padded, axis, width_pair)
 
@@ -297,30 +229,20 @@ def _get_linear_ramps(padded, axis, width_pair, end_value_pair):
 
 
 def _get_stats(padded, axis, width_pair, length_pair, stat_func):
-    """
-    Calculate statistic for the empty-padded array in given dimnsion.
+    """Calculate statistic for the empty-padded array in given dimnsion.
 
-    Parameters
-    ----------
-    padded : ndarray
-        Empty-padded array.
-    axis : int
-        Dimension in which the statistic is calculated.
-    width_pair : (int, int)
-        Pair of widths that mark the pad area on both sides in the given
-        dimension.
-    length_pair : 2-element sequence of None or int
-        Gives the number of values in valid area from each side that is
-        taken into account when calculating the statistic. If None the entire
-        valid area in `padded` is considered.
-    stat_func : function
-        Function to compute statistic. The expected signature is
-        ``stat_func(x: ndarray, axis: int, keepdims: bool) -> ndarray``.
-
-    Returns
-    -------
-    left_stat, right_stat : ndarray
-        Calculated statistic for both sides of `padded`.
+    Args:
+      padded(ndarray): Empty-padded array.
+      axis(int): Dimension in which the statistic is calculated.
+      width_pair((int, int)): Pair of widths that mark the pad area on both
+          sides in the given dimension.
+      length_pair(2-element sequence of None or int): Gives the number of
+          values in valid area from each side that is taken into account when
+          calculating the statistic. If None the entire valid area in `padded`
+          is considered.
+      stat_func(function): Function to compute statistic. The expected
+          signature is
+          ``stat_func(x: ndarray, axis: int, keepdims: bool) -> ndarray``.
     """
     # Calculate indices of the edges of the area with original values
     left_index = width_pair[0]
@@ -358,29 +280,17 @@ def _get_stats(padded, axis, width_pair, length_pair, stat_func):
 
 
 def _set_reflect_both(padded, axis, width_pair, method, include_edge=False):
-    """
-    Pad `axis` of `arr` with reflection.
+    """Pad `axis` of `arr` with reflection.
 
-    Parameters
-    ----------
-    padded : ndarray
-        Input array of arbitrary shape.
-    axis : int
-        Axis along which to pad `arr`.
-    width_pair : (int, int)
-        Pair of widths that mark the pad area on both sides in the given
-        dimension.
-    method : str
-        Controls method of reflection; options are 'even' or 'odd'.
-    include_edge : bool
-        If true, edge value is included in reflection, otherwise the edge
-        value forms the symmetric axis to the reflection.
-
-    Returns
-    -------
-    pad_amt : tuple of ints, length 2
-        New index positions of padding to do along the `axis`. If these are
-        both 0, padding is done in this dimension.
+    Args:
+      padded(ndarray): Input array of arbitrary shape.
+      axis(int): Axis along which to pad `arr`.
+      width_pair((int, int)): Pair of widths that mark the pad area on both
+          sides in the given dimension.
+      method(str): Controls method of reflection; options are 'even' or 'odd'.
+      include_edge(bool, optional): If true, edge value is included in
+          reflection, otherwise the edge value forms the symmetric axis to the
+          reflection. (Default value = False)
     """
     left_pad, right_pad = width_pair
     old_length = padded.shape[axis] - right_pad - left_pad
@@ -444,24 +354,13 @@ def _set_reflect_both(padded, axis, width_pair, method, include_edge=False):
 
 
 def _set_wrap_both(padded, axis, width_pair):
-    """
-    Pad `axis` of `arr` with wrapped values.
+    """Pad `axis` of `arr` with wrapped values.
 
-    Parameters
-    ----------
-    padded : ndarray
-        Input array of arbitrary shape.
-    axis : int
-        Axis along which to pad `arr`.
-    width_pair : (int, int)
-        Pair of widths that mark the pad area on both sides in the given
-        dimension.
-
-    Returns
-    -------
-    pad_amt : tuple of ints, length 2
-        New index positions of padding to do along the `axis`. If these are
-        both 0, padding is done in this dimension.
+    Args:
+      padded(ndarray): Input array of arbitrary shape.
+      axis(int): Axis along which to pad `arr`.
+      width_pair((int, int)): Pair of widths that mark the pad area on both
+          sides in the given dimension.
     """
     left_pad, right_pad = width_pair
     period = padded.shape[axis] - right_pad - left_pad
@@ -521,32 +420,21 @@ def _set_wrap_both(padded, axis, width_pair):
 
 
 def _as_pairs(x, ndim, as_index=False):
-    """
-    Broadcast `x` to an array with the shape (`ndim`, 2).
+    """Broadcast `x` to an array with the shape (`ndim`, 2).
 
     A helper function for `pad` that prepares and validates arguments like
     `pad_width` for iteration in pairs.
 
-    Parameters
-    ----------
-    x : {None, scalar, array-like}
-        The object to broadcast to the shape (`ndim`, 2).
-    ndim : int
-        Number of pairs the broadcasted `x` will have.
-    as_index : bool, optional
-        If `x` is not None, try to round each element of `x` to an integer
-        (dtype `cupy.intp`) and ensure every element is positive.
+    Args:
+      x({None, scalar, array-like}): The object to broadcast to the shape
+          (`ndim`, 2).
+      ndim(int): Number of pairs the broadcasted `x` will have.
+      as_index(bool, optional, optional): If `x` is not None, try to round each
+          element of `x` to an integer (dtype `cupy.intp`) and ensure every
+          element is positive. (Default value = False)
 
-    Returns
-    -------
-    pairs : nested iterables, shape (`ndim`, 2)
-        The broadcasted version of `x`.
-
-    Raises
-    ------
-    ValueError
-        If `as_index` is True and `x` contains negative elements.
-        Or if `x` is not broadcastable to the shape (`ndim`, 2).
+    Returns:
+      nested iterables, shape (`ndim`, 2): The broadcasted version of `x`.
     """
     if x is None:
         # Pass through None as a special case, otherwise cupy.round(x) fails
@@ -596,118 +484,89 @@ def _as_pairs(x, ndim, as_index=False):
 
 # @array_function_dispatch(_pad_dispatcher, module='numpy')
 def pad(array, pad_width, mode="constant", **kwargs):
-    """
-    Pad an array.
+    """Pad an array.
 
-    Parameters
-    ----------
-    array : array_like of rank N
-        The array to pad.
-    pad_width : {sequence, array_like, int}
-        Number of values padded to the edges of each axis.
-        ((before_1, after_1), ... (before_N, after_N)) unique pad widths
-        for each axis.
-        ((before, after),) yields same before and after pad for each axis.
-        (pad,) or int is a shortcut for before = after = pad width for all
-        axes.
-    mode : str or function, optional
-        One of the following string values or a user supplied function.
+    Args:
+      array(array_like of rank N): The array to pad.
+      pad_width({sequence, array_like, int}): Number of values padded to the
+          edges of each axis. ((before_1, after_1), ... (before_N, after_N))
+          unique pad widths for each axis. ((before, after),) yields same
+          before and after pad for each axis. (pad,) or int is a shortcut for
+          before = after = pad width for all axes.
+      mode(str or function, optional, optional): One of the following string
+          values or a user supplied function.
+          'constant' (default)
+          Pads with a constant value.
+          'edge'
+          Pads with the edge values of array.
+          'linear_ramp'
+          Pads with the linear ramp between end_value and the
+          array edge value.
+          'maximum'
+          Pads with the maximum value of all or part of the
+          vector along each axis.
+          'mean'
+          Pads with the mean value of all or part of the
+          vector along each axis.
+          'median'
+          Pads with the median value of all or part of the
+          vector along each axis.
+          'minimum'
+          Pads with the minimum value of all or part of the
+          vector along each axis.
+          'reflect'
+          Pads with the reflection of the vector mirrored on the first and last
+          values of the vector along each axis.
+          'symmetric'
+          Pads with the reflection of the vector mirrored along the edge of the
+          array.
+          'wrap'
+          Pads with the wrap of the vector along the axis. The first values are
+          used to pad the end and the end values are used to pad the beginning.
+          'empty'
+          Pads with undefined values.
+          <function>
+          Padding function, see Notes.
+      stat_length(sequence or int, optional): Used in 'maximum', 'mean', 'median', and 'minimum'.  Number of
+          values at edge of each axis used to calculate the statistic value.
+          ((before_1, after_1), ... (before_N, after_N)) unique statistic
+          lengths for each axis.
+          ((before, after),) yields same before and after statistic lengths
+          for each axis.
+          (stat_length,) or int is a shortcut for before = after = statistic
+          length for all axes.
+          Default is ``None``, to use the entire axis.
+      constant_values(sequence or scalar, optional): Used in 'constant'. The
+          values to set the padded values for each axis.
+          ``((before_1, after_1), ... (before_N, after_N))`` unique pad
+          constants for each axis.
+          ``((before, after),)`` yields same before and after constants for
+          each axis.
+          ``(constant,)`` or ``constant`` is a shortcut for
+          ``before = after = constant`` for all axes.
+          Default is 0.
+      end_values(sequence or scalar, optional): Used in 'linear_ramp'. The
+          values used for the ending value of the linear_ramp and that will
+          form the edge of the padded array.
+          ``((before_1, after_1), ... (before_N, after_N))`` unique end values
+          for each axis.
+          ``((before, after),)`` yields same before and after end values for
+          each axis.
+          ``(constant,)`` or ``constant`` is a shortcut for
+          ``before = after = constant`` for all axes.
+          Default is 0.
+      reflect_type({'even', 'odd'}, optional): Used in 'reflect', and
+          'symmetric'.  The 'even' style is the default with an unaltered
+          reflection around the edge value.  For the 'odd' style, the extended
+          part of the array is created by subtracting the reflected values from
+          two times the edge value.
 
-        'constant' (default)
-            Pads with a constant value.
-        'edge'
-            Pads with the edge values of array.
-        'linear_ramp'
-            Pads with the linear ramp between end_value and the
-            array edge value.
-        'maximum'
-            Pads with the maximum value of all or part of the
-            vector along each axis.
-        'mean'
-            Pads with the mean value of all or part of the
-            vector along each axis.
-        'median'
-            Pads with the median value of all or part of the
-            vector along each axis.
-        'minimum'
-            Pads with the minimum value of all or part of the
-            vector along each axis.
-        'reflect'
-            Pads with the reflection of the vector mirrored on
-            the first and last values of the vector along each
-            axis.
-        'symmetric'
-            Pads with the reflection of the vector mirrored
-            along the edge of the array.
-        'wrap'
-            Pads with the wrap of the vector along the axis.
-            The first values are used to pad the end and the
-            end values are used to pad the beginning.
-        'empty'
-            Pads with undefined values.
-
-            .. versionadded:: 1.17
-
-        <function>
-            Padding function, see Notes.
-    stat_length : sequence or int, optional
-        Used in 'maximum', 'mean', 'median', and 'minimum'.  Number of
-        values at edge of each axis used to calculate the statistic value.
-
-        ((before_1, after_1), ... (before_N, after_N)) unique statistic
-        lengths for each axis.
-
-        ((before, after),) yields same before and after statistic lengths
-        for each axis.
-
-        (stat_length,) or int is a shortcut for before = after = statistic
-        length for all axes.
-
-        Default is ``None``, to use the entire axis.
-    constant_values : sequence or scalar, optional
-        Used in 'constant'.  The values to set the padded values for each
-        axis.
-
-        ``((before_1, after_1), ... (before_N, after_N))`` unique pad constants
-        for each axis.
-
-        ``((before, after),)`` yields same before and after constants for each
-        axis.
-
-        ``(constant,)`` or ``constant`` is a shortcut for ``before = after = constant`` for
-        all axes.
-
-        Default is 0.
-    end_values : sequence or scalar, optional
-        Used in 'linear_ramp'.  The values used for the ending value of the
-        linear_ramp and that will form the edge of the padded array.
-
-        ``((before_1, after_1), ... (before_N, after_N))`` unique end values
-        for each axis.
-
-        ``((before, after),)`` yields same before and after end values for each
-        axis.
-
-        ``(constant,)`` or ``constant`` is a shortcut for ``before = after = constant`` for
-        all axes.
-
-        Default is 0.
-    reflect_type : {'even', 'odd'}, optional
-        Used in 'reflect', and 'symmetric'.  The 'even' style is the
-        default with an unaltered reflection around the edge value.  For
-        the 'odd' style, the extended part of the array is created by
-        subtracting the reflected values from two times the edge value.
-
-    Returns
-    -------
-    pad : ndarray
-        Padded array of rank equal to `array` with shape increased
-        according to `pad_width`.
+    Returns:
+      ndarray: Padded array of rank equal to `array` with shape increased
+      according to `pad_width`.
 
     Notes
     -----
-    .. versionadded:: 1.7.0
-
     For an array with rank greater than 1, some of the padding of later
     axes is calculated from padding of previous axes.  This is easiest to
     think about with a rank 2 array where the corners of the padded array
@@ -732,7 +591,6 @@ def pad(array, pad_width, mode="constant", **kwargs):
             The axis currently being calculated.
         kwargs : dict
             Any keyword arguments the function requires.
-
     Examples
     --------
     >>> a = [1, 2, 3, 4, 5]
