@@ -41,6 +41,13 @@ def _call_func(self, impl, args, kw):
     return result, error, tb_str
 
 
+_numpy_errors = [
+    AttributeError, Exception, IndexError, TypeError, ValueError,
+    NotImplementedError, DeprecationWarning,
+    numpy.AxisError, numpy.linalg.LinAlgError,
+]
+
+
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
                             numpy_tb, accept_error=False):
     # For backward compatibility
@@ -55,11 +62,9 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
         self.fail('Only numpy raises error\n\n' + numpy_tb)
     elif numpy_error is None:
         self.fail('Only cupy raises error\n\n' + cupy_tb)
-    elif not isinstance(cupy_error, type(numpy_error)):
-        # CuPy errors should be at least as explicit as the NumPy errors, i.e.
-        # allow CuPy errors to derive from NumPy errors but not the opposite.
-        # This ensures that try/except blocks that catch NumPy errors also
-        # catch CuPy errors.
+
+    elif any([isinstance(cupy_error, err) != isinstance(numpy_error, err)
+              for err in _numpy_errors]):
         msg = '''Different types of errors occurred
 
 cupy
@@ -68,8 +73,9 @@ numpy
 %s
 ''' % (cupy_tb, numpy_tb)
         self.fail(msg)
-    elif not (isinstance(cupy_error, accept_error) and
-              isinstance(numpy_error, accept_error)):
+
+    elif not (isinstance(cupy_error, accept_error)
+              and isinstance(numpy_error, accept_error)):
         msg = '''Both cupy and numpy raise exceptions
 
 cupy
