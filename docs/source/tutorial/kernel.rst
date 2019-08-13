@@ -197,6 +197,27 @@ In other words, you have control over grid size, block size, shared memory size 
           [30., 32., 34., 36., 38.],
           [40., 42., 44., 46., 48.]], dtype=float32)
 
+The CUDA kernel attributes can be retrieved by either accessing the :attr:`~cupy.RawKernel.attributes` dictionary,
+or by accessing the :class:`~cupy.RawKernel` object's attributes directly; the latter can also be used to set certain
+attributes:
+
+.. doctest::
+
+   >>> add_kernel = cp.RawKernel(r'''
+   ... extern "C" __global__
+   ... void my_add(const float* x1, const float* x2, float* y) {
+   ...     int tid = blockDim.x * blockIdx.x + threadIdx.x;
+   ...     y[tid] = x1[tid] + x2[tid];
+   ... }
+   ... ''', 'my_add')
+   >>> add_kernel.attributes  # doctest: +SKIP
+   {'max_threads_per_block': 1024, 'shared_size_bytes': 0, 'const_size_bytes': 0, 'local_size_bytes': 0, 'num_regs': 10, 'ptx_version': 70, 'binary_version': 70, 'cache_mode_ca': 0, 'max_dynamic_shared_size_bytes': 49152, 'preferred_shared_memory_carveout': -1}
+   >>> add_kernel.max_dynamic_shared_size_bytes
+   49152
+   >>> add_kernel.max_dynamic_shared_size_bytes = 50000  # set a new value for the attribute  # doctest: +SKIP
+   >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
+   50000
+
 .. note::
     The kernel does not have return values.
     You need to pass both input arrays and output arrays as arguments.
