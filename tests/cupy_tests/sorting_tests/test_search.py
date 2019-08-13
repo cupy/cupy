@@ -205,8 +205,6 @@ class TestWhereError(unittest.TestCase):
 @testing.parameterize(
     {'array': numpy.random.randint(0, 2, (20,))},
     {'array': numpy.random.randn(3, 2, 4)},
-    {'array': numpy.array(0)},
-    {'array': numpy.array(1)},
     {'array': numpy.empty((0,))},
     {'array': numpy.empty((0, 2))},
     {'array': numpy.empty((0, 2, 0))},
@@ -216,6 +214,21 @@ class TestNonzero(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
+    def test_nonzero(self, xp, dtype):
+        array = xp.array(self.array, dtype=dtype)
+        return xp.nonzero(array)
+
+
+@testing.parameterize(
+    {'array': numpy.array(0)},
+    {'array': numpy.array(1)},
+)
+@testing.gpu
+@testing.with_requires('numpy>=1.17.0')
+class TestNonzeroZeroDimension(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises(DeprecationWarning)
     def test_nonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
         return xp.nonzero(array)

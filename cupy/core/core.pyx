@@ -697,6 +697,11 @@ cdef class ndarray:
             :func:`numpy.nonzero`
 
         """
+        if self.ndim == 0:
+            warnings.warn(
+                'calling nonzero on 0d arrays is deprecated',
+                DeprecationWarning)
+
         return _indexing._ndarray_nonzero(self)
 
     # TODO(okuta): Implement compress
