@@ -1,5 +1,5 @@
 import numpy
-from numpy.polynomial import chebyshev as ch
+from numpy.polynomial import chebyshev
 import six
 
 import cupy
@@ -102,14 +102,16 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     a = cupy.asarray(a)
     b = cupy.asarray(b)
     # Check axisa and axisb are within bounds
-    axisa = ch.normalize_axis_index(axisa, a.ndim, msg_prefix='axisa')
-    axisb = ch.normalize_axis_index(axisb, b.ndim, msg_prefix='axisb')
+    axisa = chebyshev.normalize_axis_index(
+        axisa, a.ndim, msg_prefix='axisa')
+    axisb = chebyshev.normalize_axis_index(
+        axisb, b.ndim, msg_prefix='axisb')
 
     # Move working axis to the end of the shape
     a = cupy.moveaxis(a, axisa, -1)
     b = cupy.moveaxis(b, axisb, -1)
-    msg = ("incompatible dimensions for cross product\n"
-           "(dimension must be 2 or 3)")
+    msg = ('incompatible dimensions for cross product\n'
+           '(dimension must be 2 or 3)')
     if a.shape[-1] not in (2, 3) or b.shape[-1] not in (2, 3):
         raise ValueError(msg)
 
@@ -118,7 +120,8 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     if a.shape[-1] == 3 or b.shape[-1] == 3:
         shape += (3,)
         # Check axisc is within bounds
-        axisc = ch.normalize_axis_index(axisc, len(shape), msg_prefix='axisc')
+        axisc = chebyshev.normalize_axis_index(
+            axisc, len(shape), msg_prefix='axisc')
     dtype = cupy.promote_types(a.dtype, b.dtype)
     cp = cupy.empty(shape, dtype)
 
