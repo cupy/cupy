@@ -9,6 +9,14 @@ from cupy import testing
 from cupy.testing import helper
 
 
+class _Exception1(Exception):
+    pass
+
+
+class _Exception2(Exception):
+    pass
+
+
 class TestContainsSignedAndUnsigned(unittest.TestCase):
 
     def test_include(self):
@@ -81,9 +89,9 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         @testing.helper.numpy_cupy_raises()
         def dummy_cupy_derived_error(self, xp):
             if xp is cupy:
-                raise ValueError(self.tbs.get(cupy))
+                raise _Exception1(self.tbs.get(cupy))
             elif xp is numpy:
-                raise Exception(self.tbs.get(numpy))
+                raise _Exception2(self.tbs.get(numpy))
 
         dummy_cupy_derived_error(self)  # Assert no exceptions
 
