@@ -2,7 +2,6 @@ import unittest
 import warnings
 
 import numpy
-import pytest
 
 from cupy import testing
 

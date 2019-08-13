@@ -1,5 +1,3 @@
-from __future__ import division, absolute_import, print_function
-
 import cupy
 import numpy
 from numpy.lib.index_tricks import ndindex
@@ -80,13 +78,8 @@ def _slice_at_axis(sl, axis):
 
     Returns:
       tuple of slices: A tuple with slices matching `shape` in length.
-
-    Examples
-    --------
-    >>> _slice_at_axis(slice(None, 3, -1), 1)
-    (slice(None, None, None), slice(None, 3, -1), (...,))
     """
-    return (slice(None),) * axis + (sl,) + (...,)
+    return (slice(None),) * axis + (sl,) + (Ellipsis,)
 
 
 def _view_roi(array, original_area_slice, axis):
@@ -126,7 +119,7 @@ def _pad_simple(array, pad_width, fill_value=None):
         left + size + right
         for size, (left, right) in zip(array.shape, pad_width)
     )
-    order = "F" if array.flags.fnc else "C"  # Fortran and not also C-order
+    order = 'F' if array.flags.fnc else 'C'  # Fortran and not also C-order
     padded = cupy.empty(new_shape, dtype=array.dtype, order=order)
 
     if fill_value is not None:
@@ -295,7 +288,7 @@ def _set_reflect_both(padded, axis, width_pair, method, include_edge=False):
         left_slice = _slice_at_axis(slice(start, stop, -1), axis)
         left_chunk = padded[left_slice]
 
-        if method == "odd":
+        if method == 'odd':
             # Negate chunk and align with edge
             edge_slice = _slice_at_axis(slice(left_pad, left_pad + 1), axis)
             left_chunk = 2 * padded[edge_slice] - left_chunk
@@ -318,7 +311,7 @@ def _set_reflect_both(padded, axis, width_pair, method, include_edge=False):
         right_slice = _slice_at_axis(slice(start, stop, -1), axis)
         right_chunk = padded[right_slice]
 
-        if method == "odd":
+        if method == 'odd':
             # Negate chunk and align with edge
             edge_slice = _slice_at_axis(
                 slice(-right_pad - 1, -right_pad), axis
@@ -466,7 +459,7 @@ def _as_pairs(x, ndim, as_index=False):
 
 
 # @array_function_dispatch(_pad_dispatcher, module='numpy')
-def pad(array, pad_width, mode="constant", **kwargs):
+def pad(array, pad_width, mode='constant', **kwargs):
     """Pad an array.
 
     Args:
@@ -510,8 +503,9 @@ def pad(array, pad_width, mode="constant", **kwargs):
           Pads with undefined values.
           <function>
           Padding function, see Notes.
-      stat_length(sequence or int, optional): Used in 'maximum', 'mean', 'median', and 'minimum'.  Number of
-          values at edge of each axis used to calculate the statistic value.
+      stat_length(sequence or int, optional): Used in 'maximum', 'mean',
+          'median', and 'minimum'.  Number of values at edge of each axis used
+          to calculate the statistic value.
           ((before_1, after_1), ... (before_N, after_N)) unique statistic
           lengths for each axis.
           ((before, after),) yields same before and after statistic lengths
@@ -642,8 +636,8 @@ def pad(array, pad_width, mode="constant", **kwargs):
     array = cupy.asarray(array)
     pad_width = numpy.asarray(pad_width)
 
-    if not pad_width.dtype.kind == "i":
-        raise TypeError("`pad_width` must be of integral type.")
+    if not pad_width.dtype.kind == 'i':
+        raise TypeError('`pad_width` must be of integral type.')
 
     # Broadcast to shape (array.ndim, 2)
     pad_width = _as_pairs(pad_width, array.ndim, as_index=True)
@@ -673,17 +667,17 @@ def pad(array, pad_width, mode="constant", **kwargs):
 
     # Make sure that no unsupported keywords were passed for the current mode
     allowed_kwargs = {
-        "empty": [],
-        "edge": [],
-        "wrap": [],
-        "constant": ["constant_values"],
-        "linear_ramp": ["end_values"],
-        "maximum": ["stat_length"],
-        "mean": ["stat_length"],
-        # "median": ["stat_length"],
-        "minimum": ["stat_length"],
-        "reflect": ["reflect_type"],
-        "symmetric": ["reflect_type"],
+        'empty': [],
+        'edge': [],
+        'wrap': [],
+        'constant': ['constant_values'],
+        'linear_ramp': ['end_values'],
+        'maximum': ['stat_length'],
+        'mean': ['stat_length'],
+        # 'median': ['stat_length'],
+        'minimum': ['stat_length'],
+        'reflect': ['reflect_type'],
+        'symmetric': ['reflect_type'],
     }
     try:
         unsupported_kwargs = set(kwargs) - set(allowed_kwargs[mode])
@@ -697,10 +691,10 @@ def pad(array, pad_width, mode="constant", **kwargs):
         )
 
     stat_functions = {
-        "maximum": cupy.max,
-        "minimum": cupy.min,
-        "mean": cupy.mean,
-        # "median": cupy.median,
+        'maximum': cupy.max,
+        'minimum': cupy.min,
+        'mean': cupy.mean,
+        # 'median': cupy.median,
     }
 
     # Create array with final shape and original values
@@ -710,20 +704,20 @@ def pad(array, pad_width, mode="constant", **kwargs):
     # (zipping may be more readable than using enumerate)
     axes = range(padded.ndim)
 
-    if mode == "constant":
-        values = kwargs.get("constant_values", 0)
+    if mode == 'constant':
+        values = kwargs.get('constant_values', 0)
         values = _as_pairs(values, padded.ndim)
         for axis, width_pair, value_pair in zip(axes, pad_width, values):
             roi = _view_roi(padded, original_area_slice, axis)
             _set_pad_area(roi, axis, width_pair, value_pair)
 
-    elif mode == "empty":
+    elif mode == 'empty':
         pass  # Do nothing as _pad_simple already returned the correct result
 
     elif array.size == 0:
-        # Only modes "constant" and "empty" can extend empty axes, all other
+        # Only modes 'constant' and 'empty' can extend empty axes, all other
         # modes depend on `array` not being empty
-        # -> ensure every empty axis is only "padded with 0"
+        # -> ensure every empty axis is only 'padded with 0'
         for axis, width_pair in zip(axes, pad_width):
             if array.shape[axis] == 0 and any(width_pair):
                 raise ValueError(
@@ -733,14 +727,14 @@ def pad(array, pad_width, mode="constant", **kwargs):
         # passed, don't need to do anything more as _pad_simple already
         # returned the correct result
 
-    elif mode == "edge":
+    elif mode == 'edge':
         for axis, width_pair in zip(axes, pad_width):
             roi = _view_roi(padded, original_area_slice, axis)
             edge_pair = _get_edges(roi, axis, width_pair)
             _set_pad_area(roi, axis, width_pair, edge_pair)
 
-    elif mode == "linear_ramp":
-        end_values = kwargs.get("end_values", 0)
+    elif mode == 'linear_ramp':
+        end_values = kwargs.get('end_values', 0)
         end_values = _as_pairs(end_values, padded.ndim)
         for axis, width_pair, value_pair in zip(axes, pad_width, end_values):
             roi = _view_roi(padded, original_area_slice, axis)
@@ -749,16 +743,16 @@ def pad(array, pad_width, mode="constant", **kwargs):
 
     elif mode in stat_functions:
         func = stat_functions[mode]
-        length = kwargs.get("stat_length", None)
+        length = kwargs.get('stat_length', None)
         length = _as_pairs(length, padded.ndim, as_index=True)
         for axis, width_pair, length_pair in zip(axes, pad_width, length):
             roi = _view_roi(padded, original_area_slice, axis)
             stat_pair = _get_stats(roi, axis, width_pair, length_pair, func)
             _set_pad_area(roi, axis, width_pair, stat_pair)
 
-    elif mode in {"reflect", "symmetric"}:
-        method = kwargs.get("reflect_type", "even")
-        include_edge = True if mode == "symmetric" else False
+    elif mode in {'reflect', 'symmetric'}:
+        method = kwargs.get('reflect_type', 'even')
+        include_edge = True if mode == 'symmetric' else False
         for axis, (left_index, right_index) in zip(axes, pad_width):
             if array.shape[axis] == 1 and (left_index > 0 or right_index > 0):
                 # Extending singleton dimension for 'reflect' is legacy
@@ -778,7 +772,7 @@ def pad(array, pad_width, mode="constant", **kwargs):
                     roi, axis, (left_index, right_index), method, include_edge
                 )
 
-    elif mode == "wrap":
+    elif mode == 'wrap':
         for axis, (left_index, right_index) in zip(axes, pad_width):
             roi = _view_roi(padded, original_area_slice, axis)
             while left_index > 0 or right_index > 0:
