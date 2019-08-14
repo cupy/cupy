@@ -88,6 +88,33 @@ class _RecursiveAttr(object):
     def __doc__(self):
         return self._numpy_object.__doc__
 
+    @staticmethod
+    def _is_cupy_compatible(args, kwargs):
+        """
+        Returns False if ndarray is not compatible with CuPy.
+        """
+        for arg in args:
+            if isinstance(arg, ndarray) and arg._class is not cp.ndarray:
+                return False
+
+        for key in kwargs:
+            if isinstance(kwargs[key], ndarray) and \
+               kwargs[key]._class is not cp.ndarray:
+                return False
+
+        _compatible_dtypes = [
+            np.bool, np.int8, np.int16, np.int32, np.int64,
+            np.uint8, np.uint16, np.uint32, np.uint64,
+            np.float16, np.float32, np.float64,
+            np.complex64, np.complex128
+        ] + list('?bhilqBHILQefdFD')
+
+        dtype = kwargs.get('dtype', None)
+        if dtype is not None and dtype not in _compatible_dtypes:
+            return False
+
+        return True
+
     def __call__(self, *args, **kwargs):
         """
         Gets invoked when last attribute of _RecursiveAttr class gets called.
@@ -109,7 +136,8 @@ class _RecursiveAttr(object):
         if self._fallback_array is not None:
             args = ((self._fallback_array,) + args)
 
-        if self._cupy_object is not None and _is_cupy_compatible(args, kwargs):
+        if self._cupy_object is not None and \
+           _RecursiveAttr._is_cupy_compatible(args, kwargs):
             return _call_cupy(self._cupy_object, args, kwargs)
 
         return _call_numpy(self._numpy_object, args, kwargs)
@@ -185,11 +213,11 @@ class ndarray(object):
             self._numpy_array = _stored
 
     @classmethod
-    def _store_cupy_array(cls, array):
+    def _store_array_from_cupy(cls, array):
         return cls(_stored=array, _class=cp.ndarray)
 
     @classmethod
-    def _store_numpy_array(cls, array):
+    def _store_array_from_numpy(cls, array):
         if type(array) is np.ndarray and \
            array.dtype.kind in '?bhilqBHILQefdFD':
             return cls(_stored=cp.array(array), _class=cp.ndarray)
@@ -387,7 +415,7 @@ def _get_xp_args(ndarray_instance, to_xp, arg):
 
 
 def _convert_numpy_to_fallback(numpy_res):
-    return _get_xp_args(np.ndarray, ndarray._store_numpy_array, numpy_res)
+    return _get_xp_args(np.ndarray, ndarray._store_array_from_numpy, numpy_res)
 
 
 def _convert_fallback_to_numpy(args, kwargs):
@@ -399,7 +427,7 @@ def _convert_fallback_to_cupy(args, kwargs):
 
 
 def _convert_cupy_to_fallback(cupy_res):
-    return _get_xp_args(cp.ndarray, ndarray._store_cupy_array, cupy_res)
+    return _get_xp_args(cp.ndarray, ndarray._store_array_from_cupy, cupy_res)
 
 
 def _prepare_for_cupy_dispatch(args, kwargs):
@@ -465,30 +493,3 @@ def _call_numpy(func, args, kwargs):
         return kwargs.get('out')
 
     return _convert_numpy_to_fallback(numpy_res)
-
-
-def _is_cupy_compatible(args, kwargs):
-    """
-    Returns False if ndarray is not compatible with CuPy.
-    """
-    for arg in args:
-        if isinstance(arg, ndarray) and arg._class is not cp.ndarray:
-            return False
-
-    for key in kwargs:
-        if isinstance(kwargs[key], ndarray) and \
-           kwargs[key]._class is not cp.ndarray:
-            return False
-
-    _compatible_dtypes = [
-        np.bool, np.int8, np.int16, np.int32, np.int64,
-        np.uint8, np.uint16, np.uint32, np.uint64,
-        np.float16, np.float32, np.float64,
-        np.complex64, np.complex128
-    ] + list('?bhilqBHILQefdFD')
-
-    dtype = kwargs.get('dtype', None)
-    if dtype is not None and dtype not in _compatible_dtypes:
-        return False
-
-    return True
