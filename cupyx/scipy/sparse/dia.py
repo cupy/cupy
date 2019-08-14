@@ -6,7 +6,6 @@ except ImportError:
 
 import cupy
 from cupy import core
-from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import data
 from cupyx.scipy.sparse import util
