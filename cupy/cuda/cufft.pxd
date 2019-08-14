@@ -16,3 +16,6 @@ cpdef enum:
 
     CUFFT_FORWARD = -1
     CUFFT_INVERSE = 1
+
+
+cpdef get_current_plan()
