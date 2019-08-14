@@ -8,6 +8,8 @@ from cupy import cuda
 from cupy import testing
 from cupy.testing import condition
 
+from distutils.version import LooseVersion
+
 
 def random_matrix(shape, dtype, scale, sym=False):
     m, n = shape[-2:]
@@ -89,11 +91,18 @@ class TestQRDecomposition(unittest.TestCase):
     @testing.fix_random()
     @condition.repeat(3, 10)
     def test_mode(self):
-        self.check_mode(numpy.random.randn(0, 3), mode=self.mode)
-        self.check_mode(numpy.random.randn(3, 0), mode=self.mode)
         self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
+
+    @testing.fix_random()
+    @condition.repeat(3, 10)
+    @unittest.skipUnless(
+        LooseVersion(numpy.__version__) > LooseVersion('1.16.0'),
+        'NumPy<1.16 does not work with empty arrays')
+    def test_empty_array(self):
+        self.check_mode(numpy.random.randn(0, 3), mode=self.mode)
+        self.check_mode(numpy.random.randn(3, 0), mode=self.mode)
 
 
 @testing.parameterize(*testing.product({
