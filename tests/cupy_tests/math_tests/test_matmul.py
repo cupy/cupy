@@ -120,6 +120,11 @@ class TestMatmulLarge(unittest.TestCase):
             return xp.array([])
         x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
         x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
+        # Normalize the range to avoid overflow.
+        if issubclass(dtype1, numpy.floating):
+            x1 = 3. * (x1 * 2 / x1.size - 1)
+        if issubclass(dtype2, numpy.floating):
+            x2 = 3. * (x2 * 2 / x2.size - 1)
         return operator.matmul(x1, x2)
 
     @testing.with_requires('numpy>=1.10')
@@ -133,6 +138,11 @@ class TestMatmulLarge(unittest.TestCase):
         shape1, shape2 = self.shape_pair
         x1 = testing.shaped_arange(shape1, xp, dtype1)
         x2 = testing.shaped_arange(shape2, xp, dtype2)
+        # Normalize the range to avoid overflow.
+        if issubclass(dtype1, numpy.floating):
+            x1 = 3. * (x1 * 2 / x1.size - 1)
+        if issubclass(dtype2, numpy.floating):
+            x2 = 3. * (x2 * 2 / x2.size - 1)
         return xp.matmul(x1, x2)
 
 
