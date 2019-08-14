@@ -132,7 +132,7 @@ class ndarray(object):
 
     def __new__(cls, *args, **kwargs):
         """
-        If `_stored` is an argument, initialize cls(ndarray).
+        If `_stored` and `_class` are arguments, initialize cls(ndarray).
         Else get cupy.ndarray from provided arguments,
         then initialize cls(ndarray).
         """
@@ -144,6 +144,29 @@ class ndarray(object):
         return cls(_stored=cupy_ndarray_init, _class=cp.ndarray)
 
     def __init__(self, *args, **kwargs):
+        """
+        Args:
+            _stored (None, ndarray): If _stored is None, object is not
+            initialized. Otherwise, _stored (ndarray) would be set to
+            _cupy_array or _numpy_array depending upon _class.
+            _class (ndarray type): If _class is `cp.ndarray`, _stored is
+            set as _cupy_array. Otherwise, _stored is set as _numpy_array.
+            Intended values for _class are `np.ndarray`, `np.ma.MaskedArray`,
+            `np.matrix`, `np.chararray`, `np.recarray`.
+
+        Attributes:
+            _cupy_array (cp.ndarray): ndarray fully compatible with CuPy.
+            This will be always set to ndarray in GPU.
+            _numpy_array (np.ndarray and variants): ndarray not supported by
+            CuPy. Such as np.ndarray(where dtype is not in '?bhilqBHILQefdFD')
+            and it's variants. This will be always set to ndarray in CPU.
+            _latest (str): If 'cupy', latest change may be in _cupy_array, but
+            certainly not in _numpy_array. If 'numpy', latest change may be in
+            _numpy_array but certainly not in _cupy_array.
+            _class (ndarray type): If _class is `cp.ndarray`, data of array
+            will contain in _cupy_array or _numpy_array (only if fallback
+            occurs). In all other cases _numpy_array will have the data.
+        """
 
         _class = kwargs.pop('_class', None)
         _stored = kwargs.pop('_stored', None)
@@ -154,6 +177,7 @@ class ndarray(object):
         self._numpy_array = None
         self._class = _class
 
+        assert isinstance(_stored, (cp.ndarray, np.ndarray))
         if _class is cp.ndarray:
             self._cupy_array = _stored
             self._latest = 'cupy'
@@ -214,12 +238,18 @@ class ndarray(object):
 
     @classmethod
     def _cupy_dispatch(cls, array):
+        """
+        If _cupy_array is not latest, update it.
+        """
         if array._latest != 'cupy':
             array._cupy_array = cp.array(array._numpy_array)
             array._latest = 'cupy'
 
     @classmethod
     def _numpy_dispatch(cls, array):
+        """
+        If _numpy_array is not latest, update it.
+        """
         if array._class is cp.ndarray and array._latest != 'numpy':
             array._numpy_array = cp.asnumpy(array._cupy_array)
             array._latest = 'numpy'
@@ -438,16 +468,17 @@ def _call_numpy(func, args, kwargs):
 
 
 def _is_cupy_compatible(args, kwargs):
-
-    check = True
+    """
+    Returns False if ndarray is not compatible with CuPy.
+    """
     for arg in args:
         if isinstance(arg, ndarray) and arg._class is not cp.ndarray:
-            check = False
+            return False
 
     for key in kwargs:
         if isinstance(kwargs[key], ndarray) and \
            kwargs[key]._class is not cp.ndarray:
-            check = False
+            return False
 
     _compatible_dtypes = [
         np.bool, np.int8, np.int16, np.int32, np.int64,
@@ -458,6 +489,6 @@ def _is_cupy_compatible(args, kwargs):
 
     dtype = kwargs.get('dtype', None)
     if dtype is not None and dtype not in _compatible_dtypes:
-        check = False
+        return False
 
-    return check
+    return True
