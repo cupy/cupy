@@ -182,7 +182,11 @@ MODULES = [
     },
 ]
 
-if use_hip:
+
+def convert_modules_for_hip():
+    global MODULES
+    if len(MODULES) == 2:
+        return
     MODULES = MODULES[:2]
     mod_cuda = MODULES[0]
     mod_cuda['include'] = [
@@ -204,10 +208,10 @@ if use_hip:
     ]
     del mod_cuda['version_method']
     del mod_cuda['check_method']
-    mod_cusparse = MODULES[1]
-    mod_cusparse['include'] = []
-    mod_cusparse['libraries'] = []
-    del mod_cusparse['check_method']
+    mod_cusolver = MODULES[1]
+    mod_cusolver['include'] = []
+    mod_cusolver['libraries'] = []
+    del mod_cusolver['check_method']
 
 
 def ensure_module_file(file):
@@ -401,9 +405,12 @@ def make_extensions(options, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
     no_cuda = options['no_cuda']
-    use_hip = options['use_hip']
+    use_hip = not no_cuda and options['use_hip']
     use_cpp11 = use_hip
     settings = build.get_compiler_setting(use_cpp11)
+
+    if use_hip:
+        convert_modules_for_hip()
 
     include_dirs = settings['include_dirs']
 
