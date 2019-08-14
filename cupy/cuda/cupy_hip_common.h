@@ -19,6 +19,7 @@ typedef hipError_t CUresult;
 const CUresult CUDA_SUCCESS = static_cast<CUresult>(0);
 enum CUjit_option {};
 enum CUjitInputType {};
+enum CUfunction_attribute {};
 
 
 typedef hipDeviceptr_t CUdeviceptr;

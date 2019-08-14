@@ -106,6 +106,16 @@ CUresult cuLaunchKernel(CUfunction f, uint32_t gridDimX, uint32_t gridDimY,
 }
 
 
+// Function attribute
+CUresult cuFuncGetAttribute(...) {
+    return hipErrorUnknown;
+}
+
+CUresult cuFuncSetAttribute(...) {
+    return hipErrorUnknown;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // cuda_runtime.h
 ///////////////////////////////////////////////////////////////////////////////
