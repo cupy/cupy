@@ -105,6 +105,8 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     a = cupy.asarray(a)
     b = cupy.asarray(b)
     # Check axisa and axisb are within bounds
+    # TODO: Implement normalize_axis_index in cupy
+
     axisa = chebyshev.normalize_axis_index(
         axisa, a.ndim, msg_prefix='axisa')
     axisb = chebyshev.normalize_axis_index(
