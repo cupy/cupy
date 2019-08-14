@@ -72,20 +72,20 @@ class TestDot(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [
+    'params': [
         #  Test for 0 dimension
-        ((3, ), (3, )),
+        ((3, ), (3, ), -1, -1, -1),
         #  Test for basic cases
-        ((1, 2), (1, 2)),
-        ((1, 3), (1, 3)),
-        ((1, 2), (1, 3)),
-        ((2, 2), (1, 3)),
-        ((3, 3), (1, 2)),
-        ((0, 3), (0, 3)),
+        ((1, 2), (1, 2), -1, -1, 1),
+        ((1, 3), (1, 3), 1, -1, -1),
+        ((1, 2), (1, 3), -1, -1, 1),
+        ((2, 2), (1, 3), -1, -1, 0),
+        ((3, 3), (1, 2), 0, -1, -1),
+        ((0, 3), (0, 3), -1, -1, -1),
         #  Test for higher dimensions
-        ((2, 0, 3), (2, 0, 3)),
-        ((2, 4, 5, 3), (2, 4, 5, 3)),
-        ((2, 4, 5, 2), (2, 4, 5, 2)),
+        ((2, 0, 3), (2, 0, 3), 0, 0, 0),
+        ((2, 4, 5, 3), (2, 4, 5, 3), -1, -1, 0),
+        ((2, 4, 5, 2), (2, 4, 5, 2), 0, 0, -1),
     ],
 }))
 @testing.gpu
@@ -94,10 +94,10 @@ class TestCrossProduct(unittest.TestCase):
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
     def test_cross(self, xp, dtype_a, dtype_b):
-        shape_a, shape_b = self.shape
+        shape_a, shape_b, axisa, axisb, axisc = self.params
         a = testing.shaped_arange(shape_a, xp, dtype_a)
         b = testing.shaped_arange(shape_b, xp, dtype_b)
-        return xp.cross(a, b)
+        return xp.cross(a, b, axisa, axisb, axisc)
 
 
 @testing.parameterize(*testing.product({
