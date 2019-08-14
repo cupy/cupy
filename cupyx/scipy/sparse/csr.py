@@ -149,8 +149,6 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         # TODO(unno): Implement diagonal
         raise NotImplementedError
 
-    diagonal.__doc__ = base.spmatrix.diagonal.__doc__
-
     def eliminate_zeros(self):
         """Removes zero entories in place."""
         compress = cusparse.csr2csr_compress(self, 0)

@@ -182,6 +182,15 @@ class dia_matrix(data._data_matrix):
         return self.tocsc().tocsr()
 
     def diagonal(self, k=0):
+        """Returns the k-th diagonal of the matrix.
+
+        Args:
+            k (int, optional): Which diagonal to get, corresponding to elements
+            a[i, i+k]. Default: 0 (the main diagonal).
+
+        Returns:
+            cupy.ndarray : The k-th diagonal.
+        """
         rows, cols = self.shape
         if k <= -rows or k >= cols:
             raise ValueError("k exceeds matrix dimensions")
@@ -190,8 +199,6 @@ class dia_matrix(data._data_matrix):
         if idx.size == 0:
             return cupy.zeros(last_col - first_col, dtype=self.data.dtype)
         return self.data[idx[0], first_col:last_col]
-
-    diagonal.__doc__ = base.spmatrix.diagonal.__doc__
 
 
 def isspmatrix_dia(x):

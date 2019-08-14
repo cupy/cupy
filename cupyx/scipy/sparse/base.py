@@ -293,7 +293,15 @@ class spmatrix(object):
         raise NotImplementedError
 
     def diagonal(self, k=0):
-        """Returns the main diagonal of the matrix"""
+        """Returns the k-th diagonal of the matrix.
+
+        Args:
+            k (int, optional): Which diagonal to get, corresponding to elements
+            a[i, i+k]. Default: 0 (the main diagonal).
+
+        Returns:
+            cupy.ndarray : The k-th diagonal.
+        """
         return self.tocsr().diagonal(k=k)
 
     def dot(self, other):
