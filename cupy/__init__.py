@@ -1,5 +1,6 @@
 from __future__ import division
 import sys
+import warnings
 
 import numpy
 import six
@@ -634,6 +635,8 @@ from cupy.statistics.meanvar import average  # NOQA
 from cupy.statistics.meanvar import mean  # NOQA
 from cupy.statistics.meanvar import std  # NOQA
 from cupy.statistics.meanvar import var  # NOQA
+from cupy.statistics.meanvar import nanstd  # NOQA
+from cupy.statistics.meanvar import nanvar  # NOQA
 
 from cupy.statistics.histogram import bincount  # NOQA
 from cupy.statistics.histogram import histogram  # NOQA
@@ -768,3 +771,18 @@ def show_config():
     """Prints the current runtime configuration to standard output."""
     sys.stdout.write(str(cupyx.get_runtime_info()))
     sys.stdout.flush()
+
+
+# -----------------------------------------------------------------------------
+# Warning for Python 2 users
+# -----------------------------------------------------------------------------
+if sys.version_info[:1] == (2,):
+    warnings.warn('''
+--------------------------------------------------------------------------------
+CuPy is going to stop supporting Python 2 in v7.x releases.
+
+Future releases of CuPy v7.x will not run on Python 2.
+If you need to continue using Python 2, consider using CuPy v6.x, which
+will be the last version that runs on Python 2.
+--------------------------------------------------------------------------------
+''')  # NOQA

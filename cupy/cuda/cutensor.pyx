@@ -140,6 +140,9 @@ class CuTensorError(RuntimeError):
         msg = cutensorGetErrorString(<Status>status)
         super(CuTensorError, self).__init__(msg.decode())
 
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
 
 @cython.profile(False)
 cpdef inline check_status(int status):

@@ -80,12 +80,11 @@ numpy
         self.fail(msg)
 
 
-def _make_positive_indices(self, impl, args, kw):
+def _make_positive_mask(self, impl, args, kw):
     ks = [k for k, v in kw.items() if v in _unsigned_dtypes]
     for k in ks:
         kw[k] = numpy.intp
-    mask = cupy.asnumpy(impl(self, *args, **kw)) >= 0
-    return numpy.nonzero(mask)
+    return cupy.asnumpy(impl(self, *args, **kw)) >= 0
 
 
 def _contains_signed_and_unsigned(kw):
@@ -132,12 +131,12 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
             skip = False
             if _contains_signed_and_unsigned(kw) and \
                     cupy_result.dtype in _unsigned_dtypes:
-                inds = _make_positive_indices(self, impl, args, kw)
+                mask = _make_positive_mask(self, impl, args, kw)
                 if cupy_result.shape == ():
-                    skip = inds[0].size == 0
+                    skip = (mask == 0).all()
                 else:
-                    cupy_result = cupy.asnumpy(cupy_result)[inds]
-                    numpy_result = cupy.asnumpy(numpy_result)[inds]
+                    cupy_result = cupy.asnumpy(cupy_result[mask])
+                    numpy_result = cupy.asnumpy(numpy_result[mask])
 
             if not skip:
                 check_func(cupy_result, numpy_result)

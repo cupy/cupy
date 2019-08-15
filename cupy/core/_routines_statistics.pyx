@@ -39,6 +39,16 @@ cdef ndarray _ndarray_std(ndarray self, axis, dtype, out, ddof, keepdims):
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
+cpdef ndarray _ndarray_nanvar(ndarray self, axis, dtype, out, ddof, keepdims):
+    return _nanvar(
+        self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+
+
+cpdef ndarray _ndarray_nanstd(ndarray self, axis, dtype, out, ddof, keepdims):
+    return _nanstd(
+        self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+
+
 cdef _min_max_preamble = '''
 template <typename T>
 struct min_max_st{
@@ -336,6 +346,57 @@ cdef _mean = create_reduction_func(
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b',
      'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
+
+
+_count_non_nan = create_reduction_func(
+    'cupy_count_non_nan',
+    ('e->l', 'f->l', 'd->l'),
+    ('(in0 == in0) ? 1 : 0', 'a + b', 'out0 = a', None), 0)
+
+
+cdef ndarray _nanstd(
+        ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    ret = _nanvar(
+        a, axis=axis, dtype=dtype, out=None, ddof=ddof, keepdims=keepdims)
+    return _math._sqrt(ret, dtype=dtype, out=out)
+
+
+cdef ndarray _nanvar(
+        ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+
+    assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
+                                'implemented. Current implemention does not ' \
+                                'convert the dtype'
+
+    _count = _count_non_nan(a, axis=axis, keepdims=True)
+    arrsum = a._nansum(axis=axis, dtype=dtype, out=None, keepdims=True)
+
+    if out is None:
+        return _nanvar_core(
+            a, arrsum, _count, ddof, axis=axis, keepdims=keepdims)
+    else:
+        return _nanvar_core_out(
+            a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
+
+
+cdef _nanvar_preamble = '''
+template <typename S, typename T>
+__device__ T nanvar_impl(S x, T mean, long long alpha) {
+    return (x == x ? T((x - mean) * (x - mean)) : T(0)) / alpha;
+}
+'''
+
+
+cdef _nanvar_core = ReductionKernel(
+    'S x, T sum, int64 _count, int64 ddof', 'S out',
+    'nanvar_impl<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
+    'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
+
+
+cdef _nanvar_core_out = ReductionKernel(
+    'S x, T sum, int64 _count, int64 ddof', 'U out',
+    'nanvar_impl<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
+    'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
 
 
 # Variables to expose to Python

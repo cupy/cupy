@@ -1,5 +1,6 @@
 import functools
 import unittest
+import pytest
 
 import numpy as np
 
@@ -74,6 +75,7 @@ class TestFft(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
+    @testing.with_requires('numpy!=1.17.0')  # 1.17.0 raises ZeroDivisonError
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
@@ -111,6 +113,7 @@ class TestFftOrder(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
+    @testing.with_requires('numpy!=1.17.0')  # 1.17.0 raises ZeroDivisonError
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
@@ -272,6 +275,166 @@ class TestFftn(unittest.TestCase):
             out = out.astype(np.complex64)
 
         return out
+
+
+@testing.parameterize(
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
+)
+@testing.gpu
+@testing.with_requires('numpy>=1.10.0')
+class TestPlanCtxManagerFftn(unittest.TestCase):
+
+    @nd_planning_states()
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_fftn(self, xp, dtype, enable_nd):
+        assert config.enable_nd_planning == enable_nd
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp == cupy:
+            from cupyx.scipy.fftpack import get_fft_plan
+            plan = get_fft_plan(a, self.s, self.axes)
+            with plan:
+                out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
+        else:
+            out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        if xp == np and dtype is np.complex64:
+            out = out.astype(np.complex64)
+
+        return out
+
+    @nd_planning_states()
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_ifftn(self, xp, dtype, enable_nd):
+        assert config.enable_nd_planning == enable_nd
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp == cupy:
+            from cupyx.scipy.fftpack import get_fft_plan
+            plan = get_fft_plan(a, self.s, self.axes)
+            with plan:
+                out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
+        else:
+            out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        if xp == np and dtype is np.complex64:
+            out = out.astype(np.complex64)
+
+        return out
+
+    @nd_planning_states()
+    @testing.for_complex_dtypes()
+    def test_fftn_error_on_wrong_plan(self, dtype, enable_nd):
+        # This test ensures the context manager plan is picked up
+
+        from cupyx.scipy.fftpack import get_fft_plan
+        from cupy.fft import fftn
+        assert config.enable_nd_planning == enable_nd
+
+        # can't get a plan, so skip
+        if self.axes is not None:
+            if self.s is not None:
+                if len(self.s) != len(self.axes):
+                    return
+            elif len(self.shape) != len(self.axes):
+                return
+
+        a = testing.shaped_random(self.shape, cupy, dtype)
+        bad_in_shape = tuple(2*i for i in self.shape)
+        if self.s is None:
+            bad_out_shape = bad_in_shape
+        else:
+            bad_out_shape = tuple(2*i for i in self.s)
+        b = testing.shaped_random(bad_in_shape, cupy, dtype)
+        plan_wrong = get_fft_plan(b, bad_out_shape, self.axes)
+
+        with pytest.raises(ValueError) as ex, plan_wrong:
+            fftn(a, s=self.s, axes=self.axes, norm=self.norm)
+        # targeting a particular error
+        assert 'The CUFFT plan and a.shape do not match' in str(ex.value)
+
+
+@testing.parameterize(*testing.product({
+    'n': [None, 5, 10, 15],
+    'shape': [(10,), ],
+    'norm': [None, 'ortho'],
+}))
+@testing.gpu
+@testing.with_requires('numpy>=1.10.0')
+class TestPlanCtxManagerFft(unittest.TestCase):
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_fft(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp == cupy:
+            from cupyx.scipy.fftpack import get_fft_plan
+            shape = (self.n,) if self.n is not None else None
+            plan = get_fft_plan(a, shape=shape)
+            assert isinstance(plan, cupy.cuda.cufft.Plan1d)
+            with plan:
+                out = xp.fft.fft(a, n=self.n, norm=self.norm)
+        else:
+            out = xp.fft.fft(a, n=self.n, norm=self.norm)
+
+        # np.fft.fft alway returns np.complex128
+        if xp == np and dtype is np.complex64:
+            out = out.astype(np.complex64)
+
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_ifft(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp == cupy:
+            from cupyx.scipy.fftpack import get_fft_plan
+            shape = (self.n,) if self.n is not None else None
+            plan = get_fft_plan(a, shape=shape)
+            assert isinstance(plan, cupy.cuda.cufft.Plan1d)
+            with plan:
+                out = xp.fft.ifft(a, n=self.n, norm=self.norm)
+        else:
+            out = xp.fft.ifft(a, n=self.n, norm=self.norm)
+
+        if xp == np and dtype is np.complex64:
+            out = out.astype(np.complex64)
+
+        return out
+
+    @testing.for_complex_dtypes()
+    def test_fft_error_on_wrong_plan(self, dtype):
+        # This test ensures the context manager plan is picked up
+
+        from cupyx.scipy.fftpack import get_fft_plan
+        from cupy.fft import fft
+
+        a = testing.shaped_random(self.shape, cupy, dtype)
+        bad_shape = tuple(5*i for i in self.shape)
+        b = testing.shaped_random(bad_shape, cupy, dtype)
+        plan_wrong = get_fft_plan(b)
+        assert isinstance(plan_wrong, cupy.cuda.cufft.Plan1d)
+
+        with pytest.raises(ValueError) as ex, plan_wrong:
+            fft(a, n=self.n, norm=self.norm)
+        # targeting a particular error
+        assert 'Target array size does not match the plan.' in str(ex.value)
 
 
 @testing.parameterize(

@@ -1,3 +1,4 @@
+import pickle
 import unittest
 
 import mock
@@ -92,3 +93,12 @@ class TestIsValidKernelName(unittest.TestCase):
 
     def test_space(self):
         self.assertFalse(compiler.is_valid_kernel_name('invalid name'))
+
+
+class TestExceptionPicklable(unittest.TestCase):
+
+    def test(self):
+        e1 = compiler.CompileException('msg', 'fn.cu', 'fn', ('-ftz=true',))
+        e2 = pickle.loads(pickle.dumps(e1))
+        assert e1.args == e2.args
+        assert str(e1) == str(e2)
