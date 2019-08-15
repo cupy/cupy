@@ -41,14 +41,13 @@ def _call_func(self, impl, args, kw):
     return result, error, tb_str
 
 
-# Returns the list of exception classes numpy and cupy routines raise.
 def _get_numpy_errors():
+    numpy_version = numpy.lib.NumpyVersion(numpy.__version__)
+
     errors = [
         AttributeError, Exception, IndexError, TypeError, ValueError,
         NotImplementedError, DeprecationWarning,
     ]
-
-    numpy_version = numpy.lib.NumpyVersion(numpy.__version__)
     if numpy_version >= '1.13.0':
         errors.append(numpy.AxisError)
     if numpy_version >= '1.15.0':
@@ -58,6 +57,25 @@ def _get_numpy_errors():
 
 
 _numpy_errors = _get_numpy_errors()
+
+
+def _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
+    """Checks if try/except blocks are equivalent up to public error classes
+    """
+
+    errors = _numpy_errors
+
+    # Prior to NumPy version 1.13.0, NumPy raises either `ValueError` or
+    # `IndexError` instead of `numpy.AxisError`.
+    numpy_axis_error = getattr(numpy, 'AxisError', None)
+    cupy_axis_error = cupy.core._errors._AxisError
+    if isinstance(cupy_error, cupy_axis_error) and numpy_axis_error is None:
+        if not isinstance(numpy_error, (ValueError, IndexError)):
+            return False
+        errors = list(set(errors) - set([IndexError, ValueError]))
+
+    return all([isinstance(cupy_error, err) == isinstance(numpy_error, err)
+                for err in errors])
 
 
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
@@ -75,10 +93,7 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
     elif numpy_error is None:
         self.fail('Only cupy raises error\n\n' + cupy_tb)
 
-    elif any([isinstance(cupy_error, err) != isinstance(numpy_error, err)
-              for err in _numpy_errors]):
-        # Checks if there is no error in `_numpy_errors`, which only one of
-        # `cupy_error` and `numpy_error` is a instance of.
+    elif not _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
         msg = '''Different types of errors occurred
 
 cupy
