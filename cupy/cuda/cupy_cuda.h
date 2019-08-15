@@ -22,6 +22,10 @@ extern "C" {
 
 #if CUDA_VERSION < 9000
 
+CUresult cuFuncSetAttribute(...) {
+    return CUDA_ERROR_NOT_SUPPORTED;
+}
+
 typedef enum {} cublasMath_t;
 
 cublasStatus_t cublasSetMathMode(...) {
@@ -52,6 +56,7 @@ typedef enum {
 } CUresult;
 enum CUjit_option {};
 enum CUjitInputType {};
+enum CUfunction_attribute {};
 
 
 typedef void* CUdeviceptr;
@@ -143,6 +148,14 @@ CUresult cuLaunchKernel(...) {
     return CUDA_SUCCESS;
 }
 
+// Function attribute
+CUresult cuFuncGetAttribute(...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuFuncSetAttribute(...) {
+    return CUDA_SUCCESS;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // cuda_runtime.h

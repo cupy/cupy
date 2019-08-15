@@ -19,6 +19,8 @@ cdef extern from *:
 
     ctypedef int CUjit_option 'CUjit_option'
     ctypedef int CUjitInputType 'CUjitInputType'
+    ctypedef int CUfunction_attribute 'CUfunction_attribute'
+
 
 cpdef enum:
     CU_JIT_INPUT_CUBIN = 0
@@ -26,6 +28,19 @@ cpdef enum:
     CU_JIT_INPUT_FATBINARY = 2
     CU_JIT_INPUT_OBJECT = 3
     CU_JIT_INPUT_LIBRARY = 4
+
+    CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK = 0
+    CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES = 1
+    CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES = 2
+    CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES = 3
+    CU_FUNC_ATTRIBUTE_NUM_REGS = 4
+    CU_FUNC_ATTRIBUTE_PTX_VERSION = 5
+    CU_FUNC_ATTRIBUTE_BINARY_VERSION = 6
+    CU_FUNC_ATTRIBUTE_CACHE_MODE_CA = 7
+    CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES = 8
+    CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT = 9
+
+    CUDA_ERROR_INVALID_VALUE = 1
 
 
 ###############################################################################
@@ -62,3 +77,10 @@ cpdef launchKernel(
     unsigned int block_dim_y, unsigned int block_dim_z,
     unsigned int shared_mem_bytes, size_t stream, intptr_t kernel_params,
     intptr_t extra)
+
+###############################################################################
+# Kernel attributes
+###############################################################################
+
+cpdef int funcGetAttribute(int attribute, intptr_t func)
+cpdef funcSetAttribute(intptr_t func, int attribute, int value)
