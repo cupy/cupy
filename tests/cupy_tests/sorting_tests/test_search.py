@@ -205,8 +205,8 @@ class TestWhereError(unittest.TestCase):
 @testing.parameterize(
     {'array': numpy.random.randint(0, 2, (20,))},
     {'array': numpy.random.randn(3, 2, 4)},
-    {'array': numpy.array(0)},
-    {'array': numpy.array(1)},
+    {'array': numpy.array(0), 'numpy_require': '<1.17'},
+    {'array': numpy.array(1), 'numpy_require': '<1.17'},
     {'array': numpy.empty((0,))},
     {'array': numpy.empty((0, 2))},
     {'array': numpy.empty((0, 2, 0))},
@@ -214,9 +214,15 @@ class TestWhereError(unittest.TestCase):
 @testing.gpu
 class TestNonzero(unittest.TestCase):
 
+    numpy_require = None
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_nonzero(self, xp, dtype):
+        if (self.numpy_require is not None
+                and not testing.numpy_satisfies(self.numpy_require)):
+            raise unittest.SkipTest(
+                'Known to be incompatible with installed version of numpy.')
         array = xp.array(self.array, dtype=dtype)
         return xp.nonzero(array)
 
