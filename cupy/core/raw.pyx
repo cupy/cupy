@@ -21,7 +21,7 @@ cdef class RawKernel:
     Args:
         code (str): CUDA source code.
         name (str): Name of the kernel function.
-        options (str): Compile options passed to NVRTC. For details, see
+        options (str): Compiler options passed to NVRTC. For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
 
     """
@@ -190,6 +190,29 @@ def _get_raw_kernel(code, name, options=()):
 
 
 cdef class RawModule:
+    """User-defined custom module.
+
+    This class can be used to either compile raw CUDA sources or load CUDA
+    modules (\*.cubin). This class is useful when a number of CUDA kernels in
+    the same source need to be retrieved.
+
+    For the former case, the CUDA source code is compiled when initializing a
+    new instance of this class, and the kernels can be retrieved by calling
+    :meth:`get_function`, which will return an instance of :class:`RawKernel`.
+    (Same as in :class:`RawKernel`, the generated binary is also cached.)
+
+    For the latter case, an existing CUDA binary (\*.cubin) can be loaded by
+    providing its path, and kernels therein can be retrieved similarly.
+
+    Args:
+        code_or_path (str): CUDA source code or path to cubin.
+        options (str): Compiler options passed to NVRTC if compilation is
+            needed. For details, see
+            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
+
+    .. note::
+        Each kernel in ``RawModule`` possesses independent function attributes.
+    """
     def __init__(self, code_or_path, options=()):
         if isinstance(code_or_path, six.binary_type):
             code_or_path = code_or_path.decode('UTF-8')
@@ -214,6 +237,14 @@ cdef class RawModule:
         self.kernels = {}
 
     def get_function(self, name):
+        """Retrieve a CUDA kernel by its name from the module.
+
+        Args:
+            name (str): Name of the kernel function.
+
+        Returns:
+            RawKernel: An ``RawKernel`` instance.
+        """
         if name in self.kernels:
             return self.kernels[name]
         else:
