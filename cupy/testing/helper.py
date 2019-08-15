@@ -41,12 +41,23 @@ def _call_func(self, impl, args, kw):
     return result, error, tb_str
 
 
-# List of exception classes numpy and cupy routines raise.
-_numpy_errors = [
-    AttributeError, Exception, IndexError, TypeError, ValueError,
-    NotImplementedError, DeprecationWarning,
-    numpy.AxisError, numpy.linalg.LinAlgError,
-]
+# Returns the list of exception classes numpy and cupy routines raise.
+def _get_numpy_errors():
+    errors = [
+        AttributeError, Exception, IndexError, TypeError, ValueError,
+        NotImplementedError, DeprecationWarning,
+    ]
+
+    numpy_version = numpy.lib.NumpyVersion(numpy.__version__)
+    if numpy_version >= '1.13.0':
+        errors.append(numpy.AxisError)
+    if numpy_version >= '1.15.0':
+        errors.append(numpy.linalg.LinAlgError)
+
+    return errors
+
+
+_numpy_errors = _get_numpy_errors()
 
 
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
