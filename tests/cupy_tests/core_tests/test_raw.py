@@ -86,12 +86,17 @@ class TestRaw(unittest.TestCase):
         self.mod2 = cupy.RawModule(_test_source2)
         self.mod3 = cupy.RawModule(_test_source3, ("-DPRECISION=2",))
 
+    def _helper(self, kernel, dtype):
+        N = 10
+        x1 = cupy.arange(N**2, dtype=dtype).reshape(N, N)
+        x2 = cupy.ones((N, N), dtype=dtype)
+        y = cupy.zeros((N, N), dtype=dtype)
+        kernel((N,), (N,), (x1, x2, y, N**2))
+        return x1, x2, y
+
     def test_basic(self):
-        x1 = cupy.arange(100, dtype=cupy.float32).reshape(10, 10)
-        x2 = cupy.ones((10, 10), dtype=cupy.float32)
-        y = cupy.zeros((10, 10), dtype=cupy.float32)
-        self.kern((10,), (10,), (x1, x2, y))
-        assert (y == x1 + x2).all()
+        x1, x2, y = self._helper(self.kern, cupy.float32)
+        assert cupy.allclose(y, x1 + x2)
 
     def test_kernel_attributes(self):
         attrs = self.kern.attributes
@@ -115,15 +120,10 @@ class TestRaw(unittest.TestCase):
         ker_sum = module.get_function('test_sum')
         ker_times = module.get_function('test_multiply')
 
-        N = 10
-        x1 = cupy.arange(N**2, dtype=cupy.float32).reshape(N, N)
-        x2 = cupy.ones((N, N), dtype=cupy.float32)
-        y = cupy.zeros((N, N), dtype=cupy.float32)
-
-        ker_sum((N,), (N,), (x1, x2, y, N**2))
+        x1, x2, y = self._helper(ker_sum, cupy.float32)
         assert cupy.allclose(y, x1 + x2)
 
-        ker_times((N,), (N,), (x1, x2, y, N**2))
+        x1, x2, y = self._helper(ker_times, cupy.float32)
         assert cupy.allclose(y, x1 * x2)
 
     def test_compiler_flag(self):
@@ -131,15 +131,10 @@ class TestRaw(unittest.TestCase):
         ker_sum = module.get_function('test_sum')
         ker_times = module.get_function('test_multiply')
 
-        N = 10
-        x1 = cupy.arange(N**2, dtype=cupy.float64).reshape(N, N)
-        x2 = cupy.ones((N, N), dtype=cupy.float64)
-        y = cupy.zeros((N, N), dtype=cupy.float64)
-
-        ker_sum((N,), (N,), (x1, x2, y, N**2))
+        x1, x2, y = self._helper(ker_sum, cupy.float64)
         assert cupy.allclose(y, x1 + x2)
 
-        ker_times((N,), (N,), (x1, x2, y, N**2))
+        x1, x2, y = self._helper(ker_times, cupy.float64)
         assert cupy.allclose(y, x1 * x2)
 
     def test_invalid_compiler_flag(self):
