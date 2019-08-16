@@ -58,7 +58,7 @@ def numpy_fallback_array_equal(name='xp'):
             if isinstance(numpy_result, numpy.ndarray):
                 # if numpy returns ndarray, cupy must return ndarray
                 assert isinstance(fallback_result, fallback.ndarray)
-                assert fallback_result.dtype is numpy_result.dtype
+                assert fallback_result.dtype == numpy_result.dtype
 
                 if fallback_result._class is cupy.ndarray:
                     testing.assert_array_equal(
@@ -100,7 +100,7 @@ def numpy_fallback_array_allclose(name='xp'):
             numpy_result = impl(self, *args, **kwargs)
 
             assert isinstance(fallback_result, fallback.ndarray)
-            assert fallback_result.dtype is numpy_result.dtype
+            assert fallback_result.dtype == numpy_result.dtype
 
             if fallback_result._class is cupy.ndarray:
                 testing.numpy_cupy_allclose(
@@ -181,16 +181,30 @@ class TestFallbackMethodsArrayExternal(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp=xp, dtype=numpy.int64)
         return getattr(xp, self.func)(a, *self.args, **self.kwargs)
 
-    @numpy_fallback_array_equal
+
+@testing.parameterize(
+    {'func': 'min', 'shape': (3, 4), 'args': (), 'kwargs': {'axis': 0}},
+    {'func': 'argmin', 'shape': (3, 4), 'args': (), 'kwargs': {}},
+    {'func': 'arccos', 'shape': (2, 3), 'args': (), 'kwargs': {}},
+    {'func': 'fabs', 'shape': (2, 3), 'args': (), 'kwargs': {}},
+    {'func': 'nancumsum', 'shape': (5, 3), 'args': (), 'kwargs': {'axis': 1}},
+    {'func': 'nanpercentile', 'shape': (3, 4), 'args': (50,),
+     'kwargs': {'axis': 0}}
+)
+@testing.gpu
+class TestFallbackMethodsArrayExternalOut(unittest.TestCase):
+
+    @numpy_fallback_array_equal()
     def test_fallback_methods_array_external_out(self, xp):
 
         a = testing.shaped_random(self.shape, xp=xp)
-        res = getattr(xp, self.func)(a, *self.args, **self.kwargs)
+        kwargs = self.kwargs.copy()
+        res = getattr(xp, self.func)(a, *self.args, **kwargs)
 
         # to get the shape of out
         out = xp.zeros(res.shape, dtype=res.dtype)
-        self.kwargs['out'] = out
-        getattr(xp, self.func)(a, *self.args, **self.kwargs)
+        kwargs['out'] = out
+        getattr(xp, self.func)(a, *self.args, **kwargs)
         return out
 
 
@@ -299,7 +313,7 @@ class FallbackArray(unittest.TestCase):
         a = xp.array([1])
         return type(a)((2, 3))
 
-    @numpy_fallback_equal
+    @numpy_fallback_equal()
     def test_type_assert(self, xp):
         a = xp.array([1, 2, 3])
         return type(a) == xp.ndarray
@@ -309,28 +323,29 @@ class FallbackArray(unittest.TestCase):
     {'func': 'min', 'shape': (5,), 'args': (), 'kwargs': {}},
     {'func': 'argmax', 'shape': (5, 3), 'args': (), 'kwargs': {'axis': 0}},
     {'func': 'ptp', 'shape': (3, 3), 'args': (), 'kwargs': {'axis': 1}},
-    {'func': 'compress', 'shape': (3, 2), 'args': ([False, True]),
+    {'func': 'compress', 'shape': (3, 2), 'args': ([False, True],),
      'kwargs': {'axis': 0}}
 )
 @testing.gpu
 class TestFallbackArrayMethodsInternal(unittest.TestCase):
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_fallback_array_methods_internal(self, xp):
 
         a = testing.shaped_random(self.shape, xp=xp)
         return getattr(a, self.func)(*self.args, **self.kwargs)
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_fallback_array_methods_internal_out(self, xp):
 
         a = testing.shaped_random(self.shape, xp=xp)
-        res = getattr(a, self.func)(*self.args, **self.kwargs)
+        kwargs = self.kwargs.copy()
+        res = getattr(a, self.func)(*self.args, **kwargs)
 
         # to get the shape of out
         out = xp.zeros(res.shape, dtype=res.dtype)
-        self.kwargs['out'] = out
-        getattr(a, self.func)(*self.args, **self.kwargs)
+        kwargs['out'] = out
+        getattr(a, self.func)(*self.args, **kwargs)
         return out
 
 
@@ -489,45 +504,45 @@ class TestVectorizeWrapper(unittest.TestCase):
 @testing.gpu
 class TestInplaceSpecialMethods(unittest.TestCase):
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_resize_internal(self, xp):
         a = testing.shaped_random((3, 4), xp)
-        a.resize(4, 5)
+        a.resize(4, 5, refcheck=False)
         return a
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_ndarray_byteswap(self, xp):
         a = testing.shaped_random((4,), xp, dtype=xp.int16)
         return a.byteswap()
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_ndarray_byteswap_inplace(self, xp):
         a = testing.shaped_random((4,), xp, dtype=xp.int16)
         a.byteswap(inplace=True)
         return a
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_putmask(self, xp):
         a = testing.shaped_random((3, 4), xp, dtype=xp.int8)
         xp.putmask(a, a > 2, a**2)
         return a
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_put_along_axis(self, xp):
         a = xp.array([[10, 30, 20], [60, 40, 50]])
         ai = xp.expand_dims(xp.argmax(a, axis=1), axis=1)
         xp.put_along_axis(a, ai, 99, axis=1)
         return a
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_out_is_returned_when_fallbacked(self, xp):
         a = testing.shaped_random((3, 4), xp)
-        z = xp.zeros((4,))
+        z = xp.zeros((3, 4))
         res = xp.nancumsum(a, axis=0, out=z)
         assert res is z
         return res
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_allclose()
     def test_out_is_returned_when_not_fallbacked(self, xp):
         a = testing.shaped_random((3, 4), xp)
         z = xp.zeros((4,))
@@ -539,47 +554,47 @@ class TestInplaceSpecialMethods(unittest.TestCase):
 @testing.gpu
 class TestArrayVariants(unittest.TestCase):
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_creation_masked(self, xp):
         mx = xp.ma.array([1, 2, 3, 4], mask=[1, 0, 1, 0])
         return mx
 
-    @numpy_fallback_equal
+    @numpy_fallback_equal()
     def test_method_internal(self, xp):
         mx = xp.ma.array([1, 2, 3, 4], mask=[1, 0, 1, 0])
         return mx.min()
 
-    @numpy_fallback_equal
+    @numpy_fallback_equal()
     def test_method_internal_not_callable(self, xp):
         mx = xp.ma.array([1, 2, 3, 4], mask=[1, 0, 1, 0])
         return mx.shape
 
-    @numpy_fallback_equal
+    @numpy_fallback_equal()
     def test_method_external_masked(self, xp):
         mx = xp.ma.array([1, 2, 3, 4], mask=[1, 0, 1, 0])
         return xp.mean(mx)
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_magic_method_masked(self, xp):
         mx = xp.ma.array([1, 2, 3, 4], mask=[1, 0, 1, 0])
         my = xp.ma.array([4, 2, 3, 1], mask=[1, 0, 1, 0])
         return mx >= my
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_creation_char(self, xp):
         cx = xp.chararray((3, 4), itemsize=3)
         cx[:] = 'a'
         return cx
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_method_external_char(self, xp):
         cx = xp.chararray((3, 4), itemsize=3)
         cx[:] = 'a'
         cy = xp.chararray((3, 4), itemsize=3)
         cy[:] = 'b'
-        return xp.add(cx, cy)
+        return xp.char.add(cx, cy)
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_magic_method_char(self, xp):
         cx = xp.chararray((3, 4), itemsize=3)
         cx[:] = 'a'
@@ -587,19 +602,19 @@ class TestArrayVariants(unittest.TestCase):
         cy[:] = 'b'
         return cx == cy
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_inplace(self, xp):
         x = xp.arange(12).reshape((3, 4))
         mask = xp.zeros_like(x)
         mask[0, :] = 1
-        mx = xp.ma.array(x, mask)
+        mx = xp.ma.array(x, mask=mask)
         z = xp.ma.zeros((4,))
         xp.nanmean(mx, axis=0, out=z)
         return z
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_matrix_returned(self, xp):
-        x = xp.random.rand(2, 3)
+        x = testing.shaped_random((2, 3), xp=xp)
         y = xp.asmatrix(x)
 
         if xp is fallback_mode.numpy:
@@ -609,7 +624,7 @@ class TestArrayVariants(unittest.TestCase):
 
         return y
 
-    @numpy_fallback_array_equal
+    @numpy_fallback_array_equal()
     def test_record_array(self, xp):
         ra = xp.rec.array([1, 2, 3])
         return ra

@@ -207,8 +207,14 @@ class ndarray(object):
 
         assert isinstance(_stored, (cp.ndarray, np.ndarray))
         if _class is cp.ndarray:
-            self._cupy_array = _stored
-            self._latest = 'cupy'
+            if type(_stored) is cp.ndarray:
+                # _stored is in GPU memory (caller _store_array_from_cupy)
+                self._cupy_array = _stored
+                self._numpy_array = cp.asnumpy(_stored)
+            else:
+                # _stored is in CPU memory (caller _store_array_from_numpy)
+                self._cupy_array = cp.array(_stored)
+                self._numpy_array = _stored
         else:
             self._numpy_array = _stored
 
@@ -220,7 +226,7 @@ class ndarray(object):
     def _store_array_from_numpy(cls, array):
         if type(array) is np.ndarray and \
            array.dtype.kind in '?bhilqBHILQefdFD':
-            return cls(_stored=cp.array(array), _class=cp.ndarray)
+            return cls(_stored=array, _class=cp.ndarray)
 
         return cls(_stored=array, _class=array.__class__)
 
@@ -264,23 +270,22 @@ class ndarray(object):
         """
         return self._numpy_array
 
-    @classmethod
-    def _cupy_dispatch(cls, array):
+    def _numpy_array_update(self):
         """
         If _cupy_array is not latest, update it.
         """
-        if array._latest != 'cupy':
-            array._cupy_array = cp.array(array._numpy_array)
-            array._latest = 'cupy'
+        self._numpy_array = cp.asnumpy(self._cupy_array)
 
-    @classmethod
-    def _numpy_dispatch(cls, array):
+    def _cupy_array_update(self):
         """
         If _numpy_array is not latest, update it.
         """
-        if array._class is cp.ndarray and array._latest != 'numpy':
-            array._numpy_array = cp.asnumpy(array._cupy_array)
-            array._latest = 'numpy'
+        if self._class is cp.ndarray:
+            self._cupy_array = cp.array(self._numpy_array)
+
+        if self._class is np.ma.MaskedArray and \
+           isinstance(self.base, ndarray):
+            self.base._cupy_array_update()
 
 
 def _create_magic_methods():
@@ -430,12 +435,12 @@ def _convert_cupy_to_fallback(cupy_res):
     return _get_xp_args(cp.ndarray, ndarray._store_array_from_cupy, cupy_res)
 
 
-def _prepare_for_cupy_dispatch(args, kwargs):
-    return _get_xp_args(ndarray, ndarray._cupy_dispatch, (args, kwargs))
+def _update_after_cupy_call(args, kwargs):
+    return _get_xp_args(ndarray, ndarray._numpy_array_update, (args, kwargs))
 
 
-def _prepare_for_numpy_dispatch(args, kwargs):
-    return _get_xp_args(ndarray, ndarray._numpy_dispatch, (args, kwargs))
+def _update_after_numpy_call(args, kwargs):
+    return _get_xp_args(ndarray, ndarray._cupy_array_update, (args, kwargs))
 
 # -----------------------------------------------------------------------------
 # utils
@@ -456,13 +461,14 @@ def _call_cupy(func, args, kwargs):
         Result after calling func and performing data transfers.
     """
 
-    _prepare_for_cupy_dispatch(args, kwargs)
     cupy_args, cupy_kwargs = _convert_fallback_to_cupy(args, kwargs)
     cupy_res = func(*cupy_args, **cupy_kwargs)
+    _update_after_cupy_call(args, kwargs)
 
-    cupy_out = cupy_kwargs.get('out', None)
-    if cupy_out is not None and cupy_out is cupy_res:
-        return kwargs.get('out')
+    ref_res = _get_same_reference(
+        cupy_res, cupy_args, cupy_kwargs, args, kwargs)
+    if ref_res is not None:
+        return ref_res
 
     return _convert_cupy_to_fallback(cupy_res)
 
@@ -481,15 +487,36 @@ def _call_numpy(func, args, kwargs):
         Result after calling func and performing data transfers.
     """
 
-    _prepare_for_numpy_dispatch(args, kwargs)
     numpy_args, numpy_kwargs = _convert_fallback_to_numpy(args, kwargs)
     numpy_res = func(*numpy_args, **numpy_kwargs)
+    _update_after_numpy_call(args, kwargs)
 
-    # Sometimes reference to out(which was inplace updated) is returned
+    # Sometimes reference to an argument is returned
     # ex: numpy.add, numpy.nanmean
-    # Therefore, to avoid creating separate ndarrays out is returned
-    numpy_out = numpy_kwargs.get('out', None)
-    if numpy_out is not None and numpy_out is numpy_res:
-        return kwargs.get('out')
+    # Therefore, to avoid creating separate ndarray that argument is returned
+    ref_res = _get_same_reference(
+        numpy_res, numpy_args, numpy_kwargs, args, kwargs)
+    if ref_res is not None:
+        return ref_res
 
-    return _convert_numpy_to_fallback(numpy_res)
+    fallback_res = _convert_numpy_to_fallback(numpy_res)
+    if type(numpy_res) is np.ma.MaskedArray and \
+       numpy_res.base is numpy_args[0]:
+        setattr(fallback_res, 'base', args[0])
+
+    return fallback_res
+
+
+def _get_same_reference(res, args, kwargs, ret_args, ret_kwargs):
+    """
+    Finds out if an existing argument needs to be returned.
+    """
+    for i in range(len(args)):
+        if res is args[i]:
+            return ret_args[i]
+
+    for key in kwargs:
+        if res is kwargs[key]:
+            return ret_kwargs[key]
+
+    return None
