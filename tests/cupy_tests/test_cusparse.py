@@ -193,3 +193,19 @@ class TestCsrmv(unittest.TestCase):
         expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
         self.assertIs(y, z)
         testing.assert_array_almost_equal(y, expect)
+
+
+class TestCoosort(unittest.TestCase):
+
+    def setUp(self):
+        self.a = scipy.sparse.random(
+            100, 100, density=0.9, dtype=numpy.float32, format='coo')
+
+    def test_coosort(self):
+        a = sparse.coo_matrix(self.a)
+        cupy.cusparse.coosort(a)
+        # lexsort by row first and col second
+        argsort = numpy.lexsort((self.a.col, self.a.row))
+        testing.assert_array_equal(self.a.row[argsort], a.row)
+        testing.assert_array_equal(self.a.col[argsort], a.col)
+        testing.assert_array_almost_equal(self.a.data[argsort], a.data)

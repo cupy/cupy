@@ -574,14 +574,16 @@ def coosort(x):
         handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr)
     buf = cupy.empty(buffer_size, 'b')
     P = cupy.empty(nnz, 'i')
+    data_sorted = cupy.empty_like(x.data)
     cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
     cusparse.xcoosortByRow(
         handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
         P.data.ptr, buf.data.ptr)
     _call_cusparse(
         'gthr', x.dtype,
-        handle, nnz, x.data.data.ptr, x.data.data.ptr,
+        handle, nnz, x.data.data.ptr, data_sorted.data.ptr,
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    x.data = data_sorted
 
 
 def coo2csr(x):
