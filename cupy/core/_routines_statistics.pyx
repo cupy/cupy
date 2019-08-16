@@ -39,6 +39,10 @@ cdef ndarray _ndarray_std(ndarray self, axis, dtype, out, ddof, keepdims):
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
+cpdef ndarray _ndarray_nanmean(ndarray self, axis, dtype, out, keepdims):
+    return _nanmean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+
 cpdef ndarray _ndarray_nanvar(ndarray self, axis, dtype, out, ddof, keepdims):
     return _nanvar(
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
@@ -346,6 +350,34 @@ cdef _mean = create_reduction_func(
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b',
      'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
+
+
+cdef _nanmean_preamble = '''
+template <typename T>
+struct nanmean_st{
+    typedef long long ll;
+    T value;
+    ll count;
+    __device__ nanmean_st() : value(0), count(0) { }
+    __device__ nanmean_st(T v) :
+        value(isnan(v) ? T(0) : v), count(isnan(v) ? 0 : 1) { }
+    __device__ nanmean_st(T v, ll c) : value(v), count(c) { }
+};
+
+template <typename T>
+__device__ nanmean_st<T> my_nanmean(
+        const nanmean_st<T>& a, const nanmean_st<T>& b) {
+    return nanmean_st<T>(a.value + b.value, a.count + b.count);
+}
+'''
+
+
+cdef _nanmean = create_reduction_func(
+    'cupy_nanmean',
+    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'my_nanmean(a, b)',
+     'out0 = a.value / type_out0_raw(a.count)', 'nanmean_st<type_out0_raw>'),
+    None, _nanmean_preamble)
 
 
 _count_non_nan = create_reduction_func(

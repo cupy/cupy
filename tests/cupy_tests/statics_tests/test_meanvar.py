@@ -1,9 +1,13 @@
 import unittest
+import pytest
 
 import numpy
 
 import cupy
 from cupy import testing
+
+ignore_runtime_warnings = pytest.mark.filterwarnings(
+    "ignore", category=RuntimeWarning)
 
 
 @testing.gpu
@@ -183,6 +187,77 @@ class TestMeanVar(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
+        'shape': [(3, 4), (30, 40, 50)],
+        'axis': [None, 0, 1],
+        'keepdims': [True, False]
+    })
+)
+@testing.gpu
+class TestNanMean(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nanmean_without_nan(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        return xp.nanmean(a, axis=self.axis, keepdims=self.keepdims)
+
+    @ignore_runtime_warnings
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nanmean_with_nan_float(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+
+        if a.dtype.kind not in 'biu':
+            a[1, :] = xp.nan
+            a[:, 3] = xp.nan
+
+        return xp.nanmean(a, axis=self.axis, keepdims=self.keepdims)
+
+
+@testing.gpu
+class TestNanMeanAdditional(unittest.TestCase):
+
+    @ignore_runtime_warnings
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nanmean_out(self, xp, dtype):
+        a = testing.shaped_random((10, 20, 30), xp, dtype)
+        z = xp.zeros((20, 30), dtype=dtype)
+
+        if a.dtype.kind not in 'biu':
+            a[1, :] = xp.nan
+            a[:, 3] = xp.nan
+
+        xp.nanmean(a, axis=0, out=z)
+        return z
+
+    @testing.slow
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nanmean_huge(self, xp, dtype):
+        a = testing.shaped_random((1024, 512), xp, dtype)
+
+        if a.dtype.kind not in 'biu':
+            a[:512, :256] = xp.nan
+
+        return xp.nanmean(a, axis=1)
+
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_nanmean_float16(self, xp):
+        a = testing.shaped_arange((2, 3), xp, numpy.float16)
+        a[0][0] = xp.nan
+        return xp.nanmean(a)
+
+    @ignore_runtime_warnings
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nanmean_all_nan(self, xp):
+        a = xp.zeros((3, 4))
+        a[:] = xp.nan
+        return xp.nanmean(a)
+
+
+@testing.parameterize(
+    *testing.product({
         'shape': [(3, 4), (4, 3, 5)],
         'axis': [None, 0, 1],
         'keepdims': [True, False],
@@ -191,6 +266,7 @@ class TestMeanVar(unittest.TestCase):
 @testing.gpu
 class TestNanVarStd(unittest.TestCase):
 
+    @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanvar(self, xp, dtype):
@@ -200,6 +276,7 @@ class TestNanVarStd(unittest.TestCase):
         return xp.nanvar(
             a, axis=self.axis, ddof=self.ddof, keepdims=self.keepdims)
 
+    @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd(self, xp, dtype):
@@ -213,6 +290,7 @@ class TestNanVarStd(unittest.TestCase):
 @testing.gpu
 class TestNanVarStdAdditional(unittest.TestCase):
 
+    @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanvar_out(self, xp, dtype):
@@ -243,6 +321,7 @@ class TestNanVarStdAdditional(unittest.TestCase):
         a[0][0] = xp.nan
         return xp.nanvar(a, axis=0)
 
+    @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd_out(self, xp, dtype):
