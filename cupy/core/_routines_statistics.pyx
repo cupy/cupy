@@ -300,9 +300,15 @@ cdef _nanargmax = create_reduction_func(
 
 cdef ndarray _var(
         ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-    assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
-                                'implemented. Current implemention does not ' \
-                                'convert the dtype'
+
+    if a.dtype.kind == 'c':
+        assert out is None, 'Variance for complex numbers is not ' \
+                            'implemented when out != None. Current ' \
+                            'implemention does not convert the dtype.'
+        out = _var(a.real, axis, dtype, out, ddof, keepdims)
+        out += _var(a.imag, axis, dtype, out, ddof, keepdims)
+        return out
+
     if axis is None:
         axis = tuple(range(a.ndim))
     if not isinstance(axis, tuple):
