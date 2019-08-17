@@ -59,10 +59,6 @@ cdef class RawKernel:
             self._kernel = _get_raw_kernel(self.code, self.name, self.options)
         return self._kernel
 
-    @kernel.setter
-    def kernel(self, ker):
-        self._kernel = ker
-
     @property
     def attributes(self):
         """Returns a dictionary containing runtime kernel attributes. This is
@@ -249,6 +245,6 @@ cdef class RawModule:
             return self.kernels[name]
         else:
             ker = RawKernel(None, name, self.options)
-            ker.kernel = self.module.get_function(name)
+            ker._kernel = self.module.get_function(name)
             self.kernels[name] = ker
             return ker
