@@ -176,24 +176,22 @@ class ndarray(object):
         Args:
             _stored (None, ndarray): If _stored is None, object is not
             initialized. Otherwise, _stored (ndarray) would be set to
-            _cupy_array or _numpy_array depending upon _class.
+            _cupy_array and/or _numpy_array depending upon _class.
             _class (ndarray type): If _class is `cp.ndarray`, _stored is
-            set as _cupy_array. Otherwise, _stored is set as _numpy_array.
+            set as _cupy_array and _numpy_array. Otherwise, _stored is set
+            as only _numpy_array.
             Intended values for _class are `np.ndarray`, `np.ma.MaskedArray`,
             `np.matrix`, `np.chararray`, `np.recarray`.
 
         Attributes:
             _cupy_array (cp.ndarray): ndarray fully compatible with CuPy.
-            This will be always set to ndarray in GPU.
+            This will be always set to a ndarray in GPU.
             _numpy_array (np.ndarray and variants): ndarray not supported by
             CuPy. Such as np.ndarray(where dtype is not in '?bhilqBHILQefdFD')
-            and it's variants. This will be always set to ndarray in CPU.
-            _latest (str): If 'cupy', latest change may be in _cupy_array, but
-            certainly not in _numpy_array. If 'numpy', latest change may be in
-            _numpy_array but certainly not in _cupy_array.
+            and it's variants. This will be always set to a ndarray in CPU.
             _class (ndarray type): If _class is `cp.ndarray`, data of array
-            will contain in _cupy_array or _numpy_array (only if fallback
-            occurs). In all other cases _numpy_array will have the data.
+            will contain in _cupy_array and _numpy_array.
+            In all other cases only _numpy_array will have the data.
         """
 
         _class = kwargs.pop('_class', None)
@@ -272,13 +270,15 @@ class ndarray(object):
 
     def _numpy_array_update(self):
         """
-        If _cupy_array is not latest, update it.
+        Updates _numpy_array with _cupy_array
         """
         self._numpy_array = cp.asnumpy(self._cupy_array)
 
     def _cupy_array_update(self):
         """
-        If _numpy_array is not latest, update it.
+        Updates _cupy_array with _numpy_array.
+        If array is of type np.ma.MaskedArray or np.matrix,
+        then update array.base._cupy_array with array.base._numpy_array.
         """
         if self._class is cp.ndarray:
             self._cupy_array = cp.array(self._numpy_array)
@@ -442,6 +442,7 @@ def _update_after_cupy_call(args, kwargs):
 def _update_after_numpy_call(args, kwargs):
     return _get_xp_args(ndarray, ndarray._cupy_array_update, (args, kwargs))
 
+
 # -----------------------------------------------------------------------------
 # utils
 # -----------------------------------------------------------------------------
@@ -471,13 +472,15 @@ def _call_cupy(func, args, kwargs):
     if ext_res is not None:
         return ext_res
 
+    # If view into ndarray is being returned
     if isinstance(cupy_res, cp.ndarray) and \
        cupy_res.base is not None:
         # cupy_res.base is base_arg._cupy_array
         base_arg = _get_same_reference(
             cupy_res.base, cupy_args, cupy_kwargs, args, kwargs)
 
-        # base_arg is None can be when argument is view into some ndarray
+        # base_arg is None can be when argument is view into
+        # some ndarray not in args, kwargs
         if base_arg is not None:
             fallback_res = _convert_cupy_to_fallback(cupy_res)
             setattr(fallback_res, 'base', base_arg)
@@ -516,14 +519,16 @@ def _call_numpy(func, args, kwargs):
         base_arg = _get_same_reference(
             numpy_res.base, numpy_args, numpy_kwargs, args, kwargs)
 
-        # base_arg is None can be when argument is view into some ndarray
+        # base_arg is None can be when argument is view into
+        # some ndarray not in args, kwargs
         if base_arg is not None and base_arg._class is cp.ndarray:
             if type(numpy_res) is np.ndarray:
                 # creating view `_cupy_view` into base_arg._cupy_array
                 offset = _getptr(numpy_res) - _getptr(base_arg._numpy_array)
                 memptr = base_arg._cupy_array.data + offset
-                _cupy_view = cp.ndarray(numpy_res.shape, numpy_res.dtype, memptr, numpy_res.strides)
-                fallback_res =  _convert_cupy_to_fallback(_cupy_view)
+                _cupy_view = cp.ndarray(numpy_res.shape, numpy_res.dtype,
+                                        memptr, numpy_res.strides)
+                fallback_res = _convert_cupy_to_fallback(_cupy_view)
             else:
                 fallback_res = _convert_numpy_to_fallback(numpy_res)
 
@@ -550,6 +555,9 @@ def _get_same_reference(res, args, kwargs, ret_args, ret_kwargs):
 
 
 def _getptr(x):
+    """
+    Returns memory pointer for cp.ndarray or np.ndarray
+    """
     if isinstance(x, cp.ndarray):
         return x.__cuda_array_interface__['data'][0]
     if isinstance(x, np.ndarray):

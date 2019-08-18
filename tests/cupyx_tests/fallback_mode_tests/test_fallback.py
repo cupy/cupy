@@ -318,6 +318,12 @@ class FallbackArray(unittest.TestCase):
         a = xp.array([1, 2, 3])
         return type(a) == xp.ndarray
 
+    @numpy_fallback_equal()
+    def test_base(self, xp):
+        a = xp.arange(7)
+        b = a[2:]
+        return b.base is a
+
 
 @testing.parameterize(
     {'func': 'min', 'shape': (5,), 'args': (), 'kwargs': {}},
