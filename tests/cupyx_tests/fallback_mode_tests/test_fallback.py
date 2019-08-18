@@ -628,3 +628,13 @@ class TestArrayVariants(unittest.TestCase):
     def test_record_array(self, xp):
         ra = xp.rec.array([1, 2, 3])
         return ra
+
+    # changes in MaskedArray should be reflected in base ndarray
+    @numpy_fallback_array_equal()
+    def test_ma_func(self, xp):
+        x = xp.array([1, 2, 3, 4])
+        x += x
+        mx = xp.ma.array(x, mask=[1, 0, 1, 0])
+        assert mx.base is x
+        mx += mx
+        return x

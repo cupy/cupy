@@ -283,8 +283,8 @@ class ndarray(object):
         if self._class is cp.ndarray:
             self._cupy_array = cp.array(self._numpy_array)
 
-        if self._class is np.ma.MaskedArray and \
-           isinstance(self.base, ndarray):
+        if isinstance(self.base, ndarray) and \
+           self._class in [np.ma.MaskedArray, np.matrix]:
             self.base._cupy_array_update()
 
 
@@ -465,10 +465,23 @@ def _call_cupy(func, args, kwargs):
     cupy_res = func(*cupy_args, **cupy_kwargs)
     _update_after_cupy_call(args, kwargs)
 
-    ref_res = _get_same_reference(
+    # If existing argument is being returned
+    ext_res = _get_same_reference(
         cupy_res, cupy_args, cupy_kwargs, args, kwargs)
-    if ref_res is not None:
-        return ref_res
+    if ext_res is not None:
+        return ext_res
+
+    if isinstance(cupy_res, cp.ndarray) and \
+       cupy_res.base is not None:
+        # cupy_res.base is base_arg._cupy_array
+        base_arg = _get_same_reference(
+            cupy_res.base, cupy_args, cupy_kwargs, args, kwargs)
+
+        # base_arg is None can be when argument is view into some ndarray
+        if base_arg is not None:
+            fallback_res = _convert_cupy_to_fallback(cupy_res)
+            setattr(fallback_res, 'base', base_arg)
+            return fallback_res
 
     return _convert_cupy_to_fallback(cupy_res)
 
@@ -491,25 +504,39 @@ def _call_numpy(func, args, kwargs):
     numpy_res = func(*numpy_args, **numpy_kwargs)
     _update_after_numpy_call(args, kwargs)
 
-    # Sometimes reference to an argument is returned
-    # ex: numpy.add, numpy.nanmean
-    # Therefore, to avoid creating separate ndarray that argument is returned
-    ref_res = _get_same_reference(
+    # If existing argument is being returned
+    ext_res = _get_same_reference(
         numpy_res, numpy_args, numpy_kwargs, args, kwargs)
-    if ref_res is not None:
-        return ref_res
+    if ext_res is not None:
+        return ext_res
 
-    fallback_res = _convert_numpy_to_fallback(numpy_res)
-    if type(numpy_res) is np.ma.MaskedArray and \
-       numpy_res.base is numpy_args[0]:
-        setattr(fallback_res, 'base', args[0])
+    if isinstance(numpy_res, np.ndarray) and \
+       numpy_res.base is not None:
+        # numpy_res.base is base_arg._numpy_array
+        base_arg = _get_same_reference(
+            numpy_res.base, numpy_args, numpy_kwargs, args, kwargs)
 
-    return fallback_res
+        # base_arg is None can be when argument is view into some ndarray
+        if base_arg is not None and base_arg._class is cp.ndarray:
+            if type(numpy_res) is np.ndarray:
+                # creating view `_cupy_view` into base_arg._cupy_array
+                offset = _getptr(numpy_res) - _getptr(base_arg._numpy_array)
+                memptr = base_arg._cupy_array.data + offset
+                _cupy_view = cp.ndarray(numpy_res.shape, numpy_res.dtype, memptr, numpy_res.strides)
+                fallback_res =  _convert_cupy_to_fallback(_cupy_view)
+            else:
+                fallback_res = _convert_numpy_to_fallback(numpy_res)
+
+            setattr(fallback_res, 'base', base_arg)
+            return fallback_res
+
+    return _convert_numpy_to_fallback(numpy_res)
 
 
 def _get_same_reference(res, args, kwargs, ret_args, ret_kwargs):
     """
-    Finds out if an existing argument needs to be returned.
+    Returns object corresponding to res in (args, kwargs)
+    from (ret_args, ret_kwargs)
     """
     for i in range(len(args)):
         if res is args[i]:
@@ -519,4 +546,12 @@ def _get_same_reference(res, args, kwargs, ret_args, ret_kwargs):
         if res is kwargs[key]:
             return ret_kwargs[key]
 
-    return None
+    return
+
+
+def _getptr(x):
+    if isinstance(x, cp.ndarray):
+        return x.__cuda_array_interface__['data'][0]
+    if isinstance(x, np.ndarray):
+        return x.__array_interface__['data'][0]
+    raise TypeError
