@@ -9,6 +9,14 @@ from cupy import testing
 from cupy.testing import helper
 
 
+class _Exception1(Exception):
+    pass
+
+
+class _Exception2(Exception):
+    pass
+
+
 class TestContainsSignedAndUnsigned(unittest.TestCase):
 
     def test_include(self):
@@ -81,9 +89,9 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         @testing.helper.numpy_cupy_raises()
         def dummy_cupy_derived_error(self, xp):
             if xp is cupy:
-                raise ValueError(self.tbs.get(cupy))
+                raise _Exception1(self.tbs.get(cupy))
             elif xp is numpy:
-                raise Exception(self.tbs.get(numpy))
+                raise _Exception2(self.tbs.get(numpy))
 
         dummy_cupy_derived_error(self)  # Assert no exceptions
 
@@ -148,6 +156,69 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
         with six.assertRaisesRegex(self, AssertionError, pattern):
             dummy_forbidden_error(self)
+
+    def test_axis_error_different_type(self):
+        @testing.helper.numpy_cupy_raises()
+        def dummy_axis_error(self, xp):
+            if xp is cupy:
+                raise cupy.core._errors._AxisError(self.tbs.get(cupy))
+            elif xp is numpy:
+                raise TypeError(self.tbs.get(numpy))
+
+        pattern = re.compile(
+            self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
+        with six.assertRaisesRegex(self, AssertionError, pattern):
+            dummy_axis_error(self)
+
+    @testing.with_requires('numpy>=1.13')
+    def test_axis_error_value_different_type(self):
+        @testing.helper.numpy_cupy_raises()
+        def dummy_axis_error(self, xp):
+            if xp is cupy:
+                raise cupy.core._errors._AxisError(self.tbs.get(cupy))
+            elif xp is numpy:
+                raise ValueError(self.tbs.get(numpy))
+
+        pattern = re.compile(
+            self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
+        with six.assertRaisesRegex(self, AssertionError, pattern):
+            dummy_axis_error(self)
+
+    @testing.with_requires('numpy>=1.13')
+    def test_axis_error_index_different_type(self):
+        @testing.helper.numpy_cupy_raises()
+        def dummy_axis_error(self, xp):
+            if xp is cupy:
+                raise cupy.core._errors._AxisError(self.tbs.get(cupy))
+            elif xp is numpy:
+                raise IndexError(self.tbs.get(numpy))
+
+        pattern = re.compile(
+            self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
+        with six.assertRaisesRegex(self, AssertionError, pattern):
+            dummy_axis_error(self)
+
+    @testing.with_requires('numpy<1.13')
+    def test_axis_error_value(self):
+        @testing.helper.numpy_cupy_raises()
+        def dummy_axis_error(self, xp):
+            if xp is cupy:
+                raise cupy.core._errors._AxisError(self.tbs.get(cupy))
+            elif xp is numpy:
+                raise ValueError(self.tbs.get(numpy))
+
+        dummy_axis_error(self)
+
+    @testing.with_requires('numpy<1.13')
+    def test_axis_error_index(self):
+        @testing.helper.numpy_cupy_raises()
+        def dummy_axis_error(self, xp):
+            if xp is cupy:
+                raise cupy.core._errors._AxisError(self.tbs.get(cupy))
+            elif xp is numpy:
+                raise IndexError(self.tbs.get(numpy))
+
+        dummy_axis_error(self)
 
 
 class NumPyCuPyDecoratorBase(object):

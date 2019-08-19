@@ -39,6 +39,10 @@ cdef ndarray _ndarray_std(ndarray self, axis, dtype, out, ddof, keepdims):
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
+cpdef ndarray _ndarray_nanmean(ndarray self, axis, dtype, out, keepdims):
+    return _nanmean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+
 cpdef ndarray _ndarray_nanvar(ndarray self, axis, dtype, out, ddof, keepdims):
     return _nanvar(
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
@@ -60,11 +64,6 @@ struct min_max_st{
 };
 
 template <typename T>
-inline __device__ bool is_nan(T x) {
-    return x != x;
-}
-
-template <typename T>
 __device__ min_max_st<T> my_min(
         const min_max_st<T>& a, const min_max_st<T>& b) {
     if (a.index == -1) return b;
@@ -76,19 +75,8 @@ __device__ min_max_st<T> my_min_float(
         const min_max_st<T>& a, const min_max_st<T>& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
-    if (is_nan(a.value)) return a;
-    if (is_nan(b.value)) return b;
-    return min_max_st<T>(min(a.value, b.value));
-}
-template <typename T>
-__device__ min_max_st<T> my_min_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (is_nan(a.value.real())) return a;
-    if (is_nan(a.value.imag())) return a;
-    if (is_nan(b.value.real())) return b;
-    if (is_nan(b.value.imag())) return b;
+    if (isnan(a.value)) return a;
+    if (isnan(b.value)) return b;
     return min_max_st<T>(min(a.value, b.value));
 }
 
@@ -104,19 +92,8 @@ __device__ min_max_st<T> my_max_float(
         const min_max_st<T>& a, const min_max_st<T>& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
-    if (is_nan(a.value)) return a;
-    if (is_nan(b.value)) return b;
-    return min_max_st<T>(max(a.value, b.value));
-}
-template <typename T>
-__device__ min_max_st<T> my_max_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (is_nan(a.value.real())) return a;
-    if (is_nan(a.value.imag())) return a;
-    if (is_nan(b.value.real())) return b;
-    if (is_nan(b.value.imag())) return b;
+    if (isnan(a.value)) return a;
+    if (isnan(b.value)) return b;
     return min_max_st<T>(max(a.value, b.value));
 }
 
@@ -136,21 +113,8 @@ __device__ min_max_st<T> my_argmin_float(
     if (b.index == -1) return a;
     if (a.value == b.value)
         return min_max_st<T>(a.value, min(a.index, b.index));
-    if (is_nan(a.value)) return a;
-    if (is_nan(b.value)) return b;
-    return (a.value <= b.value) ? a : b;
-}
-template <typename T>
-__device__ min_max_st<T> my_argmin_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value)
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (is_nan(a.value.real())) return a;
-    if (is_nan(a.value.imag())) return a;
-    if (is_nan(b.value.real())) return b;
-    if (is_nan(b.value.imag())) return b;
+    if (isnan(a.value)) return a;
+    if (isnan(b.value)) return b;
     return (a.value <= b.value) ? a : b;
 }
 
@@ -170,21 +134,8 @@ __device__ min_max_st<T> my_argmax_float(
     if (b.index == -1) return a;
     if (a.value == b.value)
         return min_max_st<T>(a.value, min(a.index, b.index));
-    if (is_nan(a.value)) return a;
-    if (is_nan(b.value)) return b;
-    return (a.value >= b.value) ? a : b;
-}
-template <typename T>
-__device__ min_max_st<T> my_argmax_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value)
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (is_nan(a.value.real())) return a;
-    if (is_nan(a.value.imag())) return a;
-    if (is_nan(b.value.real())) return b;
-    if (is_nan(b.value.imag())) return b;
+    if (isnan(a.value)) return a;
+    if (isnan(b.value)) return b;
     return (a.value >= b.value) ? a : b;
 }
 
@@ -198,8 +149,8 @@ cdef _amin = create_reduction_func(
      ('e->e', (None, 'my_min_float(a, b)', None, None)),
      ('f->f', (None, 'my_min_float(a, b)', None, None)),
      ('d->d', (None, 'my_min_float(a, b)', None, None)),
-     ('F->F', (None, 'my_min_complex(a, b)', None, None)),
-     ('D->D', (None, 'my_min_complex(a, b)', None, None))),
+     ('F->F', (None, 'my_min_float(a, b)', None, None)),
+     ('D->D', (None, 'my_min_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0)', 'my_min(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -212,8 +163,8 @@ cdef _amax = create_reduction_func(
      ('e->e', (None, 'my_max_float(a, b)', None, None)),
      ('f->f', (None, 'my_max_float(a, b)', None, None)),
      ('d->d', (None, 'my_max_float(a, b)', None, None)),
-     ('F->F', (None, 'my_max_complex(a, b)', None, None)),
-     ('D->D', (None, 'my_max_complex(a, b)', None, None)),
+     ('F->F', (None, 'my_max_float(a, b)', None, None)),
+     ('D->D', (None, 'my_max_float(a, b)', None, None)),
      ),
     ('min_max_st<type_in0_raw>(in0)', 'my_max(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
@@ -245,8 +196,8 @@ cdef _argmin = create_reduction_func(
      ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
      ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
      ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('F->q', (None, 'my_argmin_complex(a, b)', None, None)),
-     ('D->q', (None, 'my_argmin_complex(a, b)', None, None))),
+     ('F->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('D->q', (None, 'my_argmin_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -259,8 +210,8 @@ cdef _argmax = create_reduction_func(
      ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
      ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
      ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('F->q', (None, 'my_argmax_complex(a, b)', None, None)),
-     ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
+     ('F->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('D->q', (None, 'my_argmax_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -273,9 +224,9 @@ cdef _nanargmin = create_reduction_func(
      ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
      ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
      ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('F->q', (None, 'my_argmin_complex(a, b)', None, None)),
-     ('D->q', (None, 'my_argmin_complex(a, b)', None, None))),
-    ('min_max_st<type_in0_raw>(in0, is_nan(in0) ? -1 : _J)',
+     ('F->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('D->q', (None, 'my_argmin_float(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0, isnan(in0) ? -1 : _J)',
      'my_argmin(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
@@ -287,9 +238,9 @@ cdef _nanargmax = create_reduction_func(
      ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
      ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
      ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('F->q', (None, 'my_argmax_complex(a, b)', None, None)),
-     ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
-    ('min_max_st<type_in0_raw>(in0, is_nan(in0) ? -1 : _J)',
+     ('F->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('D->q', (None, 'my_argmax_float(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0, isnan(in0) ? -1 : _J)',
      'my_argmax(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
@@ -348,10 +299,38 @@ cdef _mean = create_reduction_func(
      'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
 
 
+cdef _nanmean_preamble = '''
+template <typename T>
+struct nanmean_st{
+    typedef long long ll;
+    T value;
+    ll count;
+    __device__ nanmean_st() : value(0), count(0) { }
+    __device__ nanmean_st(T v) :
+        value(isnan(v) ? T(0) : v), count(isnan(v) ? 0 : 1) { }
+    __device__ nanmean_st(T v, ll c) : value(v), count(c) { }
+};
+
+template <typename T>
+__device__ nanmean_st<T> my_nanmean(
+        const nanmean_st<T>& a, const nanmean_st<T>& b) {
+    return nanmean_st<T>(a.value + b.value, a.count + b.count);
+}
+'''
+
+
+cdef _nanmean = create_reduction_func(
+    'cupy_nanmean',
+    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'my_nanmean(a, b)',
+     'out0 = a.value / type_out0_raw(a.count)', 'nanmean_st<type_out0_raw>'),
+    None, _nanmean_preamble)
+
+
 _count_non_nan = create_reduction_func(
     'cupy_count_non_nan',
     ('e->l', 'f->l', 'd->l'),
-    ('(in0 == in0) ? 1 : 0', 'a + b', 'out0 = a', None), 0)
+    ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0)
 
 
 cdef ndarray _nanstd(
@@ -382,7 +361,7 @@ cdef ndarray _nanvar(
 cdef _nanvar_preamble = '''
 template <typename S, typename T>
 __device__ T nanvar_impl(S x, T mean, long long alpha) {
-    return (x == x ? T((x - mean) * (x - mean)) : T(0)) / alpha;
+    return (isnan(x) ? T(0) : T((x - mean) * (x - mean))) / alpha;
 }
 '''
 
