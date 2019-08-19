@@ -1,6 +1,7 @@
 import cupy
 from cupy import util
 from cupy.cuda cimport driver
+from cupy.cuda.function cimport Module
 
 import six
 
@@ -20,7 +21,7 @@ cdef class RawKernel:
     Args:
         code (str): CUDA source code.
         name (str): Name of the kernel function.
-        options (str): Compile options passed to NVRTC. For details, see
+        options (str): Compiler options passed to NVRTC. For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
 
     """
@@ -33,6 +34,7 @@ cdef class RawKernel:
         self.code = code
         self.name = name
         self.options = options
+        self._kernel = None
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -53,7 +55,9 @@ cdef class RawKernel:
 
     @property
     def kernel(self):
-        return _get_raw_kernel(self.code, self.name, self.options)
+        if self._kernel is None:
+            self._kernel = _get_raw_kernel(self.code, self.name, self.options)
+        return self._kernel
 
     @property
     def attributes(self):
@@ -179,3 +183,68 @@ def _get_raw_kernel(code, name, options=()):
     module = cupy.core.core.compile_with_cache(code, options,
                                                prepend_cupy_headers=False)
     return module.get_function(name)
+
+
+cdef class RawModule:
+    """User-defined custom module.
+
+    This class can be used to either compile raw CUDA sources or load CUDA
+    modules (\*.cubin). This class is useful when a number of CUDA kernels in
+    the same source need to be retrieved.
+
+    For the former case, the CUDA source code is compiled when initializing a
+    new instance of this class, and the kernels can be retrieved by calling
+    :meth:`get_function`, which will return an instance of :class:`RawKernel`.
+    (Same as in :class:`RawKernel`, the generated binary is also cached.)
+
+    For the latter case, an existing CUDA binary (\*.cubin) can be loaded by
+    providing its path, and kernels therein can be retrieved similarly.
+
+    Args:
+        code_or_path (str): CUDA source code or path to cubin.
+        options (str): Compiler options passed to NVRTC if compilation is
+            needed. For details, see
+            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
+
+    .. note::
+        Each kernel in ``RawModule`` possesses independent function attributes.
+    """
+    def __init__(self, code_or_path, options=()):
+        if isinstance(code_or_path, six.binary_type):
+            code_or_path = code_or_path.decode('UTF-8')
+
+        if code_or_path.endswith('.cubin'):
+            path = code_or_path
+            self.code = None
+            self.cubin_path = path
+        else:
+            code = code_or_path
+            self.code = code
+            self.cubin_path = None
+
+        if self.code is not None:
+            self.module = cupy.core.core.compile_with_cache(
+                code, options, prepend_cupy_headers=False)
+        elif self.cubin_path is not None:
+            self.module = Module()
+            self.module.load_file(self.cubin_path)
+
+        self.options = options
+        self.kernels = {}
+
+    def get_function(self, name):
+        """Retrieve a CUDA kernel by its name from the module.
+
+        Args:
+            name (str): Name of the kernel function.
+
+        Returns:
+            RawKernel: An ``RawKernel`` instance.
+        """
+        if name in self.kernels:
+            return self.kernels[name]
+        else:
+            ker = RawKernel(None, name, self.options)
+            ker._kernel = self.module.get_function(name)
+            self.kernels[name] = ker
+            return ker
