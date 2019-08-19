@@ -63,7 +63,7 @@ def vdot(a, b):
 def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     """Returns the cross product of two vectors.
 
-    The cross product of ``a`` and ``b`` in :math:``R^3`` is a vector
+    The cross product of ``a`` and ``b`` in :math:`R^3` is a vector
     perpendicular to both ``a`` and ``b``.  If ``a`` and ``b`` are arrays
     of vectors, the vectors are defined by the last axis of ``a`` and ``b``
     by default, and these axes can have dimensions 2 or 3.  Where the
@@ -105,7 +105,7 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     a = cupy.asarray(a)
     b = cupy.asarray(b)
     # Check axisa and axisb are within bounds
-    # TODO: Implement normalize_axis_index in cupy
+    # TODO(UmashankarTriforce): Implement normalize_axis_index in cupy
 
     axisa = chebyshev.normalize_axis_index(
         axisa, a.ndim, msg_prefix='axisa')
@@ -115,9 +115,9 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     # Move working axis to the end of the shape
     a = cupy.moveaxis(a, axisa, -1)
     b = cupy.moveaxis(b, axisb, -1)
-    msg = ('incompatible dimensions for cross product\n'
-           '(dimension must be 2 or 3)')
     if a.shape[-1] not in (2, 3) or b.shape[-1] not in (2, 3):
+        msg = ('incompatible dimensions for cross product\n'
+               '(dimension must be 2 or 3)')
         raise ValueError(msg)
 
     # Create the output array
