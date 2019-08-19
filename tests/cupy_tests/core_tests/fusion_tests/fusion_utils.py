@@ -67,7 +67,7 @@ def check_fusion(
             ret = func(*args, **kwargs)
             err = None
         except Exception as e:
-            if type(e) not in accept_error:
+            if not isinstance(e, accept_error):
                 raise
             ret = None
             err = e
@@ -81,9 +81,6 @@ def check_fusion(
             # Success
             assert err_a is None
             check(xp, ret_a, ret_e)
-
-        else:
-            assert type(err_a) == type(err_e)
 
     def deco(func):
         def wrapper(self, **generate_inputs_kwargs):
