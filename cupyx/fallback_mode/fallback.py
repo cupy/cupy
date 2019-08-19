@@ -24,9 +24,9 @@ class _RecursiveAttr(object):
             numpy_object (method): NumPy method.
             cupy_method (method): Corresponding CuPy method.
             array (ndarray): Acts as flag to know if _RecursiveAttr object
-            is called from ``ndarray`` class. Also, acts as container for
-            modifying args in case it is called from ``ndarray``.
-            None otherwise.
+                is called from ``ndarray`` class. Also, acts as container for
+                modifying args in case it is called from ``ndarray``.
+                None otherwise.
         """
 
         self._numpy_object = numpy_object
@@ -56,8 +56,11 @@ class _RecursiveAttr(object):
 
         Returns:
             (_RecursiveAttr object, NumPy scalar):
-            Returns_RecursiveAttr object with new numpy_object, cupy_object.
-            Returns objects in cupy which is an alias of numpy object.
+                Returns_RecursiveAttr object with new numpy_object,
+                cupy_object. OR
+                Returns objects in cupy which is an alias
+                of numpy object. OR
+                Returns wrapper objects, `ndarray`, `vectorize`.
         """
 
         numpy_object = getattr(self._numpy_object, attr)
@@ -91,7 +94,11 @@ class _RecursiveAttr(object):
     @staticmethod
     def _is_cupy_compatible(args, kwargs):
         """
-        Returns False if ndarray is not compatible with CuPy.
+        Returns False if CuPy's functions never accept the arguments as
+        parameters due to the following reasons.
+        - The inputs include an object of a NumPy's specific class other than
+          `np.ndarray`.
+        - The inputs include a dtype which is not supported in CuPy.
         """
         for arg in args:
             if isinstance(arg, ndarray) and arg._class is not cp.ndarray:
@@ -174,24 +181,26 @@ class ndarray(object):
     def __init__(self, *args, **kwargs):
         """
         Args:
-            _stored (None, ndarray): If _stored is None, object is not
-            initialized. Otherwise, _stored (ndarray) would be set to
-            _cupy_array and/or _numpy_array depending upon _class.
+            _stored (None, cp.ndarray or np.ndarray(including variants)):
+                If _stored is None, object is not initialized.
+                Otherwise, _stored (ndarray) would be set to
+                _cupy_array and/or _numpy_array depending upon _class.
             _class (ndarray type): If _class is `cp.ndarray`, _stored is
-            set as _cupy_array and _numpy_array. Otherwise, _stored is set
-            as only _numpy_array.
-            Intended values for _class are `np.ndarray`, `np.ma.MaskedArray`,
-            `np.matrix`, `np.chararray`, `np.recarray`.
+                set as _cupy_array and _numpy_array. Otherwise, _stored is
+                set as only _numpy_array. Intended values for _class are
+                `np.ndarray`, `np.ma.MaskedArray`, `np.matrix`,
+                `np.chararray`, `np.recarray`.
 
         Attributes:
-            _cupy_array (cp.ndarray): ndarray fully compatible with CuPy.
-            This will be always set to a ndarray in GPU.
-            _numpy_array (np.ndarray and variants): ndarray not supported by
-            CuPy. Such as np.ndarray(where dtype is not in '?bhilqBHILQefdFD')
-            and it's variants. This will be always set to a ndarray in CPU.
+            _cupy_array (None or cp.ndarray): ndarray fully compatible with
+                CuPy. This will be always set to a ndarray in GPU.
+            _numpy_array (None or np.ndarray(including variants)): ndarray not
+                supported by CuPy. Such as np.ndarray (where dtype is not in
+                '?bhilqBHILQefdFD') and it's variants. This will be always set
+                to a ndarray in CPU.
             _class (ndarray type): If _class is `cp.ndarray`, data of array
-            will contain in _cupy_array and _numpy_array.
-            In all other cases only _numpy_array will have the data.
+                will contain in _cupy_array and _numpy_array.
+                In all other cases only _numpy_array will have the data.
         """
 
         _class = kwargs.pop('_class', None)
@@ -392,12 +401,12 @@ def _get_xp_args(ndarray_instance, to_xp, arg):
 
     Args:
         ndarray_instance (numpy.ndarray, cupy.ndarray or fallback.ndarray):
-        Objects of type `ndarray_instance` will be converted using `to_xp`.
+            Objects of type `ndarray_instance` will be converted using `to_xp`.
         to_xp (FunctionType): Method to convert ndarray_instance type objects.
         arg (object): `ndarray_instance`, `tuple`, `list` and `dict` type
-        objects will be returned by either converting the object or it's
-        elements, if object is iterable.
-        Objects of other types is returned as it is.
+            objects will be returned by either converting the object or it's
+            elements, if object is iterable. Objects of other types is
+            returned as it is.
 
     Returns:
         Return data structure will be same as before after converting ndarrays.
