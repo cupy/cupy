@@ -1644,7 +1644,8 @@ cpdef int _update_order_char(ndarray x, int order_char):
     return order_char
 
 
-cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype):
+cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype,
+                                                         shape=None):
     cdef vector.vector[Py_ssize_t] strides
     # strides used when order='K' for astype, empty_like, etc.
     stride_and_index = [
@@ -1654,7 +1655,7 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype):
     stride = dtype.itemsize
     for s, i in stride_and_index:
         strides[-i] = stride
-        stride *= x.shape[-i]
+        stride *= shape[-i] if shape else x.shape[-i]
     return strides
 
 
