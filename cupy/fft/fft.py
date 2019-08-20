@@ -83,6 +83,13 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         out_size = a.shape[-1]
 
     batch = a.size // a.shape[-1]
+    curr_plan = cufft.get_current_plan()
+    if curr_plan is not None:
+        if plan is None:
+            plan = curr_plan
+        else:
+            raise RuntimeError('Use the cuFFT plan either as a context manager'
+                               ' or as an argument.')
     if plan is None:
         plan = cufft.Plan1d(out_size, fft_type, batch)
     else:
@@ -327,6 +334,10 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     else:
         raise ValueError('a must be contiguous')
 
+    curr_plan = cufft.get_current_plan()
+    if curr_plan is not None:
+        plan = curr_plan
+        # don't check repeated usage; it's done in _default_fft_func()
     if plan is None:
         # generate a plan
         plan = _get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order)
@@ -435,6 +446,14 @@ def _default_plan_type(a, s=None, axes=None):
 
 
 def _default_fft_func(a, s=None, axes=None, plan=None):
+    curr_plan = cufft.get_current_plan()
+    if curr_plan is not None:
+        if plan is None:
+            plan = curr_plan
+        else:
+            raise RuntimeError('Use the cuFFT plan either as a context manager'
+                               ' or as an argument.')
+
     if isinstance(plan, cufft.PlanNd):  # a shortcut for using _fftn
         return _fftn
     elif isinstance(plan, cufft.Plan1d):  # a shortcut for using _fft

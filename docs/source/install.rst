@@ -8,7 +8,7 @@ Recommended Environments
 
 We recommend the following Linux distributions.
 
-* `Ubuntu <https://www.ubuntu.com/>`_ 14.04 / 16.04 LTS (64-bit)
+* `Ubuntu <https://www.ubuntu.com/>`_ 16.04 / 18.04 LTS (64-bit)
 * `CentOS <https://www.centos.org/>`_ 7 (64-bit)
 
 .. note::
@@ -29,14 +29,23 @@ You need to have the following components to use CuPy.
     * If you have multiple versions of CUDA Toolkit installed, CuPy will choose one of the CUDA installations automatically.
       See :ref:`install_cuda` for details.
 * `Python <https://python.org/>`_
-    * Supported Versions: 2.7.6+, 3.4.3+, 3.5.1+, 3.6.0+ and 3.7.0+.
+    * Supported Versions: 3.5.1+, 3.6.0+ and 3.7.0+.
 * `NumPy <http://www.numpy.org/>`_
-    * Supported Versions: 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15 and 1.16.
+    * Supported Versions: 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 1.16 and 1.17.
     * NumPy will be installed automatically during the installation of CuPy.
 
 Before installing CuPy, we recommend you to upgrade ``setuptools`` and ``pip``::
 
   $ pip install -U setuptools pip
+
+.. note::
+
+   On Windows, CuPy only supports Python 3.6.0 or later.
+
+.. note::
+
+   Python 2 is not supported in CuPy v7.x releases.
+   Please consider migrating Python 3 or use CuPy v6.x, which is the last version that supports Python 2.
 
 Optional Libraries
 ~~~~~~~~~~~~~~~~~~
@@ -52,7 +61,7 @@ Some features in CuPy will only be enabled if the corresponding libraries are in
 Install CuPy
 ------------
 
-Wheels (precompiled binary packages) are available for the recommended environments above.
+Wheels (precompiled binary packages) are available for Linux (Python 2.7 or later) and Windows (Python 3.6 or later).
 Package names are different depending on the CUDA version you have installed on your host.
 
 ::
@@ -97,7 +106,7 @@ When installing from source, C++ compiler such as ``g++`` is required.
 You need to install it before installing CuPy.
 This is typical installation method for each platform::
 
-  # Ubuntu 14.04
+  # Ubuntu 16.04
   $ apt-get install g++
 
   # CentOS 7

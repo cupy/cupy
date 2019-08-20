@@ -159,6 +159,7 @@ setup(
         'cupy.statistics',
         'cupy.testing',
         'cupyx',
+        'cupyx.fallback_mode',
         'cupyx.scipy',
         'cupyx.scipy.fftpack',
         'cupyx.scipy.ndimage',

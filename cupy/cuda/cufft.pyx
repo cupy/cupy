@@ -1,10 +1,25 @@
 cimport cython  # NOQA
 import numpy
+import threading
 
 import cupy
 from cupy.cuda cimport driver
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
+
+
+cdef object _thread_local = threading.local()
+if not hasattr(_thread_local, '_current_plan'):
+    _thread_local._current_plan = None
+
+
+cpdef get_current_plan():
+    """Get current cuFFT plan.
+
+    Returns:
+        None or cupy.cuda.cufft.Plan1d or cupy.cuda.cufft.PlanNd
+    """
+    return _thread_local._current_plan
 
 
 cdef extern from 'cupy_cufft.h' nogil:
@@ -69,6 +84,9 @@ class CuFFTError(RuntimeError):
         self.result = result
         super(CuFFTError, self).__init__('%s' % (RESULT[result]))
 
+    def __reduce__(self):
+        return (type(self), (self.result,))
+
 
 @cython.profile(False)
 cpdef inline check_result(int result):
@@ -80,11 +98,8 @@ class Plan1d(object):
     def __init__(self, int nx, int fft_type, int batch):
         cdef Handle plan
         cdef size_t work_size
-        stream = stream_module.get_current_stream_ptr()
         with nogil:
             result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
             if result == 0:
@@ -116,7 +131,19 @@ class Plan1d(object):
             result = cufftDestroy(plan)
         check_result(result)
 
+    def __enter__(self):
+        _thread_local._current_plan = self
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        _thread_local._current_plan = None
+
     def fft(self, a, out, direction):
+        cdef Handle plan = self.plan
+        stream = stream_module.get_current_stream_ptr()
+        with nogil:
+            result = cufftSetStream(plan, <driver.Stream>stream)
+        check_result(result)
         if self.fft_type == CUFFT_C2C:
             execC2C(self.plan, a.data, out.data, direction)
         elif self.fft_type == CUFFT_R2C:
@@ -201,11 +228,8 @@ class PlanNd(object):
             onembed_arr = numpy.asarray(onembed, dtype=numpy.intc)
             onembed_ptr = &onembed_arr[0]
 
-        stream = stream_module.get_current_stream_ptr()
         with nogil:
             result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
             if result == 0:
@@ -244,7 +268,19 @@ class PlanNd(object):
             result = cufftDestroy(plan)
         check_result(result)
 
+    def __enter__(self):
+        _thread_local._current_plan = self
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        _thread_local._current_plan = None
+
     def fft(self, a, out, direction):
+        cdef Handle plan = self.plan
+        stream = stream_module.get_current_stream_ptr()
+        with nogil:
+            result = cufftSetStream(plan, <driver.Stream>stream)
+        check_result(result)
         if self.fft_type == CUFFT_C2C:
             execC2C(self.plan, a.data, out.data, direction)
         elif self.fft_type == CUFFT_Z2Z:

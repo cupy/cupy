@@ -20,8 +20,8 @@ from cupy.cuda import device
 from cupy.cuda import memory as memory_module
 
 
-from cupy import util
 from cupy.cuda.runtime import CUDARuntimeError
+from cupy import util
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -145,7 +145,7 @@ cdef class ndarray:
             'version': 0,
         }
         if not self._c_contiguous:
-            desc['strides'] = self._strides
+            desc['strides'] = self.strides
 
         return desc
 
@@ -697,6 +697,11 @@ cdef class ndarray:
             :func:`numpy.nonzero`
 
         """
+        if self.ndim == 0:
+            warnings.warn(
+                'calling nonzero on 0d arrays is deprecated',
+                DeprecationWarning)
+
         return _indexing._ndarray_nonzero(self)
 
     # TODO(okuta): Implement compress
@@ -735,6 +740,17 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmax(self, axis, out, dtype, keepdims)
 
+    cpdef ndarray _nanargmax(self, axis=None, out=None, dtype=None,
+                             keepdims=False):
+        """Returns the indices of the maximum with nan along a given axis.
+
+        .. seealso::
+           :func:`cupy.nanargmax` for full documentation,
+           :meth:`numpy.ndarray.nanargmax`
+
+        """
+        return _statistics._ndarray_nanargmax(self, axis, out, dtype, keepdims)
+
     cpdef ndarray min(self, axis=None, out=None, dtype=None, keepdims=False):
         """Returns the minimum along a given axis.
 
@@ -756,6 +772,16 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
 
+    cpdef ndarray _nanargmin(self, axis=None, out=None, dtype=None,
+                             keepdims=False):
+        """Returns the indices of the minimum with nan along a given axis.
+
+        .. seealso::
+           :func:`cupy.nanargmin` for full documentation,
+           :meth:`numpy.ndarray.nanargmin`
+
+        """
+        return _statistics._ndarray_nanargmin(self, axis, out, dtype, keepdims)
     # TODO(okuta): Implement ptp
 
     cpdef ndarray clip(self, a_min=None, a_max=None, out=None):
@@ -810,6 +836,17 @@ cdef class ndarray:
         """
         return _math._ndarray_cumsum(self, axis, dtype, out)
 
+    cpdef ndarray _nansum(
+            self, axis=None, dtype=None, out=None, keepdims=False):
+        """Returns the sum along a given axis treating Not a Numbers (NaNs) as zero.
+
+        .. seealso::
+           :func:`cupy.nansum` for full documentation,
+           :meth:`numpy.ndarray.nansum`
+
+        """
+        return _math._ndarray_nansum(self, axis, dtype, out, keepdims)
+
     cpdef ndarray mean(self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the mean along a given axis.
 
@@ -862,6 +899,18 @@ cdef class ndarray:
 
         """
         return _math._ndarray_cumprod(self, axis, dtype, out)
+
+    cpdef ndarray _nanprod(
+            self, axis=None, dtype=None, out=None, keepdims=None):
+        """Returns the product along a given axis treating Not a Numbers (NaNs)
+        as zero.
+
+        .. seealso::
+           :func:`cupy.nanprod` for full documentation,
+           :meth:`numpy.ndarray.nanprod`
+
+        """
+        return _math._ndarray_nanprod(self, axis, dtype, out, keepdims)
 
     cpdef ndarray all(self, axis=None, out=None, keepdims=False):
         # TODO(niboshi): Write docstring
@@ -1400,14 +1449,15 @@ cdef class ndarray:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
         ptr = ctypes.c_void_p(a_cpu.__array_interface__['data'][0])
-        if stream is not None:
-            a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
-        else:
-            stream_ptr = stream_module.get_current_stream_ptr()
-            if stream_ptr == 0:
-                a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
+        with self.device:
+            if stream is not None:
+                a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
             else:
-                a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes)
+                stream_ptr = stream_module.get_current_stream_ptr()
+                if stream_ptr == 0:
+                    a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
+                else:
+                    a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes)
         return a_cpu
 
     cpdef set(self, arr, stream=None):
@@ -1437,14 +1487,15 @@ cdef class ndarray:
             raise RuntimeError('Cannot set to non-contiguous array')
 
         ptr = ctypes.c_void_p(arr.__array_interface__['data'][0])
-        if stream is not None:
-            self.data.copy_from_host_async(ptr, self.nbytes, stream)
-        else:
-            stream_ptr = stream_module.get_current_stream_ptr()
-            if stream_ptr == 0:
-                self.data.copy_from_host(ptr, self.nbytes)
+        with self.device:
+            if stream is not None:
+                self.data.copy_from_host_async(ptr, self.nbytes, stream)
             else:
-                self.data.copy_from_host_async(ptr, self.nbytes)
+                stream_ptr = stream_module.get_current_stream_ptr()
+                if stream_ptr == 0:
+                    self.data.copy_from_host(ptr, self.nbytes)
+                else:
+                    self.data.copy_from_host_async(ptr, self.nbytes)
 
     cpdef ndarray reduced_view(self, dtype=None):
         """Returns a view of the array with minimum number of dimensions.
@@ -1799,8 +1850,9 @@ cdef tuple _get_concat_shape(object obj):
     #    Returns None otherwise.
     # 2. type of the first item in the object
     # 3. dtype if the object is an array
-    return (_get_concat_shape_impl(obj) if isinstance(obj, (list, tuple))
-            else (None, None, None))
+    if isinstance(obj, (list, tuple)):
+        return _get_concat_shape_impl(obj)
+    return (None, None, None)
 
 
 cdef tuple _get_concat_shape_impl(object obj):
@@ -1808,7 +1860,7 @@ cdef tuple _get_concat_shape_impl(object obj):
     if issubclass(obj_type, (numpy.ndarray, ndarray)):
         # obj.shape is () when obj.ndim == 0
         return (obj.shape, obj_type, obj.dtype)
-    elif isinstance(obj, (list, tuple)):
+    if isinstance(obj, (list, tuple)):
         shape = None
         typ = None
         dtype = None
@@ -1824,17 +1876,19 @@ cdef tuple _get_concat_shape_impl(object obj):
 
             # `elem` is not concatable or the shape and dtype does not match
             # with siblings.
-            if (elem_shape is None or
-                    shape != elem_shape or
-                    dtype != elem_dtype):
+            if (elem_shape is None
+                    or shape != elem_shape
+                    or dtype != elem_dtype):
                 return (None, obj_type, None)
 
+        if shape is None:
+            shape = ()
         return (
-            (len(obj),) + shape if shape is not None else (len(obj),),
+            (len(obj),) + shape,
             typ,
             dtype)
-    else:  # scalar or object
-        return (None, obj_type, None)
+    # scalar or object
+    return (None, obj_type, None)
 
 
 cdef list _flatten_list(object obj):
@@ -1843,8 +1897,7 @@ cdef list _flatten_list(object obj):
         for elem in obj:
             ret += _flatten_list(elem)
         return ret
-    else:
-        return [obj]
+    return [obj]
 
 
 cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
@@ -1875,14 +1928,17 @@ cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
         a.data.copy_from_host(
-            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
+            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]),
+            nbytes)
 
     return a
 
 
 cdef ndarray _send_numpy_array_list_to_gpu(
-    list arrays, src_dtype, dst_dtype, const vector.vector[Py_ssize_t]& shape,
+        list arrays, src_dtype, dst_dtype,
+        const vector.vector[Py_ssize_t]& shape,
         order, Py_ssize_t ndmin):
+
     a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
     if a_dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_dtype)
@@ -1896,11 +1952,15 @@ cdef ndarray _send_numpy_array_list_to_gpu(
     cdef size_t offset, length
     if mem is not None:
         # write concatenated arrays to the pinned memory directly
-        src_cpu = numpy.frombuffer(mem, a_dtype, itemcount).reshape(
-            shape, order=order)
+        src_cpu = (
+            numpy.frombuffer(mem, a_dtype, itemcount)
+            .reshape(shape, order=order))
         _concatenate_numpy_array(
-            [numpy.expand_dims(e, 0) for e in arrays], 0,
-            get_dtype(src_dtype), a_dtype, src_cpu)
+            [numpy.expand_dims(e, 0) for e in arrays],
+            0,
+            get_dtype(src_dtype),
+            a_dtype,
+            src_cpu)
         a = ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
@@ -1911,7 +1971,8 @@ cdef ndarray _send_numpy_array_list_to_gpu(
                             ndmin=ndmin)
         a = ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host(
-            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]), nbytes)
+            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]),
+            nbytes)
 
     return a
 
@@ -1923,8 +1984,8 @@ cdef bint _numpy_concatenate_has_out_argument = (
 cdef inline _concatenate_numpy_array(arrays, axis, src_dtype, dst_dtype, out):
     # type(*_dtype) must be numpy.dtype
 
-    if (_numpy_concatenate_has_out_argument and
-            src_dtype.kind == dst_dtype.kind):
+    if (_numpy_concatenate_has_out_argument
+            and src_dtype.kind == dst_dtype.kind):
         # concatenate only accepts same_kind casting
         numpy.concatenate(arrays, axis, out)
     else:
@@ -2504,7 +2565,7 @@ cpdef ndarray tensordot_core(
                    (ret_dtype == 'e' or ret_dtype == 'f'))
     use_tensor_core = (use_sgemmEx and
                        _cuda_runtime_version >= 9000 and
-                       int(device.get_compute_capability()) == 70)
+                       int(device.get_compute_capability()) >= 70)
 
     if use_sgemmEx or ret_dtype in 'fdFD':
         dtype = ret_dtype

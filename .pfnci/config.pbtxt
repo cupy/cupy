@@ -11,6 +11,7 @@ configs {
     command: "sh .pfnci/wheel_nightly.sh"
   }
 }
+
 configs {
   key: "cupy.py2.cv.gpu"
   value {

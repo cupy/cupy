@@ -15,7 +15,7 @@ cdef extern from *:
     ctypedef int PointerMode 'cusparsePointerMode_t'
 
     ctypedef int Action 'cusparseAction_t'
-
+    ctypedef int AlgMode 'cusparseAlgMode_t'
 
 cpdef enum:
     CUSPARSE_POINTER_MODE_HOST = 0
@@ -39,6 +39,8 @@ cpdef enum:
     CUSPARSE_DIRECTION_ROW = 0
     CUSPARSE_DIRECTION_COLUMN = 1
 
+    CUSPARSE_ALG_NAIVE = 0
+    CUSPARSE_ALG_MERGE_PATH = 1
 
 cpdef size_t create() except? 0
 cpdef destroy(size_t handle)

@@ -14,7 +14,6 @@ There are four differences compared to the original C API.
 cimport cython  # NOQA
 from libc.stdint cimport intptr_t
 
-
 ###############################################################################
 # Extern
 ###############################################################################
@@ -55,6 +54,13 @@ cdef extern from 'cupy_cuda.h' nogil:
         unsigned int sharedMemBytes, Stream hStream,
         void** kernelParams, void** extra)
 
+    # Kernel attributes
+    int cuFuncGetAttribute(int *pi, CUfunction_attribute attrib,
+                           Function hfunc)
+
+    int cuFuncSetAttribute(Function hfunc, CUfunction_attribute attrib,
+                           int value)
+
     # Build-time version
     int CUDA_VERSION
 
@@ -75,10 +81,22 @@ class CUDADriverError(RuntimeError):
         super(CUDADriverError, self).__init__(
             '%s: %s' % (s_name.decode(), s_msg.decode()))
 
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
 
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
+        raise CUDADriverError(status)
+
+
+@cython.profile(False)
+cdef inline check_attribute_status(int status, int* pi):
+    # set attribute to -1 on older versions of CUDA where it was undefined
+    if status == CUDA_ERROR_INVALID_VALUE:
+        pi[0] = -1
+    elif status != 0:
         raise CUDADriverError(status)
 
 
@@ -226,4 +244,26 @@ cpdef launchKernel(
             block_dim_x, block_dim_y, block_dim_z,
             shared_mem_bytes, <Stream>stream,
             <void**>kernel_params, <void**>extra)
+    check_status(status)
+
+
+cpdef int funcGetAttribute(int attribute, intptr_t f):
+    cdef int pi
+    with nogil:
+        status = cuFuncGetAttribute(
+            &pi,
+            <CUfunction_attribute> attribute,
+            <Function> f)
+    check_attribute_status(status, &pi)
+    return pi
+
+
+cpdef funcSetAttribute(intptr_t f, int attribute, int value):
+    if CUDA_VERSION < 9000:
+        raise RuntimeError("Your CUDA does not support cuFuncSetAttribute.")
+    with nogil:
+        status = cuFuncSetAttribute(
+            <Function> f,
+            <CUfunction_attribute> attribute,
+            value)
     check_status(status)

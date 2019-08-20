@@ -1,5 +1,6 @@
 from __future__ import division
 import sys
+import warnings
 
 import numpy
 import six
@@ -341,12 +342,40 @@ def binary_repr(num, width=None):
 # -----------------------------------------------------------------------------
 # Data type routines (borrowed from NumPy)
 # -----------------------------------------------------------------------------
-from numpy import can_cast  # NOQA
-from numpy import common_type  # NOQA
+def can_cast(from_, to, casting='safe'):
+    """Returns True if cast between data types can occur according to the
+    casting rule. If from is a scalar or array scalar, also returns True if the
+    scalar value can be cast without overflow or truncation to an integer.
+
+    .. seealso:: :func:`numpy.can_cast`
+    """
+    from_ = from_.dtype if isinstance(from_, cupy.ndarray) else from_
+    return numpy.can_cast(from_, to, casting=casting)
+
+
+def common_type(*arrays):
+    """Return a scalar type which is common to the input arrays.
+
+    .. seealso:: :func:`numpy.common_type`
+    """
+    dtype_arrays = [numpy.empty((), a.dtype) for a in arrays]
+    return numpy.common_type(*dtype_arrays)
+
+
+def result_type(*arrays_and_dtypes):
+    """Returns the type that results from applying the NumPy type promotion
+    rules to the arguments.
+
+    .. seealso:: :func:`numpy.result_type`
+    """
+    dtypes = [a.dtype if isinstance(a, cupy.ndarray)
+              else a for a in arrays_and_dtypes]
+    return numpy.result_type(*dtypes)
+
+
 from numpy import min_scalar_type  # NOQA
 from numpy import obj2sctype  # NOQA
 from numpy import promote_types  # NOQA
-from numpy import result_type  # NOQA
 
 from numpy import dtype  # NOQA
 from numpy import format_parser  # NOQA
@@ -387,6 +416,7 @@ from cupy.indexing.generate import unravel_index  # NOQA
 from cupy.indexing.indexing import choose  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
 from cupy.indexing.indexing import take  # NOQA
+from cupy.indexing.indexing import take_along_axis  # NOQA
 
 from cupy.indexing.insert import place  # NOQA
 from cupy.indexing.insert import put  # NOQA
@@ -502,6 +532,8 @@ from cupy.math.sumprod import prod  # NOQA
 from cupy.math.sumprod import sum  # NOQA
 from cupy.math.sumprod import cumprod  # NOQA
 from cupy.math.sumprod import cumsum  # NOQA
+from cupy.math.sumprod import nansum  # NOQA
+from cupy.math.sumprod import nanprod  # NOQA
 from cupy.math.sumprod import diff  # NOQA
 from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA
@@ -574,7 +606,9 @@ from cupy.sorting.search import nonzero  # NOQA
 
 from cupy.sorting.search import where  # NOQA
 from cupy.sorting.search import argmax  # NOQA
+from cupy.sorting.search import nanargmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
+from cupy.sorting.search import nanargmin  # NOQA
 
 from cupy.sorting.sort import argpartition  # NOQA
 from cupy.sorting.sort import argsort  # NOQA
@@ -601,6 +635,9 @@ from cupy.statistics.meanvar import average  # NOQA
 from cupy.statistics.meanvar import mean  # NOQA
 from cupy.statistics.meanvar import std  # NOQA
 from cupy.statistics.meanvar import var  # NOQA
+from cupy.statistics.meanvar import nanmean  # NOQA
+from cupy.statistics.meanvar import nanstd  # NOQA
+from cupy.statistics.meanvar import nanvar  # NOQA
 
 from cupy.statistics.histogram import bincount  # NOQA
 from cupy.statistics.histogram import histogram  # NOQA
@@ -619,6 +656,7 @@ from cupy.util import memoize  # NOQA
 
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import RawKernel  # NOQA
+from cupy.core import RawModule  # NOQA
 from cupy.core import ReductionKernel  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -735,3 +773,18 @@ def show_config():
     """Prints the current runtime configuration to standard output."""
     sys.stdout.write(str(cupyx.get_runtime_info()))
     sys.stdout.flush()
+
+
+# -----------------------------------------------------------------------------
+# Warning for Python 2 users
+# -----------------------------------------------------------------------------
+if sys.version_info[:1] == (2,):
+    warnings.warn('''
+--------------------------------------------------------------------------------
+CuPy is going to stop supporting Python 2 in v7.x releases.
+
+Future releases of CuPy v7.x will not run on Python 2.
+If you need to continue using Python 2, consider using CuPy v6.x, which
+will be the last version that runs on Python 2.
+--------------------------------------------------------------------------------
+''')  # NOQA

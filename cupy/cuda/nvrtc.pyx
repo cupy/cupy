@@ -46,6 +46,9 @@ class NVRTCError(RuntimeError):
         super(NVRTCError, self).__init__(
             '{} ({})'.format(msg.decode(), status))
 
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
 
 @cython.profile(False)
 cpdef inline check_status(int status):
