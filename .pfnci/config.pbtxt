@@ -1,0 +1,13 @@
+configs {
+  key: "cupy.wheel.nightly"
+  value {
+    requirement {
+      cpu: 2
+      memory: 12
+    }
+    time_limit {
+      seconds: 1800
+    }
+    command: "sh .pfnci/wheel_nightly.sh"
+  }
+}
