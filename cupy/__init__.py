@@ -592,6 +592,13 @@ from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
 
 # -----------------------------------------------------------------------------
+# Miscellaneous routines
+# -----------------------------------------------------------------------------
+from cupy.misc import may_share_memory  # NOQA
+from cupy.misc import shares_memory  # NOQA
+
+
+# -----------------------------------------------------------------------------
 # Padding
 # -----------------------------------------------------------------------------
 pad = padding.pad.pad
