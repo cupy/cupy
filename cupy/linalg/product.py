@@ -96,7 +96,7 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
         c : cupy.ndarray
             Vector cross product(s).
 
-    .. seealso:: :func:``numpy.cross``
+    .. seealso:: :func:`numpy.cross`
 
     """
 
@@ -167,7 +167,7 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
             # cp1 = a2 * b0 - a0 * b2
             # cp2 = a0 * b1 - a1 * b0
             cupy.multiply(a1, b2, out=cp0)
-            tmp = cupy.array(a2 * b1)
+            tmp = a2 * b1
             cp0 -= tmp
             cupy.multiply(a2, b0, out=cp1)
             cupy.multiply(a0, b2, out=tmp)
