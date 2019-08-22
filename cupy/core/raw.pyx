@@ -1,6 +1,7 @@
 import cupy
 from cupy import util
 from cupy.cuda cimport driver
+from cupy.cuda.device import _get_device
 from cupy.cuda.function cimport Module
 
 import six
@@ -176,6 +177,20 @@ cdef class RawKernel:
     def preferred_shared_memory_carveout(self, fraction):
         attr = driver.CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT
         driver.funcSetAttribute(self.kernel.ptr, attr, fraction)
+
+    def calculate_occupancy(self, block_size, shared_mem_size):
+        dev_attrs = _get_device().attributes
+        max_block_size = dev_attrs['MaxThreadsPerBlock'] 
+        max_shmem_size = max(self.max_dynamic_shared_size_bytes, dev_attrs['MaxSharedMemoryPerBlockOptin'])
+        if block_size > max_block_size:
+            raise ValueError
+        if shared_mem_size > max_shmem_size:
+            raise ValueError
+        
+        max_active_blocks = driver.occupancyMaxActiveBlocksPerMultiprocessor(self.kernel.ptr, block_size, shared_mem_size)
+        occupancy = max_active_blocks * block_size / dev_attrs['MaxThreadsPerMultiProcessor']
+        return max_active_blocks, occupancy
+        
 
 
 @cupy.util.memoize(for_each_device=True)
