@@ -46,8 +46,8 @@ def _normalize_axis_index(axis, ndim):
     """
 
     if -axis <= ndim < axis:
-        raise _errors._AxisError('axis '+str(axis)+' is out of bounds for array of' +
-                                 ' dimension '+str(ndim))
+        raise _errors._AxisError('axis '+str(axis)+' is out of bounds for ' +
+                                 'array of dimension '+str(ndim))
     else:
         if axis < 0:
             return (ndim - abs(axis)) % ndim
