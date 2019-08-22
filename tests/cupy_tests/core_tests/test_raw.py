@@ -158,3 +158,52 @@ class TestRaw(unittest.TestCase):
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
             self.mod2.get_function("no_such_kernel")
         assert 'CUDA_ERROR_NOT_FOUND' in str(ex)
+
+    def test_cal_occupancy(self):
+        # In principle another test on the underlying driver API should be done
+        # in test_driver.py, but testing it here should be enough
+        ker = self.kern
+        dev_attrs = cupy.cuda.Device(cupy.cuda.runtime.getDevice()).attributes
+        max_threads = dev_attrs['MaxThreadsPerBlock']
+
+        assert 0. <= ker.calculate_theoretical_occupancy(32, 0) <= 1.
+        assert 0. <= ker.calculate_theoretical_occupancy(max_threads, 0) <= 1.
+        with pytest.raises(ValueError) as ex:
+            ker.calculate_theoretical_occupancy(max_threads+1, 0)
+        assert 'exceeds the device limit' in str(ex)
+
+        # We do not test against MaxSharedMemoryPerBlockOptin or
+        # MaxSharedMemoryPerMultiprocessor, as depending on the device it is
+        # possible that we are unable to use more than MaxSharedMemoryPerBlock
+        max_shmem = dev_attrs['MaxSharedMemoryPerBlock']
+        shmem = max_shmem//2
+        assert 0. <= ker.calculate_theoretical_occupancy(128, shmem) <= 1.
+        assert 0. <= ker.calculate_theoretical_occupancy(128, max_shmem) <= 1.
+        with pytest.warns(UserWarning) as warn:
+            res = ker.calculate_theoretical_occupancy(128, max_shmem+1)
+        assert 'exceeds the current kernel limit' in str(warn[0].message)
+
+    def test_max_block_size(self):
+        # In principle another test on the underlying driver API should be done
+        # in test_driver.py, but testing it here should be enough
+        ker = self.kern
+        dev_attrs = cupy.cuda.Device(cupy.cuda.runtime.getDevice()).attributes
+        max_threads = dev_attrs['MaxThreadsPerBlock']
+
+        assert 0 <= ker.calculate_max_block_size(0, 0) <= max_threads
+        assert 0 <= ker.calculate_max_block_size(32, 0) <= max_threads
+        assert 0 <= ker.calculate_max_block_size(max_threads, 0) <= max_threads
+        with pytest.raises(ValueError) as ex:
+            ker.calculate_max_block_size(max_threads+1, 0)
+        assert 'exceeds the device limit' in str(ex)
+
+        # We do not test against MaxSharedMemoryPerBlockOptin or
+        # MaxSharedMemoryPerMultiprocessor, as depending on the device it is
+        # possible that we are unable to use more than MaxSharedMemoryPerBlock
+        max_shmem = dev_attrs['MaxSharedMemoryPerBlock']
+        shmem = max_shmem//2
+        assert 0 <= ker.calculate_max_block_size(128, shmem) <= max_threads
+        assert 0 <= ker.calculate_max_block_size(128, max_shmem) <= max_threads
+        with pytest.warns(UserWarning) as warn:
+            res = ker.calculate_max_block_size(128, max_shmem+1)
+        assert 'exceeds the current kernel limit' in str(warn[0].message)

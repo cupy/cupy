@@ -190,7 +190,7 @@ cdef class RawKernel:
         current_kernel_shmem_max = self.max_dynamic_shared_size_bytes
         device_shmem_max = _get_device().attributes['MaxSharedMemoryPerBlockOptin']
 
-        if device_shmem_max > shared_mem_size > current_kernel_shmem_max:
+        if device_shmem_max >= shared_mem_size > current_kernel_shmem_max:
             # no harm, issue a warning and proceed
             from warnings import warn
             warn("The shared memory size you entered ({0} bytes) exceeds the "
