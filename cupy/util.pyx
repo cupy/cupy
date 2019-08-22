@@ -8,6 +8,7 @@ import warnings
 
 import cupy
 from cupy.cuda cimport device
+from cupy.core import _errors
 
 
 ENABLE_SLICE_COPY = bool(
@@ -23,6 +24,35 @@ except AttributeError:  # python <3.3
 
 
 cdef list _memos = []
+
+
+def _normalize_axis_index(axis, ndim):
+    """
+    Normalizes an axis index, ``axis``, such that is a valid positive index
+    into the shape of array with ``ndim`` dimensions. Raises a ValueError
+    with an appropriate message if this is not possible.
+
+    Args:
+        axis : int
+            The un-normalized index of the axis. Can be negative
+        ndim : int
+            The number of dimensions of the array that ``axis`` should be
+            normalized against
+
+    Returns:
+        normalized_axis : int
+            The normalized axis index, such that `0 <= normalized_axis < ndim`
+
+    """
+
+    if -axis <= ndim < axis:
+        raise _errors._AxisError('axis '+str(axis)+' is out of bounds for array of' +
+                                 ' dimension '+str(ndim))
+    else:
+        if axis < 0:
+            return (ndim - abs(axis)) % ndim
+        else:
+            return abs(axis) % ndim
 
 
 def memoize(bint for_each_device=False):
