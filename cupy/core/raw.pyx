@@ -178,19 +178,82 @@ cdef class RawKernel:
         attr = driver.CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT
         driver.funcSetAttribute(self.kernel.ptr, attr, fraction)
 
-    def calculate_occupancy(self, block_size, shared_mem_size):
-        dev_attrs = _get_device().attributes
-        max_block_size = dev_attrs['MaxThreadsPerBlock'] 
-        max_shmem_size = max(self.max_dynamic_shared_size_bytes, dev_attrs['MaxSharedMemoryPerBlockOptin'])
+    def _check_block_size(self, block_size):
+        max_block_size = _get_device().attributes['MaxThreadsPerBlock']
+
         if block_size > max_block_size:
-            raise ValueError
-        if shared_mem_size > max_shmem_size:
-            raise ValueError
-        
-        max_active_blocks = driver.occupancyMaxActiveBlocksPerMultiprocessor(self.kernel.ptr, block_size, shared_mem_size)
-        occupancy = max_active_blocks * block_size / dev_attrs['MaxThreadsPerMultiProcessor']
-        return max_active_blocks, occupancy
-        
+            raise ValueError("The block size you entered ({0}) exceeds the "
+                             "device limit ({1}).".format(block_size,
+                             max_block_size))
+
+    def _check_shmem_size(self, shared_mem_size):
+        current_kernel_shmem_max = self.max_dynamic_shared_size_bytes
+        device_shmem_max = _get_device().attributes['MaxSharedMemoryPerBlockOptin']
+
+        if device_shmem_max > shared_mem_size > current_kernel_shmem_max:
+            # no harm, issue a warning and proceed
+            from warnings import warn
+            warn("The shared memory size you entered ({0} bytes) exceeds the "
+                 "current kernel limit ({1} bytes). Try increasing the latter "
+                 "by setting RawKernel.max_dynamic_shared_size_bytes."
+                 .format(shared_mem_size, current_kernel_shmem_max))
+        elif shared_mem_size > device_shmem_max:
+            raise ValueError("The shared memory size you entered ({0} bytes) "
+                             "exceeds the device limit ({1} bytes)."
+                             .format(shared_mem_size, device_shmem_max))
+
+    def calculate_theoretical_occupancy(self, block_size, shared_mem_size):
+        """Calculate the theoretical occupancy of the RawKernel given the
+        block and shared memory sizes.
+
+        Args:
+            block_size (int): The block size for launching the kernel.
+            shared_mem_size (int): The shared memory size, in bytes, to be
+                used by the kernel.
+
+        Returns:
+            occupancy (float): The theoretical occupancy, in [0., 1.].
+
+        .. seealso:: `NVIDIA Developer Blog`_
+
+        .. _NVIDIA Developer Blog:
+            https://devblogs.nvidia.com/cuda-pro-tip-occupancy-api-simplifies-launch-configuration/
+        """  # noqa
+        self._check_block_size(block_size)
+        self._check_shmem_size(shared_mem_size)
+        max_threads = _get_device().attributes['MaxThreadsPerMultiProcessor']
+
+        max_active_blocks = driver.occupancyMaxActiveBlocksPerMultiprocessor(
+            self.kernel.ptr, block_size, shared_mem_size)
+        occupancy = max_active_blocks * block_size / max_threads
+        return occupancy
+
+    def calculate_max_block_size(self, block_size_limit, shared_mem_size):
+        """Calculate the maximum potential block size of the RawKernel given
+        the block size limit and the shared memory size.
+
+        Args:
+            block_size_limit (int): The maximum block size that the kernel
+                is designed to handle. If `block_size_limit=0`, the maximum
+                permitted by the device / function is used.
+            shared_mem_size (int): The shared memory size, in bytes, to be
+                used by the kernel.
+
+        Returns:
+            max_block_size (int): The maximum block size that can achieve
+                the maximum occupancy.
+
+        .. seealso:: `NVIDIA Developer Blog`_
+
+        .. _NVIDIA Developer Blog:
+            https://devblogs.nvidia.com/cuda-pro-tip-occupancy-api-simplifies-launch-configuration/
+        """  # noqa
+        self._check_block_size(block_size_limit)
+        self._check_shmem_size(shared_mem_size)
+
+        min_grid_size, max_block_size = driver.occupancyMaxPotentialBlockSize(
+            self.kernel.ptr, shared_mem_size, block_size_limit)
+        return max_block_size
 
 
 @cupy.util.memoize(for_each_device=True)

@@ -158,7 +158,11 @@ CUresult cuFuncSetAttribute(...) {
 }
 
 // Occupancy
-CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(...){
+CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuOccupancyMaxPotentialBlockSize(...) {
     return CUDA_SUCCESS;
 }
 

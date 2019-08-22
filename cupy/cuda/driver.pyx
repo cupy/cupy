@@ -296,10 +296,12 @@ cpdef int occupancyMaxActiveBlocksPerMultiprocessor(intptr_t func,
 
 cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
     int blockSizeLimit):
+    # CUoccupancyB2DSize is set to NULL as there is no way to pass in a
+    # unary function from Python.
     cdef int minGridSize, blockSize
     with nogil:
         status = cuOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize,
-            <Function> func, <CUoccupancyB2DSize> NULL,
-            dynamicSMemSize, blockSizeLimit)
+            <Function> func, <CUoccupancyB2DSize> NULL, dynamicSMemSize,
+            blockSizeLimit)
     check_status(status)
     return minGridSize, blockSize
