@@ -184,11 +184,12 @@ cdef class RawKernel:
         if block_size > max_block_size:
             raise ValueError("The block size you entered ({0}) exceeds the "
                              "device limit ({1}).".format(block_size,
-                             max_block_size))
+                                                          max_block_size))
 
     def _check_shmem_size(self, shared_mem_size):
         current_kernel_shmem_max = self.max_dynamic_shared_size_bytes
-        device_shmem_max = _get_device().attributes['MaxSharedMemoryPerBlockOptin']
+        device_shmem_max = _get_device().attributes[
+            'MaxSharedMemoryPerBlockOptin']
 
         if device_shmem_max >= shared_mem_size > current_kernel_shmem_max:
             # no harm, issue a warning and proceed

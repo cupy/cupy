@@ -62,11 +62,11 @@ cdef extern from 'cupy_cuda.h' nogil:
                            int value)
 
     # Occupancy
-    int cuOccupancyMaxActiveBlocksPerMultiprocessor(int* numBlocks,
-        Function func, int blockSize, size_t dynamicSMemSize)
-    int cuOccupancyMaxPotentialBlockSize(int* minGridSize, int* blockSize,
-        Function func, CUoccupancyB2DSize block2shmem, size_t dynamicSMemSize,
-        int blockSizeLimit)
+    int cuOccupancyMaxActiveBlocksPerMultiprocessor(
+        int* numBlocks, Function func, int blockSize, size_t dynamicSMemSize)
+    int cuOccupancyMaxPotentialBlockSize(
+        int* minGridSize, int* blockSize, Function func, CUoccupancyB2DSize
+        block2shmem, size_t dynamicSMemSize, int blockSizeLimit)
 
     # Build-time version
     int CUDA_VERSION
@@ -284,24 +284,24 @@ cpdef funcSetAttribute(intptr_t f, int attribute, int value):
 # Occupancy
 ###############################################################################
 
-cpdef int occupancyMaxActiveBlocksPerMultiprocessor(intptr_t func,
-    int blockSize, size_t dynamicSMemSize):
+cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
+        intptr_t func, int blockSize, size_t dynamicSMemSize):
     cdef int numBlocks
     with nogil:
-        status = cuOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks,
-            <Function> func, blockSize, dynamicSMemSize)
+        status = cuOccupancyMaxActiveBlocksPerMultiprocessor(
+            &numBlocks, <Function> func, blockSize, dynamicSMemSize)
     check_status(status)
     return numBlocks
 
 
 cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
-    int blockSizeLimit):
+                                     int blockSizeLimit):
     # CUoccupancyB2DSize is set to NULL as there is no way to pass in a
     # unary function from Python.
     cdef int minGridSize, blockSize
     with nogil:
-        status = cuOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize,
-            <Function> func, <CUoccupancyB2DSize> NULL, dynamicSMemSize,
-            blockSizeLimit)
+        status = cuOccupancyMaxPotentialBlockSize(
+            &minGridSize, &blockSize, <Function> func, <CUoccupancyB2DSize>
+            NULL, dynamicSMemSize, blockSizeLimit)
     check_status(status)
     return minGridSize, blockSize

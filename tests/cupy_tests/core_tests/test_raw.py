@@ -180,7 +180,7 @@ class TestRaw(unittest.TestCase):
         assert 0. <= ker.calculate_theoretical_occupancy(128, shmem) <= 1.
         assert 0. <= ker.calculate_theoretical_occupancy(128, max_shmem) <= 1.
         with pytest.warns(UserWarning) as warn:
-            res = ker.calculate_theoretical_occupancy(128, max_shmem+1)
+            ker.calculate_theoretical_occupancy(128, max_shmem+1)
         assert 'exceeds the current kernel limit' in str(warn[0].message)
 
     def test_max_block_size(self):
@@ -205,5 +205,5 @@ class TestRaw(unittest.TestCase):
         assert 0 <= ker.calculate_max_block_size(128, shmem) <= max_threads
         assert 0 <= ker.calculate_max_block_size(128, max_shmem) <= max_threads
         with pytest.warns(UserWarning) as warn:
-            res = ker.calculate_max_block_size(128, max_shmem+1)
+            ker.calculate_max_block_size(128, max_shmem+1)
         assert 'exceeds the current kernel limit' in str(warn[0].message)
