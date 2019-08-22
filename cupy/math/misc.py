@@ -5,46 +5,6 @@ from cupy.core import fusion
 # TODO(okuta): Implement convolve
 
 
-def normalize_axis_index(axis, ndim):
-    """
-    Normalizes an axis index, ``axis``, such that is a valid positive index
-    into the shape of array with ``ndim`` dimensions. Raises a ValueError
-    with an appropriate message if this is not possible.
-
-    Parameters
-    ----------
-    axis : int
-        The un-normalized index of the axis. Can be negative
-    ndim : int
-        The number of dimensions of the array that ``axis`` should be
-        normalized against
-
-Returns
-    -------
-    normalized_axis : int
-        The normalized axis index, such that `0 <= normalized_axis < ndim`
-
-    Raises
-    ------
-    ValueError
-        If the axis index is invalid, when `-ndim <= axis < ndim` is false.
-    """
-    flag = 0
-    if axis < 0 and abs(axis) > ndim:
-        flag = 1
-    if axis > 0 and abs(axis) >= ndim:
-        flag = 1
-
-    if flag:
-        raise ValueError('axis '+str(axis)+' is out of bounds for array of' +
-                         ' dimension '+str(ndim))
-    else:
-        if axis < 0:
-            return (ndim - abs(axis)) % ndim
-        else:
-            return abs(axis) % ndim
-
-
 def clip(a, a_min=None, a_max=None, out=None):
     """Clips the values of an array to a given interval.
 
