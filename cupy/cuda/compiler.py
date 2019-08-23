@@ -40,6 +40,15 @@ def _get_arch():
     return 'compute_%s' % cc
 
 
+def _check_cudadevrt_needed(options):
+    require_cudadevrt = False
+    for option in options:
+        if option in ('--device-c', '-dc',
+                      '--relocatable-device-code=true', '-rdc true'):
+            require_cudadevrt = True
+    return require_cudadevrt
+
+
 class TemporaryDirectory(object):
     def __enter__(self):
         self.path = tempfile.mkdtemp()
@@ -165,6 +174,16 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
     ptx = compile_using_nvrtc(source, options, arch, name + '.cu')
     ls = function.LinkState()
     ls.add_ptr_data(ptx, u'cupy.ptx')
+    # for dynamic parallelism
+    if _check_cudadevrt_needed(options):
+        cudadevrt = os.environ.get('CUPY_CUDADEVRT_PATH')
+        if cudadevrt is None:
+            raise RuntimeError('Relocatable PTX code is requested, but '
+                               'cudadevrt is not found.\nPlease set the '
+                               'environmental variable CUPY_CUDADEVRT_PATH '
+                               'to the path of cudadevrt.lib or '
+                               'libcudadevrt.a.')
+        ls.add_ptr_file(cudadevrt)
     cubin = ls.complete()
     cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
 
