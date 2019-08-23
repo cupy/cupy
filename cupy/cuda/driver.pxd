@@ -64,6 +64,7 @@ cpdef ctxDestroy(size_t ctx)
 
 cpdef size_t linkCreate() except? 0
 cpdef linkAddData(size_t state, int input_type, bytes data, unicode name)
+cpdef linkAddFile(size_t state, int input_type, unicode path)
 cpdef bytes linkComplete(size_t state)
 cpdef linkDestroy(size_t state)
 cpdef size_t moduleLoad(str filename) except? 0
