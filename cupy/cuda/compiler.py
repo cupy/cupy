@@ -43,9 +43,10 @@ def _get_arch():
 def _check_cudadevrt_needed(options):
     require_cudadevrt = False
     for option in options:
-        if option in ('--device-c', '-dc',
-                      '--relocatable-device-code=true', '-rdc true'):
+        if option in ('--device-c', '-dc', '-rdc=true',
+                      '--relocatable-device-code=true'):
             require_cudadevrt = True
+            break
     return require_cudadevrt
 
 
