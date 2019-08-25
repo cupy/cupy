@@ -112,7 +112,6 @@ class _RecursiveAttr(object):
             for key in arg:
                 _RecursiveAttr._assert_cupy_compatible(arg[key])
 
-
     def __call__(self, *args, **kwargs):
         """
         Gets invoked when last attribute of _RecursiveAttr class gets called.
@@ -143,6 +142,7 @@ class _RecursiveAttr(object):
                 pass
 
         return _call_numpy(self._numpy_object, args, kwargs)
+
 
 numpy = _RecursiveAttr(np, cp)
 
@@ -268,12 +268,12 @@ class ndarray(object):
             base_arg = self.base
             if base_arg._cupy_array is None:
                 base_arg._cupy_array = cp.array(base_arg._numpy_array)
-                base_arg._numpy_array = None # forget
+                base_arg._numpy_array = None  # forget
                 self._cupy_array = base_arg._cupy_array.view()
             else:
                 if self._cupy_array is None:
                     self._cupy_array = base_arg._cupy_array.view()
-        self._numpy_array = None # forget
+        self._numpy_array = None  # forget
         return self._cupy_array
 
     def _get_numpy_array(self):
@@ -281,6 +281,7 @@ class ndarray(object):
         Returns _numpy_array (ex: np.ndarray, numpy.ma.MaskedArray,
         numpy.chararray etc.) of ndarray object.
         """
+        _type = np.ndarray if self._class is cp.ndarray else self._class
         if self.base is None:
             if self._numpy_array is None:
                 self._numpy_array = cp.asnumpy(self._cupy_array)
@@ -288,16 +289,12 @@ class ndarray(object):
             base_arg = self.base
             if base_arg._numpy_array is None:
                 base_arg._numpy_array = cp.asnumpy(base_arg._cupy_array)
-                base_arg._cupy_array = None # forget
-                self._numpy_array = base_arg._numpy_array.view(
-                    type=np.ndarray if self._class is cp.ndarray \
-                                    else self._class)
+                base_arg._cupy_array = None  # forget
+                self._numpy_array = base_arg._numpy_array.view(type=_type)
             else:
                 if self._numpy_array is None:
-                    self._numpy_array = base_arg._numpy_array.view(
-                        type=np.ndarray if self._class is cp.ndarray \
-                                        else self._class)
-        self._cupy_array = None # forget
+                    self._numpy_array = base_arg._numpy_array.view(type=_type)
+        self._cupy_array = None  # forget
         return self._numpy_array
 
     def _numpy_array_update(self):
