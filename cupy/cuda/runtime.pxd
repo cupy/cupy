@@ -18,6 +18,21 @@ cdef extern from *:
     ctypedef int Error 'cudaError_t'
     ctypedef int DataType 'cudaDataType'
 
+    ctypedef struct ChannelFormatDesc 'cudaChannelFormatDesc':
+        pass
+    ctypedef int ChannelFormatKind 'cudaChannelFormatKind'
+    ctypedef unsigned long long TextureObject 'cudaTextureObject_t'
+    ctypedef struct ResourceDesc 'cudaResourceDesc'
+    ctypedef int ResourceType 'cudaResourceType'
+    ctypedef struct TextureDesc 'cudaTextureDesc'
+    ctypedef int TextureAddressMode 'cudaTextureAddressMode'
+    ctypedef int TextureFilterMode 'cudaTextureFilterMode'
+    ctypedef int TextureReadMode 'cudaTextureReadMode'
+    ctypedef struct ResourceViewDesc 'cudaResourceViewDesc'
+    ctypedef void* Array 'cudaArray_t'
+    ctypedef struct Extent 'cudaExtent':
+        pass
+
 
 ###############################################################################
 # Enum
@@ -169,6 +184,26 @@ cpdef enum:
     cudaDevAttrPageableMemoryAccessUsesHostPageTables = 100
     cudaDevAttrDirectManagedMemAccessFromHost = 101
 
+    ## cudaResourceType
+    #cudaResourceTypeArray = 0
+    #cudaResourceTypeMipmappedArray = 1
+    #cudaResourceTypeLinear = 2
+    #cudaResourceTypePitch2D = 3
+
+    ## cudaTextureAddressMode
+    #cudaAddressModeWrap = 0
+    #cudaAddressModeClamp = 1
+    #cudaAddressModeMirror = 2
+    #cudaAddressModeBorder = 3
+
+    ## cudaTextureFilterMode
+    #cudaFilterModePoint = 0
+    #cudaFilterModeLinear = 1
+
+    ## cudaTextureReadMode
+    #cudaReadModeElementType = 0
+    #cudaReadModeNormalizedFloat = 1
+
 
 ###############################################################################
 # Error codes
@@ -214,11 +249,16 @@ cpdef deviceEnablePeerAccess(int peerDevice)
 
 cpdef intptr_t malloc(size_t size) except? 0
 cpdef intptr_t mallocManaged(size_t size, unsigned int flags=*) except? 0
+cpdef intptr_t malloc3DArray(size_t desc, size_t width, size_t height,
+                             size_t depth, unsigned int flags=*) except? 0
+cpdef intptr_t mallocArray(size_t desc, size_t width, size_t height,
+                           unsigned int flags=*) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
 cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
 cpdef hostUnregister(intptr_t ptr)
 cpdef free(intptr_t ptr)
 cpdef freeHost(intptr_t ptr)
+cpdef freeArray(intptr_t ptr)
 cpdef memGetInfo()
 cpdef memcpy(intptr_t dst, intptr_t src, size_t size, int kind)
 cpdef memcpyAsync(intptr_t dst, intptr_t src, size_t size, int kind,
@@ -228,6 +268,9 @@ cpdef memcpyPeer(intptr_t dst, int dstDevice, intptr_t src, int srcDevice,
 cpdef memcpyPeerAsync(intptr_t dst, int dstDevice,
                       intptr_t src, int srcDevice,
                       size_t size, size_t stream)
+cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
+                      intptr_t src, size_t spitch, size_t width, size_t height,
+                      int kind)
 cpdef memset(intptr_t ptr, int value, size_t size)
 cpdef memsetAsync(intptr_t ptr, int value, size_t size, size_t stream)
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
@@ -262,3 +305,17 @@ cpdef eventSynchronize(size_t event)
 ##############################################################################
 
 cdef _ensure_context()
+
+
+##############################################################################
+# Texture
+##############################################################################
+
+cpdef createChannelDesc(int x, int y, int z, int w, ChannelFormatKind f)
+#cpdef createTextureObject(ResourceDesc* pResDesc,
+#                          TextureDesc* pTexDesc,
+#                          ResourceViewDesc* pResViewDesc)
+cpdef createTextureObject(intptr_t pResDesc,
+                          intptr_t pTexDesc,
+                          intptr_t pResViewDesc)
+cpdef destroyTextureObject(TextureObject texObject)

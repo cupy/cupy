@@ -71,11 +71,16 @@ cdef extern from 'cupy_cuda.h' nogil:
     # Memory management
     int cudaMalloc(void** devPtr, size_t size)
     int cudaMallocManaged(void** devPtr, size_t size, unsigned int flags)
+    int cudaMalloc3DArray(Array* array, const ChannelFormatDesc* desc,
+                          Extent extent, unsigned int flags)
+    int cudaMallocArray(Array* array, const ChannelFormatDesc* desc,
+                        size_t width, size_t height, unsigned int flags)
     int cudaHostAlloc(void** ptr, size_t size, unsigned int flags)
     int cudaHostRegister(void *ptr, size_t size, unsigned int flags)
     int cudaHostUnregister(void *ptr)
     int cudaFree(void* devPtr)
     int cudaFreeHost(void* ptr)
+    int cudaFreeArray(Array array)
     int cudaMemGetInfo(size_t* free, size_t* total)
     int cudaMemcpy(void* dst, const void* src, size_t count,
                    MemoryKind kind)
@@ -86,6 +91,9 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaMemcpyPeerAsync(void* dst, int dstDevice, const void* src,
                             int srcDevice, size_t count,
                             driver.Stream stream)
+    int cudaMemcpy2DToArray(Array dst, size_t wOffset, size_t hOffset,
+                            const void* src, size_t spitch, size_t width,
+                            size_t height, MemoryKind kind)
     int cudaMemset(void* devPtr, int value, size_t count)
     int cudaMemsetAsync(void* devPtr, int value, size_t count,
                         driver.Stream stream)
@@ -95,6 +103,7 @@ cdef extern from 'cupy_cuda.h' nogil:
                       MemoryAdvise advice, int device)
     int cudaPointerGetAttributes(_PointerAttributes* attributes,
                                  const void* ptr)
+    Extent make_cudaExtent(size_t w, size_t h, size_t d)
 
     # Stream and Event
     int cudaStreamCreate(driver.Stream* pStream)
@@ -115,6 +124,20 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaEventQuery(driver.Event event)
     int cudaEventRecord(driver.Event event, driver.Stream stream)
     int cudaEventSynchronize(driver.Event event)
+
+    # Texture
+    ChannelFormatDesc cudaCreateChannelDesc(int x, int y, int z, int w,
+                                            ChannelFormatKind f)
+    int cudaCreateTextureObject(TextureObject* pTexObject,
+                                const ResourceDesc* pResDesc,
+                                const TextureDesc* pTexDesc,
+                                const ResourceViewDesc* pResViewDesc)
+    int cudaDestroyTextureObject(TextureObject texObject)
+    #int cudaGetChannelDesc(ChannelFormatDesc* desc, cudaArray_const_t array )
+    #int cudaGetTextureObjectResourceDesc(ResourceDesc* pResDesc,
+    #                                     TextureObject_t texObject)
+    #int cudaGetTextureObjectResourceViewDesc ( cudaResourceViewDesc* pResViewDesc, cudaTextureObject_t texObject )
+    #int cudaGetTextureObjectTextureDesc ( cudaTextureDesc* pTexDesc, cudaTextureObject_t texObject )
 
 
 ###############################################################################
@@ -237,6 +260,27 @@ cpdef intptr_t mallocManaged(
     return <intptr_t>ptr
 
 
+cpdef intptr_t malloc3DArray(size_t desc, size_t width, size_t height,
+                             size_t depth, unsigned int flags = 0) except? 0:
+    cdef Array ptr
+    cdef Extent extent = make_cudaExtent(width, height, depth)
+    with nogil:
+        status = cudaMalloc3DArray(&ptr, <ChannelFormatDesc*>desc, extent,
+                                   flags)
+    check_status(status)
+    return <intptr_t>ptr
+
+
+cpdef intptr_t mallocArray(size_t desc, size_t width, size_t height,
+                           unsigned int flags = 0) except? 0:
+    cdef Array ptr
+    with nogil:
+        status = cudaMallocArray(&ptr, <ChannelFormatDesc*>desc, width,
+                                 height, flags)
+    check_status(status)
+    return <intptr_t>ptr
+
+
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0:
     cdef void* ptr
     with nogil:
@@ -266,6 +310,12 @@ cpdef free(intptr_t ptr):
 cpdef freeHost(intptr_t ptr):
     with nogil:
         status = cudaFreeHost(<void*>ptr)
+    check_status(status)
+
+
+cpdef freeArray(intptr_t ptr):
+    with nogil:
+        status = cudaFreeArray(<Array>ptr)
     check_status(status)
 
 
@@ -304,6 +354,15 @@ cpdef memcpyPeerAsync(intptr_t dst, int dstDevice, intptr_t src, int srcDevice,
     with nogil:
         status = cudaMemcpyPeerAsync(<void*>dst, dstDevice, <void*>src,
                                      srcDevice, size, <driver.Stream> stream)
+    check_status(status)
+
+
+cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
+                      intptr_t src, size_t spitch, size_t width, size_t height,
+                      int kind):
+    with nogil:
+        status = cudaMemcpy2DToArray(<Array>dst, wOffset, hOffset, <void*>src,
+                                     spitch, width, height, <MemoryKind>kind)
     check_status(status)
 
 
@@ -461,3 +520,29 @@ cdef _ensure_context():
         # Call Runtime API to establish context on this host thread.
         memGetInfo()
         cpython.PyThread_set_key_value(_context_initialized, <void *>1)
+
+
+##############################################################################
+# Texture
+##############################################################################
+
+cpdef createChannelDesc(int x, int y, int z, int w, ChannelFormatKind f):
+    cdef ChannelFormatDesc desc
+    with nogil:
+        desc = cudaCreateChannelDesc(x, y, z, w, f)
+    return desc
+
+cpdef createTextureObject(intptr_t pResDesc, intptr_t pTexDesc,
+                          intptr_t pResViewDesc):
+    cdef TextureObject texobj
+    with nogil:
+        status = cudaCreateTextureObject(&texobj, <ResourceDesc*>pResDesc,
+                                         <TextureDesc*>pTexDesc,
+                                         <ResourceViewDesc*>pResViewDesc)
+    check_status(status)
+    return texobj
+
+cpdef destroyTextureObject(TextureObject texObject):
+    with nogil:
+        status = cudaDestroyTextureObject(texObject)
+    check_status(status)
