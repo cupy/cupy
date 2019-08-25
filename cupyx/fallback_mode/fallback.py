@@ -212,10 +212,8 @@ class ndarray(object):
             if type(_stored) is cp.ndarray:
                 # _stored is in GPU memory (caller _store_array_from_cupy)
                 self._cupy_array = _stored
-                self._numpy_array = cp.asnumpy(_stored)
             else:
                 # _stored is in CPU memory (caller _store_array_from_numpy)
-                self._cupy_array = cp.array(_stored)
                 self._numpy_array = _stored
         else:
             self._numpy_array = _stored
