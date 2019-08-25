@@ -204,6 +204,7 @@ class ndarray(object):
 
         self._cupy_array = None
         self._numpy_array = None
+        self.base = None
         self._class = _class
 
         assert isinstance(_stored, (cp.ndarray, np.ndarray))
@@ -262,6 +263,19 @@ class ndarray(object):
         """
         Returns _cupy_array (cupy.ndarray) of ndarray object.
         """
+        if self.base is None:
+            if self._cupy_array is None:
+                self._cupy_array = cp.array(self._numpy_array)
+        else:
+            base_arg = self.base
+            if base_arg._cupy_array is None:
+                base_arg._cupy_array = cp.array(base_arg._numpy_array)
+                base_arg._numpy_array = None # forget
+                self._cupy_array = base_arg._cupy_array.view()
+            else:
+                if self._cupy_array is None:
+                    self._cupy_array = base_arg._cupy_array.view()
+        self._numpy_array = None # forget
         return self._cupy_array
 
     def _get_numpy_array(self):
@@ -269,6 +283,23 @@ class ndarray(object):
         Returns _numpy_array (ex: np.ndarray, numpy.ma.MaskedArray,
         numpy.chararray etc.) of ndarray object.
         """
+        if self.base is None:
+            if self._numpy_array is None:
+                self._numpy_array = cp.asnumpy(self._cupy_array)
+        else:
+            base_arg = self.base
+            if base_arg._numpy_array is None:
+                base_arg._numpy_array = cp.asnumpy(base_arg._cupy_array)
+                base_arg._cupy_array = None # forget
+                self._numpy_array = base_arg._numpy_array.view(
+                    type=np.ndarray if self._class is cp.ndarray \
+                                    else self._class)
+            else:
+                if self._numpy_array is None:
+                    self._numpy_array = base_arg._numpy_array.view(
+                        type=np.ndarray if self._class is cp.ndarray \
+                                        else self._class)
+        self._cupy_array = None # forget
         return self._numpy_array
 
     def _numpy_array_update(self):
@@ -467,7 +498,7 @@ def _call_cupy(func, args, kwargs):
 
     cupy_args, cupy_kwargs = _convert_fallback_to_cupy(args, kwargs)
     cupy_res = func(*cupy_args, **cupy_kwargs)
-    _update_after_cupy_call(args, kwargs)
+    # _update_after_cupy_call(args, kwargs)
 
     # If existing argument is being returned
     ext_res = _get_same_reference(
@@ -475,21 +506,18 @@ def _call_cupy(func, args, kwargs):
     if ext_res is not None:
         return ext_res
 
-    # If view into ndarray is being returned
-    if isinstance(cupy_res, cp.ndarray) and \
-       cupy_res.base is not None:
-        # cupy_res.base is base_arg._cupy_array
-        base_arg = _get_same_reference(
-            cupy_res.base, cupy_args, cupy_kwargs, args, kwargs)
-
-        # base_arg is None can be when argument is view into
-        # some ndarray not in args, kwargs
-        if base_arg is not None:
+    if isinstance(cupy_res, cp.ndarray):
+        if cupy_res.base is None:
+            # Don't share memory
             fallback_res = _convert_cupy_to_fallback(cupy_res)
-            setattr(fallback_res, 'base', base_arg)
-            return fallback_res
-
-    return _convert_cupy_to_fallback(cupy_res)
+        else:
+            # Share memory with one of the arguments
+            base_arg = _get_same_reference(
+                cupy_res.base, cupy_args, cupy_kwargs, args, kwargs)
+            fallback_res = _convert_cupy_to_fallback(cupy_res)
+            fallback_res.base = base_arg
+        return fallback_res
+    return cupy_res
 
 
 def _call_numpy(func, args, kwargs):
@@ -508,7 +536,7 @@ def _call_numpy(func, args, kwargs):
 
     numpy_args, numpy_kwargs = _convert_fallback_to_numpy(args, kwargs)
     numpy_res = func(*numpy_args, **numpy_kwargs)
-    _update_after_numpy_call(args, kwargs)
+    # _update_after_numpy_call(args, kwargs)
 
     # If existing argument is being returned
     ext_res = _get_same_reference(
@@ -516,29 +544,18 @@ def _call_numpy(func, args, kwargs):
     if ext_res is not None:
         return ext_res
 
-    if isinstance(numpy_res, np.ndarray) and \
-       numpy_res.base is not None:
-        # numpy_res.base is base_arg._numpy_array
-        base_arg = _get_same_reference(
-            numpy_res.base, numpy_args, numpy_kwargs, args, kwargs)
-
-        # base_arg is None can be when argument is view into
-        # some ndarray not in args, kwargs
-        if base_arg is not None and base_arg._class is cp.ndarray:
-            if type(numpy_res) is np.ndarray:
-                # creating view `_cupy_view` into base_arg._cupy_array
-                offset = _getptr(numpy_res) - _getptr(base_arg._numpy_array)
-                memptr = base_arg._cupy_array.data + offset
-                _cupy_view = cp.ndarray(numpy_res.shape, numpy_res.dtype,
-                                        memptr, numpy_res.strides)
-                fallback_res = _convert_cupy_to_fallback(_cupy_view)
-            else:
-                fallback_res = _convert_numpy_to_fallback(numpy_res)
-
-            setattr(fallback_res, 'base', base_arg)
-            return fallback_res
-
-    return _convert_numpy_to_fallback(numpy_res)
+    if isinstance(numpy_res, np.ndarray):
+        if numpy_res.base is None:
+            # Don't share memory
+            fallback_res = _convert_numpy_to_fallback(numpy_res)
+        else:
+            # Share memory with one of the arguments
+            base_arg = _get_same_reference(
+                numpy_res.base, numpy_args, numpy_kwargs, args, kwargs)
+            fallback_res = _convert_numpy_to_fallback(numpy_res)
+            fallback_res.base = base_arg
+        return fallback_res
+    return numpy_res
 
 
 def _get_same_reference(res, args, kwargs, ret_args, ret_kwargs):
@@ -555,14 +572,3 @@ def _get_same_reference(res, args, kwargs, ret_args, ret_kwargs):
             return ret_kwargs[key]
 
     return
-
-
-def _getptr(x):
-    """
-    Returns memory pointer for cp.ndarray or np.ndarray
-    """
-    if isinstance(x, cp.ndarray):
-        return x.__cuda_array_interface__['data'][0]
-    if isinstance(x, np.ndarray):
-        return x.__array_interface__['data'][0]
-    raise TypeError
