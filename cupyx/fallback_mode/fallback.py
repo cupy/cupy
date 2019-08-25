@@ -92,7 +92,7 @@ class _RecursiveAttr(object):
         return self._numpy_object.__doc__
 
     @staticmethod
-    def _is_cupy_compatible(args, kwargs):
+    def _assert_cupy_compatible(arg):
         """
         Returns False if CuPy's functions never accept the arguments as
         parameters due to the following reasons.
@@ -100,27 +100,18 @@ class _RecursiveAttr(object):
           `np.ndarray`.
         - The inputs include a dtype which is not supported in CuPy.
         """
-        for arg in args:
-            if isinstance(arg, ndarray) and arg._class is not cp.ndarray:
-                return False
 
-        for key in kwargs:
-            if isinstance(kwargs[key], ndarray) and \
-               kwargs[key]._class is not cp.ndarray:
-                return False
+        if isinstance(arg, ndarray):
+            assert arg._class is cp.ndarray
 
-        _compatible_dtypes = [
-            np.bool, np.int8, np.int16, np.int32, np.int64,
-            np.uint8, np.uint16, np.uint32, np.uint64,
-            np.float16, np.float32, np.float64,
-            np.complex64, np.complex128
-        ] + list('?bhilqBHILQefdFD')
+        if isinstance(arg, (tuple, list)):
+            for i in arg:
+                _RecursiveAttr._assert_cupy_compatible(i)
 
-        dtype = kwargs.get('dtype', None)
-        if dtype is not None and dtype not in _compatible_dtypes:
-            return False
+        if isinstance(arg, dict):
+            for key in arg:
+                _RecursiveAttr._assert_cupy_compatible(arg[key])
 
-        return True
 
     def __call__(self, *args, **kwargs):
         """
@@ -143,12 +134,15 @@ class _RecursiveAttr(object):
         if self._fallback_array is not None:
             args = ((self._fallback_array,) + args)
 
-        if self._cupy_object is not None and \
-           _RecursiveAttr._is_cupy_compatible(args, kwargs):
-            return _call_cupy(self._cupy_object, args, kwargs)
+        if self._cupy_object is not None:
+            try:
+                _RecursiveAttr._assert_cupy_compatible((args, kwargs))
+                return _call_cupy(self._cupy_object, args, kwargs)
+            except Exception:
+                # not cupy compatible
+                pass
 
         return _call_numpy(self._numpy_object, args, kwargs)
-
 
 numpy = _RecursiveAttr(np, cp)
 
