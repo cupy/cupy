@@ -62,6 +62,7 @@ cdef extern from *:
     ctypedef void* Array 'cudaArray_t'
     ctypedef struct Extent 'cudaExtent':
         pass
+    ctypedef void* MipmappedArray 'cudaMipmappedArray_t'
 
     # This is for the annoying nested struct cudaResourceDesc, which is not
     # perfectly supprted in Cython
@@ -69,12 +70,12 @@ cdef extern from *:
         Array array
 
     ctypedef struct _mipmap:
-        pass  # TODO(leofang): support this?
+        MipmappedArray mipmap
 
     ctypedef struct _linear:
         void* devPtr
         ChannelFormatDesc desc
-        size_t  sizeInBytes
+        size_t sizeInBytes
 
     ctypedef struct _pitch2D:   
         void* devPtr

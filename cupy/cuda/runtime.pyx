@@ -12,6 +12,7 @@ There are four differences compared to the original C API.
 cimport cpython  # NOQA
 from cpython.mem cimport PyMem_Malloc, PyMem_Free  # NOQA
 cimport cython  # NOQA
+from libc.string cimport memset as c_memset
 
 from cupy.cuda cimport driver
 
@@ -29,13 +30,13 @@ cdef class PointerAttributes:
 
 cdef class ChannelFormatDescriptor:
     def __init__(self, int x, int y, int z, int w, int f):
-        # We don't call cudaCreateChannelDesc here to avoid out of scope
+        # We don't call cudaCreateChannelDesc() here to avoid out of scope
         #
         # WARNING: don't use [0] or cython.operator.dereference to dereference
         # a pointer to struct for writing to its members !!! (But read is OK.)
         # Turns out while there's no arrow operator '->' in Cython, one can
-        # just treat the ptr as the real object and access the struct
-        # attributes. This applies to several classes below.
+        # just treat the ptr as a real object and access the struct attributes.
+        # This applies to several classes below.
         self.ptr = <intptr_t>PyMem_Malloc(sizeof(ChannelFormatDesc))
         cdef ChannelFormatDesc* desc = (<ChannelFormatDesc*>self.ptr)
         desc.x = x
@@ -59,11 +60,13 @@ cdef class ChannelFormatDescriptor:
 ##        return desc
 
 cdef class ResourceDescriptor:
-    def __init__(self, int restype, array=None, intptr_t devPtr=0,
+    def __init__(self, int restype, intptr_t cuArrayPtr=0, intptr_t devPtr=0,
                  ChannelFormatDescriptor chDesc=None, sizeInBytes=None, width=None, height=None,
                  pitchInBytes=None):
-        # array is a CUDAArray instance, but to avoid circular import problem
-        # we can't specify its type here
+        '''
+        Args:
+            cuArrayPtr (CUDAArray.ptr)
+        '''
         cdef ResourceType resType = <ResourceType>restype
         if resType == cudaResourceTypeMipmappedArray:
             # TODO(leofang): support this?
@@ -72,9 +75,12 @@ cdef class ResourceDescriptor:
 
         self.ptr = <intptr_t>PyMem_Malloc(sizeof(ResourceDesc))
         cdef ResourceDesc* desc = (<ResourceDesc*>self.ptr)
+        c_memset(desc, 0, sizeof(ResourceDesc))
+        cdef Array arr_ptr = <Array>cuArrayPtr
+
         desc.resType = resType
         if resType == cudaResourceTypeArray:
-            desc.res.array.array = <Array>array.ptr  # TODO: check this
+            desc.res.array.array = arr_ptr
         elif resType == cudaResourceTypeLinear:
             desc.res.linear.devPtr = <void*>devPtr
             desc.res.linear.desc = (<ChannelFormatDesc*>chDesc.ptr)[0]
@@ -90,10 +96,10 @@ cdef class ResourceDescriptor:
         PyMem_Free(<ResourceDesc*>self.ptr)
         self.ptr = 0
 
-    #def describe(self):
-    #    cdef ResourceDesc* desc = <ResourceDesc*>self.ptr
-    #    #print(<int>desc.res.array.array)
-    #    print(<intptr_t>desc.res.array.array)
+    def describe(self):
+        cdef ResourceDesc* desc = <ResourceDesc*>self.ptr
+        #print(<int>desc.res.array.array)
+        print(<intptr_t>(desc.res.array.array))
         
 
 #    cdef ResourceDesc get_cudaResourceDesc(self):
@@ -119,6 +125,8 @@ cdef class TextureDescriptor:
                  maxAnisotropy=None):
         self.ptr = <intptr_t>PyMem_Malloc(sizeof(TextureDesc))
         cdef TextureDesc* desc = (<TextureDesc*>self.ptr)
+        c_memset(desc, 0, sizeof(TextureDesc))
+
         for i, mode in enumerate(addressModes):
             desc.addressMode[i] = <TextureAddressMode>mode
         desc.filterMode = <TextureFilterMode>filterMode
@@ -682,12 +690,13 @@ cdef _ensure_context():
 
 cpdef createTextureObject(ResourceDescriptor ResDesc,
                           TextureDescriptor TexDesc):
-    cdef TextureObject texobj
+    cdef TextureObject texobj = 0
     with nogil:
         status = cudaCreateTextureObject(&texobj, <ResourceDesc*>ResDesc.ptr,
                                          <TextureDesc*>TexDesc.ptr,
                                          <ResourceViewDesc*>NULL)
     check_status(status)
+    assert texobj != 0
     return texobj
 
 cpdef destroyTextureObject(TextureObject texObject):
