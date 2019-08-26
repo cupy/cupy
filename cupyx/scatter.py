@@ -114,7 +114,7 @@ def scatter_min(a, slices, value):
     >>> a = cupy.zeros((6,), dtype=numpy.float32)
     >>> i = cupy.array([1, 0, 1, 2])
     >>> v = cupy.array([1., 2., 3., -1.])
-    >>> cupyx.scatter_max(a, i, v);
+    >>> cupyx.scatter_min(a, i, v);
     >>> a
     array([0., 0., -1., 0., 0., 0.], dtype=float32)
 
