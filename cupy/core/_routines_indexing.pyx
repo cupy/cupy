@@ -476,54 +476,6 @@ _scatter_max_kernel = ElementwiseKernel(
     'cupy_scatter_max')
 
 
-_scatter_max_float32_kernel = ElementwiseKernel(
-    'raw float32 v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw float32 a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      int* address_as_i = reinterpret_cast<int*>(
-        &a[(li * adim + wrap_indices) * rdim + ri]);
-      float val = v[i];
-      int old = *address_as_i, assumed;
-      do {
-        assumed = old;
-        old = atomicCAS(
-          address_as_i, assumed,
-          __float_as_int(fmaxf(val, __int_as_float(assumed))));
-      } while (assumed != old);
-    ''',
-    'cupy_scatter_max_float32')
-
-
-_scatter_max_float64_kernel = ElementwiseKernel(
-    'raw float64 v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw float64 a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      long long* address_as_i = reinterpret_cast<long long*>(
-        &a[(li * adim + wrap_indices) * rdim + ri]);
-      double val = v[i];
-      long long old = *address_as_i, assumed;
-      do {
-        assumed = old;
-        // Use unsigned version of atomicCAS since it does not support int64
-        const long long result = __double_as_longlong(
-          fmaxf(val, __longlong_as_double(assumed)));
-        old = atomicCAS(
-          reinterpret_cast<unsigned long long*>(address_as_i),
-          reinterpret_cast<unsigned long long&>(assumed),
-          reinterpret_cast<const unsigned long long&>(result));
-      } while (assumed != old);
-    ''',
-    'cupy_scatter_max_float64')
-
-
 _scatter_min_kernel = ElementwiseKernel(
     'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
     'raw T a',
@@ -535,54 +487,6 @@ _scatter_min_kernel = ElementwiseKernel(
       atomicMin(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
     ''',
     'cupy_scatter_min')
-
-
-_scatter_min_float32_kernel = ElementwiseKernel(
-    'raw float32 v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw float32 a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      int* address_as_i = reinterpret_cast<int*>(
-        &a[(li * adim + wrap_indices) * rdim + ri]);
-      float val = v[i];
-      int old = *address_as_i, assumed;
-      do {
-        assumed = old;
-        old = atomicCAS(
-          address_as_i, assumed,
-          __float_as_int(fminf(val, __int_as_float(assumed))));
-      } while (assumed != old);
-    ''',
-    'cupy_scatter_min_float32')
-
-
-_scatter_min_float64_kernel = ElementwiseKernel(
-    'raw float64 v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw float64 a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      long long* address_as_i = reinterpret_cast<long long*>(
-        &a[(li * adim + wrap_indices) * rdim + ri]);
-      double val = v[i];
-      long long old = *address_as_i, assumed;
-      do {
-        assumed = old;
-        // Use unsigned version of atomicCAS since it does not support int64
-        const long long result = __double_as_longlong(
-          fminf(val, __longlong_as_double(assumed)));
-        old = atomicCAS(
-          reinterpret_cast<unsigned long long*>(address_as_i),
-          reinterpret_cast<unsigned long long&>(assumed),
-          reinterpret_cast<const unsigned long long&>(result));
-      } while (assumed != old);
-    ''',
-    'cupy_scatter_min_float64')
 
 
 _scatter_update_mask_kernel = ElementwiseKernel(
@@ -811,37 +715,23 @@ cdef _scatter_op_single(
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'max':
-        if issubclass(v.dtype.type,
-                      (numpy.int32, numpy.uint32, numpy.uint64,
-                       numpy.ulonglong)):
-            _scatter_max_kernel(
-                v, indices, cdim, rdim, adim, a.reduced_view())
-        elif issubclass(v.dtype.type, numpy.float32):
-            _scatter_max_float32_kernel(
-                v, indices, cdim, rdim, adim, a.reduced_view())
-        elif issubclass(v.dtype.type, numpy.float64):
-            _scatter_max_float64_kernel(
-                v, indices, cdim, rdim, adim, a.reduced_view())
-        else:
+        if not issubclass(v.dtype.type,
+                      (numpy.int32, numpy.float32, numpy.float64,
+                       numpy.uint32, numpy.uint64, numpy.ulonglong)):
             raise TypeError(
                 'scatter_max only supports int32, float32, float64, '
                 'uint32, uint64 as data type')
+        _scatter_max_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'min':
-        if issubclass(v.dtype.type,
-                      (numpy.int32, numpy.uint32, numpy.uint64,
-                       numpy.ulonglong)):
-            _scatter_min_kernel(
-                v, indices, cdim, rdim, adim, a.reduced_view())
-        elif issubclass(v.dtype.type, numpy.float32):
-            _scatter_min_float32_kernel(
-                v, indices, cdim, rdim, adim, a.reduced_view())
-        elif issubclass(v.dtype.type, numpy.float64):
-            _scatter_min_float64_kernel(
-                v, indices, cdim, rdim, adim, a.reduced_view())
-        else:
+        if not issubclass(v.dtype.type,
+                      (numpy.int32, numpy.float32, numpy.float64,
+                       numpy.uint32, numpy.uint64, numpy.ulonglong)):
             raise TypeError(
                 'scatter_min only supports int32, float32, float64, '
                 'uint32, uint64 as data type')
+        _scatter_min_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
     else:
         raise ValueError('provided op is not supported')
 
