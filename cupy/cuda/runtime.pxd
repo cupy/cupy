@@ -361,10 +361,11 @@ cpdef deviceEnablePeerAccess(int peerDevice)
 
 cpdef intptr_t malloc(size_t size) except? 0
 cpdef intptr_t mallocManaged(size_t size, unsigned int flags=*) except? 0
-cpdef intptr_t malloc3DArray(size_t desc, size_t width, size_t height,
-                             size_t depth, unsigned int flags=*) except? 0
-cpdef intptr_t mallocArray(size_t desc, size_t width, size_t height,
-                           unsigned int flags=*) except? 0
+cpdef intptr_t malloc3DArray(ChannelFormatDescriptor desc, size_t width,
+                             size_t height, size_t depth,
+                             unsigned int flags=*) except? 0
+cpdef intptr_t mallocArray(ChannelFormatDescriptor desc, size_t width,
+                           size_t height, unsigned int flags=*) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
 cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
 cpdef hostUnregister(intptr_t ptr)
@@ -423,7 +424,7 @@ cdef _ensure_context()
 # Texture
 ##############################################################################
 
-cpdef createChannelDesc(int x, int y, int z, int w, ChannelFormatKind f)
+#cpdef createChannelDesc(int x, int y, int z, int w, ChannelFormatKind f)
 #cpdef createTextureObject(ResourceDesc* pResDesc,
 #                          TextureDesc* pTexDesc,
 #                          ResourceViewDesc* pResViewDesc)

@@ -390,22 +390,23 @@ cpdef intptr_t mallocManaged(
     return <intptr_t>ptr
 
 
-cpdef intptr_t malloc3DArray(size_t desc, size_t width, size_t height,
-                             size_t depth, unsigned int flags = 0) except? 0:
+cpdef intptr_t malloc3DArray(ChannelFormatDescriptor desc, size_t width,
+                             size_t height, size_t depth,
+                             unsigned int flags = 0) except? 0:
     cdef Array ptr
     cdef Extent extent = make_cudaExtent(width, height, depth)
     with nogil:
-        status = cudaMalloc3DArray(&ptr, <ChannelFormatDesc*>desc, extent,
+        status = cudaMalloc3DArray(&ptr, <ChannelFormatDesc*>desc.ptr, extent,
                                    flags)
     check_status(status)
     return <intptr_t>ptr
 
 
-cpdef intptr_t mallocArray(size_t desc, size_t width, size_t height,
-                           unsigned int flags = 0) except? 0:
+cpdef intptr_t mallocArray(ChannelFormatDescriptor desc, size_t width,
+                           size_t height, unsigned int flags = 0) except? 0:
     cdef Array ptr
     with nogil:
-        status = cudaMallocArray(&ptr, <ChannelFormatDesc*>desc, width,
+        status = cudaMallocArray(&ptr, <ChannelFormatDesc*>desc.ptr, width,
                                  height, flags)
     check_status(status)
     return <intptr_t>ptr
@@ -656,12 +657,12 @@ cdef _ensure_context():
 # Texture
 ##############################################################################
 
-cpdef createChannelDesc(int x, int y, int z, int w, ChannelFormatKind f):
-    # we don't call this, as this seems to live on the stack?
-    cdef ChannelFormatDesc desc
-    with nogil:
-        desc = cudaCreateChannelDesc(x, y, z, w, f)
-    return desc
+#cpdef createChannelDesc(int x, int y, int z, int w, ChannelFormatKind f):
+#    # we don't call this, as this seems to live on the stack?
+#    cdef ChannelFormatDesc desc
+#    with nogil:
+#        desc = cudaCreateChannelDesc(x, y, z, w, f)
+#    return desc
 
 cpdef createTextureObject(ResourceDescriptor ResDesc,
                           TextureDescriptor TexDesc):
