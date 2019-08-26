@@ -16,34 +16,14 @@ cdef class PointerAttributes:
 cdef class ChannelFormatDescriptor:
     cdef:
         readonly intptr_t ptr
-        #public int f, w, x, y, z
 
 cdef class ResourceDescriptor:
     cdef:
         readonly intptr_t ptr
-        #public int resType
-        #public Array array
-        #public intptr_t devPtr
-        #public ChannelFormatDescriptor desc
-        #public size_t sizeInBytes
-        #public size_t width
-        #public size_t height
-        #public size_t pitchInBytes
 
 cdef class TextureDescriptor:
     cdef:
         readonly intptr_t ptr
-        #int addressMode[3]
-        #int filterMode
-        #int readMode
-        #int sRGB
-        #float borderColor[4]
-        #int  normalizedCoords
-        #unsigned int maxAnisotropy
-        ##int mipmapFilterMode
-        ##float mipmapLevelBias
-        ##float minMipmapLevelClamp
-        ##float maxMipmapLevelClamp
 
 cdef extern from *:
     ctypedef int Error 'cudaError_t'
@@ -93,39 +73,7 @@ cdef extern from *:
     ctypedef struct ResourceDesc 'cudaResourceDesc':
         int resType
         _res res
-    # cudaResourceDesc done
-
-        #union res:
-        #    _array ar
-        #    _mipmap mi
-        #    _linear li
-        #    _pitch2D pi
-
-        ## this doesn't work...
-        ## cython doesn't support nested struct, but we are allowed to flatten
-        ## it all out:
-        #Array array
-        #void* devPtr
-        #ChannelFormatDesc desc
-        #size_t sizeInBytes
-        #size_t width
-        #size_t height
-        #size_t pitchInBytes
-
-        #ctypedef union res:
-        #    ctypedef struct array:
-        #        Array array
-        #    # struct mipmap:
-        #    ctypedef struct linear:
-        #        void* devPtr
-        #        ChannelFormatDesc desc
-        #        size_t  sizeInBytes
-        #    ctypedef struct pitch2D:   
-        #        void* devPtr
-        #        ChannelFormatDesc desc
-        #        size_t width
-        #        size_t height
-        #        size_t pitchInBytes
+    # typedef cudaResourceDesc done
 
     ctypedef struct TextureDesc 'cudaTextureDesc':
         int addressMode[3];
@@ -135,10 +83,6 @@ cdef extern from *:
         float borderColor[4];
         int normalizedCoords;
         unsigned int maxAnisotropy;
-        #int mipmapFilterMode;
-        #float mipmapLevelBias;
-        #float minMipmapLevelClamp;
-        #float maxMipmapLevelClamp;
 
 
 ###############################################################################
@@ -425,10 +369,6 @@ cdef _ensure_context()
 # Texture
 ##############################################################################
 
-#cpdef createChannelDesc(int x, int y, int z, int w, ChannelFormatKind f)
-#cpdef createTextureObject(ResourceDesc* pResDesc,
-#                          TextureDesc* pTexDesc,
-#                          ResourceViewDesc* pResViewDesc)
 cpdef createTextureObject(ResourceDescriptor ResDesc,
                           TextureDescriptor TexDesc)
 cpdef destroyTextureObject(TextureObject texObject)

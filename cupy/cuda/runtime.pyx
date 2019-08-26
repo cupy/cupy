@@ -49,15 +49,6 @@ cdef class ChannelFormatDescriptor:
         PyMem_Free(<ChannelFormatDesc*>self.ptr)
         self.ptr = 0
 
-#    cdef ChannelFormatDesc* get_desc(self):
-#        return self.ptr
-##        cdef cudaChannelFormatDesc desc
-##        desc.f = self.f
-##        desc.w = self.w
-##        desc.x = self.x
-##        desc.y = self.y
-##        desc.z = self.z
-##        return desc
 
 cdef class ResourceDescriptor:
     def __init__(self, int restype, intptr_t cuArrayPtr=0, intptr_t devPtr=0,
@@ -98,26 +89,8 @@ cdef class ResourceDescriptor:
 
     def describe(self):
         cdef ResourceDesc* desc = <ResourceDesc*>self.ptr
-        #print(<int>desc.res.array.array)
         print(<intptr_t>(desc.res.array.array))
-        
 
-#    cdef ResourceDesc get_cudaResourceDesc(self):
-#        cdef ResourceDesc desc
-#        resType = desc.resType = self.resType
-#        if resType == cudaResourceTypeArray:
-#            desc.array = self.array
-#        elif resType == cudaResourceTypeLinear:
-#            desc.devPtr = self.devPtr = devPtr
-#            desc.desc = self.desc.get_cudaChannelFormatDesc()
-#            desc.sizeInBytes = self.sizeInBytes
-#        elif resType == cudaResourceTypePitch2D:
-#            desc.devPtr = self.devPtr = devPtr
-#            desc.desc = self.desc.get_cudaChannelFormatDesc()
-#            desc.width = self.width
-#            desc.height = self.height
-#            desc.pitchInBytes = self.pitchInBytes
-#        return desc
 
 cdef class TextureDescriptor:
     def __init__(self, addressModes, int filterMode, int readMode,
@@ -144,37 +117,6 @@ cdef class TextureDescriptor:
     def __dealloc__(self):
         PyMem_Free(<TextureDesc*>self.ptr)
         self.ptr = 0
-
-#        for i, mode in enumerate(addressModes):
-#            self.addressMode[i] = mode
-#        self.filterMode = filterMode
-#        self.readMode = readMode
-#        if sRGB is not None:
-#            self.sRGB = sRGB
-#        if borderColors is not None:
-#            assert len(borderColors) == 4
-#            for i, color in enumerate(borderColors):            
-#                self.borderColor[i] = color
-#        if normalizedCoords is not None:
-#            self.normalizedCoords = normalizedCoords
-#        if maxAnisotropy is not None:
-#            self.maxAnisotropy = maxAnisotropy
-#
-#    cdef TextureDesc get_cudaTextureDesc(self):
-#        cdef cudaTextureDesc desc
-#        for i, mode in enumerate(self.addressMode):
-#            desc.addressMode = mode
-#        desc.filterMode = self.filterMode
-#        desc.readMode = self.readMode
-#        if self.sRGB is not None:
-#            desc.sRGB = self.sRGB
-#        if borderColors is not None:
-#            for i, color in enumerate(self.borderColor):
-#                desc.borderColor[i] = color
-#        if self.normalizedCoords is not None:
-#            desc.normalizedCoords = self.normalizedCoords
-#        if self.maxAnisotropy is not None:
-#            desc.maxAnisotropy = self.maxAnisotropy
 
 
 ###############################################################################
@@ -278,18 +220,11 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaEventSynchronize(driver.Event event)
 
     # Texture
-    ChannelFormatDesc cudaCreateChannelDesc(int x, int y, int z, int w,
-                                            ChannelFormatKind f)
     int cudaCreateTextureObject(TextureObject* pTexObject,
                                 const ResourceDesc* pResDesc,
                                 const TextureDesc* pTexDesc,
                                 const ResourceViewDesc* pResViewDesc)
     int cudaDestroyTextureObject(TextureObject texObject)
-    #int cudaGetChannelDesc(ChannelFormatDesc* desc, cudaArray_const_t array )
-    #int cudaGetTextureObjectResourceDesc(ResourceDesc* pResDesc,
-    #                                     TextureObject_t texObject)
-    #int cudaGetTextureObjectResourceViewDesc ( cudaResourceViewDesc* pResViewDesc, cudaTextureObject_t texObject )
-    #int cudaGetTextureObjectTextureDesc ( cudaTextureDesc* pTexDesc, cudaTextureObject_t texObject )
 
 
 ###############################################################################
@@ -415,7 +350,6 @@ cpdef intptr_t mallocManaged(
 cpdef intptr_t malloc3DArray(ChannelFormatDescriptor desc, size_t width,
                              size_t height, size_t depth,
                              unsigned int flags = 0) except? 0:
-    print("malloc3DArray is called")
     cdef Array ptr
     cdef Extent extent = make_cudaExtent(width, height, depth)
     with nogil:
@@ -427,7 +361,6 @@ cpdef intptr_t malloc3DArray(ChannelFormatDescriptor desc, size_t width,
 
 cpdef intptr_t mallocArray(ChannelFormatDescriptor desc, size_t width,
                            size_t height, unsigned int flags = 0) except? 0:
-    print("mallocArray is called")
     cdef Array ptr
     with nogil:
         status = cudaMallocArray(&ptr, <ChannelFormatDesc*>desc.ptr, width,
@@ -680,13 +613,6 @@ cdef _ensure_context():
 ##############################################################################
 # Texture
 ##############################################################################
-
-#cpdef createChannelDesc(int x, int y, int z, int w, ChannelFormatKind f):
-#    # we don't call this, as this seems to live on the stack?
-#    cdef ChannelFormatDesc desc
-#    with nogil:
-#        desc = cudaCreateChannelDesc(x, y, z, w, f)
-#    return desc
 
 cpdef createTextureObject(ResourceDescriptor ResDesc,
                           TextureDescriptor TexDesc):
