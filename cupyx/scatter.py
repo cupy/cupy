@@ -57,8 +57,74 @@ def scatter_add(a, slices, value):
 
 
 def scatter_max(a, slices, value):
+    """Stores a maximum value of elements specified by indices to an array.
+
+    It stores a maximum value of elements of ``value`` specified by ``slices``
+    to ``a``. If all of the indices target different locations, the operation
+    of :func:`scatter_max` is equivalent to
+    ``a[slices] = cupy.maximum(a[slices], value)``.
+    If there are multiple elements targeting the same location,
+    :func:`scatter_max` stores the maximum of all of these values to the given
+    index of the array.
+
+    Note that just like an array indexing, negative indices are interpreted as
+    counting from the end of an array.
+
+    Example
+    -------
+    >>> import numpy
+    >>> import cupy
+    >>> a = cupy.zeros((6,), dtype=numpy.float32)
+    >>> i = cupy.array([1, 0, 1, 2])
+    >>> v = cupy.array([1., 2., 3., -1.])
+    >>> cupyx.scatter_max(a, i, v);
+    >>> a
+    array([2., 3., 0., 0., 0., 0.], dtype=float32)
+
+    Args:
+        a (ndarray): An array to store the results.
+        slices: It is integer, slices, ellipsis, numpy.newaxis,
+            integer array-like, boolean array-like or tuple of them.
+            It works for slices used for
+            :func:`cupy.ndarray.__getitem__` and
+            :func:`cupy.ndarray.__setitem__`.
+        v (array-like): An array used for reference.
+    """
     a.scatter_max(slices, value)
 
 
 def scatter_min(a, slices, value):
+    """Stores a minimum value of elements specified by indices to an array.
+
+    It stores a minimum value of elements of ``value`` specified by ``slices``
+    to ``a``. If all of the indices target different locations, the operation
+    of :func:`scatter_min` is equivalent to
+    ``a[slices] = cupy.minimum(a[slices], value)``.
+    If there are multiple elements targeting the same location,
+    :func:`scatter_min` stores the minimum of all of these values to the given
+    index of the array.
+
+    Note that just like an array indexing, negative indices are interpreted as
+    counting from the end of an array.
+
+    Example
+    -------
+    >>> import numpy
+    >>> import cupy
+    >>> a = cupy.zeros((6,), dtype=numpy.float32)
+    >>> i = cupy.array([1, 0, 1, 2])
+    >>> v = cupy.array([1., 2., 3., -1.])
+    >>> cupyx.scatter_max(a, i, v);
+    >>> a
+    array([0., 0., -1., 0., 0., 0.], dtype=float32)
+
+    Args:
+        a (ndarray): An array to store the results.
+        slices: It is integer, slices, ellipsis, numpy.newaxis,
+            integer array-like, boolean array-like or tuple of them.
+            It works for slices used for
+            :func:`cupy.ndarray.__getitem__` and
+            :func:`cupy.ndarray.__setitem__`.
+        v (array-like): An array used for reference.
+    """
     a.scatter_min(slices, value)
