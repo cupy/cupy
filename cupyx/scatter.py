@@ -54,3 +54,11 @@ def scatter_add(a, slices, value):
 
     """
     a.scatter_add(slices, value)
+
+
+def scatter_max(a, slices, value):
+    a.scatter_max(slices, value)
+
+
+def scatter_min(a, slices, value):
+    a.scatter_min(slices, value)

@@ -1263,6 +1263,12 @@ cdef class ndarray:
         """
         _indexing._ndarray_scatter_add(self, slices, value)
 
+    def scatter_max(self, slices, value):
+        _indexing._ndarray_scatter_max(self, slices, value)
+
+    def scatter_min(self, slices, value):
+        _indexing._ndarray_scatter_min(self, slices, value)
+
     # TODO(okuta): Implement __getslice__
     # TODO(okuta): Implement __setslice__
     # TODO(okuta): Implement __contains__

@@ -80,6 +80,14 @@ cdef _ndarray_scatter_add(ndarray self, slices, value):
     _scatter_op(self, slices, value, 'add')
 
 
+cdef _ndarray_scatter_max(ndarray self, slices, value):
+    _scatter_op(self, slices, value, 'max')
+
+
+cdef _ndarray_scatter_min(ndarray self, slices, value):
+    _scatter_op(self, slices, value, 'min')
+
+
 cdef ndarray _ndarray_take(ndarray self, indices, axis, out):
     if axis is None:
         return _take(self, indices, 0, self._shape.size() - 1, out)
@@ -455,6 +463,76 @@ _scatter_add_kernel = ElementwiseKernel(
     'cupy_scatter_add')
 
 
+_scatter_max_kernel = ElementwiseKernel(
+    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
+    'raw T a',
+    '''
+      S wrap_indices = indices % adim;
+      if (wrap_indices < 0) wrap_indices += adim;
+      ptrdiff_t li = i / (rdim * cdim);
+      ptrdiff_t ri = i % rdim;
+      atomicMax(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
+    ''',
+    'cupy_scatter_max')
+
+
+_scatter_max_float32_kernel = ElementwiseKernel(
+    'raw float32 v, S indices, int32 cdim, int32 rdim, int32 adim',
+    'raw float32 a',
+    '''
+      S wrap_indices = indices % adim;
+      if (wrap_indices < 0) wrap_indices += adim;
+      ptrdiff_t li = i / (rdim * cdim);
+      ptrdiff_t ri = i % rdim;
+      int* address_as_i = reinterpret_cast<int*>(
+        &a[(li * adim + wrap_indices) * rdim + ri]);
+      float val = v[i];
+      int old = *address_as_i, assumed;
+      do {
+        assumed = old;
+        old = atomicCAS(
+          address_as_i, assumed,
+          __float_as_int(fmaxf(val, __int_as_float(assumed))));
+      } while (assumed != old);
+    ''',
+    'cupy_scatter_max_float32')
+
+
+_scatter_min_kernel = ElementwiseKernel(
+    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
+    'raw T a',
+    '''
+      S wrap_indices = indices % adim;
+      if (wrap_indices < 0) wrap_indices += adim;
+      ptrdiff_t li = i / (rdim * cdim);
+      ptrdiff_t ri = i % rdim;
+      atomicMin(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
+    ''',
+    'cupy_scatter_min')
+
+
+_scatter_min_float32_kernel = ElementwiseKernel(
+    'raw float32 v, S indices, int32 cdim, int32 rdim, int32 adim',
+    'raw float32 a',
+    '''
+      S wrap_indices = indices % adim;
+      if (wrap_indices < 0) wrap_indices += adim;
+      ptrdiff_t li = i / (rdim * cdim);
+      ptrdiff_t ri = i % rdim;
+      int* address_as_i = reinterpret_cast<int*>(
+        &a[(li * adim + wrap_indices) * rdim + ri]);
+      float val = v[i];
+      int old = *address_as_i, assumed;
+      do {
+        assumed = old;
+        old = atomicCAS(
+          address_as_i, assumed,
+          __float_as_int(fminf(val, __int_as_float(assumed))));
+      } while (assumed != old);
+    ''',
+    'cupy_scatter_min_float32')
+
+
 _scatter_update_mask_kernel = ElementwiseKernel(
     'raw T v, bool mask, S mask_scanned',
     'T a',
@@ -666,6 +744,32 @@ cdef _scatter_op_single(
                 'uint32, uint64, as data type')
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'max':
+        if issubclass(v.dtype.type,
+                      (numpy.int32, numpy.uint32, numpy.uint64,
+                       numpy.ulonglong)):
+            _scatter_max_kernel(
+                v, indices, cdim, rdim, adim, a.reduced_view())
+        elif issubclass(v.dtype.type, numpy.float32):
+            _scatter_max_float32_kernel(
+                v, indices, cdim, rdim, adim, a.reduced_view())
+        else:
+            raise TypeError(
+                'scatter_max only supports int32, float32, '
+                'uint32, uint64 as data type')
+    elif op == 'min':
+        if issubclass(v.dtype.type,
+                      (numpy.int32, numpy.uint32, numpy.uint64,
+                       numpy.ulonglong)):
+            _scatter_min_kernel(
+                v, indices, cdim, rdim, adim, a.reduced_view())
+        elif issubclass(v.dtype.type, numpy.float32):
+            _scatter_min_float32_kernel(
+                v, indices, cdim, rdim, adim, a.reduced_view())
+        else:
+            raise TypeError(
+                'scatter_min only supports int32, float32, '
+                'uint32, uint64 as data type')
     else:
         raise ValueError('provided op is not supported')
 
