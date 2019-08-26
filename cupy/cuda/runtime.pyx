@@ -93,26 +93,30 @@ cdef class ResourceDescriptor:
 
 
 cdef class TextureDescriptor:
-    def __init__(self, addressModes, int filterMode, int readMode,
+    def __init__(self, addressModes=None, int filterMode=0, int readMode=0,
                  sRGB=None, borderColors=None, normalizedCoords=None,
                  maxAnisotropy=None):
         self.ptr = <intptr_t>PyMem_Malloc(sizeof(TextureDesc))
         cdef TextureDesc* desc = (<TextureDesc*>self.ptr)
         c_memset(desc, 0, sizeof(TextureDesc))
 
-        for i, mode in enumerate(addressModes):
-            desc.addressMode[i] = <TextureAddressMode>mode
+        if addressModes is not None:
+            assert len(addressModes) <= 3
+            for i, mode in enumerate(addressModes):
+                desc.addressMode[i] = <TextureAddressMode>mode
         desc.filterMode = <TextureFilterMode>filterMode
         desc.readMode = <TextureReadMode>readMode
         if sRGB is not None:
             desc.sRGB = sRGB
         if borderColors is not None:
+            assert len(borderColors) <= 4
             for i, color in enumerate(borderColors):
                 desc.borderColor[i] = color
         if normalizedCoords is not None:
             desc.normalizedCoords = normalizedCoords
         if maxAnisotropy is not None:
             desc.maxAnisotropy = maxAnisotropy
+        # TODO(leofang): support mipmap?
 
     def __dealloc__(self):
         PyMem_Free(<TextureDesc*>self.ptr)
@@ -347,23 +351,22 @@ cpdef intptr_t mallocManaged(
     return <intptr_t>ptr
 
 
-cpdef intptr_t malloc3DArray(ChannelFormatDescriptor desc, size_t width,
-                             size_t height, size_t depth,
-                             unsigned int flags = 0) except? 0:
+cpdef intptr_t malloc3DArray(intptr_t descPtr, size_t width, size_t height,
+                             size_t depth, unsigned int flags = 0) except? 0:
     cdef Array ptr
     cdef Extent extent = make_cudaExtent(width, height, depth)
     with nogil:
-        status = cudaMalloc3DArray(&ptr, <ChannelFormatDesc*>desc.ptr, extent,
+        status = cudaMalloc3DArray(&ptr, <ChannelFormatDesc*>descPtr, extent,
                                    flags)
     check_status(status)
     return <intptr_t>ptr
 
 
-cpdef intptr_t mallocArray(ChannelFormatDescriptor desc, size_t width,
-                           size_t height, unsigned int flags = 0) except? 0:
+cpdef intptr_t mallocArray(intptr_t descPtr, size_t width, size_t height,
+                           unsigned int flags = 0) except? 0:
     cdef Array ptr
     with nogil:
-        status = cudaMallocArray(&ptr, <ChannelFormatDesc*>desc.ptr, width,
+        status = cudaMallocArray(&ptr, <ChannelFormatDesc*>descPtr, width,
                                  height, flags)
     check_status(status)
     return <intptr_t>ptr
@@ -614,12 +617,11 @@ cdef _ensure_context():
 # Texture
 ##############################################################################
 
-cpdef createTextureObject(ResourceDescriptor ResDesc,
-                          TextureDescriptor TexDesc):
+cpdef createTextureObject(intptr_t ResDescPtr, intptr_t TexDescPtr):
     cdef TextureObject texobj = 0
     with nogil:
-        status = cudaCreateTextureObject(&texobj, <ResourceDesc*>ResDesc.ptr,
-                                         <TextureDesc*>TexDesc.ptr,
+        status = cudaCreateTextureObject(&texobj, <ResourceDesc*>ResDescPtr,
+                                         <TextureDesc*>TexDescPtr,
                                          <ResourceViewDesc*>NULL)
     check_status(status)
     assert texobj != 0

@@ -1,13 +1,15 @@
-from libc.stdint cimport intptr_t
-
-from cupy.cuda cimport runtime
 from cupy.cuda.memory cimport BaseMemory
 
 
 cdef class CUDAArray(BaseMemory):
-    pass
+    cdef:
+        readonly object desc
+        readonly size_t width
+        readonly size_t height
+        readonly size_t depth
+        readonly unsigned int flags
 
 
 cdef class TextureObject:
     cdef:
-        readonly runtime.TextureObject ptr
+        readonly unsigned long long ptr  # type: cudaTextureObject_t

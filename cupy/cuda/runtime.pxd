@@ -306,11 +306,10 @@ cpdef deviceEnablePeerAccess(int peerDevice)
 
 cpdef intptr_t malloc(size_t size) except? 0
 cpdef intptr_t mallocManaged(size_t size, unsigned int flags=*) except? 0
-cpdef intptr_t malloc3DArray(ChannelFormatDescriptor desc, size_t width,
-                             size_t height, size_t depth,
-                             unsigned int flags=*) except? 0
-cpdef intptr_t mallocArray(ChannelFormatDescriptor desc, size_t width,
-                           size_t height, unsigned int flags=*) except? 0
+cpdef intptr_t malloc3DArray(intptr_t desc, size_t width, size_t height,
+                             size_t depth, unsigned int flags=*) except? 0
+cpdef intptr_t mallocArray(intptr_t desc, size_t width, size_t height,
+                           unsigned int flags=*) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
 cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
 cpdef hostUnregister(intptr_t ptr)
@@ -369,6 +368,5 @@ cdef _ensure_context()
 # Texture
 ##############################################################################
 
-cpdef createTextureObject(ResourceDescriptor ResDesc,
-                          TextureDescriptor TexDesc)
+cpdef createTextureObject(intptr_t ResDesc, intptr_t TexDesc)
 cpdef destroyTextureObject(TextureObject texObject)
