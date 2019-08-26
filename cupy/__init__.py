@@ -360,10 +360,17 @@ def common_type(*arrays):
     if len(arrays) == 0:
         return numpy.float16
 
-    return numpy.find_common_type(
-        [(numpy.float64 if a.dtype.kind in 'iu' else a.dtype) for a in arrays],
-        []
-    ).type
+    default_float_dtype = numpy.dtype('float64')
+    dtypes = []
+    for a in arrays:
+        if a.dtype.kind == 'b':
+            raise TypeError('can\'t get common type for non-numeric array')
+        elif a.dtype.kind in 'iu':
+            dtypes.append(default_float_dtype)
+        else:
+            dtypes.append(a.dtype)
+
+    return numpy.find_common_type(dtypes, []).type
 
 
 def result_type(*arrays_and_dtypes):

@@ -64,6 +64,13 @@ class TestCommonType(unittest.TestCase):
         assert type(ret) == type
         return ret
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_common_type_bool(self, xp, dtype):
+        array1 = _generate_type_routines_input(xp, dtype, 'array')
+        array2 = _generate_type_routines_input(xp, 'bool_', 'array')
+        xp.common_type(array1, array2)
+
 
 @testing.parameterize(
     *testing.product({
