@@ -599,6 +599,20 @@ _scatter_add_mask_kernel = ElementwiseKernel(
     'cupy_scatter_add_mask')
 
 
+_scatter_max_mask_kernel = ElementwiseKernel(
+    'raw T v, bool mask, S mask_scanned',
+    'T a',
+    'if (mask) a = max(a, v[mask_scanned - 1])',
+    'cupy_scatter_max_mask')
+
+
+_scatter_min_mask_kernel = ElementwiseKernel(
+    'raw T v, bool mask, S mask_scanned',
+    'T a',
+    'if (mask) a = min(a, v[mask_scanned - 1])',
+    'cupy_scatter_min_mask')
+
+
 _getitem_mask_kernel = ElementwiseKernel(
     'T a, bool mask, S mask_scanned',
     'raw T out',
@@ -854,6 +868,10 @@ cdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
         _scatter_update_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'add':
         _scatter_add_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'max':
+        _scatter_max_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'min':
+        _scatter_min_mask_kernel(src, mask, mask_scanned, a)
     else:
         raise ValueError('provided op is not supported')
 
