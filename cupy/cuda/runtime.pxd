@@ -49,10 +49,10 @@ cdef extern from *:
     ctypedef int Error 'cudaError_t'
     ctypedef int DataType 'cudaDataType'
 
-    ctypedef struct ChannelFormatDesc 'cudaChannelFormatDesc':
-        pass
-        #int f, w, x, y, z
     ctypedef int ChannelFormatKind 'cudaChannelFormatKind'
+    ctypedef struct ChannelFormatDesc 'cudaChannelFormatDesc':
+        int x, y, z, w
+        ChannelFormatKind f
     ctypedef unsigned long long TextureObject 'cudaTextureObject_t'
     ctypedef int ResourceType 'cudaResourceType'
     ctypedef int TextureAddressMode 'cudaTextureAddressMode'
@@ -289,6 +289,12 @@ cpdef enum:
     cudaDevAttrHostRegisterSupported = 99
     cudaDevAttrPageableMemoryAccessUsesHostPageTables = 100
     cudaDevAttrDirectManagedMemAccessFromHost = 101
+
+    # cudaChannelFormatKind
+    cudaChannelFormatKindSigned = 0
+    cudaChannelFormatKindUnsigned = 1
+    cudaChannelFormatKindFloat = 2
+    cudaChannelFormatKindNone = 3
 
     # cudaResourceType
     cudaResourceTypeArray = 0

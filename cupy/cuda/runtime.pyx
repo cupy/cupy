@@ -28,7 +28,7 @@ cdef class PointerAttributes:
 
 
 cdef class ChannelFormatDescriptor:
-    def __init__(self, int f, int w, int x, int y, int z):
+    def __init__(self, int x, int y, int z, int w, int f):
         # We don't call cudaCreateChannelDesc here to avoid out of scope 
         self.ptr = <intptr_t>PyMem_Malloc(sizeof(ChannelFormatDesc))
         cdef ChannelFormatDesc desc = (<ChannelFormatDesc*>self.ptr)[0]
@@ -56,12 +56,12 @@ cdef class ResourceDescriptor:
     def __init__(self, int restype, array=None, intptr_t devPtr=0,
                  ChannelFormatDescriptor chDesc=None, sizeInBytes=None, width=None, height=None,
                  pitchInBytes=None):
+        cdef ResourceType resType = <ResourceType>restype
         if resType == cudaResourceTypeMipmappedArray:
             # TODO(leofang): support this?
             raise NotImplementedError('cudaResourceTypeMipmappedArray is '
                                       'currently not supported.')
 
-        cdef ResourceType resType = <ResourceType>restype
         self.ptr = <intptr_t>PyMem_Malloc(sizeof(ResourceDesc))
         cdef ResourceDesc desc = (<ResourceDesc*>self.ptr)[0]
         desc.resType = resType
