@@ -10,9 +10,11 @@ There are four differences compared to the original C API.
 
 """
 cimport cpython  # NOQA
+from cpython.mem cimport PyMem_Malloc, PyMem_Free  # NOQA
 cimport cython  # NOQA
 
 from cupy.cuda cimport driver
+
 
 cdef class PointerAttributes:
 
@@ -23,6 +25,134 @@ cdef class PointerAttributes:
         self.hostPointer = hostPointer
         self.isManaged = isManaged
         self.memoryType = memoryType
+
+
+cdef class ChannelFormatDescriptor:
+    def __init__(self, int f, int w, int x, int y, int z):
+        # We don't call cudaCreateChannelDesc here to avoid out of scope 
+        self.ptr = <intptr_t>PyMem_Malloc(sizeof(ChannelFormatDesc))
+        cdef ChannelFormatDesc desc = (<ChannelFormatDesc*>self.ptr)[0]
+        desc.f = <ChannelFormatKind>f
+        desc.w = w
+        desc.x = x
+        desc.y = y
+        desc.z = z
+
+    def __dealloc__(self):
+        PyMem_Free(<ChannelFormatDesc*>self.ptr)
+        self.ptr = 0
+
+#    cdef ChannelFormatDesc* get_desc(self):
+#        return self.ptr
+##        cdef cudaChannelFormatDesc desc
+##        desc.f = self.f
+##        desc.w = self.w
+##        desc.x = self.x
+##        desc.y = self.y
+##        desc.z = self.z
+##        return desc
+
+cdef class ResourceDescriptor:
+    def __init__(self, int restype, array=None, intptr_t devPtr=0,
+                 ChannelFormatDescriptor chDesc=None, sizeInBytes=None, width=None, height=None,
+                 pitchInBytes=None):
+        if resType == cudaResourceTypeMipmappedArray:
+            # TODO(leofang): support this?
+            raise NotImplementedError('cudaResourceTypeMipmappedArray is '
+                                      'currently not supported.')
+
+        cdef ResourceType resType = <ResourceType>restype
+        self.ptr = <intptr_t>PyMem_Malloc(sizeof(ResourceDesc))
+        cdef ResourceDesc desc = (<ResourceDesc*>self.ptr)[0]
+        desc.resType = resType
+        if resType == cudaResourceTypeArray:
+            desc.res.array.array = <Array>array  # TODO: check this
+        elif resType == cudaResourceTypeLinear:
+            desc.res.linear.devPtr = <void*>devPtr
+            desc.res.linear.desc = (<ChannelFormatDesc*>chDesc.ptr)[0]
+            desc.res.linear.sizeInBytes = sizeInBytes
+        elif resType == cudaResourceTypePitch2D:
+            desc.res.pitch2D.devPtr = <void*>devPtr
+            desc.res.pitch2D.desc = (<ChannelFormatDesc*>chDesc.ptr)[0]
+            desc.res.pitch2D.width = width
+            desc.res.pitch2D.height = height
+            desc.res.pitch2D.pitchInBytes = pitchInBytes
+
+    def __dealloc__(self):
+        PyMem_Free(<ResourceDesc*>self.ptr)
+        self.ptr = 0
+
+#    cdef ResourceDesc get_cudaResourceDesc(self):
+#        cdef ResourceDesc desc
+#        resType = desc.resType = self.resType
+#        if resType == cudaResourceTypeArray:
+#            desc.array = self.array
+#        elif resType == cudaResourceTypeLinear:
+#            desc.devPtr = self.devPtr = devPtr
+#            desc.desc = self.desc.get_cudaChannelFormatDesc()
+#            desc.sizeInBytes = self.sizeInBytes
+#        elif resType == cudaResourceTypePitch2D:
+#            desc.devPtr = self.devPtr = devPtr
+#            desc.desc = self.desc.get_cudaChannelFormatDesc()
+#            desc.width = self.width
+#            desc.height = self.height
+#            desc.pitchInBytes = self.pitchInBytes
+#        return desc
+
+cdef class TextureDescriptor:
+    def __init__(self, addressModes, int filterMode, int readMode,
+                 sRGB=None, borderColors=None, normalizedCoords=None,
+                 maxAnisotropy=None):
+        self.ptr = <intptr_t>PyMem_Malloc(sizeof(TextureDesc))
+        cdef TextureDesc desc = (<TextureDesc*>self.ptr)[0]
+        for i, mode in enumerate(addressModes):
+            desc.addressMode[i] = <TextureAddressMode>mode
+        desc.filterMode = <TextureFilterMode>filterMode
+        desc.readMode = <TextureReadMode>readMode
+        if sRGB is not None:
+            desc.sRGB = sRGB
+        if borderColors is not None:
+            for i, color in enumerate(borderColors):
+                desc.borderColor[i] = color
+        if normalizedCoords is not None:
+            desc.normalizedCoords = normalizedCoords
+        if maxAnisotropy is not None:
+            desc.maxAnisotropy = maxAnisotropy
+
+    def __dealloc__(self):
+        PyMem_Free(<TextureDesc*>self.ptr)
+        self.ptr = 0
+
+#        for i, mode in enumerate(addressModes):
+#            self.addressMode[i] = mode
+#        self.filterMode = filterMode
+#        self.readMode = readMode
+#        if sRGB is not None:
+#            self.sRGB = sRGB
+#        if borderColors is not None:
+#            assert len(borderColors) == 4
+#            for i, color in enumerate(borderColors):            
+#                self.borderColor[i] = color
+#        if normalizedCoords is not None:
+#            self.normalizedCoords = normalizedCoords
+#        if maxAnisotropy is not None:
+#            self.maxAnisotropy = maxAnisotropy
+#
+#    cdef TextureDesc get_cudaTextureDesc(self):
+#        cdef cudaTextureDesc desc
+#        for i, mode in enumerate(self.addressMode):
+#            desc.addressMode = mode
+#        desc.filterMode = self.filterMode
+#        desc.readMode = self.readMode
+#        if self.sRGB is not None:
+#            desc.sRGB = self.sRGB
+#        if borderColors is not None:
+#            for i, color in enumerate(self.borderColor):
+#                desc.borderColor[i] = color
+#        if self.normalizedCoords is not None:
+#            desc.normalizedCoords = self.normalizedCoords
+#        if self.maxAnisotropy is not None:
+#            desc.maxAnisotropy = self.maxAnisotropy
 
 
 ###############################################################################
@@ -527,18 +657,19 @@ cdef _ensure_context():
 ##############################################################################
 
 cpdef createChannelDesc(int x, int y, int z, int w, ChannelFormatKind f):
+    # we don't call this, as this seems to live on the stack?
     cdef ChannelFormatDesc desc
     with nogil:
         desc = cudaCreateChannelDesc(x, y, z, w, f)
     return desc
 
-cpdef createTextureObject(intptr_t pResDesc, intptr_t pTexDesc,
-                          intptr_t pResViewDesc):
+cpdef createTextureObject(ResourceDescriptor ResDesc,
+                          TextureDescriptor TexDesc):
     cdef TextureObject texobj
     with nogil:
-        status = cudaCreateTextureObject(&texobj, <ResourceDesc*>pResDesc,
-                                         <TextureDesc*>pTexDesc,
-                                         <ResourceViewDesc*>pResViewDesc)
+        status = cudaCreateTextureObject(&texobj, <ResourceDesc*>ResDesc.ptr,
+                                         <TextureDesc*>TexDesc.ptr,
+                                         <ResourceViewDesc*>NULL)
     check_status(status)
     return texobj
 

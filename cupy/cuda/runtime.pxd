@@ -13,6 +13,37 @@ cdef class PointerAttributes:
         public int isManaged
         public int memoryType
 
+cdef class ChannelFormatDescriptor:
+    cdef:
+        readonly intptr_t ptr
+        #public int f, w, x, y, z
+
+cdef class ResourceDescriptor:
+    cdef:
+        readonly intptr_t ptr
+        #public int resType
+        #public Array array
+        #public intptr_t devPtr
+        #public ChannelFormatDescriptor desc
+        #public size_t sizeInBytes
+        #public size_t width
+        #public size_t height
+        #public size_t pitchInBytes
+
+cdef class TextureDescriptor:
+    cdef:
+        readonly intptr_t ptr
+        #int addressMode[3]
+        #int filterMode
+        #int readMode
+        #int sRGB
+        #float borderColor[4]
+        #int  normalizedCoords
+        #unsigned int maxAnisotropy
+        ##int mipmapFilterMode
+        ##float mipmapLevelBias
+        ##float minMipmapLevelClamp
+        ##float maxMipmapLevelClamp
 
 cdef extern from *:
     ctypedef int Error 'cudaError_t'
@@ -20,11 +51,10 @@ cdef extern from *:
 
     ctypedef struct ChannelFormatDesc 'cudaChannelFormatDesc':
         pass
+        #int f, w, x, y, z
     ctypedef int ChannelFormatKind 'cudaChannelFormatKind'
     ctypedef unsigned long long TextureObject 'cudaTextureObject_t'
-    ctypedef struct ResourceDesc 'cudaResourceDesc'
     ctypedef int ResourceType 'cudaResourceType'
-    ctypedef struct TextureDesc 'cudaTextureDesc'
     ctypedef int TextureAddressMode 'cudaTextureAddressMode'
     ctypedef int TextureFilterMode 'cudaTextureFilterMode'
     ctypedef int TextureReadMode 'cudaTextureReadMode'
@@ -32,6 +62,82 @@ cdef extern from *:
     ctypedef void* Array 'cudaArray_t'
     ctypedef struct Extent 'cudaExtent':
         pass
+
+    # This is for the annoying nested struct cudaResourceDesc, which is not
+    # perfectly supprted in Cython
+    ctypedef struct _array:
+        Array array
+
+    ctypedef struct _mipmap:
+        pass  # TODO(leofang): support this?
+
+    ctypedef struct _linear:
+        void* devPtr
+        ChannelFormatDesc desc
+        size_t  sizeInBytes
+
+    ctypedef struct _pitch2D:   
+        void* devPtr
+        ChannelFormatDesc desc
+        size_t width
+        size_t height
+        size_t pitchInBytes
+
+    ctypedef union _res:
+        _array array
+        _mipmap mipmap
+        _linear linear
+        _pitch2D pitch2D
+
+    ctypedef struct ResourceDesc 'cudaResourceDesc':
+        int resType
+        _res res
+    # cudaResourceDesc done
+
+        #union res:
+        #    _array ar
+        #    _mipmap mi
+        #    _linear li
+        #    _pitch2D pi
+
+        ## this doesn't work...
+        ## cython doesn't support nested struct, but we are allowed to flatten
+        ## it all out:
+        #Array array
+        #void* devPtr
+        #ChannelFormatDesc desc
+        #size_t sizeInBytes
+        #size_t width
+        #size_t height
+        #size_t pitchInBytes
+
+        #ctypedef union res:
+        #    ctypedef struct array:
+        #        Array array
+        #    # struct mipmap:
+        #    ctypedef struct linear:
+        #        void* devPtr
+        #        ChannelFormatDesc desc
+        #        size_t  sizeInBytes
+        #    ctypedef struct pitch2D:   
+        #        void* devPtr
+        #        ChannelFormatDesc desc
+        #        size_t width
+        #        size_t height
+        #        size_t pitchInBytes
+
+    ctypedef struct TextureDesc 'cudaTextureDesc':
+        int addressMode[3];
+        int filterMode;
+        int readMode;
+        int sRGB;
+        float borderColor[4];
+        int normalizedCoords;
+        unsigned int maxAnisotropy;
+        #int mipmapFilterMode;
+        #float mipmapLevelBias;
+        #float minMipmapLevelClamp;
+        #float maxMipmapLevelClamp;
 
 
 ###############################################################################
@@ -184,25 +290,25 @@ cpdef enum:
     cudaDevAttrPageableMemoryAccessUsesHostPageTables = 100
     cudaDevAttrDirectManagedMemAccessFromHost = 101
 
-    ## cudaResourceType
-    #cudaResourceTypeArray = 0
-    #cudaResourceTypeMipmappedArray = 1
-    #cudaResourceTypeLinear = 2
-    #cudaResourceTypePitch2D = 3
+    # cudaResourceType
+    cudaResourceTypeArray = 0
+    cudaResourceTypeMipmappedArray = 1
+    cudaResourceTypeLinear = 2
+    cudaResourceTypePitch2D = 3
 
-    ## cudaTextureAddressMode
-    #cudaAddressModeWrap = 0
-    #cudaAddressModeClamp = 1
-    #cudaAddressModeMirror = 2
-    #cudaAddressModeBorder = 3
+    # cudaTextureAddressMode
+    cudaAddressModeWrap = 0
+    cudaAddressModeClamp = 1
+    cudaAddressModeMirror = 2
+    cudaAddressModeBorder = 3
 
-    ## cudaTextureFilterMode
-    #cudaFilterModePoint = 0
-    #cudaFilterModeLinear = 1
+    # cudaTextureFilterMode
+    cudaFilterModePoint = 0
+    cudaFilterModeLinear = 1
 
-    ## cudaTextureReadMode
-    #cudaReadModeElementType = 0
-    #cudaReadModeNormalizedFloat = 1
+    # cudaTextureReadMode
+    cudaReadModeElementType = 0
+    cudaReadModeNormalizedFloat = 1
 
 
 ###############################################################################
@@ -315,7 +421,6 @@ cpdef createChannelDesc(int x, int y, int z, int w, ChannelFormatKind f)
 #cpdef createTextureObject(ResourceDesc* pResDesc,
 #                          TextureDesc* pTexDesc,
 #                          ResourceViewDesc* pResViewDesc)
-cpdef createTextureObject(intptr_t pResDesc,
-                          intptr_t pTexDesc,
-                          intptr_t pResViewDesc)
+cpdef createTextureObject(ResourceDescriptor ResDesc,
+                          TextureDescriptor TexDesc)
 cpdef destroyTextureObject(TextureObject texObject)
