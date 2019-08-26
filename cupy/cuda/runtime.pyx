@@ -29,14 +29,20 @@ cdef class PointerAttributes:
 
 cdef class ChannelFormatDescriptor:
     def __init__(self, int x, int y, int z, int w, int f):
-        # We don't call cudaCreateChannelDesc here to avoid out of scope 
+        # We don't call cudaCreateChannelDesc here to avoid out of scope
+        #
+        # WARNING: don't use [0] or cython.operator.dereference to dereference
+        # a pointer to struct for writing to its members !!! (But read is OK.)
+        # Turns out while there's no arrow operator '->' in Cython, one can
+        # just treat the ptr as the real object and access the struct
+        # attributes. This applies to several classes below.
         self.ptr = <intptr_t>PyMem_Malloc(sizeof(ChannelFormatDesc))
-        cdef ChannelFormatDesc desc = (<ChannelFormatDesc*>self.ptr)[0]
-        desc.f = <ChannelFormatKind>f
-        desc.w = w
+        cdef ChannelFormatDesc* desc = (<ChannelFormatDesc*>self.ptr)
         desc.x = x
         desc.y = y
         desc.z = z
+        desc.w = w
+        desc.f = <ChannelFormatKind>f
 
     def __dealloc__(self):
         PyMem_Free(<ChannelFormatDesc*>self.ptr)
@@ -56,6 +62,8 @@ cdef class ResourceDescriptor:
     def __init__(self, int restype, array=None, intptr_t devPtr=0,
                  ChannelFormatDescriptor chDesc=None, sizeInBytes=None, width=None, height=None,
                  pitchInBytes=None):
+        # array is a CUDAArray instance, but to avoid circular import problem
+        # we can't specify its type here
         cdef ResourceType resType = <ResourceType>restype
         if resType == cudaResourceTypeMipmappedArray:
             # TODO(leofang): support this?
@@ -63,10 +71,10 @@ cdef class ResourceDescriptor:
                                       'currently not supported.')
 
         self.ptr = <intptr_t>PyMem_Malloc(sizeof(ResourceDesc))
-        cdef ResourceDesc desc = (<ResourceDesc*>self.ptr)[0]
+        cdef ResourceDesc* desc = (<ResourceDesc*>self.ptr)
         desc.resType = resType
         if resType == cudaResourceTypeArray:
-            desc.res.array.array = <Array>array  # TODO: check this
+            desc.res.array.array = <Array>array.ptr  # TODO: check this
         elif resType == cudaResourceTypeLinear:
             desc.res.linear.devPtr = <void*>devPtr
             desc.res.linear.desc = (<ChannelFormatDesc*>chDesc.ptr)[0]
@@ -81,6 +89,12 @@ cdef class ResourceDescriptor:
     def __dealloc__(self):
         PyMem_Free(<ResourceDesc*>self.ptr)
         self.ptr = 0
+
+    #def describe(self):
+    #    cdef ResourceDesc* desc = <ResourceDesc*>self.ptr
+    #    #print(<int>desc.res.array.array)
+    #    print(<intptr_t>desc.res.array.array)
+        
 
 #    cdef ResourceDesc get_cudaResourceDesc(self):
 #        cdef ResourceDesc desc
@@ -104,7 +118,7 @@ cdef class TextureDescriptor:
                  sRGB=None, borderColors=None, normalizedCoords=None,
                  maxAnisotropy=None):
         self.ptr = <intptr_t>PyMem_Malloc(sizeof(TextureDesc))
-        cdef TextureDesc desc = (<TextureDesc*>self.ptr)[0]
+        cdef TextureDesc* desc = (<TextureDesc*>self.ptr)
         for i, mode in enumerate(addressModes):
             desc.addressMode[i] = <TextureAddressMode>mode
         desc.filterMode = <TextureFilterMode>filterMode
@@ -393,6 +407,7 @@ cpdef intptr_t mallocManaged(
 cpdef intptr_t malloc3DArray(ChannelFormatDescriptor desc, size_t width,
                              size_t height, size_t depth,
                              unsigned int flags = 0) except? 0:
+    print("malloc3DArray is called")
     cdef Array ptr
     cdef Extent extent = make_cudaExtent(width, height, depth)
     with nogil:
@@ -404,6 +419,7 @@ cpdef intptr_t malloc3DArray(ChannelFormatDescriptor desc, size_t width,
 
 cpdef intptr_t mallocArray(ChannelFormatDescriptor desc, size_t width,
                            size_t height, unsigned int flags = 0) except? 0:
+    print("mallocArray is called")
     cdef Array ptr
     with nogil:
         status = cudaMallocArray(&ptr, <ChannelFormatDesc*>desc.ptr, width,
