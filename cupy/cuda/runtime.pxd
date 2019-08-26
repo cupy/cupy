@@ -30,11 +30,13 @@ cdef extern from *:
     ctypedef struct ResourceViewDesc 'cudaResourceViewDesc'
     ctypedef void* Array 'cudaArray_t'
     ctypedef struct Extent 'cudaExtent':
-        pass
+        size_t width, height, depth
     ctypedef struct Pos 'cudaPos':
-        pass
+        size_t x, y, z
     ctypedef struct PitchedPtr 'cudaPitchedPtr':
-        pass
+        size_t pitch
+        void* ptr
+        size_t xsize, ysize
     ctypedef int MemoryKind 'enum cudaMemcpyKind'
     ctypedef void* MipmappedArray 'cudaMipmappedArray_t'
 
@@ -378,6 +380,9 @@ cdef _ensure_context()
 
 cpdef createTextureObject(intptr_t ResDesc, intptr_t TexDesc)
 cpdef destroyTextureObject(TextureObject texObject)
+cdef Extent make_Extent(size_t w, size_t h, size_t d)
+cdef Pos make_Pos(size_t x, size_t y, size_t z)
+cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz)
 
 cdef class ChannelFormatDescriptor:
     cdef:

@@ -110,6 +110,7 @@ cdef extern from 'cupy_cuda.h' nogil:
                                  const void* ptr)
     Extent make_cudaExtent(size_t w, size_t h, size_t d)
     Pos make_cudaPos(size_t x, size_t y, size_t z)
+    PitchedPtr make_cudaPitchedPtr(void* d, size_t p, size_t xsz, size_t ysz)
 
     # Stream and Event
     int cudaStreamCreate(driver.Stream* pStream)
@@ -552,6 +553,15 @@ cpdef destroyTextureObject(TextureObject texObject):
     with nogil:
         status = cudaDestroyTextureObject(texObject)
     check_status(status)
+
+cdef Extent make_Extent(size_t w, size_t h, size_t d):
+    return make_cudaExtent(w, h, d)
+
+cdef Pos make_Pos(size_t x, size_t y, size_t z):
+    return make_cudaPos(x, y, z)
+
+cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz):
+    return make_cudaPitchedPtr(<void*>d, p, xsz, ysz)
 
 cdef class ChannelFormatDescriptor:
     def __init__(self, int x, int y, int z, int w, int f):
