@@ -28,108 +28,12 @@ cdef class PointerAttributes:
         self.memoryType = memoryType
 
 
-cdef class ChannelFormatDescriptor:
-    def __init__(self, int x, int y, int z, int w, int f):
-        # We don't call cudaCreateChannelDesc() here to avoid out of scope
-        #
-        # WARNING: don't use [0] or cython.operator.dereference to dereference
-        # a pointer to struct for writing to its members !!! (But read is OK.)
-        # Turns out while there's no arrow operator '->' in Cython, one can
-        # just treat the ptr as a real object and access the struct attributes.
-        # This applies to several classes below.
-        self.ptr = <intptr_t>PyMem_Malloc(sizeof(ChannelFormatDesc))
-        cdef ChannelFormatDesc* desc = (<ChannelFormatDesc*>self.ptr)
-        desc.x = x
-        desc.y = y
-        desc.z = z
-        desc.w = w
-        desc.f = <ChannelFormatKind>f
-
-    def __dealloc__(self):
-        PyMem_Free(<ChannelFormatDesc*>self.ptr)
-        self.ptr = 0
-
-
-cdef class ResourceDescriptor:
-    def __init__(self, int restype, intptr_t cuArrayPtr=0, intptr_t devPtr=0,
-                 ChannelFormatDescriptor chDesc=None, sizeInBytes=None, width=None, height=None,
-                 pitchInBytes=None):
-        '''
-        Args:
-            cuArrayPtr (CUDAArray.ptr)
-        '''
-        cdef ResourceType resType = <ResourceType>restype
-        if resType == cudaResourceTypeMipmappedArray:
-            # TODO(leofang): support this?
-            raise NotImplementedError('cudaResourceTypeMipmappedArray is '
-                                      'currently not supported.')
-
-        self.ptr = <intptr_t>PyMem_Malloc(sizeof(ResourceDesc))
-        cdef ResourceDesc* desc = (<ResourceDesc*>self.ptr)
-        c_memset(desc, 0, sizeof(ResourceDesc))
-        cdef Array arr_ptr = <Array>cuArrayPtr
-
-        desc.resType = resType
-        if resType == cudaResourceTypeArray:
-            desc.res.array.array = arr_ptr
-        elif resType == cudaResourceTypeLinear:
-            desc.res.linear.devPtr = <void*>devPtr
-            desc.res.linear.desc = (<ChannelFormatDesc*>chDesc.ptr)[0]
-            desc.res.linear.sizeInBytes = sizeInBytes
-        elif resType == cudaResourceTypePitch2D:
-            desc.res.pitch2D.devPtr = <void*>devPtr
-            desc.res.pitch2D.desc = (<ChannelFormatDesc*>chDesc.ptr)[0]
-            desc.res.pitch2D.width = width
-            desc.res.pitch2D.height = height
-            desc.res.pitch2D.pitchInBytes = pitchInBytes
-
-    def __dealloc__(self):
-        PyMem_Free(<ResourceDesc*>self.ptr)
-        self.ptr = 0
-
-    def describe(self):
-        cdef ResourceDesc* desc = <ResourceDesc*>self.ptr
-        print(<intptr_t>(desc.res.array.array))
-
-
-cdef class TextureDescriptor:
-    def __init__(self, addressModes=None, int filterMode=0, int readMode=0,
-                 sRGB=None, borderColors=None, normalizedCoords=None,
-                 maxAnisotropy=None):
-        self.ptr = <intptr_t>PyMem_Malloc(sizeof(TextureDesc))
-        cdef TextureDesc* desc = (<TextureDesc*>self.ptr)
-        c_memset(desc, 0, sizeof(TextureDesc))
-
-        if addressModes is not None:
-            assert len(addressModes) <= 3
-            for i, mode in enumerate(addressModes):
-                desc.addressMode[i] = <TextureAddressMode>mode
-        desc.filterMode = <TextureFilterMode>filterMode
-        desc.readMode = <TextureReadMode>readMode
-        if sRGB is not None:
-            desc.sRGB = sRGB
-        if borderColors is not None:
-            assert len(borderColors) <= 4
-            for i, color in enumerate(borderColors):
-                desc.borderColor[i] = color
-        if normalizedCoords is not None:
-            desc.normalizedCoords = normalizedCoords
-        if maxAnisotropy is not None:
-            desc.maxAnisotropy = maxAnisotropy
-        # TODO(leofang): support mipmap?
-
-    def __dealloc__(self):
-        PyMem_Free(<TextureDesc*>self.ptr)
-        self.ptr = 0
-
-
 ###############################################################################
 # Extern
 ###############################################################################
 cdef extern from *:
     ctypedef int DeviceAttr 'enum cudaDeviceAttr'
     ctypedef int MemoryAdvise 'enum cudaMemoryAdvise'
-    ctypedef int MemoryKind 'enum cudaMemcpyKind'
 
     ctypedef void StreamCallbackDef(
         driver.Stream stream, Error status, void* userData)
@@ -192,6 +96,9 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaMemcpy2DToArray(Array dst, size_t wOffset, size_t hOffset,
                             const void* src, size_t spitch, size_t width,
                             size_t height, MemoryKind kind)
+    int cudaMemcpy3D(Memcpy3DParms* Memcpy3DParmsPtr)
+    int cudaMemcpy3DAsync(Memcpy3DParms* Memcpy3DParmsPtr,
+                          driver.Stream stream)
     int cudaMemset(void* devPtr, int value, size_t count)
     int cudaMemsetAsync(void* devPtr, int value, size_t count,
                         driver.Stream stream)
@@ -202,6 +109,7 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaPointerGetAttributes(_PointerAttributes* attributes,
                                  const void* ptr)
     Extent make_cudaExtent(size_t w, size_t h, size_t d)
+    Pos make_cudaPos(size_t x, size_t y, size_t z)
 
     # Stream and Event
     int cudaStreamCreate(driver.Stream* pStream)
@@ -457,6 +365,19 @@ cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
     check_status(status)
 
 
+cpdef memcpy3D(intptr_t Memcpy3DParmsPtr):
+    with nogil:
+        status = cudaMemcpy3D(<Memcpy3DParms*>Memcpy3DParmsPtr)
+    check_status(status)
+
+
+cpdef memcpy3DAsync(intptr_t Memcpy3DParmsPtr, size_t stream):
+    with nogil:
+        status = cudaMemcpy3DAsync(<Memcpy3DParms*>Memcpy3DParmsPtr,
+                                   <driver.Stream> stream)
+    check_status(status)
+
+
 cpdef memset(intptr_t ptr, int value, size_t size):
     with nogil:
         status = cudaMemset(<void*>ptr, value, size)
@@ -631,3 +552,97 @@ cpdef destroyTextureObject(TextureObject texObject):
     with nogil:
         status = cudaDestroyTextureObject(texObject)
     check_status(status)
+
+cdef class ChannelFormatDescriptor:
+    def __init__(self, int x, int y, int z, int w, int f):
+        # We don't call cudaCreateChannelDesc() here to avoid out of scope
+        #
+        # WARNING: don't use [0] or cython.operator.dereference to dereference
+        # a pointer to struct for writing to its members !!! (But read is OK.)
+        # Turns out while there's no arrow operator '->' in Cython, one can
+        # just treat the ptr as a real object and access the struct attributes.
+        # This applies to several classes below.
+        self.ptr = <intptr_t>PyMem_Malloc(sizeof(ChannelFormatDesc))
+        cdef ChannelFormatDesc* desc = (<ChannelFormatDesc*>self.ptr)
+        desc.x = x
+        desc.y = y
+        desc.z = z
+        desc.w = w
+        desc.f = <ChannelFormatKind>f
+
+    def __dealloc__(self):
+        PyMem_Free(<ChannelFormatDesc*>self.ptr)
+        self.ptr = 0
+
+
+cdef class ResourceDescriptor:
+    def __init__(self, int restype, intptr_t cuArrayPtr=0, intptr_t devPtr=0,
+                 ChannelFormatDescriptor chDesc=None, sizeInBytes=None, width=None, height=None,
+                 pitchInBytes=None):
+        '''
+        Args:
+            cuArrayPtr (CUDAArray.ptr)
+        '''
+        cdef ResourceType resType = <ResourceType>restype
+        if resType == cudaResourceTypeMipmappedArray:
+            # TODO(leofang): support this?
+            raise NotImplementedError('cudaResourceTypeMipmappedArray is '
+                                      'currently not supported.')
+
+        self.ptr = <intptr_t>PyMem_Malloc(sizeof(ResourceDesc))
+        cdef ResourceDesc* desc = (<ResourceDesc*>self.ptr)
+        c_memset(desc, 0, sizeof(ResourceDesc))
+        cdef Array arr_ptr = <Array>cuArrayPtr
+
+        desc.resType = resType
+        if resType == cudaResourceTypeArray:
+            desc.res.array.array = arr_ptr
+        elif resType == cudaResourceTypeLinear:
+            desc.res.linear.devPtr = <void*>devPtr
+            desc.res.linear.desc = (<ChannelFormatDesc*>chDesc.ptr)[0]
+            desc.res.linear.sizeInBytes = sizeInBytes
+        elif resType == cudaResourceTypePitch2D:
+            desc.res.pitch2D.devPtr = <void*>devPtr
+            desc.res.pitch2D.desc = (<ChannelFormatDesc*>chDesc.ptr)[0]
+            desc.res.pitch2D.width = width
+            desc.res.pitch2D.height = height
+            desc.res.pitch2D.pitchInBytes = pitchInBytes
+
+    def __dealloc__(self):
+        PyMem_Free(<ResourceDesc*>self.ptr)
+        self.ptr = 0
+
+    def describe(self):
+        cdef ResourceDesc* desc = <ResourceDesc*>self.ptr
+        print(<intptr_t>(desc.res.array.array))
+
+
+cdef class TextureDescriptor:
+    def __init__(self, addressModes=None, int filterMode=0, int readMode=0,
+                 sRGB=None, borderColors=None, normalizedCoords=None,
+                 maxAnisotropy=None):
+        self.ptr = <intptr_t>PyMem_Malloc(sizeof(TextureDesc))
+        cdef TextureDesc* desc = (<TextureDesc*>self.ptr)
+        c_memset(desc, 0, sizeof(TextureDesc))
+
+        if addressModes is not None:
+            assert len(addressModes) <= 3
+            for i, mode in enumerate(addressModes):
+                desc.addressMode[i] = <TextureAddressMode>mode
+        desc.filterMode = <TextureFilterMode>filterMode
+        desc.readMode = <TextureReadMode>readMode
+        if sRGB is not None:
+            desc.sRGB = sRGB
+        if borderColors is not None:
+            assert len(borderColors) <= 4
+            for i, color in enumerate(borderColors):
+                desc.borderColor[i] = color
+        if normalizedCoords is not None:
+            desc.normalizedCoords = normalizedCoords
+        if maxAnisotropy is not None:
+            desc.maxAnisotropy = maxAnisotropy
+        # TODO(leofang): support mipmap?
+
+    def __dealloc__(self):
+        PyMem_Free(<TextureDesc*>self.ptr)
+        self.ptr = 0

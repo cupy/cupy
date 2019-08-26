@@ -13,17 +13,6 @@ cdef class PointerAttributes:
         public int isManaged
         public int memoryType
 
-cdef class ChannelFormatDescriptor:
-    cdef:
-        readonly intptr_t ptr
-
-cdef class ResourceDescriptor:
-    cdef:
-        readonly intptr_t ptr
-
-cdef class TextureDescriptor:
-    cdef:
-        readonly intptr_t ptr
 
 cdef extern from *:
     ctypedef int Error 'cudaError_t'
@@ -42,6 +31,11 @@ cdef extern from *:
     ctypedef void* Array 'cudaArray_t'
     ctypedef struct Extent 'cudaExtent':
         pass
+    ctypedef struct Pos 'cudaPos':
+        pass
+    ctypedef struct PitchedPtr 'cudaPitchedPtr':
+        pass
+    ctypedef int MemoryKind 'enum cudaMemcpyKind'
     ctypedef void* MipmappedArray 'cudaMipmappedArray_t'
 
     # This is for the annoying nested struct cudaResourceDesc, which is not
@@ -74,6 +68,18 @@ cdef extern from *:
         int resType
         _res res
     # typedef cudaResourceDesc done
+
+    ctypedef struct Memcpy3DParms 'cudaMemcpy3DParms':
+        Array srcArray
+        Pos srcPos
+        PitchedPtr srcPtr
+
+        Array dstArray
+        Pos dstPos
+        PitchedPtr dstPtr
+
+        Extent extent
+        MemoryKind kind
 
     ctypedef struct TextureDesc 'cudaTextureDesc':
         int addressMode[3];
@@ -328,6 +334,8 @@ cpdef memcpyPeerAsync(intptr_t dst, int dstDevice,
 cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
                       intptr_t src, size_t spitch, size_t width, size_t height,
                       int kind)
+cpdef memcpy3D(intptr_t Memcpy3DParmsPtr)
+cpdef memcpy3DAsync(intptr_t Memcpy3DParmsPtr, size_t stream)
 cpdef memset(intptr_t ptr, int value, size_t size)
 cpdef memsetAsync(intptr_t ptr, int value, size_t size, size_t stream)
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
@@ -370,3 +378,15 @@ cdef _ensure_context()
 
 cpdef createTextureObject(intptr_t ResDesc, intptr_t TexDesc)
 cpdef destroyTextureObject(TextureObject texObject)
+
+cdef class ChannelFormatDescriptor:
+    cdef:
+        readonly intptr_t ptr
+
+cdef class ResourceDescriptor:
+    cdef:
+        readonly intptr_t ptr
+
+cdef class TextureDescriptor:
+    cdef:
+        readonly intptr_t ptr
