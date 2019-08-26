@@ -921,6 +921,12 @@ cdef _scatter_op(ndarray a, slices, value, op):
     if op == 'add':
         _math._add(y, value, y)
         return
+    if op == 'max':
+        cupy.maximum(y, value, y)
+        return
+    if op == 'min':
+        cupy.minimum(y, value, y)
+        return
     raise ValueError('this op is not supported')
 
 
