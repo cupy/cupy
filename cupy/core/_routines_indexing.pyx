@@ -716,8 +716,8 @@ cdef _scatter_op_single(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'max':
         if not issubclass(v.dtype.type,
-                      (numpy.int32, numpy.float32, numpy.float64,
-                       numpy.uint32, numpy.uint64, numpy.ulonglong)):
+                          (numpy.int32, numpy.float32, numpy.float64,
+                           numpy.uint32, numpy.uint64, numpy.ulonglong)):
             raise TypeError(
                 'scatter_max only supports int32, float32, float64, '
                 'uint32, uint64 as data type')
@@ -725,8 +725,8 @@ cdef _scatter_op_single(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'min':
         if not issubclass(v.dtype.type,
-                      (numpy.int32, numpy.float32, numpy.float64,
-                       numpy.uint32, numpy.uint64, numpy.ulonglong)):
+                          (numpy.int32, numpy.float32, numpy.float64,
+                           numpy.uint32, numpy.uint64, numpy.ulonglong)):
             raise TypeError(
                 'scatter_min only supports int32, float32, float64, '
                 'uint32, uint64 as data type')
