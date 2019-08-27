@@ -11,9 +11,7 @@ cdef class CUDAArray(BaseMemory):
         readonly unsigned int flags
         readonly int ndim
         int _get_kind(self, src, dst)
-        _make_cudaMemcpy2DParams(self, src, dst)
         runtime.Memcpy3DParms* _make_cudaMemcpy3DParms(self, src, dst)
-        _print_param(self, runtime.Memcpy3DParms* param)
 
 
 cdef class TextureObject:

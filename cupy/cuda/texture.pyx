@@ -58,42 +58,6 @@ cdef class CUDAArray(BaseMemory):
             raise
         return kind
 
-    cdef _make_cudaMemcpy2DParams(self, src, dst):
-        cdef intptr_t srcPtr, dstPtr
-        cdef size_t dpitch, spitch, width, height
-        cdef runtime.MemoryKind kind
-
-        # get src
-        if src is self:
-            spitch = self.width*dst.dtype.itemsize
-            width = spitch
-            height = self.height
-            srcPtr = self.ptr
-        else:
-            spitch = src.shape[-1]*src.dtype.itemsize
-            if isinstance(src, cupy.core.core.ndarray):
-                srcPtr = src.data.ptr
-            else:  # numpy.ndarray
-                srcPtr = src.ctypes.data
-
-        # get dst
-        if dst is self:
-            dpitch = self.width*src.dtype.itemsize
-            width = dpitch
-            height = self.height
-            dstPtr = self.ptr
-        else:
-            dpitch = dst.shape[-1]*dst.dtype.itemsize
-            if isinstance(dst, cupy.core.core.ndarray):
-                dstPtr = dst.data.ptr
-            else:  # numpy.ndarray
-                dstPtr = dst.ctypes.data
-
-        # get kind
-        kind = <runtime.MemoryKind>self._get_kind(src, dst)
-
-        return dstPtr, dpitch, srcPtr, spitch, width, height, kind
-
     cdef runtime.Memcpy3DParms* _make_cudaMemcpy3DParms(self, src, dst):
         '''private helper for 3D transfer'''
         cdef runtime.Memcpy3DParms* param = \
@@ -116,7 +80,7 @@ cdef class CUDAArray(BaseMemory):
             if src.ndim >= 2:
                 height = src.shape[-2]
             else:
-                height = 0
+                height = 1  # same "one-stride" trick here
 
             if isinstance(src, cupy.core.core.ndarray):
                 ptr = src.data.ptr
@@ -138,7 +102,7 @@ cdef class CUDAArray(BaseMemory):
             if dst.ndim >= 2:
                 height = dst.shape[-2]
             else:
-                height = 0
+                height = 1  # same "one-stride" trick here
 
             if isinstance(dst, cupy.core.core.ndarray):
                 ptr = dst.data.ptr
@@ -152,12 +116,6 @@ cdef class CUDAArray(BaseMemory):
         return param
 
     def _prepare_copy(self, arr, stream, direction):
-        '''
-        Args:
-            arr (cupy.core.core.ndarray or numpy.ndarray)
-            stream (cupy.cuda.Stream)
-            direction (str)
-        '''
         # sanity checks:
         # - check shape
         if self.ndim == 3:
@@ -176,65 +134,54 @@ cdef class CUDAArray(BaseMemory):
             raise ValueError
 
         cdef runtime.Memcpy3DParms* param3D = NULL
-        cdef size_t dpitch, spitch, width, height
-        cdef intptr_t dptr, sptr
-        cdef runtime.MemoryKind kind
 
-        if self.ndim == 3:
-            if direction == 'in':
-                param3D = self._make_cudaMemcpy3DParms(arr, self)
-            elif direction == 'out':
-                param3D = self._make_cudaMemcpy3DParms(self, arr)
-            try:
-                if stream is None:
-                    runtime.memcpy3D(<intptr_t>param3D)
-                else:
-                    runtime.memcpy3DAsync(<intptr_t>param3D, stream.ptr)
-            except:
-                raise
-            finally:
-                PyMem_Free(param3D)
+        # Trick: For 1D or 2D CUDA arrays, we need to "fool" memcpy3D so that
+        # at least one stride gets copied. This is not properly documented in
+        # Runtime API unfortunately. See, e.g.,
+        # https://stackoverflow.com/a/39217379/2344149
+        if self.ndim == 1:
+            self.height = 1
+            self.depth = 1
         elif self.ndim == 2:
-            if direction == 'in':
-                dptr, dpitch, sptr, spitch, width, height, kind = self._make_cudaMemcpy2DParams(arr, self)
-            elif direction == 'out':
-                dptr, dpitch, sptr, spitch, width, height, kind = self._make_cudaMemcpy2DParams(self, arr)
+            self.depth = 1
+
+        if direction == 'in':
+            param3D = self._make_cudaMemcpy3DParms(arr, self)
+        elif direction == 'out':
+            param3D = self._make_cudaMemcpy3DParms(self, arr)
+        try:
             if stream is None:
-                if direction == 'in':
-                    runtime.memcpy2DToArray(dptr, 0, 0, sptr, spitch, width, height, kind)
-                else:  # out
-                    runtime.memcpy2DFromArray(dptr, dpitch, sptr, 0, 0, width, height, kind)
+                runtime.memcpy3D(<intptr_t>param3D)
             else:
-                if direction == 'in':
-                    runtime.memcpy2DToArrayAsync(dptr, 0, 0, sptr, spitch, width, height, kind, stream.ptr)
-                else:  # out
-                    runtime.memcpy2DFromArrayAsync(dptr, dpitch, sptr, 0, 0, width, height, kind, stream.ptr)
-        else:  # 1D
-            raise NotImplementedError
+                runtime.memcpy3DAsync(<intptr_t>param3D, stream.ptr)
+        except:
+            raise
+        finally:
+            PyMem_Free(param3D)
 
-    cdef _print_param(self, runtime.Memcpy3DParms* param):
-        cdef runtime.Array ptr
-        ptr = param.srcArray
-        print(<intptr_t>(ptr))
-        print(param.srcPos.x, param.srcPos.y, param.srcPos.z)
-        print(<intptr_t>param.srcPtr.ptr, param.srcPtr.pitch, param.srcPtr.xsize, param.srcPtr.ysize)
-        
-        ptr = param.dstArray
-        print(<intptr_t>ptr)
-        print(param.dstPos.x, param.dstPos.y, param.dstPos.z)
-        print(<intptr_t>param.dstPtr.ptr, param.dstPtr.pitch, param.dstPtr.xsize, param.dstPtr.ysize)
-
-        print(param.extent.width, param.extent.height, param.extent.depth)
-        print(param.kind)
-
-        ptr = <runtime.Array>self.ptr
-        print(self.ptr, <intptr_t>ptr)
-        print('\n', flush=True)
+            # restore old config
+            if self.ndim == 1:
+                self.height = 0
+                self.depth = 0
+            elif self.ndim == 2:
+                self.depth = 0
 
     def copy_from(self, in_arr, stream=None):
+        '''Copy data from device or host array to CUDA array.
+
+        Args:
+            arr (cupy.core.core.ndarray or numpy.ndarray)
+            stream (cupy.cuda.Stream)
+        '''
         self._prepare_copy(in_arr, stream, direction='in')
 
     def copy_to(self, out_arr, stream=None):
+        '''Copy data from CUDA array to device or host array.
+
+        Args:
+            arr (cupy.core.core.ndarray or numpy.ndarray)
+            stream (cupy.cuda.Stream)
+        '''
         self._prepare_copy(out_arr, stream, direction='out')
 
 
