@@ -358,8 +358,20 @@ def common_type(*arrays):
 
     .. seealso:: :func:`numpy.common_type`
     """
-    dtype_arrays = [numpy.empty((), a.dtype) for a in arrays]
-    return numpy.common_type(*dtype_arrays)
+    if len(arrays) == 0:
+        return numpy.float16
+
+    default_float_dtype = numpy.dtype('float64')
+    dtypes = []
+    for a in arrays:
+        if a.dtype.kind == 'b':
+            raise TypeError('can\'t get common type for non-numeric array')
+        elif a.dtype.kind in 'iu':
+            dtypes.append(default_float_dtype)
+        else:
+            dtypes.append(a.dtype)
+
+    return numpy.find_common_type(dtypes, []).type
 
 
 def result_type(*arrays_and_dtypes):
