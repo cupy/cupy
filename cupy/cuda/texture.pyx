@@ -48,7 +48,6 @@ cdef class CUDAArray(BaseMemory):
         cdef runtime.Memcpy3DParms* param = \
             <runtime.Memcpy3DParms*>PyMem_Malloc(sizeof(runtime.Memcpy3DParms))
         c_memset(param, 0, sizeof(runtime.Memcpy3DParms))
-        cdef runtime.Array srcArrayPtr, dstArrayPtr
         cdef runtime.PitchedPtr srcPitchedPtr, dstPitchedPtr
         cdef intptr_t ptr 
 
@@ -66,13 +65,11 @@ cdef class CUDAArray(BaseMemory):
                              "src: " + str(type(src)) + ", dst: " + str(type(dst)))
 
         # get src
-        #if isinstance(src, type(self)):
         if src is self:
-            srcArrayPtr = <runtime.Array>(self.ptr)
-            param.srcArray = srcArrayPtr
+            # Important: cannot convert from src.ptr!
+            param.srcArray = <runtime.Array>(self.ptr)
             param.extent = runtime.make_Extent(self.width, self.height,
                                                self.depth)
-            print(str(type(src)), str(type(self)), "src ptr:", <intptr_t>(param.srcArray), src.ptr, <intptr_t>(srcArrayPtr))
         else:
             width = src.shape[-1]
             if src.ndim >= 2:
@@ -84,20 +81,17 @@ cdef class CUDAArray(BaseMemory):
                 ptr = src.data.ptr
             else:  # numpy.ndarray
                 ptr = src.ctypes.data
-            print("src ptr:", ptr)
 
             srcPitchedPtr = runtime.make_PitchedPtr(
                 ptr, width*src.dtype.itemsize, width, height)
             param.srcPtr = srcPitchedPtr
-        #param.srcPos = runtime.make_Pos(0, 0, 0)
 
         # get dst
-        #if isinstance(dst, type(self)):
         if dst is self:
+            # Important: cannot convert from dst.ptr!
             param.dstArray = <runtime.Array>(self.ptr)
             param.extent = runtime.make_Extent(self.width, self.height,
                                                self.depth)
-            print("dst ptr:", <intptr_t>(param.dstArray), dst.ptr)
         else:
             width = dst.shape[-1]
             if dst.ndim >= 2:
@@ -109,12 +103,10 @@ cdef class CUDAArray(BaseMemory):
                 ptr = dst.data.ptr
             else:  # numpy.ndarray
                 ptr = dst.ctypes.data
-            print("dst ptr:", ptr)
 
             dstPitchedPtr = runtime.make_PitchedPtr(
                 ptr, width*dst.dtype.itemsize, width, height)
             param.dstPtr = dstPitchedPtr
-        #param.dstPos = runtime.make_Pos(0, 0, 0)
 
         return param
 
@@ -141,10 +133,8 @@ cdef class CUDAArray(BaseMemory):
 
         cdef runtime.Memcpy3DParms* param
         param = self._make_cudaMemcpy3DParms(self, out_arr)
-        print("print param")
-        self._print_param(param)
 
-        runtime._ensure_context()
+        #runtime._ensure_context()
         try:
             if stream is None:
                 runtime.memcpy3D(<intptr_t>param)
@@ -176,20 +166,11 @@ cdef class CUDAArray(BaseMemory):
         if in_arr.dtype != numpy.float32:
             raise ValueError
 
-        #if stream is None:
-        #    runtime.memcpy2DToArray(self.ptr, 0, 0, in_arr.data.ptr, in_arr.shape[0]*4, in_arr.shape[0], in_arr.shape[1], runtime.memcpyDeviceToDevice)
-        #    #for w in range(self.width):
-        #    #    for h in range(self.self.height):
-        #    #        runtime.memcpy(self.ptr + h*self.depth*4+ w*self.height*4,
-        #    #                       in_arr+
 
-        #print("prepare to make param")
         cdef runtime.Memcpy3DParms* param
         param = self._make_cudaMemcpy3DParms(in_arr, self)
-        print("print param")
-        self._print_param(param)
 
-        runtime._ensure_context()
+        #runtime._ensure_context()
         try:
             if stream is None:
                 runtime.memcpy3D(<intptr_t>param)
