@@ -19,8 +19,7 @@ cdef class CUDAArray(BaseMemory):
         self.device_id = device.get_device_id()
 
         if width == 0:
-            raise ValueError('To create a 1D or 2D CUDA array, width must be '
-                             'nonzero.')
+            raise ValueError('To create a CUDA array, width must be nonzero.')
         elif height == 0 and depth > 0:
             raise ValueError
         else:
@@ -63,19 +62,21 @@ cdef class CUDAArray(BaseMemory):
         elif isinstance(src, numpy.ndarray) and isinstance(dst, type(self)):
             param.kind = <runtime.MemoryKind>runtime.memcpyHostToDevice
         else:
-            raise ValueError("Either source or destination must be a CUDAArray instance.")
+            raise ValueError("Either source or destination must be a CUDAArray instance. "
+                             "src: " + str(type(src)) + ", dst: " + str(type(dst)))
 
         # get src
-        if isinstance(src, type(self)):
-            srcArrayPtr = <runtime.Array>(src.ptr)
+        #if isinstance(src, type(self)):
+        if src is self:
+            srcArrayPtr = <runtime.Array>(self.ptr)
             param.srcArray = srcArrayPtr
-            param.extent = runtime.make_Extent(src.width, src.height,
-                                               src.depth)
-            print("src ptr:", <intptr_t>srcArrayPtr)
+            param.extent = runtime.make_Extent(self.width, self.height,
+                                               self.depth)
+            print(str(type(src)), str(type(self)), "src ptr:", <intptr_t>(param.srcArray), src.ptr, <intptr_t>(srcArrayPtr))
         else:
-            width = src.shape[0]
+            width = src.shape[-1]
             if src.ndim >= 2:
-                height = src.shape[1]
+                height = src.shape[-2]
             else:
                 height = 0
 
@@ -88,19 +89,19 @@ cdef class CUDAArray(BaseMemory):
             srcPitchedPtr = runtime.make_PitchedPtr(
                 ptr, width*src.dtype.itemsize, width, height)
             param.srcPtr = srcPitchedPtr
-        param.srcPos = runtime.make_Pos(0, 0, 0)
+        #param.srcPos = runtime.make_Pos(0, 0, 0)
 
         # get dst
-        if isinstance(dst, type(self)):
-            dstArrayPtr = <runtime.Array>(dst.ptr)
-            param.dstArray = dstArrayPtr
-            param.extent = runtime.make_Extent(dst.width, dst.height,
-                                               dst.depth)
-            print("dst ptr:", <intptr_t>dstArrayPtr)
+        #if isinstance(dst, type(self)):
+        if dst is self:
+            param.dstArray = <runtime.Array>(self.ptr)
+            param.extent = runtime.make_Extent(self.width, self.height,
+                                               self.depth)
+            print("dst ptr:", <intptr_t>(param.dstArray), dst.ptr)
         else:
-            width = dst.shape[0]
+            width = dst.shape[-1]
             if dst.ndim >= 2:
-                height = dst.shape[1]
+                height = dst.shape[-2]
             else:
                 height = 0
 
@@ -113,7 +114,7 @@ cdef class CUDAArray(BaseMemory):
             dstPitchedPtr = runtime.make_PitchedPtr(
                 ptr, width*dst.dtype.itemsize, width, height)
             param.dstPtr = dstPitchedPtr
-        param.dstPos = runtime.make_Pos(0, 0, 0)
+        #param.dstPos = runtime.make_Pos(0, 0, 0)
 
         return param
 
@@ -125,10 +126,10 @@ cdef class CUDAArray(BaseMemory):
         # sanity checks:
         # - check shape
         if self.depth > 0:
-            if out_arr.shape != (self.width, self.height, self.depth):
+            if out_arr.shape != (self.depth, self.height, self.width):
                 raise ValueError
         elif self.height > 0:
-            if out_arr.shape != (self.width, self.height):
+            if out_arr.shape != (self.height, self.width):
                 raise ValueError
         else:
             if out_arr.shape != (self.width,):
@@ -138,7 +139,6 @@ cdef class CUDAArray(BaseMemory):
         if out_arr.dtype != numpy.float32:
             raise ValueError
 
-        print("prepare to make param")
         cdef runtime.Memcpy3DParms* param
         param = self._make_cudaMemcpy3DParms(self, out_arr)
         print("print param")
@@ -163,10 +163,10 @@ cdef class CUDAArray(BaseMemory):
         # sanity checks:
         # - check shape
         if self.depth > 0:
-            if in_arr.shape != (self.width, self.height, self.depth):
+            if in_arr.shape != (self.depth, self.height, self.width):
                 raise ValueError
         elif self.height > 0:
-            if in_arr.shape != (self.width, self.height):
+            if in_arr.shape != (self.height, self.width):
                 raise ValueError
         else:
             if in_arr.shape != (self.width,):
@@ -176,7 +176,14 @@ cdef class CUDAArray(BaseMemory):
         if in_arr.dtype != numpy.float32:
             raise ValueError
 
-        print("prepare to make param")
+        #if stream is None:
+        #    runtime.memcpy2DToArray(self.ptr, 0, 0, in_arr.data.ptr, in_arr.shape[0]*4, in_arr.shape[0], in_arr.shape[1], runtime.memcpyDeviceToDevice)
+        #    #for w in range(self.width):
+        #    #    for h in range(self.self.height):
+        #    #        runtime.memcpy(self.ptr + h*self.depth*4+ w*self.height*4,
+        #    #                       in_arr+
+
+        #print("prepare to make param")
         cdef runtime.Memcpy3DParms* param
         param = self._make_cudaMemcpy3DParms(in_arr, self)
         print("print param")
@@ -194,16 +201,22 @@ cdef class CUDAArray(BaseMemory):
             PyMem_Free(param)
 
     cdef _print_param(self, runtime.Memcpy3DParms* param):
-        print(<intptr_t>param.srcArray)
+        cdef runtime.Array ptr
+        ptr = param.srcArray
+        print(<intptr_t>(ptr))
         print(param.srcPos.x, param.srcPos.y, param.srcPos.z)
         print(<intptr_t>param.srcPtr.ptr, param.srcPtr.pitch, param.srcPtr.xsize, param.srcPtr.ysize)
         
-        print(<intptr_t>param.dstArray)
+        ptr = param.dstArray
+        print(<intptr_t>ptr)
         print(param.dstPos.x, param.dstPos.y, param.dstPos.z)
         print(<intptr_t>param.dstPtr.ptr, param.dstPtr.pitch, param.dstPtr.xsize, param.dstPtr.ysize)
 
         print(param.extent.width, param.extent.height, param.extent.depth)
         print(param.kind)
+
+        ptr = <runtime.Array>self.ptr
+        print(self.ptr, <intptr_t>ptr)
         print('\n', flush=True)
 
     def copy_from(self, in_arr, stream=None):
