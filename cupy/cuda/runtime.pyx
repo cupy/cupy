@@ -96,9 +96,17 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaMemcpy2DFromArray(void* dst, size_t dpitch, Array src,
                               size_t wOffset, size_t hOffset, size_t width,
                               size_t height, MemoryKind kind)
+    int cudaMemcpy2DFromArrayAsync(void* dst, size_t dpitch, Array src,
+                                   size_t wOffset, size_t hOffset,
+                                   size_t width, size_t height,
+                                   MemoryKind kind, driver.Stream stream)
     int cudaMemcpy2DToArray(Array dst, size_t wOffset, size_t hOffset,
                             const void* src, size_t spitch, size_t width,
                             size_t height, MemoryKind kind)
+    int cudaMemcpy2DToArrayAsync(Array dst, size_t wOffset, size_t hOffset,
+                                 const void* src, size_t spitch, size_t width,
+                                 size_t height, MemoryKind kind,
+                                 driver.Stream stream)
     int cudaMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch,
                      size_t width, size_t height, MemoryKind kind)
     int cudaMemcpy2DAsync(void* dst, size_t dpitch, const void* src,
@@ -389,12 +397,34 @@ cpdef memcpy2DFromArray(intptr_t dst, size_t dpitch, intptr_t src,
     check_status(status)
 
 
+cpdef memcpy2DFromArrayAsync(intptr_t dst, size_t dpitch, intptr_t src,
+                             size_t wOffset, size_t hOffset, size_t width,
+                             size_t height, int kind, size_t stream):
+    with nogil:
+        status = cudaMemcpy2DFromArrayAsync(<void*>dst, dpitch, <Array>src,
+                                            wOffset, hOffset, width, height,
+                                            <MemoryKind>kind,
+                                            <driver.Stream>stream)
+    check_status(status)
+
+
 cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
                       intptr_t src, size_t spitch, size_t width, size_t height,
                       int kind):
     with nogil:
         status = cudaMemcpy2DToArray(<Array>dst, wOffset, hOffset, <void*>src,
                                      spitch, width, height, <MemoryKind>kind)
+    check_status(status)
+
+
+cpdef memcpy2DToArrayAsync(intptr_t dst, size_t wOffset, size_t hOffset,
+                           intptr_t src, size_t spitch, size_t width,
+                           size_t height, int kind, size_t stream):
+    with nogil:
+        status = cudaMemcpy2DToArrayAsync(<Array>dst, wOffset, hOffset,
+                                          <void*>src, spitch, width, height,
+                                          <MemoryKind>kind,
+                                          <driver.Stream>stream)
     check_status(status)
 
 

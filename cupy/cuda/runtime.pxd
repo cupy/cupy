@@ -341,9 +341,15 @@ cpdef memcpy2DAsync(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
 cpdef memcpy2DFromArray(intptr_t dst, size_t dpitch, intptr_t src,
                         size_t wOffset, size_t hOffset, size_t width,
                         size_t height, int kind)
+cpdef memcpy2DFromArrayAsync(intptr_t dst, size_t dpitch, intptr_t src,
+                             size_t wOffset, size_t hOffset, size_t width,
+                             size_t height, int kind, size_t stream)
 cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
                       intptr_t src, size_t spitch, size_t width, size_t height,
                       int kind)
+cpdef memcpy2DToArrayAsync(intptr_t dst, size_t wOffset, size_t hOffset,
+                           intptr_t src, size_t spitch, size_t width,
+                           size_t height, int kind, size_t stream)
 cpdef memcpy3D(intptr_t Memcpy3DParmsPtr)
 cpdef memcpy3DAsync(intptr_t Memcpy3DParmsPtr, size_t stream)
 cpdef memset(intptr_t ptr, int value, size_t size)

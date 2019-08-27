@@ -44,7 +44,58 @@ cdef class CUDAArray(BaseMemory):
             runtime.freeArray(self.ptr)
             self.ptr = 0
 
+    cdef int _get_kind(self, src, dst):
+        cdef int kind
+        if isinstance(src, cupy.core.core.ndarray) and dst is self:
+            kind = runtime.memcpyDeviceToDevice
+        elif src is self and isinstance(dst, cupy.core.core.ndarray):
+            kind = runtime.memcpyDeviceToDevice
+        elif isinstance(src, numpy.ndarray) and dst is self:
+            kind = runtime.memcpyHostToDevice
+        elif src is self and isinstance(dst, numpy.ndarray):
+            kind = runtime.memcpyDeviceToHost
+        else:
+            raise
+        return kind
+
+    cdef _make_cudaMemcpy2DParams(self, src, dst):
+        cdef intptr_t srcPtr, dstPtr
+        cdef size_t dpitch, spitch, width, height
+        cdef runtime.MemoryKind kind
+
+        # get src
+        if src is self:
+            spitch = self.width*dst.dtype.itemsize
+            width = spitch
+            height = self.height
+            srcPtr = self.ptr
+        else:
+            spitch = src.shape[-1]*src.dtype.itemsize
+            if isinstance(src, cupy.core.core.ndarray):
+                srcPtr = src.data.ptr
+            else:  # numpy.ndarray
+                srcPtr = src.ctypes.data
+
+        # get dst
+        if dst is self:
+            dpitch = self.width*src.dtype.itemsize
+            width = dpitch
+            height = self.height
+            dstPtr = self.ptr
+        else:
+            dpitch = dst.shape[-1]*dst.dtype.itemsize
+            if isinstance(dst, cupy.core.core.ndarray):
+                dstPtr = dst.data.ptr
+            else:  # numpy.ndarray
+                dstPtr = dst.ctypes.data
+
+        # get kind
+        kind = <runtime.MemoryKind>self._get_kind(src, dst)
+
+        return dstPtr, dpitch, srcPtr, spitch, width, height, kind
+
     cdef runtime.Memcpy3DParms* _make_cudaMemcpy3DParms(self, src, dst):
+        '''private helper for 3D transfer'''
         cdef runtime.Memcpy3DParms* param = \
             <runtime.Memcpy3DParms*>PyMem_Malloc(sizeof(runtime.Memcpy3DParms))
         c_memset(param, 0, sizeof(runtime.Memcpy3DParms))
@@ -52,16 +103,7 @@ cdef class CUDAArray(BaseMemory):
         cdef intptr_t ptr 
 
         # get kind
-        if isinstance(src, cupy.core.core.ndarray) and dst is self:
-            param.kind = <runtime.MemoryKind>runtime.memcpyDeviceToDevice
-        elif src is self and isinstance(dst, cupy.core.core.ndarray):
-            param.kind = <runtime.MemoryKind>runtime.memcpyDeviceToDevice
-        elif isinstance(src, numpy.ndarray) and dst is self:
-            param.kind = <runtime.MemoryKind>runtime.memcpyHostToDevice
-        elif src is self and isinstance(dst, numpy.ndarray):
-            param.kind = <runtime.MemoryKind>runtime.memcpyDeviceToHost
-        else:
-            raise
+        param.kind = <runtime.MemoryKind>self._get_kind(src, dst)
 
         # get src
         if src is self:
@@ -133,23 +175,41 @@ cdef class CUDAArray(BaseMemory):
         if arr.dtype != numpy.float32:
             raise ValueError
 
-        cdef runtime.Memcpy3DParms* param
+        cdef runtime.Memcpy3DParms* param3D = NULL
+        cdef size_t dpitch, spitch, width, height
+        cdef intptr_t dptr, sptr
+        cdef runtime.MemoryKind kind
 
         if self.ndim == 3:
             if direction == 'in':
-                param = self._make_cudaMemcpy3DParms(arr, self)
+                param3D = self._make_cudaMemcpy3DParms(arr, self)
             elif direction == 'out':
-                param = self._make_cudaMemcpy3DParms(self, arr)
+                param3D = self._make_cudaMemcpy3DParms(self, arr)
             try:
                 if stream is None:
-                    runtime.memcpy3D(<intptr_t>param)
+                    runtime.memcpy3D(<intptr_t>param3D)
                 else:
-                    runtime.memcpy3DAsync(<intptr_t>param, stream.ptr)
+                    runtime.memcpy3DAsync(<intptr_t>param3D, stream.ptr)
             except:
                 raise
             finally:
-                PyMem_Free(param)
-        else:
+                PyMem_Free(param3D)
+        elif self.ndim == 2:
+            if direction == 'in':
+                dptr, dpitch, sptr, spitch, width, height, kind = self._make_cudaMemcpy2DParams(arr, self)
+            elif direction == 'out':
+                dptr, dpitch, sptr, spitch, width, height, kind = self._make_cudaMemcpy2DParams(self, arr)
+            if stream is None:
+                if direction == 'in':
+                    runtime.memcpy2DToArray(dptr, 0, 0, sptr, spitch, width, height, kind)
+                else:  # out
+                    runtime.memcpy2DFromArray(dptr, dpitch, sptr, 0, 0, width, height, kind)
+            else:
+                if direction == 'in':
+                    runtime.memcpy2DToArrayAsync(dptr, 0, 0, sptr, spitch, width, height, kind, stream.ptr)
+                else:  # out
+                    runtime.memcpy2DFromArrayAsync(dptr, dpitch, sptr, 0, 0, width, height, kind, stream.ptr)
+        else:  # 1D
             raise NotImplementedError
 
     cdef _print_param(self, runtime.Memcpy3DParms* param):
