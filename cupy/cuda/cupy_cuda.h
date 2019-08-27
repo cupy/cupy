@@ -189,6 +189,32 @@ struct cudaPointerAttributes{
 typedef cudaPointerAttributes _PointerAttributes;
 
 
+enum cudaChannelFormatKind {};
+struct cudaChannelFormatDesc;
+typedef unsigned long long cudaTextureObject_t;
+enum cudaResourceType {};
+enum cudaTextureAddressMode {};
+enum cudaTextureFilterMode {};
+enum cudaTextureReadMode {};
+struct cudaResourceViewDesc;
+typedef void* cudaArray_t;
+struct cudaExtent {
+    size_t width, height, depth;
+};
+struct cudaPos {
+    size_t x, y, z;
+};
+struct cudaPitchedPtr {
+    size_t pitch;
+    void* ptr;
+    size_t xsize, ysize;
+};
+typedef void* cudaMipmappedArray_t;
+struct cudaResourceDesc;
+struct cudaMemcpy3DParms;
+struct cudaTextureDesc;
+
+
 // Error handling
 const char* cudaGetErrorName(...) {
     return NULL;
@@ -248,6 +274,14 @@ cudaError_t cudaMalloc(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaMalloc3DArray(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMallocArray(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaHostAlloc(...) {
     return cudaSuccess;
 }
@@ -265,6 +299,10 @@ cudaError_t cudaMallocManaged(...) {
 }
 
 int cudaFree(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaFreeArray(...) {
     return cudaSuccess;
 }
 
@@ -289,6 +327,38 @@ cudaError_t cudaMemcpyPeer(...) {
 }
 
 cudaError_t cudaMemcpyPeerAsync(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy2D(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy2DAsync(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy2DFromArray(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy2DFromArrayAsync(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy2DToArray(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy2DToArrayAsync(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy3D(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy3DAsync(...) {
     return cudaSuccess;
 }
 
@@ -369,6 +439,31 @@ cudaError_t cudaEventRecord(...) {
 
 cudaError_t cudaEventSynchronize(...) {
     return cudaSuccess;
+}
+
+
+// Texture
+cudaError_t cudaCreateTextureObject(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDestroyTextureObject(...) {
+    return cudaSuccess;
+}
+
+cudaExtent make_cudaExtent(...) {
+    struct cudaExtent ex = {0};
+    return ex;
+}
+
+cudaPitchedPtr make_cudaPitchedPtr(...) {
+    struct cudaPitchedPtr ptr = {0};
+    return ptr;
+}
+
+cudaPos make_cudaPos(...) {
+    struct cudaPos pos = {0};
+    return pos;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
