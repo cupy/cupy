@@ -209,7 +209,16 @@ struct cudaPitchedPtr {
     size_t xsize, ysize;
 };
 typedef void* cudaMipmappedArray_t;
-struct cudaMemcpy3DParms;
+struct cudaMemcpy3DParms {
+    cudaArray_t srcArray;
+    struct cudaPos srcPos;
+    struct cudaPitchedPtr srcPtr;
+    cudaArray_t dstArray;
+    struct cudaPos dstPos;
+    struct cudaPitchedPtr dstPtr;
+    struct cudaExtent extent;
+    enum cudaMemcpyKind kind;
+};
 struct cudaChannelFormatDesc {
     int x, y, z, w;
     enum cudaChannelFormatKind f;
