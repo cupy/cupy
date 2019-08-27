@@ -8,4 +8,4 @@ RUN apt-get update -y && \
     python-setuptools && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip install --no-cache-dir cupy-cuda92==7.0.0b3
+RUN pip install --no-cache-dir 'numpy<1.17' cupy-cuda92==7.0.0b3
