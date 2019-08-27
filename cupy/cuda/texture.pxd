@@ -1,4 +1,3 @@
-from cupy.cuda cimport runtime
 from cupy.cuda.memory cimport BaseMemory
 
 
@@ -11,9 +10,10 @@ cdef class CUDAArray(BaseMemory):
         readonly unsigned int flags
         readonly int ndim
         int _get_kind(self, src, dst)
-        runtime.Memcpy3DParms* _make_cudaMemcpy3DParms(self, src, dst)
+        void* _make_cudaMemcpy3DParms(self, src, dst)
 
 
 cdef class TextureObject:
     cdef:
+        readonly object ResDesc, TexDesc
         readonly unsigned long long ptr  # type: cudaTextureObject_t

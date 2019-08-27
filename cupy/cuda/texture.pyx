@@ -21,7 +21,8 @@ cdef class CUDAArray(BaseMemory):
         if width == 0:
             raise ValueError('To create a CUDA array, width must be nonzero.')
         elif height == 0 and depth > 0:
-            raise ValueError
+            raise ValueError('To create a 2D CUDA array, height must be '
+                             'nonzero.')
         else:
             self.ptr = runtime.malloc3DArray(desc.ptr, width, height, depth,
                                              flags)
@@ -32,12 +33,7 @@ cdef class CUDAArray(BaseMemory):
         self.height = height
         self.depth = depth
         self.flags = flags
-        if self.depth > 0:
-            self.ndim = 3
-        elif self.height > 0:
-            self.ndim = 2
-        else:
-            self.ndim = 1
+        self.ndim = 3 if depth > 0 else 2 if height > 0 else 1
 
     def __dealloc__(self):
         if self.ptr:
@@ -58,7 +54,7 @@ cdef class CUDAArray(BaseMemory):
             raise
         return kind
 
-    cdef runtime.Memcpy3DParms* _make_cudaMemcpy3DParms(self, src, dst):
+    cdef void* _make_cudaMemcpy3DParms(self, src, dst):
         '''private helper for 3D transfer'''
         cdef runtime.Memcpy3DParms* param = \
             <runtime.Memcpy3DParms*>PyMem_Malloc(sizeof(runtime.Memcpy3DParms))
@@ -113,27 +109,27 @@ cdef class CUDAArray(BaseMemory):
                 ptr, width*dst.dtype.itemsize, width, height)
             param.dstPtr = dstPitchedPtr
 
-        return param
+        return <void*>param
 
     def _prepare_copy(self, arr, stream, direction):
         # sanity checks:
         # - check shape
         if self.ndim == 3:
             if arr.shape != (self.depth, self.height, self.width):
-                raise ValueError
+                raise ValueError("shape mismatch")
         elif self.ndim == 2:
             if arr.shape != (self.height, self.width):
-                raise ValueError
+                raise ValueError("shape mismatch")
         else:  # ndim = 1
             if arr.shape != (self.width,):
-                raise ValueError
+                raise ValueError("shape mismatch")
 
         # - check dtype
         # TODO(leofang): support signed and unsigned
         if arr.dtype != numpy.float32:
-            raise ValueError
+            raise ValueError("Currently only float32 is supported")
 
-        cdef runtime.Memcpy3DParms* param3D = NULL
+        cdef runtime.Memcpy3DParms* param = NULL
 
         # Trick: For 1D or 2D CUDA arrays, we need to "fool" memcpy3D so that
         # at least one stride gets copied. This is not properly documented in
@@ -146,18 +142,20 @@ cdef class CUDAArray(BaseMemory):
             self.depth = 1
 
         if direction == 'in':
-            param3D = self._make_cudaMemcpy3DParms(arr, self)
+            param = <runtime.Memcpy3DParms*>self._make_cudaMemcpy3DParms(arr,
+                                                                         self)
         elif direction == 'out':
-            param3D = self._make_cudaMemcpy3DParms(self, arr)
+            param = <runtime.Memcpy3DParms*>self._make_cudaMemcpy3DParms(self,
+                                                                         arr)
         try:
             if stream is None:
-                runtime.memcpy3D(<intptr_t>param3D)
+                runtime.memcpy3D(<intptr_t>param)
             else:
-                runtime.memcpy3DAsync(<intptr_t>param3D, stream.ptr)
+                runtime.memcpy3DAsync(<intptr_t>param, stream.ptr)
         except:
             raise
         finally:
-            PyMem_Free(param3D)
+            PyMem_Free(param)
 
             # restore old config
             if self.ndim == 1:
@@ -190,6 +188,8 @@ cdef class TextureObject:
     def __init__(self, runtime.ResourceDescriptor ResDesc,
                  runtime.TextureDescriptor TexDesc):
         self.ptr = runtime.createTextureObject(ResDesc.ptr, TexDesc.ptr)
+        self.ResDesc = ResDesc
+        self.TexDesc = TexDesc
         
     def __dealloc__(self):
         if self.ptr:
