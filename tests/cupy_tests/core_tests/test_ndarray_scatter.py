@@ -109,7 +109,7 @@ from cupy import testing
     {'shape': (2, 3, 4), 'slices': [[[1]], slice(1, 2)], 'value': 1},
 )
 @testing.gpu
-class TestScatterAddParametrized(unittest.TestCase):
+class TestScatterParametrized(unittest.TestCase):
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
                          numpy.uint64, numpy.ulonglong, numpy.float16,
@@ -121,6 +121,28 @@ class TestScatterAddParametrized(unittest.TestCase):
             a.scatter_add(self.slices, self.value)
         else:
             numpy.add.at(a, self.slices, self.value)
+        return a
+
+    @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
+                         numpy.uint64, numpy.ulonglong, numpy.float64])
+    @testing.numpy_cupy_array_equal()
+    def test_scatter_max(self, xp, dtype):
+        a = xp.zeros(self.shape, dtype)
+        if xp is cupy:
+            a.scatter_max(self.slices, self.value)
+        else:
+            numpy.maximum.at(a, self.slices, self.value)
+        return a
+
+    @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
+                         numpy.uint64, numpy.ulonglong, numpy.float64])
+    @testing.numpy_cupy_array_equal()
+    def test_scatter_min(self, xp, dtype):
+        a = xp.zeros(self.shape, dtype)
+        if xp is cupy:
+            a.scatter_min(self.slices, self.value)
+        else:
+            numpy.minimum.at(a, self.slices, self.value)
         return a
 
 
