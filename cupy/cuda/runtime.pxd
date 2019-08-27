@@ -53,7 +53,7 @@ cdef extern from *:
         ChannelFormatDesc desc
         size_t sizeInBytes
 
-    ctypedef struct _pitch2D:   
+    ctypedef struct _pitch2D:
         void* devPtr
         ChannelFormatDesc desc
         size_t width
@@ -84,13 +84,13 @@ cdef extern from *:
         MemoryKind kind
 
     ctypedef struct TextureDesc 'cudaTextureDesc':
-        int addressMode[3];
-        int filterMode;
-        int readMode;
-        int sRGB;
-        float borderColor[4];
-        int normalizedCoords;
-        unsigned int maxAnisotropy;
+        int addressMode[3]
+        int filterMode
+        int readMode
+        int sRGB
+        float borderColor[4]
+        int normalizedCoords
+        unsigned int maxAnisotropy
 
 
 ###############################################################################

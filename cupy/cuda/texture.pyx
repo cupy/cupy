@@ -8,7 +8,7 @@ import cupy
 from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 from cupy.cuda.memory cimport BaseMemory
-
+from cupy.cuda.runtime import CUDARuntimeError
 
 
 cdef class CUDAArray(BaseMemory):
@@ -61,7 +61,7 @@ cdef class CUDAArray(BaseMemory):
             <runtime.Memcpy3DParms*>PyMem_Malloc(sizeof(runtime.Memcpy3DParms))
         c_memset(param, 0, sizeof(runtime.Memcpy3DParms))
         cdef runtime.PitchedPtr srcPitchedPtr, dstPitchedPtr
-        cdef intptr_t ptr 
+        cdef intptr_t ptr
 
         # get kind
         param.kind = <runtime.MemoryKind>self._get_kind(src, dst)
@@ -153,8 +153,8 @@ cdef class CUDAArray(BaseMemory):
                 runtime.memcpy3D(<intptr_t>param)
             else:
                 runtime.memcpy3DAsync(<intptr_t>param, stream.ptr)
-        except:
-            raise
+        except CUDARuntimeError as ex:
+            raise ex
         finally:
             PyMem_Free(param)
 
@@ -191,7 +191,7 @@ cdef class TextureObject:
         self.ptr = runtime.createTextureObject(ResDesc.ptr, TexDesc.ptr)
         self.ResDesc = ResDesc
         self.TexDesc = TexDesc
-        
+
     def __dealloc__(self):
         if self.ptr:
             runtime.destroyTextureObject(self.ptr)

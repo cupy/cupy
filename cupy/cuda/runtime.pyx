@@ -277,7 +277,7 @@ cpdef intptr_t mallocManaged(
 
 
 cpdef intptr_t malloc3DArray(intptr_t descPtr, size_t width, size_t height,
-                             size_t depth, unsigned int flags = 0) except? 0:
+                             size_t depth, unsigned int flags=0) except? 0:
     cdef Array ptr
     cdef Extent extent = make_cudaExtent(width, height, depth)
     with nogil:
@@ -288,7 +288,7 @@ cpdef intptr_t malloc3DArray(intptr_t descPtr, size_t width, size_t height,
 
 
 cpdef intptr_t mallocArray(intptr_t descPtr, size_t width, size_t height,
-                           unsigned int flags = 0) except? 0:
+                           unsigned int flags=0) except? 0:
     cdef Array ptr
     with nogil:
         status = cudaMallocArray(&ptr, <ChannelFormatDesc*>descPtr, width,
@@ -649,8 +649,8 @@ cdef class ChannelFormatDescriptor:
 
 cdef class ResourceDescriptor:
     def __init__(self, int restype, intptr_t cuArrayPtr=0, intptr_t devPtr=0,
-                 ChannelFormatDescriptor chDesc=None, sizeInBytes=None, width=None, height=None,
-                 pitchInBytes=None):
+                 ChannelFormatDescriptor chDesc=None, sizeInBytes=None,
+                 width=None, height=None, pitchInBytes=None):
         '''
         Args:
             cuArrayPtr (CUDAArray.ptr)
