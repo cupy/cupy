@@ -190,7 +190,6 @@ typedef cudaPointerAttributes _PointerAttributes;
 
 
 enum cudaChannelFormatKind {};
-struct cudaChannelFormatDesc;
 typedef unsigned long long cudaTextureObject_t;
 enum cudaResourceType {};
 enum cudaTextureAddressMode {};
@@ -210,9 +209,48 @@ struct cudaPitchedPtr {
     size_t xsize, ysize;
 };
 typedef void* cudaMipmappedArray_t;
-struct cudaResourceDesc;
 struct cudaMemcpy3DParms;
-struct cudaTextureDesc;
+struct cudaChannelFormatDesc {
+    int x, y, z, w;
+    enum cudaChannelFormatKind f;
+};
+struct cudaResourceDesc {
+    enum cudaResourceType resType;
+
+    union {
+        struct {
+            cudaArray_t array;
+        } array;
+        struct {
+            cudaMipmappedArray_t mipmap;
+        } mipmap;
+        struct {
+            void *devPtr;
+            struct cudaChannelFormatDesc desc;
+            size_t sizeInBytes;
+        } linear;
+        struct {
+            void *devPtr;
+            struct cudaChannelFormatDesc desc;
+            size_t width;
+            size_t height;
+            size_t pitchInBytes;
+        } pitch2D;
+    } res;
+};
+struct cudaTextureDesc {
+    enum cudaTextureAddressMode addressMode[3];
+    enum cudaTextureFilterMode filterMode;
+    enum cudaTextureReadMode readMode;
+    int sRGB;
+    float borderColor[4];
+    int normalizedCoords;
+    unsigned int maxAnisotropy;
+    enum cudaTextureFilterMode mipmapFilterMode;
+    float mipmapLevelBias;
+    float minMipmapLevelClamp;
+    float maxMipmapLevelClamp;
+};
 
 
 // Error handling
