@@ -333,6 +333,14 @@ cpdef memcpyPeer(intptr_t dst, int dstDevice, intptr_t src, int srcDevice,
 cpdef memcpyPeerAsync(intptr_t dst, int dstDevice,
                       intptr_t src, int srcDevice,
                       size_t size, size_t stream)
+cpdef memcpy2D(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
+               size_t width, size_t height, MemoryKind kind)
+cpdef memcpy2DAsync(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
+                    size_t width, size_t height, MemoryKind kind,
+                    size_t stream)
+cpdef memcpy2DFromArray(intptr_t dst, size_t dpitch, intptr_t src,
+                        size_t wOffset, size_t hOffset, size_t width,
+                        size_t height, int kind)
 cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
                       intptr_t src, size_t spitch, size_t width, size_t height,
                       int kind)
