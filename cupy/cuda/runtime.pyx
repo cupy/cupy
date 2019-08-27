@@ -679,11 +679,13 @@ cdef class ResourceDescriptor:
             desc.res.pitch2D.width = width
             desc.res.pitch2D.height = height
             desc.res.pitch2D.pitchInBytes = pitchInBytes
+        self.chDesc = chDesc
 
     def __dealloc__(self):
         PyMem_Free(<ResourceDesc*>self.ptr)
         self.ptr = 0
 
+    # TODO(leofang): remove this
     def describe(self):
         cdef ResourceDesc* desc = <ResourceDesc*>self.ptr
         print(<intptr_t>(desc.res.array.array))
@@ -703,14 +705,14 @@ cdef class TextureDescriptor:
                 desc.addressMode[i] = <TextureAddressMode>mode
         desc.filterMode = <TextureFilterMode>filterMode
         desc.readMode = <TextureReadMode>readMode
+        if normalizedCoords is not None:
+            desc.normalizedCoords = normalizedCoords
         if sRGB is not None:
             desc.sRGB = sRGB
         if borderColors is not None:
             assert len(borderColors) <= 4
             for i, color in enumerate(borderColors):
                 desc.borderColor[i] = color
-        if normalizedCoords is not None:
-            desc.normalizedCoords = normalizedCoords
         if maxAnisotropy is not None:
             desc.maxAnisotropy = maxAnisotropy
         # TODO(leofang): support mipmap?

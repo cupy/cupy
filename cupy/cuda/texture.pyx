@@ -24,6 +24,7 @@ cdef class CUDAArray(BaseMemory):
             raise ValueError('To create a 2D CUDA array, height must be '
                              'nonzero.')
         else:
+            # malloc3DArray handles all possibilities (1D, 2D, 3D)
             self.ptr = runtime.malloc3DArray(desc.ptr, width, height, depth,
                                              flags)
 
@@ -55,7 +56,7 @@ cdef class CUDAArray(BaseMemory):
         return kind
 
     cdef void* _make_cudaMemcpy3DParms(self, src, dst):
-        '''private helper for 3D transfer'''
+        '''Private helper for data transfer. Supports all dimensions.'''
         cdef runtime.Memcpy3DParms* param = \
             <runtime.Memcpy3DParms*>PyMem_Malloc(sizeof(runtime.Memcpy3DParms))
         c_memset(param, 0, sizeof(runtime.Memcpy3DParms))

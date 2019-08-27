@@ -405,6 +405,7 @@ cdef class ChannelFormatDescriptor:
 cdef class ResourceDescriptor:
     cdef:
         readonly intptr_t ptr
+        readonly object chDesc
 
 cdef class TextureDescriptor:
     cdef:
