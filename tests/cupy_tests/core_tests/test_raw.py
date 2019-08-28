@@ -78,6 +78,7 @@ __global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, \
 }
 '''
 
+# avoid potential cache problem
 _test_source4 = r'''
 extern "C" __global__
 void test_sub(const float* x1, const float* x2, float* y) {
