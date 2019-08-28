@@ -201,6 +201,10 @@ The CUDA kernel attributes can be retrieved by either accessing the :attr:`~cupy
 or by accessing the :class:`~cupy.RawKernel` object's attributes directly; the latter can also be used to set certain
 attributes:
 
+Dynamical parallelism is supported by :class:`~cupy.RawKernel`. You just need to provide the linking flag (such as ``-dc``) to :class:`~cupy.RawKernel`'s ``options`` arugment. The static CUDA device runtime library (``cudadevrt``) is automatically discovered by CuPy. For further detail, see `CUDA Toolkit's documentation`_.
+
+.. _CUDA Toolkit's documentation: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compiling-and-linking
+
 .. doctest::
 
    >>> add_kernel = cp.RawKernel(r'''
@@ -212,7 +216,7 @@ attributes:
    ... ''', 'my_add')
    >>> add_kernel.attributes  # doctest: +SKIP
    {'max_threads_per_block': 1024, 'shared_size_bytes': 0, 'const_size_bytes': 0, 'local_size_bytes': 0, 'num_regs': 10, 'ptx_version': 70, 'binary_version': 70, 'cache_mode_ca': 0, 'max_dynamic_shared_size_bytes': 49152, 'preferred_shared_memory_carveout': -1}
-   >>> add_kernel.max_dynamic_shared_size_bytes
+   >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
    49152
    >>> add_kernel.max_dynamic_shared_size_bytes = 50000  # set a new value for the attribute  # doctest: +SKIP
    >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
@@ -233,10 +237,10 @@ attributes:
     You can use ``cupy.cuda.Stream.null.synchronize()`` if you are using the default stream.
 
 
-Raw Modules
+Raw modules
 -----------
 
-For dealing a large raw CUDA source or loading an existing CUDA binary, the :class:`~cupy.RawModule` class can be more handy. It can be initialized either by a CUDA source code, or by a path to the CUDA binary. The needed kernels can then be retrieved by calling the :meth:`~cupy.RawModule.get_function` method, which returns a `~cupy.RawKernel` instance that can be invoked as discussed above.
+For dealing a large raw CUDA source or loading an existing CUDA binary, the :class:`~cupy.RawModule` class can be more handy. It can be initialized either by a CUDA source code, or by a path to the CUDA binary. The needed kernels can then be retrieved by calling the :meth:`~cupy.RawModule.get_function` method, which returns a :class:`~cupy.RawKernel` instance that can be invoked as discussed above.
 
 .. doctest::
 

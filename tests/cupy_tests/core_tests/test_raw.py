@@ -196,5 +196,5 @@ class TestRaw(unittest.TestCase):
         N = 15
         inner_chunk = 3
         x = cupy.zeros((N,), dtype=cupy.float32)
-        with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
+        with pytest.raises(cupy.cuda.driver.CUDADriverError):
             ker((1,), (N,), (x, N, inner_chunk))
