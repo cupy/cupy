@@ -157,6 +157,17 @@ CUresult cuFuncSetAttribute(...) {
     return CUDA_SUCCESS;
 }
 
+// Occupancy
+typedef size_t (*CUoccupancyB2DSize)(int);
+
+CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuOccupancyMaxPotentialBlockSize(...) {
+    return CUDA_SUCCESS;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // cuda_runtime.h
 ///////////////////////////////////////////////////////////////////////////////

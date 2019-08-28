@@ -21,6 +21,8 @@ cdef extern from *:
     ctypedef int CUjitInputType 'CUjitInputType'
     ctypedef int CUfunction_attribute 'CUfunction_attribute'
 
+    ctypedef size_t(*CUoccupancyB2DSize)(int)
+
 
 cpdef enum:
     CU_JIT_INPUT_CUBIN = 0
@@ -84,3 +86,13 @@ cpdef launchKernel(
 
 cpdef int funcGetAttribute(int attribute, intptr_t func)
 cpdef funcSetAttribute(intptr_t func, int attribute, int value)
+
+###############################################################################
+# Occupancy
+###############################################################################
+
+cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
+    intptr_t func, int blockSize, size_t dynamicSMemSize)
+
+cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
+                                     int blockSizeLimit)
