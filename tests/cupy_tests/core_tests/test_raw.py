@@ -1,4 +1,6 @@
+import os
 import pytest
+import shutil
 import unittest
 
 import cupy
@@ -95,6 +97,15 @@ class TestRaw(unittest.TestCase):
         self.mod2 = cupy.RawModule(_test_source2)
         self.mod3 = cupy.RawModule(_test_source3, ("-DPRECISION=2",))
 
+    def tearDown(self):
+        # To avoid cache interference, we remove cached files after every test
+        if 'CUPY_CACHE_DIR' in os.environ:
+            path = os.environ['CUPY_CACHE_DIR']
+        else:
+            path = os.path.expanduser('~/.cupy/kernel_cache')
+        shutil.rmtree(path)
+        os.makedirs(path)
+
     def _helper(self, kernel, dtype):
         N = 10
         x1 = cupy.arange(N**2, dtype=dtype).reshape(N, N)
@@ -155,7 +166,6 @@ class TestRaw(unittest.TestCase):
         # in principle this test is better done in test_driver.py, but
         # this error is more likely to appear when using RawModule, so
         # let us do it here
-        import os
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
             cupy.RawModule(os.path.expanduser("~/this_does_not_exist.cubin"))
         assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex)
@@ -171,8 +181,6 @@ class TestRaw(unittest.TestCase):
     def test_backends(self):
         for backend in ("nvrtc", "nvcc"):
             kern = cupy.RawKernel(_test_source4, 'test_sub', backend=backend)
-            x1 = cupy.arange(100, dtype=cupy.float32).reshape(10, 10)
-            x2 = cupy.ones((10, 10), dtype=cupy.float32)
-            y = cupy.zeros((10, 10), dtype=cupy.float32)
-            kern((10,), (10,), (x1, x2, y))
+            x1, x2, y = self._helper(kern, cupy.float32)
             assert (y == x1 - x2).all()
+            self.tearDown()  # do a manual cleanup
