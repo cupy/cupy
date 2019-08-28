@@ -54,18 +54,18 @@ __device__ float atomicMax(float* address, float val) {
 
 
 __device__ double atomicMax(double* address, double val) {
-  long long* address_as_i = reinterpret_cast<long long*>(address);
-  long long old = *address_as_i, assumed;
+  unsigned long long* address_as_i =
+    reinterpret_cast<unsigned long long*>(address);
+  unsigned long long old = *address_as_i, assumed;
   do {
     assumed = old;
-    const long long result = __double_as_longlong(
-        fmaxf(val, __longlong_as_double(assumed)));
+    const long long result =
+      __double_as_longlong(fmaxf(val, __longlong_as_double(assumed)));
     old = atomicCAS(
-        reinterpret_cast<unsigned long long*>(address_as_i),
-        reinterpret_cast<unsigned long long&>(assumed),
-        reinterpret_cast<const unsigned long long&>(result));
+      address_as_i, assumed,
+      reinterpret_cast<const unsigned long long&>(result));
   } while (assumed != old);
-  return __double_as_longlong(old);
+  return __double_as_longlong(reinterpret_cast<unsigned long long&>(old));
 }
 
 
@@ -83,16 +83,16 @@ __device__ float atomicMin(float* address, float val) {
 
 
 __device__ double atomicMin(double* address, double val) {
-  long long* address_as_i = reinterpret_cast<long long*>(address);
-  long long old = *address_as_i, assumed;
+  unsigned long long* address_as_i =
+    reinterpret_cast<unsigned long long*>(address);
+  unsigned long long old = *address_as_i, assumed;
   do {
     assumed = old;
-    const long long result = __double_as_longlong(
-        fminf(val, __longlong_as_double(assumed)));
+    const long long result =
+      __double_as_longlong(fminf(val, __longlong_as_double(assumed)));
     old = atomicCAS(
-        reinterpret_cast<unsigned long long*>(address_as_i),
-        reinterpret_cast<unsigned long long&>(assumed),
-        reinterpret_cast<const unsigned long long&>(result));
+      address_as_i, assumed,
+      reinterpret_cast<const unsigned long long&>(result));
   } while (assumed != old);
-  return __double_as_longlong(old);
+  return __double_as_longlong(reinterpret_cast<unsigned long long&>(old));
 }
