@@ -627,7 +627,8 @@ cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz):
 
 cdef class ChannelFormatDescriptor:
     def __init__(self, int x, int y, int z, int w, int f):
-        # We don't call cudaCreateChannelDesc() here to avoid out of scope
+        # We don't call cudaCreateChannelDesc() here for twp reaspns: 1. to
+        # avoid out of scope; 2. it doesn't do input verification for us.
         #
         # WARNING: don't use [0] or cython.operator.dereference to dereference
         # a pointer to struct for writing to its members !!! (But read is OK.)
@@ -645,6 +646,17 @@ cdef class ChannelFormatDescriptor:
     def __dealloc__(self):
         PyMem_Free(<ChannelFormatDesc*>self.ptr)
         self.ptr = 0
+
+    def get_channel_format(self):
+        # We don't need to call cudaGetChannelDesc() here, because the struct
+        # is still alive!
+        cdef dict desc = {}
+        desc['x'] = (<ChannelFormatDesc*>self.ptr).x
+        desc['y'] = (<ChannelFormatDesc*>self.ptr).y
+        desc['z'] = (<ChannelFormatDesc*>self.ptr).z
+        desc['w'] = (<ChannelFormatDesc*>self.ptr).w
+        desc['f'] = (<ChannelFormatDesc*>self.ptr).f
+        return desc
 
 
 cdef class ResourceDescriptor:
@@ -685,10 +697,8 @@ cdef class ResourceDescriptor:
         PyMem_Free(<ResourceDesc*>self.ptr)
         self.ptr = 0
 
-    # TODO(leofang): remove this
-    def describe(self):
-        cdef ResourceDesc* desc = <ResourceDesc*>self.ptr
-        print(<intptr_t>(desc.res.array.array))
+    def get_resource_type(self):
+        return (<ResourceDesc*>self.ptr).resType
 
 
 cdef class TextureDescriptor:
