@@ -710,3 +710,28 @@ class TestFftshift(unittest.TestCase):
         out = xp.fft.ifftshift(x, self.axes)
 
         return out
+
+
+class TestThreading(unittest.TestCase):
+
+    def test_threading1(self):
+        import threading
+        from cupy.cuda.cufft import get_current_plan
+
+        def thread_get_curr_plan():
+            return get_current_plan()
+
+        new_thread = threading.Thread(target=thread_get_curr_plan)
+        new_thread.start()
+
+    def test_threading2(self):
+        import threading
+
+        a = cupy.arange(100, dtype=cupy.complex64).reshape(10, 10)
+
+        def thread_do_fft():
+            b = cupy.fft.fftn(a)
+            return b
+
+        new_thread = threading.Thread(target=thread_do_fft)
+        new_thread.start()
