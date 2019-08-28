@@ -1,6 +1,7 @@
 import os
 import pytest
 import shutil
+from tempfile import mkdtemp
 import unittest
 
 import cupy
@@ -80,7 +81,6 @@ __global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, \
 }
 '''
 
-# avoid potential cache problem
 _test_source4 = r'''
 extern "C" __global__
 void test_sub(const float* x1, const float* x2, float* y) {
@@ -89,6 +89,14 @@ void test_sub(const float* x1, const float* x2, float* y) {
 }
 '''
 
+if 'CUPY_CACHE_DIR' in os.environ:
+    _old_cache_dir = os.environ['CUPY_CACHE_DIR']
+    _is_cache_env_var_set = True
+else:
+    _old_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')
+    _is_cache_env_var_set = False
+_test_cache_dir = None
+
 
 class TestRaw(unittest.TestCase):
 
@@ -96,15 +104,25 @@ class TestRaw(unittest.TestCase):
         self.kern = cupy.RawKernel(_test_source1, 'test_sum')
         self.mod2 = cupy.RawModule(_test_source2)
         self.mod3 = cupy.RawModule(_test_source3, ("-DPRECISION=2",))
+        self._setup_test_dir()
+
+    def _setup_test_dir(self):
+        global _test_cache_dir
+        _test_cache_dir = mkdtemp()
+        os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
 
     def tearDown(self):
-        # To avoid cache interference, we remove cached files after every test
-        if 'CUPY_CACHE_DIR' in os.environ:
-            path = os.environ['CUPY_CACHE_DIR']
+        self._remove_test_dir()
+
+    def _remove_test_dir(self):
+        # To avoid cache interference, we remove cached files after every test,
+        # and restore users' old setting
+        global _test_cache_dir
+        shutil.rmtree(_test_cache_dir)
+        if _is_cache_env_var_set:
+            os.environ['CUPY_CACHE_DIR'] = _old_cache_dir
         else:
-            path = os.path.expanduser('~/.cupy/kernel_cache')
-        shutil.rmtree(path)
-        os.makedirs(path)
+            os.environ.pop('CUPY_CACHE_DIR')
 
     def _helper(self, kernel, dtype):
         N = 10
@@ -148,12 +166,13 @@ class TestRaw(unittest.TestCase):
 
     def test_module_backends(self):
         for backend in ("nvrtc", "nvcc"):
+            self._remove_test_dir()
+            self._setup_test_dir()
             mod = cupy.RawModule(_test_source2, backend=backend)
             assert mod.backend == backend
             ker_sum = mod.get_function('test_sum')
             x1, x2, y = self._helper(ker_sum, cupy.float32)
             assert cupy.allclose(y, x1 + x2)
-            self.tearDown()  # do a manual cleanup
 
     def test_compiler_flag(self):
         module = self.mod3
@@ -189,7 +208,8 @@ class TestRaw(unittest.TestCase):
 
     def test_backends(self):
         for backend in ("nvrtc", "nvcc"):
+            self._remove_test_dir()
+            self._setup_test_dir()
             kern = cupy.RawKernel(_test_source4, 'test_sub', backend=backend)
             x1, x2, y = self._helper(kern, cupy.float32)
             assert (y == x1 - x2).all()
-            self.tearDown()  # do a manual cleanup
