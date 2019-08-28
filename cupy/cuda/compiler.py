@@ -10,10 +10,12 @@ import six
 
 from cupy.cuda import device
 from cupy.cuda import function
+from cupy.cuda import get_cuda_path
 from cupy.cuda import nvrtc
 
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
+_win32 = (sys.platform == 'win32')
 
 
 def _get_nvrtc_version():
@@ -177,13 +179,15 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
     ls.add_ptr_data(ptx, u'cupy.ptx')
     # for dynamic parallelism
     if _check_cudadevrt_needed(options):
-        cudadevrt = os.environ.get('CUPY_CUDADEVRT_PATH')
-        if cudadevrt is None:
+        global _win32
+        cudadevrt = get_cuda_path()
+        if _win32:
+            cudadevrt += '\lib\x64\cudadevrt.lib'
+        else:
+            cudadevrt += '/lib64/libcudadevrt.a'
+        if not os.path.isfile(cudadevrt):
             raise RuntimeError('Relocatable PTX code is requested, but '
-                               'cudadevrt is not found.\nPlease set the '
-                               'environmental variable CUPY_CUDADEVRT_PATH '
-                               'to the path of cudadevrt.lib or '
-                               'libcudadevrt.a.')
+                               'cudadevrt is not found.')
         ls.add_ptr_file(cudadevrt)
     cubin = ls.complete()
     cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
