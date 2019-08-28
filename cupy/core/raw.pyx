@@ -24,7 +24,6 @@ cdef class RawKernel:
         options (str): Compiler options passed to NVRTC. For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
         backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
-
     """
 
     def __init__(self, code, name, options=(), backend='nvrtc'):
@@ -210,11 +209,12 @@ cdef class RawModule:
         options (str): Compiler options passed to NVRTC if compilation is
             needed. For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
+        backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
     """
-    def __init__(self, code_or_path, options=()):
+    def __init__(self, code_or_path, options=(), backend='nvrtc'):
         if isinstance(code_or_path, six.binary_type):
             code_or_path = code_or_path.decode('UTF-8')
 
@@ -229,10 +229,12 @@ cdef class RawModule:
 
         if self.code is not None:
             self.module = cupy.core.core.compile_with_cache(
-                code, options, prepend_cupy_headers=False)
+                code, options, prepend_cupy_headers=False, backend=backend)
+            self.backend = backend
         elif self.cubin_path is not None:
             self.module = Module()
             self.module.load_file(self.cubin_path)
+            self.backend = 'nvcc'
 
         self.options = options
         self.kernels = {}

@@ -146,6 +146,15 @@ class TestRaw(unittest.TestCase):
         x1, x2, y = self._helper(ker_times, cupy.float32)
         assert cupy.allclose(y, x1 * x2)
 
+    def test_module_backends(self):
+        for backend in ("nvrtc", "nvcc"):
+            mod = cupy.RawModule(_test_source2, backend=backend)
+            assert mod.backend == backend
+            ker_sum = mod.get_function('test_sum')
+            x1, x2, y = self._helper(ker_sum, cupy.float32)
+            assert cupy.allclose(y, x1 + x2)
+            self.tearDown()  # do a manual cleanup
+
     def test_compiler_flag(self):
         module = self.mod3
         ker_sum = module.get_function('test_sum')

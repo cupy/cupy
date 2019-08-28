@@ -15,4 +15,5 @@ cdef class RawModule:
         readonly str cubin_path
         readonly tuple options
         dict kernels
+        readonly str backend
         object module
