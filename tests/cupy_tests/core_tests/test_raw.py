@@ -78,6 +78,30 @@ __global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, \
 }
 '''
 
+_test_source5 = r'''
+extern "C"{
+
+__global__ void test_kernel_inner(float *arr, int N)
+{
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    unsigned int inner_blk = 2;
+    unsigned int inner_len = inner_blk*sizeof(float);
+
+    if (tid < N)
+        arr[tid] = 1.0;
+}
+
+__global__ void test_kernel(float *arr, int N, int inner_blk)
+{
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (tid < N/inner_blk)
+        test_kernel_inner<<<inner_blk, 1>>>(arr+tid*inner_blk, inner_blk);
+}
+
+}
+'''
+
 
 class TestRaw(unittest.TestCase):
 
@@ -158,3 +182,19 @@ class TestRaw(unittest.TestCase):
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
             self.mod2.get_function("no_such_kernel")
         assert 'CUDA_ERROR_NOT_FOUND' in str(ex)
+
+    def test_dynamical_parallelism(self):
+        ker = cupy.RawKernel(_test_source5, 'test_kernel', options=('-dc',))
+        N = 15
+        inner_chunk = 3
+        x = cupy.zeros((N,), dtype=cupy.float32)
+        ker((1,), (N,), (x, N, inner_chunk))
+        assert (x == 1.0).all()
+
+    def test_dynamical_parallelism_compile_failure(self):
+        ker = cupy.RawKernel(_test_source5, 'test_kernel',)
+        N = 15
+        inner_chunk = 3
+        x = cupy.zeros((N,), dtype=cupy.float32)
+        with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
+            ker((1,), (N,), (x, N, inner_chunk))

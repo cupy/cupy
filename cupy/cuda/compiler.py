@@ -10,7 +10,6 @@ import six
 
 from cupy.cuda import device
 from cupy.cuda import function
-from cupy.cuda import get_cuda_path
 from cupy.cuda import nvrtc
 
 _nvrtc_version = None
@@ -180,6 +179,8 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None,
     # for dynamic parallelism
     if _check_cudadevrt_needed(options):
         global _win32
+        # defer import to here to avoid circular dependency
+        from cupy.cuda import get_cuda_path
         cudadevrt = get_cuda_path()
         if _win32:
             cudadevrt += '\lib\x64\cudadevrt.lib'
