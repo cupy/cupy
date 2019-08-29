@@ -33,17 +33,22 @@ def _normalize_axis_index(axis, ndim):
     with an appropriate message if this is not possible.
 
     Args:
-        axis : int
+        axis (int):
             The un-normalized index of the axis. Can be negative
-        ndim : int
+        ndim (int):
             The number of dimensions of the array that ``axis`` should be
             normalized against
 
     Returns:
-        normalized_axis : int
+        int:
             The normalized axis index, such that `0 <= normalized_axis < ndim`
 
     """
+
+    if axis < 0:
+        raise _errors._AxisError('axis '+str(axis)+' is out of bounds')
+    if ndim < 0:
+        raise ValueError('ndim '+str(ndim)+' is out of bounds')
 
     if -axis <= ndim < axis:
         raise _errors._AxisError('axis '+str(axis)+' is out of bounds for ' +
