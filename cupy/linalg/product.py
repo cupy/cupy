@@ -73,27 +73,25 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     the cross product is returned.
 
     Args:
-        a : cupy.ndarray
-            Components of the first vector(s).
-        b : cupy.ndarray
-            Components of the second vector(s).
-        axisa : int, optional
+        a (cupy.ndarray): Components of the first vector(s).
+        b (cupy.ndarray): Components of the second vector(s).
+        axisa (int, optional):
             Axis of ``a`` that defines the vector(s).
             By default, the last axis.
-        axisb : int, optional
+        axisb (int, optional):
             Axis of ``b`` that defines the vector(s).
             By default, the last axis.
-        axisc : int, optional
+        axisc (int, optional):
             Axis of ``c`` containing the cross product vector(s).  Ignored if
             both input vectors have dimension 2, as the return is scalar.
             By default, the last axis.
-        axis : int, optional
+        axis (int, optional):
             If defined, the axis of ``a``, ``b`` and ``c``
             that defines the vector(s) and cross product(s).
             Overrides ``axisa``, ``axisb`` and ``axisc``.
 
     Returns:
-        c : cupy.ndarray
+        cupy.ndarray :
             Vector cross product(s).
 
     .. seealso:: :func:`numpy.cross`
