@@ -59,13 +59,13 @@ __device__ double atomicMax(double* address, double val) {
   unsigned long long old = *address_as_i, assumed;
   do {
     assumed = old;
-    const long long result =
-      __double_as_longlong(fmaxf(val, __longlong_as_double(assumed)));
+    const long long result = __double_as_longlong(
+      fmaxf(val, __longlong_as_double(reinterpret_cast<long long&>(assumed))));
     old = atomicCAS(
       address_as_i, assumed,
       reinterpret_cast<const unsigned long long&>(result));
   } while (assumed != old);
-  return __double_as_longlong(reinterpret_cast<unsigned long long&>(old));
+  return __longlong_as_double(reinterpret_cast<long long&>(old));
 }
 
 
@@ -88,11 +88,11 @@ __device__ double atomicMin(double* address, double val) {
   unsigned long long old = *address_as_i, assumed;
   do {
     assumed = old;
-    const long long result =
-      __double_as_longlong(fminf(val, __longlong_as_double(assumed)));
+    const long long result = __double_as_longlong(
+      fminf(val, __longlong_as_double(reinterpret_cast<long long&>(assumed))));
     old = atomicCAS(
       address_as_i, assumed,
       reinterpret_cast<const unsigned long long&>(result));
   } while (assumed != old);
-  return __double_as_longlong(reinterpret_cast<unsigned long long&>(old));
+  return __longlong_as_double(reinterpret_cast<long long&>(old));
 }
