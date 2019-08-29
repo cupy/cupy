@@ -397,16 +397,3 @@ cpdef destroyTextureObject(TextureObject texObject)
 cdef Extent make_Extent(size_t w, size_t h, size_t d)
 cdef Pos make_Pos(size_t x, size_t y, size_t z)
 cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz)
-
-cdef class ChannelFormatDescriptor:
-    cdef:
-        readonly intptr_t ptr
-
-cdef class ResourceDescriptor:
-    cdef:
-        readonly intptr_t ptr
-        readonly object chDesc
-
-cdef class TextureDescriptor:
-    cdef:
-        readonly intptr_t ptr

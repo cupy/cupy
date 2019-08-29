@@ -4,17 +4,126 @@ from libc.string cimport memset as c_memset
 
 import numpy
 
-import cupy
+from cupy.core.core cimport ndarray
 from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 from cupy.cuda.memory cimport BaseMemory
+from cupy.cuda.runtime cimport Array, ChannelFormatDesc, ChannelFormatKind,\
+                               Memcpy3DParms, MemoryKind, PitchedPtr,\
+                               ResourceDesc, ResourceType, TextureAddressMode,\
+                               TextureDesc, TextureFilterMode, TextureReadMode
 from cupy.cuda.runtime import CUDARuntimeError
+
+
+cdef class ChannelFormatDescriptor:
+    def __init__(self, int x, int y, int z, int w, int f):
+        # We don't call cudaCreateChannelDesc() here for two reasons: 1. to
+        # avoid out of scope; 2. it doesn't do input verification for us.
+        #
+        # WARNING: don't use [0] or cython.operator.dereference to dereference
+        # a pointer to struct for writing to its members !!! (But read is OK.)
+        # Turns out while there's no arrow operator '->' in Cython, one can
+        # just treat the ptr as a real object and access the struct attributes.
+        # This applies to several classes below.
+        self.ptr = <intptr_t>PyMem_Malloc(sizeof(ChannelFormatDesc))
+        cdef ChannelFormatDesc* desc = (<ChannelFormatDesc*>self.ptr)
+        desc.x = x
+        desc.y = y
+        desc.z = z
+        desc.w = w
+        desc.f = <ChannelFormatKind>f
+
+    def __dealloc__(self):
+        PyMem_Free(<ChannelFormatDesc*>self.ptr)
+        self.ptr = 0
+
+    def get_channel_format(self):
+        # We don't need to call cudaGetChannelDesc() here, because the struct
+        # is still alive!
+        cdef dict desc = {}
+        desc['x'] = (<ChannelFormatDesc*>self.ptr).x
+        desc['y'] = (<ChannelFormatDesc*>self.ptr).y
+        desc['z'] = (<ChannelFormatDesc*>self.ptr).z
+        desc['w'] = (<ChannelFormatDesc*>self.ptr).w
+        desc['f'] = (<ChannelFormatDesc*>self.ptr).f
+        return desc
+
+
+cdef class ResourceDescriptor:
+    def __init__(self, int restype, CUDAArray cuArr=None, ndarray arr=None,
+                 ChannelFormatDescriptor chDesc=None, size_t sizeInBytes=0,
+                 size_t width=0, size_t height=0, size_t pitchInBytes=0):
+        '''
+        Args:
+        '''
+        cdef ResourceType resType = <ResourceType>restype
+        if resType == runtime.cudaResourceTypeMipmappedArray:
+            # TODO(leofang): support this?
+            raise NotImplementedError('cudaResourceTypeMipmappedArray is '
+                                      'currently not supported.')
+
+        self.ptr = <intptr_t>PyMem_Malloc(sizeof(ResourceDesc))
+        cdef ResourceDesc* desc = (<ResourceDesc*>self.ptr)
+        c_memset(desc, 0, sizeof(ResourceDesc))
+
+        desc.resType = resType
+        if resType == runtime.cudaResourceTypeArray:
+            desc.res.array.array = <Array>(cuArr.ptr)
+        elif resType == runtime.cudaResourceTypeLinear:
+            desc.res.linear.devPtr = <void*>(arr.data.ptr)
+            desc.res.linear.desc = (<ChannelFormatDesc*>chDesc.ptr)[0]
+            desc.res.linear.sizeInBytes = sizeInBytes
+        elif resType == runtime.cudaResourceTypePitch2D:
+            desc.res.pitch2D.devPtr = <void*>(arr.data.ptr)
+            desc.res.pitch2D.desc = (<ChannelFormatDesc*>chDesc.ptr)[0]
+            desc.res.pitch2D.width = width
+            desc.res.pitch2D.height = height
+            desc.res.pitch2D.pitchInBytes = pitchInBytes
+        self.chDesc = chDesc
+
+    def __dealloc__(self):
+        PyMem_Free(<ResourceDesc*>self.ptr)
+        self.ptr = 0
+
+    def get_resource_type(self):
+        return (<ResourceDesc*>self.ptr).resType
+
+
+cdef class TextureDescriptor:
+    def __init__(self, addressModes=None, int filterMode=0, int readMode=0,
+                 sRGB=None, borderColors=None, normalizedCoords=None,
+                 maxAnisotropy=None):
+        self.ptr = <intptr_t>PyMem_Malloc(sizeof(TextureDesc))
+        cdef TextureDesc* desc = (<TextureDesc*>self.ptr)
+        c_memset(desc, 0, sizeof(TextureDesc))
+
+        if addressModes is not None:
+            assert len(addressModes) <= 3
+            for i, mode in enumerate(addressModes):
+                desc.addressMode[i] = <TextureAddressMode>mode
+        desc.filterMode = <TextureFilterMode>filterMode
+        desc.readMode = <TextureReadMode>readMode
+        if normalizedCoords is not None:
+            desc.normalizedCoords = normalizedCoords
+        if sRGB is not None:
+            desc.sRGB = sRGB
+        if borderColors is not None:
+            assert len(borderColors) <= 4
+            for i, color in enumerate(borderColors):
+                desc.borderColor[i] = color
+        if maxAnisotropy is not None:
+            desc.maxAnisotropy = maxAnisotropy
+        # TODO(leofang): support mipmap?
+
+    def __dealloc__(self):
+        PyMem_Free(<TextureDesc*>self.ptr)
+        self.ptr = 0
 
 
 cdef class CUDAArray(BaseMemory):
     # TODO(leofang): perhaps this wrapper is not needed when cupy.ndarray
     # can be backed by texture memory/CUDA arrays?
-    def __init__(self, runtime.ChannelFormatDescriptor desc, size_t width,
+    def __init__(self, ChannelFormatDescriptor desc, size_t width,
                  size_t height, size_t depth=0, unsigned int flags=0):
         self.device_id = device.get_device_id()
 
@@ -43,9 +152,9 @@ cdef class CUDAArray(BaseMemory):
 
     cdef int _get_kind(self, src, dst):
         cdef int kind
-        if isinstance(src, cupy.core.core.ndarray) and dst is self:
+        if isinstance(src, ndarray) and dst is self:
             kind = runtime.memcpyDeviceToDevice
-        elif src is self and isinstance(dst, cupy.core.core.ndarray):
+        elif src is self and isinstance(dst, ndarray):
             kind = runtime.memcpyDeviceToDevice
         elif isinstance(src, numpy.ndarray) and dst is self:
             kind = runtime.memcpyHostToDevice
@@ -57,19 +166,19 @@ cdef class CUDAArray(BaseMemory):
 
     cdef void* _make_cudaMemcpy3DParms(self, src, dst):
         '''Private helper for data transfer. Supports all dimensions.'''
-        cdef runtime.Memcpy3DParms* param = \
-            <runtime.Memcpy3DParms*>PyMem_Malloc(sizeof(runtime.Memcpy3DParms))
-        c_memset(param, 0, sizeof(runtime.Memcpy3DParms))
-        cdef runtime.PitchedPtr srcPitchedPtr, dstPitchedPtr
+        cdef Memcpy3DParms* param = \
+            <Memcpy3DParms*>PyMem_Malloc(sizeof(Memcpy3DParms))
+        c_memset(param, 0, sizeof(Memcpy3DParms))
+        cdef PitchedPtr srcPitchedPtr, dstPitchedPtr
         cdef intptr_t ptr
 
         # get kind
-        param.kind = <runtime.MemoryKind>self._get_kind(src, dst)
+        param.kind = <MemoryKind>self._get_kind(src, dst)
 
         # get src
         if src is self:
             # Important: cannot convert from src.ptr!
-            param.srcArray = <runtime.Array>(self.ptr)
+            param.srcArray = <Array>(self.ptr)
             param.extent = runtime.make_Extent(self.width, self.height,
                                                self.depth)
         else:
@@ -79,7 +188,7 @@ cdef class CUDAArray(BaseMemory):
             else:
                 height = 1  # same "one-stride" trick here
 
-            if isinstance(src, cupy.core.core.ndarray):
+            if isinstance(src, ndarray):
                 ptr = src.data.ptr
             else:  # numpy.ndarray
                 ptr = src.ctypes.data
@@ -91,7 +200,7 @@ cdef class CUDAArray(BaseMemory):
         # get dst
         if dst is self:
             # Important: cannot convert from dst.ptr!
-            param.dstArray = <runtime.Array>(self.ptr)
+            param.dstArray = <Array>(self.ptr)
             param.extent = runtime.make_Extent(self.width, self.height,
                                                self.depth)
         else:
@@ -101,7 +210,7 @@ cdef class CUDAArray(BaseMemory):
             else:
                 height = 1  # same "one-stride" trick here
 
-            if isinstance(dst, cupy.core.core.ndarray):
+            if isinstance(dst, ndarray):
                 ptr = dst.data.ptr
             else:  # numpy.ndarray
                 ptr = dst.ctypes.data
@@ -130,7 +239,7 @@ cdef class CUDAArray(BaseMemory):
         if arr.dtype != numpy.float32:
             raise ValueError("Currently only float32 is supported")
 
-        cdef runtime.Memcpy3DParms* param = NULL
+        cdef Memcpy3DParms* param = NULL
 
         # Trick: For 1D or 2D CUDA arrays, we need to "fool" memcpy3D so that
         # at least one stride gets copied. This is not properly documented in
@@ -143,11 +252,9 @@ cdef class CUDAArray(BaseMemory):
             self.depth = 1
 
         if direction == 'in':
-            param = <runtime.Memcpy3DParms*>self._make_cudaMemcpy3DParms(arr,
-                                                                         self)
+            param = <Memcpy3DParms*>self._make_cudaMemcpy3DParms(arr, self)
         elif direction == 'out':
-            param = <runtime.Memcpy3DParms*>self._make_cudaMemcpy3DParms(self,
-                                                                         arr)
+            param = <Memcpy3DParms*>self._make_cudaMemcpy3DParms(self, arr)
         try:
             if stream is None:
                 runtime.memcpy3D(<intptr_t>param)
@@ -186,8 +293,7 @@ cdef class CUDAArray(BaseMemory):
 
 cdef class TextureObject:
     # GOAL: make this pass-able to RawKernel
-    def __init__(self, runtime.ResourceDescriptor ResDesc,
-                 runtime.TextureDescriptor TexDesc):
+    def __init__(self, ResourceDescriptor ResDesc, TextureDescriptor TexDesc):
         self.ptr = runtime.createTextureObject(ResDesc.ptr, TexDesc.ptr)
         self.ResDesc = ResDesc
         self.TexDesc = TexDesc
