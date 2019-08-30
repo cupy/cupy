@@ -161,6 +161,10 @@ class TestSlogdet(unittest.TestCase):
         sign, logdet = xp.linalg.slogdet(a)
         return xp.array([sign, logdet], dtype)
 
+    # TODO(hvy): Condition test without reading from private attribute.
+    @unittest.skipUnless(
+        cupy.linalg._synchronize_check_cusolver_dev_info,
+        'Async cusolver calls will behave differently from NumPy')
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_fail(self, xp, dtype):

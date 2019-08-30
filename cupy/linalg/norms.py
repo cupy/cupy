@@ -228,8 +228,8 @@ def _slogdet_one(a):
 
     handle = device.get_cusolver_handle()
     m = len(a)
-    ipiv = cupy.empty(m, 'i')
-    info = cupy.empty((), 'i')
+    ipiv = cupy.empty(m, dtype=numpy.int32)
+    dev_info = cupy.empty(1, dtype=numpy.int32)
 
     # Need to make a copy because getrf works inplace
     a_copy = a.copy(order='F')
@@ -244,9 +244,12 @@ def _slogdet_one(a):
     buffersize = getrf_bufferSize(handle, m, m, a_copy.data.ptr, m)
     workspace = cupy.empty(buffersize, dtype=dtype)
     getrf(handle, m, m, a_copy.data.ptr, m, workspace.data.ptr,
-          ipiv.data.ptr, info.data.ptr)
+          ipiv.data.ptr, dev_info.data.ptr)
 
-    if info[()] == 0:
+    try:
+        cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+            getrf, dev_info)
+
         diag = cupy.diag(a_copy)
         # ipiv is 1-origin
         non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, m + 1)) +
@@ -254,7 +257,7 @@ def _slogdet_one(a):
         # Note: sign == -1 ** (non_zero % 2)
         sign = (non_zero % 2) * -2 + 1
         logdet = cupy.log(abs(diag)).sum()
-    else:
+    except linalg.LinAlgError:
         sign = cupy.array(0.0, dtype=dtype)
         logdet = cupy.array(float('-inf'), dtype)
 
