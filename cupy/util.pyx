@@ -44,13 +44,11 @@ def _normalize_axis_index(axis, ndim):
             The normalized axis index, such that `0 <= normalized_axis < ndim`
 
     """
+    if axis < 0 and abs(axis) > ndim:
+        raise _errors._AxisError('axis '+str(axis)+' is out of bounds for ' +
+                                 'array of dimension '+str(ndim))
 
-    if axis < 0:
-        raise _errors._AxisError('axis '+str(axis)+' is out of bounds')
-    if ndim < 0:
-        raise ValueError('ndim '+str(ndim)+' is out of bounds')
-
-    if -axis <= ndim < axis:
+    elif axis > 0 and abs(axis) >= ndim:
         raise _errors._AxisError('axis '+str(axis)+' is out of bounds for ' +
                                  'array of dimension '+str(ndim))
     else:
