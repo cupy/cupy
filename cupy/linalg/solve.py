@@ -108,28 +108,25 @@ def _solve(a, b, cublas_handle, cusolver_handle):
     workspace = cupy.empty(buffersize, dtype=dtype)
     tau = cupy.empty(m, dtype=dtype)
     geqrf(
-        cusolver_handle, m, m, a.data.ptr, m,
-        tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
-    _check_status(dev_info)
+        cusolver_handle, m, m, a.data.ptr, m, tau.data.ptr, workspace.data.ptr,
+        buffersize, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        geqrf, dev_info)
+
     # 2. ormqr (Q^T * B)
     ormqr(
-        cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans,
-        m, k, m, a.data.ptr, m, tau.data.ptr, b.data.ptr, m,
-        workspace.data.ptr, buffersize, dev_info.data.ptr)
-    _check_status(dev_info)
+        cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans, m, k, m, a.data.ptr,
+        m, tau.data.ptr, b.data.ptr, m, workspace.data.ptr, buffersize,
+        dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        ormqr, dev_info)
+
     # 3. trsm (X = R^{-1} * (Q^T * B))
     trsm(
         cublas_handle, cublas.CUBLAS_SIDE_LEFT, cublas.CUBLAS_FILL_MODE_UPPER,
         cublas.CUBLAS_OP_N, cublas.CUBLAS_DIAG_NON_UNIT,
         m, k, 1, a.data.ptr, m, b.data.ptr, m)
     return b
-
-
-def _check_status(dev_info):
-    status = int(dev_info)
-    if status < 0:
-        raise linalg.LinAlgError(
-            'Parameter error (maybe caused by a bug in cupy.linalg?)')
 
 
 def tensorsolve(a, b, axes=None):
@@ -285,14 +282,20 @@ def inv(a):
     workspace = cupy.empty(buffersize, dtype=dtype)
 
     # LU factorization
-    getrf(cusolver_handle, m, m, a.data.ptr, m, workspace.data.ptr,
-          ipiv.data.ptr, dev_info.data.ptr)
+    getrf(
+        cusolver_handle, m, m, a.data.ptr, m, workspace.data.ptr,
+        ipiv.data.ptr, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        getrf, dev_info)
 
     b = cupy.eye(m, dtype=dtype)
 
     # solve for the inverse
-    getrs(cusolver_handle, 0, m, m, a.data.ptr, m, ipiv.data.ptr, b.data.ptr,
-          m, dev_info.data.ptr)
+    getrs(
+        cusolver_handle, 0, m, m, a.data.ptr, m, ipiv.data.ptr, b.data.ptr, m,
+        dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        getrs, dev_info)
 
     return b
 

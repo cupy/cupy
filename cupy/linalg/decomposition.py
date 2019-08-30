@@ -1,5 +1,4 @@
 import numpy
-from numpy import linalg
 
 import cupy
 from cupy import cuda
@@ -45,28 +44,23 @@ def cholesky(a):
     n = len(a)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
+
     if dtype == 'f':
-        buffersize = cusolver.spotrf_bufferSize(
-            handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
-        workspace = cupy.empty(buffersize, dtype=numpy.float32)
-        cusolver.spotrf(
-            handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
-            workspace.data.ptr, buffersize, dev_info.data.ptr)
+        potrf = cusolver.spotrf
+        potrf_bufferSize = cusolver.spotrf_bufferSize
     else:  # dtype == 'd'
-        buffersize = cusolver.dpotrf_bufferSize(
-            handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
-        workspace = cupy.empty(buffersize, dtype=numpy.float64)
-        cusolver.dpotrf(
-            handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
-            workspace.data.ptr, buffersize, dev_info.data.ptr)
-    status = int(dev_info[0])
-    if status > 0:
-        raise linalg.LinAlgError(
-            'The leading minor of order {} '
-            'is not positive definite'.format(status))
-    elif status < 0:
-        raise linalg.LinAlgError(
-            'Parameter error (maybe caused by a bug in cupy.linalg?)')
+        potrf = cusolver.dpotrf
+        potrf_bufferSize = cusolver.dpotrf_bufferSize
+
+    buffersize = potrf_bufferSize(
+        handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
+    workspace = cupy.empty(buffersize, dtype=dtype)
+    potrf(
+        handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
+        workspace.data.ptr, buffersize, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        potrf, dev_info)
+
     util._tril(x, k=0)
     return x
 
@@ -118,25 +112,23 @@ def qr(a, mode='reduced'):
     mn = min(m, n)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
-    # compute working space of geqrf and ormqr, and solve R
+
     if dtype == 'f':
-        buffersize = cusolver.sgeqrf_bufferSize(handle, m, n, x.data.ptr, n)
-        workspace = cupy.empty(buffersize, dtype=numpy.float32)
-        tau = cupy.empty(mn, dtype=numpy.float32)
-        cusolver.sgeqrf(
-            handle, m, n, x.data.ptr, m,
-            tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
+        geqrf = cusolver.sgeqrf
+        geqrf_bufferSize = cusolver.sgeqrf_bufferSize
     else:  # dtype == 'd'
-        buffersize = cusolver.dgeqrf_bufferSize(handle, n, m, x.data.ptr, n)
-        workspace = cupy.empty(buffersize, dtype=numpy.float64)
-        tau = cupy.empty(mn, dtype=numpy.float64)
-        cusolver.dgeqrf(
-            handle, m, n, x.data.ptr, m,
-            tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
-    status = int(dev_info[0])
-    if status < 0:
-        raise linalg.LinAlgError(
-            'Parameter error (maybe caused by a bug in cupy.linalg?)')
+        geqrf = cusolver.dgeqrf
+        geqrf_bufferSize = cusolver.dgeqrf_bufferSize
+
+    # compute working space of geqrf and solve R
+    buffersize = geqrf_bufferSize(handle, n, m, x.data.ptr, n)
+    workspace = cupy.empty(buffersize, dtype=dtype)
+    tau = cupy.empty(mn, dtype=dtype)
+    geqrf(
+        handle, m, n, x.data.ptr, m, tau.data.ptr, workspace.data.ptr,
+        buffersize, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        geqrf, dev_info)
 
     if mode == 'r':
         r = x[:, :mn].transpose()
@@ -159,21 +151,22 @@ def qr(a, mode='reduced'):
         q = cupy.empty((n, m), dtype)
     q[:n] = x
 
-    # solve Q
+    # compute working space of orgqr and solve Q
     if dtype == 'f':
-        buffersize = cusolver.sorgqr_bufferSize(
-            handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
-        workspace = cupy.empty(buffersize, dtype=numpy.float32)
-        cusolver.sorgqr(
-            handle, m, mc, mn, q.data.ptr, m, tau.data.ptr,
-            workspace.data.ptr, buffersize, dev_info.data.ptr)
-    else:
-        buffersize = cusolver.dorgqr_bufferSize(
-            handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
-        workspace = cupy.empty(buffersize, dtype=numpy.float64)
-        cusolver.dorgqr(
-            handle, m, mc, mn, q.data.ptr, m, tau.data.ptr,
-            workspace.data.ptr, buffersize, dev_info.data.ptr)
+        orgqr = cusolver.sorgqr
+        orgqr_bufferSize = cusolver.sorgqr_bufferSize
+    else:  # dtype == 'd'
+        orgqr = cusolver.dorgqr
+        orgqr_bufferSize = cusolver.dorgqr_bufferSize
+
+    buffersize = orgqr_bufferSize(
+        handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
+    workspace = cupy.empty(buffersize, dtype=dtype)
+    orgqr(
+        handle, m, mc, mn, q.data.ptr, m, tau.data.ptr, workspace.data.ptr,
+        buffersize, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        orgqr, dev_info)
 
     q = q[:mc].transpose()
     r = x[:, :mc].transpose()
@@ -249,46 +242,32 @@ def svd(a, full_matrices=True, compute_uv=True):
     s = cupy.empty(mn, dtype=s_dtype)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
+
     if compute_uv:
         job = ord('A') if full_matrices else ord('S')
     else:
         job = ord('N')
-    if a_dtype == 'f':
-        buffersize = cusolver.sgesvd_bufferSize(handle, m, n)
-        workspace = cupy.empty(buffersize, dtype=a_dtype)
-        cusolver.sgesvd(
-            handle, job, job, m, n, x.data.ptr, m,
-            s.data.ptr, u_ptr, m, vt_ptr, n,
-            workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
-    elif a_dtype == 'd':
-        buffersize = cusolver.dgesvd_bufferSize(handle, m, n)
-        workspace = cupy.empty(buffersize, dtype=a_dtype)
-        cusolver.dgesvd(
-            handle, job, job, m, n, x.data.ptr, m,
-            s.data.ptr, u_ptr, m, vt_ptr, n,
-            workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
-    elif a_dtype == 'F':
-        buffersize = cusolver.cgesvd_bufferSize(handle, m, n)
-        workspace = cupy.empty(buffersize, dtype=a_dtype)
-        cusolver.cgesvd(
-            handle, job, job, m, n, x.data.ptr, m,
-            s.data.ptr, u_ptr, m, vt_ptr, n,
-            workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
-    else:  # a_dtype == 'D':
-        buffersize = cusolver.zgesvd_bufferSize(handle, m, n)
-        workspace = cupy.empty(buffersize, dtype=a_dtype)
-        cusolver.zgesvd(
-            handle, job, job, m, n, x.data.ptr, m,
-            s.data.ptr, u_ptr, m, vt_ptr, n,
-            workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
 
-    status = int(dev_info[0])
-    if status > 0:
-        raise linalg.LinAlgError(
-            'SVD computation does not converge')
-    elif status < 0:
-        raise linalg.LinAlgError(
-            'Parameter error (maybe caused by a bug in cupy.linalg?)')
+    if a_dtype == 'f':
+        gesvd = cusolver.sgesvd
+        gesvd_bufferSize = cusolver.sgesvd_bufferSize
+    elif a_dtype == 'd':
+        gesvd = cusolver.dgesvd
+        gesvd_bufferSize = cusolver.dgesvd_bufferSize
+    elif a_dtype == 'F':
+        gesvd = cusolver.cgesvd
+        gesvd_bufferSize = cusolver.cgesvd_bufferSize
+    else:  # a_dtype == 'D':
+        gesvd = cusolver.zgesvd
+        gesvd_bufferSize = cusolver.zgesvd_bufferSize
+
+    buffersize = gesvd_bufferSize(handle, m, n)
+    workspace = cupy.empty(buffersize, dtype=a_dtype)
+    gesvd(
+        handle, job, job, m, n, x.data.ptr, m, s.data.ptr, u_ptr, m, vt_ptr, n,
+        workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        gesvd, dev_info)
 
     # Note that the returned array may need to be transporsed
     # depending on the structure of an input

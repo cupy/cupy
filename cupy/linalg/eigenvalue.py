@@ -83,6 +83,8 @@ def _syevd(a, UPLO, with_eigen_vector):
     syevd(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        syevd, dev_info)
 
     return w.astype(ret_w_dtype, copy=False), v.astype(ret_v_dtype, copy=False)
 
