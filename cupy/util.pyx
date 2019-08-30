@@ -44,9 +44,9 @@ def _normalize_axis_index(axis, ndim):
             The normalized axis index, such that `0 <= normalized_axis < ndim`
 
     """
-    if axis < 0: 
-        axis += ndim 
-    if not (0 <= axis < ndim): 
+    if axis < 0:
+        axis += ndim
+    if not (0 <= axis < ndim):
         raise _errors._AxisError('axis out of bounds')
     return axis
 
