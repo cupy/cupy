@@ -7,7 +7,6 @@ import numpy
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport device
 from cupy.cuda cimport runtime
-from cupy.cuda.memory cimport BaseMemory
 from cupy.cuda.runtime cimport Array, ChannelFormatDesc, ChannelFormatKind,\
                                Memcpy3DParms, MemoryKind, PitchedPtr,\
                                ResourceDesc, ResourceType, TextureAddressMode,\
@@ -79,7 +78,10 @@ cdef class ResourceDescriptor:
             desc.res.pitch2D.width = width
             desc.res.pitch2D.height = height
             desc.res.pitch2D.pitchInBytes = pitchInBytes
+
         self.chDesc = chDesc
+        self.cuArr = cuArr
+        self.arr = arr
 
     def __dealloc__(self):
         PyMem_Free(<ResourceDesc*>self.ptr)
@@ -120,12 +122,12 @@ cdef class TextureDescriptor:
         self.ptr = 0
 
 
-cdef class CUDAArray(BaseMemory):
+cdef class CUDAArray:
     # TODO(leofang): perhaps this wrapper is not needed when cupy.ndarray
     # can be backed by texture memory/CUDA arrays?
     def __init__(self, ChannelFormatDescriptor desc, size_t width,
                  size_t height, size_t depth=0, unsigned int flags=0):
-        self.device_id = device.get_device_id()
+        #self.device_id = device.get_device_id()
 
         if width == 0:
             raise ValueError('To create a CUDA array, width must be nonzero.')
@@ -146,9 +148,8 @@ cdef class CUDAArray(BaseMemory):
         self.ndim = 3 if depth > 0 else 2 if height > 0 else 1
 
     def __dealloc__(self):
-        if self.ptr:
-            runtime.freeArray(self.ptr)
-            self.ptr = 0
+        runtime.freeArray(self.ptr)
+        self.ptr = 0
 
     cdef int _get_kind(self, src, dst):
         cdef int kind
@@ -299,6 +300,5 @@ cdef class TextureObject:
         self.TexDesc = TexDesc
 
     def __dealloc__(self):
-        if self.ptr:
-            runtime.destroyTextureObject(self.ptr)
-            self.ptr = 0
+        runtime.destroyTextureObject(self.ptr)
+        self.ptr = 0

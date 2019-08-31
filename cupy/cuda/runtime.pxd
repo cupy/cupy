@@ -393,7 +393,7 @@ cdef _ensure_context()
 ##############################################################################
 
 cpdef createTextureObject(intptr_t ResDesc, intptr_t TexDesc)
-cpdef destroyTextureObject(TextureObject texObject)
+cpdef destroyTextureObject(intptr_t texObject)
 cdef Extent make_Extent(size_t w, size_t h, size_t d)
 cdef Pos make_Pos(size_t x, size_t y, size_t z)
 cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz)

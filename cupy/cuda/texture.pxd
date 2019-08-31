@@ -1,7 +1,5 @@
 from libc.stdint cimport intptr_t
 
-from cupy.cuda.memory cimport BaseMemory
-
 
 cdef class ChannelFormatDescriptor:
     cdef:
@@ -12,6 +10,7 @@ cdef class ResourceDescriptor:
     cdef:
         readonly intptr_t ptr
         readonly ChannelFormatDescriptor chDesc
+        readonly object cuArr, arr
 
 
 cdef class TextureDescriptor:
@@ -19,8 +18,9 @@ cdef class TextureDescriptor:
         readonly intptr_t ptr
 
 
-cdef class CUDAArray(BaseMemory):
+cdef class CUDAArray:
     cdef:
+        readonly intptr_t ptr
         readonly ChannelFormatDescriptor desc
         readonly size_t width
         readonly size_t height
@@ -33,6 +33,6 @@ cdef class CUDAArray(BaseMemory):
 
 cdef class TextureObject:
     cdef:
+        readonly intptr_t ptr
         readonly ResourceDescriptor ResDesc
         readonly TextureDescriptor TexDesc
-        readonly unsigned long long ptr  # type: cudaTextureObject_t

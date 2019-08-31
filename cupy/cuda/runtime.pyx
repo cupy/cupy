@@ -602,19 +602,21 @@ cdef _ensure_context():
 ##############################################################################
 
 cpdef createTextureObject(intptr_t ResDescPtr, intptr_t TexDescPtr):
-    cdef TextureObject texobj = 0
+    cdef TextureObject* texobj = <TextureObject*>PyMem_Malloc(sizeof(TextureObject))
     with nogil:
-        status = cudaCreateTextureObject(&texobj, <ResourceDesc*>ResDescPtr,
+        status = cudaCreateTextureObject(texobj, <ResourceDesc*>ResDescPtr,
                                          <TextureDesc*>TexDescPtr,
                                          <ResourceViewDesc*>NULL)
     check_status(status)
-    assert texobj != 0
-    return texobj
+#    assert texobj != 0
+    return <intptr_t>(texobj)
 
-cpdef destroyTextureObject(TextureObject texObject):
+cpdef destroyTextureObject(intptr_t texObject):
+    cdef TextureObject* ptr = <TextureObject*>texObject
     with nogil:
-        status = cudaDestroyTextureObject(texObject)
+        status = cudaDestroyTextureObject(ptr[0])
     check_status(status)
+    PyMem_Free(ptr)
 
 cdef Extent make_Extent(size_t w, size_t h, size_t d):
     return make_cudaExtent(w, h, d)
