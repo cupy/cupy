@@ -5,6 +5,7 @@ from tempfile import mkdtemp
 import unittest
 
 import cupy
+from cupy import testing
 
 
 _test_source1 = r'''
@@ -81,14 +82,6 @@ __global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, \
 }
 '''
 
-_test_source4 = r'''
-extern "C" __global__
-void test_sub(const float* x1, const float* x2, float* y) {
-    int tid = blockDim.x * blockIdx.x + threadIdx.x;
-    y[tid] = x1[tid] - x2[tid];
-}
-'''
-
 if 'CUPY_CACHE_DIR' in os.environ:
     _old_cache_dir = os.environ['CUPY_CACHE_DIR']
     _is_cache_env_var_set = True
@@ -98,23 +91,23 @@ else:
 _test_cache_dir = None
 
 
+@testing.parameterize(*testing.product({
+    'backend': ('nvrtc', 'nvcc'),
+}))
 class TestRaw(unittest.TestCase):
 
     def setUp(self):
-        self.kern = cupy.RawKernel(_test_source1, 'test_sum')
-        self.mod2 = cupy.RawModule(_test_source2)
-        self.mod3 = cupy.RawModule(_test_source3, ("-DPRECISION=2",))
-        self._setup_test_dir()
-
-    def _setup_test_dir(self):
         global _test_cache_dir
         _test_cache_dir = mkdtemp()
         os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
 
-    def tearDown(self):
-        self._remove_test_dir()
+        self.kern = cupy.RawKernel(_test_source1, 'test_sum',
+                                   backend=self.backend)
+        self.mod2 = cupy.RawModule(_test_source2, backend=self.backend)
+        self.mod3 = cupy.RawModule(_test_source3, ("-DPRECISION=2",),
+                                   backend=self.backend)
 
-    def _remove_test_dir(self):
+    def tearDown(self):
         # To avoid cache interference, we remove cached files after every test,
         # and restore users' old setting
         global _test_cache_dir
@@ -164,16 +157,6 @@ class TestRaw(unittest.TestCase):
         x1, x2, y = self._helper(ker_times, cupy.float32)
         assert cupy.allclose(y, x1 * x2)
 
-    def test_module_backends(self):
-        for backend in ("nvrtc", "nvcc"):
-            self._remove_test_dir()
-            self._setup_test_dir()
-            mod = cupy.RawModule(_test_source2, backend=backend)
-            assert mod.backend == backend
-            ker_sum = mod.get_function('test_sum')
-            x1, x2, y = self._helper(ker_sum, cupy.float32)
-            assert cupy.allclose(y, x1 + x2)
-
     def test_compiler_flag(self):
         module = self.mod3
         ker_sum = module.get_function('test_sum')
@@ -205,11 +188,3 @@ class TestRaw(unittest.TestCase):
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
             self.mod2.get_function("no_such_kernel")
         assert 'CUDA_ERROR_NOT_FOUND' in str(ex)
-
-    def test_backends(self):
-        for backend in ("nvrtc", "nvcc"):
-            self._remove_test_dir()
-            self._setup_test_dir()
-            kern = cupy.RawKernel(_test_source4, 'test_sub', backend=backend)
-            x1, x2, y = self._helper(kern, cupy.float32)
-            assert (y == x1 - x2).all()
