@@ -8,9 +8,8 @@ from cupy.core.core cimport ndarray
 from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 from cupy.cuda.runtime cimport Array, ChannelFormatDesc, ChannelFormatKind,\
-                               Memcpy3DParms, MemoryKind, PitchedPtr,\
-                               ResourceDesc, ResourceType, TextureAddressMode,\
-                               TextureDesc, TextureFilterMode, TextureReadMode
+    Memcpy3DParms, MemoryKind, PitchedPtr, ResourceDesc, ResourceType, \
+    TextureAddressMode, TextureDesc, TextureFilterMode, TextureReadMode
 from cupy.cuda.runtime import CUDARuntimeError
 
 
@@ -112,13 +111,13 @@ cdef class ResourceDescriptor:
         desc['resType'] = (<ResourceDesc*>self.ptr).resType
         ptr = <intptr_t>((<ResourceDesc*>self.ptr).res.array.array)
         desc['array'] = {'array': ptr}
-        ## TODO(leofang): add linear, pitch2D
-        #ptr = <intptr_t>((<ResourceDesc*>self.ptr).res.linear.devPtr)
-        #desc['linear'] = {'devPtr': ptr,
-        #                  'desc': None,
-        #                  'sizeInBytes': <ResourceDesc*>self.ptr)\
-        #                       .res.linear.sizeInBytes)
-        #desc[
+        # TODO(leofang): add linear, pitch2D
+        # ptr = <intptr_t>((<ResourceDesc*>self.ptr).res.linear.devPtr)
+        # desc['linear'] = {'devPtr': ptr,
+        #                   'desc': None,
+        #                   'sizeInBytes': <ResourceDesc*>self.ptr)\
+        #                        .res.linear.sizeInBytes)
+        # desc[
         return desc
 
 
@@ -165,8 +164,8 @@ cdef class TextureDescriptor:
         desc['addressMode'] = ((<TextureDesc*>self.ptr).addressMode[0],
                                (<TextureDesc*>self.ptr).addressMode[1],
                                (<TextureDesc*>self.ptr).addressMode[2])
-        desc['filterMode']  = (<TextureDesc*>self.ptr).filterMode
-        desc['readMode']    = (<TextureDesc*>self.ptr).readMode
+        desc['filterMode'] = (<TextureDesc*>self.ptr).filterMode
+        desc['readMode'] = (<TextureDesc*>self.ptr).readMode
         # TODO(leofang): support the rest attributes
         return desc
 
@@ -176,8 +175,6 @@ cdef class CUDAArray:
     # can be backed by texture memory/CUDA arrays?
     def __init__(self, ChannelFormatDescriptor desc, size_t width,
                  size_t height, size_t depth=0, unsigned int flags=0):
-        #self.device_id = device.get_device_id()
-
         if width == 0:
             raise ValueError('To create a CUDA array, width must be nonzero.')
         elif height == 0 and depth > 0:

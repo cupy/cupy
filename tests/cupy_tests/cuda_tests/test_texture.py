@@ -1,4 +1,4 @@
-import pytest
+# import pytest
 import unittest
 
 import numpy
@@ -31,20 +31,24 @@ class TestCUDAArray(unittest.TestCase):
 
         # generate input data and allocate output buffer
         if dim == 3:
-            arr = xp.random.random((depth, height, width)).astype(cupy.float32) # 3D random array
+            # 3D random array
+            arr = xp.random.random((depth, height, width)).astype(cupy.float32)
         elif dim == 2:
-            arr = xp.random.random((height, width)).astype(cupy.float32) # 2D random array
+            # 2D random array
+            arr = xp.random.random((height, width)).astype(cupy.float32)
         else:
-            arr = xp.random.random((width,)).astype(cupy.float32) # 1D random array
+            # 1D random array
+            arr = xp.random.random((width,)).astype(cupy.float32)
         arr2 = xp.zeros_like(arr)
 
         assert arr.flags['C_CONTIGUOUS']
         assert arr2.flags['C_CONTIGUOUS']
 
         # create a CUDA array
-        ch = ChannelFormatDescriptor(32, 0, 0, 0, runtime.cudaChannelFormatKindFloat)
+        ch = ChannelFormatDescriptor(32, 0, 0, 0,
+                                     runtime.cudaChannelFormatKindFloat)
         cu_arr = CUDAArray(ch, width, height, depth)
-        
+
         # copy from input to CUDA array, and back to output
         cu_arr.copy_from(arr, stream)
         cu_arr.copy_to(arr2, stream)
@@ -55,7 +59,7 @@ class TestCUDAArray(unittest.TestCase):
         assert (arr == arr2).all()
 
 
-source=r'''
+source = r'''
 extern "C"{
 __global__ void copyKernel(float* output,
                            cudaTextureObject_t texObj,
@@ -106,7 +110,8 @@ class TestTexture(unittest.TestCase):
         block_y = 4
         grid_x = (width + block_x - 1)//block_x
         grid_y = (height + block_y - 1)//block_y
-        ker((grid_x, grid_y), (block_x, block_y), (real_output, texobj, width, height))
-        
+        ker((grid_x, grid_y), (block_x, block_y),
+            (real_output, texobj, width, height))
+
         # validate result
         assert (real_output == expected_output).all()
