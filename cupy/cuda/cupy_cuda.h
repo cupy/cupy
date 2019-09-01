@@ -498,6 +498,18 @@ cudaError_t cudaDestroyTextureObject(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaGetChannelDesc(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGetTextureObjectResourceDesc(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGetTextureObjectTextureDesc(...) {
+    return cudaSuccess;
+}
+
 cudaExtent make_cudaExtent(...) {
     struct cudaExtent ex = {0};
     return ex;
