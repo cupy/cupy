@@ -38,7 +38,7 @@ cdef class ChannelFormatDescriptor:
         self.ptr = 0
 
     @staticmethod
-    def _from_ptr(intptr_t ptr):
+    cdef ChannelFormatDescriptor _from_ptr(intptr_t ptr):
         cdef ChannelFormatDescriptor desc = \
             ChannelFormatDescriptor.__new__(ChannelFormatDescriptor)
         desc.ptr = ptr
@@ -96,7 +96,7 @@ cdef class ResourceDescriptor:
         self.ptr = 0
 
     @staticmethod
-    def _from_ptr(intptr_t ptr):
+    cdef ResourceDescriptor _from_ptr(intptr_t ptr):
         cdef ResourceDescriptor desc = \
             ResourceDescriptor.__new__(ResourceDescriptor)
         desc.ptr = ptr
@@ -154,7 +154,7 @@ cdef class TextureDescriptor:
         self.ptr = 0
 
     @staticmethod
-    def _from_ptr(intptr_t ptr):
+    cdef TextureDescriptor _from_ptr(intptr_t ptr):
         cdef TextureDescriptor desc = \
             TextureDescriptor.__new__(TextureDescriptor)
         desc.ptr = ptr

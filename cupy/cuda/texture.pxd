@@ -5,6 +5,9 @@ cdef class ChannelFormatDescriptor:
     cdef:
         readonly intptr_t ptr
 
+    @staticmethod
+    cdef ChannelFormatDescriptor _from_ptr(intptr_t ptr)
+
 
 cdef class ResourceDescriptor:
     cdef:
@@ -12,10 +15,16 @@ cdef class ResourceDescriptor:
         readonly ChannelFormatDescriptor chDesc
         readonly object cuArr, arr
 
+    @staticmethod
+    cdef ResourceDescriptor _from_ptr(intptr_t ptr)
+
 
 cdef class TextureDescriptor:
     cdef:
         readonly intptr_t ptr
+
+    @staticmethod
+    cdef TextureDescriptor _from_ptr(intptr_t ptr)
 
 
 cdef class CUDAArray:
