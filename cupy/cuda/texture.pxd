@@ -27,7 +27,7 @@ cdef class TextureDescriptor:
     cdef TextureDescriptor _from_ptr(intptr_t ptr)
 
 
-cdef class CUDAArray:
+cdef class CUDAarray:
     cdef:
         readonly intptr_t ptr
         readonly ChannelFormatDescriptor desc

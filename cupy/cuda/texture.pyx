@@ -53,7 +53,7 @@ cdef class ChannelFormatDescriptor:
 
 
 cdef class ResourceDescriptor:
-    def __init__(self, int restype, CUDAArray cuArr=None, ndarray arr=None,
+    def __init__(self, int restype, CUDAarray cuArr=None, ndarray arr=None,
                  ChannelFormatDescriptor chDesc=None, size_t sizeInBytes=0,
                  size_t width=0, size_t height=0, size_t pitchInBytes=0):
         '''
@@ -170,7 +170,7 @@ cdef class TextureDescriptor:
         return desc
 
 
-cdef class CUDAArray:
+cdef class CUDAarray:
     # TODO(leofang): perhaps this wrapper is not needed when cupy.ndarray
     # can be backed by texture memory/CUDA arrays?
     def __init__(self, ChannelFormatDescriptor desc, size_t width,

@@ -6,7 +6,7 @@ import numpy
 import cupy
 from cupy import testing
 from cupy.cuda import runtime
-from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAArray,
+from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAarray,
                                ResourceDescriptor, TextureDescriptor,
                                TextureObject)
 
@@ -23,7 +23,7 @@ dev = cupy.cuda.Device(runtime.getDevice())
     'dtype': (numpy.float16, numpy.float32, numpy.int8, numpy.int16,
               numpy.int32, numpy.uint8, numpy.uint16, numpy.uint32),
 }))
-class TestCUDAArray(unittest.TestCase):
+class TestCUDAarray(unittest.TestCase):
     def test_array_gen_cpy(self):
         xp = numpy if self.xp == 'numpy' else cupy
         stream = None if not self.stream else stream_for_async_cpy
@@ -50,7 +50,7 @@ class TestCUDAArray(unittest.TestCase):
 
         # create a CUDA array
         ch = ChannelFormatDescriptor(arr.dtype.itemsize*8, 0, 0, 0, kind)
-        cu_arr = CUDAArray(ch, width, height, depth)
+        cu_arr = CUDAarray(ch, width, height, depth)
 
         # copy from input to CUDA array, and back to output
         cu_arr.copy_from(arr, stream)
@@ -114,7 +114,7 @@ __global__ void copyKernel3D(float* output,
     'dimensions': ((67, 0, 0), (67, 19, 0), (67, 19, 31)),
 }))
 class TestTexture(unittest.TestCase):
-    def test_fetch_float_texture_CUDAArray(self):
+    def test_fetch_float_texture_CUDAarray(self):
         width, height, depth = self.dimensions
         dim = 3 if depth != 0 else 2 if height != 0 else 1
 
@@ -129,7 +129,7 @@ class TestTexture(unittest.TestCase):
         expected_output = cupy.zeros_like(tex_data)
         ch = ChannelFormatDescriptor(32, 0, 0, 0,
                                      runtime.cudaChannelFormatKindFloat)
-        arr = CUDAArray(ch, width, height, depth)
+        arr = CUDAarray(ch, width, height, depth)
         assert tex_data.flags['C_CONTIGUOUS']
         assert expected_output.flags['C_CONTIGUOUS']
         arr.copy_from(tex_data)
