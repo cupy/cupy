@@ -1,4 +1,4 @@
-from libc.stdint cimport intptr_t
+from libc.stdint cimport intptr_t, uintmax_t
 
 
 cdef class ChannelFormatDescriptor:
@@ -43,6 +43,6 @@ cdef class CUDAArray:
 
 cdef class TextureObject:
     cdef:
-        readonly intptr_t ptr
+        readonly uintmax_t ptr
         readonly ResourceDescriptor ResDesc
         readonly TextureDescriptor TexDesc

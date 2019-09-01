@@ -4,7 +4,6 @@ import unittest
 import numpy
 
 import cupy
-cupy.cuda.set_allocator(None)
 from cupy import testing
 from cupy.cuda import runtime
 from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAArray,
@@ -16,10 +15,10 @@ stream_for_async_cpy = cupy.cuda.Stream()
 dev = cupy.cuda.Device(runtime.getDevice())
 
 
+@testing.gpu
 @testing.parameterize(*testing.product({
     'xp': ('numpy', 'cupy'),
     'stream': (None, stream_for_async_cpy),
-    #'dimensions': [(67, 19, 0), ],
     'dimensions': [(67, 0, 0), (67, 19, 0), (67, 19, 31)],
     })
 )
@@ -74,25 +73,11 @@ __global__ void copyKernel(float* output,
 '''
 
 
-# TODO(leofang): why this test fails if it is run AFTER the tests above???
 @testing.gpu
 class TestTexture(unittest.TestCase):
-    def test_fetch_texture_CUDAArray(self):
+    def test_2D_fetch_texture_CUDAArray(self):
         width = 8
         height = 16
-        #depth = 4
-
-        #arr = cupy.random.random((depth, height, width)).astype(cupy.float32) # 2D random array
-        #arr2 = cupy.zeros_like(arr)
-        #assert arr.flags['C_CONTIGUOUS']
-        #assert arr2.flags['C_CONTIGUOUS']
-        ## create a CUDA array
-        #ch = ChannelFormatDescriptor(32, 0, 0, 0, runtime.cudaChannelFormatKindFloat)
-        #cu_arr = CUDAArray(ch, width, height, depth)
-        ## copy from input to CUDA array, and back to output
-        #cu_arr.copy_from(arr)
-        #cu_arr.copy_to(arr2)
-        #assert (arr == arr2).all() 
 
         # prepare input, output, and texture, and test bidirectional copy
         tex_data = cupy.arange(width*height, dtype=cupy.float32)
@@ -117,12 +102,11 @@ class TestTexture(unittest.TestCase):
 
         # get and launch the kernel
         ker = cupy.RawKernel(source, 'copyKernel')
-        block_x = width
-        block_y = height
-        grid_x = 1
-        grid_y = 1
+        block_x = 4
+        block_y = 4
+        grid_x = (width + block_x - 1)//block_x
+        grid_y = (height + block_y - 1)//block_y
         ker((grid_x, grid_y), (block_x, block_y), (real_output, texobj, width, height))
         
         # validate result
-        print(real_output)
         assert (real_output == expected_output).all()

@@ -9,6 +9,7 @@ from libc.stdint cimport int16_t
 from libc.stdint cimport int32_t
 from libc.stdint cimport int64_t
 from libc.stdint cimport intptr_t
+from libc.stdint cimport uintmax_t
 from libcpp cimport vector
 
 
@@ -69,6 +70,15 @@ cdef class CInt128(CPointer):
         self.ptr = <void*>&self.val
 
 
+cdef class CUIntMax(CPointer):
+    cdef:
+        uintmax_t val
+
+    def __init__(self, uintmax_t v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
+
 cdef set _pointer_numpy_types = {numpy.dtype(i).type
                                  for i in '?bhilqBHILQefdFD'}
 
@@ -86,7 +96,7 @@ cdef inline CPointer _pointer(x):
         return x
 
     if isinstance(x, TextureObject):
-        return CPointer(TextureObject.ptr)
+        return CUIntMax(x.ptr)
 
     if type(x) not in _pointer_numpy_types:
         if isinstance(x, six.integer_types):

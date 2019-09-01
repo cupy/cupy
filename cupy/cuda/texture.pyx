@@ -1,5 +1,4 @@
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
-from libc.stdint cimport intptr_t
 from libc.string cimport memset as c_memset
 from libc.string cimport memcmp as c_memcmp
 
@@ -351,7 +350,6 @@ cdef class CUDAArray:
 
 
 cdef class TextureObject:
-    # GOAL: make this pass-able to RawKernel
     def __init__(self, ResourceDescriptor ResDesc, TextureDescriptor TexDesc):
         self.ptr = runtime.createTextureObject(ResDesc.ptr, TexDesc.ptr)
         self.ResDesc = ResDesc

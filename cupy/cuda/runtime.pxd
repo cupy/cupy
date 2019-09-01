@@ -1,4 +1,4 @@
-from libc.stdint cimport intptr_t
+from libc.stdint cimport intptr_t, uintmax_t
 
 
 ###############################################################################
@@ -22,7 +22,7 @@ cdef extern from *:
     ctypedef struct ChannelFormatDesc 'cudaChannelFormatDesc':
         int x, y, z, w
         ChannelFormatKind f
-    ctypedef unsigned long long TextureObject 'cudaTextureObject_t'
+    ctypedef uintmax_t TextureObject 'cudaTextureObject_t'
     ctypedef int ResourceType 'cudaResourceType'
     ctypedef int TextureAddressMode 'cudaTextureAddressMode'
     ctypedef int TextureFilterMode 'cudaTextureFilterMode'
@@ -392,11 +392,11 @@ cdef _ensure_context()
 # Texture
 ##############################################################################
 
-cpdef createTextureObject(intptr_t ResDesc, intptr_t TexDesc)
-cpdef destroyTextureObject(intptr_t texObject)
+cpdef uintmax_t createTextureObject(intptr_t ResDesc, intptr_t TexDesc)
+cpdef destroyTextureObject(uintmax_t texObject)
 cdef intptr_t getChannelDesc(intptr_t array)
-cdef intptr_t getTextureObjectResourceDesc(intptr_t texobj)
-cdef intptr_t getTextureObjectTextureDesc(intptr_t texobj)
+cdef intptr_t getTextureObjectResourceDesc(uintmax_t texobj)
+cdef intptr_t getTextureObjectTextureDesc(uintmax_t texobj)
 cdef Extent make_Extent(size_t w, size_t h, size_t d)
 cdef Pos make_Pos(size_t x, size_t y, size_t z)
 cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz)
