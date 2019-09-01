@@ -43,8 +43,6 @@ cdef class ChannelFormatDescriptor:
         return desc
 
     def get_channel_format(self):
-        # We don't need to call cudaGetChannelDesc() here, because the struct
-        # is still alive!
         cdef dict desc = {}
         desc['x'] = (<ChannelFormatDesc*>self.ptr).x
         desc['y'] = (<ChannelFormatDesc*>self.ptr).y
@@ -103,6 +101,7 @@ cdef class ResourceDescriptor:
         desc.arr = None
         return desc
 
+    # TODO(leofang): remove this. I don't think it's necessary.
     def get_resource_desc(self):
         cdef dict desc = {}
         cdef intptr_t ptr
@@ -158,6 +157,7 @@ cdef class TextureDescriptor:
         desc.ptr = ptr
         return desc
 
+    # TODO(leofang): remove this. I don't think it's necessary.
     def get_texture_desc(self):
         cdef dict desc = {}
         cdef intptr_t ptr
@@ -282,9 +282,20 @@ cdef class CUDAArray:
                 raise ValueError("shape mismatch")
 
         # - check dtype
-        # TODO(leofang): support signed and unsigned
-        if arr.dtype != numpy.float32:
-            raise ValueError("Currently only float32 is supported")
+        # TODO(leofang): we should also check channel bit size vs dtype
+        # itemsize, but can we assume it's always single channel?
+        ch_kind = self.desc.get_channel_format()['f']
+        if ch_kind == runtime.cudaChannelFormatKindSigned:
+            if arr.dtype not in (numpy.int8, numpy.int16, numpy.int32):
+                raise ValueError("dtype mismatch")
+        elif ch_kind == runtime.cudaChannelFormatKindUnsigned:
+            if arr.dtype not in (numpy.uint8, numpy.uint16, numpy.uint32):
+                raise ValueError("dtype mismatch")
+        elif ch_kind == runtime.cudaChannelFormatKindFloat:
+            if arr.dtype not in (numpy.float16, numpy.float32):
+                raise ValueError("dtype mismatch")
+        else:
+            raise ValueError("dtype not supported")
 
         cdef Memcpy3DParms* param = NULL
 
@@ -337,6 +348,7 @@ cdef class CUDAArray:
         '''
         self._prepare_copy(out_arr, stream, direction='out')
 
+    # TODO(leofang): remove this. I don't think it's necessary.
     def get_ChannelFormatDescriptor(self):
         cdef intptr_t desc_ptr = runtime.getChannelDesc(self.ptr)
         cdef ChannelFormatDescriptor desc = \
@@ -356,6 +368,7 @@ cdef class TextureObject:
         runtime.destroyTextureObject(self.ptr)
         self.ptr = 0
 
+    # TODO(leofang): remove this. I don't think it's necessary.
     def get_ResourceDescriptor(self):
         cdef intptr_t desc_ptr = runtime.getTextureObjectResourceDesc(self.ptr)
         cdef ResourceDescriptor desc = ResourceDescriptor._from_ptr(desc_ptr)
@@ -363,6 +376,7 @@ cdef class TextureObject:
                              sizeof(ChannelFormatDesc))
         return desc
 
+    # TODO(leofang): remove this. I don't think it's necessary.
     def get_TextureDescriptor(self):
         cdef intptr_t desc_ptr = runtime.getTextureObjectTextureDesc(self.ptr)
         cdef TextureDescriptor desc = TextureDescriptor._from_ptr(desc_ptr)
