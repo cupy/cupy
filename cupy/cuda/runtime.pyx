@@ -154,6 +154,9 @@ cdef extern from 'cupy_cuda.h' nogil:
                                 const TextureDesc* pTexDesc,
                                 const ResourceViewDesc* pResViewDesc)
     int cudaDestroyTextureObject(TextureObject texObject)
+    int cudaGetChannelDesc(ChannelFormatDesc* desc, Array array)
+    int cudaGetTextureObjectResourceDesc(ResourceDesc* desc, TextureObject obj)
+    int cudaGetTextureObjectTextureDesc(TextureDesc* desc, TextureObject obj)
 
 
 ###############################################################################
@@ -602,13 +605,16 @@ cdef _ensure_context():
 ##############################################################################
 
 cpdef createTextureObject(intptr_t ResDescPtr, intptr_t TexDescPtr):
-    cdef TextureObject* texobj = <TextureObject*>PyMem_Malloc(sizeof(TextureObject))
+    '''WARNING: This API is for internal use only. Calling this from Python
+    will cause memory leak!
+    '''
+    cdef TextureObject* texobj = \
+        <TextureObject*>PyMem_Malloc(sizeof(TextureObject))
     with nogil:
         status = cudaCreateTextureObject(texobj, <ResourceDesc*>ResDescPtr,
                                          <TextureDesc*>TexDescPtr,
                                          <ResourceViewDesc*>NULL)
     check_status(status)
-#    assert texobj != 0
     return <intptr_t>(texobj)
 
 cpdef destroyTextureObject(intptr_t texObject):
@@ -617,6 +623,39 @@ cpdef destroyTextureObject(intptr_t texObject):
         status = cudaDestroyTextureObject(ptr[0])
     check_status(status)
     PyMem_Free(ptr)
+
+cdef intptr_t getChannelDesc(intptr_t array):
+    '''WARNING: This API is for internal use only. Calling this from Python
+    will cause memory leak!
+    '''
+    cdef ChannelFormatDesc* desc = \
+        <ChannelFormatDesc*>PyMem_Malloc(sizeof(ChannelFormatDesc))
+    with nogil:
+        status = cudaGetChannelDesc(desc, <Array>array)
+    check_status(status)
+    return <intptr_t>desc
+
+cdef intptr_t getTextureObjectResourceDesc(intptr_t obj):
+    '''WARNING: This API is for internal use only. Calling this from Python
+    will cause memory leak!
+    '''
+    cdef ResourceDesc* desc = \
+        <ResourceDesc*>PyMem_Malloc(sizeof(ResourceDesc))
+    with nogil:
+        status = cudaGetTextureObjectResourceDesc(desc, (<TextureObject*>obj)[0])
+    check_status(status)
+    return <intptr_t>desc
+
+cdef intptr_t getTextureObjectTextureDesc(intptr_t obj):
+    '''WARNING: This API is for internal use only. Calling this from Python
+    will cause memory leak!
+    '''
+    cdef TextureDesc* desc = \
+        <TextureDesc*>PyMem_Malloc(sizeof(TextureDesc))
+    with nogil:
+        status = cudaGetTextureObjectTextureDesc(desc, (<TextureObject*>obj)[0])
+    check_status(status)
+    return <intptr_t>desc
 
 cdef Extent make_Extent(size_t w, size_t h, size_t d):
     return make_cudaExtent(w, h, d)

@@ -27,6 +27,7 @@ cdef class CUDAArray:
         readonly size_t depth
         readonly unsigned int flags
         readonly int ndim
+
         int _get_kind(self, src, dst)
         void* _make_cudaMemcpy3DParms(self, src, dst)
 

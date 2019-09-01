@@ -1,6 +1,7 @@
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.stdint cimport intptr_t
 from libc.string cimport memset as c_memset
+from libc.string cimport memcmp as c_memcmp
 
 import numpy
 
@@ -35,6 +36,13 @@ cdef class ChannelFormatDescriptor:
     def __dealloc__(self):
         PyMem_Free(<ChannelFormatDesc*>self.ptr)
         self.ptr = 0
+
+    @staticmethod
+    def _from_ptr(intptr_t ptr):
+        cdef ChannelFormatDescriptor desc = \
+            ChannelFormatDescriptor.__new__(ChannelFormatDescriptor)
+        desc.ptr = ptr
+        return desc
 
     def get_channel_format(self):
         # We don't need to call cudaGetChannelDesc() here, because the struct
@@ -87,8 +95,32 @@ cdef class ResourceDescriptor:
         PyMem_Free(<ResourceDesc*>self.ptr)
         self.ptr = 0
 
-    def get_resource_type(self):
-        return (<ResourceDesc*>self.ptr).resType
+    @staticmethod
+    def _from_ptr(intptr_t ptr):
+        cdef ResourceDescriptor desc = \
+            ResourceDescriptor.__new__(ResourceDescriptor)
+        desc.ptr = ptr
+        desc.chDesc = None
+        desc.cuArr = None
+        desc.arr = None
+        return desc
+
+    def get_resource_desc(self):
+        cdef dict desc = {}
+        cdef intptr_t ptr
+        cdef size_t size, pitch, w, h
+
+        desc['resType'] = (<ResourceDesc*>self.ptr).resType
+        ptr = <intptr_t>((<ResourceDesc*>self.ptr).res.array.array)
+        desc['array'] = {'array': ptr}
+        ## TODO(leofang): add linear, pitch2D
+        #ptr = <intptr_t>((<ResourceDesc*>self.ptr).res.linear.devPtr)
+        #desc['linear'] = {'devPtr': ptr,
+        #                  'desc': None,
+        #                  'sizeInBytes': <ResourceDesc*>self.ptr)\
+        #                       .res.linear.sizeInBytes)
+        #desc[
+        return desc
 
 
 cdef class TextureDescriptor:
@@ -120,6 +152,24 @@ cdef class TextureDescriptor:
     def __dealloc__(self):
         PyMem_Free(<TextureDesc*>self.ptr)
         self.ptr = 0
+
+    @staticmethod
+    def _from_ptr(intptr_t ptr):
+        cdef TextureDescriptor desc = \
+            TextureDescriptor.__new__(TextureDescriptor)
+        desc.ptr = ptr
+        return desc
+
+    def get_texture_desc(self):
+        cdef dict desc = {}
+        cdef intptr_t ptr
+        desc['addressMode'] = ((<TextureDesc*>self.ptr).addressMode[0],
+                               (<TextureDesc*>self.ptr).addressMode[1],
+                               (<TextureDesc*>self.ptr).addressMode[2])
+        desc['filterMode']  = (<TextureDesc*>self.ptr).filterMode
+        desc['readMode']    = (<TextureDesc*>self.ptr).readMode
+        # TODO(leofang): support the rest attributes
+        return desc
 
 
 cdef class CUDAArray:
@@ -291,6 +341,14 @@ cdef class CUDAArray:
         '''
         self._prepare_copy(out_arr, stream, direction='out')
 
+    def get_ChannelFormatDescriptor(self):
+        cdef intptr_t desc_ptr = runtime.getChannelDesc(self.ptr)
+        cdef ChannelFormatDescriptor desc = \
+            ChannelFormatDescriptor._from_ptr(desc_ptr)
+        assert 0 == c_memcmp(<void*>self.desc.ptr, <void*>desc.ptr,
+                             sizeof(ChannelFormatDesc))
+        return desc
+
 
 cdef class TextureObject:
     # GOAL: make this pass-able to RawKernel
@@ -302,3 +360,17 @@ cdef class TextureObject:
     def __dealloc__(self):
         runtime.destroyTextureObject(self.ptr)
         self.ptr = 0
+
+    def get_ResourceDescriptor(self):
+        cdef intptr_t desc_ptr = runtime.getTextureObjectResourceDesc(self.ptr)
+        cdef ResourceDescriptor desc = ResourceDescriptor._from_ptr(desc_ptr)
+        assert 0 == c_memcmp(<void*>self.ResDesc.ptr, <void*>desc.ptr,
+                             sizeof(ChannelFormatDesc))
+        return desc
+
+    def get_TextureDescriptor(self):
+        cdef intptr_t desc_ptr = runtime.getTextureObjectTextureDesc(self.ptr)
+        cdef TextureDescriptor desc = TextureDescriptor._from_ptr(desc_ptr)
+        assert 0 == c_memcmp(<void*>self.TexDesc.ptr, <void*>desc.ptr,
+                             sizeof(ChannelFormatDesc))
+        return desc
