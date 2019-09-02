@@ -86,18 +86,29 @@ cdef class ResourceDescriptor:
     def get_resource_desc(self):
         cdef dict desc = {}
         cdef intptr_t ptr
+        cdef ResourceDesc* resPtr = <ResourceDesc*>(self.ptr)
         cdef size_t size, pitch, w, h
 
-        desc['resType'] = (<ResourceDesc*>self.ptr).resType
-        ptr = <intptr_t>((<ResourceDesc*>self.ptr).res.array.array)
-        desc['array'] = {'array': ptr}
-        # TODO(leofang): add linear, pitch2D
-        # ptr = <intptr_t>((<ResourceDesc*>self.ptr).res.linear.devPtr)
-        # desc['linear'] = {'devPtr': ptr,
-        #                   'desc': None,
-        #                   'sizeInBytes': <ResourceDesc*>self.ptr)\
-        #                        .res.linear.sizeInBytes)
-        # desc[
+        # For texture memory, print the underlying pointer address so that
+        # it can be used for verification by the caller. Note that resPtr.res
+        # is a union, so ptr is always there for every category, which could
+        # be confusing and thus need a logic to make selections.
+        desc['resType'] = resPtr.resType
+        if resPtr.resType == 0:
+            ptr = <intptr_t>(resPtr.res.array.array)
+            desc['array'] = {'array': ptr}
+        elif resPtr.resType == 2:
+            ptr = <intptr_t>(resPtr.res.linear.devPtr)
+            desc['linear'] = {'devPtr': ptr,
+                              'desc': self.chDesc.get_channel_format(),
+                              'sizeInBytes': resPtr.res.linear.sizeInBytes}
+        elif resPtr.resType == 3:
+            ptr = <intptr_t>(resPtr.res.pitch2D.devPtr)
+            desc['pitch2D'] = {'devPtr': ptr,
+                               'desc': self.chDesc.get_channel_format(),
+                               'width': resPtr.res.pitch2D.width,
+                               'height': resPtr.res.pitch2D.height,
+                               'pitchInBytes': resPtr.res.pitch2D.pitchInBytes}
         return desc
 
 
