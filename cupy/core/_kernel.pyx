@@ -36,6 +36,12 @@ cpdef inline bint _is_fusing() except? -1:
         _thread_local.history = None
     return False
 
+cpdef inline bint _is_fusingx() except? -1:
+    try:
+        return _thread_local.historyx is not None
+    except AttributeError:
+        _thread_local.historyx = None
+    return False
 
 cpdef function.Function _get_simple_elementwise_kernel(
         params, operation, name, preamble,
@@ -789,6 +795,9 @@ cdef class ufunc:
         """
         if _is_fusing():
             return _thread_local.history.call_ufunc(self, args, kwargs)
+
+        if _is_fusingx():
+            return _thread_local.historyx.call_ufunc(self, args, kwargs)
 
         cdef function.Function kern
         cdef list broad_values

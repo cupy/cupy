@@ -46,6 +46,7 @@ MODULES = [
             'cupy.core.flags',
             'cupy.core.internal',
             'cupy.core.fusion',
+            'cupy.core.fusionx',
             'cupy.core.raw',
             'cupy.cuda.cublas',
             'cupy.cuda.cufft',

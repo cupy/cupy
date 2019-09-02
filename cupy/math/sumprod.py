@@ -5,6 +5,7 @@ import cupy
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
+from cupy.core import fusionx
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -30,6 +31,13 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
                 'cupy.sum does not support `keepdims` in fusion yet.')
         return fusion._call_reduction(_math.sum_auto_dtype,
                                       a, axis=axis, dtype=dtype, out=out)
+
+    if fusionx._is_fusingx():
+        if keepdims:
+            raise NotImplementedError(
+                'cupy.sum does not support `keepdims` in fusion yet.')
+        return fusionx._call_reduction(_math.sum_auto_dtype,
+                                       a, axis=axis, dtype=dtype, out=out)
 
     # TODO(okuta): check type
     return a.sum(axis, dtype, out, keepdims)
@@ -58,6 +66,10 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
                 'cupy.prod does not support `keepdims` in fusion yet.')
         return fusion._call_reduction(_math.prod_auto_dtype,
                                       a, axis=axis, dtype=dtype, out=out)
+
+    if fusionx._is_fusingx():
+        return fusionx._call_reduction(_math.prod_auto_dtype,
+                                       a, axis=axis, dtype=dtype, out=out)
 
     # TODO(okuta): check type
     return a.prod(axis, dtype, out, keepdims)
