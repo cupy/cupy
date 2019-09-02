@@ -9,7 +9,6 @@ from cupy.linalg.solve import inv
 from cupy import util
 from cupy.util import collections_abc
 
-
 matmul = core.matmul
 
 
