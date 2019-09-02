@@ -6,8 +6,8 @@ from cupy import core
 from cupy import internal
 
 from cupy.linalg.solve import inv
-from cupy.util import collections_abc
 from cupy import util
+from cupy.util import collections_abc
 
 
 matmul = core.matmul
