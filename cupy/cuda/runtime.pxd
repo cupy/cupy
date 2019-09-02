@@ -91,6 +91,7 @@ cdef extern from *:
         float borderColor[4]
         int normalizedCoords
         unsigned int maxAnisotropy
+        # TODO(leofang): support mipmap?
 
 
 ###############################################################################
@@ -394,9 +395,9 @@ cdef _ensure_context()
 
 cpdef uintmax_t createTextureObject(intptr_t ResDesc, intptr_t TexDesc)
 cpdef destroyTextureObject(uintmax_t texObject)
-cdef intptr_t getChannelDesc(intptr_t array)
-cdef intptr_t getTextureObjectResourceDesc(uintmax_t texobj)
-cdef intptr_t getTextureObjectTextureDesc(uintmax_t texobj)
+cdef ChannelFormatDesc getChannelDesc(intptr_t array)
+cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t texobj)
+cdef TextureDesc getTextureObjectTextureDesc(uintmax_t texobj)
 cdef Extent make_Extent(size_t w, size_t h, size_t d)
 cdef Pos make_Pos(size_t x, size_t y, size_t z)
 cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz)

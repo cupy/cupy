@@ -1,6 +1,5 @@
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.string cimport memset as c_memset
-from libc.string cimport memcmp as c_memcmp
 
 import numpy
 
@@ -34,13 +33,6 @@ cdef class ChannelFormatDescriptor:
     def __dealloc__(self):
         PyMem_Free(<ChannelFormatDesc*>self.ptr)
         self.ptr = 0
-
-    @staticmethod
-    cdef ChannelFormatDescriptor _from_ptr(intptr_t ptr):
-        cdef ChannelFormatDescriptor desc = \
-            ChannelFormatDescriptor.__new__(ChannelFormatDescriptor)
-        desc.ptr = ptr
-        return desc
 
     def get_channel_format(self):
         cdef dict desc = {}
@@ -91,17 +83,6 @@ cdef class ResourceDescriptor:
         PyMem_Free(<ResourceDesc*>self.ptr)
         self.ptr = 0
 
-    @staticmethod
-    cdef ResourceDescriptor _from_ptr(intptr_t ptr):
-        cdef ResourceDescriptor desc = \
-            ResourceDescriptor.__new__(ResourceDescriptor)
-        desc.ptr = ptr
-        desc.chDesc = None
-        desc.cuArr = None
-        desc.arr = None
-        return desc
-
-    # TODO(leofang): remove this. I don't think it's necessary.
     def get_resource_desc(self):
         cdef dict desc = {}
         cdef intptr_t ptr
@@ -150,23 +131,26 @@ cdef class TextureDescriptor:
         PyMem_Free(<TextureDesc*>self.ptr)
         self.ptr = 0
 
-    @staticmethod
-    cdef TextureDescriptor _from_ptr(intptr_t ptr):
-        cdef TextureDescriptor desc = \
-            TextureDescriptor.__new__(TextureDescriptor)
-        desc.ptr = ptr
-        return desc
-
-    # TODO(leofang): remove this. I don't think it's necessary.
     def get_texture_desc(self):
         cdef dict desc = {}
-        cdef intptr_t ptr
-        desc['addressMode'] = ((<TextureDesc*>self.ptr).addressMode[0],
-                               (<TextureDesc*>self.ptr).addressMode[1],
-                               (<TextureDesc*>self.ptr).addressMode[2])
-        desc['filterMode'] = (<TextureDesc*>self.ptr).filterMode
-        desc['readMode'] = (<TextureDesc*>self.ptr).readMode
-        # TODO(leofang): support the rest attributes
+        cdef TextureDesc* ptr = <TextureDesc*>(self.ptr)
+        desc['addressMode'] = (ptr.addressMode[0],
+                               ptr.addressMode[1],
+                               ptr.addressMode[2])
+        desc['filterMode'] = ptr.filterMode
+        desc['readMode'] = ptr.readMode
+        desc['sRGB'] = ptr.sRGB
+        desc['borderColor']= (ptr.borderColor[0],
+                              ptr.borderColor[1],
+                              ptr.borderColor[2],
+                              ptr.borderColor[3])
+        desc['normalizedCoords']= ptr.normalizedCoords
+        desc['maxAnisotropy'] = ptr.maxAnisotropy
+        # TODO(leofang): support these?
+        #desc['mipmapFilterMode'] = ptr.mipmapFilterMode
+        #desc['mipmapLevelBias'] = ptr.mipmapLevelBias
+        #desc['minMipmapLevelClamp'] = ptr.minMipmapLevelClamp
+        #desc['maxMipmapLevelClamp'] = ptr.maxMipmapLevelClamp
         return desc
 
 
@@ -197,7 +181,7 @@ cdef class CUDAarray:
         runtime.freeArray(self.ptr)
         self.ptr = 0
 
-    cdef int _get_kind(self, src, dst):
+    cdef int _get_memory_kind(self, src, dst):
         cdef int kind
         if isinstance(src, ndarray) and dst is self:
             kind = runtime.memcpyDeviceToDevice
@@ -220,7 +204,7 @@ cdef class CUDAarray:
         cdef intptr_t ptr
 
         # get kind
-        param.kind = <MemoryKind>self._get_kind(src, dst)
+        param.kind = <MemoryKind>self._get_memory_kind(src, dst)
 
         # get src
         if src is self:
@@ -348,15 +332,6 @@ cdef class CUDAarray:
         '''
         self._prepare_copy(out_arr, stream, direction='out')
 
-    # TODO(leofang): remove this. I don't think it's necessary.
-    def get_ChannelFormatDescriptor(self):
-        cdef intptr_t desc_ptr = runtime.getChannelDesc(self.ptr)
-        cdef ChannelFormatDescriptor desc = \
-            ChannelFormatDescriptor._from_ptr(desc_ptr)
-        assert 0 == c_memcmp(<void*>self.desc.ptr, <void*>desc.ptr,
-                             sizeof(ChannelFormatDesc))
-        return desc
-
 
 cdef class TextureObject:
     def __init__(self, ResourceDescriptor ResDesc, TextureDescriptor TexDesc):
@@ -367,19 +342,3 @@ cdef class TextureObject:
     def __dealloc__(self):
         runtime.destroyTextureObject(self.ptr)
         self.ptr = 0
-
-    # TODO(leofang): remove this. I don't think it's necessary.
-    def get_ResourceDescriptor(self):
-        cdef intptr_t desc_ptr = runtime.getTextureObjectResourceDesc(self.ptr)
-        cdef ResourceDescriptor desc = ResourceDescriptor._from_ptr(desc_ptr)
-        assert 0 == c_memcmp(<void*>self.ResDesc.ptr, <void*>desc.ptr,
-                             sizeof(ChannelFormatDesc))
-        return desc
-
-    # TODO(leofang): remove this. I don't think it's necessary.
-    def get_TextureDescriptor(self):
-        cdef intptr_t desc_ptr = runtime.getTextureObjectTextureDesc(self.ptr)
-        cdef TextureDescriptor desc = TextureDescriptor._from_ptr(desc_ptr)
-        assert 0 == c_memcmp(<void*>self.TexDesc.ptr, <void*>desc.ptr,
-                             sizeof(ChannelFormatDesc))
-        return desc

@@ -10,9 +10,7 @@ There are four differences compared to the original C API.
 
 """
 cimport cpython  # NOQA
-from cpython.mem cimport PyMem_Malloc, PyMem_Free  # NOQA
 cimport cython  # NOQA
-from libc.string cimport memset as c_memset
 
 from cupy.cuda cimport driver
 
@@ -619,38 +617,26 @@ cpdef destroyTextureObject(uintmax_t texObject):
         status = cudaDestroyTextureObject(<TextureObject>texObject)
     check_status(status)
 
-cdef intptr_t getChannelDesc(intptr_t array):
-    '''WARNING: This API is for internal use only. Caller must be responsible
-    for releasing the memory to avoid leak.
-    '''
-    cdef ChannelFormatDesc* desc = \
-        <ChannelFormatDesc*>PyMem_Malloc(sizeof(ChannelFormatDesc))
+cdef ChannelFormatDesc getChannelDesc(intptr_t array):
+    cdef ChannelFormatDesc desc
     with nogil:
-        status = cudaGetChannelDesc(desc, <Array>array)
+        status = cudaGetChannelDesc(&desc, <Array>array)
     check_status(status)
-    return <intptr_t>desc
+    return desc
 
-cdef intptr_t getTextureObjectResourceDesc(uintmax_t obj):
-    '''WARNING: This API is for internal use only. Caller must be responsible
-    for releasing the memory to avoid leak.
-    '''
-    cdef ResourceDesc* desc = \
-        <ResourceDesc*>PyMem_Malloc(sizeof(ResourceDesc))
+cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t obj):
+    cdef ResourceDesc desc
     with nogil:
-        status = cudaGetTextureObjectResourceDesc(desc, <TextureObject>obj)
+        status = cudaGetTextureObjectResourceDesc(&desc, <TextureObject>obj)
     check_status(status)
-    return <intptr_t>desc
+    return desc
 
-cdef intptr_t getTextureObjectTextureDesc(uintmax_t obj):
-    '''WARNING: This API is for internal use only. Caller must be responsible
-    for releasing the memory to avoid leak.
-    '''
-    cdef TextureDesc* desc = \
-        <TextureDesc*>PyMem_Malloc(sizeof(TextureDesc))
+cdef TextureDesc getTextureObjectTextureDesc(uintmax_t obj):
+    cdef TextureDesc desc
     with nogil:
-        status = cudaGetTextureObjectTextureDesc(desc, <TextureObject>obj)
+        status = cudaGetTextureObjectTextureDesc(&desc, <TextureObject>obj)
     check_status(status)
-    return <intptr_t>desc
+    return desc
 
 cdef Extent make_Extent(size_t w, size_t h, size_t d):
     return make_cudaExtent(w, h, d)
