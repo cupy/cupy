@@ -147,10 +147,10 @@ cdef class TextureDescriptor:
         desc['normalizedCoords']= ptr.normalizedCoords
         desc['maxAnisotropy'] = ptr.maxAnisotropy
         # TODO(leofang): support these?
-        #desc['mipmapFilterMode'] = ptr.mipmapFilterMode
-        #desc['mipmapLevelBias'] = ptr.mipmapLevelBias
-        #desc['minMipmapLevelClamp'] = ptr.minMipmapLevelClamp
-        #desc['maxMipmapLevelClamp'] = ptr.maxMipmapLevelClamp
+        # desc['mipmapFilterMode'] = ptr.mipmapFilterMode
+        # desc['mipmapLevelBias'] = ptr.mipmapLevelBias
+        # desc['minMipmapLevelClamp'] = ptr.minMipmapLevelClamp
+        # desc['maxMipmapLevelClamp'] = ptr.maxMipmapLevelClamp
         return desc
 
 
