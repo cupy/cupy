@@ -1015,7 +1015,7 @@ def rnn_forward_training(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
         lengths):
-    hx = core._internal_ascontiguousarray(hx)
+    hx = _ascontiguousarray_normalized_strides(hx)
     if cx is not None:
         cx = core._internal_ascontiguousarray(cx)
     w = core._internal_ascontiguousarray(w)
