@@ -122,7 +122,7 @@ def scatter_min(a, slices, value):
     >>> v = cupy.array([1., 2., 3., -1.])
     >>> cupyx.scatter_min(a, i, v);
     >>> a
-    array([ 0., 0., -1., 0., 0., 0.], dtype=float32)
+    array([ 0.,  0., -1.,  0.,  0.,  0.], dtype=float32)
 
     Args:
         a (ndarray): An array to store the results.
