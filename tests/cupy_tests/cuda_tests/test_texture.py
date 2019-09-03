@@ -57,7 +57,6 @@ class TestCUDAarray(unittest.TestCase):
         for i in range(n_channel):
             ch_bits[i] = arr.dtype.itemsize*8
         ch = ChannelFormatDescriptor(*ch_bits, kind)
-        print(ch.get_channel_format())
         cu_arr = CUDAarray(ch, width, height, depth)
 
         # copy from input to CUDA array, and back to output
