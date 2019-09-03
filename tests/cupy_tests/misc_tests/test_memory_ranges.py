@@ -1,5 +1,7 @@
+import numpy
 import unittest
 
+import cupy
 from cupy import testing
 
 
@@ -57,34 +59,38 @@ class TestMayShareMemory(unittest.TestCase):
         b = x[7:10]
         assert xp.may_share_memory(a, b) is False
 
-    @testing.numpy_cupy_equal()
-    def test_combination(self, xp):
-        size = 4
-
+    def _get_slices(self, size):
         slices = []
         for start in range(0, size + 1):
             for end in range(start, size + 1):
                 for step in range(-2, 2):
                     if step != 0:
                         slices.append(slice(start, end, step))
+        return slices
 
-        memory = xp.empty(size * size)
+    def test_combination(self):
+        size = 4
+        slices = self._get_slices(size)
+        memory_np = numpy.empty(size * size)
+        memory_cp = cupy.empty(size * size)
+
         arrays = []
 
-        array_1d = memory[5:5+size]
+        array_1d_np = memory_np[5:5+size]
+        array_1d_cp = memory_cp[5:5+size]
         for s in slices:
-            arrays.append(array_1d[s])
+            arrays.append((array_1d_np[s], array_1d_cp[s], s))
 
-        array_2d = memory.reshape(size, size)
+        array_2d_np = memory_np.reshape(size, size)
+        array_2d_cp = memory_cp.reshape(size, size)
         for s1 in slices:
             for s2 in slices:
-                arrays.append(array_2d[s1, s2])
+                arrays.append((
+                    array_2d_np[s1, s2], array_2d_cp[s1, s2], (s1, s2)))
 
-        result = []
-
-        for array1 in arrays:
-            for array2 in arrays:
-                ret = xp.may_share_memory(array1, array2)
-                result.append(ret)
-
-        return result
+        for array1_np, array1_cp, sl1 in arrays:
+            for array2_np, array2_cp, sl2 in arrays:
+                ret_np = numpy.may_share_memory(array1_np, array2_np)
+                ret_cp = cupy.may_share_memory(array1_cp, array2_cp)
+                assert ret_np == ret_cp, \
+                    'Failed in case of {} and {}'.format(sl1, sl2)
