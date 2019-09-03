@@ -141,7 +141,7 @@ class TestFusionReduction(FusionTestBase):
     @fusion_utils.check_fusion(generate_inputs_name='dtype_combination')
     def test_reduction_pairwise_premap(self, xp, dtype1, dtype2):
         def func(x, y):
-            return xp.sum(xp.sqrt(x - y))
+            return xp.sum(xp.sqrt(xp.abs(x - y)))
 
         return func
 
