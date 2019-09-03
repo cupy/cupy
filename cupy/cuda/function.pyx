@@ -118,13 +118,11 @@ cdef inline size_t _get_stream(stream) except *:
 cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
              Py_ssize_t block0, int block1, int block2,
              args, Py_ssize_t shared_mem, size_t stream):
-    cdef list pargs = []
     cdef vector.vector[void*] kargs
     cdef CPointer cp
     kargs.reserve(len(args))
     for a in args:
         cp = _pointer(a)
-        pargs.append(cp)
         kargs.push_back(cp.ptr)
 
     runtime._ensure_context()
