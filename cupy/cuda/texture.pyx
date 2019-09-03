@@ -13,6 +13,22 @@ from cupy.cuda.runtime import CUDARuntimeError
 
 
 cdef class ChannelFormatDescriptor:
+    '''A class that holds the channel format description. Equivalent to
+    ``cudaChannelFormatDesc``.
+
+    Args:
+        x (int): the number of bits for the x channel.
+        y (int): the number of bits for the y channel.
+        z (int): the number of bits for the z channel.
+        w (int): the number of bits for the w channel.
+        f (int): the channel format. Use one of the values in ``cudaChannelFormat*``,
+            such as :const:`cupy.cuda.runtime.cudaChannelFormatKindFloat`.
+
+    .. seealso:: `cudaCreateChannelDesc()`_
+
+    .. _cudaCreateChannelDesc():
+        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TEXTURE__OBJECT.html#group__CUDART__TEXTURE__OBJECT_1g39df9e3b6edc41cd6f189d2109672ca5
+    '''  # noqa
     def __init__(self, int x, int y, int z, int w, int f):
         # We don't call cudaCreateChannelDesc() here for two reasons: 1. to
         # avoid out of scope; 2. it doesn't do input verification for us.
@@ -35,6 +51,7 @@ cdef class ChannelFormatDescriptor:
         self.ptr = 0
 
     def get_channel_format(self):
+        '''Returns a dict containing the input.'''
         cdef dict desc = {}
         desc['x'] = (<ChannelFormatDesc*>self.ptr).x
         desc['y'] = (<ChannelFormatDesc*>self.ptr).y
@@ -45,12 +62,45 @@ cdef class ChannelFormatDescriptor:
 
 
 cdef class ResourceDescriptor:
+    '''A class that holds the resource description. Equivalent to
+    ``cudaResourceDesc``.
+
+    Args:
+        restype (int): the resource type. Use one of the values in
+            ``cudaResourceType*``, such as
+            :const:`cupy.cuda.runtime.cudaResourceTypeArray`.
+        cuArr (CUDAarray, optional): An instance of :class:`CUDAarray`,
+            required if ``restype`` is set to
+            :const:`cupy.cuda.runtime.cudaResourceTypeArray`.
+        arr (cupy.core.core.ndarray, optional): An instance of
+            :class:`~cupy.core.core.ndarray`, required if ``restype`` is set to
+            :const:`cupy.cuda.runtime.cudaResourceTypeLinear` or
+            :const:`cupy.cuda.runtime.cudaResourceTypePitch2D`.
+        chDesc (ChannelFormatDescriptor, optional): an instance of
+            :class:`ChannelFormatDescriptor`, required if ``restype`` is set to
+            :const:`cupy.cuda.runtime.cudaResourceTypeLinear` or
+            :const:`cupy.cuda.runtime.cudaResourceTypePitch2D`.
+        sizeInBytes (int, optional): total bytes in the linear memory, required
+            if ``restype`` is set to
+            :const:`cupy.cuda.runtime.cudaResourceTypeLinear`.
+        width (int, optional): the width (in elements) of the 2D array,
+            required if ``restype`` is set to
+            :const:`cupy.cuda.runtime.cudaResourceTypePitch2D`.
+        height (int, optional): the height (in elements) of the 2D array,
+            required if ``restype`` is set to
+            :const:`cupy.cuda.runtime.cudaResourceTypePitch2D`.
+        pitchInBytes (int, optional): the number of bytes per pitch-aligned row,
+            required if ``restype`` is set to
+            :const:`cupy.cuda.runtime.cudaResourceTypePitch2D`.
+
+    .. seealso:: `cudaCreateTextureObject()`_
+
+    .. _cudaCreateTextureObject():
+        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TEXTURE__OBJECT.html#group__CUDART__TEXTURE__OBJECT_1g16ac75814780c3a16e4c63869feb9ad3
+    '''  # noqa
     def __init__(self, int restype, CUDAarray cuArr=None, ndarray arr=None,
                  ChannelFormatDescriptor chDesc=None, size_t sizeInBytes=0,
                  size_t width=0, size_t height=0, size_t pitchInBytes=0):
-        '''
-        Args:
-        '''
         cdef ResourceType resType = <ResourceType>restype
         if resType == runtime.cudaResourceTypeMipmappedArray:
             # TODO(leofang): support this?
@@ -84,6 +134,7 @@ cdef class ResourceDescriptor:
         self.ptr = 0
 
     def get_resource_desc(self):
+        '''Returns a dict containing the input.'''
         cdef dict desc = {}
         cdef intptr_t ptr
         cdef ResourceDesc* resPtr = <ResourceDesc*>(self.ptr)
@@ -113,6 +164,33 @@ cdef class ResourceDescriptor:
 
 
 cdef class TextureDescriptor:
+    '''A class that holds the texture description. Equivalent to
+    ``cudaTextureDesc``.
+
+    Args:
+        addressModes (tuple or list): an iterable with length up to 3, each
+            element is one of the values in ``cudaAddressMode*``, such as
+            :const:`cupy.cuda.runtime.cudaAddressModeWrap`.
+        filterMode (int): the filter mode. Use one of the values in
+            ``cudaFilterMode*``, such as
+            :const:`cupy.cuda.runtime.cudaFilterModePoint`.
+        readMode (int): the read mode. Use one of the values in
+            ``cudaReadMode*``, such as
+            :const:`cupy.cuda.runtime.cudaReadModeElementType`.
+        normalizedCoords (int): whether coordinates are normalized or not.
+        sRGB (int, optional)
+        borderColors (tuple or list, optional): an iterable with length up to
+            4.
+        maxAnisotropy (int, optional)
+
+    .. note::
+        A texture backed by `mipmap` arrays is currently not supported in CuPy.
+
+    .. seealso:: `cudaCreateTextureObject()`_
+
+    .. _cudaCreateTextureObject():
+        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TEXTURE__OBJECT.html#group__CUDART__TEXTURE__OBJECT_1g16ac75814780c3a16e4c63869feb9ad3
+    '''  # noqa
     def __init__(self, addressModes=None, int filterMode=0, int readMode=0,
                  sRGB=None, borderColors=None, normalizedCoords=None,
                  maxAnisotropy=None):
@@ -143,6 +221,7 @@ cdef class TextureDescriptor:
         self.ptr = 0
 
     def get_texture_desc(self):
+        '''Returns a dict containing the input.'''
         cdef dict desc = {}
         cdef TextureDesc* ptr = <TextureDesc*>(self.ptr)
         desc['addressMode'] = (ptr.addressMode[0],
@@ -166,6 +245,30 @@ cdef class TextureDescriptor:
 
 
 cdef class CUDAarray:
+    '''Allocate a CUDA array (`cudaArray_t`) that can be used as texture memory.
+    Depending on the input, either 1D, 2D, or 3D CUDA array is returned.
+
+    Args:
+        desc (ChannelFormatDescriptor): an instance of
+            :class:`ChannelFormatDescriptor`.
+        width (int): the width (in elements) of the array.
+        height (int, optional): the height (in elements) of the array.
+        depth (int, optional): the depth (in elements) of the array.
+        flags (int, optional): the flag for extensions. Use one of the values
+            in ``cudaArray*``, such as
+            :const:`cupy.cuda.runtime.cudaArrayDefault`.
+
+    .. warning::
+        The memory allocation of :class:`CUDAarray` is done outside of CuPy's
+        memory management (enabled by default) due to CUDA's limitation. Users
+        of :class:`CUDAarray` should be cautious about any out-of-memory
+        possibilities.
+
+    .. seealso:: `cudaMalloc3DArray()`_
+
+    .. _cudaMalloc3DArray():
+        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1g948143cf2423a072ac6a31fb635efd88
+    '''  # noqa
     # TODO(leofang): perhaps this wrapper is not needed when cupy.ndarray
     # can be backed by texture memory/CUDA arrays?
     def __init__(self, ChannelFormatDescriptor desc, size_t width,
@@ -337,8 +440,20 @@ cdef class CUDAarray:
         '''Copy data from device or host array to CUDA array.
 
         Args:
-            arr (cupy.core.core.ndarray or numpy.ndarray)
-            stream (cupy.cuda.Stream)
+            in_arr (cupy.ndarray or numpy.ndarray)
+            stream (cupy.cuda.Stream): if not ``None``, an asynchronous copy is
+                performed.
+
+        .. note::
+            For CUDA arrays with different dimensions, the requirements for the
+            shape of the input array are given as follows:
+
+                - 1D: ``(nch * width,)``
+                - 2D: ``(height, nch * width)``
+                - 3D: ``(depth, height, nch * width)``
+
+            where ``nch`` is the number of channels specified in
+            :attr:`~CUDAarray.desc`.
         '''
         self._prepare_copy(in_arr, stream, direction='in')
 
@@ -346,13 +461,38 @@ cdef class CUDAarray:
         '''Copy data from CUDA array to device or host array.
 
         Args:
-            arr (cupy.core.core.ndarray or numpy.ndarray)
-            stream (cupy.cuda.Stream)
+            out_arr (cupy.ndarray or numpy.ndarray)
+            stream (cupy.cuda.Stream): if not ``None``, an asynchronous copy is
+                performed.
+
+        .. note::
+            For CUDA arrays with different dimensions, the requirements for the
+            shape of the output array are given as follows:
+
+                - 1D: ``(nch * width,)``
+                - 2D: ``(height, nch * width)``
+                - 3D: ``(depth, height, nch * width)``
+
+            where ``nch`` is the number of channels specified in
+            :attr:`~CUDAarray.desc`.
         '''
         self._prepare_copy(out_arr, stream, direction='out')
 
 
 cdef class TextureObject:
+    '''A class that holds a texture object. Equivalent to
+    ``cudaTextureObject_t``. The returned :class:`TextureObject` instance can
+    be passed as a argument when launching :class:`~cupy.RawKernel`.
+
+    Args:
+        ResDesc (ResourceDescriptor): an intance of the resource descriptor.
+        TexDesc (TextureDescriptor): an instance of the texture descriptor.
+
+    .. seealso:: `cudaCreateTextureObject()`_
+
+    .. _cudaCreateTextureObject():
+        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TEXTURE__OBJECT.html#group__CUDART__TEXTURE__OBJECT_1g16ac75814780c3a16e4c63869feb9ad3
+    '''  # noqa
     def __init__(self, ResourceDescriptor ResDesc, TextureDescriptor TexDesc):
         self.ptr = runtime.createTextureObject(ResDesc.ptr, TexDesc.ptr)
         self.ResDesc = ResDesc

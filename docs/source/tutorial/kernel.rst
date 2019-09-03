@@ -218,6 +218,8 @@ attributes:
    >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
    50000
 
+Accessing texture memory in :class:`~cupy.RawKernel` is supported via CUDA Runtime's Texture Object API, see :class:`~cupy.cuda.texture.TextureObject`'s documentation as well as CUDA C Programming Guide. (The Texture Reference API is marked as deprecated as of CUDA 10.1 and currently not supported in CuPy.)
+
 .. note::
     The kernel does not have return values.
     You need to pass both input arrays and output arrays as arguments.

@@ -250,7 +250,6 @@ class TestTextureVectorType(unittest.TestCase):
         height = 39
         depth = 11
         n_channel = 4
-        dim = 3
 
         # generate input data and allocate output buffer
         in_shape = (depth, height, n_channel*width)
