@@ -264,22 +264,30 @@ cdef class CUDAarray:
         return <void*>param
 
     def _prepare_copy(self, arr, stream, direction):
+        cdef dict ch = self.desc.get_channel_format()
+
         # sanity checks:
         # - check shape
+        cdef int num_channels = 0
+        for key in ['x', 'y', 'z', 'w']:
+            if ch[key] > 0:
+                num_channels += 1
+
         if self.ndim == 3:
-            if arr.shape != (self.depth, self.height, self.width):
+            if arr.shape != (self.depth, self.height, self.width) and \
+               arr.shape != (self.depth, self.height, num_channels*self.width):
                 raise ValueError("shape mismatch")
         elif self.ndim == 2:
-            if arr.shape != (self.height, self.width):
+            if arr.shape != (self.height, self.width) and \
+               arr.shape != (self.height, num_channels*self.width):
                 raise ValueError("shape mismatch")
         else:  # ndim = 1
-            if arr.shape != (self.width,):
+            if arr.shape != (self.width,) and \
+               arr.shape != (num_channels*self.width,):
                 raise ValueError("shape mismatch")
 
         # - check dtype
-        # TODO(leofang): we should also check channel bit size vs dtype
-        # itemsize, but can we assume it's always single channel?
-        ch_kind = self.desc.get_channel_format()['f']
+        ch_kind = ch['f']
         if ch_kind == runtime.cudaChannelFormatKindSigned:
             if arr.dtype not in (numpy.int8, numpy.int16, numpy.int32):
                 raise ValueError("dtype mismatch")
