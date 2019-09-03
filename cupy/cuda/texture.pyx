@@ -169,7 +169,7 @@ cdef class CUDAarray:
     # TODO(leofang): perhaps this wrapper is not needed when cupy.ndarray
     # can be backed by texture memory/CUDA arrays?
     def __init__(self, ChannelFormatDescriptor desc, size_t width,
-                 size_t height, size_t depth=0, unsigned int flags=0):
+                 size_t height=0, size_t depth=0, unsigned int flags=0):
         if width == 0:
             raise ValueError('To create a CUDA array, width must be nonzero.')
         elif height == 0 and depth > 0:

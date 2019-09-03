@@ -38,7 +38,8 @@ class TestCUDAarray(unittest.TestCase):
             arr = xp.random.random(shape).astype(self.dtype)
             kind = runtime.cudaChannelFormatKindFloat
         else:  # int
-            arr = xp.random.randint(100, size=shape, dtype=self.dtype)
+            # randint() in NumPy <= 1.10 does not have the dtype argument...
+            arr = xp.random.randint(100, size=shape).astype(self.dtype)
             if self.dtype in (numpy.int8, numpy.int16, numpy.int32):
                 kind = runtime.cudaChannelFormatKindSigned
             else:
