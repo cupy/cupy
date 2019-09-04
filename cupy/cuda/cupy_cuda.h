@@ -57,6 +57,9 @@ typedef enum {
 enum CUjit_option {};
 enum CUjitInputType {};
 enum CUfunction_attribute {};
+enum CUarray_format {};
+enum CUaddress_mode {};
+enum CUfilter_mode {};
 
 
 typedef void* CUdeviceptr;
@@ -74,6 +77,14 @@ typedef struct CUfunc_st* CUfunction;
 typedef struct CUmod_st* CUmodule;
 typedef struct CUstream_st* cudaStream_t;
 typedef struct CUlinkState_st* CUlinkState;
+typedef struct CUtexref_st* CUtexref;
+typedef struct CUarray_st* CUarray;
+typedef struct CUDA_ARRAY_DESCRIPTOR {
+    CUarray_format Format;
+    size_t Height;
+    unsigned int NumChannels;
+    size_t Width;
+};
 
 // Error handling
 CUresult cuGetErrorName(...) {
@@ -144,6 +155,10 @@ CUresult cuModuleGetGlobal(...) {
     return CUDA_SUCCESS;
 }
 
+CUresult cuModuleGetTexRef(...) {
+    return CUDA_SUCCESS;
+}
+
 CUresult cuLaunchKernel(...) {
     return CUDA_SUCCESS;
 }
@@ -154,6 +169,47 @@ CUresult cuFuncGetAttribute(...) {
 }
 
 CUresult cuFuncSetAttribute(...) {
+    return CUDA_SUCCESS;
+}
+
+// Texture reference
+CUresult cuTexRefSetAddress (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetAddress2D (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetAddressMode (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetArray (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetBorderColor (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetFilterMode (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetFlags (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetFormat (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetMaxAnisotropy (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuParamSetTexRef (...) {
     return CUDA_SUCCESS;
 }
 
