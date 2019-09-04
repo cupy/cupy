@@ -76,6 +76,7 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cuTexRefSetFormat(TexRef hTexRef, Array_format fmt,
                           int NumPackedComponents)
     int cuTexRefSetMaxAnisotropy(TexRef hTexRef, unsigned int maxAniso)
+    int cuParamSetTexRef(Function hfunc, int texunit, TexRef hTexRef)
 
     # Build-time version
     int CUDA_VERSION
@@ -364,4 +365,11 @@ cpdef texRefSetFormat(size_t texref, int fmt, int NumPackedComponents):
 cpdef texRefSetMaxAnisotropy(size_t texref, unsigned int maxAniso):
     with nogil:
         status = cuTexRefSetMaxAnisotropy(<TexRef>texref, maxAniso)
+    check_status(status)
+
+
+cpdef paramSetTexRef(size_t func, size_t texref):
+    with nogil:
+        status = cuParamSetTexRef(<Function>func, CU_PARAM_TR_DEFAULT,
+                                  <TexRef>texref)
     check_status(status)

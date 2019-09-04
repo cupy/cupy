@@ -558,6 +558,8 @@ cdef class TextureReference:
             # TODO(leofang): how about CU_TRSF_NORMALIZED_COORDINATES and
             # CU_TRSF_SRGB?
 
+        driver.texRefSetBorderColor(texref, TexDescPtr.borderColor)
+        driver.texRefSetMaxAnisotropy(texref, TexDescPtr.maxAnisotropy)
         self._set_format(ChDesc.get_channel_format())
 
     cdef _set_format(self, dict ch_format):
