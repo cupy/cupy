@@ -78,6 +78,13 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cuTexRefSetMaxAnisotropy(TexRef hTexRef, unsigned int maxAniso)
     int cuParamSetTexRef(Function hfunc, int texunit, TexRef hTexRef)
 
+    # Occupancy
+    int cuOccupancyMaxActiveBlocksPerMultiprocessor(
+        int* numBlocks, Function func, int blockSize, size_t dynamicSMemSize)
+    int cuOccupancyMaxPotentialBlockSize(
+        int* minGridSize, int* blockSize, Function func, CUoccupancyB2DSize
+        block2shmem, size_t dynamicSMemSize, int blockSizeLimit)
+
     # Build-time version
     int CUDA_VERSION
 
@@ -275,7 +282,7 @@ cpdef launchKernel(
 
 
 ###############################################################################
-# Kernel attributes
+# Function attributes
 ###############################################################################
 
 cpdef int funcGetAttribute(int attribute, intptr_t f):
@@ -373,3 +380,30 @@ cpdef paramSetTexRef(size_t func, size_t texref):
         status = cuParamSetTexRef(<Function>func, CU_PARAM_TR_DEFAULT,
                                   <TexRef>texref)
     check_status(status)
+
+
+###############################################################################
+# Occupancy
+###############################################################################
+
+cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
+        intptr_t func, int blockSize, size_t dynamicSMemSize):
+    cdef int numBlocks
+    with nogil:
+        status = cuOccupancyMaxActiveBlocksPerMultiprocessor(
+            &numBlocks, <Function> func, blockSize, dynamicSMemSize)
+    check_status(status)
+    return numBlocks
+
+
+cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
+                                     int blockSizeLimit):
+    # CUoccupancyB2DSize is set to NULL as there is no way to pass in a
+    # unary function from Python.
+    cdef int minGridSize, blockSize
+    with nogil:
+        status = cuOccupancyMaxPotentialBlockSize(
+            &minGridSize, &blockSize, <Function> func, <CUoccupancyB2DSize>
+            NULL, dynamicSMemSize, blockSizeLimit)
+    check_status(status)
+    return minGridSize, blockSize

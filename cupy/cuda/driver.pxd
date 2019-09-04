@@ -22,6 +22,8 @@ cdef extern from *:
     ctypedef int CUjitInputType 'CUjitInputType'
     ctypedef int CUfunction_attribute 'CUfunction_attribute'
 
+    ctypedef size_t(*CUoccupancyB2DSize)(int)
+
     # For Texture Reference
     ctypedef void* Array 'CUarray_st*'  # = cupy.cuda.runtime.Array
     ctypedef int Array_format 'CUarray_format'
@@ -140,3 +142,13 @@ cpdef texRefSetFlags(size_t texref, unsigned int Flags)
 cpdef texRefSetFormat(size_t texref, int fmt, int NumPackedComponents)
 cpdef texRefSetMaxAnisotropy(size_t texref, unsigned int maxAniso)
 cpdef paramSetTexRef(size_t func, size_t texref)
+
+###############################################################################
+# Occupancy
+###############################################################################
+
+cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
+    intptr_t func, int blockSize, size_t dynamicSMemSize)
+
+cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
+                                     int blockSizeLimit)
