@@ -190,6 +190,7 @@ class _FusionXVarArray(_FusionXVarScalar):
         self.input_order = None
         self.is_output = False
         self.output_order = None
+        self.updated_from = None
         self.broadcasted_from = None
         self.abstracted_shape = tuple('v{}.{}'.format(self.index, i) for i in range(self.ndim)) if init_abstracted_shape else None
 
@@ -205,6 +206,11 @@ class _FusionXVarArray(_FusionXVarScalar):
 
     def set_size(self):
         self.size = internal.prod(self.real_shape)
+
+    def set_updated(self):
+        if self.updated_from is not None:
+            self.updated_from.set_updated()
+            self.ndarray = copy.copy(self.updated_from.ndarray)
 
     def __repr__(self):
         return '<_FusionXVarArray name={}, dtype={}, ndim={}, abstracted_shape={}>'.format(_get_pvar_param_name(self), self.dtype, self.ndim, self.abstracted_shape)
@@ -382,7 +388,12 @@ class _FusionXReductionOp(object):
         return '<_FusionXReductionOp name={}, in_pvar={}, out_pvar={}>'.format(self.func.name, self.in_pvar, self.out_pvar)
 
     def _get_func_name_suffix(self):
-        return '_{}{}{}{}{}'.format(self.func.name, self.in_pvar.dtype.char, self.in_pvar.ndim, self.out_pvar.dtype.char, self.out_pvar.ndim)
+        def get_type(pvar):
+            ret = pvar.dtype.char
+            if ret == '?':
+                ret = '_'
+            return ret
+        return '_{}{}{}{}{}'.format(self.func.name, get_type(self.in_pvar), self.in_pvar.ndim, get_type(self.out_pvar), self.out_pvar.ndim)
 
     def _add_to_reduction_submodules(self, target):
         name = self._get_func_name_suffix()
@@ -497,6 +508,7 @@ class _FusionXHistory(object):
         ret.ndim = len(abstracted_shape)
         ret.abstracted_shape = abstracted_shape
         ret.real_shape = real_shape
+        ret.updated_from = None
         ret.broadcasted_from = pvar
         ret.is_input = False
         self._append_param(ret, False)
@@ -505,13 +517,17 @@ class _FusionXHistory(object):
     def _update_block_index(self, pvar):
         ret = copy.copy(pvar)
         ret.prev_block_index = pvar.block_index
+        ret.updated_from = pvar
         ret.block_index = self.block_count
         self._append_param(ret, False)
         return ret
 
-    def _make_new_param(self, ndim, dtype, abstracted_shape, real_shape):
+    def _make_new_param(self, ndim, dtype, abstracted_shape, real_shape, next_block=False):
         index = self._fresh_index()
-        ret = _FusionXVarArray(index, ndim, dtype, self.block_count)
+        block = self.block_count
+        if next_block:
+            block += 1
+        ret = _FusionXVarArray(index, ndim, dtype, block)
         ret.abstracted_shape = abstracted_shape
         ret.real_shape = real_shape
         self._append_param(ret, True)
@@ -720,7 +736,7 @@ class _FusionXHistory(object):
                     else:
                         continue
                 out_dtype = numpy.dtype(out_dtype)
-                out_pvar = self._make_new_param(out_ndim, out_dtype, out_abstracted_shape, out_real_shape)
+                out_pvar = self._make_new_param(out_ndim, out_dtype, out_abstracted_shape, out_real_shape, True)
                 self._add_reduction_op(fusion_op, arg, out_pvar, axis, op)
                 return out_pvar
         raise TypeError('No viable type cast of {}, arg_type={}'.format(
@@ -850,6 +866,10 @@ class _FusionXHistory(object):
                 else:
                     pvar.ndarray = ndarray(pvar.real_shape, pvar.dtype)
 
+    def _set_updated(self):
+        for pvar in self.param_list:
+            pvar.set_updated()
+
     def _broadcast(self):
         for pvar in self.param_list:
             if isinstance(pvar, _FusionXVarArray):
@@ -887,6 +907,7 @@ ${body}
         self._reset_vals()
         self._set_real_shape(shape_map)
         self._set_ndarray(args)
+        self._set_updated()
         self._broadcast()
         ret = self._get_output()
         self._rotate()
