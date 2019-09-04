@@ -152,6 +152,11 @@ cdef extern from 'cupy_cuda.h' nogil:
                                 const TextureDesc* pTexDesc,
                                 const ResourceViewDesc* pResViewDesc)
     int cudaDestroyTextureObject(TextureObject texObject)
+    int cudaBindTextureToArray(const TextureReference* texref, Array array,
+                               const ChannelFormatDesc* desc)
+    int cudaUnbindTexture(const TextureReference* texref)
+    #int cudaGetTextureReference(TextureReference** texref,
+    #                            const void* symbol)
     int cudaGetChannelDesc(ChannelFormatDesc* desc, Array array)
     int cudaGetTextureObjectResourceDesc(ResourceDesc* desc, TextureObject obj)
     int cudaGetTextureObjectTextureDesc(TextureDesc* desc, TextureObject obj)
@@ -616,6 +621,26 @@ cpdef destroyTextureObject(uintmax_t texObject):
     with nogil:
         status = cudaDestroyTextureObject(<TextureObject>texObject)
     check_status(status)
+
+cpdef bindTextureToArray(intptr_t texref, intptr_t array, intptr_t desc):
+    cdef const TextureReference* ptr = <TextureReference*>(texref)
+    with nogil:
+        status = cudaBindTextureToArray(ptr, <Array>array,
+                                        <ChannelFormatDesc*>desc)
+    check_status(status)
+
+cpdef unbindTexture(intptr_t texref):
+    with nogil:
+        status = cudaUnbindTexture((<TextureReference**>texref)[0])
+    check_status(status)
+
+#cpdef intptr_t getTextureReference(size_t texref_driver):
+#    cdef const TextureReference* texref_ptr
+#    cdef void* ptr = <void*>(<driver.TexRef>texref_driver)
+#    with nogil:
+#        status = cudaGetTextureReference(&texref_ptr, ptr)
+#    check_status(status)
+#    return <intptr_t>texref_ptr
 
 cdef ChannelFormatDesc getChannelDesc(intptr_t array):
     cdef ChannelFormatDesc desc

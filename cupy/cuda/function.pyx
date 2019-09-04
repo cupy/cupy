@@ -209,6 +209,11 @@ cdef class Module:
             name = six.u(name)
         return Function(self, name)
 
+    cpdef get_tex_ref(self, name):
+        if isinstance(name, six.binary_type):
+            name = six.u(name)
+        return driver.moduleGetTexRef(self.ptr, name)
+
 
 cdef class LinkState:
 

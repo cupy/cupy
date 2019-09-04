@@ -248,3 +248,8 @@ cdef class RawModule:
             ker._kernel = self.module.get_function(name)
             self.kernels[name] = ker
             return ker
+
+    def get_tex_ref(self, name):
+        '''return CUtexref as size_t'''
+        # TODO: pass to a Tex Ref class?
+        return self.module.get_tex_ref(name)

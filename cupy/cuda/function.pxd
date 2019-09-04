@@ -24,6 +24,7 @@ cdef class Module:
     cpdef load(self, bytes cubin)
     cpdef get_global_var(self, name)
     cpdef get_function(self, name)
+    cpdef get_tex_ref(self, name)
 
 
 cdef class LinkState:

@@ -16,6 +16,7 @@ cdef extern from *:
     ctypedef void* Module 'struct CUmod_st*'
     ctypedef void* Stream 'struct CUstream_st*'
     ctypedef void* LinkState 'CUlinkState'
+    ctypedef void* TexRef 'CUtexref_st*'
 
     ctypedef int CUjit_option 'CUjit_option'
     ctypedef int CUjitInputType 'CUjitInputType'
@@ -71,6 +72,7 @@ cpdef size_t moduleLoadData(bytes image) except? 0
 cpdef moduleUnload(size_t module)
 cpdef size_t moduleGetFunction(size_t module, str funcname) except? 0
 cpdef size_t moduleGetGlobal(size_t module, str varname) except? 0
+cpdef intptr_t moduleGetTexRef(size_t module, str texrefname) except? 0
 cpdef launchKernel(
     intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
     unsigned int grid_dim_z, unsigned int block_dim_x,

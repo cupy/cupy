@@ -93,6 +93,15 @@ cdef extern from *:
         unsigned int maxAnisotropy
         # TODO(leofang): support mipmap?
 
+    ctypedef struct TextureReference 'textureReference':
+        int addressMode[3]
+        ChannelFormatDesc channelDesc
+        int filterMode
+        unsigned int maxAnisotropy
+        int normalized
+        int sRGB
+        # TODO(leofang): support mipmap?
+
 
 ###############################################################################
 # Enum
@@ -395,6 +404,9 @@ cdef _ensure_context()
 
 cpdef uintmax_t createTextureObject(intptr_t ResDesc, intptr_t TexDesc)
 cpdef destroyTextureObject(uintmax_t texObject)
+cpdef bindTextureToArray(intptr_t texref, intptr_t array, intptr_t desc)
+cpdef unbindTexture(intptr_t)
+#cpdef intptr_t getTextureReference(size_t texref_driver)
 cdef ChannelFormatDesc getChannelDesc(intptr_t array)
 cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t texobj)
 cdef TextureDesc getTextureObjectTextureDesc(uintmax_t texobj)

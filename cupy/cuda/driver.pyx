@@ -47,6 +47,7 @@ cdef extern from 'cupy_cuda.h' nogil:
                             char* name)
     int cuModuleGetGlobal(Deviceptr* dptr, size_t* bytes, Module hmod,
                           char* name)
+    int cuModuleGetTexRef(TexRef* pTexRef, Module hmod, const char* name)
     int cuLaunchKernel(
         Function f, unsigned int gridDimX, unsigned int gridDimY,
         unsigned int gridDimZ, unsigned int blockDimX,
@@ -230,6 +231,16 @@ cpdef size_t moduleGetGlobal(size_t module, str varname) except? 0:
         status = cuModuleGetGlobal(&var, &size, <Module>module, b_varname_ptr)
     check_status(status)
     return <size_t>var
+
+
+cpdef intptr_t moduleGetTexRef(size_t module, str texrefname) except? 0:
+    cdef TexRef texref
+    cdef bytes b_refname = texrefname.encode()
+    cdef char* b_refname_ptr = b_refname
+    with nogil:
+        status = cuModuleGetTexRef(&texref, <Module>module, b_refname_ptr)
+    check_status(status)
+    return <intptr_t>(&texref)  # = CUtexref = textureReference* ???
 
 
 cpdef launchKernel(
