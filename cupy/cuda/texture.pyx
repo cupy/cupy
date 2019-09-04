@@ -5,6 +5,7 @@ import numpy
 
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport device
+from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 from cupy.cuda.runtime cimport Array, ChannelFormatDesc, ChannelFormatKind,\
     Memcpy3DParms, MemoryKind, PitchedPtr, ResourceDesc, ResourceType, \
@@ -498,3 +499,102 @@ cdef class TextureObject:
     def __dealloc__(self):
         runtime.destroyTextureObject(self.ptr)
         self.ptr = 0
+
+
+cdef class TextureReference:
+    '''A class that holds a texture reference. Equivalent to ``CUtexref``.
+    The driver API is used under the hood.
+
+    Args:
+        texref (size_t): a handle to the texture reference declared in the CUDA
+            source code. This can be obtained by calling
+            :meth:~cupy.RawModule.get_texref`.
+        ResDesc (ResourceDescriptor): an intance of the resource descriptor.
+        TexDesc (TextureDescriptor): an instance of the texture descriptor.
+
+    .. note::
+        This class currently only supports binding to CUDA arrays.
+
+    .. warning::
+        As of CUDA Toolkit v10.1, the Texture Reference API (in both driver and
+        runtime) is marked as deprecated. To help transition to the new Texture
+        Object API, this class mimics the usage of that one. Users who have
+        legacy CUDA codes that use texture references should consider migration
+        to the new API. This CuPy interface will be removed in the future once
+        the offcial Nvidia support is dropped.
+
+    .. seealso:: :class:`TextureObject`, `cudaCreateTextureObject()`_
+
+    .. _cudaCreateTextureObject():
+        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TEXTURE__OBJECT.html#group__CUDART__TEXTURE__OBJECT_1g16ac75814780c3a16e4c63869feb9ad3
+    '''  # noqa
+    # Basically, this class translates from the Runtime API's descriptors
+    # to the driver API calls.
+    def __init__(self, size_t texref, ResourceDescriptor ResDesc,
+                 TextureDescriptor TexDesc):
+        cdef ResourceDesc* ResDescPtr = <ResourceDesc*>(ResDesc.ptr)
+        cdef TextureDesc* TexDescPtr = <TextureDesc*>(TexDesc.ptr)
+        cdef ChannelFormatDescriptor ChDesc
+
+        self.texref = texref
+        self.ResDesc = ResDesc
+        self.TexDesc = TexDesc
+
+        if ResDesc.cuArr is not None:
+            driver.texRefSetArray(texref, ResDesc.cuArr.ptr)
+            ChDesc = ResDesc.cuArr.desc
+        else:  # TODO(leofang): ndarray
+            raise ValueError("binding to linear memory not supported yet.")
+
+        # For the following attributes, the constants in driver and runtime
+        # are set to equal, so using the values set by runtime api is OK.
+        for i in range(3):
+            driver.texRefSetAddressMode(texref, i, TexDescPtr.addressMode[i])
+
+        driver.texRefSetFilterMode(texref, TexDescPtr.filterMode)
+
+        if not TexDescPtr.readMode:  # = cudaReadModeElementType
+            driver.texRefSetFlags(texref, driver.CU_TRSF_READ_AS_INTEGER)
+            # TODO(leofang): how about CU_TRSF_NORMALIZED_COORDINATES and
+            # CU_TRSF_SRGB?
+
+        self._set_format(ChDesc.get_channel_format())
+
+    cdef _set_format(self, dict ch_format):
+        cdef int arr_format
+        cdef int num_channels = 0
+
+        for key in ['x', 'y', 'z', 'w']:
+            if ch_format[key] > 0:
+                assert ch_format[key] == ch_format['x']
+                num_channels += 1
+
+        if ch_format['f'] == runtime.cudaChannelFormatKindSigned:
+            if ch_format['x'] // 8 == 1:
+                arr_format = driver.CU_AD_FORMAT_SIGNED_INT8
+            elif ch_format['x'] // 8 == 2:
+                arr_format = driver.CU_AD_FORMAT_SIGNED_INT16
+            elif ch_format['x'] // 8 == 4:
+                arr_format = driver.CU_AD_FORMAT_SIGNED_INT32
+            else:
+                raise ValueError("format mismatch")
+        elif ch_format['f'] == runtime.cudaChannelFormatKindUnsigned:
+            if ch_format['x'] // 8 == 1:
+                arr_format = driver.CU_AD_FORMAT_UNSIGNED_INT8
+            elif ch_format['x'] // 8 == 2:
+                arr_format = driver.CU_AD_FORMAT_UNSIGNED_INT16
+            elif ch_format['x'] // 8 == 4:
+                arr_format = driver.CU_AD_FORMAT_UNSIGNED_INT32
+            else:
+                raise ValueError("format mismatch")
+        elif ch_format['f'] == runtime.cudaChannelFormatKindFloat:
+            if ch_format['x'] // 8 == 2:
+                arr_format = driver.CU_AD_FORMAT_HALF
+            elif ch_format['x'] // 8 == 4:
+                arr_format = driver.CU_AD_FORMAT_FLOAT
+            else:
+                raise ValueError("format mismatch")
+        else:
+            raise ValueError("format not recognized")
+
+        driver.texRefSetFormat(self.texref, arr_format, num_channels)

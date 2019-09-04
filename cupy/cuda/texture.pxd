@@ -38,3 +38,14 @@ cdef class TextureObject:
         readonly uintmax_t ptr
         readonly ResourceDescriptor ResDesc
         readonly TextureDescriptor TexDesc
+
+
+cdef class TextureReference:
+    cdef:
+        readonly size_t texref
+        readonly ResourceDescriptor ResDesc
+        readonly TextureDescriptor TexDesc
+        #readonly CUDAarray cuArr
+        #readonly ndarray arr
+
+        _set_format(self, dict ch_format)

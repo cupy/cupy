@@ -326,9 +326,10 @@ cpdef texRefSetAddressMode(size_t texref, int dim, int am):
     check_status(status)
 
 
-cpdef texRefSetArray(size_t texref, size_t array, unsigned int Flags):
+cpdef texRefSetArray(size_t texref, size_t array):
     with nogil:
-        status = cuTexRefSetArray(<TexRef>texref, <Array>array, Flags)
+        status = cuTexRefSetArray(<TexRef>texref, <Array>array,
+                                  CU_TRSA_OVERRIDE_FORMAT)
     check_status(status)
 
 

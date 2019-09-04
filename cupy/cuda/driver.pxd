@@ -54,7 +54,7 @@ cpdef enum:
 
     CUDA_ERROR_INVALID_VALUE = 1
 
-    # For Texture Reference
+    # CUarray_format
     CU_AD_FORMAT_UNSIGNED_INT8 = 0x01
     CU_AD_FORMAT_UNSIGNED_INT16 = 0x02
     CU_AD_FORMAT_UNSIGNED_INT32 = 0x03
@@ -64,13 +64,21 @@ cpdef enum:
     CU_AD_FORMAT_HALF = 0x10
     CU_AD_FORMAT_FLOAT = 0x20
 
+    # CUaddress_mode
     CU_TR_ADDRESS_MODE_WRAP = 0
     CU_TR_ADDRESS_MODE_CLAMP = 1
     CU_TR_ADDRESS_MODE_MIRROR = 2
     CU_TR_ADDRESS_MODE_BORDER = 3
 
+    # CUfilter_mode
     CU_TR_FILTER_MODE_POINT = 0
     CU_TR_FILTER_MODE_LINEAR = 1
+
+    CU_TRSA_OVERRIDE_FORMAT = 0x01
+
+    CU_TRSF_READ_AS_INTEGER = 0x01
+    CU_TRSF_NORMALIZED_COORDINATES = 0x02
+    CU_TRSF_SRGB = 0x10
 
 
 ###############################################################################
@@ -123,7 +131,7 @@ cpdef funcSetAttribute(intptr_t func, int attribute, int value)
 cpdef size_t texRefSetAddress(size_t texref, size_t dptr, size_t nbytes)
 cpdef texRefSetAddress2D(size_t texref, size_t desc, size_t dptr, size_t Pitch)
 cpdef texRefSetAddressMode(size_t texref, int dim, int am)
-cpdef texRefSetArray(size_t texref, size_t array, unsigned int Flags)
+cpdef texRefSetArray(size_t texref, size_t array)
 cpdef texRefSetBorderColor(size_t texref, pBorderColor)
 cpdef texRefSetFilterMode(size_t texref, int fm)
 cpdef texRefSetFlags(size_t texref, unsigned int Flags)
