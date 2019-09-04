@@ -250,5 +250,12 @@ cdef class RawModule:
             return ker
 
     def get_texref(self, name):
-        '''return CUtexref as size_t'''
+        '''Retrieve a texture reference by its name from the module.
+
+        Args:
+            name (str): Name of the texture reference.
+
+        Returns:
+            size_t: A ``CUtexref`` handle, to be passed to :class:`~cupy.cuda.texture.TextureReference`.
+        '''  # noqa
         return self.module.get_texref(name)

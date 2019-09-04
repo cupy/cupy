@@ -73,8 +73,8 @@ cdef class ResourceDescriptor:
         cuArr (CUDAarray, optional): An instance of :class:`CUDAarray`,
             required if ``restype`` is set to
             :const:`cupy.cuda.runtime.cudaResourceTypeArray`.
-        arr (cupy.core.core.ndarray, optional): An instance of
-            :class:`~cupy.core.core.ndarray`, required if ``restype`` is set to
+        arr (cupy.ndarray, optional): An instance of :class:`~cupy.ndarray`,
+            required if ``restype`` is set to
             :const:`cupy.cuda.runtime.cudaResourceTypeLinear` or
             :const:`cupy.cuda.runtime.cudaResourceTypePitch2D`.
         chDesc (ChannelFormatDescriptor, optional): an instance of
@@ -93,6 +93,9 @@ cdef class ResourceDescriptor:
         pitchInBytes (int, optional): the number of bytes per pitch-aligned row,
             required if ``restype`` is set to
             :const:`cupy.cuda.runtime.cudaResourceTypePitch2D`.
+
+    .. note::
+        A texture backed by `mipmap` arrays is currently not supported in CuPy.
 
     .. seealso:: `cudaCreateTextureObject()`_
 
@@ -502,13 +505,13 @@ cdef class TextureObject:
 
 
 cdef class TextureReference:
-    '''A class that holds a texture reference. Equivalent to ``CUtexref``.
-    The driver API is used under the hood.
+    '''A class that holds a texture reference. Equivalent to ``CUtexref`` (the
+    driver API is used under the hood).
 
     Args:
         texref (size_t): a handle to the texture reference declared in the CUDA
             source code. This can be obtained by calling
-            :meth:~cupy.RawModule.get_texref`.
+            :meth:`~cupy.RawModule.get_texref`.
         ResDesc (ResourceDescriptor): an intance of the resource descriptor.
         TexDesc (TextureDescriptor): an instance of the texture descriptor.
 
@@ -518,10 +521,13 @@ cdef class TextureReference:
     .. warning::
         As of CUDA Toolkit v10.1, the Texture Reference API (in both driver and
         runtime) is marked as deprecated. To help transition to the new Texture
-        Object API, this class mimics the usage of that one. Users who have
-        legacy CUDA codes that use texture references should consider migration
-        to the new API. This CuPy interface will be removed in the future once
-        the offcial Nvidia support is dropped.
+        Object API, this class mimics the usage of
+        :class:`~cupy.cuda.texture.TextureObject`. Users who have legacy CUDA
+        codes that use texture references should consider migration to the new
+        API.
+
+        This CuPy interface is subject to removal once the offcial NVIDIA
+        support is dropped in the future.
 
     .. seealso:: :class:`TextureObject`, `cudaCreateTextureObject()`_
 

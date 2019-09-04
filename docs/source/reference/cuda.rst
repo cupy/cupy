@@ -69,6 +69,7 @@ Texture memory
    cupy.cuda.texture.ResourceDescriptor
    cupy.cuda.texture.TextureDescriptor
    cupy.cuda.texture.TextureObject
+   cupy.cuda.texture.TextureReference
 
 
 Profiler
