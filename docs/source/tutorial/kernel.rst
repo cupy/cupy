@@ -218,7 +218,7 @@ attributes:
    >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
    50000
 
-Accessing texture memory in :class:`~cupy.RawKernel` is supported via CUDA Runtime's Texture Object API, see :class:`~cupy.cuda.texture.TextureObject`'s documentation as well as CUDA C Programming Guide. (The Texture Reference API is marked as deprecated as of CUDA 10.1 and currently not supported in CuPy.)
+Accessing texture memory in :class:`~cupy.RawKernel` is supported via CUDA Runtime's Texture Object API, see :class:`~cupy.cuda.texture.TextureObject`'s documentation as well as CUDA C Programming Guide. For using the Texture Reference API, which is marked as deprecated as of CUDA Toolkit 10.1, see the introduction to :class:`~cupy.RawModule` below.
 
 .. note::
     The kernel does not have return values.
@@ -235,10 +235,10 @@ Accessing texture memory in :class:`~cupy.RawKernel` is supported via CUDA Runti
     You can use ``cupy.cuda.Stream.null.synchronize()`` if you are using the default stream.
 
 
-Raw Modules
+Raw modules
 -----------
 
-For dealing a large raw CUDA source or loading an existing CUDA binary, the :class:`~cupy.RawModule` class can be more handy. It can be initialized either by a CUDA source code, or by a path to the CUDA binary. The needed kernels can then be retrieved by calling the :meth:`~cupy.RawModule.get_function` method, which returns a `~cupy.RawKernel` instance that can be invoked as discussed above.
+For dealing a large raw CUDA source or loading an existing CUDA binary, the :class:`~cupy.RawModule` class can be more handy. It can be initialized either by a CUDA source code, or by a path to the CUDA binary. The needed kernels can then be retrieved by calling the :meth:`~cupy.RawModule.get_function` method, which returns a :class:`~cupy.RawKernel` instance that can be invoked as discussed above.
 
 .. doctest::
 
@@ -277,6 +277,8 @@ For dealing a large raw CUDA source or loading an existing CUDA binary, the :cla
     >>> assert cp.allclose(y, x1 + x2)
     >>> ker_times((N,), (N,), (x1, x2, y, N**2)) # y = x1 * x2
     >>> assert cp.allclose(y, x1 * x2)
+
+A handle to the texture reference in a module can be retrieved by name via :meth:`~cupy.RawModule.get_texref`. Then, you need to pass it to :class:`~cupy.cuda.texture.TextureReference`, along with a resource descriptor and texture descriptor. (The interface of :class:`~cupy.cuda.texture.TextureReference` is meant to mimic that of :class:`~cupy.cuda.texture.TextureObject` to help users make transition to the latter, since as of CUDA Toolkit 10.1 the former is marked as deprecated.)
 
 
 Kernel fusion
