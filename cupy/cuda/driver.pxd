@@ -22,6 +22,17 @@ cdef extern from *:
     ctypedef int CUjitInputType 'CUjitInputType'
     ctypedef int CUfunction_attribute 'CUfunction_attribute'
 
+    # For Texture Reference
+    ctypedef void* Array 'CUarray_st*' # = cupy.cuda.runtime.Array
+    ctypedef int Array_format 'CUarray_format'
+    ctypedef struct Array_desc 'CUDA_ARRAY_DESCRIPTOR':
+        Array_format Format
+        size_t Height
+        unsigned int NumChannels
+        size_t Width
+    ctypedef int Address_mode 'CUaddress_mode'
+    ctypedef int Filter_mode 'CUfilter_mode'
+
 
 cpdef enum:
     CU_JIT_INPUT_CUBIN = 0
@@ -42,6 +53,24 @@ cpdef enum:
     CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT = 9
 
     CUDA_ERROR_INVALID_VALUE = 1
+
+    # For Texture Reference
+    CU_AD_FORMAT_UNSIGNED_INT8 = 0x01
+    CU_AD_FORMAT_UNSIGNED_INT16 = 0x02
+    CU_AD_FORMAT_UNSIGNED_INT32 = 0x03
+    CU_AD_FORMAT_SIGNED_INT8 = 0x08
+    CU_AD_FORMAT_SIGNED_INT16 = 0x09
+    CU_AD_FORMAT_SIGNED_INT32 = 0x0a
+    CU_AD_FORMAT_HALF = 0x10
+    CU_AD_FORMAT_FLOAT = 0x20
+
+    CU_TR_ADDRESS_MODE_WRAP = 0
+    CU_TR_ADDRESS_MODE_CLAMP = 1
+    CU_TR_ADDRESS_MODE_MIRROR = 2
+    CU_TR_ADDRESS_MODE_BORDER = 3
+
+    CU_TR_FILTER_MODE_POINT = 0
+    CU_TR_FILTER_MODE_LINEAR = 1
 
 
 ###############################################################################
@@ -72,7 +101,7 @@ cpdef size_t moduleLoadData(bytes image) except? 0
 cpdef moduleUnload(size_t module)
 cpdef size_t moduleGetFunction(size_t module, str funcname) except? 0
 cpdef size_t moduleGetGlobal(size_t module, str varname) except? 0
-cpdef intptr_t moduleGetTexRef(size_t module, str texrefname) except? 0
+cpdef size_t moduleGetTexRef(size_t module, str texrefname) except? 0
 cpdef launchKernel(
     intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
     unsigned int grid_dim_z, unsigned int block_dim_x,
@@ -86,3 +115,17 @@ cpdef launchKernel(
 
 cpdef int funcGetAttribute(int attribute, intptr_t func)
 cpdef funcSetAttribute(intptr_t func, int attribute, int value)
+
+###############################################################################
+# Texture reference
+###############################################################################
+
+cpdef size_t texRefSetAddress(size_t texref, size_t dptr, size_t nbytes)
+cpdef texRefSetAddress2D(size_t texref, size_t desc, size_t dptr, size_t Pitch)
+cpdef texRefSetAddressMode(size_t texref, int dim, int am)
+cpdef texRefSetArray(size_t texref, size_t array, unsigned int Flags)
+cpdef texRefSetBorderColor(size_t texref, pBorderColor)
+cpdef texRefSetFilterMode(size_t texref, int fm)
+cpdef texRefSetFlags(size_t texref, unsigned int Flags)
+cpdef texRefSetFormat(size_t texref, int fmt, int NumPackedComponents)
+cpdef texRefSetMaxAnisotropy(size_t texref, unsigned int maxAniso)
