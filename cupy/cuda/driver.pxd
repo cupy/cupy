@@ -23,7 +23,7 @@ cdef extern from *:
     ctypedef int CUfunction_attribute 'CUfunction_attribute'
 
     # For Texture Reference
-    ctypedef void* Array 'CUarray_st*' # = cupy.cuda.runtime.Array
+    ctypedef void* Array 'CUarray_st*'  # = cupy.cuda.runtime.Array
     ctypedef int Array_format 'CUarray_format'
     ctypedef struct Array_desc 'CUDA_ARRAY_DESCRIPTOR':
         Array_format Format

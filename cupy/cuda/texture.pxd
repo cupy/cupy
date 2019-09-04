@@ -45,7 +45,5 @@ cdef class TextureReference:
         readonly size_t texref
         readonly ResourceDescriptor ResDesc
         readonly TextureDescriptor TexDesc
-        #readonly CUDAarray cuArr
-        #readonly ndarray arr
 
         _set_format(self, dict ch_format)

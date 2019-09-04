@@ -387,7 +387,8 @@ class TestTexture(unittest.TestCase):
         texref_name = 'texref'
         texref_name += '3D' if dim == 3 else '2D' if dim == 2 else '1D'
         texrefPtr = mod.get_texref(texref_name)
-        texref = TextureReference(texrefPtr, res, tex)
+        # bind texture ref to resource
+        texref = TextureReference(texrefPtr, res, tex)  # noqa
 
         # get and launch the kernel
         ker_name = 'copyKernel'
@@ -493,7 +494,8 @@ class TestTextureVectorType(unittest.TestCase):
 
         mod = cupy.RawModule(source2)
         texrefPtr = mod.get_texref('texref3Df4')
-        texref = TextureReference(texrefPtr, res, tex)
+        # bind texture ref to resource
+        texref = TextureReference(texrefPtr, res, tex)  # noqa
 
         # get and launch the kernel
         ker_name = 'copyKernel3D_4ch'
