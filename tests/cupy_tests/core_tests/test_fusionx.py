@@ -292,3 +292,50 @@ class TestInplace(unittest.TestCase):
             return x
 
         return f(a, b)
+
+class TestReductionAxis(unittest.TestCase):
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_reduce(self, xp, dtype):
+        a = xp.array([[1, 2], [3, 4], [4, 5]], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return xp.sum(x, axis=1)
+
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_reduce_3d(self, xp, dtype):
+        a = xp.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return xp.sum(x, axis=2)
+
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_reduce_3d2(self, xp, dtype):
+        a = xp.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]], dtype=dtype)
+
+        @cp.fusex()
+        def f(x):
+            y = xp.sum(x, axis=2)
+            return xp.sum(y, axis=1)
+
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_reduce_misc(self, xp, dtype):
+        a = xp.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]], dtype=dtype)
+
+        @cp.fusex()
+        def f(x):
+            a = xp.sqrt(x)
+            b = xp.sum(a, axis=1)
+            c = xp.sqrt(b)
+            return xp.sum(c, axis=0)
+
+        return f(a)

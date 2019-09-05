@@ -7,6 +7,7 @@ import cupy
 from libcpp cimport vector
 from cupy.core.core cimport ndarray, Indexer
 from cupy.core._routines_manipulation cimport broadcast_to
+from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core import _kernel
 from cupy.core cimport internal
 from cupy.core._dtype import get_dtype
@@ -179,19 +180,18 @@ class _FusionXVarScalar(object):
         return cupy.copy(self)
 
 class _FusionXVarArray(_FusionXVarScalar):
-    def __init__(self, index, ndim, dtype, block_index, init_abstracted_shape=False):
+    def __init__(self, index, ndim, dtype, init_abstracted_shape=False):
         self.index = index
         self.dup = None
         self.ndim = ndim
         self.dtype = dtype
-        self.prev_block_index = 999
-        self.block_index = block_index
         self.is_input = False
         self.input_order = None
         self.is_output = False
         self.output_order = None
-        self.updated_from = None
         self.broadcasted_from = None
+        self.rotated_from = None
+        self.axis = None
         self.abstracted_shape = tuple('v{}.{}'.format(self.index, i) for i in range(self.ndim)) if init_abstracted_shape else None
 
         # resettable
@@ -207,21 +207,24 @@ class _FusionXVarArray(_FusionXVarScalar):
     def set_size(self):
         self.size = internal.prod(self.real_shape)
 
-    def set_updated(self):
-        if self.updated_from is not None:
-            self.updated_from.set_updated()
-            self.ndarray = copy.copy(self.updated_from.ndarray)
+    def rotate(self):
+        axis_permutes = [self.axis]
+        for i in range(self.ndim):
+            if i != self.axis:
+                axis_permutes.append(i)
+        axis_permutes = tuple(axis_permutes)
+        self.ndarray = _manipulation._transpose(self.rotated_from.ndarray, axis_permutes)
 
     def __repr__(self):
         return '<_FusionXVarArray name={}, dtype={}, ndim={}, abstracted_shape={}>'.format(_get_pvar_param_name(self), self.dtype, self.ndim, self.abstracted_shape)
 
     def __eq__(self, other):
         if isinstance(other, _FusionXVarArray):
-            return self.index == other.index and self.block_index == other.block_index and self.abstracted_shape == other.abstracted_shape
+            return self.index == other.index and self.abstracted_shape == other.abstracted_shape
         return False
 
     def __hash__(self):
-        return hash((self.index, self.block_index, self.abstracted_shape))
+        return hash((self.index, self.abstracted_shape, self.broadcasted_from, self.rotated_from))
 
     def __iadd__(self, other):
         if self.broadcasted_from is not None:
@@ -304,7 +307,8 @@ class _FusionXOp(object):
     def _get_indexer_setup(self):
         ret = ''
         for a in self.in_pvars + self.out_pvars:
-            ret += '        {}.set(i);\n'.format(_get_indexer_name(a))
+            if isinstance(a, _FusionXVarArray):
+                ret += '        {}.set(i);\n'.format(_get_indexer_name(a))
         return ret
 
     def _get_declaration(self):
@@ -374,12 +378,10 @@ ${after_operation}
             after_operation=self._get_after_operation())
 
 class _FusionXReductionOp(object):
-    def __init__(self, func, in_pvar, out_pvar, axis, op, reduction_index):
+    def __init__(self, func, in_pvar, out_pvar, op, reduction_index):
         self.func = func
         self.in_pvar = in_pvar
         self.out_pvar = out_pvar
-        # for negative axis
-        self.axis = axis % in_pvar.ndim
         self.reduce_identity = func.identity
         _, _, (_, self.reduce_expr, _, _) = op
         self.reduction_index = reduction_index
@@ -438,7 +440,6 @@ class _FusionXHistory(object):
     def __init__(self):
         self.count = 0
         self.dup_count = dict()
-        self.block_count = 0
         # TODO: reuse dead variables
         self.param_list_base_used = set()
         self.param_list_base = list()
@@ -491,7 +492,7 @@ class _FusionXHistory(object):
     def _make_input_param(self, arg, idx):
         if isinstance(arg, cupy.core.ndarray):
             index = self._fresh_index()
-            ret = _FusionXVarArray(index, arg.ndim, arg.dtype, 0, True)
+            ret = _FusionXVarArray(index, arg.ndim, arg.dtype, True)
             ret.real_shape = arg.shape
             ret.is_input = True
             ret.input_order = idx
@@ -508,26 +509,22 @@ class _FusionXHistory(object):
         ret.ndim = len(abstracted_shape)
         ret.abstracted_shape = abstracted_shape
         ret.real_shape = real_shape
-        ret.updated_from = None
         ret.broadcasted_from = pvar
         ret.is_input = False
         self._append_param(ret, False)
         return ret
 
-    def _update_block_index(self, pvar):
+    def _make_rotated_param(self, pvar, axis):
         ret = copy.copy(pvar)
-        ret.prev_block_index = pvar.block_index
-        ret.updated_from = pvar
-        ret.block_index = self.block_count
+        ret.rotated_from = pvar
+        ret.axis = axis
+        ret.is_input = False
         self._append_param(ret, False)
         return ret
 
-    def _make_new_param(self, ndim, dtype, abstracted_shape, real_shape, next_block=False):
+    def _make_new_param(self, ndim, dtype, abstracted_shape, real_shape):
         index = self._fresh_index()
-        block = self.block_count
-        if next_block:
-            block += 1
-        ret = _FusionXVarArray(index, ndim, dtype, block)
+        ret = _FusionXVarArray(index, ndim, dtype)
         ret.abstracted_shape = abstracted_shape
         ret.real_shape = real_shape
         self._append_param(ret, True)
@@ -538,8 +535,10 @@ class _FusionXHistory(object):
         self.op_list.append(op)
 
     def _add_reduction_op(self, func, in_pvar, out_pvar, axis, op):
-        op = _FusionXReductionOp(func, in_pvar, out_pvar, axis, op, self.block_count)
-        self.block_count += 1
+        axis %= in_pvar.ndim
+        if axis != 0:
+            in_pvar = self._make_rotated_param(in_pvar, axis)
+        op = _FusionXReductionOp(func, in_pvar, out_pvar, op, len(self.reduction_op_list))
         self.op_list.append(op)
         self.reduction_op_list.append(op)
 
@@ -593,11 +592,6 @@ class _FusionXHistory(object):
         pvar_list = [self._get_pvar(arg) for arg in args]
         in_pvars = pvar_list[:nin]
         out_pvars = pvar_list[nin:]
-
-        for pvar in in_pvars:
-            if isinstance(pvar, _FusionXVarArray):
-                if pvar.block_index != self.block_count:
-                    pvar = self._update_block_index(pvar)
 
         if 'out' in kwargs:
             out = kwargs.pop('out')
@@ -736,20 +730,20 @@ class _FusionXHistory(object):
                     else:
                         continue
                 out_dtype = numpy.dtype(out_dtype)
-                out_pvar = self._make_new_param(out_ndim, out_dtype, out_abstracted_shape, out_real_shape, True)
+                out_pvar = self._make_new_param(out_ndim, out_dtype, out_abstracted_shape, out_real_shape)
                 self._add_reduction_op(fusion_op, arg, out_pvar, axis, op)
                 return out_pvar
         raise TypeError('No viable type cast of {}, arg_type={}'.format(
             fusion_op.name, arg.dtype))
 
-    def prepare_reduction_submodules(self):
+    def _prepare_reduction_submodules(self):
         for op in self.reduction_op_list:
             op._add_to_reduction_submodules(self)
 
     def _get_output(self):
         out = None if self.no_return or self.return_size < 0 else list(None for _ in range(self.return_size))
         for a in self.param_list:
-            if a.is_output:
+            if isinstance(a, _FusionXVarArray) and a.is_output:
                 if self.return_size < 0:
                     out = a.ndarray
                 else:
@@ -767,10 +761,10 @@ class _FusionXHistory(object):
         kern_size = 1
 
         for a in self.param_list:
-            kern_size = max(kern_size, a.size)
             if isinstance(a, _FusionXVarArray):
                 params.append(a.ndarray)
                 indexers.append(Indexer(a.ndarray.shape))
+                kern_size = max(kern_size, a.size)
             elif isinstance(a, _FusionXVarScalar):
                 if a.const_value is not None:
                     continue
@@ -810,7 +804,7 @@ class _FusionXHistory(object):
             else:
                 raise TypeError('Unknown type {}.'.format(type(a)))
 
-        for i in range(self.block_count):
+        for i in range(len(self.reduction_op_list)):
             block_strides.append('int block_stride{}'.format(i))
 
         return params + indexers + block_strides
@@ -866,10 +860,6 @@ class _FusionXHistory(object):
                 else:
                     pvar.ndarray = ndarray(pvar.real_shape, pvar.dtype)
 
-    def _set_updated(self):
-        for pvar in self.param_list:
-            pvar.set_updated()
-
     def _broadcast(self):
         for pvar in self.param_list:
             if isinstance(pvar, _FusionXVarArray):
@@ -878,7 +868,9 @@ class _FusionXHistory(object):
                     pvar.ndarray = broadcast_to(pvar.broadcasted_from.ndarray, pvar.real_shape)
 
     def _rotate(self):
-        pass
+        for pvar in self.param_list:
+            if isinstance(pvar, _FusionXVarArray) and pvar.rotated_from is not None:
+                pvar.rotate()
 
     def _reduce_dims(self):
         for pvar in self.param_list:
@@ -907,12 +899,11 @@ ${body}
         self._reset_vals()
         self._set_real_shape(shape_map)
         self._set_ndarray(args)
-        self._set_updated()
         self._broadcast()
         ret = self._get_output()
         self._rotate()
         self._reduce_dims()
-        self.prepare_reduction_submodules()
+        self._prepare_reduction_submodules()
         inout_args, kern_size = self._get_inout_args()
 
         self.cuda_params = self._get_cuda_params()
