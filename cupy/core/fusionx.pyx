@@ -300,6 +300,7 @@ class _FusionXOp(object):
         self.out_pvars = out_pvars
         self.in_dtypes = in_dtypes
         self.out_dtypes = out_dtypes
+        self.abstracted_shape = out_pvars[0].abstracted_shape
 
     def __repr__(self):
         in_pvars = ', '.join([_get_pvar_param_name(a) for a in self.in_pvars])
@@ -343,13 +344,13 @@ class _FusionXOp(object):
             if a in used:
                 continue
             used.add(a)
-            pre_conversion += '        {type} {name} = ({type}) {name}_;\n'.format(
+            pre_conversion += '            {type} {name} = ({type}) {name}_;\n'.format(
                 type=_dtype_to_ctype[d], name=_get_pvar_decl_name(a))
-        operation += '        {}({});\n'.format(self.ufunc.name, ', '.join([_get_pvar_decl_name(a) for a in self.in_pvars + self.out_pvars]))
+        operation += '            {}({});\n'.format(self.ufunc.name, ', '.join([_get_pvar_decl_name(a) for a in self.in_pvars + self.out_pvars]))
         for a in self.out_pvars:
-            post_conversion += '        {name}_ = ({type}) {name};\n'.format(
+            post_conversion += '            {name}_ = ({type}) {name};\n'.format(
                 type=_dtype_to_ctype[a.dtype], name=_get_pvar_decl_name(a))
-        return pre_conversion + operation + post_conversion
+        return '        {\n' + pre_conversion + operation + post_conversion + '        }\n'
 
     def _get_after_operation(self):
         ret = ''
@@ -403,6 +404,40 @@ class _FusionXReductionOp(object):
             in_ind=_get_indexer_name(self.in_pvar),
             out_ind=_get_indexer_name(self.out_pvar),
             reduction_index = self.reduction_index)
+
+class _FusionXMergedOp(_FusionXOp):
+    def __init__(self):
+        self.in_pvars = list()
+        self.in_pvars_used = set()
+        self.out_pvars = list()
+        self.out_pvars_used = set()
+        self.in_dtypes = list()
+        self.out_dtypes = list()
+        self.ops = list()
+
+    def add_op(self, fusionx_op):
+        for in_pvar, in_dtype in zip(fusionx_op.in_pvars, fusionx_op.in_dtypes):
+            if in_pvar in self.in_pvars_used:
+                continue
+            self.in_pvars_used.add(in_pvar)
+            self.in_pvars.append(in_pvar)
+            self.in_dtypes.append(in_dtype)
+        for out_pvar, out_dtype in zip(fusionx_op.out_pvars, fusionx_op.out_dtypes):
+            if out_pvar in self.out_pvars_used:
+                continue
+            self.out_pvars_used.add(out_pvar)
+            self.out_pvars.append(out_pvar)
+            self.out_dtypes.append(out_dtype)
+        self.ops.append(fusionx_op)
+
+    def size(self):
+        return len(self.ops)
+
+    def _get_operation(self):
+        ret = ''
+        for op in self.ops:
+            ret += op._get_operation()
+        return ret
 
 class _ShapeConstraints(object):
     def __init__(self):
@@ -823,7 +858,31 @@ class _FusionXHistory(object):
 
         self.return_size = -1
         self.no_return = no_return
-        self.cuda_body = '    __syncthreads();'.join([op.code() for op in self.op_list])
+
+        merged_op_list = list()
+        prev = None
+        merged = _FusionXMergedOp()
+
+        for op in self.op_list:
+            if isinstance(op, _FusionXReductionOp):
+                if merged.size() > 0:
+                    merged_op_list.append(merged)
+                prev = None
+                merged = _FusionXMergedOp()
+                merged_op_list.append(op)
+            elif isinstance(op, _FusionXOp):
+                if prev is not None and prev.abstracted_shape != op.abstracted_shape:
+                    if merged.size() > 0:
+                        merged_op_list.append(merged)
+                    merged = _FusionXMergedOp()
+                merged.add_op(op)
+                prev = op
+            else:
+                raise TypeError('Unknown op type {}.'.format(type(op)))
+        if merged.size() > 0:
+            merged_op_list.append(merged)
+
+        self.cuda_body = '    __syncthreads();'.join([op.code() for op in merged_op_list])
 
         return self, self.shape_constraints
 
