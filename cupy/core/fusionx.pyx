@@ -51,6 +51,8 @@ class _FusionXVarScalar(object):
         self.index = index
         self.dtype = dtype
         self.ndim = -1
+        self.is_input = False
+        self.input_order = None
 
         # resettable
         self.const_value = const_value
@@ -389,25 +391,13 @@ class _FusionXReductionOp(object):
     def __repr__(self):
         return '<_FusionXReductionOp name={}, in_pvar={}, out_pvar={}>'.format(self.func.name, self.in_pvar, self.out_pvar)
 
-    def _get_func_name_suffix(self):
-        def get_type(pvar):
-            ret = pvar.dtype.char
-            if ret == '?':
-                ret = '_'
-            return ret
-        return '_{}{}{}{}{}'.format(self.func.name, get_type(self.in_pvar), self.in_pvar.ndim, get_type(self.out_pvar), self.out_pvar.ndim)
-
     def _add_to_reduction_submodules(self, target):
-        name = self._get_func_name_suffix()
-        if name not in target.reduction_submodules:
-            submodule_code = reduction_code_template(name, self.in_pvar, self.out_pvar, self.reduce_expr, self.reduce_identity)
-            target.reduction_submodules[name] = submodule_code
+        target.reduction_submodules.append(reduction_code_template(self.reduction_index, self.in_pvar, self.out_pvar, self.reduce_expr, self.reduce_identity))
 
     def code(self):
         return string.Template('''
-    reduce${name}(${in_arr}, ${out_arr}, ${in_ind}, ${out_ind}, block_stride${reduction_index});
+    reduce${reduction_index}(${in_arr}, ${out_arr}, ${in_ind}, ${out_ind}, block_stride${reduction_index});
 ''').substitute(
-            name=self._get_func_name_suffix(),
             in_arr=_get_pvar_param_name(self.in_pvar),
             out_arr=_get_pvar_param_name(self.out_pvar),
             in_ind=_get_indexer_name(self.in_pvar),
@@ -451,7 +441,7 @@ class _FusionXHistory(object):
         self.reduction_op_list = list()
 
         self.ufunc_submodules = dict()
-        self.reduction_submodules = dict()
+        self.reduction_submodules = list()
         self.block_strides = list()
 
         self.cuda_body = None
@@ -500,7 +490,9 @@ class _FusionXHistory(object):
         else:
             index = self._fresh_index()
             dtype = numpy.dtype(type(arg))
-            ret = _FusionXVarScalar(index, dtype)
+            ret = _FusionXVarScalar(index, dtype, None)
+            ret.is_input = True
+            ret.input_order = idx
             self._append_param(ret)
         return ret
 
@@ -628,58 +620,58 @@ class _FusionXHistory(object):
                         out_real_shape[ndim - 1 - j] = in_pvar.real_shape[cur_ndim - 1 - j]
                         out_abstracted_shape[ndim - 1 - j] = in_pvar.abstracted_shape[cur_ndim - 1 - j]
 
-            out_abstracted_shape = tuple(out_abstracted_shape)
-            out_real_shape = tuple(out_real_shape)
+        out_abstracted_shape = tuple(out_abstracted_shape)
+        out_real_shape = tuple(out_real_shape)
 
-            for idx, in_pvar in enumerate(in_pvars):
-                cur_ndim = in_pvar.ndim
-                if cur_ndim == -1:
-                    continue
-                is_necessary = cur_ndim != ndim
-                for j in range(cur_ndim):
-                    if in_pvar.real_shape[cur_ndim - 1 - j] < out_real_shape[ndim - 1 - j]:
-                        if in_pvar.real_shape[cur_ndim - 1 - j] == 1:
-                            self.shape_constraints.add_one_constraint(in_pvar.abstracted_shape[cur_ndim - 1 - j])
-                        else:
-                            raise ValueError('Cannot broadcast shape {} to {}.'.format(in_pvar.real_shape, out_real_shape))
-                        is_necessary = True
+        for idx, in_pvar in enumerate(in_pvars):
+            cur_ndim = in_pvar.ndim
+            if cur_ndim == -1:
+                continue
+            is_necessary = cur_ndim != ndim
+            for j in range(cur_ndim):
+                if in_pvar.real_shape[cur_ndim - 1 - j] < out_real_shape[ndim - 1 - j]:
+                    if in_pvar.real_shape[cur_ndim - 1 - j] == 1:
+                        self.shape_constraints.add_one_constraint(in_pvar.abstracted_shape[cur_ndim - 1 - j])
                     else:
-                        self.shape_constraints.add_eq_constraint(in_pvar.abstracted_shape[cur_ndim - 1 - j], out_abstracted_shape[ndim - 1 - j])
-                if is_necessary:
-                    in_pvars[idx] = self._broadcast_to(in_pvar, out_abstracted_shape, out_real_shape)
+                        raise ValueError('Cannot broadcast shape {} to {}.'.format(in_pvar.real_shape, out_real_shape))
+                    is_necessary = True
+                else:
+                    self.shape_constraints.add_eq_constraint(in_pvar.abstracted_shape[cur_ndim - 1 - j], out_abstracted_shape[ndim - 1 - j])
+            if is_necessary:
+                in_pvars[idx] = self._broadcast_to(in_pvar, out_abstracted_shape, out_real_shape)
 
-            op_index = len(self.op_list)
-            # TODO: life analysis
+        op_index = len(self.op_list)
+        # TODO: life analysis
 
-            can_cast = can_cast1 if _should_use_min_scalar(in_pvars) else can_cast2
-            for in_dtypes, out_dtypes, op in ufunc._ops:
-                in_dtypes = [numpy.dtype(t) for t in in_dtypes]
-                out_dtypes = [numpy.dtype(t) for t in out_dtypes]
-                if can_cast(in_pvars, in_dtypes):
-                    ret = list()
-                    for i in range(nout):
-                        if i >= len(out_pvars):
-                            out_pvar = self._make_new_param(ndim, out_dtypes[i], out_abstracted_shape, out_real_shape)
-                            out_pvars.append(out_pvar)
-                            ret.append(out_pvar)
-                        elif numpy.can_cast(out_dtypes[i], out_pvars[i].dtype, 'same_kind'):
-                            out_pvar = out_pvars[i]
-                            ret.append(out_pvar)
-                        else:
-                            raise TypeError(
-                                'output (typecode \'{}\') could not be coerced '
-                                'to provided output parameter (typecode \'{}\') '
-                                'according to the casting rule '
-                                '"same_kind"'.format(
-                                    out_dtypes[i].char, out_pvars[i].dtype.char))
-                    in_params = [(in_dtypes[i], 'in{}'.format(i)) for i, _ in enumerate(in_pvars)]
-                    out_params = [(out_dtypes[i], 'out{}'.format(i)) for i, _ in enumerate(out_pvars)]
-                    subm = _Submodule(ufunc, in_params, out_params, op)
-                    self.ufunc_submodules[subm.key()] = subm
-                    self._add_ufunc_op(ufunc, in_pvars, out_pvars, in_dtypes, out_dtypes)
-                    return ret[0] if len(ret) == 1 else tuple(ret)
-            raise TypeError('Invalid type cast in \'{}\' in_dtypes={}'.format(
-                ufunc.name, [v.dtype for v in in_pvars]))
+        can_cast = can_cast1 if _should_use_min_scalar(in_pvars) else can_cast2
+        for in_dtypes, out_dtypes, op in ufunc._ops:
+            in_dtypes = [numpy.dtype(t) for t in in_dtypes]
+            out_dtypes = [numpy.dtype(t) for t in out_dtypes]
+            if can_cast(in_pvars, in_dtypes):
+                ret = list()
+                for i in range(nout):
+                    if i >= len(out_pvars):
+                        out_pvar = self._make_new_param(ndim, out_dtypes[i], out_abstracted_shape, out_real_shape)
+                        out_pvars.append(out_pvar)
+                        ret.append(out_pvar)
+                    elif numpy.can_cast(out_dtypes[i], out_pvars[i].dtype, 'same_kind'):
+                        out_pvar = out_pvars[i]
+                        ret.append(out_pvar)
+                    else:
+                        raise TypeError(
+                            'output (typecode \'{}\') could not be coerced '
+                            'to provided output parameter (typecode \'{}\') '
+                            'according to the casting rule '
+                            '"same_kind"'.format(
+                                out_dtypes[i].char, out_pvars[i].dtype.char))
+                in_params = [(in_dtypes[i], 'in{}'.format(i)) for i, _ in enumerate(in_pvars)]
+                out_params = [(out_dtypes[i], 'out{}'.format(i)) for i, _ in enumerate(out_pvars)]
+                subm = _Submodule(ufunc, in_params, out_params, op)
+                self.ufunc_submodules[subm.key()] = subm
+                self._add_ufunc_op(ufunc, in_pvars, out_pvars, in_dtypes, out_dtypes)
+                return ret[0] if len(ret) == 1 else tuple(ret)
+        raise TypeError('Invalid type cast in \'{}\' in_dtypes={}'.format(
+            ufunc.name, [v.dtype for v in in_pvars]))
 
     def call_reduction(self, fusion_op, args, kwargs):
         if len(args) != 1:
@@ -754,7 +746,7 @@ class _FusionXHistory(object):
             out = tuple(out)
         return out
 
-    def _get_inout_args(self):
+    def _get_inout_args(self, args):
         params = list()
         indexers = list()
         block_strides = list()
@@ -766,9 +758,8 @@ class _FusionXHistory(object):
                 indexers.append(Indexer(a.ndarray.shape))
                 kern_size = max(kern_size, a.size)
             elif isinstance(a, _FusionXVarScalar):
-                if a.const_value is not None:
-                    continue
-                params.append(0)
+                if a.is_input:
+                    params.append(args[a.input_order])
             else:
                 raise TypeError('Unknown type {}.'.format(type(a)))
         for op in self.reduction_op_list:
@@ -882,7 +873,7 @@ class _FusionXHistory(object):
         code = ''
         for submodule in self.ufunc_submodules.values():
             code += submodule.code()
-        for submodule_code in self.reduction_submodules.values():
+        for submodule_code in self.reduction_submodules:
             code += submodule_code
         code += string.Template('''
 extern "C" __global__ void ${name}(${params}) {
@@ -904,7 +895,7 @@ ${body}
         self._rotate()
         self._reduce_dims()
         self._prepare_reduction_submodules()
-        inout_args, kern_size = self._get_inout_args()
+        inout_args, kern_size = self._get_inout_args(args)
 
         self.cuda_params = self._get_cuda_params()
         if len(inout_args) != len(self.cuda_params):
@@ -1058,7 +1049,7 @@ def fusex(*args, **kwargs):
         return lambda f: functools.update_wrapper(
             wrapper(f, *args, **kwargs), f)
 
-def reduction_code_template(name, in_pvar, out_pvar, reduce_expr, identity):
+def reduction_code_template(reduction_index, in_pvar, out_pvar, reduce_expr, identity):
     """
     statically determined params
         name: name of reduce_func
@@ -1072,12 +1063,12 @@ def reduction_code_template(name, in_pvar, out_pvar, reduce_expr, identity):
     if in_pvar.ndarray is None or out_pvar.ndarray is None:
         raise ValueError('ndarray must be malloced before launching kernel.')
     return string.Template('''
-#define REDUCE${name}(a, b) (${reduce_expr})
-#define _REDUCE${name}(offset) sdata[tid] = REDUCE${name}(sdata[tid], sdata[tid + offset]);
+#define REDUCE${reduction_index}(a, b) (${reduce_expr})
+#define _REDUCE${reduction_index}(offset) sdata_${out_type_char}${reduction_index}[tid] = REDUCE${reduction_index}(sdata_${out_type_char}${reduction_index}[tid], sdata_${out_type_char}${reduction_index}[tid + offset]);
 
-__device__ void reduce${name}(CArray<${in_type}, ${in_ndim}> in_arr, CArray<${out_type}, ${out_ndim}> out_arr,
+__device__ void reduce${reduction_index}(CArray<${in_type}, ${in_ndim}> in_arr, CArray<${out_type}, ${out_ndim}> out_arr,
         CIndexer<${in_ndim}> in_ind, CIndexer<${out_ndim}> out_ind, int block_stride) {
-    extern __shared__ ${out_type} sdata[${block_size}];
+    extern __shared__ ${out_type} sdata_${out_type_char}${reduction_index}[${block_size}];
     unsigned int tid = threadIdx.x;
     int _J = tid >> __popc(block_stride - 1);
     ptrdiff_t _j = (ptrdiff_t)_J * out_ind.size();
@@ -1090,18 +1081,18 @@ __device__ void reduce${name}(CArray<${in_type}, ${in_ndim}> in_arr, CArray<${ou
         for (ptrdiff_t j = i + _j; j < in_ind.size(); j += j_stride) {
             in_ind.set(j);
             ${in_type} &a = in_arr[in_ind.get()];
-            s = REDUCE${name}(s, (${out_type})a);
+            s = REDUCE${reduction_index}(s, (${out_type})a);
         }
-        sdata[tid] = s;
+        sdata_${out_type_char}${reduction_index}[tid] = s;
         __syncthreads();
         for (unsigned int block = ${block_size} / 2; block >= block_stride; block >>= 1) {
             if (tid < block) {
-                _REDUCE${name}(block);
+                _REDUCE${reduction_index}(block);
             }
             __syncthreads();
         }
         if (tid < block_stride) {
-            s = sdata[tid];
+            s = sdata_${out_type_char}${reduction_index}[tid];
         }
         if (tid < block_stride && i < out_ind.size()) {
             out_ind.set(i);
@@ -1112,11 +1103,12 @@ __device__ void reduce${name}(CArray<${in_type}, ${in_ndim}> in_arr, CArray<${ou
     }
 }
 ''').substitute(
-        name=name,
+        reduction_index=reduction_index,
         in_ndim=in_pvar.ndarray.ndim,
         in_type=_dtype_to_ctype[in_pvar.dtype],
         out_ndim=out_pvar.ndarray.ndim,
         out_type=_dtype_to_ctype[out_pvar.dtype],
+        out_type_char=out_pvar.dtype.char,
         block_size=512,
         reduce_expr=reduce_expr,
         identity=identity)
