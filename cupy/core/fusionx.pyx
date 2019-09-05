@@ -184,6 +184,8 @@ class _FusionXVarScalar(object):
 class _FusionXVarArray(_FusionXVarScalar):
     def __init__(self, index, ndim, dtype, init_abstracted_shape=False):
         self.index = index
+        # reuse dead variable
+        self.new_index = index
         self.dup = None
         self.ndim = ndim
         self.dtype = dtype
@@ -309,7 +311,11 @@ class _FusionXOp(object):
 
     def _get_indexer_setup(self):
         ret = ''
+        used = set()
         for a in self.in_pvars + self.out_pvars:
+            if a in used:
+                continue
+            used.add(a)
             if isinstance(a, _FusionXVarArray):
                 ret += '        {}.set(i);\n'.format(_get_indexer_name(a))
         return ret
@@ -465,7 +471,7 @@ class _FusionXHistory(object):
     def __init__(self):
         self.count = 0
         self.dup_count = dict()
-        # TODO: reuse dead variables
+        self.base_abstracted_shape = dict()
         self.param_list_base_used = set()
         self.param_list_base = list()
         # contains broadcasted params
@@ -474,6 +480,7 @@ class _FusionXHistory(object):
         self.shape_constraints = _ShapeConstraints()
         self.op_list = list()
         self.reduction_op_list = list()
+        self.last_op = dict()
 
         self.ufunc_submodules = dict()
         self.reduction_submodules = list()
@@ -496,6 +503,7 @@ class _FusionXHistory(object):
             dup = self.dup_count.get(pvar.index, 0)
             pvar.dup = dup
             self.dup_count[pvar.index] = dup + 1
+            self.base_abstracted_shape[pvar.index] = pvar.abstracted_shape
         if need_malloc and pvar not in self.param_list_base_used:
             self.param_list_base_used.add(pvar)
             self.param_list_base.append(pvar)
@@ -676,7 +684,8 @@ class _FusionXHistory(object):
                 in_pvars[idx] = self._broadcast_to(in_pvar, out_abstracted_shape, out_real_shape)
 
         op_index = len(self.op_list)
-        # TODO: life analysis
+        for in_pvar in in_pvars:
+            self.last_op[in_pvar.index] = op_index
 
         can_cast = can_cast1 if _should_use_min_scalar(in_pvars) else can_cast2
         for in_dtypes, out_dtypes, op in ufunc._ops:
@@ -744,7 +753,7 @@ class _FusionXHistory(object):
             dtype = get_dtype(dtype).type
 
         op_index = len(self.op_list)
-        # TODO: life analysis
+        self.last_op[arg.index] = op_index
 
         out_ndim = len(out_abstracted_shape)
 
@@ -835,6 +844,92 @@ class _FusionXHistory(object):
 
         return params + indexers + block_strides
 
+    def _get_pvar_meminfo(self, pvar):
+        return (self.base_abstracted_shape[pvar.index], pvar.dtype)
+
+    def _compress_pvars(self):
+        def get_last_op(pvar):
+            return self.last_op.get(pvar.index, -1)
+
+        # dead[abst_shape] = [indexes]
+        dead = dict()
+        alive = set()
+        index_map = dict()
+        for op_index, op in enumerate(self.op_list):
+            if isinstance(op, _FusionXOp):
+                in_pvars = op.in_pvars
+                out_pvars = op.out_pvars
+            elif isinstance(op, _FusionXReductionOp):
+                in_pvars = [op.in_pvar]
+                out_pvars = [op.out_pvar]
+            else:
+                raise TypeError('Unknown type {}.'.format(type(op)))
+            
+            for pvar in in_pvars:
+                if not isinstance(pvar, _FusionXVarArray):
+                    continue
+                if pvar.index in index_map:
+                    pvar.new_index = index_map[pvar.index]
+                is_input = pvar.is_input
+                is_output = pvar.is_output
+                if pvar.broadcasted_from is not None:
+                    is_input |= pvar.broadcasted_from.is_input
+                    is_output |= pvar.broadcasted_from.is_output
+                if pvar.rotated_from is not None:
+                    is_input |= pvar.rotated_from.is_input
+                    is_output |= pvar.rotated_from.is_output
+                if not is_input and not is_output and get_last_op(pvar) <= op_index:
+                    # pvar becomes dead
+                    key = self._get_pvar_meminfo(pvar)
+                    if key in dead:
+                        dead[key].append(pvar.new_index)
+                    else:
+                        dead[key] = [pvar.new_index]
+                    if pvar.new_index in alive:
+                        alive.remove(pvar.new_index)
+                else:
+                    alive.add(pvar.new_index)
+            for pvar in out_pvars:
+                if not isinstance(pvar, _FusionXVarArray):
+                    continue
+                if pvar.index in index_map:
+                    pvar.new_index = index_map[pvar.index]
+                if pvar.new_index not in alive:
+                    # assign new index
+                    key = self._get_pvar_meminfo(pvar)
+                    if key in dead and len(dead[key]) > 0:
+                        pvar.new_index = dead[key].pop(0)
+                    index_map[pvar.index] = pvar.new_index
+                    alive.add(pvar.new_index)
+
+        param_list = list()
+        param_list_base = list()
+        param_list_used = set()
+        map = dict()
+        dup_count = dict()
+        for pvar in self.param_list_used:
+            if not isinstance(pvar, _FusionXVarArray):
+                if pvar in param_list_used:
+                    continue
+                param_list_used.add(pvar)
+                param_list.append(pvar)
+                param_list_base.append(pvar)
+                continue
+            if pvar in param_list_used:
+                if pvar.is_output:
+                    param_list[map[pvar]].is_output = True
+                continue
+            map[pvar] = len(param_list)
+            dup = dup_count.get(pvar.index, 0)
+            pvar.dup = dup
+            dup_count[pvar.index] = dup + 1
+            param_list_used.add(pvar)
+            param_list.append(pvar)
+            if pvar.broadcasted_from is None and pvar.rotated_from is None:
+                param_list_base.append(pvar)
+        self.param_list = param_list
+        self.param_list_base = param_list_base
+
     def _get_fusionx_info(self, func, args, name):
         self.name = name
         in_pvars = [self._make_input_param(arg, idx) for idx, arg in enumerate(args)]
@@ -858,6 +953,8 @@ class _FusionXHistory(object):
 
         self.return_size = -1
         self.no_return = no_return
+
+        self._compress_pvars()
 
         merged_op_list = list()
         prev = None

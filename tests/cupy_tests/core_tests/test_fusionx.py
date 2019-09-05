@@ -521,3 +521,6 @@ class TestScalarInput(unittest.TestCase):
             return a * b
 
         return f(a, b, c)
+
+if __name__ == '__main__':
+    unittest.main()
