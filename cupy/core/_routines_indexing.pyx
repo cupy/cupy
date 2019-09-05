@@ -80,6 +80,14 @@ cdef _ndarray_scatter_add(ndarray self, slices, value):
     _scatter_op(self, slices, value, 'add')
 
 
+cdef _ndarray_scatter_max(ndarray self, slices, value):
+    _scatter_op(self, slices, value, 'max')
+
+
+cdef _ndarray_scatter_min(ndarray self, slices, value):
+    _scatter_op(self, slices, value, 'min')
+
+
 cdef ndarray _ndarray_take(ndarray self, indices, axis, out):
     if axis is None:
         return _take(self, indices, 0, self._shape.size() - 1, out)
@@ -455,6 +463,32 @@ _scatter_add_kernel = ElementwiseKernel(
     'cupy_scatter_add')
 
 
+_scatter_max_kernel = ElementwiseKernel(
+    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
+    'raw T a',
+    '''
+      S wrap_indices = indices % adim;
+      if (wrap_indices < 0) wrap_indices += adim;
+      ptrdiff_t li = i / (rdim * cdim);
+      ptrdiff_t ri = i % rdim;
+      atomicMax(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
+    ''',
+    'cupy_scatter_max')
+
+
+_scatter_min_kernel = ElementwiseKernel(
+    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
+    'raw T a',
+    '''
+      S wrap_indices = indices % adim;
+      if (wrap_indices < 0) wrap_indices += adim;
+      ptrdiff_t li = i / (rdim * cdim);
+      ptrdiff_t ri = i % rdim;
+      atomicMin(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
+    ''',
+    'cupy_scatter_min')
+
+
 _scatter_update_mask_kernel = ElementwiseKernel(
     'raw T v, bool mask, S mask_scanned',
     'T a',
@@ -467,6 +501,20 @@ _scatter_add_mask_kernel = ElementwiseKernel(
     'T a',
     'if (mask) a = a + v[mask_scanned - 1]',
     'cupy_scatter_add_mask')
+
+
+_scatter_max_mask_kernel = ElementwiseKernel(
+    'raw T v, bool mask, S mask_scanned',
+    'T a',
+    'if (mask) a = max(a, v[mask_scanned - 1])',
+    'cupy_scatter_max_mask')
+
+
+_scatter_min_mask_kernel = ElementwiseKernel(
+    'raw T v, bool mask, S mask_scanned',
+    'T a',
+    'if (mask) a = min(a, v[mask_scanned - 1])',
+    'cupy_scatter_min_mask')
 
 
 _getitem_mask_kernel = ElementwiseKernel(
@@ -666,6 +714,24 @@ cdef _scatter_op_single(
                 'uint32, uint64, as data type')
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'max':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.float32, numpy.float64,
+                           numpy.uint32, numpy.uint64, numpy.ulonglong)):
+            raise TypeError(
+                'scatter_max only supports int32, float32, float64, '
+                'uint32, uint64 as data type')
+        _scatter_max_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'min':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.float32, numpy.float64,
+                           numpy.uint32, numpy.uint64, numpy.ulonglong)):
+            raise TypeError(
+                'scatter_min only supports int32, float32, float64, '
+                'uint32, uint64 as data type')
+        _scatter_min_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
     else:
         raise ValueError('provided op is not supported')
 
@@ -692,6 +758,10 @@ cdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
         _scatter_update_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'add':
         _scatter_add_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'max':
+        _scatter_max_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'min':
+        _scatter_min_mask_kernel(src, mask, mask_scanned, a)
     else:
         raise ValueError('provided op is not supported')
 
@@ -740,6 +810,12 @@ cdef _scatter_op(ndarray a, slices, value, op):
         return
     if op == 'add':
         _math._add(y, value, y)
+        return
+    if op == 'max':
+        cupy.maximum(y, value, y)
+        return
+    if op == 'min':
+        cupy.minimum(y, value, y)
         return
     raise ValueError('this op is not supported')
 

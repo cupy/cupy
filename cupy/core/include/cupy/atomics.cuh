@@ -38,3 +38,61 @@ __device__ float16 atomicAdd(float16* address, float16 val) {
   __half_raw raw = {old_as_us};
   return float16(raw);
 };
+
+
+__device__ float atomicMax(float* address, float val) {
+  int* address_as_i = reinterpret_cast<int*>(address);
+  int old = *address_as_i, assumed;
+  do {
+    assumed = old;
+    old = atomicCAS(
+        reinterpret_cast<int*>(address), assumed,
+        __float_as_int(fmaxf(val, __int_as_float(assumed))));
+  } while (assumed != old);
+  return __int_as_float(old);
+}
+
+
+__device__ double atomicMax(double* address, double val) {
+  unsigned long long* address_as_i =
+    reinterpret_cast<unsigned long long*>(address);
+  unsigned long long old = *address_as_i, assumed;
+  do {
+    assumed = old;
+    const long long result = __double_as_longlong(
+      fmaxf(val, __longlong_as_double(reinterpret_cast<long long&>(assumed))));
+    old = atomicCAS(
+      address_as_i, assumed,
+      reinterpret_cast<const unsigned long long&>(result));
+  } while (assumed != old);
+  return __longlong_as_double(reinterpret_cast<long long&>(old));
+}
+
+
+__device__ float atomicMin(float* address, float val) {
+  int* address_as_i = reinterpret_cast<int*>(address);
+  int old = *address_as_i, assumed;
+  do {
+    assumed = old;
+    old = atomicCAS(
+        reinterpret_cast<int*>(address), assumed,
+        __float_as_int(fminf(val, __int_as_float(assumed))));
+  } while (assumed != old);
+  return __int_as_float(old);
+}
+
+
+__device__ double atomicMin(double* address, double val) {
+  unsigned long long* address_as_i =
+    reinterpret_cast<unsigned long long*>(address);
+  unsigned long long old = *address_as_i, assumed;
+  do {
+    assumed = old;
+    const long long result = __double_as_longlong(
+      fminf(val, __longlong_as_double(reinterpret_cast<long long&>(assumed))));
+    old = atomicCAS(
+      address_as_i, assumed,
+      reinterpret_cast<const unsigned long long&>(result));
+  } while (assumed != old);
+  return __longlong_as_double(reinterpret_cast<long long&>(old));
+}
