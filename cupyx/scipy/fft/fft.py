@@ -28,19 +28,18 @@ _implemented = {}
 
 
 def __ua_convert__(dispatchables, coerce):
-    if not all(d.type == np.ndarray for d in dispatchables):
-        return NotImplemented
-
     if coerce:
         try:
-            replaced = [cupy.asarray(d.value) if d.coercible else d.value
-                        for d in dispatchables]
+            replaced = [
+                cupy.asarray(d.value) if d.coercible and d.type == np.ndarray
+                else d.value for d in dispatchables]
         except TypeError:
             return NotImplemented
     else:
         replaced = [d.value for d in dispatchables]
 
-    if not all(isinstance(r, cupy.ndarray) for r in replaced):
+    if not all(d.type != np.ndarray or isinstance(r, cupy.ndarray)
+               for r, d in zip(replaced, dispatchables)):
         return NotImplemented
 
     return replaced
