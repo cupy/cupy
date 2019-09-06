@@ -522,5 +522,189 @@ class TestScalarInput(unittest.TestCase):
 
         return f(a, b, c)
 
-if __name__ == '__main__':
-    unittest.main()
+class TestReturnTuple(unittest.TestCase):
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_add(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        b = xp.array([4, 5, 6], dtype=dtype)
+        @cp.fusex()
+        def f(x, y):
+            return x + y, y - x
+
+        return f(a, b)
+
+    @testing.for_dtypes(['l', 'd'])
+    @testing.numpy_cupy_array_list_equal()
+    def test_misc(self, xp, dtype):
+        a = xp.array([[1, 2], [3, 4]], dtype=dtype)
+        b = xp.array([5, 6], dtype=dtype)
+        @cp.fusex()
+        def f(x, y):
+            a = x + y
+            b = xp.sum(a, axis=0)
+            x += b
+            c = xp.sum(x, axis=1)
+            y += c
+            return c, b, x, y, a
+        return f(a, b)
+
+class TestReturnNone(unittest.TestCase):
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_equal()
+    def test_add(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            x += 2
+
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_add2(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+
+        @cp.fusex()
+        def f(x):
+            x += x
+            x += x
+
+        return f(a), a
+
+class TestMultiNout(unittest.TestCase):
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_divmod(self, xp, dtype):
+        a = xp.array([1, 5, 25], dtype=dtype)
+        b = xp.array([1, 2, 4], dtype=dtype)
+        @cp.fusex()
+        def f(x, y):
+            return xp.divmod(x, y)
+
+        return f(a, b)
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_divmod_broadcast(self, xp, dtype):
+        a = xp.array([[1, 3], [5, 7]], dtype=dtype)
+        b = xp.array([1, 2], dtype=dtype)
+        @cp.fusex()
+        def f(x, y):
+            return xp.divmod(x, y)
+
+        return f(a, b)
+
+    @testing.for_float_dtypes()
+    # array_list_allclose?
+    @testing.numpy_cupy_array_list_equal()
+    def test_modf(self, xp, dtype):
+        a = xp.array([1.3, 2.2, 3.1], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return xp.modf(x)
+
+        return f(a)
+
+    @testing.for_float_dtypes()
+    # array_list_allclose?
+    @testing.numpy_cupy_array_list_equal()
+    def test_frexp(self, xp, dtype):
+        a = xp.array([1.3, 2.2, 3.1], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return xp.frexp(x)
+
+        return f(a)
+
+class TestOutKwarg(unittest.TestCase):
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_add(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        b = xp.array([0, 1, 2], dtype=dtype)
+        @cp.fusex()
+        def f(x, y):
+            xp.add(x, x, out=y)
+            return x, y
+
+        return f(a, b)
+
+class TestReductionDtype(unittest.TestCase):
+    @testing.for_dtypes(['i', 'f'])
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_sum(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return xp.sum(x, dtype=xp.float64)
+
+        return f(a)
+
+class TestCompressLoop(unittest.TestCase):
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_add(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return x + x + x + x + x + x + x + x + x + x
+
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_addsum(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return xp.sum(x) + xp.sum(x) + xp.sum(x) + xp.sum(x) + xp.sum(x) + xp.sum(x) + xp.sum(x) + xp.sum(x) + xp.sum(x) + xp.sum(x)
+
+        return f(a)
+
+class TestPvarUsed(unittest.TestCase):
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_add2(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            x = x + x
+            return x + x
+
+        return f(a), a
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_add3(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            a = x + x
+            return a + a
+
+        return f(a), a
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_add4(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            x += x
+            return x + x
+
+        return f(a), a
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_add5(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        b = xp.array([4, 5, 6], dtype=dtype)
+        @cp.fusex()
+        def f(x, y):
+            x = x + y
+            a = x + x
+            return a + a
+
+        return f(a, b), a, b

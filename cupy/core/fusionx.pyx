@@ -53,8 +53,6 @@ class _FusionXVarScalar(object):
         self.ndim = -1
         self.is_input = False
         self.input_order = None
-
-        # resettable
         self.const_value = const_value
 
     def reset(self):
@@ -951,7 +949,7 @@ class _FusionXHistory(object):
         else:
             raise TypeError('Invalid return type {}.'.format(type(return_value)))
 
-        self.return_size = -1
+        self.return_size = return_size
         self.no_return = no_return
 
         self._compress_pvars()
