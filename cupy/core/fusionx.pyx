@@ -16,6 +16,7 @@ from cupy.core.fusion cimport _acceptable_types, _kind_score, _dtype_to_ctype
 from cupy.core.fusion import _Submodule
 import numpy
 from cupy.core.core cimport compile_with_cache
+from cupy import util
 
 _thread_local = _kernel._thread_local
 
@@ -494,6 +495,9 @@ class _FusionXHistory(object):
         self.count += 1
         return ret
 
+    def _init_reduction_submodules(self):
+        self.reduction_submodules = list()
+
     def _append_param(self, pvar, need_malloc=True):
         if pvar in self.param_list_used:
             return
@@ -899,34 +903,44 @@ class _FusionXHistory(object):
                         pvar.new_index = dead[key].pop(0)
                     index_map[pvar.index] = pvar.new_index
                     alive.add(pvar.new_index)
-
+        for pvar in self.param_list:
+            if isinstance(pvar, _FusionXVarArray):
+                pvar.index = pvar.new_index
         param_list = list()
         param_list_base = list()
         param_list_used = set()
-        map = dict()
+        # representative
+        use = dict()
         dup_count = dict()
-        for pvar in self.param_list_used:
+        for pvar in self.param_list:
             if not isinstance(pvar, _FusionXVarArray):
                 if pvar in param_list_used:
                     continue
+                use[pvar] = pvar
                 param_list_used.add(pvar)
                 param_list.append(pvar)
                 param_list_base.append(pvar)
                 continue
             if pvar in param_list_used:
                 if pvar.is_output:
-                    param_list[map[pvar]].is_output = True
+                    use[pvar].is_output = True
                 continue
-            map[pvar] = len(param_list)
             dup = dup_count.get(pvar.index, 0)
             pvar.dup = dup
             dup_count[pvar.index] = dup + 1
+            use[pvar] = pvar
             param_list_used.add(pvar)
             param_list.append(pvar)
             if pvar.broadcasted_from is None and pvar.rotated_from is None:
                 param_list_base.append(pvar)
         self.param_list = param_list
         self.param_list_base = param_list_base
+
+        # rewrite pvars for reduction op
+        # because code is generated on execution
+        for op in self.reduction_op_list:
+            op.in_pvar = use[op.in_pvar]
+            op.out_pvar = use[op.out_pvar]
 
     def _get_fusionx_info(self, func, args, name):
         self.name = name
@@ -1023,7 +1037,7 @@ class _FusionXHistory(object):
                 continue
             pvar.ndarray = _reduce_dims_core(pvar.ndarray)
 
-    def _get_kernel(self):
+    def _get_kernel(self, cuda_params):
         code = ''
         for submodule in self.ufunc_submodules.values():
             code += submodule.code()
@@ -1034,10 +1048,10 @@ extern "C" __global__ void ${name}(${params}) {
 ${body}
 }''').substitute(
             name=self.name,
-            params=', '.join(self.cuda_params),
+            params=', '.join(cuda_params),
             body=self.cuda_body)
 
-        module = compile_with_cache(code)
+        module = cuda_compile(code)
         return module.get_function(self.name)
 
     def exec(self, shape_map, *args):
@@ -1048,16 +1062,17 @@ ${body}
         ret = self._get_output()
         self._rotate()
         self._reduce_dims()
+        self._init_reduction_submodules()
         self._prepare_reduction_submodules()
         inout_args, kern_size = self._get_inout_args(args)
 
-        self.cuda_params = self._get_cuda_params()
-        if len(inout_args) != len(self.cuda_params):
+        cuda_params = self._get_cuda_params()
+        if len(inout_args) != len(cuda_params):
             raise AssertionError('''Length of inout_args is not consistent with length of cuda_params.
 len(inout_args): {}, len(cuda_params): {}
-inout_args: {}, cuda_params: {}'''.format(len(inout_args), len(self.cuda_params), inout_args, self.cuda_params))
+inout_args: {}, cuda_params: {}'''.format(len(inout_args), len(cuda_params), inout_args, cuda_params))
 
-        kern = self._get_kernel()
+        kern = self._get_kernel(cuda_params)
         kern.linear_launch(kern_size, inout_args, 0, 512)
         return ret
 
@@ -1081,6 +1096,10 @@ cpdef ndarray _reduce_dims_core(ndarray array):
     new_shape = new_shape[::-1]
     new_strides = new_strides[::-1]
     return ndarray(new_shape, array.dtype, array.data, new_strides)
+
+@util.memoize()
+def cuda_compile(code):
+    return compile_with_cache(code)
 
 class FusionX(object):
     def __init__(self, func, name=None):
