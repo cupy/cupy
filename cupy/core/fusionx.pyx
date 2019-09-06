@@ -991,6 +991,11 @@ class _FusionXHistory(object):
         if merged.size() > 0:
             merged_op_list.append(merged)
 
+        ufunc_submodule_code = ''
+        for submodule in self.ufunc_submodules.values():
+            ufunc_submodule_code += submodule.code()
+
+        self.ufunc_submodule_code = ufunc_submodule_code
         self.cuda_body = '    __syncthreads();'.join([op.code() for op in merged_op_list])
 
         return self, self.shape_constraints
@@ -1038,21 +1043,10 @@ class _FusionXHistory(object):
             pvar.ndarray = _reduce_dims_core(pvar.ndarray)
 
     def _get_kernel(self, cuda_params):
-        code = ''
-        for submodule in self.ufunc_submodules.values():
-            code += submodule.code()
+        code = self.ufunc_submodule_code
         for submodule_code in self.reduction_submodules:
             code += submodule_code
-        code += string.Template('''
-extern "C" __global__ void ${name}(${params}) {
-${body}
-}''').substitute(
-            name=self.name,
-            params=', '.join(cuda_params),
-            body=self.cuda_body)
-
-        module = cuda_compile(code)
-        return module.get_function(self.name)
+        return _cuda_compile(code, self.name, cuda_params, self.cuda_body)
 
     def exec(self, shape_map, *args):
         self._reset_vals()
@@ -1072,7 +1066,7 @@ ${body}
 len(inout_args): {}, len(cuda_params): {}
 inout_args: {}, cuda_params: {}'''.format(len(inout_args), len(cuda_params), inout_args, cuda_params))
 
-        kern = self._get_kernel(cuda_params)
+        kern = self._get_kernel(', '.join(cuda_params))
         kern.linear_launch(kern_size, inout_args, 0, 512)
         return ret
 
@@ -1098,8 +1092,11 @@ cpdef ndarray _reduce_dims_core(ndarray array):
     return ndarray(new_shape, array.dtype, array.data, new_strides)
 
 @util.memoize()
-def cuda_compile(code):
-    return compile_with_cache(code)
+def _cuda_compile(code, name, cuda_params, cuda_body):
+    code += 'extern "C" __global__ void {}({})'.format(
+        name, cuda_params) + '{\n' + cuda_body + '}\n'
+    module = compile_with_cache(code)
+    return module.get_function(name)
 
 class FusionX(object):
     def __init__(self, func, name=None):
