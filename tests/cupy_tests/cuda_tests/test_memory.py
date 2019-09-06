@@ -650,7 +650,7 @@ class TestAllocator(unittest.TestCase):
 
 
 @testing.gpu
-class TestAllocatorDefault(unittest.TestCase):
+class TestAllocatorDisabled(unittest.TestCase):
 
     def setUp(self):
         self.pool = cupy.get_default_memory_pool()
