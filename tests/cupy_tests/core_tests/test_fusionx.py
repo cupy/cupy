@@ -708,3 +708,49 @@ class TestPvarUsed(unittest.TestCase):
             return a + a
 
         return f(a, b), a, b
+
+class TestSimpleBasicIndexing(unittest.TestCase):
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_add(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        b = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        @cp.fusex()
+        def f(x, y):
+            return x + y[1]
+
+        return f(a, b)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_add2(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        b = xp.array([4], dtype=dtype)
+        @cp.fusex()
+        def f(x, y):
+            return x + y[0]
+
+        return f(a, b)
+
+    # @testing.for_int_dtypes()
+    # @testing.numpy_cupy_array_equal()
+    # def test_add3(self, xp, dtype):
+    #     a = xp.array([1, 2, 3], dtype=dtype)
+    #     @cp.fusex()
+    #     def f(x):
+    #         return x + x[0] + x[1]
+
+    #     return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_add4(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return x + x + x[0]
+
+        return f(a)
+
+if __name__ == '__main__':
+    unittest.main(failfast=True)

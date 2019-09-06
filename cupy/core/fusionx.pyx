@@ -195,6 +195,8 @@ class _FusionXVarArray(_FusionXVarScalar):
         self.broadcasted_from = None
         self.rotated_from = None
         self.axis = None
+        self.indexed_from = None
+        self.index_key = None
         self.abstracted_shape = tuple('v{}.{}'.format(self.index, i) for i in range(self.ndim)) if init_abstracted_shape else None
 
         # resettable
@@ -229,70 +231,76 @@ class _FusionXVarArray(_FusionXVarScalar):
     def __hash__(self):
         return hash((self.index, self.abstracted_shape, self.broadcasted_from, self.rotated_from))
 
+    def _is_readonly(self):
+        return self.broadcasted_from is not None or self.rotated_from is not None or self.indexed_from is not None
+
     def __iadd__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.add(self, other, self)
 
     def __isub__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.subtract(self, other, self)
 
     def __imul__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.multiply(self, other, self)
 
     def __idiv__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.divide(self, other, self)
 
     def __itruediv__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.true_divide(self, other, self)
 
     def __ifloordiv__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.floor_divide(self, other, self)
 
     def __imod__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.remainder(self, other, self)
 
     def __ipow__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.power(self, other, self)
 
     def __ilshift__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.left_shift(self, other, self)
 
     def __irshift__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.right_shift(self, other, self)
 
     def __iand__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.bitwise_and(self, other, self)
 
     def __ior__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.bitwise_or(self, other, self)
 
     def __ixor__(self, other):
-        if self.broadcasted_from is not None:
+        if self._is_readonly():
             raise ValueError('output array is read-only')
         return cupy.bitwise_xor(self, other, self)
+
+    def __getitem__(self, key):
+        return _thread_local.historyx._make_indexed_param(self, key)
 
 class _FusionXOp(object):
     def __init__(self, ufunc, in_pvars, out_pvars, in_dtypes, out_dtypes):
@@ -498,15 +506,16 @@ class _FusionXHistory(object):
     def _init_reduction_submodules(self):
         self.reduction_submodules = list()
 
-    def _append_param(self, pvar, need_malloc=True):
-        if pvar in self.param_list_used:
+    def _append_param(self, pvar, need_malloc=True, force=False):
+        if not force and pvar in self.param_list_used:
             return
         if isinstance(pvar, _FusionXVarArray):
             dup = self.dup_count.get(pvar.index, 0)
             pvar.dup = dup
             self.dup_count[pvar.index] = dup + 1
-            self.base_abstracted_shape[pvar.index] = pvar.abstracted_shape
-        if need_malloc and pvar not in self.param_list_base_used:
+            if need_malloc:
+                self.base_abstracted_shape[pvar.index] = pvar.abstracted_shape
+        if need_malloc:
             self.param_list_base_used.add(pvar)
             self.param_list_base.append(pvar)
         self.param_list_used.add(pvar)
@@ -564,7 +573,7 @@ class _FusionXHistory(object):
         ret = _FusionXVarArray(index, ndim, dtype)
         ret.abstracted_shape = abstracted_shape
         ret.real_shape = real_shape
-        self._append_param(ret, True)
+        self._append_param(ret)
         return ret
 
     def _add_ufunc_op(self, ufunc, in_pvars, out_pvars, in_dtypes, out_dtypes):
@@ -866,7 +875,7 @@ class _FusionXHistory(object):
                 out_pvars = [op.out_pvar]
             else:
                 raise TypeError('Unknown type {}.'.format(type(op)))
-            
+
             for pvar in in_pvars:
                 if not isinstance(pvar, _FusionXVarArray):
                     continue
@@ -880,6 +889,10 @@ class _FusionXHistory(object):
                 if pvar.rotated_from is not None:
                     is_input |= pvar.rotated_from.is_input
                     is_output |= pvar.rotated_from.is_output
+                # TODO: support nested indexing
+                if pvar.indexed_from is not None:
+                    is_input |= pvar.indexed_from.is_input
+                    is_output |= pvar.indexed_from.is_output
                 if not is_input and not is_output and get_last_op(pvar) <= op_index:
                     # pvar becomes dead
                     key = self._get_pvar_meminfo(pvar)
@@ -931,7 +944,7 @@ class _FusionXHistory(object):
             use[pvar] = pvar
             param_list_used.add(pvar)
             param_list.append(pvar)
-            if pvar.broadcasted_from is None and pvar.rotated_from is None:
+            if not pvar._is_readonly():
                 param_list_base.append(pvar)
         self.param_list = param_list
         self.param_list_base = param_list_base
@@ -966,7 +979,7 @@ class _FusionXHistory(object):
         self.return_size = return_size
         self.no_return = no_return
 
-        self._compress_pvars()
+        # self._compress_pvars()
 
         merged_op_list = list()
         prev = None
@@ -997,6 +1010,7 @@ class _FusionXHistory(object):
 
         self.ufunc_submodule_code = ufunc_submodule_code
         self.cuda_body = '    __syncthreads();'.join([op.code() for op in merged_op_list])
+        # print(self.cuda_body)
 
         return self, self.shape_constraints
 
@@ -1036,6 +1050,14 @@ class _FusionXHistory(object):
             if isinstance(pvar, _FusionXVarArray) and pvar.rotated_from is not None:
                 pvar.rotate()
 
+    def _subscript(self):
+        for pvar in self.param_list:
+            if isinstance(pvar, _FusionXVarArray):
+                if pvar.indexed_from is not None:
+                    # TODO: support nested indexing
+                    assert pvar.indexed_from.indexed_from is None and pvar.indexed_from.ndarray is not None
+                    pvar.ndarray = pvar.indexed_from.ndarray[pvar.index_key]
+
     def _reduce_dims(self):
         for pvar in self.param_list:
             if pvar.ndim < 2:
@@ -1049,9 +1071,11 @@ class _FusionXHistory(object):
         return _cuda_compile(code, self.name, cuda_params, self.cuda_body)
 
     def exec(self, shape_map, *args):
+        # TODO: put everything into single loop
         self._reset_vals()
         self._set_real_shape(shape_map)
         self._set_ndarray(args)
+        self._subscript()
         self._broadcast()
         ret = self._get_output()
         self._rotate()
@@ -1069,6 +1093,44 @@ inout_args: {}, cuda_params: {}'''.format(len(inout_args), len(cuda_params), ino
         kern = self._get_kernel(', '.join(cuda_params))
         kern.linear_launch(kern_size, inout_args, 0, 512)
         return ret
+
+    # Basic indexing
+    def _make_indexed_param(self, pvar, key):
+        ret = copy.copy(pvar)
+        ret.indexed_from = pvar
+        ret.index_key = key
+        abstracted_shape = list(pvar.abstracted_shape)
+        real_shape = list(pvar.real_shape)
+        if isinstance(key, int):
+            if pvar.ndim == 0:
+                raise ValueError('scalar object is not subscriptable')
+            ret.ndim -= 1
+            abstracted_shape.pop(0)
+            real_shape.pop(0)
+            ret.abstracted_shape = tuple(abstracted_shape)
+            ret.real_shape = tuple(real_shape)
+            ret.is_input = False
+            self._append_param(ret, False, force=True)
+            return ret
+        elif isinstance(key, tuple):
+            # TODO: support indexing when slice and int are mixed
+            for k in key:
+                if not isinstance(k, int):
+                    raise ValueError('Cannot subscript by type {}.'.format(type(k)))
+            if len(key) > pvar.ndim:
+                raise ValueError('Invalid subscription key {}.'.format(key))
+            ret.ndim -= len(key)
+            for _ in range(len(key)):
+                abstracted_shape.pop(0)
+                real_shape.pop(0)
+            ret.abstracted_shape = tuple(abstracted_shape)
+            ret.real_shape = tuple(real_shape)
+            ret.is_input = False
+            self._append_param(ret, False)
+            return ret
+        else:
+            # TODO
+            raise NotImplementedError('Subscription by slice is not implemented.')
 
 cpdef ndarray _reduce_dims_core(ndarray array):
     cdef vector.vector[Py_ssize_t] shape, strides, new_shape, new_strides
