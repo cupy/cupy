@@ -1,4 +1,4 @@
-# import pytest
+import pytest
 import unittest
 
 import numpy
@@ -71,7 +71,7 @@ class TestCUDAarray(unittest.TestCase):
         assert (arr == arr2).all()
 
 
-source = r'''
+source_obj = r'''
 extern "C"{
 __global__ void copyKernel1Dfetch(float* output,
                                   cudaTextureObject_t texObj,
@@ -154,7 +154,7 @@ __global__ void copyKernel3D_4ch(float* output_x,
 '''
 
 
-source2 = r'''
+source_ref = r'''
 extern "C"{
 texture<float, cudaTextureType1D, cudaReadModeElementType> texref1D;
 texture<float, cudaTextureType2D, cudaReadModeElementType> texref2D;
@@ -241,17 +241,17 @@ __global__ void copyKernel3D_4ch(float* output_x,
 @testing.parameterize(*testing.product({
     'dimensions': ((64, 0, 0), (64, 32, 0), (64, 32, 19)),
     'mem_type': ('CUDAarray', 'linear', 'pitch2D'),
+    'target': ('object', 'reference'),
 }))
 class TestTexture(unittest.TestCase):
-    def test_fetch_float_texture_object(self):
+    def test_fetch_float_texture(self):
         width, height, depth = self.dimensions
         dim = 3 if depth != 0 else 2 if height != 0 else 1
 
         if (self.mem_type == 'linear' and dim != 1) or \
            (self.mem_type == 'pitch2D' and dim != 2):
-            print('The test case', self.dimensions, 'is inapplicable for',
-                  self.mem_type, 'and thus skipped.')
-            return
+            pytest.skip('The test case {0} is inapplicable for {1} and thus '
+                        'skipped.'.format(self.dimensions, self.mem_type))
 
         # generate input data and allocate output buffer
         shape = (depth, height, width) if dim == 3 else \
@@ -276,90 +276,7 @@ class TestTexture(unittest.TestCase):
             arr = tex_data
             expected_output = tex_data
 
-        # create a texture object
-        if self.mem_type == 'CUDAarray':
-            res = ResourceDescriptor(runtime.cudaResourceTypeArray, cuArr=arr)
-        elif self.mem_type == 'linear':
-            res = ResourceDescriptor(runtime.cudaResourceTypeLinear,
-                                     arr=arr,
-                                     chDesc=ch,
-                                     sizeInBytes=arr.size*arr.dtype.itemsize)
-        else:  # pitch2D
-            # In this case, we rely on the fact that the hand-picked array
-            # shape meets the alignment requirement. This is CUDA's limitation,
-            # see CUDA Runtime API reference guide. "TexturePitchAlignment" is
-            # assumed to be 32, which should be applicable for most devices.
-            res = ResourceDescriptor(runtime.cudaResourceTypePitch2D,
-                                     arr=arr,
-                                     chDesc=ch,
-                                     width=width,
-                                     height=height,
-                                     pitchInBytes=width*arr.dtype.itemsize)
-        address_mode = (runtime.cudaAddressModeClamp,
-                        runtime.cudaAddressModeClamp)
-        tex = TextureDescriptor(address_mode, runtime.cudaFilterModePoint,
-                                runtime.cudaReadModeElementType)
-        texobj = TextureObject(res, tex)
-
-        # get and launch the kernel
-        mod = cupy.RawModule(source)
-        ker_name = 'copyKernel'
-        ker_name += '3D' if dim == 3 else '2D' if dim == 2 else '1D'
-        ker_name += 'fetch' if self.mem_type == 'linear' else ''
-        ker = mod.get_function(ker_name)
-        block = (4, 4, 2) if dim == 3 else (4, 4) if dim == 2 else (4,)
-        grid = ()
-        args = (real_output, texobj, width)
-        if dim >= 1:
-            grid_x = (width + block[0] - 1)//block[0]
-            grid = grid + (grid_x,)
-        if dim >= 2:
-            grid_y = (height + block[1] - 1)//block[1]
-            grid = grid + (grid_y,)
-            args = args + (height,)
-        if dim == 3:
-            grid_z = (depth + block[2] - 1)//block[2]
-            grid = grid + (grid_z,)
-            args = args + (depth,)
-        ker(grid, block, args)
-
-        # validate result
-        assert (real_output == expected_output).all()
-
-    def test_fetch_float_texture_reference(self):
-        width, height, depth = self.dimensions
-        dim = 3 if depth != 0 else 2 if height != 0 else 1
-
-        # TODO(leofang): support linear and pitch2D
-        if self.mem_type == 'linear' or self.mem_type == 'pitch2D':
-            print(self.mem_type, 'is currently not supported by texture '
-                  'reference and thus skipped.')
-            return
-
-        # generate input data and allocate output buffer
-        shape = (depth, height, width) if dim == 3 else \
-                (height, width) if dim == 2 else \
-                (width,)
-
-        # prepare input, output, and texture memory
-        tex_data = cupy.random.random(shape, dtype=cupy.float32)
-        real_output = cupy.zeros_like(tex_data)
-        ch = ChannelFormatDescriptor(32, 0, 0, 0,
-                                     runtime.cudaChannelFormatKindFloat)
-        assert tex_data.flags['C_CONTIGUOUS']
-        assert real_output.flags['C_CONTIGUOUS']
-        if self.mem_type == 'CUDAarray':
-            arr = CUDAarray(ch, width, height, depth)
-            expected_output = cupy.zeros_like(tex_data)
-            assert expected_output.flags['C_CONTIGUOUS']
-            # test bidirectional copy
-            arr.copy_from(tex_data)
-            arr.copy_to(expected_output)
-        else:  # linear are pitch2D are backed by ndarray
-            arr = tex_data
-            expected_output = tex_data
-
-        # create a texture object
+        # create resource and texture descriptors
         if self.mem_type == 'CUDAarray':
             res = ResourceDescriptor(runtime.cudaResourceTypeArray, cuArr=arr)
         elif self.mem_type == 'linear':
@@ -383,12 +300,17 @@ class TestTexture(unittest.TestCase):
         tex = TextureDescriptor(address_mode, runtime.cudaFilterModePoint,
                                 runtime.cudaReadModeElementType)
 
-        mod = cupy.RawModule(source2)
-        texref_name = 'texref'
-        texref_name += '3D' if dim == 3 else '2D' if dim == 2 else '1D'
-        texrefPtr = mod.get_texref(texref_name)
-        # bind texture ref to resource
-        texref = TextureReference(texrefPtr, res, tex)  # noqa
+        if self.target == 'object':
+            # create a texture object
+            texobj = TextureObject(res, tex)
+            mod = cupy.RawModule(source_obj)
+        else:  # self.target == 'reference'
+            mod = cupy.RawModule(source_ref)
+            texref_name = 'texref'
+            texref_name += '3D' if dim == 3 else '2D' if dim == 2 else '1D'
+            texrefPtr = mod.get_texref(texref_name)
+            # bind texture ref to resource
+            texref = TextureReference(texrefPtr, res, tex)  # noqa
 
         # get and launch the kernel
         ker_name = 'copyKernel'
@@ -397,10 +319,13 @@ class TestTexture(unittest.TestCase):
         ker = mod.get_function(ker_name)
         block = (4, 4, 2) if dim == 3 else (4, 4) if dim == 2 else (4,)
         grid = ()
-        args = (real_output, width)
+        args = (real_output,)
+        if self.target == 'object':
+            args = args + (texobj,)
         if dim >= 1:
             grid_x = (width + block[0] - 1)//block[0]
             grid = grid + (grid_x,)
+            args = args + (width,)
         if dim >= 2:
             grid_y = (height + block[1] - 1)//block[1]
             grid = grid + (grid_y,)
@@ -416,8 +341,11 @@ class TestTexture(unittest.TestCase):
 
 
 @testing.gpu
+@testing.parameterize(*testing.product({
+    'target': ('object', 'reference'),
+}))
 class TestTextureVectorType(unittest.TestCase):
-    def test_fetch_float4_texture_object(self):
+    def test_fetch_float4_texture(self):
         width = 47
         height = 39
         depth = 11
@@ -438,64 +366,22 @@ class TestTextureVectorType(unittest.TestCase):
         arr = CUDAarray(ch, width, height, depth)
         arr.copy_from(tex_data)
 
-        # create a texture object
-        res = ResourceDescriptor(runtime.cudaResourceTypeArray, cuArr=arr)
-        address_mode = (runtime.cudaAddressModeClamp,
-                        runtime.cudaAddressModeClamp)
-        tex = TextureDescriptor(address_mode, runtime.cudaFilterModePoint,
-                                runtime.cudaReadModeElementType)
-        texobj = TextureObject(res, tex)
-
-        # get and launch the kernel
-        mod = cupy.RawModule(source)
-        ker_name = 'copyKernel3D_4ch'
-        ker = mod.get_function(ker_name)
-        block = (4, 4, 2)
-        grid = ((width + block[0] - 1)//block[0],
-                (height + block[1] - 1)//block[1],
-                (depth + block[2] - 1)//block[2])
-        args = (real_output_x, real_output_y, real_output_z, real_output_w,
-                texobj, width, height, depth)
-        ker(grid, block, args)
-
-        # validate result
-        assert (real_output_x == tex_data[..., 0::4]).all()
-        assert (real_output_y == tex_data[..., 1::4]).all()
-        assert (real_output_z == tex_data[..., 2::4]).all()
-        assert (real_output_w == tex_data[..., 3::4]).all()
-
-    def test_fetch_float4_texture_reference(self):
-        width = 47
-        height = 39
-        depth = 11
-        n_channel = 4
-
-        # generate input data and allocate output buffer
-        in_shape = (depth, height, n_channel*width)
-        out_shape = (depth, height, width)
-
-        # prepare input, output, and texture memory
-        tex_data = cupy.random.random(in_shape, dtype=cupy.float32)
-        real_output_x = cupy.zeros(out_shape, dtype=cupy.float32)
-        real_output_y = cupy.zeros(out_shape, dtype=cupy.float32)
-        real_output_z = cupy.zeros(out_shape, dtype=cupy.float32)
-        real_output_w = cupy.zeros(out_shape, dtype=cupy.float32)
-        ch = ChannelFormatDescriptor(32, 32, 32, 32,
-                                     runtime.cudaChannelFormatKindFloat)
-        arr = CUDAarray(ch, width, height, depth)
-        arr.copy_from(tex_data)
-
-        # create a texture object
+        # create resource and texture descriptors
         res = ResourceDescriptor(runtime.cudaResourceTypeArray, cuArr=arr)
         address_mode = (runtime.cudaAddressModeClamp,
                         runtime.cudaAddressModeClamp)
         tex = TextureDescriptor(address_mode, runtime.cudaFilterModePoint,
                                 runtime.cudaReadModeElementType)
 
-        mod = cupy.RawModule(source2)
-        texrefPtr = mod.get_texref('texref3Df4')
-        # bind texture ref to resource
-        texref = TextureReference(texrefPtr, res, tex)  # noqa
+        if self.target == 'object':
+            # create a texture object
+            texobj = TextureObject(res, tex)
+            mod = cupy.RawModule(source_obj)
+        else:  # self.target == 'reference'
+            mod = cupy.RawModule(source_ref)
+            texrefPtr = mod.get_texref('texref3Df4')
+            # bind texture ref to resource
+            texref = TextureReference(texrefPtr, res, tex)  # noqa
 
         # get and launch the kernel
         ker_name = 'copyKernel3D_4ch'
@@ -504,8 +390,10 @@ class TestTextureVectorType(unittest.TestCase):
         grid = ((width + block[0] - 1)//block[0],
                 (height + block[1] - 1)//block[1],
                 (depth + block[2] - 1)//block[2])
-        args = (real_output_x, real_output_y, real_output_z, real_output_w,
-                width, height, depth)
+        args = (real_output_x, real_output_y, real_output_z, real_output_w)
+        if self.target == 'object':
+            args = args + (texobj,)
+        args = args + (width, height, depth)
         ker(grid, block, args)
 
         # validate result

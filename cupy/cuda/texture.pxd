@@ -46,4 +46,4 @@ cdef class TextureReference:
         readonly ResourceDescriptor ResDesc
         readonly TextureDescriptor TexDesc
 
-        _set_format(self, dict ch_format)
+        _get_format(self, dict ch_format)

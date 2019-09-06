@@ -515,9 +515,6 @@ cdef class TextureReference:
         ResDesc (ResourceDescriptor): an intance of the resource descriptor.
         TexDesc (TextureDescriptor): an instance of the texture descriptor.
 
-    .. note::
-        This class currently only supports binding to CUDA arrays.
-
     .. warning::
         As of CUDA Toolkit v10.1, the Texture Reference API (in both driver and
         runtime) is marked as deprecated. To help transition to the new Texture
@@ -541,16 +538,41 @@ cdef class TextureReference:
         cdef ResourceDesc* ResDescPtr = <ResourceDesc*>(ResDesc.ptr)
         cdef TextureDesc* TexDescPtr = <TextureDesc*>(TexDesc.ptr)
         cdef ChannelFormatDescriptor ChDesc
+        cdef int arr_format, num_channels
+        cdef driver.Array_desc arr_desc
 
         self.texref = texref
         self.ResDesc = ResDesc
         self.TexDesc = TexDesc
 
-        if ResDesc.cuArr is not None:
-            driver.texRefSetArray(texref, ResDesc.cuArr.ptr)
+        if ResDescPtr.resType == runtime.cudaResourceTypeArray:
+            driver.texRefSetArray(texref, <size_t>(ResDescPtr.res.array.array))
             ChDesc = ResDesc.cuArr.desc
-        else:  # TODO(leofang): ndarray
-            raise ValueError("binding to linear memory not supported yet.")
+            arr_format, num_channels = \
+                self._get_format(ChDesc.get_channel_format())
+            driver.texRefSetFormat(self.texref, arr_format, num_channels)
+        elif ResDescPtr.resType == runtime.cudaResourceTypeLinear:
+            driver.texRefSetAddress(texref,
+                                    <size_t>(ResDescPtr.res.linear.devPtr),
+                                    ResDescPtr.res.linear.sizeInBytes)
+            ChDesc = ResDesc.chDesc
+            arr_format, num_channels = \
+                self._get_format(ChDesc.get_channel_format())
+            driver.texRefSetFormat(self.texref, arr_format, num_channels)
+        elif ResDescPtr.resType == runtime.cudaResourceTypePitch2D:
+            ChDesc = ResDesc.chDesc
+            arr_format, num_channels = \
+                self._get_format(ChDesc.get_channel_format())
+            arr_desc.Format = <driver.Array_format>arr_format
+            arr_desc.NumChannels = num_channels
+            arr_desc.Height = ResDescPtr.res.pitch2D.height
+            arr_desc.Width = ResDescPtr.res.pitch2D.width
+            driver.texRefSetAddress2D(texref, <size_t>(&arr_desc),
+                                      <size_t>(ResDescPtr.res.pitch2D.devPtr),
+                                      ResDescPtr.res.pitch2D.pitchInBytes)
+            # don't call driver.texRefSetFormat() here!
+        else:  # TODO(leofang): mipmap
+            raise ValueError("mpimap array is not supported yet.")
 
         # For the following attributes, the constants in driver and runtime
         # are set to equal, so using the values set by runtime api is OK.
@@ -559,16 +581,19 @@ cdef class TextureReference:
 
         driver.texRefSetFilterMode(texref, TexDescPtr.filterMode)
 
-        if not TexDescPtr.readMode:  # = cudaReadModeElementType
-            driver.texRefSetFlags(texref, driver.CU_TRSF_READ_AS_INTEGER)
-            # TODO(leofang): how about CU_TRSF_NORMALIZED_COORDINATES and
-            # CU_TRSF_SRGB?
+        cdef int flag = 0x00
+        if TexDescPtr.readMode == runtime.cudaReadModeElementType:
+            flag = flag | driver.CU_TRSF_READ_AS_INTEGER
+        if TexDescPtr.normalizedCoords:
+            flag = flag | driver.CU_TRSF_NORMALIZED_COORDINATES
+        if TexDescPtr.sRGB:
+            flag = flag | driver.CU_TRSF_SRGB
+        driver.texRefSetFlags(texref, flag)
 
         driver.texRefSetBorderColor(texref, TexDescPtr.borderColor)
         driver.texRefSetMaxAnisotropy(texref, TexDescPtr.maxAnisotropy)
-        self._set_format(ChDesc.get_channel_format())
 
-    cdef _set_format(self, dict ch_format):
+    cdef _get_format(self, dict ch_format):
         cdef int arr_format
         cdef int num_channels = 0
 
@@ -605,4 +630,4 @@ cdef class TextureReference:
         else:
             raise ValueError("format not recognized")
 
-        driver.texRefSetFormat(self.texref, arr_format, num_channels)
+        return (arr_format, num_channels)
