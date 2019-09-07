@@ -41,7 +41,6 @@ class TestDLTensorMemory(unittest.TestCase):
         cupy.cuda.set_allocator(self.old_pool.malloc)
 
     def test_deleter(self):
-        self.pool.free_all_blocks()
         array = cupy.empty(10)
         tensor = array.toDlpack()
         assert self.pool.n_free_blocks() == 0
