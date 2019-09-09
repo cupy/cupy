@@ -13,6 +13,7 @@ There are four differences compared to the original C API.
 """
 cimport cython  # NOQA
 from libc.stdint cimport intptr_t
+from libcpp cimport vector
 
 ###############################################################################
 # Extern
@@ -47,6 +48,7 @@ cdef extern from 'cupy_cuda.h' nogil:
                             char* name)
     int cuModuleGetGlobal(Deviceptr* dptr, size_t* bytes, Module hmod,
                           char* name)
+    int cuModuleGetTexRef(TexRef* pTexRef, Module hmod, const char* name)
     int cuLaunchKernel(
         Function f, unsigned int gridDimX, unsigned int gridDimY,
         unsigned int gridDimZ, unsigned int blockDimX,
@@ -60,6 +62,21 @@ cdef extern from 'cupy_cuda.h' nogil:
 
     int cuFuncSetAttribute(Function hfunc, CUfunction_attribute attrib,
                            int value)
+
+    # Texture reference
+    int cuTexRefSetAddress(size_t* ByteOffset, TexRef hTexRef, Deviceptr dptr,
+                           size_t bytes)
+    int cuTexRefSetAddress2D(TexRef hTexRef, const Array_desc* desc,
+                             Deviceptr dptr, size_t Pitch)
+    int cuTexRefSetAddressMode(TexRef hTexRef, int dim, Address_mode am)
+    int cuTexRefSetArray(TexRef hTexRef, Array hArray, unsigned int Flags)
+    int cuTexRefSetBorderColor(TexRef hTexRef, float* pBorderColor)
+    int cuTexRefSetFilterMode(TexRef hTexRef, Filter_mode fm)
+    int cuTexRefSetFlags(TexRef hTexRef, unsigned int Flags)
+    int cuTexRefSetFormat(TexRef hTexRef, Array_format fmt,
+                          int NumPackedComponents)
+    int cuTexRefSetMaxAnisotropy(TexRef hTexRef, unsigned int maxAniso)
+    int cuParamSetTexRef(Function hfunc, int texunit, TexRef hTexRef)
 
     # Occupancy
     int cuOccupancyMaxActiveBlocksPerMultiprocessor(
@@ -239,6 +256,16 @@ cpdef size_t moduleGetGlobal(size_t module, str varname) except? 0:
     return <size_t>var
 
 
+cpdef size_t moduleGetTexRef(size_t module, str texrefname) except? 0:
+    cdef TexRef texref
+    cdef bytes b_refname = texrefname.encode()
+    cdef char* b_refname_ptr = b_refname
+    with nogil:
+        status = cuModuleGetTexRef(&texref, <Module>module, b_refname_ptr)
+    check_status(status)
+    return <size_t>texref
+
+
 cpdef launchKernel(
         intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
         unsigned int grid_dim_z, unsigned int block_dim_x,
@@ -277,6 +304,81 @@ cpdef funcSetAttribute(intptr_t f, int attribute, int value):
             <Function> f,
             <CUfunction_attribute> attribute,
             value)
+    check_status(status)
+
+
+###############################################################################
+# Texture reference
+###############################################################################
+
+cpdef size_t texRefSetAddress(size_t texref, size_t dptr, size_t nbytes):
+    cdef size_t ByteOffset
+    with nogil:
+        status = cuTexRefSetAddress(&ByteOffset, <TexRef>texref,
+                                    <Deviceptr>dptr, nbytes)
+    check_status(status)
+    return ByteOffset
+
+
+cpdef texRefSetAddress2D(size_t texref, size_t desc, size_t dptr,
+                         size_t Pitch):
+    with nogil:
+        status = cuTexRefSetAddress2D(<TexRef>texref, <const Array_desc*>desc,
+                                      <Deviceptr>dptr, Pitch)
+    check_status(status)
+
+
+cpdef texRefSetAddressMode(size_t texref, int dim, int am):
+    with nogil:
+        status = cuTexRefSetAddressMode(<TexRef>texref, dim, <Address_mode>am)
+    check_status(status)
+
+
+cpdef texRefSetArray(size_t texref, size_t array):
+    with nogil:
+        status = cuTexRefSetArray(<TexRef>texref, <Array>array,
+                                  CU_TRSA_OVERRIDE_FORMAT)
+    check_status(status)
+
+
+cpdef texRefSetBorderColor(size_t texref, pBorderColor):
+    cdef vector.vector[float] colors
+    for i in range(4):
+        colors.push_back(pBorderColor[i])
+    with nogil:
+        status = cuTexRefSetBorderColor(<TexRef>texref, colors.data())
+    check_status(status)
+
+
+cpdef texRefSetFilterMode(size_t texref, int fm):
+    with nogil:
+        status = cuTexRefSetFilterMode(<TexRef>texref, <Filter_mode>fm)
+    check_status(status)
+
+
+cpdef texRefSetFlags(size_t texref, unsigned int Flags):
+    with nogil:
+        status = cuTexRefSetFlags(<TexRef>texref, Flags)
+    check_status(status)
+
+
+cpdef texRefSetFormat(size_t texref, int fmt, int NumPackedComponents):
+    with nogil:
+        status = cuTexRefSetFormat(<TexRef>texref, <Array_format>fmt,
+                                   NumPackedComponents)
+    check_status(status)
+
+
+cpdef texRefSetMaxAnisotropy(size_t texref, unsigned int maxAniso):
+    with nogil:
+        status = cuTexRefSetMaxAnisotropy(<TexRef>texref, maxAniso)
+    check_status(status)
+
+
+cpdef paramSetTexRef(size_t func, size_t texref):
+    with nogil:
+        status = cuParamSetTexRef(<Function>func, CU_PARAM_TR_DEFAULT,
+                                  <TexRef>texref)
     check_status(status)
 
 
