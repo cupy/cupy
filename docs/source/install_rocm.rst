@@ -3,7 +3,7 @@
 
 .. contents:: :local:
 
-This is experimental feature. We recommend that only advanced users use this.
+This is an experimental feature. We recommend only for advanced users to use this.
 
 Recommended Environments
 ------------------------
@@ -18,7 +18,7 @@ Requirements
 
 You need to have the following components to use CuPy.
 
-* AMD GPU
+* GPU supported by ROCm (AMD GPUs or NVIDIA GPUs)
 * `ROCm <https://rocm.github.io/install.html>`_
     * Supported Versions: ROCm 2.6+.
 * `Python <https://python.org/>`_
@@ -40,7 +40,7 @@ Install CuPy from Source
 ------------------------
 
 It is recommended to use wheels whenever possible.
-However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / cuDNN / NCCL not supported by wheels), you can also build CuPy from source.
+However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use different version sets of CUDA / cuDNN / NCCL that are not included in any CuPy wheels), you have to build CuPy from source.
 
 When installing from source, C++ compiler such as ``g++`` is required.
 You need to install it before installing CuPy.
@@ -51,17 +51,18 @@ This is typical installation method for each platform::
 
 .. note::
 
-   If you upgrade or downgrade the version of ROCm, you may need to reinstall CuPy.
+   If you want to upgrade or downgrade the version of ROCm, you may need to reinstall CuPy after that.
    See :ref:`rocm_install_reinstall` for details.
 
 Using pip
 ~~~~~~~~~
 
 You can install `CuPy package <https://pypi.python.org/pypi/cupy>`_ via ``pip``.
+It builds CuPy from source.
 
 ::
 
-  $ export HCC_AMDGPU_TARGET=gfx900
+  $ export HCC_AMDGPU_TARGET=gfx900  # This value should be changed based on your GPU
   $ export __HIP_PLATFORM_HCC__
   $ export CUPY_INSTALL_USE_HIP=1
   $ pip install cupy
@@ -78,12 +79,12 @@ You can also install the development version of CuPy from a cloned Git repositor
 
   $ git clone https://github.com/cupy/cupy.git
   $ cd cupy
-  $ export HCC_AMDGPU_TARGET=gfx900
+  $ export HCC_AMDGPU_TARGET=gfx900  # This value should be changed based on your GPU
   $ export __HIP_PLATFORM_HCC__
   $ export CUPY_INSTALL_USE_HIP=1
   $ pip install .
 
-If you are using source tree downloaded from GitHub, you need to install Cython 0.28.0 or later (``pip install cython``).
+If you are using the source tree downloaded from GitHub, you need to install Cython 0.28.0 or later (``pip install cython``).
 
 Uninstall CuPy
 --------------
@@ -103,7 +104,7 @@ Upgrade CuPy
 
 Just use ``pip install`` with ``-U`` option::
 
-  $ export HCC_AMDGPU_TARGET=gfx900
+  $ export HCC_AMDGPU_TARGET=gfx900  # This value should be changed based on your GPU
   $ export __HIP_PLATFORM_HCC__
   $ export CUPY_INSTALL_USE_HIP=1
   $ pip install -U cupy
@@ -113,11 +114,11 @@ Just use ``pip install`` with ``-U`` option::
 Reinstall CuPy
 --------------
 
-If you want to reinstall CuPy, please uninstall CuPy and then install it.
+If you want to reinstall CuPy, please uninstall CuPy first, and then install again.
 When reinstalling CuPy, we recommend to use ``--no-cache-dir`` option as ``pip`` caches the previously built binaries::
 
   $ pip uninstall cupy
-  $ export HCC_AMDGPU_TARGET=gfx900
+  $ export HCC_AMDGPU_TARGET=gfx900  # This value should be changed based on your GPU
   $ export __HIP_PLATFORM_HCC__
   $ export CUPY_INSTALL_USE_HIP=1
   $ pip install cupy --no-cache-dir
@@ -134,7 +135,7 @@ Please make sure that you are using the latest ``setuptools`` and ``pip``::
 
   $ pip install -U setuptools pip
 
-Use ``-vvvv`` option with ``pip`` command.
+Use ``-vvvv`` option with ``pip`` command to investigate the details of errors.
 This will display all logs of installation::
 
   $ pip install cupy -vvvv
