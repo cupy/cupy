@@ -42,7 +42,7 @@ cdef class TextureObject:
 
 cdef class TextureReference:
     cdef:
-        readonly size_t texref
+        readonly intptr_t texref
         readonly ResourceDescriptor ResDesc
         readonly TextureDescriptor TexDesc
 

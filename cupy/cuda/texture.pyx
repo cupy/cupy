@@ -509,8 +509,8 @@ cdef class TextureReference:
     driver API is used under the hood).
 
     Args:
-        texref (size_t): a handle to the texture reference declared in the CUDA
-            source code. This can be obtained by calling
+        texref (intptr_t): a handle to the texture reference declared in the
+            CUDA source code. This can be obtained by calling
             :meth:`~cupy.RawModule.get_texref`.
         ResDesc (ResourceDescriptor): an intance of the resource descriptor.
         TexDesc (TextureDescriptor): an instance of the texture descriptor.
@@ -533,7 +533,7 @@ cdef class TextureReference:
     '''  # noqa
     # Basically, this class translates from the Runtime API's descriptors
     # to the driver API calls.
-    def __init__(self, size_t texref, ResourceDescriptor ResDesc,
+    def __init__(self, intptr_t texref, ResourceDescriptor ResDesc,
                  TextureDescriptor TexDesc):
         cdef ResourceDesc* ResDescPtr = <ResourceDesc*>(ResDesc.ptr)
         cdef TextureDesc* TexDescPtr = <TextureDesc*>(TexDesc.ptr)
@@ -546,14 +546,15 @@ cdef class TextureReference:
         self.TexDesc = TexDesc
 
         if ResDescPtr.resType == runtime.cudaResourceTypeArray:
-            driver.texRefSetArray(texref, <size_t>(ResDescPtr.res.array.array))
+            driver.texRefSetArray(texref,
+                                  <intptr_t>(ResDescPtr.res.array.array))
             ChDesc = ResDesc.cuArr.desc
             arr_format, num_channels = \
                 self._get_format(ChDesc.get_channel_format())
             driver.texRefSetFormat(self.texref, arr_format, num_channels)
         elif ResDescPtr.resType == runtime.cudaResourceTypeLinear:
             driver.texRefSetAddress(texref,
-                                    <size_t>(ResDescPtr.res.linear.devPtr),
+                                    <intptr_t>(ResDescPtr.res.linear.devPtr),
                                     ResDescPtr.res.linear.sizeInBytes)
             ChDesc = ResDesc.chDesc
             arr_format, num_channels = \
@@ -567,9 +568,10 @@ cdef class TextureReference:
             arr_desc.NumChannels = num_channels
             arr_desc.Height = ResDescPtr.res.pitch2D.height
             arr_desc.Width = ResDescPtr.res.pitch2D.width
-            driver.texRefSetAddress2D(texref, <size_t>(&arr_desc),
-                                      <size_t>(ResDescPtr.res.pitch2D.devPtr),
-                                      ResDescPtr.res.pitch2D.pitchInBytes)
+            driver.texRefSetAddress2D(
+                texref, <intptr_t>(&arr_desc),
+                <intptr_t>(ResDescPtr.res.pitch2D.devPtr),
+                ResDescPtr.res.pitch2D.pitchInBytes)
             # don't call driver.texRefSetFormat() here!
         else:  # TODO(leofang): mipmap
             raise ValueError("mpimap array is not supported yet.")
