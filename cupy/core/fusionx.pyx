@@ -220,6 +220,19 @@ class _FusionXVarArray(_FusionXVarScalar):
         axis_permutes = tuple(axis_permutes)
         self.ndarray = _manipulation._transpose(self.rotated_from.ndarray, axis_permutes)
 
+    # for checking validity of inplace-op
+    def _data_base(self):
+        if self.indexed_from is not None:
+            return self.indexed_from._data_base()
+        return self
+
+    def _is_invalid_inplace(self, other):
+        if not isinstance(other, _FusionXVarArray):
+            return False
+        if self.indexed_from is None and other.indexed_from is None:
+            return False
+        return self._data_base() == other._data_base()
+
     def __repr__(self):
         return '<_FusionXVarArray name={}, dtype={}, ndim={}, abstracted_shape={}>'.format(_get_pvar_param_name(self), self.dtype, self.ndim, self.abstracted_shape)
 
@@ -237,66 +250,92 @@ class _FusionXVarArray(_FusionXVarScalar):
     def __iadd__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.add(self, other, self)
 
     def __isub__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.subtract(self, other, self)
 
     def __imul__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.multiply(self, other, self)
 
     def __idiv__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.divide(self, other, self)
 
     def __itruediv__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.true_divide(self, other, self)
 
     def __ifloordiv__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.floor_divide(self, other, self)
 
     def __imod__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.remainder(self, other, self)
 
     def __ipow__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.power(self, other, self)
 
     def __ilshift__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.left_shift(self, other, self)
 
     def __irshift__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.right_shift(self, other, self)
 
     def __iand__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.bitwise_and(self, other, self)
 
     def __ior__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.bitwise_or(self, other, self)
 
     def __ixor__(self, other):
         if self._is_readonly():
             raise ValueError('output array is read-only')
+        if self._is_invalid_inplace(other):
+            raise ValueError('This kind of inplace operation is not supported.')
         return cupy.bitwise_xor(self, other, self)
 
     def __getitem__(self, key):
