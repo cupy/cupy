@@ -256,6 +256,6 @@ cdef class RawModule:
             name (str): Name of the texture reference.
 
         Returns:
-            size_t: A ``CUtexref`` handle, to be passed to :class:`~cupy.cuda.texture.TextureReference`.
+            intptr_t: A ``CUtexref`` handle, to be passed to :class:`~cupy.cuda.texture.TextureReference`.
         '''  # noqa
         return self.module.get_texref(name)
