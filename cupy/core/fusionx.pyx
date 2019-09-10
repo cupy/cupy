@@ -229,7 +229,7 @@ class _FusionXVarArray(_FusionXVarScalar):
         return False
 
     def __hash__(self):
-        return hash((self.index, self.abstracted_shape, self.broadcasted_from, self.rotated_from))
+        return hash((self.index, self.abstracted_shape, self.broadcasted_from, self.rotated_from, self.indexed_from, self.index_key))
 
     def _is_readonly(self):
         return self.broadcasted_from is not None or self.rotated_from is not None or self.indexed_from is not None
@@ -862,7 +862,7 @@ class _FusionXHistory(object):
         def get_last_op(pvar):
             return self.last_op.get(pvar.index, -1)
 
-        # dead[abst_shape] = [indexes]
+        # dead[pvar_meminfo] = [indexes]
         dead = dict()
         alive = set()
         index_map = dict()

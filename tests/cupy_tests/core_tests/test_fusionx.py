@@ -732,15 +732,15 @@ class TestSimpleBasicIndexing(unittest.TestCase):
 
         return f(a, b)
 
-    # @testing.for_int_dtypes()
-    # @testing.numpy_cupy_array_equal()
-    # def test_add3(self, xp, dtype):
-    #     a = xp.array([1, 2, 3], dtype=dtype)
-    #     @cp.fusex()
-    #     def f(x):
-    #         return x + x[0] + x[1]
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_add3(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return x + x[0] + x[1]
 
-    #     return f(a)
+        return f(a)
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()
