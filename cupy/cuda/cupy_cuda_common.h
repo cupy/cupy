@@ -17,7 +17,10 @@ typedef enum {
 } CUresult;
 enum CUjit_option {};
 enum CUjitInputType {};
-enum CUfunction_attribute {};
+enum CUfunction_attribute {};;
+enum CUarray_format {};
+enum CUaddress_mode {};
+enum CUfilter_mode {};
 
 
 typedef void* CUdeviceptr;
@@ -35,6 +38,14 @@ typedef struct CUfunc_st* CUfunction;
 typedef struct CUmod_st* CUmodule;
 typedef struct CUstream_st* cudaStream_t;
 typedef struct CUlinkState_st* CUlinkState;
+typedef struct CUtexref_st* CUtexref;
+typedef struct CUarray_st* CUarray;
+struct CUDA_ARRAY_DESCRIPTOR {
+    CUarray_format Format;
+    size_t Height;
+    unsigned int NumChannels;
+    size_t Width;
+};
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -67,6 +78,79 @@ struct cudaPointerAttributes{
     void* hostPointer;
     int isManaged;
     int memoryType;
+};
+
+
+enum cudaChannelFormatKind {};
+typedef unsigned long long cudaTextureObject_t;
+enum cudaResourceType {};
+enum cudaTextureAddressMode {};
+enum cudaTextureFilterMode {};
+enum cudaTextureReadMode {};
+struct cudaResourceViewDesc;
+typedef void* cudaArray_t;
+struct cudaExtent {
+    size_t width, height, depth;
+};
+struct cudaPos {
+    size_t x, y, z;
+};
+struct cudaPitchedPtr {
+    size_t pitch;
+    void* ptr;
+    size_t xsize, ysize;
+};
+typedef void* cudaMipmappedArray_t;
+struct cudaMemcpy3DParms {
+    cudaArray_t srcArray;
+    struct cudaPos srcPos;
+    struct cudaPitchedPtr srcPtr;
+    cudaArray_t dstArray;
+    struct cudaPos dstPos;
+    struct cudaPitchedPtr dstPtr;
+    struct cudaExtent extent;
+    enum cudaMemcpyKind kind;
+};
+struct cudaChannelFormatDesc {
+    int x, y, z, w;
+    enum cudaChannelFormatKind f;
+};
+struct cudaResourceDesc {
+    enum cudaResourceType resType;
+
+    union {
+        struct {
+            cudaArray_t array;
+        } array;
+        struct {
+            cudaMipmappedArray_t mipmap;
+        } mipmap;
+        struct {
+            void *devPtr;
+            struct cudaChannelFormatDesc desc;
+            size_t sizeInBytes;
+        } linear;
+        struct {
+            void *devPtr;
+            struct cudaChannelFormatDesc desc;
+            size_t width;
+            size_t height;
+            size_t pitchInBytes;
+        } pitch2D;
+    } res;
+};
+struct cudaTextureDesc {
+    enum cudaTextureAddressMode addressMode[3];
+    enum cudaTextureFilterMode filterMode;
+    enum cudaTextureReadMode readMode;
+    int sRGB;
+    float borderColor[4];
+    int normalizedCoords;
+    unsigned int maxAnisotropy;
+    enum cudaTextureFilterMode mipmapFilterMode;
+    float mipmapLevelBias;
+    float minMipmapLevelClamp;
+    float maxMipmapLevelClamp;
 };
 
 

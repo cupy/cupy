@@ -43,6 +43,7 @@ Memory hook
    cupy.cuda.memory_hooks.DebugPrintHook
    cupy.cuda.memory_hooks.LineProfileHook
 
+
 Streams and events
 ------------------
 
@@ -54,6 +55,21 @@ Streams and events
    cupy.cuda.get_current_stream
    cupy.cuda.Event
    cupy.cuda.get_elapsed_time
+
+
+Texture memory
+--------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.cuda.texture.ChannelFormatDescriptor
+   cupy.cuda.texture.CUDAarray
+   cupy.cuda.texture.ResourceDescriptor
+   cupy.cuda.texture.TextureDescriptor
+   cupy.cuda.texture.TextureObject
+   cupy.cuda.texture.TextureReference
 
 
 Profiler

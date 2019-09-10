@@ -20,12 +20,12 @@ const CUresult CUDA_SUCCESS = static_cast<CUresult>(0);
 enum CUjit_option {};
 enum CUjitInputType {};
 enum CUfunction_attribute {};
+enum CUarray_format {};
+enum CUaddress_mode {};
+enum CUfilter_mode {};
 
 
 typedef hipDeviceptr_t CUdeviceptr;
-//struct CUevent_st;
-//struct CUfunc_st;
-//struct CUmod_st;
 struct CUlinkState_st;
 
 
@@ -35,6 +35,15 @@ typedef hipFunction_t CUfunction;
 typedef hipModule_t CUmodule;
 typedef hipStream_t cudaStream_t;
 typedef struct CUlinkState_st* CUlinkState;
+typedef struct CUtexref_st* CUtexref;
+typedef struct CUarray_st* CUarray;
+struct CUDA_ARRAY_DESCRIPTOR {
+    CUarray_format Format;
+    size_t Height;
+    unsigned int NumChannels;
+    size_t Width;
+};
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -60,6 +69,23 @@ typedef hipMemcpyKind cudaMemcpyKind;
 
 typedef hipStreamCallback_t cudaStreamCallback_t;
 typedef hipPointerAttribute_t cudaPointerAttributes;
+
+typedef hipChannelFormatKind cudaChannelFormatKind;
+typedef hipTextureObject_t cudaTextureObject_t;
+typedef hipResourceType cudaResourceType;
+typedef hipTextureAddressMode cudaTextureAddressMode;
+typedef hipTextureFilterMode cudaTextureFilterMode;
+typedef hipTextureReadMode cudaTextureReadMode;
+typedef hipResourceViewDesc cudaResourceViewDesc;
+typedef hipArray_t cudaArray_t;
+typedef hipExtent cudaExtent;
+typedef hipPos cudaPos;
+typedef hipPitchedPtr cudaPitchedPtr;
+typedef hipMipmappedArray_t cudaMipmappedArray_t;
+typedef hipMemcpy3DParms cudaMemcpy3DParms;
+typedef hipChannelFormatDesc cudaChannelFormatDesc;
+typedef hipResourceDesc cudaResourceDesc;
+typedef hipTextureDesc cudaTextureDesc;
 
 
 ///////////////////////////////////////////////////////////////////////////////

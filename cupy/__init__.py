@@ -358,8 +358,20 @@ def common_type(*arrays):
 
     .. seealso:: :func:`numpy.common_type`
     """
-    dtype_arrays = [numpy.empty((), a.dtype) for a in arrays]
-    return numpy.common_type(*dtype_arrays)
+    if len(arrays) == 0:
+        return numpy.float16
+
+    default_float_dtype = numpy.dtype('float64')
+    dtypes = []
+    for a in arrays:
+        if a.dtype.kind == 'b':
+            raise TypeError('can\'t get common type for non-numeric array')
+        elif a.dtype.kind in 'iu':
+            dtypes.append(default_float_dtype)
+        else:
+            dtypes.append(a.dtype)
+
+    return numpy.find_common_type(dtypes, []).type
 
 
 def result_type(*arrays_and_dtypes):
@@ -592,6 +604,13 @@ from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
 
 # -----------------------------------------------------------------------------
+# Miscellaneous routines
+# -----------------------------------------------------------------------------
+from cupy.misc import may_share_memory  # NOQA
+from cupy.misc import shares_memory  # NOQA
+
+
+# -----------------------------------------------------------------------------
 # Padding
 # -----------------------------------------------------------------------------
 pad = padding.pad.pad
@@ -635,6 +654,7 @@ from cupy.statistics.meanvar import average  # NOQA
 from cupy.statistics.meanvar import mean  # NOQA
 from cupy.statistics.meanvar import std  # NOQA
 from cupy.statistics.meanvar import var  # NOQA
+from cupy.statistics.meanvar import nanmean  # NOQA
 from cupy.statistics.meanvar import nanstd  # NOQA
 from cupy.statistics.meanvar import nanvar  # NOQA
 
@@ -655,6 +675,7 @@ from cupy.util import memoize  # NOQA
 
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import RawKernel  # NOQA
+from cupy.core import RawModule  # NOQA
 from cupy.core import ReductionKernel  # NOQA
 
 # -----------------------------------------------------------------------------

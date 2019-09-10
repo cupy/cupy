@@ -33,7 +33,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_radd_scalar(self):
         self.check_array_scalar_op(operator.add, swap=True)
 
-    @testing.with_requires('numpy>=1.10,<1.17')
+    @testing.with_requires('numpy>=1.10')
     def test_iadd_scalar(self):
         self.check_array_scalar_op(operator.iadd)
 
@@ -43,7 +43,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_rsub_scalar(self):
         self.check_array_scalar_op(operator.sub, swap=True, no_bool=True)
 
-    @testing.with_requires('numpy>=1.10,<1.17')
+    @testing.with_requires('numpy>=1.10')
     def test_isub_scalar(self):
         self.check_array_scalar_op(operator.isub, no_bool=True)
 
@@ -53,7 +53,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_rmul_scalar(self):
         self.check_array_scalar_op(operator.mul, swap=True)
 
-    @testing.with_requires('numpy>=1.10,<1.17')
+    @testing.with_requires('numpy>=1.10')
     def test_imul_scalar(self):
         self.check_array_scalar_op(operator.imul)
 
@@ -174,21 +174,21 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_add_array(self):
         self.check_array_array_op(operator.add)
 
-    @testing.with_requires('numpy>=1.10,<1.17')
+    @testing.with_requires('numpy>=1.10')
     def test_iadd_array(self):
         self.check_array_array_op(operator.iadd)
 
     def test_sub_array(self):
         self.check_array_array_op(operator.sub, no_bool=True)
 
-    @testing.with_requires('numpy>=1.10,<1.17')
+    @testing.with_requires('numpy>=1.10')
     def test_isub_array(self):
         self.check_array_array_op(operator.isub, no_bool=True)
 
     def test_mul_array(self):
         self.check_array_array_op(operator.mul)
 
-    @testing.with_requires('numpy>=1.10,<1.17')
+    @testing.with_requires('numpy>=1.10')
     def test_imul_array(self):
         self.check_array_array_op(operator.imul)
 
@@ -281,7 +281,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_broadcasted_add(self):
         self.check_array_broadcasted_op(operator.add)
 
-    @testing.with_requires('numpy>=1.10,<1.17')
+    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_iadd(self):
         self.check_array_broadcasted_op(operator.iadd)
 
@@ -289,7 +289,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
         # TODO(unno): sub for boolean array is deprecated in numpy>=1.13
         self.check_array_broadcasted_op(operator.sub, no_bool=True)
 
-    @testing.with_requires('numpy>=1.10,<1.17')
+    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_isub(self):
         # TODO(unno): sub for boolean array is deprecated in numpy>=1.13
         self.check_array_broadcasted_op(operator.isub, no_bool=True)
@@ -297,7 +297,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_broadcasted_mul(self):
         self.check_array_broadcasted_op(operator.mul)
 
-    @testing.with_requires('numpy>=1.10,<1.17')
+    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_imul(self):
         self.check_array_broadcasted_op(operator.imul)
 

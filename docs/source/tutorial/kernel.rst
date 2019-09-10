@@ -218,6 +218,8 @@ attributes:
    >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
    50000
 
+Accessing texture memory in :class:`~cupy.RawKernel` is supported via CUDA Runtime's Texture Object API, see :class:`~cupy.cuda.texture.TextureObject`'s documentation as well as CUDA C Programming Guide. For using the Texture Reference API, which is marked as deprecated as of CUDA Toolkit 10.1, see the introduction to :class:`~cupy.RawModule` below.
+
 .. note::
     The kernel does not have return values.
     You need to pass both input arrays and output arrays as arguments.
@@ -231,6 +233,52 @@ attributes:
 .. note::
     When using ``printf()`` in your CUDA kernel, you may need to synchronize the stream to see the output.
     You can use ``cupy.cuda.Stream.null.synchronize()`` if you are using the default stream.
+
+
+Raw modules
+-----------
+
+For dealing a large raw CUDA source or loading an existing CUDA binary, the :class:`~cupy.RawModule` class can be more handy. It can be initialized either by a CUDA source code, or by a path to the CUDA binary. The needed kernels can then be retrieved by calling the :meth:`~cupy.RawModule.get_function` method, which returns a :class:`~cupy.RawKernel` instance that can be invoked as discussed above.
+
+.. doctest::
+
+    >>> loaded_from_source = r'''
+    ... extern "C"{
+    ...
+    ... __global__ void test_sum(const float* x1, const float* x2, float* y, \
+    ...                          unsigned int N)
+    ... {
+    ...     unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    ...     if (tid < N)
+    ...     {
+    ...         y[tid] = x1[tid] + x2[tid];
+    ...     }
+    ... }
+    ...
+    ... __global__ void test_multiply(const float* x1, const float* x2, float* y, \
+    ...                               unsigned int N)
+    ... {
+    ...     unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    ...     if (tid < N)
+    ...     {
+    ...         y[tid] = x1[tid] * x2[tid];
+    ...     }
+    ... }
+    ...
+    ... }'''
+    >>> module = cp.RawModule(loaded_from_source)
+    >>> ker_sum = module.get_function('test_sum')
+    >>> ker_times = module.get_function('test_multiply')
+    >>> N = 10
+    >>> x1 = cp.arange(N**2, dtype=cp.float32).reshape(N, N)
+    >>> x2 = cp.ones((N, N), dtype=cp.float32)
+    >>> y = cp.zeros((N, N), dtype=cp.float32)
+    >>> ker_sum((N,), (N,), (x1, x2, y, N**2))   # y = x1 + x2
+    >>> assert cp.allclose(y, x1 + x2)
+    >>> ker_times((N,), (N,), (x1, x2, y, N**2)) # y = x1 * x2
+    >>> assert cp.allclose(y, x1 * x2)
+
+CuPy also supports the Texture Reference API. A handle to the texture reference in a module can be retrieved by name via :meth:`~cupy.RawModule.get_texref`. Then, you need to pass it to :class:`~cupy.cuda.texture.TextureReference`, along with a resource descriptor and texture descriptor, for binding the reference to the array. (The interface of :class:`~cupy.cuda.texture.TextureReference` is meant to mimic that of :class:`~cupy.cuda.texture.TextureObject` to help users make transition to the latter, since as of CUDA Toolkit 10.1 the former is marked as deprecated.)
 
 
 Kernel fusion

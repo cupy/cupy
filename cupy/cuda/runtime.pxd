@@ -1,4 +1,4 @@
-from libc.stdint cimport intptr_t
+from libc.stdint cimport intptr_t, uintmax_t
 
 
 ###############################################################################
@@ -17,6 +17,81 @@ cdef class PointerAttributes:
 cdef extern from *:
     ctypedef int Error 'cudaError_t'
     ctypedef int DataType 'cudaDataType'
+
+    ctypedef int ChannelFormatKind 'cudaChannelFormatKind'
+    ctypedef struct ChannelFormatDesc 'cudaChannelFormatDesc':
+        int x, y, z, w
+        ChannelFormatKind f
+    ctypedef uintmax_t TextureObject 'cudaTextureObject_t'
+    ctypedef int ResourceType 'cudaResourceType'
+    ctypedef int TextureAddressMode 'cudaTextureAddressMode'
+    ctypedef int TextureFilterMode 'cudaTextureFilterMode'
+    ctypedef int TextureReadMode 'cudaTextureReadMode'
+    ctypedef struct ResourceViewDesc 'cudaResourceViewDesc'
+    ctypedef void* Array 'cudaArray_t'
+    ctypedef struct Extent 'cudaExtent':
+        size_t width, height, depth
+    ctypedef struct Pos 'cudaPos':
+        size_t x, y, z
+    ctypedef struct PitchedPtr 'cudaPitchedPtr':
+        size_t pitch
+        void* ptr
+        size_t xsize, ysize
+    ctypedef int MemoryKind 'cudaMemcpyKind'
+    ctypedef void* MipmappedArray 'cudaMipmappedArray_t'
+
+    # This is for the annoying nested struct cudaResourceDesc, which is not
+    # perfectly supprted in Cython
+    ctypedef struct _array:
+        Array array
+
+    ctypedef struct _mipmap:
+        MipmappedArray mipmap
+
+    ctypedef struct _linear:
+        void* devPtr
+        ChannelFormatDesc desc
+        size_t sizeInBytes
+
+    ctypedef struct _pitch2D:
+        void* devPtr
+        ChannelFormatDesc desc
+        size_t width
+        size_t height
+        size_t pitchInBytes
+
+    ctypedef union _res:
+        _array array
+        _mipmap mipmap
+        _linear linear
+        _pitch2D pitch2D
+
+    ctypedef struct ResourceDesc 'cudaResourceDesc':
+        int resType
+        _res res
+    # typedef cudaResourceDesc done
+
+    ctypedef struct Memcpy3DParms 'cudaMemcpy3DParms':
+        Array srcArray
+        Pos srcPos
+        PitchedPtr srcPtr
+
+        Array dstArray
+        Pos dstPos
+        PitchedPtr dstPtr
+
+        Extent extent
+        MemoryKind kind
+
+    ctypedef struct TextureDesc 'cudaTextureDesc':
+        int addressMode[3]
+        int filterMode
+        int readMode
+        int sRGB
+        float borderColor[4]
+        int normalizedCoords
+        unsigned int maxAnisotropy
+        # TODO(leofang): support mipmap?
 
 
 ###############################################################################
@@ -170,6 +245,32 @@ cpdef enum:
     cudaDevAttrPageableMemoryAccessUsesHostPageTables = 100
     cudaDevAttrDirectManagedMemAccessFromHost = 101
 
+    # cudaChannelFormatKind
+    cudaChannelFormatKindSigned = 0
+    cudaChannelFormatKindUnsigned = 1
+    cudaChannelFormatKindFloat = 2
+    cudaChannelFormatKindNone = 3
+
+    # cudaResourceType
+    cudaResourceTypeArray = 0
+    cudaResourceTypeMipmappedArray = 1
+    cudaResourceTypeLinear = 2
+    cudaResourceTypePitch2D = 3
+
+    # cudaTextureAddressMode
+    cudaAddressModeWrap = 0
+    cudaAddressModeClamp = 1
+    cudaAddressModeMirror = 2
+    cudaAddressModeBorder = 3
+
+    # cudaTextureFilterMode
+    cudaFilterModePoint = 0
+    cudaFilterModeLinear = 1
+
+    # cudaTextureReadMode
+    cudaReadModeElementType = 0
+    cudaReadModeNormalizedFloat = 1
+
 
 ###############################################################################
 # Error codes
@@ -222,11 +323,16 @@ cpdef deviceEnablePeerAccess(int peerDevice)
 
 cpdef intptr_t malloc(size_t size) except? 0
 cpdef intptr_t mallocManaged(size_t size, unsigned int flags=*) except? 0
+cpdef intptr_t malloc3DArray(intptr_t desc, size_t width, size_t height,
+                             size_t depth, unsigned int flags=*) except? 0
+cpdef intptr_t mallocArray(intptr_t desc, size_t width, size_t height,
+                           unsigned int flags=*) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
 cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
 cpdef hostUnregister(intptr_t ptr)
 cpdef free(intptr_t ptr)
 cpdef freeHost(intptr_t ptr)
+cpdef freeArray(intptr_t ptr)
 cpdef memGetInfo()
 cpdef memcpy(intptr_t dst, intptr_t src, size_t size, int kind)
 cpdef memcpyAsync(intptr_t dst, intptr_t src, size_t size, int kind,
@@ -236,6 +342,25 @@ cpdef memcpyPeer(intptr_t dst, int dstDevice, intptr_t src, int srcDevice,
 cpdef memcpyPeerAsync(intptr_t dst, int dstDevice,
                       intptr_t src, int srcDevice,
                       size_t size, size_t stream)
+cpdef memcpy2D(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
+               size_t width, size_t height, MemoryKind kind)
+cpdef memcpy2DAsync(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
+                    size_t width, size_t height, MemoryKind kind,
+                    size_t stream)
+cpdef memcpy2DFromArray(intptr_t dst, size_t dpitch, intptr_t src,
+                        size_t wOffset, size_t hOffset, size_t width,
+                        size_t height, int kind)
+cpdef memcpy2DFromArrayAsync(intptr_t dst, size_t dpitch, intptr_t src,
+                             size_t wOffset, size_t hOffset, size_t width,
+                             size_t height, int kind, size_t stream)
+cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
+                      intptr_t src, size_t spitch, size_t width, size_t height,
+                      int kind)
+cpdef memcpy2DToArrayAsync(intptr_t dst, size_t wOffset, size_t hOffset,
+                           intptr_t src, size_t spitch, size_t width,
+                           size_t height, int kind, size_t stream)
+cpdef memcpy3D(intptr_t Memcpy3DParmsPtr)
+cpdef memcpy3DAsync(intptr_t Memcpy3DParmsPtr, size_t stream)
 cpdef memset(intptr_t ptr, int value, size_t size)
 cpdef memsetAsync(intptr_t ptr, int value, size_t size, size_t stream)
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
@@ -270,3 +395,17 @@ cpdef eventSynchronize(size_t event)
 ##############################################################################
 
 cdef _ensure_context()
+
+
+##############################################################################
+# Texture
+##############################################################################
+
+cpdef uintmax_t createTextureObject(intptr_t ResDesc, intptr_t TexDesc)
+cpdef destroyTextureObject(uintmax_t texObject)
+cdef ChannelFormatDesc getChannelDesc(intptr_t array)
+cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t texobj)
+cdef TextureDesc getTextureObjectTextureDesc(uintmax_t texobj)
+cdef Extent make_Extent(size_t w, size_t h, size_t d)
+cdef Pos make_Pos(size_t x, size_t y, size_t z)
+cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz)

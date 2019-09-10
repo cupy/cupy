@@ -126,6 +126,10 @@ CUresult cuModuleGetGlobal(...) {
     return CUDA_SUCCESS;
 }
 
+CUresult cuModuleGetTexRef(...) {
+    return CUDA_SUCCESS;
+}
+
 CUresult cuLaunchKernel(...) {
     return CUDA_SUCCESS;
 }
@@ -136,6 +140,58 @@ CUresult cuFuncGetAttribute(...) {
 }
 
 CUresult cuFuncSetAttribute(...) {
+    return CUDA_SUCCESS;
+}
+
+// Texture reference
+CUresult cuTexRefSetAddress (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetAddress2D (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetAddressMode (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetArray (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetBorderColor (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetFilterMode (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetFlags (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetFormat (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuTexRefSetMaxAnisotropy (...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuParamSetTexRef (...) {
+    return CUDA_SUCCESS;
+}
+
+// Occupancy
+typedef size_t (*CUoccupancyB2DSize)(int);
+
+CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuOccupancyMaxPotentialBlockSize(...) {
     return CUDA_SUCCESS;
 }
 
@@ -202,6 +258,14 @@ cudaError_t cudaMalloc(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaMalloc3DArray(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMallocArray(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaHostAlloc(...) {
     return cudaSuccess;
 }
@@ -219,6 +283,10 @@ cudaError_t cudaMallocManaged(...) {
 }
 
 int cudaFree(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaFreeArray(...) {
     return cudaSuccess;
 }
 
@@ -243,6 +311,38 @@ cudaError_t cudaMemcpyPeer(...) {
 }
 
 cudaError_t cudaMemcpyPeerAsync(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy2D(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy2DAsync(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy2DFromArray(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy2DFromArrayAsync(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy2DToArray(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy2DToArrayAsync(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy3D(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemcpy3DAsync(...) {
     return cudaSuccess;
 }
 
@@ -325,6 +425,48 @@ cudaError_t cudaEventSynchronize(...) {
     return cudaSuccess;
 }
 
+
+// Texture
+cudaError_t cudaCreateTextureObject(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDestroyTextureObject(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGetChannelDesc(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGetTextureObjectResourceDesc(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGetTextureObjectTextureDesc(...) {
+    return cudaSuccess;
+}
+
+cudaExtent make_cudaExtent(...) {
+    struct cudaExtent ex = {0};
+    return ex;
+}
+
+cudaPitchedPtr make_cudaPitchedPtr(...) {
+    struct cudaPitchedPtr ptr = {0};
+    return ptr;
+}
+
+cudaPos make_cudaPos(...) {
+    struct cudaPos pos = {0};
+    return pos;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// cuComplex.h
+///////////////////////////////////////////////////////////////////////////////
+
+#include "cupy_cuComplex.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // cublas_v2.h

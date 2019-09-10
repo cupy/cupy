@@ -12,6 +12,7 @@ from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import profiler  # NOQA
 from cupy.cuda import runtime  # NOQA
 from cupy.cuda import stream  # NOQA
+from cupy.cuda import texture  # NOQA
 
 
 _available = None

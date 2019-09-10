@@ -95,6 +95,10 @@ CUresult cuModuleGetGlobal(CUdeviceptr *dptr, size_t *bytes, CUmodule hmod,
     return hipModuleGetGlobal(dptr, bytes, hmod, name);
 }
 
+CUresult cuModuleGetTexRef(...) {
+    return hipErrorUnknown;
+}
+
 CUresult cuLaunchKernel(CUfunction f, uint32_t gridDimX, uint32_t gridDimY,
                         uint32_t gridDimZ, uint32_t blockDimX,
                         uint32_t blockDimY, uint32_t blockDimZ,
@@ -112,6 +116,59 @@ CUresult cuFuncGetAttribute(...) {
 }
 
 CUresult cuFuncSetAttribute(...) {
+    return hipErrorUnknown;
+}
+
+
+// Texture reference
+CUresult cuTexRefSetAddress (...) {
+    return hipErrorUnknown;
+}
+
+CUresult cuTexRefSetAddress2D (...) {
+    return hipErrorUnknown;
+}
+
+CUresult cuTexRefSetAddressMode (...) {
+    return hipErrorUnknown;
+}
+
+CUresult cuTexRefSetArray (...) {
+    return hipErrorUnknown;
+}
+
+CUresult cuTexRefSetBorderColor (...) {
+    return hipErrorUnknown;
+}
+
+CUresult cuTexRefSetFilterMode (...) {
+    return hipErrorUnknown;
+}
+
+CUresult cuTexRefSetFlags (...) {
+    return hipErrorUnknown;
+}
+
+CUresult cuTexRefSetFormat (...) {
+    return hipErrorUnknown;
+}
+
+CUresult cuTexRefSetMaxAnisotropy (...) {
+    return hipErrorUnknown;
+}
+
+CUresult cuParamSetTexRef (...) {
+    return hipErrorUnknown;
+}
+
+// Occupancy
+typedef size_t (*CUoccupancyB2DSize)(int);
+
+CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(...) {
+    return hipErrorUnknown;
+}
+
+CUresult cuOccupancyMaxPotentialBlockSize(...) {
     return hipErrorUnknown;
 }
 
@@ -181,6 +238,14 @@ cudaError_t cudaMalloc(void** ptr, size_t size) {
     return hipMalloc(ptr, size);
 }
 
+cudaError_t cudaMalloc3DArray(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMallocArray(...) {
+    return hipErrorUnknown;
+}
+
 cudaError_t cudaHostAlloc(void** ptr, size_t size, unsigned int flags) {
     return hipHostMalloc(ptr, size, flags);
 }
@@ -199,6 +264,10 @@ cudaError_t cudaMallocManaged(...) {
 
 int cudaFree(void* ptr) {
     return hipFree(ptr);
+}
+
+cudaError_t cudaFreeArray(...) {
+    return hipErrorUnknown;
 }
 
 cudaError_t cudaFreeHost(void* ptr) {
@@ -229,6 +298,38 @@ cudaError_t cudaMemcpyPeerAsync(void* dst, int dstDevice, const void* src,
                                 cudaStream_t stream) {
     return hipMemcpyPeerAsync(dst, dstDevice, src, srcDevice, sizeBytes,
                               stream);
+}
+
+cudaError_t cudaMemcpy2D(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemcpy2DAsync(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemcpy2DFromArray(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemcpy2DFromArrayAsync(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemcpy2DToArray(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemcpy2DToArrayAsync(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemcpy3D(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemcpy3DAsync(...) {
+    return hipErrorUnknown;
 }
 
 cudaError_t cudaMemset(void* dst, int value, size_t sizeBytes) {
@@ -314,6 +415,43 @@ cudaError_t cudaEventRecord(cudaEvent_t event, cudaStream_t stream) {
 
 cudaError_t cudaEventSynchronize(cudaEvent_t event) {
     return hipEventSynchronize(event);
+}
+
+
+// Texture
+cudaError_t cudaCreateTextureObject(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDestroyTextureObject(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGetChannelDesc(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGetTextureObjectResourceDesc(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGetTextureObjectTextureDesc(...) {
+    return cudaSuccess;
+}
+
+cudaExtent make_cudaExtent(...) {
+    cudaExtent ex = {};
+    return ex;
+}
+
+cudaPitchedPtr make_cudaPitchedPtr(...) {
+    cudaPitchedPtr ptr = {};
+    return ptr;
+}
+
+cudaPos make_cudaPos(...) {
+    cudaPos pos = {};
+    return pos;
 }
 
 
