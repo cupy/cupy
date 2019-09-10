@@ -309,39 +309,39 @@ class PlanNd(object):
             raise ValueError('output shape mismatch')
 
 
-cpdef execC2C(size_t plan, size_t idata, size_t odata, int direction):
+cpdef execC2C(Handle plan, intptr_t idata, intptr_t odata, int direction):
     with nogil:
         result = cufftExecC2C(plan, <Complex*>idata, <Complex*>odata,
                               direction)
     check_result(result)
 
 
-cpdef execR2C(size_t plan, size_t idata, size_t odata):
+cpdef execR2C(Handle plan, intptr_t idata, intptr_t odata):
     with nogil:
         result = cufftExecR2C(plan, <Float*>idata, <Complex*>odata)
     check_result(result)
 
 
-cpdef execC2R(size_t plan, size_t idata, size_t odata):
+cpdef execC2R(Handle plan, intptr_t idata, intptr_t odata):
     with nogil:
         result = cufftExecC2R(plan, <Complex*>idata, <Float*>odata)
     check_result(result)
 
 
-cpdef execZ2Z(size_t plan, size_t idata, size_t odata, int direction):
+cpdef execZ2Z(Handle plan, intptr_t idata, intptr_t odata, int direction):
     with nogil:
         result = cufftExecZ2Z(plan, <DoubleComplex*>idata,
                               <DoubleComplex*>odata, direction)
     check_result(result)
 
 
-cpdef execD2Z(size_t plan, size_t idata, size_t odata):
+cpdef execD2Z(Handle plan, intptr_t idata, intptr_t odata):
     with nogil:
         result = cufftExecD2Z(plan, <Double*>idata, <DoubleComplex*>odata)
     check_result(result)
 
 
-cpdef execZ2D(size_t plan, size_t idata, size_t odata):
+cpdef execZ2D(Handle plan, intptr_t idata, intptr_t odata):
     with nogil:
         result = cufftExecZ2D(plan, <DoubleComplex*>idata, <Double*>odata)
     check_result(result)
