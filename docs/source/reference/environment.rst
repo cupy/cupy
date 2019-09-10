@@ -46,10 +46,13 @@ Here are the environment variables CuPy uses.
 For install
 -----------
 
-These environment variables are only used during installation.
+These environment variables are used during installation (building CuPy from source).
 
-+---------------+---------------------------------------------------------------------+
-| ``CUDA_PATH`` | See the description above.                                          |
-+---------------+---------------------------------------------------------------------+
-| ``NVCC``      | Define the compiler to use when compiling CUDA files.               |
-+---------------+---------------------------------------------------------------------+
++-------------------+---------------------------------------------------------------------+
+| ``CUDA_PATH``     | See the description above.                                          |
++-------------------+---------------------------------------------------------------------+
+| ``CUTENSOR_PATH`` | Path to the cuTENSOR root directory that contains ``lib`` and       |
+|                   | ``include`` directories. (experimental)                             |
++-------------------+---------------------------------------------------------------------+
+| ``NVCC``          | Define the compiler to use when compiling CUDA files.               |
++-------------------+---------------------------------------------------------------------+
