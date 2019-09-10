@@ -808,5 +808,33 @@ class TestMultiDimentionalBasicIndexing(unittest.TestCase):
 
         return f(a)
 
+class TestBasicIndexingByTuple(unittest.TestCase):
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_subscript(self, xp, dtype):
+        a = xp.array([[1, 2], [3, 4]], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return x[0, 1]
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_add(self, xp, dtype):
+        a = xp.array([[1, 2], [3, 4]], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return x + x[0, 1]
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_add2(self, xp, dtype):
+        a = xp.array([[1, 2], [3, 4]], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return x + x[0, 1] + x[1, 0] + x[0] + x[1]
+        return f(a)
+
 if __name__ == '__main__':
     unittest.main(failfast=True)
