@@ -712,6 +712,16 @@ class TestPvarUsed(unittest.TestCase):
 class TestSimpleBasicIndexing(unittest.TestCase):
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_subscript(self, xp, dtype):
+        a = xp.array([1, 2, 3], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return x[0]
+
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_add(self, xp, dtype):
         a = xp.array([1, 2, 3], dtype=dtype)
         b = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
@@ -749,6 +759,52 @@ class TestSimpleBasicIndexing(unittest.TestCase):
         @cp.fusex()
         def f(x):
             return x + x + x[0]
+
+        return f(a)
+
+# TODO: support this
+# class TestWillFail(unittest.TestCase):
+#     @testing.for_int_dtypes()
+#     @testing.numpy_cupy_array_equal()
+#     def test_add(self, xp, dtype):
+#         a = xp.array([1, 1], dtype=dtype)
+#         b = xp.array([1, 1], dtype=dtype)
+#         @cp.fusex()
+#         def f(x, y):
+#             x += y
+#             x += y
+#             return x
+#         f(a, b)
+#         return f(b, b)
+
+class TestMultiDimentionalBasicIndexing(unittest.TestCase):
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_subscript(self, xp, dtype):
+        a = xp.array([[1, 2], [3, 4]], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return x[0][1]
+
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_add(self, xp, dtype):
+        a = xp.array([[1, 2], [3, 4]], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return x[0][1] + x[1][0]
+
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_add2(self, xp, dtype):
+        a = xp.array([[1, 2], [3, 4]], dtype=dtype)
+        @cp.fusex()
+        def f(x):
+            return x + x[0][1] + x[1] + x[0] + x[1][0]
 
         return f(a)
 
