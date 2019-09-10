@@ -217,6 +217,8 @@ cdef class RawModule:
     def __init__(self, code_or_path, options=(), backend='nvrtc'):
         if isinstance(code_or_path, six.binary_type):
             code_or_path = code_or_path.decode('UTF-8')
+        if isinstance(backend, six.binary_type):
+            backend = backend.decode('UTF-8')
 
         if code_or_path.endswith('.cubin'):
             path = code_or_path
