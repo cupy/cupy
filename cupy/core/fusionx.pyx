@@ -220,6 +220,13 @@ class _FusionXVarArray(_FusionXVarScalar):
         axis_permutes = tuple(axis_permutes)
         self.ndarray = _manipulation._transpose(self.rotated_from.ndarray, axis_permutes)
 
+    def subscript(self):
+        if self.ndarray is not None:
+            return
+        if self.indexed_from is not None:
+            self.indexed_from.subscript()
+            self.ndarray = self.indexed_from.ndarray[self.index_key]
+
     # for checking validity of inplace-op
     def _data_base(self):
         if self.indexed_from is not None:
@@ -1092,10 +1099,7 @@ class _FusionXHistory(object):
     def _subscript(self):
         for pvar in self.param_list:
             if isinstance(pvar, _FusionXVarArray):
-                if pvar.indexed_from is not None:
-                    # TODO: support nested indexing
-                    assert pvar.indexed_from.indexed_from is None and pvar.indexed_from.ndarray is not None
-                    pvar.ndarray = pvar.indexed_from.ndarray[pvar.index_key]
+                pvar.subscript()
 
     def _reduce_dims(self):
         for pvar in self.param_list:
