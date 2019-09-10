@@ -758,7 +758,22 @@ class CuDNNError(RuntimeError):
     def __init__(self, int status):
         self.status = status
         msg = cudnnGetErrorString(<Status>status)
-        super(CuDNNError, self).__init__(msg.decode())
+        super(CuDNNError, self).__init__(
+            'cuDNN Error: {}'.format(msg.decode()))
+        self._infos = []
+
+    def add_info(self, info):
+        assert isinstance(info, str)
+        self._infos.append(info)
+
+    def add_infos(self, infos):
+        assert isinstance(infos, list)
+        self._infos.extend(infos)
+
+    def __str__(self):
+        base = super(CuDNNError, self).__str__()
+        return base + ''.join(
+            '\n  ' + info for info in self._infos)
 
     def __reduce__(self):
         return (type(self), (self.status,))

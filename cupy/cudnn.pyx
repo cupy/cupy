@@ -1569,6 +1569,13 @@ cpdef bint _should_use_tensor_core(
             'tensor_code_mode must be either of "always", "auto", or "never".')
 
 
+def _get_array_info(core.ndarray arr):
+    if arr is None:
+        return 'None'
+    return 'shape={!r}, dtype={}, strides={!r}'.format(
+        arr.shape, arr.dtype.name, arr.strides)
+
+
 def convolution_forward(
         core.ndarray x, core.ndarray W, core.ndarray b, core.ndarray y,
         tuple pad, tuple stride, tuple dilation, int groups, *,
@@ -1636,10 +1643,27 @@ def convolution_forward(
 
         workspace = memory.alloc(perf.memory)
 
-        cudnn.convolutionForward(
-            handle, one, x_desc, x.data.ptr, filter_desc, W.data.ptr,
-            conv_desc, perf.algo, workspace.ptr, perf.memory, zero, y_desc,
-            y.data.ptr)
+        try:
+            cudnn.convolutionForward(
+                handle, one, x_desc, x.data.ptr, filter_desc, W.data.ptr,
+                conv_desc, perf.algo, workspace.ptr, perf.memory, zero, y_desc,
+                y.data.ptr)
+        except py_cudnn.CuDNNError as e:
+            infos = [
+                'func: cudnnConvolutionForward',
+                'x: {}'.format(_get_array_info(x)),
+                'W: {}'.format(_get_array_info(W)),
+                'b: {}'.format(_get_array_info(b)),
+                'y: {}'.format(_get_array_info(y)),
+                'pad={!r}, stride={!r}, dilation={!r}, groups={!r}'.format(
+                    pad, stride, dilation, groups),
+                'auto_tune={!r}, tensor_core={!r}'.format(
+                    auto_tune, tensor_core),
+                'd_layout={!r}, w_layout={!r}'.format(d_layout, w_layout),
+            ]
+            e.add_infos(infos)
+            raise
+
         del workspace, x, W
 
         if b is not None:
