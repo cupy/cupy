@@ -1,4 +1,5 @@
 cimport cython  # NOQA
+from libc.stdint cimport intptr_t
 import numpy
 import threading
 
