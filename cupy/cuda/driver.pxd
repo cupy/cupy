@@ -133,7 +133,8 @@ cpdef funcSetAttribute(intptr_t func, int attribute, int value)
 ###############################################################################
 
 cpdef size_t texRefSetAddress(intptr_t texref, intptr_t dptr, size_t nbytes)
-cpdef texRefSetAddress2D(intptr_t texref, intptr_t desc, intptr_t dptr, size_t Pitch)
+cpdef texRefSetAddress2D(intptr_t texref, intptr_t desc, intptr_t dptr,
+                         size_t Pitch)
 cpdef texRefSetAddressMode(intptr_t texref, int dim, int am)
 cpdef texRefSetArray(intptr_t texref, intptr_t array)
 cpdef texRefSetBorderColor(intptr_t texref, pBorderColor)
