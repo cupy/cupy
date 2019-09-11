@@ -58,15 +58,20 @@ def arange(start, stop=None, step=1, dtype=None):
     return ret
 
 
-def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
+def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
+             axis=0):
     """Returns an array with evenly-spaced values within a given interval.
 
     Instead of specifying the step width like :func:`cupy.arange`, this
     function requires the total number of elements specified.
 
     Args:
-        start: Start of the interval.
-        stop: End of the interval.
+        start (scalar or array_like): Starting value(s) of the sequence.
+        stop (scalar or array_like): Ending value(s) of the sequence, unless
+            `endpoint` is set to False. In that case, the sequence consists of
+            all but the last of ``num + 1`` evenly spaced samples, so that
+            `stop` is excluded.  Note that the step size changes when
+            `endpoint` is False.
         num: Number of elements.
         endpoint (bool): If ``True``, the stop value is included as the last
             element. Otherwise, the stop value is omitted.
@@ -74,6 +79,10 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
             Otherwise, it returns only the array.
         dtype: Data type specifier. It is inferred from the start and stop
             arguments by default.
+        axis (int):  The axis in the result to store the samples.  Relevant
+            only if start or stop are array-like.  By default (0), the samples
+            will be along a new axis inserted at the beginning. Use -1 to get
+            an axis at the end.
 
     Returns:
         cupy.ndarray: The 1-D array of ranged values.
@@ -81,31 +90,47 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
     """
     if num < 0:
         raise ValueError('linspace with num<0 is not supported')
+    div = (num - 1) if endpoint else num
 
+    start = cupy.asarray(start) * 1.0
+    stop = cupy.asarray(stop) * 1.0
+
+    dt = cupy.result_type(start, stop, float(num))
     if dtype is None:
         # In actual implementation, only float is used
-        dtype = float
+        dtype = dt
 
-    ret = cupy.empty((num,), dtype=dtype)
-    if num == 0:
-        step = float('nan')
-    elif num == 1:
-        ret.fill(start)
-        step = float('nan')
-    else:
-        div = (num - 1) if endpoint else num
-        step = float(stop - start) / div
-        stop = float(stop)
-
-        if step == 0.0:
-            # for underflow
-            _linspace_ufunc_underflow(start, stop - start, div, ret,
-                                      casting='unsafe')
+    delta = stop - start
+    ret = cupy.arange(0, num, dtype=dt).reshape((-1,) + (1,) * delta.ndim)
+    # In-place multiplication y *= delta/div is faster, but prevents the
+    # multiplicant from overriding what class is produced, and thus prevents,
+    # e.g. use of Quantities, see numpy#7142. Hence, we multiply in place only
+    # for standard scalar types.
+    _mult_inplace = delta.ndim == 0
+    if num > 1:
+        step = delta / div
+        if cupy.any(step == 0):
+            ret /= div
+            if _mult_inplace:
+                ret *= delta
+            else:
+                ret = ret * delta
         else:
-            _linspace_ufunc(start, step, ret, casting='unsafe')
+            if _mult_inplace:
+                ret *= step
+            else:
+                ret = ret * step
 
         if endpoint:
             ret[-1] = stop
+    else:
+        # 0 and 1 item long sequences have an undefined step
+        step = float('nan')
+        # Multiply with delta to allow possible override of output class.
+        ret = ret * delta
+
+    if axis != 0:
+        ret = cupy.moveaxis(ret, 0, axis)
 
     if retstep:
         return ret, step
@@ -317,14 +342,3 @@ _arange_ufunc = core.create_ufunc(
      ('FF->F', 'out0 = in0 + float(i) * in1'),
      ('DD->D', 'out0 = in0 + double(i) * in1')),
     'out0 = in0 + i * in1')
-
-
-_linspace_ufunc = core.create_ufunc(
-    'cupy_linspace',
-    ('dd->d',),
-    'out0 = in0 + i * in1')
-
-_linspace_ufunc_underflow = core.create_ufunc(
-    'cupy_linspace',
-    ('ddd->d',),
-    'out0 = in0 + i * in1 / in2')
