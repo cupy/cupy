@@ -58,6 +58,61 @@ def arange(start, stop=None, step=1, dtype=None):
     return ret
 
 
+
+
+def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
+                     dtype=None):
+    """Returns an array with evenly-spaced values within a given interval.
+
+    Instead of specifying the step width like :func:`cupy.arange`, this
+    function requires the total number of elements specified.
+
+    Args:
+        start: Start of the interval.
+        stop: End of the interval.
+        num: Number of elements.
+        endpoint (bool): If ``True``, the stop value is included as the last
+            element. Otherwise, the stop value is omitted.
+        retstep (bool): If ``True``, this function returns (array, step).
+            Otherwise, it returns only the array.
+        dtype: Data type specifier. It is inferred from the start and stop
+            arguments by default.
+
+    Returns:
+        cupy.ndarray: The 1-D array of ranged values.
+
+    """
+    if dtype is None:
+        # In actual implementation, only float is used
+        dtype = float
+
+    ret = cupy.empty((num,), dtype=dtype)
+    if num == 0:
+        step = float('nan')
+    elif num == 1:
+        ret.fill(start)
+        step = float('nan')
+    else:
+        div = (num - 1) if endpoint else num
+        step = float(stop - start) / div
+        stop = float(stop)
+
+        if step == 0.0:
+            # for underflow
+            _linspace_ufunc_underflow(start, stop - start, div, ret,
+                                      casting='unsafe')
+        else:
+            _linspace_ufunc(start, step, ret, casting='unsafe')
+
+        if endpoint:
+            ret[-1] = stop
+
+    if retstep:
+        return ret, step
+    else:
+        return ret
+
+
 def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
              axis=0):
     """Returns an array with evenly-spaced values within a given interval.
@@ -91,6 +146,9 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
     if num < 0:
         raise ValueError('linspace with num<0 is not supported')
     div = (num - 1) if endpoint else num
+
+    if cupy.isscalar(start) and cupy.isscalar(stop):
+        return _linspace_scalar(start, stop, num, endpoint, retstep, dtype)
 
     start = cupy.asarray(start) * 1.0
     stop = cupy.asarray(stop) * 1.0
@@ -343,3 +401,13 @@ _arange_ufunc = core.create_ufunc(
      ('FF->F', 'out0 = in0 + float(i) * in1'),
      ('DD->D', 'out0 = in0 + double(i) * in1')),
     'out0 = in0 + i * in1')
+
+_linspace_ufunc = core.create_ufunc(
+    'cupy_linspace',
+    ('dd->d',),
+    'out0 = in0 + i * in1')
+
+_linspace_ufunc_underflow = core.create_ufunc(
+    'cupy_linspace',
+    ('ddd->d',),
+    'out0 = in0 + i * in1 / in2')
