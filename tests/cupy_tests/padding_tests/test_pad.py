@@ -10,8 +10,8 @@ from cupy import testing
     *testing.product({
         'array': [numpy.arange(6).reshape([2, 3])],
         'pad_width': [1, [1, 2], [[1, 2], [3, 4]]],
-        'mode': ['constant', 'edge', 'reflect', 'maximum', 'minimum', 'mean',
-                 'symmetric', 'wrap', 'linear_ramp'],
+        'mode': ['constant', 'edge', 'linear_ramp', 'maximum', 'mean',
+                 'minimum', 'reflect', 'symmetric', 'wrap'],
     })
 )
 @testing.gpu

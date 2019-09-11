@@ -1,9 +1,6 @@
-import cupy
 import numpy
-from numpy.lib.index_tricks import ndindex
 
-
-__all__ = ['pad']
+import cupy
 
 
 ###############################################################################
@@ -59,7 +56,7 @@ def _pad_simple(array, pad_width, fill_value=None):
       array(ndarray): Array to grow.
       pad_width(sequence of tuple[int, int]): Pad width on both sides for each
           dimension in `arr`.
-      fill_value(scalar, optional, optional): If provided the padded area is
+      fill_value(scalar, optional): If provided the padded area is
           filled with this value, otherwise the pad area left undefined.
           (Default value = None)
     """
@@ -130,10 +127,11 @@ def _get_linear_ramps(padded, axis, width_pair, end_value_pair):
     """
     edge_pair = _get_edges(padded, axis, width_pair)
 
-    # TODO: implement axis argument to cupy.linspace to avoid need for numpy here
+    # TODO: implement axis argument to cupy.linspace to avoid need for numpy
     left_ramp = cupy.asarray(numpy.linspace(
         start=end_value_pair[0],
-        stop=cupy.asnumpy(edge_pair[0].squeeze(axis)),  # Dimensions is replaced by linspace
+        # squeeze axis replaced by linspace
+        stop=cupy.asnumpy(edge_pair[0].squeeze(axis)),
         num=width_pair[0],
         endpoint=False,
         dtype=padded.dtype,
@@ -142,7 +140,8 @@ def _get_linear_ramps(padded, axis, width_pair, end_value_pair):
 
     right_ramp = cupy.asarray(numpy.linspace(
         start=end_value_pair[1],
-        stop=cupy.asnumpy(edge_pair[1].squeeze(axis)),  # Dimension is replaced by linspace
+        # squeeze axis replaced by linspace
+        stop=cupy.asnumpy(edge_pair[1].squeeze(axis)),
         num=width_pair[1],
         endpoint=False,
         dtype=padded.dtype,
@@ -355,7 +354,7 @@ def _as_pairs(x, ndim, as_index=False):
       x({None, scalar, array-like}): The object to broadcast to the shape
           (`ndim`, 2).
       ndim(int): Number of pairs the broadcasted `x` will have.
-      as_index(bool, optional, optional): If `x` is not None, try to round each
+      as_index(bool, optional): If `x` is not None, try to round each
           element of `x` to an integer (dtype `cupy.intp`) and ensure every
           element is positive. (Default value = False)
 
@@ -419,7 +418,7 @@ def pad(array, pad_width, mode='constant', **kwargs):
           unique pad widths for each axis. ((before, after),) yields same
           before and after pad for each axis. (pad,) or int is a shortcut for
           before = after = pad width for all axes.
-      mode(str or function, optional, optional): One of the following string
+      mode(str or function, optional): One of the following string
           values or a user supplied function.
           'constant' (default)
           Pads with a constant value.
@@ -608,7 +607,7 @@ def pad(array, pad_width, mode='constant', **kwargs):
 
             # compute indices for the iteration axes, and append a trailing
             # ellipsis to prevent 0d arrays decaying to scalars (gh-8642)
-            inds = ndindex(view.shape[:-1])
+            inds = numpy.ndindex(view.shape[:-1])
             inds = (ind + (Ellipsis,) for ind in inds)
             for ind in inds:
                 function(view[ind], pad_width[axis], axis, kwargs)
