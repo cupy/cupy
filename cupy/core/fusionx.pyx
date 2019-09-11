@@ -589,6 +589,9 @@ class _FusionXHistory(object):
         self.param_list_used[pvar] = pvar
         self.param_list.append(pvar)
         return pvar
+    
+    def _get_new_len(self, step, abstracted_shape0, real_shape0):
+        raise NotImplementedError('TODO: implement')
 
     def _get_pvar(self, arg):
         if isinstance(arg, _FusionXVarScalar):
@@ -1212,32 +1215,8 @@ inout_args: {}, cuda_params: {}'''.format(len(inout_args), len(cuda_params), ino
             ret.real_shape = tuple(real_shape)
             return self._append_param(ret, False)
         elif isinstance(key, slice):
-            if pvar.ndim == 0:
-                raise IndexError('too many indices for array.')
-            start = key.start
-            ok = True
-            if start is None:
-                start = 0
-            else:
-                ok &= isinstance(start, int)
-            stop = key.stop
-            if stop is None:
-                stop = ret.abstracted_shape[0]
-            else:
-                ok &= isinstance(stop, int)
-            step = key.step
-            if step is None:
-                step = 1
-            else:
-                ok &= isinstance(step, int)
-            if not ok:
-                raise NotImplementedError('Slice indexing only supports constants.')
-            new_abst_len, new_real_len = self._get_new_len(start, stop, step, real_shape[0])
-            abstracted_shape[0] = new_abst_len
-            real_shape[0] = new_real_len
-            ret.abstracted_shape = tuple(abstracted_shape)
-            ret.real_shape = tuple(real_shape)
-            return self._append_param(ret, False)
+            raise NotImplementedError('Indexing by slice is not supported. Here is the alternative: \
+                make an indexed array by that slice first, and then include that array into the input.')
         else:
             raise TypeError('Indexing by unknown type {}.'.format(type(key)))
 
