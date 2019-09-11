@@ -185,6 +185,7 @@ class _FusionXVarArray(_FusionXVarScalar):
         self.index = index
         # reuse dead variable
         self.new_index = index
+        # set after _compress_pvar
         self.dup = None
         self.ndim = ndim
         self.dtype = dtype
@@ -208,6 +209,13 @@ class _FusionXVarArray(_FusionXVarScalar):
         self.size = None
         self.real_shape = None
         self.ndarray = None
+
+    # for indexed pvar
+    def _is_input_recursive(self):
+        ret = self.is_input
+        if self.indexed_from is not None:
+            ret |= self.indexed_from._is_input_recursive()
+        return ret
 
     def set_size(self):
         self.size = internal.prod(self.real_shape)
@@ -245,14 +253,16 @@ class _FusionXVarArray(_FusionXVarScalar):
 
     def __eq__(self, other):
         if isinstance(other, _FusionXVarArray):
-            return self.index == other.index and self.abstracted_shape == other.abstracted_shape
+            return self.index == other.index and self.abstracted_shape == other.abstracted_shape and \
+                self.broadcasted_from == other.broadcasted_from and self.rotated_from == other.rotated_from and \
+                self.indexed_from == other.indexed_from and self.index_key == other.index_key
         return False
 
     def __hash__(self):
         return hash((self.index, self.abstracted_shape, self.broadcasted_from, self.rotated_from, self.indexed_from, self.index_key))
 
     def _is_readonly(self):
-        return self.broadcasted_from is not None or self.rotated_from is not None or self.indexed_from is not None
+        return self.broadcasted_from is not None or self.rotated_from is not None
 
     def __iadd__(self, other):
         if self._is_readonly():
@@ -523,12 +533,10 @@ class _ShapeConstraints(object):
 class _FusionXHistory(object):
     def __init__(self):
         self.count = 0
-        self.dup_count = dict()
         self.base_abstracted_shape = dict()
-        self.param_list_base_used = set()
         self.param_list_base = list()
         # contains broadcasted params
-        self.param_list_used = set()
+        self.param_list_used = dict()
         self.param_list = list()
         self.shape_constraints = _ShapeConstraints()
         self.op_list = list()
@@ -552,20 +560,17 @@ class _FusionXHistory(object):
     def _init_reduction_submodules(self):
         self.reduction_submodules = list()
 
-    def _append_param(self, pvar, need_malloc=True, force=False):
-        if not force and pvar in self.param_list_used:
-            return
+    def _append_param(self, pvar, need_malloc=True):
+        if pvar in self.param_list_used:
+            return self.param_list_used[pvar]
         if isinstance(pvar, _FusionXVarArray):
-            dup = self.dup_count.get(pvar.index, 0)
-            pvar.dup = dup
-            self.dup_count[pvar.index] = dup + 1
             if need_malloc:
                 self.base_abstracted_shape[pvar.index] = pvar.abstracted_shape
         if need_malloc:
-            self.param_list_base_used.add(pvar)
             self.param_list_base.append(pvar)
-        self.param_list_used.add(pvar)
+        self.param_list_used[pvar] = pvar
         self.param_list.append(pvar)
+        return pvar
 
     def _get_pvar(self, arg):
         if isinstance(arg, _FusionXVarScalar):
@@ -575,8 +580,7 @@ class _FusionXHistory(object):
             index = self._fresh_index()
             dtype = numpy.dtype(type(arg))
             pvar = _FusionXVarScalar(index, dtype, arg)
-            self._append_param(pvar)
-            return pvar
+            return self._append_param(pvar)
         raise TypeError('Unsupported type {}'.format(type(arg)))
 
     def _make_input_param(self, arg, idx):
@@ -586,14 +590,14 @@ class _FusionXHistory(object):
             ret.real_shape = arg.shape
             ret.is_input = True
             ret.input_order = idx
-            self._append_param(ret)
+            ret = self._append_param(ret)
         else:
             index = self._fresh_index()
             dtype = numpy.dtype(type(arg))
             ret = _FusionXVarScalar(index, dtype, None)
             ret.is_input = True
             ret.input_order = idx
-            self._append_param(ret)
+            ret = self._append_param(ret)
         return ret
 
     def _broadcast_to(self, pvar, abstracted_shape, real_shape):
@@ -603,24 +607,23 @@ class _FusionXHistory(object):
         ret.real_shape = real_shape
         ret.broadcasted_from = pvar
         ret.is_input = False
-        self._append_param(ret, False)
-        return ret
+        ret.indexed_from = None
+        return self._append_param(ret, False)
 
     def _make_rotated_param(self, pvar, axis):
         ret = copy.copy(pvar)
         ret.rotated_from = pvar
         ret.axis = axis
         ret.is_input = False
-        self._append_param(ret, False)
-        return ret
+        ret.indexed_from = None
+        return self._append_param(ret, False)
 
     def _make_new_param(self, ndim, dtype, abstracted_shape, real_shape):
         index = self._fresh_index()
         ret = _FusionXVarArray(index, ndim, dtype)
         ret.abstracted_shape = abstracted_shape
         ret.real_shape = real_shape
-        self._append_param(ret)
-        return ret
+        return self._append_param(ret)
 
     def _add_ufunc_op(self, ufunc, in_pvars, out_pvars, in_dtypes, out_dtypes):
         op = _FusionXOp(ufunc, in_pvars, out_pvars, in_dtypes, out_dtypes)
@@ -928,18 +931,12 @@ class _FusionXHistory(object):
                 if pvar.index in index_map:
                     pvar.new_index = index_map[pvar.index]
                 is_input = pvar.is_input
-                is_output = pvar.is_output
                 if pvar.broadcasted_from is not None:
                     is_input |= pvar.broadcasted_from.is_input
-                    is_output |= pvar.broadcasted_from.is_output
                 if pvar.rotated_from is not None:
                     is_input |= pvar.rotated_from.is_input
-                    is_output |= pvar.rotated_from.is_output
-                # TODO: support nested indexing
-                if pvar.indexed_from is not None:
-                    is_input |= pvar.indexed_from.is_input
-                    is_output |= pvar.indexed_from.is_output
-                if not is_input and not is_output and get_last_op(pvar) <= op_index:
+                is_input |= pvar._is_input_recursive()
+                if not is_input and get_last_op(pvar) <= op_index:
                     # pvar becomes dead
                     key = self._get_pvar_meminfo(pvar)
                     if key in dead:
@@ -962,44 +959,48 @@ class _FusionXHistory(object):
                         pvar.new_index = dead[key].pop(0)
                     index_map[pvar.index] = pvar.new_index
                     alive.add(pvar.new_index)
+        # update index
         for pvar in self.param_list:
             if isinstance(pvar, _FusionXVarArray):
                 pvar.index = pvar.new_index
         param_list = list()
         param_list_base = list()
-        param_list_used = set()
-        # representative
-        use = dict()
+        param_list_used = dict()
         dup_count = dict()
+        # set dup
         for pvar in self.param_list:
             if not isinstance(pvar, _FusionXVarArray):
                 if pvar in param_list_used:
                     continue
-                use[pvar] = pvar
-                param_list_used.add(pvar)
+                param_list_used[pvar] = pvar
                 param_list.append(pvar)
                 param_list_base.append(pvar)
                 continue
             if pvar in param_list_used:
                 if pvar.is_output:
-                    use[pvar].is_output = True
+                    param_list_used[pvar].is_output = True
                 continue
             dup = dup_count.get(pvar.index, 0)
-            pvar.dup = dup
             dup_count[pvar.index] = dup + 1
-            use[pvar] = pvar
-            param_list_used.add(pvar)
+            pvar.dup = dup
+            param_list_used[pvar] = pvar
             param_list.append(pvar)
-            if not pvar._is_readonly():
+            if not pvar._is_readonly() and pvar.indexed_from is None:
                 param_list_base.append(pvar)
         self.param_list = param_list
         self.param_list_base = param_list_base
 
-        # rewrite pvars for reduction op
-        # because code is generated on execution
-        for op in self.reduction_op_list:
-            op.in_pvar = use[op.in_pvar]
-            op.out_pvar = use[op.out_pvar]
+        for op in self.op_list:
+            if isinstance(op, _FusionXOp):
+                for idx, pvar in enumerate(op.in_pvars):
+                    op.in_pvars[idx] = param_list_used[pvar]
+                for idx, pvar in enumerate(op.out_pvars):
+                    op.out_pvars[idx] = param_list_used[pvar]
+            elif isinstance(op, _FusionXReductionOp):
+                op.in_pvar = param_list_used[op.in_pvar]
+                op.out_pvar = param_list_used[op.out_pvar]
+            else:
+                assert False
 
     def _get_fusionx_info(self, func, args, name):
         self.name = name
@@ -1014,9 +1015,11 @@ class _FusionXHistory(object):
             for idx, pvar in enumerate(return_value):
                 pvar.is_output = True
                 pvar.output_order = idx
+                self.last_op[pvar.index] = len(self.op_list)
         elif isinstance(return_value, _FusionXVarArray):
             return_value.is_output = True
             return_value.output_order = 0
+            self.last_op[return_value.index] = len(self.op_list)
         elif return_value is None:
             no_return = True
         else:
@@ -1025,7 +1028,7 @@ class _FusionXHistory(object):
         self.return_size = return_size
         self.no_return = no_return
 
-        # self._compress_pvars()
+        self._compress_pvars()
 
         merged_op_list = list()
         prev = None
@@ -1057,7 +1060,6 @@ class _FusionXHistory(object):
         self.ufunc_submodule_code = ufunc_submodule_code
         self.cuda_body = '    __syncthreads();'.join([op.code() for op in merged_op_list])
         # print(self.cuda_body)
-
         return self, self.shape_constraints
 
     def _reset_vals(self):
@@ -1139,41 +1141,65 @@ inout_args: {}, cuda_params: {}'''.format(len(inout_args), len(cuda_params), ino
 
     # Basic indexing
     def _make_indexed_param(self, pvar, key):
+        assert not pvar._is_readonly()
         ret = copy.copy(pvar)
         ret.indexed_from = pvar
         ret.index_key = key
+        ret.in_input = False
         abstracted_shape = list(pvar.abstracted_shape)
         real_shape = list(pvar.real_shape)
         if isinstance(key, int):
             if pvar.ndim == 0:
-                raise ValueError('scalar object is not subscriptable')
+                raise IndexError('too many indices for array.')
             ret.ndim -= 1
             abstracted_shape.pop(0)
             real_shape.pop(0)
             ret.abstracted_shape = tuple(abstracted_shape)
             ret.real_shape = tuple(real_shape)
-            ret.is_input = False
-            self._append_param(ret, False, force=True)
-            return ret
+            return self._append_param(ret, False)
         elif isinstance(key, tuple):
             # TODO: support indexing when slice and int are mixed
             for k in key:
                 if not isinstance(k, int):
-                    raise ValueError('Cannot subscript by type {}.'.format(type(k)))
+                    raise IndexError('Cannot subscript by type {}.'.format(type(k)))
             if len(key) > pvar.ndim:
-                raise ValueError('Invalid subscription key {}.'.format(key))
+                raise IndexError('too many indices for array.')
             ret.ndim -= len(key)
             for _ in range(len(key)):
                 abstracted_shape.pop(0)
                 real_shape.pop(0)
             ret.abstracted_shape = tuple(abstracted_shape)
             ret.real_shape = tuple(real_shape)
-            ret.is_input = False
-            self._append_param(ret, False)
-            return ret
+            return self._append_param(ret, False)
+        elif isinstance(key, slice):
+            if pvar.ndim == 0:
+                raise IndexError('too many indices for array.')
+            start = key.start
+            ok = True
+            if start is None:
+                start = 0
+            else:
+                ok &= isinstance(start, int)
+            stop = key.stop
+            if stop is None:
+                stop = ret.abstracted_shape[0]
+            else:
+                ok &= isinstance(stop, int)
+            step = key.step
+            if step is None:
+                step = 1
+            else:
+                ok &= isinstance(step, int)
+            if not ok:
+                raise NotImplementedError('Slice indexing only supports constants.')
+            new_abst_len, new_real_len = self._get_new_len(start, stop, step, real_shape[0])
+            abstracted_shape[0] = new_abst_len
+            real_shape[0] = new_real_len
+            ret.abstracted_shape = tuple(abstracted_shape)
+            ret.real_shape = tuple(real_shape)
+            return self._append_param(ret, False)
         else:
-            # TODO
-            raise NotImplementedError('Subscription by slice is not implemented.')
+            raise TypeError('Indexing by unknown type {}.'.format(type(key)))
 
 cpdef ndarray _reduce_dims_core(ndarray array):
     cdef vector.vector[Py_ssize_t] shape, strides, new_shape, new_strides
