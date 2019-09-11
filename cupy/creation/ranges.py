@@ -58,8 +58,6 @@ def arange(start, stop=None, step=1, dtype=None):
     return ret
 
 
-
-
 def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
                      dtype=None):
     """Returns an array with evenly-spaced values within a given interval.
@@ -159,25 +157,24 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
         dtype = dt
 
     delta = stop - start
-    ret = cupy.arange(0, num, dtype=dt).reshape((-1,) + (1,) * delta.ndim)
+
+    # ret = cupy.arange(0, num, dtype=dt).reshape((-1,) + (1,) * delta.ndim)
+    ret = cupy.empty((num,), dtype=dt)
+    _arange_ufunc(0.0, 1.0, ret, dtype=dt)
+    ret = ret.reshape((-1,) + (1,) * delta.ndim)
+
     # In-place multiplication y *= delta/div is faster, but prevents the
     # multiplicant from overriding what class is produced, and thus prevents,
     # e.g. use of Quantities, see numpy#7142. Hence, we multiply in place only
     # for standard scalar types.
-    _mult_inplace = delta.ndim == 0
     if num > 1:
         step = delta / div
         if cupy.any(step == 0):
+            # Special handling for denormal numbers, numpy#5437
             ret /= div
-            if _mult_inplace:
-                ret *= delta
-            else:
-                ret = ret * delta
+            ret = ret * delta
         else:
-            if _mult_inplace:
-                ret *= step
-            else:
-                ret = ret * step
+            ret = ret * step
     else:
         # 0 and 1 item long sequences have an undefined step
         step = float('nan')
