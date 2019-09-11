@@ -145,6 +145,34 @@ class TestRanges(unittest.TestCase):
             x /= 2
         return xp.linspace(0., x, 10, dtype=float)
 
+    @testing.with_requires('numpy>=1.16')
+    @testing.numpy_cupy_array_equal()
+    def test_linspace_array_start_stop(self, xp):
+        start = xp.array([-120, 120], dtype="int8")
+        stop = xp.array([100, -100], dtype="int8")
+        return xp.linspace(start, stop, num=50, dtype=float)
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.numpy_cupy_array_equal()
+    def test_linspace_mixed_start_stop(self, xp):
+        start = 0.0
+        stop = xp.array([100, -100], dtype="int8")
+        return xp.linspace(start, stop, num=50)
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.numpy_cupy_array_equal()
+    def test_linspace_mixed_start_stop2(self, xp):
+        start = xp.array([-120, 120], dtype="int8")
+        stop = 0
+        return xp.linspace(start, stop, num=50)
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.numpy_cupy_array_equal()
+    def test_linspace_array_start_stop_axis1(self, xp):
+        start = xp.array([-120, 120], dtype="int8")
+        stop = xp.array([100, -100], dtype="int8")
+        return xp.linspace(start, stop, num=50, dtype=float, axis=1)
+
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_logspace(self, xp, dtype):
