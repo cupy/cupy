@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import functools
 import six
 import string
@@ -26,7 +27,7 @@ def _call_ufunc(fusion_op, *args, **kwargs):
 def _call_reduction(fusion_op, *args, **kwargs):
     return _thread_local.historyx.call_reduction(fusion_op, args, kwargs)
 
-# function args
+# 関数の引数の宣言で使う変数名。__repr__でも使われる
 def _get_pvar_param_name(pvar):
     if isinstance(pvar, _FusionXVarArray):
         return 'a{}_{}'.format(pvar.index, pvar.dup)
@@ -35,7 +36,7 @@ def _get_pvar_param_name(pvar):
     else:
         raise TypeError('Unknown type {}.'.format(type(pvar)))
 
-# inside function
+# 関数内で各スレッドが扱うローカルな変数に使う変数名
 def _get_pvar_decl_name(pvar):
     if isinstance(pvar, _FusionXVarArray):
         return 'v{}_{}'.format(pvar.index, pvar.dup)
@@ -53,7 +54,9 @@ class _FusionXVarScalar(object):
         self.dtype = dtype
         self.ndim = -1
         self.is_input = False
+        # outputにはできない
         self.input_order = None
+        # 実はconst_value is Noneとis_inputは同じ
         self.const_value = const_value
 
     def reset(self):
@@ -67,6 +70,7 @@ class _FusionXVarScalar(object):
         return False
 
     def __hash__(self):
+        # indexが同じなら_FusionXVarScalarは区別可能
         return self.index
 
     def __repr__(self):
@@ -182,21 +186,26 @@ class _FusionXVarScalar(object):
 
 class _FusionXVarArray(_FusionXVarScalar):
     def __init__(self, index, ndim, dtype, init_abstracted_shape=False):
+        # broadcast, rotate, subscriptしてできる変数間は同じindexを共有する
         self.index = index
-        # reuse dead variable
+        # _compress_pvarsのときにindexがnew_indexで上書きされる
         self.new_index = index
-        # set after _compress_pvar
+        # _compress_pvarsのときに設定される
+        # broadcast, rotate, subscriptでできる変数用のidentifier
         self.dup = None
         self.ndim = ndim
         self.dtype = dtype
         self.is_input = False
+        # 入力の何番目か。input_order is not Noneとis_inputは同じ
         self.input_order = None
         self.is_output = False
         self.output_order = None
         self.broadcasted_from = None
         self.rotated_from = None
+        # どの軸でreduceしたか
         self.axis = None
         self.indexed_from = None
+        # どのkeyでsubscriptしたか。int, tuple, sliceのみ対応
         self.index_key = None
         self.abstracted_shape = tuple('v{}.{}'.format(self.index, i) for i in range(self.ndim)) if init_abstracted_shape else None
 
@@ -210,16 +219,18 @@ class _FusionXVarArray(_FusionXVarScalar):
         self.real_shape = None
         self.ndarray = None
 
-    # for indexed pvar
+    # _compress_pvarsのときに、その変数のindexが入力に関わるかを判定。そのままindexで判定したほうが楽か
     def _is_input_recursive(self):
         ret = self.is_input
         if self.indexed_from is not None:
             ret |= self.indexed_from._is_input_recursive()
         return ret
 
+    # exec内_set_real_shapeのときに呼ばれる
     def set_size(self):
         self.size = internal.prod(self.real_shape)
 
+    # これもexec内
     def rotate(self):
         axis_permutes = [self.axis]
         for i in range(self.ndim):
@@ -228,6 +239,7 @@ class _FusionXVarArray(_FusionXVarScalar):
         axis_permutes = tuple(axis_permutes)
         self.ndarray = _manipulation._transpose(self.rotated_from.ndarray, axis_permutes)
 
+    # これもexec内
     def subscript(self):
         if self.ndarray is not None:
             return
@@ -235,7 +247,6 @@ class _FusionXVarArray(_FusionXVarScalar):
             self.indexed_from.subscript()
             self.ndarray = self.indexed_from.ndarray[self.index_key]
 
-    # for checking validity of inplace-op
     def _data_base(self):
         if self.indexed_from is not None:
             return self.indexed_from._data_base()
@@ -365,6 +376,7 @@ class _FusionXOp(object):
         self.out_pvars = out_pvars
         self.in_dtypes = in_dtypes
         self.out_dtypes = out_dtypes
+        # in_pvars + out_pvarsの全変数はこのabst_shapeになっているはず
         self.abstracted_shape = out_pvars[0].abstracted_shape
 
     def __repr__(self):
@@ -461,6 +473,7 @@ class _FusionXReductionOp(object):
     def __repr__(self):
         return '<_FusionXReductionOp name={}, in_pvar={}, out_pvar={}>'.format(self.func.name, self.in_pvar, self.out_pvar)
 
+    # reductionのsubmoduleのみ実行時に追加される(reduce-dims後のndarrayのshapeに依存するので)
     def _add_to_reduction_submodules(self, target):
         target.reduction_submodules.append(reduction_code_template(self.reduction_index, self.in_pvar, self.out_pvar, self.reduce_expr, self.reduce_identity))
 
@@ -474,6 +487,7 @@ class _FusionXReductionOp(object):
             out_ind=_get_indexer_name(self.out_pvar),
             reduction_index = self.reduction_index)
 
+# 同じabst_shapeのelementwise演算をmergeする
 class _FusionXMergedOp(_FusionXOp):
     def __init__(self):
         self.in_pvars = list()
@@ -533,9 +547,12 @@ class _ShapeConstraints(object):
 class _FusionXHistory(object):
     def __init__(self):
         self.count = 0
+        # base_abst_shape[index] = broadcast, rotate, subscriptする前のshape
         self.base_abstracted_shape = dict()
+        # input argsの割り当て、mallocが必要な変数のリスト
         self.param_list_base = list()
-        # contains broadcasted params
+        # param_list_used[pvar] = pvarの形で登録する。同一とみなせるpvarを一つで代用する
+        # param_listに含まれるpvarの集合とparam_list_usedに含まれるpvarの集合は同一
         self.param_list_used = dict()
         self.param_list = list()
         self.shape_constraints = _ShapeConstraints()
@@ -545,9 +562,8 @@ class _FusionXHistory(object):
 
         self.ufunc_submodules = dict()
         self.reduction_submodules = list()
+        # reduction時のblock_stridesはコードに埋め込むのではなく関数の引数として渡す
         self.block_strides = list()
-
-        self.cuda_body = None
 
     def __repr__(self):
         return '<_FusionXHistory> op_list={}, param_list={}, shape_constraints={}'.format(self.op_list, self.param_list, self.shape_constraints)
@@ -557,9 +573,11 @@ class _FusionXHistory(object):
         self.count += 1
         return ret
 
+    # exec時に前のexec時に生成したreduction_submoduleを消す(reduce_dimsに依存しているので異なる可能性がある)
     def _init_reduction_submodules(self):
         self.reduction_submodules = list()
 
+    # 新しくparamを生成する場合は必ずこの関数が介される。pvarがすでに生成されているものの場合、それを代用
     def _append_param(self, pvar, need_malloc=True):
         if pvar in self.param_list_used:
             return self.param_list_used[pvar]
@@ -606,6 +624,7 @@ class _FusionXHistory(object):
         ret.abstracted_shape = abstracted_shape
         ret.real_shape = real_shape
         ret.broadcasted_from = pvar
+        # is_inputであるかどうか、broadcasted(rotated/indexed)_fromがNoneかどうかによってndarrayの割当方法が異なる
         ret.is_input = False
         ret.indexed_from = None
         return self._append_param(ret, False)
@@ -630,6 +649,7 @@ class _FusionXHistory(object):
         self.op_list.append(op)
 
     def _add_reduction_op(self, func, in_pvar, out_pvar, axis, op):
+        # この時点でaxisを正規化。範囲外チェックはやっていない
         axis %= in_pvar.ndim
         if axis != 0:
             in_pvar = self._make_rotated_param(in_pvar, axis)
@@ -726,6 +746,8 @@ class _FusionXHistory(object):
         out_abstracted_shape = tuple(out_abstracted_shape)
         out_real_shape = tuple(out_real_shape)
 
+        # ここまででout_abst_shape, out_real_shapeが決定したので、各変数にbroadcastが必要かを次に調べる
+        # broadcastが必要な場合、新たにpvarを作成
         for idx, in_pvar in enumerate(in_pvars):
             cur_ndim = in_pvar.ndim
             if cur_ndim == -1:
@@ -743,6 +765,7 @@ class _FusionXHistory(object):
             if is_necessary:
                 in_pvars[idx] = self._broadcast_to(in_pvar, out_abstracted_shape, out_real_shape)
 
+        # 生存解析用
         op_index = len(self.op_list)
         for in_pvar in in_pvars:
             self.last_op[in_pvar.index] = op_index
@@ -770,6 +793,7 @@ class _FusionXHistory(object):
                                 out_dtypes[i].char, out_pvars[i].dtype.char))
                 in_params = [(in_dtypes[i], 'in{}'.format(i)) for i, _ in enumerate(in_pvars)]
                 out_params = [(out_dtypes[i], 'out{}'.format(i)) for i, _ in enumerate(out_pvars)]
+                # in_params, out_paramsは完全に_Submoduleのための変数
                 subm = _Submodule(ufunc, in_params, out_params, op)
                 self.ufunc_submodules[subm.key()] = subm
                 self._add_ufunc_op(ufunc, in_pvars, out_pvars, in_dtypes, out_dtypes)
@@ -785,6 +809,7 @@ class _FusionXHistory(object):
             raise ValueError('Cannot reduce {}.'.format(type(arg)))
         axis = kwargs.pop('axis', None)
         dtype = kwargs.pop('dtype', None)
+        # 結局keepdimsはコーディングしたけどチェックしていない
         keepdims = kwargs.pop('keepdims', False)
 
         if axis is None and not keepdims:
@@ -812,6 +837,7 @@ class _FusionXHistory(object):
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
+        # 生存解析用
         op_index = len(self.op_list)
         self.last_op[arg.index] = op_index
 
@@ -850,6 +876,7 @@ class _FusionXHistory(object):
             out = tuple(out)
         return out
 
+    # 関数の引数はこの戻り値の配列で決定される(順序もこの順)
     def _get_inout_args(self, args):
         params = list()
         indexers = list()
@@ -879,6 +906,7 @@ class _FusionXHistory(object):
 
         return params + indexers + block_strides, kern_size
 
+    # 関数の引数の文字列
     def _get_cuda_params(self):
         params = list()
         indexers = list()
@@ -904,6 +932,7 @@ class _FusionXHistory(object):
 
         return params + indexers + block_strides
 
+    # このkeyが同じなら同じメモリを割り当てて良い
     def _get_pvar_meminfo(self, pvar):
         return (self.base_abstracted_shape[pvar.index], pvar.dtype)
 
@@ -914,6 +943,8 @@ class _FusionXHistory(object):
         # dead[pvar_meminfo] = [indexes]
         dead = dict()
         alive = set()
+        # index_map[index] = new_index
+        # broadcast/rotate/subscriptした後/する前の変数のnew_indexが変わったら他もまとめて変える必要があるため
         index_map = dict()
         for op_index, op in enumerate(self.op_list):
             if isinstance(op, _FusionXOp):
@@ -931,6 +962,8 @@ class _FusionXHistory(object):
                 if pvar.index in index_map:
                     pvar.new_index = index_map[pvar.index]
                 is_input = pvar.is_input
+                # 入力の変数は死んだらダメ
+                # 出力の変数もダメだけど、last_opの値的に絶対に死なない
                 if pvar.broadcasted_from is not None:
                     is_input |= pvar.broadcasted_from.is_input
                 if pvar.rotated_from is not None:
@@ -990,6 +1023,8 @@ class _FusionXHistory(object):
         self.param_list = param_list
         self.param_list_base = param_list_base
 
+        # param_listのdupを全部更新しても、op内のpvarのdupが更新されているとは限らない
+        # 実際、pvar BのindexをAのindexに揃えた場合、B.dupはNoneのままである。これを解消させるのが以下
         for op in self.op_list:
             if isinstance(op, _FusionXOp):
                 for idx, pvar in enumerate(op.in_pvars):
@@ -1015,6 +1050,7 @@ class _FusionXHistory(object):
             for idx, pvar in enumerate(return_value):
                 pvar.is_output = True
                 pvar.output_order = idx
+                # outputを死なせないために
                 self.last_op[pvar.index] = len(self.op_list)
         elif isinstance(return_value, _FusionXVarArray):
             return_value.is_output = True
@@ -1053,6 +1089,7 @@ class _FusionXHistory(object):
         if merged.size() > 0:
             merged_op_list.append(merged)
 
+        # ufuncのsubmoduleは実行ごとに変化しないためこの時点で生成
         ufunc_submodule_code = ''
         for submodule in self.ufunc_submodules.values():
             ufunc_submodule_code += submodule.code()
@@ -1119,6 +1156,7 @@ class _FusionXHistory(object):
         # TODO: put everything into single loop
         self._reset_vals()
         self._set_real_shape(shape_map)
+        # 以下から_rotate()までndarrayの割当。順序はめちゃくちゃ重要
         self._set_ndarray(args)
         self._subscript()
         self._broadcast()
@@ -1145,6 +1183,8 @@ inout_args: {}, cuda_params: {}'''.format(len(inout_args), len(cuda_params), ino
         ret = copy.copy(pvar)
         ret.indexed_from = pvar
         ret.index_key = key
+        # 再掲だがis_inputかどうかによってndarrayの割当方法が異なる。これはsubscriptによってndarrayを割り当てるのでFalse
+        # indexed_fromがbroadcasted/rotatedとなることはないので、ret.broadcasted_form = Noneなどは不要
         ret.in_input = False
         abstracted_shape = list(pvar.abstracted_shape)
         real_shape = list(pvar.real_shape)
