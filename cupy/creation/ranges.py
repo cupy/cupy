@@ -120,22 +120,23 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
                 ret *= step
             else:
                 ret = ret * step
-
-        if endpoint:
-            ret[-1] = stop
     else:
         # 0 and 1 item long sequences have an undefined step
         step = float('nan')
         # Multiply with delta to allow possible override of output class.
         ret = ret * delta
 
+    ret += start
+    if endpoint and num > 1:
+        ret[-1] = stop
+
     if axis != 0:
         ret = cupy.moveaxis(ret, 0, axis)
 
     if retstep:
-        return ret, step
+        return ret.astype(dtype, copy=False), step
     else:
-        return ret
+        return ret.astype(dtype, copy=False)
 
 
 def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
