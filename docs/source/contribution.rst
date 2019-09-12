@@ -261,6 +261,16 @@ Please note the followings when writing the document.
   original one, users should explicitly describe only what is implemented in
   the document.
 
+For changes that add new or modify existing Cython files, please ensure the pointer types obey the following rules (`GH-1913 <https://github.com/cupy/cupy/issues/1913>`_).
+
+* Pointers should be ``intptr_t``.
+* Memory sizes should be ``size_t``.
+* Memory offsets should be ``ptrdiff_t``.
+
+.. note::
+
+   We are incrementally enforcing the above rules.
+   Some existing codes may not be complying, but all new code contributions should follow the above rules.
 
 .. _testing-guide:
 
