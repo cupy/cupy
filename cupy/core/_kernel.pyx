@@ -24,7 +24,7 @@ from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
-from cupy import misc
+from cupy.core._memory_range cimport may_share_bounds
 
 
 _thread_local = threading.local()
@@ -366,7 +366,7 @@ cdef list _copy_in_args_if_needed(list in_args, list out_args):
         if isinstance(inp, ndarray):
             for j in range(len(out_args)):
                 out = out_args[j]
-                if inp is not out and misc.may_share_memory(inp, out):
+                if inp is not out and may_share_bounds(inp, out):
                     inp = inp.copy()
                     break
         ret.append(inp)

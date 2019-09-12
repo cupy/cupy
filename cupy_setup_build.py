@@ -34,6 +34,7 @@ MODULES = [
         'file': [
             'cupy.core._dtype',
             'cupy.core._kernel',
+            'cupy.core._memory_range',
             'cupy.core._routines_indexing',
             'cupy.core._routines_logic',
             'cupy.core._routines_manipulation',
