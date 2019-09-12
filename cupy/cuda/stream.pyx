@@ -177,10 +177,11 @@ class Stream(object):
             self.ptr = runtime.streamCreate()
 
     def __del__(self):
+        cdef void* current_ptr
         if self.ptr:
             tls = _StreamThreadLocal.get()
-            current_ptr = <intptr_t>tls.get_current_stream_ptr()
-            if self.ptr == current_ptr:
+            current_ptr = tls.get_current_stream_ptr()
+            if <void*>self.ptr == current_ptr:
                 tls.set_current_stream(self.null)
             runtime.streamDestroy(self.ptr)
         # Note that we can not release memory pool of the stream held in CPU

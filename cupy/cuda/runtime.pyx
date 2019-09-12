@@ -590,9 +590,9 @@ cdef _ensure_context():
 
     See discussion on https://github.com/cupy/cupy/issues/72 for details.
     """
-    cdef intptr_t status
-    status = <intptr_t>cpython.PyThread_get_key_value(_context_initialized)
-    if status == 0:
+    cdef void* status = NULL
+    status = cpython.PyThread_get_key_value(_context_initialized)
+    if status == NULL:
         # Call Runtime API to establish context on this host thread.
         memGetInfo()
         cpython.PyThread_set_key_value(_context_initialized, <void *>1)

@@ -19,6 +19,7 @@ from libcpp cimport algorithm
 from cupy.cuda import runtime
 
 from cupy.cuda cimport device
+from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport memory_hook
 from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
@@ -158,15 +159,15 @@ cdef class ManagedMemory(BaseMemory):
         runtime.memPrefetchAsync(self.ptr, self.size, self.device_id,
                                  stream.ptr)
 
-    def advise(self, int advise, device.Device dev):
+    def advise(self, int advise, device_mod.Device device):
         """(experimental) Advise about the usage of this memory.
 
         Args:
             advics (int): Advise to be applied for this memory.
-            dev (cupy.cuda.Device): Device to apply the advice for.
+            device (cupy.cuda.Device): Device to apply the advice for.
 
         """
-        runtime.memAdvise(self.ptr, self.size, advise, dev.id)
+        runtime.memAdvise(self.ptr, self.size, advise, device.id)
 
 
 cdef set _peer_access_checked = set()
