@@ -815,6 +815,9 @@ class _FusionXHistory(object):
         axis = kwargs.pop('axis', None)
         dtype = kwargs.pop('dtype', None)
         keepdims = kwargs.pop('keepdims', False)
+        out_pvar = kwargs.pop('out', None)
+        if kwargs:
+            raise ValueError('Unknown kwargs: {}.'.format(kwargs))
         if keepdims:
             raise NotImplementedError('keepdims is not supported.')
 
@@ -851,7 +854,11 @@ class _FusionXHistory(object):
                     else:
                         continue
                 out_dtype = numpy.dtype(out_dtype)
-                out_pvar = self._make_new_param(out_ndim, out_dtype, out_abstracted_shape, out_real_shape)
+                if out_pvar is not None:
+                    if out_pvar.real_shape != out_real_shape:
+                        raise ValueError('Shape of specified output variable is not consistent with reduced shape.')
+                else:
+                    out_pvar = self._make_new_param(out_ndim, out_dtype, out_abstracted_shape, out_real_shape)
                 self._add_reduction_op(fusion_op, arg, out_pvar, axis, op)
                 return out_pvar
         raise TypeError('No viable type cast of {}, arg_type={}'.format(
