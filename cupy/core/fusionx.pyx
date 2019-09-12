@@ -232,9 +232,9 @@ class _FusionXVarArray(_FusionXVarScalar):
 
     # これもexec内
     def rotate(self):
-        axis_permutes = [self.axis]
+        axis_permutes = list(self.axis)
         for i in range(self.ndim):
-            if i != self.axis:
+            if i not in self.axis:
                 axis_permutes.append(i)
         axis_permutes = tuple(axis_permutes)
         self.ndarray = _manipulation._transpose(self.rotated_from.ndarray, axis_permutes)
@@ -653,8 +653,10 @@ class _FusionXHistory(object):
 
     def _add_reduction_op(self, func, in_pvar, out_pvar, axis, op):
         # この時点でaxisを正規化。範囲外チェックはやっていない
-        axis %= in_pvar.ndim
-        if axis != 0:
+        if axis is None or axis == tuple(range(len(axis))):
+            pass
+        else:
+            # in_pvar.ndimであまりをとるべきだけどやってない
             in_pvar = self._make_rotated_param(in_pvar, axis)
         op = _FusionXReductionOp(func, in_pvar, out_pvar, op, len(self.reduction_op_list))
         self.op_list.append(op)
@@ -812,27 +814,21 @@ class _FusionXHistory(object):
             raise ValueError('Cannot reduce {}.'.format(type(arg)))
         axis = kwargs.pop('axis', None)
         dtype = kwargs.pop('dtype', None)
-        # 結局keepdimsはコーディングしたけどチェックしていない
         keepdims = kwargs.pop('keepdims', False)
+        if keepdims:
+            raise NotImplementedError('keepdims is not supported.')
 
         if axis is None and not keepdims:
-            axis = 0
             out_abstracted_shape = ()
             out_real_shape = ()
         else:
             out_abstracted_shape = list(arg.abstracted_shape)
             out_real_shape = list(arg.real_shape)
-            if keepdims:
-                reduce_axis = [axis] if axis else list(range(arg.ndim))
-                for i in reduce_axis:
-                    out_abstracted_shape[i] = '1'
-                    out_real_shape[i] = 1
-                if axis is None:
-                    axis = 0
-            else:
-                out_abstracted_shape.pop(axis)
-                out_real_shape.pop(axis)
-
+            if isinstance(axis, int):
+                axis = (axis,)
+            for a in sorted(axis)[::-1]:
+                out_abstracted_shape.pop(a)
+                out_real_shape.pop(a)
 
             out_abstracted_shape = tuple(out_abstracted_shape)
             out_real_shape = tuple(out_real_shape)
