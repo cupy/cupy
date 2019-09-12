@@ -563,6 +563,8 @@ class _FusionXHistory(object):
         self.ufunc_submodules = dict()
         # reduce_dims後のshapeがkey
         self.full_submodules = dict()
+        # reduce_dims後のshapeがkey
+        self.cuda_params_memo = dict()
         # reduction時のblock_stridesはコードに埋め込むのではなく関数の引数として渡す
         self.block_strides = list()
 
@@ -914,7 +916,9 @@ class _FusionXHistory(object):
         return params + indexers + block_strides, kern_size
 
     # 関数の引数の文字列
-    def _get_cuda_params(self):
+    def _get_cuda_params(self, key):
+        if key in self.cuda_params_memo:
+            return self.cuda_params_memo[key]
         params = list()
         indexers = list()
         block_strides = list()
@@ -937,7 +941,9 @@ class _FusionXHistory(object):
         for i in range(len(self.reduction_op_list)):
             block_strides.append('int block_stride{}'.format(i))
 
-        return params + indexers + block_strides
+        ret = params + indexers + block_strides
+        self.cuda_params_memo[key] = ret
+        return ret
 
     # このkeyが同じなら同じメモリを割り当てて良い
     def _get_pvar_meminfo(self, pvar):
@@ -1189,7 +1195,7 @@ class _FusionXHistory(object):
         self._append_reduction_submodules(key)
         inout_args, kern_size = self._get_inout_args(args)
 
-        cuda_params = self._get_cuda_params()
+        cuda_params = self._get_cuda_params(key)
         if len(inout_args) != len(cuda_params):
             raise AssertionError('''Length of inout_args is not consistent with length of cuda_params.
 len(inout_args): {}, len(cuda_params): {}
