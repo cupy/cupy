@@ -1407,7 +1407,7 @@ def reduction_code_template(reduction_index, in_pvar, out_pvar, reduce_expr, ide
 
 __device__ void reduce${reduction_index}(CArray<${in_type}, ${in_ndim}> in_arr, CArray<${out_type}, ${out_ndim}> out_arr,
         CIndexer<${in_ndim}> in_ind, CIndexer<${out_ndim}> out_ind, int block_stride) {
-    extern __shared__ ${out_type} sdata_${out_type_char}${reduction_index}[${block_size}];
+    __shared__ ${out_type} sdata_${out_type_char}${reduction_index}[${block_size}];
     unsigned int tid = threadIdx.x;
     int _J = tid >> __popc(block_stride - 1);
     ptrdiff_t _j = (ptrdiff_t)_J * out_ind.size();
