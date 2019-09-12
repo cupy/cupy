@@ -836,5 +836,64 @@ class TestBasicIndexingByTuple(unittest.TestCase):
             return x + x[0, 1] + x[1, 0] + x[0] + x[1]
         return f(a)
 
+class TestReductionMultiAxes(unittest.TestCase):
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_reduction(self, xp, dtype):
+        a = xp.arange(16).reshape(2, 2, 2, 2)
+        @cp.fusex()
+        def f(x):
+            return xp.sum(x, axis=(0, 1))
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_reduction2(self, xp, dtype):
+        a = xp.arange(16).reshape(2, 2, 2, 2)
+        @cp.fusex()
+        def f(x):
+            return xp.sum(x, axis=(1, 2))
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_reduction3(self, xp, dtype):
+        a = xp.arange(16).reshape(2, 2, 2, 2)
+        @cp.fusex()
+        def f(x):
+            return xp.sum(x, axis=(3, 1))
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_reduction4(self, xp, dtype):
+        a = xp.arange(16).reshape(2, 2, 2, 2)
+        @cp.fusex()
+        def f(x):
+            return xp.sum(x, axis=(2, 1, 3))
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_reduction5(self, xp, dtype):
+        a = xp.arange(16).reshape(2, 2, 2, 2)
+        @cp.fusex()
+        def f(x):
+            return xp.sum(x, axis=(0, 1, 2, 3))
+        return f(a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_multi_reduction(self, xp, dtype):
+        a = xp.arange(16).reshape(2, 2, 2, 2)
+        @cp.fusex()
+        def f(x):
+            x += 1
+            y = xp.sum(x, axis=(0, 2))
+            y *= 2
+            z = xp.sum(y, axis=(1, 0))
+            return z + 3
+        return f(a)
+
 if __name__ == '__main__':
     unittest.main(failfast=True)
