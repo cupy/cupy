@@ -379,6 +379,10 @@ class _FusionXOp(object):
         # in_pvars + out_pvarsの全変数はこのabst_shapeになっているはず
         self.abstracted_shape = out_pvars[0].abstracted_shape
 
+        for pvar in self.in_pvars + self.out_pvars:
+            if isinstance(pvar, _FusionXVarArray):
+                _thread_local.historyx.abstracted_shape_uf.unite(pvar.abstracted_shape, self.abstracted_shape)
+
     def __repr__(self):
         in_pvars = ', '.join([_get_pvar_param_name(a) for a in self.in_pvars])
         out_pvars = ', '.join([_get_pvar_param_name(a) for a in self.out_pvars])
@@ -544,6 +548,34 @@ class _ShapeConstraints(object):
     def __repr__(self):
         return '<_ShapeConstraints eq_constraints={}, one_constraints={}>'.format(self.eq_constraints, self.one_constraints)
 
+class _UnionFind:
+    def __init__(self):
+        self.node = set()
+        self.parent = dict()
+
+    def add_node(self, v):
+        if v not in self.node:
+            self.node.add(v)
+            self.parent[v] = v
+
+    def root(self, v):
+        if v == self.parent[v]:
+            return v
+        ret = self.root(self.parent[v])
+        self.parent[v] = ret
+        return ret
+
+    def same(self, u, v):
+        return self.root(u) == self.root(v)
+
+    def unite(self, u, v):
+        self.add_node(u)
+        self.add_node(v)
+        u = self.root(u)
+        v = self.root(v)
+        if u != v:
+            self.parent[u] = v
+
 class _FusionXHistory(object):
     def __init__(self):
         self.count = 0
@@ -559,6 +591,8 @@ class _FusionXHistory(object):
         self.op_list = list()
         self.reduction_op_list = list()
         self.last_op = dict()
+
+        self.abstracted_shape_uf = _UnionFind()
 
         self.ufunc_submodules = dict()
         # reduce_dims後のshapeがkey
@@ -1103,7 +1137,7 @@ class _FusionXHistory(object):
                 merged = _FusionXMergedOp()
                 merged_op_list.append(op)
             elif isinstance(op, _FusionXOp):
-                if prev is not None and prev.abstracted_shape != op.abstracted_shape:
+                if prev is not None and not self.abstracted_shape_uf.same(prev.abstracted_shape, op.abstracted_shape):
                     if merged.size() > 0:
                         merged_op_list.append(merged)
                     merged = _FusionXMergedOp()
@@ -1270,6 +1304,7 @@ cpdef ndarray _reduce_dims_core(ndarray array):
 def _cuda_compile(code, name, cuda_params, cuda_body):
     code += 'extern "C" __global__ void {}({})'.format(
         name, cuda_params) + '{\n' + cuda_body + '}\n'
+    # print(code)
     module = compile_with_cache(code)
     return module.get_function(name)
 
