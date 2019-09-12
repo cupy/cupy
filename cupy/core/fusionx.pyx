@@ -1120,7 +1120,9 @@ class _FusionXHistory(object):
     def _reset_vals(self):
         for pvar in self.param_list:
             if isinstance(pvar, _FusionXVarArray):
-                pvar.ndarray = None
+                if pvar.ndarray is not None:
+                    if pvar.ndarray.shape != pvar.real_shape or pvar.ndarray.dtype != pvar.dtype:
+                        pvar.ndarray = None
 
     def _set_real_shape(self, shape_map):
         for pvar in self.param_list:
@@ -1138,7 +1140,7 @@ class _FusionXHistory(object):
             if isinstance(pvar, _FusionXVarArray):
                 if pvar.is_input:
                     pvar.ndarray = args[pvar.input_order]
-                else:
+                elif pvar.ndarray is None:
                     pvar.ndarray = ndarray(pvar.real_shape, pvar.dtype)
 
     def _broadcast(self):
@@ -1172,9 +1174,9 @@ class _FusionXHistory(object):
 
     def exec(self, shape_map, *args):
         # TODO: put everything into single loop
-        self._reset_vals()
         self._set_real_shape(shape_map)
         # 以下から_rotate()までndarrayの割当。順序はめちゃくちゃ重要
+        self._reset_vals()
         self._set_ndarray(args)
         self._subscript()
         self._broadcast()
