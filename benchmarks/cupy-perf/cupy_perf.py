@@ -45,7 +45,7 @@ def _parse_options(cmd_args):
 class PerfCase:
     def __init__(self, func):
         self.func = func
-        self.n = 10000
+        self.n = 100
         self.n_warmup = 10
         self.exclude_others = False
         self.skip = False
