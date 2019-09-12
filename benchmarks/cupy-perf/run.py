@@ -1,6 +1,7 @@
 import cupy
 import cupy as cp
 import numpy
+from cupy.core.fusionx import _FusionXHistory, FusionX
 
 import cupy_perf
 
@@ -121,4 +122,14 @@ class PerfBatchNorm(cupy_perf.PerfCases):
         self.run_elementwise(self.x, self.gamma, self.beta, self.decay, self.eps, \
             self.running_mean, self.running_var, self.expander, self.adjust)
 
-cupy_perf.run(__name__)
+# PerfBatchNorm.perf_elementwise = profile(PerfBatchNorm.perf_elementwise)
+# PerfBatchNorm.perf_fuse = profile(PerfBatchNorm.perf_fuse)
+_FusionXHistory.exec = profile(_FusionXHistory.exec)
+FusionX.__call__ = profile(FusionX.__call__)
+# cupy_perf.run(__name__)
+
+hoge = PerfBatchNorm()
+hoge.setUp()
+for i in range(100):
+    hoge.perf_fuse()
+    # hoge.perf_elementwise()
