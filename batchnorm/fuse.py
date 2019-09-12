@@ -11,6 +11,7 @@ def batchnorm_forward(x):
     gamma = cp.ones(chan)
     beta = cp.zeros(chan)
     decay = 0.9
+    decay_ = 1 - decay
     eps = 2e-5
     running_mean = cp.zeros(chan)
     running_var = cp.ones(chan)
@@ -28,7 +29,7 @@ def batchnorm_forward(x):
 
 
     # assume gamma, beta are already expanded
-    def run(x, gamma, beta, decay, eps, running_mean, running_var, \
+    def run(x, gamma, beta, decay, decay_, eps, running_mean, running_var, \
         mean, mean_expand, inv_std, inv_std_expand, m, adjust):
         # cp.mean(x, axis=(0,2,3), out=mean)
         cp.sum(x, axis=(0,2,3), out=mean)
@@ -43,14 +44,14 @@ def batchnorm_forward(x):
         y = gamma * (x - mean_expand) * inv_std_expand + beta
 
         # update running statistics
-        running_mean = running_mean * decay + mean * (1 - decay)
-        running_var = running_var * decay + var * (1 - decay) * adjust
+        running_mean = running_mean * decay + mean * decay_
+        running_var = running_var * decay + var * decay_ * adjust
 
         return y, running_mean, running_var
 
     run_fuse = cp.fusex(run)
 
-    return run_fuse(x, gamma_expand, beta_expand, decay, eps, running_mean, running_var, \
+    return run_fuse(x, gamma_expand, beta_expand, decay, decay_, eps, running_mean, running_var, \
         mean, mean_expand, inv_std, inv_std_expand, m, adjust)
 
 if __name__ == '__main__':
