@@ -473,9 +473,9 @@ class _FusionXReductionOp(object):
     def __repr__(self):
         return '<_FusionXReductionOp name={}, in_pvar={}, out_pvar={}>'.format(self.func.name, self.in_pvar, self.out_pvar)
 
-    # reductionのsubmoduleのみ実行時に追加される(reduce-dims後のndarrayのshapeに依存するので)
-    def _add_to_reduction_submodules(self, target):
-        target.reduction_submodules.append(reduction_code_template(self.reduction_index, self.in_pvar, self.out_pvar, self.reduce_expr, self.reduce_identity))
+    # reductionのコードのみ実行時に追加される(reduce-dims後のndarrayのshapeに依存するので)
+    def _get_reduction_code(self):
+        return reduction_code_template(self.reduction_index, self.in_pvar, self.out_pvar, self.reduce_expr, self.reduce_identity)
 
     def code(self):
         return string.Template('''
@@ -561,7 +561,8 @@ class _FusionXHistory(object):
         self.last_op = dict()
 
         self.ufunc_submodules = dict()
-        self.reduction_submodules = list()
+        # reduce_dims後のshapeがkey
+        self.full_submodules = dict()
         # reduction時のblock_stridesはコードに埋め込むのではなく関数の引数として渡す
         self.block_strides = list()
 
@@ -572,10 +573,6 @@ class _FusionXHistory(object):
         ret = self.count
         self.count += 1
         return ret
-
-    # exec時に前のexec時に生成したreduction_submoduleを消す(reduce_dimsに依存しているので異なる可能性がある)
-    def _init_reduction_submodules(self):
-        self.reduction_submodules = list()
 
     # 新しくparamを生成する場合は必ずこの関数が介される。pvarがすでに生成されているものの場合、それを代用
     def _append_param(self, pvar, need_malloc=True):
@@ -864,9 +861,13 @@ class _FusionXHistory(object):
         raise TypeError('No viable type cast of {}, arg_type={}'.format(
             fusion_op.name, arg.dtype))
 
-    def _prepare_reduction_submodules(self):
+    def _append_reduction_submodules(self, key):
+        if key in self.full_submodules:
+            return
+        code = self.ufunc_submodule_code
         for op in self.reduction_op_list:
-            op._add_to_reduction_submodules(self)
+            code += op._get_reduction_code()
+        self.full_submodules[key] = code
 
     def _get_output(self):
         out = None if self.no_return or self.return_size < 0 else list(None for _ in range(self.return_size))
@@ -1161,16 +1162,18 @@ class _FusionXHistory(object):
                 pvar.subscript()
 
     def _reduce_dims(self):
+        shapes = []
         for pvar in self.param_list:
             if pvar.ndim < 2:
                 continue
             pvar.ndarray = _reduce_dims_core(pvar.ndarray)
+            shapes.append(pvar.ndarray.shape)
+        # keyでreduction_submodulesのコードを管理
+        key = tuple(shapes)
+        return key
 
-    def _get_kernel(self, cuda_params):
-        code = self.ufunc_submodule_code
-        for submodule_code in self.reduction_submodules:
-            code += submodule_code
-        return _cuda_compile(code, self.name, cuda_params, self.cuda_body)
+    def _get_kernel(self, cuda_params, key):
+        return _cuda_compile(self.full_submodules[key], self.name, cuda_params, self.cuda_body)
 
     def exec(self, shape_map, *args):
         # TODO: put everything into single loop
@@ -1182,9 +1185,8 @@ class _FusionXHistory(object):
         self._broadcast()
         ret = self._get_output()
         self._rotate()
-        self._reduce_dims()
-        self._init_reduction_submodules()
-        self._prepare_reduction_submodules()
+        key = self._reduce_dims()
+        self._append_reduction_submodules(key)
         inout_args, kern_size = self._get_inout_args(args)
 
         cuda_params = self._get_cuda_params()
@@ -1193,7 +1195,7 @@ class _FusionXHistory(object):
 len(inout_args): {}, len(cuda_params): {}
 inout_args: {}, cuda_params: {}'''.format(len(inout_args), len(cuda_params), inout_args, cuda_params))
 
-        kern = self._get_kernel(', '.join(cuda_params))
+        kern = self._get_kernel(', '.join(cuda_params), key)
         kern.linear_launch(kern_size, inout_args, 0, 512)
         return ret
 
