@@ -1011,6 +1011,7 @@ class _FusionXHistory(object):
             if pvar in param_list_used:
                 if pvar.is_output:
                     param_list_used[pvar].is_output = True
+                    param_list_used[pvar].output_order = pvar.output_order
                 continue
             dup = dup_count.get(pvar.index, 0)
             dup_count[pvar.index] = dup + 1
