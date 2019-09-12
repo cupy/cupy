@@ -124,12 +124,13 @@ class PerfBatchNorm(cupy_perf.PerfCases):
 
 # PerfBatchNorm.perf_elementwise = profile(PerfBatchNorm.perf_elementwise)
 # PerfBatchNorm.perf_fuse = profile(PerfBatchNorm.perf_fuse)
-_FusionXHistory.exec = profile(_FusionXHistory.exec)
-FusionX.__call__ = profile(FusionX.__call__)
-# cupy_perf.run(__name__)
+# _FusionXHistory.exec = profile(_FusionXHistory.exec)
+# FusionX.__call__ = profile(FusionX.__call__)
+cupy_perf.run(__name__)
 
-hoge = PerfBatchNorm()
-hoge.setUp()
-for i in range(100):
-    hoge.perf_fuse()
-    # hoge.perf_elementwise()
+# hoge = PerfBatchNorm()
+# hoge.setUp()
+# for i in range(100):
+#     hoge.perf_fuse()
+#     hoge.perf_elementwise()
+

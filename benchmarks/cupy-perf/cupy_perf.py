@@ -93,11 +93,11 @@ class PerfCaseResult(object):
             self.cpu_mean() * 1e6,
             self.cpu_std() * 1e6,
             self.cpu_min() * 1e6)
-        if show_gpu:
-            s += '  {:9.03f} us   +/-{:6.03f} (min:{:9.03f}) us'.format(
-                self.gpu_mean() * 1e6,
-                self.gpu_std() * 1e6,
-                self.gpu_min() * 1e6)
+
+        s += '  {:9.03f} us   +/-{:6.03f} (min:{:9.03f}) us'.format(
+            self.gpu_mean() * 1e6,
+            self.gpu_std() * 1e6,
+            self.gpu_min() * 1e6)
         return s
 
     def __str__(self):
