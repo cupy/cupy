@@ -39,20 +39,6 @@ cdef ndarray _ndarray_std(ndarray self, axis, dtype, out, ddof, keepdims):
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
-cpdef ndarray _ndarray_nanmean(ndarray self, axis, dtype, out, keepdims):
-    return _nanmean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
-
-
-cpdef ndarray _ndarray_nanvar(ndarray self, axis, dtype, out, ddof, keepdims):
-    return _nanvar(
-        self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
-
-
-cpdef ndarray _ndarray_nanstd(ndarray self, axis, dtype, out, ddof, keepdims):
-    return _nanstd(
-        self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
-
-
 cdef _min_max_preamble = '''
 template <typename T>
 struct min_max_st{
@@ -319,7 +305,7 @@ __device__ nanmean_st<T> my_nanmean(
 '''
 
 
-cdef _nanmean = create_reduction_func(
+cdef _nanmean_func = create_reduction_func(
     'cupy_nanmean',
     ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'my_nanmean(a, b)',
@@ -333,16 +319,16 @@ _count_non_nan = create_reduction_func(
     ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0)
 
 
-cdef ndarray _nanstd(
-        ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-    ret = _nanvar(
-        a, axis=axis, dtype=dtype, out=None, ddof=ddof, keepdims=keepdims)
-    return _math._sqrt(ret, dtype=dtype, out=out)
+cpdef ndarray _nanmean(ndarray a, axis, dtype, out, keepdims):
+    return _nanmean_func(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-cdef ndarray _nanvar(
-        ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+cpdef ndarray _nanstd(ndarray a, axis, dtype, out, ddof, keepdims):
+    var = _nanvar(a, axis, dtype, None, ddof, keepdims)
+    return _math._sqrt(var, dtype=dtype, out=out)
 
+
+cpdef ndarray _nanvar(ndarray a, axis, dtype, out, ddof, keepdims):
     assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
                                 'implemented. Current implemention does not ' \
                                 'convert the dtype'
