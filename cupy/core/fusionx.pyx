@@ -589,7 +589,7 @@ class _FusionXHistory(object):
         self.param_list_used[pvar] = pvar
         self.param_list.append(pvar)
         return pvar
-    
+
     def _get_new_len(self, step, abstracted_shape0, real_shape0):
         raise NotImplementedError('TODO: implement')
 
@@ -1022,17 +1022,28 @@ class _FusionXHistory(object):
         self.param_list = param_list
         self.param_list_base = param_list_base
 
+        def update(pvar):
+            if not isinstance(pvar, _FusionXVarArray):
+                return pvar
+            if pvar.rotated_from is not None:
+                pvar.rotated_from = update(pvar.rotated_from)
+            if pvar.broadcasted_from is not None:
+                pvar.broadcasted_from = update(pvar.broadcasted_from)
+            if pvar.indexed_from is not None:
+                pvar.indexed_from = update(pvar.indexed_from)
+            return param_list_used[pvar]
+
         # param_listのdupを全部更新しても、op内のpvarのdupが更新されているとは限らない
         # 実際、pvar BのindexをAのindexに揃えた場合、B.dupはNoneのままである。これを解消させるのが以下
         for op in self.op_list:
             if isinstance(op, _FusionXOp):
                 for idx, pvar in enumerate(op.in_pvars):
-                    op.in_pvars[idx] = param_list_used[pvar]
+                    op.in_pvars[idx] = update(pvar)
                 for idx, pvar in enumerate(op.out_pvars):
-                    op.out_pvars[idx] = param_list_used[pvar]
+                    op.out_pvars[idx] = update(pvar)
             elif isinstance(op, _FusionXReductionOp):
-                op.in_pvar = param_list_used[op.in_pvar]
-                op.out_pvar = param_list_used[op.out_pvar]
+                op.in_pvar = update(op.in_pvar)
+                op.out_pvar = update(op.out_pvar)
             else:
                 assert False
 
@@ -1183,7 +1194,7 @@ inout_args: {}, cuda_params: {}'''.format(len(inout_args), len(cuda_params), ino
         ret.indexed_from = pvar
         ret.index_key = key
         # 再掲だがis_inputかどうかによってndarrayの割当方法が異なる。これはsubscriptによってndarrayを割り当てるのでFalse
-        # indexed_fromがbroadcasted/rotatedとなることはないので、ret.broadcasted_form = Noneなどは不要
+        # indexed_fromがbroadcasted/rotatedとなることはないので、ret.broadcasted_from = Noneなどは不要
         ret.in_input = False
         abstracted_shape = list(pvar.abstracted_shape)
         real_shape = list(pvar.real_shape)
