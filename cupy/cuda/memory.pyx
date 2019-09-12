@@ -163,7 +163,7 @@ cdef class ManagedMemory(BaseMemory):
 
         Args:
             advics (int): Advise to be applied for this memory.
-            device (cupy.cuda.Device): Device to apply the advice for.
+            dev (cupy.cuda.Device): Device to apply the advice for.
 
         """
         runtime.memAdvise(self.ptr, self.size, advise, dev.id)
@@ -626,7 +626,8 @@ cdef class PooledMemory(BaseMemory):
 cdef int _index_compaction_threshold = 512
 
 
-cdef _compact_index(SingleDeviceMemoryPool pool, intptr_t stream_ptr, bint free):
+cdef _compact_index(SingleDeviceMemoryPool pool, intptr_t stream_ptr,
+                    bint free):
     # need self._free_lock
     cdef list arena, new_arena
     cdef set free_list, keep_list

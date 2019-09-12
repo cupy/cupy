@@ -20,7 +20,7 @@ cpdef tuple getVersion()
 ###############################################################################
 
 cpdef intptr_t createProgram(unicode src, unicode name, headers,
-                           include_names) except? 0
+                             include_names) except? 0
 cpdef destroyProgram(intptr_t prog)
 cpdef compileProgram(intptr_t prog, options)
 cpdef unicode getPTX(intptr_t prog)

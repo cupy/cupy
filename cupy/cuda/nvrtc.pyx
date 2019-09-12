@@ -69,7 +69,7 @@ cpdef tuple getVersion():
 ###############################################################################
 
 cpdef intptr_t createProgram(unicode src, unicode name, headers,
-                           include_names) except? 0:
+                             include_names) except? 0:
     cdef Program prog
     cdef bytes b_src = src.encode()
     cdef const char* src_ptr = b_src
