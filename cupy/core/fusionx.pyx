@@ -185,7 +185,7 @@ class _FusionXVarScalar(object):
         return cupy.copy(self)
 
 class _FusionXVarArray(_FusionXVarScalar):
-    def __init__(self, index, ndim, dtype, init_abstracted_shape=False):
+    def __init__(self, index, ndim, dtype, init_abstract_shape=False):
         # broadcast, rotate, subscriptしてできる変数間は同じindexを共有する
         self.index = index
         # _compress_pvarsのときにindexがnew_indexで上書きされる
@@ -207,7 +207,7 @@ class _FusionXVarArray(_FusionXVarScalar):
         self.indexed_from = None
         # どのkeyでsubscriptしたか。int, tuple, sliceのみ対応
         self.index_key = None
-        self.abstracted_shape = tuple('v{}.{}'.format(self.index, i) for i in range(self.ndim)) if init_abstracted_shape else None
+        self.abstract_shape = tuple('v{}.{}'.format(self.index, i) for i in range(self.ndim)) if init_abstract_shape else None
 
         # resettable
         self.size = None
@@ -260,17 +260,17 @@ class _FusionXVarArray(_FusionXVarScalar):
         return self._data_base() == other._data_base()
 
     def __repr__(self):
-        return '<_FusionXVarArray name={}, dtype={}, ndim={}, abstracted_shape={}>'.format(_get_pvar_param_name(self), self.dtype, self.ndim, self.abstracted_shape)
+        return '<_FusionXVarArray name={}, dtype={}, ndim={}, abstract_shape={}>'.format(_get_pvar_param_name(self), self.dtype, self.ndim, self.abstract_shape)
 
     def __eq__(self, other):
         if isinstance(other, _FusionXVarArray):
-            return self.index == other.index and self.abstracted_shape == other.abstracted_shape and \
+            return self.index == other.index and self.abstract_shape == other.abstract_shape and \
                 self.broadcasted_from == other.broadcasted_from and self.rotated_from == other.rotated_from and \
                 self.indexed_from == other.indexed_from and self.index_key == other.index_key
         return False
 
     def __hash__(self):
-        return hash((self.index, self.abstracted_shape, self.broadcasted_from, self.rotated_from, self.indexed_from, self.index_key))
+        return hash((self.index, self.abstract_shape, self.broadcasted_from, self.rotated_from, self.indexed_from, self.index_key))
 
     def _is_readonly(self):
         return self.broadcasted_from is not None or self.rotated_from is not None
@@ -377,11 +377,11 @@ class _FusionXOp(object):
         self.in_dtypes = in_dtypes
         self.out_dtypes = out_dtypes
         # in_pvars + out_pvarsの全変数はこのabst_shapeになっているはず
-        self.abstracted_shape = out_pvars[0].abstracted_shape
+        self.abstract_shape = out_pvars[0].abstract_shape
 
         for pvar in self.in_pvars + self.out_pvars:
             if isinstance(pvar, _FusionXVarArray):
-                _thread_local.historyx.abstracted_shape_uf.unite(pvar.abstracted_shape, self.abstracted_shape)
+                _thread_local.historyx.abstract_shape_uf.unite(pvar.abstract_shape, self.abstract_shape)
 
     def __repr__(self):
         in_pvars = ', '.join([_get_pvar_param_name(a) for a in self.in_pvars])
@@ -580,7 +580,7 @@ class _FusionXHistory(object):
     def __init__(self):
         self.count = 0
         # base_abst_shape[index] = broadcast, rotate, subscriptする前のshape
-        self.base_abstracted_shape = dict()
+        self.base_abstract_shape = dict()
         # input argsの割り当て、mallocが必要な変数のリスト
         self.param_list_base = list()
         # param_list_used[pvar] = pvarの形で登録する。同一とみなせるpvarを一つで代用する
@@ -592,7 +592,7 @@ class _FusionXHistory(object):
         self.reduction_op_list = list()
         self.last_op = dict()
 
-        self.abstracted_shape_uf = _UnionFind()
+        self.abstract_shape_uf = _UnionFind()
 
         self.ufunc_submodules = dict()
         # reduce_dims後のshapeがkey
@@ -616,14 +616,14 @@ class _FusionXHistory(object):
             return self.param_list_used[pvar]
         if isinstance(pvar, _FusionXVarArray):
             if need_malloc:
-                self.base_abstracted_shape[pvar.index] = pvar.abstracted_shape
+                self.base_abstract_shape[pvar.index] = pvar.abstract_shape
         if need_malloc:
             self.param_list_base.append(pvar)
         self.param_list_used[pvar] = pvar
         self.param_list.append(pvar)
         return pvar
 
-    def _get_new_len(self, step, abstracted_shape0, real_shape0):
+    def _get_new_len(self, step, abstract_shape0, real_shape0):
         raise NotImplementedError('TODO: implement')
 
     def _get_pvar(self, arg):
@@ -654,10 +654,10 @@ class _FusionXHistory(object):
             ret = self._append_param(ret)
         return ret
 
-    def _broadcast_to(self, pvar, abstracted_shape, real_shape):
+    def _broadcast_to(self, pvar, abstract_shape, real_shape):
         ret = copy.copy(pvar)
-        ret.ndim = len(abstracted_shape)
-        ret.abstracted_shape = abstracted_shape
+        ret.ndim = len(abstract_shape)
+        ret.abstract_shape = abstract_shape
         ret.real_shape = real_shape
         ret.broadcasted_from = pvar
         # is_inputであるかどうか、broadcasted(rotated/indexed)_fromがNoneかどうかによってndarrayの割当方法が異なる
@@ -673,10 +673,10 @@ class _FusionXHistory(object):
         ret.indexed_from = None
         return self._append_param(ret, False)
 
-    def _make_new_param(self, ndim, dtype, abstracted_shape, real_shape):
+    def _make_new_param(self, ndim, dtype, abstract_shape, real_shape):
         index = self._fresh_index()
         ret = _FusionXVarArray(index, ndim, dtype)
-        ret.abstracted_shape = abstracted_shape
+        ret.abstract_shape = abstract_shape
         ret.real_shape = real_shape
         return self._append_param(ret)
 
@@ -767,10 +767,10 @@ class _FusionXHistory(object):
             raise ValueError('Invalid ndim {} in {}'.format(ndim, ufunc.name))
 
         if ndim == 0:
-            out_abstracted_shape = ()
+            out_abstract_shape = ()
             out_real_shape = ()
         else:
-            out_abstracted_shape = [None for _ in range(ndim)]
+            out_abstract_shape = [None for _ in range(ndim)]
             out_real_shape = [0 for _ in range(ndim)]
 
             # Determine shape
@@ -779,9 +779,9 @@ class _FusionXHistory(object):
                 for j in range(cur_ndim):
                     if in_pvar.real_shape[cur_ndim - 1 - j] > out_real_shape[ndim - 1 - j]:
                         out_real_shape[ndim - 1 - j] = in_pvar.real_shape[cur_ndim - 1 - j]
-                        out_abstracted_shape[ndim - 1 - j] = in_pvar.abstracted_shape[cur_ndim - 1 - j]
+                        out_abstract_shape[ndim - 1 - j] = in_pvar.abstract_shape[cur_ndim - 1 - j]
 
-        out_abstracted_shape = tuple(out_abstracted_shape)
+        out_abstract_shape = tuple(out_abstract_shape)
         out_real_shape = tuple(out_real_shape)
 
         # ここまででout_abst_shape, out_real_shapeが決定したので、各変数にbroadcastが必要かを次に調べる
@@ -794,14 +794,14 @@ class _FusionXHistory(object):
             for j in range(cur_ndim):
                 if in_pvar.real_shape[cur_ndim - 1 - j] < out_real_shape[ndim - 1 - j]:
                     if in_pvar.real_shape[cur_ndim - 1 - j] == 1:
-                        self.shape_constraints.add_one_constraint(in_pvar.abstracted_shape[cur_ndim - 1 - j])
+                        self.shape_constraints.add_one_constraint(in_pvar.abstract_shape[cur_ndim - 1 - j])
                     else:
                         raise ValueError('Cannot broadcast shape {} to {}.'.format(in_pvar.real_shape, out_real_shape))
                     is_necessary = True
                 else:
-                    self.shape_constraints.add_eq_constraint(in_pvar.abstracted_shape[cur_ndim - 1 - j], out_abstracted_shape[ndim - 1 - j])
+                    self.shape_constraints.add_eq_constraint(in_pvar.abstract_shape[cur_ndim - 1 - j], out_abstract_shape[ndim - 1 - j])
             if is_necessary:
-                in_pvars[idx] = self._broadcast_to(in_pvar, out_abstracted_shape, out_real_shape)
+                in_pvars[idx] = self._broadcast_to(in_pvar, out_abstract_shape, out_real_shape)
 
         # 生存解析用
         op_index = len(self.op_list)
@@ -816,7 +816,7 @@ class _FusionXHistory(object):
                 ret = list()
                 for i in range(nout):
                     if i >= len(out_pvars):
-                        out_pvar = self._make_new_param(ndim, out_dtypes[i], out_abstracted_shape, out_real_shape)
+                        out_pvar = self._make_new_param(ndim, out_dtypes[i], out_abstract_shape, out_real_shape)
                         out_pvars.append(out_pvar)
                         ret.append(out_pvar)
                     elif numpy.can_cast(out_dtypes[i], out_pvars[i].dtype, 'same_kind'):
@@ -855,18 +855,18 @@ class _FusionXHistory(object):
             raise NotImplementedError('keepdims is not supported.')
 
         if axis is None and not keepdims:
-            out_abstracted_shape = ()
+            out_abstract_shape = ()
             out_real_shape = ()
         else:
-            out_abstracted_shape = list(arg.abstracted_shape)
+            out_abstract_shape = list(arg.abstract_shape)
             out_real_shape = list(arg.real_shape)
             if isinstance(axis, int):
                 axis = (axis,)
             for a in sorted(axis)[::-1]:
-                out_abstracted_shape.pop(a)
+                out_abstract_shape.pop(a)
                 out_real_shape.pop(a)
 
-            out_abstracted_shape = tuple(out_abstracted_shape)
+            out_abstract_shape = tuple(out_abstract_shape)
             out_real_shape = tuple(out_real_shape)
 
         if dtype is not None:
@@ -876,7 +876,7 @@ class _FusionXHistory(object):
         op_index = len(self.op_list)
         self.last_op[arg.index] = op_index
 
-        out_ndim = len(out_abstracted_shape)
+        out_ndim = len(out_abstract_shape)
 
         for op in fusion_op._ops:
             (in_dtype,), (out_dtype,), _ = op
@@ -891,7 +891,7 @@ class _FusionXHistory(object):
                     if out_pvar.real_shape != out_real_shape:
                         raise ValueError('Shape of specified output variable is not consistent with reduced shape.')
                 else:
-                    out_pvar = self._make_new_param(out_ndim, out_dtype, out_abstracted_shape, out_real_shape)
+                    out_pvar = self._make_new_param(out_ndim, out_dtype, out_abstract_shape, out_real_shape)
                 self._add_reduction_op(fusion_op, arg, out_pvar, axis, op)
                 return out_pvar
         raise TypeError('No viable type cast of {}, arg_type={}'.format(
@@ -981,7 +981,7 @@ class _FusionXHistory(object):
 
     # このkeyが同じなら同じメモリを割り当てて良い
     def _get_pvar_meminfo(self, pvar):
-        return (self.base_abstracted_shape[pvar.index], pvar.dtype)
+        return (self.base_abstract_shape[pvar.index], pvar.dtype)
 
     def _compress_pvars(self):
         def get_last_op(pvar):
@@ -1137,7 +1137,7 @@ class _FusionXHistory(object):
                 merged = _FusionXMergedOp()
                 merged_op_list.append(op)
             elif isinstance(op, _FusionXOp):
-                if prev is not None and not self.abstracted_shape_uf.same(prev.abstracted_shape, op.abstracted_shape):
+                if prev is not None and not self.abstract_shape_uf.same(prev.abstract_shape, op.abstract_shape):
                     if merged.size() > 0:
                         merged_op_list.append(merged)
                     merged = _FusionXMergedOp()
@@ -1171,8 +1171,8 @@ class _FusionXHistory(object):
                 ndim = pvar.ndim
                 real_shape = [None for _ in range(ndim)]
                 for i in range(ndim):
-                    assert pvar.abstracted_shape[i] in shape_map
-                    real_shape[i] = shape_map[pvar.abstracted_shape[i]]
+                    assert pvar.abstract_shape[i] in shape_map
+                    real_shape[i] = shape_map[pvar.abstract_shape[i]]
                 pvar.real_shape = tuple(real_shape)
                 pvar.set_size()
 
@@ -1248,15 +1248,15 @@ inout_args: {}, cuda_params: {}'''.format(len(inout_args), len(cuda_params), ino
         # 再掲だがis_inputかどうかによってndarrayの割当方法が異なる。これはsubscriptによってndarrayを割り当てるのでFalse
         # indexed_fromがbroadcasted/rotatedとなることはないので、ret.broadcasted_from = Noneなどは不要
         ret.in_input = False
-        abstracted_shape = list(pvar.abstracted_shape)
+        abstract_shape = list(pvar.abstract_shape)
         real_shape = list(pvar.real_shape)
         if isinstance(key, int):
             if pvar.ndim == 0:
                 raise IndexError('too many indices for array.')
             ret.ndim -= 1
-            abstracted_shape.pop(0)
+            abstract_shape.pop(0)
             real_shape.pop(0)
-            ret.abstracted_shape = tuple(abstracted_shape)
+            ret.abstract_shape = tuple(abstract_shape)
             ret.real_shape = tuple(real_shape)
             return self._append_param(ret, False)
         elif isinstance(key, tuple):
@@ -1268,9 +1268,9 @@ inout_args: {}, cuda_params: {}'''.format(len(inout_args), len(cuda_params), ino
                 raise IndexError('too many indices for array.')
             ret.ndim -= len(key)
             for _ in range(len(key)):
-                abstracted_shape.pop(0)
+                abstract_shape.pop(0)
                 real_shape.pop(0)
-            ret.abstracted_shape = tuple(abstracted_shape)
+            ret.abstract_shape = tuple(abstract_shape)
             ret.real_shape = tuple(real_shape)
             return self._append_param(ret, False)
         elif isinstance(key, slice):
