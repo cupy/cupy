@@ -266,7 +266,7 @@ def inv(a):
         dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
 
     cusolver_handle = device.get_cusolver_handle()
-    dev_info = cupy.empty(1, dtype=dtype)
+    dev_info = cupy.empty(1, dtype=numpy.int32)
 
     ipiv = cupy.empty((a.shape[0], 1), dtype=numpy.intc)
 

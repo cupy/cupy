@@ -88,7 +88,7 @@ dtype=cp.float32))
                 'array must not contain infs or NaNs')
 
     cusolver_handle = device.get_cusolver_handle()
-    dev_info = cupy.empty(1, dtype=numpy.intc)
+    dev_info = cupy.empty(1, dtype=numpy.int32)
 
     m, n = a.shape
 
@@ -194,7 +194,7 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
 
     n = 1 if b.ndim == 1 else b.shape[1]
     cusolver_handle = device.get_cusolver_handle()
-    dev_info = cupy.empty(1, dtype=numpy.intc)
+    dev_info = cupy.empty(1, dtype=numpy.int32)
 
     # solve for the inverse
     getrs(cusolver_handle,
