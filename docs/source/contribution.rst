@@ -261,7 +261,7 @@ Please note the followings when writing the document.
   original one, users should explicitly describe only what is implemented in
   the document.
 
-For changes that modify or add new Cython files, please make sure the pointer types follow these guidelines (`GH-1913 <https://github.com/cupy/cupy/issues/1913>`_).
+For changes that modify or add new Cython files, please make sure the pointer types follow these guidelines (`#1913 <https://github.com/cupy/cupy/issues/1913>`_).
 
 * Pointers should be ``intptr_t``.
 * Memory sizes should be ``size_t``.
