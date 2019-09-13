@@ -559,6 +559,7 @@ class _UnionFind:
             self.parent[v] = v
 
     def root(self, v):
+        self.add_node(v)
         if v == self.parent[v]:
             return v
         ret = self.root(self.parent[v])
@@ -981,9 +982,10 @@ class _FusionXHistory(object):
 
     # このkeyが同じなら同じメモリを割り当てて良い
     def _get_pvar_meminfo(self, pvar):
-        return (self.base_abstract_shape[pvar.index], pvar.dtype)
+        return (self.abstract_shape_uf.root(self.base_abstract_shape[pvar.index]), pvar.dtype)
 
     def _compress_pvars(self):
+        self.abstract_shape_uf.compress()
         def get_last_op(pvar):
             return self.last_op.get(pvar.index, -1)
 
@@ -1226,6 +1228,7 @@ class _FusionXHistory(object):
         ret = self._get_output()
         self._rotate()
         key = self._reduce_dims()
+        # TODO: keyが確定するとkernelまで確定するので一気にcacheしたほうが速い。今でもまあ高速なので後回し
         self._append_reduction_submodules(key)
         inout_args, kern_size = self._get_inout_args(args)
 
