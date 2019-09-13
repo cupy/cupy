@@ -10,6 +10,34 @@ from batchnorm.gen_input import gen_input
 class PerfBatchNorm(cupy_perf.PerfCases):
     enable_line_profiler = False
 
+    def run_elementwise(self, x, gamma, beta, decay, eps, running_mean, running_var, expander, adjust):
+            mean = cp.mean(x, axis=(0,2,3))
+            var = cp.var(x, axis=(0,2,3))
+            inv_std = 1. / cp.sqrt(var)
+
+            kern = cp.ElementwiseKernel(
+                'T x, U mean, U inv_std, U gamma, U beta', 'T y',
+                'y = gamma * (x - mean) * inv_std + beta', 'bn_fwd'
+            )
+
+            mean_ex = mean[expander]
+            inv_std_ex = inv_std[expander]
+
+            y = kern(x, mean_ex, inv_std_ex, gamma, beta)
+
+            # update running statistics
+            cp.ElementwiseKernel(
+                'U mean, U var, U decay, U adjust',
+                'U r_mean, U r_var',
+                '''
+                r_mean = r_mean * decay + mean * (1 - decay);
+                r_var = r_var * decay + var * (1 - decay) * adjust;
+                ''',
+                'update_mean_var')(mean, var, decay, adjust,
+                                    running_mean, running_var)
+
+            return y, running_mean, running_var
+
     def setUp(self):
         x = gen_input()
         chan = x.shape[1]
@@ -56,7 +84,7 @@ class PerfBatchNorm(cupy_perf.PerfCases):
             var /= m
 
             cp.true_divide(1, cp.sqrt(var + eps), out=inv_std)
-            y = gamma * (x - mean_expand) * inv_std_expand + beta
+            y = gamma * tmp * inv_std_expand + beta
 
             # update running statistics
             running_mean = running_mean * decay + mean * decay_
@@ -64,25 +92,29 @@ class PerfBatchNorm(cupy_perf.PerfCases):
 
             return y, running_mean, running_var
 
-        def run_elementwise(x, gamma, beta, decay, eps, running_mean, running_var, expander, adjust):
-            mean = cp.mean(x, axis=(0,2,3))
-            var = cp.var(x, axis=(0,2,3))
-            inv_std = 1. / cp.sqrt(var)
-
-            y = cp.ElementwiseKernel(
+        self.kern1 = cp.ElementwiseKernel(
                 'T x, U mean, U inv_std, U gamma, U beta', 'T y',
                 'y = gamma * (x - mean) * inv_std + beta', 'bn_fwd'
-            )(x, mean[expander], inv_std[expander], gamma, beta)
+            )
 
-            # update running statistics
-            cp.ElementwiseKernel(
+        self.kern2 = cp.ElementwiseKernel(
                 'U mean, U var, U decay, U adjust',
                 'U r_mean, U r_var',
                 '''
                 r_mean = r_mean * decay + mean * (1 - decay);
                 r_var = r_var * decay + var * (1 - decay) * adjust;
                 ''',
-                'update_mean_var')(mean, var, decay, adjust,
+                'update_mean_var')
+
+        def run_elementwise2(x, gamma, beta, decay, eps, running_mean, running_var, expander, adjust, kern1, kern2):
+            mean = cp.mean(x, axis=(0,2,3))
+            var = cp.var(x, axis=(0,2,3))
+            inv_std = 1. / cp.sqrt(var)
+
+            y = kern1(x, mean[expander], inv_std[expander], gamma, beta)
+
+            # update running statistics
+            kern2(mean, var, decay, adjust,
                                     running_mean, running_var)
 
             return y, running_mean, running_var
@@ -106,7 +138,8 @@ class PerfBatchNorm(cupy_perf.PerfCases):
 
         self.run_nofuse = run_nofuse
         self.run_fuse = cp.fusex(run_fuse)
-        self.run_elementwise = run_elementwise
+        # self.run_elementwise = run_elementwise
+        self.run_elementwise2 = run_elementwise2
 
 
     def perf_nofuse(self):
@@ -122,15 +155,19 @@ class PerfBatchNorm(cupy_perf.PerfCases):
         self.run_elementwise(self.x, self.gamma, self.beta, self.decay, self.eps, \
             self.running_mean, self.running_var, self.expander, self.adjust)
 
+    def perf_elementwise2(self):
+        self.run_elementwise2(self.x, self.gamma, self.beta, self.decay, self.eps, \
+            self.running_mean, self.running_var, self.expander, self.adjust, self.kern1, self.kern2)
+
+# PerfBatchNorm.run_elementwise = profile(PerfBatchNorm.run_elementwise)
 # PerfBatchNorm.perf_elementwise = profile(PerfBatchNorm.perf_elementwise)
 # PerfBatchNorm.perf_fuse = profile(PerfBatchNorm.perf_fuse)
 # _FusionXHistory.exec = profile(_FusionXHistory.exec)
 # FusionX.__call__ = profile(FusionX.__call__)
-cupy_perf.run(__name__)
+# cupy_perf.run(__name__)
 
-# hoge = PerfBatchNorm()
-# hoge.setUp()
-# for i in range(100):
-#     hoge.perf_fuse()
-#     hoge.perf_elementwise()
-
+hoge = PerfBatchNorm()
+hoge.setUp()
+for i in range(1):
+    hoge.perf_fuse()
+    hoge.perf_elementwise()
