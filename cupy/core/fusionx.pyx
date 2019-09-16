@@ -410,7 +410,7 @@ class _FusionXOp(object):
         out_pvars = ', '.join([_get_pvar_param_name(a) for a in self.out_pvars])
         return '<_FusionXOp name={}, in_pvars={}, out_pvars={}>'.format(self.ufunc.name, in_pvars, out_pvars)
 
-    def _get_indexer_setup(self):
+    def _get_indexer_setup(self, tid='i'):
         ret = ''
         used = set()
         for a in self.in_pvars + self.out_pvars:
@@ -420,7 +420,7 @@ class _FusionXOp(object):
             if isinstance(a, _FusionXVarArray):
                 if a.can_scalar:
                     continue
-                ret += '        {}.set(i);\n'.format(_get_indexer_name(a))
+                ret += '        {}.set({});\n'.format(_get_indexer_name(a), tid)
         return ret
 
     def _get_declaration(self):
@@ -524,14 +524,74 @@ class _FusionXReductionOp(object):
             reduction_index = self.reduction_index)
 
 # ReductionOpの直前の_FusionXOpと直後の_FusionXOpをマージできる場合はマージする
-# pre_opをマージするのは回転が不要なときのみ。__syncthreads + メモリアクセス < reduce_dims
-# pre_opのabst_shapeとreduction_op.in_pvarのabst_shapeが同じ。
+# pre_opのabst_shapeとreduction_op.in_pvarのabst_shapeが同じで
 # post_opのabst_shapeとreduction_op.out_pvarのabst_shapeが同じことが条件
+# とりあえずpre_opをマージするのは回転が不要なときのみ(将来実装するなら以下の点に注意)
+# 回転させるとrotated_paramsを作る必要があるが、ReductionOpのin_pvarは回転済みなのでやや実装がややこしい
+# それにcompress_pvars()はmerge前にやる必要があるので、またparam_listの更新が必要になってしまう
+# さらにreduce dimsの効果も失われがち
+
+def _can_merge_pre_post(pre_op, post_op):
+    pre_op_index_set = set()
+    post_op_index_set = set()
+    for pvar in pre_op.in_pvars + pre_op.out_pvars:
+        pre_op_index_set.add(pvar.index)
+    for pvar in post_op.in_pvars + post_op.out_pvars:
+        post_op_index_set.add(pvar.index)
+    for pvar in post_op.out_pvars:
+        if pvar.index in pre_op_index_set:
+            return False
+    for pvar in pre_op.out_pvars:
+        if pvar.index in post_op_index_set:
+            return False
+    return True
+
 class _FusionXMergedReductionOp:
-    def __init__(self, pre_op, reduction_op, post_op):
+    def __init__(self, pre_op, reduction_op, post_op, idx, op_idx):
         self.pre_op = pre_op
         self.reduction_op = reduction_op
         self.post_op = post_op
+        self.idx = idx
+        self.op_idx = op_idx
+        if pre_op is not None and reduction_op.in_pvar.rotated_from is not None:
+            raise ValueError('Reduction must be without rotation if pre_op is not None.')
+        pvars = list()
+        pvars_pre = set()
+        pvars_post = set()
+        pvars_used = set()
+        all_pvars = list()
+
+        if pre_op is not None:
+            all_pvars += pre_op.in_pvars + pre_op.out_pvars
+            for pvar in pre_op.in_pvars + pre_op.out_pvars:
+                pvars_pre.add(pvar)
+        all_pvars += [reduction_op.in_pvar, reduction_op.out_pvar]
+        if post_op is not None:
+            all_pvars += post_op.in_pvars + post_op.out_pvars
+            for pvar in post_op.in_pvars + post_op.out_pvars:
+                pvars_post.add(pvar)
+        for pvar in all_pvars:
+            if pvar in pvars_used:
+                continue
+            pvars_used.add(pvar)
+            pvars.append(pvar)
+        self.pvars = pvars
+        self.pvars_pre = pvars_pre
+        self.pvars_post = pvars_post
+
+    def _get_reduction_code(self):
+        return merged_reduction_code_template(self.pre_op, self.reduction_op, self.post_op, self.pvars, self.pvars_pre, self.pvars_post, self.idx, self.op_idx)
+
+    def code(self):
+        params = list()
+        for pvar in pvars:
+            if isinstance(pvar, _FusionXVarArray):
+                params.append(_get_pvar_param_name(pvar))
+                params.append(_get_indexer_name(pvar))
+            else:
+                params.append(_get_pvar_param_name(pvar))
+        params.append('block_stride{}'.format(self.reduction_op.reduction_index))
+        return '    merged_reduction{}({});'.format(self.reduction_op.reduction_index, ', '.join(params))
 
 # 同じabst_shapeのelementwise演算をmergeする
 class _FusionXMergedOp(_FusionXOp):
@@ -1262,6 +1322,41 @@ class _FusionXHistory(object):
         self.param_list = new_param_list
         self.param_list_base = new_param_list_base
 
+        # _FusionXMergedReductionOp
+        new_merged_op_list = list()
+        skip = False
+        last_merged = None
+        for idx, op in enumerate(merged_op_list):
+            if skip:
+                skip = False
+                continue
+            if isinstance(op, _FusionXReductionOp):
+                can_merge_pre = 0 < idx and last_merged != idx - 1 and not isinstance(merged_op_list[idx - 1], _FusionXReductionOp)
+                can_merge_post = idx < len(merged_op_list) - 1 and not isinstance(merged_op_list[idx + 1], _FusionXReductionOp)
+                if can_merge_pre and can_merge_post:
+                    if not _can_merge_pre_post(merged_op_list[idx - 1], merged_op_list[idx + 1]):
+                        can_merge_pre = False
+                if can_merge_pre and can_merge_post:
+                    pre_op = new_merged_op_list.pop(-1)
+                    post_op = merged_op_list[idx + 1]
+                    new_merged_op_list.append(_FusionXMergedReductionOp(pre_op, op, post_op, idx, op_idx))
+                    skip = True
+                    last_merged = idx + 1
+                elif can_merge_pre:
+                    pre_op = new_merged_op_list.pop(-1)
+                    new_merged_op_list.append(_FusionXMergedReductionOp(pre_op, op, None, idx, op_idx))
+                elif can_merge_post:
+                    post_op = merged_op_list[idx + 1]
+                    new_merged_op_list.append(_FusionXMergedReductionOp(pre_op, op, post_op, idx, op_idx))
+                    skip = True
+                    last_merged = idx + 1
+                else:
+                    new_merged_op_list.append(op)
+            else:
+                new_merged_op_list.append(op)
+
+        merged_op_list = new_merged_op_list
+
         # ufuncのsubmoduleは実行ごとに変化しないためこの時点で生成
         ufunc_submodule_code = ''
         for submodule in self.ufunc_submodules.values():
@@ -1622,3 +1717,112 @@ __device__ void reduce${reduction_index}(CArray<${in_type}, ${in_ndim}> in_arr, 
         block_size=512,
         reduce_expr=reduce_expr,
         identity=identity)
+
+def _get_pre_op_expr(pre_op, reduction_op, pvars_pre, idx, op_idx):
+    indexer_setup = ''
+    declaration = ''
+    operation = ''
+    after_operation = ''
+    if pre_op is not None:
+        indexer_setup += pre_op._get_indexer_setup('j')
+        declaration += pre_op._get_declaration()
+        operation += pre_op._get_operation()
+        after_operation += pre_op._get_after_operation(idx, op_idx)
+
+    if reduction_op.in_pvar not in pvars_pre:
+        indexer_setup += '        {}.set(j);\n'.format(_get_indexer_name(reduction_op.in_pvar))
+        declaration += '        {} {}_ = {}[{}.get()];\n'.format(
+                    _dtype_to_ctype[reduction_op.in_pvar.dtype], _get_pvar_decl_name(reduction_op.in_pvar), \
+                    _get_pvar_param_name(reduction_op.in_pvar, _get_indexer_name(reduction_op.in_pvar))
+    after_operation += '        {} a = {}_;\n'.format(
+        _dtype_to_ctype[reduction_op.in_pvar.dtype], _get_pvar_decl_name(reduction_op.in_pvar))
+
+    return '\n'.join([indexer_setup, declaration, operation, after_operation])
+
+def _get_post_op_expr(post_op, reduction_op, pvars_post):
+    indexer_setup = ''
+    declaration = ''
+    operation = ''
+    after_operation = ''
+    if post_op is not None:
+        indexer_setup += post_op._get_indexer_setup()
+        declaration += post_op._get_declaration()
+        operation += post_op._get_operation()
+        after_operation += post_op._get_after_operation(idx, op_idx)
+
+    if reduction_op.out_pvar not in out_pvars:
+        indexer_setup += '        {}.set(i);\n'.format(_get_indexer_name(reduction_op.out_pvar))
+        declaration += '        {} {}_ = {}[{}.get()];\n'.format(
+                    _dtype_to_ctype[reduction_op.out_pvar.dtype], _get_pvar_decl_name(reduction_op.out_pvar), \
+                    _get_pvar_param_name(reduction_op.out_pvar, _get_indexer_name(reduction_op.out_pvar))
+        after_operation += '        {}[{}.get()] = {}_;\n'.format(
+                    _get_pvar_param_name(reduction_op.out_pvar), _get_indexer_name(reduction_op.out_pvar), _get_pvar_decl_name(reduction_op.out_pvar))
+    declaration += '        {}_ = s;\n'.format(
+    _dtype_to_ctype[reduction_op.out_pvar.dtype], _get_pvar_decl_name(reduction_op.out_pvar))
+    return '\n'.join([indexer_setup, declaration, operation, after_operation])
+
+# 高速化案
+# reduction_opのin_pvar, out_pvarが一時変数なら保存しなくてもいい(それぞれin_pvarのlast_opがreduction_op, out_pvarのlast_opがpost_opのとき)
+# 一般の_FusionXMergedOpについても、in_pvarsが初期化されていない場合、a[ind.get()];せずに宣言することで高速化可能
+
+def merged_reduction_code_template(pre_op, reduction_op, post_op, pvars, pvars_pre, pvars_post, idx, op_idx):
+    params = list()
+    for pvar in pvars:
+        if isinstance(pvar, _FusionXVarArray):
+            params.append('CArray<{}, {}> {}'.format(_dtype_to_ctype[pvar.dtype], pvar.ndarray.ndim, _get_pvar_param_name(pvar)))
+            params.append('CIndexer<{}> {}'.format(pvar.ndarray.ndim, _get_indexer_name(pvar)))
+        else:
+            params.append('{} {}'.format(_dtype_to_ctype[pvar.dtype], _get_pvar_param_name(pvar)))
+    params.append('int block_stride')
+
+    pre_op_expr = _get_pre_op_expr(pre_op, reduction_op, pvars_pre, idx - 1, op_idx)
+    post_op_expr = _get_post_op_expr(post_op, reduction_op, pvars_post, idx + 1, op_idx)
+
+    return string.Template('''
+#define REDUCE${reduction_index}(a, b) (${reduce_expr})
+#define _REDUCE${reduction_index}(offset) sdata_${out_type_char}${reduction_index}[tid] = REDUCE${reduction_index}(sdata_${out_type_char}${reduction_index}[tid], sdata_${out_type_char}${reduction_index}[tid + offset]);
+
+__device__ void merged_reduction${reduction_index}(${params}) {
+    __shared__ ${out_type} sdata_${out_type_char}${reduction_index}[${block_size}];
+    unsigned int tid = threadIdx.x;
+    int _J = tid >> __popc(block_stride - 1);
+    ptrdiff_t _j = (ptrdiff_t)_J * ${out_ind}.size();
+    int J_stride = ${block_size} >> __popc(block_stride - 1);
+    ptrdiff_t j_stride = (ptrdiff_t)J_stride * ${out_ind}.size();
+
+    for (ptrdiff_t _i = (ptrdiff_t)blockIdx.x * block_stride; _i < ${out_ind}.size(); _i += (ptrdiff_t)gridDim.x * block_stride) {
+        ${out_type} s = (${out_type})${identity};
+        ptrdiff_t i = _i + (tid & (block_stride - 1));
+        for (ptrdiff_t j = i + _j; j < ${in_ind}.size(); j += j_stride) {
+${pre_op_expr}
+            s = REDUCE${reduction_index}(s, (${out_type})a);
+        }
+        sdata_${out_type_char}${reduction_index}[tid] = s;
+        __syncthreads();
+        for (unsigned int block = ${block_size} / 2; block >= block_stride; block >>= 1) {
+            if (tid < block) {
+                _REDUCE${reduction_index}(block);
+            }
+            __syncthreads();
+        }
+        if (tid < block_stride) {
+            s = sdata_${out_type_char}${reduction_index}[tid];
+        }
+        if (tid < block_stride && i < ${out_ind}.size()) {
+${post_op_expr}
+        }
+        __syncthreads();
+    }
+}
+''').substitute(
+        params=', '.join(params)
+        reduction_index=reduction_index,
+        out_type=_dtype_to_ctype[reduction_op.out_pvar.dtype],
+        out_type_char=reduction_op.out_pvar.dtype.char,
+        pre_op_expr=pre_op_expr,
+        in_ind=_get_indexer_name(reduction_op.in_pvar),
+        out_ind=_get_indexer_name(reduction_op.out_pvar),
+        post_op_expr=post_op_expr,
+        block_size=512,
+        reduce_expr=reduction_op.reduce_expr,
+        identity=reduction_op.reduce_identity)
