@@ -209,6 +209,9 @@ class _FusionXVarArray(_FusionXVarScalar):
         self.index_key = None
         self.abstract_shape = tuple('v{}.{}'.format(self.index, i) for i in range(self.ndim)) if init_abstract_shape else None
 
+        # 1つの_FusionXOp (_FusionXMergedOp)にしか現れなく、入出力でないならscalarに潰せる
+        self.can_scalar = False
+
         # resettable
         self.size = None
         self.real_shape = None
@@ -224,6 +227,21 @@ class _FusionXVarArray(_FusionXVarScalar):
         ret = self.is_input
         if self.indexed_from is not None:
             ret |= self.indexed_from._is_input_recursive()
+        return ret
+
+    def _is_output_recursive(self):
+        ret = self.is_output
+        if self.indexed_from is not None:
+            ret |= self.indexed_from._is_output_recursive()
+        return ret
+
+    def is_inout(self):
+        ret = self.is_input or self.is_output
+        if self.broadcasted_from is not None:
+            ret |= self.broadcasted_from.is_input or self.broadcasted_from.is_output
+        if self.rotated_from is not None:
+            ret |= self.rotated_from.is_input or self.rotated_from.is_output
+        ret |= self._is_input_recursive() or self._is_output_recursive()
         return ret
 
     # exec内_set_real_shapeのときに呼ばれる
@@ -377,11 +395,15 @@ class _FusionXOp(object):
         self.in_dtypes = in_dtypes
         self.out_dtypes = out_dtypes
         # in_pvars + out_pvarsの全変数はこのabst_shapeになっているはず
-        self.abstract_shape = out_pvars[0].abstract_shape
+        self.abstract_shape = None
+        for pvar in in_pvars:
+            if isinstance(pvar, _FusionXVarArray):
+                self.abstract_shape = pvar.abstract_shape
+        assert self.abstract_shape is not None
 
         for pvar in self.in_pvars + self.out_pvars:
             if isinstance(pvar, _FusionXVarArray):
-                _thread_local.historyx.abstract_shape_uf.unite(pvar.abstract_shape, self.abstract_shape)
+                _thread_local.historyx.abstract_shape_uf.unite_tuple(pvar.abstract_shape, self.abstract_shape)
 
     def __repr__(self):
         in_pvars = ', '.join([_get_pvar_param_name(a) for a in self.in_pvars])
@@ -396,6 +418,8 @@ class _FusionXOp(object):
                 continue
             used.add(a)
             if isinstance(a, _FusionXVarArray):
+                if a.can_scalar:
+                    continue
                 ret += '        {}.set(i);\n'.format(_get_indexer_name(a))
         return ret
 
@@ -407,8 +431,12 @@ class _FusionXOp(object):
                 continue
             used.add(a)
             if isinstance(a, _FusionXVarArray):
-                ret += '        {} {}_ = {}[{}.get()];\n'.format(
-                    _dtype_to_ctype[a.dtype], _get_pvar_decl_name(a), _get_pvar_param_name(a), _get_indexer_name(a))
+                if a.can_scalar:
+                    ret += '        {} {}_ = 0;\n'.format(
+                        _dtype_to_ctype[a.dtype], _get_pvar_decl_name(a))
+                else:
+                    ret += '        {} {}_ = {}[{}.get()];\n'.format(
+                        _dtype_to_ctype[a.dtype], _get_pvar_decl_name(a), _get_pvar_param_name(a), _get_indexer_name(a))
             elif isinstance(a, _FusionXVarScalar):
                 if a.const_value is None:
                     ret += '        {} {}_ = {};\n'.format(
@@ -437,9 +465,13 @@ class _FusionXOp(object):
                 type=_dtype_to_ctype[a.dtype], name=_get_pvar_decl_name(a))
         return '        {\n' + pre_conversion + operation + post_conversion + '        }\n'
 
-    def _get_after_operation(self):
+    def _get_after_operation(self, idx, op_list):
         ret = ''
         for a in self.out_pvars:
+            if a.can_scalar:
+                continue
+            if not a.is_inout() and idx == max(op_list[a.index]):
+                continue
             if isinstance(a, _FusionXVarArray):
                 ret += '        {}[{}.get()] = {}_;\n'.format(
                     _get_pvar_param_name(a), _get_indexer_name(a), _get_pvar_decl_name(a))
@@ -450,7 +482,7 @@ class _FusionXOp(object):
                 raise TypeError('Unknown type {}.'.format(type(a)))
         return ret
 
-    def code(self):
+    def code(self, idx, op_idx):
         return string.Template('''
     CUPY_FOR(i, ${indexer_name}.size()) {
 ${indexer_setup}
@@ -459,11 +491,11 @@ ${operation}
 ${after_operation}
     }
 ''').substitute(
-            indexer_name=_get_indexer_name(self.out_pvars[0]),
+            indexer_name=_get_indexer_name(self.in_pvars[0]),
             declaration=self._get_declaration(),
             indexer_setup=self._get_indexer_setup(),
             operation=self._get_operation(),
-            after_operation=self._get_after_operation())
+            after_operation=self._get_after_operation(idx, op_idx))
 
 class _FusionXReductionOp(object):
     def __init__(self, func, in_pvar, out_pvar, op, reduction_index):
@@ -490,6 +522,16 @@ class _FusionXReductionOp(object):
             in_ind=_get_indexer_name(self.in_pvar),
             out_ind=_get_indexer_name(self.out_pvar),
             reduction_index = self.reduction_index)
+
+# ReductionOpの直前の_FusionXOpと直後の_FusionXOpをマージできる場合はマージする
+# pre_opをマージするのは回転が不要なときのみ。__syncthreads + メモリアクセス < reduce_dims
+# pre_opのabst_shapeとreduction_op.in_pvarのabst_shapeが同じ。
+# post_opのabst_shapeとreduction_op.out_pvarのabst_shapeが同じことが条件
+class _FusionXMergedReductionOp:
+    def __init__(self, pre_op, reduction_op, post_op):
+        self.pre_op = pre_op
+        self.reduction_op = reduction_op
+        self.post_op = post_op
 
 # 同じabst_shapeのelementwise演算をmergeする
 class _FusionXMergedOp(_FusionXOp):
@@ -550,15 +592,17 @@ class _ShapeConstraints(object):
 
 class _UnionFind:
     def __init__(self):
-        self.node = set()
+        self.nodes = set()
         self.parent = dict()
 
     def add_node(self, v):
-        if v not in self.node:
-            self.node.add(v)
+        assert isinstance(v, str)
+        if v not in self.nodes:
+            self.nodes.add(v)
             self.parent[v] = v
 
     def root(self, v):
+        assert isinstance(v, str)
         self.add_node(v)
         if v == self.parent[v]:
             return v
@@ -566,16 +610,35 @@ class _UnionFind:
         self.parent[v] = ret
         return ret
 
+    def root_tuple(self, t):
+        assert isinstance(t, tuple)
+        ret = ()
+        for a in t:
+            ret += (self.root(a),)
+        return ret
+
     def same(self, u, v):
+        assert isinstance(u, str) and isinstance(v, str)
         return self.root(u) == self.root(v)
 
+    def same_tuple(self, s, t):
+        assert isinstance(s, tuple) and isinstance(t, tuple)
+        return self.root_tuple(s) == self.root_tuple(t)
+
     def unite(self, u, v):
-        self.add_node(u)
-        self.add_node(v)
+        assert isinstance(u, str) and isinstance(v, str)
         u = self.root(u)
         v = self.root(v)
-        if u != v:
-            self.parent[u] = v
+        if u == v:
+            return
+        self.parent[v] = u
+
+    def unite_tuple(self, s, t):
+        assert isinstance(s, tuple) and isinstance(t, tuple)
+        if len(s) != len(t):
+            raise ValueError('Cannot unite two tuples of different size. Got {} and {}.'.format(s, t))
+        for idx, _ in enumerate(s):
+            self.unite(s[idx], t[idx])
 
 class _FusionXHistory(object):
     def __init__(self):
@@ -982,10 +1045,9 @@ class _FusionXHistory(object):
 
     # このkeyが同じなら同じメモリを割り当てて良い
     def _get_pvar_meminfo(self, pvar):
-        return (self.abstract_shape_uf.root(self.base_abstract_shape[pvar.index]), pvar.dtype)
+        return (self.abstract_shape_uf.root_tuple(self.base_abstract_shape[pvar.index]), pvar.dtype)
 
     def _compress_pvars(self):
-        self.abstract_shape_uf.compress()
         def get_last_op(pvar):
             return self.last_op.get(pvar.index, -1)
 
@@ -1098,9 +1160,14 @@ class _FusionXHistory(object):
             else:
                 assert False
 
-    def _get_fusionx_info(self, func, args, name):
+    def _get_fusionx_info(self, func, args, same_shape, name):
         self.name = name
         in_pvars = [self._make_input_param(arg, idx) for idx, arg in enumerate(args)]
+
+        for t in same_shape:
+            for a in t:
+                self.abstract_shape_uf.unite_tuple(in_pvars[t[0]].abstract_shape, in_pvars[a].abstract_shape)
+
         return_value = func(*in_pvars)
 
         # size >= 0 for tuples
@@ -1139,7 +1206,7 @@ class _FusionXHistory(object):
                 merged = _FusionXMergedOp()
                 merged_op_list.append(op)
             elif isinstance(op, _FusionXOp):
-                if prev is not None and not self.abstract_shape_uf.same(prev.abstract_shape, op.abstract_shape):
+                if prev is not None and not self.abstract_shape_uf.same_tuple(prev.abstract_shape, op.abstract_shape):
                     if merged.size() > 0:
                         merged_op_list.append(merged)
                     merged = _FusionXMergedOp()
@@ -1150,13 +1217,64 @@ class _FusionXHistory(object):
         if merged.size() > 0:
             merged_op_list.append(merged)
 
+        # inputでもoutputでもなく1つのopにしか登場しない変数はarrayとして保存しなくていい
+        # inputでもoutputでもないarrayは最後の登場時計算結果を更新しなくていい
+
+        # op_idx[pvar.index] = set of idx of merged_op that contains pvar
+        op_idx = dict()
+        for idx, op in enumerate(merged_op_list):
+            if isinstance(op, _FusionXReductionOp):
+                in_pvars = [op.in_pvar]
+                out_pvars = [op.out_pvar]
+            else:
+                in_pvars = op.in_pvars
+                out_pvars = op.out_pvars
+            for pvar in in_pvars + out_pvars:
+                if pvar.index not in op_idx:
+                    op_idx[pvar.index] = set()
+                op_idx[pvar.index].add(idx)
+
+        for idx, op in enumerate(merged_op_list):
+            if isinstance(op, _FusionXReductionOp):
+                in_pvars = [op.in_pvar]
+                out_pvars = [op.out_pvar]
+            else:
+                in_pvars = op.in_pvars
+                out_pvars = op.out_pvars
+            for pvar in in_pvars + out_pvars:
+                if isinstance(pvar, _FusionXVarArray) and not pvar.is_inout() and len(op_idx[pvar.index]) == 1:
+                    pvar.can_scalar = True
+
+        new_param_list = []
+        new_param_list_base = []
+        for pvar in self.param_list:
+            if isinstance(pvar, _FusionXVarArray):
+                if not pvar.can_scalar:
+                    new_param_list.append(pvar)
+            else:
+                new_param_list.append(pvar)
+        for pvar in self.param_list_base:
+            if isinstance(pvar, _FusionXVarArray):
+                if not pvar.can_scalar:
+                    new_param_list_base.append(pvar)
+            else:
+                new_param_list_base.append(pvar)
+        self.param_list = new_param_list
+        self.param_list_base = new_param_list_base
+
         # ufuncのsubmoduleは実行ごとに変化しないためこの時点で生成
         ufunc_submodule_code = ''
         for submodule in self.ufunc_submodules.values():
             ufunc_submodule_code += submodule.code()
 
         self.ufunc_submodule_code = ufunc_submodule_code
-        self.cuda_body = '    __syncthreads();'.join([op.code() for op in merged_op_list])
+        codes = []
+        for idx, op in enumerate(merged_op_list):
+            if isinstance(op, _FusionXReductionOp):
+                codes.append(op.code())
+            else:
+                codes.append(op.code(idx, op_idx))
+        self.cuda_body = '    __syncthreads();'.join(codes)
         # print(self.cuda_body)
         return self, self.shape_constraints
 
@@ -1305,7 +1423,7 @@ cpdef ndarray _reduce_dims_core(ndarray array):
 
 @util.memoize()
 def _cuda_compile(code, name, cuda_params, cuda_body):
-    code += 'extern "C" __global__ void {}({})'.format(
+    code += 'extern "C" __global__ void {}({}) '.format(
         name, cuda_params) + '{\n' + cuda_body + '}\n'
     # print(code)
     module = compile_with_cache(code)
@@ -1323,7 +1441,7 @@ class FusionX(object):
     def __repr__(self):
         return '<FusionX name={}>'.format(self.name)
 
-    def __call__(self, *args):
+    def __call__(self, *args, **kwargs):
         if _is_fusingx():
             # Inner function of composition of multiple fused functions.
             return self.func(*args)
@@ -1367,9 +1485,17 @@ class FusionX(object):
             else:
                 raise TypeError('Unsupported input type {}.'.format(type(arg)))
 
+        # とりあえず古いfusionに沿ってargsはこうしているが、same_shapeで指定するindexと噛み合わなくて面倒なケースがある
         args = [arg for arg in args if arg is not None]
 
-        cdef tuple param_key = tuple(params_info)
+        # check same_shape
+        same_shape = kwargs.pop('same_shape', [])
+        for t in same_shape:
+            for a in t:
+                if args[a].shape != args[t[0]].shape:
+                    raise ValueError('Shape of {} must be equal to {}, specified by same_shape.'.format(args[a], args[t[0]]))
+
+        cdef tuple param_key = tuple(params_info) + tuple(same_shape)
         cdef tuple shape_key = tuple(shape_info)
 
         map = self._get_shape_map(args)
@@ -1387,22 +1513,23 @@ class FusionX(object):
             self._memo1[param_key] = dict()
             self._memo2[param_key] = dict()
         if fusionx_info is None:
-            kernel, constraints = self._setup_fusionx_info(args)
+            kernel, constraints = self._setup_fusionx_info(args, same_shape)
             self._memo1[param_key][constraints] = kernel
             self._memo2[param_key][shape_key] = kernel
             fusionx_info = kernel
 
         return fusionx_info.exec(map, *args)
 
-    def _setup_fusionx_info(self, args):
+    def _setup_fusionx_info(self, args, same_shape):
         history = _FusionXHistory()
         # avoid conflict with _thread_local.history
         _thread_local.historyx = history
-        ret = history._get_fusionx_info(self.func, args, self.name)
+        ret = history._get_fusionx_info(self.func, args, same_shape, self.name)
         _thread_local.historyx = None
         return ret
 
     def _get_shape_map(self, args):
+        # kwargsのsame_shapeをチェックするほうがユーザに優しいけどCPU時間がわずかに増える。とりあえず実装は省略
         map = dict()
         for idx, arg in enumerate(args):
             if not isinstance(arg, cupy.core.ndarray):

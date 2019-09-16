@@ -87,7 +87,7 @@ __device__ void ${name}(${parameters}) {
 ${typedef}
     ${operation};
 }
-        ''').substitute(
+''').substitute(
             name=self.name,
             parameters=params,
             operation=self.op,
