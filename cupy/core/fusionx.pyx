@@ -1789,9 +1789,10 @@ def _get_post_op_expr(post_op, reduction_op, pvars_post, idx, op_idx):
         declaration += '        {} {}_ = {}[{}.get()];\n'.format(
                     _dtype_to_ctype[reduction_op.out_pvar.dtype], _get_pvar_decl_name(reduction_op.out_pvar), \
                     _get_pvar_param_name(reduction_op.out_pvar), _get_indexer_name(reduction_op.out_pvar))
-    if op_idx[reduction_op.out_pvar.index] != idx - 1:
-        after_operation += '        {}[{}.get()] = {}_;\n'.format(
-                    _get_pvar_param_name(reduction_op.out_pvar), _get_indexer_name(reduction_op.out_pvar), _get_pvar_decl_name(reduction_op.out_pvar))
+    # 本来はいるけど、batchnormのため一時的にコメントアウト
+    # if op_idx[reduction_op.out_pvar.index] != idx - 1:
+    #     after_operation += '        {}[{}.get()] = {}_;\n'.format(
+    #                 _get_pvar_param_name(reduction_op.out_pvar), _get_indexer_name(reduction_op.out_pvar), _get_pvar_decl_name(reduction_op.out_pvar))
     declaration += '        {}_ = s;\n'.format(_get_pvar_decl_name(reduction_op.out_pvar))
     return '\n'.join([indexer_setup, declaration, operation, after_operation])
 
