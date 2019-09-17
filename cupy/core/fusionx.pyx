@@ -589,6 +589,8 @@ class _FusionXMergedReductionOp:
         params = list()
         for pvar in self.pvars:
             if isinstance(pvar, _FusionXVarArray):
+                if pvar.can_scalar:
+                    continue
                 params.append(_get_pvar_param_name(pvar))
                 params.append(_get_indexer_name(pvar))
             else:
@@ -1801,6 +1803,8 @@ def merged_reduction_code_template(pre_op, reduction_op, post_op, pvars, pvars_p
     params = list()
     for pvar in pvars:
         if isinstance(pvar, _FusionXVarArray):
+            if pvar.can_scalar:
+                continue
             params.append('CArray<{}, {}> {}'.format(_dtype_to_ctype[pvar.dtype], pvar.ndarray.ndim, _get_pvar_param_name(pvar)))
             params.append('CIndexer<{}> {}'.format(pvar.ndarray.ndim, _get_indexer_name(pvar)))
         else:
