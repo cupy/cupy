@@ -209,9 +209,6 @@ class _FusionXVarArray(_FusionXVarScalar):
         self.index_key = None
         self.abstract_shape = tuple('v{}.{}'.format(self.index, i) for i in range(self.ndim)) if init_abstract_shape else None
 
-        # 1つの_FusionXOp (_FusionXMergedOp)にしか現れなく、入出力でないならscalarに潰せる
-        self.can_scalar = False
-
         # resettable
         self.size = None
         self.real_shape = None
@@ -400,6 +397,10 @@ class _FusionXOp(object):
             if isinstance(pvar, _FusionXVarArray):
                 self.abstract_shape = pvar.abstract_shape
         assert self.abstract_shape is not None
+        self.need_indexer = set()
+        self.indexer_setup = None
+        self.declaration = None
+        self.after_operation = None
 
         for pvar in self.in_pvars + self.out_pvars:
             if isinstance(pvar, _FusionXVarArray):
@@ -411,19 +412,22 @@ class _FusionXOp(object):
         return '<_FusionXOp name={}, in_pvars={}, out_pvars={}>'.format(self.ufunc.name, in_pvars, out_pvars)
 
     def _get_indexer_setup(self, tid='i'):
+        if self.indexer_setup is not None:
+            return self.indexer_setup
         ret = ''
         used = set()
         for a in self.in_pvars + self.out_pvars:
             if a in used:
                 continue
             used.add(a)
-            if isinstance(a, _FusionXVarArray):
-                if a.can_scalar:
-                    continue
+            if isinstance(a, _FusionXVarArray) and a in self.need_indexer:
                 ret += '        {}.set({});\n'.format(_get_indexer_name(a), tid)
+        self.indexer_setup = ret
         return ret
 
-    def _get_declaration(self):
+    def _get_declaration(self, ignore=set()):
+        if self.declaration is not None:
+            return self.declaration
         ret = ''
         used = set()
         for a in self.in_pvars + self.out_pvars:
@@ -431,10 +435,12 @@ class _FusionXOp(object):
                 continue
             used.add(a)
             if isinstance(a, _FusionXVarArray):
-                if a.can_scalar:
-                    ret += '        {} {}_ = 0;\n'.format(
+                if not a.is_inout() and a.index not in _thread_local.historyx.initialized:
+                    _thread_local.historyx.initialized.add(a.index)
+                    ret += '        {} {}_;\n'.format(
                         _dtype_to_ctype[a.dtype], _get_pvar_decl_name(a))
                 else:
+                    self.need_indexer.add(a)
                     ret += '        {} {}_ = {}[{}.get()];\n'.format(
                         _dtype_to_ctype[a.dtype], _get_pvar_decl_name(a), _get_pvar_param_name(a), _get_indexer_name(a))
             elif isinstance(a, _FusionXVarScalar):
@@ -446,6 +452,7 @@ class _FusionXOp(object):
                         _dtype_to_ctype[a.dtype], _get_pvar_decl_name(a), a.const_value)
             else:
                 raise TypeError('Unknown type {}.'.format(type(a)))
+        self.declaration = ret
         return ret
 
     def _get_operation(self):
@@ -465,14 +472,19 @@ class _FusionXOp(object):
                 type=_dtype_to_ctype[a.dtype], name=_get_pvar_decl_name(a))
         return '        {\n' + pre_conversion + operation + post_conversion + '        }\n'
 
-    def _get_after_operation(self, idx, op_idx):
+    def _get_after_operation(self, idx, op_idx, delay=set()):
+        if self.after_operation is not None:
+            return self.after_operation
         ret = ''
         for a in self.out_pvars:
-            if a.can_scalar:
-                continue
-            if not a.is_inout() and idx == max(op_idx[a.index]):
-                continue
+            if not a.is_inout():
+                if idx == max(op_idx[a.index]):
+                    continue
+                if a in delay and idx + 1 == max(op_idx[a.index]):
+                    continue
             if isinstance(a, _FusionXVarArray):
+                _thread_local.historyx.need_save.add(a.index)
+                self.need_indexer.add(a)
                 ret += '        {}[{}.get()] = {}_;\n'.format(
                     _get_pvar_param_name(a), _get_indexer_name(a), _get_pvar_decl_name(a))
             elif isinstance(a, _FusionXVarScalar):
@@ -480,9 +492,14 @@ class _FusionXOp(object):
                     _get_pvar_param_name(a), _get_pvar_decl_name(a))
             else:
                 raise TypeError('Unknown type {}.'.format(type(a)))
+        self.after_operation = ret
         return ret
 
-    def code(self, idx, op_idx):
+    def set_idx(self, idx, op_idx):
+        self.idx = idx
+        self.op_idx = op_idx
+
+    def code(self, gen_code=True):
         return string.Template('''
     CUPY_FOR(i, ${indexer_name}.size()) {
 ${indexer_setup}
@@ -493,9 +510,10 @@ ${after_operation}
 ''').substitute(
             indexer_name=_get_indexer_name(self.in_pvars[0]),
             declaration=self._get_declaration(),
-            indexer_setup=self._get_indexer_setup(),
             operation=self._get_operation(),
-            after_operation=self._get_after_operation(idx, op_idx))
+            after_operation=self._get_after_operation(self.idx, self.op_idx),
+            # must be at the end
+            indexer_setup=self._get_indexer_setup())
 
 class _FusionXReductionOp(object):
     def __init__(self, func, in_pvar, out_pvar, op, reduction_index):
@@ -513,7 +531,10 @@ class _FusionXReductionOp(object):
     def _get_reduction_code(self):
         return reduction_code_template(self.reduction_index, self.in_pvar, self.out_pvar, self.reduce_expr, self.reduce_identity)
 
-    def code(self, idx, op_idx):
+    def code(self, gen_code=True):
+        if not gen_code:
+            _thread_local.historyx.need_save.add(self.out_pvar.index)
+            return
         return string.Template('''
     reduce${reduction_index}(${in_arr}, ${out_arr}, ${in_ind}, ${out_ind}, block_stride${reduction_index});
 ''').substitute(
@@ -578,26 +599,38 @@ class _FusionXMergedReductionOp:
         self.pvars = pvars
         self.pvars_pre = pvars_pre
         self.pvars_post = pvars_post
+        self.pre_op_expr = None
+        self.post_op_expr = None
 
     def __repr__(self):
         return '<_FusionXMergedReductionOp pre_op={}, post_op={}>'.format(self.pre_op, self.post_op)
 
     def _get_reduction_code(self):
-        return merged_reduction_code_template(self.pre_op, self.reduction_op, self.post_op, self.pvars, self.pvars_pre, self.pvars_post, self.idx, self.op_idx)
+        code, self.in_pvar, self.out_pvar = merged_reduction_code_template(self, self.pre_op, self.reduction_op, self.post_op, self.pvars_save, self.pvars_pre, self.pvars_post, self.idx, self.op_idx)
+        return code
 
-    def code(self, idx, op_idx):
+    def code(self, gen_code=True):
+        if not gen_code:
+            _get_pre_op_expr(self, self.pre_op, self.reduction_op, self.pvars_pre, self.idx - 1, self.op_idx)
+            _get_post_op_expr(self, self.post_op, self.reduction_op, self.pvars_post, self.idx + 1, self.op_idx)
+            return
+
         params = list()
+        pvars_save = list()
         for pvar in self.pvars:
             if isinstance(pvar, _FusionXVarArray):
-                if pvar.can_scalar:
+                if not pvar.is_inout() and pvar.index not in _thread_local.historyx.need_save:
                     continue
+                pvars_save.append(pvar)
                 params.append(_get_pvar_param_name(pvar))
                 params.append(_get_indexer_name(pvar))
             else:
                 if pvar.const_value is not None:
                     continue
+                pvars_save.append(pvar)
                 params.append(_get_pvar_param_name(pvar))
         params.append('block_stride{}'.format(self.reduction_op.reduction_index))
+        self.pvars_save = pvars_save
         return '    merged_reduction{}({});\n'.format(self.reduction_op.reduction_index, ', '.join(params))
 
 # 同じabst_shapeのelementwise演算をmergeする
@@ -610,6 +643,10 @@ class _FusionXMergedOp(_FusionXOp):
         self.in_dtypes = list()
         self.out_dtypes = list()
         self.ops = list()
+        self.need_indexer = set()
+        self.indexer_setup = None
+        self.declaration = None
+        self.after_operation = None
 
     def __repr__(self):
         return '<_FusionXMergedOp>'
@@ -736,6 +773,11 @@ class _FusionXHistory(object):
         self.cuda_params_memo = dict()
         # reduction時のblock_stridesはコードに埋め込むのではなく関数の引数として渡す
         self.block_strides = list()
+
+        # これにpvar.indexが入っていないnot pvar.is_inout()なarrayははじめの宣言時ind.get();しなくてよい
+        self.initialized = set()
+        # これにpvar.indexが入っているnot pvar.is_inout()な変数はmallocが必要
+        self.need_save = set()
 
     def __repr__(self):
         return '<_FusionXHistory> op_list={}, param_list={}, shape_constraints={}'.format(self.op_list, self.param_list, self.shape_constraints)
@@ -1074,10 +1116,7 @@ class _FusionXHistory(object):
             else:
                 raise TypeError('Unknown type {}.'.format(type(a)))
 
-        merged_reductions = list()
-        for op in self.merged_reduction_op_list:
-            merged_reductions.append(op.reduction_op)
-        for op in self.reduction_op_list + merged_reductions:
+        for op in self.reduction_op_list + self.merged_reduction_op_list:
             in_pvar = op.in_pvar
             out_pvar = op.out_pvar
             block_size = 512
@@ -1314,34 +1353,6 @@ class _FusionXHistory(object):
                     op_idx[pvar.index] = set()
                 op_idx[pvar.index].add(idx)
 
-        for idx, op in enumerate(merged_op_list):
-            if isinstance(op, _FusionXReductionOp):
-                in_pvars = [op.in_pvar]
-                out_pvars = [op.out_pvar]
-            else:
-                in_pvars = op.in_pvars
-                out_pvars = op.out_pvars
-            for pvar in in_pvars + out_pvars:
-                if isinstance(pvar, _FusionXVarArray) and not pvar.is_inout() and len(op_idx[pvar.index]) == 1:
-                    pvar.can_scalar = True
-
-        new_param_list = []
-        new_param_list_base = []
-        for pvar in self.param_list:
-            if isinstance(pvar, _FusionXVarArray):
-                if not pvar.can_scalar:
-                    new_param_list.append(pvar)
-            else:
-                new_param_list.append(pvar)
-        for pvar in self.param_list_base:
-            if isinstance(pvar, _FusionXVarArray):
-                if not pvar.can_scalar:
-                    new_param_list_base.append(pvar)
-            else:
-                new_param_list_base.append(pvar)
-        self.param_list = new_param_list
-        self.param_list_base = new_param_list_base
-
         # _FusionXMergedReductionOp
         new_merged_op_list = list()
         skip = False
@@ -1385,11 +1396,32 @@ class _FusionXHistory(object):
                     new_merged_op_list.append(op)
                     reduction_op_list.append(op)
             else:
+                op.set_idx(idx, op_idx)
                 new_merged_op_list.append(op)
 
         merged_op_list = new_merged_op_list
         self.reduction_op_list = reduction_op_list
         self.merged_reduction_op_list = merged_reduction_op_list
+
+        # trim unnecessary arrays
+        for op in merged_op_list:
+            op.code(gen_code=False)
+
+        param_list = list()
+        param_list_base = list()
+        for pvar in self.param_list:
+            if not isinstance(pvar, _FusionXVarArray) or pvar.is_inout():
+                param_list.append(pvar)
+                continue
+            if pvar.index in self.need_save:
+                param_list.append(pvar)
+        for pvar in self.param_list_base:
+            if pvar.is_input:
+                param_list_base.append(pvar)
+            if pvar.index in self.need_save:
+                param_list_base.append(pvar)
+        self.param_list = param_list
+        self.param_list_base = param_list_base
 
         # ufuncのsubmoduleは実行ごとに変化しないためこの時点で生成
         ufunc_submodule_code = ''
@@ -1398,11 +1430,8 @@ class _FusionXHistory(object):
 
         self.ufunc_submodule_code = ufunc_submodule_code
         codes = []
-        for idx, op in enumerate(merged_op_list):
-            if isinstance(op, _FusionXReductionOp):
-                codes.append(op.code(idx, op_idx))
-            else:
-                codes.append(op.code(idx, op_idx))
+        for op in merged_op_list:
+                codes.append(op.code())
         self.cuda_body = '    __syncthreads();\n'.join(codes)
         # print(self.cuda_body)
         return self, self.shape_constraints
@@ -1752,70 +1781,80 @@ __device__ void reduce${reduction_index}(CArray<${in_type}, ${in_ndim}> in_arr, 
         reduce_expr=reduce_expr,
         identity=identity)
 
-def _get_pre_op_expr(pre_op, reduction_op, pvars_pre, idx, op_idx):
+def _get_pre_op_expr(self, pre_op, reduction_op, pvars_pre, idx, op_idx):
     indexer_setup = ''
     declaration = ''
     operation = ''
     after_operation = ''
     if pre_op is not None:
-        indexer_setup += pre_op._get_indexer_setup('j')
         declaration += pre_op._get_declaration()
         operation += pre_op._get_operation()
-        after_operation += pre_op._get_after_operation(idx, op_idx)
+        delay = set()
+        delay.add(reduction_op.in_pvar)
+        after_operation += pre_op._get_after_operation(idx, op_idx, delay)
+        # must be at the end
+        indexer_setup += pre_op._get_indexer_setup('j')
 
     if reduction_op.in_pvar not in pvars_pre:
-        indexer_setup += '        {}.set(j);\n'.format(_get_indexer_name(reduction_op.in_pvar))
-        declaration += '        {} {}_ = {}[{}.get()];\n'.format(
-                    _dtype_to_ctype[reduction_op.in_pvar.dtype], _get_pvar_decl_name(reduction_op.in_pvar), \
-                    _get_pvar_param_name(reduction_op.in_pvar), _get_indexer_name(reduction_op.in_pvar))
+        if not reduction_op.in_pvar.is_inout() and reduction_op.in_pvar.index not in _thread_local.historyx.initialized:
+            _thread_local.historyx.initialized.add(reduction_op.in_pvar.index)
+            declaration += '        {} {}_;\n'.format(
+                _dtype_to_ctype[reduction_op.in_pvar.dtype], _get_pvar_decl_name(reduction_op.in_pvar))
+        else:
+            indexer_setup += '        {}.set(j);\n'.format(_get_indexer_name(reduction_op.in_pvar))
+            declaration += '        {} {}_ = {}[{}.get()];\n'.format(
+                _dtype_to_ctype[reduction_op.in_pvar.dtype], _get_pvar_decl_name(reduction_op.in_pvar), \
+                _get_pvar_param_name(reduction_op.in_pvar), _get_indexer_name(reduction_op.in_pvar))
     after_operation += '        {} a = {}_;\n'.format(
         _dtype_to_ctype[reduction_op.in_pvar.dtype], _get_pvar_decl_name(reduction_op.in_pvar))
 
-    return '\n'.join([indexer_setup, declaration, operation, after_operation])
+    ret = '\n'.join([indexer_setup, declaration, operation, after_operation])
+    self.pre_op_expr = ret
+    return ret
 
-def _get_post_op_expr(post_op, reduction_op, pvars_post, idx, op_idx):
+def _get_post_op_expr(self, post_op, reduction_op, pvars_post, idx, op_idx):
     indexer_setup = ''
     declaration = ''
     operation = ''
     after_operation = ''
     if post_op is not None:
-        indexer_setup += post_op._get_indexer_setup()
-        declaration += post_op._get_declaration()
+        ignore = set()
+        ignore.add(reduction_op.out_pvar)
+        declaration += post_op._get_declaration(ignore=ignore)
         operation += post_op._get_operation()
         after_operation += post_op._get_after_operation(idx, op_idx)
+        # must be at the end
+        indexer_setup += post_op._get_indexer_setup()
 
-    if reduction_op.out_pvar not in pvars_post:
-        indexer_setup += '        {}.set(i);\n'.format(_get_indexer_name(reduction_op.out_pvar))
-        declaration += '        {} {}_ = {}[{}.get()];\n'.format(
-                    _dtype_to_ctype[reduction_op.out_pvar.dtype], _get_pvar_decl_name(reduction_op.out_pvar), \
-                    _get_pvar_param_name(reduction_op.out_pvar), _get_indexer_name(reduction_op.out_pvar))
-    # 本来はいるけど、batchnormのため一時的にコメントアウト
-    # if op_idx[reduction_op.out_pvar.index] != idx - 1:
-    #     after_operation += '        {}[{}.get()] = {}_;\n'.format(
-    #                 _get_pvar_param_name(reduction_op.out_pvar), _get_indexer_name(reduction_op.out_pvar), _get_pvar_decl_name(reduction_op.out_pvar))
     declaration += '        {}_ = s;\n'.format(_get_pvar_decl_name(reduction_op.out_pvar))
-    return '\n'.join([indexer_setup, declaration, operation, after_operation])
+    ret = '\n'.join([indexer_setup, declaration, operation, after_operation])
+    self.post_op_expr = ret
+    return ret
 
 # 高速化案
 # reduction_opのin_pvar, out_pvarが一時変数なら保存しなくてもいい(それぞれin_pvarのlast_opがreduction_op, out_pvarのlast_opがpost_opのとき)
 # 一般の_FusionXMergedOpについても、in_pvarsが初期化されていない場合、a[ind.get()];せずに宣言することで高速化可能
 
-def merged_reduction_code_template(pre_op, reduction_op, post_op, pvars, pvars_pre, pvars_post, idx, op_idx):
+def merged_reduction_code_template(self, pre_op, reduction_op, post_op, pvars, pvars_pre, pvars_post, idx, op_idx):
     params = list()
+    size = dict()
     for pvar in pvars:
         if isinstance(pvar, _FusionXVarArray):
-            if pvar.can_scalar:
-                continue
             params.append('CArray<{}, {}> {}'.format(_dtype_to_ctype[pvar.dtype], pvar.ndarray.ndim, _get_pvar_param_name(pvar)))
             params.append('CIndexer<{}> {}'.format(pvar.ndarray.ndim, _get_indexer_name(pvar)))
+            size[pvar.ndarray.size] = pvar
         else:
             if pvar.const_value is not None:
                 continue
             params.append('{} {}'.format(_dtype_to_ctype[pvar.dtype], _get_pvar_param_name(pvar)))
     params.append('int block_stride')
 
-    pre_op_expr = _get_pre_op_expr(pre_op, reduction_op, pvars_pre, idx - 1, op_idx)
-    post_op_expr = _get_post_op_expr(post_op, reduction_op, pvars_post, idx + 1, op_idx)
+    pre_op_expr = self.pre_op_expr
+    post_op_expr = self.post_op_expr
+
+    assert len(size) <= 2
+
+    in_pvar, out_pvar = size[max(size)], size[min(size)]
 
     return string.Template('''
 #define REDUCE${reduction_index}(a, b) (${reduce_expr})
@@ -1859,9 +1898,9 @@ ${post_op_expr}
         out_type=_dtype_to_ctype[reduction_op.out_pvar.dtype],
         out_type_char=reduction_op.out_pvar.dtype.char,
         pre_op_expr=pre_op_expr,
-        in_ind=_get_indexer_name(reduction_op.in_pvar),
-        out_ind=_get_indexer_name(reduction_op.out_pvar),
+        in_ind=_get_indexer_name(in_pvar),
+        out_ind=_get_indexer_name(out_pvar),
         post_op_expr=post_op_expr,
         block_size=512,
         reduce_expr=reduction_op.reduce_expr,
-        identity=reduction_op.reduce_identity)
+        identity=reduction_op.reduce_identity), in_pvar, out_pvar
