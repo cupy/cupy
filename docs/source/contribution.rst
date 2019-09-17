@@ -263,7 +263,7 @@ Please note the followings when writing the document.
 
 For changes that modify or add new Cython files, please make sure the pointer types follow these guidelines (`#1913 <https://github.com/cupy/cupy/issues/1913>`_).
 
-* Pointers should be ``intptr_t``.
+* Pointers should be ``void*`` if only used within Cython, or ``intptr_t`` if exposed to the Python space.
 * Memory sizes should be ``size_t``.
 * Memory offsets should be ``ptrdiff_t``.
 
