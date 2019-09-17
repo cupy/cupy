@@ -92,6 +92,26 @@ class PerfBatchNorm(cupy_perf.PerfCases):
 
             return y, running_mean, running_var
 
+        def run_fuse2(x, gamma, beta, decay, decay_, eps, running_mean, running_var, \
+            mean, mean_expand, inv_std, inv_std_expand, m, adjust):
+            # cp.mean(x, axis=(0,2,3), out=mean)
+            cp.sum(x, axis=(0,2,3), out=mean)
+            mean /= m
+
+            # var = cp.var(x, axis=(0,2,3))
+            tmp = x - mean_expand
+            var = cp.sum(tmp * tmp, axis=(0,2,3))
+            var /= m
+
+            cp.true_divide(1, cp.sqrt(var + eps), out=inv_std)
+            y = gamma * tmp * inv_std_expand + beta
+
+            # update running statistics
+            running_mean = running_mean * decay + mean * decay_
+            running_var = running_var * decay + var * decay_ * adjust
+
+            return y, running_mean, running_var
+
         self.kern1 = cp.ElementwiseKernel(
                 'T x, U mean, U inv_std, U gamma, U beta', 'T y',
                 'y = gamma * (x - mean) * inv_std + beta', 'bn_fwd'
@@ -138,6 +158,7 @@ class PerfBatchNorm(cupy_perf.PerfCases):
 
         self.run_nofuse = run_nofuse
         self.run_fuse = cp.fusex(run_fuse)
+        self.run_fuse2 = cp.fusex(run_fuse2)
         # self.run_elementwise = run_elementwise
         self.run_elementwise2 = run_elementwise2
 
@@ -150,6 +171,11 @@ class PerfBatchNorm(cupy_perf.PerfCases):
         self.run_fuse(self.x, self.gamma, self.beta, self.decay, self.decay_, self.eps, \
             self.running_mean, self.running_var, self.mean, self.mean_expand, \
             self.inv_std, self.inv_std_expand, self.m, self.adjust)
+
+    def perf_fuse2(self):
+        self.run_fuse2(self.x, self.gamma, self.beta, self.decay, self.decay_, self.eps, \
+            self.running_mean, self.running_var, self.mean, self.mean_expand, \
+            self.inv_std, self.inv_std_expand, self.m, self.adjust, same_shape=[(1, 2), (6, 7), (8, 10), (9, 11)])
 
     def perf_elementwise(self):
         self.run_elementwise(self.x, self.gamma, self.beta, self.decay, self.eps, \
@@ -164,10 +190,11 @@ class PerfBatchNorm(cupy_perf.PerfCases):
 # PerfBatchNorm.perf_fuse = profile(PerfBatchNorm.perf_fuse)
 # _FusionXHistory.exec = profile(_FusionXHistory.exec)
 # FusionX.__call__ = profile(FusionX.__call__)
-# cupy_perf.run(__name__)
+cupy_perf.run(__name__)
 
-hoge = PerfBatchNorm()
-hoge.setUp()
-for i in range(1):
-    hoge.perf_fuse()
-    hoge.perf_elementwise()
+# hoge = PerfBatchNorm()
+# hoge.setUp()
+# for i in range(1):
+    # hoge.perf_fuse()
+    # hoge.perf_fuse2()
+    # hoge.perf_elementwise()
