@@ -465,12 +465,12 @@ class _FusionXOp(object):
                 type=_dtype_to_ctype[a.dtype], name=_get_pvar_decl_name(a))
         return '        {\n' + pre_conversion + operation + post_conversion + '        }\n'
 
-    def _get_after_operation(self, idx, op_list):
+    def _get_after_operation(self, idx, op_idx):
         ret = ''
         for a in self.out_pvars:
             if a.can_scalar:
                 continue
-            if not a.is_inout() and idx == max(op_list[a.index]):
+            if not a.is_inout() and idx == max(op_idx[a.index]):
                 continue
             if isinstance(a, _FusionXVarArray):
                 ret += '        {}[{}.get()] = {}_;\n'.format(
@@ -513,7 +513,7 @@ class _FusionXReductionOp(object):
     def _get_reduction_code(self):
         return reduction_code_template(self.reduction_index, self.in_pvar, self.out_pvar, self.reduce_expr, self.reduce_identity)
 
-    def code(self):
+    def code(self, idx, op_idx):
         return string.Template('''
     reduce${reduction_index}(${in_arr}, ${out_arr}, ${in_ind}, ${out_ind}, block_stride${reduction_index});
 ''').substitute(
@@ -579,19 +579,24 @@ class _FusionXMergedReductionOp:
         self.pvars_pre = pvars_pre
         self.pvars_post = pvars_post
 
+    def __repr__(self):
+        return '<_FusionXMergedReductionOp pre_op={}, post_op={}>'.format(self.pre_op, self.post_op)
+
     def _get_reduction_code(self):
         return merged_reduction_code_template(self.pre_op, self.reduction_op, self.post_op, self.pvars, self.pvars_pre, self.pvars_post, self.idx, self.op_idx)
 
-    def code(self):
+    def code(self, idx, op_idx):
         params = list()
-        for pvar in pvars:
+        for pvar in self.pvars:
             if isinstance(pvar, _FusionXVarArray):
                 params.append(_get_pvar_param_name(pvar))
                 params.append(_get_indexer_name(pvar))
             else:
+                if pvar.const_value is not None:
+                    continue
                 params.append(_get_pvar_param_name(pvar))
         params.append('block_stride{}'.format(self.reduction_op.reduction_index))
-        return '    merged_reduction{}({});'.format(self.reduction_op.reduction_index, ', '.join(params))
+        return '    merged_reduction{}({});\n'.format(self.reduction_op.reduction_index, ', '.join(params))
 
 # 同じabst_shapeのelementwise演算をmergeする
 class _FusionXMergedOp(_FusionXOp):
@@ -604,7 +609,11 @@ class _FusionXMergedOp(_FusionXOp):
         self.out_dtypes = list()
         self.ops = list()
 
+    def __repr__(self):
+        return '<_FusionXMergedOp>'
+
     def add_op(self, fusionx_op):
+        self.abstract_shape = fusionx_op.abstract_shape
         for in_pvar, in_dtype in zip(fusionx_op.in_pvars, fusionx_op.in_dtypes):
             if in_pvar in self.in_pvars_used:
                 continue
@@ -1027,6 +1036,8 @@ class _FusionXHistory(object):
         code = self.ufunc_submodule_code
         for op in self.reduction_op_list:
             code += op._get_reduction_code()
+        for op in self.merged_reduction_op_list:
+            code += op._get_reduction_code()
         self.full_submodules[key] = code
 
     def _get_output(self):
@@ -1060,7 +1071,11 @@ class _FusionXHistory(object):
                     params.append(args[a.input_order])
             else:
                 raise TypeError('Unknown type {}.'.format(type(a)))
-        for op in self.reduction_op_list:
+
+        merged_reductions = list()
+        for op in self.merged_reduction_op_list:
+            merged_reductions.append(op.reduction_op)
+        for op in self.reduction_op_list + merged_reductions:
             in_pvar = op.in_pvar
             out_pvar = op.out_pvar
             block_size = 512
@@ -1096,8 +1111,11 @@ class _FusionXHistory(object):
             else:
                 raise TypeError('Unknown type {}.'.format(type(a)))
 
-        for i in range(len(self.reduction_op_list)):
-            block_strides.append('int block_stride{}'.format(i))
+        merged_reductions = list()
+        for op in self.merged_reduction_op_list:
+            merged_reductions.append(op.reduction_op)
+        for op in self.reduction_op_list + merged_reductions:
+            block_strides.append('int block_stride{}'.format(op.reduction_index))
 
         ret = params + indexers + block_strides
         self.cuda_params_memo[key] = ret
@@ -1326,36 +1344,50 @@ class _FusionXHistory(object):
         new_merged_op_list = list()
         skip = False
         last_merged = None
+        reduction_op_list = list()
+        merged_reduction_op_list = list()
         for idx, op in enumerate(merged_op_list):
             if skip:
                 skip = False
                 continue
             if isinstance(op, _FusionXReductionOp):
-                can_merge_pre = 0 < idx and last_merged != idx - 1 and not isinstance(merged_op_list[idx - 1], _FusionXReductionOp)
-                can_merge_post = idx < len(merged_op_list) - 1 and not isinstance(merged_op_list[idx + 1], _FusionXReductionOp)
+                can_merge_pre = op.in_pvar.rotated_from is None and 0 < idx and last_merged != idx - 1 and \
+                    not isinstance(merged_op_list[idx - 1], _FusionXReductionOp) and \
+                    self.abstract_shape_uf.same_tuple(op.in_pvar.abstract_shape, merged_op_list[idx - 1].abstract_shape)
+                can_merge_post = idx < len(merged_op_list) - 1 and not isinstance(merged_op_list[idx + 1], _FusionXReductionOp) and \
+                    self.abstract_shape_uf.same_tuple(op.out_pvar.abstract_shape, merged_op_list[idx + 1].abstract_shape)
                 if can_merge_pre and can_merge_post:
                     if not _can_merge_pre_post(merged_op_list[idx - 1], merged_op_list[idx + 1]):
                         can_merge_pre = False
                 if can_merge_pre and can_merge_post:
                     pre_op = new_merged_op_list.pop(-1)
                     post_op = merged_op_list[idx + 1]
-                    new_merged_op_list.append(_FusionXMergedReductionOp(pre_op, op, post_op, idx, op_idx))
+                    merged_reduction = _FusionXMergedReductionOp(pre_op, op, post_op, idx, op_idx)
+                    new_merged_op_list.append(merged_reduction)
+                    merged_reduction_op_list.append(merged_reduction)
                     skip = True
                     last_merged = idx + 1
                 elif can_merge_pre:
                     pre_op = new_merged_op_list.pop(-1)
-                    new_merged_op_list.append(_FusionXMergedReductionOp(pre_op, op, None, idx, op_idx))
+                    merged_reduction = _FusionXMergedReductionOp(pre_op, op, None, idx, op_idx)
+                    new_merged_op_list.append(merged_reduction)
+                    merged_reduction_op_list.append(merged_reduction)
                 elif can_merge_post:
                     post_op = merged_op_list[idx + 1]
-                    new_merged_op_list.append(_FusionXMergedReductionOp(pre_op, op, post_op, idx, op_idx))
+                    merged_reduction = _FusionXMergedReductionOp(None, op, post_op, idx, op_idx)
+                    new_merged_op_list.append(merged_reduction)
+                    merged_reduction_op_list.append(merged_reduction)
                     skip = True
                     last_merged = idx + 1
                 else:
                     new_merged_op_list.append(op)
+                    reduction_op_list.append(op)
             else:
                 new_merged_op_list.append(op)
 
         merged_op_list = new_merged_op_list
+        self.reduction_op_list = reduction_op_list
+        self.merged_reduction_op_list = merged_reduction_op_list
 
         # ufuncのsubmoduleは実行ごとに変化しないためこの時点で生成
         ufunc_submodule_code = ''
@@ -1366,10 +1398,10 @@ class _FusionXHistory(object):
         codes = []
         for idx, op in enumerate(merged_op_list):
             if isinstance(op, _FusionXReductionOp):
-                codes.append(op.code())
+                codes.append(op.code(idx, op_idx))
             else:
                 codes.append(op.code(idx, op_idx))
-        self.cuda_body = '    __syncthreads();'.join(codes)
+        self.cuda_body = '    __syncthreads();\n'.join(codes)
         # print(self.cuda_body)
         return self, self.shape_constraints
 
@@ -1733,13 +1765,13 @@ def _get_pre_op_expr(pre_op, reduction_op, pvars_pre, idx, op_idx):
         indexer_setup += '        {}.set(j);\n'.format(_get_indexer_name(reduction_op.in_pvar))
         declaration += '        {} {}_ = {}[{}.get()];\n'.format(
                     _dtype_to_ctype[reduction_op.in_pvar.dtype], _get_pvar_decl_name(reduction_op.in_pvar), \
-                    _get_pvar_param_name(reduction_op.in_pvar, _get_indexer_name(reduction_op.in_pvar))
+                    _get_pvar_param_name(reduction_op.in_pvar), _get_indexer_name(reduction_op.in_pvar))
     after_operation += '        {} a = {}_;\n'.format(
         _dtype_to_ctype[reduction_op.in_pvar.dtype], _get_pvar_decl_name(reduction_op.in_pvar))
 
     return '\n'.join([indexer_setup, declaration, operation, after_operation])
 
-def _get_post_op_expr(post_op, reduction_op, pvars_post):
+def _get_post_op_expr(post_op, reduction_op, pvars_post, idx, op_idx):
     indexer_setup = ''
     declaration = ''
     operation = ''
@@ -1750,15 +1782,15 @@ def _get_post_op_expr(post_op, reduction_op, pvars_post):
         operation += post_op._get_operation()
         after_operation += post_op._get_after_operation(idx, op_idx)
 
-    if reduction_op.out_pvar not in out_pvars:
+    if reduction_op.out_pvar not in pvars_post:
         indexer_setup += '        {}.set(i);\n'.format(_get_indexer_name(reduction_op.out_pvar))
         declaration += '        {} {}_ = {}[{}.get()];\n'.format(
                     _dtype_to_ctype[reduction_op.out_pvar.dtype], _get_pvar_decl_name(reduction_op.out_pvar), \
-                    _get_pvar_param_name(reduction_op.out_pvar, _get_indexer_name(reduction_op.out_pvar))
+                    _get_pvar_param_name(reduction_op.out_pvar), _get_indexer_name(reduction_op.out_pvar))
+    if op_idx[reduction_op.out_pvar.index] != idx - 1:
         after_operation += '        {}[{}.get()] = {}_;\n'.format(
                     _get_pvar_param_name(reduction_op.out_pvar), _get_indexer_name(reduction_op.out_pvar), _get_pvar_decl_name(reduction_op.out_pvar))
-    declaration += '        {}_ = s;\n'.format(
-    _dtype_to_ctype[reduction_op.out_pvar.dtype], _get_pvar_decl_name(reduction_op.out_pvar))
+    declaration += '        {}_ = s;\n'.format(_get_pvar_decl_name(reduction_op.out_pvar))
     return '\n'.join([indexer_setup, declaration, operation, after_operation])
 
 # 高速化案
@@ -1772,6 +1804,8 @@ def merged_reduction_code_template(pre_op, reduction_op, post_op, pvars, pvars_p
             params.append('CArray<{}, {}> {}'.format(_dtype_to_ctype[pvar.dtype], pvar.ndarray.ndim, _get_pvar_param_name(pvar)))
             params.append('CIndexer<{}> {}'.format(pvar.ndarray.ndim, _get_indexer_name(pvar)))
         else:
+            if pvar.const_value is not None:
+                continue
             params.append('{} {}'.format(_dtype_to_ctype[pvar.dtype], _get_pvar_param_name(pvar)))
     params.append('int block_stride')
 
@@ -1815,8 +1849,8 @@ ${post_op_expr}
     }
 }
 ''').substitute(
-        params=', '.join(params)
-        reduction_index=reduction_index,
+        params=', '.join(params),
+        reduction_index=reduction_op.reduction_index,
         out_type=_dtype_to_ctype[reduction_op.out_pvar.dtype],
         out_type_char=reduction_op.out_pvar.dtype.char,
         pre_op_expr=pre_op_expr,

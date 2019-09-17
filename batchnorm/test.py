@@ -1,8 +1,8 @@
 import cupy as cp
-from gen_input import gen_test_input
-from nofuse import batchnorm_forward as nofuse_fwd
-from fuse import batchnorm_forward as fuse_fwd
-from elementwise import batchnorm_forward as elementwise_fwd
+from batchnorm.gen_input import gen_test_input
+from batchnorm.nofuse import batchnorm_forward as nofuse_fwd
+from batchnorm.fuse import batchnorm_forward as fuse_fwd
+from batchnorm.elementwise import batchnorm_forward as elementwise_fwd
 
 def assert_almost_equal(ret1, ret2, delta=1e-2):
     if type(ret1) != type(ret2):
