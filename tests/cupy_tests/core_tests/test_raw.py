@@ -140,7 +140,7 @@ class TestRaw(unittest.TestCase):
     def test_invalid_compiler_flag(self):
         with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
             cupy.RawModule(_test_source3, ("-DPRECISION=3",))
-        assert 'precision not supported' in str(ex)
+        assert 'precision not supported' in str(ex.value)
 
     def test_module_load_failure(self):
         # in principle this test is better done in test_driver.py, but
@@ -149,7 +149,7 @@ class TestRaw(unittest.TestCase):
         import os
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
             cupy.RawModule(os.path.expanduser("~/this_does_not_exist.cubin"))
-        assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex)
+        assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)
 
     def test_get_function_failure(self):
         # in principle this test is better done in test_driver.py, but
@@ -157,4 +157,4 @@ class TestRaw(unittest.TestCase):
         # let us do it here
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
             self.mod2.get_function("no_such_kernel")
-        assert 'CUDA_ERROR_NOT_FOUND' in str(ex)
+        assert 'CUDA_ERROR_NOT_FOUND' in str(ex.value)
