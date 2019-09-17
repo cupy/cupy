@@ -189,7 +189,7 @@ cdef class RawModule:
     """User-defined custom module.
 
     This class can be used to either compile raw CUDA sources or load CUDA
-    modules (\*.cubin). This class is useful when a number of CUDA kernels in
+    modules (\\*.cubin). This class is useful when a number of CUDA kernels in
     the same source need to be retrieved.
 
     For the former case, the CUDA source code is compiled when initializing a
@@ -197,7 +197,7 @@ cdef class RawModule:
     :meth:`get_function`, which will return an instance of :class:`RawKernel`.
     (Same as in :class:`RawKernel`, the generated binary is also cached.)
 
-    For the latter case, an existing CUDA binary (\*.cubin) can be loaded by
+    For the latter case, an existing CUDA binary (\\*.cubin) can be loaded by
     providing its path, and kernels therein can be retrieved similarly.
 
     Args:
