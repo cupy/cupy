@@ -326,7 +326,7 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
 
         C = alpha * reduce_op(uop_A(A)) + beta * uop_C(C))
 
-    See cupy/cuda/cutensor.reduction for details.
+    See :func:`cupy.cuda.cutensor.reduction` for details.
 
     Args:
         alpha: Scaling factor for A.
@@ -376,7 +376,7 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
         reduce_op, compute_dtype)
     try:
         ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
-    except Exception:
+    except cupy.cuda.memory.OutOfMemoryError:
         warnings.warn('cuTENSOR: failed to allocate memory of workspace '
                       '(size: {}).'.format(ws_size))
         ws_size = 0
