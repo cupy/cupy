@@ -9,7 +9,10 @@ from cupy import _version
 
 
 try:
-    from cupy import core  # NOQA
+    with warnings.catch_warnings():
+        distutils_warning = 'can\'t resolve package from __spec__'
+        warnings.filterwarnings("ignore", message=distutils_warning)
+        from cupy import core  # NOQA
 except ImportError:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
