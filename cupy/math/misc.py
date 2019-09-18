@@ -92,6 +92,11 @@ sign = core.create_ufunc(
     ''')
 
 
+_float_preamble = '''
+#ifndef NAN
+#define NAN __int_as_float(0x7fffffff)
+#endif
+'''
 _float_maximum = ('out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : '
                   'out0_type(max(in0, in1))')
 maximum = core.create_ufunc(
@@ -104,6 +109,7 @@ maximum = core.create_ufunc(
      ('FF->F', _float_maximum),
      ('DD->D', _float_maximum)),
     'out0 = max(in0, in1)',
+    preamble=_float_preamble,
     doc='''Takes the maximum of two arrays elementwise.
 
     If NaN appears, it returns the NaN.
@@ -125,6 +131,7 @@ minimum = core.create_ufunc(
      ('FF->F', _float_minimum),
      ('DD->D', _float_minimum)),
     'out0 = min(in0, in1)',
+    preamble=_float_preamble,
     doc='''Takes the minimum of two arrays elementwise.
 
     If NaN appears, it returns the NaN.
