@@ -165,12 +165,24 @@ class TestPadEmpty(unittest.TestCase):
 @testing.gpu
 class TestPadCustomFunction(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
-    def test_pad_via_func(self, xp, dtype):
+    def test_pad_via_func_modifying_inplace(self, xp, dtype):
         def _padwithtens(vector, pad_width, iaxis, kwargs):
             vector[:pad_width[0]] = 10
             vector[-pad_width[1]:] = 10
+        a = xp.arange(6, dtype=dtype).reshape(2, 3)
+        a = xp.pad(a, 2, _padwithtens)
+        return a
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_pad_via_func_returning_vector(self, xp, dtype):
+        def _padwithtens(vector, pad_width, iaxis, kwargs):
+            vector[:pad_width[0]] = 10
+            vector[-pad_width[1]:] = 10
+            return vector  # returning vector required by old NumPy (<=1.12)
         a = xp.arange(6, dtype=dtype).reshape(2, 3)
         a = xp.pad(a, 2, _padwithtens)
         return a
