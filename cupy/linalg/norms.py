@@ -15,7 +15,6 @@ if cuda.cusolver_enabled:
 def norm(x, ord=None, axis=None, keepdims=False):
     """Returns one of matrix norms specified by ``ord`` parameter.
 
-    Complex valued matrices and vectors are not supported.
     See numpy.linalg.norm for more detail.
 
     Args:
