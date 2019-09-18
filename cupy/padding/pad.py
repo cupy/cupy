@@ -368,7 +368,7 @@ def _as_pairs(x, ndim, as_index=False):
 
     x = numpy.array(x)
     if as_index:
-        x = numpy.round(x).astype(numpy.intp, copy=False)
+        x = numpy.asarray(numpy.round(x), dtype=numpy.intp)
 
     if x.ndim < 3:
         # Optimization: Possibly use faster paths for cases where `x` has
