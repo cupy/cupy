@@ -38,7 +38,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
         ndim = x.ndim
         if (ord is None or (ndim == 1 and ord == 2) or
                 (ndim == 2 and ord in ('f', 'fro'))):
-            if issubclass(x.dtype.type, numpy.complexfloating):
+            if x.dtype.kind == 'c':
                 s = abs(x.ravel())
                 s *= s
                 ret = cupy.sqrt(s.sum())
@@ -116,7 +116,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 row_axis -= 1
             ret = abs(x).sum(axis=col_axis).min(axis=row_axis)
         elif ord in [None, 'fro', 'f']:
-            if issubclass(x.dtype.type, numpy.complexfloating):
+            if x.dtype.kind == 'c':
                 s = abs(x)
                 s *= s
                 ret = cupy.sqrt(s.sum(axis=axis))
