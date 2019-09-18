@@ -21,7 +21,7 @@ set 1 to CUPY_PYTHON_350_FORCE environment variable."""
 
 requirements = {
     'setup': [
-        'fastrlock>=0.3',
+        'fastrlock==0.3',
     ],
     'install': [
         'numpy>=1.9.0',
