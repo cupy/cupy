@@ -128,6 +128,11 @@ def _get_linear_ramps(padded, axis, width_pair, end_value_pair):
     edge_pair = _get_edges(padded, axis, width_pair)
 
     # TODO: implement axis argument to cupy.linspace to avoid need for numpy
+    if numpy.lib.NumpyVersion(numpy.__version__) < '1.16.0':
+        # TODO: remove this once axis support is added to cupy.linspace
+        raise NotImplementedError(
+            "padding with 'linear_ramp' currently requires numpy >= 1.16")
+
     left_ramp = cupy.asarray(numpy.linspace(
         start=end_value_pair[0],
         # squeeze axis replaced by linspace
