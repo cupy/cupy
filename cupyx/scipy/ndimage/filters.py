@@ -1,0 +1,184 @@
+import numpy
+
+import cupy
+
+
+def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
+    """Multi-dimensional correlate.
+
+    The array is correlated with the given kernel.
+
+    Args:
+        input (cupy.ndarray): The input array.
+        weights (cupy.ndarray): Array of weights, same number of dimensions as
+            input
+        output (cupy.ndarray or None): The array in which to place the output.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``constant``. Default is ``0.0``.
+        origin (scalar or tuple of scalar): The origin parameter controls the
+            placement of the filter, relative to the center of the current
+            element of the input. Default of 0 is equivalent to
+            ``(0,)*input.ndim``.
+
+    Returns:
+        cupy.ndarray: The result of correlate.
+
+    .. seealso:: :func:`scipy.ndimage.correlate`
+    """
+    return _correlate_or_convolve(input, weights, output, mode, cval, origin,
+                                  False)
+
+
+def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
+    """Multi-dimensional convolution.
+
+    The array is convolved with the given kernel.
+
+    Args:
+        input (cupy.ndarray): The input array.
+        weights (cupy.ndarray): Array of weights, same number of dimensions as
+            input
+        output (cupy.ndarray or None): The array in which to place the output.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``constant``. Default is ``0.0``.
+        origin (scalar or tuple of scalar): The origin parameter controls the
+            placement of the filter, relative to the center of the current
+            element of the input. Default of 0 is equivalent to
+            ``(0,)*input.ndim``.
+
+    Returns:
+        cupy.ndarray: The result of convolution.
+
+    .. seealso:: :func:`scipy.ndimage.convolve`
+    """
+    return _correlate_or_convolve(input, weights, output, mode, cval, origin,
+                                  True)
+
+
+def _get_output(output, input, shape=None):
+    if shape is None:
+        shape = input.shape
+    if isinstance(output, cupy.ndarray):
+        if output.shape != tuple(shape):
+            raise ValueError('output shape is not correct')
+    else:
+        dtype = output
+        if dtype is None:
+            dtype = input.dtype
+        output = cupy.zeros(shape, dtype)
+    return output
+
+
+def _correlate_or_convolve(input, weights, output, mode, cval, origin,
+                           convolution):
+    if input.dtype in (numpy.complex64, numpy.complex128, numpy.complex256):
+        raise TypeError('Complex type not supported.')
+    if not hasattr(origin, '__getitem__'):
+        origin = [origin, ] * input.ndim
+    wshape = [ii for ii in weights.shape if ii > 0]
+    if len(wshape) != input.ndim:
+        raise RuntimeError('filter weights array has incorrect shape.')
+    if convolution:
+        weights = weights[tuple([slice(None, None, -1)] * weights.ndim)]
+        for ii in range(len(origin)):
+            origin[ii] = - origin[ii]
+            if not weights.shape[ii] & 1:
+                origin[ii] -= 1
+    for _origin, lenw in zip(origin, wshape):
+        if (lenw // 2 + _origin < 0) or (lenw // 2 + _origin > lenw):
+            raise ValueError('invalid origin')
+    if mode not in ('reflect', 'constant', 'nearest', 'mirror', 'wrap'):
+        msg = 'boundary mode not supported (actual: {}).'.format(mode)
+        raise RuntimeError(msg)
+
+    output = _get_output(output, input)
+    input = cupy.ascontiguousarray(input.astype(output.dtype))
+    weights = cupy.ascontiguousarray(weights.astype(output.dtype))
+    in_params, out_params, operation, name = _create_correlete_kernel(
+        input.ndim, mode, cval, input.shape, wshape, origin)
+    return cupy.ElementwiseKernel(in_params, out_params, operation, name)(
+        input, weights, output)
+
+
+def _create_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
+    in_params = ('raw T x, raw T w')
+    out_params = 'T y'
+
+    ops = []
+    ops.append('const int sx_{} = 1;'.format(ndim-1))
+    for j in range(ndim-2, -1, -1):
+        ops.append('int sx_{0} = sx_{1} * {2};'.format(j, j+1, xshape[j+1]))
+    ops.append('int _i = i;')
+    for j in range(ndim-1, -1, -1):
+        ops.append('int cx_{0} = _i % {1} - ({2} / 2) - ({3});'
+                   .format(j, xshape[j], wshape[j], origin[j]))
+        ops.append('_i /= {0};'.format(xshape[j]))
+    ops.append('T sum = (T)0;')
+    ops.append('int iw = 0;')
+
+    for j in range(ndim):
+        ops.append('for (int iw_{0} = 0; iw_{0} < {1}; iw_{0}++)'
+                   .format(j, wshape[j]))
+        ops.append('{')
+        ops.append('    int ix_{0} = cx_{0} + iw_{0};'.format(j))
+        # boundary condition
+        if mode == 'reflect':
+            ops.append('    if (ix_{0} < 0)'.format(j))
+            ops.append('        ix_{0} = - 1 - ix_{0};'.format(j))
+            ops.append('    ix_{0} %= {1} * 2;'.format(j, xshape[j]))
+            ops.append('    ix_{0} = min(ix_{0}, 2 * {1} - 1 - ix_{0});'
+                       .format(j, xshape[j]))
+        elif mode == 'mirror':
+            ops.append('    if (ix_{0} < 0)'.format(j))
+            ops.append('        ix_{0} = - ix_{0};'.format(j))
+            ops.append('    if ({} == 1)'.format(xshape[j]))
+            ops.append('        ix_{0} = 0;'.format(j))
+            ops.append('    else')
+            ops.append('    {')
+            ops.append('        ix_{0} = 1 + (ix_{0} - 1) % (({1} - 1) * 2);'
+                       .format(j, xshape[j]))
+            ops.append('        ix_{0} = min(ix_{0}, 2 * {1} - 2 - ix_{0});'
+                       .format(j, xshape[j]))
+            ops.append('    }')
+        elif mode == 'nearest':
+            ops.append('    ix_{0} = min(max(ix_{0}, 0), {1} - 1);'
+                       .format(j, xshape[j]))
+        elif mode == 'wrap':
+            ops.append('    if (ix_{0} < 0)'.format(j))
+            ops.append('        ix_{0} += (1 - (ix_{0} / {1})) * {1};'
+                       .format(j, xshape[j]))
+            ops.append('    ix_{0} %= {1};'.format(j, xshape[j]))
+        elif mode == 'constant':
+            ops.append('    if (ix_{0} >= {1})'.format(j, xshape[j]))
+            ops.append('        ix_{0} = -1;'.format(j))
+        ops.append('')
+
+    if mode == 'constant':
+        _str = " || ".join(['ix_{0} < 0'.format(j) for j in range(ndim)])
+        ops.append('    if (' + _str + ')')
+        ops.append('    {')
+        ops.append('        sum += (T){} * w[iw];'.format(cval))
+        ops.append('        iw += 1;')
+        ops.append('        continue;')
+        ops.append('    }')
+
+    _str = " + ".join(['ix_{0} * sx_{0}'.format(j) for j in range(ndim)])
+    ops.append('    int ix = ' + _str + ';')
+    ops.append('    sum += x[ix] * w[iw];')
+    ops.append('    iw += 1;')
+
+    for j in range(ndim):
+        ops.append('}')
+    ops.append('y = sum;')
+    operation = "\n".join(ops)
+
+    name = 'cupy_ndimage_correlate_{}_{}d_x{}_w{}'.format(
+        mode, ndim, "_".join(['{}'.format(j) for j in xshape]),
+        "_".join(['{}'.format(j) for j in wshape]))
+    return in_params, out_params, operation, name
