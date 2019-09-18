@@ -12,7 +12,6 @@ from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAarray,
 
 
 dev = cupy.cuda.Device(runtime.getDevice())
-stream_for_async_cpy = cupy.cuda.Stream()
 
 
 @testing.gpu
@@ -27,7 +26,7 @@ stream_for_async_cpy = cupy.cuda.Stream()
 class TestCUDAarray(unittest.TestCase):
     def test_array_gen_cpy(self):
         xp = numpy if self.xp == 'numpy' else cupy
-        stream = None if not self.stream else stream_for_async_cpy
+        stream = None if not self.stream else cupy.cuda.Stream()
         width, height, depth = self.dimensions
         n_channel = self.n_channels
 
