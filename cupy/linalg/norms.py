@@ -75,7 +75,11 @@ def norm(x, ord=None, axis=None, keepdims=False):
             return abs(x).sum(axis=axis, keepdims=keepdims)
         elif ord is None or ord == 2:
             # special case for speedup
-            s = (x.conj() * x).real
+            if x.dtype.kind == 'c':
+                s = abs(x)
+                s *= s
+            else:
+                s = x * x
             return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
         else:
             try:
