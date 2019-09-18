@@ -397,7 +397,11 @@ def _as_pairs(x, ndim, as_index=False):
 
     # Converting the array with `tolist` seems to improve performance
     # when iterating and indexing the result (see usage in `pad`)
-    return numpy.broadcast_to(x, (ndim, 2)).tolist()
+    try:
+        return numpy.broadcast_to(x, (ndim, 2)).tolist()
+    except AttributeError:
+        # NumPy < 1.10 does not have broadcast_to
+        return cupy.broadcast_to(cupy.asarray(x), (ndim, 2)).tolist()
 
 # def _pad_dispatcher(array, pad_width, mode=None, **kwargs):
 #    return (array,)
