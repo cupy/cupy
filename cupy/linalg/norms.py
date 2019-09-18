@@ -43,7 +43,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 s *= s
                 ret = cupy.sqrt(s.sum())
             else:
-                ret = cupy.sqrt((x.ravel() ** 2).sum())
+                ret = cupy.sqrt((x * x).ravel().sum())
             if keepdims:
                 ret = ret.reshape((1,) * ndim)
             return ret
@@ -121,7 +121,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 s *= s
                 ret = cupy.sqrt(s.sum(axis=axis))
             else:
-                ret = cupy.sqrt((x ** 2).sum(axis=axis))
+                ret = cupy.sqrt((x * x).sum(axis=axis))
         else:
             raise ValueError('Invalid norm order for matrices.')
         if keepdims:
