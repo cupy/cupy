@@ -288,7 +288,7 @@ def inv(a):
         getrf_bufferSize = cusolver.zgetrf_bufferSize
         getrs = cusolver.zgetrs
     else:
-        raise RuntimeError("unsupported dtype")
+        raise ValueError('unsupported dtype')
 
     m = a.shape[0]
 
