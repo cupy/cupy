@@ -233,15 +233,34 @@ cdef _nanargmax = create_reduction_func(
 
 cdef ndarray _var(
         ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-    assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
-                                'implemented. Current implemention does not ' \
-                                'convert the dtype'
+
+    if a.dtype.kind == 'c':
+        if out is not None:
+            raise NotImplementedError(
+                'Variance for complex numbers is not implemented when out != '
+                'None. Current implemention does not convert the dtype.'
+            )
+        dtype_out = dtype
+        if dtype in ['D', 'F']:
+            dtype == dtype.lower()
+        out = _var(a.real, axis, dtype, None, ddof, keepdims)
+        out += _var(a.imag, axis, dtype, None, ddof, keepdims)
+        if dtype_out is not None and dtype_out != dtype:
+            out = out.astype(dtype_out, copy=False)
+        return out
+
     if axis is None:
         axis = tuple(range(a.ndim))
     if not isinstance(axis, tuple):
         axis = (axis,)
 
-    if dtype is None and a.dtype.kind in 'biu':
+    dtype_out = dtype
+    if dtype in ['D', 'F']:
+        if a.dtype.kind == 'f':
+            dtype = a.dtype.char
+        else:
+            dtype = 'd'
+    elif dtype is None and a.dtype.kind in 'biu':
         dtype = 'd'
 
     shape = a.shape
@@ -251,10 +270,13 @@ cdef ndarray _var(
     alpha = 1. / max(items - ddof, 0)
     arrmean = a.mean(axis=axis, dtype=dtype, out=None, keepdims=True)
     if out is None:
-        return _var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
+        out = _var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
     else:
-        return _var_core_out(
+        out = _var_core_out(
             a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
+    if dtype_out is not None and dtype_out != dtype:
+        out = out.astype(dtype_out, copy=False)
+    return out
 
 
 cdef ndarray _std(
