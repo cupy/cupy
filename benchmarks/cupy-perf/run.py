@@ -11,8 +11,8 @@ class PerfBatchNorm(cupy_perf.PerfCases):
     enable_line_profiler = False
 
     def run_elementwise(self, x, gamma, beta, decay, eps, running_mean, running_var, expander, adjust):
-            mean = cp.mean(x, axis=(0,2,3))
-            var = cp.var(x, axis=(0,2,3))
+            mean = cp.mean(x, axis=(0,1,2))
+            var = cp.var(x, axis=(0,1,2))
             inv_std = 1. / cp.sqrt(var)
 
             kern = cp.ElementwiseKernel(
@@ -40,7 +40,7 @@ class PerfBatchNorm(cupy_perf.PerfCases):
 
     def setUp(self):
         x = gen_input()
-        chan = x.shape[1]
+        chan = x.shape[3]
         gamma = cp.ones(chan)
         beta = cp.zeros(chan)
         decay = 0.9
@@ -48,7 +48,7 @@ class PerfBatchNorm(cupy_perf.PerfCases):
         eps = 2e-5
         running_mean = cp.zeros(chan)
         running_var = cp.ones(chan)
-        expander = [None, slice(None), None, None]
+        expander = [None, None, None, slice(None)]
         gamma_expand = gamma[expander]
         beta_expand = beta[expander]
 
@@ -61,8 +61,8 @@ class PerfBatchNorm(cupy_perf.PerfCases):
         adjust = m / max(m - 1., 1.)
 
         def run_nofuse(x, gamma, beta, decay, eps, running_mean, running_var, expander, adjust):
-            mean = cp.mean(x, axis=(0,2,3))
-            var = cp.var(x, axis=(0,2,3))
+            mean = cp.mean(x, axis=(0,1,2))
+            var = cp.var(x, axis=(0,1,2))
             inv_std = 1. / cp.sqrt(var + eps)
             y = gamma * (x - mean[expander]) * inv_std[expander] + beta
 
@@ -74,13 +74,13 @@ class PerfBatchNorm(cupy_perf.PerfCases):
 
         def run_fuse(x, gamma, beta, decay, decay_, eps, running_mean, running_var, \
             mean, mean_expand, inv_std, inv_std_expand, m, adjust):
-            # cp.mean(x, axis=(0,2,3), out=mean)
-            cp.sum(x, axis=(0,2,3), out=mean)
+            # cp.mean(x, axis=(0,1,2), out=mean)
+            cp.sum(x, axis=(0,1,2), out=mean)
             mean /= m
 
-            # var = cp.var(x, axis=(0,2,3))
+            # var = cp.var(x, axis=(0,1,2))
             tmp = x - mean_expand
-            var = cp.sum(tmp * tmp, axis=(0,2,3))
+            var = cp.sum(tmp * tmp, axis=(0,1,2))
             var /= m
 
             cp.true_divide(1, cp.sqrt(var + eps), out=inv_std)
@@ -94,13 +94,13 @@ class PerfBatchNorm(cupy_perf.PerfCases):
 
         def run_fuse2(x, gamma, beta, decay, decay_, eps, running_mean, running_var, \
             mean, mean_expand, inv_std, inv_std_expand, m, adjust):
-            # cp.mean(x, axis=(0,2,3), out=mean)
-            cp.sum(x, axis=(0,2,3), out=mean)
+            # cp.mean(x, axis=(0,1,2), out=mean)
+            cp.sum(x, axis=(0,1,2), out=mean)
             mean /= m
 
-            # var = cp.var(x, axis=(0,2,3))
+            # var = cp.var(x, axis=(0,1,2))
             tmp = x - mean_expand
-            var = cp.sum(tmp * tmp, axis=(0,2,3))
+            var = cp.sum(tmp * tmp, axis=(0,1,2))
             var /= m
 
             cp.true_divide(1, cp.sqrt(var + eps), out=inv_std)
@@ -127,8 +127,8 @@ class PerfBatchNorm(cupy_perf.PerfCases):
                 'update_mean_var')
 
         def run_elementwise2(x, gamma, beta, decay, eps, running_mean, running_var, expander, adjust, kern1, kern2):
-            mean = cp.mean(x, axis=(0,2,3))
-            var = cp.var(x, axis=(0,2,3))
+            mean = cp.mean(x, axis=(0,1,2))
+            var = cp.var(x, axis=(0,1,2))
             inv_std = 1. / cp.sqrt(var)
 
             y = kern1(x, mean[expander], inv_std[expander], gamma, beta)
@@ -177,7 +177,7 @@ class PerfBatchNorm(cupy_perf.PerfCases):
             self.running_mean, self.running_var, self.mean, self.mean_expand, \
             self.inv_std, self.inv_std_expand, self.m, self.adjust, same_shape=[(1, 2), (6, 7), (8, 10), (9, 11)])
 
-    def perf_elementwise(self):
+    def aperf_elementwise(self):
         self.run_elementwise(self.x, self.gamma, self.beta, self.decay, self.eps, \
             self.running_mean, self.running_var, self.expander, self.adjust)
 
