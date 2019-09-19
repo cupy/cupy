@@ -90,7 +90,7 @@ class TestArrayUfunc(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_shares_memory(self, xp):
-        a = cupy.testing.shaped_arange((1000, 1000), xp)
+        a = cupy.testing.shaped_arange((1000, 1000), xp, 'int64')
         b = xp.transpose(a)
         a += b
         return a
