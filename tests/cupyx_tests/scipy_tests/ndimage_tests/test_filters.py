@@ -3,10 +3,10 @@ import unittest
 import numpy
 
 from cupy import testing
-import cupyx.scipy.ndimage
+import cupyx.scipy.ndimage  # NOQA
 
 try:
-    import scipy.ndimage
+    import scipy.ndimage  # NOQA
 except ImportError:
     pass
 
