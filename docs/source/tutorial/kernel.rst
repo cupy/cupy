@@ -254,7 +254,7 @@ Accessing texture memory in :class:`~cupy.RawKernel` is supported via CUDA Runti
     Especially note that when passing :class:`~cupy.ndarray`, its ``dtype`` should match with the type of the argument declared in the method signature of the CUDA source code (unless you are casting arrays intentionally).
     For example, ``cupy.float32`` and ``cupy.uint64`` arrays must be passed to the argument typed as ``float*`` and ``unsigned long long*``.
     For Python primitive types, ``int``, ``float`` and ``bool`` map to ``long long``, ``double`` and ``bool``, respectively.
-    To use complex types, the user must include ``<cupy/complex.cuh>`` as in the complex-valued example above; CUDA's complex-type header (`<cuComplex.h>`) does not work in CuPy.
+    To use complex types, the user must include ``<cupy/complex.cuh>`` as in the complex-valued example above; CUDA's complex-type header (``<cuComplex.h>``) does not work in CuPy.
 
 .. note::
     When using ``printf()`` in your CUDA kernel, you may need to synchronize the stream to see the output.
