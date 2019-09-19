@@ -232,6 +232,8 @@ class _FusionXVarArray(_FusionXVarScalar):
             ret |= self.indexed_from._is_output_recursive()
         return ret
 
+    # 結構冗長な解析をしているけど解析パートでしか呼ばれないので楽だしかなり使っている。indexだけを見て入力かどうか判定している
+    # やはりそのままindexで判定したほうが楽だった
     def is_inout(self):
         ret = self.is_input or self.is_output
         if self.broadcasted_from is not None:
@@ -411,6 +413,8 @@ class _FusionXOp(object):
         out_pvars = ', '.join([_get_pvar_param_name(a) for a in self.out_pvars])
         return '<_FusionXOp name={}, in_pvars={}, out_pvars={}>'.format(self.ufunc.name, in_pvars, out_pvars)
 
+    # ind0.set(i);みたいなやつを文字列として生成する。先に_get_declarationと_get_after_operationが呼ばれていることを想定している
+    # そうするとself.need_indexerの中身が得られるため
     def _get_indexer_setup(self, tid='i'):
         if self.indexer_setup is not None:
             return self.indexer_setup
@@ -425,6 +429,7 @@ class _FusionXOp(object):
         self.indexer_setup = ret
         return ret
 
+    # int v0_ = a0[ind0.get()];みたいな処理を文字列として生成する。a0が未初期化の場合、速度向上のためにint v0_;のみを宣言
     def _get_declaration(self, ignore=set()):
         if self.declaration is not None:
             return self.declaration
@@ -474,6 +479,8 @@ class _FusionXOp(object):
                 type=_dtype_to_ctype[a.dtype], name=_get_pvar_decl_name(a))
         return '        {\n' + pre_conversion + operation + post_conversion + '        }\n'
 
+    # operation後に、結果をもとの配列に戻すパート
+    # もうその後参照されないなら戻す必要がない
     def _get_after_operation(self, idx, op_idx, delay=set()):
         if self.after_operation is not None:
             return self.after_operation
@@ -497,10 +504,15 @@ class _FusionXOp(object):
         self.after_operation = ret
         return ret
 
+    # code()が呼ばれる前に設定する
+    # idxは、_FusionXMergedReductionOpを作る前の(_FusionXMergedOp作成後時点)での命令の順序
+    # op_idxは、op_idx[pvar.index] = (pvarが登場した命令のidxの集合)
     def set_idx(self, idx, op_idx):
         self.idx = idx
         self.op_idx = op_idx
 
+    # 実際にコードを生成する前に、gen_code=Falseとして一度だけ走査して、どのタイミングでどの変数が初期化されるかなどを調べる
+    # gen_code=Falseでの呼び出しは1度の解析につき1度のみ想定している
     def code(self, gen_code=True):
         return string.Template('''
     CUPY_FOR(i, ${indexer_name}.size()) {
@@ -535,6 +547,7 @@ class _FusionXReductionOp(object):
 
     def code(self, gen_code=True):
         if not gen_code:
+            # 配列は上書きされるので更新。need_saveは、その後アクセスがあるか本来見るべきだけど冗長な命令を含まないコードなら普通必要なのでとりあえず追加
             _thread_local.historyx.initialized.add(self.out_pvar.index)
             _thread_local.historyx.need_save.add(self.out_pvar.index)
             return
@@ -555,6 +568,7 @@ class _FusionXReductionOp(object):
 # それにcompress_pvars()はmerge前にやる必要があるので、またparam_listの更新が必要になってしまう
 # さらにreduce dimsの効果も失われがち
 
+# Reduction命令前後で同じメモリアクセスがある場合はマージできない(両方ともreadなら大丈夫)
 def _can_merge_pre_post(pre_op, post_op):
     pre_op_index_set = set()
     post_op_index_set = set()
@@ -608,12 +622,15 @@ class _FusionXMergedReductionOp:
     def __repr__(self):
         return '<_FusionXMergedReductionOp pre_op={}, post_op={}>'.format(self.pre_op, self.post_op)
 
+    # これは実行時に呼ばれる。code()で生成される文字列(関数呼び出し)の中で呼び出される外部関数の中身
     def _get_reduction_code(self):
         code, self.in_pvar, self.out_pvar = merged_reduction_code_template(self, self.pre_op, self.reduction_op, self.post_op, self.pvars_save, self.pvars_pre, self.pvars_post, self.idx, self.op_idx)
         return code
 
+    # 解析時で呼ばれる
     def code(self, gen_code=True):
         if not gen_code:
+            # これ本来はメンバ関数で実装したほうがよかった。メンバにたくさんアクセスするのでselfを渡している
             _get_pre_op_expr(self, self.pre_op, self.reduction_op, self.pvars_pre, self.idx - 1, self.op_idx)
             _get_post_op_expr(self, self.post_op, self.reduction_op, self.pvars_post, self.idx + 1, self.op_idx)
             return
@@ -701,6 +718,7 @@ class _ShapeConstraints(object):
     def __repr__(self):
         return '<_ShapeConstraints eq_constraints={}, one_constraints={}>'.format(self.eq_constraints, self.one_constraints)
 
+# 等価なshapeはUnionFindで管理
 class _UnionFind:
     def __init__(self):
         self.nodes = set()
@@ -1782,6 +1800,9 @@ __device__ void reduce${reduction_index}(CArray<${in_type}, ${in_ndim}> in_arr, 
         reduce_expr=reduce_expr,
         identity=identity)
 
+# これは解析時に呼ばれる
+# ReducionKernelでいうpre_opの部分を生成する
+# メモリアクセスの無駄がないようにpre_opとreduction_opの変数をうまくつぶしている
 def _get_pre_op_expr(self, pre_op, reduction_op, pvars_pre, idx, op_idx):
     indexer_setup = ''
     declaration = ''
@@ -1813,6 +1834,9 @@ def _get_pre_op_expr(self, pre_op, reduction_op, pvars_pre, idx, op_idx):
     self.pre_op_expr = ret
     return ret
 
+# 解析時
+# ReducionKernelでいうpost_opの部分を生成する
+# reduction_opとpost_opの変数をうまくつぶしている
 def _get_post_op_expr(self, post_op, reduction_op, pvars_post, idx, op_idx):
     indexer_setup = ''
     declaration = ''
@@ -1840,6 +1864,7 @@ def _get_post_op_expr(self, post_op, reduction_op, pvars_post, idx, op_idx):
     self.post_op_expr = ret
     return ret
 
+# 実行に呼ばれる(たいていはキャッシュされているが)
 def merged_reduction_code_template(self, pre_op, reduction_op, post_op, pvars, pvars_pre, pvars_post, idx, op_idx):
     params = list()
     size = dict()
