@@ -436,6 +436,7 @@ class _FusionXOp(object):
             used.add(a)
             if isinstance(a, _FusionXVarArray):
                 if a in ignore:
+                    _thread_local.historyx.initialized.add(a.index)
                     ret += '        {} {}_;\n'.format(
                         _dtype_to_ctype[a.dtype], _get_pvar_decl_name(a))
                     continue
@@ -537,6 +538,7 @@ class _FusionXReductionOp(object):
 
     def code(self, gen_code=True):
         if not gen_code:
+            _thread_local.historyx.initialized.add(self.out_pvar.index)
             _thread_local.historyx.need_save.add(self.out_pvar.index)
             return
         return string.Template('''
@@ -1752,8 +1754,7 @@ __device__ void reduce${reduction_index}(CArray<${in_type}, ${in_ndim}> in_arr, 
         ptrdiff_t i = _i + (tid & (block_stride - 1));
         for (ptrdiff_t j = i + _j; j < in_ind.size(); j += j_stride) {
             in_ind.set(j);
-            ${in_type} &a = in_arr[in_ind.get()];
-            s = REDUCE${reduction_index}(s, (${out_type})a);
+            s = REDUCE${reduction_index}(s, (${out_type})in_arr[in_ind.get()]);
         }
         sdata_${out_type_char}${reduction_index}[tid] = s;
         __syncthreads();
@@ -1768,8 +1769,7 @@ __device__ void reduce${reduction_index}(CArray<${in_type}, ${in_ndim}> in_arr, 
         }
         if (tid < block_stride && i < out_ind.size()) {
             out_ind.set(i);
-            ${out_type} &a = out_arr[out_ind.get()];
-            a = s;
+            out_arr[out_ind.get()] = s;
         }
         __syncthreads();
     }
