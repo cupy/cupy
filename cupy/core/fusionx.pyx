@@ -435,6 +435,10 @@ class _FusionXOp(object):
                 continue
             used.add(a)
             if isinstance(a, _FusionXVarArray):
+                if a in ignore:
+                    ret += '        {} {}_;\n'.format(
+                        _dtype_to_ctype[a.dtype], _get_pvar_decl_name(a))
+                    continue
                 if not a.is_inout() and a.index not in _thread_local.historyx.initialized:
                     _thread_local.historyx.initialized.add(a.index)
                     ret += '        {} {}_;\n'.format(
