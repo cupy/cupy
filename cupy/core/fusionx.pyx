@@ -431,15 +431,12 @@ class _FusionXOp(object):
         ret = ''
         used = set()
         for a in self.in_pvars + self.out_pvars:
+            if a in ignore:
+                continue
             if a in used:
                 continue
             used.add(a)
             if isinstance(a, _FusionXVarArray):
-                if a in ignore:
-                    _thread_local.historyx.initialized.add(a.index)
-                    ret += '        {} {}_;\n'.format(
-                        _dtype_to_ctype[a.dtype], _get_pvar_decl_name(a))
-                    continue
                 if not a.is_inout() and a.index not in _thread_local.historyx.initialized:
                     _thread_local.historyx.initialized.add(a.index)
                     ret += '        {} {}_;\n'.format(
@@ -1422,9 +1419,9 @@ class _FusionXHistory(object):
             if pvar.index in self.need_save:
                 param_list.append(pvar)
         for pvar in self.param_list_base:
-            if pvar.is_input:
+            if not isinstance(pvar, _FusionXVarArray):
                 param_list_base.append(pvar)
-            if pvar.index in self.need_save:
+            elif pvar.is_inout() or pvar.index in self.need_save:
                 param_list_base.append(pvar)
         self.param_list = param_list
         self.param_list_base = param_list_base
@@ -1830,14 +1827,18 @@ def _get_post_op_expr(self, post_op, reduction_op, pvars_post, idx, op_idx):
         # must be at the end
         indexer_setup += post_op._get_indexer_setup()
 
-    declaration += '        {}_ = s;\n'.format(_get_pvar_decl_name(reduction_op.out_pvar))
+    _thread_local.historyx.initialized.add(reduction_op.out_pvar.index)
+    declaration += '        {} {}_ = s;\n'.format(_dtype_to_ctype[reduction_op.out_pvar.dtype], _get_pvar_decl_name(reduction_op.out_pvar))
+    if reduction_op.out_pvar not in pvars_post or (reduction_op.out_pvar not in post_op.out_pvars and reduction_op.out_pvar.is_inout()):
+        if post_op is not None and reduction_op.out_pvar in post_op.need_indexer:
+            pass
+        else:
+            indexer_setup += '        {}.set(i);\n'.format(_get_indexer_name(reduction_op.out_pvar))
+        after_operation += '        {}[{}.get()] = {}_;\n'.format(
+            _get_pvar_param_name(reduction_op.out_pvar), _get_indexer_name(reduction_op.out_pvar), _get_pvar_decl_name(reduction_op.out_pvar))
     ret = '\n'.join([indexer_setup, declaration, operation, after_operation])
     self.post_op_expr = ret
     return ret
-
-# 高速化案
-# reduction_opのin_pvar, out_pvarが一時変数なら保存しなくてもいい(それぞれin_pvarのlast_opがreduction_op, out_pvarのlast_opがpost_opのとき)
-# 一般の_FusionXMergedOpについても、in_pvarsが初期化されていない場合、a[ind.get()];せずに宣言することで高速化可能
 
 def merged_reduction_code_template(self, pre_op, reduction_op, post_op, pvars, pvars_pre, pvars_post, idx, op_idx):
     params = list()
