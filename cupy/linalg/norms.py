@@ -43,7 +43,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 s *= s
                 ret = cupy.sqrt(s.sum())
             else:
-                ret = cupy.sqrt((x * x).ravel().sum())
+                ret = cupy.sqrt((x * x).sum())
             if keepdims:
                 ret = ret.reshape((1,) * ndim)
             return ret
