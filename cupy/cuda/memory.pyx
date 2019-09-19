@@ -204,7 +204,7 @@ cdef class _Chunk:
         mem (~cupy.cuda.Memory): The device memory buffer.
         offset (int): An offset bytes from the head of the buffer.
         size (int): Chunk size in bytes.
-        stream_ptr (size_t): Raw stream handle of cupy.cuda.Stream
+        stream_ptr (intptr_t): Raw stream handle of cupy.cuda.Stream
 
     Attributes:
         mem (Memory): The device memory buffer.
@@ -220,7 +220,7 @@ cdef class _Chunk:
         readonly BaseMemory mem
         readonly ptrdiff_t offset
         readonly size_t size
-        readonly size_t stream_ptr
+        readonly intptr_t stream_ptr
         public _Chunk prev
         public _Chunk next
 
@@ -230,7 +230,7 @@ cdef class _Chunk:
         self._init(mem, offset, size, stream_ptr)
 
     cdef _init(self, BaseMemory mem, ptrdiff_t offset,
-               size_t size, Py_ssize_t stream_ptr):
+               size_t size, intptr_t stream_ptr):
         assert mem.ptr != 0 or offset == 0
         self.mem = mem
         self.offset = offset
@@ -627,7 +627,8 @@ cdef class PooledMemory(BaseMemory):
 cdef int _index_compaction_threshold = 512
 
 
-cdef _compact_index(SingleDeviceMemoryPool pool, size_t stream_ptr, bint free):
+cdef _compact_index(SingleDeviceMemoryPool pool, intptr_t stream_ptr,
+                    bint free):
     # need self._free_lock
     cdef list arena, new_arena
     cdef set free_list, keep_list
@@ -665,7 +666,7 @@ cdef _compact_index(SingleDeviceMemoryPool pool, size_t stream_ptr, bint free):
 
 
 cdef object _get_chunk(SingleDeviceMemoryPool pool, size_t size,
-                       size_t stream_ptr):
+                       intptr_t stream_ptr):
     # need self._free_lock
     cdef set free_list
     cdef size_t i, index, length
@@ -856,13 +857,13 @@ cdef class SingleDeviceMemoryPool:
     cdef:
         object _allocator
 
-        # Map from memory pointer of the chunk (size_t) to the corresponding
+        # Map from memory pointer of the chunk (intptr_t) to the corresponding
         # Chunk object. All chunks currently allocated to the application from
         # this pool are stored.
         # `_in_use_lock` must be acquired to access it.
         dict _in_use
 
-        # Map from stream pointer (int) to its arena (list) for the stream.
+        # Map from stream pointer (intptr_t) to its arena (list) for the stream
         # `_free_lock` must be acquired to access it.
         dict _free
 
@@ -883,8 +884,8 @@ cdef class SingleDeviceMemoryPool:
 
         # Map from stream pointer to its arena index.
         # `_free_lock` must be acquired to access it.
-        map.map[size_t, vector.vector[size_t]] _index
-        map.map[size_t, vector.vector[int8_t]] _flag
+        map.map[intptr_t, vector.vector[size_t]] _index
+        map.map[intptr_t, vector.vector[int8_t]] _flag
 
     def __init__(self, allocator=_malloc):
         self._in_use = {}
@@ -898,7 +899,7 @@ cdef class SingleDeviceMemoryPool:
 
         self.set_limit(**(self._parse_limit_string()))
 
-    cpdef list _arena(self, size_t stream_ptr):
+    cpdef list _arena(self, intptr_t stream_ptr):
         """Returns appropriate arena (list of bins) of a given stream.
 
         All free chunks in the stream belong to one of the bin in the arena.
@@ -910,7 +911,7 @@ cdef class SingleDeviceMemoryPool:
             self._free[stream_ptr] = ret = []
         return ret
 
-    cdef inline vector.vector[size_t]* _arena_index(self, size_t stream_ptr):
+    cdef inline vector.vector[size_t]* _arena_index(self, intptr_t stream_ptr):
         """Returns appropriate arena sparse index of a given stream.
 
         Each element of the returned vector is an index value of the arena
@@ -923,7 +924,7 @@ cdef class SingleDeviceMemoryPool:
         """
         return &self._index[stream_ptr]
 
-    cdef vector.vector[int8_t]* _arena_flag(self, size_t stream_ptr):
+    cdef vector.vector[int8_t]* _arena_flag(self, intptr_t stream_ptr):
         """Returns appropriate arena used flag list of a given stream.
 
         Caller is responsible to acquire `_free_lock`.
@@ -1041,7 +1042,7 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef free_all_blocks(self, stream=None):
         """Free all **non-split** chunks"""
-        cdef size_t stream_ptr
+        cdef intptr_t stream_ptr
 
         with LockAndNoGc(self._free_lock):
             # free blocks in all arenas

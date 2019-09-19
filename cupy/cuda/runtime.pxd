@@ -8,8 +8,8 @@ from libc.stdint cimport intptr_t, uintmax_t
 cdef class PointerAttributes:
     cdef:
         public int device
-        public size_t devicePointer
-        public size_t hostPointer
+        public intptr_t devicePointer
+        public intptr_t hostPointer
         public int isManaged
         public int memoryType
 
@@ -328,35 +328,35 @@ cpdef freeArray(intptr_t ptr)
 cpdef memGetInfo()
 cpdef memcpy(intptr_t dst, intptr_t src, size_t size, int kind)
 cpdef memcpyAsync(intptr_t dst, intptr_t src, size_t size, int kind,
-                  size_t stream)
+                  intptr_t stream)
 cpdef memcpyPeer(intptr_t dst, int dstDevice, intptr_t src, int srcDevice,
                  size_t size)
 cpdef memcpyPeerAsync(intptr_t dst, int dstDevice,
                       intptr_t src, int srcDevice,
-                      size_t size, size_t stream)
+                      size_t size, intptr_t stream)
 cpdef memcpy2D(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
                size_t width, size_t height, MemoryKind kind)
 cpdef memcpy2DAsync(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
                     size_t width, size_t height, MemoryKind kind,
-                    size_t stream)
+                    intptr_t stream)
 cpdef memcpy2DFromArray(intptr_t dst, size_t dpitch, intptr_t src,
                         size_t wOffset, size_t hOffset, size_t width,
                         size_t height, int kind)
 cpdef memcpy2DFromArrayAsync(intptr_t dst, size_t dpitch, intptr_t src,
                              size_t wOffset, size_t hOffset, size_t width,
-                             size_t height, int kind, size_t stream)
+                             size_t height, int kind, intptr_t stream)
 cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
                       intptr_t src, size_t spitch, size_t width, size_t height,
                       int kind)
 cpdef memcpy2DToArrayAsync(intptr_t dst, size_t wOffset, size_t hOffset,
                            intptr_t src, size_t spitch, size_t width,
-                           size_t height, int kind, size_t stream)
+                           size_t height, int kind, intptr_t stream)
 cpdef memcpy3D(intptr_t Memcpy3DParmsPtr)
-cpdef memcpy3DAsync(intptr_t Memcpy3DParmsPtr, size_t stream)
+cpdef memcpy3DAsync(intptr_t Memcpy3DParmsPtr, intptr_t stream)
 cpdef memset(intptr_t ptr, int value, size_t size)
-cpdef memsetAsync(intptr_t ptr, int value, size_t size, size_t stream)
+cpdef memsetAsync(intptr_t ptr, int value, size_t size, intptr_t stream)
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
-                       size_t stream)
+                       intptr_t stream)
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device)
 cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
 
@@ -365,21 +365,21 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
 # Stream and Event
 ###############################################################################
 
-cpdef size_t streamCreate() except? 0
-cpdef size_t streamCreateWithFlags(unsigned int flags) except? 0
-cpdef streamDestroy(size_t stream)
-cpdef streamSynchronize(size_t stream)
-cpdef streamAddCallback(size_t stream, callback, intptr_t arg,
+cpdef intptr_t streamCreate() except? 0
+cpdef intptr_t streamCreateWithFlags(unsigned int flags) except? 0
+cpdef streamDestroy(intptr_t stream)
+cpdef streamSynchronize(intptr_t stream)
+cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=*)
-cpdef streamQuery(size_t stream)
-cpdef streamWaitEvent(size_t stream, size_t event, unsigned int flags=*)
-cpdef size_t eventCreate() except? 0
-cpdef size_t eventCreateWithFlags(unsigned int flags) except? 0
-cpdef eventDestroy(size_t event)
-cpdef float eventElapsedTime(size_t start, size_t end) except? 0
-cpdef eventQuery(size_t event)
-cpdef eventRecord(size_t event, size_t stream)
-cpdef eventSynchronize(size_t event)
+cpdef streamQuery(intptr_t stream)
+cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=*)
+cpdef intptr_t eventCreate() except? 0
+cpdef intptr_t eventCreateWithFlags(unsigned int flags) except? 0
+cpdef eventDestroy(intptr_t event)
+cpdef float eventElapsedTime(intptr_t start, intptr_t end) except? 0
+cpdef eventQuery(intptr_t event)
+cpdef eventRecord(intptr_t event, intptr_t stream)
+cpdef eventSynchronize(intptr_t event)
 
 
 ##############################################################################

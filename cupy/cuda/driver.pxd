@@ -95,30 +95,30 @@ cpdef devicePrimaryCtxRelease(Device dev)
 # Context management
 ###############################################################################
 
-cpdef size_t ctxGetCurrent() except? 0
-cpdef ctxSetCurrent(size_t ctx)
-cpdef size_t ctxCreate(Device dev) except? 0
-cpdef ctxDestroy(size_t ctx)
+cpdef intptr_t ctxGetCurrent() except? 0
+cpdef ctxSetCurrent(intptr_t ctx)
+cpdef intptr_t ctxCreate(Device dev) except? 0
+cpdef ctxDestroy(intptr_t ctx)
 
 ###############################################################################
 # Module load and kernel execution
 ###############################################################################
 
-cpdef size_t linkCreate() except? 0
-cpdef linkAddData(size_t state, int input_type, bytes data, unicode name)
-cpdef bytes linkComplete(size_t state)
-cpdef linkDestroy(size_t state)
-cpdef size_t moduleLoad(str filename) except? 0
-cpdef size_t moduleLoadData(bytes image) except? 0
-cpdef moduleUnload(size_t module)
-cpdef size_t moduleGetFunction(size_t module, str funcname) except? 0
-cpdef size_t moduleGetGlobal(size_t module, str varname) except? 0
-cpdef size_t moduleGetTexRef(size_t module, str texrefname) except? 0
+cpdef intptr_t linkCreate() except? 0
+cpdef linkAddData(intptr_t state, int input_type, bytes data, unicode name)
+cpdef bytes linkComplete(intptr_t state)
+cpdef linkDestroy(intptr_t state)
+cpdef intptr_t moduleLoad(str filename) except? 0
+cpdef intptr_t moduleLoadData(bytes image) except? 0
+cpdef moduleUnload(intptr_t module)
+cpdef intptr_t moduleGetFunction(intptr_t module, str funcname) except? 0
+cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0
+cpdef intptr_t moduleGetTexRef(intptr_t module, str texrefname) except? 0
 cpdef launchKernel(
     intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
     unsigned int grid_dim_z, unsigned int block_dim_x,
     unsigned int block_dim_y, unsigned int block_dim_z,
-    unsigned int shared_mem_bytes, size_t stream, intptr_t kernel_params,
+    unsigned int shared_mem_bytes, intptr_t stream, intptr_t kernel_params,
     intptr_t extra)
 
 ###############################################################################
@@ -132,16 +132,17 @@ cpdef funcSetAttribute(intptr_t func, int attribute, int value)
 # Texture reference
 ###############################################################################
 
-cpdef size_t texRefSetAddress(size_t texref, size_t dptr, size_t nbytes)
-cpdef texRefSetAddress2D(size_t texref, size_t desc, size_t dptr, size_t Pitch)
-cpdef texRefSetAddressMode(size_t texref, int dim, int am)
-cpdef texRefSetArray(size_t texref, size_t array)
-cpdef texRefSetBorderColor(size_t texref, pBorderColor)
-cpdef texRefSetFilterMode(size_t texref, int fm)
-cpdef texRefSetFlags(size_t texref, unsigned int Flags)
-cpdef texRefSetFormat(size_t texref, int fmt, int NumPackedComponents)
-cpdef texRefSetMaxAnisotropy(size_t texref, unsigned int maxAniso)
-cpdef paramSetTexRef(size_t func, size_t texref)
+cpdef size_t texRefSetAddress(intptr_t texref, intptr_t dptr, size_t nbytes)
+cpdef texRefSetAddress2D(intptr_t texref, intptr_t desc, intptr_t dptr,
+                         size_t Pitch)
+cpdef texRefSetAddressMode(intptr_t texref, int dim, int am)
+cpdef texRefSetArray(intptr_t texref, intptr_t array)
+cpdef texRefSetBorderColor(intptr_t texref, pBorderColor)
+cpdef texRefSetFilterMode(intptr_t texref, int fm)
+cpdef texRefSetFlags(intptr_t texref, unsigned int Flags)
+cpdef texRefSetFormat(intptr_t texref, int fmt, int NumPackedComponents)
+cpdef texRefSetMaxAnisotropy(intptr_t texref, unsigned int maxAniso)
+cpdef paramSetTexRef(intptr_t func, intptr_t texref)
 
 ###############################################################################
 # Occupancy
