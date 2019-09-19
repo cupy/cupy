@@ -260,7 +260,8 @@ def inv(a):
     util._assert_rank2(a)
     util._assert_nd_squareness(a)
 
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
+    # support float32, float64, complex64, and complex128
+    if a.dtype.char in 'fdFD':
         dtype = a.dtype.char
     else:
         dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
@@ -274,10 +275,20 @@ def inv(a):
         getrf = cusolver.sgetrf
         getrf_bufferSize = cusolver.sgetrf_bufferSize
         getrs = cusolver.sgetrs
-    else:  # dtype == 'd'
+    elif dtype == 'd':
         getrf = cusolver.dgetrf
         getrf_bufferSize = cusolver.dgetrf_bufferSize
         getrs = cusolver.dgetrs
+    elif dtype == 'F':
+        getrf = cusolver.cgetrf
+        getrf_bufferSize = cusolver.cgetrf_bufferSize
+        getrs = cusolver.cgetrs
+    elif dtype == 'D':
+        getrf = cusolver.zgetrf
+        getrf_bufferSize = cusolver.zgetrf_bufferSize
+        getrs = cusolver.zgetrs
+    else:
+        raise ValueError('unsupported dtype')
 
     m = a.shape[0]
 
