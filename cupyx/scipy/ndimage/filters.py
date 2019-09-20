@@ -100,81 +100,87 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
     output = _get_output(output, input)
     input = cupy.ascontiguousarray(input.astype(output.dtype))
     weights = cupy.ascontiguousarray(weights.astype(output.dtype))
-    in_params, out_params, operation, name = _create_correlete_kernel(
+    in_params, out_params, operation, name = _generate_correlete_kernel(
         input.ndim, mode, cval, input.shape, wshape, origin)
     return cupy.ElementwiseKernel(in_params, out_params, operation, name)(
         input, weights, output)
 
 
-def _create_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
-    in_params = ('raw T x, raw T w')
+def _generate_boundary_condition_ops(mode, ix, xsize):
+    if mode == 'reflect':
+        ops = '''
+        if ({ix} < 0) {{
+            {ix} = - 1 - {ix};
+        }}
+        {ix} %= {xsize} * 2;
+        {ix} = min({ix}, 2 * {xsize} - 1 - {ix});'''.format(ix=ix, xsize=xsize)
+    elif mode == 'mirror':
+        ops = '''
+        if ({ix} < 0) {{
+            {ix} = - {ix};
+        }}
+        if ({xsize} == 1) {{
+            {ix} = 0;
+        }} else {{
+            {ix} = 1 + ({ix} - 1) % (({xsize} - 1) * 2);
+            {ix} = min({ix}, 2 * {xsize} - 2 - {ix});
+        }}'''.format(ix=ix, xsize=xsize)
+    elif mode == 'nearest':
+        ops = '''
+        {ix} = min(max({ix}, 0), {xsize} - 1);'''.format(ix=ix, xsize=xsize)
+    elif mode == 'wrap':
+        ops = '''
+        if ({ix} < 0) {{
+            {ix} += (1 - ({ix} / {xsize})) * {xsize};
+        }}
+        {ix} %= {xsize};'''.format(ix=ix, xsize=xsize)
+    elif mode == 'constant':
+        ops = '''
+        if ({ix} >= {xsize}) {{
+            {ix} = -1;
+        }}'''.format(ix=ix, xsize=xsize)
+    return ops
+
+
+def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
+    in_params = 'raw T x, raw T w'
     out_params = 'T y'
 
     ops = []
     ops.append('const int sx_{} = 1;'.format(ndim-1))
-    for j in range(ndim-2, -1, -1):
-        ops.append('int sx_{0} = sx_{1} * {2};'.format(j, j+1, xshape[j+1]))
+    for j in range(ndim-1, 0, -1):
+        ops.append('int sx_{jm} = sx_{j} * {xsize_j};'.
+                   format(jm=j-1, j=j, xsize_j=xshape[j]))
     ops.append('int _i = i;')
     for j in range(ndim-1, -1, -1):
-        ops.append('int cx_{0} = _i % {1} - ({2} / 2) - ({3});'
-                   .format(j, xshape[j], wshape[j], origin[j]))
-        ops.append('_i /= {0};'.format(xshape[j]))
+        ops.append('int cx_{j} = _i % {xsize} - ({wsize} / 2) - ({origin});'
+                   .format(j=j, xsize=xshape[j], wsize=wshape[j],
+                           origin=origin[j]))
+        if (j > 0):
+            ops.append('_i /= {xsize};'.format(xsize=xshape[j]))
     ops.append('T sum = (T)0;')
     ops.append('int iw = 0;')
 
     for j in range(ndim):
-        ops.append('for (int iw_{0} = 0; iw_{0} < {1}; iw_{0}++)'
-                   .format(j, wshape[j]))
-        ops.append('{')
-        ops.append('    int ix_{0} = cx_{0} + iw_{0};'.format(j))
-        # boundary condition
-        if mode == 'reflect':
-            ops.append('    if (ix_{0} < 0)'.format(j))
-            ops.append('        ix_{0} = - 1 - ix_{0};'.format(j))
-            ops.append('    ix_{0} %= {1} * 2;'.format(j, xshape[j]))
-            ops.append('    ix_{0} = min(ix_{0}, 2 * {1} - 1 - ix_{0});'
-                       .format(j, xshape[j]))
-        elif mode == 'mirror':
-            ops.append('    if (ix_{0} < 0)'.format(j))
-            ops.append('        ix_{0} = - ix_{0};'.format(j))
-            ops.append('    if ({} == 1)'.format(xshape[j]))
-            ops.append('        ix_{0} = 0;'.format(j))
-            ops.append('    else')
-            ops.append('    {')
-            ops.append('        ix_{0} = 1 + (ix_{0} - 1) % (({1} - 1) * 2);'
-                       .format(j, xshape[j]))
-            ops.append('        ix_{0} = min(ix_{0}, 2 * {1} - 2 - ix_{0});'
-                       .format(j, xshape[j]))
-            ops.append('    }')
-        elif mode == 'nearest':
-            ops.append('    ix_{0} = min(max(ix_{0}, 0), {1} - 1);'
-                       .format(j, xshape[j]))
-        elif mode == 'wrap':
-            ops.append('    if (ix_{0} < 0)'.format(j))
-            ops.append('        ix_{0} += (1 - (ix_{0} / {1})) * {1};'
-                       .format(j, xshape[j]))
-            ops.append('    ix_{0} %= {1};'.format(j, xshape[j]))
-        elif mode == 'constant':
-            ops.append('    if (ix_{0} >= {1})'.format(j, xshape[j]))
-            ops.append('        ix_{0} = -1;'.format(j))
-        ops.append('')
+        ops.append('''
+    for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)
+    {{
+        int ix_{j} = cx_{j} + iw_{j};'''.format(j=j, wsize=wshape[j]))
+        ixvar = 'ix_{}'.format(j)
+        ops.append(_generate_boundary_condition_ops(mode, ixvar, xshape[j]))
 
-    if mode == 'constant':
-        _str = " || ".join(['ix_{0} < 0'.format(j) for j in range(ndim)])
-        ops.append('    if (' + _str + ')')
-        ops.append('    {')
-        ops.append('        sum += (T){} * w[iw];'.format(cval))
-        ops.append('        iw += 1;')
-        ops.append('        continue;')
-        ops.append('    }')
+    _cond = " || ".join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
+    _expr = " + ".join(['ix_{0} * sx_{0}'.format(j) for j in range(ndim)])
+    ops.append('''
+        if ({cond}) {{
+            sum += (T){cval} * w[iw];
+        }} else {{
+            int ix = {expr};
+            sum += x[ix] * w[iw];
+        }}
+        iw += 1;'''.format(cond=_cond, expr=_expr, cval=cval))
 
-    _str = " + ".join(['ix_{0} * sx_{0}'.format(j) for j in range(ndim)])
-    ops.append('    int ix = ' + _str + ';')
-    ops.append('    sum += x[ix] * w[iw];')
-    ops.append('    iw += 1;')
-
-    for j in range(ndim):
-        ops.append('}')
+    ops.append('} ' * ndim)
     ops.append('y = sum;')
     operation = "\n".join(ops)
 
