@@ -27,10 +27,14 @@ def _call_ufunc(fusion_op, *args, **kwargs):
 def _call_reduction(fusion_op, *args, **kwargs):
     return _thread_local.historyx.call_reduction(fusion_op, args, kwargs)
 
+# dupの代わりに__hash__を使うことにしました
+def _id(pvar):
+    return str(pvar.__hash__()).replace('-', '_')
+
 # 関数の引数の宣言で使う変数名。__repr__でも使われる
 def _get_pvar_param_name(pvar):
     if isinstance(pvar, _FusionXVarArray):
-        return 'a{}_{}'.format(pvar.index, pvar.dup)
+        return 'a{}_{}'.format(pvar.index, _id(pvar))
     elif isinstance(pvar, _FusionXVarScalar):
         return 'a{}'.format(pvar.index)
     else:
@@ -39,14 +43,14 @@ def _get_pvar_param_name(pvar):
 # 関数内で各スレッドが扱うローカルな変数に使う変数名
 def _get_pvar_decl_name(pvar):
     if isinstance(pvar, _FusionXVarArray):
-        return 'v{}_{}'.format(pvar.index, pvar.dup)
+        return 'v{}_{}'.format(pvar.index, _id(pvar))
     elif isinstance(pvar, _FusionXVarScalar):
         return 'v{}'.format(pvar.index)
     else:
         raise TypeError('Unknown type {}.'.format(type(pvar)))
 
 def _get_indexer_name(pvar):
-    return 'ind{}_{}'.format(pvar.index, pvar.dup)
+    return 'ind{}_{}'.format(pvar.index, _id(pvar))
 
 class _FusionXVarScalar(object):
     def __init__(self, index, dtype, const_value):
@@ -154,33 +158,6 @@ class _FusionXVarScalar(object):
     def __rxor__(self, other):
         return cupy.bitwise_xor(other, self)
 
-    def __invert__(self):
-        return cupy.invert(self)
-
-    def __lt__(self, other):
-        return cupy.less(self, other)
-
-    def __le__(self, other):
-        return cupy.less_equal(self, other)
-
-    def __eq__(self, other):
-        return cupy.equal(self, other)
-
-    def __ne__(self, other):
-        return cupy.not_equal(self, other)
-
-    def __gt__(self, other):
-        return cupy.greater(self, other)
-
-    def __ge__(self, other):
-        return cupy.greater_equal(self, other)
-
-    def __nonzero__(self):
-        raise Exception('Can\'t cast to bool')
-
-    def __bool__(self):
-        raise Exception('Can\'t cast to bool')
-
     def copy(self):
         return cupy.copy(self)
 
@@ -190,9 +167,6 @@ class _FusionXVarArray(_FusionXVarScalar):
         self.index = index
         # _compress_pvarsのときにindexがnew_indexで上書きされる
         self.new_index = index
-        # _compress_pvarsのときに設定される
-        # broadcast, rotate, subscriptでできる変数用のidentifier
-        self.dup = None
         self.ndim = ndim
         self.dtype = dtype
         self.is_input = False
@@ -237,10 +211,11 @@ class _FusionXVarArray(_FusionXVarScalar):
     def is_inout(self):
         ret = self.is_input or self.is_output
         if self.broadcasted_from is not None:
-            ret |= self.broadcasted_from.is_input or self.broadcasted_from.is_output
+            ret |= self.broadcasted_from.is_inout()
         if self.rotated_from is not None:
-            ret |= self.rotated_from.is_input or self.rotated_from.is_output
-        ret |= self._is_input_recursive() or self._is_output_recursive()
+            ret |= self.rotated_from.is_inout()
+        if self.indexed_from is not None:
+            ret |= self.indexed_from.is_inout()
         return ret
 
     # exec内_set_real_shapeのときに呼ばれる
@@ -530,13 +505,15 @@ ${after_operation}
             indexer_setup=self._get_indexer_setup())
 
 class _FusionXReductionOp(object):
-    def __init__(self, func, in_pvar, out_pvar, op, reduction_index):
+    def __init__(self, func, in_pvar, out_pvar, op, axis, reduction_index):
         self.func = func
         self.in_pvar = in_pvar
         self.out_pvar = out_pvar
         self.reduce_identity = func.identity
         _, _, (_, self.reduce_expr, _, _) = op
         self.reduction_index = reduction_index
+        # axisの正規化(in_pvar.ndimで割ったあまりを取る)はしていない
+        self.axis = axis
 
     def __repr__(self):
         return '<_FusionXReductionOp name={}, in_pvar={}, out_pvar={}>'.format(self.func.name, self.in_pvar, self.out_pvar)
@@ -563,11 +540,8 @@ class _FusionXReductionOp(object):
 # ReductionOpの直前の_FusionXOpと直後の_FusionXOpをマージできる場合はマージする
 # pre_opのabst_shapeとreduction_op.in_pvarのabst_shapeが同じで
 # post_opのabst_shapeとreduction_op.out_pvarのabst_shapeが同じことが条件
-# とりあえずpre_opをマージするのは回転が不要なときのみ(将来実装するなら以下の点に注意)
-# 回転させるとrotated_paramsを作る必要があるが、ReductionOpのin_pvarは回転済みなのでやや実装がややこしい
-# それにcompress_pvars()はmerge前にやる必要があるので、またparam_listの更新が必要になってしまう
-# さらにreduce dimsの効果も失われがち
-
+# _compress_pvarsはmerge前にやる必要があるので、またparam_listの更新が必要になってしまう
+# pre_opを回転させるとreduce dimsの効果が失われがちだけど、マージさせたほうが効果大
 # Reduction命令前後で同じメモリアクセスがある場合はマージできない(両方ともreadなら大丈夫)
 def _can_merge_pre_post(pre_op, post_op):
     pre_op_index_set = set()
@@ -591,8 +565,7 @@ class _FusionXMergedReductionOp:
         self.post_op = post_op
         self.idx = idx
         self.op_idx = op_idx
-        if pre_op is not None and reduction_op.in_pvar.rotated_from is not None:
-            raise ValueError('Reduction must be without rotation if pre_op is not None.')
+
         pvars = list()
         pvars_pre = set()
         pvars_post = set()
@@ -669,7 +642,7 @@ class _FusionXMergedOp(_FusionXOp):
         self.after_operation = None
 
     def __repr__(self):
-        return '<_FusionXMergedOp>'
+        return '<_FusionXMergedOp, ops={}>'.format(self.ops)
 
     def add_op(self, fusionx_op):
         self.abstract_shape = fusionx_op.abstract_shape
@@ -865,6 +838,8 @@ class _FusionXHistory(object):
 
     def _make_rotated_param(self, pvar, axis):
         ret = copy.copy(pvar)
+        # broadcastしたものをrotateする場合もある
+        ret.broadcasted_from = None
         ret.rotated_from = pvar
         ret.axis = axis
         ret.is_input = False
@@ -883,13 +858,7 @@ class _FusionXHistory(object):
         self.op_list.append(op)
 
     def _add_reduction_op(self, func, in_pvar, out_pvar, axis, op):
-        # この時点でaxisを正規化。範囲外チェックはやっていない
-        if axis is None or axis == tuple(range(len(axis))):
-            pass
-        else:
-            # in_pvar.ndimであまりをとるべきだけどやってない
-            in_pvar = self._make_rotated_param(in_pvar, axis)
-        op = _FusionXReductionOp(func, in_pvar, out_pvar, op, len(self.reduction_op_list))
+        op = _FusionXReductionOp(func, in_pvar, out_pvar, op, axis, len(self.reduction_op_list))
         self.op_list.append(op)
         self.reduction_op_list.append(op)
 
@@ -1250,8 +1219,6 @@ class _FusionXHistory(object):
         param_list = list()
         param_list_base = list()
         param_list_used = dict()
-        dup_count = dict()
-        # set dup
         for pvar in self.param_list:
             if not isinstance(pvar, _FusionXVarArray):
                 if pvar in param_list_used:
@@ -1265,40 +1232,13 @@ class _FusionXHistory(object):
                     param_list_used[pvar].is_output = True
                     param_list_used[pvar].output_order = pvar.output_order
                 continue
-            dup = dup_count.get(pvar.index, 0)
-            dup_count[pvar.index] = dup + 1
-            pvar.dup = dup
             param_list_used[pvar] = pvar
             param_list.append(pvar)
             if not pvar._is_readonly() and pvar.indexed_from is None:
                 param_list_base.append(pvar)
         self.param_list = param_list
         self.param_list_base = param_list_base
-
-        def update(pvar):
-            if not isinstance(pvar, _FusionXVarArray):
-                return pvar
-            if pvar.rotated_from is not None:
-                pvar.rotated_from = update(pvar.rotated_from)
-            if pvar.broadcasted_from is not None:
-                pvar.broadcasted_from = update(pvar.broadcasted_from)
-            if pvar.indexed_from is not None:
-                pvar.indexed_from = update(pvar.indexed_from)
-            return param_list_used[pvar]
-
-        # param_listのdupを全部更新しても、op内のpvarのdupが更新されているとは限らない
-        # 実際、pvar BのindexをAのindexに揃えた場合、B.dupはNoneのままである。これを解消させるのが以下
-        for op in self.op_list:
-            if isinstance(op, _FusionXOp):
-                for idx, pvar in enumerate(op.in_pvars):
-                    op.in_pvars[idx] = update(pvar)
-                for idx, pvar in enumerate(op.out_pvars):
-                    op.out_pvars[idx] = update(pvar)
-            elif isinstance(op, _FusionXReductionOp):
-                op.in_pvar = update(op.in_pvar)
-                op.out_pvar = update(op.out_pvar)
-            else:
-                assert False
+        self.param_list_used = param_list_used
 
     def _get_fusionx_info(self, func, args, same_shape, name):
         self.name = name
@@ -1385,17 +1325,36 @@ class _FusionXHistory(object):
                 skip = False
                 continue
             if isinstance(op, _FusionXReductionOp):
-                can_merge_pre = op.in_pvar.rotated_from is None and 0 < idx and last_merged != idx - 1 and \
-                    not isinstance(merged_op_list[idx - 1], _FusionXReductionOp) and \
+                can_merge_pre = 0 < idx and last_merged != idx - 1 and \
+                    isinstance(merged_op_list[idx - 1], _FusionXMergedOp) and \
                     self.abstract_shape_uf.same_tuple(op.in_pvar.abstract_shape, merged_op_list[idx - 1].abstract_shape)
-                can_merge_post = idx < len(merged_op_list) - 1 and not isinstance(merged_op_list[idx + 1], _FusionXReductionOp) and \
+                can_merge_post = idx < len(merged_op_list) - 1 and isinstance(merged_op_list[idx + 1], _FusionXMergedOp) and \
                     self.abstract_shape_uf.same_tuple(op.out_pvar.abstract_shape, merged_op_list[idx + 1].abstract_shape)
                 if can_merge_pre and can_merge_post:
                     if not _can_merge_pre_post(merged_op_list[idx - 1], merged_op_list[idx + 1]):
-                        can_merge_pre = False
+                        # preをマージするほうが大切
+                        can_merge_post = False
+
+                # 回転させる
+                if can_merge_pre and op.axis is not None and op.axis != tuple(range(len(op.axis))):
+                    pre_op = merged_op_list[idx - 1]
+                    for idx_, pvar in enumerate(pre_op.in_pvars):
+                        pre_op.in_pvars[idx_] = self._make_rotated_param(pvar, op.axis)
+                    for idx_, pvar in enumerate(pre_op.out_pvars):
+                        pre_op.out_pvars[idx_] = self._make_rotated_param(pvar, op.axis)
+                    # _FusionXMergedOp内の各opのpvarsも更新する必要がある
+                    for op_ in pre_op.ops:
+                        for idx_, pvar in enumerate(op_.in_pvars):
+                            op_.in_pvars[idx_] = self._make_rotated_param(pvar, op.axis)
+                        for idx_, pvar in enumerate(op_.out_pvars):
+                            op_.out_pvars[idx_] = self._make_rotated_param(pvar, op.axis)
+                if op.axis is not None and op.axis != tuple(range(len(op.axis))):
+                    op.in_pvar = self._make_rotated_param(op.in_pvar, op.axis)
+
                 if can_merge_pre and can_merge_post:
                     pre_op = new_merged_op_list.pop(-1)
                     post_op = merged_op_list[idx + 1]
+                    post_op.set_idx(idx + 1, op_idx)
                     merged_reduction = _FusionXMergedReductionOp(pre_op, op, post_op, idx, op_idx)
                     new_merged_op_list.append(merged_reduction)
                     merged_reduction_op_list.append(merged_reduction)
@@ -1408,6 +1367,7 @@ class _FusionXHistory(object):
                     merged_reduction_op_list.append(merged_reduction)
                 elif can_merge_post:
                     post_op = merged_op_list[idx + 1]
+                    post_op.set_idx(idx + 1, op_idx)
                     merged_reduction = _FusionXMergedReductionOp(None, op, post_op, idx, op_idx)
                     new_merged_op_list.append(merged_reduction)
                     merged_reduction_op_list.append(merged_reduction)
@@ -1423,6 +1383,30 @@ class _FusionXHistory(object):
         merged_op_list = new_merged_op_list
         self.reduction_op_list = reduction_op_list
         self.merged_reduction_op_list = merged_reduction_op_list
+
+        # もともと_compress_pvarsの最後に
+        def update(pvar):
+            if not isinstance(pvar, _FusionXVarArray):
+                return pvar
+            if pvar.rotated_from is not None:
+                pvar.rotated_from = update(pvar.rotated_from)
+            if pvar.broadcasted_from is not None:
+                pvar.broadcasted_from = update(pvar.broadcasted_from)
+            if pvar.indexed_from is not None:
+                pvar.indexed_from = update(pvar.indexed_from)
+            return self.param_list_used[pvar]
+
+        for op in merged_op_list:
+            if isinstance(op, _FusionXMergedOp):
+                pvars = op.in_pvars + op.out_pvars
+            elif isinstance(op, _FusionXMergedReductionOp):
+                pvars = op.pvars
+            elif isinstance(op, _FusionXReductionOp):
+                pvars = [op.in_pvar, op.out_pvar]
+            else:
+                raise ValueError('Unknown op {}.'.format(type(op)))
+            for idx, pvar in enumerate(pvars):
+                pvars[idx] = update(pvar)
 
         # trim unnecessary arrays
         for op in merged_op_list:
@@ -1604,7 +1588,7 @@ cpdef ndarray _reduce_dims_core(ndarray array):
 def _cuda_compile(code, name, cuda_params, cuda_body):
     code += 'extern "C" __global__ void {}({}) '.format(
         name, cuda_params) + '{\n' + cuda_body + '}\n'
-    # print(code)
+    print(code)
     module = compile_with_cache(code)
     return module.get_function(name)
 
