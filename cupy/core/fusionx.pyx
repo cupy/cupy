@@ -833,6 +833,7 @@ class _FusionXHistory(object):
         ret.broadcasted_from = pvar
         # is_inputであるかどうか、broadcasted(rotated/indexed)_fromがNoneかどうかによってndarrayの割当方法が異なる
         ret.is_input = False
+        ret.is_output = False
         ret.indexed_from = None
         return self._append_param(ret, False)
 
@@ -843,6 +844,7 @@ class _FusionXHistory(object):
         ret.rotated_from = pvar
         ret.axis = axis
         ret.is_input = False
+        ret.is_output = False
         ret.indexed_from = None
         return self._append_param(ret, False)
 
@@ -1240,6 +1242,20 @@ class _FusionXHistory(object):
         self.param_list_base = param_list_base
         self.param_list_used = param_list_used
 
+        # indexをマージしたが、is_outputがマージできていないのでここでやる
+        for op in self.op_list:
+            if isinstance(op, _FusionXOp):
+                for idx, pvar in enumerate(op.in_pvars):
+                    op.in_pvars[idx] = param_list_used[pvar]
+                for idx, pvar in enumerate(op.out_pvars):
+                    op.out_pvars[idx] = param_list_used[pvar]
+            elif isinstance(op, _FusionXReductionOp):
+                op.in_pvar = param_list_used[op.in_pvar]
+                op.out_pvar = param_list_used[op.out_pvar]
+            else:
+                # この時点ではmergeされたものはありえない
+                raise ValueError('Unknown op type {}.'.format(type(op)))
+
     def _get_fusionx_info(self, func, args, same_shape, name):
         self.name = name
         in_pvars = [self._make_input_param(arg, idx) for idx, arg in enumerate(args)]
@@ -1354,7 +1370,7 @@ class _FusionXHistory(object):
                 if can_merge_pre and can_merge_post:
                     pre_op = new_merged_op_list.pop(-1)
                     post_op = merged_op_list[idx + 1]
-                    post_op.set_idx(idx + 1, op_idx)
+                    # post_opのdeclarationやafter_operationは_FusionXMergedReductionOpのcode()から呼ばれるのでop_idxをセットしなくてよい
                     merged_reduction = _FusionXMergedReductionOp(pre_op, op, post_op, idx, op_idx)
                     new_merged_op_list.append(merged_reduction)
                     merged_reduction_op_list.append(merged_reduction)
@@ -1367,7 +1383,6 @@ class _FusionXHistory(object):
                     merged_reduction_op_list.append(merged_reduction)
                 elif can_merge_post:
                     post_op = merged_op_list[idx + 1]
-                    post_op.set_idx(idx + 1, op_idx)
                     merged_reduction = _FusionXMergedReductionOp(None, op, post_op, idx, op_idx)
                     new_merged_op_list.append(merged_reduction)
                     merged_reduction_op_list.append(merged_reduction)
@@ -1531,7 +1546,8 @@ inout_args: {}, cuda_params: {}'''.format(len(inout_args), len(cuda_params), ino
         ret.index_key = key
         # 再掲だがis_inputかどうかによってndarrayの割当方法が異なる。これはsubscriptによってndarrayを割り当てるのでFalse
         # indexed_fromがbroadcasted/rotatedとなることはないので、ret.broadcasted_from = Noneなどは不要
-        ret.in_input = False
+        ret.is_input = False
+        ret.is_output = False
         abstract_shape = list(pvar.abstract_shape)
         real_shape = list(pvar.real_shape)
         if isinstance(key, int):
@@ -1588,7 +1604,7 @@ cpdef ndarray _reduce_dims_core(ndarray array):
 def _cuda_compile(code, name, cuda_params, cuda_body):
     code += 'extern "C" __global__ void {}({}) '.format(
         name, cuda_params) + '{\n' + cuda_body + '}\n'
-    print(code)
+    # print(code)
     module = compile_with_cache(code)
     return module.get_function(name)
 
@@ -1834,6 +1850,8 @@ def _get_post_op_expr(self, post_op, reduction_op, pvars_post, idx, op_idx):
         after_operation += post_op._get_after_operation(idx, op_idx)
         # must be at the end
         indexer_setup += post_op._get_indexer_setup()
+    else:
+        _thread_local.historyx.need_save.add(reduction_op.out_pvar.index)
 
     _thread_local.historyx.initialized.add(reduction_op.out_pvar.index)
     declaration += '        {} {}_ = s;\n'.format(_dtype_to_ctype[reduction_op.out_pvar.dtype], _get_pvar_decl_name(reduction_op.out_pvar))
