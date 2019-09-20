@@ -195,6 +195,7 @@ class TestCsrmv(unittest.TestCase):
         testing.assert_array_almost_equal(y, expect)
 
 
+@testing.with_requires('scipy')
 class TestCoosort(unittest.TestCase):
 
     def setUp(self):
