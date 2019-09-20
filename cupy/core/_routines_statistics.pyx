@@ -16,14 +16,8 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
-cdef ndarray _ndarray_nanargmax(ndarray self, axis, out, dtype, keepdims):
-    return _nanargmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
-
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
-
-cdef ndarray _ndarray_nanargmin(ndarray self, axis, out, dtype, keepdims):
-    return _nanargmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
     return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
@@ -203,7 +197,17 @@ cdef _argmax = create_reduction_func(
     None, _min_max_preamble)
 
 
-cdef _nanargmin = create_reduction_func(
+cpdef ndarray _nanargmax(ndarray a, axis, out, dtype, keepdims):
+    return _nanargmax_func(
+        a, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+
+
+cpdef ndarray _nanargmin(ndarray a, axis, out, dtype, keepdims):
+    return _nanargmin_func(
+        a, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+
+
+cdef _nanargmin_func = create_reduction_func(
     'cupy_nanargmin',
     ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
      'q->q', 'Q->q',
@@ -217,7 +221,7 @@ cdef _nanargmin = create_reduction_func(
     None, _min_max_preamble)
 
 
-cdef _nanargmax = create_reduction_func(
+cdef _nanargmax_func = create_reduction_func(
     'cupy_nanargmax',
     ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
      'q->q', 'Q->q',
@@ -356,7 +360,7 @@ cpdef ndarray _nanvar(ndarray a, axis, dtype, out, ddof, keepdims):
                                 'convert the dtype'
 
     _count = _count_non_nan(a, axis=axis, keepdims=True)
-    arrsum = a._nansum(axis=axis, dtype=dtype, out=None, keepdims=True)
+    arrsum = _math._nansum(a, axis=axis, dtype=dtype, out=None, keepdims=True)
 
     if out is None:
         return _nanvar_core(
