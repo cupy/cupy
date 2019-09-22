@@ -91,15 +91,15 @@ class TestAllAnyWithNaN(unittest.TestCase):
              (3, ),
              (2, 3),
              (2, 1, 3),
-         ],
-         'shape_y': [
+        ],
+            'shape_y': [
              (0, ),
              (3, ),
              (2, 3),
              (2, 1, 3),
-         ],
-         'assume_unique': [False, True],
-         'invert': [False, True]}))
+        ],
+            'assume_unique': [False, True],
+            'invert': [False, True]}))
 @testing.gpu
 class TestIn1DIsIn(unittest.TestCase):
 
