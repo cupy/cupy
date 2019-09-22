@@ -466,6 +466,9 @@ from cupy.logic.content import isfinite  # NOQA
 from cupy.logic.content import isinf  # NOQA
 from cupy.logic.content import isnan  # NOQA
 
+from cupy.logic.truth import in1d  # NOQA
+from cupy.logic.truth import isin  # NOQA
+
 from cupy.logic.type_test import iscomplex  # NOQA
 from cupy.logic.type_test import iscomplexobj  # NOQA
 from cupy.logic.type_test import isfortran  # NOQA
