@@ -1,5 +1,6 @@
 from __future__ import division
 import sys
+import warnings
 
 import numpy
 import six
@@ -357,8 +358,20 @@ def common_type(*arrays):
 
     .. seealso:: :func:`numpy.common_type`
     """
-    dtype_arrays = [numpy.empty((), a.dtype) for a in arrays]
-    return numpy.common_type(*dtype_arrays)
+    if len(arrays) == 0:
+        return numpy.float16
+
+    default_float_dtype = numpy.dtype('float64')
+    dtypes = []
+    for a in arrays:
+        if a.dtype.kind == 'b':
+            raise TypeError('can\'t get common type for non-numeric array')
+        elif a.dtype.kind in 'iu':
+            dtypes.append(default_float_dtype)
+        else:
+            dtypes.append(a.dtype)
+
+    return numpy.find_common_type(dtypes, []).type
 
 
 def result_type(*arrays_and_dtypes):
@@ -445,8 +458,8 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 # -----------------------------------------------------------------------------
 from cupy.linalg.einsum import einsum  # NOQA
 
-from cupy.linalg.product import dot  # NOQA
 from cupy.linalg.product import cross  # NOQA
+from cupy.linalg.product import dot  # NOQA
 from cupy.linalg.product import inner  # NOQA
 from cupy.linalg.product import kron  # NOQA
 from cupy.linalg.product import matmul  # NOQA
@@ -598,6 +611,13 @@ from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
 
 # -----------------------------------------------------------------------------
+# Miscellaneous routines
+# -----------------------------------------------------------------------------
+from cupy.misc import may_share_memory  # NOQA
+from cupy.misc import shares_memory  # NOQA
+
+
+# -----------------------------------------------------------------------------
 # Padding
 # -----------------------------------------------------------------------------
 pad = padding.pad.pad
@@ -641,6 +661,7 @@ from cupy.statistics.meanvar import average  # NOQA
 from cupy.statistics.meanvar import mean  # NOQA
 from cupy.statistics.meanvar import std  # NOQA
 from cupy.statistics.meanvar import var  # NOQA
+from cupy.statistics.meanvar import nanmean  # NOQA
 from cupy.statistics.meanvar import nanstd  # NOQA
 from cupy.statistics.meanvar import nanvar  # NOQA
 
@@ -661,6 +682,7 @@ from cupy.util import memoize  # NOQA
 
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import RawKernel  # NOQA
+from cupy.core import RawModule  # NOQA
 from cupy.core import ReductionKernel  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -777,3 +799,18 @@ def show_config():
     """Prints the current runtime configuration to standard output."""
     sys.stdout.write(str(cupyx.get_runtime_info()))
     sys.stdout.flush()
+
+
+# -----------------------------------------------------------------------------
+# Warning for Python 2 users
+# -----------------------------------------------------------------------------
+if sys.version_info[:1] == (2,):
+    warnings.warn('''
+--------------------------------------------------------------------------------
+CuPy is going to stop supporting Python 2 in v7.x releases.
+
+Future releases of CuPy v7.x will not run on Python 2.
+If you need to continue using Python 2, consider using CuPy v6.x, which
+will be the last version that runs on Python 2.
+--------------------------------------------------------------------------------
+''')  # NOQA

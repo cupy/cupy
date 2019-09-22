@@ -61,6 +61,7 @@ MODULES = [
             'cupy.cuda.function',
             'cupy.cuda.stream',
             'cupy.cuda.runtime',
+            'cupy.cuda.texture',
             'cupy.util',
         ],
         'include': [
