@@ -1,3 +1,5 @@
+import numpy
+
 import cupy
 from cupy import cuda
 from cupy.cuda import cublas
@@ -48,7 +50,7 @@ def _syevd(a, UPLO, with_eigen_vector):
 
     m, lda = a.shape
     w = cupy.empty(m, inp_w_dtype)
-    dev_info = cupy.empty((), 'i')
+    dev_info = cupy.empty((), numpy.int32)
     handle = device.Device().cusolver_handle
 
     if with_eigen_vector:

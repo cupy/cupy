@@ -15,7 +15,6 @@ if cuda.cusolver_enabled:
 def norm(x, ord=None, axis=None, keepdims=False):
     """Returns one of matrix norms specified by ``ord`` parameter.
 
-    Complex valued matrices and vectors are not supported.
     See numpy.linalg.norm for more detail.
 
     Args:
@@ -39,12 +38,12 @@ def norm(x, ord=None, axis=None, keepdims=False):
         ndim = x.ndim
         if (ord is None or (ndim == 1 and ord == 2) or
                 (ndim == 2 and ord in ('f', 'fro'))):
-            if issubclass(x.dtype.type, numpy.complexfloating):
+            if x.dtype.kind == 'c':
                 s = abs(x.ravel())
                 s *= s
                 ret = cupy.sqrt(s.sum())
             else:
-                ret = cupy.sqrt((x.ravel() ** 2).sum())
+                ret = cupy.sqrt((x * x).sum())
             if keepdims:
                 ret = ret.reshape((1,) * ndim)
             return ret
@@ -76,7 +75,11 @@ def norm(x, ord=None, axis=None, keepdims=False):
             return abs(x).sum(axis=axis, keepdims=keepdims)
         elif ord is None or ord == 2:
             # special case for speedup
-            s = (x.conj() * x).real
+            if x.dtype.kind == 'c':
+                s = abs(x)
+                s *= s
+            else:
+                s = x * x
             return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
         else:
             try:
@@ -117,12 +120,12 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 row_axis -= 1
             ret = abs(x).sum(axis=col_axis).min(axis=row_axis)
         elif ord in [None, 'fro', 'f']:
-            if issubclass(x.dtype.type, numpy.complexfloating):
+            if x.dtype.kind == 'c':
                 s = abs(x)
                 s *= s
                 ret = cupy.sqrt(s.sum(axis=axis))
             else:
-                ret = cupy.sqrt((x ** 2).sum(axis=axis))
+                ret = cupy.sqrt((x * x).sum(axis=axis))
         else:
             raise ValueError('Invalid norm order for matrices.')
         if keepdims:

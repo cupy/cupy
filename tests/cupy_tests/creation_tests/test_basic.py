@@ -8,7 +8,6 @@ from cupy import testing
 
 @testing.gpu
 class TestBasic(unittest.TestCase):
-
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -149,6 +148,12 @@ class TestBasic(unittest.TestCase):
         b = xp.empty_like(a, order='Q')
         return b
 
+    @testing.numpy_cupy_raises()
+    def test_empty_like_subok(self):
+        a = testing.shaped_arange((2, 3, 4), cupy)
+        b = cupy.empty_like(a, subok=True)
+        return b
+
     @testing.for_CF_orders()
     def test_empty_zero_sized_array_strides(self, order):
         a = numpy.empty((1, 0, 2), dtype='d', order=order)
@@ -196,6 +201,11 @@ class TestBasic(unittest.TestCase):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
         return xp.zeros_like(a, order=order)
 
+    @testing.numpy_cupy_raises()
+    def test_zeros_like_subok(self):
+        a = cupy.ndarray((2, 3, 4))
+        return cupy.zeros_like(a, subok=True)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_ones(self, xp, dtype):
@@ -207,6 +217,11 @@ class TestBasic(unittest.TestCase):
     def test_ones_like(self, xp, dtype, order):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
         return xp.ones_like(a, order=order)
+
+    @testing.numpy_cupy_raises()
+    def test_ones_like_subok(self):
+        a = cupy.ndarray((2, 3, 4))
+        return cupy.ones_like(a, subok=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -231,3 +246,219 @@ class TestBasic(unittest.TestCase):
     def test_full_like(self, xp, dtype, order):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
         return xp.full_like(a, 1, order=order)
+
+    @testing.numpy_cupy_raises()
+    def test_full_like_subok(self):
+        a = cupy.ndarray((2, 3, 4))
+        return cupy.full_like(a, 1)
+
+
+@testing.parameterize(
+    *testing.product({
+        'shape': [4, (4, ), (4, 2), (4, 2, 3), (5, 4, 2, 3)],
+    })
+)
+@testing.gpu
+class TestBasicReshape(unittest.TestCase):
+
+    @testing.with_requires('numpy>=1.17.0')
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_like_reshape(self, xp, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.empty_like(a, order=order, shape=self.shape)
+        b.fill(0)
+        return b
+
+    @testing.for_CF_orders()
+    @testing.for_all_dtypes()
+    def test_empty_like_reshape_cupy_only(self, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.empty_like(a, shape=self.shape)
+        b.fill(0)
+        c = cupy.empty(self.shape, order=order, dtype=dtype)
+        c.fill(0)
+
+        testing.assert_array_equal(b, c)
+
+    @testing.with_requires('numpy>=1.17.0')
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_like_reshape_contiguity(self, xp, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.empty_like(a, order=order, shape=self.shape)
+        b.fill(0)
+        if order in ['f', 'F']:
+            self.assertTrue(b.flags.f_contiguous)
+        else:
+            self.assertTrue(b.flags.c_contiguous)
+        return b
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    def test_empty_like_reshape_contiguity_cupy_only(self, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.empty_like(a, order=order, shape=self.shape)
+        b.fill(0)
+        c = cupy.empty(self.shape)
+        c.fill(0)
+        if order in ['f', 'F']:
+            self.assertTrue(b.flags.f_contiguous)
+        else:
+            self.assertTrue(b.flags.c_contiguous)
+        testing.assert_array_equal(b, c)
+
+    @testing.with_requires('numpy>=1.17.0')
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_like_reshape_contiguity2(self, xp, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a = xp.asfortranarray(a)
+        b = xp.empty_like(a, order=order, shape=self.shape)
+        b.fill(0)
+        shape = self.shape if not numpy.isscalar(self.shape) else (self.shape,)
+        if (order in ['c', 'C'] or
+                (order in ['k', 'K', None] and len(shape) != a.ndim)):
+            self.assertTrue(b.flags.c_contiguous)
+        else:
+            self.assertTrue(b.flags.f_contiguous)
+        return b
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    def test_empty_like_reshape_contiguity2_cupy_only(self, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        a = cupy.asfortranarray(a)
+        b = cupy.empty_like(a, order=order, shape=self.shape)
+        b.fill(0)
+        c = cupy.empty(self.shape)
+        c.fill(0)
+        shape = self.shape if not numpy.isscalar(self.shape) else (self.shape,)
+        if (order in ['c', 'C'] or
+                (order in ['k', 'K', None] and len(shape) != a.ndim)):
+            self.assertTrue(b.flags.c_contiguous)
+        else:
+            self.assertTrue(b.flags.f_contiguous)
+        testing.assert_array_equal(b, c)
+
+    @testing.with_requires('numpy>=1.17.0')
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_like_reshape_contiguity3(self, xp, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        # test strides that are both non-contiguous and non-descending
+        a = a[:, ::2, :].swapaxes(0, 1)
+        b = xp.empty_like(a, order=order, shape=self.shape)
+        b.fill(0)
+        shape = self.shape if not numpy.isscalar(self.shape) else (self.shape,)
+        if len(shape) == 1:
+            self.assertTrue(b.flags.c_contiguous)
+            self.assertTrue(b.flags.f_contiguous)
+        elif order in ['k', 'K', None] and len(shape) == a.ndim:
+            self.assertFalse(b.flags.c_contiguous)
+            self.assertFalse(b.flags.f_contiguous)
+        elif order in ['f', 'F']:
+            self.assertFalse(b.flags.c_contiguous)
+            self.assertTrue(b.flags.f_contiguous)
+        else:
+            self.assertTrue(b.flags.c_contiguous)
+            self.assertFalse(b.flags.f_contiguous)
+        return b
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    def test_empty_like_reshape_contiguity3_cupy_only(self, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        # test strides that are both non-contiguous and non-descending
+        a = a[:, ::2, :].swapaxes(0, 1)
+        b = cupy.empty_like(a, order=order, shape=self.shape)
+        b.fill(0)
+        shape = self.shape if not numpy.isscalar(self.shape) else (self.shape,)
+        if len(shape) == 1:
+            self.assertTrue(b.flags.c_contiguous)
+            self.assertTrue(b.flags.f_contiguous)
+        elif order in ['k', 'K', None] and len(shape) == a.ndim:
+            self.assertFalse(b.flags.c_contiguous)
+            self.assertFalse(b.flags.f_contiguous)
+        elif order in ['f', 'F']:
+            self.assertFalse(b.flags.c_contiguous)
+            self.assertTrue(b.flags.f_contiguous)
+        else:
+            self.assertTrue(b.flags.c_contiguous)
+            self.assertFalse(b.flags.f_contiguous)
+
+        c = cupy.zeros(self.shape)
+        c.fill(0)
+        testing.assert_array_equal(b, c)
+
+    @testing.with_requires('numpy>=1.17.0')
+    @testing.for_all_dtypes()
+    def test_empty_like_K_strides_reshape(self, dtype):
+        # test strides that are both non-contiguous and non-descending
+        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        a = a[:, ::2, :].swapaxes(0, 1)
+        b = numpy.empty_like(a, order='K', shape=self.shape)
+        b.fill(0)
+
+        # GPU case
+        ag = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        ag = ag[:, ::2, :].swapaxes(0, 1)
+        bg = cupy.empty_like(ag, order='K', shape=self.shape)
+        bg.fill(0)
+
+        # make sure NumPy and CuPy strides agree
+        self.assertEqual(b.strides, bg.strides)
+        return
+
+    @testing.with_requires('numpy>=1.17.0')
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_zeros_like_reshape(self, xp, dtype, order):
+        a = xp.ndarray((2, 3, 4), dtype=dtype)
+        return xp.zeros_like(a, order=order, shape=self.shape)
+
+    @testing.for_CF_orders()
+    @testing.for_all_dtypes()
+    def test_zeros_like_reshape_cupy_only(self, dtype, order):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.zeros_like(a, shape=self.shape)
+        c = cupy.zeros(self.shape, order=order, dtype=dtype)
+
+        testing.assert_array_equal(b, c)
+
+    @testing.with_requires('numpy>=1.17.0')
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_ones_like_reshape(self, xp, dtype, order):
+        a = xp.ndarray((2, 3, 4), dtype=dtype)
+        return xp.ones_like(a, order=order, shape=self.shape)
+
+    @testing.for_all_dtypes()
+    def test_ones_like_reshape_cupy_only(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.ones_like(a, shape=self.shape)
+        c = cupy.ones(self.shape, dtype=dtype)
+
+        testing.assert_array_equal(b, c)
+
+    @testing.with_requires('numpy>=1.17.0')
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_full_like_reshape(self, xp, dtype, order):
+        a = xp.ndarray((2, 3, 4), dtype=dtype)
+        return xp.full_like(a, 1, order=order, shape=self.shape)
+
+    @testing.for_all_dtypes()
+    def test_full_like_reshape_cupy_only(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.full_like(a, 1, shape=self.shape)
+        c = cupy.full(self.shape, 1, dtype=dtype)
+
+        testing.assert_array_equal(b, c)

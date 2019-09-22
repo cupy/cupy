@@ -150,6 +150,7 @@ setup(
         'cupy.logic',
         'cupy.manipulation',
         'cupy.math',
+        'cupy.misc',
         'cupy.padding',
         'cupy.prof',
         'cupy.random',

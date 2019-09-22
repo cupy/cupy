@@ -44,13 +44,9 @@ cdef class ndarray:
     cpdef ndarray max(self, axis=*, out=*, dtype=*, keepdims=*)
     cpdef ndarray argmax(self, axis=*, out=*, dtype=*,
                          keepdims=*)
-    cpdef ndarray _nanargmax(self, axis=*, out=*, dtype=*,
-                             keepdims=*)
     cpdef ndarray min(self, axis=*, out=*, dtype=*, keepdims=*)
     cpdef ndarray argmin(self, axis=*, out=*, dtype=*,
                          keepdims=*)
-    cpdef ndarray _nanargmin(self, axis=*, out=*, dtype=*,
-                             keepdims=*)
     cpdef ndarray clip(self, a_min=*, a_max=*, out=*)
     cpdef ndarray round(self, decimals=*, out=*)
 
@@ -58,8 +54,6 @@ cdef class ndarray:
                         out=*)
     cpdef ndarray sum(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray cumsum(self, axis=*, dtype=*, out=*)
-    cpdef ndarray _nansum(self, axis=*, dtype=*, out=*, keepdims=*)
-
     cpdef ndarray mean(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray var(self, axis=*, dtype=*, out=*, ddof=*,
                       keepdims=*)
@@ -67,8 +61,6 @@ cdef class ndarray:
                       keepdims=*)
     cpdef ndarray prod(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray cumprod(self, axis=*, dtype=*, out=*)
-    cpdef ndarray _nanprod(self, axis=*, dtype=*, out=*, keepdims=*)
-
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)
     cpdef ndarray conj(self)

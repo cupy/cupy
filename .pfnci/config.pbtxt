@@ -1,0 +1,83 @@
+configs {
+  key: "cupy.wheel.nightly"
+  value {
+    requirement {
+      cpu: 2
+      memory: 12
+    }
+    time_limit {
+      seconds: 1800
+    }
+    command: "sh .pfnci/wheel_nightly.sh"
+  }
+}
+
+# Python 2 tests are disabled in the master branch, but configs can be removed
+# only after removing web hooks.
+# TODO(niboshi): Completely remove them after discontinuing v6 series.
+configs {
+  key: "cupy.py2.cv.gpu"
+  value {
+    command: "true"
+  }
+}
+configs {
+  key: "cupy.py2.cv.examples"
+  value {
+    command: "true"
+  }
+}
+configs {
+  key: "cupy.py3.cv.gpu"
+  value {
+    requirement {
+      cpu: 4
+      memory: 24
+      disk: 10
+      gpu: 1
+    }
+    time_limit {
+      seconds: 1800
+    }
+    command: "git clone https://github.com/chainer/chainercv.git --depth 1 && sh chainercv/.pfnci/tests_gpu.sh"
+    environment_variables {
+      key: "REPOSITORY"
+      value: "cupy"
+    }
+    environment_variables {
+      key: "PYTHON"
+      value: "3"
+    }
+    environment_variables {
+      key: "OPTIONAL_MODULES"
+      value: "1"
+    }
+  }
+}
+configs {
+  key: "cupy.py3.cv.examples"
+  value {
+    requirement {
+      cpu: 6
+      memory: 36
+      disk: 10
+      gpu: 2
+    }
+    time_limit {
+      seconds: 3600
+    }
+    command: "git clone https://github.com/chainer/chainercv.git --depth 1 && sh chainercv/.pfnci/examples_tests.sh"
+    environment_variables {
+      key: "REPOSITORY"
+      value: "cupy"
+    }
+    environment_variables {
+      key: "PYTHON"
+      value: "3"
+    }
+    environment_variables {
+      key: "OPTIONAL_MODULES"
+      value: "1"
+    }
+  }
+}

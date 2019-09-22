@@ -697,6 +697,11 @@ cdef class ndarray:
             :func:`numpy.nonzero`
 
         """
+        if self.ndim == 0:
+            warnings.warn(
+                'calling nonzero on 0d arrays is deprecated',
+                DeprecationWarning)
+
         return _indexing._ndarray_nonzero(self)
 
     # TODO(okuta): Implement compress
@@ -735,17 +740,6 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmax(self, axis, out, dtype, keepdims)
 
-    cpdef ndarray _nanargmax(self, axis=None, out=None, dtype=None,
-                             keepdims=False):
-        """Returns the indices of the maximum with nan along a given axis.
-
-        .. seealso::
-           :func:`cupy.nanargmax` for full documentation,
-           :meth:`numpy.ndarray.nanargmax`
-
-        """
-        return _statistics._ndarray_nanargmax(self, axis, out, dtype, keepdims)
-
     cpdef ndarray min(self, axis=None, out=None, dtype=None, keepdims=False):
         """Returns the minimum along a given axis.
 
@@ -767,16 +761,6 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
 
-    cpdef ndarray _nanargmin(self, axis=None, out=None, dtype=None,
-                             keepdims=False):
-        """Returns the indices of the minimum with nan along a given axis.
-
-        .. seealso::
-           :func:`cupy.nanargmin` for full documentation,
-           :meth:`numpy.ndarray.nanargmin`
-
-        """
-        return _statistics._ndarray_nanargmin(self, axis, out, dtype, keepdims)
     # TODO(okuta): Implement ptp
 
     cpdef ndarray clip(self, a_min=None, a_max=None, out=None):
@@ -831,17 +815,6 @@ cdef class ndarray:
         """
         return _math._ndarray_cumsum(self, axis, dtype, out)
 
-    cpdef ndarray _nansum(
-            self, axis=None, dtype=None, out=None, keepdims=False):
-        """Returns the sum along a given axis treating Not a Numbers (NaNs) as zero.
-
-        .. seealso::
-           :func:`cupy.nansum` for full documentation,
-           :meth:`numpy.ndarray.nansum`
-
-        """
-        return _math._ndarray_nansum(self, axis, dtype, out, keepdims)
-
     cpdef ndarray mean(self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the mean along a given axis.
 
@@ -894,18 +867,6 @@ cdef class ndarray:
 
         """
         return _math._ndarray_cumprod(self, axis, dtype, out)
-
-    cpdef ndarray _nanprod(
-            self, axis=None, dtype=None, out=None, keepdims=None):
-        """Returns the product along a given axis treating Not a Numbers (NaNs)
-        as zero.
-
-        .. seealso::
-           :func:`cupy.nanprod` for full documentation,
-           :meth:`numpy.ndarray.nanprod`
-
-        """
-        return _math._ndarray_nanprod(self, axis, dtype, out, keepdims)
 
     cpdef ndarray all(self, axis=None, out=None, keepdims=False):
         # TODO(niboshi): Write docstring
@@ -1257,6 +1218,24 @@ cdef class ndarray:
 
         """
         _indexing._ndarray_scatter_add(self, slices, value)
+
+    def scatter_max(self, slices, value):
+        """Stores a maximum value of elements specified by indices to an array.
+
+        .. seealso::
+            :func:`cupyx.scatter_max` for full documentation.
+
+        """
+        _indexing._ndarray_scatter_max(self, slices, value)
+
+    def scatter_min(self, slices, value):
+        """Stores a minimum value of elements specified by indices to an array.
+
+        .. seealso::
+            :func:`cupyx.scatter_min` for full documentation.
+
+        """
+        _indexing._ndarray_scatter_min(self, slices, value)
 
     # TODO(okuta): Implement __getslice__
     # TODO(okuta): Implement __setslice__
@@ -1639,7 +1618,8 @@ cpdef int _update_order_char(ndarray x, int order_char):
     return order_char
 
 
-cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype):
+cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype,
+                                                         shape=None):
     cdef vector.vector[Py_ssize_t] strides
     # strides used when order='K' for astype, empty_like, etc.
     stride_and_index = [
@@ -1649,7 +1629,7 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype):
     stride = dtype.itemsize
     for s, i in stride_and_index:
         strides[-i] = stride
-        stride *= x.shape[-i]
+        stride *= shape[-i] if shape else x.shape[-i]
     return strides
 
 

@@ -11,3 +11,5 @@ CuPy-specific functions are placed under ``cupyx`` namespace.
 
    cupyx.rsqrt
    cupyx.scatter_add
+   cupyx.scatter_max
+   cupyx.scatter_min
