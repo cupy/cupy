@@ -82,7 +82,11 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
         cupy.ndarray, bool: The values ``ar1[in1d]`` are in ``ar2``.
 
     """
+    # TODO(UmashankarTriforce): Improve efficiency of len check
     # Ravel both arrays, behavior for the first array could be different
+    # check for shape
+    if not(ar1.shape[-1]):
+        return cupy.array([], dtype=bool)
     ar1 = cupy.asarray(ar1).ravel()
     ar2 = cupy.asarray(ar2).ravel()
 
@@ -113,7 +117,7 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
         bool_ar = (sar[1:] != sar[:-1])
     else:
         bool_ar = (sar[1:] == sar[:-1])
-    flag = cupy.concatenate((bool_ar, [invert]))
+    flag = cupy.concatenate((bool_ar, cupy.array(invert)))
     ret = cupy.empty(ar.shape, dtype=bool)
     ret[order] = flag
 
