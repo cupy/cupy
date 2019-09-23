@@ -10,7 +10,8 @@ from cupy import testing
     *testing.product({
         'array': [numpy.arange(6).reshape([2, 3])],
         'pad_width': [1, [1, 2], [[1, 2], [3, 4]]],
-        'mode': ['constant', 'edge', 'linear_ramp', 'maximum', 'mean',
+        # mode 'mean' is non-exact, so it is tested in a separate class
+        'mode': ['constant', 'edge', 'linear_ramp', 'maximum',
                  'minimum', 'reflect', 'symmetric', 'wrap'],
     })
 )
@@ -23,7 +24,7 @@ class TestPadDefault(unittest.TestCase):
         array = xp.array(self.array, dtype=dtype)
 
         if (xp.dtype(dtype).kind in ['i', 'u'] and
-                self.mode in ['mean', 'linear_ramp']):
+                self.mode == 'linear_ramp'):
             # TODO: can remove this skip once cupy/cupy/#2330 is merged
             return array
 
@@ -36,6 +37,36 @@ class TestPadDefault(unittest.TestCase):
         # Older version of NumPy(<1.12) can emit ComplexWarning
         def f():
             return xp.pad(array, self.pad_width, mode=self.mode)
+
+        if xp is numpy:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', numpy.ComplexWarning)
+                return f()
+        else:
+            return f()
+
+
+@testing.parameterize(
+    *testing.product({
+        'array': [numpy.arange(6).reshape([2, 3])],
+        'pad_width': [1, [1, 2], [[1, 2], [3, 4]]],
+    })
+)
+@testing.gpu
+class TestPadDefaultMean(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_almost_equal(decimal=5)
+    def test_pad_default(self, xp, dtype):
+        array = xp.array(self.array, dtype=dtype)
+
+        if xp.dtype(dtype).kind in ['i', 'u']:
+            # TODO: can remove this skip once cupy/cupy/#2330 is merged
+            return array
+
+        # Older version of NumPy(<1.12) can emit ComplexWarning
+        def f():
+            return xp.pad(array, self.pad_width, mode='mean')
 
         if xp is numpy:
             with warnings.catch_warnings():
@@ -71,17 +102,6 @@ class TestPadDefault(unittest.TestCase):
     {'array': numpy.arange(6).reshape([2, 3]),
      'pad_width': [[1, 2], [3, 4]], 'mode': 'symmetric',
      'reflect_type': 'odd'},
-    # mode='mean'
-    {'array': numpy.arange(60).reshape([5, 12]), 'pad_width': 1,
-     'mode': 'mean', 'stat_length': 2},
-    {'array': numpy.arange(60).reshape([5, 12]),
-     'pad_width': [1, 2], 'mode': 'mean', 'stat_length': (2, 4)},
-    {'array': numpy.arange(60).reshape([5, 12]),
-     'pad_width': [[1, 2], [3, 4]], 'mode': 'mean',
-     'stat_length': ((2, 4), (3, 5))},
-    {'array': numpy.arange(60).reshape([5, 12]),
-     'pad_width': [[1, 2], [3, 4]], 'mode': 'mean',
-     'stat_length': None},
     # mode='minimum'
     {'array': numpy.arange(60).reshape([5, 12]), 'pad_width': 1,
      'mode': 'minimum', 'stat_length': 2},
@@ -115,21 +135,57 @@ class TestPad(unittest.TestCase):
     def test_pad(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
 
-        if xp.dtype(dtype).kind in ['i', 'u'] and self.mode in ['mean']:
-            # TODO: can remove this skip once cupy/cupy/#2330 is merged
-            return array
-
         # Older version of NumPy(<1.12) can emit ComplexWarning
         def f():
             if self.mode == 'constant':
                 return xp.pad(array, self.pad_width, mode=self.mode,
                               constant_values=self.constant_values)
-            elif self.mode in ['mean', 'minimum', 'maximum']:
+            elif self.mode in ['minimum', 'maximum']:
                 return xp.pad(array, self.pad_width, mode=self.mode,
                               stat_length=self.stat_length)
             elif self.mode in ['reflect', 'symmetric']:
                 return xp.pad(array, self.pad_width, mode=self.mode,
                               reflect_type=self.reflect_type)
+
+        if xp is numpy:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', numpy.ComplexWarning)
+                return f()
+        else:
+            return f()
+
+
+@testing.parameterize(
+    # mode='mean'
+    {'array': numpy.arange(60).reshape([5, 12]), 'pad_width': 1,
+     'mode': 'mean', 'stat_length': 2},
+    {'array': numpy.arange(60).reshape([5, 12]),
+     'pad_width': [1, 2], 'mode': 'mean', 'stat_length': (2, 4)},
+    {'array': numpy.arange(60).reshape([5, 12]),
+     'pad_width': [[1, 2], [3, 4]], 'mode': 'mean',
+     'stat_length': ((2, 4), (3, 5))},
+    {'array': numpy.arange(60).reshape([5, 12]),
+     'pad_width': [[1, 2], [3, 4]], 'mode': 'mean',
+     'stat_length': None},
+)
+@testing.gpu
+# Old numpy does not work with multi-dimensional constant_values
+@testing.with_requires('numpy>=1.11.1')
+class TestPadMean(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_almost_equal(decimal=5)
+    def test_pad(self, xp, dtype):
+        array = xp.array(self.array, dtype=dtype)
+
+        if xp.dtype(dtype).kind in ['i', 'u']:
+            # TODO: can remove this skip once cupy/cupy/#2330 is merged
+            return array
+
+        # Older version of NumPy(<1.12) can emit ComplexWarning
+        def f():
+            return xp.pad(array, self.pad_width, mode=self.mode,
+                          stat_length=self.stat_length)
 
         if xp is numpy:
             with warnings.catch_warnings():
