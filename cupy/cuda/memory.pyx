@@ -557,6 +557,15 @@ cpdef set_allocator(allocator=None):
     _current_allocator = allocator
 
 
+cpdef get_allocator():
+    """Returns the current allocator for GPU memory.
+
+    Returns:
+        function: CuPy memory allocator.
+    """
+    return _current_allocator
+
+
 @cython.final
 @cython.no_gc
 cdef class PooledMemory(BaseMemory):
