@@ -81,6 +81,8 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
         raise TypeError('Complex type not supported.')
     if not hasattr(origin, '__getitem__'):
         origin = [origin, ] * input.ndim
+    else:
+        origin = list(origin)
     wshape = [ii for ii in weights.shape if ii > 0]
     if len(wshape) != input.ndim:
         raise RuntimeError('filter weights array has incorrect shape.')
@@ -170,8 +172,8 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
         ops.append(_generate_boundary_condition_ops(mode, ixvar, xshape[j]))
         ops.append('        ix_{j} *= sx_{j};'.format(j=j))
 
-    _cond = " || ".join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
-    _expr = " + ".join(['ix_{0}'.format(j) for j in range(ndim)])
+    _cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
+    _expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
     ops.append('''
         if ({cond}) {{
             sum += (W){cval} * w[iw];
@@ -183,9 +185,9 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
 
     ops.append('} ' * ndim)
     ops.append('y = (Y)sum;')
-    operation = "\n".join(ops)
+    operation = '\n'.join(ops)
 
-    name = 'cupy_ndimage_correlate_{}_{}d_x{}_w{}'.format(
-        mode, ndim, "_".join(['{}'.format(j) for j in xshape]),
-        "_".join(['{}'.format(j) for j in wshape]))
+    name = 'cupy_ndimage_correlate_{}d_{}_x{}_w{}'.format(
+        ndim, mode, '_'.join(['{}'.format(j) for j in xshape]),
+        '_'.join(['{}'.format(j) for j in wshape]))
     return in_params, out_params, operation, name
