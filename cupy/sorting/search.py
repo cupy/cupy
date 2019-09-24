@@ -1,6 +1,8 @@
 from cupy import core
 from cupy.core import fusion
 
+from cupy.core import _routines_statistics as _statistics
+
 
 def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the indices of the maximum along an axis.
@@ -46,7 +48,7 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
     if a.dtype.kind in 'biu':
         return argmax(a, axis=axis)
 
-    return a._nanargmax(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return _statistics._nanargmax(a, axis, dtype, out, keepdims)
 
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -93,7 +95,7 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
     if a.dtype.kind in 'biu':
         return argmin(a, axis=axis)
 
-    return a._nanargmin(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return _statistics._nanargmin(a, axis, dtype, out, keepdims)
 
 # TODO(okuta): Implement argwhere
 

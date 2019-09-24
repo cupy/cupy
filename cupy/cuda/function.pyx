@@ -9,6 +9,7 @@ from libc.stdint cimport int16_t
 from libc.stdint cimport int32_t
 from libc.stdint cimport int64_t
 from libc.stdint cimport intptr_t
+from libc.stdint cimport uintmax_t
 from libcpp cimport vector
 
 
@@ -16,6 +17,7 @@ from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 from cupy.core cimport core
 from cupy.cuda cimport stream as stream_module
+from cupy.cuda.texture cimport TextureObject
 
 
 cdef class CPointer:
@@ -68,6 +70,15 @@ cdef class CInt128(CPointer):
         self.ptr = <void*>&self.val
 
 
+cdef class CUIntMax(CPointer):
+    cdef:
+        uintmax_t val
+
+    def __init__(self, uintmax_t v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
+
 cdef set _pointer_numpy_types = {numpy.dtype(i).type
                                  for i in '?bhilqBHILQefdFD'}
 
@@ -83,6 +94,9 @@ cdef inline CPointer _pointer(x):
 
     if isinstance(x, CPointer):
         return x
+
+    if isinstance(x, TextureObject):
+        return CUIntMax(x.ptr)
 
     if type(x) not in _pointer_numpy_types:
         if isinstance(x, six.integer_types):
@@ -194,6 +208,11 @@ cdef class Module:
         if isinstance(name, six.binary_type):
             name = six.u(name)
         return Function(self, name)
+
+    cpdef get_texref(self, name):
+        if isinstance(name, six.binary_type):
+            name = six.u(name)
+        return driver.moduleGetTexRef(self.ptr, name)
 
 
 cdef class LinkState:

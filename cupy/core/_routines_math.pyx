@@ -84,24 +84,6 @@ cdef ndarray _ndarray_cumprod(ndarray self, axis, dtype, out):
     return cupy.cumprod(self, axis, dtype, out)
 
 
-cdef ndarray _ndarray_nansum(ndarray self, axis, dtype, out, keepdims):
-    if cupy.iscomplexobj(self):
-        return _nansum_complex_dtype(self, axis, dtype, out, keepdims)
-    elif dtype is None:
-        return _nansum_auto_dtype(self, axis, dtype, out, keepdims)
-    else:
-        return _nansum_keep_dtype(self, axis, dtype, out, keepdims)
-
-
-cdef ndarray _ndarray_nanprod(ndarray self, axis, dtype, out, keepdims):
-    if cupy.iscomplexobj(self):
-        return _nanprod_complex_dtype(self, axis, dtype, out, keepdims)
-    elif dtype is None:
-        return _nanprod_auto_dtype(self, axis, dtype, out, keepdims)
-    else:
-        return _nanprod_keep_dtype(self, axis, dtype, out, keepdims)
-
-
 cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
     if a_min is None and a_max is None:
         raise ValueError('array_clip: must set either max or min')
@@ -251,6 +233,24 @@ cdef ndarray scan(ndarray a, ndarray out=None):
 # Only for test
 def _scan_for_test(a, out=None):
     return scan(a, out)
+
+
+cpdef ndarray _nansum(ndarray a, axis, dtype, out, keepdims):
+    if cupy.iscomplexobj(a):
+        return _nansum_complex_dtype(a, axis, dtype, out, keepdims)
+    elif dtype is None:
+        return _nansum_auto_dtype(a, axis, dtype, out, keepdims)
+    else:
+        return _nansum_keep_dtype(a, axis, dtype, out, keepdims)
+
+
+cpdef ndarray _nanprod(ndarray a, axis, dtype, out, keepdims):
+    if cupy.iscomplexobj(a):
+        return _nanprod_complex_dtype(a, axis, dtype, out, keepdims)
+    elif dtype is None:
+        return _nanprod_auto_dtype(a, axis, dtype, out, keepdims)
+    else:
+        return _nanprod_keep_dtype(a, axis, dtype, out, keepdims)
 
 
 _sum_auto_dtype = create_reduction_func(

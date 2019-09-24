@@ -34,6 +34,7 @@ MODULES = [
         'file': [
             'cupy.core._dtype',
             'cupy.core._kernel',
+            'cupy.core._memory_range',
             'cupy.core._routines_indexing',
             'cupy.core._routines_logic',
             'cupy.core._routines_manipulation',
@@ -61,6 +62,7 @@ MODULES = [
             'cupy.cuda.function',
             'cupy.cuda.stream',
             'cupy.cuda.runtime',
+            'cupy.cuda.texture',
             'cupy.util',
         ],
         'include': [

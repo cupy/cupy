@@ -260,13 +260,14 @@ def inv(a):
     util._assert_rank2(a)
     util._assert_nd_squareness(a)
 
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
+    # support float32, float64, complex64, and complex128
+    if a.dtype.char in 'fdFD':
         dtype = a.dtype.char
     else:
         dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
 
     cusolver_handle = device.get_cusolver_handle()
-    dev_info = cupy.empty(1, dtype=cupy.int32)
+    dev_info = cupy.empty(1, dtype=numpy.int32)
 
     ipiv = cupy.empty((a.shape[0], 1), dtype=numpy.intc)
 
