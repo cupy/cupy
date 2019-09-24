@@ -98,8 +98,8 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
         raise RuntimeError(msg)
 
     output = _get_output(output, input)
-    input = cupy.ascontiguousarray(input.astype(output.dtype))
-    weights = cupy.ascontiguousarray(weights.astype(output.dtype))
+    input = cupy.ascontiguousarray(input)
+    weights = cupy.ascontiguousarray(weights, cupy.float64)
     in_params, out_params, operation, name = _generate_correlete_kernel(
         input.ndim, mode, cval, input.shape, wshape, origin)
     return cupy.ElementwiseKernel(in_params, out_params, operation, name)(
@@ -143,8 +143,8 @@ def _generate_boundary_condition_ops(mode, ix, xsize):
 
 
 def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
-    in_params = 'raw T x, raw T w'
-    out_params = 'T y'
+    in_params = 'raw X x, raw W w'
+    out_params = 'Y y'
 
     ops = []
     ops.append('const int sx_{} = 1;'.format(ndim-1))
@@ -158,7 +158,7 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
                            origin=origin[j]))
         if (j > 0):
             ops.append('_i /= {xsize};'.format(xsize=xshape[j]))
-    ops.append('T sum = (T)0;')
+    ops.append('W sum = (W)0;')
     ops.append('int iw = 0;')
 
     for j in range(ndim):
@@ -168,20 +168,21 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
         int ix_{j} = cx_{j} + iw_{j};'''.format(j=j, wsize=wshape[j]))
         ixvar = 'ix_{}'.format(j)
         ops.append(_generate_boundary_condition_ops(mode, ixvar, xshape[j]))
+        ops.append('        ix_{j} *= sx_{j};'.format(j=j))
 
     _cond = " || ".join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
-    _expr = " + ".join(['ix_{0} * sx_{0}'.format(j) for j in range(ndim)])
+    _expr = " + ".join(['ix_{0}'.format(j) for j in range(ndim)])
     ops.append('''
         if ({cond}) {{
-            sum += (T){cval} * w[iw];
+            sum += (W){cval} * w[iw];
         }} else {{
             int ix = {expr};
-            sum += x[ix] * w[iw];
+            sum += (W)x[ix] * w[iw];
         }}
         iw += 1;'''.format(cond=_cond, expr=_expr, cval=cval))
 
     ops.append('} ' * ndim)
-    ops.append('y = sum;')
+    ops.append('y = (Y)sum;')
     operation = "\n".join(ops)
 
     name = 'cupy_ndimage_correlate_{}_{}d_x{}_w{}'.format(
