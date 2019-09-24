@@ -525,13 +525,14 @@ def csrsort(x):
         x.indices.data.ptr)
     buf = cupy.empty(buffer_size, 'b')
     P = cupy.empty(nnz, 'i')
+    data_orig = x.data.copy()
     cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
     cusparse.xcsrsort(
         handle, m, n, nnz, x._descr.descriptor, x.indptr.data.ptr,
         x.indices.data.ptr, P.data.ptr, buf.data.ptr)
     _call_cusparse(
         'gthr', x.dtype,
-        handle, nnz, x.data.data.ptr, x.data.data.ptr,
+        handle, nnz, data_orig.data.ptr, x.data.data.ptr,
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 
@@ -553,18 +554,19 @@ def cscsort(x):
         x.indices.data.ptr)
     buf = cupy.empty(buffer_size, 'b')
     P = cupy.empty(nnz, 'i')
+    data_orig = x.data.copy()
     cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
     cusparse.xcscsort(
         handle, m, n, nnz, x._descr.descriptor, x.indptr.data.ptr,
         x.indices.data.ptr, P.data.ptr, buf.data.ptr)
     _call_cusparse(
         'gthr', x.dtype,
-        handle, nnz, x.data.data.ptr, x.data.data.ptr,
+        handle, nnz, data_orig.data.ptr, x.data.data.ptr,
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 
 def coosort(x):
-    """Sorts indices of COO-matrix in place
+    """Sorts indices of COO-matrix in place.
 
     Args:
         x (cupyx.scipy.sparse.coo_matrix): A sparse matrix to sort.
@@ -580,7 +582,6 @@ def coosort(x):
         handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr)
     buf = cupy.empty(buffer_size, 'b')
     P = cupy.empty(nnz, 'i')
-    # copy data to do safe in-place edits by gthr
     data_orig = x.data.copy()
     cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
     cusparse.xcoosortByRow(
