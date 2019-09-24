@@ -87,3 +87,11 @@ class TestArrayUfunc(unittest.TestCase):
         a = cupy.testing.shaped_arange((3, 1), xp)[:, :, None]
         b = cupy.testing.shaped_arange((3, 2), xp)[:, None, :]
         return a * b
+
+    @testing.with_requires('numpy>=1.11')
+    @testing.numpy_cupy_array_equal()
+    def test_shares_memory(self, xp):
+        a = cupy.testing.shaped_arange((1000, 1000), xp, 'int64')
+        b = xp.transpose(a)
+        a += b
+        return a
