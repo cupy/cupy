@@ -288,8 +288,8 @@ def inv(a):
         getrf_bufferSize = cusolver.zgetrf_bufferSize
         getrs = cusolver.zgetrs
     else:
-        msg = ('dtype must be float32 (\'f\'), float64 (\'d\'), complex64 '
-               '(\'F\') or complex128 (\'D\') (actual: {})'.format(dtype))
+        msg = ('dtype must be float32, float64, complex64 or float128'
+               ' (actual: {})'.format(a.dtype))
         raise ValueError(msg)
 
     m = a.shape[0]
