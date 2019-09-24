@@ -254,10 +254,10 @@ cdef ndarray _var(
                 dtype_out = numpy.dtype(a.dtype.char.lower())
 
     shape = a.shape
-    items = 1
+    cdef Py_ssize_t items = 1
     for ax in axis:
         items *= shape[ax]
-    alpha = numpy.dtype(dtype_out).type(1) / max(items - ddof, 0)
+    alpha = 1 / max(items - ddof, 0)
     arrmean = a.mean(axis=axis, dtype=dtype_mean, out=None, keepdims=True)
 
     if out is None:
