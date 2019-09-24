@@ -193,3 +193,58 @@ class TestCsrmv(unittest.TestCase):
         expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
         self.assertIs(y, z)
         testing.assert_array_almost_equal(y, expect)
+
+
+@testing.with_requires('scipy')
+class TestCoosort(unittest.TestCase):
+
+    def setUp(self):
+        self.a = scipy.sparse.random(
+            100, 100, density=0.9, dtype=numpy.float32, format='coo')
+
+    def test_coosort(self):
+        a = sparse.coo_matrix(self.a)
+        cupy.cusparse.coosort(a)
+        # lexsort by row first and col second
+        argsort = numpy.lexsort((self.a.col, self.a.row))
+        testing.assert_array_equal(self.a.row[argsort], a.row)
+        testing.assert_array_equal(self.a.col[argsort], a.col)
+        testing.assert_array_almost_equal(self.a.data[argsort], a.data)
+
+
+@testing.with_requires('scipy')
+class TestCsrsort(unittest.TestCase):
+
+    def setUp(self):
+        self.a = scipy.sparse.random(
+            1, 1000, density=0.9, dtype=numpy.float32, format='csr')
+        numpy.random.shuffle(self.a.indices)
+        self.a.has_sorted_indices = False
+
+    def test_csrsort(self):
+        a = sparse.csr_matrix(self.a)
+        cupy.cusparse.csrsort(a)
+
+        self.a.sort_indices()
+        testing.assert_array_equal(self.a.indptr, a.indptr)
+        testing.assert_array_equal(self.a.indices, a.indices)
+        testing.assert_array_almost_equal(self.a.data, a.data)
+
+
+@testing.with_requires('scipy')
+class TestCscsort(unittest.TestCase):
+
+    def setUp(self):
+        self.a = scipy.sparse.random(
+            1000, 1, density=0.9, dtype=numpy.float32, format='csc')
+        numpy.random.shuffle(self.a.indices)
+        self.a.has_sorted_indices = False
+
+    def test_csrsort(self):
+        a = sparse.csc_matrix(self.a)
+        cupy.cusparse.cscsort(a)
+
+        self.a.sort_indices()
+        testing.assert_array_equal(self.a.indptr, a.indptr)
+        testing.assert_array_equal(self.a.indices, a.indices)
+        testing.assert_array_almost_equal(self.a.data, a.data)
