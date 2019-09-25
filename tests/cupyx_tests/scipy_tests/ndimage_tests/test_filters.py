@@ -3,6 +3,7 @@ import unittest
 import numpy
 import pytest
 
+import cupy
 from cupy import testing
 import cupyx.scipy.ndimage  # NOQA
 
@@ -48,3 +49,50 @@ class TestConvolveAndCorrelate(unittest.TestCase):
             wdtype = self.wdtype
         w = testing.shaped_random((self.ksize,) * a.ndim, xp, wdtype)
         return self._filter(xp, scp, a, w)
+
+
+@testing.parameterize(*testing.product({
+    'ndim': [2, 3],
+    'dtype': [numpy.int32, numpy.float64],
+    'filter': ['convolve', 'correlate']
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestConvolveAndCorrelateSpecialCases(unittest.TestCase):
+
+    def _filter(self, scp, a, w, mode='reflect', origin=0):
+        filter = getattr(scp.ndimage, self.filter)
+        return filter(a, w, mode=mode, origin=origin)
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_weights_with_size_zero_dim(self, xp, scp):
+        a = testing.shaped_random((3, ) * self.ndim, xp, self.dtype)
+        w = testing.shaped_random((0, ) + (3, ) * self.ndim, xp, self.dtype)
+        return self._filter(scp, a, w)
+
+    def test_invalid_shape_weights(self):
+        a = testing.shaped_random((3, ) * self.ndim, cupy, self.dtype)
+        w = testing.shaped_random((3, ) * (self.ndim - 1), cupy, self.dtype)
+        with self.assertRaises(RuntimeError):
+            self._filter(cupyx.scipy, a, w)
+        w = testing.shaped_random((0, ) + (3, ) * (self.ndim - 1), cupy,
+                                  self.dtype)
+        with self.assertRaises(RuntimeError):
+            self._filter(cupyx.scipy, a, w)
+
+    def test_invalid_mode(self):
+        a = testing.shaped_random((3, ) * self.ndim, cupy, self.dtype)
+        w = testing.shaped_random((3, ) * self.ndim, cupy, self.dtype)
+        with self.assertRaises(RuntimeError):
+            self._filter(cupyx.scipy, a, w, mode='unknown')
+
+    def test_invalid_origin(self):
+        a = testing.shaped_random((3, ) * self.ndim, cupy, self.dtype)
+        w = testing.shaped_random((3, ) * self.ndim, cupy, self.dtype)
+        for origin in (-3, -2, 2, 3):
+            if self.filter == 'correlate' and origin == 2:
+                continue
+            if self.filter == 'convolve' and origin == -2:
+                continue
+            with self.assertRaises(ValueError):
+                self._filter(cupyx.scipy, a, w, origin=origin)

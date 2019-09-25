@@ -100,6 +100,8 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
         raise RuntimeError(msg)
 
     output = _get_output(output, input)
+    if weights.size == 0:
+        return output
     input = cupy.ascontiguousarray(input)
     weights = cupy.ascontiguousarray(weights, cupy.float64)
     in_params, out_params, operation, name = _generate_correlete_kernel(
