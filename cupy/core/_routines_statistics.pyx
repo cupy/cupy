@@ -268,9 +268,9 @@ cdef ndarray _var(
         else:
             var_core = _var_core_float64
         return var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
-    else:
-        out = _var_core_out(a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
-        return out.astype(dtype_out, copy=False)
+
+    out = _var_core_out(a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
+    return out.astype(dtype_out, copy=False)
 
 
 cdef ndarray _std(
