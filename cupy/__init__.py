@@ -10,8 +10,8 @@ from cupy import _version
 
 try:
     with warnings.catch_warnings():
-        distutils_warning = 'can\'t resolve package from __spec__'
-        warnings.filterwarnings("ignore", message=distutils_warning)
+        warnings.filterwarnings('ignore', category=ImportWarning,
+                                message='can\'t resolve package from __spec__')
         from cupy import core  # NOQA
 except ImportError:
     # core is a c-extension module.
