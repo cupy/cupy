@@ -1,7 +1,6 @@
 import unittest
 
 import numpy
-import pytest
 
 import cupy
 from cupy import testing
@@ -13,18 +12,40 @@ except ImportError:
     pass
 
 
-@testing.parameterize(*testing.product({
-    'shape': [(3, 4), (2, 3, 4), (1, 2, 3, 4)],
-    'ksize': [3, 4],
-    'mode': ['reflect', 'constant', 'nearest', 'mirror', 'wrap'],
-    'cval': [0.0, 1.0],
-    'origin': [0, 1, None],
-    'adtype': [numpy.int8, numpy.int16, numpy.int32,
-               numpy.float32, numpy.float64],
-    'wdtype': [None, numpy.int32, numpy.float64],
-    'output': [None, numpy.int32, numpy.float64],
-    'filter': ['convolve', 'correlate']
-}))
+@testing.parameterize(*(
+    testing.product({
+        'shape': [(3, 4), (2, 3, 4), (1, 2, 3, 4)],
+        'ksize': [3, 4],
+        'mode': ['reflect'],
+        'cval': [0.0],
+        'origin': [0, 1, None],
+        'adtype': [numpy.int8, numpy.int16, numpy.int32,
+                   numpy.float32, numpy.float64],
+        'wdtype': [None, numpy.int32, numpy.float64],
+        'output': [None, numpy.int32, numpy.float64],
+        'filter': ['convolve', 'correlate']
+    }) + testing.product({
+        'shape': [(3, 4), (2, 3, 4), (1, 2, 3, 4)],
+        'ksize': [3, 4],
+        'mode': ['constant'],
+        'cval': [-1.0, 0.0, 1.0],
+        'origin': [0],
+        'adtype': [numpy.int32, numpy.float64],
+        'wdtype': [None],
+        'output': [None],
+        'filter': ['convolve', 'correlate']
+    }) + testing.product({
+        'shape': [(3, 4), (2, 3, 4), (1, 2, 3, 4)],
+        'ksize': [3, 4],
+        'mode': ['nearest', 'mirror', 'wrap'],
+        'cval': [0.0],
+        'origin': [0],
+        'adtype': [numpy.int32, numpy.float64],
+        'wdtype': [None],
+        'output': [None],
+        'filter': ['convolve', 'correlate']
+    })
+))
 @testing.gpu
 @testing.with_requires('scipy')
 class TestConvolveAndCorrelate(unittest.TestCase):
@@ -41,7 +62,7 @@ class TestConvolveAndCorrelate(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_convolve_and_correlate(self, xp, scp):
         if self.adtype == self.wdtype or self.adtype == self.output:
-            pytest.skip('skip duplicated test.')
+            return xp.array(True)
         a = testing.shaped_random(self.shape, xp, self.adtype)
         if self.wdtype is None:
             wdtype = self.adtype
