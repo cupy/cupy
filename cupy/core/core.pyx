@@ -142,9 +142,11 @@ cdef class ndarray:
             'typestr': self.dtype.str,
             'descr': self.dtype.descr,
             'data': (self.data.ptr, False),
-            'version': 0,
+            'version': 2,
         }
-        if not self._c_contiguous:
+        if self._c_contiguous:
+            desc['strides'] = None
+        else:
             desc['strides'] = self.strides
 
         return desc
@@ -2743,14 +2745,23 @@ not_equal = create_comparison(
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
     cdef Py_ssize_t sh, st
     desc = a.__cuda_array_interface__
+    # TODO(leofang): enforce compliance to the latest protocol?
     shape = desc['shape']
     dtype = numpy.dtype(desc['typestr'])
+    if 'mask' in desc:
+        mask = desc['mask']
+        if mask is not None:
+            raise ValueError("CuPy currently does not support masked arrays.")
+    # TODO(leofang): for ver.2, 'strides' is always available, so don't check.
     if 'strides' in desc:
         strides = desc['strides']
-        nbytes = 0
-        for sh, st in zip(shape, strides):
-            nbytes = max(nbytes, abs(sh * st))
-    else:
+        if strides is not None:
+            nbytes = 0
+            for sh, st in zip(shape, strides):
+                nbytes = max(nbytes, abs(sh * st))
+        else:
+            nbytes = internal.prod(shape) * dtype.itemsize
+    else:  # for backward compatibility with ver.0 & ver.1
         strides = None
         nbytes = internal.prod(shape) * dtype.itemsize
     mem = memory_module.UnownedMemory(desc['data'][0], nbytes, a)
