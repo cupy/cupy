@@ -329,7 +329,7 @@ def _batched_inv(a):
         getrf = cupy.cuda.cublas.zgetrfBatched
         getri = cupy.cuda.cublas.zgetriBatched
     else:
-        msg = ('dtype must be float32, float64, complex64 or float128'
+        msg = ('dtype must be float32, float64, complex64 or complex128'
                ' (actual: {})'.format(a.dtype))
         raise ValueError(msg)
 
