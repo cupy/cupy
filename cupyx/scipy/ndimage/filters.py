@@ -12,7 +12,8 @@ def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
         input (cupy.ndarray): The input array.
         weights (cupy.ndarray): Array of weights, same number of dimensions as
             input
-        output (cupy.ndarray or None): The array in which to place the output.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output.
         mode (str): The array borders are handled according to the given mode
             (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
             ``'wrap'``). Default is ``'reflect'``.
@@ -41,7 +42,8 @@ def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
         input (cupy.ndarray): The input array.
         weights (cupy.ndarray): Array of weights, same number of dimensions as
             input
-        output (cupy.ndarray or None): The array in which to place the output.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output.
         mode (str): The array borders are handled according to the given mode
             (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
             ``'wrap'``). Default is ``'reflect'``.
@@ -89,8 +91,8 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
     if convolution:
         weights = weights[tuple([slice(None, None, -1)] * weights.ndim)]
         for ii in range(len(origin)):
-            origin[ii] = - origin[ii]
-            if not weights.shape[ii] & 1:
+            origin[ii] = -origin[ii]
+            if weights.shape[ii] % 2 == 0:
                 origin[ii] -= 1
     for _origin, lenw in zip(origin, wshape):
         if (lenw // 2 + _origin < 0) or (lenw // 2 + _origin > lenw):
