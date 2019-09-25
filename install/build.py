@@ -116,6 +116,10 @@ def get_compiler_setting():
         include_dirs.append(os.path.join(cutensor_path, 'include'))
         library_dirs.append(os.path.join(cutensor_path, 'lib'))
 
+    cub_path = os.environ.get('CUB_PATH', '')
+    if os.path.exists(cub_path):
+        include_dirs.append(cub_path)
+
     return {
         'include_dirs': include_dirs,
         'library_dirs': library_dirs,

@@ -17,6 +17,7 @@ from cupy.cuda import texture  # NOQA
 
 _available = None
 _cuda_path = None
+_cub_disabled = None
 
 
 from cupy.cuda import cusolver  # NOQA
@@ -33,6 +34,14 @@ try:
     thrust_enabled = True
 except ImportError:
     thrust_enabled = False
+
+cub_enabled = False
+if int(os.getenv('CUB_DISABLED', 0)) == 0:
+    try:
+        from cupy.cuda import cub  # NOQA
+        cub_enabled = True
+    except ImportError:
+        pass
 
 try:
     from cupy.cuda import nccl  # NOQA

@@ -14,6 +14,9 @@ from cupy.core._dtype cimport get_dtype
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 
+if cupy.cuda.cub_enabled:
+    from cupy.cuda import cub
+
 
 # ndarray members
 
@@ -70,6 +73,10 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
 
 
 cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
+    if cupy.cuda.cub_enabled:
+        if (cub.can_use_reduce_sum(self.dtype, dtype) and (axis is None)
+                and (not keepdims)):
+            return cub.reduce_sum(self, out=out)
     if dtype is None:
         return _sum_auto_dtype(self, axis, dtype, out, keepdims)
     else:
