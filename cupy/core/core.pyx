@@ -2513,24 +2513,21 @@ not_equal = create_comparison(
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
     cdef Py_ssize_t sh, st
     desc = a.__cuda_array_interface__
-    # TODO(leofang): enforce compliance to the latest protocol?
     shape = desc['shape']
     dtype = numpy.dtype(desc['typestr'])
     if 'mask' in desc:
         mask = desc['mask']
         if mask is not None:
-            raise ValueError("CuPy currently does not support masked arrays.")
-    # TODO(leofang): for ver.2, 'strides' is always available, so don't check.
-    if 'strides' in desc:
+            raise ValueError('CuPy currently does not support masked arrays.')
+    if 'strides' in desc:  # for ver.2, 'strides' is always available
         strides = desc['strides']
-        if strides is not None:
-            nbytes = 0
-            for sh, st in zip(shape, strides):
-                nbytes = max(nbytes, abs(sh * st))
-        else:
-            nbytes = internal.prod(shape) * dtype.itemsize
     else:  # for backward compatibility with ver.0 & ver.1
         strides = None
+    if strides is not None:
+        nbytes = 0
+        for sh, st in zip(shape, strides):
+            nbytes = max(nbytes, abs(sh * st))
+    else:
         nbytes = internal.prod(shape) * dtype.itemsize
     mem = memory_module.UnownedMemory(desc['data'][0], nbytes, a)
     memptr = memory.MemoryPointer(mem, 0)
