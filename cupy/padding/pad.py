@@ -356,7 +356,7 @@ def _as_pairs(x, ndim, as_index=False):
     `pad_width` for iteration in pairs.
 
     Args:
-      x({None, scalar, array-like}): The object to broadcast to the shape
+      x(None, scalar or array-like): The object to broadcast to the shape
           (`ndim`, 2).
       ndim(int): Number of pairs the broadcasted `x` will have.
       as_index(bool, optional): If `x` is not None, try to round each
@@ -419,8 +419,8 @@ def pad(array, pad_width, mode='constant', **kwargs):
     """Pads an array with specified widths and values.
 
     Args:
-      array(array_like of rank N): The array to pad.
-      pad_width({sequence, array_like, int}): Number of values padded to the
+      array(cupy.ndarray): The array to pad.
+      pad_width(sequence, array_like or int): Number of values padded to the
           edges of each axis. ((before_1, after_1), ... (before_N, after_N))
           unique pad widths for each axis. ((before, after),) yields same
           before and after pad for each axis. (pad,) or int is a shortcut for
