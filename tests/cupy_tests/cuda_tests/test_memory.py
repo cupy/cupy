@@ -626,6 +626,9 @@ class TestAllocator(unittest.TestCase):
             self.assertEqual(1024, arr.data.mem.size)
             self.assertEqual(1024, self.pool.used_bytes())
 
+    def test_get_allocator(self):
+        assert memory.get_allocator() == self.pool.malloc
+
     @unittest.skipUnless(sys.version_info[0] >= 3,
                          'Only for Python3 or higher')
     def test_reuse_between_thread(self):
