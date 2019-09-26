@@ -105,14 +105,10 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
     if weights.size == 0:
         return output
     input = cupy.ascontiguousarray(input)
-    if input.dtype in (cupy.int32, cupy.uint32,
-                       cupy.int64, cupy.uint64, cupy.float64):
-        # If the input dtype is one of the above dtypes, float64 must be used
-        # for correlation computation to get an output compatible with SciPy.
-        wdtype = cupy.float64
-    else:
-        wdtype = cupy.float32
-    weights = cupy.ascontiguousarray(weights, wdtype)
+    weights = cupy.ascontiguousarray(weights, cupy.float64)
+    # weights is always casted to float64 in order to get an output compatible
+    # with SciPy, thought float32 might be sufficient when input dtype is low
+    # precision.
     in_params, out_params, operation, name = _generate_correlete_kernel(
         input.ndim, mode, cval, input.shape, wshape, origin)
     return cupy.ElementwiseKernel(in_params, out_params, operation, name)(
