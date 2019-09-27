@@ -1,5 +1,8 @@
 import unittest
 
+import pytest
+
+import cupy
 from cupy import testing
 
 
@@ -19,6 +22,21 @@ class TestRepeat(unittest.TestCase):
     def test_array_repeat(self, xp):
         x = testing.shaped_arange((2, 3, 4), xp)
         return xp.repeat(x, self.repeats, self.axis)
+
+
+class TestRepeatRepeatsNdarray(unittest.TestCase):
+
+    def test_func(self):
+        a = testing.shaped_arange((2, 3, 4), cupy)
+        repeats = cupy.array([2, 3], dtype=cupy.int32)
+        with pytest.raises(ValueError, match=r'repeats'):
+            cupy.repeat(a, repeats)
+
+    def test_method(self):
+        a = testing.shaped_arange((2, 3, 4), cupy)
+        repeats = cupy.array([2, 3], dtype=cupy.int32)
+        with pytest.raises(ValueError, match=r'repeats'):
+            a.repeat(repeats)
 
 
 @testing.parameterize(
