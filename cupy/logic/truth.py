@@ -61,11 +61,11 @@ def any(a, axis=None, out=None, keepdims=False):
 
 def in1d(ar1, ar2, assume_unique=False, invert=False):
     """
-    Test whether each element of a 1-D array is also present in a second array.
+    Tests whether each element of a 1-D array is also present in a second
+    array.
 
-    Returns a boolean array the same length as ``ar1`` that is True
+    Returns a boolean array the same length as ``ar1`` that is ``True``
     where an element of ``ar1`` is in ``ar2`` and False otherwise.
-
     Args:
         ar1 (cupy.ndarray): Input array.
         ar2  (cupy.ndarray):
@@ -82,27 +82,21 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
         cupy.ndarray, bool: The values ``ar1[in1d]`` are in ``ar2``.
 
     """
-    # TODO(UmashankarTriforce): Improve efficiency of len check
+    # TODO(UmashankarTriforce): Improve efficiency by avoiding loop over the
+    # first axis
     # Ravel both arrays, behavior for the first array could be different
-    # check for shape
-    if not(ar1.shape[-1]):
-        return cupy.array([], dtype=bool)
-    ar1 = cupy.asarray(ar1).ravel()
-    ar2 = cupy.asarray(ar2).ravel()
+    ar1 = ar1.ravel()
+    ar2 = ar2.ravel()
 
-    # Check if one of the arrays may contain arbitrary objects
-    contains_object = ar1.dtype.hasobject or ar2.dtype.hasobject
-
-    if len(ar2) < 10 * len(ar1) ** 0.145 or contains_object:
-        if invert:
-            mask = cupy.ones(len(ar1), dtype=bool)
-            for a in ar2:
-                mask &= (ar1 != a)
-        else:
-            mask = cupy.zeros(len(ar1), dtype=bool)
-            for a in ar2:
-                mask |= (ar1 == a)
-        return mask
+    if invert:
+        mask = cupy.ones(len(ar1), dtype=bool)
+        for a in ar2:
+            mask &= (ar1 != a)
+    else:
+        mask = cupy.zeros(len(ar1), dtype=bool)
+        for a in ar2:
+            mask |= (ar1 == a)
+    return mask
 
     # Otherwise use sorting
     if not assume_unique:
@@ -129,7 +123,7 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
 
 def isin(element, test_elements, assume_unique=False, invert=False):
     """
-    Calculates ``element in test_elements``, broadcasting over ``element`` only
+    Calculates element in ``test_elements``, broadcasting over ``element`` only
     Returns a boolean array of the same shape as ``element`` that is True
     where an element of ``element`` is in ``test_elements``
     and False otherwise.
@@ -154,6 +148,5 @@ def isin(element, test_elements, assume_unique=False, invert=False):
             are in `test_elements`.
 
     """
-    element = cupy.asarray(element)
     return in1d(element, test_elements, assume_unique=assume_unique,
                 invert=invert).reshape(element.shape)
