@@ -272,11 +272,13 @@ class TestPadSpecial(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_pad_special(self, xp):
+        array = xp.array(self.array)
+
         if self.mode == 'constant':
-            a = xp.pad(self.array, self.pad_width, mode=self.mode,
+            a = xp.pad(array, self.pad_width, mode=self.mode,
                        constant_values=self.constant_values)
         elif self.mode in ['edge', 'reflect']:
-            a = xp.pad(self.array, self.pad_width, mode=self.mode)
+            a = xp.pad(array, self.pad_width, mode=self.mode)
         return a
 
 
@@ -310,6 +312,8 @@ class TestPadFailure(unittest.TestCase):
 
     @testing.numpy_cupy_raises()
     def test_pad_failure(self, xp):
-        a = xp.pad(self.array, self.pad_width, mode=self.mode,
+        array = xp.array(self.array)
+
+        a = xp.pad(array, self.pad_width, mode=self.mode,
                    constant_values=self.constant_values)
         return a
