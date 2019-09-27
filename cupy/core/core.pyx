@@ -2751,10 +2751,7 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
         mask = desc['mask']
         if mask is not None:
             raise ValueError('CuPy currently does not support masked arrays.')
-    if 'strides' in desc:  # for ver.2, 'strides' is always available
-        strides = desc['strides']
-    else:  # for backward compatibility with ver.0 & ver.1
-        strides = None
+    strides = desc.get('strides')
     if strides is not None:
         nbytes = 0
         for sh, st in zip(shape, strides):
