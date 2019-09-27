@@ -591,7 +591,6 @@ def pad(array, pad_width, mode='constant', **kwargs):
            [100, 100, 100, 100, 100, 100, 100],
            [100, 100, 100, 100, 100, 100, 100]])
     """
-    array = cupy.asarray(array)
     pad_width = numpy.asarray(pad_width)
 
     if not pad_width.dtype.kind == 'i':
