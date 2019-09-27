@@ -95,6 +95,9 @@ class TestCrossProduct(unittest.TestCase):
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
     def test_cross(self, xp, dtype_a, dtype_b):
+        if dtype_a == dtype_b == numpy.bool_:
+            # cross does not support bool-bool inputs.
+            return xp.array(True)
         shape_a, shape_b, axisa, axisb, axisc = self.params
         a = testing.shaped_arange(shape_a, xp, dtype_a)
         b = testing.shaped_arange(shape_b, xp, dtype_b)
