@@ -116,8 +116,8 @@ def reduce_min(core.ndarray x, out=None):
             return y
         else:
             out_im = _reduce_min(x[idx].imag, out if out is None else out.imag)
-            idx = (x.imag == out_im).nonzero()
-            y = x[idx][0]
+            # we know the full answer at this point, no need to search again
+            y = out_re + 1j * out_im
             if out is not None:
                 out[...] = y
                 y = out
@@ -177,8 +177,8 @@ def reduce_max(core.ndarray x, out=None):
             return y
         else:
             out_im = _reduce_max(x[idx].imag, out if out is None else out.imag)
-            idx = (x.imag == out_im).nonzero()
-            y = x[idx][0]
+            # we know the full answer at this point, no need to search again
+            y = out_re + 1j * out_im
             if out is not None:
                 out[...] = y
                 y = out
