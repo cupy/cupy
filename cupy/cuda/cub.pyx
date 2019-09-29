@@ -46,9 +46,13 @@ cdef extern from 'cupy_cub.h':
 # TODO(leofang): remove this hack when CUB supports complex numbers
 def reduce_sum(core.ndarray x, out=None):
     if x.dtype in (numpy.complex64, numpy.complex128):
-        out_re = _reduce_sum(x.real, out)
-        out_im = _reduce_sum(x.imag, out)
-        return out_re + 1j * out_im
+        out_re = _reduce_sum(x.real, out if out is None else out.real)
+        out_im = _reduce_sum(x.imag, out if out is None else out.imag)
+        y = out_re + 1j * out_im
+        if out is not None:
+            out[...] = y
+            y = out
+        return y
     else:
         return _reduce_sum(x, out)
 
@@ -100,10 +104,24 @@ def can_use_reduce_sum(x_dtype, dtype=None):
 # TODO(leofang): remove this hack when CUB supports complex numbers
 def reduce_min(core.ndarray x, out=None):
     if x.dtype in (numpy.complex64, numpy.complex128):
-        # Here we only look at the real part, as NumPy does the comparison of
-        # complex numbers in lexical order (numpy/numpy#2004)
-        out_re = _reduce_min(x.real, out)
-        return x[(x.real == out_re).nonzero()]
+        # NumPy does the comparison of complex numbers in lexical order
+        # (numpy/numpy#2004): test real part first, then imaginary
+        out_re = _reduce_min(x.real, out if out is None else out.real)
+        idx = (x.real == out_re).nonzero()
+        if len(idx) == x.ndim:
+            y = x[idx][0]
+            if out is not None:
+                out[...] = y
+                y = out
+            return y
+        else:
+            out_im = _reduce_min(x[idx].imag, out if out is None else out.imag)
+            idx = (x.imag == out_im).nonzero()
+            y = x[idx][0]
+            if out is not None:
+                out[...] = y
+                y = out
+            return y
     else:
         return _reduce_min(x, out)
 
@@ -147,10 +165,24 @@ def can_use_reduce_min(x_dtype, dtype=None):
 # TODO(leofang): remove this hack when CUB supports complex numbers
 def reduce_max(core.ndarray x, out=None):
     if x.dtype in (numpy.complex64, numpy.complex128):
-        # Here we only look at the real part, as NumPy does the comparison of
-        # complex numbers in lexical order (numpy/numpy#2004)
-        out_re = _reduce_max(x.real, out)
-        return x[(x.real == out_re).nonzero()]
+        # NumPy does the comparison of complex numbers in lexical order
+        # (numpy/numpy#2004): test real part first, then imaginary
+        out_re = _reduce_max(x.real, out if out is None else out.real)
+        idx = (x.real == out_re).nonzero()
+        if len(idx) == x.ndim:
+            y = x[idx][0]
+            if out is not None:
+                out[...] = y
+                y = out
+            return y
+        else:
+            out_im = _reduce_max(x[idx].imag, out if out is None else out.imag)
+            idx = (x.imag == out_im).nonzero()
+            y = x[idx][0]
+            if out is not None:
+                out[...] = y
+                y = out
+            return y
     else:
         return _reduce_max(x, out)
 
