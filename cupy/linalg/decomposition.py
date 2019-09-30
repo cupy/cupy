@@ -16,8 +16,7 @@ def cholesky(a):
 
     Decompose a given two-dimensional square matrix into ``L * L.T``,
     where ``L`` is a lower-triangular matrix and ``.T`` is a conjugate
-    transpose operator. Note that in the current implementation ``a`` must be
-    a real matrix, and only float32 and float64 are supported.
+    transpose operator.
 
     Args:
         a (cupy.ndarray): The input matrix with dimension ``(N, N)``
@@ -35,7 +34,6 @@ def cholesky(a):
     util._assert_rank2(a)
     util._assert_nd_squareness(a)
 
-    # Cast to float32 or float64
     if a.dtype.char == 'f' or a.dtype.char == 'd':
         dtype = a.dtype.char
     else:
