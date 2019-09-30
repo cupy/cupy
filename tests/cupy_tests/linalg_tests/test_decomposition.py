@@ -33,6 +33,7 @@ def random_matrix(shape, dtype, scale, sym=False):
         a = a + 1j * numpy.random.standard_normal(shape)
     u, s, vh = numpy.linalg.svd(a)
     if sym:
+        assert m == n
         vh = u.conj().swapaxes(-1, -2)
     new_s = numpy.random.uniform(low_s, high_s, s.shape)
     new_a = numpy.einsum('...ij,...j,...jk->...ik', u, new_s, vh)
