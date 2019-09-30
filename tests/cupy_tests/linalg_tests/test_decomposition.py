@@ -29,13 +29,13 @@ def random_matrix(shape, dtype, scale, sym=False):
             high_s = bias = high_s / (1 + numpy.sqrt(m * n))
     assert low_s <= high_s
     a = numpy.random.standard_normal(shape)
+    if dtype.kind == 'c':
+        a = a + 1j * numpy.random.standard_normal(shape)
     u, s, vh = numpy.linalg.svd(a)
-    new_s = numpy.random.uniform(low_s, high_s, s.shape)
     if sym:
-        assert m == n
-        new_a = numpy.einsum('...ij,...j,...kj', u, new_s, u)
-    else:
-        new_a = numpy.einsum('...ij,...j,...jk', u, new_s, vh)
+        vh = u.conj().swapaxes(-1, -2)
+    new_s = numpy.random.uniform(low_s, high_s, s.shape)
+    new_a = numpy.einsum('...ij,...j,...jk->...ik', u, new_s, vh)
     if bias is not None:
         new_a += bias
     if dtype.kind in 'iu':
