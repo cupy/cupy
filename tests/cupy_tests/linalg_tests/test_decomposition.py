@@ -55,7 +55,7 @@ class TestCholeskyDecomposition(unittest.TestCase):
 
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
-        numpy.float32, numpy.float64])
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
     def test_decomposition(self, dtype):
         # A positive definite matrix
         A = random_matrix((5, 5), dtype, scale=(10, 10000), sym=True)

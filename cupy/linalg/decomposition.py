@@ -52,13 +52,32 @@ def cholesky(a):
         cusolver.spotrf(
             handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
             workspace.data.ptr, buffersize, dev_info.data.ptr)
-    else:  # dtype == 'd'
+    elif dtype == 'd':
         buffersize = cusolver.dpotrf_bufferSize(
             handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
         workspace = cupy.empty(buffersize, dtype=numpy.float64)
         cusolver.dpotrf(
             handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
             workspace.data.ptr, buffersize, dev_info.data.ptr)
+    elif dtype == 'F':
+        buffersize = cusolver.cpotrf_bufferSize(
+            handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
+        workspace = cupy.empty(buffersize, dtype=numpy.complex64)
+        cusolver.cpotrf(
+            handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
+            workspace.data.ptr, buffersize, dev_info.data.ptr)
+    elif dtype == 'D':
+        buffersize = cusolver.zpotrf_bufferSize(
+            handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
+        workspace = cupy.empty(buffersize, dtype=numpy.complex128)
+        cusolver.zpotrf(
+            handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
+            workspace.data.ptr, buffersize, dev_info.data.ptr)
+    else:
+        raise ValueError(
+            'dtype must be int32, int64, uint32, uint64, float32, float64,'
+            ' complex64 or complex128 (actual: {})'.format(dtype))
+
     status = int(dev_info[0])
     if status > 0:
         raise linalg.LinAlgError(
