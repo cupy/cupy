@@ -60,8 +60,7 @@ def any(a, axis=None, out=None, keepdims=False):
 
 
 def in1d(ar1, ar2, assume_unique=False, invert=False):
-    """
-    Tests whether each element of a 1-D array is also present in a second
+    """Tests whether each element of a 1-D array is also present in a second
     array.
 
     Returns a boolean array the same length as ``ar1`` that is ``True``
@@ -69,15 +68,15 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
 
     Args:
         ar1 (cupy.ndarray): Input array.
-        ar2  (cupy.ndarray):
-            The values against which to test each value of ``ar1``.
-        assume_unique (bool, optional):
-            If ``True``, the input arrays are both assumed to be unique, which
-            can speed up the calculation. Default is ``False``.
-        invert(bool, optional):
-            If ``True``, the values in the returned array are inverted (that
-            is, ``False`` where an element of ``ar1`` is in ``ar2`` and
-            ``True`` otherwise). Default is ``False``.
+        ar2  (cupy.ndarray): The values against which to test each value of
+            ar1``.
+        assume_unique (bool, optional): If ``True``, the input arrays are both
+            assumed to be unique, which can speed up the calculation
+            Default is ``False``.
+
+        invert(bool, optional): If ``True``, the values in the returned array
+            are inverted (that is, ``False`` where an element of ``ar1`` is in
+            ar2`` and ``True`` otherwise). Default is ``False``.
 
     Returns:
         cupy.ndarray, bool: The values ``ar1[in1d]`` are in ``ar2``.
@@ -97,7 +96,6 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
         mask = cupy.zeros(len(ar1), dtype=bool)
         for a in ar2:
             mask |= (ar1 == a)
-    return mask
 
     # Otherwise use sorting
     if not assume_unique:
@@ -131,15 +129,15 @@ def isin(element, test_elements, assume_unique=False, invert=False):
 
     Args:
         element (cupy.ndarray): Input array.
-        test_elements (cupy.ndarray):
-            The values against which to test each value of ``element``.
-            This argument is flattened if it is an array or array_like.
-        assume_unique (bool, optional):
-            If ``True``, the input arrays are both assumed to be unique, which
-            can speed up the calculation.  Default is ``False``.
-        invert (bool, optional):
-            If ``True``, the values in the returned array are inverted, as if
-            calculating element not in ``test_elements``. Default is ``False``.
+        test_elements (cupy.ndarray): The values against which to test each
+            `value of ``element``. This argument is flattened if it is an
+            array or array_like.
+        assume_unique (bool, optional): If ``True``, the input arrays are
+            both assumed to be unique, which can speed up the calculation.
+            Default is ``False``.
+        invert (bool, optional): If ``True``, the values in the returned array
+            are inverted, as if calculating element not in ``test_elements``.
+            Default is ``False``.
 
     Returns:
         cupy.ndarray, bool:
