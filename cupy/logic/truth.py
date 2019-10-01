@@ -68,22 +68,16 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
 
     Args:
         ar1 (cupy.ndarray): Input array.
-        ar2  (cupy.ndarray): The values against which to test each value of
+        ar2 (cupy.ndarray): The values against which to test each value of
             ``ar1``.
-        assume_unique (bool, optional): If ``True``, the input arrays are both
-            assumed to be unique, which can speed up the calculation
-            Default is ``False``.
-
-        invert(bool, optional): If ``True``, the values in the returned array
+        assume_unique (bool, optional): Ignored
+        invert (bool, optional): If ``True``, the values in the returned array
             are inverted (that is, ``False`` where an element of ``ar1`` is in
-            ``ar2`` and ``True`` otherwise). Default is ``False``.
-
+            ``22ar2`` and ``True`` otherwise). Default is ``False``.
     Returns:
         cupy.ndarray, bool: The values ``ar1[in1d]`` are in ``ar2``.
 
     """
-    # TODO(UmashankarTriforce): Improve efficiency by avoiding loop over the
-    # first axis
     # Ravel both arrays, behavior for the first array could be different
     ar1 = ar1.ravel()
     ar2 = ar2.ravel()
@@ -104,29 +98,24 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
 
 
 def isin(element, test_elements, assume_unique=False, invert=False):
-    """
-    Calculates element in ``test_elements``, broadcasting over ``element`` only
-    Returns a boolean array of the same shape as ``element`` that is ``True``
-    where an element of ``element`` is in ``test_elements``
-    and ``False`` otherwise.
+    """Calculates element in ``test_elements``, broadcasting over ``element``
+    only. Returns a boolean array of the same shape as ``element`` that is
+    ``True`` where an element of ``element`` is in ``test_elements`` and
+    ``False`` otherwise.
 
     Args:
         element (cupy.ndarray): Input array.
         test_elements (cupy.ndarray): The values against which to test each
             `value of ``element``. This argument is flattened if it is an
             array or array_like.
-        assume_unique (bool, optional): If ``True``, the input arrays are
-            both assumed to be unique, which can speed up the calculation.
-            Default is ``False``.
+        assume_unique (bool, optional): Ignored
         invert (bool, optional): If ``True``, the values in the returned array
             are inverted, as if calculating element not in ``test_elements``.
             Default is ``False``.
-
     Returns:
         cupy.ndarray, bool:
             Has the same shape as ``element``. The values ``element[isin]``
             are in ``test_elements``.
-
     """
     return in1d(element, test_elements, assume_unique=assume_unique,
                 invert=invert).reshape(element.shape)
