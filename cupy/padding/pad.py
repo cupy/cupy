@@ -36,7 +36,7 @@ def _view_roi(array, original_area_slice, axis):
     working area for the first dimensions so that corners are excluded.
 
     Args:
-      array(ndarray): The array with the region of interest.
+      array(cupy.ndarray): The array with the region of interest.
       original_area_slice(tuple of slices): Denotes the area with original
           values of the unpadded array.
       axis(int): The currently padded dimension assuming that `axis` is padded
@@ -53,7 +53,7 @@ def _pad_simple(array, pad_width, fill_value=None):
     """Pads an array on all sides with either a constant or undefined values.
 
     Args:
-      array(ndarray): Array to grow.
+      array(cupy.ndarray): Array to grow.
       pad_width(sequence of tuple[int, int]): Pad width on both sides for each
           dimension in `arr`.
       fill_value(scalar, optional): If provided the padded area is
@@ -97,7 +97,7 @@ def _get_edges(padded, axis, width_pair):
     """Retrieves edge values from an empty-padded array along a given axis.
 
     Args:
-      padded(ndarray): Empty-padded array.
+      padded(cupy.ndarray): Empty-padded array.
       axis(int): Dimension in which the edges are considered.
       width_pair((int, int)): Pair of widths that mark the pad area on both
           sides in the given dimension.
@@ -117,7 +117,7 @@ def _get_linear_ramps(padded, axis, width_pair, end_value_pair):
     """Constructs linear ramps for an empty-padded array along a given axis.
 
     Args:
-      padded(ndarray): Empty-padded array.
+      padded(cupy.ndarray): Empty-padded array.
       axis(int): Dimension in which the ramps are constructed.
       width_pair((int, int)): Pair of widths that mark the pad area on both
           sides in the given dimension.
@@ -162,7 +162,7 @@ def _get_stats(padded, axis, width_pair, length_pair, stat_func):
     """Calculates a statistic for an empty-padded array along a given axis.
 
     Args:
-      padded(ndarray): Empty-padded array.
+      padded(cupy.ndarray): Empty-padded array.
       axis(int): Dimension in which the statistic is calculated.
       width_pair((int, int)): Pair of widths that mark the pad area on both
           sides in the given dimension.
@@ -213,7 +213,7 @@ def _set_reflect_both(padded, axis, width_pair, method, include_edge=False):
     """Pads an `axis` of `arr` using reflection.
 
     Args:
-      padded(ndarray): Input array of arbitrary shape.
+      padded(cupy.ndarray): Input array of arbitrary shape.
       axis(int): Axis along which to pad `arr`.
       width_pair((int, int)): Pair of widths that mark the pad area on both
           sides in the given dimension.
@@ -287,7 +287,7 @@ def _set_wrap_both(padded, axis, width_pair):
     """Pads an `axis` of `arr` with wrapped values.
 
     Args:
-      padded(ndarray): Input array of arbitrary shape.
+      padded(cupy.ndarray): Input array of arbitrary shape.
       axis(int): Axis along which to pad `arr`.
       width_pair((int, int)): Pair of widths that mark the pad area on both
           sides in the given dimension.
@@ -356,7 +356,7 @@ def _as_pairs(x, ndim, as_index=False):
     `pad_width` for iteration in pairs.
 
     Args:
-      x(None, scalar or array-like): The object to broadcast to the shape
+      x(scalar or array-like, optional): The object to broadcast to the shape
           (`ndim`, 2).
       ndim(int): Number of pairs the broadcasted `x` will have.
       as_index(bool, optional): If `x` is not None, try to round each
@@ -528,7 +528,7 @@ def pad(array, pad_width, mode='constant', **kwargs):
 
     Examples
     --------
-    >>> a = [1, 2, 3, 4, 5]
+    >>> a = cupy.array([1, 2, 3, 4, 5])
     >>> cupy.pad(a, (2, 3), 'constant', constant_values=(4, 6))
     array([4, 4, 1, ..., 6, 6, 6])
 
@@ -544,7 +544,7 @@ def pad(array, pad_width, mode='constant', **kwargs):
     >>> cupy.pad(a, (2,), 'mean')
     array([3, 3, 1, 2, 3, 4, 5, 3, 3])
 
-    >>> a = [[1, 2], [3, 4]]
+    >>> a = cupy.array([[1, 2], [3, 4]])
     >>> cupy.pad(a, ((3, 2), (2, 3)), 'minimum')
     array([[1, 1, 1, 2, 1, 1, 1],
            [1, 1, 1, 2, 1, 1, 1],
@@ -554,7 +554,7 @@ def pad(array, pad_width, mode='constant', **kwargs):
            [1, 1, 1, 2, 1, 1, 1],
            [1, 1, 1, 2, 1, 1, 1]])
 
-    >>> a = [1, 2, 3, 4, 5]
+    >>> a = cupy.array([1, 2, 3, 4, 5])
     >>> cupy.pad(a, (2, 3), 'reflect')
     array([3, 2, 1, 2, 3, 4, 5, 4, 3, 2])
 
@@ -591,7 +591,6 @@ def pad(array, pad_width, mode='constant', **kwargs):
            [100, 100, 100, 100, 100, 100, 100],
            [100, 100, 100, 100, 100, 100, 100]])
     """
-    array = cupy.asarray(array)
     pad_width = numpy.asarray(pad_width)
 
     if not pad_width.dtype.kind == 'i':
