@@ -222,8 +222,7 @@ class TestFromData(unittest.TestCase):
     def test_asarray_cuda_array_interface_with_masked_array(self):
         a = cupy.arange(10)
         mask = cupy.zeros(10)
-        a = DummyObjectWithCudaArrayInterface(a)
-        a.set_mask(mask)
+        a = DummyObjectWithCudaArrayInterface(a, mask)
         with pytest.raises(ValueError) as ex:
             b = cupy.asarray(a)  # noqa
         assert 'does not support' in str(ex.value)
@@ -269,28 +268,23 @@ class TestFromData(unittest.TestCase):
 
 class DummyObjectWithCudaArrayInterface(object):
 
-    def __init__(self, a):
+    def __init__(self, a, mask=None):
         self.a = a
-        self._desc = None
+        self.mask = mask
 
     @property
     def __cuda_array_interface__(self):
-        if self._desc is None:
-            desc = {
-                'shape': self.a.shape,
-                'strides': self.a.strides,
-                'typestr': self.a.dtype.str,
-                'descr': self.a.dtype.descr,
-                'data': (self.a.data.ptr, False),
-                'version': 2,
-            }
-            self._desc = desc
-        return self._desc
-
-    def set_mask(self, mask):
-        if self._desc is None:
-            self.__cuda_array_interface__
-        self._desc['mask'] = mask
+        desc = {
+            'shape': self.a.shape,
+            'strides': self.a.strides,
+            'typestr': self.a.dtype.str,
+            'descr': self.a.dtype.descr,
+            'data': (self.a.data.ptr, False),
+            'version': 2,
+        }
+        if self.mask is not None:
+            desc['mask'] = self.mask
+        return desc
 
 
 @testing.parameterize(

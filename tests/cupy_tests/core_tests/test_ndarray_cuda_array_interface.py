@@ -9,21 +9,18 @@ class DummyObjectWithCudaArrayInterface(object):
 
     def __init__(self, a):
         self.a = a
-        self._desc = None
 
     @property
     def __cuda_array_interface__(self):
-        if self._desc is None:
-            desc = {
-                'shape': self.a.shape,
-                'strides': self.a.strides,
-                'typestr': self.a.dtype.str,
-                'descr': self.a.dtype.descr,
-                'data': (self.a.data.ptr, False),
-                'version': 2,
-            }
-            self._desc = desc
-        return self._desc
+        desc = {
+            'shape': self.a.shape,
+            'strides': self.a.strides,
+            'typestr': self.a.dtype.str,
+            'descr': self.a.dtype.descr,
+            'data': (self.a.data.ptr, False),
+            'version': 2,
+        }
+        return desc
 
 
 @testing.gpu
