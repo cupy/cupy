@@ -878,7 +878,8 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
             random.shuffle(shuffled_types)
             ts.append(types + shuffled_types)
 
-        combination = [dict(zip(names, typs)) for typs in zip(*ts)]
+        combination = [tuple(zip(names, typs)) for typs in zip(*ts)]
+        combination = [dict(assoc_list) for assoc_list in set(combination)]
 
     def decorator(impl):
         @functools.wraps(impl)
