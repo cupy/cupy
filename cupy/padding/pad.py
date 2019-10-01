@@ -528,7 +528,7 @@ def pad(array, pad_width, mode='constant', **kwargs):
 
     Examples
     --------
-    >>> a = [1, 2, 3, 4, 5]
+    >>> a = cupy.array([1, 2, 3, 4, 5])
     >>> cupy.pad(a, (2, 3), 'constant', constant_values=(4, 6))
     array([4, 4, 1, ..., 6, 6, 6])
 
@@ -544,7 +544,7 @@ def pad(array, pad_width, mode='constant', **kwargs):
     >>> cupy.pad(a, (2,), 'mean')
     array([3, 3, 1, 2, 3, 4, 5, 3, 3])
 
-    >>> a = [[1, 2], [3, 4]]
+    >>> a = cupy.array([[1, 2], [3, 4]])
     >>> cupy.pad(a, ((3, 2), (2, 3)), 'minimum')
     array([[1, 1, 1, 2, 1, 1, 1],
            [1, 1, 1, 2, 1, 1, 1],
@@ -554,7 +554,7 @@ def pad(array, pad_width, mode='constant', **kwargs):
            [1, 1, 1, 2, 1, 1, 1],
            [1, 1, 1, 2, 1, 1, 1]])
 
-    >>> a = [1, 2, 3, 4, 5]
+    >>> a = cupy.array([1, 2, 3, 4, 5])
     >>> cupy.pad(a, (2, 3), 'reflect')
     array([3, 2, 1, 2, 3, 4, 5, 4, 3, 2])
 
