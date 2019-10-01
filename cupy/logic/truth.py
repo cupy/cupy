@@ -69,14 +69,14 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
     Args:
         ar1 (cupy.ndarray): Input array.
         ar2  (cupy.ndarray): The values against which to test each value of
-            ar1``.
+            ``ar1``.
         assume_unique (bool, optional): If ``True``, the input arrays are both
             assumed to be unique, which can speed up the calculation
             Default is ``False``.
 
         invert(bool, optional): If ``True``, the values in the returned array
             are inverted (that is, ``False`` where an element of ``ar1`` is in
-            ar2`` and ``True`` otherwise). Default is ``False``.
+            ``ar2`` and ``True`` otherwise). Default is ``False``.
 
     Returns:
         cupy.ndarray, bool: The values ``ar1[in1d]`` are in ``ar2``.
@@ -87,37 +87,20 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
     # Ravel both arrays, behavior for the first array could be different
     ar1 = ar1.ravel()
     ar2 = ar2.ravel()
+    if ar1.size == 0 or ar2.size == 0:
+        if invert:
+            return cupy.ones(ar1.shape, dtype=cupy.bool_)
+        else:
+            return cupy.zeros(ar1.shape, dtype=cupy.bool_)
 
+    shape = (ar1.size, ar2.size)
+    ar1_broadcast = cupy.broadcast_to(ar1[..., cupy.newaxis], shape)
+    ar2_broadcast = cupy.broadcast_to(ar2, shape)
+    count = (ar1_broadcast == ar2_broadcast).sum(axis=1)
     if invert:
-        mask = cupy.ones(len(ar1), dtype=bool)
-        for a in ar2:
-            mask &= (ar1 != a)
+        return count == 0
     else:
-        mask = cupy.zeros(len(ar1), dtype=bool)
-        for a in ar2:
-            mask |= (ar1 == a)
-
-    # Otherwise use sorting
-    if not assume_unique:
-        ar1, rev_idx = cupy.unique(ar1, return_inverse=True)
-        ar2 = cupy.unique(ar2)
-
-    ar = cupy.concatenate((ar1, ar2))
-
-    order = ar.argsort()
-    sar = ar[order]
-    if invert:
-        bool_ar = (sar[1:] != sar[:-1])
-    else:
-        bool_ar = (sar[1:] == sar[:-1])
-    flag = cupy.concatenate((bool_ar, cupy.array(invert)))
-    ret = cupy.empty(ar.shape, dtype=bool)
-    ret[order] = flag
-
-    if assume_unique:
-        return ret[:len(ar1)]
-    else:
-        return ret[rev_idx]
+        return count > 0
 
 
 def isin(element, test_elements, assume_unique=False, invert=False):
