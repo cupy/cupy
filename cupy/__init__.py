@@ -9,7 +9,10 @@ from cupy import _version
 
 
 try:
-    from cupy import core  # NOQA
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', category=ImportWarning,
+                                message='can\'t resolve package from __spec__')
+        from cupy import core  # NOQA
 except ImportError:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
@@ -458,6 +461,7 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 # -----------------------------------------------------------------------------
 from cupy.linalg.einsum import einsum  # NOQA
 
+from cupy.linalg.product import cross  # NOQA
 from cupy.linalg.product import dot  # NOQA
 from cupy.linalg.product import inner  # NOQA
 from cupy.linalg.product import kron  # NOQA
@@ -602,6 +606,13 @@ from cupy.math.misc import nan_to_num  # NOQA
 from cupy.math.misc import sign  # NOQA
 from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
+
+# -----------------------------------------------------------------------------
+# Miscellaneous routines
+# -----------------------------------------------------------------------------
+from cupy.misc import may_share_memory  # NOQA
+from cupy.misc import shares_memory  # NOQA
+
 
 # -----------------------------------------------------------------------------
 # Padding

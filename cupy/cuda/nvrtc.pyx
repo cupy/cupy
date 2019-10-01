@@ -68,8 +68,8 @@ cpdef tuple getVersion():
 # Program
 ###############################################################################
 
-cpdef size_t createProgram(unicode src, unicode name, headers,
-                           include_names) except? 0:
+cpdef intptr_t createProgram(unicode src, unicode name, headers,
+                             include_names) except? 0:
     cdef Program prog
     cdef bytes b_src = src.encode()
     cdef const char* src_ptr = b_src
@@ -88,17 +88,17 @@ cpdef size_t createProgram(unicode src, unicode name, headers,
             &prog, src_ptr, name_ptr, num_headers, &(header_vec[0]),
             &(include_name_vec[0]))
     check_status(status)
-    return <size_t>prog
+    return <intptr_t>prog
 
 
-cpdef destroyProgram(size_t prog):
+cpdef destroyProgram(intptr_t prog):
     cdef Program p = <Program>prog
     with nogil:
         status = nvrtcDestroyProgram(&p)
     check_status(status)
 
 
-cpdef compileProgram(size_t prog, options):
+cpdef compileProgram(intptr_t prog, options):
     cdef int option_num = len(options)
     cdef vector.vector[const char*] option_vec
     cdef option_list = [opt.encode() for opt in options]
@@ -111,7 +111,7 @@ cpdef compileProgram(size_t prog, options):
     check_status(status)
 
 
-cpdef unicode getPTX(size_t prog):
+cpdef unicode getPTX(intptr_t prog):
     cdef size_t ptxSizeRet
     cdef bytes ptx
     cdef char* ptx_ptr
@@ -130,7 +130,7 @@ cpdef unicode getPTX(size_t prog):
     return ptx.decode('UTF-8')
 
 
-cpdef unicode getProgramLog(size_t prog):
+cpdef unicode getProgramLog(intptr_t prog):
     cdef size_t logSizeRet
     cdef bytes log
     cdef char* log_ptr

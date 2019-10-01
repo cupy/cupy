@@ -1,3 +1,5 @@
+from libc.stdint cimport intptr_t
+
 
 ###############################################################################
 # Types
@@ -17,9 +19,9 @@ cpdef tuple getVersion()
 # Program
 ###############################################################################
 
-cpdef size_t createProgram(unicode src, unicode name, headers,
-                           include_names) except? 0
-cpdef destroyProgram(size_t prog)
-cpdef compileProgram(size_t prog, options)
-cpdef unicode getPTX(size_t prog)
-cpdef unicode getProgramLog(size_t prog)
+cpdef intptr_t createProgram(unicode src, unicode name, headers,
+                             include_names) except? 0
+cpdef destroyProgram(intptr_t prog)
+cpdef compileProgram(intptr_t prog, options)
+cpdef unicode getPTX(intptr_t prog)
+cpdef unicode getProgramLog(intptr_t prog)

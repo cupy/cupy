@@ -9,7 +9,8 @@ Matrix and vector products
 .. autosummary::
    :toctree: generated/
    :nosignatures:
-
+   
+   cupy.cross
    cupy.dot
    cupy.vdot
    cupy.inner

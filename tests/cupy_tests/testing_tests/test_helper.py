@@ -2,6 +2,7 @@ import re
 import unittest
 
 import numpy
+import pytest
 import six
 
 import cupy
@@ -423,3 +424,81 @@ class TestShapedRandom(unittest.TestCase):
         self.assertTrue(self.xp.all(0 <= a.imag))
         self.assertTrue(self.xp.all(a.imag < 10))
         self.assertTrue(self.xp.any(a.imag))
+
+
+class TestSkip(unittest.TestCase):
+
+    @testing.numpy_cupy_allclose()
+    def test_allclose(self, xp):
+        raise unittest.SkipTest('Test for skip with @numpy_cupy_allclose')
+        assert False
+
+    @testing.numpy_cupy_array_almost_equal()
+    def test_array_almost_equal(self, xp):
+        raise unittest.SkipTest(
+            'Test for skip with @numpy_cupy_array_almost_equal')
+        assert False
+
+    @testing.numpy_cupy_array_almost_equal_nulp()
+    def test_array_almost_equal_nulp(self, xp):
+        raise unittest.SkipTest(
+            'Test for skip with @numpy_cupy_array_almost_equal_nulp')
+        assert False
+
+    @testing.numpy_cupy_array_max_ulp()
+    def test_array_max_ulp(self, xp):
+        raise unittest.SkipTest('Test for skip with @numpy_cupy_array_max_ulp')
+        assert False
+
+    @testing.numpy_cupy_array_equal()
+    def test_array_equal(self, xp):
+        raise unittest.SkipTest('Test for skip with @numpy_cupy_array_equal')
+        assert False
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_array_list_equal(self, xp):
+        raise unittest.SkipTest(
+            'Test for skip with @numpy_cupy_array_list_equal')
+        assert False
+
+    @testing.numpy_cupy_array_less()
+    def test_less(self, xp):
+        raise unittest.SkipTest('Test for skip with @numpy_cupy_array_less')
+        assert False
+
+    @testing.numpy_cupy_equal()
+    def test_equal(self, xp):
+        raise unittest.SkipTest('Test for skip with @numpy_cupy_equal')
+        assert False
+
+    @testing.numpy_cupy_raises()
+    def test_raises(self, xp):
+        raise unittest.SkipTest('Test for skip with @numpy_cupy_raises')
+        assert False
+
+
+class TestSkipFail(unittest.TestCase):
+
+    @pytest.mark.xfail(strict=True)
+    @testing.numpy_cupy_allclose()
+    def test_different_reason(self, xp):
+        if xp is numpy:
+            raise unittest.SkipTest('skip1')
+        else:
+            raise unittest.SkipTest('skip2')
+
+    @pytest.mark.xfail(strict=True)
+    @testing.numpy_cupy_allclose()
+    def test_only_numpy(self, xp):
+        if xp is numpy:
+            raise unittest.SkipTest('skip')
+        else:
+            return xp.array(True)
+
+    @pytest.mark.xfail(strict=True)
+    @testing.numpy_cupy_allclose()
+    def test_only_cupy(self, xp):
+        if xp is numpy:
+            return xp.array(True)
+        else:
+            raise unittest.SkipTest('skip')

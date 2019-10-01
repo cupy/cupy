@@ -80,6 +80,14 @@ def _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
 
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
                             numpy_tb, accept_error=False):
+    # Skip the test if both raised SkipTest.
+    if (isinstance(cupy_error, unittest.SkipTest)
+            and isinstance(numpy_error, unittest.SkipTest)):
+        if cupy_error.args != numpy_error.args:
+            raise AssertionError(
+                'Both numpy and cupy were skipped but with different causes.')
+        raise numpy_error  # reraise SkipTest
+
     # For backward compatibility
     if accept_error is True:
         accept_error = Exception

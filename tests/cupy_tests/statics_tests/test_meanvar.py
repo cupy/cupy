@@ -88,97 +88,97 @@ class TestMeanVar(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.mean(a, axis=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_var_all(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return a.var()
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_external_var_all(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return xp.var(a)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_var_all_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return a.var(ddof=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_external_var_all_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return xp.var(a, ddof=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_var_axis(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.var(axis=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_external_var_axis(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.var(a, axis=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_var_axis_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.var(axis=1, ddof=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_external_var_axis_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.var(a, axis=1, ddof=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_std_all(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return a.std()
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_external_std_all(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return xp.std(a)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_std_all_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return a.std(ddof=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_external_std_all_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return xp.std(a, ddof=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_std_axis(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.std(axis=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_external_std_axis(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.std(a, axis=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_std_axis_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.std(axis=1, ddof=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_external_std_axis_ddof(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)

@@ -38,7 +38,9 @@ def concatenate(tup, axis=0):
     Args:
         tup (sequence of arrays): Arrays to be joined. All of these should have
             same dimensionalities except the specified axis.
-        axis (int): The axis to join arrays along.
+        axis (int or None): The axis to join arrays along.
+            If axis is None, arrays are flattened before use.
+            Default is 0.
 
     Returns:
         cupy.ndarray: Joined array.
@@ -46,6 +48,9 @@ def concatenate(tup, axis=0):
     .. seealso:: :func:`numpy.concatenate`
 
     """
+    if axis is None:
+        tup = [m.ravel() for m in tup]
+        axis = 0
     return core.concatenate_method(tup, axis)
 
 

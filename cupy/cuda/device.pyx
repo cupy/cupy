@@ -157,8 +157,10 @@ cdef class Device:
         if self.id in _compute_capabilities:
             return _compute_capabilities[self.id]
         with self:
-            major = runtime.deviceGetAttribute(75, self.id)
-            minor = runtime.deviceGetAttribute(76, self.id)
+            major = runtime.deviceGetAttribute(
+                runtime.deviceAttributeComputeCapabilityMajor, self.id)
+            minor = runtime.deviceGetAttribute(
+                runtime.deviceAttributeComputeCapabilityMinor, self.id)
             cc = '%d%d' % (major, minor)
             _compute_capabilities[self.id] = cc
             return cc

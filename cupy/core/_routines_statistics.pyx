@@ -1,29 +1,37 @@
+import numpy
+
 from cupy.core._kernel import create_reduction_func
 from cupy.core._kernel import ReductionKernel
 
 from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray
 
+import cupy
+if cupy.cuda.cub_enabled:
+    from cupy.cuda import cub
+
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
+    if cupy.cuda.cub_enabled:
+        if (cub.can_use_reduce_max(self.dtype, dtype) and (axis is None) and
+                (not keepdims)):
+            return cub.reduce_max(self, out=out)
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
+    if cupy.cuda.cub_enabled:
+        if (cub.can_use_reduce_min(self.dtype, dtype) and (axis is None) and
+                (not keepdims)):
+            return cub.reduce_min(self, out=out)
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
-cdef ndarray _ndarray_nanargmax(ndarray self, axis, out, dtype, keepdims):
-    return _nanargmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
-
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
-
-cdef ndarray _ndarray_nanargmin(ndarray self, axis, out, dtype, keepdims):
-    return _nanargmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
     return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
@@ -36,20 +44,6 @@ cdef ndarray _ndarray_var(ndarray self, axis, dtype, out, ddof, keepdims):
 
 cdef ndarray _ndarray_std(ndarray self, axis, dtype, out, ddof, keepdims):
     return _std(
-        self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
-
-
-cpdef ndarray _ndarray_nanmean(ndarray self, axis, dtype, out, keepdims):
-    return _nanmean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
-
-
-cpdef ndarray _ndarray_nanvar(ndarray self, axis, dtype, out, ddof, keepdims):
-    return _nanvar(
-        self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
-
-
-cpdef ndarray _ndarray_nanstd(ndarray self, axis, dtype, out, ddof, keepdims):
-    return _nanstd(
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
@@ -217,7 +211,17 @@ cdef _argmax = create_reduction_func(
     None, _min_max_preamble)
 
 
-cdef _nanargmin = create_reduction_func(
+cpdef ndarray _nanargmax(ndarray a, axis, out, dtype, keepdims):
+    return _nanargmax_func(
+        a, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+
+
+cpdef ndarray _nanargmin(ndarray a, axis, out, dtype, keepdims):
+    return _nanargmin_func(
+        a, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+
+
+cdef _nanargmin_func = create_reduction_func(
     'cupy_nanargmin',
     ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
      'q->q', 'Q->q',
@@ -231,7 +235,7 @@ cdef _nanargmin = create_reduction_func(
     None, _min_max_preamble)
 
 
-cdef _nanargmax = create_reduction_func(
+cdef _nanargmax_func = create_reduction_func(
     'cupy_nanargmax',
     ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
      'q->q', 'Q->q',
@@ -247,28 +251,42 @@ cdef _nanargmax = create_reduction_func(
 
 cdef ndarray _var(
         ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-    assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
-                                'implemented. Current implemention does not ' \
-                                'convert the dtype'
+
     if axis is None:
         axis = tuple(range(a.ndim))
     if not isinstance(axis, tuple):
         axis = (axis,)
 
-    if dtype is None and a.dtype.kind in 'biu':
-        dtype = 'd'
+    dtype_mean = a.dtype
+    dtype_out = numpy.dtype(dtype)
+    if dtype is None:
+        if a.dtype.kind in 'biu':
+            dtype_mean = 'float64'
+            dtype_out = 'float64'
+        else:
+            dtype_mean = a.dtype
+            dtype_out = a.dtype
+            if a.dtype.kind == 'c':
+                dtype_out = numpy.dtype(a.dtype.char.lower())
 
     shape = a.shape
-    items = 1
+    cdef Py_ssize_t items = 1
     for ax in axis:
         items *= shape[ax]
-    alpha = 1. / max(items - ddof, 0)
-    arrmean = a.mean(axis=axis, dtype=dtype, out=None, keepdims=True)
+    alpha = 1 / max(items - ddof, 0)
+    arrmean = a.mean(axis=axis, dtype=dtype_mean, out=None, keepdims=True)
+
     if out is None:
-        return _var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
-    else:
-        return _var_core_out(
-            a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
+        if dtype_out == 'float16':
+            var_core = _var_core_float16
+        elif dtype_out == 'float32':
+            var_core = _var_core_float32
+        else:
+            var_core = _var_core_float64
+        return var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
+
+    out = _var_core_out(a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
+    return out.astype(dtype_out, copy=False)
 
 
 cdef ndarray _std(
@@ -278,15 +296,36 @@ cdef ndarray _std(
     return _math._sqrt(ret, dtype=dtype, out=out)
 
 
-cdef _var_core = ReductionKernel(
-    'S x, T mean, T alpha', 'T out',
-    '(x - mean) * (x - mean)',
-    'a + b', 'out = alpha * a', '0', '_var_core')
+cdef _norm_preamble = '''
+template <typename T> __device__ T my_norm(T x) { return x * x; }
+__device__ float my_norm(const complex<float>& x) { return norm(x); }
+__device__ double my_norm(const complex<double>& x) { return norm(x); }
+'''
+
+
+cdef _var_core_float16 = ReductionKernel(
+    'S x, T mean, float32 alpha', 'float16 out',
+    'my_norm(x - mean)',
+    'a + b', 'out = alpha * a', '0', '_var_core', preamble=_norm_preamble)
+
+
+cdef _var_core_float32 = ReductionKernel(
+    'S x, T mean, float32 alpha', 'float32 out',
+    'my_norm(x - mean)',
+    'a + b', 'out = alpha * a', '0', '_var_core', preamble=_norm_preamble)
+
+
+cdef _var_core_float64 = ReductionKernel(
+    'S x, T mean, float64 alpha', 'float64 out',
+    'my_norm(x - mean)',
+    'a + b', 'out = alpha * a', '0', '_var_core', preamble=_norm_preamble)
+
 
 cdef _var_core_out = ReductionKernel(
-    'S x, T mean, T alpha', 'U out',
-    '(x - mean) * (x - mean)',
-    'a + b', 'out = alpha * a', '0', '_var_core')
+    'S x, T mean, U alpha', 'U out',
+    'my_norm(x - mean)',
+    'a + b', 'out = alpha * a', '0', '_var_core', preamble=_norm_preamble)
+
 
 # TODO(okuta) needs cast
 cdef _mean = create_reduction_func(
@@ -319,7 +358,7 @@ __device__ nanmean_st<T> my_nanmean(
 '''
 
 
-cdef _nanmean = create_reduction_func(
+cdef _nanmean_func = create_reduction_func(
     'cupy_nanmean',
     ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'my_nanmean(a, b)',
@@ -333,22 +372,22 @@ _count_non_nan = create_reduction_func(
     ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0)
 
 
-cdef ndarray _nanstd(
-        ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-    ret = _nanvar(
-        a, axis=axis, dtype=dtype, out=None, ddof=ddof, keepdims=keepdims)
-    return _math._sqrt(ret, dtype=dtype, out=out)
+cpdef ndarray _nanmean(ndarray a, axis, dtype, out, keepdims):
+    return _nanmean_func(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-cdef ndarray _nanvar(
-        ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+cpdef ndarray _nanstd(ndarray a, axis, dtype, out, ddof, keepdims):
+    var = _nanvar(a, axis, dtype, None, ddof, keepdims)
+    return _math._sqrt(var, dtype=dtype, out=out)
 
+
+cpdef ndarray _nanvar(ndarray a, axis, dtype, out, ddof, keepdims):
     assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
                                 'implemented. Current implemention does not ' \
                                 'convert the dtype'
 
     _count = _count_non_nan(a, axis=axis, keepdims=True)
-    arrsum = a._nansum(axis=axis, dtype=dtype, out=None, keepdims=True)
+    arrsum = _math._nansum(a, axis=axis, dtype=dtype, out=None, keepdims=True)
 
     if out is None:
         return _nanvar_core(

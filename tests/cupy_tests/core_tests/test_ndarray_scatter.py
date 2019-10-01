@@ -109,7 +109,7 @@ from cupy import testing
     {'shape': (2, 3, 4), 'slices': [[[1]], slice(1, 2)], 'value': 1},
 )
 @testing.gpu
-class TestScatterAddParametrized(unittest.TestCase):
+class TestScatterParametrized(unittest.TestCase):
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
                          numpy.uint64, numpy.ulonglong, numpy.float16,
@@ -121,6 +121,28 @@ class TestScatterAddParametrized(unittest.TestCase):
             a.scatter_add(self.slices, self.value)
         else:
             numpy.add.at(a, self.slices, self.value)
+        return a
+
+    @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
+                         numpy.uint64, numpy.ulonglong, numpy.float64])
+    @testing.numpy_cupy_array_equal()
+    def test_scatter_max(self, xp, dtype):
+        a = xp.zeros(self.shape, dtype)
+        if xp is cupy:
+            a.scatter_max(self.slices, self.value)
+        else:
+            numpy.maximum.at(a, self.slices, self.value)
+        return a
+
+    @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
+                         numpy.uint64, numpy.ulonglong, numpy.float64])
+    @testing.numpy_cupy_array_equal()
+    def test_scatter_min(self, xp, dtype):
+        a = xp.zeros(self.shape, dtype)
+        if xp is cupy:
+            a.scatter_min(self.slices, self.value)
+        else:
+            numpy.minimum.at(a, self.slices, self.value)
         return a
 
 
@@ -178,3 +200,78 @@ class TestScatterAdd(unittest.TestCase):
         numpy.testing.assert_almost_equal(
             a.get(),
             numpy.array([[1, 0, 0], [0, 1, 1]], dtype=src_dtype))
+
+
+class TestScatterMinMax(unittest.TestCase):
+
+    @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
+                         numpy.uint64, numpy.ulonglong, numpy.float64])
+    def test_scatter_minmax_cupy_arguments(self, dtype):
+        shape = (2, 3)
+        a = cupy.zeros(shape, dtype)
+        slices = (cupy.array([1, 1]), slice(None))
+        a.scatter_max(slices, cupy.array(1.))
+        testing.assert_array_equal(
+            a, cupy.array([[0., 0., 0.], [1., 1., 1.]], dtype))
+
+        a = cupy.ones(shape, dtype)
+        a.scatter_min(slices, cupy.array(0.))
+        testing.assert_array_equal(
+            a, cupy.array([[1., 1., 1.], [0., 0., 0.]], dtype))
+
+    @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
+                         numpy.uint64, numpy.ulonglong, numpy.float64])
+    def test_scatter_minmax_cupy_arguments_mask(self, dtype):
+        shape = (2, 3)
+        a = cupy.zeros(shape, dtype)
+        slices = (cupy.array([True, False]), slice(None))
+        a.scatter_max(slices, cupy.array(1.))
+        testing.assert_array_equal(
+            a, cupy.array([[1., 1., 1.], [0., 0., 0.]], dtype))
+
+        a = cupy.ones(shape, dtype)
+        a.scatter_min(slices, cupy.array(0.))
+        testing.assert_array_equal(
+            a, cupy.array([[0., 0., 0.], [1., 1., 1.]], dtype))
+
+    @testing.for_dtypes_combination(
+        [numpy.float32, numpy.int32, numpy.uint32, numpy.uint64,
+         numpy.ulonglong, numpy.float64],
+        names=['src_dtype', 'dst_dtype'])
+    def test_scatter_minmax_differnt_dtypes(self, src_dtype, dst_dtype):
+        shape = (2, 3)
+        a = cupy.zeros(shape, dtype=src_dtype)
+        value = cupy.array(1, dtype=dst_dtype)
+        slices = ([1, 1], slice(None))
+        a.scatter_max(slices, value)
+        numpy.testing.assert_almost_equal(
+            a.get(),
+            numpy.array([[0, 0, 0], [1, 1, 1]], dtype=src_dtype))
+
+        a = cupy.ones(shape, dtype=src_dtype)
+        value = cupy.array(0, dtype=dst_dtype)
+        a.scatter_min(slices, value)
+        numpy.testing.assert_almost_equal(
+            a.get(),
+            numpy.array([[1, 1, 1], [0, 0, 0]], dtype=src_dtype))
+
+    @testing.for_dtypes_combination(
+        [numpy.float32, numpy.int32, numpy.uint32, numpy.uint64,
+         numpy.ulonglong, numpy.float16, numpy.float64],
+        names=['src_dtype', 'dst_dtype'])
+    def test_scatter_minmax_differnt_dtypes_mask(self, src_dtype, dst_dtype):
+        shape = (2, 3)
+        a = cupy.zeros(shape, dtype=src_dtype)
+        value = cupy.array(1, dtype=dst_dtype)
+        slices = (numpy.array([[True, False, False], [False, True, True]]))
+        a.scatter_max(slices, value)
+        numpy.testing.assert_almost_equal(
+            a.get(),
+            numpy.array([[1, 0, 0], [0, 1, 1]], dtype=src_dtype))
+
+        a = cupy.ones(shape, dtype=src_dtype)
+        value = cupy.array(0, dtype=dst_dtype)
+        a.scatter_min(slices, value)
+        numpy.testing.assert_almost_equal(
+            a.get(),
+            numpy.array([[0, 1, 1], [1, 0, 0]], dtype=src_dtype))
