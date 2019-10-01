@@ -1,6 +1,5 @@
 from __future__ import division
 import string
-import threading
 
 import numpy
 import six
@@ -25,24 +24,8 @@ from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.core._memory_range cimport may_share_bounds
+from cupy.core import _fusion_thread_local
 
-
-_thread_local = threading.local()
-
-
-cpdef inline bint _is_fusing() except? -1:
-    try:
-        return _thread_local.history is not None
-    except AttributeError:
-        _thread_local.history = None
-    return False
-
-cpdef inline bint _is_fusingx() except? -1:
-    try:
-        return _thread_local.historyx is not None
-    except AttributeError:
-        _thread_local.historyx = None
-    return False
 
 cpdef function.Function _get_simple_elementwise_kernel(
         params, operation, name, preamble,
@@ -826,11 +809,8 @@ cdef class ufunc:
             Output array or a tuple of output arrays.
 
         """
-        if _is_fusing():
-            return _thread_local.history.call_ufunc(self, args, kwargs)
-
-        if _is_fusingx():
-            return _thread_local.historyx.call_ufunc(self, args, kwargs)
+        if _fusion_thread_local.is_fusing():
+            return _fusion_thread_local.call_ufunc(self, *args, **kwargs)
 
         cdef function.Function kern
         cdef list broad_values

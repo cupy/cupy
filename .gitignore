@@ -17,8 +17,8 @@ _readthedocs_build
 cupy.egg-info/
 dist/
 htmlcov/
-.idea/ .cache/
+.idea/
+.cache/
 .pytest_cache/
 cupy/.data/
 cupy/cuda/thrust.h
-*.lprof

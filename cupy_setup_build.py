@@ -34,6 +34,10 @@ MODULES = [
         'name': 'cuda',
         'file': [
             'cupy.core._dtype',
+            'cupy.core._fusion_runtime',
+            'cupy.core._fusion_shape',
+            'cupy.core._fusion_thread_local',
+            'cupy.core._fusion_variable',
             'cupy.core._kernel',
             'cupy.core._memory_range',
             'cupy.core._routines_indexing',
@@ -48,7 +52,6 @@ MODULES = [
             'cupy.core.flags',
             'cupy.core.internal',
             'cupy.core.fusion',
-            'cupy.core.fusionx',
             'cupy.core.raw',
             'cupy.cuda.cublas',
             'cupy.cuda.cufft',
@@ -462,8 +465,6 @@ def make_extensions(options, compiler, use_cython):
     # https://groups.google.com/forum/#!topic/theano-users/3ihQYiTRG4E
     settings['define_macros'].append(('_FORCE_INLINES', '1'))
 
-    settings['define_macros'].append(('CYTHON_TRACE', '1'))
-
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
@@ -699,9 +700,6 @@ def cythonize(extensions, arg_options):
     directive_keys = ('linetrace', 'profile')
     directives = {key: arg_options[key] for key in directive_keys}
 
-    directives['linetrace'] = True
-    directives['profile'] = True
-
     # Embed signatures for Sphinx documentation.
     directives['embedsignature'] = True
 
@@ -711,7 +709,7 @@ def cythonize(extensions, arg_options):
 
     return Cython.Build.cythonize(
         extensions, verbose=True, language_level=3,
-        compiler_directives={'linetrace': True}, **cythonize_options)
+        compiler_directives=directives, **cythonize_options)
 
 
 def check_extensions(extensions):

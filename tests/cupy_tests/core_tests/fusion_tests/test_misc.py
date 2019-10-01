@@ -24,27 +24,6 @@ class FusionTestBase(unittest.TestCase):
 
 
 @testing.gpu
-class TestFusionOutArg(unittest.TestCase):
-
-    def generate_inputs(self, xp, dtype1, dtype2):
-        x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
-        y = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=1)
-        z = testing.shaped_random((3, 4), xp, dtype2, scale=10, seed=2)
-        return (x, y, z), {}
-
-    @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), full=True, no_complex=True)
-    @fusion_utils.check_fusion(accept_error=TypeError)
-    @testing.with_requires('numpy>=1.13')
-    def test_outarg_add(self, xp, dtype1, dtype2):
-        def func(x, y, z):
-            xp.add(x, y, out=z)
-            return z
-
-        return func
-
-
-@testing.gpu
 class TestFusionInplaceUpdate(FusionTestBase):
 
     @testing.for_all_dtypes(no_bool=True)
@@ -117,50 +96,60 @@ class TestFusionTuple(FusionTestBase):
 
         return func
 
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @fusion_utils.check_fusion(generate_inputs_args=(2,))
+    def test_various_shape(self, xp, dtype):
+        def func(x, y):
+            a = x + y
+            b = xp.sum(a, axis=0)
+            x += b
+            c = xp.sum(x, axis=0)
+            y += c
+            return c, b, x, y, a
+        return func
+
+
+class TestReturnNone(FusionTestBase):
+
+    @testing.for_all_dtypes()
+    @fusion_utils.check_fusion(generate_inputs_args=(0,))
+    def test_pass(self, xp, dtype):
+        def func():
+            pass
+        return func
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @fusion_utils.check_fusion(generate_inputs_args=(1,))
+    def test_iadd_once(self, xp, dtype):
+        def func(x):
+            x += 2
+        return func
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @fusion_utils.check_fusion(generate_inputs_args=(1,))
+    def test_iadd_twice(self, xp, dtype):
+        def impl(x):
+            x += x
+            x += x
+        return impl
+
 
 @testing.gpu
-class TestFusionReduction(FusionTestBase):
+class TestFusionNoneParams(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_bool=True)
-    @fusion_utils.check_fusion(generate_inputs_args=(1,))
-    def test_reduction_premap(self, xp, dtype):
-        def func(x):
-            return xp.sum(xp.sqrt(x) + 10)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_python_none_parameter(self, xp, dtype):
+        @cupy.fuse()
+        def f(x, y, z):
+            if y is None:
+                return x * z
+            return x + y + z
 
-        return func
-
-    @testing.for_all_dtypes(no_bool=True)
-    @fusion_utils.check_fusion(generate_inputs_args=(1,))
-    def test_reduction_postmap(self, xp, dtype):
-        def func(x):
-            return xp.sqrt(xp.sum(x)) + 10
-
-        return func
-
-    @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), no_bool=True)
-    @fusion_utils.check_fusion(generate_inputs_name='dtype_combination')
-    def test_reduction_pairwise_premap(self, xp, dtype1, dtype2):
-        def func(x, y):
-            return xp.sum(xp.sqrt(xp.abs(x - y)))
-
-        return func
-
-    @testing.for_all_dtypes(no_bool=True)
-    @fusion_utils.check_fusion(generate_inputs_args=(1,))
-    def test_sum_axis_0(self, xp, dtype):
-        def func(x):
-            return xp.sum(x, axis=0)
-
-        return func
-
-    @testing.for_all_dtypes(no_bool=True)
-    @fusion_utils.check_fusion(generate_inputs_args=(1,))
-    def test_sum_axis_1(self, xp, dtype):
-        def func(x):
-            return xp.sum(x, axis=1)
-
-        return func
+        x = testing.shaped_arange((10,), xp, dtype)
+        y = testing.shaped_arange((10,), xp, dtype)
+        z = testing.shaped_arange((10,), xp, dtype)
+        return f(x, None, z) + f(x, y, z)
 
 
 @testing.gpu
@@ -194,14 +183,10 @@ class TestFusionKernelName(unittest.TestCase):
 
         # Test kernel name (with mock)
         if xp is cupy:
-            target = (
-                'cupy.core._kernel.ElementwiseKernel' if is_elementwise
-                else 'cupy.core._kernel.ReductionKernel')
-
-            with mock.patch(target) as Kernel:
+            with mock.patch('cupy.core._fusion_runtime.FusedKernel') as Kernel:
                 func(a, b, c)
                 Kernel.assert_called_once()
-                self.assertEqual(Kernel.call_args[1]['name'], expected_name)
+                self.assertEqual(Kernel.call_args.args[0], expected_name)
 
         # Test there's no error in computation (without mock)
         return func(a, b, c)
@@ -271,159 +256,6 @@ class TestFusionKernelName(unittest.TestCase):
             return func_a1(a, b, c)
 
         return self.check(xp, func, 'abc', False)
-
-
-@testing.gpu
-class TestFusionScalar(FusionTestBase):
-
-    def generate_inputs(self, xp, dtype1, dtype2):
-        array = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
-        return (array,), {}
-
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion()
-    def test_python_scalar(self, xp, dtype1, dtype2):
-        def func(array):
-            py_scalar = dtype2(1).item()
-            return array + py_scalar
-
-        return func
-
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion()
-    def test_numpy_scalar(self, xp, dtype1, dtype2):
-        def func(array):
-            np_scalar = dtype2(1)
-            return array + np_scalar
-
-        return func
-
-    def python_scalar_param(self, xp, dtype1, dtype2):
-        array = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
-        py_scalar = dtype2(1).item()
-        return (array, py_scalar), {}
-
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion(generate_inputs_name='python_scalar_param')
-    def test_python_scalar_param(self, xp, dtype1, dtype2):
-        def func(array, py_scalar):
-            return array + py_scalar
-
-        return func
-
-    def numpy_scalar_param(self, xp, dtype1, dtype2):
-        array = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
-        np_scalar = dtype2(1)
-        return (array, np_scalar), {}
-
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion(generate_inputs_name='numpy_scalar_param')
-    def test_numpy_scalar_param(self, xp, dtype1, dtype2):
-        def func(array, np_scalar):
-            return array + np_scalar
-
-        return func
-
-    def numpy_scalar_params_binop(self, xp, dtype1, dtype2):
-        scalar1 = dtype1(1)
-        scalar2 = dtype2(1)
-        array = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
-        return (scalar1, scalar2, array), {}
-
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion(
-        generate_inputs_name='numpy_scalar_params_binop')
-    def test_numpy_scalar_params_binop(self, xp, dtype1, dtype2):
-        def func(scalar1, scalar2, array):
-            dtype = (scalar1 + scalar2).dtype
-            return array.astype(dtype)
-
-        return func
-
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion(
-        generate_inputs_name='numpy_scalar_params_binop')
-    def test_scalar_inplace_update(self, xp, dtype1, dtype2):
-        def func(scalar1, scalar2, array):
-            scalar1_copy = scalar1
-            scalar1 += scalar2
-            return array + scalar1 + scalar1_copy
-
-        return func
-
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion(generate_inputs_name='numpy_scalar_param')
-    def test_scalar_inplace_update_with_array(self, xp, dtype1, dtype2):
-        def func(array, scalar):
-            scalar += array
-            return scalar
-
-        return func
-
-
-@testing.gpu
-class TestFusionBroadcast(unittest.TestCase):
-
-    def generate_inputs(self, xp, dtype):
-        x = testing.shaped_random((3, 4), xp, dtype, scale=10, seed=0)
-        y = testing.shaped_random((4,), xp, dtype, scale=10, seed=1)
-        return (x, y), {}
-
-    @testing.for_all_dtypes()
-    @fusion_utils.check_fusion()
-    def test_broadcast(self, xp, dtype):
-        def func(x, y):
-            x += y
-            return x
-
-        return func
-
-    @testing.for_all_dtypes()
-    @fusion_utils.check_fusion(accept_error=ValueError)
-    def test_broadcast_error(self, xp, dtype):
-        def func(x, y):
-            y += x
-            return y
-
-        return func
-
-
-@testing.gpu
-class TestFusionNoneParams(unittest.TestCase):
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_python_none_parameter(self, xp, dtype):
-        @cupy.fuse()
-        def f(x, y, z):
-            if y is None:
-                return x * z
-            return x + y + z
-
-        x = testing.shaped_arange((10,), xp, dtype)
-        y = testing.shaped_arange((10,), xp, dtype)
-        z = testing.shaped_arange((10,), xp, dtype)
-        return f(x, None, z) + f(x, y, z)
-
-
-@testing.gpu
-class TestFusionReturnsConstantValue(FusionTestBase):
-
-    @testing.for_all_dtypes()
-    @fusion_utils.check_fusion(generate_inputs_args=(1,))
-    def test_pass(self, xp, dtype):
-        def func(x):
-            pass
-
-        return func
-
-    @testing.for_all_dtypes(no_bool=True)
-    @fusion_utils.check_fusion(generate_inputs_args=(1,))
-    def test_no_return_value(self, xp, dtype):
-        def func(x):
-            x += 1
-
-        return func
 
 
 class TestFusionComposition(unittest.TestCase):

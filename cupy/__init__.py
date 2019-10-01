@@ -51,7 +51,6 @@ __version__ = _version.__version__
 
 from cupy import binary  # NOQA
 import cupy.core.fusion  # NOQA
-import cupy.core.fusionx # NOQA
 from cupy import creation  # NOQA
 from cupy import fft  # NOQA
 from cupy import indexing  # NOQA
@@ -753,14 +752,12 @@ def get_array_module(*args):
     """
     for arg in args:
         if isinstance(arg, (ndarray, sparse.spmatrix,
-                            cupy.core.fusion._FusionVarScalar,
-                            cupy.core.fusion._FusionVarArray)):
+                            cupy.core.fusion._ndarray)):
             return _cupy
     return numpy
 
 
 fuse = cupy.core.fusion.fuse
-fusex = cupy.core.fusionx.fusex
 
 disable_experimental_feature_warning = False
 

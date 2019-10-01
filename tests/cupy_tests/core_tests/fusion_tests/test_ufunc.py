@@ -1,425 +1,313 @@
+import itertools
 import unittest
-
-import numpy
 
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 
-class FusionUnaryUfuncTestBase(unittest.TestCase):
-
-    def generate_inputs(self, xp, dtype):
-        x = testing.shaped_random((3, 4), xp, dtype, scale=10, seed=0)
-        return (x,), {}
-
-
-class FusionBinaryUfuncTestBase(unittest.TestCase):
-
-    def generate_inputs(self, xp, dtype1, dtype2):
-        x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
-        y = testing.shaped_random((3, 4), xp, dtype2, scale=10, seed=1)
-        return (x, y), {}
+def _permutate_shapes(shapes_list):
+    # Permutates input shapes
+    permutated_shapes_set = set()
+    for shapes in shapes_list:
+        for permutated_shapes in itertools.permutations(shapes):
+            permutated_shapes_set.add(permutated_shapes)
+    return list(permutated_shapes_set)
 
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'func': [
-        'bitwise_and', 'bitwise_or', 'bitwise_xor', 'left_shift', 'right_shift'
-    ]
-}))
-class TestFusionBitwiseBinary(FusionBinaryUfuncTestBase):
+    'shapes': _permutate_shapes([
+        # Same shapes
+        ((1,), (1,)),
+        ((3, 4), (3, 4)),
+        # Broadcast
+        ((10,), (1,)),
+        ((3, 4), (3, 1)),
+        ((3, 4), (1, 4)),
+        ((3, 4), (4,)),
+        ((3, 4), (1, 1)),
+        ((3, 4), (1,)),
+        ((2, 3, 4), (1, 1, 1)),
+        # TODO(asi1024): Fix testing.shaped_random to support 0-dim array.
+        # # 0-dim shape
+        # ((), ()),
+        # ((1,), ()),
+        # ((3,), ()),
+        # ((2, 3), ()),
+        # 0-size shape
+        ((0,), (0,)),
+        ((0,), (1,)),
+        ((2, 0, 3), (2, 0, 3)),
+        ((2, 0, 3), (0, 1)),
 
-    @testing.for_int_dtypes_combination(names=('dtype1', 'dtype2'))
+        ((3, 1), (1, 4)),
+        ((2, 1, 4), (3, 1)),
+    ])
+}))
+class TestFusionBroadcast(unittest.TestCase):
+
+    def generate_inputs(self, xp):
+        shape1, shape2 = self.shapes
+        x = testing.shaped_random(shape1, xp, 'int64', scale=10, seed=0)
+        y = testing.shaped_random(shape2, xp, 'int64', scale=10, seed=1)
+        return (x, y), {}
+
     @fusion_utils.check_fusion()
-    def test_bitwise(self, xp, dtype1, dtype2):
+    def test_broadcast(self, xp):
+        return lambda x, y: x + y
+
+    @fusion_utils.check_fusion(accept_error=ValueError)
+    def test_broadcast_inplace(self, xp):
         def impl(x, y):
-            if ((x.dtype == 'uint64' and y.dtype.kind == 'i')
-                    or (y.dtype == 'uint64' and x.dtype.kind == 'i')):
-                # Skip TypeError case.
-                return
-            return getattr(xp, self.func)(x, y)
+            x += y
         return impl
 
 
-class TestFusionBitwiseUnary(FusionUnaryUfuncTestBase):
-
-    @testing.for_int_dtypes()
-    @fusion_utils.check_fusion()
-    def test_invert(self, xp, dtype):
-        return lambda x: xp.invert(x)
-
-
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'func': [
-        'greater', 'greater_equal', 'less', 'less_equal', 'equal', 'not_equal',
-        'logical_and', 'logical_or', 'logical_xor',
-        'maximum', 'minimum', 'fmax', 'fmin',
-    ]
+    'shapes': _permutate_shapes([
+        ((2,), (3,)),
+        ((2,), (0,)),
+        ((3, 2), (3, 3)),
+        ((3, 2), (2, 2)),
+        ((3,), (1, 2)),
+    ])
 }))
-class TestFusionComparisonBinary(FusionBinaryUfuncTestBase):
+class TestFusionBroadcastInvalid(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(
-        no_complex=True, names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion()
-    def test_comparison(self, xp, dtype1, dtype2):
-        return lambda x, y: getattr(xp, self.func)(x, y)
+    def generate_inputs(self, xp):
+        shape1, shape2 = self.shapes
+        x = testing.shaped_random(shape1, xp, 'int64', scale=10, seed=0)
+        y = testing.shaped_random(shape2, xp, 'int64', scale=10, seed=1)
+        return (x, y), {}
+
+    @fusion_utils.check_fusion(accept_error=ValueError)
+    def test_broadcast(self, xp):
+        return lambda x, y: x + y
+
+    @fusion_utils.check_fusion(accept_error=ValueError)
+    def test_broadcast_inplace(self, xp):
+        def impl(x, y):
+            x += y
+        return impl
 
 
 @testing.gpu
-class TestFusionComparisonUnary(FusionUnaryUfuncTestBase):
+class TestFusionParseInput(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_complex=True)
-    @fusion_utils.check_fusion()
-    def test_comparison(self, xp, dtype):
-        return lambda x: xp.logical_not(x)
-
-
-@testing.gpu
-class TestFusionArrayContents(FusionUnaryUfuncTestBase):
-
-    def generate_inputs(self, xp, has_nan, dtype):
-        if numpy.dtype(dtype).kind not in ('f', 'c'):
-            return super(TestFusionArrayContents, self).generate_inputs(
-                xp, dtype)
-
-        nan = numpy.nan
-        inf = dtype(float('inf'))
-
-        if has_nan:
-            x = xp.array([-3, nan, -1, nan, 0, nan, inf], dtype=dtype)
-        else:
-            x = xp.array([-3, inf, -1, -inf, 0, 1, 2], dtype=dtype)
+    def generate_inputs(self, xp):
+        x = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
         return (x,), {}
 
-    @testing.for_all_dtypes()
-    @fusion_utils.check_fusion(generate_inputs_args=(False,))
-    def test_isfinite(self, xp, dtype):
-        return lambda x: xp.isfinite(x)
-
-    @testing.for_all_dtypes()
-    @fusion_utils.check_fusion(generate_inputs_args=(False,))
-    def test_isinf(self, xp, dtype):
-        return lambda x: xp.isinf(x)
-
-    @testing.for_all_dtypes()
-    @fusion_utils.check_fusion(generate_inputs_args=(True,))
-    def test_isnan(self, xp, dtype):
-        return lambda x: xp.isnan(x)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': [
-        'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan',
-        'sinh', 'cosh', 'tanh', 'arcsinh', 'arccosh', 'arctanh',
-    ],
-}))
-class TestFusionTrigonometricUnary(unittest.TestCase):
-
-    def generate_inputs(self, xp, dtype):
-        if numpy.dtype(dtype).kind not in ('f', 'c'):
-            x = xp.array([0, 1])
-        else:
-            x = testing.shaped_random((3, 4), xp, dtype, scale=1, seed=0)
-        return (x,), {}
-
-    @testing.for_all_dtypes()
     @fusion_utils.check_fusion()
-    def test_trigonometric(self, xp, dtype):
+    def test_add(self, xp):
+        return lambda x: x + x
+
+    # TODO(asi1024): Should fix cupy.ufunc
+    @fusion_utils.check_fusion(accept_error=(ValueError, TypeError))
+    def test_add_too_less_param(self, xp):
+        return lambda x: xp.add(x)
+
+    # TODO(asi1024): Should fix cupy.ufunc
+    @fusion_utils.check_fusion(accept_error=(ValueError, TypeError))
+    def test_add_too_much_param(self, xp):
+        return lambda x: xp.add(x, x, x, x)
+
+    @fusion_utils.check_fusion(accept_error=TypeError)
+    def test_add_none(self, xp):
+        return lambda x: x + None
+
+    @fusion_utils.check_fusion(accept_error=TypeError)
+    def test_add_object(self, xp):
+        return lambda x: x + object()
+
+    # TODO(asi1024): Should fix cupy.ufunc
+    # @fusion_utils.check_fusion()
+    # def test_add_out_none(self, xp):
+    #     def impl(x):
+    #         xp.add(x, x, None)
+    #         return x
+    #     return impl
+
+    @fusion_utils.check_fusion()
+    def test_add_kwargs_out_none(self, xp):
         def impl(x):
-            with testing.NumpyError(divide='ignore', invalid='ignore'):
-                return getattr(xp, self.func)(x)
+            xp.add(x, x, out=None)
+        return impl
+
+    # TODO(asi1024): Should fix cupy.ufunc
+    # @fusion_utils.check_fusion(accept_error=ValueError)
+    # def test_add_both_out_none(self, xp):
+    #     def impl(x):
+    #         xp.add(x, x, None, out=None)
+    #     return impl
+
+    @fusion_utils.check_fusion(accept_error=TypeError)
+    def test_add_out_object(self, xp):
+        def impl(x):
+            xp.add(x, x, object())
+            return x
+        return impl
+
+    @fusion_utils.check_fusion(accept_error=TypeError)
+    def test_add_kwargs_out_object(self, xp):
+        def impl(x):
+            xp.add(x, x, out=object())
+            return x
+        return impl
+
+    @fusion_utils.check_fusion()
+    def test_divmod(self, xp):
+        return lambda x: xp.divmod(x, x)
+
+
+@testing.gpu
+class TestFusionOutDtype(unittest.TestCase):
+
+    def generate_inputs(self, xp, dtype1, dtype2):
+        x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
+        y = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=1)
+        z = testing.shaped_random((3, 4), xp, dtype2, scale=10, seed=2)
+        return (x, y, z), {}
+
+    @testing.for_all_dtypes_combination(
+        names=('dtype1', 'dtype2'), full=True, no_complex=True)
+    @fusion_utils.check_fusion(accept_error=TypeError)
+    @testing.with_requires('numpy>=1.13')
+    def test_outarg(self, xp, dtype1, dtype2):
+        def impl(x, y, z):
+            xp.add(x, y, out=z)
+            return z
         return impl
 
 
 @testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['arctan2', 'hypot']
-}))
-class TestFusionTrigonometricBinary(FusionBinaryUfuncTestBase):
-
-    @testing.for_all_dtypes_combination(
-        no_complex=True, names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion()
-    def test_trigonometric(self, xp, dtype1, dtype2):
-        return lambda x, y: getattr(xp, self.func)(x, y)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['deg2rad', 'rad2deg', 'degrees', 'radians']
-}))
-class TestFusionDegRad(FusionUnaryUfuncTestBase):
-
-    @testing.for_all_dtypes(no_complex=True)
-    @fusion_utils.check_fusion()
-    def test_trigonometric(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['around', 'round_', 'rint', 'floor', 'ceil', 'trunc', 'fix']
-}))
-class TestFusionRounding(FusionUnaryUfuncTestBase):
-
-    @testing.for_all_dtypes(no_complex=True)
-    @fusion_utils.check_fusion()
-    def test_rounding(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['exp', 'expm1', 'exp2', 'log', 'log10', 'log2', 'log1p']
-}))
-class TestFusionExpLogUnary(unittest.TestCase):
-
-    def generate_inputs(self, xp, dtype):
-        x = testing.shaped_random((3, 4), xp, dtype, scale=10, seed=0) + 1
-        return (x,), {}
-
-    @testing.for_all_dtypes()
-    @fusion_utils.check_fusion()
-    def test_explog(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['logaddexp', 'logaddexp2']
-}))
-class TestFusionExpLogBinary(FusionBinaryUfuncTestBase):
-
-    @testing.for_all_dtypes_combination(
-        no_complex=True, names=('dtype1', 'dtype2'))
-    @fusion_utils.check_fusion()
-    def test_explog(self, xp, dtype1, dtype2):
-        return lambda x, y: getattr(xp, self.func)(x, y)
-
-
-@testing.gpu
-class TestFusionLdexp(FusionBinaryUfuncTestBase):
-
-    @testing.for_float_dtypes(name='dtype1')
-    @testing.for_dtypes(['i', 'l'], name='dtype2')
-    @fusion_utils.check_fusion()
-    def test_explog(self, xp, dtype1, dtype2):
-        return lambda x, y: xp.ldexp(x, y)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['signbit', 'frexp']
-}))
-class TestFusionFloatingUnary(FusionUnaryUfuncTestBase):
-
-    @testing.for_all_dtypes(no_complex=True)
-    @fusion_utils.check_fusion()
-    def test_floating_point_routine(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['copysign', 'nextafter']
-}))
-class TestFusionFloatingBinary(FusionBinaryUfuncTestBase):
-
-    @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), no_complex=True)
-    @fusion_utils.check_fusion()
-    def test_floating_point_routine(self, xp, dtype1, dtype2):
-        return lambda x, y: getattr(xp, self.func)(x, y)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['reciprocal', 'negative', 'angle', 'conj', 'real', 'imag']
-}))
-class TestArithmeticUnary(FusionUnaryUfuncTestBase):
-
-    def generate_inputs(self, xp, dtype):
-        x = testing.shaped_random((3, 4), xp, dtype, scale=10, seed=0)
-        x[x == 0] = 1
-        return (x,), {}
-
-    @testing.for_all_dtypes(no_bool=True)
-    @fusion_utils.check_fusion()
-    def test_arithmetic(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
-
-
-@testing.gpu
-class TestModf(FusionUnaryUfuncTestBase):
-
-    def generate_inputs(self, xp, dtype):
-        x = testing.shaped_random((3, 4), xp, dtype, scale=10, seed=0)
-        return (x,), {}
-
-    @testing.for_all_dtypes(no_complex=True)
-    @fusion_utils.check_fusion()
-    def test_arithmetic(self, xp, dtype):
-        return lambda x: xp.modf(x)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['add', 'subtract', 'multiply', 'power']
-}))
-class TestArithmeticBinary(FusionBinaryUfuncTestBase):
+class TestFusionScalar(unittest.TestCase):
 
     def generate_inputs(self, xp, dtype1, dtype2):
-        x = testing.shaped_random((3, 4), xp, dtype1, scale=5, seed=0)
-        y = testing.shaped_random((3, 4), xp, dtype2, scale=5, seed=0)
-        return (x, y), {}
-
-    @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), no_complex=True, no_bool=True)
-    @fusion_utils.check_fusion()
-    def test_arithmetic(self, xp, dtype1, dtype2):
-        # TODO(unno): boolean subtract causes DeprecationWarning in numpy>=1.13
-        return lambda x, y: getattr(xp, self.func)(x, y)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['divide', 'true_divide', 'floor_divide', 'fmod', 'remainder']
-}))
-class TestDivide(unittest.TestCase):
-
-    def generate_inputs(self, xp, dtype1, dtype2):
-        x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
-        y = testing.shaped_random((3, 4), xp, dtype2, scale=10, seed=1)
-        y[y == 0] = 1
-        return (x, y), {}
-
-    @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), no_complex=True)
-    @fusion_utils.check_fusion()
-    def test_divide(self, xp, dtype1, dtype2):
-        return lambda x, y: getattr(xp, self.func)(x, y)
-
-
-@testing.gpu
-class TestDivmod(unittest.TestCase):
-
-    def generate_inputs(self, xp, dtype1, dtype2):
-        x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
-        y = testing.shaped_random((3, 4), xp, dtype2, scale=10, seed=1)
-        y[y == 0] = 1
-        return (x, y), {}
-
-    @testing.with_requires('numpy>=1.13')
-    @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), no_complex=True)
-    @fusion_utils.check_fusion()
-    def test_divmod(self, xp, dtype1, dtype2):
-        return lambda x, y: xp.divmod(x, y)
-
-
-@testing.gpu
-class TestFusionMisc(FusionUnaryUfuncTestBase):
-
-    @testing.with_requires('numpy>=1.11.2')
-    @testing.for_all_dtypes(no_complex=True)
-    @fusion_utils.check_fusion()
-    def test_sqrt(self, xp, dtype):
-        return lambda x: xp.sqrt(x)
-
-    @testing.with_requires('numpy>=1.10')
-    @testing.for_all_dtypes(no_complex=True)
-    @fusion_utils.check_fusion()
-    def test_cbrt(self, xp, dtype):
-        return lambda x: xp.cbrt(x)
-
-    @testing.for_all_dtypes()
-    @fusion_utils.check_fusion()
-    def test_square(self, xp, dtype):
-        return lambda x: xp.square(x)
-
-    @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @fusion_utils.check_fusion()
-    def test_absolute(self, xp, dtype):
-        return lambda x: xp.absolute(x)
-
-    @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @fusion_utils.check_fusion()
-    def test_abs(self, xp, dtype):
-        return lambda x: xp.abs(x)
-
-    @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @fusion_utils.check_fusion()
-    def test_sign(self, xp, dtype):
-        return lambda x: xp.sign(x)
-
-    @testing.for_all_dtypes(no_complex=True)
-    @fusion_utils.check_fusion()
-    def test_clip(self, xp, dtype):
-        return lambda x: xp.clip(x, dtype(2), dtype(4))
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['i0', 'sinc']
-}))
-class TestFusionSpecialMath(FusionUnaryUfuncTestBase):
-
-    # TODO(imanishi): Fix for integer tests
-    @testing.for_float_dtypes()
-    @fusion_utils.check_fusion()
-    def test_special_math(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
-
-
-class TestFusionManipulation(unittest.TestCase):
-
-    def generate_inputs(self, xp, dtype1, dtype2):
-        cond = testing.shaped_random((3, 4), xp, 'bool_', seed=0)
-        x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=1)
-        y = testing.shaped_random((3, 4), xp, dtype2, scale=10, seed=2)
-        return (cond, x, y), {}
+        array = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
+        return (array,), {}
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @fusion_utils.check_fusion()
-    def test_where(self, xp, dtype1, dtype2):
-        return lambda cond, x, y: xp.where(cond, x, y)
+    def test_python_scalar_r(self, xp, dtype1, dtype2):
+        def func(array):
+            py_scalar = dtype2(1).item()
+            return array + py_scalar
 
-    # TODO(imanishi): Supoort complex dtypes
-    @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), no_complex=True)
-    @fusion_utils.check_fusion(accept_error=(TypeError,))
-    def test_copyto(self, xp, dtype1, dtype2):
-        return lambda cond, x, y: xp.copyto(x, y)
+        return func
 
-    # TODO(imanishi): Supoort complex dtypes
-    @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), no_complex=True)
-    @fusion_utils.check_fusion(accept_error=(TypeError,))
-    def test_copyto_where(self, xp, dtype1, dtype2):
-        return lambda cond, x, y: xp.where(x, y, where=cond)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['sum', 'prod', 'amax', 'amin', 'max', 'min']
-}))
-class TestFusionNumericalReduction(FusionUnaryUfuncTestBase):
-
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @fusion_utils.check_fusion()
-    def test_reduction(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
+    def test_numpy_scalar_r(self, xp, dtype1, dtype2):
+        def func(array):
+            np_scalar = dtype2(1)
+            return array + np_scalar
 
+        return func
 
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': ['all', 'any']
-}))
-class TestFusionLogicalReduction(FusionUnaryUfuncTestBase):
-
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @fusion_utils.check_fusion()
-    def test_reduction(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
+    def test_python_scalar_l(self, xp, dtype1, dtype2):
+        def func(array):
+            py_scalar = dtype2(1).item()
+            return py_scalar + array
+
+        return func
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @fusion_utils.check_fusion()
+    def test_numpy_scalar_l(self, xp, dtype1, dtype2):
+        def func(array):
+            np_scalar = dtype2(1)
+            return np_scalar + array
+
+        return func
+
+    def python_scalar_param_r(self, xp, dtype1, dtype2):
+        array = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
+        py_scalar = dtype2(1).item()
+        return (array, py_scalar), {}
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @fusion_utils.check_fusion(generate_inputs_name='python_scalar_param_r')
+    def test_python_scalar_param_r(self, xp, dtype1, dtype2):
+        def func(array, py_scalar):
+            return array + py_scalar
+
+        return func
+
+    def python_scalar_param_l(self, xp, dtype1, dtype2):
+        array = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
+        py_scalar = dtype2(1).item()
+        return (py_scalar, array), {}
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @fusion_utils.check_fusion(generate_inputs_name='python_scalar_param_l')
+    def test_python_scalar_param_l(self, xp, dtype1, dtype2):
+        def func(py_scalar, array):
+            return py_scalar + array
+
+        return func
+
+    def numpy_scalar_param_r(self, xp, dtype1, dtype2):
+        array = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
+        np_scalar = dtype2(1)
+        return (array, np_scalar), {}
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @fusion_utils.check_fusion(generate_inputs_name='numpy_scalar_param_r')
+    def test_numpy_scalar_param_r(self, xp, dtype1, dtype2):
+        def func(array, np_scalar):
+            return array + np_scalar
+
+        return func
+
+    def numpy_scalar_param_l(self, xp, dtype1, dtype2):
+        array = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
+        np_scalar = dtype2(1)
+        return (np_scalar, array), {}
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @fusion_utils.check_fusion(generate_inputs_name='numpy_scalar_param_l')
+    def test_numpy_scalar_param_l(self, xp, dtype1, dtype2):
+        def func(np_scalar, array):
+            return np_scalar + array
+
+        return func
+
+    def numpy_scalar_params_binop(self, xp, dtype1, dtype2):
+        scalar1 = dtype1(1)
+        scalar2 = dtype2(1)
+        array = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
+        return (scalar1, scalar2, array), {}
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @fusion_utils.check_fusion(
+        generate_inputs_name='numpy_scalar_params_binop')
+    def test_numpy_scalar_params_binop(self, xp, dtype1, dtype2):
+        def func(scalar1, scalar2, array):
+            dtype = (scalar1 + scalar2).dtype
+            return array.astype(dtype)
+
+        return func
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @fusion_utils.check_fusion(
+        generate_inputs_name='numpy_scalar_params_binop')
+    def test_scalar_inplace_update(self, xp, dtype1, dtype2):
+        def func(scalar1, scalar2, array):
+            scalar1_copy = scalar1
+            scalar1 += scalar2
+            return array + scalar1 + scalar1_copy
+
+        return func
+
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @fusion_utils.check_fusion(generate_inputs_name='numpy_scalar_param_r')
+    def test_scalar_inplace_update_with_array(self, xp, dtype1, dtype2):
+        def func(array, scalar):
+            scalar += array
+            return scalar
+
+        return func
