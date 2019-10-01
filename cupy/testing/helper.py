@@ -859,6 +859,12 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
     ``(16, 32)``, ``(64, 64)`` and ``(32, 16)``.
     """
 
+    types = list(types)
+
+    if len(types) == 1:
+        name, = names
+        return for_dtypes(types, name)
+
     if full is None:
         full = int(os.environ.get('CUPY_TEST_FULL_COMBINATION', '0')) != 0
 
@@ -868,9 +874,9 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
         ts = []
         for _ in range(len(names)):
             # Make shuffled list of types for each name
-            t = list(types)
-            random.shuffle(t)
-            ts.append(t)
+            shuffled_types = types[:]
+            random.shuffle(shuffled_types)
+            ts.append(types + shuffled_types)
 
         combination = [dict(zip(names, typs)) for typs in zip(*ts)]
 
