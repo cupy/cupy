@@ -73,7 +73,8 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
         assume_unique (bool, optional): Ignored
         invert (bool, optional): If ``True``, the values in the returned array
             are inverted (that is, ``False`` where an element of ``ar1`` is in
-            ``22ar2`` and ``True`` otherwise). Default is ``False``.
+            ``ar2`` and ``True`` otherwise). Default is ``False``.
+
     Returns:
         cupy.ndarray, bool: The values ``ar1[in1d]`` are in ``ar2``.
 
@@ -112,6 +113,7 @@ def isin(element, test_elements, assume_unique=False, invert=False):
         invert (bool, optional): If ``True``, the values in the returned array
             are inverted, as if calculating element not in ``test_elements``.
             Default is ``False``.
+
     Returns:
         cupy.ndarray, bool:
             Has the same shape as ``element``. The values ``element[isin]``
