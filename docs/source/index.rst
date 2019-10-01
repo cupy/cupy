@@ -25,5 +25,6 @@ This is the `CuPy <https://github.com/cupy/cupy>`_ documentation.
    :caption: Misc Notes
 
    install
+   install_rocm
    upgrade
    license

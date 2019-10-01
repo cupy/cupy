@@ -1,6 +1,6 @@
 #pragma once
 
-#if __CUDA_ARCH__ < 600
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 600)
 
 __device__ double atomicAdd(double *address, double val)
 {
@@ -15,7 +15,7 @@ __device__ double atomicAdd(double *address, double val)
     return __longlong_as_double(old);
 }
 
-#endif
+#endif // #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 600)
 
 __device__ float16 atomicAdd(float16* address, float16 val) {
   unsigned int *aligned = (unsigned int*)((size_t)address - ((size_t)address & 2));
@@ -35,7 +35,8 @@ __device__ float16 atomicAdd(float16* address, float16 val) {
                                                  : (old & 0xffff0000) | sum_as_us;
     old = atomicCAS(aligned, assumed, sum_as_ui);
   } while(assumed != old);
-  __half_raw raw = {old_as_us};
+  __half_raw raw;
+  raw.x = old_as_us;
   return float16(raw);
 };
 

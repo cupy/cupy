@@ -12,10 +12,9 @@ from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
 from libcpp cimport vector
 
-
+from cupy.core cimport core
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
-from cupy.core cimport core
 from cupy.cuda cimport stream as stream_module
 from cupy.cuda.texture cimport TextureObject
 

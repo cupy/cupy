@@ -37,7 +37,7 @@ cdef extern from *:
         size_t pitch
         void* ptr
         size_t xsize, ysize
-    ctypedef int MemoryKind 'enum cudaMemcpyKind'
+    ctypedef int MemoryKind 'cudaMemcpyKind'
     ctypedef void* MipmappedArray 'cudaMipmappedArray_t'
 
     # This is for the annoying nested struct cudaResourceDesc, which is not
@@ -216,8 +216,9 @@ cpdef enum:
     cudaDevAttrMaxTexture2DLinearPitch = 72
     cudaDevAttrMaxTexture2DMipmappedWidth = 73
     cudaDevAttrMaxTexture2DMipmappedHeight = 74
-    cudaDevAttrComputeCapabilityMajor = 75
-    cudaDevAttrComputeCapabilityMinor = 76
+    # Use header version
+    # cudaDevAttrComputeCapabilityMajor = 75
+    # cudaDevAttrComputeCapabilityMinor = 76
     cudaDevAttrMaxTexture1DMipmappedWidth = 77
     cudaDevAttrStreamPrioritiesSupported = 78
     cudaDevAttrGlobalL1CacheSupported = 79
@@ -278,6 +279,13 @@ cpdef enum:
 cdef extern from '../cuda/cupy_cuda.h':  # thru parent to import in core
     int cudaErrorMemoryAllocation
     int cudaErrorInvalidValue
+
+###############################################################################
+# Const value
+###############################################################################
+cpdef bint _is_hip_environment
+cpdef int deviceAttributeComputeCapabilityMajor
+cpdef int deviceAttributeComputeCapabilityMinor
 
 
 ###############################################################################

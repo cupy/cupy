@@ -19,6 +19,7 @@ minimum_cudnn_version = 5000
 maximum_cudnn_version = 7999
 
 _cuda_path = 'NOT_INITIALIZED'
+_rocm_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
 
 
@@ -29,6 +30,18 @@ def _tempdir():
         yield temp_dir
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def get_rocm_path():
+    global _rocm_path
+
+    # Use a magic word to represent the cache not filled because None is a
+    # valid return value.
+    if _rocm_path is not 'NOT_INITIALIZED':
+        return _rocm_path
+
+    _rocm_path = os.environ.get('ROCM_HOME', '')
+    return _rocm_path
 
 
 def get_cuda_path():
@@ -85,12 +98,14 @@ def get_nvcc_path():
         return None
 
 
-def get_compiler_setting():
+def get_compiler_setting(use_cpp11):
     cuda_path = get_cuda_path()
+    rocm_path = get_rocm_path()
 
     include_dirs = []
     library_dirs = []
     define_macros = []
+    extra_compile_args = []
 
     if cuda_path:
         include_dirs.append(os.path.join(cuda_path, 'include'))
@@ -100,6 +115,16 @@ def get_compiler_setting():
         else:
             library_dirs.append(os.path.join(cuda_path, 'lib64'))
             library_dirs.append(os.path.join(cuda_path, 'lib'))
+
+    if rocm_path:
+        include_dirs.append(os.path.join(rocm_path, 'include'))
+        include_dirs.append(os.path.join(rocm_path, 'rocrand', 'include'))
+        library_dirs.append(os.path.join(rocm_path, 'lib'))
+        library_dirs.append(os.path.join(rocm_path, 'rocrand', 'lib'))
+
+    if use_cpp11:
+        extra_compile_args.append('-std=c++11')
+
     if PLATFORM_DARWIN:
         library_dirs.append('/usr/local/cuda/lib')
 
@@ -125,6 +150,7 @@ def get_compiler_setting():
         'library_dirs': library_dirs,
         'define_macros': define_macros,
         'language': 'c++',
+        'extra_compile_args': extra_compile_args,
     }
 
 
@@ -389,14 +415,16 @@ def get_cutensor_version(formatted=False):
 
 
 def build_shlib(compiler, source, libraries=(),
-                include_dirs=(), library_dirs=(), define_macros=None):
+                include_dirs=(), library_dirs=(), define_macros=None,
+                extra_compile_args=()):
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
         objects = compiler.compile([fname], output_dir=temp_dir,
                                    include_dirs=include_dirs,
-                                   macros=define_macros)
+                                   macros=define_macros,
+                                   extra_postargs=list(extra_compile_args))
 
         try:
             postargs = ['/MANIFEST'] if PLATFORM_WIN32 else []
@@ -412,7 +440,8 @@ def build_shlib(compiler, source, libraries=(),
 
 
 def build_and_run(compiler, source, libraries=(),
-                  include_dirs=(), library_dirs=(), define_macros=None):
+                  include_dirs=(), library_dirs=(), define_macros=None,
+                  extra_compile_args=()):
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
@@ -420,7 +449,8 @@ def build_and_run(compiler, source, libraries=(),
 
         objects = compiler.compile([fname], output_dir=temp_dir,
                                    include_dirs=include_dirs,
-                                   macros=define_macros)
+                                   macros=define_macros,
+                                   extra_postargs=list(extra_compile_args))
 
         try:
             postargs = ['/MANIFEST'] if PLATFORM_WIN32 else []

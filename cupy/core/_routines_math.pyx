@@ -491,14 +491,8 @@ cdef _power_preamble = '''
 template <typename T>
 inline __device__ T integral_power(T in0, T in1) {
     if (in1 < 0) {
-        switch (in0) {
-            case -1:
-                return in1 & 1 ? -1 : 1;
-            case 1:
-                return 1;
-            default:
-                return 0;
-        }
+        if (in0 == -1) {return (in1 & 1) ? -1 : 1;}
+        else {return (in0 == 1) ? 1 : 0;}
     }
     T out0 = 1;
     while (in1 > 0) {

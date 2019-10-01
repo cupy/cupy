@@ -11,10 +11,10 @@ cdef extern from *:
 
     ctypedef void* Context 'CUcontext'
     ctypedef void* Deviceptr 'CUdeviceptr'
-    ctypedef void* Event 'struct CUevent_st*'
-    ctypedef void* Function 'struct CUfunc_st*'
-    ctypedef void* Module 'struct CUmod_st*'
-    ctypedef void* Stream 'struct CUstream_st*'
+    ctypedef void* Event 'cudaEvent_t'
+    ctypedef void* Function 'CUfunction'
+    ctypedef void* Module 'CUmodule'
+    ctypedef void* Stream 'cudaStream_t'
     ctypedef void* LinkState 'CUlinkState'
     ctypedef void* TexRef 'CUtexref_st*'
 
