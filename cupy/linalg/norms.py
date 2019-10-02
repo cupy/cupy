@@ -61,6 +61,8 @@ def norm(x, ord=None, axis=None, keepdims=False):
         axis = (axis,)
 
     if len(axis) == 1:
+        if nd == 1:
+            axis = None  # fast CUB-based reductions require axis == None
         if ord == numpy.Inf:
             return abs(x).max(axis=axis, keepdims=keepdims)
         elif ord == -numpy.Inf:
