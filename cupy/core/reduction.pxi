@@ -44,9 +44,8 @@ extern "C" __global__ void ${name}(${params}) {
     _type_reduce _s = _type_reduce(${identity});
     ptrdiff_t _i =
         _i_base + (_tid & (_block_stride - 1));  // _tid % _block_stride
-    int _J = _J_offset;
     for (ptrdiff_t _j = _i + _j_offset; _j < _in_ind.size();
-         _j += _j_stride, _J += _J_stride) {
+         _j += _j_stride) {
       _in_ind.set(_j);
       ${input_expr}
       _type_reduce _a = static_cast<_type_reduce>(${pre_map_expr});
