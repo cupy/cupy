@@ -46,13 +46,11 @@ cdef extern from 'cupy_cub.h':
 # TODO(leofang): remove this hack when CUB supports complex numbers
 def reduce_sum(core.ndarray x, out=None):
     if x.dtype in (numpy.complex64, numpy.complex128):
-        out_re = _reduce_sum(x.real, out if out is None else out.real)
-        out_im = _reduce_sum(x.imag, out if out is None else out.imag)
-        y = out_re + 1j * out_im
-        if out is not None:
-            out[...] = y
-            y = out
-        return y
+        if out is None:
+            out = core.ndarray((), dtype=x.dtype)
+        _reduce_sum(x.real, out.real)
+        _reduce_sum(x.imag, out.imag)
+        return out
     else:
         return _reduce_sum(x, out)
 
