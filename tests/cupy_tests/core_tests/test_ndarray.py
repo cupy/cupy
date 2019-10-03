@@ -198,15 +198,17 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
         iface = arr.__cuda_array_interface__
         assert (set(iface.keys()) ==
-                set(['shape', 'typestr', 'data', 'version', 'descr']))
+                set(['shape', 'typestr', 'data', 'version', 'descr',
+                     'strides']))
         assert iface['shape'] == (2, 3)
         assert iface['typestr'] == '<f8'
         assert isinstance(iface['data'], tuple)
         assert len(iface['data']) == 2
         assert iface['data'][0] == arr.data.ptr
         assert not iface['data'][1]
-        assert iface['version'] == 0
+        assert iface['version'] == 2
         assert iface['descr'] == [('', '<f8')]
+        assert iface['strides'] is None
 
     def test_cuda_array_interface_view(self):
         arr = cupy.zeros(shape=(10, 20), dtype=cupy.float64)
@@ -221,7 +223,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert len(iface['data']) == 2
         assert iface['data'][0] == arr.data.ptr
         assert not iface['data'][1]
-        assert iface['version'] == 0
+        assert iface['version'] == 2
         assert iface['strides'] == (320, 40)
         assert iface['descr'] == [('', '<f8')]
 
