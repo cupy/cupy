@@ -142,9 +142,11 @@ cdef class ndarray:
             'typestr': self.dtype.str,
             'descr': self.dtype.descr,
             'data': (self.data.ptr, False),
-            'version': 0,
+            'version': 2,
         }
-        if not self._c_contiguous:
+        if self._c_contiguous:
+            desc['strides'] = None
+        else:
             desc['strides'] = self.strides
 
         return desc
@@ -2745,13 +2747,16 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     desc = a.__cuda_array_interface__
     shape = desc['shape']
     dtype = numpy.dtype(desc['typestr'])
-    if 'strides' in desc:
-        strides = desc['strides']
+    if 'mask' in desc:
+        mask = desc['mask']
+        if mask is not None:
+            raise ValueError('CuPy currently does not support masked arrays.')
+    strides = desc.get('strides')
+    if strides is not None:
         nbytes = 0
         for sh, st in zip(shape, strides):
             nbytes = max(nbytes, abs(sh * st))
     else:
-        strides = None
         nbytes = internal.prod(shape) * dtype.itemsize
     mem = memory_module.UnownedMemory(desc['data'][0], nbytes, a)
     memptr = memory.MemoryPointer(mem, 0)

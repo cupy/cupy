@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 import cupy
 from cupy import cuda
 from cupy import testing
@@ -396,11 +398,20 @@ class TestFromData(unittest.TestCase):
         testing.assert_array_equal(a, b)
 
     @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_with_strdies(self, dtype):
+    def test_asarray_cuda_array_interface_with_strides(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype).T
-        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, True))
+        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a))
         assert a.strides == b.strides
         assert a.nbytes == b.data.mem.size
+
+    # TODO(leofang): remove this test when masked array is supported
+    def test_asarray_cuda_array_interface_with_masked_array(self):
+        a = cupy.arange(10)
+        mask = cupy.zeros(10)
+        a = DummyObjectWithCudaArrayInterface(a, mask)
+        with pytest.raises(ValueError) as ex:
+            b = cupy.asarray(a)  # noqa
+        assert 'does not support' in str(ex.value)
 
     def test_ascontiguousarray_on_noncontiguous_array(self):
         a = testing.shaped_arange((2, 3, 4))
@@ -466,21 +477,22 @@ class TestFromData(unittest.TestCase):
 
 class DummyObjectWithCudaArrayInterface(object):
 
-    def __init__(self, a, has_strides=False):
+    def __init__(self, a, mask=None):
         self.a = a
-        self.has_strides = has_strides
+        self.mask = mask
 
     @property
     def __cuda_array_interface__(self):
         desc = {
             'shape': self.a.shape,
+            'strides': self.a.strides,
             'typestr': self.a.dtype.str,
             'descr': self.a.dtype.descr,
-            'data': (self.a.data.mem.ptr, False),
-            'version': 0,
+            'data': (self.a.data.ptr, False),
+            'version': 2,
         }
-        if self.has_strides:
-            desc['strides'] = self.a.strides
+        if self.mask is not None:
+            desc['mask'] = self.mask
         return desc
 
 
