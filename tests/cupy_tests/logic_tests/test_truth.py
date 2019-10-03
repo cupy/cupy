@@ -114,5 +114,5 @@ class TestIn1DIsIn(unittest.TestCase):
         y = testing.shaped_arange(self.shape_y, xp, dtype)
         if xp is numpy and self.f == 'isin':
             return xp.in1d(x, y, self.assume_unique, self.invert)\
-              .reshape(x.shape)
+                .reshape(x.shape)
         return getattr(xp, self.f)(x, y, self.assume_unique, self.invert)
