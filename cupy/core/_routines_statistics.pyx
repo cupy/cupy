@@ -13,7 +13,7 @@ if cupy.cuda.cub_enabled:
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        if (cub.can_use_reduce_max(self.dtype, dtype) and (axis is None) and
+        if (cub.can_use_reduce_max(self.dtype, self.ndim, dtype, axis) and
                 (not keepdims)):
             return cub.reduce_max(self, out=out)
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
@@ -21,7 +21,7 @@ cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
 
 cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        if (cub.can_use_reduce_min(self.dtype, dtype) and (axis is None) and
+        if (cub.can_use_reduce_min(self.dtype, self.ndim, dtype, axis) and
                 (not keepdims)):
             return cub.reduce_min(self, out=out)
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
