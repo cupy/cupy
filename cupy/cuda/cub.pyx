@@ -43,7 +43,7 @@ cdef extern from 'cupy_cub.h':
 ###############################################################################
 
 
-def reduce_sum(core.ndarray x, out=None):
+def reduce_sum(core.ndarray x, out=None, bint keepdims=False):
     cdef core.ndarray y
     cdef core.ndarray ws
     cdef int dtype_id
@@ -60,7 +60,13 @@ def reduce_sum(core.ndarray x, out=None):
     ws = core.ndarray(ws_size, numpy.int8)
     ws_ptr = <void *>ws.data.ptr
     cub_reduce_sum(x_ptr, y_ptr, x.size, ws_ptr, ws_size, dtype_id)
+    if keepdims:
+        y = y.reshape((1,))
     if out is not None:
+        if y.ndim != out.ndim:
+            raise ValueError(
+                "output parameter for reduction operation sum has the wrong "
+                "number of dimensions")
         out[...] = y
         y = out
     return y
@@ -91,7 +97,7 @@ def can_use_reduce_sum(x_dtype, Py_ssize_t ndim, dtype=None, axis=None):
     return _cub_axis_compatible(axis, ndim)
 
 
-def reduce_min(core.ndarray x, out=None):
+def reduce_min(core.ndarray x, out=None, bint keepdims=False):
     cdef core.ndarray y
     cdef core.ndarray ws
     cdef int dtype_id
@@ -108,7 +114,13 @@ def reduce_min(core.ndarray x, out=None):
     ws = core.ndarray(ws_size, numpy.int8)
     ws_ptr = <void *>ws.data.ptr
     cub_reduce_min(x_ptr, y_ptr, x.size, ws_ptr, ws_size, dtype_id)
+    if keepdims:
+        y = y.reshape((1,))
     if out is not None:
+        if y.ndim != out.ndim:
+            raise ValueError(
+                "output parameter for reduction operation min has the wrong "
+                "number of dimensions")
         out[...] = y
         y = out
     return y
@@ -126,7 +138,7 @@ def can_use_reduce_min(x_dtype, Py_ssize_t ndim, dtype=None, axis=None):
     return _cub_axis_compatible(axis, ndim)
 
 
-def reduce_max(core.ndarray x, out=None):
+def reduce_max(core.ndarray x, out=None, bint keepdims=False):
     cdef core.ndarray y
     cdef core.ndarray ws
     cdef int dtype_id
@@ -143,7 +155,13 @@ def reduce_max(core.ndarray x, out=None):
     ws = core.ndarray(ws_size, numpy.int8)
     ws_ptr = <void *>ws.data.ptr
     cub_reduce_max(x_ptr, y_ptr, x.size, ws_ptr, ws_size, dtype_id)
+    if keepdims:
+        y = y.reshape((1,))
     if out is not None:
+        if y.ndim != out.ndim:
+            raise ValueError(
+                "output parameter for reduction operation max has the wrong "
+                "number of dimensions")
         out[...] = y
         y = out
     return y
