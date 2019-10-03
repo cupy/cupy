@@ -201,6 +201,20 @@ __device__ inline T norm(const complex<T>& z);
 template <typename T>
 __device__ inline complex<T> conj(const complex<T>& z);
 
+/*! Returns the real part of a \p complex.
+ *
+ *  \param z The \p complex from which to return the real part
+ */
+template <typename T>
+__device__ inline T real(const complex<T>& z);
+
+/*! Returns the imaginary part of a \p complex.
+ *
+ *  \param z The \p complex from which to return the imaginary part
+ */
+template <typename T>
+__device__ inline T imag(const complex<T>& z);
+
 /*! Returns a \p complex with the specified magnitude and phase.
  *
  *  \param m The magnitude of the returned \p complex.
