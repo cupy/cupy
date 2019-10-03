@@ -18,7 +18,7 @@ class DummyObjectWithCudaArrayInterface(object):
             'typestr': self.a.dtype.str,
             'descr': self.a.dtype.descr,
             'data': (self.a.data.ptr, False),
-            'version': 0,
+            'version': 2,
         }
         return desc
 
@@ -187,12 +187,9 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
         typestr = y.__cuda_array_interface__['typestr']
         ptr, readonly = y.__cuda_array_interface__['data']
         version = y.__cuda_array_interface__['version']
+        strides = y.__cuda_array_interface__['strides']
 
         # optional entries
-        if 'strides' in y.__cuda_array_interface__:
-            strides = y.__cuda_array_interface__['strides']
-        else:
-            strides = None
         if 'descr' in y.__cuda_array_interface__:
             descr = y.__cuda_array_interface__['descr']
         else:
@@ -203,7 +200,7 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
         assert isinstance(typestr, str)
         assert isinstance(ptr, int)
         assert isinstance(readonly, bool)
-        assert version == 0  # update this when the standard is updated!
+        assert version == 2  # update this when the standard is updated!
         assert (strides is None) or isinstance(strides, tuple)
         assert (descr is None) or isinstance(descr, list)
         if isinstance(descr, list):
