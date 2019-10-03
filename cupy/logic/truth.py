@@ -107,7 +107,7 @@ def isin(element, test_elements, assume_unique=False, invert=False):
     Args:
         element (cupy.ndarray): Input array.
         test_elements (cupy.ndarray): The values against which to test each
-            `value of ``element``. This argument is flattened if it is an
+            value of ``element``. This argument is flattened if it is an
             array or array_like.
         assume_unique (bool, optional): Ignored
         invert (bool, optional): If ``True``, the values in the returned array
