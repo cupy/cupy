@@ -879,6 +879,7 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
             ts.append(types + shuffled_types)
 
         combination = [tuple(zip(names, typs)) for typs in zip(*ts)]
+        # Remove duplicate entries
         combination = [dict(assoc_list) for assoc_list in set(combination)]
 
     def decorator(impl):
