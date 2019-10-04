@@ -2,7 +2,6 @@ import unittest
 
 import numpy
 import cupy
-from cupy import cuda
 from cupy import testing
 import cupyx.scipy.linalg
 if cupyx.scipy._scipy_available:
@@ -14,8 +13,6 @@ if cupyx.scipy._scipy_available:
     'shape': [(1, 1), (2, 2), (3, 3), (5, 5), (1, 5), (5, 1), (2, 5), (5, 2)],
 }))
 @testing.fix_random()
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.with_requires('scipy')
 class TestLUFactor(unittest.TestCase):
 
@@ -69,8 +66,6 @@ class TestLUFactor(unittest.TestCase):
     'shapes': [((4, 4), (4,)), ((5, 5), (5, 2))],
 }))
 @testing.fix_random()
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.with_requires('scipy')
 class TestLUSolve(unittest.TestCase):
 

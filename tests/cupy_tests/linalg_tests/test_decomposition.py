@@ -4,7 +4,6 @@ import numpy
 import six
 
 import cupy
-from cupy import cuda
 from cupy import testing
 from cupy.testing import condition
 
@@ -43,8 +42,6 @@ def random_matrix(shape, dtype, scale, sym=False):
     return new_a.astype(dtype)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestCholeskyDecomposition(unittest.TestCase):
 
@@ -67,8 +64,6 @@ class TestCholeskyDecomposition(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'mode': ['r', 'raw', 'complete', 'reduced'],
 }))
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestQRDecomposition(unittest.TestCase):
 
@@ -98,8 +93,6 @@ class TestQRDecomposition(unittest.TestCase):
     'full_matrices': [True, False],
 }))
 @testing.fix_random()
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestSVD(unittest.TestCase):
 
