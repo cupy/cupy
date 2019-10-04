@@ -114,6 +114,22 @@ class TestInv(unittest.TestCase):
         self.check_shape((2, 4, 3))
 
 
+# TODO(hvy): Condition test without reading fromrivate attribute.
+@unittest.skipUnless(
+    cupy.linalg._synchronize_check_cusolver_dev_info,
+    'Async cusolver calls will behave differently from NumPy')
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
+class TestInvInvalid(unittest.TestCase):
+
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
+    @testing.for_float_dtypes(no_float16=True)
+    def test_inv(self, dtype, xp):
+        a = xp.array([[1, 2], [2, 4]]).astype(dtype)
+        return xp.linalg.inv(a)
+
+
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu

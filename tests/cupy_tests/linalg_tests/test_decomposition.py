@@ -64,6 +64,28 @@ class TestCholeskyDecomposition(unittest.TestCase):
         self.check_L(numpy.array([[1, 2], [1, 9]], dtype))
 
 
+# TODO(hvy): Condition test without reading fromrivate attribute.
+@unittest.skipUnless(
+    cupy.linalg._synchronize_check_cusolver_dev_info,
+    'Async cusolver calls will behave differently from NumPy')
+@unittest.skipUnless(
+    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
+class TestCholeskyInvalid(unittest.TestCase):
+
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
+    def check_L(self, array, xp):
+        a = xp.asarray(array)
+        return xp.linalg.cholesky(a)
+
+    @testing.for_dtypes([
+        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
+        numpy.float32, numpy.float64])
+    def test_decomposition(self, dtype):
+        A = numpy.array([[1, -2], [-2, 1]]).astype(dtype)
+        self.check_L(A)
+
+
 @testing.parameterize(*testing.product({
     'mode': ['r', 'raw', 'complete', 'reduced'],
 }))
