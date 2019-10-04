@@ -161,7 +161,7 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
         y (cupy.ndarray or None): Vector y. It must be F-contiguous.
         alpha (float): Coefficient for x.
         beta (float): Coefficient for y.
-        merge_path (bool): If ``True``, merge path algoritm is used.
+        merge_path (bool): If ``True``, merge path algorithm is used.
 
         All pointers must be aligned with 128 bytes.
 

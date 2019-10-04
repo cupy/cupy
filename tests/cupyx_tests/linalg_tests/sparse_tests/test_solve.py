@@ -34,7 +34,7 @@ class TestLschol(unittest.TestCase):
         # symmetric and positive definite
         self.A = self.A.T*self.A + 10*scipy.sparse.eye(50)
         self.b = self.A.T*self.b
-        # inital scipy results by dense cholesky method.
+        # initial scipy results by dense cholesky method.
         L = scipy.linalg.cho_factor(self.A.todense())
         self.x = scipy.linalg.cho_solve(L, self.b)
         if self.dtype == numpy.float64:

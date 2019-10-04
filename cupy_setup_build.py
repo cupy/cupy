@@ -522,7 +522,7 @@ def make_extensions(options, compiler, use_cython):
                 args = s.setdefault('extra_link_args', [])
                 args.append(ldflag)
                 if PLATFORM_DARWIN:
-                    # -rpath is only supported when targetting Mac OS X 10.5 or
+                    # -rpath is only supported when targeting Mac OS X 10.5 or
                     # later
                     args.append('-mmacosx-version-min=10.5')
 
