@@ -72,7 +72,7 @@ class TestCholeskyDecomposition(unittest.TestCase):
 @testing.gpu
 class TestQRDecomposition(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     def check_mode(self, array, mode, dtype):
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
