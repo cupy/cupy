@@ -253,7 +253,7 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
 
     # TODO(takgi) For its implementation reason, cupy.ndarray.argsort
     # currently performs full argsort with Thrust's efficient radix sort
-    # algoritm.
+    # algorithm.
 
     # kth is ignored.
     return data.argsort(_axis)
