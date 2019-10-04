@@ -838,25 +838,11 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
     on the option ``full``. If ``full`` is ``True``,
     all combinations of ``types`` are tested.
     Sometimes, such an exhaustive test can be costly.
-    So, if ``full`` is ``False``, only the subset of possible
-    combinations is tested. Specifically, at first,
-    the shuffled lists of ``types`` are made for each argument
-    name in ``names``.
-    Let the lists be ``D1``, ``D2``, ..., ``Dn``
-    where :math:`n` is the number of arguments.
-    Then, the combinations to be tested will be ``zip(D1, ..., Dn)``.
-    If ``full`` is ``None``, the behavior is switched
-    by setting the environment variable ``CUPY_TEST_FULL_COMBINATION=1``.
-
-    For example, let ``types`` be ``[float16, float32, float64]``
-    and ``names`` be ``['a_type', 'b_type']``. If ``full`` is ``True``,
-    then the decorated test fixture is executed with all
-    :math:`2^3` patterns. On the other hand, if ``full`` is ``False``,
-    shuffled lists are made for ``a_type`` and ``b_type``.
-    Suppose the lists are ``(16, 64, 32)`` for ``a_type`` and
-    ``(32, 64, 16)`` for ``b_type`` (prefixes are removed for short).
-    Then the combinations of ``(a_type, b_type)`` to be tested are
-    ``(16, 32)``, ``(64, 64)`` and ``(32, 16)``.
+    So, if ``full`` is ``False``, only a subset of possible combinations
+    is randomly sampled. If ``full`` is ``None``, the behavior is
+    determined by an environment variable ``CUPY_TEST_FULL_COMBINATION``.
+    If the value is set to ``'1'``, it behaves as if ``full=True``, and
+    otherwise ``full=False``.
     """
 
     types = list(types)
