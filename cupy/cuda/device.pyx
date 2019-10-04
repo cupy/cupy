@@ -3,17 +3,13 @@
 import threading
 
 from cupy.cuda import cublas
+from cupy.cuda import cusolver
 from cupy.cuda import cusparse
 from cupy.cuda cimport runtime
 from cupy.cuda import runtime as runtime_module
 from cupy import util
 
-try:
-    from cupy.cuda import cusolver
-    cusolver_enabled = True
-except ImportError:
-    cusolver_enabled = False
-
+cusolver_enabled = True
 
 cdef object _thread_local = threading.local()
 

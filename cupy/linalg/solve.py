@@ -4,14 +4,11 @@ import six
 
 import cupy
 from cupy.core import core
-from cupy import cuda
 from cupy.cuda import cublas
+from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import decomposition
 from cupy.linalg import util
-
-if cuda.cusolver_enabled:
-    from cupy.cuda import cusolver
 
 
 def solve(a, b):
@@ -35,9 +32,6 @@ def solve(a, b):
     #       we manually solve a linear system with QR decomposition.
     #       For details, please see the following:
     #       https://docs.nvidia.com/cuda/cusolver/index.html#qr_examples
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-
     util._assert_cupy_array(a, b)
     util._assert_nd_squareness(a)
 
@@ -249,9 +243,6 @@ def inv(a):
     """
     if a.ndim >= 3:
         return _batched_inv(a)
-
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
     # to prevent `a` to be overwritten
     a = a.copy()
