@@ -33,10 +33,8 @@ def _ureduce(a, func, **kwargs):
         else:
             keep = set(range(nd)) - set(axis)
             nkeep = len(keep)
-            # swap axis that should not be reduced to front
             for i, s in enumerate(sorted(keep)):
                 a = a.swapaxes(i, s)
-            # merge reduced axis
             a = a.reshape(a.shape[:nkeep] + (-1,))
             kwargs['axis'] = -1
         keepdim = tuple(keepdim)
