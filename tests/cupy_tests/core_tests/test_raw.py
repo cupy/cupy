@@ -6,6 +6,7 @@ import unittest
 
 import cupy
 from cupy import testing
+from cupy.cuda import compiler
 
 
 _test_source1 = r'''
@@ -116,6 +117,7 @@ class TestRaw(unittest.TestCase):
             os.environ['CUPY_CACHE_DIR'] = _old_cache_dir
         else:
             os.environ.pop('CUPY_CACHE_DIR')
+        compiler._empty_file_preprocess_cache = {}
 
     def _helper(self, kernel, dtype):
         N = 10
@@ -170,7 +172,8 @@ class TestRaw(unittest.TestCase):
 
     def test_invalid_compiler_flag(self):
         with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-            cupy.RawModule(_test_source3, ("-DPRECISION=3",))
+            cupy.RawModule(_test_source3, ("-DPRECISION=3",),
+                           backend=self.backend)
         assert 'precision not supported' in str(ex.value)
 
     def test_module_load_failure(self):
@@ -178,7 +181,8 @@ class TestRaw(unittest.TestCase):
         # this error is more likely to appear when using RawModule, so
         # let us do it here
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
-            cupy.RawModule(os.path.expanduser("~/this_does_not_exist.cubin"))
+            cupy.RawModule(os.path.expanduser("~/this_does_not_exist.cubin"),
+                           backend=self.backend)
         assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)
 
     def test_get_function_failure(self):
