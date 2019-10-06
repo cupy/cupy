@@ -94,6 +94,22 @@ class TestDeviceAttributes(unittest.TestCase):
             # try to retrieve attributes from a non-existent device
             cuda.device.Device(cuda.runtime.getDeviceCount()).attributes
 
+@testing.gpu
+class TestDevicePCIBusId(unittest.TestCase):
+    def test_device_get_pci_bus_id(self):
+        import re
+        d = cuda.Device()
+        pci_bus_id = d.pci_bus_id
+        assert re.match("^[a-fA-F0-9]{4}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}.[a-fA-F0-9]", pci_bus_id)
+    def test_device_by_pci_bus_id(self):
+        d1 = cuda.Device()
+        d2 = cuda.Device(d1.pci_bus_id)
+        assert d1 == d2
+        d3 = cuda.Device(d2)
+        assert d2 == d3
+        with pytest.raises(cuda.runtime.CUDARuntimeError) as excinfo:
+            d4 = cuda.Device("fake:id")
+            assert excinfo == "cudaErrorInvalidValue: invalid argument"
 
 @testing.gpu
 class TestDeviceHandles(unittest.TestCase):
