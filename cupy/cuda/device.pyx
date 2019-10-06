@@ -98,10 +98,11 @@ cdef class Device:
     original one.
 
     Args:
-        device (int or cupy.cuda.Device): Index of the device to manipulate. Be
-            careful that the device ID (a.k.a. GPU ID) is zero origin. If it is
-            a Device object, then its ID is used. The current device is
-            selected by default.
+        device (int or cupy.cuda.Device or str): Index of the device to
+            manipulate. Be careful that the device ID (a.k.a. GPU ID) is zero
+            origin. If it is a Device object, then its ID is used. If device is
+            a str, then it is used as a PCI bus ID to choose a specific device.
+            The current device is selected by default.
 
     Attributes:
         id (int): ID of this device.
@@ -112,7 +113,10 @@ cdef class Device:
         if device is None:
             self.id = runtime.getDevice()
         else:
-            self.id = int(device)
+            try:
+                self.id = int(device)
+            except ValueError:
+                self.id = runtime.deviceGetByPCIBusId(str(device))
 
         self._device_stack = []
 
