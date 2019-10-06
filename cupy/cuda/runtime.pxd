@@ -310,6 +310,7 @@ cpdef int runtimeGetVersion() except? -1
 cpdef int getDevice() except? -1
 cpdef int deviceGetAttribute(int attrib, int device) except? -1
 cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1
+cpdef unicode deviceGetPCIBusId(int device)
 cpdef int getDeviceCount() except? -1
 cpdef setDevice(int device)
 cpdef deviceSynchronize()

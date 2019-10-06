@@ -81,6 +81,9 @@ def _get_attributes(device_id):
                     raise
     return d
 
+def _get_pci_bus_id(device_id):
+    """Return the string representing the PCI Bus ID"""
+    return runtime.deviceGetPCIBusId(device_id)
 
 cdef class Device:
 
@@ -250,6 +253,18 @@ cdef class Device:
                 `MaxThreadsPerBlock`.
         """
         return _get_attributes(self.id)
+
+    @property
+    def pci_bus_id(self):
+        """A string of the PCI Bus ID
+
+        Returns:
+            pci_bus_id (str):
+                Returned identifier string for the device in the following
+                format [domain]:[bus]:[device].[function] where domain, bus,
+                device, and function are all hexadecimal values.
+        """
+        return _get_pci_bus_id(self.id)
 
     def __richcmp__(Device self, object other, int op):
         if op == 2:

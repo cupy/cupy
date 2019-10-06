@@ -61,6 +61,7 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaGetDevice(int* device)
     int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device)
     int cudaDeviceGetByPCIBusId(int* device, const char* pciBusId)
+    int cudaDeviceGetPCIBusId(char* pciBusId, int len, int device)
     int cudaGetDeviceCount(int* count)
     int cudaSetDevice(int device)
     int cudaDeviceSynchronize()
@@ -244,6 +245,12 @@ cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
     status = cudaDeviceGetByPCIBusId(&device, c_pci_bus_id)
     check_status(status)
     return device
+
+cpdef unicode deviceGetPCIBusId(int device):
+    cdef char pci_bus_id[13]
+    status = cudaDeviceGetPCIBusId(pci_bus_id, 13, device)
+    check_status(status)
+    return pci_bus_id.decode("UTF-8")
 
 cpdef int getDeviceCount() except? -1:
     cdef int count
