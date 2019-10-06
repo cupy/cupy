@@ -142,7 +142,7 @@ def compile_using_nvcc(source, options=(), arch=None,
         try:
             _run_nvcc(cmd, root_dir)
         except NVCCException as e:
-            cex = CompileException(str(e), source, cu_path, options)
+            cex = CompileException(str(e), source, cu_path, options, 'nvcc')
 
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -174,7 +174,6 @@ def _preprocess(source, options, arch, backend):
             if dump:
                 e.dump(sys.stderr)
             raise
-
     elif backend == 'nvcc':
         try:
             result = compile_using_nvcc(source, options, arch, 'preprocess.cu',
@@ -293,15 +292,17 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
 
 class CompileException(Exception):
 
-    def __init__(self, msg, source, name, options):
+    def __init__(self, msg, source, name, options, backend='nvrtc'):
         self._msg = msg
         self.source = source
         self.name = name
         self.options = options
+        self.backend = backend
         super(CompileException, self).__init__()
 
     def __reduce__(self):
-        return (type(self), (self._msg, self.source, self.name, self.options))
+        return (type(self), (self._msg, self.source, self.name,
+                             self.options, self.backend))
 
     def __repr__(self):
         return str(self)
@@ -316,7 +317,8 @@ class CompileException(Exception):
         lines = self.source.split('\n')
         digits = int(math.floor(math.log10(len(lines)))) + 1
         linum_fmt = '{{:0{}d}} '.format(digits)
-        f.write('NVRTC compilation error: {}\n'.format(self))
+        f.write('{} '.format(self.backend.upper()))
+        f.write('compilation error: {}\n'.format(self))
         f.write('-----\n')
         f.write('Name: {}\n'.format(self.name))
         f.write('Options: {}\n'.format(' '.join(self.options)))
@@ -352,7 +354,7 @@ class _NVRTCProgram(object):
             return nvrtc.getPTX(self.ptr)
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
-            raise CompileException(log, self.src, self.name, options)
+            raise CompileException(log, self.src, self.name, options, 'nvrtc')
 
 
 def is_valid_kernel_name(name):
@@ -375,6 +377,7 @@ def _run_hipcc(cmd, cwd='.', env=None):
         return subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=cwd,
                                        env=env)
     except subprocess.CalledProcessError as e:
+        # TODO(leofang): raise an "HIPCCException"?
         raise RuntimeError(
             '`hipcc` command returns non-zero exit status. \n'
             'command: {0}\n'
@@ -485,6 +488,8 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
                 mod.load(binary)
                 return mod
 
+    # TODO(leofang): catch HIPCCException and convert it to CompileException
+    # with backend='hipcc'
     binary = _hipcc(source, options, arch)
     binary_hash = six.b(hashlib.md5(binary).hexdigest())
 
