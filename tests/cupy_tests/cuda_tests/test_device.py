@@ -112,6 +112,10 @@ class TestDevicePCIBusId(unittest.TestCase):
             d4 = cuda.Device.from_pci_bus_id("fake:id")
             assert excinfo == "cudaErrorInvalidValue: invalid argument"
 
+        with pytest.raises(cuda.runtime.CUDARuntimeError) as excinfo:
+            d4 = cuda.Device.from_pci_bus_id("FFFF:FF:FF.F")
+            assert excinfo == "cudaErrorInvalidDevice: invalid device ordinal"
+
 @testing.gpu
 class TestDeviceHandles(unittest.TestCase):
     def _check_handle(self, func):
