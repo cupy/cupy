@@ -102,7 +102,9 @@ class TestDevicePCIBusId(unittest.TestCase):
         d = cuda.Device()
         pci_bus_id = d.pci_bus_id
         assert re.match(
-            "^[a-fA-F0-9]{4}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}.[a-fA-F0-9]", pci_bus_id)
+            "^[a-fA-F0-9]{4}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}.[a-fA-F0-9]",
+            pci_bus_id
+        )
 
     def test_device_by_pci_bus_id(self):
         d1 = cuda.Device()
