@@ -3,6 +3,7 @@ from libc.stdint cimport int32_t
 
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.cuda cimport runtime
+from cupy.cuda cimport stream as stream_module
 
 import string
 
@@ -393,7 +394,7 @@ class ReductionKernel(object):
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
         keepdims = kwargs.pop('keepdims', False)
-        stream = kwargs.pop('stream', None)
+        stream = kwargs.pop('stream', stream_module.get_current_stream_ptr())
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 

@@ -25,6 +25,7 @@ from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.core._memory_range cimport may_share_bounds
+from cupy.cuda cimport stream as stream_module
 
 
 _thread_local = threading.local()
@@ -534,7 +535,7 @@ cdef class ElementwiseKernel:
 
         size = -1
         size = kwargs.pop('size', -1)
-        stream = kwargs.pop('stream', None)
+        stream = kwargs.pop('stream', stream_module.get_current_stream_ptr())
         if len(kwargs):
             raise TypeError('Wrong arguments %s' % kwargs)
 
