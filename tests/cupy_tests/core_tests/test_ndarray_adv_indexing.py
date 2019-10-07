@@ -343,10 +343,10 @@ class TestArrayInvalidValueAdvGetitemForOldVersion(unittest.TestCase):
     {'shape': (2, 3, 4),
      'indexes': (slice(None), [[1, 2], [0, -1]],), 'value': 1},
     {'shape': (2, 3, 4),
-     'indexes': (slice(None), slice(None), [[1, 2], [0, 2]]), 'value': 1},
+     'indexes': (slice(None), slice(None), [[1, 2], [0, -1]]), 'value': 1},
     # slice and array
     {'shape': (2, 3, 4),
-     'indexes': (slice(None), slice(1, 2), [[1, 2], [0, 2]]), 'value': 1},
+     'indexes': (slice(None), slice(1, 2), [[1, 2], [0, -1]]), 'value': 1},
     # None and array
     {'shape': (2, 3, 4),
      'indexes': (None, [1, -1]), 'value': 1},
@@ -507,7 +507,7 @@ class TestArrayAdvancedIndexingSetitemScalarValueIndexError(unittest.TestCase):
      'value': numpy.array([1, 2, 3, 4])},
     {'shape': (2, 3, 4), 'indexes': (slice(None), [0, -1]),
      'value': numpy.arange(2 * 2 * 4).reshape(2, 2, 4)},
-    {'shape': (2, 3, 4), 'indexes': (slice(None), [[0, 1], [2, 0]]),
+    {'shape': (2, 5, 4), 'indexes': (slice(None), [[0, 2], [1, -1]]),
      'value': numpy.arange(2 * 2 * 2 * 4).reshape(2, 2, 2, 4)},
     # mask
     {'shape': (2, 3, 4), 'indexes': numpy.random.choice([False, True], (2, 3)),

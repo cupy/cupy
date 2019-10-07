@@ -43,6 +43,7 @@ cpdef MemoryPointer alloc(size)
 
 
 cpdef set_allocator(allocator=*)
+cpdef get_allocator()
 
 
 cdef class MemoryPool:

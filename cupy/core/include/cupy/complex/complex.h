@@ -238,7 +238,7 @@ __device__ inline complex<T> operator*(const complex<T>& lhs,
 template <typename T>
 __device__ inline complex<T> operator*(const complex<T>& lhs, const T& rhs);
 
-/*! Multiplies a scalr by a \p complex number.
+/*! Multiplies a scalar by a \p complex number.
  *
  *  \param lhs The scalar.
  *  \param rhs The \p complex.

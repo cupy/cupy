@@ -12,10 +12,12 @@ from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import profiler  # NOQA
 from cupy.cuda import runtime  # NOQA
 from cupy.cuda import stream  # NOQA
+from cupy.cuda import texture  # NOQA
 
 
 _available = None
 _cuda_path = None
+_cub_disabled = None
 
 
 from cupy.cuda import cusolver  # NOQA
@@ -32,6 +34,14 @@ try:
     thrust_enabled = True
 except ImportError:
     thrust_enabled = False
+
+cub_enabled = False
+if int(os.getenv('CUB_DISABLED', 0)) == 0:
+    try:
+        from cupy.cuda import cub  # NOQA
+        cub_enabled = True
+    except ImportError:
+        pass
 
 try:
     from cupy.cuda import nccl  # NOQA
@@ -96,6 +106,7 @@ from cupy.cuda.memory import Memory  # NOQA
 from cupy.cuda.memory import MemoryPointer  # NOQA
 from cupy.cuda.memory import MemoryPool  # NOQA
 from cupy.cuda.memory import set_allocator  # NOQA
+from cupy.cuda.memory import get_allocator  # NOQA
 from cupy.cuda.memory import UnownedMemory  # NOQA
 from cupy.cuda.memory_hook import MemoryHook  # NOQA
 from cupy.cuda.pinned_memory import alloc_pinned_memory  # NOQA

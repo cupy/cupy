@@ -7,6 +7,17 @@ Upgrade Guide
 This is a list of changes introduced in each release that users should be aware of when migrating from older versions.
 Most changes are carefully designed not to break existing code; however changes that may possibly break them are highlighted with a box.
 
+CuPy v7
+=======
+
+Dropping Support of Python 2.7 and 3.4
+--------------------------------------
+
+Starting from CuPy v7, Python 2.7 and 3.4 are no longer supported as it reaches its end-of-life (EOL) in January 2020 (2.7) and March 2019 (3.4).
+Python 3.5.1 is the minimum Python version supported by CuPy v7.
+Please upgrade the Python version if you are using affected versions of Python to any later versions listed under :ref:`install-guide`.
+
+
 CuPy v6
 =======
 
@@ -15,6 +26,7 @@ Binary Packages Ignore ``LD_LIBRARY_PATH``
 
 Prior to CuPy v6, ``LD_LIBRARY_PATH`` environment variable can be used to override cuDNN / NCCL libraries bundled in the binary distribution (also known as wheels).
 In CuPy v6, ``LD_LIBRARY_PATH`` will be ignored during discovery of cuDNN / NCCL; CuPy binary distributions always use libraries that comes with the package to avoid errors caused by unexpected override.
+
 
 CuPy v5
 =======

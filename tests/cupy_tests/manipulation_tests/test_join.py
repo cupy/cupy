@@ -53,6 +53,14 @@ class TestJoin(unittest.TestCase):
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
+    def test_concatenate_axis_none(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        b = testing.shaped_reverse_arange((3, 5, 2), xp, dtype)
+        c = testing.shaped_arange((7, ), xp, dtype)
+        return xp.concatenate((a, b, c), axis=None)
+
+    @testing.for_all_dtypes(name='dtype')
+    @testing.numpy_cupy_array_equal()
     def test_concatenate_large_2(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3, 2), xp, dtype)

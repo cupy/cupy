@@ -3,6 +3,7 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -11,6 +12,7 @@ import six
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import nvrtc
+from cupy.cuda import runtime
 
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
@@ -118,6 +120,16 @@ _empty_file_preprocess_cache = {}
 
 def compile_with_cache(source, options=(), arch=None, cache_dir=None,
                        extra_source=None):
+    if runtime.is_hip:
+        return _compile_with_cache_hipcc(source, options, arch, cache_dir,
+                                         extra_source)
+    else:
+        return _compile_with_cache_nvrtc(source, options, arch, cache_dir,
+                                         extra_source)
+
+
+def _compile_with_cache_nvrtc(source, options, arch, cache_dir,
+                              extra_source):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -252,3 +264,150 @@ class _NVRTCProgram(object):
 
 def is_valid_kernel_name(name):
     return re.match('^[a-zA-Z_][a-zA-Z_0-9]*$', name) is not None
+
+
+_hipcc_version = None
+
+
+def _get_hipcc_version():
+    global _hipcc_version
+    if _hipcc_version is None:
+        cmd = ['hipcc', '--version']
+        _hipcc_version = _run_hipcc(cmd)
+    return _hipcc_version
+
+
+def _run_hipcc(cmd, cwd='.', env=None):
+    try:
+        return subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=cwd,
+                                       env=env)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            '`hipcc` command returns non-zero exit status. \n'
+            'command: {0}\n'
+            'return-code: {1}\n'
+            'stdout/stderr: \n'
+            '{2}'.format(e.cmd, e.returncode, e.output))
+    except OSError as e:
+        raise OSError('Failed to run `hipcc` command. '
+                      'Check PATH environment variable: '
+                      + str(e))
+
+
+def _hipcc(source, options, arch):
+    cmd = ['hipcc', '--genco', '--targets=' + arch,
+           '--flags="%s"' % ' '.join(options)]
+
+    with TemporaryDirectory() as root_dir:
+        path = os.path.join(root_dir, 'kern')
+        in_path = path + '.cpp'
+        out_path = path + '.hsaco'
+
+        with open(in_path, 'w') as f:
+            f.write(source)
+
+        cmd += [in_path, '-o', out_path]
+
+        env = os.environ.copy()
+
+        output = _run_hipcc(cmd, root_dir, env)
+        if not os.path.isfile(out_path):
+            raise RuntimeError(
+                '`hipcc` command does not generate output file. \n'
+                'command: {0}\n'
+                'stdout/stderr: \n'
+                '{1}'.format(cmd, output))
+        with open(out_path, 'rb') as f:
+            return f.read()
+
+
+def _preprocess_hipcc(source, options):
+    cmd = ['hipcc', '--preprocess'] + list(options)
+    with TemporaryDirectory() as root_dir:
+        path = os.path.join(root_dir, 'kern')
+        cu_path = '%s.cpp' % path
+
+        with open(cu_path, 'w') as cu_file:
+            cu_file.write(source)
+
+        cmd.append(cu_path)
+        pp_src = _run_hipcc(cmd, root_dir)
+        assert isinstance(pp_src, six.binary_type)
+        return re.sub(b'(?m)^#.*$', b'', pp_src)
+
+
+def _convert_to_hip_source(source):
+    table = [
+        ('threadIdx.', 'hipThreadIdx_'),
+        ('blockIdx.', 'hipBlockIdx_'),
+        ('blockDim.', 'hipBlockDim_'),
+        ('gridDim.', 'hipGridDim_'),
+    ]
+    for i, j in table:
+        source = source.replace(i, j)
+
+    return "#include <hip/hip_runtime.h>\n" + source
+
+
+def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
+                              use_converter=True):
+    global _empty_file_preprocess_cache
+    if cache_dir is None:
+        cache_dir = get_cache_dir()
+    if arch is None:
+        arch = os.environ.get('HCC_AMDGPU_TARGET')
+    if use_converter:
+        source = _convert_to_hip_source(source)
+
+    env = (arch, options, _get_hipcc_version())
+    base = _empty_file_preprocess_cache.get(env, None)
+    if base is None:
+        # This is checking of HIPCC compiler internal version
+        base = _preprocess_hipcc('', options)
+        _empty_file_preprocess_cache[env] = base
+    key_src = '%s %s %s %s' % (env, base, source, extra_source)
+
+    key_src = key_src.encode('utf-8')
+    name = '%s.hsaco' % hashlib.md5(key_src).hexdigest()
+
+    if not os.path.isdir(cache_dir):
+        try:
+            os.makedirs(cache_dir)
+        except OSError:
+            if not os.path.isdir(cache_dir):
+                raise
+
+    mod = function.Module()
+    # To handle conflicts in concurrent situation, we adopt lock-free method
+    # to avoid performance degradation.
+    path = os.path.join(cache_dir, name)
+    if os.path.exists(path):
+        with open(path, 'rb') as file:
+            data = file.read()
+        if len(data) >= 32:
+            hash_value = data[:32]
+            binary = data[32:]
+            binary_hash = six.b(hashlib.md5(binary).hexdigest())
+            if hash_value == binary_hash:
+                mod.load(binary)
+                return mod
+
+    binary = _hipcc(source, options, arch)
+    binary_hash = six.b(hashlib.md5(binary).hexdigest())
+
+    # shutil.move is not atomic operation, so it could result in a corrupted
+    # file. We detect it by appending md5 hash at the beginning of each cache
+    # file. If the file is corrupted, it will be ignored next time it is read.
+    with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
+        tf.write(binary_hash)
+        tf.write(binary)
+        temp_path = tf.name
+    shutil.move(temp_path, path)
+
+    # Save .cu source file along with .hsaco
+    if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
+        with open(path + '.cu', 'w') as f:
+            f.write(source)
+
+    mod.load(binary)
+    return mod

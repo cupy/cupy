@@ -12,6 +12,8 @@ Truth value testing
 
    cupy.all
    cupy.any
+   cupy.in1d
+   cupy.isin
 
 
 Infinities and NaNs
