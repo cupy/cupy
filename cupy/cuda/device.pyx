@@ -81,9 +81,11 @@ def _get_attributes(device_id):
                     raise
     return d
 
+
 def _get_pci_bus_id(device_id):
     """Return the string representing the PCI Bus ID"""
     return runtime.deviceGetPCIBusId(device_id)
+
 
 cdef class Device:
 
