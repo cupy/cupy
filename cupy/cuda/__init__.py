@@ -21,6 +21,8 @@ _cub_disabled = None
 
 
 from cupy.cuda import cusolver  # NOQA
+# This flag is kept for backward compatibility.
+# It is always True as cuSOLVER library is always available in CUDA 8.0+.
 cusolver_enabled = True
 
 try:
