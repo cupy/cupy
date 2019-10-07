@@ -101,11 +101,10 @@ cdef class Device:
     original one.
 
     Args:
-        device (int or cupy.cuda.Device or str): Index of the device to
-            manipulate. Be careful that the device ID (a.k.a. GPU ID) is zero
-            origin. If it is a Device object, then its ID is used. If device is
-            a str, then it is used as a PCI bus ID to choose a specific device.
-            The current device is selected by default.
+        device (int or cupy.cuda.Device): Index of the device to manipulate. Be
+            careful that the device ID (a.k.a. GPU ID) is zero origin. If it is
+            a Device object, then its ID is used. The current device is
+            selected by default.
 
     Attributes:
         id (int): ID of this device.
@@ -116,10 +115,7 @@ cdef class Device:
         if device is None:
             self.id = runtime.getDevice()
         else:
-            try:
-                self.id = int(device)
-            except ValueError:
-                self.id = runtime.deviceGetByPCIBusId(str(device))
+            self.id = int(device)
 
         self._device_stack = []
 
@@ -265,6 +261,23 @@ cdef class Device:
                 device, and function are all hexadecimal values.
         """
         return _get_pci_bus_id(self.id)
+
+    @classmethod
+    def from_pci_bus_id(cls, pci_bus_id):
+        """Returns a new device instance based on a PCI Bus ID
+
+        Args:
+            pci_bus_id (str):
+                The string for a device in the following format
+                [domain]:[bus]:[device].[function] where domain, bus, device,
+                and function are all hexadecimal values.
+        Returns:
+            device (Device):
+                An instance of the Device class that has the PCI Bus ID as
+                given by the argument pci_bus_id.
+        """
+        new_id = runtime.deviceGetByPCIBusId(str(pci_bus_id))
+        return cls(new_id)
 
     def __richcmp__(Device self, object other, int op):
         if op == 2:
