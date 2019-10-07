@@ -247,6 +247,9 @@ cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
     return device
 
 cpdef str deviceGetPCIBusId(int device):
+    # The PCI Bus ID string must be able to store 13 characters including the
+    # NULL-terminator according to the CUDA documentation.
+    # https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html
     cdef char pci_bus_id[13]
     status = cudaDeviceGetPCIBusId(pci_bus_id, 13, device)
     check_status(status)
