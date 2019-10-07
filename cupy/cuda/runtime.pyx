@@ -238,7 +238,7 @@ cpdef int deviceGetAttribute(int attrib, int device) except? -1:
 
 cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
     # Encode the python string before passing to native code
-    byte_pci_bus_id = pci_bus_id.encode("UTF-8")
+    byte_pci_bus_id = pci_bus_id.encode("ascii")
     cdef const char* c_pci_bus_id = byte_pci_bus_id
 
     cdef int device
@@ -246,11 +246,11 @@ cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
     check_status(status)
     return device
 
-cpdef unicode deviceGetPCIBusId(int device):
+cpdef str deviceGetPCIBusId(int device):
     cdef char pci_bus_id[13]
     status = cudaDeviceGetPCIBusId(pci_bus_id, 13, device)
     check_status(status)
-    return pci_bus_id.decode("UTF-8")
+    return pci_bus_id.decode("ascii")
 
 cpdef int getDeviceCount() except? -1:
     cdef int count
