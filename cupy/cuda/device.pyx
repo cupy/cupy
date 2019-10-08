@@ -82,11 +82,6 @@ def _get_attributes(device_id):
     return d
 
 
-def _get_pci_bus_id(device_id):
-    """Return the string representing the PCI Bus ID"""
-    return runtime.deviceGetPCIBusId(device_id)
-
-
 cdef class Device:
 
     """Object that represents a CUDA device.
@@ -262,7 +257,7 @@ cdef class Device:
                 format [domain]:[bus]:[device].[function] where domain, bus,
                 device, and function are all hexadecimal values.
         """
-        return _get_pci_bus_id(self.id)
+        return runtime.deviceGetPCIBusId(self.id)
 
     @classmethod
     def from_pci_bus_id(cls, pci_bus_id):
