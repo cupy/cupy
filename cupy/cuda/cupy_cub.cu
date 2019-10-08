@@ -1,8 +1,37 @@
+#include <cupy/complex.cuh>
 #include <cub/device/device_reduce.cuh>
 #include "cupy_cub.h"
-#include <stdexcept>
+//#include <stdexcept>
 
 using namespace cub;
+
+template <>
+struct FpLimits<complex<float>>
+{
+    static __host__ __device__ __forceinline__ complex<float> Max() {
+        return FLT_MAX;
+    }
+
+    static __host__ __device__ __forceinline__ complex<float> Lowest() {
+        return FLT_MAX * float(-1);
+    }
+};
+
+template <>
+struct FpLimits<complex<double>>
+{
+    static __host__ __device__ __forceinline__ complex<double> Max() {
+        return DBL_MAX;
+    }
+
+    static __host__ __device__ __forceinline__ complex<double> Lowest() {
+        return DBL_MAX  * double(-1);
+    }
+};
+
+template <> struct NumericTraits<complex<float>> :               BaseTraits<FLOATING_POINT, true, false, unsigned int, complex<float>> {};
+template <> struct NumericTraits<complex<double>> :              BaseTraits<FLOATING_POINT, true, false, unsigned long long, complex<double>> {};
+
 
 //
 // **** dtype_dispatcher ****
@@ -14,16 +43,18 @@ template <class functor_t, typename... Ts>
 void dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args)
 {
     switch (dtype_id) {
-    case CUPY_CUB_INT8:	   return f.template operator()<char>(std::forward<Ts>(args)...);
-    case CUPY_CUB_INT16:   return f.template operator()<short>(std::forward<Ts>(args)...);
-    case CUPY_CUB_INT32:   return f.template operator()<int>(std::forward<Ts>(args)...);
-    case CUPY_CUB_INT64:   return f.template operator()<long>(std::forward<Ts>(args)...);
-    case CUPY_CUB_UINT8:   return f.template operator()<unsigned char>(std::forward<Ts>(args)...);
-    case CUPY_CUB_UINT16:  return f.template operator()<unsigned short>(std::forward<Ts>(args)...);
-    case CUPY_CUB_UINT32:  return f.template operator()<unsigned int>(std::forward<Ts>(args)...);
-    case CUPY_CUB_UINT64:  return f.template operator()<unsigned long>(std::forward<Ts>(args)...);
-    case CUPY_CUB_FLOAT32: return f.template operator()<float>(std::forward<Ts>(args)...);
-    case CUPY_CUB_FLOAT64: return f.template operator()<double>(std::forward<Ts>(args)...);
+    case CUPY_CUB_INT8:	      return f.template operator()<char>(std::forward<Ts>(args)...);
+    case CUPY_CUB_INT16:      return f.template operator()<short>(std::forward<Ts>(args)...);
+    case CUPY_CUB_INT32:      return f.template operator()<int>(std::forward<Ts>(args)...);
+    case CUPY_CUB_INT64:      return f.template operator()<long>(std::forward<Ts>(args)...);
+    case CUPY_CUB_UINT8:      return f.template operator()<unsigned char>(std::forward<Ts>(args)...);
+    case CUPY_CUB_UINT16:     return f.template operator()<unsigned short>(std::forward<Ts>(args)...);
+    case CUPY_CUB_UINT32:     return f.template operator()<unsigned int>(std::forward<Ts>(args)...);
+    case CUPY_CUB_UINT64:     return f.template operator()<unsigned long>(std::forward<Ts>(args)...);
+    case CUPY_CUB_FLOAT32:    return f.template operator()<float>(std::forward<Ts>(args)...);
+    case CUPY_CUB_FLOAT64:    return f.template operator()<double>(std::forward<Ts>(args)...);
+    case CUPY_CUB_COMPLEX64:  return f.template operator()<complex<float>>(std::forward<Ts>(args)...);
+    case CUPY_CUB_COMPLEX128: return f.template operator()<complex<double>>(std::forward<Ts>(args)...);
     default:
 	throw std::runtime_error("Unsupported dtype ID");
     }
