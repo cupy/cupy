@@ -481,7 +481,9 @@ class TestFromData(unittest.TestCase):
         a = xp.ones((), dtype=dtype_a)
         return xp.asfortranarray(a, dtype=dtype_b)
 
+
 max_cuda_array_interface_version = 2
+
 
 class DummyObjectWithCudaArrayInterface(object):
 
