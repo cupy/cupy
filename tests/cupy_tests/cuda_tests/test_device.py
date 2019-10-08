@@ -1,3 +1,4 @@
+import re
 import threading
 import unittest
 
@@ -98,7 +99,6 @@ class TestDeviceAttributes(unittest.TestCase):
 @testing.gpu
 class TestDevicePCIBusId(unittest.TestCase):
     def test_device_get_pci_bus_id(self):
-        import re
         d = cuda.Device()
         pci_bus_id = d.pci_bus_id
         assert re.match(
