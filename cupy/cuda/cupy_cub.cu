@@ -1,19 +1,26 @@
 #include <cupy/complex.cuh>
 #include <cub/device/device_reduce.cuh>
 #include "cupy_cub.h"
-//#include <stdexcept>
+#include <stdexcept>
 
 using namespace cub;
 
+// Minimum boilerplate to support complex numbers in sum(), min(), and max():
+// - This works only because all data fields in the *Traits struct are not
+//   used in <cub/device/device_reduce.cuh>.
+// - DO NOT USE THIS STUB for supporting CUB sorting!!!!!!
+// - The Max() and Lowest() below are chosen to comply with NumPy's lexical
+//   ordering; note that std::numeric_limits<T> does not support complex
+//   numbers as in general the comparison is ill defined.
 template <>
 struct FpLimits<complex<float>>
 {
     static __host__ __device__ __forceinline__ complex<float> Max() {
-        return FLT_MAX;
+        return (complex<float>(FLT_MAX, FLT_MAX));
     }
 
     static __host__ __device__ __forceinline__ complex<float> Lowest() {
-        return FLT_MAX * float(-1);
+        return (complex<float>(FLT_MAX * float(-1), FLT_MAX * float(-1)));
     }
 };
 
@@ -21,16 +28,17 @@ template <>
 struct FpLimits<complex<double>>
 {
     static __host__ __device__ __forceinline__ complex<double> Max() {
-        return DBL_MAX;
+        return (complex<double>(DBL_MAX, DBL_MAX));
     }
 
     static __host__ __device__ __forceinline__ complex<double> Lowest() {
-        return DBL_MAX  * double(-1);
+        return (complex<double>(DBL_MAX * double(-1), DBL_MAX * double(-1)));
     }
 };
 
-template <> struct NumericTraits<complex<float>> :               BaseTraits<FLOATING_POINT, true, false, unsigned int, complex<float>> {};
-template <> struct NumericTraits<complex<double>> :              BaseTraits<FLOATING_POINT, true, false, unsigned long long, complex<double>> {};
+template <> struct NumericTraits<complex<float>>  : BaseTraits<FLOATING_POINT, true, false, unsigned int, complex<float>> {};
+template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, true, false, unsigned long long, complex<double>> {};
+// end of boilerplate
 
 
 //

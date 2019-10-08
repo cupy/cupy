@@ -25,6 +25,8 @@ cdef enum:
     CUPY_CUB_FLOAT16 = 8
     CUPY_CUB_FLOAT32 = 9
     CUPY_CUB_FLOAT64 = 10
+    CUPY_CUB_COMPLEX64 = 11
+    CUPY_CUB_COMPLEX128 = 12
 
 ###############################################################################
 # Extern
@@ -43,19 +45,7 @@ cdef extern from 'cupy_cub.h':
 ###############################################################################
 
 
-# TODO(leofang): remove this hack when CUB supports complex numbers
 def reduce_sum(core.ndarray x, out=None):
-    if x.dtype in (numpy.complex64, numpy.complex128):
-        if out is None:
-            out = core.ndarray((), dtype=x.dtype)
-        _reduce_sum(x.real, out.real)
-        _reduce_sum(x.imag, out.imag)
-        return out
-    else:
-        return _reduce_sum(x, out)
-
-
-def _reduce_sum(core.ndarray x, out=None):
     cdef core.ndarray y
     cdef core.ndarray ws
     cdef int dtype_id
@@ -99,32 +89,7 @@ def can_use_reduce_sum(x_dtype, dtype=None):
     return True
 
 
-# TODO(leofang): remove this hack when CUB supports complex numbers
 def reduce_min(core.ndarray x, out=None):
-    if x.dtype in (numpy.complex64, numpy.complex128):
-        # NumPy does the comparison of complex numbers in lexical order
-        # (numpy/numpy#2004): test real part first, then imaginary
-        out_re = _reduce_min(x.real, out if out is None else out.real)
-        idx = (x.real == out_re).nonzero()
-        if len(idx) == x.ndim:
-            y = x[idx][0]
-            if out is not None:
-                out[...] = y
-                y = out
-            return y
-        else:
-            out_im = _reduce_min(x[idx].imag, out if out is None else out.imag)
-            # we know the full answer at this point, no need to search again
-            y = out_re + 1j * out_im
-            if out is not None:
-                out[...] = y
-                y = out
-            return y
-    else:
-        return _reduce_min(x, out)
-
-
-def _reduce_min(core.ndarray x, out=None):
     cdef core.ndarray y
     cdef core.ndarray ws
     cdef int dtype_id
@@ -160,32 +125,7 @@ def can_use_reduce_min(x_dtype, dtype=None):
     return True
 
 
-# TODO(leofang): remove this hack when CUB supports complex numbers
 def reduce_max(core.ndarray x, out=None):
-    if x.dtype in (numpy.complex64, numpy.complex128):
-        # NumPy does the comparison of complex numbers in lexical order
-        # (numpy/numpy#2004): test real part first, then imaginary
-        out_re = _reduce_max(x.real, out if out is None else out.real)
-        idx = (x.real == out_re).nonzero()
-        if len(idx) == x.ndim:
-            y = x[idx][0]
-            if out is not None:
-                out[...] = y
-                y = out
-            return y
-        else:
-            out_im = _reduce_max(x[idx].imag, out if out is None else out.imag)
-            # we know the full answer at this point, no need to search again
-            y = out_re + 1j * out_im
-            if out is not None:
-                out[...] = y
-                y = out
-            return y
-    else:
-        return _reduce_max(x, out)
-
-
-def _reduce_max(core.ndarray x, out=None):
     cdef core.ndarray y
     cdef core.ndarray ws
     cdef int dtype_id
@@ -242,6 +182,10 @@ def _get_dtype_id(dtype):
         ret = CUPY_CUB_FLOAT32
     elif dtype == numpy.float64:
         ret = CUPY_CUB_FLOAT64
+    elif dtype == numpy.complex64:
+        ret = CUPY_CUB_COMPLEX64
+    elif dtype == numpy.complex128:
+        ret = CUPY_CUB_COMPLEX128
     else:
         raise ValueError('Unsupported dtype ({})'.format(dtype))
     return ret
