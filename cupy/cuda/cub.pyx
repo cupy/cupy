@@ -43,7 +43,19 @@ cdef extern from 'cupy_cub.h':
 ###############################################################################
 
 
+# TODO(leofang): remove this hack when CUB supports complex numbers
 def reduce_sum(core.ndarray x, out=None):
+    if x.dtype in (numpy.complex64, numpy.complex128):
+        if out is None:
+            out = core.ndarray((), dtype=x.dtype)
+        _reduce_sum(x.real, out.real)
+        _reduce_sum(x.imag, out.imag)
+        return out
+    else:
+        return _reduce_sum(x, out)
+
+
+def _reduce_sum(core.ndarray x, out=None):
     cdef core.ndarray y
     cdef core.ndarray ws
     cdef int dtype_id
@@ -73,11 +85,13 @@ def can_use_reduce_sum(x_dtype, dtype=None):
         # See _sum_auto_dtype in cupy/core/_routines_math.pyx for which dtypes
         # are promoted.
         support_dtype = [numpy.int64, numpy.uint64,
-                         numpy.float32, numpy.float64]
+                         numpy.float32, numpy.float64,
+                         numpy.complex64, numpy.complex128]
     elif dtype == x_dtype:
         support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
                          numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
-                         numpy.float32, numpy.float64]
+                         numpy.float32, numpy.float64,
+                         numpy.complex64, numpy.complex128]
     else:
         return False
     if x_dtype not in support_dtype:
@@ -85,7 +99,32 @@ def can_use_reduce_sum(x_dtype, dtype=None):
     return True
 
 
+# TODO(leofang): remove this hack when CUB supports complex numbers
 def reduce_min(core.ndarray x, out=None):
+    if x.dtype in (numpy.complex64, numpy.complex128):
+        # NumPy does the comparison of complex numbers in lexical order
+        # (numpy/numpy#2004): test real part first, then imaginary
+        out_re = _reduce_min(x.real, out if out is None else out.real)
+        idx = (x.real == out_re).nonzero()
+        if len(idx) == x.ndim:
+            y = x[idx][0]
+            if out is not None:
+                out[...] = y
+                y = out
+            return y
+        else:
+            out_im = _reduce_min(x[idx].imag, out if out is None else out.imag)
+            # we know the full answer at this point, no need to search again
+            y = out_re + 1j * out_im
+            if out is not None:
+                out[...] = y
+                y = out
+            return y
+    else:
+        return _reduce_min(x, out)
+
+
+def _reduce_min(core.ndarray x, out=None):
     cdef core.ndarray y
     cdef core.ndarray ws
     cdef int dtype_id
@@ -112,7 +151,8 @@ def can_use_reduce_min(x_dtype, dtype=None):
     if dtype is None or dtype == x_dtype:
         support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
                          numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
-                         numpy.float32, numpy.float64]
+                         numpy.float32, numpy.float64,
+                         numpy.complex64, numpy.complex128]
     else:
         return False
     if x_dtype not in support_dtype:
@@ -120,7 +160,32 @@ def can_use_reduce_min(x_dtype, dtype=None):
     return True
 
 
+# TODO(leofang): remove this hack when CUB supports complex numbers
 def reduce_max(core.ndarray x, out=None):
+    if x.dtype in (numpy.complex64, numpy.complex128):
+        # NumPy does the comparison of complex numbers in lexical order
+        # (numpy/numpy#2004): test real part first, then imaginary
+        out_re = _reduce_max(x.real, out if out is None else out.real)
+        idx = (x.real == out_re).nonzero()
+        if len(idx) == x.ndim:
+            y = x[idx][0]
+            if out is not None:
+                out[...] = y
+                y = out
+            return y
+        else:
+            out_im = _reduce_max(x[idx].imag, out if out is None else out.imag)
+            # we know the full answer at this point, no need to search again
+            y = out_re + 1j * out_im
+            if out is not None:
+                out[...] = y
+                y = out
+            return y
+    else:
+        return _reduce_max(x, out)
+
+
+def _reduce_max(core.ndarray x, out=None):
     cdef core.ndarray y
     cdef core.ndarray ws
     cdef int dtype_id
@@ -147,7 +212,8 @@ def can_use_reduce_max(x_dtype, dtype=None):
     if dtype is None or dtype == x_dtype:
         support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
                          numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
-                         numpy.float32, numpy.float64]
+                         numpy.float32, numpy.float64,
+                         numpy.complex64, numpy.complex128]
     else:
         return False
     if x_dtype not in support_dtype:

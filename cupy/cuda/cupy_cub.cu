@@ -1,5 +1,6 @@
 #include <cub/device/device_reduce.cuh>
 #include "cupy_cub.h"
+#include <stdexcept>
 
 using namespace cub;
 
