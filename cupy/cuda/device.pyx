@@ -116,6 +116,23 @@ cdef class Device:
 
         self._device_stack = []
 
+    @classmethod
+    def from_pci_bus_id(cls, pci_bus_id):
+        """Returns a new device instance based on a PCI Bus ID
+
+        Args:
+            pci_bus_id (str):
+                The string for a device in the following format
+                [domain]:[bus]:[device].[function] where domain, bus, device,
+                and function are all hexadecimal values.
+        Returns:
+            device (Device):
+                An instance of the Device class that has the PCI Bus ID as
+                given by the argument pci_bus_id.
+        """
+        device_id = runtime.deviceGetByPCIBusId(pci_bus_id)
+        return cls(new_id)
+
     def __int__(self):
         return self.id
 
@@ -258,23 +275,6 @@ cdef class Device:
                 device, and function are all hexadecimal values.
         """
         return runtime.deviceGetPCIBusId(self.id)
-
-    @classmethod
-    def from_pci_bus_id(cls, pci_bus_id):
-        """Returns a new device instance based on a PCI Bus ID
-
-        Args:
-            pci_bus_id (str):
-                The string for a device in the following format
-                [domain]:[bus]:[device].[function] where domain, bus, device,
-                and function are all hexadecimal values.
-        Returns:
-            device (Device):
-                An instance of the Device class that has the PCI Bus ID as
-                given by the argument pci_bus_id.
-        """
-        new_id = runtime.deviceGetByPCIBusId(str(pci_bus_id))
-        return cls(new_id)
 
     def __richcmp__(Device self, object other, int op):
         if op == 2:
