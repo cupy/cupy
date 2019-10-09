@@ -36,7 +36,7 @@ requirements = {
     ],
     'test': [
         'pytest<4.2.0',  # 4.2.0 is slow collecting tests and times out on CI.
-        'attrs<19.2.0',
+        'attrs<19.2.0',  # pytest 4.1.1 does not run with attrs==19.2.0
         'pytest',
         'mock',
     ],
