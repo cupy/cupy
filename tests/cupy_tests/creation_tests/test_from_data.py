@@ -377,49 +377,6 @@ class TestFromData(unittest.TestCase):
         a.fill(0)
         return b
 
-    @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface(self, dtype):
-        for ver in range(max_cuda_array_interface_version+1):
-            a = testing.shaped_arange((2, 3, 4), cupy, dtype)
-            b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, ver))
-            testing.assert_array_equal(a, b)
-
-    @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_is_not_copied(self, dtype):
-        for ver in range(max_cuda_array_interface_version+1):
-            a = testing.shaped_arange((2, 3, 4), cupy, dtype)
-            b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, ver))
-            a.fill(0)
-            testing.assert_array_equal(a, b)
-
-    @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_order(self, dtype):
-        for ver in range(max_cuda_array_interface_version+1):
-            a = testing.shaped_arange((2, 3, 4), cupy, dtype)
-            b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, ver),
-                             order='F')
-            assert b.flags.f_contiguous
-            testing.assert_array_equal(a, b)
-
-    @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_with_strides(self, dtype):
-        for ver in range(max_cuda_array_interface_version+1):
-            a = testing.shaped_arange((2, 3, 4), cupy, dtype).T
-            b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, ver))
-            assert a.strides == b.strides
-            assert a.nbytes == b.data.mem.size
-
-    # TODO(leofang): update this test when masked array is supported
-    @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_with_masked_array(self, dtype):
-        for ver in range(1, max_cuda_array_interface_version+1):
-            a = testing.shaped_arange((2, 3, 4), cupy, dtype)
-            mask = testing.shaped_arange((2, 3, 4), cupy, dtype)
-            a = DummyObjectWithCudaArrayInterface(a, ver, mask)
-            with pytest.raises(ValueError) as ex:
-                b = cupy.asarray(a)  # noqa
-            assert 'does not support' in str(ex.value)
-
     def test_ascontiguousarray_on_noncontiguous_array(self):
         a = testing.shaped_arange((2, 3, 4))
         b = a.transpose(2, 0, 1)
@@ -485,8 +442,54 @@ class TestFromData(unittest.TestCase):
 max_cuda_array_interface_version = 2
 
 
-class DummyObjectWithCudaArrayInterface(object):
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'ver': tuple(range(max_cuda_array_interface_version+1)),
+}))
+class TestFromExternalData(unittest.TestCase):
+    @testing.for_all_dtypes()
+    def test_asarray_cuda_array_interface(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, self.ver))
+        testing.assert_array_equal(a, b)
 
+    @testing.for_all_dtypes()
+    def test_asarray_cuda_array_interface_is_not_copied(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, self.ver))
+        a.fill(0)
+        testing.assert_array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    def test_asarray_cuda_array_interface_order(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, self.ver),
+                         order='F')
+        assert b.flags.f_contiguous
+        testing.assert_array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    def test_asarray_cuda_array_interface_with_strides(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype).T
+        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, self.ver))
+        assert a.strides == b.strides
+        assert a.nbytes == b.data.mem.size
+
+    # TODO(leofang): update this test when masked array is supported
+    @testing.for_all_dtypes()
+    def test_asarray_cuda_array_interface_with_masked_array(self, dtype):
+        if self.ver == 0:
+            raise unittest.SkipTest("Version 0 does not have the mask "
+                                    "attribute")
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        mask = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        a = DummyObjectWithCudaArrayInterface(a, self.ver, mask)
+        with pytest.raises(ValueError) as ex:
+            b = cupy.asarray(a)  # noqa
+        assert 'does not support' in str(ex.value)
+
+
+class DummyObjectWithCudaArrayInterface(object):
     def __init__(self, a, ver, mask=None):
         assert ver in tuple(range(max_cuda_array_interface_version+1))
         self.a = a
