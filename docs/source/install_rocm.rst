@@ -40,7 +40,7 @@ Install CuPy from Source
 ------------------------
 
 It is recommended to use wheels whenever possible.
-However, there is currently no wheels for ROCm environment, so that you have to build it from source.
+However, there is currently no wheels for the ROCm environment, so you have to build it from source.
 
 When installing from source, C++ compiler such as ``g++`` is required.
 You need to install it before installing CuPy.
