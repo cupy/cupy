@@ -131,7 +131,7 @@ cdef class Device:
                 given by the argument pci_bus_id.
         """
         device_id = runtime.deviceGetByPCIBusId(pci_bus_id)
-        return cls(new_id)
+        return cls(device_id)
 
     def __int__(self):
         return self.id
