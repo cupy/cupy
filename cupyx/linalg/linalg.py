@@ -14,7 +14,8 @@ def invh(a):
     """Compute the inverse of a Hermitian matrix.
 
     This function computes a inverse of a real symmetric or complex hermitian
-    matrix.
+    positive-definite matrix using Cholesky factorization. If matrix ``a`` is
+    not positive definite, Cholesky factorization fails and it raises an error.
 
     Args:
         a (cupy.ndarray): Real symmetric or complex hermitian maxtix.
@@ -26,7 +27,7 @@ def invh(a):
     if not cuda.cusolver_enabled:
         raise RuntimeError('cuSOLVER is not available')
 
-    # to prevent `a` to be overwritten
+    # to prevent `a` from being overwritten
     a = a.copy()
 
     util._assert_cupy_array(a)
@@ -89,11 +90,11 @@ def invh(a):
           dev_info.data.ptr)
 
     info = dev_info[0]
-    if info != 0:
-        if info < 0:
-            msg = '\tThe {}-th parameter is wrong'.format(-info)
-        else:
-            msg = ''
-        raise RuntimeError('matrix inversion failed at potrf.\n' + msg)
+    if info > 0:
+        assert False, ('Unexpected output returned by potrf (actual: {})'
+                       .format(info))
+    elif info < 0:
+        raise RuntimeError('matrix inversion failed at potrf.\n'
+                           '\tThe {}-th parameter is wrong'.format(-info))
 
     return b
