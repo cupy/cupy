@@ -251,6 +251,12 @@ class simple_reduction_function(object):
         if (<ndarray>out_args[0]).size == 0:
             return ret
 
+        # Special casing "mean", as it behaves differently for 0-sized set
+        # reductions
+        if arr.size == 0 and self.identity is None and self.name != "cupy_mean":
+            raise ValueError(('zero-size array to reduction operation'
+                              ' %s which has no identity') % self.name)
+
         in_args, in_shape, contiguous_size = _get_permuted_args(
             in_args, reduce_axis + out_axis, a_shape, None, len(out_axis))
 
