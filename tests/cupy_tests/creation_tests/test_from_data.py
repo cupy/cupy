@@ -452,14 +452,14 @@ class TestCudaArrayInterface(unittest.TestCase):
     def test_base(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = cupy.asarray(
-                DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
+            DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
         testing.assert_array_equal(a, b)
 
     @testing.for_all_dtypes()
     def test_not_copied(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = cupy.asarray(
-                DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
+            DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
         a.fill(0)
         testing.assert_array_equal(a, b)
 
@@ -467,8 +467,8 @@ class TestCudaArrayInterface(unittest.TestCase):
     def test_order(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = cupy.asarray(
-                DummyObjectWithCudaArrayInterface(a, self.ver, self.strides),
-                order='F')
+            DummyObjectWithCudaArrayInterface(a, self.ver, self.strides),
+            order='F')
         assert b.flags.f_contiguous
         testing.assert_array_equal(a, b)
 
@@ -476,7 +476,7 @@ class TestCudaArrayInterface(unittest.TestCase):
     def test_with_strides(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype).T
         b = cupy.asarray(
-                DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
+            DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
         assert a.strides == b.strides
         assert a.nbytes == b.data.mem.size
 
