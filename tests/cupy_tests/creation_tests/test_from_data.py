@@ -454,14 +454,14 @@ class TestCudaArrayInterface(unittest.TestCase):
         testing.assert_array_equal(a, b)
 
     @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_is_not_copied(self, dtype):
+    def test_not_copied(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, self.ver))
         a.fill(0)
         testing.assert_array_equal(a, b)
 
     @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_order(self, dtype):
+    def test_order(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, self.ver),
                          order='F')
@@ -469,18 +469,21 @@ class TestCudaArrayInterface(unittest.TestCase):
         testing.assert_array_equal(a, b)
 
     @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_with_strides(self, dtype):
+    def test_with_strides(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype).T
         b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, self.ver))
         assert a.strides == b.strides
         assert a.nbytes == b.data.mem.size
 
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'ver': tuple(range(1, max_cuda_array_interface_version+1)),
+}))
+class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
     # TODO(leofang): update this test when masked array is supported
     @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_with_masked_array(self, dtype):
-        if self.ver == 0:
-            raise unittest.SkipTest("Version 0 does not have the mask "
-                                    "attribute")
+    def test_masked_array(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         mask = testing.shaped_arange((2, 3, 4), cupy, dtype)
         a = DummyObjectWithCudaArrayInterface(a, self.ver, mask)
