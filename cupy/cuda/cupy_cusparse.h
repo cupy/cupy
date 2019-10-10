@@ -191,6 +191,10 @@ typedef enum {
 
 typedef void* cusparseHandle_t;
 typedef void* cusparseMatDescr_t;
+typedef void* csric02Info_t;
+typedef void* bsric02Info_t;
+typedef void* csrilu02Info_t;
+typedef void* bsrilu02Info_t;
 
 typedef enum {} cusparseMatrixType_t;
 typedef enum {} cusparseOperation_t;
@@ -198,6 +202,7 @@ typedef enum {} cusparsePointerMode_t;
 typedef enum {} cusparseAction_t;
 typedef enum {} cusparseDirection_t;
 typedef enum {} cusparseAlgMode_t;
+typedef enum {} cusparseSolvePolicy_t;
 
 // cuSPARSE Helper Function
 cusparseStatus_t cusparseCreate(...) {
@@ -513,6 +518,14 @@ cusparseStatus_t cusparseCreateCsric02Info(...) {
 }
 
 cusparseStatus_t cusparseDestroyCsric02Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCreateBsric02Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDestroyBsric02Info(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
