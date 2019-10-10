@@ -446,9 +446,9 @@ max_cuda_array_interface_version = 2
 @testing.parameterize(*testing.product({
     'ver': tuple(range(max_cuda_array_interface_version+1)),
 }))
-class TestFromExternalData(unittest.TestCase):
+class TestCudaArrayInterface(unittest.TestCase):
     @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface(self, dtype):
+    def test_base(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, self.ver))
         testing.assert_array_equal(a, b)
