@@ -253,7 +253,9 @@ class simple_reduction_function(object):
 
         # Special casing "mean", as it behaves differently for 0-sized set
         # reductions
-        if arr.size == 0 and self.identity is None and self.name != "cupy_mean":
+        if (arr.size == 0 and
+                self.identity is None and
+                self.name != "cupy_mean"):
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
