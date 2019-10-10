@@ -102,7 +102,7 @@ class TestDevicePCIBusId(unittest.TestCase):
         d = cuda.Device()
         pci_bus_id = d.pci_bus_id
         assert re.match(
-            "^[a-fA-F0-9]{4}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}.[a-fA-F0-9]",
+            '^[a-fA-F0-9]{4}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}.[a-fA-F0-9]',
             pci_bus_id
         )
 
@@ -114,12 +114,12 @@ class TestDevicePCIBusId(unittest.TestCase):
         assert d2 == d3
 
         with pytest.raises(cuda.runtime.CUDARuntimeError) as excinfo:
-            cuda.Device.from_pci_bus_id("fake:id")
-            assert excinfo == "cudaErrorInvalidValue: invalid argument"
+            cuda.Device.from_pci_bus_id('fake:id')
+            assert excinfo == 'cudaErrorInvalidValue: invalid argument'
 
         with pytest.raises(cuda.runtime.CUDARuntimeError) as excinfo:
-            cuda.Device.from_pci_bus_id("FFFF:FF:FF.F")
-            assert excinfo == "cudaErrorInvalidDevice: invalid device ordinal"
+            cuda.Device.from_pci_bus_id('FFFF:FF:FF.F')
+            assert excinfo == 'cudaErrorInvalidDevice: invalid device ordinal'
 
 
 @testing.gpu
