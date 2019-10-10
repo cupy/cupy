@@ -91,10 +91,10 @@ def invh(a):
 
     info = dev_info[0]
     if info > 0:
-        assert False, ('Unexpected output returned by potrf (actual: {})'
+        assert False, ('Unexpected output returned by potrs (actual: {})'
                        .format(info))
     elif info < 0:
-        raise RuntimeError('matrix inversion failed at potrf.\n'
+        raise RuntimeError('matrix inversion failed at potrs.\n'
                            '\tThe {}-th parameter is wrong'.format(-info))
 
     return b
