@@ -241,7 +241,7 @@ cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
     byte_pci_bus_id = pci_bus_id.encode('ascii')
     cdef const char* c_pci_bus_id = byte_pci_bus_id
 
-    cdef int device
+    cdef int device = -1
     status = cudaDeviceGetByPCIBusId(&device, c_pci_bus_id)
     check_status(status)
     return device
