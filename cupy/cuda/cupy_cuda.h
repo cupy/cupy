@@ -232,6 +232,14 @@ cudaError_t cudaDeviceGetAttribute(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaDeviceGetByPCIBusId(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDeviceGetPCIBusId(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaGetDeviceCount(...) {
     return cudaSuccess;
 }
