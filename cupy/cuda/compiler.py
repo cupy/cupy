@@ -262,7 +262,7 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
     if backend == 'nvrtc':
         ptx = compile_using_nvrtc(source, options, arch, name + '.cu')
         ls = function.LinkState()
-        ls.add_ptr_data(ptx, u'cupy.ptx')
+        ls.add_ptr_data(ptx, 'cupy.ptx')
         cubin = ls.complete()
     elif backend == 'nvcc':
         cubin = compile_using_nvcc(source, options, arch, name + '.cu',
