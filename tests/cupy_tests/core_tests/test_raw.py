@@ -213,7 +213,7 @@ class TestRaw(unittest.TestCase):
         # this error is more likely to appear when using RawModule, so
         # let us do it here
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
-            self.mod2.get_function("no_such_kernel")
+            self.mod2.get_function('no_such_kernel')
         assert 'CUDA_ERROR_NOT_FOUND' in str(ex.value)
 
     def test_dynamical_parallelism(self):
