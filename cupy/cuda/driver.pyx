@@ -206,7 +206,7 @@ cpdef linkAddFile(intptr_t state, int input_type, unicode path):
                                b_path_ptr, 0, <CUjit_option*>0, <void**>0)
     check_status(status)
 
-    
+
 cpdef bytes linkComplete(intptr_t state):
     cdef void* cubinOut
     cdef size_t sizeOut

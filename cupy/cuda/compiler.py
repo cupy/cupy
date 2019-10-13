@@ -17,6 +17,7 @@ from cupy.cuda import runtime
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
 _win32 = (sys.platform == 'win32')
+_osx = (sys.platform == 'darwin')
 
 
 class NVCCException(Exception):
@@ -78,6 +79,17 @@ def _check_cudadevrt_needed(options):
     return require_cudadevrt
 
 
+def _remove_rdc_option(options):
+    new_options = []
+    for option in options:
+        if option in ('--device-c', '-dc', '-rdc=true',
+                      '--relocatable-device-code=true'):
+            continue
+        else:
+            new_options.append(option)
+    return tuple(new_options)
+
+
 class TemporaryDirectory(object):
     def __enter__(self):
         self.path = tempfile.mkdtemp()
@@ -128,7 +140,8 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
 
 
 def compile_using_nvcc(source, options=(), arch=None,
-                       filename='kern.cu', code_type='cubin'):
+                       filename='kern.cu', code_type='cubin',
+                       separate_compilation=False):
     if not arch:
         arch = _get_arch()
 
@@ -136,7 +149,7 @@ def compile_using_nvcc(source, options=(), arch=None,
         raise ValueError('Invalid code_type %s. Should be cubin or ptx')
 
     arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
-    cmd = ['nvcc', '--%s' % code_type, arch_str] + list(options)
+    cmd = ['nvcc', arch_str]
 
     with TemporaryDirectory() as root_dir:
         first_part = filename.split('.')[0]
@@ -148,19 +161,55 @@ def compile_using_nvcc(source, options=(), arch=None,
         with open(cu_path, 'w') as cu_file:
             cu_file.write(source)
 
-        cmd.append(cu_path)
+        if not separate_compilation:  # majority cases
+            cmd.append('--%s' % code_type)
+            cmd += list(options)
+            cmd.append(cu_path)
 
-        try:
-            _run_nvcc(cmd, root_dir)
-        except NVCCException as e:
-            cex = CompileException(str(e), source, cu_path, options, 'nvcc')
+            try:
+                _run_nvcc(cmd, root_dir)
+            except NVCCException as e:
+                cex = CompileException(str(e), source, cu_path, options,
+                                       'nvcc')
 
-            dump = _get_bool_env_variable(
-                'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
-            if dump:
-                cex.dump(sys.stderr)
+                dump = _get_bool_env_variable(
+                    'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+                if dump:
+                    cex.dump(sys.stderr)
 
-            raise cex
+                raise cex
+        else:  # two steps: compile to object and device-link
+            cmd_partial = cmd.copy()
+            cmd_partial.append('--cubin')
+
+            obj = path + '.o'
+            options_obj = options
+            options_obj += ('-o', obj)
+            cmd += list(options_obj)
+            cmd.append(cu_path)
+
+            try:
+                _run_nvcc(cmd, root_dir)
+            except NVCCException as e:
+                cex = CompileException(str(e), source, cu_path, options,
+                                       'nvcc')
+
+                dump = _get_bool_env_variable(
+                    'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+                if dump:
+                    cex.dump(sys.stderr)
+
+                raise cex
+
+            options = _remove_rdc_option(options)
+            options += ('--device-link', obj, '-o', path + '.cubin')
+            cmd = cmd_partial + list(options)
+
+            try:
+                _run_nvcc(cmd, root_dir)
+            except NVCCException as e:
+                cex = CompileException(str(e), '', '', options, 'nvcc')
+                raise cex
 
         if code_type == 'ptx':
             with open(result_path, 'rb') as ptx_file:
@@ -274,24 +323,27 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
         ptx = compile_using_nvrtc(source, options, arch, name + '.cu')
         ls = function.LinkState()
         ls.add_ptr_data(ptx, 'cupy.ptx')
-        # for dynamic parallelism
+        # for separate compilation
         if _check_cudadevrt_needed(options):
-            global _win32
+            global _win32, _osx
             # defer import to here to avoid circular dependency
             from cupy.cuda import get_cuda_path
             cudadevrt = get_cuda_path()
             if _win32:
                 cudadevrt += '\lib\x64\cudadevrt.lib'
-            else:
+            elif _osx:
+                cudadevrt += '/lib/libcudadevrt.a'
+            else:  # linux
                 cudadevrt += '/lib64/libcudadevrt.a'
             if not os.path.isfile(cudadevrt):
                 raise RuntimeError('Relocatable PTX code is requested, but '
-                               'cudadevrt is not found.')
+                                   'cudadevrt is not found.')
             ls.add_ptr_file(cudadevrt)
         cubin = ls.complete()
     elif backend == 'nvcc':
+        rdc = True if _check_cudadevrt_needed(options) else False
         cubin = compile_using_nvcc(source, options, arch, name + '.cu',
-                                   code_type='cubin')
+                                   code_type='cubin', separate_compilation=rdc)
     else:
         raise ValueError('Invalid backend %s' % backend)
 

@@ -84,7 +84,7 @@ __global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, \
 '''
 
 # dynamic parallelism
-_test_source5 = r'''
+_test_source4 = r'''
 extern "C"{
 
 __global__ void test_kernel_inner(float *arr, int N)
@@ -217,7 +217,8 @@ class TestRaw(unittest.TestCase):
         assert 'CUDA_ERROR_NOT_FOUND' in str(ex.value)
 
     def test_dynamical_parallelism(self):
-        ker = cupy.RawKernel(_test_source5, 'test_kernel', options=('-dc',))
+        ker = cupy.RawKernel(_test_source4, 'test_kernel', options=('-dc',),
+                             backend=self.backend)
         N = 169
         inner_chunk = 13
         x = cupy.zeros((N,), dtype=cupy.float32)
@@ -225,9 +226,16 @@ class TestRaw(unittest.TestCase):
         assert (x == 1.0).all()
 
     def test_dynamical_parallelism_compile_failure(self):
-        ker = cupy.RawKernel(_test_source5, 'test_kernel',)
+        # no option for separate compilation is given should cause an error
+        ker = cupy.RawKernel(_test_source4, 'test_kernel',
+                             backend=self.backend)
         N = 10
         inner_chunk = 2
         x = cupy.zeros((N,), dtype=cupy.float32)
-        with pytest.raises(cupy.cuda.driver.CUDADriverError):
-            ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
+        if self.backend == 'nvrtc':
+            # raised when calling ls.complete()
+            with pytest.raises(cupy.cuda.driver.CUDADriverError):
+                ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
+        else:  # nvcc
+            with pytest.raises(cupy.cuda.compiler.CompileException):
+                ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
