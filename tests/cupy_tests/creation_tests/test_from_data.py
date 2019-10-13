@@ -515,16 +515,14 @@ class DummyObjectWithCudaArrayInterface(object):
             'data': (self.a.data.ptr, False),
             'version': self.ver,
         }
-        if self.a.flags.f_contiguous:
-            desc['strides'] = self.a.strides
-        elif self.a.flags.c_contiguous:
+        if self.a.flags.c_contiguous:
             if self.include_strides is True:
                 desc['strides'] = self.a.strides
             elif self.include_strides is None:
                 desc['strides'] = None
             else:  # self.include_strides is False
                 pass
-        else:  # unlikely, just in case
+        else:  # F contiguous or neither
             desc['strides'] = self.a.strides
         if self.mask is not None:
             desc['mask'] = self.mask
