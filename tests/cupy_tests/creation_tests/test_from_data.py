@@ -515,9 +515,9 @@ class DummyObjectWithCudaArrayInterface(object):
             'data': (self.a.data.ptr, False),
             'version': self.ver,
         }
-        if self.a._f_contiguous:
+        if self.a.flags.f_contiguous:
             desc['strides'] = self.a.strides
-        elif self.a._c_contiguous:
+        elif self.a.flags.c_contiguous:
             if self.include_strides is True:
                 desc['strides'] = self.a.strides
             elif self.include_strides is None:
