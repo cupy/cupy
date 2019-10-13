@@ -31,7 +31,7 @@ You need to have the following components to use CuPy.
 * `Python <https://python.org/>`_
     * Supported Versions: 3.5.1+, 3.6.0+ and 3.7.0+.
 * `NumPy <http://www.numpy.org/>`_
-    * Supported Versions: 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15 and 1.16.
+    * Supported Versions: 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 1.16 and 1.17.
     * NumPy will be installed automatically during the installation of CuPy.
 
 Before installing CuPy, we recommend you to upgrade ``setuptools`` and ``pip``::
@@ -56,6 +56,8 @@ Some features in CuPy will only be enabled if the corresponding libraries are in
     * Supported Versions: v5, v5.1, v6, v7, v7.1, v7.2, v7.3, v7.4 and v7.5.
 * `NCCL <https://developer.nvidia.com/nccl>`_  (library to perform collective multi-GPU / multi-node computations)
     * Supported Versions: v1.3.4, v2, v2.1, v2.2, v2.3 and v2.4.
+* `cuTENSOR <https://developer.nvidia.com/cuda-math-library-early-access-program-page>`_ (library for high-performance tensor operations)
+    * Supported Versions: v0.2.2 (experimental)
 
 
 Install CuPy

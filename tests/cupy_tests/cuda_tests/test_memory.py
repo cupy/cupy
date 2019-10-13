@@ -612,12 +612,13 @@ class TestMemoryPool(unittest.TestCase):
 class TestAllocator(unittest.TestCase):
 
     def setUp(self):
+        self.old_pool = cupy.get_default_memory_pool()
         self.pool = memory.MemoryPool()
         memory.set_allocator(self.pool.malloc)
 
     def tearDown(self):
-        memory.set_allocator()
         self.pool.free_all_blocks()
+        memory.set_allocator(self.old_pool.malloc)
 
     def test_set_allocator(self):
         with cupy.cuda.Device(0):
@@ -625,6 +626,9 @@ class TestAllocator(unittest.TestCase):
             arr = cupy.arange(128, dtype=cupy.int64)
             self.assertEqual(1024, arr.data.mem.size)
             self.assertEqual(1024, self.pool.used_bytes())
+
+    def test_get_allocator(self):
+        assert memory.get_allocator() == self.pool.malloc
 
     @unittest.skipUnless(sys.version_info[0] >= 3,
                          'Only for Python3 or higher')
@@ -649,7 +653,7 @@ class TestAllocator(unittest.TestCase):
 
 
 @testing.gpu
-class TestAllocatorDefault(unittest.TestCase):
+class TestAllocatorDisabled(unittest.TestCase):
 
     def setUp(self):
         self.pool = cupy.get_default_memory_pool()

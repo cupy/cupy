@@ -75,7 +75,9 @@ class TestFft(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    @testing.with_requires('numpy!=1.17.0')  # 1.17.0 raises ZeroDivisonError
+    # NumPy 1.17.0 and 1.17.1 raises ZeroDivisonError due to a bug
+    @testing.with_requires('numpy!=1.17.0')
+    @testing.with_requires('numpy!=1.17.1')
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
@@ -113,7 +115,6 @@ class TestFftOrder(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    @testing.with_requires('numpy!=1.17.0')  # 1.17.0 raises ZeroDivisonError
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
@@ -710,3 +711,28 @@ class TestFftshift(unittest.TestCase):
         out = xp.fft.ifftshift(x, self.axes)
 
         return out
+
+
+class TestThreading(unittest.TestCase):
+
+    def test_threading1(self):
+        import threading
+        from cupy.cuda.cufft import get_current_plan
+
+        def thread_get_curr_plan():
+            return get_current_plan()
+
+        new_thread = threading.Thread(target=thread_get_curr_plan)
+        new_thread.start()
+
+    def test_threading2(self):
+        import threading
+
+        a = cupy.arange(100, dtype=cupy.complex64).reshape(10, 10)
+
+        def thread_do_fft():
+            b = cupy.fft.fftn(a)
+            return b
+
+        new_thread = threading.Thread(target=thread_do_fft)
+        new_thread.start()

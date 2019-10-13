@@ -9,7 +9,10 @@ from cupy import _version
 
 
 try:
-    from cupy import core  # NOQA
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', category=ImportWarning,
+                                message='can\'t resolve package from __spec__')
+        from cupy import core  # NOQA
 except ImportError:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
@@ -358,8 +361,20 @@ def common_type(*arrays):
 
     .. seealso:: :func:`numpy.common_type`
     """
-    dtype_arrays = [numpy.empty((), a.dtype) for a in arrays]
-    return numpy.common_type(*dtype_arrays)
+    if len(arrays) == 0:
+        return numpy.float16
+
+    default_float_dtype = numpy.dtype('float64')
+    dtypes = []
+    for a in arrays:
+        if a.dtype.kind == 'b':
+            raise TypeError('can\'t get common type for non-numeric array')
+        elif a.dtype.kind in 'iu':
+            dtypes.append(default_float_dtype)
+        else:
+            dtypes.append(a.dtype)
+
+    return numpy.find_common_type(dtypes, []).type
 
 
 def result_type(*arrays_and_dtypes):
@@ -446,6 +461,7 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 # -----------------------------------------------------------------------------
 from cupy.linalg.einsum import einsum  # NOQA
 
+from cupy.linalg.product import cross  # NOQA
 from cupy.linalg.product import dot  # NOQA
 from cupy.linalg.product import inner  # NOQA
 from cupy.linalg.product import kron  # NOQA
@@ -466,11 +482,17 @@ from cupy.logic.content import isfinite  # NOQA
 from cupy.logic.content import isinf  # NOQA
 from cupy.logic.content import isnan  # NOQA
 
+from cupy.logic.truth import in1d  # NOQA
+from cupy.logic.truth import isin  # NOQA
+
 from cupy.logic.type_test import iscomplex  # NOQA
 from cupy.logic.type_test import iscomplexobj  # NOQA
 from cupy.logic.type_test import isfortran  # NOQA
 from cupy.logic.type_test import isreal  # NOQA
 from cupy.logic.type_test import isrealobj  # NOQA
+
+from cupy.logic.truth import in1d  # NOQA
+from cupy.logic.truth import isin  # NOQA
 
 
 def isscalar(num):
@@ -590,6 +612,13 @@ from cupy.math.misc import nan_to_num  # NOQA
 from cupy.math.misc import sign  # NOQA
 from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
+
+# -----------------------------------------------------------------------------
+# Miscellaneous routines
+# -----------------------------------------------------------------------------
+from cupy.misc import may_share_memory  # NOQA
+from cupy.misc import shares_memory  # NOQA
+
 
 # -----------------------------------------------------------------------------
 # Padding

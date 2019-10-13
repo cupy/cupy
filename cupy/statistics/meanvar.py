@@ -161,7 +161,7 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
         return a.mean(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     # TODO(okuta): check type
-    return _statistics._ndarray_nanmean(
+    return _statistics._nanmean(
         a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
@@ -188,8 +188,8 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
                      keepdims=keepdims)
 
     # TODO(okuta): check type
-    return _statistics._ndarray_nanvar(a, axis=axis, dtype=dtype, out=out,
-                                       ddof=ddof, keepdims=keepdims)
+    return _statistics._nanvar(
+        a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
 def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
@@ -215,5 +215,5 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
                      keepdims=keepdims)
 
     # TODO(okuta): check type
-    return _statistics._ndarray_nanstd(a, axis=axis, dtype=dtype, out=out,
-                                       ddof=ddof, keepdims=keepdims)
+    return _statistics._nanstd(
+        a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)

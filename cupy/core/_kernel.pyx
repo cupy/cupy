@@ -24,6 +24,7 @@ from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
+from cupy.core._memory_range cimport may_share_bounds
 
 
 _thread_local = threading.local()
@@ -354,6 +355,22 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
                       casting)
             raise TypeError(msg)
     return out_args
+
+
+cdef list _copy_in_args_if_needed(list in_args, list out_args):
+    cdef int i, j
+    cdef list ret = []
+
+    for i in range(len(in_args)):
+        inp = in_args[i]
+        if isinstance(inp, ndarray):
+            for j in range(len(out_args)):
+                out = out_args[j]
+                if inp is not out and may_share_bounds(inp, out):
+                    inp = inp.copy()
+                    break
+        ret.append(inp)
+    return ret
 
 
 cdef list _get_out_args_with_params(
@@ -823,7 +840,8 @@ cdef class ufunc:
             out_args = _preprocess_args(dev_id, (out,), False)
             args += out_args
 
-        broad_values, shape = _broadcast_core(args)
+        in_args = _copy_in_args_if_needed(in_args, out_args)
+        broad_values, shape = _broadcast_core(in_args + out_args)
 
         op = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)

@@ -36,18 +36,40 @@ class TestCanCast(unittest.TestCase):
         return ret
 
 
+# NumPy 1.9 cannot handle float16 in ``numpy.common_type``.
+@testing.with_requires('numpy>=1.10')
 class TestCommonType(unittest.TestCase):
 
-    # NumPy 1.9 cannot handle float16 in ``numpy.common_type``.
-    @testing.with_requires('numpy>=1.10')
-    @testing.for_dtypes_combination('efdFD', names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_equal()
-    def test_common_type(self, xp, dtype1, dtype2):
+    def test_common_type_empty(self, xp):
+        ret = xp.common_type()
+        assert type(ret) == type
+        return ret
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_equal()
+    def test_common_type_single_argument(self, xp, dtype):
+        array = _generate_type_routines_input(xp, dtype, 'array')
+        ret = xp.common_type(array)
+        assert type(ret) == type
+        return ret
+
+    @testing.for_all_dtypes_combination(
+        names=('dtype1', 'dtype2'), no_bool=True)
+    @testing.numpy_cupy_equal()
+    def test_common_type_two_arguments(self, xp, dtype1, dtype2):
         array1 = _generate_type_routines_input(xp, dtype1, 'array')
         array2 = _generate_type_routines_input(xp, dtype2, 'array')
         ret = xp.common_type(array1, array2)
         assert type(ret) == type
         return ret
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_common_type_bool(self, xp, dtype):
+        array1 = _generate_type_routines_input(xp, dtype, 'array')
+        array2 = _generate_type_routines_input(xp, 'bool_', 'array')
+        xp.common_type(array1, array2)
 
 
 @testing.parameterize(

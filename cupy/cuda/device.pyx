@@ -116,6 +116,23 @@ cdef class Device:
 
         self._device_stack = []
 
+    @classmethod
+    def from_pci_bus_id(cls, pci_bus_id):
+        """Returns a new device instance based on a PCI Bus ID
+
+        Args:
+            pci_bus_id (str):
+                The string for a device in the following format
+                [domain]:[bus]:[device].[function] where domain, bus, device,
+                and function are all hexadecimal values.
+        Returns:
+            device (Device):
+                An instance of the Device class that has the PCI Bus ID as
+                given by the argument pci_bus_id.
+        """
+        device_id = runtime.deviceGetByPCIBusId(pci_bus_id)
+        return cls(device_id)
+
     def __int__(self):
         return self.id
 
@@ -157,8 +174,10 @@ cdef class Device:
         if self.id in _compute_capabilities:
             return _compute_capabilities[self.id]
         with self:
-            major = runtime.deviceGetAttribute(75, self.id)
-            minor = runtime.deviceGetAttribute(76, self.id)
+            major = runtime.deviceGetAttribute(
+                runtime.deviceAttributeComputeCapabilityMajor, self.id)
+            minor = runtime.deviceGetAttribute(
+                runtime.deviceAttributeComputeCapabilityMinor, self.id)
             cc = '%d%d' % (major, minor)
             _compute_capabilities[self.id] = cc
             return cc
@@ -244,6 +263,18 @@ cdef class Device:
                 `MaxThreadsPerBlock`.
         """
         return _get_attributes(self.id)
+
+    @property
+    def pci_bus_id(self):
+        """A string of the PCI Bus ID
+
+        Returns:
+            pci_bus_id (str):
+                Returned identifier string for the device in the following
+                format [domain]:[bus]:[device].[function] where domain, bus,
+                device, and function are all hexadecimal values.
+        """
+        return runtime.deviceGetPCIBusId(self.id)
 
     def __richcmp__(Device self, object other, int op):
         if op == 2:

@@ -168,7 +168,7 @@ void cupy::thrust::_argsort(size_t *idx_start, void *data_start,
                             void *keys_start,
                             const std::vector<ptrdiff_t>& shape,
                             size_t stream, void *memory) {
-    /* idx_start is the beggining of the output array where the indexes that
+    /* idx_start is the beginning of the output array where the indexes that
        would sort the data will be placed. The original contents of idx_start
        will be destroyed. */
 

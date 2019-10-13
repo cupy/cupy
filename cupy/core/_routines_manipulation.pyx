@@ -496,6 +496,10 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
     """
     cdef ndarray ret
 
+    if isinstance(repeats, ndarray):
+        raise ValueError(
+            'cupy.ndaray cannot be specified as `repeats` argument.')
+
     # Scalar and size 1 'repeat' arrays broadcast to any shape, for all
     # other inputs the dimension must match exactly.
     cdef bint broadcast = False

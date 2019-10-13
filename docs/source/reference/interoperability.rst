@@ -1,7 +1,7 @@
 Interoperability
 ================
 
-CuPy can also be used in conjuction with other frameworks.
+CuPy can also be used in conjunction with other frameworks.
 
 NumPy
 -----
@@ -30,7 +30,7 @@ Numba
 
 :class:`cupy.ndarray` implements ``__cuda_array_interface__``, which is the CUDA array interchange interface compatible with Numba v0.39.0 or later (see `CUDA Array Interface <http://numba.pydata.org/numba-doc/latest/cuda/cuda_array_interface.html>`_ for details).
 It means you can pass CuPy arrays to kernels JITed with Numba.
-The folowing is a simple example code borrowed from `numba/numba#2860 <https://github.com/numba/numba/pull/2860>`_:
+The following is a simple example code borrowed from `numba/numba#2860 <https://github.com/numba/numba/pull/2860>`_:
 
 .. code:: python
 

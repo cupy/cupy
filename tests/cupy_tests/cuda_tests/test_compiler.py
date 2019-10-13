@@ -23,15 +23,15 @@ class TestNvrtcArch(unittest.TestCase):
 
     @unittest.skipUnless(cuda_version() < 9000, 'Requires CUDA 8.x or earlier')
     def test_get_arch_cuda8(self):
-        self._check_get_arch('37', 'compute_37')
-        self._check_get_arch('50', 'compute_50')
-        self._check_get_arch('52', 'compute_50')
+        self._check_get_arch('37', '37')
+        self._check_get_arch('50', '50')
+        self._check_get_arch('52', '50')
 
     @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.x or later')
     def test_get_arch_cuda9(self):
-        self._check_get_arch('62', 'compute_62')
-        self._check_get_arch('70', 'compute_70')
-        self._check_get_arch('72', 'compute_70')
+        self._check_get_arch('62', '62')
+        self._check_get_arch('70', '70')
+        self._check_get_arch('72', '70')
 
     def _compile(self, arch):
         compiler.compile_using_nvrtc('', arch=arch)
@@ -42,15 +42,15 @@ class TestNvrtcArch(unittest.TestCase):
 
         # It should not fail.
         # (Do not test `compute_53` as it is for Tegra.)
-        self._compile('compute_52')
+        self._compile('52')
 
         # It should fail.
         # (`compute_60` and `compute_61` are not supported by NVRTC in CUDA 8
         #  but it does not raise error when used.)
         self.assertRaises(
-            compiler.CompileException, self._compile, 'compute_54')
+            compiler.CompileException, self._compile, '54')
         self.assertRaises(
-            compiler.CompileException, self._compile, 'compute_70')
+            compiler.CompileException, self._compile, '70')
 
     @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.0 or later')
     def test_compile_cuda9(self):
@@ -58,11 +58,11 @@ class TestNvrtcArch(unittest.TestCase):
 
         # It should not fail.
         # (Do not test `compute_72` as it is for Tegra.)
-        self._compile('compute_70')
+        self._compile('70')
 
         # It should fail.
         self.assertRaises(
-            compiler.CompileException, self._compile, 'compute_73')
+            compiler.CompileException, self._compile, '73')
 
 
 @testing.gpu
