@@ -22,7 +22,8 @@ def rand(*size, **kwarg):
     Returns:
         cupy.ndarray: A random array.
 
-    .. seealso:: :func:`numpy.random.rand`
+    .. seealso:: :meth:`numpy.random.rand
+                 <numpy.random.mtrand.RandomState.rand>`
 
     .. admonition:: Example
 
@@ -62,7 +63,8 @@ def randn(*size, **kwarg):
     Returns:
         cupy.ndarray: An array of standard normal random values.
 
-    .. seealso:: :func:`numpy.random.randn`
+    .. seealso:: :meth:`numpy.random.randn
+                 <numpy.random.mtrand.RandomState.randn>`
 
     .. admonition:: Example
 
@@ -151,7 +153,8 @@ def random_sample(size=None, dtype=float):
     Returns:
         cupy.ndarray: An array of uniformly distributed random values.
 
-    .. seealso:: :func:`numpy.random.random_sample`
+    .. seealso:: :meth:`numpy.random.random_sample
+                 <numpy.random.mtrand.RandomState.random_sample>`
 
     """
     rs = generator.get_random_state()
@@ -185,7 +188,8 @@ def choice(a, size=None, replace=True, p=None):
         cupy.ndarray: An array of ``a`` values distributed according to
                       ``p`` or uniformly.
 
-    .. seealso:: :func:`numpy.random.choice`
+    .. seealso:: :meth:`numpy.random.choice
+                 <numpy.random.mtrand.RandomState.choice>`
 
     """
     rs = generator.get_random_state()
@@ -222,7 +226,8 @@ def multinomial(n, pvals, size=None):
     .. note::
        It does not support ``sum(pvals) < 1`` case.
 
-    .. seealso:: :func:`numpy.random.multinomial`
+    .. seealso:: :meth:`numpy.random.multinomial
+                 <numpy.random.mtrand.RandomState.multinomial>`
     """
 
     if size is None:
