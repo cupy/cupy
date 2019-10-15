@@ -4,7 +4,8 @@ import numpy
 def bytes(length):
     """Returns random bytes.
 
-    .. seealso:: :func:`numpy.random.bytes`
+    .. seealso:: :meth:`numpy.random.bytes
+                 <numpy.random.mtrand.RandomState.bytes>`
     """
     return numpy.bytes(length)
 
