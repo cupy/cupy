@@ -240,18 +240,21 @@ class TestFlip(unittest.TestCase):
         x = xp.array([], dtype).reshape((1, 0, 1))
         return xp.flip(x, 1)
 
+    @testing.with_requires('numpy>=1.15')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_flip_insufficient_ndim(self, xp, dtype):
         x = testing.shaped_arange((), xp, dtype)
         return xp.flip(x, 0)
 
+    @testing.with_requires('numpy>=1.15')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_flip_invalid_axis(self, xp, dtype):
         x = testing.shaped_arange((3, 4), xp, dtype)
         return xp.flip(x, 2)
 
+    @testing.with_requires('numpy>=1.15')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_flip_invalid_negative_axis(self, xp, dtype):
