@@ -339,21 +339,62 @@ cdef extern from 'cupy_cusolver.h' nogil:
         SpHandle handle, int m, int nnz, const MatDescr descrA,
         const float* csrValA, const int* csrRowPtrA, const int* csrColIndA,
         const float* b, float tol, int reorder, float* x, int* singularity)
-
     int cusolverSpDcsrlsvchol(
         SpHandle handle, int m, int nnz, const MatDescr descrA,
         const double* csrValA, const int* csrRowPtrA, const int* csrColIndA,
         const double* b, double tol, int reorder, double* x, int* singularity)
+    int cusolverSpCcsrlsvchol(
+        SpHandle handle, int m, int nnz,
+        const MatDescr descrA, const cuComplex *csrVal,
+        const int *csrRowPtr, const int *csrColInd, const cuComplex *b,
+        float tol, int reorder, cuComplex *x, int *singularity)
+    int cusolverSpZcsrlsvchol(
+        SpHandle handle, int m, int nnz,
+        const MatDescr descrA, const cuDoubleComplex *csrVal,
+        const int *csrRowPtr, const int *csrColInd, const cuDoubleComplex *b,
+        double tol, int reorder, cuDoubleComplex *x, int *singularity)
 
     int cusolverSpScsrlsvqr(
         SpHandle handle, int m, int nnz, const MatDescr descrA,
         const float* csrValA, const int* csrRowPtrA, const int* csrColIndA,
         const float* b, float tol, int reorder, float* x, int* singularity)
-
     int cusolverSpDcsrlsvqr(
         SpHandle handle, int m, int nnz, const MatDescr descrA,
         const double* csrValA, const int* csrRowPtrA, const int* csrColIndA,
         const double* b, double tol, int reorder, double* x, int* singularity)
+    int cusolverSpCcsrlsvqr(
+        SpHandle handle, int m, int nnz,
+        const MatDescr descrA, const cuComplex *csrVal,
+        const int *csrRowPtr, const int *csrColInd, const cuComplex *b,
+        float tol, int reorder, cuComplex *x, int *singularity)
+    int cusolverSpZcsrlsvqr(
+        SpHandle handle, int m, int nnz,
+        const MatDescr descrA, const cuDoubleComplex *csrVal,
+        const int *csrRowPtr, const int *csrColInd, const cuDoubleComplex *b,
+        double tol, int reorder, cuDoubleComplex *x, int *singularity)
+
+    int cusolverSpScsreigvsi(
+        SpHandle handle, int m, int nnz,
+        const MatDescr descrA, const float *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA, float mu0,
+        const float *x0, int maxite, float eps, float *mu, float *x)
+    int cusolverSpDcsreigvsi(
+        SpHandle handle, int m, int nnz,
+        const MatDescr descrA, const double *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA, double mu0,
+        const double *x0, int maxite, double eps, double *mu, double *x)
+    int cusolverSpCcsreigvsi(
+        SpHandle handle, int m, int nnz,
+        const MatDescr descrA, const cuComplex *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA, cuComplex mu0,
+        const cuComplex *x0, int maxite, float eps, cuComplex *mu,
+        cuComplex *x)
+    int cusolverSpZcsreigvsi(
+        SpHandle handle, int m, int nnz,
+        const MatDescr descrA, const cuDoubleComplex *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA, cuDoubleComplex mu0,
+        const cuDoubleComplex *x0, int maxite, double eps, cuDoubleComplex *mu,
+        cuDoubleComplex *x)
 
 ###############################################################################
 # Error handling
@@ -1337,6 +1378,7 @@ cpdef scsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                   size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
                   int reorder, size_t x, size_t singularity):
     cdef int status
+    spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverSpScsrlsvchol(
             <SpHandle>handle, m, nnz, <const MatDescr> descrA,
@@ -1349,12 +1391,39 @@ cpdef dcsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                   size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
                   int reorder, size_t x, size_t singularity):
     cdef int status
+    spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverSpDcsrlsvchol(
             <SpHandle>handle, m, nnz, <const MatDescr> descrA,
             <const double*> csrValA, <const int*> csrRowPtrA,
             <const int*> csrColIndA, <const double*> b,
             tol, reorder, <double*> x, <int*> singularity)
+    check_status(status)
+
+cpdef ccsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrVal,
+                  size_t csrRowPtr, size_t csrColInd, size_t b, float tol,
+                  int reorder, size_t x, size_t singularity):
+    cdef int status
+    spSetStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverSpCcsrlsvchol(
+            <SpHandle>handle, m, nnz, <const MatDescr>descrA,
+            <const cuComplex*>csrVal, <const int*>csrRowPtr,
+            <const int*>csrColInd, <const cuComplex*>b, tol, reorder,
+            <cuComplex*>x, <int*>singularity)
+    check_status(status)
+
+cpdef zcsrlsvchol(size_t handle, int m, int nnz, size_t descrA, size_t csrVal,
+                  size_t csrRowPtr, size_t csrColInd, size_t b, double tol,
+                  int reorder, size_t x, size_t singularity):
+    cdef int status
+    spSetStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverSpZcsrlsvchol(
+            <SpHandle>handle, m, nnz, <const MatDescr>descrA,
+            <const cuDoubleComplex*>csrVal, <const int*>csrRowPtr,
+            <const int*>csrColInd, <const cuDoubleComplex*>b, tol, reorder,
+            <cuDoubleComplex*>x, <int*>singularity)
     check_status(status)
 
 cpdef scsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
@@ -1381,4 +1450,83 @@ cpdef dcsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
             <const double*> csrValA, <const int*> csrRowPtrA,
             <const int*> csrColIndA, <const double*> b,
             tol, reorder, <double*> x, <int*> singularity)
+    check_status(status)
+
+cpdef ccsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrVal,
+                size_t csrRowPtr, size_t csrColInd, size_t b, float tol,
+                int reorder, size_t x, size_t singularity):
+    cdef int status
+    spSetStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverSpCcsrlsvqr(
+            <SpHandle>handle, m, nnz, <const MatDescr>descrA,
+            <const cuComplex*>csrVal, <const int*>csrRowPtr,
+            <const int*>csrColInd, <const cuComplex*>b, tol, reorder,
+            <cuComplex*>x, <int*>singularity)
+    check_status(status)
+
+cpdef zcsrlsvqr(size_t handle, int m, int nnz, size_t descrA, size_t csrVal,
+                size_t csrRowPtr, size_t csrColInd, size_t b, double tol,
+                int reorder, size_t x, size_t singularity):
+    cdef int status
+    spSetStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverSpZcsrlsvqr(
+            <SpHandle>handle, m, nnz, <const MatDescr>descrA,
+            <const cuDoubleComplex*>csrVal, <const int*>csrRowPtr,
+            <const int*>csrColInd, <const cuDoubleComplex*>b, tol, reorder,
+            <cuDoubleComplex*>x, <int*>singularity)
+    check_status(status)
+
+cpdef scsreigvsi(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                 size_t csrRowPtrA, size_t csrColIndA, float mu0, size_t x0,
+                 int maxite, float eps, size_t mu, size_t x):
+    cdef int status
+    spSetStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverSpScsreigvsi(
+            <SpHandle>handle, m, nnz, <const MatDescr>descrA,
+            <const float*>csrValA, <const int*>csrRowPtrA,
+            <const int*>csrColIndA, mu0, <const float*>x0, maxite, eps,
+            <float*>mu, <float*>x)
+    check_status(status)
+
+cpdef dcsreigvsi(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                 size_t csrRowPtrA, size_t csrColIndA, double mu0,
+                 size_t x0, int maxite, double eps, size_t mu, size_t x):
+    cdef int status
+    spSetStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverSpDcsreigvsi(
+            <SpHandle>handle, m, nnz, <const MatDescr>descrA,
+            <const double*>csrValA, <const int*>csrRowPtrA,
+            <const int*>csrColIndA, mu0, <const double*>x0, maxite, eps,
+            <double*>mu, <double*>x)
+    check_status(status)
+
+cpdef ccsreigvsi(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                 size_t csrRowPtrA, size_t csrColIndA, size_t mu0,
+                 size_t x0, int maxite, float eps, size_t mu, size_t x):
+    cdef int status
+    spSetStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverSpCcsreigvsi(
+            <SpHandle>handle, m, nnz, <const MatDescr>descrA,
+            <const cuComplex*>csrValA, <const int*>csrRowPtrA,
+            <const int*>csrColIndA, (<cuComplex*>mu0)[0], <const cuComplex*>x0,
+            maxite, eps, <cuComplex*>mu, <cuComplex*>x)
+    check_status(status)
+
+cpdef zcsreigvsi(size_t handle, int m, int nnz, size_t descrA, size_t csrValA,
+                 size_t csrRowPtrA, size_t csrColIndA, size_t mu0,
+                 size_t x0, int maxite, double eps, size_t mu, size_t x):
+    cdef int status
+    spSetStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverSpZcsreigvsi(
+            <SpHandle>handle, m, nnz, <const MatDescr>descrA,
+            <const cuDoubleComplex*>csrValA, <const int*>csrRowPtrA,
+            <const int*>csrColIndA, (<cuDoubleComplex*>mu0)[0],
+            <const cuDoubleComplex*>x0, maxite,
+            eps, <cuDoubleComplex*>mu, <cuDoubleComplex*>x)
     check_status(status)
