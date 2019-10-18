@@ -1,5 +1,4 @@
 import numpy
-
 from numpy import nan
 
 from cupy.core._kernel import create_reduction_func
@@ -251,6 +250,13 @@ cdef _nanargmax_func = create_reduction_func(
     None, _min_max_preamble)
 
 
+cdef ndarray _mean(
+        ndarray a, axis=None, dtype=None, out=None, keepdims=False):
+    if a.size == 0:
+        # Return nan; see also https://github.com/numpy/numpy/issues/13582
+        return _mean_core_empty(a, axis, dtype, out, keepdims)
+    return _mean_core(a, axis, dtype, out, keepdims)
+
 cdef ndarray _var(
         ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
@@ -336,7 +342,7 @@ cdef _var_core_out = ReductionKernel(
 
 
 # TODO(okuta) needs cast
-cdef _mean = create_reduction_func(
+cdef _mean_core = create_reduction_func(
     'cupy_mean',
     ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
@@ -345,6 +351,14 @@ cdef _mean = create_reduction_func(
     ('in0', 'a + b',
      'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
 
+cdef _mean_core_empty = create_reduction_func(
+    'cupy_mean',
+    ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
+     'q->d', 'Q->d',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a + b',
+     'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None), 0)
 
 cdef _nanmean_preamble = '''
 template <typename T>

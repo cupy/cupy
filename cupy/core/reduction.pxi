@@ -250,12 +250,7 @@ class simple_reduction_function(object):
         ret = out_args[0] if len(out_args) == 1 else tuple(out_args)
         if (<ndarray>out_args[0]).size == 0:
             return ret
-
-        # Special casing "mean", as it behaves differently for 0-sized set
-        # reductions
-        if (arr.size == 0 and
-                self.identity is None and
-                self.name != "cupy_mean"):
+        if arr.size == 0 and self.identity is None:
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
