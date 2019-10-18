@@ -83,6 +83,46 @@ __global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, \
 }
 '''
 
+_test_cuComplex = r'''
+#include <cuComplex.h>
+#define N 100
+
+extern "C"{
+__global__ void test_divf(cuComplex* arr1, cuComplex* arr2,
+                          cuComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCdivf(arr1[tid], arr2[tid]);
+    }
+}
+
+__global__ void test_div(cuDoubleComplex* arr1, cuDoubleComplex* arr2,
+                         cuDoubleComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCdiv(arr1[tid], arr2[tid]);
+    }
+}
+
+__global__ void test_fmaf(cuFloatComplex* A, cuFloatComplex* B,
+                          cuFloatComplex* C, cuFloatComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCfmaf(A[tid], B[tid], C[tid]);
+    }
+}
+
+__global__ void test_fma(cuDoubleComplex* A, cuDoubleComplex* B,
+                         cuDoubleComplex* C, cuDoubleComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCfma(A[tid], B[tid], C[tid]);
+    }
+}
+}
+'''
+
+
 if 'CUPY_CACHE_DIR' in os.environ:
     _old_cache_dir = os.environ['CUPY_CACHE_DIR']
     _is_cache_env_var_set = True
@@ -192,3 +232,45 @@ class TestRaw(unittest.TestCase):
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
             self.mod2.get_function("no_such_kernel")
         assert 'CUDA_ERROR_NOT_FOUND' in str(ex.value)
+
+    def test_cuFloatComplex(self):
+        mod = cupy.RawModule(_test_cuComplex, enable_cuComplex=True)
+        N = 100
+        block = 32
+        grid = (N + block - 1) // block
+        a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        a = a.astype(cupy.complex64)
+        b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        b = b.astype(cupy.complex64)
+        c = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        c = c.astype(cupy.complex64)
+        out = cupy.zeros((N,), dtype=cupy.complex64)
+
+        ker = mod.get_function('test_divf')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a/b).all()
+
+        ker = mod.get_function('test_fmaf')
+        ker((grid,), (block,), (a, b, c, out))
+        assert (out == a * b + c).all()
+
+    def test_cuDoubleComplex(self):
+        mod = cupy.RawModule(_test_cuComplex, enable_cuComplex=True)
+        N = 100
+        block = 32
+        grid = (N + block - 1) // block
+        a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        a = a.astype(cupy.complex128)
+        b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        b = b.astype(cupy.complex128)
+        c = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        c = c.astype(cupy.complex128)
+        out = cupy.zeros((N,), dtype=cupy.complex128)
+
+        ker = mod.get_function('test_div')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a/b).all()
+
+        ker = mod.get_function('test_fma')
+        ker((grid,), (block,), (a, b, c, out))
+        assert (out == a * b + c).all()
