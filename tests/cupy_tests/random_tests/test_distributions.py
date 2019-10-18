@@ -3,7 +3,6 @@ import unittest
 import numpy
 
 import cupy
-from cupy import cuda
 from cupy.random import distributions
 from cupy import testing
 
@@ -333,8 +332,6 @@ class TestDistributionsLogseries(RandomDistributionsTestCase):
 })
 )
 @testing.gpu
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 class TestDistributionsMultivariateNormal(unittest.TestCase):
 
     def check_distribution(self, dist_func, mean_dtype, cov_dtype, dtype):

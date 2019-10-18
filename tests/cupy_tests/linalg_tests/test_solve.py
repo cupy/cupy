@@ -3,13 +3,10 @@ import unittest
 import numpy
 
 import cupy
-from cupy import cuda
 from cupy import testing
 from cupy.testing import condition
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 @testing.fix_random()
 class TestSolve(unittest.TestCase):
@@ -60,8 +57,6 @@ class TestSolve(unittest.TestCase):
 }))
 @testing.fix_random()
 @testing.gpu
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 class TestTensorSolve(unittest.TestCase):
 
     def setUp(self):
@@ -77,8 +72,6 @@ class TestTensorSolve(unittest.TestCase):
         return xp.linalg.tensorsolve(a, b, axes=self.axes)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestInv(unittest.TestCase):
 
@@ -114,8 +107,6 @@ class TestInv(unittest.TestCase):
         self.check_shape((2, 4, 3))
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestPinv(unittest.TestCase):
 
@@ -153,8 +144,6 @@ class TestPinv(unittest.TestCase):
         self.check_shape((4, 3, 2, 1), rcond=0.1)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestLstsq(unittest.TestCase):
 
@@ -227,8 +216,6 @@ class TestLstsq(unittest.TestCase):
         self.check_invalid_shapes((4, 3), (10, 3, 3))
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestTensorInv(unittest.TestCase):
 

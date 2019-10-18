@@ -3,17 +3,15 @@
 import threading
 
 from cupy.cuda import cublas
+from cupy.cuda import cusolver
 from cupy.cuda import cusparse
 from cupy.cuda cimport runtime
 from cupy.cuda import runtime as runtime_module
 from cupy import util
 
-try:
-    from cupy.cuda import cusolver
-    cusolver_enabled = True
-except ImportError:
-    cusolver_enabled = False
-
+# This flag is kept for backward compatibility.
+# It is always True as cuSOLVER library is always available in CUDA 8.0+.
+cusolver_enabled = True
 
 cdef object _thread_local = threading.local()
 

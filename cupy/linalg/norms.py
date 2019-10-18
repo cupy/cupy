@@ -2,14 +2,10 @@ import numpy
 from numpy import linalg
 
 import cupy
-from cupy import cuda
+from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import decomposition
 from cupy.linalg import util
-
-
-if cuda.cusolver_enabled:
-    from cupy.cuda import cusolver
 
 
 def norm(x, ord=None, axis=None, keepdims=False):
@@ -203,9 +199,6 @@ def slogdet(a):
 
     .. seealso:: :func:`numpy.linalg.slogdet`
     """
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-
     if a.ndim < 2:
         msg = ('%d-dimensional array given. '
                'Array must be at least two-dimensional' % a.ndim)

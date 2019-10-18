@@ -67,10 +67,9 @@ cusparseStatus_t cusparseSetStream(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-// cusparseGetStream is only available from CUDA 8.0
-// cusparseStatus_t cusparseGetStream(...) {
-//   return CUSPARSE_STATUS_SUCCESS;
-// }
+cusparseStatus_t cusparseGetStream(...) {
+   return CUSPARSE_STATUS_SUCCESS;
+}
 
 // cuSPARSE Level1 Function
 cusparseStatus_t cusparseSgthr(...) {
@@ -113,7 +112,7 @@ cusparseStatus_t cusparseCsrmvEx_bufferSize(...) {
 cusparseStatus_t cusparseCsrmvEx(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
-  
+
 // cuSPARSE Level3 Function
 cusparseStatus_t cusparseScsrmm(...) {
   return CUSPARSE_STATUS_SUCCESS;
