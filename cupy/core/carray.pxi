@@ -128,7 +128,7 @@ cpdef str _convert_cuComplex_to_Thrust(str source):
 
     # First, we comment out the line that includes cuComplex.h
     for i, line in enumerate(source_lines):
-        if '<cuComplex.h>' in line:
+        if '#include' in line and 'cuComplex.h' in line:
             source_lines[i] = r'//' + line
             break
     source = '\n'.join(source_lines)
