@@ -6,6 +6,7 @@ cdef class RawKernel:
         readonly tuple options
         object _kernel
         readonly str backend
+        bint cuComplex
 
 
 cdef class RawModule:

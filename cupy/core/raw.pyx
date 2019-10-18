@@ -24,9 +24,12 @@ cdef class RawKernel:
         options (str): Compiler options passed to NVRTC. For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
         backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
+        enable_cuComplex (bool): Whether the CUDA source includes cuComplex.h
+            or not. Defaults to False.
     """
 
-    def __init__(self, code, name, options=(), backend='nvrtc'):
+    def __init__(self, code, name, options=(), backend='nvrtc',
+                 enable_cuComplex=False):
         if isinstance(code, six.binary_type):
             code = code.decode('UTF-8')
         if isinstance(name, six.binary_type):
@@ -38,6 +41,7 @@ cdef class RawKernel:
         self.options = options
         self._kernel = None
         self.backend = backend
+        self.cuComplex = enable_cuComplex
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -60,7 +64,7 @@ cdef class RawKernel:
     def kernel(self):
         if self._kernel is None:
             self._kernel = _get_raw_kernel(self.code, self.name, self.options,
-                                           self.backend)
+                                           self.backend, self.cuComplex)
         return self._kernel
 
     @property
@@ -183,9 +187,11 @@ cdef class RawKernel:
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_raw_kernel(code, name, options=(), backend='nvrtc'):
+def _get_raw_kernel(code, name, options=(), backend='nvrtc',
+                    enable_cuComplex=False):
     module = cupy.core.core.compile_with_cache(
-        code, options, prepend_cupy_headers=False, backend=backend)
+        code, options, prepend_cupy_headers=False, backend=backend,
+        enable_cuComplex=enable_cuComplex)
     return module.get_function(name)
 
 
@@ -210,11 +216,14 @@ cdef class RawModule:
             needed. For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
         backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
+        enable_cuComplex (bool): Whether the CUDA source includes cuComplex.h
+            or not. Defaults to False.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
     """
-    def __init__(self, code_or_path, options=(), backend='nvrtc'):
+    def __init__(self, code_or_path, options=(), backend='nvrtc',
+                 enable_cuComplex=False):
         if isinstance(code_or_path, six.binary_type):
             code_or_path = code_or_path.decode('UTF-8')
         if isinstance(backend, six.binary_type):
@@ -231,7 +240,8 @@ cdef class RawModule:
 
         if self.code is not None:
             self.module = cupy.core.core.compile_with_cache(
-                code, options, prepend_cupy_headers=False, backend=backend)
+                code, options, prepend_cupy_headers=False, backend=backend,
+                enable_cuComplex=enable_cuComplex)
             self.backend = backend
         elif self.cubin_path is not None:
             self.module = Module()

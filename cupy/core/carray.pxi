@@ -122,9 +122,60 @@ cpdef str _get_header_source():
     return _header_source
 
 
+cpdef str _convert_cuComplex_to_Thrust(str source):
+    cdef str macro, line
+    cdef list source_lines = [line for line in source.split('\n')]
+
+    # First, we comment out the line that includes cuComplex.h
+    for i, line in enumerate(source_lines):
+        if '<cuComplex.h>' in line:
+            source_lines[i] = r'//' + line
+            break
+    source = '\n'.join(source_lines)
+
+    # Second, we use macros to replace cuComplex APIs by those of Thrust's
+    macro = r'''
+    /* ------------------- single complex ------------------- */
+    #define cuFloatComplex                complex<float>
+    #define cuComplex                     complex<float>
+    #define cuCrealf                      real
+    #define cuCimagf                      imag
+    #define make_cuFloatComplex(A, B)     complex<float>(A, B)
+    #define make_cuComplex(A, B)          complex<float>(A, B)
+    #define cuConjf                       conj
+    #define cuCaddf(A, B)                 A + B
+    #define cuCsubf(A, B)                 A - B
+    #define cuCmulf(A, B)                 A * B
+    #define cuCdivf(A, B)                 A / B
+    #define cuCabsf                       abs
+    #define cuComplexDoubleToFloat        complex<float>
+    #define cuCfmaf(A, B, C)              A * B + C
+
+    /* ------------------- double complex ------------------- */
+    #define cuDoubleComplex               complex<double>
+    #define cuCreal                       real
+    #define cuCimag                       imag
+    #define make_cuDoubleComplex(A, B)    complex<double>(A, B)
+    #define cuConj                        conj
+    #define cuCadd(A, B)                  A + B
+    #define cuCsub(A, B)                  A - B
+    #define cuCmul(A, B)                  A * B
+    #define cuCdiv(A, B)                  A / B
+    #define cuCabs                        abs
+    #define cuComplexFloatToDouble        complex<double>
+    #define cuCfma(A, B, C)               A * B + C
+    '''
+    source = macro + source
+    return source
+
+
 cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None,
-        prepend_cupy_headers=True, backend='nvrtc'):
+        prepend_cupy_headers=True, backend='nvrtc', enable_cuComplex=False):
+    if enable_cuComplex:
+        source = _convert_cuComplex_to_Thrust(source)
+        prepend_cupy_headers=True  # for <cupy/complex.cuh>
+
     if prepend_cupy_headers:
         source = _cupy_header + source
     extra_source = _get_header_source()
