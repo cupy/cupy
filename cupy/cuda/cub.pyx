@@ -25,6 +25,8 @@ cdef enum:
     CUPY_CUB_FLOAT16 = 8
     CUPY_CUB_FLOAT32 = 9
     CUPY_CUB_FLOAT64 = 10
+    CUPY_CUB_COMPLEX64 = 11
+    CUPY_CUB_COMPLEX128 = 12
 
 ###############################################################################
 # Extern
@@ -86,11 +88,13 @@ def can_use_reduce_sum(x_dtype, Py_ssize_t ndim, dtype=None, axis=None):
         # See _sum_auto_dtype in cupy/core/_routines_math.pyx for which dtypes
         # are promoted.
         support_dtype = [numpy.int64, numpy.uint64,
-                         numpy.float32, numpy.float64]
+                         numpy.float32, numpy.float64,
+                         numpy.complex64, numpy.complex128]
     elif dtype == x_dtype:
         support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
                          numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
-                         numpy.float32, numpy.float64]
+                         numpy.float32, numpy.float64,
+                         numpy.complex64, numpy.complex128]
     else:
         return False
     if x_dtype not in support_dtype:
@@ -132,7 +136,8 @@ def can_use_reduce_min(x_dtype, Py_ssize_t ndim, dtype=None, axis=None):
     if dtype is None or dtype == x_dtype:
         support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
                          numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
-                         numpy.float32, numpy.float64]
+                         numpy.float32, numpy.float64,
+                         numpy.complex64, numpy.complex128]
     else:
         return False
     if x_dtype not in support_dtype:
@@ -174,7 +179,8 @@ def can_use_reduce_max(x_dtype, Py_ssize_t ndim, dtype=None, axis=None):
     if dtype is None or dtype == x_dtype:
         support_dtype = [numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
                          numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
-                         numpy.float32, numpy.float64]
+                         numpy.float32, numpy.float64,
+                         numpy.complex64, numpy.complex128]
     else:
         return False
     if x_dtype not in support_dtype:
@@ -203,6 +209,10 @@ def _get_dtype_id(dtype):
         ret = CUPY_CUB_FLOAT32
     elif dtype == numpy.float64:
         ret = CUPY_CUB_FLOAT64
+    elif dtype == numpy.complex64:
+        ret = CUPY_CUB_COMPLEX64
+    elif dtype == numpy.complex128:
+        ret = CUPY_CUB_COMPLEX128
     else:
         raise ValueError('Unsupported dtype ({})'.format(dtype))
     return ret
