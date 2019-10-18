@@ -222,6 +222,8 @@ Raw kernels operating on complex-valued arrays can be created as well:
           [20.+40.j, 21.+42.j, 22.+44.j, 23.+46.j, 24.+48.j]],
          dtype=complex64)
 
+Note that while we encourage the usage of ``complex<T>`` types for complex numbers (available by including ``<cupy/complex.cuh>`` as shown above), for CUDA codes already written using functions from ``cuComplex.h`` there is no need to make the conversion yourself: just set the option ``enable_cuComplex=True`` when creating a :class:`~cupy.RawKernel` instance.
+
 The CUDA kernel attributes can be retrieved by either accessing the :attr:`~cupy.RawKernel.attributes` dictionary,
 or by accessing the :class:`~cupy.RawKernel` object's attributes directly; the latter can also be used to set certain
 attributes:
@@ -254,7 +256,6 @@ Accessing texture memory in :class:`~cupy.RawKernel` is supported via CUDA Runti
     Especially note that when passing :class:`~cupy.ndarray`, its ``dtype`` should match with the type of the argument declared in the method signature of the CUDA source code (unless you are casting arrays intentionally).
     For example, ``cupy.float32`` and ``cupy.uint64`` arrays must be passed to the argument typed as ``float*`` and ``unsigned long long*``.
     For Python primitive types, ``int``, ``float`` and ``bool`` map to ``long long``, ``double`` and ``bool``, respectively.
-    To use complex types, the user must include ``<cupy/complex.cuh>`` as in the complex-valued example above; CUDA's complex-type header (``<cuComplex.h>``) does not work in CuPy.
 
 .. note::
     When using ``printf()`` in your CUDA kernel, you may need to synchronize the stream to see the output.
@@ -303,6 +304,8 @@ For dealing a large raw CUDA source or loading an existing CUDA binary, the :cla
     >>> assert cp.allclose(y, x1 + x2)
     >>> ker_times((N,), (N,), (x1, x2, y, N**2)) # y = x1 * x2
     >>> assert cp.allclose(y, x1 * x2)
+
+The instruction above for using complex numbers in :class:`~cupy.RawKernel` also applies to :class:`~cupy.RawModule`.
 
 CuPy also supports the Texture Reference API. A handle to the texture reference in a module can be retrieved by name via :meth:`~cupy.RawModule.get_texref`. Then, you need to pass it to :class:`~cupy.cuda.texture.TextureReference`, along with a resource descriptor and texture descriptor, for binding the reference to the array. (The interface of :class:`~cupy.cuda.texture.TextureReference` is meant to mimic that of :class:`~cupy.cuda.texture.TextureObject` to help users make transition to the latter, since as of CUDA Toolkit 10.1 the former is marked as deprecated.)
 
