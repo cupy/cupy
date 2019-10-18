@@ -122,7 +122,7 @@ cpdef str _get_header_source():
     return _header_source
 
 
-cpdef str _convert_cuComplex_to_Thrust(str source):
+cdef str _convert_cuComplex_to_Thrust(str source):
     cdef str macro, line
     cdef list source_lines = [line for line in source.split('\n')]
 
