@@ -1,5 +1,4 @@
 import numpy
-
 from numpy import nan
 
 from cupy.core._kernel import create_reduction_func
