@@ -5,7 +5,8 @@
 import numpy
 
 from cupy.core cimport core
-from cupy.cuda cimport common
+from cupy.cuda cimport stream
+from cupy.cuda.driver cimport Stream as Stream_t
 
 cimport cython
 
@@ -33,12 +34,12 @@ cdef enum:
 ###############################################################################
 
 cdef extern from 'cupy_cub.h':
-    void cub_reduce_sum(void*, void*, int, void*, size_t&, int)
-    void cub_reduce_min(void*, void*, int, void*, size_t&, int)
-    void cub_reduce_max(void*, void*, int, void*, size_t&, int)
-    size_t cub_reduce_sum_get_workspace_size(void*, void*, int, int)
-    size_t cub_reduce_min_get_workspace_size(void*, void*, int, int)
-    size_t cub_reduce_max_get_workspace_size(void*, void*, int, int)
+    void cub_reduce_sum(void*, void*, int, void*, size_t&, Stream_t, int)
+    void cub_reduce_min(void*, void*, int, void*, size_t&, Stream_t, int)
+    void cub_reduce_max(void*, void*, int, void*, size_t&, Stream_t, int)
+    size_t cub_reduce_sum_get_workspace_size(void*, void*, int, Stream_t, int)
+    size_t cub_reduce_min_get_workspace_size(void*, void*, int, Stream_t, int)
+    size_t cub_reduce_max_get_workspace_size(void*, void*, int, Stream_t, int)
 
 ###############################################################################
 # Python interface
@@ -53,6 +54,7 @@ def reduce_sum(core.ndarray x, out=None, bint keepdims=False):
     cdef void *x_ptr
     cdef void *y_ptr
     cdef void *ws_ptr
+    cdef Stream_t s
     ndim_out = keepdims
     if out is not None and out.ndim != ndim_out:
         raise ValueError(
@@ -63,10 +65,12 @@ def reduce_sum(core.ndarray x, out=None, bint keepdims=False):
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
     dtype_id = _get_dtype_id(x.dtype)
-    ws_size = cub_reduce_sum_get_workspace_size(x_ptr, y_ptr, x.size, dtype_id)
+    s = <Stream_t>stream.get_current_stream_ptr()
+    ws_size = cub_reduce_sum_get_workspace_size(x_ptr, y_ptr, x.size, s,
+                                                dtype_id)
     ws = core.ndarray(ws_size, numpy.int8)
     ws_ptr = <void *>ws.data.ptr
-    cub_reduce_sum(x_ptr, y_ptr, x.size, ws_ptr, ws_size, dtype_id)
+    cub_reduce_sum(x_ptr, y_ptr, x.size, ws_ptr, ws_size, s, dtype_id)
     if keepdims:
         y = y.reshape((1,))
     if out is not None:
@@ -110,6 +114,7 @@ def reduce_min(core.ndarray x, out=None, bint keepdims=False):
     cdef void *x_ptr
     cdef void *y_ptr
     cdef void *ws_ptr
+    cdef Stream_t s
     ndim_out = keepdims
     if out is not None and out.ndim != ndim_out:
         raise ValueError(
@@ -120,10 +125,12 @@ def reduce_min(core.ndarray x, out=None, bint keepdims=False):
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
     dtype_id = _get_dtype_id(x.dtype)
-    ws_size = cub_reduce_min_get_workspace_size(x_ptr, y_ptr, x.size, dtype_id)
+    s = <Stream_t>stream.get_current_stream_ptr()
+    ws_size = cub_reduce_min_get_workspace_size(x_ptr, y_ptr, x.size, s,
+                                                dtype_id)
     ws = core.ndarray(ws_size, numpy.int8)
     ws_ptr = <void *>ws.data.ptr
-    cub_reduce_min(x_ptr, y_ptr, x.size, ws_ptr, ws_size, dtype_id)
+    cub_reduce_min(x_ptr, y_ptr, x.size, ws_ptr, ws_size, s, dtype_id)
     if keepdims:
         y = y.reshape((1,))
     if out is not None:
@@ -153,6 +160,7 @@ def reduce_max(core.ndarray x, out=None, bint keepdims=False):
     cdef void *x_ptr
     cdef void *y_ptr
     cdef void *ws_ptr
+    cdef Stream_t s
     ndim_out = keepdims
     if out is not None and out.ndim != ndim_out:
         raise ValueError(
@@ -163,10 +171,12 @@ def reduce_max(core.ndarray x, out=None, bint keepdims=False):
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
     dtype_id = _get_dtype_id(x.dtype)
-    ws_size = cub_reduce_max_get_workspace_size(x_ptr, y_ptr, x.size, dtype_id)
+    s = <Stream_t>stream.get_current_stream_ptr()
+    ws_size = cub_reduce_max_get_workspace_size(x_ptr, y_ptr, x.size, s,
+                                                dtype_id)
     ws = core.ndarray(ws_size, numpy.int8)
     ws_ptr = <void *>ws.data.ptr
-    cub_reduce_max(x_ptr, y_ptr, x.size, ws_ptr, ws_size, dtype_id)
+    cub_reduce_max(x_ptr, y_ptr, x.size, ws_ptr, ws_size, s, dtype_id)
     if keepdims:
         y = y.reshape((1,))
     if out is not None:
