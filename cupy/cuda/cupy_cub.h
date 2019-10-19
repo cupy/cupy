@@ -1,7 +1,6 @@
 #ifndef INCLUDE_GUARD_CUPY_CUDA_CUB_H
 #define INCLUDE_GUARD_CUPY_CUDA_CUB_H
 
-#include <cuda_runtime.h>  // for cudaStream_t
 #define CUPY_CUB_INT8        0
 #define CUPY_CUB_UINT8       1
 #define CUPY_CUB_INT16       2
@@ -17,6 +16,7 @@
 #define CUPY_CUB_COMPLEX128 12
 
 #ifndef CUPY_NO_CUDA
+#include <cuda_runtime.h>  // for cudaStream_t
 
 void cub_reduce_sum(void *, void *, int, void *, size_t &, cudaStream_t, int);
 void cub_reduce_min(void *, void *, int, void *, size_t &, cudaStream_t, int);
@@ -27,6 +27,7 @@ size_t cub_reduce_min_get_workspace_size(void *, void *, int, cudaStream_t, int)
 size_t cub_reduce_max_get_workspace_size(void *, void *, int, cudaStream_t, int);
 
 #else // CUPY_NO_CUDA
+typedef struct CUstream_st *cudaStream_t;
 
 void cub_reduce_sum(...) {
 }
