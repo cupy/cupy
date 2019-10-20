@@ -74,10 +74,10 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
 
 cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
     if cupy.cuda.cub_enabled:
-        if cub.can_use_reduce_sum_min_max(
-            self.dtype, self.ndim, cub.CUPY_CUB_SUM, dtype, axis):
-            return cub.reduce_sum_min_max(self, cub.CUPY_CUB_SUM,
-                                          out=out, keepdims=keepdims)
+        if cub.can_use_device_reduce(self.dtype, self.ndim, cub.CUPY_CUB_SUM,
+                                     dtype, axis):
+            return cub.device_reduce(self, cub.CUPY_CUB_SUM, out=out,
+                                     keepdims=keepdims)
     if dtype is None:
         return _sum_auto_dtype(self, axis, dtype, out, keepdims)
     else:

@@ -22,16 +22,16 @@
 #ifndef CUPY_NO_CUDA
 #include <cuda_runtime.h>  // for cudaStream_t
 
-void cub_reduce_sum_min_max(void *, void *, int, void *, size_t &, cudaStream_t, int, int);
-size_t cub_reduce_sum_min_max_get_workspace_size(void *, void *, int, cudaStream_t, int, int);
+void cub_device_reduce(void *, void *, int, void *, size_t &, cudaStream_t, int, int);
+size_t cub_device_reduce_get_workspace_size(void *, void *, int, cudaStream_t, int, int);
 
 #else // CUPY_NO_CUDA
 typedef struct CUstream_st *cudaStream_t;
 
-void cub_reduce_sum_min_max(...) {
+void cub_device_reduce(...) {
 }
 
-size_t cub_reduce_sum_min_max_get_workspace_size(...) {
+size_t cub_device_reduce_get_workspace_size(...) {
     return 0;
 }
 

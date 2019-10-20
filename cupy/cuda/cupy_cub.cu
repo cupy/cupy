@@ -107,7 +107,7 @@ struct _cub_reduce_max {
     }
 };
 
-void cub_reduce_sum_min_max(void *x, void *y, int num_items, void *workspace, size_t &workspace_size, cudaStream_t stream,
+void cub_device_reduce(void *x, void *y, int num_items, void *workspace, size_t &workspace_size, cudaStream_t stream,
     int op, int dtype_id)
 {
     switch(op) {
@@ -121,10 +121,10 @@ void cub_reduce_sum_min_max(void *x, void *y, int num_items, void *workspace, si
     }
 }
 
-size_t cub_reduce_sum_min_max_get_workspace_size(void *x, void *y, int num_items, cudaStream_t stream,
+size_t cub_device_reduce_get_workspace_size(void *x, void *y, int num_items, cudaStream_t stream,
     int op, int dtype_id)
 {
     size_t workspace_size = 0;
-    cub_reduce_sum_min_max(x, y, num_items, NULL, workspace_size, stream, op, dtype_id);
+    cub_device_reduce(x, y, num_items, NULL, workspace_size, stream, op, dtype_id);
     return workspace_size;
 }

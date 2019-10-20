@@ -5,10 +5,12 @@
 import numpy
 
 from cupy.core cimport core
+#from cupy.core._kernel import _get_axis, _get_out_shape, _get_permuted_args  # segfault!
 from cupy.cuda cimport stream
 from cupy.cuda.driver cimport Stream as Stream_t
 
 cimport cython
+
 
 ###############################################################################
 # Const
@@ -34,17 +36,17 @@ cdef enum:
 ###############################################################################
 
 cdef extern from 'cupy_cub.h':
-    void cub_reduce_sum_min_max(void*, void*, int, void*, size_t&, Stream_t,
-                                int, int)
-    size_t cub_reduce_sum_min_max_get_workspace_size(void*, void*, int,
-                                                     Stream_t, int, int)
+    void cub_device_reduce(void*, void*, int, void*, size_t&, Stream_t,
+                           int, int)
+    size_t cub_device_reduce_get_workspace_size(void*, void*, int, Stream_t,
+                                                int, int)
 
 ###############################################################################
 # Python interface
 ###############################################################################
 
 
-def reduce_sum_min_max(core.ndarray x, int op, out=None, bint keepdims=False):
+def device_reduce(core.ndarray x, int op, out=None, bint keepdims=False):
     cdef core.ndarray y
     cdef core.ndarray ws
     cdef int dtype_id, ndim_out
@@ -69,12 +71,11 @@ def reduce_sum_min_max(core.ndarray x, int op, out=None, bint keepdims=False):
     dtype_id = _get_dtype_id(x.dtype)
     s = <Stream_t>stream.get_current_stream_ptr()
 
-    ws_size = cub_reduce_sum_min_max_get_workspace_size(
-        x_ptr, y_ptr, x.size, s, op, dtype_id)
+    ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x.size, s,
+                                                   op, dtype_id)
     ws = core.ndarray(ws_size, numpy.int8)
     ws_ptr = <void *>ws.data.ptr
-    cub_reduce_sum_min_max(x_ptr, y_ptr, x.size, ws_ptr, ws_size, s,
-                           op, dtype_id)
+    cub_device_reduce(x_ptr, y_ptr, x.size, ws_ptr, ws_size, s, op, dtype_id)
 
     if keepdims:
         y = y.reshape((1,))
@@ -90,8 +91,14 @@ cpdef bint _cub_axis_compatible(axis, Py_ssize_t ndim):
     return False
 
 
-def can_use_reduce_sum_min_max(x_dtype, Py_ssize_t ndim, int op,
-                               dtype=None, axis=None):
+def can_use_device_reduce(x_dtype, Py_ssize_t ndim, int op, dtype=None,
+                          axis=None):
+    if not can_use_device_segmented_reduce(x_dtype, op, dtype):
+        return False
+    return _cub_axis_compatible(axis, ndim)
+
+
+def can_use_device_segmented_reduce(x_dtype, int op, dtype=None):
     if dtype is None:
         if op == CUPY_CUB_SUM:
             # auto dtype:
@@ -119,7 +126,7 @@ def can_use_reduce_sum_min_max(x_dtype, Py_ssize_t ndim, int op,
         return False
     if x_dtype not in support_dtype:
         return False
-    return _cub_axis_compatible(axis, ndim)
+    return True
 
 
 def _get_dtype_id(dtype):
