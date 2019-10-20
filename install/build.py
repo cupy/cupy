@@ -240,7 +240,7 @@ def check_cuda_version(compiler, settings):
         out = build_and_run(compiler, '''
         #include <cuda.h>
         #include <stdio.h>
-        int main(int argc, char* argv[]) {
+        int main() {
           printf("%d", CUDA_VERSION);
           return 0;
         }
@@ -282,7 +282,7 @@ def check_cudnn_version(compiler, settings):
         out = build_and_run(compiler, '''
         #include <cudnn.h>
         #include <stdio.h>
-        int main(int argc, char* argv[]) {
+        int main() {
           printf("%d", CUDNN_VERSION);
           return 0;
         }
@@ -333,7 +333,7 @@ def check_nccl_version(compiler, settings):
         #else
         #  define NCCL_VERSION_CODE 0
         #endif
-        int main(int argc, char* argv[]) {
+        int main() {
           printf("%d", NCCL_VERSION_CODE);
           return 0;
         }
