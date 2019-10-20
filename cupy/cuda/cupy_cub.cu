@@ -81,21 +81,6 @@ struct _cub_reduce_sum {
     }
 };
 
-void cub_reduce_sum(void *x, void *y, int num_items, void *workspace,
-    size_t &workspace_size, cudaStream_t stream, int dtype_id)
-{
-    dtype_dispatcher(dtype_id, _cub_reduce_sum(),
-        x, y, num_items, workspace, workspace_size, stream);
-}
-
-size_t cub_reduce_sum_get_workspace_size(void *x, void *y, int num_items,
-    cudaStream_t stream, int dtype_id)
-{
-    size_t workspace_size = 0;
-    cub_reduce_sum(x, y, num_items, NULL, workspace_size, stream, dtype_id);
-    return workspace_size;
-}
-
 //
 // **** cub_reduce_min ****
 //
@@ -108,21 +93,6 @@ struct _cub_reduce_min {
             static_cast<T*>(y), num_items, s);
     }
 };
-
-void cub_reduce_min(void *x, void *y, int num_items, void *workspace,
-    size_t &workspace_size, cudaStream_t stream, int dtype_id)
-{
-    dtype_dispatcher(dtype_id, _cub_reduce_min(),
-        x, y, num_items, workspace, workspace_size, stream);
-}
-
-size_t cub_reduce_min_get_workspace_size(void *x, void *y, int num_items,
-    cudaStream_t stream, int dtype_id)
-{
-    size_t workspace_size = 0;
-    cub_reduce_min(x, y, num_items, NULL, workspace_size, stream, dtype_id);
-    return workspace_size;
-}
 
 //
 // **** cub_reduce_max ****
@@ -137,17 +107,24 @@ struct _cub_reduce_max {
     }
 };
 
-void cub_reduce_max(void *x, void *y, int num_items, void *workspace,
-    size_t &workspace_size, cudaStream_t stream, int dtype_id)
+void cub_reduce_sum_min_max(void *x, void *y, int num_items, void *workspace, size_t &workspace_size, cudaStream_t stream,
+    int op, int dtype_id)
 {
-    dtype_dispatcher(dtype_id, _cub_reduce_max(),
-        x, y, num_items, workspace, workspace_size, stream);
+    switch(op) {
+    case CUPY_CUB_SUM:  return dtype_dispatcher(dtype_id, _cub_reduce_sum(),
+                            x, y, num_items, workspace, workspace_size, stream);
+    case CUPY_CUB_MIN:  return dtype_dispatcher(dtype_id, _cub_reduce_min(),
+                            x, y, num_items, workspace, workspace_size, stream);
+    case CUPY_CUB_MAX:  return dtype_dispatcher(dtype_id, _cub_reduce_max(),
+                            x, y, num_items, workspace, workspace_size, stream);
+    default:            throw std::runtime_error("Unsupported operation");
+    }
 }
 
-size_t cub_reduce_max_get_workspace_size(void *x, void *y, int num_items,
-    cudaStream_t stream, int dtype_id)
+size_t cub_reduce_sum_min_max_get_workspace_size(void *x, void *y, int num_items, cudaStream_t stream,
+    int op, int dtype_id)
 {
     size_t workspace_size = 0;
-    cub_reduce_max(x, y, num_items, NULL, workspace_size, stream, dtype_id);
+    cub_reduce_sum_min_max(x, y, num_items, NULL, workspace_size, stream, op, dtype_id);
     return workspace_size;
 }

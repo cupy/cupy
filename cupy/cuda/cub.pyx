@@ -29,22 +29,15 @@ cdef enum:
     CUPY_CUB_COMPLEX64 = 11
     CUPY_CUB_COMPLEX128 = 12
 
-cpdef enum:
-    CUPY_CUB_SUM = 0
-    CUPY_CUB_MIN = 1
-    CUPY_CUB_MAX = 2
-
 ###############################################################################
 # Extern
 ###############################################################################
 
 cdef extern from 'cupy_cub.h':
-    void cub_reduce_sum(void*, void*, int, void*, size_t&, Stream_t, int)
-    void cub_reduce_min(void*, void*, int, void*, size_t&, Stream_t, int)
-    void cub_reduce_max(void*, void*, int, void*, size_t&, Stream_t, int)
-    size_t cub_reduce_sum_get_workspace_size(void*, void*, int, Stream_t, int)
-    size_t cub_reduce_min_get_workspace_size(void*, void*, int, Stream_t, int)
-    size_t cub_reduce_max_get_workspace_size(void*, void*, int, Stream_t, int)
+    void cub_reduce_sum_min_max(void*, void*, int, void*, size_t&, Stream_t,
+                                int, int)
+    size_t cub_reduce_sum_min_max_get_workspace_size(void*, void*, int,
+                                                     Stream_t, int, int)
 
 ###############################################################################
 # Python interface
@@ -76,23 +69,13 @@ def reduce_sum_min_max(core.ndarray x, int op, out=None, bint keepdims=False):
     dtype_id = _get_dtype_id(x.dtype)
     s = <Stream_t>stream.get_current_stream_ptr()
 
-    if op == CUPY_CUB_SUM:
-        ws_size = cub_reduce_sum_get_workspace_size(x_ptr, y_ptr, x.size, s,
-                                                    dtype_id)
-    elif op == CUPY_CUB_MIN:
-        ws_size = cub_reduce_min_get_workspace_size(x_ptr, y_ptr, x.size, s,
-                                                    dtype_id)
-    elif op == CUPY_CUB_MAX:
-        ws_size = cub_reduce_max_get_workspace_size(x_ptr, y_ptr, x.size, s,
-                                                    dtype_id)
+    ws_size = cub_reduce_sum_min_max_get_workspace_size(
+        x_ptr, y_ptr, x.size, s, op, dtype_id)
     ws = core.ndarray(ws_size, numpy.int8)
     ws_ptr = <void *>ws.data.ptr
-    if op == CUPY_CUB_SUM:
-        cub_reduce_sum(x_ptr, y_ptr, x.size, ws_ptr, ws_size, s, dtype_id)
-    elif op == CUPY_CUB_MIN:
-        cub_reduce_min(x_ptr, y_ptr, x.size, ws_ptr, ws_size, s, dtype_id)
-    elif op == CUPY_CUB_MAX:
-        cub_reduce_max(x_ptr, y_ptr, x.size, ws_ptr, ws_size, s, dtype_id)
+    cub_reduce_sum_min_max(x_ptr, y_ptr, x.size, ws_ptr, ws_size, s,
+                           op, dtype_id)
+
     if keepdims:
         y = y.reshape((1,))
     if out is not None:
