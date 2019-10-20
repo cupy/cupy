@@ -633,7 +633,7 @@ cdef class PooledMemory(BaseMemory):
         self.free()
 
 
-cdef int _index_compaction_threshold = 512
+cdef size_t _index_compaction_threshold = 512
 
 
 cdef _compact_index(SingleDeviceMemoryPool pool, intptr_t stream_ptr,
