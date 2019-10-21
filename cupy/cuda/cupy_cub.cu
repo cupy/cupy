@@ -90,7 +90,7 @@ struct _cub_segmented_reduce_sum {
         DeviceSegmentedReduce::Sum(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
             static_cast<int*>(offset_start),
-            static_cast<int*>(offset_end)+1, s);
+            static_cast<int*>(offset_end), s);
     }
 };
 
