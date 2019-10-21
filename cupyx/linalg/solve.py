@@ -1,13 +1,10 @@
 import numpy
 
 import cupy
-from cupy import cuda
 from cupy.cuda import cublas
+from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import util
-
-if cuda.cusolver_enabled:
-    from cupy.cuda import cusolver
 
 
 def invh(a):
@@ -23,9 +20,6 @@ def invh(a):
     Returns:
         cupy.ndarray: The inverse of matrix ``a``.
     """
-
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('cuSOLVER is not available')
 
     # to prevent `a` from being overwritten
     a = a.copy()
