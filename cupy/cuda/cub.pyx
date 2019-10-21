@@ -60,14 +60,14 @@ def _preprocess_array(ndarray arr, axis):
 
     reduce_axis, out_axis = _get_axis(axis, arr._shape.size())
 #    del axis
-    axis_permutes = reduce_axis + out_axis
+    axis_permutes = out_axis + reduce_axis
     if axis_permutes != tuple(range(len(arr.shape))):
         new_arr = _transpose(arr, axis_permutes)
     else:
         new_arr = arr
     new_arr = _internal_ascontiguousarray(new_arr)
 
-    for axis in out_axis:
+    for axis in reduce_axis:
         contiguous_size *= arr.shape[axis]
     out_shape = tuple([arr.shape[axis] for axis in out_axis])
 
