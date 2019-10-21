@@ -1,5 +1,6 @@
 #include <cupy/complex.cuh>
 #include <cub/device/device_reduce.cuh>
+#include <cub/device/device_segmented_reduce.cuh>
 #include "cupy_cub.h"
 #include <stdexcept>
 
@@ -73,11 +74,23 @@ void dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args)
 //
 struct _cub_reduce_sum {
     template <typename T>
-    void operator()(void *x, void *y, int num_items, void *workspace,
-        size_t &workspace_size, cudaStream_t s)
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_items, cudaStream_t s)
     {
         DeviceReduce::Sum(workspace, workspace_size, static_cast<T*>(x),
             static_cast<T*>(y), num_items, s);
+    }
+};
+
+struct _cub_segmented_reduce_sum {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
+    {
+        DeviceSegmentedReduce::Sum(workspace, workspace_size,
+            static_cast<T*>(x), static_cast<T*>(y), num_segments,
+            static_cast<int*>(offset_start),
+            static_cast<int*>(offset_end)+1, s);
     }
 };
 
@@ -86,11 +99,23 @@ struct _cub_reduce_sum {
 //
 struct _cub_reduce_min {
     template <typename T>
-    void operator()(void *x, void *y, int num_items, void *workspace,
-        size_t &workspace_size, cudaStream_t s)
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_items, cudaStream_t s)
     {
         DeviceReduce::Min(workspace, workspace_size, static_cast<T*>(x),
             static_cast<T*>(y), num_items, s);
+    }
+};
+
+struct _cub_segmented_reduce_min {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
+    {
+        DeviceSegmentedReduce::Min(workspace, workspace_size,
+            static_cast<T*>(x), static_cast<T*>(y), num_segments,
+            static_cast<unsigned int*>(offset_start),
+            static_cast<unsigned int*>(offset_end), s);
     }
 };
 
@@ -99,32 +124,82 @@ struct _cub_reduce_min {
 //
 struct _cub_reduce_max {
     template <typename T>
-    void operator()(void *x, void *y, int num_items, void *workspace,
-        size_t &workspace_size, cudaStream_t s)
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_items, cudaStream_t s)
     {
         DeviceReduce::Max(workspace, workspace_size, static_cast<T*>(x),
             static_cast<T*>(y), num_items, s);
     }
 };
 
-void cub_device_reduce(void *x, void *y, int num_items, void *workspace, size_t &workspace_size, cudaStream_t stream,
-    int op, int dtype_id)
+struct _cub_segmented_reduce_max {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
+    {
+        DeviceSegmentedReduce::Max(workspace, workspace_size,
+            static_cast<T*>(x), static_cast<T*>(y), num_segments,
+            static_cast<unsigned int*>(offset_start),
+            static_cast<unsigned int*>(offset_end), s);
+    }
+};
+
+//
+// APIs exposed to CuPy
+//
+
+void cub_device_reduce(void* workspace, size_t& workspace_size, void* x, void* y,
+    int num_items, cudaStream_t stream, int op, int dtype_id)
 {
     switch(op) {
     case CUPY_CUB_SUM:  return dtype_dispatcher(dtype_id, _cub_reduce_sum(),
-                            x, y, num_items, workspace, workspace_size, stream);
+                            workspace, workspace_size, x, y, num_items, stream);
     case CUPY_CUB_MIN:  return dtype_dispatcher(dtype_id, _cub_reduce_min(),
-                            x, y, num_items, workspace, workspace_size, stream);
+                            workspace, workspace_size, x, y, num_items, stream);
     case CUPY_CUB_MAX:  return dtype_dispatcher(dtype_id, _cub_reduce_max(),
-                            x, y, num_items, workspace, workspace_size, stream);
+                            workspace, workspace_size, x, y, num_items, stream);
     default:            throw std::runtime_error("Unsupported operation");
     }
 }
 
-size_t cub_device_reduce_get_workspace_size(void *x, void *y, int num_items, cudaStream_t stream,
-    int op, int dtype_id)
+size_t cub_device_reduce_get_workspace_size(void* x, void* y, int num_items,
+    cudaStream_t stream, int op, int dtype_id)
 {
     size_t workspace_size = 0;
-    cub_device_reduce(x, y, num_items, NULL, workspace_size, stream, op, dtype_id);
+    cub_device_reduce(NULL, workspace_size, x, y, num_items, stream,
+                      op, dtype_id);
+    return workspace_size;
+}
+
+void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
+    void* x, void* y, int num_segments, void* offset_start, void* offset_end,
+    cudaStream_t stream, int op, int dtype_id)
+{
+    switch(op) {
+    case CUPY_CUB_SUM:
+        return dtype_dispatcher(dtype_id, _cub_segmented_reduce_sum(),
+                   workspace, workspace_size, x, y, num_segments, offset_start,
+                   offset_end, stream);
+    case CUPY_CUB_MIN:
+        return dtype_dispatcher(dtype_id, _cub_segmented_reduce_min(),
+                   workspace, workspace_size, x, y, num_segments, offset_start,
+                   offset_end, stream);
+    case CUPY_CUB_MAX:
+        return dtype_dispatcher(dtype_id, _cub_segmented_reduce_max(),
+                   workspace, workspace_size, x, y, num_segments, offset_start,
+                   offset_end, stream);
+    default:
+        throw std::runtime_error("Unsupported operation");
+    }
+}
+
+size_t cub_device_segmented_reduce_get_workspace_size(void* x, void* y,
+    int num_segments, void* offset_start, void* offset_end,
+    cudaStream_t stream, int op, int dtype_id)
+{
+    size_t workspace_size = 0;
+    cub_device_segmented_reduce(NULL, workspace_size, x, y, num_segments,
+                                offset_start, offset_end, stream,
+                                op, dtype_id);
     return workspace_size;
 }

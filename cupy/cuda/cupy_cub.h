@@ -22,8 +22,10 @@
 #ifndef CUPY_NO_CUDA
 #include <cuda_runtime.h>  // for cudaStream_t
 
-void cub_device_reduce(void *, void *, int, void *, size_t &, cudaStream_t, int, int);
+void cub_device_reduce(void*, size_t&, void*, void*, int, cudaStream_t, int, int);
+void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, void*, void*, cudaStream_t, int, int);
 size_t cub_device_reduce_get_workspace_size(void *, void *, int, cudaStream_t, int, int);
+size_t cub_device_segmented_reduce_get_workspace_size(void *, void *, int, void*, void*, cudaStream_t, int, int);
 
 #else // CUPY_NO_CUDA
 typedef struct CUstream_st *cudaStream_t;
@@ -31,10 +33,16 @@ typedef struct CUstream_st *cudaStream_t;
 void cub_device_reduce(...) {
 }
 
+void cub_device_segmented_reduce(...) {
+}
+
 size_t cub_device_reduce_get_workspace_size(...) {
     return 0;
 }
 
+size_t cub_device_segmented_reduce_get_workspace_size(...) {
+    return 0;
+}
 #endif // #ifndef CUPY_NO_CUDA
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_CUB_H

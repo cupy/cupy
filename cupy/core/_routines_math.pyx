@@ -76,8 +76,15 @@ cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
     if cupy.cuda.cub_enabled:
         if cub.can_use_device_reduce(self.dtype, self.ndim, cub.CUPY_CUB_SUM,
                                      dtype, axis):
+            print("using device_reduce!")
             return cub.device_reduce(self, cub.CUPY_CUB_SUM, out=out,
                                      keepdims=keepdims)
+        elif cub.can_use_device_segmented_reduce(self.dtype, cub.CUPY_CUB_SUM,
+                                                 dtype):
+            print("using device_segmented_reduce!")
+            return cub.device_segmented_reduce(
+                       self, cub.CUPY_CUB_SUM, axis, out=out,
+                       keepdims=keepdims)
     if dtype is None:
         return _sum_auto_dtype(self, axis, dtype, out, keepdims)
     else:
