@@ -250,6 +250,7 @@ cdef class RawModule:
 
         self.options = options
         self.kernels = {}
+        self.cuComplex = enable_cuComplex
 
     def get_function(self, name):
         """Retrieve a CUDA kernel by its name from the module.
@@ -263,7 +264,8 @@ cdef class RawModule:
         if name in self.kernels:
             return self.kernels[name]
         else:
-            ker = RawKernel(None, name, self.options)
+            ker = RawKernel(None, name, self.options, self.backend,
+                            self.cuComplex)
             ker._kernel = self.module.get_function(name)
             self.kernels[name] = ker
             return ker

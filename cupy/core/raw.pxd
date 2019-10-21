@@ -18,3 +18,4 @@ cdef class RawModule:
         dict kernels
         readonly str backend
         object module
+        bint cuComplex
