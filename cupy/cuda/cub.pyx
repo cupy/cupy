@@ -30,6 +30,13 @@ cdef enum:
     CUPY_CUB_COMPLEX64 = 11
     CUPY_CUB_COMPLEX128 = 12
 
+CUB_support_dtype = [numpy.int8, numpy.uint8,
+                     numpy.int16, numpy.uint16,
+                     numpy.int32, numpy.uint32,
+                     numpy.int64, numpy.uint64,
+                     numpy.float32, numpy.float64,
+                     numpy.complex64, numpy.complex128]
+
 ###############################################################################
 # Extern
 ###############################################################################
@@ -50,6 +57,11 @@ cdef extern from 'cupy_cub.h':
 
 
 def _preprocess_array(ndarray arr, axis, bint keepdims):
+    '''Reshape the array and ensure the reduced axes have contiguous blocks.
+    This function more or less follows the logic of _get_permuted_args() in
+    reduction.pxi.
+    '''
+
     # if import at the top level, a segfault would happen when import cupy!
     from cupy.core._kernel import _get_axis
     from cupy.core._routines_manipulation import _transpose
@@ -95,8 +107,8 @@ def device_reduce(ndarray x, int op, out=None, bint keepdims=False):
     ndim_out = keepdims
     if out is not None and out.ndim != ndim_out:
         raise ValueError(
-            "output parameter for reduction operation sum has the wrong "
-            "number of dimensions")
+            "output parameter for reduction operation has the wrong number of "
+            "dimensions")
     if op < 0 or op > 2:
         raise ValueError("only CUPY_CUB_SUM, CUPY_CUB_MIN, and CUPY_CUB_MAX "
                          "are supported.")
@@ -127,11 +139,11 @@ def device_segmented_reduce(ndarray x, int op, axis, out=None,
     from cupy.creation.ranges import arange
 
     cdef ndarray x_reshaped, y, ws, offset
+    cdef void *x_ptr, *y_ptr, *ws_ptr, *offset_start_ptr
     cdef int dtype_id, n_segments
     cdef size_t ws_size
     cdef Py_ssize_t contiguous_size
     cdef tuple out_shape
-    cdef void *x_ptr, *y_ptr, *ws_ptr, *offset_start_ptr
     cdef Stream_t s
 
     if op < 0 or op > 2:
@@ -158,15 +170,12 @@ def device_segmented_reduce(ndarray x, int op, axis, out=None,
     # get workspace size and then fire up
     ws_size = cub_device_segmented_reduce_get_workspace_size(
         x_ptr, y_ptr, n_segments, offset_start_ptr, offset_end_ptr, s,
-#        x_ptr, y_ptr, n_segments, offset_start_ptr, offset_start_ptr, s,
         op, dtype_id)
     ws = ndarray(ws_size, numpy.int8)
     ws_ptr = <void*>ws.data.ptr
     cub_device_segmented_reduce(ws_ptr, ws_size, x_ptr, y_ptr, n_segments,
                                 offset_start_ptr, offset_end_ptr, s,
-#                                offset_start_ptr, offset_start_ptr, s,
                                 op, dtype_id)
-    print("cub_device_segmented_reduce finished!")
 
     if out is not None:
         out[...] = y
@@ -198,19 +207,9 @@ def can_use_device_segmented_reduce(x_dtype, int op, dtype=None):
                              numpy.float32, numpy.float64,
                              numpy.complex64, numpy.complex128]
         else:
-            support_dtype = [numpy.int8, numpy.uint8,
-                             numpy.int16, numpy.uint16,
-                             numpy.int32, numpy.uint32,
-                             numpy.int64, numpy.uint64,
-                             numpy.float32, numpy.float64,
-                             numpy.complex64, numpy.complex128]
+            support_dtype = CUB_support_dtype
     elif dtype == x_dtype:
-        support_dtype = [numpy.int8, numpy.uint8,
-                         numpy.int16, numpy.uint16,
-                         numpy.int32, numpy.uint32,
-                         numpy.int64, numpy.uint64,
-                         numpy.float32, numpy.float64,
-                         numpy.complex64, numpy.complex128]
+        support_dtype = CUB_support_dtype
     else:
         return False
     if x_dtype not in support_dtype:

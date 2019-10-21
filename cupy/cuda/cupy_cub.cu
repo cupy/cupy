@@ -70,7 +70,7 @@ void dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args)
 }
 
 //
-// **** cub_reduce_sum ****
+// **** CUB Sum ****
 //
 struct _cub_reduce_sum {
     template <typename T>
@@ -95,7 +95,7 @@ struct _cub_segmented_reduce_sum {
 };
 
 //
-// **** cub_reduce_min ****
+// **** CUB Min ****
 //
 struct _cub_reduce_min {
     template <typename T>
@@ -114,13 +114,13 @@ struct _cub_segmented_reduce_min {
     {
         DeviceSegmentedReduce::Min(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
-            static_cast<unsigned int*>(offset_start),
-            static_cast<unsigned int*>(offset_end), s);
+            static_cast<int*>(offset_start),
+            static_cast<int*>(offset_end), s);
     }
 };
 
 //
-// **** cub_reduce_max ****
+// **** CUB Max ****
 //
 struct _cub_reduce_max {
     template <typename T>
@@ -139,14 +139,16 @@ struct _cub_segmented_reduce_max {
     {
         DeviceSegmentedReduce::Max(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
-            static_cast<unsigned int*>(offset_start),
-            static_cast<unsigned int*>(offset_end), s);
+            static_cast<int*>(offset_start),
+            static_cast<int*>(offset_end), s);
     }
 };
 
 //
 // APIs exposed to CuPy
 //
+
+/* -------- device reduce -------- */
 
 void cub_device_reduce(void* workspace, size_t& workspace_size, void* x, void* y,
     int num_items, cudaStream_t stream, int op, int dtype_id)
@@ -170,6 +172,8 @@ size_t cub_device_reduce_get_workspace_size(void* x, void* y, int num_items,
                       op, dtype_id);
     return workspace_size;
 }
+
+/* -------- device segmented reduce -------- */
 
 void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
     void* x, void* y, int num_segments, void* offset_start, void* offset_end,
