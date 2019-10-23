@@ -80,7 +80,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.beta` for full documentation,
-            :meth:`numpy.random.RandomState.beta`
+            :meth:`numpy.random.RandomState.beta
+            <numpy.random.mtrand.RandomState.beta>`
         """
         a, b = cupy.asarray(a), cupy.asarray(b)
         if size is None:
@@ -95,7 +96,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.binomial` for full documentation,
-            :meth:`numpy.random.RandomState.binomial`
+            :meth:`numpy.random.RandomState.binomial
+            <numpy.random.mtrand.RandomState.binomial>`
         """
         n, p = cupy.asarray(n), cupy.asarray(p)
         if size is None:
@@ -110,7 +112,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.chisquare` for full documentation,
-            :meth:`numpy.random.RandomState.chisquare`
+            :meth:`numpy.random.RandomState.chisquare
+            <numpy.random.mtrand.RandomState.chisquare>`
         """
         df = cupy.asarray(df)
         if size is None:
@@ -125,7 +128,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.dirichlet` for full documentation,
-            :meth:`numpy.random.RandomState.dirichlet`
+            :meth:`numpy.random.RandomState.dirichlet
+            <numpy.random.mtrand.RandomState.dirichlet>`
         """
         alpha = cupy.asarray(alpha)
         if size is None:
@@ -143,7 +147,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.exponential` for full documentation,
-            :meth:`numpy.random.RandomState.exponential`
+            :meth:`numpy.random.RandomState.exponential
+            <numpy.random.mtrand.RandomState.exponential>`
         """
         scale = cupy.asarray(scale, dtype)
         if (scale < 0).any():
@@ -159,7 +164,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.f` for full documentation,
-            :meth:`numpy.random.RandomState.f`
+            :meth:`numpy.random.RandomState.f
+            <numpy.random.mtrand.RandomState.f>`
         """
         dfnum, dfden = cupy.asarray(dfnum), cupy.asarray(dfden)
         if size is None:
@@ -174,7 +180,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.gamma` for full documentation,
-            :meth:`numpy.random.RandomState.gamma`
+            :meth:`numpy.random.RandomState.gamma
+            <numpy.random.mtrand.RandomState.gamma>`
         """
         shape, scale = cupy.asarray(shape), cupy.asarray(scale)
         if size is None:
@@ -190,7 +197,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.geometric` for full documentation,
-            :meth:`numpy.random.RandomState.geometric`
+            :meth:`numpy.random.RandomState.geometric
+            <numpy.random.mtrand.RandomState.geometric>`
         """
         p = cupy.asarray(p)
         if size is None:
@@ -205,7 +213,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.hypergeometric` for full documentation,
-            :meth:`numpy.random.RandomState.hypergeometric`
+            :meth:`numpy.random.RandomState.hypergeometric
+            <numpy.random.mtrand.RandomState.hypergeometric>`
         """
         ngood, nbad, nsample = \
             cupy.asarray(ngood), cupy.asarray(nbad), cupy.asarray(nsample)
@@ -226,7 +235,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.laplace` for full documentation,
-            :meth:`numpy.random.RandomState.laplace`
+            :meth:`numpy.random.RandomState.laplace
+            <numpy.random.mtrand.RandomState.laplace>`
         """
         loc = cupy.asarray(loc, dtype)
         scale = cupy.asarray(scale, dtype)
@@ -241,7 +251,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.logistic` for full documentation,
-            :meth:`numpy.random.RandomState.logistic`
+            :meth:`numpy.random.RandomState.logistic
+            <numpy.random.mtrand.RandomState.logistic>`
         """
         loc, scale = cupy.asarray(loc), cupy.asarray(scale)
         if size is None:
@@ -260,7 +271,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.lognormal` for full documentation,
-            :meth:`numpy.random.RandomState.lognormal`
+            :meth:`numpy.random.RandomState.lognormal
+            <numpy.random.mtrand.RandomState.lognormal>`
 
         """
         dtype = _check_and_get_dtype(dtype)
@@ -275,7 +287,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.logseries` for full documentation,
-            :meth:`numpy.random.RandomState.logseries`
+            :meth:`numpy.random.RandomState.logseries
+            <numpy.random.mtrand.RandomState.logseries>`
 
         """
         p = cupy.asarray(p)
@@ -297,7 +310,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.multivariate_normal` for full documentation,
-            :meth:`numpy.random.RandomState.multivariate_normal`
+            :meth:`numpy.random.RandomState.multivariate_normal
+            <numpy.random.mtrand.RandomState.multivariate_normal>`
         """
         util.experimental('cupy.random.RandomState.multivariate_normal')
         mean = cupy.asarray(mean, dtype=dtype)
@@ -348,7 +362,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.negative_binomial` for full documentation,
-            :meth:`numpy.random.RandomState.negative_binomial`
+            :meth:`numpy.random.RandomState.negative_binomial
+            <numpy.random.mtrand.RandomState.negative_binomial>`
         """
         n = cupy.asarray(n)
         p = cupy.asarray(p)
@@ -366,7 +381,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.normal` for full documentation,
-            :meth:`numpy.random.RandomState.normal`
+            :meth:`numpy.random.RandomState.normal
+            <numpy.random.mtrand.RandomState.normal>`
 
         """
         dtype = _check_and_get_dtype(dtype)
@@ -381,7 +397,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.pareto_kernel` for full documentation,
-            :meth:`numpy.random.RandomState.pareto`
+            :meth:`numpy.random.RandomState.pareto
+            <numpy.random.mtrand.RandomState.pareto>`
         """
         a = cupy.asarray(a)
         x = self._random_sample_raw(size, dtype)
@@ -395,7 +412,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.noncentral_chisquare` for full documentation,
-            :meth:`numpy.random.RandomState.noncentral_chisquare`
+            :meth:`numpy.random.RandomState.noncentral_chisquare
+            <numpy.random.mtrand.RandomState.noncentral_chisquare>`
         """
         df, nonc = cupy.asarray(df), cupy.asarray(nonc)
         if cupy.any(df <= 0):
@@ -414,7 +432,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.noncentral_f` for full documentation,
-            :meth:`numpy.random.RandomState.noncentral_f`
+            :meth:`numpy.random.RandomState.noncentral_f
+            <numpy.random.mtrand.RandomState.noncentral_f>`
         """
         dfnum, dfden, nonc = \
             cupy.asarray(dfnum), cupy.asarray(dfden), cupy.asarray(nonc)
@@ -436,7 +455,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.poisson` for full documentation,
-            :meth:`numpy.random.RandomState.poisson`
+            :meth:`numpy.random.RandomState.poisson
+            <numpy.random.mtrand.RandomState.poisson>`
         """
         lam = cupy.asarray(lam)
         if size is None:
@@ -451,7 +471,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.power` for full documentation,
-            :meth:`numpy.random.RandomState.power`
+            :meth:`numpy.random.RandomState.power
+            <numpy.random.mtrand.RandomState.power>`
         """
         a = cupy.asarray(a)
         if cupy.any(a < 0):
@@ -469,7 +490,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.rand` for full documentation,
-            :meth:`numpy.random.RandomState.rand`
+            :meth:`numpy.random.RandomState.rand
+            <numpy.random.mtrand.RandomState.rand>`
 
         """
         dtype = kwarg.pop('dtype', float)
@@ -483,7 +505,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.randn` for full documentation,
-            :meth:`numpy.random.RandomState.randn`
+            :meth:`numpy.random.RandomState.randn
+            <numpy.random.mtrand.RandomState.randn>`
 
         """
         dtype = kwarg.pop('dtype', float)
@@ -510,7 +533,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.random_sample` for full documentation,
-            :meth:`numpy.random.RandomState.random_sample`
+            :meth:`numpy.random.RandomState.random_sample
+            <numpy.random.mtrand.RandomState.random_sample>`
 
         """
         out = self._random_sample_raw(size, dtype)
@@ -522,7 +546,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.rayleigh` for full documentation,
-            :meth:`numpy.random.RandomState.rayleigh`
+            :meth:`numpy.random.RandomState.rayleigh
+            <numpy.random.mtrand.RandomState.rayleigh>`
         """
         scale = cupy.asarray(scale)
         if size is None:
@@ -614,7 +639,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.seed` for full documentation,
-            :meth:`numpy.random.RandomState.seed`
+            :meth:`numpy.random.RandomState.seed
+            <numpy.random.mtrand.RandomState.seed>`
 
         """
         if seed is None:
@@ -638,7 +664,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.standard_cauchy` for full documentation,
-            :meth:`numpy.random.RandomState.standard_cauchy`
+            :meth:`numpy.random.RandomState.standard_cauchy
+            <numpy.random.mtrand.RandomState.standard_cauchy>`
         """
         x = self.uniform(size=size, dtype=dtype)
         return cupy.tan(cupy.pi * (x - 0.5))
@@ -648,7 +675,8 @@ class RandomState(object):
 
          .. seealso::
             :func:`cupy.random.standard_exponential` for full documentation,
-            :meth:`numpy.random.RandomState.standard_exponential`
+            :meth:`numpy.random.RandomState.standard_exponential
+            <numpy.random.mtrand.RandomState.standard_exponential>`
         """
         x = self._random_sample_raw(size, dtype)
         return -cupy.log(x, out=x)
@@ -658,7 +686,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.standard_gamma` for full documentation,
-            :meth:`numpy.random.RandomState.standard_gamma`
+            :meth:`numpy.random.RandomState.standard_gamma
+            <numpy.random.mtrand.RandomState.standard_gamma>`
         """
         shape = cupy.asarray(shape)
         if size is None:
@@ -673,7 +702,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.standard_normal` for full documentation,
-            :meth:`numpy.random.RandomState.standard_normal`
+            :meth:`numpy.random.RandomState.standard_normal
+            <numpy.random.mtrand.RandomState.standard_normal>`
 
         """
         return self.normal(size=size, dtype=dtype)
@@ -683,7 +713,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.standard_t` for full documentation,
-            :meth:`numpy.random.RandomState.standard_t`
+            :meth:`numpy.random.RandomState.standard_t
+            <numpy.random.mtrand.RandomState.standard_t>`
         """
         df = cupy.asarray(df)
         if size is None:
@@ -703,7 +734,8 @@ class RandomState(object):
             cupy.ndarray: Drawn samples.
 
         .. seealso::
-            :meth:`numpy.random.RandomState.tomaxint`
+            :meth:`numpy.random.RandomState.tomaxint
+            <numpy.random.mtrand.RandomState.tomaxint>`
 
         """
         if size is None:
@@ -745,7 +777,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.triangular` for full documentation,
-            :meth:`numpy.random.RandomState.triangular`
+            :meth:`numpy.random.RandomState.triangular
+            <numpy.random.mtrand.RandomState.triangular>`
         """
         left, mode, right = \
             cupy.asarray(left), cupy.asarray(mode), cupy.asarray(right)
@@ -770,7 +803,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.uniform` for full documentation,
-            :meth:`numpy.random.RandomState.uniform`
+            :meth:`numpy.random.RandomState.uniform
+            <numpy.random.mtrand.RandomState.uniform>`
 
         """
         dtype = numpy.dtype(dtype)
@@ -786,7 +820,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.vonmises` for full documentation,
-            :meth:`numpy.random.RandomState.vonmises`
+            :meth:`numpy.random.RandomState.vonmises
+            <numpy.random.mtrand.RandomState.vonmises>`
         """
         mu, kappa = cupy.asarray(mu), cupy.asarray(kappa)
         if size is None:
@@ -816,7 +851,8 @@ class RandomState(object):
 
          .. seealso::
             :func:`cupy.random.wald` for full documentation,
-            :meth:`numpy.random.RandomState.wald`
+            :meth:`numpy.random.RandomState.wald
+            <numpy.random.mtrand.RandomState.wald>`
         """
         mean, scale = \
             cupy.asarray(mean, dtype=dtype), cupy.asarray(scale, dtype=dtype)
@@ -831,7 +867,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.weibull` for full documentation,
-            :meth:`numpy.random.RandomState.weibull`
+            :meth:`numpy.random.RandomState.weibull
+            <numpy.random.mtrand.RandomState.weibull>`
         """
         a = cupy.asarray(a)
         if cupy.any(a < 0):
@@ -845,7 +882,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.zipf` for full documentation,
-            :meth:`numpy.random.RandomState.zipf`
+            :meth:`numpy.random.RandomState.zipf
+            <numpy.random.mtrand.RandomState.zipf>`
         """
         a = cupy.asarray(a)
         if cupy.any(a <= 1.0):
@@ -862,7 +900,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.choice` for full document,
-            :func:`numpy.random.choice`
+            :meth:`numpy.random.choice
+            <numpy.random.mtrand.RandomState.choice>`
 
         """
         if a is None:
@@ -939,7 +978,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.shuffle` for full document,
-            :func:`numpy.random.shuffle`
+            :meth:`numpy.random.shuffle
+            <numpy.random.mtrand.RandomState.shuffle>`
 
         """
         if not isinstance(a, cupy.ndarray):
@@ -996,7 +1036,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.gumbel` for full documentation,
-            :meth:`numpy.random.RandomState.gumbel`
+            :meth:`numpy.random.RandomState.gumbel
+            <numpy.random.mtrand.RandomState.gumbel>`
         """
         x = self._random_sample_raw(size=size, dtype=dtype)
         if not numpy.isscalar(loc):
@@ -1011,7 +1052,8 @@ class RandomState(object):
 
         .. seealso::
             :func:`cupy.random.randint` for full documentation,
-            :meth:`numpy.random.RandomState.randint`
+            :meth:`numpy.random.RandomState.randint
+            <numpy.random.mtrand.RandomState.randint>`
         """
         if high is None:
             lo = 0
