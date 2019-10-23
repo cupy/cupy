@@ -15,6 +15,8 @@ from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 
 if cupy.cuda.cub_enabled:
+    import warnings
+    from cupy import util
     from cupy.cuda import cub
 
 
@@ -74,12 +76,18 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
 
 cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
     if cupy.cuda.cub_enabled:
-        if cub.can_use_device_reduce(self.dtype, self.ndim, cub.CUPY_CUB_SUM,
-                                     dtype, axis):
+        if cub.can_use_device_reduce(cub.CUPY_CUB_SUM, self.dtype, self.ndim,
+                                     axis, dtype):
             return cub.device_reduce(self, cub.CUPY_CUB_SUM, out=out,
                                      keepdims=keepdims)
-        elif cub.can_use_device_segmented_reduce(self.dtype, cub.CUPY_CUB_SUM,
-                                                 dtype):
+        elif cub.can_use_device_segmented_reduce(
+                cub.CUPY_CUB_SUM, self.dtype, self.ndim, axis, dtype):
+            if self.dtype in (numpy.complex64, numpy.complex128):
+                warnings.warn("CUB reduction for complex numbers may not be "
+                              "highly performant. If concerned, set "
+                              "cupy.cuda.cub_enabled=False to switch to CuPy's"
+                              " internal reduction routine and compare the "
+                              "timings.", util.PerformanceWarning)
             return cub.device_segmented_reduce(
                        self, cub.CUPY_CUB_SUM, axis, out=out,
                        keepdims=keepdims)
