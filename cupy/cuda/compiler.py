@@ -330,11 +330,13 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
             from cupy.cuda import get_cuda_path
             cudadevrt = get_cuda_path()
             if _win32:
-                cudadevrt += '\lib\x64\cudadevrt.lib'
+                # rely on os.altsep
+                cudadevrt += '/lib/x64/cudadevrt.lib'
             elif _osx:
                 cudadevrt += '/lib/libcudadevrt.a'
             else:  # linux
                 cudadevrt += '/lib64/libcudadevrt.a'
+            cudadevrt = os.path.normpath(cudadevrt)
             if not os.path.isfile(cudadevrt):
                 raise RuntimeError('Relocatable PTX code is requested, but '
                                    'cudadevrt is not found.')
