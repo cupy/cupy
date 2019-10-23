@@ -16,38 +16,37 @@
 #define CUPY_CUB_COMPLEX128 12
 
 #ifndef CUPY_NO_CUDA
+#include <cuda_runtime.h>  // for cudaStream_t
 
-void cub_reduce_sum(void *, void *, int, void *, size_t &, int);
-void cub_reduce_min(void *, void *, int, void *, size_t &, int);
-void cub_reduce_max(void *, void *, int, void *, size_t &, int);
+void cub_reduce_sum(void *, void *, int, void *, size_t &, cudaStream_t, int);
+void cub_reduce_min(void *, void *, int, void *, size_t &, cudaStream_t, int);
+void cub_reduce_max(void *, void *, int, void *, size_t &, cudaStream_t, int);
 
-size_t cub_reduce_sum_get_workspace_size(void *, void *, int, int);
-size_t cub_reduce_min_get_workspace_size(void *, void *, int, int);
-size_t cub_reduce_max_get_workspace_size(void *, void *, int, int);
+size_t cub_reduce_sum_get_workspace_size(void *, void *, int, cudaStream_t, int);
+size_t cub_reduce_min_get_workspace_size(void *, void *, int, cudaStream_t, int);
+size_t cub_reduce_max_get_workspace_size(void *, void *, int, cudaStream_t, int);
 
 #else // CUPY_NO_CUDA
+typedef struct CUstream_st *cudaStream_t;
 
-void cub_reduce_sum(void *, void *, int, void *, size_t &, int) {
-    return;
+void cub_reduce_sum(...) {
 }
 
-void cub_reduce_min(void *, void *, int, void *, size_t &, int) {
-    return;
+void cub_reduce_min(...) {
 }
 
-void cub_reduce_max(void *, void *, int, void *, size_t &, int) {
-    return;
+void cub_reduce_max(...) {
 }
 
-size_t cub_reduce_sum_get_workspace_size(void *, void *, int, int) {
+size_t cub_reduce_sum_get_workspace_size(...) {
     return 0;
 }
 
-size_t cub_reduce_min_get_workspace_size(void *, void *, int, int) {
+size_t cub_reduce_min_get_workspace_size(...) {
     return 0;
 }
 
-size_t cub_reduce_max_get_workspace_size(void *, void *, int, int) {
+size_t cub_reduce_max_get_workspace_size(...) {
     return 0;
 }
 
