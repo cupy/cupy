@@ -28,8 +28,7 @@ cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
                               " internal reduction routine and compare the "
                               "timings.", util.PerformanceWarning)
             return cub.device_segmented_reduce(
-                       self, cub.CUPY_CUB_MAX, axis, out=out,
-                       keepdims=keepdims)
+                self, cub.CUPY_CUB_MAX, axis, out=out, keepdims=keepdims)
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
@@ -48,8 +47,7 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
                               " internal reduction routine and compare the "
                               "timings.", util.PerformanceWarning)
             return cub.device_segmented_reduce(
-                       self, cub.CUPY_CUB_MIN, axis, out=out,
-                       keepdims=keepdims)
+                self, cub.CUPY_CUB_MIN, axis, out=out, keepdims=keepdims)
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 

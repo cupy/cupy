@@ -89,8 +89,7 @@ cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
                               " internal reduction routine and compare the "
                               "timings.", util.PerformanceWarning)
             return cub.device_segmented_reduce(
-                       self, cub.CUPY_CUB_SUM, axis, out=out,
-                       keepdims=keepdims)
+                self, cub.CUPY_CUB_SUM, axis, out=out, keepdims=keepdims)
     if dtype is None:
         return _sum_auto_dtype(self, axis, dtype, out, keepdims)
     else:
