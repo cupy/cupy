@@ -121,6 +121,7 @@ cpdef _create_tensor_nd_descriptor(
         size_t desc, core.ndarray arr, int data_type=-1):
     cdef vector.vector[int] c_shape, c_strides
     cdef Py_ssize_t itemsize, s
+    cdef int next_stride, i
     if data_type == -1:  # `-1` is used instead of `None`
         data_type = get_data_type(arr.dtype)
     itemsize = arr.itemsize
@@ -128,6 +129,14 @@ cpdef _create_tensor_nd_descriptor(
         c_strides.push_back(s // itemsize)
     for s in arr._shape:
         c_shape.push_back(s)
+    # Use "c-contiguous stride" with the next axis, if ambiguous
+    next_stride = 1
+    for i in reversed(range(c_shape.size())):
+        if c_shape[i] <= 1:
+            c_strides[i] = next_stride
+        else:
+            next_stride = c_shape[i] * c_strides[i]
+
     cudnn.setTensorNdDescriptor(
         desc, data_type, arr._shape.size(), <size_t>&c_shape[0],
         <size_t>&c_strides[0])
