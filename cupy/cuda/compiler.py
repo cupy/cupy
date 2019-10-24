@@ -17,9 +17,9 @@ from cupy.cuda import runtime
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
 _win32 = sys.platform.startswith('win32')
-_osx = sys.platform.startswith('darwin')
 _rdc_flags = ('--device-c', '-dc', '-rdc=true',
               '--relocatable-device-code=true')
+_cudadevrt = None
 
 
 class NVCCException(Exception):
@@ -312,24 +312,27 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
         ls.add_ptr_data(ptx, 'cupy.ptx')
         # for separate compilation
         if _check_cudadevrt_needed(options):
-            global _win32, _osx
-            # defer import to here to avoid circular dependency
-            from cupy.cuda import get_cuda_path
-            cudadevrt = get_cuda_path()
-            if _win32:
-                # rely on os.altsep
-                cudadevrt += '/lib/x64/cudadevrt.lib'
-            elif _osx:
-                cudadevrt64 = cudadevrt + '/lib64/libcudadevrt.a'
-                if not os.path.isfile(cudadevrt64):
-                    cudadevrt += '/lib/libcudadevrt.a'
-                else:
-                    cudadevrt = cudadevrt64
-            else:  # linux
-                cudadevrt += '/lib64/libcudadevrt.a'
-            if not os.path.isfile(cudadevrt):
-                raise RuntimeError('Relocatable PTX code is requested, but '
-                                   'cudadevrt is not found.')
+            global _win32, _cudadevrt
+            if _cudadevrt is None:
+                # defer import to here to avoid circular dependency
+                from cupy.cuda import get_cuda_path
+                cudadevrt = get_cuda_path()
+                if _win32:
+                    # rely on os.altsep
+                    cudadevrt += '/lib/x64/cudadevrt.lib'
+                else:  # linux & osx: search twice as in cupy/install/build.py
+                    cudadevrt64 = cudadevrt + '/lib64/libcudadevrt.a'
+                    if not os.path.isfile(cudadevrt64):
+                        cudadevrt += '/lib/libcudadevrt.a'
+                    else:
+                        cudadevrt = cudadevrt64
+                if not os.path.isfile(cudadevrt):
+                    raise RuntimeError(
+                        'Relocatable PTX code is requested, but cudadevrt '
+                        'is not found.')
+                _cudadevrt = cudadevrt
+            else:
+                cudadevrt = _cudadevrt
             ls.add_ptr_file(cudadevrt)
         cubin = ls.complete()
     elif backend == 'nvcc':
