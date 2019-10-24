@@ -16,8 +16,10 @@ from cupy.cuda import runtime
 
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
-_win32 = (sys.platform == 'win32')
-_osx = (sys.platform == 'darwin')
+_win32 = sys.platform.startswith('win32')
+_osx = sys.platform.startswith('darwin')
+_rdc_flags = ('--device-c', '-dc', '-rdc=true',
+              '--relocatable-device-code=true')
 
 
 class NVCCException(Exception):
@@ -70,24 +72,11 @@ def _get_arch():
 
 
 def _check_cudadevrt_needed(options):
-    require_cudadevrt = False
-    for option in options:
-        if option in ('--device-c', '-dc', '-rdc=true',
-                      '--relocatable-device-code=true'):
-            require_cudadevrt = True
-            break
-    return require_cudadevrt
+    return any(o for o in options if o in _rdc_flags)
 
 
 def _remove_rdc_option(options):
-    new_options = []
-    for option in options:
-        if option in ('--device-c', '-dc', '-rdc=true',
-                      '--relocatable-device-code=true'):
-            continue
-        else:
-            new_options.append(option)
-    return tuple(new_options)
+    return tuple(o for o in options if o not in _rdc_flags)
 
 
 class TemporaryDirectory(object):
@@ -183,9 +172,7 @@ def compile_using_nvcc(source, options=(), arch=None,
             cmd_partial.append('--cubin')
 
             obj = path + '.o'
-            options_obj = options
-            options_obj += ('-o', obj)
-            cmd += list(options_obj)
+            cmd += list(options + ('-o', obj))
             cmd.append(cu_path)
 
             try:
@@ -333,10 +320,13 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
                 # rely on os.altsep
                 cudadevrt += '/lib/x64/cudadevrt.lib'
             elif _osx:
-                cudadevrt += '/lib/libcudadevrt.a'
+                cudadevrt64 = cudadevrt + '/lib64/libcudadevrt.a'
+                if not os.path.isfile(cudadevrt64):
+                    cudadevrt += '/lib/libcudadevrt.a'
+                else:
+                    cudadevrt = cudadevrt64
             else:  # linux
                 cudadevrt += '/lib64/libcudadevrt.a'
-            cudadevrt = os.path.normpath(cudadevrt)
             if not os.path.isfile(cudadevrt):
                 raise RuntimeError('Relocatable PTX code is requested, but '
                                    'cudadevrt is not found.')
