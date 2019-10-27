@@ -108,7 +108,7 @@ NCCL
 Runtime API
 -----------
 
-CuPy wraps CUDA Runtime APIs to provide native CUDA operation.
+CuPy wraps CUDA Runtime APIs to provide the native CUDA operations.
 Please check `Original CUDA Runtime document <<https://docs.nvidia.com/cuda/cuda-runtime-api/index.html>`_
 to use these functions.
 
