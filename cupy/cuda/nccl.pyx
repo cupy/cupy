@@ -96,6 +96,9 @@ class NcclError(RuntimeError):
         super(NcclError, self).__init__(
             '%s: %s' % (s, msg.decode()))
 
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
 
 @cython.profile(False)
 cpdef inline check_status(ncclResult_t status):

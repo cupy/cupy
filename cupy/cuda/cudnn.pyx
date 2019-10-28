@@ -705,6 +705,9 @@ class CuDNNError(RuntimeError):
         msg = cudnnGetErrorString(<Status>status)
         super(CuDNNError, self).__init__(msg.decode())
 
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
 
 @cython.profile(False)
 cpdef inline check_status(int status):

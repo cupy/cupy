@@ -35,9 +35,14 @@ def _exit():
 class OutOfMemoryError(MemoryError):
 
     def __init__(self, size, total):
+        self._size = size
+        self._total = total
         msg = 'out of memory to allocate %d bytes ' \
               '(total %d bytes)' % (size, total)
         super(OutOfMemoryError, self).__init__(msg)
+
+    def __reduce__(self):
+        return (type(self), (self._size, self._total))
 
 
 @cython.no_gc

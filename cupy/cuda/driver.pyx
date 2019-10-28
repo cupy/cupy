@@ -75,6 +75,9 @@ class CUDADriverError(RuntimeError):
         super(CUDADriverError, self).__init__(
             '%s: %s' % (s_name.decode(), s_msg.decode()))
 
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
 
 @cython.profile(False)
 cpdef inline check_status(int status):
