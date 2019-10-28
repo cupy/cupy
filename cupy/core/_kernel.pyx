@@ -187,7 +187,7 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         last_ax = ax
     if last_ax >= 0:
         axes.push_back(last_ax)
-    if axes.size() == ndim:
+    if <int>axes.size() == ndim:
         return shape
 
     for ax in axes:

@@ -50,7 +50,8 @@ cdef _ndarray_setitem(ndarray self, slices, value):
 
 
 cdef tuple _ndarray_nonzero(ndarray self):
-    cdef Py_ssize_t count_nonzero, ndim
+    cdef Py_ssize_t count_nonzero
+    cdef int ndim
     dtype = numpy.int64
     if self.size == 0:
         count_nonzero = 0
@@ -60,7 +61,7 @@ cdef tuple _ndarray_nonzero(ndarray self):
         del r
         scan_index = _math.scan(nonzero)
         count_nonzero = int(scan_index[-1])
-    ndim = max(self._shape.size(), 1)
+    ndim = max(<int>self._shape.size(), 1)
     if count_nonzero == 0:
         return (ndarray((0,), dtype=dtype),) * ndim
 

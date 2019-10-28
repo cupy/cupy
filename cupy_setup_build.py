@@ -275,7 +275,7 @@ def check_library(compiler, includes=(), libraries=(),
                   extra_compile_args=()):
 
     source = ''.join(['#include <%s>\n' % header for header in includes])
-    source += 'int main(int argc, char* argv[]) {return 0;}'
+    source += 'int main() {return 0;}'
     try:
         # We need to try to build a shared library because distutils
         # uses different option to build an executable and a shared library.
