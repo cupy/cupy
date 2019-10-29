@@ -39,6 +39,9 @@ configs {
     time_limit {
       seconds: 1800
     }
+    checkout_strategy {
+      include_dot_git: true
+    }
     command: "git clone https://github.com/chainer/chainercv.git --depth 1 && sh chainercv/.pfnci/tests_gpu.sh"
     environment_variables {
       key: "REPOSITORY"
@@ -65,6 +68,9 @@ configs {
     }
     time_limit {
       seconds: 3600
+    }
+    checkout_strategy {
+      include_dot_git: true
     }
     command: "git clone https://github.com/chainer/chainercv.git --depth 1 && sh chainercv/.pfnci/examples_tests.sh"
     environment_variables {
