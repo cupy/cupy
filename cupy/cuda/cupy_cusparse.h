@@ -204,6 +204,11 @@ typedef enum {} cusparseDirection_t;
 typedef enum {} cusparseAlgMode_t;
 typedef enum {} cusparseSolvePolicy_t;
 
+// Version
+cusparseStatus_t cusparseGetVersion(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 // cuSPARSE Helper Function
 cusparseStatus_t cusparseCreate(...) {
   return CUSPARSE_STATUS_SUCCESS;

@@ -103,6 +103,11 @@ cufftResult_t cufftExecZ2D(...) {
     return CUFFT_SUCCESS;
 }
 
+// cuFFT Version
+cufftResult_t cufftGetVersion(...) {
+    return CUFFT_SUCCESS;
+}
+
 }  // extern "C"
 
 #endif  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
