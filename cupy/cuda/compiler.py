@@ -75,6 +75,28 @@ def _check_cudadevrt_needed(options):
     return any(o for o in options if o in _rdc_flags)
 
 
+def _get_cudadevrt_path():
+    # defer import to here to avoid circular dependency
+    from cupy.cuda import get_cuda_path
+    global _win32
+
+    cudadevrt = get_cuda_path()
+    if _win32:
+        # rely on os.altsep
+        cudadevrt += '/lib/x64/cudadevrt.lib'
+    else:  # linux & osx: search twice as in cupy/install/build.py
+        cudadevrt64 = cudadevrt + '/lib64/libcudadevrt.a'
+        if not os.path.isfile(cudadevrt64):
+            cudadevrt += '/lib/libcudadevrt.a'
+        else:
+            cudadevrt = cudadevrt64
+    if not os.path.isfile(cudadevrt):
+        raise RuntimeError(
+            'Relocatable PTX code is requested, but cudadevrt '
+            'is not found.')
+    return cudadevrt
+
+
 def _remove_rdc_option(options):
     return tuple(o for o in options if o not in _rdc_flags)
 
@@ -312,28 +334,10 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
         ls.add_ptr_data(ptx, 'cupy.ptx')
         # for separate compilation
         if _check_cudadevrt_needed(options):
-            global _win32, _cudadevrt
+            global _cudadevrt
             if _cudadevrt is None:
-                # defer import to here to avoid circular dependency
-                from cupy.cuda import get_cuda_path
-                cudadevrt = get_cuda_path()
-                if _win32:
-                    # rely on os.altsep
-                    cudadevrt += '/lib/x64/cudadevrt.lib'
-                else:  # linux & osx: search twice as in cupy/install/build.py
-                    cudadevrt64 = cudadevrt + '/lib64/libcudadevrt.a'
-                    if not os.path.isfile(cudadevrt64):
-                        cudadevrt += '/lib/libcudadevrt.a'
-                    else:
-                        cudadevrt = cudadevrt64
-                if not os.path.isfile(cudadevrt):
-                    raise RuntimeError(
-                        'Relocatable PTX code is requested, but cudadevrt '
-                        'is not found.')
-                _cudadevrt = cudadevrt
-            else:
-                cudadevrt = _cudadevrt
-            ls.add_ptr_file(cudadevrt)
+                _cudadevrt = _get_cudadevrt_path()
+            ls.add_ptr_file(_cudadevrt)
         cubin = ls.complete()
     elif backend == 'nvcc':
         rdc = True if _check_cudadevrt_needed(options) else False
