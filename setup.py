@@ -167,7 +167,7 @@ setup(
     author_email='tokui@preferred.jp',
     url='https://docs-cupy.chainer.org/',
     license='MIT License',
-    download_url="https://https://pypi.org/project/cupy/",
+    download_url="https://pypi.org/project/cupy/",
     project_urls={
         "Bug Tracker": "https://github.com/cupy/cupy/issues",
         "Documentation": "https://docs-cupy.chainer.org/",
