@@ -89,6 +89,11 @@ class TestQRDecomposition(unittest.TestCase):
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
 
+    @testing.with_requires('numpy>=1.16')
+    def test_empty_array(self):
+        self.check_mode(numpy.empty((0, 3)), mode=self.mode)
+        self.check_mode(numpy.empty((3, 0)), mode=self.mode)
+
 
 @testing.parameterize(*testing.product({
     'full_matrices': [True, False],
