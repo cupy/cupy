@@ -24,4 +24,4 @@ docker run --rm \
 '
 
 gsutil -q cp cupy-*.whl gs://tmp-asia-pfn-public-ci/cupy/wheel/${CI_COMMIT_ID}/cuda9.2/
-echo ${CI_COMMIT_ID} | gsutil -q cp - gs://tmp-asia-pfn-public-ci/cupy/wheel/master
+echo ${CI_COMMIT_ID} | gsutil -q cp - gs://tmp-asia-pfn-public-ci/cupy/wheel/v6
