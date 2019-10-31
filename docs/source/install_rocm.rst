@@ -1,8 +1,6 @@
 [Experimental] Installation Guide for ROCm environemt
 =====================================================
 
-.. _install_hip:
-
 .. contents:: :local:
 
 This is an experimental feature. We recommend only for advanced users to use this.
@@ -37,6 +35,8 @@ Before installing CuPy, we recommend you to upgrade ``setuptools`` and ``pip``::
 
   $ pip install -U setuptools pip
 
+
+.. _install_hip:
 
 Install CuPy from Source
 ------------------------
