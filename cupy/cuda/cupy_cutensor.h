@@ -63,6 +63,14 @@ extern "C" {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
+    cutensorStatus_t cutensorReduction(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorReductionGetWorkspace(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
     const char* cutensorGetErrorString(...) {
 	return NULL;
     }

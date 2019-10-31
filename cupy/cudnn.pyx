@@ -27,7 +27,7 @@ cdef vector.vector[size_t] _handles
 cpdef size_t get_handle() except? 0:
     cdef int dev
     dev = device.get_device_id()
-    if _handles.size() <= dev:
+    if <int>_handles.size() <= dev:
         _handles.resize(dev + 1, 0)
     ret = _handles[dev]
     if ret != 0:
@@ -680,7 +680,7 @@ cdef int _create_tensor_descriptor_for_softmax(
         left *= arr._shape[i]
     center = arr._shape[axis]
     right = 1
-    for i in range(axis + 1, arr._shape.size()):
+    for i in range(axis + 1, <int>arr._shape.size()):
         right *= arr._shape[i]
     cudnn.setTensor4dDescriptor(desc, cudnn.CUDNN_TENSOR_NCHW, data_type,
                                 left, center, right, 1)

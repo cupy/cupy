@@ -40,7 +40,7 @@ Install CuPy from Source
 ------------------------
 
 It is recommended to use wheels whenever possible.
-However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use different version sets of CUDA / cuDNN / NCCL that are not included in any CuPy wheels), you have to build CuPy from source.
+However, there is currently no wheels for the ROCm environment, so you have to build it from source.
 
 When installing from source, C++ compiler such as ``g++`` is required.
 You need to install it before installing CuPy.

@@ -124,7 +124,7 @@ cpdef str _get_header_source():
 
 cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None,
-        prepend_cupy_headers=True):
+        prepend_cupy_headers=True, backend='nvrtc'):
     if prepend_cupy_headers:
         source = _cupy_header + source
     extra_source = _get_header_source()
@@ -164,4 +164,4 @@ cpdef function.Module compile_with_cache(
             options += ('-I ' + os.path.join(cuda_path, 'include'),)
 
     return cuda.compile_with_cache(source, options, arch, cachd_dir,
-                                   extra_source)
+                                   extra_source, backend)

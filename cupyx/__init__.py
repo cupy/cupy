@@ -7,7 +7,6 @@ from cupyx.scatter import scatter_min  # NOQA
 
 from cupyx import linalg  # NOQA
 from cupyx import scipy  # NOQA
-from cupyx import fallback_mode  # NOQA
 
 from cupyx._ufunc_config import errstate  # NOQA
 from cupyx._ufunc_config import geterr  # NOQA

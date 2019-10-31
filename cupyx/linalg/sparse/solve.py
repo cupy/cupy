@@ -1,14 +1,10 @@
 import numpy
 
 import cupy
-from cupy import cuda
+from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import util
 import cupy.sparse
-
-
-if cuda.cusolver_enabled:
-    from cupy.cuda import cusolver
 
 
 def lschol(A, b):
@@ -28,9 +24,6 @@ def lschol(A, b):
         ret (cupy.ndarray): The solution vector ``x``.
 
     """
-
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
 
     if not cupy.sparse.isspmatrix_csr(A):
         A = cupy.sparse.csr_matrix(A)

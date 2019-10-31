@@ -1,7 +1,12 @@
+import os
 import pytest
+import shutil
+import tempfile
 import unittest
 
 import cupy
+from cupy import testing
+from cupy.cuda import compiler
 
 
 _test_source1 = r'''
@@ -78,13 +83,41 @@ __global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, \
 }
 '''
 
+if 'CUPY_CACHE_DIR' in os.environ:
+    _old_cache_dir = os.environ['CUPY_CACHE_DIR']
+    _is_cache_env_var_set = True
+else:
+    _old_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')
+    _is_cache_env_var_set = False
+_test_cache_dir = None
 
+
+@testing.parameterize(*testing.product({
+    'backend': ('nvrtc', 'nvcc'),
+}))
 class TestRaw(unittest.TestCase):
 
     def setUp(self):
-        self.kern = cupy.RawKernel(_test_source1, 'test_sum')
-        self.mod2 = cupy.RawModule(_test_source2)
-        self.mod3 = cupy.RawModule(_test_source3, ("-DPRECISION=2",))
+        global _test_cache_dir
+        _test_cache_dir = tempfile.mkdtemp()
+        os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
+
+        self.kern = cupy.RawKernel(_test_source1, 'test_sum',
+                                   backend=self.backend)
+        self.mod2 = cupy.RawModule(_test_source2, backend=self.backend)
+        self.mod3 = cupy.RawModule(_test_source3, ('-DPRECISION=2',),
+                                   backend=self.backend)
+
+    def tearDown(self):
+        # To avoid cache interference, we remove cached files after every test,
+        # and restore users' old setting
+        global _test_cache_dir
+        shutil.rmtree(_test_cache_dir)
+        if _is_cache_env_var_set:
+            os.environ['CUPY_CACHE_DIR'] = _old_cache_dir
+        else:
+            os.environ.pop('CUPY_CACHE_DIR')
+        compiler._empty_file_preprocess_cache = {}
 
     def _helper(self, kernel, dtype):
         N = 10
@@ -139,16 +172,17 @@ class TestRaw(unittest.TestCase):
 
     def test_invalid_compiler_flag(self):
         with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-            cupy.RawModule(_test_source3, ("-DPRECISION=3",))
+            cupy.RawModule(_test_source3, ('-DPRECISION=3',),
+                           backend=self.backend)
         assert 'precision not supported' in str(ex.value)
 
     def test_module_load_failure(self):
         # in principle this test is better done in test_driver.py, but
         # this error is more likely to appear when using RawModule, so
         # let us do it here
-        import os
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
-            cupy.RawModule(os.path.expanduser("~/this_does_not_exist.cubin"))
+            cupy.RawModule(os.path.expanduser('~/this_does_not_exist.cubin'),
+                           backend=self.backend)
         assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)
 
     def test_get_function_failure(self):

@@ -389,6 +389,14 @@ cusolverStatus_t cusolverSpDcsrlsvqr(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverSpCcsrlsvqr(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpZcsrlsvqr(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverSpScsrlsvchol(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
@@ -396,6 +404,31 @@ cusolverStatus_t cusolverSpScsrlsvchol(...) {
 cusolverStatus_t cusolverSpDcsrlsvchol(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
+
+cusolverStatus_t cusolverSpCcsrlsvchol(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpZcsrlsvchol(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpScsreigvsi(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpDcsreigvsi(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpCcsreigvsi(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpZcsreigvsi(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 
 } // extern "C"
 
