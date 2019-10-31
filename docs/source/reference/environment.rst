@@ -42,10 +42,10 @@ Here are the environment variables CuPy uses.
 +------------------------------------+----------------------------------------------------+
 | ``CUPY_SEED``                      | Set the seed for random number generators. For     |
 |                                    | historical reasons ``CHAINER_SEED`` is used if     |
-|                                    | ``CUPY_SEED`` is unspecified                       |
+|                                    | ``CUPY_SEED`` is unspecified.                      |
 +------------------------------------+----------------------------------------------------+
 | ``CUPY_EXPERIMENTAL_SLICE_COPY``   | If set to 1, the following syntax is enabled:      |
-|                                    | ``cupy_ndarray[:] = numpy_ndarray``                |
+|                                    | ``cupy_ndarray[:] = numpy_ndarray``.               |
 +------------------------------------+----------------------------------------------------+
 
 Moreover, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit
@@ -70,7 +70,7 @@ These environment variables are used during installation (building CuPy from sou
 | ``CUPY_PYTHON_350_FORCE``   | Enforce CuPy to be installed against Python 3.5.0 (not         |
 |                             | recommended).                                                  |
 +-----------------------------+----------------------------------------------------------------+
-| ``CUPY_INSTALL_USE_HIP``    | For building the ROCm support, see :doc:`../install_rocm` for  |
+| ``CUPY_INSTALL_USE_HIP``    | For building the ROCm support, see :ref:`install_hip` for      |
 |                             | further detail.                                                |
 +-----------------------------+----------------------------------------------------------------+
 | ``CUPY_NVCC_GENERATE_CODE`` | To build CuPy for a particular CUDA architecture. For example, |

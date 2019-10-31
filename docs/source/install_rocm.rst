@@ -1,6 +1,8 @@
 [Experimental] Installation Guide for ROCm environemt
 =====================================================
 
+.. _install_hip:
+
 .. contents:: :local:
 
 This is an experimental feature. We recommend only for advanced users to use this.
