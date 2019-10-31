@@ -9,6 +9,6 @@ from cupyx import linalg  # NOQA
 from cupyx import scipy  # NOQA
 from cupyx import fallback_mode  # NOQA
 
-from cupyx.ufunc_config import errstate  # NOQA
-from cupyx.ufunc_config import geterr  # NOQA
-from cupyx.ufunc_config import seterr  # NOQA
+from cupyx._ufunc_config import errstate  # NOQA
+from cupyx._ufunc_config import geterr  # NOQA
+from cupyx._ufunc_config import seterr  # NOQA
