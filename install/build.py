@@ -37,7 +37,7 @@ def get_rocm_path():
 
     # Use a magic word to represent the cache not filled because None is a
     # valid return value.
-    if _rocm_path is not 'NOT_INITIALIZED':
+    if _rocm_path != 'NOT_INITIALIZED':
         return _rocm_path
 
     _rocm_path = os.environ.get('ROCM_HOME', '')
