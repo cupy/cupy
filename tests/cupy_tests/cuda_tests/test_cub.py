@@ -35,7 +35,8 @@ def for_contiguous_axes(name='axis'):
                     kw[name] = a
                     impl(self, *args, **kw)
                 except Exception:
-                    print(name, 'is', a, 'ndim is', ndim, 'shape is', self.shape)
+                    print(name, 'is', a, ', ndim is', ndim, ', shape is',
+                          self.shape)
                     raise
         return test_func
     return decorator
@@ -57,13 +58,16 @@ def timing(test, func, arr, axis, runs=20):
     test.stop.record()
     test.stop.synchronize()
     t_cupy = cupy.cuda.get_elapsed_time(test.start, test.stop)
-#    if t_cub > 1.05 * t_cupy:
-#        warnings.warn("CUB: "+str(t_cub)+"; CuPy: "+str(t_cupy)+" (shape={}, axis={}, dtype={})".format(arr.shape, axis, arr.dtype), cupy.util.PerformanceWarning)
-    print("CUB:", t_cub, '; CuPy:', t_cupy, '(ms for', runs, 'runs)')
 
+    # TODO(leofang): raise PerformanceWarning here?
+    print("CUB: {:4.5f}; CuPy: {:4.5f} (ms for {} runs, shape={}, axis={})"
+          .format(t_cub, t_cupy, runs, arr.shape, axis))
     cupy.cuda.cub_enabled = True  # restore
 
 
+# Tests named with test_cub_{op} compare CUB results against NumPy's,
+# and those named with test_cub_{op}_performance compare CUB results
+# against CuPy's original implementation while timing.
 @testing.parameterize(*testing.product({
 #    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
     'shape': [(256,), (256, 256), (128, 256, 256), (4, 128, 256, 256)],
@@ -121,3 +125,31 @@ class TestCUBreduction(unittest.TestCase):
     def test_cub_max_performance(self, dtype, axis):
         a = testing.shaped_arange(self.shape, cupy, dtype)
         timing(self, 'max', a, axis)
+
+    # argmin does not support axis yet
+    @testing.for_dtypes('LQfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_argmin(self, xp, dtype):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        return a.argmin()
+
+    # argmin does not support axis yet
+    @testing.for_dtypes('LQfdFD')
+    def test_cub_argmin_performance(self, dtype):
+        a = testing.shaped_arange(self.shape, cupy, dtype)
+        timing(self, 'argmin', a, None)
+
+    # argmax does not support axis yet
+    @testing.for_dtypes('LQfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_argmax(self, xp, dtype):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        return a.argmax()
+
+    # argmax does not support axis yet
+    @testing.for_dtypes('LQfdFD')
+    def test_cub_argmax_performance(self, dtype):
+        a = testing.shaped_arange(self.shape, cupy, dtype)
+        timing(self, 'argmax', a, None)
