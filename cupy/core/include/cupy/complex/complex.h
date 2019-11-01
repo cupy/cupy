@@ -62,7 +62,7 @@ struct _select_greater_type
  *
  */
 template <typename T>
-struct complex {
+struct __align__(sizeof(T)*2) complex {
  public:
   /*! \p value_type is the type of \p complex's real and imaginary parts.
    */

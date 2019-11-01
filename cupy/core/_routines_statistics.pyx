@@ -14,15 +14,27 @@ if cupy.cuda.cub_enabled:
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        if cub.can_use_reduce_max(self.dtype, self.ndim, dtype, axis):
-            return cub.reduce_max(self, out=out, keepdims=keepdims)
+        if cub.can_use_device_reduce(cub.CUPY_CUB_MAX, self.dtype, self.ndim,
+                                     axis, dtype):
+            return cub.device_reduce(self, cub.CUPY_CUB_MAX, out=out,
+                                     keepdims=keepdims)
+        elif cub.can_use_device_segmented_reduce(
+                cub.CUPY_CUB_MAX, self.dtype, self.ndim, axis, dtype):
+            return cub.device_segmented_reduce(
+                self, cub.CUPY_CUB_MAX, axis, out=out, keepdims=keepdims)
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        if cub.can_use_reduce_min(self.dtype, self.ndim, dtype, axis):
-            return cub.reduce_min(self, out=out, keepdims=keepdims)
+        if cub.can_use_device_reduce(cub.CUPY_CUB_MIN, self.dtype, self.ndim,
+                                     axis, dtype):
+            return cub.device_reduce(self, cub.CUPY_CUB_MIN, out=out,
+                                     keepdims=keepdims)
+        elif cub.can_use_device_segmented_reduce(
+                cub.CUPY_CUB_MIN, self.dtype, self.ndim, axis, dtype):
+            return cub.device_segmented_reduce(
+                self, cub.CUPY_CUB_MIN, axis, out=out, keepdims=keepdims)
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
