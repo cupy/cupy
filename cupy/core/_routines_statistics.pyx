@@ -54,26 +54,28 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        # Note that the signature of argmax only has axis and out, so we need to
-        # disable the rest
-        if cub.can_use_device_reduce(cub.CUPY_CUB_ARGMAX, self.dtype, self.ndim,
-                                     axis, None):
+        # Note that the NumPy signature of argmax only has axis and out, so we
+        # need to disable the rest. Moreover, to be compatible with NumPy, axis
+        # can only be None or integers
+        if axis is None and cub.can_use_device_reduce(
+            cub.CUPY_CUB_ARGMAX, self.dtype, self.ndim, axis, None):
             return cub.device_reduce(self, cub.CUPY_CUB_ARGMAX, out=out,
                                      keepdims=False)
-        # TODO(leofang): support device_segmented_reduce after arxmax is fixed
+        # TODO(leofang): support device_segmented_reduce for axis=-1?
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        # Note that the signature of argmin only has axis and out, so we need to
-        # disable the rest
-        if cub.can_use_device_reduce(cub.CUPY_CUB_ARGMIN, self.dtype, self.ndim,
-                                     axis, None):
+        # Note that the NumPy signature of argmax only has axis and out, so we
+        # need to disable the rest. Moreover, to be compatible with NumPy, axis
+        # can only be None or integers
+        if axis is None and cub.can_use_device_reduce(
+            cub.CUPY_CUB_ARGMIN, self.dtype, self.ndim, axis, None):
             return cub.device_reduce(self, cub.CUPY_CUB_ARGMIN, out=out,
                                      keepdims=False)
-        # TODO(leofang): support device_segmented_reduce after arxmin is fixed
+        # TODO(leofang): support device_segmented_reduce for axis=-1?
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
