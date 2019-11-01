@@ -8,8 +8,6 @@ from cupy.core.core cimport ndarray
 
 import cupy
 if cupy.cuda.cub_enabled:
-    import warnings
-    from cupy import util
     from cupy.cuda import cub
 
 
@@ -21,12 +19,6 @@ cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
                                      keepdims=keepdims)
         elif cub.can_use_device_segmented_reduce(
                 cub.CUPY_CUB_MAX, self.dtype, self.ndim, axis, dtype):
-            if self.dtype in (numpy.complex64, numpy.complex128):
-                warnings.warn("CUB reduction for complex numbers may not be "
-                              "highly performant. If concerned, set "
-                              "cupy.cuda.cub_enabled=False to switch to CuPy's"
-                              " internal reduction routine and compare the "
-                              "timings.", util.PerformanceWarning)
             return cub.device_segmented_reduce(
                 self, cub.CUPY_CUB_MAX, axis, out=out, keepdims=keepdims)
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
@@ -40,12 +32,6 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
                                      keepdims=keepdims)
         elif cub.can_use_device_segmented_reduce(
                 cub.CUPY_CUB_MIN, self.dtype, self.ndim, axis, dtype):
-            if self.dtype in (numpy.complex64, numpy.complex128):
-                warnings.warn("CUB reduction for complex numbers may not be "
-                              "highly performant. If concerned, set "
-                              "cupy.cuda.cub_enabled=False to switch to CuPy's"
-                              " internal reduction routine and compare the "
-                              "timings.", util.PerformanceWarning)
             return cub.device_segmented_reduce(
                 self, cub.CUPY_CUB_MIN, axis, out=out, keepdims=keepdims)
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
