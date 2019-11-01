@@ -104,8 +104,8 @@ def device_reduce(ndarray x, int op, out=None, bint keepdims=False):
             "output parameter for reduction operation has the wrong number of "
             "dimensions")
     if op < 0 or op > 4:
-        raise ValueError("only CUPY_CUB_SUM, CUPY_CUB_MIN, and CUPY_CUB_MAX "
-                         "are supported.")
+        raise ValueError("only CUPY_CUB_SUM, CUPY_CUB_MIN, CUPY_CUB_MAX, "
+                         "CUPY_CUB_ARGMIN, and CUPY_CUB_ARGMAX are supported.")
     x = _internal_ascontiguousarray(x)
     if 0 <= op <= 2:
         y = ndarray((), x.dtype)
@@ -153,7 +153,7 @@ def device_segmented_reduce(ndarray x, int op, axis, out=None,
     cdef tuple out_shape
     cdef Stream_t s
 
-    if op < 0 or op > 4:
+    if op < 0 or op > 2:
         raise ValueError("only CUPY_CUB_SUM, CUPY_CUB_MIN, and CUPY_CUB_MAX "
                          "are supported.")
 
