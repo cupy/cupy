@@ -145,6 +145,56 @@ struct _cub_segmented_reduce_max {
 };
 
 //
+// **** CUB ArgMin ****
+//
+struct _cub_reduce_argmin {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_items, cudaStream_t s)
+    {
+        DeviceReduce::ArgMin(workspace, workspace_size, static_cast<T*>(x),
+            static_cast<KeyValuePair<int, T>*>(y), num_items, s);
+    }
+};
+
+struct _cub_segmented_reduce_argmin {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
+    {
+        DeviceSegmentedReduce::ArgMin(workspace, workspace_size,
+            static_cast<T*>(x), static_cast<KeyValuePair<int, T>*>(y), num_segments,
+            static_cast<int*>(offset_start),
+            static_cast<int*>(offset_end), s);
+    }
+};
+
+//
+// **** CUB ArgMax ****
+//
+struct _cub_reduce_argmax {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_items, cudaStream_t s)
+    {
+        DeviceReduce::ArgMax(workspace, workspace_size, static_cast<T*>(x),
+            static_cast<KeyValuePair<int, T>*>(y), num_items, s);
+    }
+};
+
+struct _cub_segmented_reduce_argmax {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
+    {
+        DeviceSegmentedReduce::ArgMax(workspace, workspace_size,
+            static_cast<T*>(x), static_cast<KeyValuePair<int, T>*>(y), num_segments,
+            static_cast<int*>(offset_start),
+            static_cast<int*>(offset_end), s);
+    }
+};
+
+//
 // APIs exposed to CuPy
 //
 
@@ -154,12 +204,16 @@ void cub_device_reduce(void* workspace, size_t& workspace_size, void* x, void* y
     int num_items, cudaStream_t stream, int op, int dtype_id)
 {
     switch(op) {
-    case CUPY_CUB_SUM:  return dtype_dispatcher(dtype_id, _cub_reduce_sum(),
-                            workspace, workspace_size, x, y, num_items, stream);
-    case CUPY_CUB_MIN:  return dtype_dispatcher(dtype_id, _cub_reduce_min(),
-                            workspace, workspace_size, x, y, num_items, stream);
-    case CUPY_CUB_MAX:  return dtype_dispatcher(dtype_id, _cub_reduce_max(),
-                            workspace, workspace_size, x, y, num_items, stream);
+    case CUPY_CUB_SUM:      return dtype_dispatcher(dtype_id, _cub_reduce_sum(),
+                                workspace, workspace_size, x, y, num_items, stream);
+    case CUPY_CUB_MIN:      return dtype_dispatcher(dtype_id, _cub_reduce_min(),
+                                workspace, workspace_size, x, y, num_items, stream);
+    case CUPY_CUB_MAX:      return dtype_dispatcher(dtype_id, _cub_reduce_max(),
+                                workspace, workspace_size, x, y, num_items, stream);
+    case CUPY_CUB_ARGMIN:   return dtype_dispatcher(dtype_id, _cub_reduce_argmin(),
+                                workspace, workspace_size, x, y, num_items, stream);
+    case CUPY_CUB_ARGMAX:   return dtype_dispatcher(dtype_id, _cub_reduce_argmax(),
+                                workspace, workspace_size, x, y, num_items, stream);
     default:            throw std::runtime_error("Unsupported operation");
     }
 }
@@ -190,6 +244,14 @@ void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
                    offset_end, stream);
     case CUPY_CUB_MAX:
         return dtype_dispatcher(dtype_id, _cub_segmented_reduce_max(),
+                   workspace, workspace_size, x, y, num_segments, offset_start,
+                   offset_end, stream);
+    case CUPY_CUB_ARGMIN:
+        return dtype_dispatcher(dtype_id, _cub_segmented_reduce_argmin(),
+                   workspace, workspace_size, x, y, num_segments, offset_start,
+                   offset_end, stream);
+    case CUPY_CUB_ARGMAX:
+        return dtype_dispatcher(dtype_id, _cub_segmented_reduce_argmax(),
                    workspace, workspace_size, x, y, num_segments, offset_start,
                    offset_end, stream);
     default:

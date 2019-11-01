@@ -52,9 +52,39 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
 
 
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
+    if cupy.cuda.cub_enabled:
+        if cub.can_use_device_reduce(cub.CUPY_CUB_ARGMAX, self.dtype, self.ndim,
+                                     axis, dtype):
+            return cub.device_reduce(self, cub.CUPY_CUB_ARGMAX, out=out,
+                                     keepdims=keepdims)
+        elif cub.can_use_device_segmented_reduce(
+                cub.CUPY_CUB_ARGMAX, self.dtype, self.ndim, axis, dtype):
+            if self.dtype in (numpy.complex64, numpy.complex128):
+                warnings.warn("CUB reduction for complex numbers may not be "
+                              "highly performant. If concerned, set "
+                              "cupy.cuda.cub_enabled=False to switch to CuPy's"
+                              " internal reduction routine and compare the "
+                              "timings.", util.PerformanceWarning)
+            return cub.device_segmented_reduce(
+                self, cub.CUPY_CUB_ARGMAX, axis, out=out, keepdims=keepdims)
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
+    if cupy.cuda.cub_enabled:
+        if cub.can_use_device_reduce(cub.CUPY_CUB_ARGMIN, self.dtype, self.ndim,
+                                     axis, dtype):
+            return cub.device_reduce(self, cub.CUPY_CUB_ARGMIN, out=out,
+                                     keepdims=keepdims)
+        elif cub.can_use_device_segmented_reduce(
+                cub.CUPY_CUB_ARGMIN, self.dtype, self.ndim, axis, dtype):
+            if self.dtype in (numpy.complex64, numpy.complex128):
+                warnings.warn("CUB reduction for complex numbers may not be "
+                              "highly performant. If concerned, set "
+                              "cupy.cuda.cub_enabled=False to switch to CuPy's"
+                              " internal reduction routine and compare the "
+                              "timings.", util.PerformanceWarning)
+            return cub.device_segmented_reduce(
+                self, cub.CUPY_CUB_ARGMIN, axis, out=out, keepdims=keepdims)
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
