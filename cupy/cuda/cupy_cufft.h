@@ -14,14 +14,8 @@ extern "C" {
 
 typedef float cufftReal;
 typedef double cufftDoubleReal;
-
-struct cufftComplex{
-    float x, y;
-};
-
-struct cufftDoubleComplex{
-    double x, y;
-};
+typedef cuComplex cufftComplex;
+typedef cuDoubleComplex cufftDoubleComplex;
 
 typedef enum {
     CUFFT_SUCCESS = 0,
