@@ -42,38 +42,90 @@ def for_contiguous_axes(name='axis'):
     return decorator
 
 
-def timing(test, func, arr, axis, runs=20):
+def timing(test, func, arr, axis, runs=21):
     cupy.cuda.cub_enabled = True
-    test.start.record()
+    t_cub = 0.
     for i in range(runs):
+        if i > 0:
+            test.start.record()
         getattr(arr, func)(axis=axis)
-    test.stop.record()
-    test.stop.synchronize()
-    t_cub = cupy.cuda.get_elapsed_time(test.start, test.stop)
+        if i > 0:
+            test.stop.record()
+            test.stop.synchronize()
+            t_cub += cupy.cuda.get_elapsed_time(test.start, test.stop)
 
     cupy.cuda.cub_enabled = False
-    test.start.record()
+    t_cupy = 0.
     for i in range(runs):
+        if i > 0:
+            test.start.record()
         getattr(arr, func)(axis=axis)
-    test.stop.record()
-    test.stop.synchronize()
-    t_cupy = cupy.cuda.get_elapsed_time(test.start, test.stop)
+        if i > 0:
+            test.stop.record()
+            test.stop.synchronize()
+            t_cupy += cupy.cuda.get_elapsed_time(test.start, test.stop)
 
     # TODO(leofang): raise PerformanceWarning here?
     print("CUB: {:4.5f}; CuPy: {:4.5f} (ms for {} runs, shape={}, axis={})"
-          .format(t_cub, t_cupy, runs, arr.shape, axis))
+          .format(t_cub, t_cupy, runs-1, arr.shape, axis))
     cupy.cuda.cub_enabled = True  # restore
 
 
-# Tests named with test_cub_{op} compare CUB results against NumPy's,
-# and those named with test_cub_{op}_performance compare CUB results
-# against CuPy's original implementation while timing.
+# This class compares CUB results against NumPy's
 @testing.parameterize(*testing.product({
-#    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
-    'shape': [(256,), (256, 256), (128, 256, 256), (4, 128, 256, 256)],
+    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
 }))
 @testing.gpu
 class TestCUBreduction(unittest.TestCase):
+    @for_contiguous_axes()
+    @testing.for_dtypes('LQfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_sum(self, xp, dtype, axis):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        return a.sum(axis=axis)
+
+    @for_contiguous_axes()
+    @testing.for_dtypes('LQfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_min(self, xp, dtype, axis):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        return a.min(axis=axis)
+
+    @for_contiguous_axes()
+    @testing.for_dtypes('LQfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_max(self, xp, dtype, axis):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        return a.max(axis=axis)
+
+    # argmin does not support axis yet
+    @testing.for_dtypes('LQfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_argmin(self, xp, dtype):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        return a.argmin()
+
+    # argmax does not support axis yet
+    @testing.for_dtypes('LQfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_argmax(self, xp, dtype):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        return a.argmax()
+
+
+# This class compares CUB results against CuPy's original implementation
+# and their performance
+@testing.parameterize(*testing.product({
+    'shape': [(1024,), (256, 1024), (128, 256, 256), (4, 128, 256, 256)],
+}))
+@testing.slow
+@testing.gpu
+class TestCUBperformance(unittest.TestCase):
     def setUp(self):
         self.start = cupy.cuda.Event()
         self.stop = cupy.cuda.Event()
@@ -86,25 +138,9 @@ class TestCUBreduction(unittest.TestCase):
 
     @for_contiguous_axes()
     @testing.for_dtypes('LQfdFD')
-    @testing.numpy_cupy_allclose(rtol=1E-5)
-    def test_cub_sum(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        return a.sum(axis=axis)
-
-    @for_contiguous_axes()
-    @testing.for_dtypes('LQfdFD')
     def test_cub_sum_performance(self, dtype, axis):
         a = testing.shaped_arange(self.shape, cupy, dtype)
         timing(self, 'sum', a, axis)
-
-    @for_contiguous_axes()
-    @testing.for_dtypes('LQfdFD')
-    @testing.numpy_cupy_allclose(rtol=1E-5)
-    def test_cub_min(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        return a.min(axis=axis)
 
     @for_contiguous_axes()
     @testing.for_dtypes('LQfdFD')
@@ -114,39 +150,15 @@ class TestCUBreduction(unittest.TestCase):
 
     @for_contiguous_axes()
     @testing.for_dtypes('LQfdFD')
-    @testing.numpy_cupy_allclose(rtol=1E-5)
-    def test_cub_max(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        return a.max(axis=axis)
-
-    @for_contiguous_axes()
-    @testing.for_dtypes('LQfdFD')
     def test_cub_max_performance(self, dtype, axis):
         a = testing.shaped_arange(self.shape, cupy, dtype)
         timing(self, 'max', a, axis)
 
     # argmin does not support axis yet
     @testing.for_dtypes('LQfdFD')
-    @testing.numpy_cupy_allclose(rtol=1E-5)
-    def test_cub_argmin(self, xp, dtype):
-        assert cupy.cuda.cub_enabled
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        return a.argmin()
-
-    # argmin does not support axis yet
-    @testing.for_dtypes('LQfdFD')
     def test_cub_argmin_performance(self, dtype):
         a = testing.shaped_arange(self.shape, cupy, dtype)
         timing(self, 'argmin', a, None)
-
-    # argmax does not support axis yet
-    @testing.for_dtypes('LQfdFD')
-    @testing.numpy_cupy_allclose(rtol=1E-5)
-    def test_cub_argmax(self, xp, dtype):
-        assert cupy.cuda.cub_enabled
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        return a.argmax()
 
     # argmax does not support axis yet
     @testing.for_dtypes('LQfdFD')
