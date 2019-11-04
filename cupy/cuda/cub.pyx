@@ -6,6 +6,7 @@ import numpy
 
 from cupy.core.core cimport ndarray, _internal_ascontiguousarray
 from cupy.cuda cimport stream
+from cupy.cuda cimport device
 from cupy.cuda.driver cimport Stream as Stream_t
 
 cimport cython
@@ -34,7 +35,7 @@ CUB_support_dtype = [numpy.int8, numpy.uint8,
                      numpy.int16, numpy.uint16,
                      numpy.int32, numpy.uint32,
                      numpy.int64, numpy.uint64,
-                     numpy.float16, numpy.float32, numpy.float64,
+                     numpy.float32, numpy.float64,
                      numpy.complex64, numpy.complex128]
 
 ###############################################################################
@@ -236,7 +237,7 @@ cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None,
             # See _sum_auto_dtype in cupy/core/_routines_math.pyx for which
             # dtypes are promoted.
             support_dtype = [numpy.int64, numpy.uint64,
-                             numpy.float16, numpy.float32, numpy.float64,
+                             numpy.float32, numpy.float64,
                              numpy.complex64, numpy.complex128]
         else:
             support_dtype = CUB_support_dtype
@@ -244,6 +245,10 @@ cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None,
         support_dtype = CUB_support_dtype
     else:
         return False
+
+    if int(device.get_compute_capability()) >= 530:
+        support_dtype.append(numpy.float16)
+
     if x_dtype not in support_dtype:
         return False
     return True

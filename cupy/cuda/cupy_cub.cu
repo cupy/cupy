@@ -3,7 +3,10 @@
 #include <cub/device/device_segmented_reduce.cuh>
 #include "cupy_cub.h"
 #include <stdexcept>
-#include <cupy/carray.cuh>
+
+#if __CUDACC_VER_MAJOR__ >= 9
+#include <cuda_fp16.h>
+#endif
 
 
 using namespace cub;
@@ -15,20 +18,6 @@ using namespace cub;
 // - The Max() and Lowest() below are chosen to comply with NumPy's lexical
 //   ordering; note that std::numeric_limits<T> does not support complex
 //   numbers as in general the comparison is ill defined.
-template <>
-struct FpLimits<float16>
-{
-    static __host__ __device__ __forceinline__ float16 Max() {
-        unsigned short max_word = 0x7BFF;
-        return reinterpret_cast<float16&>(max_word);
-    }
-
-    static __host__ __device__ __forceinline__ float16 Lowest() {
-        unsigned short lowest_word = 0xFBFF;
-        return reinterpret_cast<float16&>(lowest_word);
-    }
-};
-
 template <>
 struct FpLimits<complex<float>>
 {
@@ -53,7 +42,6 @@ struct FpLimits<complex<double>>
     }
 };
 
-template <> struct NumericTraits<float16>  : BaseTraits<FLOATING_POINT, true, false, unsigned short, float16> {};
 template <> struct NumericTraits<complex<float>>  : BaseTraits<FLOATING_POINT, true, false, unsigned int, complex<float>> {};
 template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, true, false, unsigned long long, complex<double>> {};
 // end of boilerplate
@@ -77,7 +65,9 @@ void dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args)
     case CUPY_CUB_UINT16:     return f.template operator()<unsigned short>(std::forward<Ts>(args)...);
     case CUPY_CUB_UINT32:     return f.template operator()<unsigned int>(std::forward<Ts>(args)...);
     case CUPY_CUB_UINT64:     return f.template operator()<unsigned long>(std::forward<Ts>(args)...);
-    case CUPY_CUB_FLOAT16:    return f.template operator()<float16>(std::forward<Ts>(args)...);
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+    case CUPY_CUB_FLOAT16:    return f.template operator()<__half>(std::forward<Ts>(args)...);
+#endif
     case CUPY_CUB_FLOAT32:    return f.template operator()<float>(std::forward<Ts>(args)...);
     case CUPY_CUB_FLOAT64:    return f.template operator()<double>(std::forward<Ts>(args)...);
     case CUPY_CUB_COMPLEX64:  return f.template operator()<complex<float>>(std::forward<Ts>(args)...);
