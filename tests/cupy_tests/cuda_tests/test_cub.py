@@ -68,7 +68,7 @@ def timing(test, func, arr, axis, runs=20):
 @testing.gpu
 class TestCUBreduction(unittest.TestCase):
     @for_contiguous_axes()
-    @testing.for_dtypes('lLfdFD')  # sum supports less dtypes
+    @testing.for_dtypes('lLefdFD')  # sum supports less dtypes
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_sum(self, xp, dtype, axis):
         assert cupy.cuda.cub_enabled
@@ -76,7 +76,7 @@ class TestCUBreduction(unittest.TestCase):
         return a.sum(axis=axis)
 
     @for_contiguous_axes()
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_min(self, xp, dtype, axis):
         assert cupy.cuda.cub_enabled
@@ -84,7 +84,7 @@ class TestCUBreduction(unittest.TestCase):
         return a.min(axis=axis)
 
     @for_contiguous_axes()
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_max(self, xp, dtype, axis):
         assert cupy.cuda.cub_enabled
@@ -92,7 +92,7 @@ class TestCUBreduction(unittest.TestCase):
         return a.max(axis=axis)
 
     # argmin does not support axis yet
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_argmin(self, xp, dtype):
         assert cupy.cuda.cub_enabled
@@ -100,7 +100,7 @@ class TestCUBreduction(unittest.TestCase):
         return a.argmin()
 
     # argmax does not support axis yet
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_argmax(self, xp, dtype):
         assert cupy.cuda.cub_enabled
@@ -127,31 +127,31 @@ class TestCUBperformance(unittest.TestCase):
         cupy.get_default_pinned_memory_pool().free_all_blocks()
 
     @for_contiguous_axes()
-    @testing.for_dtypes('lLfdFD')  # sum supports less dtypes
+    @testing.for_dtypes('lLefdFD')  # sum supports less dtypes
     def test_cub_sum_performance(self, dtype, axis):
         a = testing.shaped_random(self.shape, cupy, dtype)
         timing(self, 'sum', a, axis)
 
     @for_contiguous_axes()
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_dtypes('bhilBHILefdFD')
     def test_cub_min_performance(self, dtype, axis):
         a = testing.shaped_random(self.shape, cupy, dtype)
         timing(self, 'min', a, axis)
 
     @for_contiguous_axes()
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_dtypes('bhilBHILefdFD')
     def test_cub_max_performance(self, dtype, axis):
         a = testing.shaped_random(self.shape, cupy, dtype)
         timing(self, 'max', a, axis)
 
     # argmin does not support axis yet
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_dtypes('bhilBHILefdFD')
     def test_cub_argmin_performance(self, dtype):
         a = testing.shaped_random(self.shape, cupy, dtype)
         timing(self, 'argmin', a, None)
 
     # argmax does not support axis yet
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_dtypes('bhilBHILefdFD')
     def test_cub_argmax_performance(self, dtype):
         a = testing.shaped_random(self.shape, cupy, dtype)
         timing(self, 'argmax', a, None)
