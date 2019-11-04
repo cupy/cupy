@@ -34,7 +34,7 @@ CUB_support_dtype = [numpy.int8, numpy.uint8,
                      numpy.int16, numpy.uint16,
                      numpy.int32, numpy.uint32,
                      numpy.int64, numpy.uint64,
-                     numpy.float32, numpy.float64,
+                     numpy.float16, numpy.float32, numpy.float64,
                      numpy.complex64, numpy.complex128]
 
 ###############################################################################
@@ -236,7 +236,7 @@ cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None,
             # See _sum_auto_dtype in cupy/core/_routines_math.pyx for which
             # dtypes are promoted.
             support_dtype = [numpy.int64, numpy.uint64,
-                             numpy.float32, numpy.float64,
+                             numpy.float16, numpy.float32, numpy.float64,
                              numpy.complex64, numpy.complex128]
         else:
             support_dtype = CUB_support_dtype
@@ -266,6 +266,8 @@ def _get_dtype_id(dtype):
         ret = CUPY_CUB_INT64
     elif dtype == numpy.uint64:
         ret = CUPY_CUB_UINT64
+    elif dtype == numpy.float16:
+        ret = CUPY_CUB_FLOAT16
     elif dtype == numpy.float32:
         ret = CUPY_CUB_FLOAT32
     elif dtype == numpy.float64:
