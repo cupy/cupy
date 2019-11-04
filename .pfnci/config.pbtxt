@@ -95,7 +95,7 @@ configs {
       memory: 10
     }
     time_limit: {
-      seconds: 900
+      seconds: 3600
     }
     command: "bash .pfnci/script.sh py37.amd"
   }
