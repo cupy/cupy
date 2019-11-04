@@ -246,7 +246,7 @@ cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None,
     else:
         return False
 
-    if int(device.get_compute_capability()) >= 530:
+    if int(device.get_compute_capability()) >= 53:
         if x_dtype == numpy.float16:
             return True
 
