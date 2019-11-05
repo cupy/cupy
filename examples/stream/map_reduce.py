@@ -19,8 +19,8 @@ start_time = time.time()
 # Map
 for stream in map_streams:
     with stream:
-        x = rand.normal(size=(1, 1024 * 256))
-        y = rand.normal(size=(1024 * 256, 1))
+        x = rand.normal(size=(1, 1024**2))
+        y = rand.normal(size=(1024**2, 1))
         z = cupy.matmul(x, y)
         zs.append(z)
     stop_event = stream.record()
