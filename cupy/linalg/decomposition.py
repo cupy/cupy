@@ -118,8 +118,20 @@ def qr(a, mode='reduced'):
         dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
 
     m, n = a.shape
-    x = a.transpose().astype(dtype, order='C', copy=True)
     mn = min(m, n)
+    if mn == 0:
+        if mode == 'reduced':
+            return cupy.empty((m, 0), dtype), cupy.empty((0, n), dtype)
+        elif mode == 'complete':
+            return cupy.identity(m, dtype), cupy.empty((m, n), dtype)
+        elif mode == 'r':
+            return cupy.empty((0, n), dtype)
+        else:  # mode == 'raw'
+            # compatibility with numpy.linalg.qr
+            dtype = numpy.find_common_type((dtype, 'd'), ())
+            return cupy.empty((n, m), dtype), cupy.empty((0,), dtype)
+
+    x = a.transpose().astype(dtype, order='C', copy=True)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
     # compute working space of geqrf and orgqr, and solve R
