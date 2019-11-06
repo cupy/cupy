@@ -47,8 +47,8 @@ CUB_sum_support_dtype_without_half = [numpy.int64, numpy.uint64,
                                       numpy.float32, numpy.float64,
                                       numpy.complex64, numpy.complex128]
 
-CUB_sum_support_dtype_with_half = CUB_sum_support_dtype_without_half +\
-                                  [numpy.float16]
+CUB_sum_support_dtype_with_half = \
+    CUB_sum_support_dtype_without_half + [numpy.float16]
 
 CUB_sum_support_dtype = {}
 
