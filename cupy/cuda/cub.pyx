@@ -5,8 +5,9 @@
 import numpy
 
 from cupy.core.core cimport ndarray, _internal_ascontiguousarray
-from cupy.cuda cimport stream
 from cupy.cuda cimport device
+from cupy.cuda cimport runtime
+from cupy.cuda cimport stream
 from cupy.cuda.driver cimport Stream as Stream_t
 
 cimport cython
@@ -31,12 +32,25 @@ cdef enum:
     CUPY_CUB_COMPLEX64 = 11
     CUPY_CUB_COMPLEX128 = 12
 
-CUB_support_dtype = [numpy.int8, numpy.uint8,
-                     numpy.int16, numpy.uint16,
-                     numpy.int32, numpy.uint32,
-                     numpy.int64, numpy.uint64,
-                     numpy.float32, numpy.float64,
-                     numpy.complex64, numpy.complex128]
+CUB_support_dtype_without_half = [numpy.int8, numpy.uint8,
+                                  numpy.int16, numpy.uint16,
+                                  numpy.int32, numpy.uint32,
+                                  numpy.int64, numpy.uint64,
+                                  numpy.float32, numpy.float64,
+                                  numpy.complex64, numpy.complex128]
+
+CUB_support_dtype_with_half = CUB_support_dtype_without_half + [numpy.float16]
+
+CUB_support_dtype = {}
+
+CUB_sum_support_dtype_without_half = [numpy.int64, numpy.uint64,
+                                      numpy.float32, numpy.float64,
+                                      numpy.complex64, numpy.complex128]
+
+CUB_sum_support_dtype_with_half = CUB_sum_support_dtype_without_half +\
+                                  [numpy.float16]
+
+CUB_sum_support_dtype = {}
 
 ###############################################################################
 # Extern
@@ -228,27 +242,44 @@ def can_use_device_segmented_reduce(int op, x_dtype, Py_ssize_t ndim, axis,
     return _cub_device_segmented_reduce_axis_compatible(axis, ndim)
 
 
-cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None,
-                                  bint segmented=False):
+cdef _cub_support_dtype(bint sum_mode, int dev_id):
+    if sum_mode:
+        support_dtype_dict = CUB_sum_support_dtype
+        with_half = CUB_sum_support_dtype_with_half
+        without_half = CUB_sum_support_dtype_without_half
+    else:
+        support_dtype_dict = CUB_support_dtype
+        with_half = CUB_support_dtype_with_half
+        without_half = CUB_support_dtype_without_half
+
+    if dev_id not in support_dtype_dict:
+        if int(device.get_compute_capability()) >= 53 and \
+                runtime.runtimeGetVersion() >= 9000:
+            support_dtype = with_half
+        else:
+            support_dtype = without_half
+
+        support_dtype_dict[dev_id] = support_dtype
+
+    return support_dtype_dict[dev_id]
+
+
+cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None):
+    dev_id = device.get_device_id()
+
     if dtype is None:
         if op == CUPY_CUB_SUM:
             # auto dtype:
             # CUB reduce_sum does not support dtype promotion.
             # See _sum_auto_dtype in cupy/core/_routines_math.pyx for which
             # dtypes are promoted.
-            support_dtype = [numpy.int64, numpy.uint64,
-                             numpy.float32, numpy.float64,
-                             numpy.complex64, numpy.complex128]
+            support_dtype = _cub_support_dtype(True, dev_id)
         else:
-            support_dtype = CUB_support_dtype
+            support_dtype = _cub_support_dtype(False, dev_id)
     elif dtype == x_dtype:
-        support_dtype = CUB_support_dtype
+        support_dtype = _cub_support_dtype(False, dev_id)
     else:
         return False
-
-    if int(device.get_compute_capability()) >= 53:
-        if x_dtype == numpy.float16:
-            return True
 
     if x_dtype not in support_dtype:
         return False
