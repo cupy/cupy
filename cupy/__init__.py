@@ -798,9 +798,9 @@ def get_default_pinned_memory_pool():
     return _default_pinned_memory_pool
 
 
-def show_config(*, detailed=False):
+def show_config():
     """Prints the current runtime configuration to standard output."""
-    sys.stdout.write(str(cupyx.get_runtime_info(detailed)))
+    sys.stdout.write(str(cupyx.get_runtime_info()))
     sys.stdout.flush()
 
 

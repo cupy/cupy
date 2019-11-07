@@ -87,8 +87,7 @@ class _RuntimeInfo(object):
     cub_version = None
     cutensor_version = None
 
-    def __init__(self, detailed):
-        self._detailed = detailed
+    def __init__(self):
         self.cupy_version = cupy.__version__
 
         self.cuda_path = cupy.cuda.get_cuda_path()
@@ -102,26 +101,26 @@ class _RuntimeInfo(object):
             cupy.cuda.runtime.runtimeGetVersion,
             cupy.cuda.runtime.CUDARuntimeError)
 
-        if detailed:
-            dev = cupy.cuda.Device()
-            self.cublas_version = _eval_or_error(
-                lambda: cupy.cuda.cublas.getVersion(dev.cublas_handle),
-                cupy.cuda.cublas.CUBLASError)
-            self.cufft_version = _eval_or_error(
-                cupy.cuda.cufft.getVersion,
-                cupy.cuda.cufft.CuFFTError)
-            self.curand_version = _eval_or_error(
-                cupy.cuda.curand.getVersion,
-                cupy.cuda.curand.CURANDError)
-            self.cusolver_version = _eval_or_error(
-                cupy.cuda.cusolver._getVersion,
-                cupy.cuda.cusolver.CUSOLVERError)
-            self.cusparse_version = _eval_or_error(
-                lambda: cupy.cuda.cusparse.getVersion(dev.cusparse_handle),
-                cupy.cuda.cusparse.CuSparseError)
-            self.nvrtc_version = _eval_or_error(
-                cupy.cuda.nvrtc.getVersion,
-                cupy.cuda.nvrtc.NVRTCError)
+        self.cublas_version = _eval_or_error(
+            lambda: cupy.cuda.cublas.getVersion(
+                cupy.cuda.device.get_cublas_handle()),
+            cupy.cuda.cublas.CUBLASError)
+        self.cufft_version = _eval_or_error(
+            cupy.cuda.cufft.getVersion,
+            cupy.cuda.cufft.CuFFTError)
+        self.curand_version = _eval_or_error(
+            cupy.cuda.curand.getVersion,
+            cupy.cuda.curand.CURANDError)
+        self.cusolver_version = _eval_or_error(
+            cupy.cuda.cusolver._getVersion,
+            cupy.cuda.cusolver.CUSOLVERError)
+        self.cusparse_version = _eval_or_error(
+            lambda: cupy.cuda.cusparse.getVersion(
+                cupy.cuda.device.get_cusparse_handle()),
+            cupy.cuda.cusparse.CuSparseError)
+        self.nvrtc_version = _eval_or_error(
+            cupy.cuda.nvrtc.getVersion,
+            cupy.cuda.nvrtc.NVRTCError)
 
         if cudnn is not None:
             self.cudnn_build_version = cudnn.get_build_version()
@@ -146,15 +145,14 @@ class _RuntimeInfo(object):
             ('CUDA Runtime Version', self.cuda_runtime_version),
         ]
 
-        if self._detailed:
-            records += [
-                ('cuBLAS Version', self.cublas_version),
-                ('cuFFT Version', self.cufft_version),
-                ('cuRAND Version', self.curand_version),
-                ('cuSOLVER Version', self.cusolver_version),
-                ('cuSPARSE Version', self.cusparse_version),
-                ('NVRTC Version', self.nvrtc_version),
-            ]
+        records += [
+            ('cuBLAS Version', self.cublas_version),
+            ('cuFFT Version', self.cufft_version),
+            ('cuRAND Version', self.curand_version),
+            ('cuSOLVER Version', self.cusolver_version),
+            ('cuSPARSE Version', self.cusparse_version),
+            ('NVRTC Version', self.nvrtc_version),
+        ]
 
         records += [
             ('cuDNN Build Version', self.cudnn_build_version),
@@ -172,8 +170,8 @@ class _RuntimeInfo(object):
         return s.getvalue()
 
 
-def get_runtime_info(detailed):
-    return _RuntimeInfo(detailed)
+def get_runtime_info():
+    return _RuntimeInfo()
 
 
 def get_install_info():
