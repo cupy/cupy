@@ -36,6 +36,8 @@ Before installing CuPy, we recommend you to upgrade ``setuptools`` and ``pip``::
   $ pip install -U setuptools pip
 
 
+.. _install_hip:
+
 Install CuPy from Source
 ------------------------
 
