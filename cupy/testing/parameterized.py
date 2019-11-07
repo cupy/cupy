@@ -62,8 +62,7 @@ def _idval(val, argname, i):
         return str(val)
     elif isinstance(val, REGEX_TYPE):
         return _ascii_escaped(val.pattern)
-    elif ((inspect.isclass(val) or inspect.isfunction(val)) and
-            hasattr(val, "__name__")):
+    elif hasattr(val, "__name__"):
         return val.__name__
     return str(argname) + str(i)
 
