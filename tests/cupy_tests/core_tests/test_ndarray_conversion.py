@@ -41,7 +41,7 @@ class TestNdarrayToBytes(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_item(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, xp.int64)
+        a = testing.shaped_arange(self.shape, xp, dtype)
         if hasattr(self, 'order'):
             return a.tobytes(self.order)
         else:
