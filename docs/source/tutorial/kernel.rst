@@ -222,7 +222,7 @@ Raw kernels operating on complex-valued arrays can be created as well:
           [20.+40.j, 21.+42.j, 22.+44.j, 23.+46.j, 24.+48.j]],
          dtype=complex64)
 
-Note that while we encourage the usage of ``complex<T>`` types for complex numbers (available by including ``<cupy/complex.cuh>`` as shown above), for CUDA codes already written using functions from ``cuComplex.h`` there is no need to make the conversion yourself: just set the option ``enable_cuComplex=True`` when creating a :class:`~cupy.RawKernel` instance.
+Note that while we encourage the usage of ``complex<T>`` types for complex numbers (available by including ``<cupy/complex.cuh>`` as shown above), for CUDA codes already written using functions from ``cuComplex.h`` there is no need to make the conversion yourself: just set the option ``translate_cucomplex=True`` when creating a :class:`~cupy.RawKernel` instance.
 
 The CUDA kernel attributes can be retrieved by either accessing the :attr:`~cupy.RawKernel.attributes` dictionary,
 or by accessing the :class:`~cupy.RawKernel` object's attributes directly; the latter can also be used to set certain

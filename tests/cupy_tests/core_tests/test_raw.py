@@ -260,7 +260,7 @@ class TestRaw(unittest.TestCase):
         grid = (N + block - 1) // block
         dtype = cupy.complex64
 
-        mod = cupy.RawModule(_test_cuComplex, enable_cuComplex=True)
+        mod = cupy.RawModule(_test_cuComplex, translate_cucomplex=True)
         a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
         a = a.astype(dtype)
         b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
@@ -288,7 +288,7 @@ class TestRaw(unittest.TestCase):
         grid = (N + block - 1) // block
         dtype = cupy.complex128
 
-        mod = cupy.RawModule(_test_cuComplex, enable_cuComplex=True)
+        mod = cupy.RawModule(_test_cuComplex, translate_cucomplex=True)
         a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
         a = a.astype(dtype)
         b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
