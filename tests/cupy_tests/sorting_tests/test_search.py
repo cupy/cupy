@@ -166,16 +166,14 @@ class TestCUBreduction(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_argmin(self, xp, dtype):
         assert cupy.cuda.cub_enabled
-        shape = (10, 20, 30)
-        a = testing.shaped_random(shape, xp, dtype)
+        a = testing.shaped_random(self.shape, xp, dtype)
         return a.argmin()
 
     @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_argmax(self, xp, dtype):
         assert cupy.cuda.cub_enabled
-        shape = (10, 20, 30)
-        a = testing.shaped_random(shape, xp, dtype)
+        a = testing.shaped_random(self.shape, xp, dtype)
         return a.argmax()
 
 
