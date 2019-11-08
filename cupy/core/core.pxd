@@ -19,7 +19,7 @@ cdef class ndarray:
         readonly ndarray base
 
     cpdef item(self)
-    cpdef tolist(self)
+    cpdef list tolist(self)
     cpdef tofile(self, fid, sep=*, format=*)
     cpdef dump(self, file)
     cpdef dumps(self)

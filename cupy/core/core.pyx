@@ -281,7 +281,7 @@ cdef class ndarray:
                 'can only convert an array of size 1 to a Python scalar')
         return self.get().item()
 
-    cpdef tolist(self):
+    cpdef list tolist(self):
         """Converts the array to a (possibly nested) Python list.
 
         Returns:
