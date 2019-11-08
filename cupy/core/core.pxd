@@ -20,6 +20,7 @@ cdef class ndarray:
 
     cpdef item(self)
     cpdef tolist(self)
+    cpdef bytes tobytes(self, order=*)
     cpdef tofile(self, fid, sep=*, format=*)
     cpdef dump(self, file)
     cpdef dumps(self)

@@ -294,7 +294,10 @@ cdef class ndarray:
 
     # TODO(okuta): Implement itemset
     # TODO(okuta): Implement tostring
-    # TODO(okuta): Implement tobytes
+
+    cpdef bytes tobytes(self, order='C'):
+        """Turns the array into a Python bytes object."""
+        return self.get().tobytes(order)
 
     cpdef tofile(self, fid, sep='', format='%s'):
         """Writes the array to a file.
