@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+import cupy
 from cupy import testing
 
 
@@ -151,6 +152,31 @@ class TestSearch(unittest.TestCase):
     def test_argmin_zero_size_axis1(self, xp, dtype):
         a = testing.shaped_random((0, 1), xp, dtype)
         return a.argmin(axis=1)
+
+
+# This class compares CUB results against NumPy's
+# TODO(leofang): test axis after support is added
+@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
+@testing.parameterize(*testing.product({
+    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+}))
+@testing.gpu
+class TestCUBreduction(unittest.TestCase):
+    @testing.for_dtypes('bhilBHILefdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_argmin(self, xp, dtype):
+        assert cupy.cuda.cub_enabled
+        shape = (10, 20, 30)
+        a = testing.shaped_random(shape, xp, dtype)
+        return a.argmin()
+
+    @testing.for_dtypes('bhilBHILefdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_argmax(self, xp, dtype):
+        assert cupy.cuda.cub_enabled
+        shape = (10, 20, 30)
+        a = testing.shaped_random(shape, xp, dtype)
+        return a.argmax()
 
 
 @testing.parameterize(

@@ -178,6 +178,23 @@ class TestSumprod(unittest.TestCase):
         return a.prod(dtype=dst_dtype)
 
 
+# This class compares CUB results against NumPy's
+@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
+@testing.parameterize(*testing.product({
+    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+}))
+@testing.gpu
+class TestCUBreduction(unittest.TestCase):
+    @testing.for_contiguous_axes()
+    # sum supports less dtypes; don't test float16 as it's not as accurate?
+    @testing.for_dtypes('lLfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_sum(self, xp, dtype, axis):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_random(self.shape, xp, dtype)
+        return a.sum(axis=axis)
+
+
 @testing.parameterize(
     *testing.product({
         'shape': [(2, 3, 4), (20, 30, 40)],

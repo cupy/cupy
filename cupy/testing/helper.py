@@ -999,6 +999,36 @@ def for_CF_orders(name='order'):
     return for_orders([None, 'C', 'F', 'c', 'f'], name)
 
 
+def for_contiguous_axes(name='axis'):
+    '''Decorator for parametrizing tests with possible contiguous axes.
+
+    Args:
+        name(str): Argument name to which specified axis are passed.
+
+    .. note::
+        1. Adapted from tests/cupy_tests/fft_tests/test_fft.py.
+        2. Example: for ``shape = (1, 2, 3)``, the tested axes are
+            ``[(3,), (2, 3), (1, 2, 3)]``.
+    '''
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            ndim = len(self.shape)
+            for i in range(ndim):
+                a = ()
+                for j in range(ndim-1, i-1, -1):
+                    a = (j,) + a
+                try:
+                    kw[name] = a
+                    impl(self, *args, **kw)
+                except Exception:
+                    print(name, 'is', a, ', ndim is', ndim, ', shape is',
+                          self.shape)
+                    raise
+        return test_func
+    return decorator
+
+
 def with_requires(*requirements):
     """Run a test case only when given requirements are satisfied.
 
