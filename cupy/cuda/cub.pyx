@@ -103,11 +103,11 @@ def device_reduce(ndarray x, int op, out=None, bint keepdims=False):
         raise ValueError(
             "output parameter for reduction operation has the wrong number of "
             "dimensions")
-    if op < 0 or op > 4:
+    if op < CUPY_CUB_SUM or op > CUPY_CUB_ARGMAX:
         raise ValueError("only CUPY_CUB_SUM, CUPY_CUB_MIN, CUPY_CUB_MAX, "
                          "CUPY_CUB_ARGMIN, and CUPY_CUB_ARGMAX are supported.")
     x = _internal_ascontiguousarray(x)
-    if 0 <= op <= 2:
+    if CUPY_CUB_SUM <= op <= CUPY_CUB_MAX:
         y = ndarray((), x.dtype)
     else:  # argmin and argmax
         # cub::KeyValuePair has 1 int + 1 arbitrary type
@@ -123,7 +123,7 @@ def device_reduce(ndarray x, int op, out=None, bint keepdims=False):
     ws = ndarray(ws_size, numpy.int8)
     ws_ptr = <void *>ws.data.ptr
     cub_device_reduce(ws_ptr, ws_size, x_ptr, y_ptr, x.size, s, op, dtype_id)
-    if op > 2:  # argmin and argmax
+    if op == CUPY_CUB_ARGMIN or op == CUPY_CUB_ARGMAX:
         # get key from KeyValuePair: need to reinterpret the first 4 bytes
         # and then cast it
         y = y[0:4].view(numpy.int32).astype(numpy.int64)[0]
@@ -153,7 +153,7 @@ def device_segmented_reduce(ndarray x, int op, axis, out=None,
     cdef tuple out_shape
     cdef Stream_t s
 
-    if op < 0 or op > 2:
+    if op < CUPY_CUB_SUM or op > CUPY_CUB_MAX:
         raise ValueError("only CUPY_CUB_SUM, CUPY_CUB_MIN, and CUPY_CUB_MAX "
                          "are supported.")
 
