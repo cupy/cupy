@@ -31,6 +31,7 @@ class TestNdarrayItemRaise(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'shape': ()},
     {'shape': (1,)},
     {'shape': (2, 3)},
     {'shape': (2, 3), 'order': 'C'},
