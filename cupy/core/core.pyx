@@ -296,7 +296,7 @@ cdef class ndarray:
     # TODO(okuta): Implement tostring
     # TODO(okuta): Implement tobytes
 
-    cpdef tofile(self, fid, sep='', format='%s'):
+    cpdef void tofile(self, fid, sep='', format='%s'):
         """Writes the array to a file.
 
         .. seealso:: :meth:`numpy.ndarray.tolist`
