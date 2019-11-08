@@ -313,7 +313,7 @@ cdef class ndarray:
         """
         six.moves.cPickle.dump(self, file, -1)
 
-    cpdef dumps(self):
+    cpdef bytes dumps(self):
         """Dumps a pickle of the array to a string."""
         return six.moves.cPickle.dumps(self, -1)
 
