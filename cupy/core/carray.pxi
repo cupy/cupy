@@ -123,11 +123,20 @@ cpdef str _get_header_source():
     return _header_source
 
 
+# added at the module level for precompiling the regex
+_cucomplex_include_tokens = ['', '#', 'include', '<', r'cuComplex\.h', '>']
+_cucomplex_include_pattern = re.compile(r'\s*'.join(_cucomplex_include_tokens))
+
+
 cdef inline str _convert_cuComplex_to_Thrust(str source):
-    source = re.sub(r'<cuComplex.h>',
-                    r'<cupy/cuComplex_bridge.h>  // translate_cucomplex',
-                    source)
-    return source
+    lines = []
+    for line in source.splitlines(keepends=True):
+        if _cucomplex_include_pattern.match(line):
+            lines += '#include <cupy/cuComplex_bridge.h>  '\
+                     '// translate_cucomplex\n'
+        else:
+            lines += line
+    return ''.join(lines)
 
 
 cpdef function.Module compile_with_cache(
