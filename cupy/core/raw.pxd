@@ -6,7 +6,7 @@ cdef class RawKernel:
         readonly tuple options
         object _kernel
         readonly str backend
-        bint cuComplex
+        bint translate_cucomplex
 
 
 cdef class RawModule:
@@ -18,4 +18,4 @@ cdef class RawModule:
         dict kernels
         readonly str backend
         object module
-        bint cuComplex
+        bint translate_cucomplex

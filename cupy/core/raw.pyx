@@ -3,8 +3,6 @@ from cupy import util
 from cupy.cuda cimport driver
 from cupy.cuda.function cimport Module
 
-import six
-
 
 cdef class RawKernel:
 
@@ -24,24 +22,21 @@ cdef class RawKernel:
         options (str): Compiler options passed to NVRTC. For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
         backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
-        translate_cucomplex (bool): Whether the CUDA source includes the
-            "cuComplex.h" header or not. Defaults to False.
+        translate_cucomplex (bool): Whether the CUDA source includes the header
+            `cuComplex.h` or not. If set to ``True``, any code that uses the
+            functions from `cuComplex.h` will be translated to its Thrust
+            counterpart. Defaults to ``False``.
     """
 
-    def __init__(self, code, name, options=(), backend='nvrtc',
-                 translate_cucomplex=False):
-        if isinstance(code, six.binary_type):
-            code = code.decode('UTF-8')
-        if isinstance(name, six.binary_type):
-            name = name.decode('UTF-8')
-        if isinstance(backend, six.binary_type):
-            backend = backend.decode('UTF-8')
+    def __init__(self, code, name, options=(), backend='nvrtc', **kwargs):
+        translate_cucomplex = kwargs.get('translate_cucomplex', False)
+
         self.code = code
         self.name = name
         self.options = options
-        self._kernel = None
         self.backend = backend
-        self.cuComplex = translate_cucomplex
+        self.translate_cucomplex = translate_cucomplex
+        self._kernel = None
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -63,8 +58,9 @@ cdef class RawKernel:
     @property
     def kernel(self):
         if self._kernel is None:
-            self._kernel = _get_raw_kernel(self.code, self.name, self.options,
-                                           self.backend, self.cuComplex)
+            self._kernel = _get_raw_kernel(
+                self.code, self.name, self.options, self.backend,
+                self.translate_cucomplex)
         return self._kernel
 
     @property
@@ -216,18 +212,16 @@ cdef class RawModule:
             needed. For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
         backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
-        translate_cucomplex (bool): Whether the CUDA source includes the
-            "cuComplex.h" header or not. Defaults to False.
+        translate_cucomplex (bool): Whether the CUDA source includes the header
+            `cuComplex.h` or not. If set to ``True``, any code that uses the
+            functions from `cuComplex.h` will be translated to its Thrust
+            counterpart. Defaults to ``False``.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
     """
-    def __init__(self, code_or_path, options=(), backend='nvrtc',
-                 translate_cucomplex=False):
-        if isinstance(code_or_path, six.binary_type):
-            code_or_path = code_or_path.decode('UTF-8')
-        if isinstance(backend, six.binary_type):
-            backend = backend.decode('UTF-8')
+    def __init__(self, code_or_path, options=(), backend='nvrtc', **kwargs):
+        translate_cucomplex = kwargs.get('translate_cucomplex', False)
 
         if code_or_path.endswith('.cubin'):
             path = code_or_path
@@ -242,15 +236,17 @@ cdef class RawModule:
             self.module = cupy.core.core.compile_with_cache(
                 code, options, prepend_cupy_headers=False, backend=backend,
                 translate_cucomplex=translate_cucomplex)
+            self.options = options
             self.backend = backend
+            self.translate_cucomplex = translate_cucomplex
         elif self.cubin_path is not None:
             self.module = Module()
             self.module.load_file(self.cubin_path)
+            self.options = ()
             self.backend = 'nvcc'
+            self.translate_cucomplex = False
 
-        self.options = options
         self.kernels = {}
-        self.cuComplex = translate_cucomplex
 
     def get_function(self, name):
         """Retrieve a CUDA kernel by its name from the module.
@@ -265,7 +261,7 @@ cdef class RawModule:
             return self.kernels[name]
         else:
             ker = RawKernel(None, name, self.options, self.backend,
-                            self.cuComplex)
+                            translate_cucomplex=self.translate_cucomplex)
             ker._kernel = self.module.get_function(name)
             self.kernels[name] = ker
             return ker
