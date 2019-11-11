@@ -22,7 +22,7 @@ cdef class ndarray:
     cpdef tolist(self)
     cpdef bytes tobytes(self, order=*)
     cpdef void tofile(self, fid, sep=*, format=*)
-    cpdef dump(self, file)
+    cpdef void dump(self, file)
     cpdef bytes dumps(self)
     cpdef ndarray astype(self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef ndarray copy(self, order=*)

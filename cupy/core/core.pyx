@@ -310,7 +310,7 @@ cdef class ndarray:
         """
         self.get().tofile(fid, sep, format)
 
-    cpdef dump(self, file):
+    cpdef void dump(self, file):
         """Dumps a pickle of the array to a file.
 
         Dumped file can be read back to :class:`cupy.ndarray` by
