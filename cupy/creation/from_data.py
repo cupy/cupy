@@ -1,3 +1,5 @@
+import numpy
+
 from cupy import core
 from cupy.core import fusion
 
@@ -137,7 +139,8 @@ def copy(a, order='K'):
 # TODO(okuta): Implement frombuffer
 
 
-# TODO(okuta): Implement fromfile
+def fromfile(file, dtype=float, count=-1, sep='', offset=0):
+    return asarray(numpy.fromfile(file, dtype, count, sep, offset))
 
 
 # TODO(okuta): Implement fromfunction
