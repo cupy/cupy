@@ -140,6 +140,14 @@ def copy(a, order='K'):
 
 
 def fromfile(file, dtype=float, count=-1, sep='', offset=0):
+    """Reads an array from a file.
+
+    .. note::
+        Uses NumPy's ``fromfile`` and coerces the result to a CuPy array.
+
+    .. seealso:: func:`numpy.fromfile`
+    """
+
     return asarray(numpy.fromfile(file, dtype, count, sep, offset))
 
 
