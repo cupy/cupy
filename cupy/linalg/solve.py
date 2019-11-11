@@ -375,20 +375,8 @@ def _batched_inv(a):
 
     getrf(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
           info_array.data.ptr, batch_size)
-
-    err = False
-    err_detail = ''
-    for i in range(batch_size):
-        info = info_array[i]
-        if info < 0:
-            err = True
-            err_detail += ('\tmatrix[{}]: illegal value at {}-the parameter.'
-                           '\n'.format(i, -info))
-        if info > 0:
-            err = True
-            err_detail += '\tmatrix[{}]: matrix is singular.\n'.format(i)
-    if err:
-        raise RuntimeError('matrix inversion failed at getrf.\n' + err_detail)
+    cupy.linalg.util._check_cublas_info_array_if_synchronization_allowed(
+        getrf, info_array)
 
     c = cupy.empty_like(a)
     ldc = lda
@@ -399,14 +387,8 @@ def _batched_inv(a):
 
     getri(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
           c_array.data.ptr, ldc, info_array.data.ptr, batch_size)
-
-    for i in range(batch_size):
-        info = info_array[i]
-        if info > 0:
-            err = True
-            err_detail += '\tmatrix[{}]: matrix is singular.\n'.format(i)
-    if err:
-        raise RuntimeError('matrix inversion failed at getri.\n' + err_detail)
+    cupy.linalg.util._check_cublas_info_array_if_synchronization_allowed(
+        getri, info_array)
 
     return c.reshape(a_shape)
 
