@@ -5,6 +5,7 @@ import numpy
 import cupy
 from cupy import testing
 from cupy.testing import condition
+import cupyx
 
 
 @testing.gpu
@@ -107,10 +108,6 @@ class TestInv(unittest.TestCase):
         self.check_shape((2, 4, 3))
 
 
-# TODO(hvy): Condition test without reading from private attribute.
-@unittest.skipUnless(
-    cupy.linalg._synchronize_check_cusolver_dev_info,
-    'Async cusolver calls will behave differently from NumPy')
 @testing.gpu
 class TestInvInvalid(unittest.TestCase):
 
@@ -118,7 +115,8 @@ class TestInvInvalid(unittest.TestCase):
     @testing.for_float_dtypes(no_float16=True)
     def test_inv(self, dtype, xp):
         a = xp.array([[1, 2], [2, 4]]).astype(dtype)
-        return xp.linalg.inv(a)
+        with cupyx.errstate(linalg='raise'):
+            xp.linalg.inv(a)
 
 
 @testing.gpu

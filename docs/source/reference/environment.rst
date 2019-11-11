@@ -40,13 +40,6 @@ Here are the environment variables CuPy uses.
 |                                    | See :doc:`memory` for details.                     |
 |                                    | ``0`` (unlimited) is used by default.              |
 +------------------------------------+----------------------------------------------------+
-| ``CUPY_LINALG_CHECK_DEVICE_INFO``  | If set to 1, synchronizes after cuSOLVER calls to  |
-|                                    | report errors. If set to 0, avoids                 |
-|                                    | synchronization but might hide errors (results     |
-|                                    | could be wrong).                                   |
-|                                    | This is an experimental feature.                   |
-|                                    | It is disabled by default.                         |
-+------------------------------------+----------------------------------------------------+
 | ``CUPY_SEED``                      | Set the seed for random number generators. For     |
 |                                    | historical reasons ``CHAINER_SEED`` is used if     |
 |                                    | ``CUPY_SEED`` is unspecified.                      |

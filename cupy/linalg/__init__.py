@@ -1,5 +1,3 @@
-import os
-
 # Functions from the following NumPy document
 # https://docs.scipy.org/doc/numpy/reference/routines.linalg.html
 
@@ -30,7 +28,3 @@ from cupy.linalg.solve import tensorinv  # NOQA
 from cupy.linalg.solve import tensorsolve  # NOQA
 
 from cupy.linalg.product import matrix_power  # NOQA
-
-
-_synchronize_check_cusolver_dev_info = bool(
-    int(os.environ.get('CUPY_LINALG_CHECK_DEVICE_INFO', '0')))

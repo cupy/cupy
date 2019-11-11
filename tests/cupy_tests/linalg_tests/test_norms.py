@@ -4,6 +4,7 @@ import numpy
 
 import cupy
 from cupy import testing
+import cupyx
 
 
 @testing.gpu
@@ -154,15 +155,14 @@ class TestSlogdet(unittest.TestCase):
         sign, logdet = xp.linalg.slogdet(a)
         return xp.array([sign, logdet], dtype)
 
-    # TODO(hvy): Condition test without reading from private attribute.
-    @unittest.skipUnless(
-        cupy.linalg._synchronize_check_cusolver_dev_info,
-        'Async cusolver calls will behave differently from NumPy')
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_fail(self, xp, dtype):
         a = xp.zeros((3, 3), dtype)
-        sign, logdet = xp.linalg.slogdet(a)
+        with cupyx.errstate(linalg='raise'):
+            # `cupy.linalg.slogdet` internally catches a raised error from
+            # cuSOLVER, but yield a valid output to mimic NumPy.
+            sign, logdet = xp.linalg.slogdet(a)
         return xp.array([sign, logdet], dtype)
 
     @testing.for_float_dtypes(no_float16=True)
