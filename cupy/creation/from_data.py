@@ -139,7 +139,7 @@ def copy(a, order='K'):
 # TODO(okuta): Implement frombuffer
 
 
-def fromfile(file, dtype=float, count=-1, sep='', offset=0):
+def fromfile(*args, **kwargs):
     """Reads an array from a file.
 
     .. note::
@@ -148,7 +148,7 @@ def fromfile(file, dtype=float, count=-1, sep='', offset=0):
     .. seealso:: :func:`numpy.fromfile`
     """
 
-    return asarray(numpy.fromfile(file, dtype, count, sep, offset))
+    return asarray(numpy.fromfile(*args, **kwargs))
 
 
 # TODO(okuta): Implement fromfunction
