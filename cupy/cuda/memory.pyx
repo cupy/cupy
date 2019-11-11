@@ -3,9 +3,11 @@ cimport cython  # NOQA
 
 import atexit
 import collections
+import contextlib
 import ctypes
 import gc
 import os
+import threading
 import warnings
 import weakref
 
@@ -523,7 +525,7 @@ cpdef MemoryPointer malloc_managed(size_t size):
 
 
 cdef object _current_allocator = _malloc
-
+cdef object _thread_local = threading.local()
 
 cpdef MemoryPointer alloc(size):
     """Calls the current allocator.
@@ -537,7 +539,8 @@ cpdef MemoryPointer alloc(size):
         ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
     """
-    return _current_allocator(size)
+    allocator = getattr(_thread_local, 'allocator', _current_allocator)
+    return allocator(size)
 
 
 cpdef set_allocator(allocator=None):
@@ -556,14 +559,39 @@ cpdef set_allocator(allocator=None):
         allocator = _malloc
     _current_allocator = allocator
 
-
 cpdef get_allocator():
     """Returns the current allocator for GPU memory.
 
     Returns:
         function: CuPy memory allocator.
     """
-    return _current_allocator
+    allocator = getattr(_thread_local, 'allocator', _current_allocator)
+    return allocator
+
+
+@contextlib.contextmanager
+def using_allocator(allocator=None):
+    """Sets a thread-local allocator for GPU memory inside
+       context manager
+
+    Args:
+        allocator (function): CuPy memory allocator. It must have the same
+            interface as the :func:`cupy.cuda.alloc` function, which takes the
+            buffer size as an argument and returns the device buffer of that
+            size. When ``None`` is specified, raw memory allocator will be
+            used (i.e., memory pool is disabled).
+
+    """
+    if allocator is None:
+        allocator = _malloc
+    previous_allocator = getattr(_thread_local, 'allocator', None)
+    _thread_local.allocator = allocator
+    try:
+        yield
+    finally:
+        _thread_local.allocator = previous_allocator
+        if previous_allocator is None:
+            delattr(_thread_local, 'allocator')
 
 
 @cython.final
