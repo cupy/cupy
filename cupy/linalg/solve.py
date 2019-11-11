@@ -26,6 +26,13 @@ def solve(a, b):
         cupy.ndarray:
             The matrix with dimension ``(..., M)`` or ``(..., M, K)``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not  `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.solve`
     """
     # NOTE: Since cusolver in CUDA 8.0 does not support gesv,
@@ -139,6 +146,13 @@ def tensorsolve(a, b, axes=None):
         cupy.ndarray:
             The tensor with shape ``Q`` such that ``b.shape + Q == a.shape``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not  `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.tensorsolve`
     """
     if axes is not None:
@@ -186,6 +200,13 @@ def lstsq(a, b, rcond=1e-15):
             but  iff b is 1-dimensional, this is a (1,) shape array, Otherwise
             the shape is (K,). The ``rank`` of matrix ``a`` is an integer. The
             singular values of ``a`` are ``s``.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not  `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.lstsq`
     """
@@ -235,6 +256,13 @@ def inv(a):
 
     Returns:
         cupy.ndarray: The inverse of a matrix.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not  `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.inv`
     """
@@ -399,6 +427,13 @@ def pinv(a, rcond=1e-15):
     Returns:
         cupy.ndarray: The pseudoinverse of ``a`` with dimension ``(N, M)``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not  `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.pinv`
     """
     u, s, vt = decomposition.svd(a, full_matrices=False)
@@ -425,6 +460,13 @@ def tensorinv(a, ind=2):
         cupy.ndarray:
             The inverse of a tensor whose shape is equivalent to
             ``a.shape[ind:] + a.shape[:ind]``.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not  `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.tensorinv`
     """

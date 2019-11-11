@@ -197,6 +197,17 @@ def slogdet(a):
             The shapes of both ``sign`` and ``logdet`` are equal to
             ``a.shape[:-2]``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not  `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
+    .. warning::
+        To produce the same results as :func:`numpy.linalg.slogdet` for
+        singular inputs, set the `linalg` configuration to `raise`.
+
     .. seealso:: :func:`numpy.linalg.slogdet`
     """
     if a.ndim < 2:

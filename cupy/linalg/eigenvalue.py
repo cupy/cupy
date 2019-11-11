@@ -112,6 +112,13 @@ def eigh(a, UPLO='L'):
             ``v`` contains eigenvectors. ``v[:, i]`` is an eigenvector
             corresponding to an eigenvalue ``w[i]``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not  `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.eigh`
     """
     return _syevd(a, UPLO, True)
@@ -139,6 +146,13 @@ def eigvalsh(a, UPLO='L'):
     Returns:
         cupy.ndarray:
             Returns eigenvalues as a vector.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not  `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """

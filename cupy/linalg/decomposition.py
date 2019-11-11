@@ -20,6 +20,13 @@ def cholesky(a):
     Returns:
         cupy.ndarray: The lower-triangular matrix.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not  `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
@@ -82,6 +89,13 @@ def qr(a, mode='reduced'):
             Although the type of returned object depends on the mode,
             it returns a tuple of ``(Q, R)`` by default.
             For details, please see the document of :func:`numpy.linalg.qr`.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not  `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.qr`
     """
@@ -216,6 +230,13 @@ def svd(a, full_matrices=True, compute_uv=True):
     Returns:
         tuple of :class:`cupy.ndarray`:
             A tuple of ``(u, s, v)`` such that ``a = u * np.diag(s) * v``.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not  `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.svd`
     """
