@@ -487,7 +487,7 @@ cdef class ndarray:
     # TODO(okuta): Implement getfield
     # TODO(okuta): Implement setflags
 
-    cpdef void fill(self, value):
+    cpdef void fill(self, value) except *:
         """Fills the array with a scalar value.
 
         Args:
