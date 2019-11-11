@@ -2,6 +2,7 @@ import contextlib
 import os
 
 from cupy.cuda import compiler  # NOQA
+from cupy.cuda import cub  # NOQA
 from cupy.cuda import device  # NOQA
 from cupy.cuda import driver  # NOQA
 from cupy.cuda import function  # NOQA
@@ -17,7 +18,7 @@ from cupy.cuda import texture  # NOQA
 
 _available = None
 _cuda_path = None
-_cub_disabled = None
+cub_enabled = False  # default to not use CUB for backward compatibility
 
 
 from cupy.cuda import cusolver  # NOQA
@@ -36,14 +37,6 @@ try:
     thrust_enabled = True
 except ImportError:
     thrust_enabled = False
-
-cub_enabled = False
-if int(os.getenv('CUB_DISABLED', 0)) == 0:
-    try:
-        from cupy.cuda import cub  # NOQA
-        cub_enabled = True
-    except ImportError:
-        pass
 
 try:
     from cupy.cuda import nccl  # NOQA
