@@ -201,7 +201,7 @@ def slogdet(a):
         This function calls one or more cuSOLVER routine(s) which may yield
         invalid results if input conditions are not met.
         To detect these invalid results, you can set the `linalg`
-        configuration to a value that is not  `ignore` in
+        configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. warning::

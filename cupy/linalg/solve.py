@@ -30,7 +30,7 @@ def solve(a, b):
         This function calls one or more cuSOLVER routine(s) which may yield
         invalid results if input conditions are not met.
         To detect these invalid results, you can set the `linalg`
-        configuration to a value that is not  `ignore` in
+        configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.solve`
@@ -150,7 +150,7 @@ def tensorsolve(a, b, axes=None):
         This function calls one or more cuSOLVER routine(s) which may yield
         invalid results if input conditions are not met.
         To detect these invalid results, you can set the `linalg`
-        configuration to a value that is not  `ignore` in
+        configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.tensorsolve`
@@ -205,7 +205,7 @@ def lstsq(a, b, rcond=1e-15):
         This function calls one or more cuSOLVER routine(s) which may yield
         invalid results if input conditions are not met.
         To detect these invalid results, you can set the `linalg`
-        configuration to a value that is not  `ignore` in
+        configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.lstsq`
@@ -261,7 +261,7 @@ def inv(a):
         This function calls one or more cuSOLVER routine(s) which may yield
         invalid results if input conditions are not met.
         To detect these invalid results, you can set the `linalg`
-        configuration to a value that is not  `ignore` in
+        configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.inv`
@@ -413,7 +413,7 @@ def pinv(a, rcond=1e-15):
         This function calls one or more cuSOLVER routine(s) which may yield
         invalid results if input conditions are not met.
         To detect these invalid results, you can set the `linalg`
-        configuration to a value that is not  `ignore` in
+        configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.pinv`
@@ -447,7 +447,7 @@ def tensorinv(a, ind=2):
         This function calls one or more cuSOLVER routine(s) which may yield
         invalid results if input conditions are not met.
         To detect these invalid results, you can set the `linalg`
-        configuration to a value that is not  `ignore` in
+        configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.tensorinv`

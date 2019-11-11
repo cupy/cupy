@@ -24,7 +24,7 @@ def cholesky(a):
         This function calls one or more cuSOLVER routine(s) which may yield
         invalid results if input conditions are not met.
         To detect these invalid results, you can set the `linalg`
-        configuration to a value that is not  `ignore` in
+        configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.cholesky`
@@ -94,7 +94,7 @@ def qr(a, mode='reduced'):
         This function calls one or more cuSOLVER routine(s) which may yield
         invalid results if input conditions are not met.
         To detect these invalid results, you can set the `linalg`
-        configuration to a value that is not  `ignore` in
+        configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.qr`
@@ -235,7 +235,7 @@ def svd(a, full_matrices=True, compute_uv=True):
         This function calls one or more cuSOLVER routine(s) which may yield
         invalid results if input conditions are not met.
         To detect these invalid results, you can set the `linalg`
-        configuration to a value that is not  `ignore` in
+        configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.svd`
