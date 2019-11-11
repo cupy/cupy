@@ -15,9 +15,11 @@
 #define CUPY_CUB_COMPLEX64  11
 #define CUPY_CUB_COMPLEX128 12
 
-#define CUPY_CUB_SUM  0
-#define CUPY_CUB_MIN  1
-#define CUPY_CUB_MAX  2
+#define CUPY_CUB_SUM     0
+#define CUPY_CUB_MIN     1
+#define CUPY_CUB_MAX     2
+#define CUPY_CUB_ARGMIN  3
+#define CUPY_CUB_ARGMAX  4
 
 #ifndef CUPY_NO_CUDA
 #include <cuda_runtime.h>  // for cudaStream_t
