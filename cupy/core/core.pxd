@@ -27,7 +27,7 @@ cdef class ndarray:
     cpdef ndarray astype(self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef ndarray copy(self, order=*)
     cpdef ndarray view(self, dtype=*)
-    cpdef fill(self, value)
+    cpdef void fill(self, value)
     cpdef ndarray swapaxes(self, Py_ssize_t axis1, Py_ssize_t axis2)
     cpdef ndarray flatten(self)
     cpdef ndarray ravel(self, order=*)
