@@ -14,6 +14,9 @@ from cupy.core._dtype cimport get_dtype
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 
+if cupy.cuda.cub_enabled:
+    from cupy.cuda import cub
+
 
 # ndarray members
 
@@ -70,6 +73,15 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
 
 
 cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
+    if cupy.cuda.cub_enabled:
+        if cub.can_use_device_reduce(cub.CUPY_CUB_SUM, self.dtype, self.ndim,
+                                     axis, dtype):
+            return cub.device_reduce(self, cub.CUPY_CUB_SUM, out=out,
+                                     keepdims=keepdims)
+        elif cub.can_use_device_segmented_reduce(
+                cub.CUPY_CUB_SUM, self.dtype, self.ndim, axis, dtype):
+            return cub.device_segmented_reduce(
+                self, cub.CUPY_CUB_SUM, axis, out=out, keepdims=keepdims)
     if dtype is None:
         return _sum_auto_dtype(self, axis, dtype, out, keepdims)
     else:
@@ -82,24 +94,6 @@ cdef ndarray _ndarray_cumsum(ndarray self, axis, dtype, out):
 
 cdef ndarray _ndarray_cumprod(ndarray self, axis, dtype, out):
     return cupy.cumprod(self, axis, dtype, out)
-
-
-cdef ndarray _ndarray_nansum(ndarray self, axis, dtype, out, keepdims):
-    if cupy.iscomplexobj(self):
-        return _nansum_complex_dtype(self, axis, dtype, out, keepdims)
-    elif dtype is None:
-        return _nansum_auto_dtype(self, axis, dtype, out, keepdims)
-    else:
-        return _nansum_keep_dtype(self, axis, dtype, out, keepdims)
-
-
-cdef ndarray _ndarray_nanprod(ndarray self, axis, dtype, out, keepdims):
-    if cupy.iscomplexobj(self):
-        return _nanprod_complex_dtype(self, axis, dtype, out, keepdims)
-    elif dtype is None:
-        return _nanprod_auto_dtype(self, axis, dtype, out, keepdims)
-    else:
-        return _nanprod_keep_dtype(self, axis, dtype, out, keepdims)
 
 
 cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
@@ -251,6 +245,24 @@ cdef ndarray scan(ndarray a, ndarray out=None):
 # Only for test
 def _scan_for_test(a, out=None):
     return scan(a, out)
+
+
+cpdef ndarray _nansum(ndarray a, axis, dtype, out, keepdims):
+    if cupy.iscomplexobj(a):
+        return _nansum_complex_dtype(a, axis, dtype, out, keepdims)
+    elif dtype is None:
+        return _nansum_auto_dtype(a, axis, dtype, out, keepdims)
+    else:
+        return _nansum_keep_dtype(a, axis, dtype, out, keepdims)
+
+
+cpdef ndarray _nanprod(ndarray a, axis, dtype, out, keepdims):
+    if cupy.iscomplexobj(a):
+        return _nanprod_complex_dtype(a, axis, dtype, out, keepdims)
+    elif dtype is None:
+        return _nanprod_auto_dtype(a, axis, dtype, out, keepdims)
+    else:
+        return _nanprod_keep_dtype(a, axis, dtype, out, keepdims)
 
 
 _sum_auto_dtype = create_reduction_func(
@@ -484,14 +496,8 @@ cdef _power_preamble = '''
 template <typename T>
 inline __device__ T integral_power(T in0, T in1) {
     if (in1 < 0) {
-        switch (in0) {
-            case -1:
-                return in1 & 1 ? -1 : 1;
-            case 1:
-                return 1;
-            default:
-                return 0;
-        }
+        if (in0 == -1) {return (in1 & 1) ? -1 : 1;}
+        else {return (in0 == 1) ? 1 : 0;}
     }
     T out0 = 1;
     while (in1 > 0) {

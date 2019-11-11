@@ -80,6 +80,26 @@ cdef extern from 'cupy_cutensor.h' nogil:
 
     int cutensorContractionMaxAlgos(int32_t* maxNumAlgos)
 
+    int cutensorReduction(
+        Handle handle,
+        void* alpha,
+        void* A, TensorDescriptor descA, int32_t* modeA,
+        void* beta,
+        void* C, TensorDescriptor descC, int32_t* modeC,
+        void* D, TensorDescriptor descD, int32_t* modeD,
+        Operator opReduce, DataType typeCompute,
+        void* workspace, uint64_t workspaceSize,
+        driver.Stream stream)
+
+    int cutensorReductionGetWorkspace(
+        Handle handle,
+        void* A, TensorDescriptor descA, int32_t* modeA,
+        void* C, TensorDescriptor descC, int32_t* modeC,
+        void* D, TensorDescriptor descD, int32_t* modeD,
+        Operator opReduce, DataType typeCompute,
+        uint64_t* workspaceSize)
+
+
 ###############################################################################
 # Enum
 ###############################################################################
@@ -526,3 +546,103 @@ cpdef int32_t contractionMaxAlgos():
     status = cutensorContractionMaxAlgos(&maxNumAlgos)
     check_status(status)
     return maxNumAlgos
+
+
+###############################################################################
+# Tensor reduction
+###############################################################################
+
+cpdef reduction(size_t handle,
+                size_t alpha,
+                size_t A, size_t descA, size_t modeA,
+                size_t beta,
+                size_t C, size_t descC, size_t modeC,
+                size_t D, size_t descD, size_t modeD,
+                int opReduce, int typeCompute,
+                size_t workspace, uint64_t workspaceSize):
+    """Tensor reduction
+
+    This routine computes the tensor reduction of the form
+    D = alpha * opReduce(opA(A)) + beta * opC(C).
+
+    Example:
+     - D_{a,d} = 0.9 * A_{a,b,c,d} + 0.1 * C_{a,d}
+
+    Args:
+        handle (cutensorHandle_t): Opaque handle holding CUTENSOR's library
+            context.
+        alpha (void*): Scaling for A. The data_type_t is determined by
+            'typeCompute'. Pointer to the host memory.
+        A (void*): Pointer to the data corresponding to A. Pointer to the
+            GPU-accessable memory.
+        descA (cutensorDescriptor_t): A descriptor that holds the information
+            about the data type, modes, strides and unary operator (opA) of A.
+        modeA (int32_t*): Array with 'nmodeA' entries that represent the modes
+            of A. The modeA[i] corresponds to extent[i] and stride[i] w.r.t.
+            the arguments provided to cutensorCreateTensorDescriptor.
+        beta (void*): Scaling for C. The data_type_t is determined by
+            'typeCompute'. Pointer to the host memory.
+        C (void*): Pointer to the data corresponding to C. Pointer to the
+            GPU-accessable memory.
+        modeC (int32_t*): Array with 'nmodeC' entries that represent the modes
+            of C. The modeC[i] corresponds to extent[i] and stride[i] w.r.t.
+            the arguments provided to cutensorCreateTensorDescriptor.
+        descC (cutensorDescriptor_t): The C descriptor that holds information
+            about the data type, modes, strides and unary operator (opC) of C.
+        D (void*): Pointer to the data corresponding to D (must be identical
+            to C for now). Pointer to the GPU-accessable memory.
+        modeD (int32_t*): Array with 'nmodeD' entries that represent the modes
+            of D (must be identical to modeC for now). The modeD[i] corresponds
+            to extent[i] and stride[i] w.r.t. the arguments provided to
+            cutensorCreateTensorDescriptor.
+        descD (cutensorDescriptor_t): The D descriptor that holds information
+            about the data type, modes, and strides of D (must be identical to
+            descC for now).
+        opReduce (cutensorOperator_t): Binary operator used to reduce elements
+            of A.
+        typeCompute (cudaDataType_t): All arithmetic is performed using this
+            data type (i.e., it affects the accuracy and performance).
+        workspace (void*): Scratchpad (device) memory.
+        workspaceSize (uint64_t): Please use reductionGetWorkspace() to query
+            the required workspace. That being said, a workspaceSize of zero is
+            valid but it can lead to (grossly) suboptimal performance. Hence,
+            if you don't want to call reductionGetWorkspace() prior to each
+            reduction call (which is not really necessary), then you could
+            provide some small and fixed workspace (e.g., 8192 bytes).
+    """
+    cdef size_t stream = stream_module.get_current_stream_ptr()
+    status = cutensorReduction(
+        <Handle> handle,
+        <void*> alpha,
+        <void*> A, <TensorDescriptor> descA, <int32_t*> modeA,
+        <void*> beta,
+        <void*> C, <TensorDescriptor> descC, <int32_t*> modeC,
+        <void*> D, <TensorDescriptor> descD, <int32_t*> modeD,
+        <Operator> opReduce, <DataType> typeCompute,
+        <void*> workspace, workspaceSize, <driver.Stream> stream)
+    check_status(status)
+
+
+cpdef uint64_t reductionGetWorkspace(size_t handle,
+                                     size_t A, size_t descA, size_t modeA,
+                                     size_t C, size_t descC, size_t modeC,
+                                     size_t D, size_t descD, size_t modeD,
+                                     int opReduce, int typeCompute):
+    """Determines the required workspaceSize for a given tensor reduction
+
+    Args:
+        See reduction() about args.
+
+    Returns:
+        workspaceSize (uint64_t): The workspace size (in bytes) that is
+            required for the given tensor reduction.
+    """
+    cdef uint64_t workspaceSize
+    status = cutensorReductionGetWorkspace(
+        <Handle> handle,
+        <void*> A, <TensorDescriptor> descA, <int32_t*> modeA,
+        <void*> C, <TensorDescriptor> descC, <int32_t*> modeC,
+        <void*> D, <TensorDescriptor> descD, <int32_t*> modeD,
+        <Operator> opReduce, <DataType> typeCompute, &workspaceSize)
+    check_status(status)
+    return workspaceSize

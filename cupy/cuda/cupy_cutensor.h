@@ -10,6 +10,8 @@
 
 #else // #ifndef CUPY_NO_CUDA
 
+#include "cupy_cuda_common.h"
+
 extern "C" {
 
     typedef enum {} cudaDataType_t;
@@ -58,6 +60,14 @@ extern "C" {
     }
 
     cutensorStatus_t cutensorContractionMaxAlgos(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorReduction(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorReductionGetWorkspace(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 

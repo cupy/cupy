@@ -3,13 +3,10 @@ import unittest
 import numpy
 
 import cupy
-from cupy import cuda
 from cupy import testing
 from cupy.testing import condition
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 @testing.fix_random()
 class TestSolve(unittest.TestCase):
@@ -60,8 +57,6 @@ class TestSolve(unittest.TestCase):
 }))
 @testing.fix_random()
 @testing.gpu
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 class TestTensorSolve(unittest.TestCase):
 
     def setUp(self):
@@ -77,12 +72,10 @@ class TestTensorSolve(unittest.TestCase):
         return xp.linalg.tensorsolve(a, b, axes=self.axes)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestInv(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @condition.retry(10)
     def check_x(self, a_shape, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
@@ -114,12 +107,10 @@ class TestInv(unittest.TestCase):
         self.check_shape((2, 4, 3))
 
 
-# TODO(hvy): Condition test without reading fromrivate attribute.
+# TODO(hvy): Condition test without reading from private attribute.
 @unittest.skipUnless(
     cupy.linalg._synchronize_check_cusolver_dev_info,
     'Async cusolver calls will behave differently from NumPy')
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestInvInvalid(unittest.TestCase):
 
@@ -130,8 +121,6 @@ class TestInvInvalid(unittest.TestCase):
         return xp.linalg.inv(a)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestPinv(unittest.TestCase):
 
@@ -169,8 +158,6 @@ class TestPinv(unittest.TestCase):
         self.check_shape((4, 3, 2, 1), rcond=0.1)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestLstsq(unittest.TestCase):
 
@@ -243,8 +230,6 @@ class TestLstsq(unittest.TestCase):
         self.check_invalid_shapes((4, 3), (10, 3, 3))
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestTensorInv(unittest.TestCase):
 

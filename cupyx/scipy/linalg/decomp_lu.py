@@ -3,13 +3,10 @@ from warnings import warn
 import numpy
 
 import cupy
-from cupy import cuda
 from cupy.cuda import cublas
+from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import util
-
-if cuda.cusolver_enabled:
-    from cupy.cuda import cusolver
 
 
 def lu_factor(a, overwrite_a=False, check_finite=True):
@@ -63,9 +60,6 @@ dtype=cp.float32))
                [nan, nan]], dtype=float32), array([0, 1], dtype=int32))
     """
 
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-
     a = cupy.asarray(a)
     util._assert_rank2(a)
 
@@ -88,7 +82,7 @@ dtype=cp.float32))
                 'array must not contain infs or NaNs')
 
     cusolver_handle = device.get_cusolver_handle()
-    dev_info = cupy.empty(1, dtype=numpy.intc)
+    dev_info = cupy.empty(1, dtype=numpy.int32)
 
     m, n = a.shape
 
@@ -145,9 +139,6 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     .. seealso:: :func:`scipy.linalg.lu_solve`
     """
 
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-
     (lu, ipiv) = lu_and_piv
 
     util._assert_cupy_array(lu)
@@ -194,7 +185,7 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
 
     n = 1 if b.ndim == 1 else b.shape[1]
     cusolver_handle = device.get_cusolver_handle()
-    dev_info = cupy.empty(1, dtype=numpy.intc)
+    dev_info = cupy.empty(1, dtype=numpy.int32)
 
     # solve for the inverse
     getrs(cusolver_handle,

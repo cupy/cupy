@@ -5,6 +5,7 @@ Wrapper for NCCL: Optimized primiteive for collective multi-GPU communication
 """
 cimport cython  # NOQA
 
+from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
 from cupy.cuda cimport driver
@@ -366,8 +367,8 @@ cdef class NcclCommunicator:
         check_status(status)
         return ranks
 
-    def allReduce(self, size_t sendbuf, size_t recvbuf,
-                  size_t count, int datatype, int op, size_t stream):
+    def allReduce(self, intptr_t sendbuf, intptr_t recvbuf,
+                  size_t count, int datatype, int op, intptr_t stream):
         with nogil:
             status = _ncclAllReduce(<void*>sendbuf, <void*>recvbuf,
                                     count, <ncclDataType_t>datatype,
@@ -375,8 +376,8 @@ cdef class NcclCommunicator:
                                     <driver.Stream>stream)
         check_status(status)
 
-    def reduce(self, size_t sendbuf, size_t recvbuf,
-               size_t count, int datatype, int op, int root, size_t stream):
+    def reduce(self, intptr_t sendbuf, intptr_t recvbuf,
+               size_t count, int datatype, int op, int root, intptr_t stream):
         with nogil:
             status = _ncclReduce(<void*>sendbuf, <void*>recvbuf,
                                  count, <ncclDataType_t>datatype,
@@ -384,8 +385,8 @@ cdef class NcclCommunicator:
                                  <driver.Stream>stream)
         check_status(status)
 
-    def broadcast(self, size_t sendbuff, size_t recvbuff, int count,
-                  int datatype, int root, size_t stream):
+    def broadcast(self, intptr_t sendbuff, intptr_t recvbuff, int count,
+                  int datatype, int root, intptr_t stream):
         if NCCL_VERSION_CODE < 2200:
             # ncclBroadcast is not available in NCCL 2.1 or older.
             if self.rank_id() == root and sendbuff != recvbuff:
@@ -400,16 +401,16 @@ cdef class NcclCommunicator:
                                     self._comm, <driver.Stream>stream)
         check_status(status)
 
-    def bcast(self, size_t buff, int count, int datatype,
-              int root, size_t stream):
+    def bcast(self, intptr_t buff, int count, int datatype,
+              int root, intptr_t stream):
         with nogil:
             status = _ncclBcast(<void*>buff, count,
                                 <ncclDataType_t>datatype, root,
                                 self._comm, <driver.Stream>stream)
         check_status(status)
 
-    def reduceScatter(self, size_t sendbuf, size_t recvbuf,
-                      size_t recvcount, int datatype, int op, size_t stream):
+    def reduceScatter(self, intptr_t sendbuf, intptr_t recvbuf,
+                      size_t recvcount, int datatype, int op, intptr_t stream):
         with nogil:
             status = _ncclReduceScatter(<void*>sendbuf, <void*>recvbuf,
                                         recvcount, <ncclDataType_t>datatype,
@@ -417,8 +418,8 @@ cdef class NcclCommunicator:
                                         <driver.Stream>stream)
         check_status(status)
 
-    def allGather(self, size_t sendbuf, size_t recvbuf, size_t count,
-                  int datatype, size_t stream):
+    def allGather(self, intptr_t sendbuf, intptr_t recvbuf, size_t count,
+                  int datatype, intptr_t stream):
         with nogil:
             status = _ncclAllGather(<void*>sendbuf, <void*>recvbuf,
                                     count, <ncclDataType_t>datatype,

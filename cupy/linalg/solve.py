@@ -4,14 +4,11 @@ import six
 
 import cupy
 from cupy.core import core
-from cupy import cuda
 from cupy.cuda import cublas
+from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import decomposition
 from cupy.linalg import util
-
-if cuda.cusolver_enabled:
-    from cupy.cuda import cusolver
 
 
 def solve(a, b):
@@ -35,9 +32,6 @@ def solve(a, b):
     #       we manually solve a linear system with QR decomposition.
     #       For details, please see the following:
     #       https://docs.nvidia.com/cuda/cusolver/index.html#qr_examples
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-
     util._assert_cupy_array(a, b)
     util._assert_nd_squareness(a)
 
@@ -247,9 +241,6 @@ def inv(a):
     if a.ndim >= 3:
         return _batched_inv(a)
 
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-
     # to prevent `a` to be overwritten
     a = a.copy()
 
@@ -257,7 +248,8 @@ def inv(a):
     util._assert_rank2(a)
     util._assert_nd_squareness(a)
 
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
+    # support float32, float64, complex64, and complex128
+    if a.dtype.char in 'fdFD':
         dtype = a.dtype.char
     else:
         dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
@@ -271,10 +263,22 @@ def inv(a):
         getrf = cusolver.sgetrf
         getrf_bufferSize = cusolver.sgetrf_bufferSize
         getrs = cusolver.sgetrs
-    else:  # dtype == 'd'
+    elif dtype == 'd':
         getrf = cusolver.dgetrf
         getrf_bufferSize = cusolver.dgetrf_bufferSize
         getrs = cusolver.dgetrs
+    elif dtype == 'F':
+        getrf = cusolver.cgetrf
+        getrf_bufferSize = cusolver.cgetrf_bufferSize
+        getrs = cusolver.cgetrs
+    elif dtype == 'D':
+        getrf = cusolver.zgetrf
+        getrf_bufferSize = cusolver.zgetrf_bufferSize
+        getrs = cusolver.zgetrs
+    else:
+        msg = ('dtype must be float32, float64, complex64 or complex128'
+               ' (actual: {})'.format(a.dtype))
+        raise ValueError(msg)
 
     m = a.shape[0]
 
@@ -319,7 +323,7 @@ def _batched_inv(a):
         getrf = cupy.cuda.cublas.zgetrfBatched
         getri = cupy.cuda.cublas.zgetriBatched
     else:
-        msg = ('dtype must be float32, float64, complex64 or float128'
+        msg = ('dtype must be float32, float64, complex64 or complex128'
                ' (actual: {})'.format(a.dtype))
         raise ValueError(msg)
 

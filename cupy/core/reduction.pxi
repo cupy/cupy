@@ -2,10 +2,9 @@ from cpython cimport sequence
 from libc.stdint cimport int32_t
 
 from cupy.core cimport _routines_manipulation as _manipulation
+from cupy.cuda cimport runtime
 
 import string
-
-import numpy
 
 from cupy.core import _errors
 from cupy.cuda import compiler
@@ -147,7 +146,7 @@ cpdef tuple _get_permuted_args(
 cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
         Indexer in_indexer, Indexer out_indexer, Py_ssize_t contiguous_size):
     cdef Py_ssize_t block_size, reduce_block_size, block_stride, out_block_num
-    block_size = 512
+    block_size = 256 if runtime._is_hip_environment else 512
 
     reduce_block_size = max(1, in_indexer.size // out_indexer.size)
     contiguous_size = min(contiguous_size, 32)

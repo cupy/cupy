@@ -5,7 +5,6 @@ Environment variables
 
 Here are the environment variables CuPy uses.
 
-
 +------------------------------------+----------------------------------------------------+
 | ``CUDA_PATH``                      | Path to the directory containing CUDA.             |
 |                                    | The parent of the directory containing ``nvcc`` is |
@@ -48,15 +47,40 @@ Here are the environment variables CuPy uses.
 |                                    | This is an experimental feature.                   |
 |                                    | It is disabled by default.                         |
 +------------------------------------+----------------------------------------------------+
+| ``CUPY_SEED``                      | Set the seed for random number generators. For     |
+|                                    | historical reasons ``CHAINER_SEED`` is used if     |
+|                                    | ``CUPY_SEED`` is unspecified.                      |
++------------------------------------+----------------------------------------------------+
+| ``CUPY_EXPERIMENTAL_SLICE_COPY``   | If set to 1, the following syntax is enabled:      |
+|                                    | ``cupy_ndarray[:] = numpy_ndarray``.               |
++------------------------------------+----------------------------------------------------+
+
+Moreover, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit
+Documentation`_ will also be honored.
+
+.. _CUDA Toolkit Documentation: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#env-vars
 
 
-For install
------------
+For installation
+----------------
 
-These environment variables are only used during installation.
+These environment variables are used during installation (building CuPy from source).
 
-+---------------+---------------------------------------------------------------------+
-| ``CUDA_PATH`` | See the description above.                                          |
-+---------------+---------------------------------------------------------------------+
-| ``NVCC``      | Define the compiler to use when compiling CUDA files.               |
-+---------------+---------------------------------------------------------------------+
++-----------------------------+----------------------------------------------------------------+
+| ``CUDA_PATH``               | See the description above.                                     |
++-----------------------------+----------------------------------------------------------------+
+| ``CUTENSOR_PATH``           | Path to the cuTENSOR root directory that contains ``lib`` and  |
+|                             | ``include`` directories. (experimental)                        |
++-----------------------------+----------------------------------------------------------------+
+| ``NVCC``                    | Define the compiler to use when compiling CUDA files.          |
++-----------------------------+----------------------------------------------------------------+
+| ``CUPY_PYTHON_350_FORCE``   | Enforce CuPy to be installed against Python 3.5.0 (not         |
+|                             | recommended).                                                  |
++-----------------------------+----------------------------------------------------------------+
+| ``CUPY_INSTALL_USE_HIP``    | For building the ROCm support, see :ref:`install_hip` for      |
+|                             | further detail.                                                |
++-----------------------------+----------------------------------------------------------------+
+| ``CUPY_NVCC_GENERATE_CODE`` | To build CuPy for a particular CUDA architecture. For example, |
+|                             | ``CUPY_NVCC_GENERATE_CODE=compute_60,sm_60``. When this is not |
+|                             | set, the default is to support all architectures.              |
++-----------------------------+----------------------------------------------------------------+

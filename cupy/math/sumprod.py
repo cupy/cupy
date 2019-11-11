@@ -89,7 +89,7 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False):
                                       a, axis=axis, dtype=dtype, out=out)
 
     # TODO(okuta): check type
-    return a._nansum(axis, dtype, out, keepdims)
+    return _math._nansum(a, axis, dtype, out, keepdims)
 
 
 def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -118,7 +118,7 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
                                       a, axis=axis, dtype=dtype, out=out)
 
     # TODO(okuta): check type
-    return a._nanprod(axis, dtype, out, keepdims)
+    return _math._nanprod(a, axis, dtype, out, keepdims)
 
 
 def _axis_to_first(x, axis):

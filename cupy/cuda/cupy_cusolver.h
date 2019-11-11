@@ -3,14 +3,18 @@
 #ifndef INCLUDE_GUARD_CUPY_CUSOLVER_H
 #define INCLUDE_GUARD_CUPY_CUSOLVER_H
 
-#include "cupy_cuda.h"
-
-#ifndef CUPY_NO_CUDA
+#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 #include <cusolverDn.h>
 #include <cusolverSp.h>
 
-#else // #ifndef CUPY_NO_CUDA
+#else // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+
+#ifdef CUPY_USE_HIP
+#include "cupy_hip_common.h"
+#else // #ifdef CUPY_USE_HIP
+#include "cupy_cuda_common.h"
+#endif // #ifdef CUPY_USE_HIP
 
 extern "C" {
 
@@ -385,6 +389,14 @@ cusolverStatus_t cusolverSpDcsrlsvqr(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverSpCcsrlsvqr(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpZcsrlsvqr(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverSpScsrlsvchol(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
@@ -393,7 +405,32 @@ cusolverStatus_t cusolverSpDcsrlsvchol(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverSpCcsrlsvchol(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpZcsrlsvchol(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpScsreigvsi(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpDcsreigvsi(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpCcsreigvsi(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverSpZcsreigvsi(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+
 } // extern "C"
 
-#endif // #ifndef CUPY_NO_CUDA
+#endif // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUSOLVER_H

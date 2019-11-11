@@ -8,14 +8,14 @@ import numpy
 
 from black_scholes import black_scholes_kernel
 
-# This sample computes call prices for Europian options with
+# This sample computes call prices for European options with
 # Monte-Carlo simulation. It was based on a sample of the financial package
 # in CUDA toolkit. For details, please see the corresponding whitepaper.
 #
 # The present price of an option can also be represented as a discounted
 # expectation of the option price under a risk-neutral measure.
 # Since it is assumed that the stock price follows a lognormal distribution,
-# the call price for Europian option can be evaluated by approximating the
+# the call price for European option can be evaluated by approximating the
 # risk-neutral expectation at the time of exercise with the Monte-Carlo method.
 # Note that as current ElementwiseKernel does not support 'curand'
 # due to nvrtc, this sample manually implements a pseudorandom function.

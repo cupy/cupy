@@ -62,7 +62,7 @@ struct _select_greater_type
  *
  */
 template <typename T>
-struct complex {
+struct __align__(sizeof(T)*2) complex {
  public:
   /*! \p value_type is the type of \p complex's real and imaginary parts.
    */
@@ -75,7 +75,7 @@ struct complex {
    *  \param re The real part of the number.
    *  \param im The imaginary part of the number.
    */
-  inline __device__ complex(const T& re = T(), const T& im = T());
+  inline __host__ __device__ complex(const T& re = T(), const T& im = T());
 
   /*! This copy constructor copies from a \p complex with a type that
    *  is convertible to this \p complex \c value_type.
@@ -85,7 +85,7 @@ struct complex {
    *  \tparam X is convertible to \c value_type.
    */
   template <typename X>
-  inline __device__ complex(const complex<X>& z);
+  inline __host__ __device__ complex(const complex<X>& z);
 
   /* --- Compound Assignment Operators --- */
 
@@ -94,28 +94,28 @@ struct complex {
    *
    *  \param z The \p complex to be Added.
    */
-  __device__ inline complex<T>& operator+=(const complex<T> z);
+  __host__ __device__ inline complex<T>& operator+=(const complex<T> z);
 
   /*! Subtracts a \p complex from this \p complex and
    *  assigns the result to this \p complex.
    *
    *  \param z The \p complex to be subtracted.
    */
-  __device__ inline complex<T>& operator-=(const complex<T> z);
+  __host__ __device__ inline complex<T>& operator-=(const complex<T> z);
 
   /*! Multiplies this \p complex by another \p complex and
    *  assigns the result to this \p complex.
    *
    *  \param z The \p complex to be multiplied.
    */
-  __device__ inline complex<T>& operator*=(const complex<T> z);
+  __host__ __device__ inline complex<T>& operator*=(const complex<T> z);
 
   /*! Divides this \p complex by another \p complex and
    *  assigns the result to this \p complex.
    *
    *  \param z The \p complex to be divided.
    */
-  __device__ inline complex<T>& operator/=(const complex<T> z);
+  __host__ __device__ inline complex<T>& operator/=(const complex<T> z);
 
   /* --- Getter functions ---
    * The volatile ones are there to help for example
@@ -124,19 +124,19 @@ struct complex {
 
   /*! Returns the real part of this \p complex.
    */
-  __device__ inline T real() const volatile { return m_data[0]; }
+  __host__ __device__ inline T real() const volatile { return m_data[0]; }
 
   /*! Returns the imaginary part of this \p complex.
    */
-  __device__ inline T imag() const volatile { return m_data[1]; }
+  __host__ __device__ inline T imag() const volatile { return m_data[1]; }
 
   /*! Returns the real part of this \p complex.
    */
-  __device__ inline T real() const { return m_data[0]; }
+  __host__ __device__ inline T real() const { return m_data[0]; }
 
   /*! Returns the imaginary part of this \p complex.
    */
-  __device__ inline T imag() const { return m_data[1]; }
+  __host__ __device__ inline T imag() const { return m_data[1]; }
 
   /* --- Setter functions ---
    * The volatile ones are there to help for example
@@ -147,25 +147,25 @@ struct complex {
    *
    *  \param re The new real part of this \p complex.
    */
-  __device__ inline void real(T re) volatile { m_data[0] = re; }
+  __host__ __device__ inline void real(T re) volatile { m_data[0] = re; }
 
   /*! Sets the imaginary part of this \p complex.
    *
    *  \param im The new imaginary part of this \p complex.e
    */
-  __device__ inline void imag(T im) volatile { m_data[1] = im; }
+  __host__ __device__ inline void imag(T im) volatile { m_data[1] = im; }
 
   /*! Sets the real part of this \p complex.
    *
    *  \param re The new real part of this \p complex.
    */
-  __device__ inline void real(T re) { m_data[0] = re; }
+  __host__ __device__ inline void real(T re) { m_data[0] = re; }
 
   /*! Sets the imaginary part of this \p complex.
    *
    *  \param im The new imaginary part of this \p complex.
    */
-  __device__ inline void imag(T im) { m_data[1] = im; }
+  __host__ __device__ inline void imag(T im) { m_data[1] = im; }
 
  private:
   T m_data[2];
@@ -200,6 +200,20 @@ __device__ inline T norm(const complex<T>& z);
  */
 template <typename T>
 __device__ inline complex<T> conj(const complex<T>& z);
+
+/*! Returns the real part of a \p complex.
+ *
+ *  \param z The \p complex from which to return the real part
+ */
+template <typename T>
+__device__ inline T real(const complex<T>& z);
+
+/*! Returns the imaginary part of a \p complex.
+ *
+ *  \param z The \p complex from which to return the imaginary part
+ */
+template <typename T>
+__device__ inline T imag(const complex<T>& z);
 
 /*! Returns a \p complex with the specified magnitude and phase.
  *
@@ -548,7 +562,7 @@ __device__ complex<T> atanh(const complex<T>& z);
  *  \param rhs The second \p complex.
  */
 template <typename T>
-__device__ inline bool operator==(const complex<T>& lhs, const complex<T>& rhs);
+__host__ __device__ inline bool operator==(const complex<T>& lhs, const complex<T>& rhs);
 
 /*! Returns true if the imaginary part of the  \p complex number is zero and the
  * real part is equal to the scalar. Returns false otherwise.
@@ -557,7 +571,7 @@ __device__ inline bool operator==(const complex<T>& lhs, const complex<T>& rhs);
  *  \param rhs The \p complex.
  */
 template <typename T>
-__device__ inline bool operator==(const T& lhs, const complex<T>& rhs);
+__host__ __device__ inline bool operator==(const T& lhs, const complex<T>& rhs);
 
 /*! Returns true if the imaginary part of the  \p complex number is zero and the
  * real part is equal to the scalar. Returns false otherwise.
@@ -566,7 +580,7 @@ __device__ inline bool operator==(const T& lhs, const complex<T>& rhs);
  *  \param rhs The scalar.
  */
 template <typename T>
-__device__ inline bool operator==(const complex<T>& lhs, const T& rhs);
+__host__ __device__ inline bool operator==(const complex<T>& lhs, const T& rhs);
 
 /*! Returns true if two \p complex numbers are different and false otherwise.
  *
@@ -574,7 +588,7 @@ __device__ inline bool operator==(const complex<T>& lhs, const T& rhs);
  *  \param rhs The second \p complex.
  */
 template <typename T>
-__device__ inline bool operator!=(const complex<T>& lhs, const complex<T>& rhs);
+__host__ __device__ inline bool operator!=(const complex<T>& lhs, const complex<T>& rhs);
 
 /*! Returns true if the imaginary part of the  \p complex number is not zero or
  * the real part is different from the scalar. Returns false otherwise.
@@ -583,7 +597,7 @@ __device__ inline bool operator!=(const complex<T>& lhs, const complex<T>& rhs);
  *  \param rhs The \p complex.
  */
 template <typename T>
-__device__ inline bool operator!=(const T& lhs, const complex<T>& rhs);
+__host__ __device__ inline bool operator!=(const T& lhs, const complex<T>& rhs);
 
 /*! Returns true if the imaginary part of the \p complex number is not zero or
  * the real part is different from the scalar. Returns false otherwise.
@@ -592,7 +606,7 @@ __device__ inline bool operator!=(const T& lhs, const complex<T>& rhs);
  *  \param rhs The scalar.
  */
 template <typename T>
-__device__ inline bool operator!=(const complex<T>& lhs, const T& rhs);
+__host__ __device__ inline bool operator!=(const complex<T>& lhs, const T& rhs);
 
 }  // end namespace thrust
 

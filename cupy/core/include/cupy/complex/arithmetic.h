@@ -274,6 +274,16 @@ __device__ inline complex<ValueType> conj(const complex<ValueType>& z) {
 }
 
 template <typename ValueType>
+__device__ inline ValueType real(const complex<ValueType>& z) {
+  return z.real();
+}
+
+template <typename ValueType>
+__device__ inline ValueType imag(const complex<ValueType>& z) {
+  return z.imag();
+}
+
+template <typename ValueType>
 __device__ inline ValueType norm(const complex<ValueType>& z) {
   return z.real() * z.real() + z.imag() * z.imag();
 }

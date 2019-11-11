@@ -11,7 +11,6 @@ class TestCusolver(unittest.TestCase):
                          cuda.cusolver_enabled)
 
 
-@unittest.skipUnless(cuda.cusolver_enabled, 'cuSOLVER is unavailable')
 class TestExceptionPicklable(unittest.TestCase):
 
     def test(self):

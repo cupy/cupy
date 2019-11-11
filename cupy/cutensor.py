@@ -16,7 +16,7 @@ def get_handle():
     return _handles[dev]
 
 
-class Descriptor:
+class Descriptor(object):
 
     def __init__(self, descriptor, destroyer):
         self.value = descriptor
@@ -41,6 +41,11 @@ def get_cuda_dtype(numpy_dtype):
         return runtime.CUDA_C_64F
     else:
         raise TypeError('Dtype {} is not supported'.format(numpy_dtype))
+
+
+def _convert_mode(mode):
+    return numpy.array([ord(x) if isinstance(x, str) else x for x in mode],
+                       dtype=numpy.int32)
 
 
 def create_tensor_descriptor(a, uop=cutensor.OP_IDENTITY,
@@ -100,7 +105,7 @@ def elementwise_trinary(alpha, A, desc_A, mode_A,
         desc_A (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor A.
         mode_A (tuple of int/str): A tuple that holds the labels of the modes
-            of tensor A (e.g., if A_{x,y,z} => mode_A = {'x','y','z'})
+            of tensor A (e.g., if A_{x,y,z}, mode_A = {'x','y','z'})
         beta: Scaling factor for tensor B.
         B (cupy.ndarray): Input tensor.
         desc_B (class Descriptor): A descriptor that holds the information
@@ -121,17 +126,17 @@ def elementwise_trinary(alpha, A, desc_A, mode_A,
 
     Returns:
         out (cupy.ndarray): Output tensor.
+
+    Examples:
+        See examples/cutensor/elementwise_trinary.py
     """
     assert A.dtype == B.dtype == C.dtype
     assert A.ndim == len(mode_A)
     assert B.ndim == len(mode_B)
     assert C.ndim == len(mode_C)
-    mode_A = numpy.array([ord(x) if isinstance(x, str) else x for x in mode_A],
-                         dtype=numpy.int32)
-    mode_B = numpy.array([ord(x) if isinstance(x, str) else x for x in mode_B],
-                         dtype=numpy.int32)
-    mode_C = numpy.array([ord(x) if isinstance(x, str) else x for x in mode_C],
-                         dtype=numpy.int32)
+    mode_A = _convert_mode(mode_A)
+    mode_B = _convert_mode(mode_B)
+    mode_C = _convert_mode(mode_C)
     if out is None:
         out = cupy.ndarray(C.shape, dtype=C.dtype)
     else:
@@ -173,14 +178,15 @@ def elementwise_binary(alpha, A, desc_A, mode_A,
                   gamma * uop_C(C_{Pi^C(i_0,i_1,...,i_n)}))
 
     See elementwise_trinary() for details.
+
+    Examples:
+        See examples/cutensor/elementwise_binary.py
     """
     assert A.dtype == C.dtype
     assert A.ndim == len(mode_A)
     assert C.ndim == len(mode_C)
-    mode_A = numpy.array([ord(x) if isinstance(x, str) else x for x in mode_A],
-                         dtype=numpy.int32)
-    mode_C = numpy.array([ord(x) if isinstance(x, str) else x for x in mode_C],
-                         dtype=numpy.int32)
+    mode_A = _convert_mode(mode_A)
+    mode_C = _convert_mode(mode_C)
     if out is None:
         out = cupy.ndarray(C.shape, dtype=C.dtype)
     else:
@@ -224,14 +230,14 @@ def contraction(alpha, A, desc_A, mode_A, B, desc_B, mode_B,
         desc_A (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor A.
         mode_A (tuple of int/str): A tuple that holds the labels of the modes
-            of tensor A (e.g., if A_{x,y,z} => mode_A = {'x','y','z'})
+            of tensor A (e.g., if A_{x,y,z}, mode_A = {'x','y','z'})
         B (cupy.ndarray): Input tensor.
         desc_B (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor B.
         mode_B (tuple of int/str): A tuple that holds the labels of the modes
             of tensor B.
         beta: Scaling factor for C.
-        C (cupy.ndarray): Input tensor.
+        C (cupy.ndarray): Input/output tensor.
         desc_C (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor C.
         mode_C (tuple of int/str): A tuple that holds the labels of the modes
@@ -249,6 +255,9 @@ def contraction(alpha, A, desc_A, mode_A, B, desc_B, mode_B,
 
     Returns:
         out (cupy.ndarray): Output tensor.
+
+    Examples:
+        See examples/cutensor/contraction.py
     """
     assert A.dtype == B.dtype == C.dtype
     assert A.ndim == len(mode_A)
@@ -307,3 +316,76 @@ def contraction_max_algos():
     See cupy/cuda/cutensor.contractionMaxAlgos() for details.
     """
     return cutensor.contractionMaxAlgos()
+
+
+def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
+              reduce_op=cutensor.OP_ADD, compute_dtype=None):
+    """Tensor reduction
+
+    This routine computes the tensor reduction:
+
+        C = alpha * reduce_op(uop_A(A)) + beta * uop_C(C))
+
+    See :func:`cupy.cuda.cutensor.reduction` for details.
+
+    Args:
+        alpha: Scaling factor for A.
+        A (cupy.ndarray): Input tensor.
+        desc_A (class Descriptor): A descriptor that holds the information
+            about the data type, modes, strides and unary operator (uop_A) of
+            tensor A.
+        mode_A (tuple of int/str): A tuple that holds the labels of the modes
+            of tensor A (e.g., if A_{x,y,z}, mode_A = {'x','y','z'})
+        beta: Scaling factor for C.
+        C (cupy.ndarray): Input/output tensor.
+        desc_C (class Descriptor): A descriptor that holds the information
+            about the data type, modes, strides and unary operator (uop_C) of
+            tensor C.
+        mode_C (tuple of int/str): A tuple that holds the labels of the modes
+            of tensor C.
+        reduce_op (cutensorOperator_t): Binary operator used to reduce A.
+        compute_dtype (numpy.dtype): Compute type for the intermediate
+            computation.
+
+    Returns:
+        out (cupy.ndarray): Output tensor.
+
+    Examples:
+        See examples/cutensor/reduction.py
+    """
+    assert A.dtype == C.dtype
+    assert A.ndim == len(mode_A)
+    assert C.ndim == len(mode_C)
+    mode_A = _convert_mode(mode_A)
+    mode_C = _convert_mode(mode_C)
+    out = C
+    if compute_dtype is None:
+        if A.dtype == numpy.float16:
+            compute_dtype = numpy.float32
+        else:
+            compute_dtype = A.dtype
+    alpha = numpy.array(alpha, compute_dtype)
+    beta = numpy.array(beta, compute_dtype)
+    handle = get_handle()
+    compute_dtype = get_cuda_dtype(compute_dtype)
+    ws_size = cutensor.reductionGetWorkspace(
+        handle,
+        A.data.ptr, desc_A.value, mode_A.ctypes.data,
+        C.data.ptr, desc_C.value, mode_C.ctypes.data,
+        out.data.ptr, desc_C.value, mode_C.ctypes.data,
+        reduce_op, compute_dtype)
+    try:
+        ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
+    except cupy.cuda.memory.OutOfMemoryError:
+        warnings.warn('cuTENSOR: failed to allocate memory of workspace '
+                      '(size: {}).'.format(ws_size))
+        ws_size = 0
+        ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
+    cutensor.reduction(handle,
+                       alpha.ctypes.data,
+                       A.data.ptr, desc_A.value, mode_A.ctypes.data,
+                       beta.ctypes.data,
+                       C.data.ptr, desc_C.value, mode_C.ctypes.data,
+                       out.data.ptr, desc_C.value, mode_C.ctypes.data,
+                       reduce_op, compute_dtype, ws.data.ptr, ws_size)
+    return out

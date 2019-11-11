@@ -1,10 +1,9 @@
-import cupy
-from cupy import cuda
-from cupy.cuda import cublas
-from cupy.cuda import device
+import numpy
 
-if cuda.cusolver_enabled:
-    from cupy.cuda import cusolver
+import cupy
+from cupy.cuda import cublas
+from cupy.cuda import cusolver
+from cupy.cuda import device
 
 
 def _syevd(a, UPLO, with_eigen_vector):
@@ -48,7 +47,7 @@ def _syevd(a, UPLO, with_eigen_vector):
 
     m, lda = a.shape
     w = cupy.empty(m, inp_w_dtype)
-    dev_info = cupy.empty((), 'i')
+    dev_info = cupy.empty((), numpy.int32)
     handle = device.Device().cusolver_handle
 
     if with_eigen_vector:
@@ -102,10 +101,6 @@ def eigh(a, UPLO='L'):
 
        Currenlty only 2-D matrix is supported.
 
-    .. note::
-
-       CUDA >=8.0 is required.
-
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix.
         UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
@@ -119,8 +114,6 @@ def eigh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigh`
     """
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
     return _syevd(a, UPLO, True)
 
 
@@ -138,10 +131,6 @@ def eigvalsh(a, UPLO='L'):
 
        Currenlty only 2-D matrix is supported.
 
-    .. note::
-
-       CUDA >=8.0 is required.
-
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix.
         UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
@@ -153,6 +142,4 @@ def eigvalsh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
     return _syevd(a, UPLO, False)[0]

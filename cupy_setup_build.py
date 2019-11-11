@@ -27,6 +27,7 @@ from install.build import PLATFORM_WIN32
 required_cython_version = pkg_resources.parse_version('0.28.0')
 ignore_cython_versions = [
 ]
+use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 
 MODULES = [
     {
@@ -34,6 +35,7 @@ MODULES = [
         'file': [
             'cupy.core._dtype',
             'cupy.core._kernel',
+            'cupy.core._memory_range',
             'cupy.core._routines_indexing',
             'cupy.core._routines_logic',
             'cupy.core._routines_manipulation',
@@ -61,6 +63,7 @@ MODULES = [
             'cupy.cuda.function',
             'cupy.cuda.stream',
             'cupy.cuda.runtime',
+            'cupy.cuda.texture',
             'cupy.util',
         ],
         'include': [
@@ -84,6 +87,19 @@ MODULES = [
         ],
         'check_method': build.check_cuda_version,
         'version_method': build.get_cuda_version,
+    },
+    {
+        'name': 'cusolver',
+        'file': [
+            'cupy.cuda.cusolver',
+        ],
+        'include': [
+            'cusolverDn.h',
+        ],
+        'libraries': [
+            'cusolver',
+        ],
+        'check_method': build.check_cuda_version,
     },
     {
         'name': 'cudnn',
@@ -113,19 +129,6 @@ MODULES = [
         ],
         'check_method': build.check_nccl_version,
         'version_method': build.get_nccl_version,
-    },
-    {
-        'name': 'cusolver',
-        'file': [
-            'cupy.cuda.cusolver',
-        ],
-        'include': [
-            'cusolverDn.h',
-        ],
-        'libraries': [
-            'cusolver',
-        ],
-        'check_method': build.check_cuda_version,
     },
     {
         'name': 'nvtx',
@@ -179,7 +182,51 @@ MODULES = [
         'check_method': build.check_cutensor_version,
         'version_method': build.get_cutensor_version,
     },
+    {
+        'name': 'cub',
+        'file': [
+            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+        ],
+        'include': [
+            'cub/util_namespace.cuh',  # dummy
+        ],
+        'libraries': [
+            'cudart',
+        ],
+        'check_method': build.check_cuda_version,
+    },
 ]
+
+
+def convert_modules_for_hip():
+    global MODULES
+    if len(MODULES) == 2:
+        return
+    MODULES = MODULES[:2]
+    mod_cuda = MODULES[0]
+    mod_cuda['include'] = [
+        'hip/hip_runtime_api.h',
+        'hip/hiprtc.h',
+        'hipblas.h',
+        'hiprand/hiprand.h',
+        #        'hipsparse.h',
+        #        'cuda_profiler_api.h',
+        #        'cufft.h',
+    ]
+    mod_cuda['libraries'] = [
+        'hiprtc',
+        'hip_hcc',
+        'hipblas',
+        'hiprand',
+        #        'hipsparse',
+        #        'cufft',
+    ]
+    del mod_cuda['version_method']
+    del mod_cuda['check_method']
+    mod_cusolver = MODULES[1]
+    mod_cusolver['include'] = []
+    mod_cusolver['libraries'] = []
+    del mod_cusolver['check_method']
 
 
 def ensure_module_file(file):
@@ -224,17 +271,19 @@ def check_readthedocs_environment():
 
 
 def check_library(compiler, includes=(), libraries=(),
-                  include_dirs=(), library_dirs=(), define_macros=None):
+                  include_dirs=(), library_dirs=(), define_macros=None,
+                  extra_compile_args=()):
 
     source = ''.join(['#include <%s>\n' % header for header in includes])
-    source += 'int main(int argc, char* argv[]) {return 0;}'
+    source += 'int main() {return 0;}'
     try:
         # We need to try to build a shared library because distutils
         # uses different option to build an executable and a shared library.
         # Especially when a user build an executable, distutils does not use
         # LDFLAGS environment variable.
         build.build_shlib(compiler, source, libraries,
-                          include_dirs, library_dirs, define_macros)
+                          include_dirs, library_dirs, define_macros,
+                          extra_compile_args)
     except Exception as e:
         print(e)
         sys.stdout.flush()
@@ -267,7 +316,8 @@ def preconfigure_modules(compiler, settings):
     ]
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
-                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC']:
+                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC',
+                'ROCM_HOME']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [
@@ -285,16 +335,20 @@ def preconfigure_modules(compiler, settings):
         print('-------- Configuring Module: {} --------'.format(
             module['name']))
         sys.stdout.flush()
-        if not check_library(compiler,
-                             includes=module['include'],
-                             include_dirs=settings['include_dirs'],
-                             define_macros=settings['define_macros']):
+        if not check_library(
+                compiler,
+                includes=module['include'],
+                include_dirs=settings['include_dirs'],
+                define_macros=settings['define_macros'],
+                extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Include files not found: %s' % module['include'],
                       'Check your CFLAGS environment variable.']
-        elif not check_library(compiler,
-                               libraries=module['libraries'],
-                               library_dirs=settings['library_dirs'],
-                               define_macros=settings['define_macros']):
+        elif not check_library(
+                compiler,
+                libraries=module['libraries'],
+                library_dirs=settings['library_dirs'],
+                define_macros=settings['define_macros'],
+                extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Cannot link libraries: %s' % module['libraries'],
                       'Check your LDFLAGS environment variable.']
         elif ('check_method' in module and
@@ -303,6 +357,10 @@ def preconfigure_modules(compiler, settings):
             installed = True
             errmsg = ['The library is installed but not supported.']
         elif module['name'] == 'thrust' and nvcc_path is None:
+            installed = True
+            errmsg = ['nvcc command could not be found in PATH.',
+                      'Check your PATH environment variable.']
+        elif module['name'] == 'cub' and nvcc_path is None:
             installed = True
             errmsg = ['nvcc command could not be found in PATH.',
                       'Check your PATH environment variable.']
@@ -366,7 +424,12 @@ def make_extensions(options, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
     no_cuda = options['no_cuda']
-    settings = build.get_compiler_setting()
+    use_hip = not no_cuda and options['use_hip']
+    use_cpp11 = use_hip
+    settings = build.get_compiler_setting(use_cpp11)
+
+    if use_hip:
+        convert_modules_for_hip()
 
     include_dirs = settings['include_dirs']
 
@@ -392,6 +455,9 @@ def make_extensions(options, compiler, use_cython):
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
     if no_cuda:
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
+    if use_hip:
+        settings['define_macros'].append(('CUPY_USE_HIP', '1'))
+        settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
 
     available_modules = []
     if no_cuda:
@@ -456,7 +522,7 @@ def make_extensions(options, compiler, use_cython):
                 args = s.setdefault('extra_link_args', [])
                 args.append(ldflag)
                 if PLATFORM_DARWIN:
-                    # -rpath is only supported when targetting Mac OS X 10.5 or
+                    # -rpath is only supported when targeting Mac OS X 10.5 or
                     # later
                     args.append('-mmacosx-version-min=10.5')
 
@@ -467,6 +533,7 @@ def make_extensions(options, compiler, use_cython):
     return ret
 
 
+# TODO(oktua): use enviriment variable
 def parse_args():
     parser = argparse.ArgumentParser(add_help=False)
 
@@ -499,6 +566,9 @@ def parse_args():
     parser.add_argument(
         '--cupy-no-cuda', action='store_true', default=False,
         help='build CuPy with stub header file')
+    # parser.add_argument(
+    #     '--cupy-use-hip', action='store_true', default=False,
+    #     help='build CuPy with HIP')
 
     opts, sys.argv = parser.parse_known_args(sys.argv)
 
@@ -512,6 +582,7 @@ def parse_args():
         'linetrace': opts.cupy_coverage,
         'annotate': opts.cupy_coverage,
         'no_cuda': opts.cupy_no_cuda,
+        'use_hip': use_hip  # opts.cupy_use_hip,
     }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
@@ -737,7 +808,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
 
             cuda_version = build.get_cuda_version()
             postargs = _nvcc_gencode_options(cuda_version) + [
-                '-O2', '--compiler-options="-fPIC"']
+                '-O2', '--compiler-options="-fPIC"', '--std=c++11']
             print('NVCC options:', postargs)
 
             return unixccompiler.UnixCCompiler._compile(

@@ -23,18 +23,21 @@ cdef class RawKernel:
         name (str): Name of the kernel function.
         options (str): Compiler options passed to NVRTC. For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
-
+        backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
     """
 
-    def __init__(self, code, name, options=()):
+    def __init__(self, code, name, options=(), backend='nvrtc'):
         if isinstance(code, six.binary_type):
             code = code.decode('UTF-8')
         if isinstance(name, six.binary_type):
             name = name.decode('UTF-8')
+        if isinstance(backend, six.binary_type):
+            backend = backend.decode('UTF-8')
         self.code = code
         self.name = name
         self.options = options
         self._kernel = None
+        self.backend = backend
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -56,7 +59,8 @@ cdef class RawKernel:
     @property
     def kernel(self):
         if self._kernel is None:
-            self._kernel = _get_raw_kernel(self.code, self.name, self.options)
+            self._kernel = _get_raw_kernel(self.code, self.name, self.options,
+                                           self.backend)
         return self._kernel
 
     @property
@@ -179,9 +183,9 @@ cdef class RawKernel:
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_raw_kernel(code, name, options=()):
-    module = cupy.core.core.compile_with_cache(code, options,
-                                               prepend_cupy_headers=False)
+def _get_raw_kernel(code, name, options=(), backend='nvrtc'):
+    module = cupy.core.core.compile_with_cache(
+        code, options, prepend_cupy_headers=False, backend=backend)
     return module.get_function(name)
 
 
@@ -189,7 +193,7 @@ cdef class RawModule:
     """User-defined custom module.
 
     This class can be used to either compile raw CUDA sources or load CUDA
-    modules (\*.cubin). This class is useful when a number of CUDA kernels in
+    modules (\\*.cubin). This class is useful when a number of CUDA kernels in
     the same source need to be retrieved.
 
     For the former case, the CUDA source code is compiled when initializing a
@@ -197,7 +201,7 @@ cdef class RawModule:
     :meth:`get_function`, which will return an instance of :class:`RawKernel`.
     (Same as in :class:`RawKernel`, the generated binary is also cached.)
 
-    For the latter case, an existing CUDA binary (\*.cubin) can be loaded by
+    For the latter case, an existing CUDA binary (\\*.cubin) can be loaded by
     providing its path, and kernels therein can be retrieved similarly.
 
     Args:
@@ -205,13 +209,16 @@ cdef class RawModule:
         options (str): Compiler options passed to NVRTC if compilation is
             needed. For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
+        backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
     """
-    def __init__(self, code_or_path, options=()):
+    def __init__(self, code_or_path, options=(), backend='nvrtc'):
         if isinstance(code_or_path, six.binary_type):
             code_or_path = code_or_path.decode('UTF-8')
+        if isinstance(backend, six.binary_type):
+            backend = backend.decode('UTF-8')
 
         if code_or_path.endswith('.cubin'):
             path = code_or_path
@@ -224,10 +231,12 @@ cdef class RawModule:
 
         if self.code is not None:
             self.module = cupy.core.core.compile_with_cache(
-                code, options, prepend_cupy_headers=False)
+                code, options, prepend_cupy_headers=False, backend=backend)
+            self.backend = backend
         elif self.cubin_path is not None:
             self.module = Module()
             self.module.load_file(self.cubin_path)
+            self.backend = 'nvcc'
 
         self.options = options
         self.kernels = {}
@@ -248,3 +257,14 @@ cdef class RawModule:
             ker._kernel = self.module.get_function(name)
             self.kernels[name] = ker
             return ker
+
+    def get_texref(self, name):
+        '''Retrieve a texture reference by its name from the module.
+
+        Args:
+            name (str): Name of the texture reference.
+
+        Returns:
+            intptr_t: A ``CUtexref`` handle, to be passed to :class:`~cupy.cuda.texture.TextureReference`.
+        '''  # noqa
+        return self.module.get_texref(name)

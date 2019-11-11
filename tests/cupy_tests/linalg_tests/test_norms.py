@@ -3,7 +3,6 @@ import unittest
 import numpy
 
 import cupy
-from cupy import cuda
 from cupy import testing
 
 
@@ -71,8 +70,6 @@ class TestNorm(unittest.TestCase):
     ],
     'tol': [None, 1]
 }))
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestMatrixRank(unittest.TestCase):
 
@@ -93,8 +90,6 @@ class TestMatrixRank(unittest.TestCase):
         return y
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestDet(unittest.TestCase):
 
@@ -135,8 +130,6 @@ class TestDet(unittest.TestCase):
         xp.linalg.det(a)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestSlogdet(unittest.TestCase):
 
