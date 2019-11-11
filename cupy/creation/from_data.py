@@ -145,7 +145,7 @@ def fromfile(file, dtype=float, count=-1, sep='', offset=0):
     .. note::
         Uses NumPy's ``fromfile`` and coerces the result to a CuPy array.
 
-    .. seealso:: func:`numpy.fromfile`
+    .. seealso:: :func:`numpy.fromfile`
     """
 
     return asarray(numpy.fromfile(file, dtype, count, sep, offset))
