@@ -29,7 +29,7 @@ ignore_cython_versions = [
 ]
 use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 
-MODULES = [
+MODULES_CUDA = [
     {
         'name': 'cuda',
         'file': [
@@ -196,37 +196,34 @@ MODULES = [
         'check_method': build.check_cuda_version,
     },
 ]
+MODULES_HIP = _convert_modules_for_hip(MODULES_CUDA)
+
+MODULES = MODULES_CUDA
 
 
-def convert_modules_for_hip():
-    global MODULES
-    if len(MODULES) == 2:
-        return
-    MODULES = MODULES[:2]
-    mod_cuda = MODULES[0]
+def _convert_modules_for_hip(mods):
+    mod_cuda = [m for m in mods if m['name'] == 'cuda'][0]
     mod_cuda['include'] = [
         'hip/hip_runtime_api.h',
         'hip/hiprtc.h',
         'hipblas.h',
         'hiprand/hiprand.h',
-        #        'hipsparse.h',
-        #        'cuda_profiler_api.h',
-        #        'cufft.h',
     ]
     mod_cuda['libraries'] = [
         'hiprtc',
         'hip_hcc',
         'hipblas',
         'hiprand',
-        #        'hipsparse',
-        #        'cufft',
     ]
     del mod_cuda['version_method']
     del mod_cuda['check_method']
-    mod_cusolver = MODULES[1]
+
+    mod_cusolver = [m for m in mods if m['name'] == 'cusolver'][0]
     mod_cusolver['include'] = []
     mod_cusolver['libraries'] = []
     del mod_cusolver['check_method']
+
+    return [mod_cuda, mod_cusolver]
 
 
 def ensure_module_file(file):
@@ -429,7 +426,8 @@ def make_extensions(options, compiler, use_cython):
     settings = build.get_compiler_setting(use_cpp11)
 
     if use_hip:
-        convert_modules_for_hip()
+        global MODULES
+        MODULES = MODULES_HIP
 
     include_dirs = settings['include_dirs']
 
@@ -566,9 +564,6 @@ def parse_args():
     parser.add_argument(
         '--cupy-no-cuda', action='store_true', default=False,
         help='build CuPy with stub header file')
-    # parser.add_argument(
-    #     '--cupy-use-hip', action='store_true', default=False,
-    #     help='build CuPy with HIP')
 
     opts, sys.argv = parser.parse_known_args(sys.argv)
 
@@ -582,7 +577,7 @@ def parse_args():
         'linetrace': opts.cupy_coverage,
         'annotate': opts.cupy_coverage,
         'no_cuda': opts.cupy_no_cuda,
-        'use_hip': use_hip  # opts.cupy_use_hip,
+        'use_hip': use_hip,
     }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
