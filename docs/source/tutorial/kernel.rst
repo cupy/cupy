@@ -228,10 +228,6 @@ The CUDA kernel attributes can be retrieved by either accessing the :attr:`~cupy
 or by accessing the :class:`~cupy.RawKernel` object's attributes directly; the latter can also be used to set certain
 attributes:
 
-Dynamical parallelism is supported by :class:`~cupy.RawKernel`. You just need to provide the linking flag (such as ``-dc``) to :class:`~cupy.RawKernel`'s ``options`` arugment. The static CUDA device runtime library (``cudadevrt``) is automatically discovered by CuPy. For further detail, see `CUDA Toolkit's documentation`_.
-
-.. _CUDA Toolkit's documentation: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compiling-and-linking
-
 .. doctest::
 
    >>> add_kernel = cp.RawKernel(r'''
@@ -248,6 +244,10 @@ Dynamical parallelism is supported by :class:`~cupy.RawKernel`. You just need to
    >>> add_kernel.max_dynamic_shared_size_bytes = 50000  # set a new value for the attribute  # doctest: +SKIP
    >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
    50000
+
+Dynamical parallelism is supported by :class:`~cupy.RawKernel`. You just need to provide the linking flag (such as ``-dc``) to :class:`~cupy.RawKernel`'s ``options`` arugment. The static CUDA device runtime library (``cudadevrt``) is automatically discovered by CuPy. For further detail, see `CUDA Toolkit's documentation`_.
+
+.. _CUDA Toolkit's documentation: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compiling-and-linking
 
 Accessing texture memory in :class:`~cupy.RawKernel` is supported via CUDA Runtime's Texture Object API, see :class:`~cupy.cuda.texture.TextureObject`'s documentation as well as CUDA C Programming Guide. For using the Texture Reference API, which is marked as deprecated as of CUDA Toolkit 10.1, see the introduction to :class:`~cupy.RawModule` below.
 
