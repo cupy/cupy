@@ -2,12 +2,12 @@ import os
 import subprocess
 import sys
 
-from chainer import testing
-from chainer.testing import parameterized
+from cupy import testing
+from cupy.testing import parameterized
 
 
 _pairwise_parameterize = (
-    os.environ.get('CHAINER_TEST_PAIRWISE_PARAMETERIZATION', 'never'))
+    os.environ.get('CUPY_TEST_PAIRWISE_PARAMETERIZATION', 'never'))
 assert _pairwise_parameterize in ('never', 'always')
 
 
@@ -20,7 +20,7 @@ def _is_pip_installed():
 
 
 def _is_in_ci():
-    ci_name = os.environ.get('CHAINER_CI', '')
+    ci_name = os.environ.get('CUPY_CI', '')
     return ci_name != ''
 
 
