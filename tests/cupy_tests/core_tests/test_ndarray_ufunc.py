@@ -88,7 +88,7 @@ class TestArrayUfunc(unittest.TestCase):
         b = cupy.testing.shaped_arange((3, 2), xp)[:, None, :]
         return a * b
 
-    @testing.with_requires('numpy>=1.11')
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_array_equal()
     def test_shares_memory(self, xp):
         a = cupy.testing.shaped_arange((1000, 1000), xp, 'int64')

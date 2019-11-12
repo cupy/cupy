@@ -141,13 +141,16 @@ cdef class ndarray:
             'shape': self.shape,
             'typestr': self.dtype.str,
             'descr': self.dtype.descr,
-            'data': (self.data.ptr, False),
             'version': 2,
         }
         if self._c_contiguous:
             desc['strides'] = None
         else:
             desc['strides'] = self.strides
+        if self.size > 0:
+            desc['data'] = (self.data.ptr, False)
+        else:
+            desc['data'] = (0, False)
 
         return desc
 
@@ -294,7 +297,10 @@ cdef class ndarray:
 
     # TODO(okuta): Implement itemset
     # TODO(okuta): Implement tostring
-    # TODO(okuta): Implement tobytes
+
+    cpdef bytes tobytes(self, order='C'):
+        """Turns the array into a Python bytes object."""
+        return self.get().tobytes(order)
 
     cpdef tofile(self, fid, sep='', format='%s'):
         """Writes the array to a file.
@@ -313,7 +319,7 @@ cdef class ndarray:
         """
         six.moves.cPickle.dump(self, file, -1)
 
-    cpdef dumps(self):
+    cpdef bytes dumps(self):
         """Dumps a pickle of the array to a string."""
         return six.moves.cPickle.dumps(self, -1)
 

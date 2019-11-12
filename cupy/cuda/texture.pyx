@@ -105,8 +105,7 @@ cdef class ResourceDescriptor:
     def __init__(self, int restype, CUDAarray cuArr=None, ndarray arr=None,
                  ChannelFormatDescriptor chDesc=None, size_t sizeInBytes=0,
                  size_t width=0, size_t height=0, size_t pitchInBytes=0):
-        cdef ResourceType resType = <ResourceType>restype
-        if resType == runtime.cudaResourceTypeMipmappedArray:
+        if restype == runtime.cudaResourceTypeMipmappedArray:
             # TODO(leofang): support this?
             raise NotImplementedError('cudaResourceTypeMipmappedArray is '
                                       'currently not supported.')
@@ -115,14 +114,14 @@ cdef class ResourceDescriptor:
         cdef ResourceDesc* desc = (<ResourceDesc*>self.ptr)
         c_memset(desc, 0, sizeof(ResourceDesc))
 
-        desc.resType = resType
-        if resType == runtime.cudaResourceTypeArray:
+        desc.resType = <ResourceType>restype
+        if restype == runtime.cudaResourceTypeArray:
             desc.res.array.array = <Array>(cuArr.ptr)
-        elif resType == runtime.cudaResourceTypeLinear:
+        elif restype == runtime.cudaResourceTypeLinear:
             desc.res.linear.devPtr = <void*>(arr.data.ptr)
             desc.res.linear.desc = (<ChannelFormatDesc*>chDesc.ptr)[0]
             desc.res.linear.sizeInBytes = sizeInBytes
-        elif resType == runtime.cudaResourceTypePitch2D:
+        elif restype == runtime.cudaResourceTypePitch2D:
             desc.res.pitch2D.devPtr = <void*>(arr.data.ptr)
             desc.res.pitch2D.desc = (<ChannelFormatDesc*>chDesc.ptr)[0]
             desc.res.pitch2D.width = width

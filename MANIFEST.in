@@ -2,6 +2,7 @@ recursive-include cupy *.h *.hpp
 recursive-exclude cupy *.pyx *.pxd *.pxi
 include cupy_setup_build.py
 recursive-include install *.py
+recursive-include tests *.py
 include LICENSE
 include docs/LICENSE_THIRD_PARTY
 include docs/source/license.rst

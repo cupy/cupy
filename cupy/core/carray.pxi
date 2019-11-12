@@ -1,4 +1,5 @@
 import os
+import re
 
 from cupy import cuda
 
@@ -122,9 +123,30 @@ cpdef str _get_header_source():
     return _header_source
 
 
+# added at the module level for precompiling the regex
+_cucomplex_include_tokens = ['', '#', 'include', '<', r'cuComplex\.h', '>']
+_cucomplex_include_pattern = re.compile(r'\s*'.join(_cucomplex_include_tokens))
+
+
+cdef inline str _translate_cucomplex_to_thrust(str source):
+    lines = []
+    for line in source.splitlines(keepends=True):
+        if _cucomplex_include_pattern.match(line):
+            lines += '#include <cupy/cuComplex_bridge.h>  '\
+                     '// translate_cucomplex\n'
+        else:
+            lines += line
+    return ''.join(lines)
+
+
 cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None,
-        prepend_cupy_headers=True, backend='nvrtc'):
+        prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False):
+    if translate_cucomplex:
+        source = _translate_cucomplex_to_thrust(source)
+        _cupy_header_list.append('cupy/cuComplex_bridge.h')
+        prepend_cupy_headers = True
+
     if prepend_cupy_headers:
         source = _cupy_header + source
     extra_source = _get_header_source()

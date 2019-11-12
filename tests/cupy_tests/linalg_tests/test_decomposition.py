@@ -4,7 +4,6 @@ import numpy
 import six
 
 import cupy
-from cupy import cuda
 from cupy import testing
 from cupy.testing import condition
 
@@ -44,8 +43,6 @@ def random_matrix(shape, dtype, scale, sym=False):
     return new_a.astype(dtype)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestCholeskyDecomposition(unittest.TestCase):
 
@@ -68,12 +65,10 @@ class TestCholeskyDecomposition(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'mode': ['r', 'raw', 'complete', 'reduced'],
 }))
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestQRDecomposition(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     def check_mode(self, array, mode, dtype):
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
@@ -94,13 +89,16 @@ class TestQRDecomposition(unittest.TestCase):
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
 
+    @testing.with_requires('numpy>=1.16')
+    def test_empty_array(self):
+        self.check_mode(numpy.empty((0, 3)), mode=self.mode)
+        self.check_mode(numpy.empty((3, 0)), mode=self.mode)
+
 
 @testing.parameterize(*testing.product({
     'full_matrices': [True, False],
 }))
 @testing.fix_random()
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestSVD(unittest.TestCase):
 

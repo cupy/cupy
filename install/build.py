@@ -37,7 +37,7 @@ def get_rocm_path():
 
     # Use a magic word to represent the cache not filled because None is a
     # valid return value.
-    if _rocm_path is not 'NOT_INITIALIZED':
+    if _rocm_path != 'NOT_INITIALIZED':
         return _rocm_path
 
     _rocm_path = os.environ.get('ROCM_HOME', '')
@@ -143,6 +143,10 @@ def get_compiler_setting(use_cpp11):
 
     cub_path = os.environ.get('CUB_PATH', '')
     if os.path.exists(cub_path):
+        # for <cupy/complex.cuh>
+        cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                   '../cupy/core/include')
+        include_dirs.append(cupy_header)
         include_dirs.append(cub_path)
 
     return {
@@ -236,7 +240,7 @@ def check_cuda_version(compiler, settings):
         out = build_and_run(compiler, '''
         #include <cuda.h>
         #include <stdio.h>
-        int main(int argc, char* argv[]) {
+        int main() {
           printf("%d", CUDA_VERSION);
           return 0;
         }
@@ -278,7 +282,7 @@ def check_cudnn_version(compiler, settings):
         out = build_and_run(compiler, '''
         #include <cudnn.h>
         #include <stdio.h>
-        int main(int argc, char* argv[]) {
+        int main() {
           printf("%d", CUDNN_VERSION);
           return 0;
         }
@@ -329,7 +333,7 @@ def check_nccl_version(compiler, settings):
         #else
         #  define NCCL_VERSION_CODE 0
         #endif
-        int main(int argc, char* argv[]) {
+        int main() {
           printf("%d", NCCL_VERSION_CODE);
           return 0;
         }

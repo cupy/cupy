@@ -20,9 +20,10 @@ cdef class ndarray:
 
     cpdef item(self)
     cpdef tolist(self)
+    cpdef bytes tobytes(self, order=*)
     cpdef tofile(self, fid, sep=*, format=*)
     cpdef dump(self, file)
-    cpdef dumps(self)
+    cpdef bytes dumps(self)
     cpdef ndarray astype(self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef ndarray copy(self, order=*)
     cpdef ndarray view(self, dtype=*)
@@ -99,7 +100,7 @@ cpdef ndarray asfortranarray(ndarray a, dtype=*)
 
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*,
-                                backend=*)
+                                backend=*, translate_cucomplex=*)
 
 
 # TODO(niboshi): Move to _routines_creation.pyx

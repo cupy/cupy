@@ -1,4 +1,5 @@
 import numpy
+from numpy import nan
 
 from cupy.core._kernel import create_reduction_func
 from cupy.core._kernel import ReductionKernel
@@ -13,23 +14,57 @@ if cupy.cuda.cub_enabled:
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        if cub.can_use_reduce_max(self.dtype, self.ndim, dtype, axis):
-            return cub.reduce_max(self, out=out, keepdims=keepdims)
+        if cub.can_use_device_reduce(cub.CUPY_CUB_MAX, self.dtype, self.ndim,
+                                     axis, dtype):
+            return cub.device_reduce(self, cub.CUPY_CUB_MAX, out=out,
+                                     keepdims=keepdims)
+        elif cub.can_use_device_segmented_reduce(
+                cub.CUPY_CUB_MAX, self.dtype, self.ndim, axis, dtype):
+            return cub.device_segmented_reduce(
+                self, cub.CUPY_CUB_MAX, axis, out=out, keepdims=keepdims)
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        if cub.can_use_reduce_min(self.dtype, self.ndim, dtype, axis):
-            return cub.reduce_min(self, out=out, keepdims=keepdims)
+        if cub.can_use_device_reduce(cub.CUPY_CUB_MIN, self.dtype, self.ndim,
+                                     axis, dtype):
+            return cub.device_reduce(self, cub.CUPY_CUB_MIN, out=out,
+                                     keepdims=keepdims)
+        elif cub.can_use_device_segmented_reduce(
+                cub.CUPY_CUB_MIN, self.dtype, self.ndim, axis, dtype):
+            return cub.device_segmented_reduce(
+                self, cub.CUPY_CUB_MIN, axis, out=out, keepdims=keepdims)
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
+# TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
+    if cupy.cuda.cub_enabled:
+        # Note that the NumPy signature of argmax only has axis and out, so we
+        # need to disable the rest. Moreover, to be compatible with NumPy, axis
+        # can only be None or integers
+        if axis is None and cub.can_use_device_reduce(
+                cub.CUPY_CUB_ARGMAX, self.dtype, self.ndim, axis, None):
+            return cub.device_reduce(self, cub.CUPY_CUB_ARGMAX, out=out,
+                                     keepdims=False)
+        # TODO(leofang): support device_segmented_reduce for axis=-1?
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
+
+# TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
+    if cupy.cuda.cub_enabled:
+        # Note that the NumPy signature of argmax only has axis and out, so we
+        # need to disable the rest. Moreover, to be compatible with NumPy, axis
+        # can only be None or integers
+        if axis is None and cub.can_use_device_reduce(
+                cub.CUPY_CUB_ARGMIN, self.dtype, self.ndim, axis, None):
+            return cub.device_reduce(self, cub.CUPY_CUB_ARGMIN, out=out,
+                                     keepdims=False)
+        # TODO(leofang): support device_segmented_reduce for axis=-1?
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
     return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
@@ -247,6 +282,13 @@ cdef _nanargmax_func = create_reduction_func(
     None, _min_max_preamble)
 
 
+cdef ndarray _mean(
+        ndarray a, axis=None, dtype=None, out=None, keepdims=False):
+    if a.size == 0:
+        # Return nan; see also https://github.com/numpy/numpy/issues/13582
+        return _mean_core_empty(a, axis, dtype, out, keepdims)
+    return _mean_core(a, axis, dtype, out, keepdims)
+
 cdef ndarray _var(
         ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
@@ -271,7 +313,13 @@ cdef ndarray _var(
     cdef Py_ssize_t items = 1
     for ax in axis:
         items *= shape[ax]
-    alpha = 1 / max(items - ddof, 0)
+
+    # Make alpha NaN when array is empty, mimics NumPy behavior, resulting in
+    # NaN. See https://github.com/numpy/numpy/issues/13582 for an explanation
+    # on why NaN is the result.
+    div = max(items - ddof, 0)
+    alpha = 1. / div if div != 0 else nan
+
     arrmean = a.mean(axis=axis, dtype=dtype_mean, out=None, keepdims=True)
 
     if out is None:
@@ -326,7 +374,7 @@ cdef _var_core_out = ReductionKernel(
 
 
 # TODO(okuta) needs cast
-cdef _mean = create_reduction_func(
+cdef _mean_core = create_reduction_func(
     'cupy_mean',
     ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
@@ -335,6 +383,14 @@ cdef _mean = create_reduction_func(
     ('in0', 'a + b',
      'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
 
+cdef _mean_core_empty = create_reduction_func(
+    'cupy_mean',
+    ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
+     'q->d', 'Q->d',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a + b',
+     'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None), 0)
 
 cdef _nanmean_preamble = '''
 template <typename T>

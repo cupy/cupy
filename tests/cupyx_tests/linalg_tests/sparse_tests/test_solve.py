@@ -11,7 +11,6 @@ except ImportError:
     scipy_available = False
 
 import cupy as cp
-from cupy import cuda
 import cupy.sparse as sp
 from cupy import testing
 from cupy.testing import condition
@@ -21,8 +20,6 @@ import cupyx
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestLschol(unittest.TestCase):
 
