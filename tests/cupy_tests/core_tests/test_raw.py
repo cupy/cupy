@@ -83,6 +83,157 @@ __global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, \
 }
 '''
 
+_test_cuComplex = r'''
+#include <cuComplex.h>
+#define N 100
+
+extern "C"{
+/* ------------------- double complex ------------------- */
+
+__global__ void test_add(cuDoubleComplex* arr1, cuDoubleComplex* arr2,
+                         cuDoubleComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCadd(arr1[tid], arr2[tid]);
+    }
+}
+
+__global__ void test_sub(cuDoubleComplex* arr1, cuDoubleComplex* arr2,
+                         cuDoubleComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCsub(arr1[tid], arr2[tid]);
+    }
+}
+
+__global__ void test_mul(cuDoubleComplex* arr1, cuDoubleComplex* arr2,
+                         cuDoubleComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCmul(arr1[tid], arr2[tid]);
+    }
+}
+
+__global__ void test_div(cuDoubleComplex* arr1, cuDoubleComplex* arr2,
+                         cuDoubleComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCdiv(arr1[tid], arr2[tid]);
+    }
+}
+
+__global__ void test_conj(cuDoubleComplex* arr, cuDoubleComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuConj(arr[tid]);
+    }
+}
+
+__global__ void test_abs(cuDoubleComplex* arr, double* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCabs(arr[tid]);
+    }
+}
+
+__global__ void test_fma(cuDoubleComplex* A, cuDoubleComplex* B,
+                         cuDoubleComplex* C, cuDoubleComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCfma(A[tid], B[tid], C[tid]);
+    }
+}
+
+__global__ void test_make(cuDoubleComplex* arr) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    cuDoubleComplex out = make_cuDoubleComplex(1.8, 2.9);
+    if (tid < N) {
+        arr[tid] = make_cuDoubleComplex(cuCreal(out), -3.*cuCimag(out));
+    }
+}
+
+__global__ void test_downcast(cuDoubleComplex* arr, cuComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuComplexDoubleToFloat(arr[tid]);
+    }
+}
+
+/* ------------------- single complex ------------------- */
+
+__global__ void test_addf(cuComplex* arr1, cuComplex* arr2,
+                          cuComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCaddf(arr1[tid], arr2[tid]);
+    }
+}
+
+__global__ void test_subf(cuComplex* arr1, cuComplex* arr2,
+                          cuComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCsubf(arr1[tid], arr2[tid]);
+    }
+}
+
+__global__ void test_mulf(cuComplex* arr1, cuComplex* arr2,
+                          cuComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCmulf(arr1[tid], arr2[tid]);
+    }
+}
+
+__global__ void test_divf(cuComplex* arr1, cuComplex* arr2,
+                          cuComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCdivf(arr1[tid], arr2[tid]);
+    }
+}
+
+__global__ void test_conjf(cuComplex* arr, cuComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuConjf(arr[tid]);
+    }
+}
+
+__global__ void test_absf(cuFloatComplex* arr, float* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCabsf(arr[tid]);
+    }
+}
+
+__global__ void test_fmaf(cuFloatComplex* A, cuFloatComplex* B,
+                          cuFloatComplex* C, cuFloatComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCfmaf(A[tid], B[tid], C[tid]);
+    }
+}
+
+__global__ void test_makef(cuComplex* arr) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    cuComplex out = make_cuFloatComplex(1.8, 2.9);
+    if (tid < N) {
+        arr[tid] = make_cuFloatComplex(cuCrealf(out), -3.*cuCimagf(out));
+    }
+}
+
+__global__ void test_upcast(cuComplex* arr, cuDoubleComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuComplexFloatToDouble(arr[tid]);
+    }
+}
+
+}
+'''
+
+
 if 'CUPY_CACHE_DIR' in os.environ:
     _old_cache_dir = os.environ['CUPY_CACHE_DIR']
     _is_cache_env_var_set = True
@@ -192,3 +343,110 @@ class TestRaw(unittest.TestCase):
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
             self.mod2.get_function("no_such_kernel")
         assert 'CUDA_ERROR_NOT_FOUND' in str(ex.value)
+
+    def test_cuFloatComplex(self):
+        N = 100
+        block = 32
+        grid = (N + block - 1) // block
+        dtype = cupy.complex64
+
+        mod = cupy.RawModule(_test_cuComplex, translate_cucomplex=True)
+        a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        a = a.astype(dtype)
+        b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        b = b.astype(dtype)
+        c = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        c = c.astype(dtype)
+        out = cupy.zeros((N,), dtype=dtype)
+        out_float = cupy.zeros((N,), dtype=cupy.float32)
+        out_up = cupy.zeros((N,), dtype=cupy.complex128)
+
+        ker = mod.get_function('test_addf')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a + b).all()
+
+        ker = mod.get_function('test_subf')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a - b).all()
+
+        ker = mod.get_function('test_mulf')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a * b).all()
+
+        ker = mod.get_function('test_divf')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a / b).all()
+
+        ker = mod.get_function('test_conjf')
+        ker((grid,), (block,), (a, out))
+        assert (out == cupy.conj(a)).all()
+
+        ker = mod.get_function('test_absf')
+        ker((grid,), (block,), (a, out_float))
+        assert (out_float == cupy.abs(a)).all()
+
+        ker = mod.get_function('test_fmaf')
+        ker((grid,), (block,), (a, b, c, out))
+        assert (out == a * b + c).all()
+
+        ker = mod.get_function('test_makef')
+        ker((grid,), (block,), (out,))
+        # because of precision issue, the (A==B).all() semantics would fail
+        assert cupy.allclose(out, 1.8 - 1j * 8.7)
+
+        ker = mod.get_function('test_upcast')
+        ker((grid,), (block,), (a, out_up))
+        assert (out_up == a.astype(cupy.complex128)).all()
+
+    def test_cuDoubleComplex(self):
+        N = 100
+        block = 32
+        grid = (N + block - 1) // block
+        dtype = cupy.complex128
+
+        mod = cupy.RawModule(_test_cuComplex, translate_cucomplex=True)
+        a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        a = a.astype(dtype)
+        b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        b = b.astype(dtype)
+        c = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
+        c = c.astype(dtype)
+        out = cupy.zeros((N,), dtype=dtype)
+        out_float = cupy.zeros((N,), dtype=cupy.float64)
+        out_down = cupy.zeros((N,), dtype=cupy.complex64)
+
+        ker = mod.get_function('test_add')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a + b).all()
+
+        ker = mod.get_function('test_sub')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a - b).all()
+
+        ker = mod.get_function('test_mul')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a * b).all()
+
+        ker = mod.get_function('test_div')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a / b).all()
+
+        ker = mod.get_function('test_conj')
+        ker((grid,), (block,), (a, out))
+        assert (out == cupy.conj(a)).all()
+
+        ker = mod.get_function('test_abs')
+        ker((grid,), (block,), (a, out_float))
+        assert (out_float == cupy.abs(a)).all()
+
+        ker = mod.get_function('test_fma')
+        ker((grid,), (block,), (a, b, c, out))
+        assert (out == a * b + c).all()
+
+        ker = mod.get_function('test_make')
+        ker((grid,), (block,), (out,))
+        assert (out == 1.8 - 1j * 8.7).all()
+
+        ker = mod.get_function('test_downcast')
+        ker((grid,), (block,), (a, out_down))
+        assert (out_down == a.astype(cupy.complex64)).all()
