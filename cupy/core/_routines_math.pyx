@@ -14,8 +14,7 @@ from cupy.core._dtype cimport get_dtype
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 
-if cupy.cuda.cub_enabled:
-    from cupy.cuda import cub
+from cupy.cuda import cub
 
 
 # ndarray members

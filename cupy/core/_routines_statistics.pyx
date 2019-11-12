@@ -1,15 +1,14 @@
 import numpy
 from numpy import nan
 
+import cupy
 from cupy.core._kernel import create_reduction_func
 from cupy.core._kernel import ReductionKernel
 
 from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray
 
-import cupy
-if cupy.cuda.cub_enabled:
-    from cupy.cuda import cub
+from cupy.cuda import cub
 
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
