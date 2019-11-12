@@ -3,6 +3,8 @@ from cupy import util
 from cupy.cuda cimport driver
 from cupy.cuda.function cimport Module
 
+import six
+
 
 cdef class RawKernel:
 
@@ -28,8 +30,14 @@ cdef class RawKernel:
             counterpart. Defaults to ``False``.
     """
 
-    def __init__(self, code, name, options=(), backend='nvrtc', **kwargs):
-        translate_cucomplex = kwargs.get('translate_cucomplex', False)
+    def __init__(self, code, name, options=(), backend='nvrtc', *,
+                 translate_cucomplex=False):
+        if isinstance(code, six.binary_type):
+            code = code.decode('UTF-8')
+        if isinstance(name, six.binary_type):
+            name = name.decode('UTF-8')
+        if isinstance(backend, six.binary_type):
+            backend = backend.decode('UTF-8')
 
         self.code = code
         self.name = name
@@ -220,8 +228,12 @@ cdef class RawModule:
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
     """
-    def __init__(self, code_or_path, options=(), backend='nvrtc', **kwargs):
-        translate_cucomplex = kwargs.get('translate_cucomplex', False)
+    def __init__(self, code_or_path, options=(), backend='nvrtc', *,
+                 translate_cucomplex=False):
+        if isinstance(code_or_path, six.binary_type):
+            code_or_path = code_or_path.decode('UTF-8')
+        if isinstance(backend, six.binary_type):
+            backend = backend.decode('UTF-8')
 
         if code_or_path.endswith('.cubin'):
             path = code_or_path
