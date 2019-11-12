@@ -7,8 +7,8 @@ import unittest
 import numpy
 import six
 
-from chainer.testing import _bundle
-from chainer import utils
+from cupy.testing import _bundle
+from cupy import utils
 
 
 def _param_to_str(obj):
@@ -157,9 +157,9 @@ def product_dict(*parameters):
 
 
 # TODO(kataoka): product_dict is patched by tests/conftest.py while tests are
-# collected if CHAINER_TEST_PAIRWISE_PARAMETERIZATION is configured
+# collected if CUPY_TEST_PAIRWISE_PARAMETERIZATION is configured
 # accordingly. Also used in
-# tests/chainer_tests/testing_tests/test_parameterized.py
+# tests/cupy_tests/testing_tests/test_parameterized.py
 _product_dict_orig = product_dict
 
 
@@ -174,7 +174,7 @@ def _pairwise_product_dict_iter(
 ) -> tp.Iterator[tp.Dict[str, tp.Any]]:
     """Generate combinations that cover all pairs.
 
-    The argument is the same as `chainer.testing.product_dict`.
+    The argument is the same as `cupy.testing.product_dict`.
 
     """
     parameter_lists = [list(dicts) for dicts in parameters]  # type: tp.List[tp.List[tp.Dict[str, tp.Any]]]  # NOQA
