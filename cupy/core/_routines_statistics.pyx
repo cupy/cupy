@@ -13,7 +13,7 @@ if cupy.cuda.cub_enabled:
 
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
-    if cupy.cuda.cub_enabled:
+    if cupy.cuda.cub_enabled and self._c_contiguous:
         if cub.can_use_device_reduce(cub.CUPY_CUB_MAX, self.dtype, self.ndim,
                                      axis, dtype):
             return cub.device_reduce(self, cub.CUPY_CUB_MAX, out=out,
@@ -26,7 +26,7 @@ cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
 
 
 cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
-    if cupy.cuda.cub_enabled:
+    if cupy.cuda.cub_enabled and self._c_contiguous:
         if cub.can_use_device_reduce(cub.CUPY_CUB_MIN, self.dtype, self.ndim,
                                      axis, dtype):
             return cub.device_reduce(self, cub.CUPY_CUB_MIN, out=out,
@@ -40,7 +40,7 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
 
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
-    if cupy.cuda.cub_enabled:
+    if cupy.cuda.cub_enabled and self._c_contiguous:
         # Note that the NumPy signature of argmax only has axis and out, so we
         # need to disable the rest. Moreover, to be compatible with NumPy, axis
         # can only be None or integers
@@ -54,7 +54,7 @@ cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
 
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
-    if cupy.cuda.cub_enabled:
+    if cupy.cuda.cub_enabled and self._c_contiguous:
         # Note that the NumPy signature of argmax only has axis and out, so we
         # need to disable the rest. Moreover, to be compatible with NumPy, axis
         # can only be None or integers
