@@ -3,15 +3,12 @@ import unittest
 import numpy
 
 import cupy
-from cupy import cuda
 from cupy import testing
 
 
 @testing.parameterize(*testing.product({
     'UPLO': ['U', 'L'],
 }))
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestEigenvalue(unittest.TestCase):
 

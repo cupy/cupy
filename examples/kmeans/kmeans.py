@@ -68,7 +68,7 @@ def fit_xp(X, n_clusters, max_iter):
         i = xp.arange(n_clusters)
         mask = pred == i[:, None]
         sums = xp.where(mask[:, :, None], X, 0).sum(axis=1)
-        counts = xp.count_nonzero(mask, axis=1)
+        counts = xp.count_nonzero(mask, axis=1).reshape((n_clusters, 1))
         centers = sums / counts
 
     return centers, pred
@@ -95,7 +95,7 @@ def fit_custom(X, n_clusters, max_iter):
         i = cupy.arange(n_clusters)
         mask = pred == i[:, None]
         sums = sum_kernel(X, mask[:, :, None], axis=1)
-        counts = count_kernel(mask, axis=1)
+        counts = count_kernel(mask, axis=1).reshape((n_clusters, 1))
         centers = sums / counts
 
     return centers, pred

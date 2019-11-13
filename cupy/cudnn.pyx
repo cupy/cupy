@@ -1,4 +1,5 @@
 from libcpp cimport vector
+from libc.stdint cimport int64_t
 
 import atexit
 import threading
@@ -13,9 +14,9 @@ from cupy.cuda cimport device
 from cupy.core cimport internal
 from cupy.cuda cimport memory
 
-from cupy import util
+from cupy.core._ufuncs import elementwise_copy
 from cupy.cuda import cudnn as py_cudnn
-
+from cupy import util
 
 cdef int _cudnn_version = cudnn.getVersion()
 cdef _thread_local = threading.local()
@@ -26,7 +27,7 @@ cdef vector.vector[size_t] _handles
 cpdef size_t get_handle() except? 0:
     cdef int dev
     dev = device.get_device_id()
-    if _handles.size() <= dev:
+    if <int>_handles.size() <= dev:
         _handles.resize(dev + 1, 0)
     ret = _handles[dev]
     if ret != 0:
@@ -232,6 +233,18 @@ cpdef _create_convolution_descriptor(
             cudnn.setConvolutionGroupCount(desc, groups)
     elif groups > 1:
         raise ValueError('groups must be one when cuDNN < 7.0')
+
+
+cpdef core.ndarray _ascontiguousarray_normalized_strides(core.ndarray a):
+    cdef core.ndarray newarray
+
+    if a._c_contiguous:
+        newarray = a.view()
+        newarray._set_contiguous_strides(newarray.itemsize, True)
+    else:
+        newarray = core.ndarray(a.shape, a.dtype)
+        elementwise_copy(a, newarray)
+    return newarray
 
 
 def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
@@ -581,6 +594,14 @@ def rnn_backward_weights_ex(
     return dw
 
 
+def create_activation_descriptor(mode, nan_prop_mode=cudnn.CUDNN_PROPAGATE_NAN,
+                                 coef=0.0):
+    desc = Descriptor(cudnn.createActivationDescriptor(),
+                      py_cudnn.destroyActivationDescriptor)
+    cudnn.setActivationDescriptor(desc.value, mode, nan_prop_mode, coef)
+    return desc
+
+
 def activation_forward(core.ndarray x, int mode, double coef=0.0):
     cdef float float_zero = 0, float_one = 1
     cdef double double_zero = 0, double_one = 1
@@ -659,7 +680,7 @@ cdef int _create_tensor_descriptor_for_softmax(
         left *= arr._shape[i]
     center = arr._shape[axis]
     right = 1
-    for i in range(axis + 1, arr._shape.size()):
+    for i in range(axis + 1, <int>arr._shape.size()):
         right *= arr._shape[i]
     cudnn.setTensor4dDescriptor(desc, cudnn.CUDNN_TENSOR_NCHW, data_type,
                                 left, center, right, 1)
@@ -994,7 +1015,7 @@ def rnn_forward_training(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
         lengths):
-    hx = core._internal_ascontiguousarray(hx)
+    hx = _ascontiguousarray_normalized_strides(hx)
     if cx is not None:
         cx = core._internal_ascontiguousarray(cx)
     w = core._internal_ascontiguousarray(w)
@@ -1052,11 +1073,11 @@ def rnn_backward_data(
         cx = core._internal_ascontiguousarray(cx)
     w = core._internal_ascontiguousarray(w)
     xs = core._internal_ascontiguousarray(xs)
-    ys = core._internal_ascontiguousarray(ys)
+    ys = _ascontiguousarray_normalized_strides(ys)
     dhy = core._internal_ascontiguousarray(dhy)
     if dcy is not None:
         dcy = core._internal_ascontiguousarray(dcy)
-    dys = core._internal_ascontiguousarray(dys)
+    dys = _ascontiguousarray_normalized_strides(dys)
 
     cdef int length = len(lengths)
     cdef int n_layers = _get_n_layers(direction_mode, hx)
@@ -1198,7 +1219,7 @@ def create_reduce_tensor_descriptor(reduce_type, dtype):
 cpdef bint is_tensor_core_available(dtype) except *:
     return (_cudnn_version >= 7000 and
             (<str>dtype.char) == 'e' and
-            int(device.get_compute_capability()) >= 70)
+            int(device.get_compute_capability()) == 70)
 
 
 cdef class DropoutStates:
@@ -1330,6 +1351,8 @@ cpdef _Algorithm _find_algorithm_fwd(
         perf = cudnn.findConvolutionForwardAlgorithmEx(
             handle, x_desc, x.data.ptr, filter_desc, W.data.ptr, conv_desc,
             y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
+    if perf.status != cudnn.CUDNN_STATUS_SUCCESS:
+        raise RuntimeError('No available algorithm found.')
     algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     _algorithm_fwd_cache[key] = algo
     return algo
@@ -1429,6 +1452,8 @@ cpdef _Algorithm _find_algorithm_bwd_filter(
         perf = cudnn.findConvolutionBackwardFilterAlgorithmEx(
             handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
             filter_desc, dW.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
+    if perf.status != cudnn.CUDNN_STATUS_SUCCESS:
+        raise RuntimeError('No available algorithm found.')
     algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     _algorithm_bwd_filter_cache[key] = algo
     return algo
@@ -1488,7 +1513,7 @@ cpdef _warn_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param):
     warnings.warn(
         'Tensor Core mode is set but the selected convolution backward '
-        'filter algorithm is not a Tensor Core enabled algorithm. '
+        'data algorithm is not a Tensor Core enabled algorithm. '
         'This might be due to lack of workspace memory. '
         'W.shape:{}, x.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(W.shape, x.shape, y.shape, conv_param[0], conv_param[1]),
@@ -1530,6 +1555,8 @@ cpdef _Algorithm _find_algorithm_bwd_data(
         perf = cudnn.findConvolutionBackwardDataAlgorithmEx(
             handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
             y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
+    if perf.status != cudnn.CUDNN_STATUS_SUCCESS:
+        raise RuntimeError('No available algorithm found.')
     algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     _algorithm_bwd_data_cache[key] = algo
     return algo
@@ -1599,6 +1626,13 @@ cpdef bint _should_use_tensor_core(
             'tensor_code_mode must be either of "always", "auto", or "never".')
 
 
+def _get_array_info(core.ndarray arr):
+    if arr is None:
+        return 'None'
+    return 'shape={!r}, dtype={}, strides={!r}'.format(
+        arr.shape, arr.dtype.name, arr.strides)
+
+
 def convolution_forward(
         core.ndarray x, core.ndarray W, core.ndarray b, core.ndarray y,
         tuple pad, tuple stride, tuple dilation, int groups, *,
@@ -1666,10 +1700,27 @@ def convolution_forward(
 
         workspace = memory.alloc(perf.memory)
 
-        cudnn.convolutionForward(
-            handle, one, x_desc, x.data.ptr, filter_desc, W.data.ptr,
-            conv_desc, perf.algo, workspace.ptr, perf.memory, zero, y_desc,
-            y.data.ptr)
+        try:
+            cudnn.convolutionForward(
+                handle, one, x_desc, x.data.ptr, filter_desc, W.data.ptr,
+                conv_desc, perf.algo, workspace.ptr, perf.memory, zero, y_desc,
+                y.data.ptr)
+        except py_cudnn.CuDNNError as e:
+            infos = [
+                'func: cudnnConvolutionForward',
+                'x: {}'.format(_get_array_info(x)),
+                'W: {}'.format(_get_array_info(W)),
+                'b: {}'.format(_get_array_info(b)),
+                'y: {}'.format(_get_array_info(y)),
+                'pad={!r}, stride={!r}, dilation={!r}, groups={!r}'.format(
+                    pad, stride, dilation, groups),
+                'auto_tune={!r}, tensor_core={!r}'.format(
+                    auto_tune, tensor_core),
+                'd_layout={!r}, w_layout={!r}'.format(d_layout, w_layout),
+            ]
+            e.add_infos(infos)
+            raise
+
         del workspace, x, W
 
         if b is not None:
@@ -1961,12 +2012,13 @@ def pooling_backward(
 
 
 cdef _create_tensor_descriptor_for_bn(
-        size_t desc, core.ndarray arr, bint is_for_conv2d):
+        size_t desc, core.ndarray arr, bint is_for_conv2d,
+        int format=cudnn.CUDNN_TENSOR_NCHW):
     assert arr._c_contiguous
-    data_type = get_data_type(arr.dtype)
     if is_for_conv2d:
-        _create_tensor_nd_descriptor(desc, arr, data_type)
+        _create_tensor_descriptor(desc, arr, format)
         return
+    data_type = get_data_type(arr.dtype)
     cdef Py_ssize_t dim1, dim2
     cdef int ndim = arr._shape.size()
     dim2 = 1
@@ -1993,7 +2045,8 @@ def batch_normalization_forward_training(
         core.ndarray x, core.ndarray gamma, core.ndarray beta,
         core.ndarray running_mean, core.ndarray running_var,
         mean, inv_std, double eps, double decay,
-        bint is_for_conv2d, int cudnn_mode, bint debug):
+        bint is_for_conv2d, int cudnn_mode, bint debug,
+        int d_layout=cudnn.CUDNN_TENSOR_NCHW):
     # Usually supply None to mean and inv_std, which are left for backward
     # compatibility. See cupy#2060 and cupy#2070.
     if (mean is None) != (inv_std is None):
@@ -2015,7 +2068,8 @@ def batch_normalization_forward_training(
     cdef size_t x_desc = cudnn.createTensorDescriptor()
     cdef size_t derivedBnDesc = cudnn.createTensorDescriptor()
     try:
-        _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
+        _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d,
+                                         format=d_layout)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
         if gamma.dtype != dtype_param:
@@ -2079,7 +2133,8 @@ def batch_normalization_forward_training(
 def batch_normalization_forward_inference(
         core.ndarray x, core.ndarray gamma, core.ndarray beta,
         core.ndarray mean, core.ndarray var,
-        double eps, bint is_for_conv2d, int cudnn_mode):
+        double eps, bint is_for_conv2d, int cudnn_mode,
+        int d_layout=cudnn.CUDNN_TENSOR_NCHW):
     x = core._internal_ascontiguousarray(x)
     dtype = x.dtype
     y = core.ndarray(x._shape, dtype)
@@ -2096,7 +2151,8 @@ def batch_normalization_forward_inference(
     cdef size_t x_desc = cudnn.createTensorDescriptor()
     cdef size_t derivedBnDesc = cudnn.createTensorDescriptor()
     try:
-        _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
+        _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d,
+                                         format=d_layout)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
         if gamma.dtype != dtype_param:
@@ -2122,7 +2178,8 @@ def batch_normalization_forward_inference(
 def batch_normalization_backward(
         core.ndarray x, core.ndarray gamma, core.ndarray gy,
         core.ndarray mean, core.ndarray inv_std,
-        double eps, bint is_for_conv2d, int cudnn_mode, bint debug):
+        double eps, bint is_for_conv2d, int cudnn_mode, bint debug,
+        int d_layout=cudnn.CUDNN_TENSOR_NCHW):
     cdef core.ndarray ggamma, gbeta
     cdef bint need_cast
     x = core._internal_ascontiguousarray(x)
@@ -2142,7 +2199,8 @@ def batch_normalization_backward(
     cdef size_t x_desc = cudnn.createTensorDescriptor()
     cdef size_t derivedBnDesc = cudnn.createTensorDescriptor()
     try:
-        _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d)
+        _create_tensor_descriptor_for_bn(x_desc, x, is_for_conv2d,
+                                         format=d_layout)
         cudnn.deriveBNTensorDescriptor(derivedBnDesc, x_desc, cudnn_mode)
         dtype_param = _get_dtype_of_tensor_descriptor(derivedBnDesc)
         need_cast = gamma.dtype != dtype_param
@@ -2179,3 +2237,176 @@ def batch_normalization_backward(
         ggamma = ggamma.astype(dtype)
         gbeta = gbeta.astype(dtype)
     return gx, ggamma, gbeta
+
+
+def create_activation_descriptor(mode, relu_nan_opt=cudnn.CUDNN_PROPAGATE_NAN,
+                                 coef=0.0):
+    desc = Descriptor(cudnn.createActivationDescriptor(),
+                      py_cudnn.destroyActivationDescriptor)
+    cudnn.setActivationDescriptor(desc.value, mode, relu_nan_opt, coef)
+    return desc
+
+
+def create_fused_ops_plan(ops):
+    plan = Descriptor(cudnn.createFusedOpsPlan(ops),
+                      py_cudnn.destroyFusedOpsPlan)
+    return plan
+
+
+def create_fused_ops_const_param_pack(ops, list_attr_param):
+    const_pack = Descriptor(cudnn.createFusedOpsConstParamPack(ops),
+                            py_cudnn.destroyFusedOpsConstParamPack)
+    for attr, param in list_attr_param:
+        set_fused_ops_const_param_pack_attribute(const_pack, attr, param)
+    return const_pack
+
+
+def make_fused_ops_plan(plan, const_pack):
+    handle = get_handle()
+    return cudnn.makeFusedOpsPlan(handle, plan.value, const_pack.value)
+
+
+def create_fused_ops_variant_param_pack(ops, list_attr_param):
+    var_pack = Descriptor(cudnn.createFusedOpsVariantParamPack(ops),
+                          py_cudnn.destroyFusedOpsVariantParamPack)
+    for attr, param in list_attr_param:
+        set_fused_ops_variant_param_pack_attribute(var_pack, attr, param)
+    return var_pack
+
+
+def fused_ops_execute(plan, var_pack):
+    handle = get_handle()
+    cudnn.fusedOpsExecute(handle, plan.value, var_pack.value)
+
+
+cpdef set_fused_ops_const_param_pack_attribute(
+        Descriptor const_pack, int param_label, desc_or_scalar):
+    cdef int scaler
+    cdef Descriptor desc
+    if param_label in (cudnn.CUDNN_PARAM_XDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_MODE,
+                       cudnn.CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_WDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DWDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_YDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DYDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_YSUM_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_YSQSUM_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_SCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_BIAS_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_SAVED_MEAN_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_SAVED_INVSTD_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_RUNNING_MEAN_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_RUNNING_VAR_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_ZDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_Z_EQSCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DXDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DZDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_DSCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_DBIAS_PLACEHOLDER):
+        scalar = <int>desc_or_scalar
+        cudnn.setFusedOpsConstParamPackAttribute(const_pack.value, param_label,
+                                                 <size_t>&scalar)
+    else:
+        desc = <Descriptor>desc_or_scalar
+        cudnn.setFusedOpsConstParamPackAttribute(const_pack.value, param_label,
+                                                 <size_t>desc.value)
+
+
+cpdef get_fused_ops_const_param_pack_attribute(Descriptor const_pack,
+                                               int param_label):
+    cdef int param_int
+    cdef size_t param_desc
+    if param_label in (cudnn.CUDNN_PARAM_XDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_MODE,
+                       cudnn.CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_WDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DWDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_YDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DYDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_YSUM_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_YSQSUM_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_SCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_BIAS_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_SAVED_MEAN_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_SAVED_INVSTD_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_RUNNING_MEAN_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_RUNNING_VAR_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_ZDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_Z_EQSCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DXDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_DZDATA_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_DSCALE_PLACEHOLDER,
+                       cudnn.CUDNN_PARAM_BN_DBIAS_PLACEHOLDER):
+        is_null = cudnn.getFusedOpsConstParamPackAttribute(
+            const_pack.value, param_label, <size_t>&param_int)
+        return <size_t>param_int, is_null
+    else:
+        if param_label == cudnn.CUDNN_PARAM_ACTIVATION_DESC:
+            param_desc = cudnn.createActivationDescriptor()
+        elif param_label == cudnn.CUDNN_PARAM_CONV_DESC:
+            param_desc = cudnn.createConvolutionDescriptor()
+        elif param_label in (cudnn.CUDNN_PARAM_WDESC,
+                             cudnn.CUDNN_PARAM_DWDESC,):
+            param_desc = cudnn.createFilterDescriptor()
+        else:
+            param_desc = cudnn.createTensorDescriptor()
+        is_null = cudnn.getFusedOpsConstParamPackAttribute(
+            const_pack.value, param_label, param_desc)
+        return param_desc, is_null
+
+
+cpdef set_fused_ops_variant_param_pack_attribute(
+        Descriptor var_pack, int param_label, arr_or_scaler):
+    cdef size_t scalar_size_t
+    cdef int64_t scalar_int64_t
+    cdef double scalar_double
+    cdef size_t ptr
+    if param_label == cudnn.CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES:
+        scalar_size_t = <size_t>arr_or_scaler
+        cudnn.setFusedOpsVariantParamPackAttribute(var_pack.value, param_label,
+                                                   <size_t>&scalar_size_t)
+    elif param_label == cudnn.CUDNN_SCALAR_INT64_T_BN_ACCUMULATION_COUNT:
+        scalar_int64_t = <int64_t>arr_or_scaler
+        cudnn.setFusedOpsVariantParamPackAttribute(var_pack.value, param_label,
+                                                   <size_t>&scalar_int64_t)
+    elif param_label in (cudnn.CUDNN_SCALAR_DOUBLE_BN_EPSILON,
+                         cudnn.CUDNN_SCALAR_DOUBLE_BN_EXP_AVG_FACTOR):
+        scalar_double = <double>arr_or_scaler
+        cudnn.setFusedOpsVariantParamPackAttribute(var_pack.value, param_label,
+                                                   <size_t>&scalar_double)
+    else:
+        ptr = <size_t>arr_or_scaler.data.ptr
+        cudnn.setFusedOpsVariantParamPackAttribute(var_pack.value, param_label,
+                                                   ptr)
+
+
+cpdef get_fused_ops_variant_param_pack_attribute(size_t var_pack,
+                                                 int param_label):
+    cdef size_t scalar_size_t
+    cdef int64_t scalar_int64_t
+    cdef double scalar_double
+    cdef size_t ptr
+    if param_label == cudnn.CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES:
+        cudnn.getFusedOpsVariantParamPackAttribute(var_pack, param_label,
+                                                   <size_t>&scalar_size_t)
+        return <size_t>scalar_size_t
+    elif param_label == cudnn.CUDNN_SCALAR_INT64_T_BN_ACCUMULATION_COUNT:
+        cudnn.getFusedOpsVariantParamPackAttribute(var_pack, param_label,
+                                                   <size_t>&scalar_int64_t)
+        return <size_t>scalar_int64_t
+    elif param_label in (cudnn.CUDNN_SCALAR_DOUBLE_BN_EPSILON,
+                         cudnn.CUDNN_SCALAR_DOUBLE_BN_EXP_AVG_FACTOR):
+        cudnn.getFusedOpsVariantParamPackAttribute(var_pack, param_label,
+                                                   <size_t>&scalar_double)
+        return <size_t>scalar_double
+    else:
+        cudnn.getFusedOpsVariantParamPackAttribute(var_pack, param_label,
+                                                   <size_t>&ptr)
+        return <size_t>ptr

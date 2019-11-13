@@ -9,7 +9,8 @@ Matrix and vector products
 .. autosummary::
    :toctree: generated/
    :nosignatures:
-
+   
+   cupy.cross
    cupy.dot
    cupy.vdot
    cupy.inner
@@ -64,6 +65,7 @@ Solving linear equations
 
    cupy.linalg.solve
    cupy.linalg.tensorsolve
+   cupy.linalg.lstsq
    cupy.linalg.inv
    cupy.linalg.pinv
    cupy.linalg.tensorinv

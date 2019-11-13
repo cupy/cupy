@@ -3,11 +3,11 @@
 #ifndef INCLUDE_GUARD_CUPY_COMPLEX_H
 #define INCLUDE_GUARD_CUPY_COMPLEX_H
 
-#ifndef CUPY_NO_CUDA
+#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 #include <cuComplex.h>
 
-#else // #ifndef CUPY_NO_CUDA
+#else // #if !defined(CUPY_NO_CUDA) || !defined(CUPY_USE_HIP)
 
 extern "C" {
 

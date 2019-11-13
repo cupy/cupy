@@ -1,5 +1,5 @@
 /*
-* Copyright 1993-2014 NVIDIA Corporation.  All rights reserved.
+* Copyright 1993-2019 NVIDIA Corporation.  All rights reserved.
 *
 * NOTICE TO LICENSEE:
 *
@@ -157,7 +157,7 @@ public:
     __CUDA_HOSTDEVICE__ volatile __half &operator=(const __half_raw &hr) volatile { __x = hr.x; return *this; }
     __CUDA_HOSTDEVICE__ volatile __half &operator=(const volatile __half_raw &hr) volatile { __x = hr.x; return *this; }
     __CUDA_HOSTDEVICE__ operator __half_raw() const { __half_raw ret; ret.x = __x; return ret; }
-    __CUDA_HOSTDEVICE__ operator volatile __half_raw() const volatile { __half_raw ret; ret.x = __x; return ret; }
+    __CUDA_HOSTDEVICE__ operator __half_raw() const volatile { __half_raw ret; ret.x = __x; return ret; }
 
 #if !defined(__CUDA_NO_HALF_CONVERSIONS__)
 
@@ -1038,7 +1038,7 @@ __CUDA_FP16_DECL__ __half __ushort_as_half(const unsigned short int i)
 ******************************************************************************/
 #define __SHUFFLE_HALF2_MACRO(name) do {\
    __half2 r; \
-   asm("{"#name" %0,%1,%2,%3;\n}" \
+   asm volatile ("{"#name" %0,%1,%2,%3;\n}" \
        :"=r"(__HALF2_TO_UI(r)): "r"(__HALF2_TO_CUI(var)), "r"(delta), "r"(c)); \
    return r; \
 } while(0)

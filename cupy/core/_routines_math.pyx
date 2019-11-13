@@ -1,7 +1,7 @@
 import string
 
-import six
 import numpy
+import six
 
 import cupy
 from cupy.core._kernel import create_reduction_func
@@ -13,6 +13,9 @@ from cupy import util
 from cupy.core._dtype cimport get_dtype
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
+
+if cupy.cuda.cub_enabled:
+    from cupy.cuda import cub
 
 
 # ndarray members
@@ -70,6 +73,15 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
 
 
 cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
+    if cupy.cuda.cub_enabled:
+        if cub.can_use_device_reduce(cub.CUPY_CUB_SUM, self.dtype, self.ndim,
+                                     axis, dtype):
+            return cub.device_reduce(self, cub.CUPY_CUB_SUM, out=out,
+                                     keepdims=keepdims)
+        elif cub.can_use_device_segmented_reduce(
+                cub.CUPY_CUB_SUM, self.dtype, self.ndim, axis, dtype):
+            return cub.device_segmented_reduce(
+                self, cub.CUPY_CUB_SUM, axis, out=out, keepdims=keepdims)
     if dtype is None:
         return _sum_auto_dtype(self, axis, dtype, out, keepdims)
     else:
@@ -235,6 +247,24 @@ def _scan_for_test(a, out=None):
     return scan(a, out)
 
 
+cpdef ndarray _nansum(ndarray a, axis, dtype, out, keepdims):
+    if cupy.iscomplexobj(a):
+        return _nansum_complex_dtype(a, axis, dtype, out, keepdims)
+    elif dtype is None:
+        return _nansum_auto_dtype(a, axis, dtype, out, keepdims)
+    else:
+        return _nansum_keep_dtype(a, axis, dtype, out, keepdims)
+
+
+cpdef ndarray _nanprod(ndarray a, axis, dtype, out, keepdims):
+    if cupy.iscomplexobj(a):
+        return _nanprod_complex_dtype(a, axis, dtype, out, keepdims)
+    elif dtype is None:
+        return _nanprod_auto_dtype(a, axis, dtype, out, keepdims)
+    else:
+        return _nanprod_keep_dtype(a, axis, dtype, out, keepdims)
+
+
 _sum_auto_dtype = create_reduction_func(
     'cupy_sum',
     ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
@@ -251,6 +281,36 @@ _sum_keep_dtype = create_reduction_func(
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
+
+
+_nansum_auto_dtype = create_reduction_func(
+    'cupy_nansum',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(0)',
+     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+
+
+_nansum_keep_dtype = create_reduction_func(
+    'cupy_nansum_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(0)',
+     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+
+
+_nansum_complex_dtype = create_reduction_func(
+    'cupy_nansum_complex_dtype',
+    ('F->F', 'D->D'),
+    ('''
+    type_in0_raw((in0.real() == in0.real()) ? in0.real() : 0,
+                 (in0.imag() == in0.imag()) ? in0.imag() : 0)
+    ''',
+     'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
 
 _prod_auto_dtype = create_reduction_func(
@@ -270,6 +330,35 @@ _prod_keep_dtype = create_reduction_func(
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
+
+_nanprod_auto_dtype = create_reduction_func(
+    'cupy_nanprod',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(1)',
+     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+
+
+_nanprod_keep_dtype = create_reduction_func(
+    'cupy_nanprod_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(1)',
+     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+
+
+_nanprod_complex_dtype = create_reduction_func(
+    'cupy_nanprod_complex_dtype',
+    ('F->F', 'D->D'),
+    ('''
+    type_in0_raw((in0.real() == in0.real()) ? in0.real() : 1,
+                 (in0.imag() == in0.imag()) ? in0.imag() : 1)
+    ''',
+     'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 cdef create_arithmetic(name, op, boolop, doc):
     return create_ufunc(
@@ -400,6 +489,28 @@ _divide = create_ufunc(
     ''')
 
 
+# `integral_power` should return somewhat appropriate values for negative
+# integral powers (for which NumPy would raise errors). Hence the branches in
+# the beginning. This behavior is not officially documented and could change.
+cdef _power_preamble = '''
+template <typename T>
+inline __device__ T integral_power(T in0, T in1) {
+    if (in1 < 0) {
+        if (in0 == -1) {return (in1 & 1) ? -1 : 1;}
+        else {return (in0 == 1) ? 1 : 0;}
+    }
+    T out0 = 1;
+    while (in1 > 0) {
+        if (in1 & 1) {
+            out0 *= in0;
+        }
+        in0 *= in0;
+        in1 >>= 1;
+    }
+    return out0;
+}
+'''
+
 _power = create_ufunc(
     'cupy_power',
     ('??->b', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
@@ -409,7 +520,8 @@ _power = create_ufunc(
      ('dd->d', 'out0 = pow(in0, in1)'),
      ('FF->F', 'out0 = pow(in0, in1)'),
      ('DD->D', 'out0 = pow(in0, in1)')),
-    'out0 = rint(pow((double)in0, (double)in1))',
+    'out0 = integral_power(in0, in1)',
+    preamble=_power_preamble,
     doc='''Computes ``x1 ** x2`` elementwise.
 
     .. seealso:: :data:`numpy.power`
@@ -527,5 +639,7 @@ absolute = _absolute
 sqrt = _sqrt
 
 sum_auto_dtype = _sum_auto_dtype  # used from cupy/math/sumprod.py
+nansum_auto_dtype = _nansum_auto_dtype  # used from cupy/math/sumprod.py
 prod_auto_dtype = _prod_auto_dtype  # used from cupy/math/sumprod.py
+nanprod_auto_dtype = _nanprod_auto_dtype  # used from cupy/math/sumprod.py
 clip = _clip  # used from cupy/math/misc.py

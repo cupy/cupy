@@ -35,7 +35,8 @@ requirements = {
         'pycodestyle==2.3.1',
     ],
     'test': [
-        'pytest',
+        'pytest<4.2.0',  # 4.2.0 is slow collecting tests and times out on CI.
+        'attrs<19.2.0',  # pytest 4.1.1 does not run with attrs==19.2.0
         'mock',
     ],
     'doctest': [
@@ -52,6 +53,13 @@ requirements = {
     ],
     'appveyor': [
         '-r test',
+    ],
+    'jenkins': [
+        '-r test',
+        'pytest-timeout',
+        'pytest-cov',
+        'coveralls',
+        'codecov',
     ],
 }
 
@@ -132,7 +140,7 @@ setup(
     long_description=long_description,
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
-    url='https://docs-cupy.chainer.org/',
+    url='https://cupy.chainer.org/',
     license='MIT License',
     packages=[
         'cupy',
@@ -150,6 +158,7 @@ setup(
         'cupy.logic',
         'cupy.manipulation',
         'cupy.math',
+        'cupy.misc',
         'cupy.padding',
         'cupy.prof',
         'cupy.random',
@@ -159,6 +168,7 @@ setup(
         'cupy.statistics',
         'cupy.testing',
         'cupyx',
+        'cupyx.fallback_mode',
         'cupyx.scipy',
         'cupyx.scipy.fftpack',
         'cupyx.scipy.ndimage',
