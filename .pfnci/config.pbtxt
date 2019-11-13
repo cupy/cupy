@@ -87,3 +87,16 @@ configs {
     }
   }
 }
+configs {
+  key: "cupy.py37.amd"
+  value {
+    requirement {
+      cpu: 2
+      memory: 10
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    command: "bash .pfnci/script.sh py37.amd"
+  }
+}
