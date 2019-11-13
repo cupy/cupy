@@ -48,12 +48,6 @@ template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, t
    TODO(leofang): support half precision?
 */
 
-// 1. The function name is appended "cupy_" to avoid confusion and name collision
-// 2. std::isnan() cannot be used here as <cmath> cannot be included
-// 3. This is used for floating-point types (float, double)
-template <typename T>
-__host__ __device__ __forceinline__ bool cupy_isnan(const T &a) { return a != a; }
-
 //
 // Max()
 //
@@ -63,8 +57,8 @@ template <>
 __host__ __device__ __forceinline__ float Max::operator()(const float &a, const float &b) const
 {
     // NumPy behavior: NaN is always chosen!
-    if (cupy_isnan(a)) {return a;}
-    else if (cupy_isnan(b)) {return b;}
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
     else {return CUB_MAX(a, b);}
 }
 
@@ -73,8 +67,8 @@ template <>
 __host__ __device__ __forceinline__ double Max::operator()(const double &a, const double &b) const
 {
     // NumPy behavior: NaN is always chosen!
-    if (cupy_isnan(a)) {return a;}
-    else if (cupy_isnan(b)) {return b;}
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
     else {return CUB_MAX(a, b);}
 }
 
@@ -111,8 +105,8 @@ template <>
 __host__ __device__ __forceinline__ float Min::operator()(const float &a, const float &b) const
 {
     // NumPy behavior: NaN is always chosen!
-    if (cupy_isnan(a)) {return a;}
-    else if (cupy_isnan(b)) {return b;}
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
     else {return CUB_MIN(a, b);}
 }
 
@@ -121,8 +115,8 @@ template <>
 __host__ __device__ __forceinline__ double Min::operator()(const double &a, const double &b) const
 {
     // NumPy behavior: NaN is always chosen!
-    if (cupy_isnan(a)) {return a;}
-    else if (cupy_isnan(b)) {return b;}
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
     else {return CUB_MIN(a, b);}
 }
 
@@ -160,9 +154,9 @@ __host__ __device__ __forceinline__ KeyValuePair<int, float> ArgMax::operator()(
     const KeyValuePair<int, float> &a,
     const KeyValuePair<int, float> &b) const
 {
-    if (cupy_isnan(a.value))
+    if (isnan(a.value))
         return a;
-    else if (cupy_isnan(b.value))
+    else if (isnan(b.value))
         return b;
     else if ((b.value > a.value) || ((a.value == b.value) && (b.key < a.key)))
         return b;
@@ -176,9 +170,9 @@ __host__ __device__ __forceinline__ KeyValuePair<int, double> ArgMax::operator()
     const KeyValuePair<int, double> &a,
     const KeyValuePair<int, double> &b) const
 {
-    if (cupy_isnan(a.value))
+    if (isnan(a.value))
         return a;
-    else if (cupy_isnan(b.value))
+    else if (isnan(b.value))
         return b;
     else if ((b.value > a.value) || ((a.value == b.value) && (b.key < a.key)))
         return b;
@@ -228,9 +222,9 @@ __host__ __device__ __forceinline__ KeyValuePair<int, float> ArgMin::operator()(
     const KeyValuePair<int, float> &a,
     const KeyValuePair<int, float> &b) const
 {
-    if (cupy_isnan(a.value))
+    if (isnan(a.value))
         return a;
-    else if (cupy_isnan(b.value))
+    else if (isnan(b.value))
         return b;
     else if ((b.value < a.value) || ((a.value == b.value) && (b.key < a.key)))
         return b;
@@ -244,9 +238,9 @@ __host__ __device__ __forceinline__ KeyValuePair<int, double> ArgMin::operator()
     const KeyValuePair<int, double> &a,
     const KeyValuePair<int, double> &b) const
 {
-    if (cupy_isnan(a.value))
+    if (isnan(a.value))
         return a;
-    else if (cupy_isnan(b.value))
+    else if (isnan(b.value))
         return b;
     else if ((b.value < a.value) || ((a.value == b.value) && (b.key < a.key)))
         return b;
