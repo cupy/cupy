@@ -148,7 +148,7 @@ Programming Language :: Python :: 3.5
 Programming Language :: Python :: 3.6
 Programming Language :: Python :: 3.7
 Programming Language :: Python :: 3 :: Only
-Programming Language :: Python :: Implementation :: Cython
+Programming Language :: Cython
 Topic :: Software Development
 Topic :: Scientific/Engineering
 Operating System :: Microsoft :: Windows
