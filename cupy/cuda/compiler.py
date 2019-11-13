@@ -383,7 +383,7 @@ def _run_hipcc(cmd, cwd='.', env=None):
             'command: {0}\n'
             'return-code: {1}\n'
             'stdout/stderr: \n'
-            '{2}'.format(e.cmd, e.returncode, e.output))
+            '{2}'.format(e.cmd, e.returncode, e.output.decode('utf-8')))
     except OSError as e:
         raise OSError('Failed to run `hipcc` command. '
                       'Check PATH environment variable: '
@@ -452,6 +452,8 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
         cache_dir = get_cache_dir()
     if arch is None:
         arch = os.environ.get('HCC_AMDGPU_TARGET')
+        if arch is None:
+            raise RuntimeError('HCC_AMDGPU_TARGET is not set')
     if use_converter:
         source = _convert_to_hip_source(source)
 
