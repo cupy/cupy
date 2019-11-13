@@ -37,7 +37,6 @@ requirements = {
     'test': [
         'pytest<4.2.0',  # 4.2.0 is slow collecting tests and times out on CI.
         'attrs<19.2.0',  # pytest 4.1.1 does not run with attrs==19.2.0
-        'pytest',
         'mock',
     ],
     'doctest': [
@@ -57,11 +56,8 @@ requirements = {
     ],
     'jenkins': [
         '-r test',
-        # pytest-timeout>=1.3.0 requires pytest>=3.6.
-        # TODO(niboshi): Consider upgrading pytest to >=3.6
-        'pytest-timeout<1.3.0',
+        'pytest-timeout',
         'pytest-cov',
-        'nose',
         'coveralls',
         'codecov',
     ],
