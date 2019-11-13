@@ -3,7 +3,7 @@
 Overview
 ========
 
-.. module:: cupy
+.. currentmodule:: cupy
 
 `CuPy <https://github.com/cupy/cupy>`_ is an implementation of NumPy-compatible multi-dimensional array on CUDA.
 CuPy consists of :class:`cupy.ndarray`, the core multi-dimensional array class,

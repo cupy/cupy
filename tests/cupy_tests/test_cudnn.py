@@ -3,6 +3,7 @@ import unittest
 import numpy
 
 import cupy
+
 try:
     import cupy.cuda.cudnn as libcudnn
     cudnn_enabled = True
@@ -14,14 +15,22 @@ try:
     coef_modes = [
         libcudnn.CUDNN_ACTIVATION_CLIPPED_RELU,
     ]
-    if libcudnn.getVersion() >= 6000:
+    layouts = [
+        libcudnn.CUDNN_TENSOR_NCHW,
+        libcudnn.CUDNN_TENSOR_NHWC,
+    ]
+    cudnn_version = libcudnn.getVersion()
+    if cudnn_version >= 6000:
         coef_modes.append(libcudnn.CUDNN_ACTIVATION_ELU)
 
     from cupy import cudnn
 except ImportError:
     cudnn_enabled = False
+    cudnn_version = -1
     modes = []
     coef_modes = []
+    layouts = []
+
 from cupy import testing
 
 
@@ -120,7 +129,7 @@ class TestCudnnDropout(unittest.TestCase):
     'max_workspace_size': [0, 2 ** 22],
     'auto_tune': [True, False],
     'bias': [True, False],
-    'layout': [libcudnn.CUDNN_TENSOR_NCHW, libcudnn.CUDNN_TENSOR_NHWC],
+    'layout': layouts,
 })))
 @unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
 class TestConvolutionForward(unittest.TestCase):
@@ -138,6 +147,7 @@ class TestConvolutionForward(unittest.TestCase):
             out_channels_a_group = 2
         in_channels = in_channels_a_group * self.groups
         out_channels = out_channels_a_group * self.groups
+        # TODO(anaruse): increase test cases.
         ksize = 3
         stride = 2
         pad = ksize // stride * self.dilate
@@ -220,6 +230,7 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
         out_channels_a_group = 2
         in_channels = in_channels_a_group * self.groups
         out_channels = out_channels_a_group * self.groups
+        # TODO(anaruse): increase test cases.
         ksize = 3
         stride = 2
         pad = ksize // stride * self.dilate
@@ -288,6 +299,7 @@ class TestConvolutionBackwardData(unittest.TestCase):
         out_channels_a_group = 2
         in_channels = in_channels_a_group * self.groups
         out_channels = out_channels_a_group * self.groups
+        # TODO(anaruse): increase test cases.
         ksize = 3
         stride = 2
         pad = ksize // stride * self.dilate
@@ -336,3 +348,86 @@ class TestConvolutionBackwardData(unittest.TestCase):
         else:
             with self.assertRaises(self.err):
                 self.call()
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+    'ksize': [1, 3, 5],
+    'stride': [2, 4],
+    'auto_tune': [True, False],
+}))
+@unittest.skipIf(not cudnn_enabled or cudnn_version < 7500,
+                 'cuDNN 7.5.0 or later is required')
+class TestConvolutionNoAvailableAlgorithm(unittest.TestCase):
+    '''Checks if an expected error is raised.
+
+    This checks if an expected error is raised when no available algorithm
+    is found by cuDNN for a configuration. This (no available algorithm found)
+    can occur when convolution_backward_data or convolution_backward_filter is
+    performed with NHWC layout.
+
+    Please notice that conditions that cause the error may change depending on
+    cuDNN version. The conditions below are set based on cuDNN 7.5.0 and 7.6.0.
+    '''
+
+    def setUp(self):
+        self.layout = libcudnn.CUDNN_TENSOR_NHWC
+        n = 16
+        x_c, y_c = 64, 64
+        x_h, x_w = 32, 32
+        y_h, y_w = x_h // self.stride, x_w // self.stride
+        self.pad = (self.ksize - 1) // 2
+        if self.layout == libcudnn.CUDNN_TENSOR_NHWC:
+            x_shape = (n, x_h, x_w, x_c)
+            y_shape = (n, y_h, y_w, y_c)
+            W_shape = (y_c, self.ksize, self.ksize, x_c)
+        else:
+            x_shape = (n, x_c, x_h, x_w)
+            y_shape = (n, y_c, y_h, y_w)
+            W_shape = (y_c, x_c, self.ksize, self.ksize)
+        self.x = cupy.ones(x_shape, dtype=self.dtype)
+        self.W = cupy.ones(W_shape, dtype=self.dtype)
+        self.y = cupy.empty(y_shape, dtype=self.dtype)
+        self.gx = cupy.empty(x_shape, dtype=self.dtype)
+        self.gW = cupy.empty(W_shape, dtype=self.dtype)
+        self.gy = cupy.ones(y_shape, dtype=self.dtype)
+        self._workspace_size = cudnn.get_max_workspace_size()
+        cudnn.set_max_workspace_size(0)
+
+    def tearDown(self):
+        cudnn.set_max_workspace_size(self._workspace_size)
+
+    def test_backward_filter(self):
+        err = None
+        if (self.layout == libcudnn.CUDNN_TENSOR_NHWC and
+                self.dtype == numpy.float64):
+            err = self._get_error_type()
+        if err is None:
+            return unittest.SkipTest()
+        with self.assertRaises(err):
+            cudnn.convolution_backward_filter(
+                self.x, self.gy, self.gW,
+                pad=(self.pad, self.pad), stride=(self.stride, self.stride),
+                dilation=(1, 1), groups=1, deterministic=0,
+                auto_tune=self.auto_tune, tensor_core='always',
+                d_layout=self.layout, w_layout=self.layout)
+
+    def test_backward_data(self):
+        err = None
+        if self.layout == libcudnn.CUDNN_TENSOR_NHWC:
+            err = self._get_error_type()
+        if err is None:
+            return unittest.SkipTest()
+        with self.assertRaises(err):
+            cudnn.convolution_backward_data(
+                self.W, self.gy, None, self.gx,
+                pad=(self.pad, self.pad), stride=(self.stride, self.stride),
+                dilation=(1, 1), groups=1, deterministic=0,
+                auto_tune=self.auto_tune, tensor_core='always',
+                d_layout=self.layout, w_layout=self.layout)
+
+    def _get_error_type(self):
+        if self.auto_tune:
+            return RuntimeError
+        else:
+            return libcudnn.CuDNNError

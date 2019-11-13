@@ -4,7 +4,6 @@ import numpy
 import six
 
 import cupy
-from cupy import cuda
 from cupy import testing
 from cupy.testing import condition
 
@@ -29,13 +28,14 @@ def random_matrix(shape, dtype, scale, sym=False):
             high_s = bias = high_s / (1 + numpy.sqrt(m * n))
     assert low_s <= high_s
     a = numpy.random.standard_normal(shape)
+    if dtype.kind == 'c':
+        a = a + 1j * numpy.random.standard_normal(shape)
     u, s, vh = numpy.linalg.svd(a)
-    new_s = numpy.random.uniform(low_s, high_s, s.shape)
     if sym:
         assert m == n
-        new_a = numpy.einsum('...ij,...j,...kj', u, new_s, u)
-    else:
-        new_a = numpy.einsum('...ij,...j,...jk', u, new_s, vh)
+        vh = u.conj().swapaxes(-1, -2)
+    new_s = numpy.random.uniform(low_s, high_s, s.shape)
+    new_a = numpy.einsum('...ij,...j,...jk->...ik', u, new_s, vh)
     if bias is not None:
         new_a += bias
     if dtype.kind in 'iu':
@@ -43,8 +43,6 @@ def random_matrix(shape, dtype, scale, sym=False):
     return new_a.astype(dtype)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestCholeskyDecomposition(unittest.TestCase):
 
@@ -55,7 +53,7 @@ class TestCholeskyDecomposition(unittest.TestCase):
 
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
-        numpy.float32, numpy.float64])
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
     def test_decomposition(self, dtype):
         # A positive definite matrix
         A = random_matrix((5, 5), dtype, scale=(10, 10000), sym=True)
@@ -67,12 +65,10 @@ class TestCholeskyDecomposition(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'mode': ['r', 'raw', 'complete', 'reduced'],
 }))
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestQRDecomposition(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     def check_mode(self, array, mode, dtype):
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
@@ -93,20 +89,26 @@ class TestQRDecomposition(unittest.TestCase):
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
 
+    @testing.with_requires('numpy>=1.16')
+    def test_empty_array(self):
+        self.check_mode(numpy.empty((0, 3)), mode=self.mode)
+        self.check_mode(numpy.empty((3, 0)), mode=self.mode)
+
 
 @testing.parameterize(*testing.product({
     'full_matrices': [True, False],
 }))
 @testing.fix_random()
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestSVD(unittest.TestCase):
 
     def setUp(self):
         self.seed = testing.generate_seed()
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes([
+        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    ])
     def check_usv(self, shape, dtype):
         array = testing.shaped_random(
             shape, numpy, dtype=dtype, seed=self.seed)
@@ -114,13 +116,45 @@ class TestSVD(unittest.TestCase):
         a_gpu = cupy.asarray(array, dtype=dtype)
         result_cpu = numpy.linalg.svd(a_cpu, full_matrices=self.full_matrices)
         result_gpu = cupy.linalg.svd(a_gpu, full_matrices=self.full_matrices)
-        self.assertEqual(len(result_cpu), len(result_gpu))
-        for b_cpu, b_gpu in zip(result_cpu, result_gpu):
-            # Use abs to support an inverse vector
-            cupy.testing.assert_allclose(
-                numpy.abs(b_cpu), cupy.abs(b_gpu), atol=1e-4)
+        # Check if the input matrix is not broken
+        cupy.testing.assert_allclose(a_gpu, a_cpu)
 
-    @testing.for_float_dtypes(no_float16=True)
+        self.assertEqual(len(result_gpu), len(result_cpu))
+        u_cpu, s_cpu, vh_cpu = result_cpu
+        u_gpu, s_gpu, vh_gpu = result_gpu
+        cupy.testing.assert_allclose(s_gpu, s_cpu, atol=1e-4)
+
+        k, = s_cpu.shape
+        for j in range(k):
+            # assert corresponding vectors are equal up to rotation (`sign`)
+            uj_cpu = u_cpu[:, j]
+            vj_cpu = vh_cpu[j, :].conj()
+            uj_gpu = cupy.asnumpy(u_gpu[:, j])
+            vj_gpu = cupy.asnumpy(vh_gpu[j, :]).conj()
+            # Use least-squares estimation to compute rotation from cpu result
+            # to gpu result. We know norms of uj_cpu, vj_cpu are 1.
+            u_sign = numpy.vdot(uj_cpu, uj_gpu)
+            v_sign = numpy.vdot(vj_cpu, vj_gpu)
+            numpy.testing.assert_allclose(uj_gpu, u_sign * uj_cpu, atol=1e-4)
+            numpy.testing.assert_allclose(vj_gpu, v_sign * vj_cpu, atol=1e-4)
+            numpy.testing.assert_allclose(abs(u_sign), 1, atol=1e-4)
+            numpy.testing.assert_allclose(abs(v_sign), 1, atol=1e-4)
+            numpy.testing.assert_allclose(u_sign, v_sign, atol=1e-4)
+
+        # assert unitary
+        cupy.testing.assert_allclose(
+            cupy.matmul(u_gpu.T.conj(), u_gpu),
+            numpy.eye(u_gpu.shape[1]),
+            atol=1e-4)
+        cupy.testing.assert_allclose(
+            cupy.matmul(vh_gpu, vh_gpu.T.conj()),
+            numpy.eye(vh_gpu.shape[0]),
+            atol=1e-4)
+
+    @testing.for_dtypes([
+        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    ])
     @testing.numpy_cupy_allclose(atol=1e-4)
     def check_singular(self, shape, xp, dtype):
         array = testing.shaped_random(shape, xp, dtype=dtype, seed=self.seed)
@@ -138,15 +172,15 @@ class TestSVD(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_svd(self):
-        self.check_usv((2, 3))
+        self.check_usv((3, 7))
         self.check_usv((2, 2))
-        self.check_usv((3, 2))
+        self.check_usv((7, 3))
 
     @condition.repeat(3, 10)
     def test_svd_no_uv(self):
-        self.check_singular((2, 3))
+        self.check_singular((3, 7))
         self.check_singular((2, 2))
-        self.check_singular((3, 2))
+        self.check_singular((7, 3))
 
     @condition.repeat(3, 10)
     def test_rank2(self):

@@ -19,6 +19,7 @@ minimum_cudnn_version = 5000
 maximum_cudnn_version = 7999
 
 _cuda_path = 'NOT_INITIALIZED'
+_rocm_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
 
 
@@ -31,20 +32,29 @@ def _tempdir():
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+def get_rocm_path():
+    global _rocm_path
+
+    # Use a magic word to represent the cache not filled because None is a
+    # valid return value.
+    if _rocm_path != 'NOT_INITIALIZED':
+        return _rocm_path
+
+    _rocm_path = os.environ.get('ROCM_HOME', '')
+    return _rocm_path
+
+
 def get_cuda_path():
     global _cuda_path
 
     # Use a magic word to represent the cache not filled because None is a
     # valid return value.
-    if _cuda_path is not 'NOT_INITIALIZED':
+    if _cuda_path != 'NOT_INITIALIZED':
         return _cuda_path
 
     nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
     cuda_path_default = None
-    if nvcc_path is None:
-        utils.print_warning('nvcc not in path.',
-                            'Please set path to nvcc.')
-    else:
+    if nvcc_path is not None:
         cuda_path_default = os.path.normpath(
             os.path.join(os.path.dirname(nvcc_path), '..'))
 
@@ -88,12 +98,14 @@ def get_nvcc_path():
         return None
 
 
-def get_compiler_setting():
+def get_compiler_setting(use_cpp11):
     cuda_path = get_cuda_path()
+    rocm_path = get_rocm_path()
 
     include_dirs = []
     library_dirs = []
     define_macros = []
+    extra_compile_args = []
 
     if cuda_path:
         include_dirs.append(os.path.join(cuda_path, 'include'))
@@ -103,6 +115,16 @@ def get_compiler_setting():
         else:
             library_dirs.append(os.path.join(cuda_path, 'lib64'))
             library_dirs.append(os.path.join(cuda_path, 'lib'))
+
+    if rocm_path:
+        include_dirs.append(os.path.join(rocm_path, 'include'))
+        include_dirs.append(os.path.join(rocm_path, 'rocrand', 'include'))
+        library_dirs.append(os.path.join(rocm_path, 'lib'))
+        library_dirs.append(os.path.join(rocm_path, 'rocrand', 'lib'))
+
+    if use_cpp11:
+        extra_compile_args.append('-std=c++11')
+
     if PLATFORM_DARWIN:
         library_dirs.append('/usr/local/cuda/lib')
 
@@ -114,11 +136,25 @@ def get_compiler_setting():
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
+    cutensor_path = os.environ.get('CUTENSOR_PATH', '')
+    if os.path.exists(cutensor_path):
+        include_dirs.append(os.path.join(cutensor_path, 'include'))
+        library_dirs.append(os.path.join(cutensor_path, 'lib'))
+
+    cub_path = os.environ.get('CUB_PATH', '')
+    if os.path.exists(cub_path):
+        # for <cupy/complex.cuh>
+        cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                   '../cupy/core/include')
+        include_dirs.append(cupy_header)
+        include_dirs.append(cub_path)
+
     return {
         'include_dirs': include_dirs,
         'library_dirs': library_dirs,
         'define_macros': define_macros,
         'language': 'c++',
+        'extra_compile_args': extra_compile_args,
     }
 
 
@@ -204,7 +240,7 @@ def check_cuda_version(compiler, settings):
         out = build_and_run(compiler, '''
         #include <cuda.h>
         #include <stdio.h>
-        int main(int argc, char* argv[]) {
+        int main() {
           printf("%d", CUDA_VERSION);
           return 0;
         }
@@ -246,7 +282,7 @@ def check_cudnn_version(compiler, settings):
         out = build_and_run(compiler, '''
         #include <cudnn.h>
         #include <stdio.h>
-        int main(int argc, char* argv[]) {
+        int main() {
           printf("%d", CUDNN_VERSION);
           return 0;
         }
@@ -297,7 +333,7 @@ def check_nccl_version(compiler, settings):
         #else
         #  define NCCL_VERSION_CODE 0
         #endif
-        int main(int argc, char* argv[]) {
+        int main() {
           printf("%d", NCCL_VERSION_CODE);
           return 0;
         }
@@ -344,15 +380,55 @@ def check_nvtx(compiler, settings):
     return True
 
 
+def check_cutensor_version(compiler, settings):
+    global _cutensor_version
+    try:
+        out = build_and_run(compiler, '''
+        #include <cutensor.h>
+        #include <stdio.h>
+        #ifdef CUTENSOR_MAJOR
+        #ifndef CUTENSOR_VERSION
+        #define CUTENSOR_VERSION \
+                (CUTENSOR_MAJOR * 1000 + CUTENSOR_MINOR * 100 + CUTENSOR_PATCH)
+        #endif
+        #else
+        #  define CUTENSOR_VERSION 0
+        #endif
+        int main(int argc, char* argv[]) {
+          printf("%d", CUTENSOR_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+
+    except Exception as e:
+        utils.print_warning('Cannot check cuTENSOR version\n{0}'.format(e))
+        return False
+
+    _cutensor_version = int(out)
+
+    return True
+
+
+def get_cutensor_version(formatted=False):
+    """Return cuTENSOR version cached in check_cutensor_version()."""
+    global _cutensor_version
+    if _cutensor_version is None:
+        msg = 'check_cutensor_version() must be called first.'
+        raise RuntimeError(msg)
+    return _cutensor_version
+
+
 def build_shlib(compiler, source, libraries=(),
-                include_dirs=(), library_dirs=(), define_macros=None):
+                include_dirs=(), library_dirs=(), define_macros=None,
+                extra_compile_args=()):
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
         objects = compiler.compile([fname], output_dir=temp_dir,
                                    include_dirs=include_dirs,
-                                   macros=define_macros)
+                                   macros=define_macros,
+                                   extra_postargs=list(extra_compile_args))
 
         try:
             postargs = ['/MANIFEST'] if PLATFORM_WIN32 else []
@@ -368,7 +444,8 @@ def build_shlib(compiler, source, libraries=(),
 
 
 def build_and_run(compiler, source, libraries=(),
-                  include_dirs=(), library_dirs=(), define_macros=None):
+                  include_dirs=(), library_dirs=(), define_macros=None,
+                  extra_compile_args=()):
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
@@ -376,7 +453,8 @@ def build_and_run(compiler, source, libraries=(),
 
         objects = compiler.compile([fname], output_dir=temp_dir,
                                    include_dirs=include_dirs,
-                                   macros=define_macros)
+                                   macros=define_macros,
+                                   extra_postargs=list(extra_compile_args))
 
         try:
             postargs = ['/MANIFEST'] if PLATFORM_WIN32 else []

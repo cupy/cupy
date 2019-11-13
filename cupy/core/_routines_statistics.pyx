@@ -1,23 +1,68 @@
+import numpy
+from numpy import nan
+
 from cupy.core._kernel import create_reduction_func
 from cupy.core._kernel import ReductionKernel
 
 from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray
 
+import cupy
+if cupy.cuda.cub_enabled:
+    from cupy.cuda import cub
+
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
+    if cupy.cuda.cub_enabled:
+        if cub.can_use_device_reduce(cub.CUPY_CUB_MAX, self.dtype, self.ndim,
+                                     axis, dtype):
+            return cub.device_reduce(self, cub.CUPY_CUB_MAX, out=out,
+                                     keepdims=keepdims)
+        elif cub.can_use_device_segmented_reduce(
+                cub.CUPY_CUB_MAX, self.dtype, self.ndim, axis, dtype):
+            return cub.device_segmented_reduce(
+                self, cub.CUPY_CUB_MAX, axis, out=out, keepdims=keepdims)
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
+    if cupy.cuda.cub_enabled:
+        if cub.can_use_device_reduce(cub.CUPY_CUB_MIN, self.dtype, self.ndim,
+                                     axis, dtype):
+            return cub.device_reduce(self, cub.CUPY_CUB_MIN, out=out,
+                                     keepdims=keepdims)
+        elif cub.can_use_device_segmented_reduce(
+                cub.CUPY_CUB_MIN, self.dtype, self.ndim, axis, dtype):
+            return cub.device_segmented_reduce(
+                self, cub.CUPY_CUB_MIN, axis, out=out, keepdims=keepdims)
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
+# TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
+    if cupy.cuda.cub_enabled:
+        # Note that the NumPy signature of argmax only has axis and out, so we
+        # need to disable the rest. Moreover, to be compatible with NumPy, axis
+        # can only be None or integers
+        if axis is None and cub.can_use_device_reduce(
+                cub.CUPY_CUB_ARGMAX, self.dtype, self.ndim, axis, None):
+            return cub.device_reduce(self, cub.CUPY_CUB_ARGMAX, out=out,
+                                     keepdims=False)
+        # TODO(leofang): support device_segmented_reduce for axis=-1?
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
+# TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
+    if cupy.cuda.cub_enabled:
+        # Note that the NumPy signature of argmax only has axis and out, so we
+        # need to disable the rest. Moreover, to be compatible with NumPy, axis
+        # can only be None or integers
+        if axis is None and cub.can_use_device_reduce(
+                cub.CUPY_CUB_ARGMIN, self.dtype, self.ndim, axis, None):
+            return cub.device_reduce(self, cub.CUPY_CUB_ARGMIN, out=out,
+                                     keepdims=False)
+        # TODO(leofang): support device_segmented_reduce for axis=-1?
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
@@ -46,11 +91,6 @@ struct min_max_st{
 };
 
 template <typename T>
-inline __device__ bool is_nan(T x) {
-    return x != x;
-}
-
-template <typename T>
 __device__ min_max_st<T> my_min(
         const min_max_st<T>& a, const min_max_st<T>& b) {
     if (a.index == -1) return b;
@@ -62,19 +102,8 @@ __device__ min_max_st<T> my_min_float(
         const min_max_st<T>& a, const min_max_st<T>& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
-    if (is_nan(a.value)) return a;
-    if (is_nan(b.value)) return b;
-    return min_max_st<T>(min(a.value, b.value));
-}
-template <typename T>
-__device__ min_max_st<T> my_min_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (is_nan(a.value.real())) return a;
-    if (is_nan(a.value.imag())) return a;
-    if (is_nan(b.value.real())) return b;
-    if (is_nan(b.value.imag())) return b;
+    if (isnan(a.value)) return a;
+    if (isnan(b.value)) return b;
     return min_max_st<T>(min(a.value, b.value));
 }
 
@@ -90,19 +119,8 @@ __device__ min_max_st<T> my_max_float(
         const min_max_st<T>& a, const min_max_st<T>& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
-    if (is_nan(a.value)) return a;
-    if (is_nan(b.value)) return b;
-    return min_max_st<T>(max(a.value, b.value));
-}
-template <typename T>
-__device__ min_max_st<T> my_max_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (is_nan(a.value.real())) return a;
-    if (is_nan(a.value.imag())) return a;
-    if (is_nan(b.value.real())) return b;
-    if (is_nan(b.value.imag())) return b;
+    if (isnan(a.value)) return a;
+    if (isnan(b.value)) return b;
     return min_max_st<T>(max(a.value, b.value));
 }
 
@@ -122,21 +140,8 @@ __device__ min_max_st<T> my_argmin_float(
     if (b.index == -1) return a;
     if (a.value == b.value)
         return min_max_st<T>(a.value, min(a.index, b.index));
-    if (is_nan(a.value)) return a;
-    if (is_nan(b.value)) return b;
-    return (a.value <= b.value) ? a : b;
-}
-template <typename T>
-__device__ min_max_st<T> my_argmin_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value)
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (is_nan(a.value.real())) return a;
-    if (is_nan(a.value.imag())) return a;
-    if (is_nan(b.value.real())) return b;
-    if (is_nan(b.value.imag())) return b;
+    if (isnan(a.value)) return a;
+    if (isnan(b.value)) return b;
     return (a.value <= b.value) ? a : b;
 }
 
@@ -156,23 +161,11 @@ __device__ min_max_st<T> my_argmax_float(
     if (b.index == -1) return a;
     if (a.value == b.value)
         return min_max_st<T>(a.value, min(a.index, b.index));
-    if (is_nan(a.value)) return a;
-    if (is_nan(b.value)) return b;
+    if (isnan(a.value)) return a;
+    if (isnan(b.value)) return b;
     return (a.value >= b.value) ? a : b;
 }
-template <typename T>
-__device__ min_max_st<T> my_argmax_complex(
-        const min_max_st<T>& a, const min_max_st<T>& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value)
-        return min_max_st<T>(a.value, min(a.index, b.index));
-    if (is_nan(a.value.real())) return a;
-    if (is_nan(a.value.imag())) return a;
-    if (is_nan(b.value.real())) return b;
-    if (is_nan(b.value.imag())) return b;
-    return (a.value >= b.value) ? a : b;
-}
+
 '''
 
 
@@ -183,8 +176,8 @@ cdef _amin = create_reduction_func(
      ('e->e', (None, 'my_min_float(a, b)', None, None)),
      ('f->f', (None, 'my_min_float(a, b)', None, None)),
      ('d->d', (None, 'my_min_float(a, b)', None, None)),
-     ('F->F', (None, 'my_min_complex(a, b)', None, None)),
-     ('D->D', (None, 'my_min_complex(a, b)', None, None))),
+     ('F->F', (None, 'my_min_float(a, b)', None, None)),
+     ('D->D', (None, 'my_min_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0)', 'my_min(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -197,8 +190,8 @@ cdef _amax = create_reduction_func(
      ('e->e', (None, 'my_max_float(a, b)', None, None)),
      ('f->f', (None, 'my_max_float(a, b)', None, None)),
      ('d->d', (None, 'my_max_float(a, b)', None, None)),
-     ('F->F', (None, 'my_max_complex(a, b)', None, None)),
-     ('D->D', (None, 'my_max_complex(a, b)', None, None)),
+     ('F->F', (None, 'my_max_float(a, b)', None, None)),
+     ('D->D', (None, 'my_max_float(a, b)', None, None)),
      ),
     ('min_max_st<type_in0_raw>(in0)', 'my_max(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
@@ -230,8 +223,8 @@ cdef _argmin = create_reduction_func(
      ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
      ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
      ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('F->q', (None, 'my_argmin_complex(a, b)', None, None)),
-     ('D->q', (None, 'my_argmin_complex(a, b)', None, None))),
+     ('F->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('D->q', (None, 'my_argmin_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -244,37 +237,102 @@ cdef _argmax = create_reduction_func(
      ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
      ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
      ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('F->q', (None, 'my_argmax_complex(a, b)', None, None)),
-     ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
+     ('F->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('D->q', (None, 'my_argmax_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
 
+cpdef ndarray _nanargmax(ndarray a, axis, out, dtype, keepdims):
+    return _nanargmax_func(
+        a, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+
+
+cpdef ndarray _nanargmin(ndarray a, axis, out, dtype, keepdims):
+    return _nanargmin_func(
+        a, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+
+
+cdef _nanargmin_func = create_reduction_func(
+    'cupy_nanargmin',
+    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
+     'q->q', 'Q->q',
+     ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmin_float(a, b)', None, None)),
+     ('D->q', (None, 'my_argmin_float(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0, isnan(in0) ? -1 : _J)',
+     'my_argmin(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
+    None, _min_max_preamble)
+
+
+cdef _nanargmax_func = create_reduction_func(
+    'cupy_nanargmax',
+    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
+     'q->q', 'Q->q',
+     ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('F->q', (None, 'my_argmax_float(a, b)', None, None)),
+     ('D->q', (None, 'my_argmax_float(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0, isnan(in0) ? -1 : _J)',
+     'my_argmax(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
+    None, _min_max_preamble)
+
+
+cdef ndarray _mean(
+        ndarray a, axis=None, dtype=None, out=None, keepdims=False):
+    if a.size == 0:
+        # Return nan; see also https://github.com/numpy/numpy/issues/13582
+        return _mean_core_empty(a, axis, dtype, out, keepdims)
+    return _mean_core(a, axis, dtype, out, keepdims)
+
 cdef ndarray _var(
         ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-    assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
-                                'implemented. Current implemention does not ' \
-                                'convert the dtype'
+
     if axis is None:
         axis = tuple(range(a.ndim))
     if not isinstance(axis, tuple):
         axis = (axis,)
 
-    if dtype is None and a.dtype.kind in 'biu':
-        dtype = 'd'
+    dtype_mean = a.dtype
+    dtype_out = numpy.dtype(dtype)
+    if dtype is None:
+        if a.dtype.kind in 'biu':
+            dtype_mean = 'float64'
+            dtype_out = 'float64'
+        else:
+            dtype_mean = a.dtype
+            dtype_out = a.dtype
+            if a.dtype.kind == 'c':
+                dtype_out = numpy.dtype(a.dtype.char.lower())
 
     shape = a.shape
-    items = 1
+    cdef Py_ssize_t items = 1
     for ax in axis:
         items *= shape[ax]
-    alpha = 1. / max(items - ddof, 0)
-    arrmean = a.mean(axis=axis, dtype=dtype, out=None, keepdims=True)
+
+    # Make alpha NaN when array is empty, mimics NumPy behavior, resulting in
+    # NaN. See https://github.com/numpy/numpy/issues/13582 for an explanation
+    # on why NaN is the result.
+    div = max(items - ddof, 0)
+    alpha = 1. / div if div != 0 else nan
+
+    arrmean = a.mean(axis=axis, dtype=dtype_mean, out=None, keepdims=True)
+
     if out is None:
-        return _var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
-    else:
-        return _var_core_out(
-            a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
+        if dtype_out == 'float16':
+            var_core = _var_core_float16
+        elif dtype_out == 'float32':
+            var_core = _var_core_float32
+        else:
+            var_core = _var_core_float64
+        return var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
+
+    out = _var_core_out(a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
+    return out.astype(dtype_out, copy=False)
 
 
 cdef ndarray _std(
@@ -284,18 +342,39 @@ cdef ndarray _std(
     return _math._sqrt(ret, dtype=dtype, out=out)
 
 
-cdef _var_core = ReductionKernel(
-    'S x, T mean, T alpha', 'T out',
-    '(x - mean) * (x - mean)',
-    'a + b', 'out = alpha * a', '0', '_var_core')
+cdef _norm_preamble = '''
+template <typename T> __device__ T my_norm(T x) { return x * x; }
+__device__ float my_norm(const complex<float>& x) { return norm(x); }
+__device__ double my_norm(const complex<double>& x) { return norm(x); }
+'''
+
+
+cdef _var_core_float16 = ReductionKernel(
+    'S x, T mean, float32 alpha', 'float16 out',
+    'my_norm(x - mean)',
+    'a + b', 'out = alpha * a', '0', '_var_core', preamble=_norm_preamble)
+
+
+cdef _var_core_float32 = ReductionKernel(
+    'S x, T mean, float32 alpha', 'float32 out',
+    'my_norm(x - mean)',
+    'a + b', 'out = alpha * a', '0', '_var_core', preamble=_norm_preamble)
+
+
+cdef _var_core_float64 = ReductionKernel(
+    'S x, T mean, float64 alpha', 'float64 out',
+    'my_norm(x - mean)',
+    'a + b', 'out = alpha * a', '0', '_var_core', preamble=_norm_preamble)
+
 
 cdef _var_core_out = ReductionKernel(
-    'S x, T mean, T alpha', 'U out',
-    '(x - mean) * (x - mean)',
-    'a + b', 'out = alpha * a', '0', '_var_core')
+    'S x, T mean, U alpha', 'U out',
+    'my_norm(x - mean)',
+    'a + b', 'out = alpha * a', '0', '_var_core', preamble=_norm_preamble)
+
 
 # TODO(okuta) needs cast
-cdef _mean = create_reduction_func(
+cdef _mean_core = create_reduction_func(
     'cupy_mean',
     ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
@@ -303,6 +382,93 @@ cdef _mean = create_reduction_func(
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b',
      'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
+
+cdef _mean_core_empty = create_reduction_func(
+    'cupy_mean',
+    ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
+     'q->d', 'Q->d',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a + b',
+     'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None), 0)
+
+cdef _nanmean_preamble = '''
+template <typename T>
+struct nanmean_st{
+    typedef long long ll;
+    T value;
+    ll count;
+    __device__ nanmean_st() : value(0), count(0) { }
+    __device__ nanmean_st(T v) :
+        value(isnan(v) ? T(0) : v), count(isnan(v) ? 0 : 1) { }
+    __device__ nanmean_st(T v, ll c) : value(v), count(c) { }
+};
+
+template <typename T>
+__device__ nanmean_st<T> my_nanmean(
+        const nanmean_st<T>& a, const nanmean_st<T>& b) {
+    return nanmean_st<T>(a.value + b.value, a.count + b.count);
+}
+'''
+
+
+cdef _nanmean_func = create_reduction_func(
+    'cupy_nanmean',
+    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'my_nanmean(a, b)',
+     'out0 = a.value / type_out0_raw(a.count)', 'nanmean_st<type_out0_raw>'),
+    None, _nanmean_preamble)
+
+
+_count_non_nan = create_reduction_func(
+    'cupy_count_non_nan',
+    ('e->l', 'f->l', 'd->l'),
+    ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0)
+
+
+cpdef ndarray _nanmean(ndarray a, axis, dtype, out, keepdims):
+    return _nanmean_func(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+
+cpdef ndarray _nanstd(ndarray a, axis, dtype, out, ddof, keepdims):
+    var = _nanvar(a, axis, dtype, None, ddof, keepdims)
+    return _math._sqrt(var, dtype=dtype, out=out)
+
+
+cpdef ndarray _nanvar(ndarray a, axis, dtype, out, ddof, keepdims):
+    assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
+                                'implemented. Current implemention does not ' \
+                                'convert the dtype'
+
+    _count = _count_non_nan(a, axis=axis, keepdims=True)
+    arrsum = _math._nansum(a, axis=axis, dtype=dtype, out=None, keepdims=True)
+
+    if out is None:
+        return _nanvar_core(
+            a, arrsum, _count, ddof, axis=axis, keepdims=keepdims)
+    else:
+        return _nanvar_core_out(
+            a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
+
+
+cdef _nanvar_preamble = '''
+template <typename S, typename T>
+__device__ T nanvar_impl(S x, T mean, long long alpha) {
+    return (isnan(x) ? T(0) : T((x - mean) * (x - mean))) / alpha;
+}
+'''
+
+
+cdef _nanvar_core = ReductionKernel(
+    'S x, T sum, int64 _count, int64 ddof', 'S out',
+    'nanvar_impl<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
+    'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
+
+
+cdef _nanvar_core_out = ReductionKernel(
+    'S x, T sum, int64 _count, int64 ddof', 'U out',
+    'nanvar_impl<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
+    'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
 
 
 # Variables to expose to Python

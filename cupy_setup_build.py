@@ -27,6 +27,7 @@ from install.build import PLATFORM_WIN32
 required_cython_version = pkg_resources.parse_version('0.28.0')
 ignore_cython_versions = [
 ]
+use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 
 MODULES = [
     {
@@ -34,6 +35,7 @@ MODULES = [
         'file': [
             'cupy.core._dtype',
             'cupy.core._kernel',
+            'cupy.core._memory_range',
             'cupy.core._routines_indexing',
             'cupy.core._routines_logic',
             'cupy.core._routines_manipulation',
@@ -61,6 +63,7 @@ MODULES = [
             'cupy.cuda.function',
             'cupy.cuda.stream',
             'cupy.cuda.runtime',
+            'cupy.cuda.texture',
             'cupy.util',
         ],
         'include': [
@@ -84,6 +87,19 @@ MODULES = [
         ],
         'check_method': build.check_cuda_version,
         'version_method': build.get_cuda_version,
+    },
+    {
+        'name': 'cusolver',
+        'file': [
+            'cupy.cuda.cusolver',
+        ],
+        'include': [
+            'cusolverDn.h',
+        ],
+        'libraries': [
+            'cusolver',
+        ],
+        'check_method': build.check_cuda_version,
     },
     {
         'name': 'cudnn',
@@ -113,19 +129,6 @@ MODULES = [
         ],
         'check_method': build.check_nccl_version,
         'version_method': build.get_nccl_version,
-    },
-    {
-        'name': 'cusolver',
-        'file': [
-            'cupy.cuda.cusolver',
-        ],
-        'include': [
-            'cusolverDn.h',
-        ],
-        'libraries': [
-            'cusolver',
-        ],
-        'check_method': build.check_cuda_version,
     },
     {
         'name': 'nvtx',
@@ -163,8 +166,67 @@ MODULES = [
             'cudart',
         ],
         'check_method': build.check_cuda_version,
-    }
+    },
+    {
+        'name': 'cutensor',
+        'file': [
+            'cupy.cuda.cutensor',
+        ],
+        'include': [
+            'cutensor.h',
+        ],
+        'libraries': [
+            'cutensor',
+            'cublas',
+        ],
+        'check_method': build.check_cutensor_version,
+        'version_method': build.get_cutensor_version,
+    },
+    {
+        'name': 'cub',
+        'file': [
+            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+        ],
+        'include': [
+            'cub/util_namespace.cuh',  # dummy
+        ],
+        'libraries': [
+            'cudart',
+        ],
+        'check_method': build.check_cuda_version,
+    },
 ]
+
+
+def convert_modules_for_hip():
+    global MODULES
+    if len(MODULES) == 2:
+        return
+    MODULES = MODULES[:2]
+    mod_cuda = MODULES[0]
+    mod_cuda['include'] = [
+        'hip/hip_runtime_api.h',
+        'hip/hiprtc.h',
+        'hipblas.h',
+        'hiprand/hiprand.h',
+        #        'hipsparse.h',
+        #        'cuda_profiler_api.h',
+        #        'cufft.h',
+    ]
+    mod_cuda['libraries'] = [
+        'hiprtc',
+        'hip_hcc',
+        'hipblas',
+        'hiprand',
+        #        'hipsparse',
+        #        'cufft',
+    ]
+    del mod_cuda['version_method']
+    del mod_cuda['check_method']
+    mod_cusolver = MODULES[1]
+    mod_cusolver['include'] = []
+    mod_cusolver['libraries'] = []
+    del mod_cusolver['check_method']
 
 
 def ensure_module_file(file):
@@ -209,17 +271,19 @@ def check_readthedocs_environment():
 
 
 def check_library(compiler, includes=(), libraries=(),
-                  include_dirs=(), library_dirs=(), define_macros=None):
+                  include_dirs=(), library_dirs=(), define_macros=None,
+                  extra_compile_args=()):
 
     source = ''.join(['#include <%s>\n' % header for header in includes])
-    source += 'int main(int argc, char* argv[]) {return 0;}'
+    source += 'int main() {return 0;}'
     try:
         # We need to try to build a shared library because distutils
         # uses different option to build an executable and a shared library.
         # Especially when a user build an executable, distutils does not use
         # LDFLAGS environment variable.
         build.build_shlib(compiler, source, libraries,
-                          include_dirs, library_dirs, define_macros)
+                          include_dirs, library_dirs, define_macros,
+                          extra_compile_args)
     except Exception as e:
         print(e)
         sys.stdout.flush()
@@ -252,7 +316,8 @@ def preconfigure_modules(compiler, settings):
     ]
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
-                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC']:
+                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC',
+                'ROCM_HOME']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [
@@ -270,16 +335,20 @@ def preconfigure_modules(compiler, settings):
         print('-------- Configuring Module: {} --------'.format(
             module['name']))
         sys.stdout.flush()
-        if not check_library(compiler,
-                             includes=module['include'],
-                             include_dirs=settings['include_dirs'],
-                             define_macros=settings['define_macros']):
+        if not check_library(
+                compiler,
+                includes=module['include'],
+                include_dirs=settings['include_dirs'],
+                define_macros=settings['define_macros'],
+                extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Include files not found: %s' % module['include'],
                       'Check your CFLAGS environment variable.']
-        elif not check_library(compiler,
-                               libraries=module['libraries'],
-                               library_dirs=settings['library_dirs'],
-                               define_macros=settings['define_macros']):
+        elif not check_library(
+                compiler,
+                libraries=module['libraries'],
+                library_dirs=settings['library_dirs'],
+                define_macros=settings['define_macros'],
+                extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Cannot link libraries: %s' % module['libraries'],
                       'Check your LDFLAGS environment variable.']
         elif ('check_method' in module and
@@ -288,6 +357,10 @@ def preconfigure_modules(compiler, settings):
             installed = True
             errmsg = ['The library is installed but not supported.']
         elif module['name'] == 'thrust' and nvcc_path is None:
+            installed = True
+            errmsg = ['nvcc command could not be found in PATH.',
+                      'Check your PATH environment variable.']
+        elif module['name'] == 'cub' and nvcc_path is None:
             installed = True
             errmsg = ['nvcc command could not be found in PATH.',
                       'Check your PATH environment variable.']
@@ -351,7 +424,12 @@ def make_extensions(options, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
     no_cuda = options['no_cuda']
-    settings = build.get_compiler_setting()
+    use_hip = not no_cuda and options['use_hip']
+    use_cpp11 = use_hip
+    settings = build.get_compiler_setting(use_cpp11)
+
+    if use_hip:
+        convert_modules_for_hip()
 
     include_dirs = settings['include_dirs']
 
@@ -360,7 +438,7 @@ def make_extensions(options, compiler, use_cython):
     settings['library_dirs'] = [
         x for x in settings['library_dirs'] if path.exists(x)]
 
-    # Adjust rpath to use CUDA libraries in `cupy/_lib/*.so`) from CuPy.
+    # Adjust rpath to use CUDA libraries in `cupy/.data/lib/*.so`) from CuPy.
     use_wheel_libs_rpath = (
         0 < len(options['wheel_libs']) and not PLATFORM_WIN32)
 
@@ -377,6 +455,9 @@ def make_extensions(options, compiler, use_cython):
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
     if no_cuda:
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
+    if use_hip:
+        settings['define_macros'].append(('CUPY_USE_HIP', '1'))
+        settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
 
     available_modules = []
     if no_cuda:
@@ -422,13 +503,14 @@ def make_extensions(options, compiler, use_cython):
                 rpath += s['library_dirs']
 
             if use_wheel_libs_rpath:
-                # Add `cupy/_lib` (where shared libraries included in wheels
-                # reside) to RPATH.
+                # Add `cupy/.data/lib` (where shared libraries included in
+                # wheels reside) to RPATH.
                 # The path is resolved relative to the module, e.g., use
-                # `$ORIGIN/_lib` for `cupy/cudnn.so` and `$ORIGIN/../_lib` for
-                # `cupy/cuda/cudnn.so`.
+                # `$ORIGIN/.data/lib` for `cupy/cudnn.so` and
+                # `$ORIGIN/../.data/lib` for `cupy/cuda/cudnn.so`.
                 depth = name.count('.') - 1
-                rpath.append('{}{}/_lib'.format(_rpath_base(), '/..' * depth))
+                rpath.append(
+                    '{}{}/.data/lib'.format(_rpath_base(), '/..' * depth))
 
             if not PLATFORM_WIN32 and not PLATFORM_LINUX:
                 s['runtime_library_dirs'] = rpath
@@ -440,7 +522,7 @@ def make_extensions(options, compiler, use_cython):
                 args = s.setdefault('extra_link_args', [])
                 args.append(ldflag)
                 if PLATFORM_DARWIN:
-                    # -rpath is only supported when targetting Mac OS X 10.5 or
+                    # -rpath is only supported when targeting Mac OS X 10.5 or
                     # later
                     args.append('-mmacosx-version-min=10.5')
 
@@ -451,6 +533,7 @@ def make_extensions(options, compiler, use_cython):
     return ret
 
 
+# TODO(oktua): use enviriment variable
 def parse_args():
     parser = argparse.ArgumentParser(add_help=False)
 
@@ -465,6 +548,13 @@ def parse_args():
         help='shared library to copy into the wheel '
              '(can be specified for multiple times)')
     parser.add_argument(
+        '--cupy-wheel-include', type=str, action='append', default=[],
+        help='An include file to copy into the wheel. '
+             'Delimited by a colon. '
+             'The former part is a full path of the source include file and '
+             'the latter is the relative path within cupy wheel. '
+             '(can be specified for multiple times)')
+    parser.add_argument(
         '--cupy-no-rpath', action='store_true', default=False,
         help='disable adding default library directories to RPATH')
     parser.add_argument(
@@ -476,6 +566,9 @@ def parse_args():
     parser.add_argument(
         '--cupy-no-cuda', action='store_true', default=False,
         help='build CuPy with stub header file')
+    # parser.add_argument(
+    #     '--cupy-use-hip', action='store_true', default=False,
+    #     help='build CuPy with HIP')
 
     opts, sys.argv = parser.parse_known_args(sys.argv)
 
@@ -483,11 +576,13 @@ def parse_args():
         'package_name': opts.cupy_package_name,
         'long_description': opts.cupy_long_description,
         'wheel_libs': opts.cupy_wheel_lib,  # list
+        'wheel_includes': opts.cupy_wheel_include,  # list
         'no_rpath': opts.cupy_no_rpath,
         'profile': opts.cupy_profile,
         'linetrace': opts.cupy_coverage,
         'annotate': opts.cupy_coverage,
         'no_cuda': opts.cupy_no_cuda,
+        'use_hip': use_hip  # opts.cupy_use_hip,
     }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
@@ -511,39 +606,66 @@ def get_long_description():
 
 
 def prepare_wheel_libs():
-    """Prepare shared libraries for wheels.
+    """Prepare shared libraries and include files for wheels.
 
     On Windows, DLLs will be placed under `cupy/cuda`.
-    On other platforms, shared libraries are placed under `cupy/_libs` and
+    On other platforms, shared libraries are placed under `cupy/.data/lib` and
     RUNPATH will be set to this directory later.
+    Include files are placed under `cupy/.data/include`.
     """
-    libdirname = None
+    data_dir = '.data'
+    if os.path.exists(data_dir):
+        print('Removing directory: {}'.format(data_dir))
+        shutil.rmtree(data_dir)
+
     if PLATFORM_WIN32:
-        libdirname = 'cuda'
+        lib_dirname = 'cuda'
         # Clean up existing libraries.
-        libfiles = glob.glob('cupy/{}/*.dll'.format(libdirname))
+        libfiles = glob.glob('cupy/{}/*.dll'.format(lib_dirname))
         for libfile in libfiles:
             print('Removing file: {}'.format(libfile))
             os.remove(libfile)
     else:
-        libdirname = '_lib'
-        # Clean up the library directory.
-        libdir = 'cupy/{}'.format(libdirname)
-        if os.path.exists(libdir):
-            print('Removing directory: {}'.format(libdir))
-            shutil.rmtree(libdir)
-        os.mkdir(libdir)
+        lib_dirname = os.path.join(data_dir, 'lib')
 
-    # Copy specified libraries to the library directory.
-    libs = []
-    for lib in cupy_setup_options['wheel_libs']:
+    include_dirname = os.path.join(data_dir, 'include')
+
+    # Collect files to copy
+    files_to_copy = []
+
+    # Library files
+    lib_base_path = os.path.join('cupy', lib_dirname)
+    for srcpath in cupy_setup_options['wheel_libs']:
+        relpath = os.path.basename(srcpath)
+        dstpath = path.join(lib_base_path, relpath)
+        files_to_copy.append((
+            srcpath,
+            dstpath,
+            path.join(lib_dirname, relpath)))
+
+    # Include files
+    include_base_path = os.path.join('cupy', include_dirname)
+    for include_path_spec in cupy_setup_options['wheel_includes']:
+        # TODO(niboshi): Consider using platform-dependent path delimiter.
+        srcpath, relpath = include_path_spec.rsplit(':', 1)
+        dstpath = os.path.join(include_base_path, relpath)
+        files_to_copy.append((
+            srcpath,
+            dstpath,
+            path.join(include_dirname, relpath)))
+
+    # Copy
+    package_data = []
+    for srcpath, dstpath, package_path in files_to_copy:
         # Note: symlink is resolved by shutil.copy2.
-        print('Copying library for wheel: {}'.format(lib))
-        libname = path.basename(lib)
-        libpath = 'cupy/{}/{}'.format(libdirname, libname)
-        shutil.copy2(lib, libpath)
-        libs.append('{}/{}'.format(libdirname, libname))
-    return libs
+        print('Copying file for wheel: {}'.format(srcpath))
+        dirpath = os.path.dirname(dstpath)
+        if not os.path.isdir(dirpath):
+            os.makedirs(dirpath)
+        shutil.copy2(srcpath, dstpath)
+        package_data.append(package_path)
+
+    return package_data
 
 
 try:
@@ -601,6 +723,13 @@ def get_ext_modules(use_cython=False):
 def _nvcc_gencode_options(cuda_version):
     """Returns NVCC GPU code generation options."""
 
+    if sys.argv == ['setup.py', 'develop']:
+        return []
+
+    envcfg = os.getenv('CUPY_NVCC_GENERATE_CODE', None)
+    if envcfg:
+        return ['--generate-code={}'.format(envcfg)]
+
     # The arch_list specifies virtual architectures, such as 'compute_61', and
     # real architectures, such as 'sm_61', for which the CUDA input files are
     # to be compiled.
@@ -657,10 +786,7 @@ def _nvcc_gencode_options(cuda_version):
             options.append('--generate-code=arch={},code={}'.format(
                 arch, arch))
 
-    if sys.argv == ['setup.py', 'develop']:
-        return []
-    else:
-        return options
+    return options
 
 
 class _UnixCCompiler(unixccompiler.UnixCCompiler):
@@ -682,7 +808,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
 
             cuda_version = build.get_cuda_version()
             postargs = _nvcc_gencode_options(cuda_version) + [
-                '-O2', '--compiler-options="-fPIC"']
+                '-O2', '--compiler-options="-fPIC"', '--std=c++11']
             print('NVCC options:', postargs)
 
             return unixccompiler.UnixCCompiler._compile(

@@ -81,3 +81,38 @@ class TestAllAnyWithNaN(unittest.TestCase):
         out = xp.empty(out_shape, dtype=x.dtype)
         getattr(xp, self.f)(x, self.axis, out, self.keepdims)
         return out
+
+
+@testing.parameterize(
+    *testing.product(
+        {'f': ['in1d', 'isin'],
+         'shape_x': [
+             (0, ),
+             (3, ),
+             (2, 3),
+             (2, 1, 3),
+             (2, 0, 1),
+             (2, 0, 1, 1)
+        ],
+            'shape_y': [
+             (0, ),
+             (3, ),
+             (2, 3),
+             (2, 1, 3),
+             (2, 0, 1),
+             (2, 0, 1, 1)
+        ],
+            'assume_unique': [False, True],
+            'invert': [False, True]}))
+@testing.gpu
+class TestIn1DIsIn(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test(self, xp, dtype):
+        x = testing.shaped_arange(self.shape_x, xp, dtype)
+        y = testing.shaped_arange(self.shape_y, xp, dtype)
+        if xp is numpy and self.f == 'isin':
+            return xp.in1d(x, y, self.assume_unique, self.invert)\
+                .reshape(x.shape)
+        return getattr(xp, self.f)(x, y, self.assume_unique, self.invert)

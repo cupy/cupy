@@ -4,6 +4,8 @@
 
 using thrust::complex;
 using thrust::conj;
+using thrust::real;
+using thrust::imag;
 using thrust::arg;
 
 using thrust::exp;

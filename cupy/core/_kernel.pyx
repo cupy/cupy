@@ -24,6 +24,7 @@ from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
+from cupy.core._memory_range cimport may_share_bounds
 
 
 _thread_local = threading.local()
@@ -78,26 +79,25 @@ cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     - Converts Python scalars into NumPy scalars
     """
     cdef list ret = []
-    cdef type typ
 
     for arg in args:
-        typ = type(arg)
-        if typ is not ndarray and hasattr(arg, '__cuda_array_interface__'):
+        if type(arg) is not ndarray:
+            s = _scalar.convert_scalar(arg, use_c_scalar)
+            if s is not None:
+                ret.append(s)
+                continue
+            if not hasattr(arg, '__cuda_array_interface__'):
+                raise TypeError('Unsupported type %s' % type(arg))
             arg = _convert_object_with_cuda_array_interface(arg)
-            typ = ndarray
 
-        if typ is ndarray:
-            arr_dev_id = (<ndarray?>arg).data.device_id
-            if arr_dev_id != dev_id:
-                raise ValueError(
-                    'Array device must be same as the current '
-                    'device: array device = %d while current = %d'
-                    % (arr_dev_id, dev_id))
-        else:
-            arg = _scalar.convert_scalar(arg, use_c_scalar)
-            if arg is None:
-                raise TypeError('Unsupported type %s' % typ)
+        arr_dev_id = (<ndarray>arg).data.device_id
+        if arr_dev_id != dev_id:
+            raise ValueError(
+                'Array device must be same as the current '
+                'device: array device = %d while current = %d'
+                % (arr_dev_id, dev_id))
         ret.append(arg)
+
     return ret
 
 
@@ -187,7 +187,7 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         last_ax = ax
     if last_ax >= 0:
         axes.push_back(last_ax)
-    if axes.size() == ndim:
+    if <int>axes.size() == ndim:
         return shape
 
     for ax in axes:
@@ -355,6 +355,22 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
                       casting)
             raise TypeError(msg)
     return out_args
+
+
+cdef list _copy_in_args_if_needed(list in_args, list out_args):
+    cdef int i, j
+    cdef list ret = []
+
+    for i in range(len(in_args)):
+        inp = in_args[i]
+        if isinstance(inp, ndarray):
+            for j in range(len(out_args)):
+                out = out_args[j]
+                if inp is not out and may_share_bounds(inp, out):
+                    inp = inp.copy()
+                    break
+        ret.append(inp)
+    return ret
 
 
 cdef list _get_out_args_with_params(
@@ -544,10 +560,6 @@ cdef class ElementwiseKernel:
         if size != -1:
             shape = size,
             is_size_specified = True
-
-        for i in range(self.nin):
-            if not (self.params[i].is_const or args[i].shape == shape):
-                raise ValueError('Shape is mismatched')
 
         out_args = _get_out_args_with_params(
             out_args, out_types, shape, self.out_params, is_size_specified)
@@ -831,7 +843,8 @@ cdef class ufunc:
             out_args = _preprocess_args(dev_id, (out,), False)
             args += out_args
 
-        broad_values, shape = _broadcast_core(args)
+        in_args = _copy_in_args_if_needed(in_args, out_args)
+        broad_values, shape = _broadcast_core(in_args + out_args)
 
         op = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype,

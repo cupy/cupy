@@ -20,9 +20,10 @@ cdef class ndarray:
 
     cpdef item(self)
     cpdef tolist(self)
+    cpdef bytes tobytes(self, order=*)
     cpdef tofile(self, fid, sep=*, format=*)
     cpdef dump(self, file)
-    cpdef dumps(self)
+    cpdef bytes dumps(self)
     cpdef ndarray astype(self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef ndarray copy(self, order=*)
     cpdef ndarray view(self, dtype=*)
@@ -54,7 +55,6 @@ cdef class ndarray:
                         out=*)
     cpdef ndarray sum(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray cumsum(self, axis=*, dtype=*, out=*)
-
     cpdef ndarray mean(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray var(self, axis=*, dtype=*, out=*, ddof=*,
                       keepdims=*)
@@ -62,7 +62,6 @@ cdef class ndarray:
                       keepdims=*)
     cpdef ndarray prod(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray cumprod(self, axis=*, dtype=*, out=*)
-
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)
     cpdef ndarray conj(self)
@@ -100,7 +99,8 @@ cpdef ndarray ascontiguousarray(ndarray a, dtype=*)
 cpdef ndarray asfortranarray(ndarray a, dtype=*)
 
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
-                                cachd_dir=*, prepend_cupy_headers=*)
+                                cachd_dir=*, prepend_cupy_headers=*,
+                                backend=*, translate_cucomplex=*)
 
 
 # TODO(niboshi): Move to _routines_creation.pyx

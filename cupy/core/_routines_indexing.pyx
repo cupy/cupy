@@ -50,7 +50,8 @@ cdef _ndarray_setitem(ndarray self, slices, value):
 
 
 cdef tuple _ndarray_nonzero(ndarray self):
-    cdef Py_ssize_t count_nonzero, ndim
+    cdef Py_ssize_t count_nonzero
+    cdef int ndim
     dtype = numpy.int64
     if self.size == 0:
         count_nonzero = 0
@@ -60,7 +61,7 @@ cdef tuple _ndarray_nonzero(ndarray self):
         del r
         scan_index = _math.scan(nonzero)
         count_nonzero = int(scan_index[-1])
-    ndim = max(self._shape.size(), 1)
+    ndim = max(<int>self._shape.size(), 1)
     if count_nonzero == 0:
         return (ndarray((0,), dtype=dtype),) * ndim
 
@@ -78,6 +79,14 @@ cdef tuple _ndarray_nonzero(ndarray self):
 
 cdef _ndarray_scatter_add(ndarray self, slices, value):
     _scatter_op(self, slices, value, 'add')
+
+
+cdef _ndarray_scatter_max(ndarray self, slices, value):
+    _scatter_op(self, slices, value, 'max')
+
+
+cdef _ndarray_scatter_min(ndarray self, slices, value):
+    _scatter_op(self, slices, value, 'min')
 
 
 cdef ndarray _ndarray_take(ndarray self, indices, axis, out):
@@ -455,6 +464,32 @@ _scatter_add_kernel = ElementwiseKernel(
     'cupy_scatter_add')
 
 
+_scatter_max_kernel = ElementwiseKernel(
+    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
+    'raw T a',
+    '''
+      S wrap_indices = indices % adim;
+      if (wrap_indices < 0) wrap_indices += adim;
+      ptrdiff_t li = i / (rdim * cdim);
+      ptrdiff_t ri = i % rdim;
+      atomicMax(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
+    ''',
+    'cupy_scatter_max')
+
+
+_scatter_min_kernel = ElementwiseKernel(
+    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
+    'raw T a',
+    '''
+      S wrap_indices = indices % adim;
+      if (wrap_indices < 0) wrap_indices += adim;
+      ptrdiff_t li = i / (rdim * cdim);
+      ptrdiff_t ri = i % rdim;
+      atomicMin(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
+    ''',
+    'cupy_scatter_min')
+
+
 _scatter_update_mask_kernel = ElementwiseKernel(
     'raw T v, bool mask, S mask_scanned',
     'T a',
@@ -467,6 +502,20 @@ _scatter_add_mask_kernel = ElementwiseKernel(
     'T a',
     'if (mask) a = a + v[mask_scanned - 1]',
     'cupy_scatter_add_mask')
+
+
+_scatter_max_mask_kernel = ElementwiseKernel(
+    'raw T v, bool mask, S mask_scanned',
+    'T a',
+    'if (mask) a = max(a, v[mask_scanned - 1])',
+    'cupy_scatter_max_mask')
+
+
+_scatter_min_mask_kernel = ElementwiseKernel(
+    'raw T v, bool mask, S mask_scanned',
+    'T a',
+    'if (mask) a = min(a, v[mask_scanned - 1])',
+    'cupy_scatter_min_mask')
 
 
 _getitem_mask_kernel = ElementwiseKernel(
@@ -666,6 +715,24 @@ cdef _scatter_op_single(
                 'uint32, uint64, as data type')
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'max':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.float32, numpy.float64,
+                           numpy.uint32, numpy.uint64, numpy.ulonglong)):
+            raise TypeError(
+                'scatter_max only supports int32, float32, float64, '
+                'uint32, uint64 as data type')
+        _scatter_max_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'min':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.float32, numpy.float64,
+                           numpy.uint32, numpy.uint64, numpy.ulonglong)):
+            raise TypeError(
+                'scatter_min only supports int32, float32, float64, '
+                'uint32, uint64 as data type')
+        _scatter_min_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
     else:
         raise ValueError('provided op is not supported')
 
@@ -692,6 +759,10 @@ cdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
         _scatter_update_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'add':
         _scatter_add_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'max':
+        _scatter_max_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'min':
+        _scatter_min_mask_kernel(src, mask, mask_scanned, a)
     else:
         raise ValueError('provided op is not supported')
 
@@ -741,6 +812,12 @@ cdef _scatter_op(ndarray a, slices, value, op):
     if op == 'add':
         _math._add(y, value, y)
         return
+    if op == 'max':
+        cupy.maximum(y, value, y)
+        return
+    if op == 'min':
+        cupy.minimum(y, value, y)
+        return
     raise ValueError('this op is not supported')
 
 
@@ -785,11 +862,19 @@ cdef ndarray _diagonal(
     return ret
 
 
+_prepare_array_indexing = ElementwiseKernel(
+    'T s, S len, S stride',
+    'S out',
+    'S in0 = s, in1 = len;'
+    'out += stride * (in0 - _floor_divide(in0, in1) * in1)',
+    'cupy_prepare_array_indexing')
+
+
 cdef tuple _prepare_multiple_array_indexing(ndarray a, list slices):
     # slices consist of either slice(None) or ndarray
-    cdef Py_ssize_t i, p, li, ri, max_index
-    cdef ndarray take_idx, input_flat, out_flat, ret
-    cdef tuple a_shape
+    cdef Py_ssize_t i, p, li, ri, stride, prev_arr_i
+    cdef ndarray reduced_idx
+    cdef bint do_transpose
 
     br = _manipulation.broadcast(*slices)
     slices = list(br.values)
@@ -798,15 +883,15 @@ cdef tuple _prepare_multiple_array_indexing(ndarray a, list slices):
     # li:  index of the leftmost array in slices
     # ri:  index of the rightmost array in slices
     do_transpose = False
-    prev_arr_i = None
+    prev_arr_i = -1
     li = 0
     ri = 0
     for i, s in enumerate(slices):
         if isinstance(s, ndarray):
-            if prev_arr_i is None:
+            if prev_arr_i == -1:
                 prev_arr_i = i
                 li = i
-            elif prev_arr_i is not None and i - prev_arr_i > 1:
+            elif i - prev_arr_i > 1:
                 do_transpose = True
             else:
                 prev_arr_i = i
@@ -830,55 +915,18 @@ cdef tuple _prepare_multiple_array_indexing(ndarray a, list slices):
         li = 0
         ri = len(transp_a) - 1
 
-    a_interm_shape = a.shape
-    a_interm = a
-
-    # build the strides
-    strides = [1]
-    for s in a.shape[ri:li:-1]:
-        strides.insert(0, s * strides[0])
-
-    flattened_indexes = []
-    for stride, s, a_interm_shape_i in zip(
-            strides, slices[li:ri + 1], a_interm_shape[li:ri + 1]):
-        max_index = stride * (a_interm_shape_i - 1)
-        # cast to appropriate dtype if the linearized index can
-        # exceed the range of the original dtype.
-        dtype = None
-        if max_index >= 2**31 and issubclass(
-                s.dtype.type, (numpy.int8, numpy.int16, numpy.int32)):
-            dtype = numpy.int64
-        elif max_index >= 2**15 and issubclass(
-                s.dtype.type, (numpy.int8, numpy.int16)):
-            dtype = numpy.int32
-        elif max_index >= 2**7 and issubclass(s.dtype.type, numpy.int8):
-            dtype = numpy.int16
-
-        if max_index >= 2**32 and issubclass(
-                s.dtype.type, (numpy.uint8, numpy.uint16, numpy.uint32)):
-            dtype = numpy.uint64
-        elif max_index >= 2**16 and issubclass(
-                s.dtype.type, (numpy.uint8, numpy.uint16)):
-            dtype = numpy.uint32
-        elif max_index >= 2**8 and issubclass(s.dtype.type, numpy.uint8):
-            dtype = numpy.uint16
-
-        if dtype is not None:
-            s = s.astype(dtype)
+    reduced_idx = ndarray(br.shape, dtype=numpy.int64)
+    reduced_idx.fill(0)
+    stride = 1
+    for i in range(ri, li - 1, -1):
+        s = slices[i]
+        a_shape_i = a._shape[i]
         # wrap all out-of-bound indices
-        flattened_indexes.append(stride * (s % a_interm_shape_i))
+        if a_shape_i != 0:
+            _prepare_array_indexing(s, a_shape_i, stride, reduced_idx)
+        stride *= a_shape_i
 
-    # do stack: flattened_indexes = stack(flattened_indexes, axis=0)
-    concat_shape = (len(flattened_indexes),) + br.shape
-    flattened_indexes = _manipulation._concatenate(
-        [
-            _manipulation._reshape(index, (1,) + index.shape)
-            for index in flattened_indexes],
-        axis=0, shape=concat_shape, dtype=flattened_indexes[0].dtype)
-
-    reduced_idx = _math._sum_auto_dtype(flattened_indexes, axis=0)
-
-    return a_interm, reduced_idx, li, ri
+    return a, reduced_idx, li, ri
 
 
 cdef ndarray _getitem_multiple(ndarray a, list slices):

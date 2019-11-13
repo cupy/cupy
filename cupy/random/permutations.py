@@ -1,5 +1,4 @@
 from cupy.random import generator
-import six
 
 
 def shuffle(a):
@@ -8,7 +7,8 @@ def shuffle(a):
     Args:
         a (cupy.ndarray): The array to be shuffled.
 
-    .. seealso:: :func:`numpy.random.shuffle`
+    .. seealso:: :meth:`numpy.random.shuffle
+                 <numpy.random.mtrand.RandomState.shuffle>`
 
     """
     rs = generator.get_random_state()
@@ -26,10 +26,8 @@ def permutation(a):
         and `a` - 1.
         Otherwise, it is a permutation of `a`.
 
-    .. seealso:: :func:`numpy.random.permutation`
+    .. seealso:: :meth:`numpy.random.permutation
+                 <numpy.random.mtrand.RandomState.permutation>`
     """
     rs = generator.get_random_state()
-    if isinstance(a, six.integer_types):
-        return rs.permutation(a)
-    else:
-        return a[rs.permutation(len(a))]
+    return rs.permutation(a)

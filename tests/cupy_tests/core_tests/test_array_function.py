@@ -28,3 +28,19 @@ class TestArrayFunction(unittest.TestCase):
         else:
             self.assertEqual(qr_cpu.dtype, qr_gpu.dtype)
             cupy.testing.assert_allclose(qr_cpu, qr_gpu, atol=1e-4)
+
+    @testing.with_requires('numpy>=1.17.0')
+    @testing.numpy_cupy_equal()
+    def test_array_function_can_cast(self, xp):
+        return numpy.can_cast(xp.arange(2), 'f4')
+
+    @testing.with_requires('numpy>=1.17.0')
+    @testing.numpy_cupy_equal()
+    def test_array_function_common_type(self, xp):
+        return numpy.common_type(xp.arange(2, dtype='f8'),
+                                 xp.arange(2, dtype='f4'))
+
+    @testing.with_requires('numpy>=1.17.0')
+    @testing.numpy_cupy_equal()
+    def test_array_function_result_type(self, xp):
+        return numpy.result_type(3, xp.arange(2, dtype='f8'))
