@@ -1896,6 +1896,8 @@ def pooling_forward(
         zero = <size_t>&float_zero
         one = <size_t>&float_one
     x = core._internal_ascontiguousarray(x)
+    if not y._c_contiguous:
+        raise ValueError('pooling_forward supports c-contiguous y only')
     handle = get_handle()
     x_desc = cudnn.createTensorDescriptor()
     y_desc = cudnn.createTensorDescriptor()
@@ -1930,6 +1932,7 @@ def pooling_backward(
 
     gx = core.ndarray(x._shape, x.dtype)
     x = core._internal_ascontiguousarray(x)
+    y = core._internal_ascontiguousarray(y)
     gy = core._internal_ascontiguousarray(gy)
 
     handle = get_handle()
