@@ -44,7 +44,7 @@ cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
         # Note that the NumPy signature of argmax only has axis and out, so we
         # need to disable the rest. Moreover, to be compatible with NumPy, axis
         # can only be None or integers
-        if axis is None and cub.can_use_device_reduce(
+        if cub.can_use_device_reduce(
                 cub.CUPY_CUB_ARGMAX, self.dtype, self.ndim, axis, None):
             return cub.device_reduce(self, cub.CUPY_CUB_ARGMAX, out=out,
                                      keepdims=False)
@@ -58,7 +58,7 @@ cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
         # Note that the NumPy signature of argmax only has axis and out, so we
         # need to disable the rest. Moreover, to be compatible with NumPy, axis
         # can only be None or integers
-        if axis is None and cub.can_use_device_reduce(
+        if cub.can_use_device_reduce(
                 cub.CUPY_CUB_ARGMIN, self.dtype, self.ndim, axis, None):
             return cub.device_reduce(self, cub.CUPY_CUB_ARGMIN, out=out,
                                      keepdims=False)
