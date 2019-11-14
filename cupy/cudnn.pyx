@@ -121,6 +121,7 @@ cpdef _create_tensor_nd_descriptor(
         size_t desc, core.ndarray arr, int data_type=-1):
     cdef vector.vector[int] c_shape, c_strides
     cdef Py_ssize_t itemsize, s
+    cdef int next_stride, i
     if data_type == -1:  # `-1` is used instead of `None`
         data_type = get_data_type(arr.dtype)
     itemsize = arr.itemsize
@@ -128,6 +129,14 @@ cpdef _create_tensor_nd_descriptor(
         c_strides.push_back(s // itemsize)
     for s in arr._shape:
         c_shape.push_back(s)
+    # Use "c-contiguous stride" with the next axis, if ambiguous
+    next_stride = 1
+    for i in reversed(range(c_shape.size())):
+        if c_shape[i] <= 1:
+            c_strides[i] = next_stride
+        else:
+            next_stride = c_shape[i] * c_strides[i]
+
     cudnn.setTensorNdDescriptor(
         desc, data_type, arr._shape.size(), <size_t>&c_shape[0],
         <size_t>&c_strides[0])
@@ -1015,7 +1024,7 @@ def rnn_forward_training(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
         lengths):
-    hx = _ascontiguousarray_normalized_strides(hx)
+    hx = core._internal_ascontiguousarray(hx)
     if cx is not None:
         cx = core._internal_ascontiguousarray(cx)
     w = core._internal_ascontiguousarray(w)
@@ -1887,6 +1896,8 @@ def pooling_forward(
         zero = <size_t>&float_zero
         one = <size_t>&float_one
     x = core._internal_ascontiguousarray(x)
+    if not y._c_contiguous:
+        raise ValueError('pooling_forward supports c-contiguous y only')
     handle = get_handle()
     x_desc = cudnn.createTensorDescriptor()
     y_desc = cudnn.createTensorDescriptor()
@@ -1921,6 +1932,7 @@ def pooling_backward(
 
     gx = core.ndarray(x._shape, x.dtype)
     x = core._internal_ascontiguousarray(x)
+    y = core._internal_ascontiguousarray(y)
     gy = core._internal_ascontiguousarray(gy)
 
     handle = get_handle()
