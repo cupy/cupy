@@ -52,8 +52,8 @@ def make_decorator(test_case_generator):
                 mod_name = klass.__module__
 
             # Generate parameterized test cases out of the input test case.
-            l = _generate_test_cases(mod_name, klass, test_case_generator)
-            generated_cases += l
+            c = _generate_test_cases(mod_name, klass, test_case_generator)
+            generated_cases += c
 
         # Return the bundle of generated cases to allow repeated application of
         # parameterize decorators.
