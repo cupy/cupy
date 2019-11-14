@@ -5,6 +5,7 @@ import numpy
 import cupy
 from cupy import testing
 from cupy.testing import condition
+import cupyx
 
 
 @testing.gpu
@@ -105,6 +106,25 @@ class TestInv(unittest.TestCase):
         self.check_shape((4, 1))
         self.check_shape((4, 3, 2))
         self.check_shape((2, 4, 3))
+
+
+@testing.gpu
+class TestInvInvalid(unittest.TestCase):
+
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
+    @testing.for_float_dtypes(no_float16=True)
+    def test_inv(self, dtype, xp):
+        a = xp.array([[1, 2], [2, 4]]).astype(dtype)
+        with cupyx.errstate(linalg='raise'):
+            xp.linalg.inv(a)
+
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
+    @testing.for_float_dtypes(no_float16=True)
+    def test_batched_inv(self, dtype, xp):
+        a = xp.array([[[1, 2], [2, 4]]]).astype(dtype)
+        assert a.ndim >= 3  # CuPy internally uses a batched function.
+        with cupyx.errstate(linalg='raise'):
+            xp.linalg.inv(a)
 
 
 @testing.gpu
