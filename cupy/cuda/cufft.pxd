@@ -18,4 +18,11 @@ cpdef enum:
     CUFFT_INVERSE = 1
 
 
+cpdef enum:
+    CUFFT_XT_FORMAT_INPUT
+    CUFFT_XT_FORMAT_OUTPUT
+    CUFFT_XT_FORMAT_INPLACE
+    CUFFT_XT_FORMAT_INPLACE_SHUFFLED
+
+
 cpdef get_current_plan()

@@ -1,5 +1,6 @@
 cimport cython  # NOQA
 from libc.stdint cimport intptr_t
+from libcpp cimport vector
 import numpy
 import threading
 
@@ -7,6 +8,7 @@ import cupy
 from cupy.cuda cimport driver
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
+from cupy.cuda.device import Device
 
 
 cdef object _thread_local = threading.local()
@@ -57,6 +59,29 @@ cdef extern from 'cupy_cufft.h' nogil:
     Result cufftExecD2Z(Handle plan, Double *idata, DoubleComplex *odata)
     Result cufftExecZ2D(Handle plan, DoubleComplex *idata, Double *odata)
 
+    # cufftXt data types
+    ctypedef struct XtArrayDesc 'cudaXtDesc':
+        # MAX_CUDA_DESCRIPTOR_GPUS is undocumented, so we put 16 here
+        int version
+        int nGPUs
+        int GPUs[16]
+        void* data[16]
+        size_t size[16]
+        void* cudaXtState
+
+    ctypedef struct XtArray 'cudaLibXtDesc':
+        int version
+        XtArrayDesc* descriptor
+        int library
+        int subFormat
+        void* libDescriptor
+
+    # cufftXt functions
+    Result cufftXtSetGPUs(Handle plan, int nGPUs, int* gpus)
+    Result cufftXtSetWorkArea(Handle plan, void** workArea)
+    Result cufftXtMalloc(Handle plan, XtArray** arr, int format)
+    Result cufftXtFree(XtArray* arr)
+
 
 cdef dict RESULT = {
     0: 'CUFFT_SUCCESS',
@@ -96,16 +121,73 @@ cpdef inline check_result(int result):
 
 
 class Plan1d(object):
-    def __init__(self, int nx, int fft_type, int batch):
+    def __init__(self, int nx, int fft_type, int batch, *,
+                 use_multi_gpus=False, devices=None, out=None):
         cdef Handle plan
         cdef size_t work_size
+        cdef intptr_t ptr
+
         with nogil:
             result = cufftCreate(&plan)
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
-            if result == 0:
+        check_result(result)
+
+        if not use_multi_gpus:
+            with nogil:
                 result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
                                          &work_size)
+
+            # cufftMakePlan1d uses large memory when nx has large divisor.
+            # See https://github.com/cupy/cupy/issues/1063
+            if result == 2:
+                cupy.get_default_memory_pool().free_all_blocks()
+                with nogil:
+                    result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
+                                             &work_size)
+
+            check_result(result)
+            work_area = memory.alloc(work_size)
+            ptr = work_area.ptr
+            with nogil:
+                result = cufftSetWorkArea(plan, <void*>(ptr))
+            check_result(result)
+        else:
+            plan, work_area = self._get_multi_gpu_plan(
+                plan, nx, fft_type, batch, devices, out)
+
+        self.nx = nx
+        self.fft_type = fft_type
+        self.batch = batch
+        self.plan = plan
+        self.work_area = work_area
+
+    def _get_multi_gpu_plan(self, Handle plan, int nx, int fft_type, int batch,
+                            devices, out):
+        cdef int nGPUs
+        cdef vector.vector[int] gpus
+        cdef vector.vector[size_t] work_size
+        cdef list work_area = []
+        cdef vector.vector[void*] work_area_ptr
+
+        if isinstance(devices, list):
+            nGPUs = len(devices)
+            for i in range(nGPUs):
+                gpus.push_back(devices[i])
+        elif isinstance(devices, int):
+            nGPUs = devices
+            for i in range(nGPUs):
+                gpus.push_back(i)
+            #devices_ptr = devices.data()
+        else:
+            raise ValueError("\"devices\" should be an int or a list of int.")
+        work_size.resize(nGPUs)
+
+        with nogil:
+            result = cufftXtSetGPUs(plan, nGPUs, gpus.data())
+            if result == 0:
+                result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
+                                         work_size.data())
 
         # cufftMakePlan1d uses large memory when nx has large divisor.
         # See https://github.com/cupy/cupy/issues/1063
@@ -113,18 +195,19 @@ class Plan1d(object):
             cupy.get_default_memory_pool().free_all_blocks()
             with nogil:
                 result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
-                                         &work_size)
+                                         work_size.data())
+        check_result(result)
 
-        check_result(result)
-        work_area = memory.alloc(work_size)
+        for i in range(nGPUs):
+            with Device(gpus[i]):
+                buf = memory.alloc(work_size[i])
+                work_area.append(buf)
+                work_area_ptr.push_back(<void*>buf.ptr)
         with nogil:
-            result = cufftSetWorkArea(plan, <void *>(work_area.ptr))
+            result = cufftXtSetWorkArea(plan, work_area_ptr.data())
         check_result(result)
-        self.nx = nx
-        self.fft_type = fft_type
-        self.plan = plan
-        self.work_area = work_area
-        self.batch = batch
+
+        return plan, work_area
 
     def __del__(self):
         cdef Handle plan = self.plan
