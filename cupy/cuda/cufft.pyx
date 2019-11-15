@@ -221,7 +221,8 @@ cdef _XtMalloc(list gpus, list sizes,
     cdef XtArrayDesc* xtArr_desc
     cdef XtArray* xtArr
     cdef list xtArr_buffer = []
-    cdef int i, nGPUs, size
+    cdef int i, nGPUs
+    cdef size_t size
 
     assert len(gpus) == len(sizes)
     nGPUs = len(gpus)
@@ -474,9 +475,10 @@ class Plan1d(object):
     def _multi_gpu_memcpy(self, a, str action):
         cdef Handle plan = self.plan
         cdef list xtArr_buffer, share
-        cdef int start, nGPUs, i, count, size
+        cdef int start, nGPUs, i, count
         cdef XtArray* arr
         cdef intptr_t ptr
+        cdef size_t size
 
         if isinstance(a, cupy.ndarray):
             start = 0
