@@ -1,3 +1,4 @@
+import tempfile
 import unittest
 
 import pytest
@@ -473,6 +474,14 @@ class TestFromData(unittest.TestCase):
             self, xp, dtype_a, dtype_b):
         a = xp.ones((), dtype=dtype_a)
         return xp.asfortranarray(a, dtype=dtype_b)
+
+    @testing.numpy_cupy_array_equal()
+    def test_fromfile(self, xp):
+        with tempfile.TemporaryFile() as fh:
+            fh.write(b"\x00\x01\x02\x03\x04")
+            fh.flush()
+            fh.seek(0)
+            return xp.fromfile(fh, dtype="u1")
 
 
 class DummyObjectWithCudaArrayInterface(object):
