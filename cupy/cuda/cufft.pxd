@@ -25,4 +25,10 @@ cpdef enum:
     CUFFT_XT_FORMAT_INPLACE_SHUFFLED
 
 
+cpdef enum:
+    # Actually, this is 64, but it's undocumented. For the sake
+    # of safety, let us use 16, which agrees with the cuFFT doc.
+    MAX_CUDA_DESCRIPTOR_GPUS = 16
+
+
 cpdef get_current_plan()
