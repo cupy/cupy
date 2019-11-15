@@ -142,7 +142,6 @@ cpdef inline check_result(int result):
 def _multi_gpu_check_data_integraty(intptr_t in_arr=0):
     cdef intptr_t ptr
     cdef XtArray* xtArr
-    cdef Xt1dFactors factors
 
     if in_arr == 0:
         return
@@ -166,9 +165,9 @@ def _multi_gpu_check_data_integraty(intptr_t in_arr=0):
     print(<intptr_t>xtArr.libDescriptor)
 
 
-# General Note: this is necessary for single-batch transforms: "When batch is
-# one, data is left in the GPU memory in a permutation of the natural output",
-# see https://docs.nvidia.com/cuda/cufft/index.html#multiple-GPU-cufft-intermediate-helper  # NOQA
+# This is necessary for single-batch transforms: "when batch is one, data is
+# left in the GPU memory in a permutation of the natural output", see
+# https://docs.nvidia.com/cuda/cufft/index.html#multiple-GPU-cufft-intermediate-helper  # NOQA
 cdef _reorder_buffers(Handle plan, intptr_t xtArr, list xtArr_buffer):
     cdef int i, result, nGPUs
     cdef intptr_t temp_xtArr
@@ -205,6 +204,7 @@ cdef _reorder_buffers(Handle plan, intptr_t xtArr, list xtArr_buffer):
 
         # swap pointer in xtArr
         arr.descriptor.data[i] = temp_arr.descriptor.data[i]
+        assert arr.descriptor.size[i] == temp_arr.descriptor.size[i]
         temp_arr.descriptor.data[i] = NULL
         temp_arr.descriptor.size[i] = 0
 
@@ -346,7 +346,7 @@ class Plan1d(object):
                 min_len = 64
             elif nGPUs == 8:
                 min_len = 128
-            else:  # nGPU = 64
+            else:  # nGPU = 16
                 min_len = 1024
             if nx < min_len:
                 raise ValueError('For {} GPUs, the array length must be at '
