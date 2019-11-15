@@ -223,7 +223,6 @@ cdef class RawModule:
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options or
             https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#command-option-description
         backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
-        backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
         translate_cucomplex (bool): Whether the CUDA source includes the header
             `cuComplex.h` or not. If set to ``True``, any code that uses the
             functions from `cuComplex.h` will be translated to its Thrust
