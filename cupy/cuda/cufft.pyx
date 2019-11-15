@@ -70,11 +70,17 @@ cdef extern from 'cupy_cufft.h' nogil:
         size_t size[MAX_CUDA_DESCRIPTOR_GPUS]
         void* cudaXtState
 
+    ctypedef enum XtSubFormat 'cufftXtSubFormat':
+        CUFFT_XT_FORMAT_INPUT
+        CUFFT_XT_FORMAT_OUTPUT
+        CUFFT_XT_FORMAT_INPLACE
+        CUFFT_XT_FORMAT_INPLACE_SHUFFLED
+
     ctypedef struct XtArray 'cudaLibXtDesc':
         int version
         XtArrayDesc* descriptor
         int library
-        int subFormat
+        XtSubFormat subFormat
         void* libDescriptor
 
     ctypedef enum XtCopyType 'cufftXtCopyType':
@@ -82,43 +88,17 @@ cdef extern from 'cupy_cufft.h' nogil:
         CUFFT_COPY_DEVICE_TO_HOST = 0x01
         CUFFT_COPY_DEVICE_TO_DEVICE = 0x02
 
-    ctypedef enum XtSubFormat 'cufftXtSubFormat':
-        CUFFT_XT_FORMAT_INPUT
-        CUFFT_XT_FORMAT_OUTPUT
-        CUFFT_XT_FORMAT_INPLACE
-        CUFFT_XT_FORMAT_INPLACE_SHUFFLED
-
-    # for debugging
-    ctypedef struct Xt1dFactors 'cufftXt1dFactors':
-        long long int size
-        long long int stringCount
-        long long int stringLength
-        long long int substringLength
-        long long int factor1
-        long long int factor2
-        long long int stringMask
-        long long int substringMask
-        long long int factor1Mask
-        long long int factor2Mask
-        int stringShift
-        int substringShift
-        int factor1Shift
-        int factor2Shift
-
     ctypedef enum XtQueryType 'cufftXtQueryType':
         CUFFT_QUERY_1D_FACTORS = 0x00
 
     # cufftXt functions
     Result cufftXtSetGPUs(Handle plan, int nGPUs, int* gpus)
     Result cufftXtSetWorkArea(Handle plan, void** workArea)
-    Result cufftXtMalloc(Handle plan, XtArray** arr, XtSubFormat format)
-    Result cufftXtFree(XtArray* arr)
     Result cufftXtMemcpy(Handle plan, void *dst, void *src, XtCopyType type)
     Result cufftXtExecDescriptorC2C(Handle plan, XtArray* idata,
                                     XtArray* odata, int direction)
     Result cufftXtExecDescriptorZ2Z(Handle plan, XtArray* idata,
                                     XtArray* odata, int direction)
-    Result cufftXtQueryPlan(Handle plan, void* query, XtQueryType queryType)
 
 
 cdef dict RESULT = {
@@ -158,48 +138,127 @@ cpdef inline check_result(int result):
         raise CuFFTError(result)
 
 
-cdef void _swap_mem_ptr(Handle plan, intptr_t old_xtArr, list old_xtArr_buffer):
-    cdef int result, nGPUs
+# for debugging
+def _multi_gpu_check_data_integraty(intptr_t in_arr=0):
+    cdef intptr_t ptr
+    cdef XtArray* xtArr
+    cdef Xt1dFactors factors
+
+    if in_arr == 0:
+        return
+    xtArr = <XtArray*>in_arr
+
+    print(xtArr.version)
+    print(xtArr.descriptor.version)
+    print(xtArr.descriptor.nGPUs)
+    for i in range(MAX_CUDA_DESCRIPTOR_GPUS):
+        print(xtArr.descriptor.GPUs[i], end=' ')
+    print()
+    for i in range(MAX_CUDA_DESCRIPTOR_GPUS):
+        print(<intptr_t>xtArr.descriptor.data[i], end=' ')
+    print()
+    for i in range(MAX_CUDA_DESCRIPTOR_GPUS):
+        print(xtArr.descriptor.size[i], end=' ')
+    print()
+    print(<intptr_t>xtArr.descriptor.cudaXtState)
+    print(xtArr.library)
+    print(<int>xtArr.subFormat)
+    print(<intptr_t>xtArr.libDescriptor)
+
+
+# General Note: this is necessary for single-batch transforms: "When batch is
+# one, data is left in the GPU memory in a permutation of the natural output",
+# see https://docs.nvidia.com/cuda/cufft/index.html#multiple-GPU-cufft-intermediate-helper  # NOQA
+cdef _reorder_buffers(Handle plan, intptr_t xtArr, list xtArr_buffer):
+    cdef int i, result, nGPUs
+    cdef intptr_t temp_xtArr
+    cdef XtArray* temp_arr
     cdef XtArray* arr
-    cdef XtArray* old_arr
-    cdef list garbage = []  # freed when out of scope
+    cdef list gpus = []
+    cdef list sizes = []
+    cdef list temp_xtArr_buffer
 
-    # make a device copy to bring the data back to natural order
-    nGPUs = len(old_xtArr_buffer)
-    with nogil:
-        result = cufftXtMalloc(plan, &arr, CUFFT_XT_FORMAT_INPLACE)
-        if result == 0:
-            result = cufftXtMemcpy(plan, <void*>arr, <void*>old_xtArr, CUFFT_COPY_DEVICE_TO_DEVICE)
-    check_result(result)
+    arr = <XtArray*>xtArr
+    nGPUs = len(xtArr_buffer)
+    assert nGPUs == arr.descriptor.nGPUs
 
-    # Now the old buffer is not needed, but we still want its list container,
-    # so we swap the pointers and free the "new" XtArray
-    old_arr = <XtArray*>old_xtArr
+    # allocate another buffer to prepare for order conversion
     for i in range(nGPUs):
-        # swap MemoryPointer in old_xtArr_buffer
-        raw_mem = memory.BaseMemory()
-        raw_mem.ptr = <intptr_t>(arr.descriptor.data[i])
-        raw_mem.size = arr.descriptor.size[i]
-        raw_mem.device_id = arr.descriptor.GPUs[i]
-        mem = memory.MemoryPointer(raw_mem, 0)
-        garbage.append(old_xtArr_buffer[i])
-        old_xtArr_buffer[i] = mem
+        gpus.append(arr.descriptor.GPUs[i])
+        sizes.append(arr.descriptor.size[i])
+    temp_xtArr, temp_xtArr_buffer = _XtMalloc(gpus, sizes)
+    temp_arr = <XtArray*>temp_xtArr
 
-        # swap pointer in old_xtArr
-        old_arr.descriptor.data[i] = arr.descriptor.data[i]
-        arr.descriptor.data[i] = NULL
-        arr.descriptor.size[i] = 0
+    # Make a device copy to bring the data from the permuted order back to
+    # the natural order. Note that this works because after FFT
+    # arr.subFormat is silently changed to CUFFT_XT_FORMAT_INPLACE_SHUFFLED
     with nogil:
-        result = cufftXtFree(arr)
+        result = cufftXtMemcpy(plan, <void*>temp_arr, <void*>arr,
+                               CUFFT_COPY_DEVICE_TO_DEVICE)
     check_result(result)
+
+    for i in range(nGPUs):
+        # swap MemoryPointer in xtArr_buffer
+        temp = temp_xtArr_buffer[i]
+        temp_xtArr_buffer[i] = xtArr_buffer[i]
+        xtArr_buffer[i] = temp
+
+        # swap pointer in xtArr
+        arr.descriptor.data[i] = temp_arr.descriptor.data[i]
+        temp_arr.descriptor.data[i] = NULL
+        temp_arr.descriptor.size[i] = 0
+
+    # temp_xtArr now points to the old data, which is now in temp_xtArr_buffer
+    # and will be deallocated after this line (out of scope)
+    _XtFree(temp_xtArr)
+
+
+# We need to manage the buffers ourselves in order to 1. avoid excessive,
+# uncessary memory usage, and 2. use CuPy's memory pool.
+# This is meant to replace cufftXtMalloc().
+cdef _XtMalloc(list gpus, list sizes,
+               XtSubFormat format=CUFFT_XT_FORMAT_INPLACE):
+    cdef XtArrayDesc* xtArr_desc
+    cdef XtArray* xtArr
+    cdef list xtArr_buffer = []
+    cdef int i, nGPUs, size
+
+    assert len(gpus) == len(sizes)
+    nGPUs = len(gpus)
+    xtArr_desc = <XtArrayDesc*>PyMem_Malloc(sizeof(XtArrayDesc))
+    xtArr = <XtArray*>PyMem_Malloc(sizeof(XtArray))
+    c_memset(xtArr_desc, 0, sizeof(XtArrayDesc))
+    c_memset(xtArr, 0, sizeof(XtArray))
+
+    xtArr_desc.nGPUs = nGPUs
+    for i, size in enumerate(sizes):
+        with Device(gpus[i]):
+            buf = memory.alloc(size)
+        xtArr_buffer.append(buf)
+        xtArr_desc.GPUs[i] = gpus[i]
+        xtArr_desc.data[i] = <void*>buf.ptr
+        xtArr_desc.size[i] = size
+
+    xtArr.descriptor = xtArr_desc
+    xtArr.subFormat = format
+
+    return <intptr_t>xtArr, xtArr_buffer
+
+
+# This is meant to replace cufftXtFree().
+# We only free the C structs. The underlying GPU buffers are deallocated when
+# going out of scope.
+cdef _XtFree(intptr_t ptr):
+    cdef XtArray* xtArr = <XtArray*>ptr
+    cdef XtArrayDesc* xtArr_desc = xtArr.descriptor
+    PyMem_Free(xtArr_desc)
+    PyMem_Free(xtArr)
 
 
 class Plan1d(object):
     def __init__(self, int nx, int fft_type, int batch, *,
                  use_multi_gpus=False, devices=None, out=None):
         cdef Handle plan
-        cdef size_t work_size
-        cdef intptr_t ptr
 
         with nogil:
             result = cufftCreate(&plan)
@@ -208,24 +267,8 @@ class Plan1d(object):
         check_result(result)
 
         if not use_multi_gpus:
-            with nogil:
-                result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
-                                         &work_size)
-
-            # cufftMakePlan1d uses large memory when nx has large divisor.
-            # See https://github.com/cupy/cupy/issues/1063
-            if result == 2:
-                cupy.get_default_memory_pool().free_all_blocks()
-                with nogil:
-                    result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
-                                             &work_size)
-
-            check_result(result)
-            work_area = memory.alloc(work_size)
-            ptr = work_area.ptr
-            with nogil:
-                result = cufftSetWorkArea(plan, <void*>(ptr))
-            check_result(result)
+            plan, work_area = self._single_gpu_get_plan(plan, nx, fft_type,
+                                                        batch)
             gpus = None
         else:
             plan, work_area, gpus = self._multi_gpu_get_plan(
@@ -243,9 +286,36 @@ class Plan1d(object):
         self.xtArr = <intptr_t>0  # pointer to metadata for multi-GPU buffer
         self.xtArr_buffer = None  # actual multi-GPU intermediate buffer
 
+    def _single_gpu_get_plan(self, Handle plan, int nx, int fft_type,
+                             int batch):
+        cdef int result
+        cdef size_t work_size
+        cdef intptr_t ptr
+
+        with nogil:
+            result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
+                                     &work_size)
+
+        # cufftMakePlan1d uses large memory when nx has large divisor.
+        # See https://github.com/cupy/cupy/issues/1063
+        if result == 2:
+            cupy.get_default_memory_pool().free_all_blocks()
+            with nogil:
+                result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
+                                         &work_size)
+
+        check_result(result)
+        work_area = memory.alloc(work_size)
+        ptr = work_area.ptr
+        with nogil:
+            result = cufftSetWorkArea(plan, <void*>(ptr))
+        check_result(result)
+
+        return plan, work_area
+
     def _multi_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch,
                             devices, out):
-        cdef int nGPUs, min_len
+        cdef int nGPUs, min_len, result
         cdef vector.vector[int] gpus
         cdef vector.vector[size_t] work_size
         cdef list work_area = []
@@ -264,7 +334,7 @@ class Plan1d(object):
             for i in range(nGPUs):
                 gpus.push_back(i)
         else:
-            raise ValueError("\"devices\" should be an int or a list of int.")
+            raise ValueError('\"devices\" should be an int or a list of int.')
         if batch == 1:
             if (nx & (nx - 1)) != 0:
                 raise ValueError('For multi-GPU FFT with batch = 1, the array '
@@ -280,8 +350,8 @@ class Plan1d(object):
                 min_len = 1024
             if nx < min_len:
                 raise ValueError('For {} GPUs, the array length must be at '
-                                 'least {} (you have {}).'.format(nGPUs,
-                                 min_len, nx))
+                                 'least {} (you have {}).'
+                                 .format(nGPUs, min_len, nx))
         work_size.resize(nGPUs)
 
         with nogil:
@@ -321,13 +391,8 @@ class Plan1d(object):
         check_result(result)
 
         if self.xtArr != 0:
-            # WARNING: <XtArray*>self.xtAtr is the address of the object
-            # self.xtAtr, not that of the actual XtArray struct...
-            ptr = self.xtArr
-            xtArr = <XtArray*>ptr
-            xtArr_desc = xtArr.descriptor
-            PyMem_Free(xtArr_desc)
-            PyMem_Free(xtArr)
+            _XtFree(self.xtArr)
+            self.xtArr = 0
 
     def __enter__(self):
         _thread_local._current_plan = self
@@ -365,19 +430,16 @@ class Plan1d(object):
     def _multi_gpu_setup_buffer(self, a):
         cdef XtArrayDesc* xtArr_desc
         cdef XtArray* xtArr
-        cdef list xtArr_buffer, share
-        cdef int i, nGPUs, size, count
+        cdef intptr_t ptr
+        cdef list xtArr_buffer, share, sizes
+        cdef int i, nGPUs, count
 
         # First, get the buffers:
         # We need to manage the buffers ourselves in order to avoid excessive,
         # uncessary memory usage. Note that these buffers are used for in-place
         # transforms, and are re-used (lifetime tied to the plan).
         if isinstance(a, cupy.ndarray):
-            if self.xtArr == 0:
-                xtArr_desc = <XtArrayDesc*>PyMem_Malloc(sizeof(XtArrayDesc))
-                c_memset(xtArr_desc, 0, sizeof(XtArrayDesc))
-                xtArr = <XtArray*>PyMem_Malloc(sizeof(XtArray))
-                c_memset(xtArr, 0, sizeof(XtArray))
+            if self.xtArr == 0 and self.xtArr_buffer is None:
                 nGPUs = len(self.gpus)
 
                 # this is the rule for distributing the workload
@@ -387,22 +449,17 @@ class Plan1d(object):
                         share[i] += 1
                 else:
                     share = [1.0 / nGPUs] * nGPUs
+                sizes = [int(share[i] * self.nx * a.dtype.itemsize)
+                         for i in range(nGPUs)]
 
-                xtArr_buffer = []
-                xtArr_desc.nGPUs = nGPUs
-                for i in range(nGPUs):
-                    size = int(share[i] * self.nx * a.dtype.itemsize)
-                    with Device(self.gpus[i]):
-                        buf = memory.alloc(size)
-                    xtArr_buffer.append(buf)
-                    xtArr_desc.GPUs[i] = self.gpus[i]
-                    xtArr_desc.data[i] = <void*>buf.ptr
-                    xtArr_desc.size[i] = size
+                # get buffer
+                ptr, xtArr_buffer = _XtMalloc(self.gpus, sizes)
+                xtArr = <XtArray*>ptr
+                xtArr_desc = xtArr.descriptor
+                assert xtArr_desc.nGPUs == nGPUs
 
-                xtArr.descriptor = xtArr_desc
-                xtArr.subFormat = CUFFT_XT_FORMAT_INPLACE
                 self.batch_share = share
-                self.xtArr = <intptr_t>xtArr
+                self.xtArr = ptr
                 self.xtArr_buffer = xtArr_buffer  # kept to ensure lifetime
         elif isinstance(a, list):
             # TODO(leofang): For users running Plan1d.fft() (bypassing all
@@ -413,9 +470,6 @@ class Plan1d(object):
                                       'supported.')
         else:
             raise ValueError('Impossible to reach.')
-
-        # Next, copy data to buffer
-        self._multi_gpu_memcpy(a, 'scatter')
 
     def _multi_gpu_memcpy(self, a, str action):
         cdef Handle plan = self.plan
@@ -442,9 +496,9 @@ class Plan1d(object):
                         b[start:start+count].data, size)
                     start += count
                 assert start == b.size
-            else:  # = 'gather'
+            elif action == 'gather':
                 if self.batch == 1:
-                    _swap_mem_ptr(plan, self.xtArr, xtArr_buffer)
+                    _reorder_buffers(plan, self.xtArr, xtArr_buffer)
 
                 for i in range(nGPUs):
                     count = int(share[i] * self.nx)
@@ -453,12 +507,18 @@ class Plan1d(object):
                         xtArr_buffer[i], size)
                     start += count
                 assert start == b.size
+            else:
+                raise ValueError
 
     def _multi_gpu_fft(self, a, out, direction):
         # When we arrive here, the normal CuPy call path ensures a and out
         # reside on the same GPU -> must distribute a to all of the GPUs
         self._multi_gpu_setup_buffer(a)
 
+        # Next, copy data to buffer
+        self._multi_gpu_memcpy(a, 'scatter')
+
+        # Actual workhorses
         if self.fft_type == CUFFT_C2C:
             multi_gpu_execC2C(self.plan, self.xtArr, self.xtArr, direction)
         elif self.fft_type == CUFFT_Z2Z:
@@ -466,7 +526,15 @@ class Plan1d(object):
         else:
             raise ValueError
 
+        # Gather the distributed outputs
         self._multi_gpu_memcpy(out, 'gather')
+
+        # After FFT the subFormat flag is silently changed to
+        # CUFFT_XT_FORMAT_INPLACE_SHUFFLED. For reuse we must correct it,
+        # otherwise in the next run we would encounter CUFFT_INVALID_TYPE!
+        cdef intptr_t ptr = self.xtArr
+        cdef XtArray* xtArr = <XtArray*>ptr
+        xtArr.subFormat = CUFFT_XT_FORMAT_INPLACE
 
     def _output_dtype_and_shape(self, a):
         shape = list(a.shape)
@@ -513,53 +581,8 @@ class Plan1d(object):
 
     # for debugging
     def _multi_gpu_check_data_integraty(self, intptr_t in_arr=0):
-        cdef intptr_t ptr
-        cdef XtArray* xtArr
-        cdef Xt1dFactors factors
-
-        if in_arr == 0:
-            # WARNING: <XtArray*>self.ptr gets the address of the object
-            # self.ptr, not that of the actual struct...
-            ptr = <intptr_t>self.xtArr
-            xtArr = <XtArray*>ptr
-        else:
-            xtArr = <XtArray*>in_arr
-        print(xtArr.version)
-        print(xtArr.descriptor.version)
-        print(xtArr.descriptor.nGPUs)
-        for i in range(MAX_CUDA_DESCRIPTOR_GPUS):
-            print(xtArr.descriptor.GPUs[i], end=' ')
-        print()
-        for i in range(MAX_CUDA_DESCRIPTOR_GPUS):
-            print(<intptr_t>xtArr.descriptor.data[i], end=' ')
-        print()
-        for i in range(MAX_CUDA_DESCRIPTOR_GPUS):
-            print(xtArr.descriptor.size[i], end=' ')
-        print()
-        print(<intptr_t>xtArr.descriptor.cudaXtState)
-        print(xtArr.library)
-        print(xtArr.subFormat)
-        print(<intptr_t>xtArr.libDescriptor)
-
-        if self.batch == 1:
-            # Seems the query only works in this corner case; for other cases, a Floating point exception
-            # is raised here for some reason...
-            result = cufftXtQueryPlan(<Handle>self.plan, <void*>&factors, CUFFT_QUERY_1D_FACTORS)
-            check_result(result)
-            print(factors.size)
-            print(factors.stringCount)
-            print(factors.stringLength)
-            print(factors.substringLength)
-            print(factors.factor1)
-            print(factors.factor2)
-            print(factors.stringMask)
-            print(factors.substringMask)
-            print(factors.factor1Mask)
-            print(factors.factor2Mask)
-            print(factors.stringShift)
-            print(factors.substringShift)
-            print(factors.factor1Shift)
-            print(factors.factor2Shift)
+        cdef intptr_t ptr = <intptr_t>self.xtArr
+        _multi_gpu_check_data_integraty(ptr)
 
 
 class PlanNd(object):
