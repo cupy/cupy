@@ -11,6 +11,7 @@ from cupy.cuda cimport driver
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 from cupy.cuda.device import Device
+from cupy.cuda.stream import Event, Stream
 
 
 cdef object _thread_local = threading.local()
@@ -265,7 +266,7 @@ class Plan1d(object):
                 result = cufftSetAutoAllocation(plan, 0)
         check_result(result)
 
-        # set plan, work_area, and gpus
+        # set plan, work_area, gpus, streams, and events
         if not use_multi_gpus:
             self._single_gpu_get_plan(plan, nx, fft_type, batch)
         else:
@@ -308,6 +309,8 @@ class Plan1d(object):
         self.plan = plan
         self.work_area = work_area  # this is for cuFFT plan
         self.gpus = None
+        self.streams = None
+        self.events = None
 
     def _multi_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch,
                             devices, out):
@@ -315,6 +318,8 @@ class Plan1d(object):
         cdef vector.vector[int] gpus
         cdef vector.vector[size_t] work_size
         cdef list work_area = []
+        cdef list streams = []
+        cdef list events = []
         cdef vector.vector[void*] work_area_ptr
 
         # some sanity checks
@@ -368,7 +373,11 @@ class Plan1d(object):
         for i in range(nGPUs):
             with Device(gpus[i]):
                 buf = memory.alloc(work_size[i])
+                stream = Stream()
+                event = Event()
             work_area.append(buf)
+            streams.append(stream)
+            events.append(event)
             work_area_ptr.push_back(<void*>buf.ptr)
         with nogil:
             result = cufftXtSetWorkArea(plan, work_area_ptr.data())
@@ -377,6 +386,8 @@ class Plan1d(object):
         self.plan = plan
         self.work_area = work_area  # this is for cuFFT plan
         self.gpus = list(gpus)
+        self.streams = streams      # for async, overlapped copies
+        self.events = events        # for async, overlapped copies
 
     def __del__(self):
         cdef Handle plan = self.plan
@@ -512,8 +523,16 @@ class Plan1d(object):
                     for i in range(nGPUs):
                         count = int(share[i] * self.nx)
                         size = count * b.dtype.itemsize
-                        xtArr_buffer[i].copy_from_device(
-                            b[start:start+count].data, size)
+                        stream = self.streams[i]
+                        xtArr_buffer[i].copy_from_device_async(
+                            b[start:start+count].data, size, stream)
+                        if i != 0:
+                            event = self.events[i-1]
+                            stream.wait_event(event)
+                        event = self.events[i]
+                        event.record(stream)
+                        if i == nGPUs - 1:
+                            event.synchronize()
                         start += count
                     assert start == b.size
                 else:  # numpy
@@ -531,8 +550,16 @@ class Plan1d(object):
                     for i in range(nGPUs):
                         count = int(share[i] * self.nx)
                         size = count * b.dtype.itemsize
-                        b[start:start+count].data.copy_from_device(
-                            xtArr_buffer[i], size)
+                        stream = self.streams[i]
+                        b[start:start+count].data.copy_from_device_async(
+                            xtArr_buffer[i], size, stream)
+                        if i != 0:
+                            event = self.events[i-1]
+                            stream.wait_event(event)
+                        event = self.events[i]
+                        event.record(stream)
+                        if i == nGPUs - 1:
+                            event.synchronize()
                         start += count
                     assert start == b.size
                 else:  # numpy
