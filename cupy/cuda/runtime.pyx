@@ -158,6 +158,11 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaGetTextureObjectResourceDesc(ResourceDesc* desc, TextureObject obj)
     int cudaGetTextureObjectTextureDesc(TextureDesc* desc, TextureObject obj)
 
+    # Surface
+    int cudaCreateSurfaceObject(SurfaceObject* pSurObject,
+                                const ResourceDesc* pResDesc)
+    int cudaDestroySurfaceObject(SurfaceObject surObject)
+
     bint hip_environment
     int cudaDevAttrComputeCapabilityMajor
     int cudaDevAttrComputeCapabilityMinor
@@ -644,6 +649,19 @@ cpdef uintmax_t createTextureObject(intptr_t ResDescPtr, intptr_t TexDescPtr):
 cpdef destroyTextureObject(uintmax_t texObject):
     with nogil:
         status = cudaDestroyTextureObject(<TextureObject>texObject)
+    check_status(status)
+
+cpdef uintmax_t createSurfaceObject(intptr_t ResDescPtr):
+    cdef uintmax_t surfobj = 0
+    with nogil:
+        status = cudaCreateSurfaceObject(<SurfaceObject*>(&surfobj),
+                                         <ResourceDesc*>ResDescPtr)
+    check_status(status)
+    return surfobj
+
+cpdef destroySurfaceObject(uintmax_t surfObject):
+    with nogil:
+        status = cudaDestroySurfaceObject(<SurfaceObject>surfObject)
     check_status(status)
 
 cdef ChannelFormatDesc getChannelDesc(intptr_t array):

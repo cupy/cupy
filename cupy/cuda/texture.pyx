@@ -502,6 +502,15 @@ cdef class TextureObject:
         runtime.destroyTextureObject(self.ptr)
         self.ptr = 0
 
+cdef class SurfaceObject:
+    def __init__(self, ResourceDescriptor ResDesc):
+        self.ptr = runtime.createSurfaceObject(ResDesc.ptr)
+        self.ResDesc = ResDesc
+
+    def __dealloc__(self):
+        runtime.destroySurfaceObject(self.ptr)
+        self.ptr = 0
+
 
 cdef class TextureReference:
     '''A class that holds a texture reference. Equivalent to ``CUtexref`` (the
