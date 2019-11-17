@@ -89,9 +89,6 @@ cdef extern from 'cupy_cufft.h' nogil:
         CUFFT_COPY_DEVICE_TO_HOST = 0x01
         CUFFT_COPY_DEVICE_TO_DEVICE = 0x02
 
-    ctypedef enum XtQueryType 'cufftXtQueryType':
-        CUFFT_QUERY_1D_FACTORS = 0x00
-
     # cufftXt functions
     Result cufftXtSetGPUs(Handle plan, int nGPUs, int* gpus)
     Result cufftXtSetWorkArea(Handle plan, void** workArea)
