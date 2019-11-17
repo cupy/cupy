@@ -468,8 +468,9 @@ class Plan1d(object):
                 self.xtArr_buffer = xtArr_buffer  # kept to ensure lifetime
             else:
                 # After FFT the subFormat flag is silently changed to
-                # CUFFT_XT_FORMAT_INPLACE_SHUFFLED. For reuse we must correct it,
-                # otherwise in the next run we would encounter CUFFT_INVALID_TYPE!
+                # CUFFT_XT_FORMAT_INPLACE_SHUFFLED. For reuse we must correct
+                # it, otherwise in the next run we would encounter
+                # CUFFT_INVALID_TYPE!
                 ptr = self.xtArr
                 xtArr = <XtArray*>ptr
                 if self.batch == 1:
