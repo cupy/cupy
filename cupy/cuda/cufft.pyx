@@ -265,22 +265,17 @@ class Plan1d(object):
                 result = cufftSetAutoAllocation(plan, 0)
         check_result(result)
 
+        # set plan, work_area, and gpus
         if not use_multi_gpus:
-            plan, work_area = self._single_gpu_get_plan(plan, nx, fft_type,
-                                                        batch)
-            gpus = None
+            self._single_gpu_get_plan(plan, nx, fft_type, batch)
         else:
-            plan, work_area, gpus = self._multi_gpu_get_plan(
-                plan, nx, fft_type, batch, devices, out)
+            self._multi_gpu_get_plan(plan, nx, fft_type, batch, devices, out)
 
         self.nx = nx
         self.fft_type = fft_type
         self.batch = batch
-        self.plan = plan
-        self.work_area = work_area  # this is for cuFFT plan
 
         self.use_multi_gpus = use_multi_gpus
-        self.gpus = gpus
         self.batch_share = None
         self.xtArr = <intptr_t>0  # pointer to metadata for multi-GPU buffer
         self.xtArr_buffer = None  # actual multi-GPU intermediate buffer
@@ -310,7 +305,9 @@ class Plan1d(object):
             result = cufftSetWorkArea(plan, <void*>(ptr))
         check_result(result)
 
-        return plan, work_area
+        self.plan = plan
+        self.work_area = work_area  # this is for cuFFT plan
+        self.gpus = None
 
     def _multi_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch,
                             devices, out):
@@ -377,7 +374,9 @@ class Plan1d(object):
             result = cufftXtSetWorkArea(plan, work_area_ptr.data())
         check_result(result)
 
-        return plan, work_area, list(gpus)
+        self.plan = plan
+        self.work_area = work_area  # this is for cuFFT plan
+        self.gpus = list(gpus)
 
     def __del__(self):
         cdef Handle plan = self.plan
