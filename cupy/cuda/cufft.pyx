@@ -75,6 +75,7 @@ cdef extern from 'cupy_cufft.h' nogil:
         CUFFT_XT_FORMAT_OUTPUT
         CUFFT_XT_FORMAT_INPLACE
         CUFFT_XT_FORMAT_INPLACE_SHUFFLED
+        CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED
 
     ctypedef struct XtArray 'cudaLibXtDesc':
         int version
@@ -185,7 +186,8 @@ cdef _reorder_buffers(Handle plan, intptr_t xtArr, list xtArr_buffer):
     for i in range(nGPUs):
         gpus.append(arr.descriptor.GPUs[i])
         sizes.append(arr.descriptor.size[i])
-    temp_xtArr, temp_xtArr_buffer = _XtMalloc(gpus, sizes)
+    temp_xtArr, temp_xtArr_buffer = _XtMalloc(gpus, sizes,
+                                              CUFFT_XT_FORMAT_INPLACE)
     temp_arr = <XtArray*>temp_xtArr
 
     # Make a device copy to bring the data from the permuted order back to
@@ -216,8 +218,7 @@ cdef _reorder_buffers(Handle plan, intptr_t xtArr, list xtArr_buffer):
 # We need to manage the buffers ourselves in order to 1. avoid excessive,
 # uncessary memory usage, and 2. use CuPy's memory pool.
 # This is meant to replace cufftXtMalloc().
-cdef _XtMalloc(list gpus, list sizes,
-               XtSubFormat format=CUFFT_XT_FORMAT_INPLACE):
+cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
     cdef XtArrayDesc* xtArr_desc
     cdef XtArray* xtArr
     cdef list xtArr_buffer = []
@@ -241,7 +242,7 @@ cdef _XtMalloc(list gpus, list sizes,
         xtArr_desc.size[i] = size
 
     xtArr.descriptor = xtArr_desc
-    xtArr.subFormat = format
+    xtArr.subFormat = fmt
 
     return <intptr_t>xtArr, xtArr_buffer
 
@@ -434,12 +435,13 @@ class Plan1d(object):
         cdef intptr_t ptr
         cdef list xtArr_buffer, share, sizes
         cdef int i, nGPUs, count
+        cdef XtSubFormat fmt
 
         # First, get the buffers:
         # We need to manage the buffers ourselves in order to avoid excessive,
         # uncessary memory usage. Note that these buffers are used for in-place
         # transforms, and are re-used (lifetime tied to the plan).
-        if isinstance(a, cupy.ndarray):
+        if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
             if self.xtArr == 0 and self.xtArr_buffer is None:
                 nGPUs = len(self.gpus)
 
@@ -454,7 +456,12 @@ class Plan1d(object):
                          for i in range(nGPUs)]
 
                 # get buffer
-                ptr, xtArr_buffer = _XtMalloc(self.gpus, sizes)
+                if isinstance(a, cupy.ndarray):
+                    fmt = CUFFT_XT_FORMAT_INPLACE
+                else:  # from numpy
+                    fmt = CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED
+                ptr, xtArr_buffer = _XtMalloc(self.gpus, sizes, fmt)
+
                 xtArr = <XtArray*>ptr
                 xtArr_desc = xtArr.descriptor
                 assert xtArr_desc.nGPUs == nGPUs
@@ -462,6 +469,18 @@ class Plan1d(object):
                 self.batch_share = share
                 self.xtArr = ptr
                 self.xtArr_buffer = xtArr_buffer  # kept to ensure lifetime
+            else:
+                # After FFT the subFormat flag is silently changed to
+                # CUFFT_XT_FORMAT_INPLACE_SHUFFLED. For reuse we must correct it,
+                # otherwise in the next run we would encounter CUFFT_INVALID_TYPE!
+                ptr = self.xtArr
+                xtArr = <XtArray*>ptr
+                if self.batch == 1:
+                    if isinstance(a, cupy.ndarray):
+                        fmt = CUFFT_XT_FORMAT_INPLACE
+                    else:  # from numpy
+                        fmt = CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED
+                    xtArr.subFormat = fmt
         elif isinstance(a, list):
             # TODO(leofang): For users running Plan1d.fft() (bypassing all
             # checks in cupy.fft.fft), they are allowed to send in a list of
@@ -475,29 +494,38 @@ class Plan1d(object):
     def _multi_gpu_memcpy(self, a, str action):
         cdef Handle plan = self.plan
         cdef list xtArr_buffer, share
-        cdef int start, nGPUs, i, count
+        cdef int start, nGPUs, i, count, result
         cdef XtArray* arr
-        cdef intptr_t ptr
+        cdef intptr_t ptr, ptr2
         cdef size_t size
 
-        if isinstance(a, cupy.ndarray):
+        if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
             start = 0
             b = a.ravel()
             assert b.flags['OWNDATA'] is False
             assert self.xtArr_buffer is not None
             ptr = self.xtArr
+            arr = <XtArray*>ptr
             xtArr_buffer = self.xtArr_buffer
             nGPUs = len(self.gpus)
             share = self.batch_share
 
             if action == 'scatter':
-                for i in range(nGPUs):
-                    count = int(share[i] * self.nx)
-                    size = count * b.dtype.itemsize
-                    xtArr_buffer[i].copy_from_device(
-                        b[start:start+count].data, size)
-                    start += count
-                assert start == b.size
+                if isinstance(a, cupy.ndarray):
+                    for i in range(nGPUs):
+                        count = int(share[i] * self.nx)
+                        size = count * b.dtype.itemsize
+                        xtArr_buffer[i].copy_from(
+                            b[start:start+count].data, size)
+                        start += count
+                    assert start == b.size
+                else:  # numpy
+                    ptr2 = b.ctypes.data
+                    with nogil:
+                        result = cufftXtMemcpy(
+                            plan, <void*>arr, <void*>ptr2,
+                            CUFFT_COPY_HOST_TO_DEVICE)
+                    check_result(result)
             elif action == 'gather':
                 if self.batch == 1:
                     _reorder_buffers(plan, self.xtArr, xtArr_buffer)
@@ -530,13 +558,6 @@ class Plan1d(object):
 
         # Gather the distributed outputs
         self._multi_gpu_memcpy(out, 'gather')
-
-        # After FFT the subFormat flag is silently changed to
-        # CUFFT_XT_FORMAT_INPLACE_SHUFFLED. For reuse we must correct it,
-        # otherwise in the next run we would encounter CUFFT_INVALID_TYPE!
-        cdef intptr_t ptr = self.xtArr
-        cdef XtArray* xtArr = <XtArray*>ptr
-        xtArr.subFormat = CUFFT_XT_FORMAT_INPLACE
 
     def _output_dtype_and_shape(self, a):
         shape = list(a.shape)
