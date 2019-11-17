@@ -525,16 +525,24 @@ class Plan1d(object):
                             CUFFT_COPY_HOST_TO_DEVICE)
                     check_result(result)
             elif action == 'gather':
-                if self.batch == 1:
-                    _reorder_buffers(plan, self.xtArr, xtArr_buffer)
+                if isinstance(a, cupy.ndarray):
+                    if self.batch == 1:
+                        _reorder_buffers(plan, self.xtArr, xtArr_buffer)
 
-                for i in range(nGPUs):
-                    count = int(share[i] * self.nx)
-                    size = count * b.dtype.itemsize
-                    b[start:start+count].data.copy_from_device(
-                        xtArr_buffer[i], size)
-                    start += count
-                assert start == b.size
+                    for i in range(nGPUs):
+                        count = int(share[i] * self.nx)
+                        size = count * b.dtype.itemsize
+                        b[start:start+count].data.copy_from_device(
+                            xtArr_buffer[i], size)
+                        start += count
+                    assert start == b.size
+                else:  # numpy
+                    ptr2 = b.ctypes.data
+                    with nogil:
+                        result = cufftXtMemcpy(
+                            plan, <void*>ptr2, <void*>arr,
+                            CUFFT_COPY_DEVICE_TO_HOST)
+                    check_result(result)
             else:
                 raise ValueError
 
