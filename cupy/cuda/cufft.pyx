@@ -515,7 +515,7 @@ class Plan1d(object):
                     for i in range(nGPUs):
                         count = int(share[i] * self.nx)
                         size = count * b.dtype.itemsize
-                        xtArr_buffer[i].copy_from(
+                        xtArr_buffer[i].copy_from_device(
                             b[start:start+count].data, size)
                         start += count
                     assert start == b.size
@@ -604,7 +604,7 @@ class Plan1d(object):
 
     # for debugging
     def _multi_gpu_check_data_integraty(self, intptr_t in_arr=0):
-        cdef intptr_t ptr = <intptr_t>self.xtArr
+        cdef intptr_t ptr = self.xtArr
         _multi_gpu_check_data_integraty(ptr)
 
 

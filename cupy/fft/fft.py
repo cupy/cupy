@@ -106,7 +106,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             raise ValueError('Target array size does not match the plan.')
         if batch != plan.batch:
             raise ValueError('Batch size does not match the plan.')
-        if config.use_multi_gpus != plan.config.use_multi_gpus:
+        if config.use_multi_gpus != plan.use_multi_gpus:
             raise ValueError('Unclear if multiple GPUs are to be used or not.')
 
     if overwrite_x and value_type == 'C2C':
@@ -178,6 +178,12 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
         a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x,
                       out_size)
 
+    # TODO(leofang): ask for help
+    # For some reason, the assignment operator in _fft_c2c() (a = _exec_fft(
+    # ...)) silently switched the current device if multi-GPU cuFFT is used.
+    # This hotfix ensures we use whichever device we started with.
+    if config.use_multi_gpus:
+        cupy.cuda.runtime.setDevice(a.data.device_id)
     return a
 
 
