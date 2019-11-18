@@ -88,7 +88,7 @@ cpdef _preprocess_array(ndarray arr, axis, bint keepdims):
     return out_shape, contiguous_size
 
 
-def device_reduce(ndarray x, int op, out=None, bint keepdims=False):
+def device_reduce(ndarray x, op, out=None, bint keepdims=False):
     cdef ndarray y, z
     cdef ndarray ws
     cdef int dtype_id, ndim_out, kv_bytes
@@ -106,6 +106,9 @@ def device_reduce(ndarray x, int op, out=None, bint keepdims=False):
     if op < CUPY_CUB_SUM or op > CUPY_CUB_ARGMAX:
         raise ValueError("only CUPY_CUB_SUM, CUPY_CUB_MIN, CUPY_CUB_MAX, "
                          "CUPY_CUB_ARGMIN, and CUPY_CUB_ARGMAX are supported.")
+    if x.size == 0 and op != CUPY_CUB_SUM:
+        raise ValueError('zero-size array to reduction operation {} which has '
+                         'no identity'.format(op.name))
     x = _internal_ascontiguousarray(x)
     if CUPY_CUB_SUM <= op <= CUPY_CUB_MAX:
         y = ndarray((), x.dtype)
@@ -137,7 +140,7 @@ def device_reduce(ndarray x, int op, out=None, bint keepdims=False):
     return y
 
 
-def device_segmented_reduce(ndarray x, int op, axis, out=None,
+def device_segmented_reduce(ndarray x, op, axis, out=None,
                             bint keepdims=False):
     # if import at the top level, a segfault would happen when import cupy!
     from cupy.creation.ranges import arange
@@ -156,6 +159,9 @@ def device_segmented_reduce(ndarray x, int op, axis, out=None,
     if op < CUPY_CUB_SUM or op > CUPY_CUB_MAX:
         raise ValueError("only CUPY_CUB_SUM, CUPY_CUB_MIN, and CUPY_CUB_MAX "
                          "are supported.")
+    if x.size == 0 and op != CUPY_CUB_SUM:
+        raise ValueError('zero-size array to reduction operation {} which has '
+                         'no identity'.format(op.name))
 
     # prepare input
     out_shape, contiguous_size = _preprocess_array(x, axis, keepdims)
@@ -165,6 +171,11 @@ def device_segmented_reduce(ndarray x, int op, axis, out=None,
     if out is not None and out.shape != out_shape:
         raise ValueError(
             "output parameter for reduction operation has the wrong shape")
+    if x.size == 0:  # for CUPY_CUB_SUM
+        if out is not None:
+            y = out
+        y[...] = 0
+        return y
     n_segments = x.size//contiguous_size
     # CUB internally use int for offset...
     offset = arange(0, x.size+1, contiguous_size, dtype=numpy.int32)
