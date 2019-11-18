@@ -5,7 +5,6 @@ import types
 import typing as tp  # NOQA
 import unittest
 
-import numpy
 import six
 
 from cupy.testing import _bundle
@@ -170,62 +169,3 @@ def product_dict(*parameters):
     return [
         {k: v for dic in dicts for k, v in six.iteritems(dic)}
         for dicts in itertools.product(*parameters)]
-
-
-# TODO(kataoka): product_dict is patched by tests/conftest.py while tests are
-# collected if CUPY_TEST_PAIRWISE_PARAMETERIZATION is configured
-# accordingly. Also used in
-# tests/cupy_tests/testing_tests/test_parameterized.py
-_product_dict_orig = product_dict
-
-
-def _pairwise_product_dict(*parameters):
-    if len(parameters) <= 2:
-        return _product_dict_orig(*parameters)
-    return list(_pairwise_product_dict_iter(*parameters))
-
-
-def _pairwise_product_dict_iter(
-        *parameters: tp.Iterable[tp.Dict[str, tp.Any]]
-) -> tp.Iterator[tp.Dict[str, tp.Any]]:
-    """Generate combinations that cover all pairs.
-
-    The argument is the same as `cupy.testing.product_dict`.
-
-    """
-    parameter_lists = [list(dicts) for dicts in parameters]  # type: tp.List[tp.List[tp.Dict[str, tp.Any]]]  # NOQA
-
-    for nd_index in sorted(_nd_indices_to_cover_each_2d(
-            [len(dicts) for dicts in parameter_lists])):
-        yield {
-            k: v
-            for i, dicts in zip(nd_index, parameter_lists)
-            for k, v in dicts[i].items()}
-
-
-def _nd_indices_to_cover_each_2d(
-        shape: tp.Sequence[int]
-) -> tp.Iterator[tp.Tuple[int, ...]]:
-    rs = numpy.random.RandomState(seed=0)
-    n = len(shape)
-    indices = [list(range(length)) for length in shape]  # type: tp.List[tp.List[int]]  # NOQA
-
-    # `(k_i, k_j) in uncovered[(i, j)]` iff it has not been yielded
-    # `nd_index` such that `(nd_index[i], nd_inde[j]) == (k_i, k_j)`.
-    uncovered = {}  # type: tp.Dict[tp.Tuple[int, int], tp.Set[tp.Tuple[int, int]]]  # NOQA
-    for i, j in itertools.combinations(range(n), 2):
-        uncovered[(i, j)] = set(itertools.product(indices[i], indices[j]))
-
-    nd_indices = list(itertools.product(*indices))  # type: tp.List[tp.Tuple[int, ...]]  # NOQA
-    rs.shuffle(nd_indices)
-    for nd_index in nd_indices:
-        count = 0
-        for i, j in itertools.combinations(range(n), 2):
-            try:
-                uncovered[(i, j)].remove((nd_index[i], nd_index[j]))
-            except KeyError:
-                pass
-            else:
-                count += 1
-        if count > 0:
-            yield nd_index
