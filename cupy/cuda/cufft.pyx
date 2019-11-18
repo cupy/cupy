@@ -408,12 +408,15 @@ class Plan1d(object):
         _thread_local._current_plan = None
 
     def fft(self, a, out, direction):
-        cdef Handle plan = self.plan
-
         if self.use_multi_gpus:
             # Note: mult-GPU plans cannot set stream
             self._multi_gpu_fft(a, out, direction)
-            return
+        else:
+            self._single_gpu_fft(a, out, direction)
+
+    def _single_gpu_fft(self, a, out, direction):
+        cdef Handle plan = self.plan
+        cdef intptr_t stream
 
         stream = stream_module.get_current_stream_ptr()
         with nogil:
