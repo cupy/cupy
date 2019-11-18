@@ -41,7 +41,7 @@ cpdef enum:
 # Library Attributes
 ###############################################################################
 
-cpdef getProperty(int type)
+cpdef int getProperty(int type)
 cpdef tuple _getVersion()
 
 ###############################################################################

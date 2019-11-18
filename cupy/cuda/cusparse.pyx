@@ -14,7 +14,7 @@ cdef extern from 'cupy_cuComplex.h':
 cdef extern from 'cupy_cusparse.h' nogil:
 
     # Version
-    cusparseStatus_t cusparseGetVersion(cusparseHandle_t handle, int *version)
+    cusparseStatus_t cusparseGetVersion(cusparseHandle_t handle, int* version)
 
     # cuSPARSE Helper Function
     Status cusparseCreate(Handle *handle)
@@ -998,7 +998,7 @@ cdef inline cuDoubleComplex double_complex_to_cuda(double complex value):
     return value_cuda
 
 
-cpdef size_t getVersion(size_t handle) except? -1:
+cpdef int getVersion(size_t handle) except? -1:
     cdef int version
     status = cusparseGetVersion(<Handle>handle, &version)
     check_status(status)

@@ -58,7 +58,7 @@ cdef extern from 'cupy_cufft.h' nogil:
     Result cufftExecZ2D(Handle plan, DoubleComplex *idata, Double *odata)
 
     # Version
-    Result cufftGetVersion(int *version)
+    Result cufftGetVersion(int* version)
 
 
 cdef dict RESULT = {

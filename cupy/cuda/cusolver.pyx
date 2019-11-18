@@ -444,10 +444,10 @@ cpdef inline check_status(int status):
 # Library Attributes
 ###############################################################################
 
-cpdef getProperty(int type):
-    cpdef int value
+cpdef int getProperty(int type):
+    cdef int value
     with nogil:
-        status = cusolverGetProperty(<LibraryPropertyType> type, &value)
+        status = cusolverGetProperty(<LibraryPropertyType>type, &value)
     check_status(status)
     return value
 
