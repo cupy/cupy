@@ -333,6 +333,11 @@ cpdef ndarray _reshape(ndarray self,
     if internal.vector_equal(shape, self._shape):
         return self.view()
 
+    cdef size_t shape_size = internal.prod(shape)
+    if self.size != shape_size:
+        raise ValueError('cannot reshape array of size {}'
+                         ' into shape {}'.format(self.size, shape_size))
+
     _get_strides_for_nocopy_reshape(self, shape, strides)
     if strides.size() == shape.size():
         return self._view(shape, strides, False, True)
