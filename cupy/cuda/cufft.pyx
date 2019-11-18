@@ -391,9 +391,6 @@ class Plan1d(object):
 
     def __del__(self):
         cdef Handle plan = self.plan
-        cdef intptr_t ptr
-        cdef XtArrayDesc* xtArr_desc
-        cdef XtArray* xtArr
 
         with nogil:
             result = cufftDestroy(plan)
