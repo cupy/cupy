@@ -187,6 +187,10 @@ cpdef _set_peer_access(int device, int peer):
     runtime.setDevice(device)
     try:
         runtime.deviceEnablePeerAccess(peer)
+    # peer access could already be set by external libraries at this point
+    except runtime.CUDARuntimeError as e:
+        if e.status != runtime.cudaErrorPeerAccessAlreadyEnabled:
+            raise
     finally:
         runtime.setDevice(current)
 
