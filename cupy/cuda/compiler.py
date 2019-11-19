@@ -71,7 +71,7 @@ def _get_arch():
                _nvrtc_max_compute_capability)
 
 
-def _check_cudadevrt_needed(options):
+def _is_cudadevrt_needed(options):
     return any(o for o in options if o in _rdc_flags)
 
 
@@ -81,6 +81,9 @@ def _get_cudadevrt_path():
     global _win32
 
     cudadevrt = get_cuda_path()
+    if cudadevrt is None:
+        raise RuntimeError('CUDA is not found.')
+
     if _win32:
         # rely on os.altsep
         cudadevrt += '/lib/x64/cudadevrt.lib'
@@ -158,6 +161,8 @@ def compile_using_nvcc(source, options=(), arch=None,
 
     if code_type not in ('cubin', 'ptx'):
         raise ValueError('Invalid code_type %s. Should be cubin or ptx')
+    if code_type == 'ptx':
+        assert not separate_compilation
 
     arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
     cmd = ['nvcc', arch_str]
@@ -333,14 +338,14 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
         ls = function.LinkState()
         ls.add_ptr_data(ptx, 'cupy.ptx')
         # for separate compilation
-        if _check_cudadevrt_needed(options):
+        if _is_cudadevrt_needed(options):
             global _cudadevrt
             if _cudadevrt is None:
                 _cudadevrt = _get_cudadevrt_path()
             ls.add_ptr_file(_cudadevrt)
         cubin = ls.complete()
     elif backend == 'nvcc':
-        rdc = True if _check_cudadevrt_needed(options) else False
+        rdc = _is_cudadevrt_needed(options)
         cubin = compile_using_nvcc(source, options, arch, name + '.cu',
                                    code_type='cubin', separate_compilation=rdc)
     else:
