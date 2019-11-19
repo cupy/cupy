@@ -237,11 +237,12 @@ cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
     c_memset(xtArr, 0, sizeof(XtArray))
 
     xtArr_desc.nGPUs = nGPUs
-    for i, size in enumerate(sizes):
-        with Device(gpus[i]):
+    for i, (gpu, size) in enumerate(zip(gpus, sizes)):
+        with Device(gpu):
             buf = memory.alloc(size)
+        assert gpu == buf.device_id
         xtArr_buffer.append(buf)
-        xtArr_desc.GPUs[i] = gpus[i]
+        xtArr_desc.GPUs[i] = gpu
         xtArr_desc.data[i] = <void*>buf.ptr
         xtArr_desc.size[i] = size
 
