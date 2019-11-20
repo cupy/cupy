@@ -633,7 +633,7 @@ class RandomState(object):
 
         assert n_rem == 0
 
-        if not ret:
+        if ret is None:
             return cupy.array(())
 
         return ret.reshape(size)
