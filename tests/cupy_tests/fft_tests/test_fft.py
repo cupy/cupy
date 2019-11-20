@@ -615,6 +615,7 @@ class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
 
         return out
 
+    @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     def test_fft_error_on_wrong_plan(self, dtype):
         # This test ensures the context manager plan is picked up
@@ -623,7 +624,7 @@ class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
         from cupy.fft import fft
 
         a = testing.shaped_random(self.shape, cupy, dtype)
-        bad_shape = tuple(5*i for i in self.shape)
+        bad_shape = tuple(4*i for i in self.shape)
         b = testing.shaped_random(bad_shape, cupy, dtype)
         plan_wrong = get_fft_plan(b)
         assert isinstance(plan_wrong, cupy.cuda.cufft.Plan1d)
