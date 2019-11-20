@@ -530,16 +530,16 @@ class Plan1d(object):
                     for i in range(nGPUs):
                         count = int(share[i] * self.nx)
                         size = count * b.dtype.itemsize
-                        stream = self.streams[i]
+                        curr_stream = self.streams[i]
                         xtArr_buffer[i].copy_from_device_async(
-                            b[start:start+count].data, size, stream)
-                        if i != 0:
-                            event = self.events[i-1]
-                            stream.wait_event(event)
-                        event = self.events[i]
-                        event.record(stream)
+                            b[start:start+count].data, size, curr_stream)
+                        # it's no harm to do a cyclic wait
+                        prev_event = self.events[i-1]
+                        curr_stream.wait_event(prev_event)
+                        curr_event = self.events[i]
+                        curr_event.record(curr_stream)
                         if i == nGPUs - 1:
-                            event.synchronize()
+                            curr_event.synchronize()
                         start += count
                     assert start == b.size
                 else:  # numpy
@@ -557,16 +557,16 @@ class Plan1d(object):
                     for i in range(nGPUs):
                         count = int(share[i] * self.nx)
                         size = count * b.dtype.itemsize
-                        stream = self.streams[i]
+                        curr_stream = self.streams[i]
                         b[start:start+count].data.copy_from_device_async(
-                            xtArr_buffer[i], size, stream)
-                        if i != 0:
-                            event = self.events[i-1]
-                            stream.wait_event(event)
-                        event = self.events[i]
-                        event.record(stream)
+                            xtArr_buffer[i], size, curr_stream)
+                        # it's no harm to do a cyclic wait
+                        prev_event = self.events[i-1]
+                        curr_stream.wait_event(prev_event)
+                        curr_event = self.events[i]
+                        curr_event.record(curr_stream)
                         if i == nGPUs - 1:
-                            event.synchronize()
+                            curr_event.synchronize()
                         start += count
                     assert start == b.size
                 else:  # numpy
