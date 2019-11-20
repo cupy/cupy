@@ -130,6 +130,12 @@ class TestDet(unittest.TestCase):
         a = testing.shaped_arange((), xp, dtype)
         xp.linalg.det(a)
 
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_det_singular(self, xp, dtype):
+        a = xp.zeros((2, 3, 3), dtype)
+        return xp.linalg.det(a)
+
 
 @testing.gpu
 class TestSlogdet(unittest.TestCase):
@@ -157,11 +163,18 @@ class TestSlogdet(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
-    def test_slogdet_fail(self, xp, dtype):
+    def test_slogdet_singular(self, xp, dtype):
+        a = xp.zeros((3, 3), dtype)
+        sign, logdet = xp.linalg.slogdet(a)
+        return xp.array([sign, logdet], dtype)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_slogdet_singular_errstate(self, xp, dtype):
         a = xp.zeros((3, 3), dtype)
         with cupyx.errstate(linalg='raise'):
-            # `cupy.linalg.slogdet` internally catches a raised error from
-            # cuSOLVER, but yield a valid output to mimic NumPy.
+            # `cupy.linalg.slogdet` internally catches `dev_info < 0` from
+            # cuSOLVER, which should not affect `dev_info > 0` cases.
             sign, logdet = xp.linalg.slogdet(a)
         return xp.array([sign, logdet], dtype)
 
