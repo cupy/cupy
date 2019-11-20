@@ -66,6 +66,16 @@ class TestShape(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4))
         a.reshape(2, 4, 4, order='K')
 
+    @testing.numpy_cupy_raises()
+    def test_reshape_empty_invalid(self, xp):
+        a = testing.empty(xp)
+        a = a.reshape(())
+
+    @testing.numpy_cupy_array_equal()
+    def test_reshape_empty(self, xp):
+        a = testing.empty(xp)
+        return a.reshape((0,))
+
     @testing.for_orders('CFA')
     @testing.numpy_cupy_array_equal()
     def test_external_reshape(self, xp, order):
