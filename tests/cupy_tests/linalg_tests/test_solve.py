@@ -130,11 +130,11 @@ class TestInvInvalid(unittest.TestCase):
 @testing.gpu
 class TestPinv(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @condition.retry(10)
     def check_x(self, a_shape, rcond, dtype):
-        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
-        a_gpu = cupy.asarray(a_cpu)
+        a_gpu = testing.shaped_random(a_shape, dtype=dtype)
+        a_cpu = cupy.asnumpy(a_gpu)
         a_gpu_copy = a_gpu.copy()
         result_cpu = numpy.linalg.pinv(a_cpu, rcond=rcond)
         result_gpu = cupy.linalg.pinv(a_gpu, rcond=rcond)
