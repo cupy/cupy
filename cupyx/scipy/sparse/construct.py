@@ -99,13 +99,15 @@ def _compressed_sparse_stack(blocks, axis):
     idx_dtype = get_index_dtype(arrays=[b.indptr for b in blocks],
                                 maxval=max(data.size, constant_dim))
     indices = cupy.empty(data.size, dtype=idx_dtype)
-    indptr = cupy.empty(sum(b.shape[axis] for b in blocks) + 1, dtype=idx_dtype)
+    indptr = cupy.empty(sum(b.shape[axis]
+                            for b in blocks) + 1, dtype=idx_dtype)
     last_indptr = idx_dtype(0)
     sum_dim = 0
     sum_indices = 0
     for b in blocks:
         if b.shape[other_axis] != constant_dim:
-            raise ValueError('incompatible dimensions for axis %d' % other_axis)
+            raise ValueError(
+                'incompatible dimensions for axis %d' % other_axis)
         indices[sum_indices:sum_indices+b.indices.size] = b.indices
         sum_indices += b.indices.size
         idxs = slice(sum_dim, sum_dim + b.shape[axis])
@@ -116,10 +118,10 @@ def _compressed_sparse_stack(blocks, axis):
     indptr[-1] = last_indptr
     if axis == 0:
         return csr.csr_matrix((data, indices, indptr),
-                          shape=(sum_dim, constant_dim))
+                              shape=(sum_dim, constant_dim))
     else:
         return csc.csc_matrix((data, indices, indptr),
-                          shape=(constant_dim, sum_dim))
+                              shape=(constant_dim, sum_dim))
 
 
 def hstack(blocks, format=None, dtype=None):
