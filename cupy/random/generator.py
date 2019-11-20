@@ -632,6 +632,10 @@ class RandomState(object):
             n_rem -= n_succ
 
         assert n_rem == 0
+
+        if not ret:
+            return cupy.array(())
+
         return ret.reshape(size)
 
     def seed(self, seed=None):
