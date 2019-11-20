@@ -421,6 +421,9 @@ cdef function.Function _get_elementwise_kernel(
         preamble, **kwargs)
 
 
+cdef dict _elementwise_kernel_memo = {}
+
+
 cdef class ElementwiseKernel:
 
     """User-defined elementwise kernel.
@@ -475,7 +478,6 @@ cdef class ElementwiseKernel:
         readonly bint no_return
         readonly bint return_tuple
         readonly dict kwargs
-        readonly dict _kernel_memo
         readonly dict _params_type_memo
 
     def __init__(self, in_params, out_params, operation,
@@ -499,7 +501,6 @@ cdef class ElementwiseKernel:
         self.no_return = no_return
         self.return_tuple = return_tuple
         self.kwargs = kwargs
-        self._kernel_memo = {}
         self._params_type_memo = {}
         names = [p.name for p in self.in_params + self.out_params]
         if 'i' in names:
@@ -603,14 +604,26 @@ cdef class ElementwiseKernel:
 
     cpdef function.Function _get_elementwise_kernel(
             self, int dev_id, tuple args_info, tuple types):
-        key = (dev_id, args_info, types)
-        kern = self._kernel_memo.get(key, None)
+        key = (
+            self.params,
+            self.operation,
+            self.name,
+            self.preamble,
+            tuple(sorted(self.kwargs.items())),
+            dev_id,
+            args_info,
+            types)
+        kern = _elementwise_kernel_memo.get(key, None)
         if kern is not None:
             return kern
         kern = _get_elementwise_kernel(
             args_info, types, self.params, self.operation,
             self.name, self.preamble, self.kwargs)
-        self._kernel_memo[key] = kern
+
+        # Store the compiled kernel in the cache.
+        # Potentially overwrite a duplicate cache entry because
+        # _get_elementwise_kernel() may include IO wait.
+        _elementwise_kernel_memo[key] = kern
         return kern
 
 
