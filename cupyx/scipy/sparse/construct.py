@@ -4,7 +4,7 @@ from cupyx.scipy.sparse import coo
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import csr
 from cupyx.scipy.sparse import dia
-from cupyx.scipy.sparse.sputils import isscalarlike
+from cupyx.scipy.sparse.sputils import get_index_dtype, upcast, isscalarlike
 
 
 def eye(m, n=None, k=0, dtype='d', format=None):
@@ -86,6 +86,230 @@ def spdiags(data, diags, m, n, format=None):
 
     """
     return dia.dia_matrix((data, diags), shape=(m, n)).asformat(format)
+
+
+def _compressed_sparse_stack(blocks, axis):
+    """
+    Stacking fast path for CSR/CSC matrices
+    (i) vstack for CSR, (ii) hstack for CSC.
+    """
+    other_axis = 1 if axis == 0 else 0
+    data = cupy.concatenate([b.data for b in blocks])
+    constant_dim = blocks[0].shape[other_axis]
+    idx_dtype = get_index_dtype(arrays=[b.indptr for b in blocks],
+                                maxval=max(data.size, constant_dim))
+    indices = cupy.empty(data.size, dtype=idx_dtype)
+    indptr = cupy.empty(sum(b.shape[axis] for b in blocks) + 1, dtype=idx_dtype)
+    last_indptr = idx_dtype(0)
+    sum_dim = 0
+    sum_indices = 0
+    for b in blocks:
+        if b.shape[other_axis] != constant_dim:
+            raise ValueError('incompatible dimensions for axis %d' % other_axis)
+        indices[sum_indices:sum_indices+b.indices.size] = b.indices
+        sum_indices += b.indices.size
+        idxs = slice(sum_dim, sum_dim + b.shape[axis])
+        indptr[idxs] = b.indptr[:-1]
+        indptr[idxs] += last_indptr
+        sum_dim += b.shape[axis]
+        last_indptr += b.indptr[-1]
+    indptr[-1] = last_indptr
+    if axis == 0:
+        return csr.csr_matrix((data, indices, indptr),
+                          shape=(sum_dim, constant_dim))
+    else:
+        return csc.csc_matrix((data, indices, indptr),
+                          shape=(constant_dim, sum_dim))
+
+
+def hstack(blocks, format=None, dtype=None):
+    """
+    Stack sparse matrices horizontally (column wise)
+    Parameters
+    ----------
+    blocks
+        sequence of sparse matrices with compatible shapes
+    format : str
+        sparse format of the result (e.g. "csr")
+        by default an appropriate sparse matrix format is returned.
+        This choice is subject to change.
+    dtype : dtype, optional
+        The data-type of the output matrix.  If not given, the dtype is
+        determined from that of `blocks`.
+    See Also
+    --------
+    vstack : stack sparse matrices vertically (row wise)
+    Examples
+    --------
+    >>> from cupy.sparse import coo_matrix, hstack
+    >>> A = coo_matrix([[1, 2], [3, 4]])
+    >>> B = coo_matrix([[5], [6]])
+    >>> hstack([A,B]).toarray()
+    array([[1, 2, 5],
+           [3, 4, 6]])
+    """
+    return bmat([blocks], format=format, dtype=dtype)
+
+
+def vstack(blocks, format=None, dtype=None):
+    """
+    Stack sparse matrices vertically (row wise)
+    Parameters
+    ----------
+    blocks
+        sequence of sparse matrices with compatible shapes
+    format : str, optional
+        sparse format of the result (e.g. "csr")
+        by default an appropriate sparse matrix format is returned.
+        This choice is subject to change.
+    dtype : dtype, optional
+        The data-type of the output matrix.  If not given, the dtype is
+        determined from that of `blocks`.
+    See Also
+    --------
+    hstack : stack sparse matrices horizontally (column wise)
+    Examples
+    --------
+    >>> from cupy.sparse import coo_matrix, vstack
+    >>> A = coo_matrix([[1, 2], [3, 4]])
+    >>> B = coo_matrix([[5, 6]])
+    >>> vstack([A, B]).toarray()
+    array([[1, 2],
+           [3, 4],
+           [5, 6]])
+    """
+    return bmat([[b] for b in blocks], format=format, dtype=dtype)
+
+
+def bmat(blocks, format=None, dtype=None):
+    """
+    Build a sparse matrix from sparse sub-blocks
+    Parameters
+    ----------
+    blocks : array_like
+        Grid of sparse matrices with compatible shapes.
+        An entry of None implies an all-zero matrix.
+    format : {'bsr', 'coo', 'csc', 'csr', 'dia', 'dok', 'lil'}, optional
+        The sparse format of the result (e.g. "csr").  By default an
+        appropriate sparse matrix format is returned.
+        This choice is subject to change.
+    dtype : dtype, optional
+        The data-type of the output matrix.  If not given, the dtype is
+        determined from that of `blocks`.
+    Returns
+    -------
+    bmat : sparse matrix
+    See Also
+    --------
+    block_diag, diags
+    Examples
+    --------
+    >>> from cupy.sparse import coo_matrix, bmat
+    >>> A = coo_matrix([[1, 2], [3, 4]])
+    >>> B = coo_matrix([[5], [6]])
+    >>> C = coo_matrix([[7]])
+    >>> bmat([[A, B], [None, C]]).toarray()
+    array([[1, 2, 5],
+           [3, 4, 6],
+           [0, 0, 7]])
+    >>> bmat([[A, None], [None, C]]).toarray()
+    array([[1, 2, 0],
+           [3, 4, 0],
+           [0, 0, 7]])
+    """
+
+    # We assume here that blocks will be 2-D so we need to look, at most,
+    # 2 layers deep for the shape
+
+    # NOTE: We can't follow scipy exactly here
+    # since we don't have an `object` datatype
+    M = len(blocks)
+    N = len(blocks[0])
+
+    blocks_flat = []
+    for m in range(M):
+        for n in range(N):
+            if blocks[m][n] is not None:
+                blocks_flat.append(blocks[m][n])
+
+    # if blocks.ndim != 2:
+    #     raise ValueError('blocks must be 2-D')
+
+    # check for fast path cases
+    if (N == 1 and format in (None, 'csr') and all(isinstance(b, csr.csr_matrix)
+                                                   for b in blocks_flat)):
+        A = _compressed_sparse_stack(blocks_flat, 0)
+        if dtype is not None:
+            A = A.astype(dtype)
+        return A
+    elif (M == 1 and format in (None, 'csc')
+          and all(isinstance(b, csc.csc_matrix) for b in blocks_flat)):
+        A = _compressed_sparse_stack(blocks_flat, 1)
+        if dtype is not None:
+            A = A.astype(dtype)
+        return A
+
+    block_mask = cupy.zeros((M, N), dtype=bool)
+    brow_lengths = cupy.zeros(M+1, dtype=cupy.int64)
+    bcol_lengths = cupy.zeros(N+1, dtype=cupy.int64)
+
+    # convert everything to COO format
+    for i in range(M):
+        for j in range(N):
+            if blocks[i][j] is not None:
+                A = coo.coo_matrix(blocks[i][j])
+                blocks[i][j] = A
+                block_mask[i][j] = True
+
+                if brow_lengths[i+1] == 0:
+                    brow_lengths[i+1] = A.shape[0]
+                elif brow_lengths[i+1] != A.shape[0]:
+                    msg = ('blocks[{i},:] has incompatible row dimensions. '
+                           'Got blocks[{i},{j}].shape[0] == {got}, '
+                           'expected {exp}.'.format(i=i, j=j,
+                                                    exp=brow_lengths[i+1],
+                                                    got=A.shape[0]))
+                    raise ValueError(msg)
+
+                if bcol_lengths[j+1] == 0:
+                    bcol_lengths[j+1] = A.shape[1]
+                elif bcol_lengths[j+1] != A.shape[1]:
+                    msg = ('blocks[:,{j}] has incompatible row dimensions. '
+                           'Got blocks[{i},{j}].shape[1] == {got}, '
+                           'expected {exp}.'.format(i=i, j=j,
+                                                    exp=bcol_lengths[j+1],
+                                                    got=A.shape[1]))
+                    raise ValueError(msg)
+
+    nnz = sum(block.nnz for block in blocks_flat)
+    if dtype is None:
+        all_dtypes = [blk.dtype for blk in blocks_flat]
+        dtype = upcast(*all_dtypes) if all_dtypes else None
+
+    row_offsets = cupy.cumsum(brow_lengths)
+    col_offsets = cupy.cumsum(bcol_lengths)
+
+    shape = (row_offsets[-1], col_offsets[-1])
+
+    data = cupy.empty(nnz, dtype=dtype)
+    idx_dtype = get_index_dtype(maxval=max(shape))
+    row = cupy.empty(nnz, dtype=idx_dtype)
+    col = cupy.empty(nnz, dtype=idx_dtype)
+
+    nnz = 0
+    ii, jj = cupy.nonzero(block_mask)
+    for i, j in zip(ii, jj):
+
+        print("i=%s, j=%s" % (int(i), int(j)))
+        print(str(blocks))
+        B = blocks[int(i)][int(j)]
+        idx = slice(nnz, nnz + B.nnz)
+        data[idx] = B.data
+        row[idx] = B.row + row_offsets[i]
+        col[idx] = B.col + col_offsets[j]
+        nnz += B.nnz
+
+    return coo.coo_matrix((data, (row, col)), shape=shape).asformat(format)
 
 
 def random(m, n, density=0.01, format='coo', dtype=None,
