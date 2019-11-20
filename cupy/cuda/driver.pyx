@@ -39,6 +39,9 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cuLinkAddData(LinkState state, CUjitInputType type, void* data,
                       size_t size, const char* name, unsigned int  numOptions,
                       CUjit_option* options, void** optionValues)
+    int cuLinkAddFile(LinkState state, CUjitInputType type, const char* path,
+                      unsigned int numOptions, CUjit_option* options, void**
+                      optionValues)
     int cuLinkComplete(LinkState state, void** cubinOut, size_t* sizeOut)
     int cuLinkDestroy(LinkState state)
     int cuModuleLoad(Module* module, char* fname)
@@ -192,6 +195,15 @@ cpdef linkAddData(intptr_t state, int input_type, bytes data, unicode name):
         status = cuLinkAddData(
             <LinkState>state, <CUjitInputType>input_type, <void*>data_ptr,
             data_size, b_name_ptr, 0, <CUjit_option*>0, <void**>0)
+    check_status(status)
+
+
+cpdef linkAddFile(intptr_t state, int input_type, unicode path):
+    cdef bytes b_path = path.encode()
+    cdef const char* b_path_ptr = b_path
+    with nogil:
+        status = cuLinkAddFile(<LinkState>state, <CUjitInputType>input_type,
+                               b_path_ptr, 0, <CUjit_option*>0, <void**>0)
     check_status(status)
 
 

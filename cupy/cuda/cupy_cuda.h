@@ -99,6 +99,10 @@ CUresult cuLinkAddData(...) {
     return CUDA_SUCCESS;
 }
 
+CUresult cuLinkAddFile(...) {
+    return CUDA_SUCCESS;
+}
+
 CUresult cuLinkComplete(...) {
     return CUDA_SUCCESS;
 }
