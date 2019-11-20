@@ -50,6 +50,42 @@ def nd_planning_states(states=[True, False], name='enable_nd'):
     return decorator
 
 
+def multi_gpu_config(gpu_configs=None):
+    """Decorator for parameterized tests with different GPU configurations.
+
+    Args:
+        gpu_configs(list of list): The GPUs to test.
+
+    .. notes:
+        The decorated tests are skipped if no or only one GPU is available.
+    """
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            use_multi_gpus = config.use_multi_gpus
+            _devices = config._devices
+
+            try:
+                for gpus in gpu_configs:
+                    try:
+                        nGPUs = len(gpus)
+                        if nGPUs < 2:
+                            raise ValueError('Must use at least two gpus')
+                        config.use_multi_gpus = True
+                        config.set_cufft_gpus(gpus)
+
+                        impl(self, *args, **kw)
+                    except Exception:
+                        print('GPU config is:', gpus)
+                        raise
+            finally:
+                config.use_multi_gpus = use_multi_gpus
+                config._devices = _devices
+
+        return test_func
+    return decorator
+
+
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
     'shape': [(10,), (10, 10)],
@@ -123,6 +159,93 @@ class TestFftOrder(unittest.TestCase):
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
+
+        return out
+
+
+# Almost identical to the TestFft class, except that
+# 1. multi-GPU cuFFT is used
+# 2. the tested parameter combinations are adjusted to meet the requirements
+@testing.parameterize(*testing.product({
+    'n': [None, 0, 64],
+    'shape': [(64,), (4, 64)],
+    'norm': [None, 'ortho', ''],
+}))
+@testing.with_requires('numpy>=1.10.0')
+@testing.multi_gpu(2)
+class TestMultiGpuFft(unittest.TestCase):
+    @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
+    @testing.for_dtypes('FD')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_fft(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        out = xp.fft.fft(a, n=self.n, norm=self.norm)
+
+        # np.fft.fft alway returns np.complex128
+        if xp == np and dtype is np.complex64:
+            out = out.astype(dtype)
+
+        return out
+
+    @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
+    @testing.for_dtypes('FD')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    # NumPy 1.17.0 and 1.17.1 raises ZeroDivisonError due to a bug
+    @testing.with_requires('numpy!=1.17.0')
+    @testing.with_requires('numpy!=1.17.1')
+    def test_ifft(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        out = xp.fft.ifft(a, n=self.n, norm=self.norm)
+
+        # np.fft.fft alway returns np.complex128
+        if xp == np and dtype is np.complex64:
+            out = out.astype(dtype)
+
+        return out
+
+
+# Almost identical to the TestFftOrder class, except that
+# 1. multi-GPU cuFFT is used
+# 2. the tested parameter combinations are adjusted to meet the requirements
+@testing.parameterize(*testing.product({
+    'shape': [(10, 10), (10, 5, 10)],
+    'data_order': ['F', 'C'],
+    'axis': [0, 1, -1],
+}))
+@testing.with_requires('numpy>=1.10.0')
+@testing.multi_gpu(2)
+class TestMultiGpuFftOrder(unittest.TestCase):
+    @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
+    @testing.for_dtypes('FD')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_fft(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.data_order == 'F':
+            a = xp.asfortranarray(a)
+        out = xp.fft.fft(a, axis=self.axis)
+
+        # np.fft.fft alway returns np.complex128
+        if xp == np and dtype is np.complex64:
+            out = out.astype(dtype)
+
+        return out
+
+    @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
+    @testing.for_dtypes('FD')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_ifft(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.data_order == 'F':
+            a = xp.asfortranarray(a)
+        out = xp.fft.ifft(a, axis=self.axis)
+
+        # np.fft.fft alway returns np.complex128
+        if xp == np and dtype is np.complex64:
+            out = out.astype(dtype)
 
         return out
 
