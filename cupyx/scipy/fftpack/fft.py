@@ -2,6 +2,7 @@ from numpy import prod
 
 import cupy
 from cupy.cuda import cufft
+from cupy.fft import config
 from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
                           _get_cufft_plan_nd)
 
@@ -108,7 +109,11 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
     else:  # 1D transform
         out_size = shape[axis1D]
         batch = prod(shape) // out_size
-        plan = cufft.Plan1d(out_size, fft_type, batch)
+        if not config.use_multi_gpus:
+            plan = cufft.Plan1d(out_size, fft_type, batch)
+        else:
+            plan = cufft.Plan1d(out_size, fft_type, batch,
+                                use_multi_gpus=True, devices=config._devices)
 
     return plan
 

@@ -175,7 +175,7 @@ class TestFftOrder(unittest.TestCase):
 @testing.multi_gpu(2)
 class TestMultiGpuFft(unittest.TestCase):
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
-    @testing.for_dtypes('FD')
+    @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
@@ -189,7 +189,7 @@ class TestMultiGpuFft(unittest.TestCase):
         return out
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
-    @testing.for_dtypes('FD')
+    @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     # NumPy 1.17.0 and 1.17.1 raises ZeroDivisonError due to a bug
@@ -218,7 +218,7 @@ class TestMultiGpuFft(unittest.TestCase):
 @testing.multi_gpu(2)
 class TestMultiGpuFftOrder(unittest.TestCase):
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
-    @testing.for_dtypes('FD')
+    @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
@@ -234,7 +234,7 @@ class TestMultiGpuFftOrder(unittest.TestCase):
         return out
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
-    @testing.for_dtypes('FD')
+    @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
@@ -522,6 +522,79 @@ class TestPlanCtxManagerFft(unittest.TestCase):
 
         return out
 
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_ifft(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp == cupy:
+            from cupyx.scipy.fftpack import get_fft_plan
+            shape = (self.n,) if self.n is not None else None
+            plan = get_fft_plan(a, shape=shape)
+            assert isinstance(plan, cupy.cuda.cufft.Plan1d)
+            with plan:
+                out = xp.fft.ifft(a, n=self.n, norm=self.norm)
+        else:
+            out = xp.fft.ifft(a, n=self.n, norm=self.norm)
+
+        if xp == np and dtype is np.complex64:
+            out = out.astype(np.complex64)
+
+        return out
+
+    @testing.for_complex_dtypes()
+    def test_fft_error_on_wrong_plan(self, dtype):
+        # This test ensures the context manager plan is picked up
+
+        from cupyx.scipy.fftpack import get_fft_plan
+        from cupy.fft import fft
+
+        a = testing.shaped_random(self.shape, cupy, dtype)
+        bad_shape = tuple(5*i for i in self.shape)
+        b = testing.shaped_random(bad_shape, cupy, dtype)
+        plan_wrong = get_fft_plan(b)
+        assert isinstance(plan_wrong, cupy.cuda.cufft.Plan1d)
+
+        with pytest.raises(ValueError) as ex, plan_wrong:
+            fft(a, n=self.n, norm=self.norm)
+        # targeting a particular error
+        assert 'Target array size does not match the plan.' in str(ex.value)
+
+
+# Almost identical to the TestPlanCtxManagerFft class, except that
+# 1. multi-GPU cuFFT is used
+# 2. the tested parameter combinations are adjusted to meet the requirements
+@testing.parameterize(*testing.product({
+    'n': [None, 64],
+    'shape': [(64,), (128,)],
+    'norm': [None, 'ortho'],
+}))
+@testing.with_requires('numpy>=1.10.0')
+@testing.multi_gpu(2)
+class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
+    @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_fft(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp == cupy:
+            from cupyx.scipy.fftpack import get_fft_plan
+            shape = (self.n,) if self.n is not None else None
+            plan = get_fft_plan(a, shape=shape)
+            assert isinstance(plan, cupy.cuda.cufft.Plan1d)
+            with plan:
+                out = xp.fft.fft(a, n=self.n, norm=self.norm)
+        else:
+            out = xp.fft.fft(a, n=self.n, norm=self.norm)
+
+        # np.fft.fft alway returns np.complex128
+        if xp == np and dtype is np.complex64:
+            out = out.astype(np.complex64)
+
+        return out
+
+    @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
