@@ -246,6 +246,7 @@ class TestRandomSample(unittest.TestCase):
     {'size': None},
     {'size': ()},
     {'size': 4},
+    {'size': (0,)},
     {'size': (1, 0)},
 )
 @testing.fix_random()
