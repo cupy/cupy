@@ -47,7 +47,10 @@ from cupy.testing.helper import shaped_arange  # NOQA
 from cupy.testing.helper import shaped_random  # NOQA
 from cupy.testing.helper import shaped_reverse_arange  # NOQA
 from cupy.testing.helper import with_requires  # NOQA
+from cupy.testing.parameterized import from_pytest_parameterize  # NOQA
 from cupy.testing.parameterized import parameterize  # NOQA
+from cupy.testing.parameterized import parameterize_pytest  # NOQA
 from cupy.testing.parameterized import product  # NOQA
+from cupy.testing.parameterized import product_dict  # NOQA
 from cupy.testing.random import fix_random  # NOQA
 from cupy.testing.random import generate_seed  # NOQA
