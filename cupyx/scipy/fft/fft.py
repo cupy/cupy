@@ -1,10 +1,12 @@
+from numbers import Number
+
+import numpy as np
+
 import cupy
 from cupy.cuda import cufft
 from cupy.fft.fft import (_fft, _default_fft_func, hfft as _hfft,
                           ihfft as _ihfft)
 from cupy.fft.fft import fftshift, ifftshift, fftfreq, rfftfreq
-import numpy as np
-from numbers import Number
 
 
 __all__ = ['fft', 'ifft', 'fft2', 'ifft2', 'fftn', 'ifftn',
@@ -31,14 +33,14 @@ def __ua_convert__(dispatchables, coerce):
     if coerce:
         try:
             replaced = [
-                cupy.asarray(d.value) if d.coercible and d.type == np.ndarray
+                cupy.asarray(d.value) if d.coercible and d.type is np.ndarray
                 else d.value for d in dispatchables]
         except TypeError:
             return NotImplemented
     else:
         replaced = [d.value for d in dispatchables]
 
-    if not all(d.type != np.ndarray or isinstance(r, cupy.ndarray)
+    if not all(d.type is not np.ndarray or isinstance(r, cupy.ndarray)
                for r, d in zip(replaced, dispatchables)):
         return NotImplemented
 
@@ -61,8 +63,8 @@ def _implements(scipy_func):
     return inner
 
 
-def _asiterable(x):
-    """Convert scalars to iterable, otherwise pass through ``x`` unchanged"""
+def _assequence(x):
+    """Convert scalars to a sequence, otherwise pass through ``x`` unchanged"""
     if isinstance(x, Number):
         return (x,)
     return x
@@ -182,8 +184,8 @@ def fftn(x, s=None, axes=None, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.fftn`
     """
-    s = _asiterable(s)
-    axes = _asiterable(axes)
+    s = _assequence(s)
+    axes = _assequence(axes)
     func = _default_fft_func(x, s, axes)
     return func(x, s, axes, norm, cufft.CUFFT_FORWARD, overwrite_x=overwrite_x)
 
@@ -208,8 +210,8 @@ def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.ifftn`
     """
-    s = _asiterable(s)
-    axes = _asiterable(axes)
+    s = _assequence(s)
+    axes = _assequence(axes)
     func = _default_fft_func(x, s, axes)
     return func(x, s, axes, norm, cufft.CUFFT_INVERSE, overwrite_x=overwrite_x)
 
@@ -335,8 +337,8 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.rfftn`
     """
-    s = _asiterable(s)
-    axes = _asiterable(axes)
+    s = _assequence(s)
+    axes = _assequence(axes)
     return _fft(x, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C', overwrite_x)
 
 
@@ -363,8 +365,8 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.irfftn`
     """
-    s = _asiterable(s)
-    axes = _asiterable(axes)
+    s = _assequence(s)
+    axes = _assequence(axes)
     return _fft(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R', overwrite_x)
 
 
