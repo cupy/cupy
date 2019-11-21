@@ -241,7 +241,6 @@ def convert_modules_for_hip():
     del mod_thrust['check_method']
 
 
-
 def ensure_module_file(file):
     if isinstance(file, tuple):
         return file
