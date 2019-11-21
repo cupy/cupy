@@ -134,6 +134,12 @@ class TestDet(unittest.TestCase):
         a = testing.shaped_arange((), xp, dtype)
         xp.linalg.det(a)
 
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_det_singular(self, xp, dtype):
+        a = xp.zeros((2, 3, 3), dtype)
+        return xp.linalg.det(a)
+
 
 @unittest.skipUnless(
     cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
@@ -163,9 +169,23 @@ class TestSlogdet(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
-    def test_slogdet_fail(self, xp, dtype):
+    def test_slogdet_singular(self, xp, dtype):
         a = xp.zeros((3, 3), dtype)
         sign, logdet = xp.linalg.slogdet(a)
+        return xp.array([sign, logdet], dtype)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_slogdet_singular_errstate(self, xp, dtype):
+        a = xp.zeros((3, 3), dtype)
+<<<<<<< HEAD
+        sign, logdet = xp.linalg.slogdet(a)
+=======
+        with cupyx.errstate(linalg='raise'):
+            # `cupy.linalg.slogdet` internally catches `dev_info < 0` from
+            # cuSOLVER, which should not affect `dev_info > 0` cases.
+            sign, logdet = xp.linalg.slogdet(a)
+>>>>>>> 4a8105f88... Merge pull request #2660 from toslunar/slogdet-nosync
         return xp.array([sign, logdet], dtype)
 
     @testing.for_float_dtypes(no_float16=True)
