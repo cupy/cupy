@@ -236,7 +236,7 @@ def _slogdet_one(a):
     handle = device.get_cusolver_handle()
     m = len(a)
     ipiv = cupy.empty(m, dtype=numpy.int32)
-    dev_info = cupy.empty(1, dtype=numpy.int32)
+    dev_info = cupy.empty((), dtype=numpy.int32)
 
     # Need to make a copy because getrf works inplace
     a_copy = a.copy(order='F')
@@ -253,22 +253,25 @@ def _slogdet_one(a):
     getrf(handle, m, m, a_copy.data.ptr, m, workspace.data.ptr,
           ipiv.data.ptr, dev_info.data.ptr)
 
-    try:
-        cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
-            getrf, dev_info)
+    # dev_info < 0 means illegal value (in dimensions, strides, and etc.) that
+    # should never happen even if the matrix contains nan or inf.
+    # TODO(kataoka): assert dev_info >= 0 if synchronization is allowed for
+    # debugging purposes.
 
-        diag = cupy.diag(a_copy)
-        # ipiv is 1-origin
-        non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, m + 1)) +
-                    cupy.count_nonzero(diag < 0))
-        # Note: sign == -1 ** (non_zero % 2)
-        sign = (non_zero % 2) * -2 + 1
-        logdet = cupy.log(abs(diag)).sum()
-    except linalg.LinAlgError:
-        sign = cupy.array(0.0, dtype=dtype)
-        logdet = cupy.array(float('-inf'), dtype)
+    diag = cupy.diag(a_copy)
+    # ipiv is 1-origin
+    non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, m + 1)) +
+                cupy.count_nonzero(diag < 0))
 
-    return sign, logdet
+    # Note: sign == -1 ** (non_zero % 2)
+    sign = (non_zero % 2) * -2 + 1
+    logdet = cupy.log(abs(diag)).sum()
+
+    singular = dev_info > 0
+    return (
+        cupy.where(singular, dtype.type(0), sign),
+        cupy.where(singular, dtype.type('-inf'), logdet),
+    )
 
 
 def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
