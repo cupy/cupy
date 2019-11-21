@@ -253,7 +253,8 @@ def _slogdet_one(a):
     getrf(handle, m, m, a_copy.data.ptr, m, workspace.data.ptr,
           ipiv.data.ptr, dev_info.data.ptr)
 
-    # dev_info < 0 means illegal value
+    # dev_info < 0 means illegal value (in dimensions, strides, and etc.) that
+    # should never happen even if the matrix contains nan or inf.
     # TODO(kataoka): assert dev_info >= 0 if synchronization is allowed for
     # debugging purposes.
 
