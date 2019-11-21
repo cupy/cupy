@@ -1,10 +1,5 @@
-global enable_nd_planning
 enable_nd_planning = True
-
-global use_multi_gpus
 use_multi_gpus = False
-
-global _devices
 _devices = None
 
 
