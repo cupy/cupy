@@ -254,9 +254,8 @@ def _slogdet_one(a):
           ipiv.data.ptr, dev_info.data.ptr)
 
     # dev_info < 0 means illegal value
-    dev_info_err = cupy.fmin(dev_info, 0)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
-        getrf, dev_info_err)
+    # TODO(kataoka): assert dev_info >= 0 if synchronization is allowed for
+    # debugging purposes.
 
     diag = cupy.diag(a_copy)
     # ipiv is 1-origin
