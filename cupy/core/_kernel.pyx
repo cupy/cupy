@@ -710,10 +710,10 @@ cdef dict _mst_unsigned_to_signed = {
     i : (numpy.iinfo(j).max, (i, j))
     for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
                  for i in "BHILQ"]}
+cdef _numpy_min_scalar_type = numpy.min_scalar_type
 
-
-cpdef _min_scalar_type(x):
-    t = numpy.min_scalar_type(x)
+cdef _min_scalar_type(x):
+    t = _numpy_min_scalar_type(x)
     dt = t.type
     if t.kind == 'u':
         m, dt2 = <tuple>_mst_unsigned_to_signed[dt]
