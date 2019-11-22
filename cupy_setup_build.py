@@ -200,9 +200,13 @@ MODULES = [
 
 def convert_modules_for_hip():
     global MODULES
-    if len(MODULES) == 2:
+    if len(MODULES) == 3:
         return
+    for m in MODULES:
+        if m['name'] == 'thrust':
+            mod_thrust = m
     MODULES = MODULES[:2]
+    MODULES.append(mod_thrust)
     mod_cuda = MODULES[0]
     mod_cuda['include'] = [
         'hip/hip_runtime_api.h',
@@ -227,6 +231,14 @@ def convert_modules_for_hip():
     mod_cusolver['include'] = []
     mod_cusolver['libraries'] = []
     del mod_cusolver['check_method']
+    mod_thrust['include'] = [
+        'thrust/version.h',
+    ]
+    mod_thrust['libraries'] = [
+        'hiprtc',
+        'hip_hcc',
+    ]
+    del mod_thrust['check_method']
 
 
 def ensure_module_file(file):
@@ -425,8 +437,7 @@ def make_extensions(options, compiler, use_cython):
 
     no_cuda = options['no_cuda']
     use_hip = not no_cuda and options['use_hip']
-    use_cpp11 = use_hip
-    settings = build.get_compiler_setting(use_cpp11)
+    settings = build.get_compiler_setting(use_hip)
 
     if use_hip:
         convert_modules_for_hip()
@@ -484,7 +495,9 @@ def make_extensions(options, compiler, use_cython):
             compile_args = s.setdefault('extra_compile_args', [])
             link_args = s.setdefault('extra_link_args', [])
             # openmp is required for cusolver
-            if compiler.compiler_type == 'unix' and not PLATFORM_DARWIN:
+            if use_hip:
+                pass
+            elif compiler.compiler_type == 'unix' and not PLATFORM_DARWIN:
                 # In mac environment, openmp is not required.
                 compile_args.append('-fopenmp')
                 link_args.append('-fopenmp')
@@ -799,6 +812,10 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             return unixccompiler.UnixCCompiler._compile(
                 self, obj, src, ext, cc_args, extra_postargs, pp_opts)
 
+        if use_hip:
+            return self._comiple_unix_hipcc(
+                obj, src, ext, cc_args, extra_postargs, pp_opts)
+
         # For CUDA C source files, compile them with NVCC.
         _compiler_so = self.compiler_so
         try:
@@ -815,6 +832,43 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
                 self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
         finally:
             self.compiler_so = _compiler_so
+
+    def _comiple_unix_hipcc(self,
+                            obj, src, ext, cc_args, extra_postargs, pp_opts):
+        # For CUDA C source files, compile them with HIPCC.
+        _compiler_so = self.compiler_so
+        try:
+            rcom_path = build.get_hipcc_path()
+            base_opts = build.get_compiler_base_options()
+            self.set_executable('compiler_so', rcom_path)
+
+            postargs = ['-O2', '-fPIC']
+            print('HIPCC options:', postargs)
+
+            return unixccompiler.UnixCCompiler._compile(
+                self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
+        finally:
+            self.compiler_so = _compiler_so
+
+    def link(self, target_desc, objects, output_filename, *args):
+        use_hipcc = False
+        if use_hip:
+            for i in objects:
+                if 'cupy_thrust.o' in i:
+                    use_hipcc = True
+        if use_hipcc:
+            _compiler_cxx = self.compiler_cxx
+            try:
+                rcom_path = build.get_hipcc_path()
+                self.set_executable('compiler_cxx', rcom_path)
+
+                return unixccompiler.UnixCCompiler.link(
+                    self, target_desc, objects, output_filename, *args)
+            finally:
+                self.compiler_cxx = _compiler_cxx
+        else:
+            return unixccompiler.UnixCCompiler.link(
+                self, target_desc, objects, output_filename, *args)
 
 
 class _MSVCCompiler(msvccompiler.MSVCCompiler):
