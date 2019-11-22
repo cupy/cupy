@@ -178,12 +178,6 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
         a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x,
                       out_size)
 
-    # TODO(leofang): ask for help
-    # For some reason, the assignment operator in _fft_c2c() (a = _exec_fft(
-    # ...)) silently switched the current device if multi-GPU cuFFT is used.
-    # This hotfix ensures we use whichever device we started with.
-    if config.use_multi_gpus:
-        cupy.cuda.runtime.setDevice(a.data.device_id)
     return a
 
 

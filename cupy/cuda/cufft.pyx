@@ -9,6 +9,7 @@ import threading
 import cupy
 from cupy.cuda cimport driver
 from cupy.cuda cimport memory
+from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
 from cupy.cuda.device import Device
 from cupy.cuda.stream import Event, Stream
@@ -398,10 +399,17 @@ class Plan1d(object):
 
     def __del__(self):
         cdef Handle plan = self.plan
+        cdef int dev = runtime.getDevice()
 
         with nogil:
             result = cufftDestroy(plan)
         check_result(result)
+
+        # cuFFT bug: after cufftDestroy(), the current device is mistakenly
+        # set to the last device in self.gpus, so we must correct it. See
+        # https://github.com/cupy/cupy/pull/2644#discussion_r347567899 and
+        # NVIDIA internal ticket 2761341.
+        runtime.setDevice(dev)
 
         if self.xtArr != 0:
             _XtFree(self.xtArr)
