@@ -531,11 +531,16 @@ class Plan1d(object):
                         count = int(share[i] * self.nx)
                         size = count * b.dtype.itemsize
                         curr_stream = self.streams[i]
+                        if i == 0:
+                            # When we come here, another stream could still be
+                            # copying data for us, so we wait patiently...
+                            outer_stream = stream_module.get_current_stream()
+                            outer_stream.synchronize()
                         xtArr_buffer[i].copy_from_device_async(
                             b[start:start+count].data, size, curr_stream)
-                        # it's no harm to do a cyclic wait
-                        prev_event = self.events[i-1]
-                        curr_stream.wait_event(prev_event)
+                        if i != 0:
+                            prev_event = self.events[i-1]
+                            curr_stream.wait_event(prev_event)
                         curr_event = self.events[i]
                         curr_event.record(curr_stream)
                         if i == nGPUs - 1:
@@ -558,11 +563,16 @@ class Plan1d(object):
                         count = int(share[i] * self.nx)
                         size = count * b.dtype.itemsize
                         curr_stream = self.streams[i]
+                        if i == 0:
+                            # When we come here, another stream could still be
+                            # copying data for us, so we wait patiently...
+                            outer_stream = stream_module.get_current_stream()
+                            outer_stream.synchronize()
                         b[start:start+count].data.copy_from_device_async(
                             xtArr_buffer[i], size, curr_stream)
-                        # it's no harm to do a cyclic wait
-                        prev_event = self.events[i-1]
-                        curr_stream.wait_event(prev_event)
+                        if i != 0:
+                            prev_event = self.events[i-1]
+                            curr_stream.wait_event(prev_event)
                         curr_event = self.events[i]
                         curr_event.record(curr_stream)
                         if i == nGPUs - 1:
