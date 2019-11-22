@@ -142,11 +142,9 @@ cdef class ndarray:
             'typestr': self.dtype.str,
             'descr': self.dtype.descr,
             'data': (self.data.ptr, False),
-            'version': 2,
+            'version': 0,
         }
-        if self._c_contiguous:
-            desc['strides'] = None
-        else:
+        if not self._c_contiguous:
             desc['strides'] = self.strides
 
         return desc
