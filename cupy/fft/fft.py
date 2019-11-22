@@ -48,7 +48,8 @@ def _cook_shape(a, s, axes, value_type, order='C'):
                 index = [slice(None)] * a.ndim
                 index[axis] = slice(0, shape[axis])
                 shape[axis] = sz
-                z = cupy.zeros(shape, a.dtype.char, order=order)
+                xp = cupy.get_array_module(a)
+                z = xp.zeros(shape, a.dtype.char, order=order)
                 z[index] = a
                 a = z
     return a
@@ -401,22 +402,23 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
     # sort the provided axes in ascending order
     axes = tuple(sorted(np.mod(axes, a.ndim)))
 
+    xp = cupy.get_array_module(a)
     if order == 'A':
         if a.flags.f_contiguous:
             order = 'F'
         elif a.flags.c_contiguous:
             order = 'C'
         else:
-            a = cupy.ascontiguousarray(a)
+            a = xp.ascontiguousarray(a)
             order = 'C'
     elif order not in ['C', 'F']:
         raise ValueError('Unsupported order: {}'.format(order))
 
     a = _cook_shape(a, s, axes, value_type, order=order)
     if order == 'C' and not a.flags.c_contiguous:
-        a = cupy.ascontiguousarray(a)
+        a = xp.ascontiguousarray(a)
     elif order == 'F' and not a.flags.f_contiguous:
-        a = cupy.asfortranarray(a)
+        a = xp.asfortranarray(a)
 
     a = _exec_fftn(a, direction, value_type, norm=norm, axes=axes,
                    overwrite_x=overwrite_x, plan=plan, out=out)

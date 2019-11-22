@@ -638,7 +638,8 @@ class Plan1d(object):
 
     def get_output_array(self, a):
         shape, dtype = self._output_dtype_and_shape(a)
-        return cupy.empty(shape, dtype)
+        xp = cupy.get_array_module(a)
+        return xp.empty(shape, dtype)
 
     def check_output_array(self, a, out):
         """Verify shape and dtype of the output array.
