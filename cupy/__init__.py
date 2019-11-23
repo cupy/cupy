@@ -1,4 +1,5 @@
 from __future__ import division
+import functools
 import sys
 import warnings
 
@@ -375,7 +376,7 @@ def common_type(*arrays):
         else:
             dtypes.append(a.dtype)
 
-    return numpy.find_common_type(dtypes, []).type
+    return functools.reduce(numpy.promote_types, dtypes)
 
 
 def result_type(*arrays_and_dtypes):

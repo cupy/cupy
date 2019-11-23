@@ -37,7 +37,7 @@ def cholesky(a):
     if a.dtype.char == 'f' or a.dtype.char == 'd':
         dtype = a.dtype.char
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+        dtype = numpy.promote_types(a.dtype.char, 'f').char
 
     x = a.astype(dtype, order='C', copy=True)
     n = len(a)
@@ -114,7 +114,7 @@ def qr(a, mode='reduced'):
     if a.dtype.char in 'fdFD':
         dtype = a.dtype.char
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+        dtype = numpy.promote_types(a.dtype.char, 'f').char
 
     m, n = a.shape
     mn = min(m, n)
@@ -127,7 +127,7 @@ def qr(a, mode='reduced'):
             return cupy.empty((0, n), dtype)
         else:  # mode == 'raw'
             # compatibility with numpy.linalg.qr
-            dtype = numpy.find_common_type((dtype, 'd'), ())
+            dtype = numpy.promote_types(dtype, 'd')
             return cupy.empty((n, m), dtype), cupy.empty((0,), dtype)
 
     x = a.transpose().astype(dtype, order='C', copy=True)
@@ -245,7 +245,7 @@ def svd(a, full_matrices=True, compute_uv=True):
     util._assert_rank2(a)
 
     # Cast to float32 or float64
-    a_dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+    a_dtype = numpy.promote_types(a.dtype.char, 'f').char
     if a_dtype == 'f':
         s_dtype = 'f'
     elif a_dtype == 'd':

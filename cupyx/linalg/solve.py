@@ -32,7 +32,7 @@ def invh(a):
     if a.dtype.char in 'fdFD':
         dtype = a.dtype.char
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+        dtype = numpy.promote_types(a.dtype.char, 'f').char
 
     cusolver_handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)

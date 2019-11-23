@@ -2339,7 +2339,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             True, True)
 
     ret_dtype = numpy.result_type(a.dtype, b.dtype)
-    dtype = numpy.find_common_type((ret_dtype, 'f'), ())
+    dtype = numpy.promote_types(ret_dtype, 'f')
 
     a = ascontiguousarray(a, dtype)
     b = ascontiguousarray(b, dtype)
@@ -2532,7 +2532,7 @@ cpdef ndarray tensordot_core(
     cdef float one_fp32, zero_fp32
     ret_dtype = a.dtype.char
     if ret_dtype != b.dtype.char:
-        ret_dtype = numpy.find_common_type((ret_dtype, b.dtype), ()).char
+        ret_dtype = numpy.promote_types(ret_dtype, b.dtype).char
 
     if not a.size or not b.size:
         if out is None:
@@ -2553,7 +2553,7 @@ cpdef ndarray tensordot_core(
     if use_sgemmEx or ret_dtype in 'fdFD':
         dtype = ret_dtype
     else:
-        dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
+        dtype = numpy.promote_types(ret_dtype, 'f').char
 
     if out is None:
         out = ndarray(ret_shape, dtype)
