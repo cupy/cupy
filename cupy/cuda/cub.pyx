@@ -4,7 +4,7 @@
 
 import numpy
 
-from cupy.core.core cimport (ndarray, _internal_ascontiguousarray,
+from cupy.core.core cimport (ndarray, _internal_ascontiguousarray,  # noqa:E211
                              _internal_asfortranarray)
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream
@@ -207,9 +207,6 @@ def device_segmented_reduce(ndarray x, op, axis, out=None,
     cub_device_segmented_reduce(ws_ptr, ws_size, x_ptr, y_ptr, n_segments,
                                 offset_start_ptr, offset_end_ptr, s,
                                 op, dtype_id)
-#    if x.flags.f_contiguous:
-#        y = _internal_asfortranarray(y)
-#        #y = y.astype(y.dtype, order='F')
 
     if out is not None:
         out[...] = y
@@ -224,7 +221,7 @@ cdef bint _cub_device_reduce_axis_compatible(axis, Py_ssize_t ndim):
 
 
 cdef bint _cub_device_segmented_reduce_axis_compatible(
-    axis, Py_ssize_t ndim, order):
+        axis, Py_ssize_t ndim, order):
     # Implementation borrowed from cupy.fft.fft._get_cufft_plan_nd().
     # This function checks if the reduced axes are contiguous.
     cdef tuple cub_axis
