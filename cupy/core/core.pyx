@@ -2338,7 +2338,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             (0,) * (ndim - b_ndim) + b.strides,
             True, True)
 
-    ret_dtype = numpy.result_type(a.dtype, b.dtype)
+    ret_dtype = numpy.promote_types(a.dtype, b.dtype)
     dtype = numpy.promote_types(ret_dtype, 'f')
 
     a = ascontiguousarray(a, dtype)

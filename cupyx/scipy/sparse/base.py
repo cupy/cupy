@@ -238,7 +238,7 @@ class spmatrix(object):
         if self.dtype.kind == 'f':
             return self
         else:
-            typ = numpy.result_type(self.dtype, 'f')
+            typ = numpy.promote_types(self.dtype, 'f')
             return self.astype(typ)
 
     def astype(self, t):
