@@ -596,8 +596,6 @@ def using_allocator(allocator=None):
         yield
     finally:
         _thread_local.allocator = previous_allocator
-        if previous_allocator is None:
-            delattr(_thread_local, 'allocator')
 
 
 @cython.final
