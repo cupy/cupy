@@ -102,16 +102,24 @@ cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
 
 
 cpdef tuple _get_args_info(list args):
+    cdef ndarray arr
     ret = []
     for a in args:
         t = type(a)
         if t is Indexer:
             dtype = None
+            ndim = (<Indexer>a).ndim
         elif t is _scalar.CScalar:
             dtype = (<_scalar.CScalar>a).get_numpy_type()
+            ndim = 0
+        elif t is ndarray:
+            arr = a
+            dtype = arr.dtype.type
+            ndim = arr._shape.size()
         else:
             dtype = a.dtype.type
-        ret.append((t, dtype, a.ndim))
+            ndim = a.ndim
+        ret.append((t, dtype, ndim))
     return tuple(ret)
 
 
