@@ -1483,7 +1483,8 @@ cdef class ndarray:
         """Returns a view of the array with minimum number of dimensions.
 
         Args:
-            dtype: Data type specifier. If it is given, then the memory
+            dtype: (Deprecated) Data type specifier.
+                If it is given, then the memory
                 sequence is reinterpreted as the new type.
 
         Returns:
@@ -1492,18 +1493,32 @@ cdef class ndarray:
         """
         cdef vector.vector[Py_ssize_t] shape, strides
         cdef Py_ssize_t ndim
+        cdef ndarray view
+        if dtype is not None:
+            warnings.warn(
+                'calling reduced_view with dtype is deprecated',
+                DeprecationWarning)
+            return self.reduced_view().view(dtype)
+
         ndim = self._shape.size()
         if ndim <= 1:
             return self
+        if self._c_contiguous:
+            view = self.view()
+            view._shape.assign(1, self.size)
+            view._strides.assign(1, self.dtype.itemsize)
+            view._update_f_contiguity()
+            return view
+
+            newstrides.resize(1)
+
         internal.get_reduced_dims(
-            self._shape, self._strides, self.itemsize, shape, strides)
+            self._shape, self._strides, self.dtype.itemsize, shape, strides)
         if ndim == <Py_ssize_t>shape.size():
             return self
 
-        view = self.view(dtype=dtype)
         # TODO(niboshi): Confirm update_x_contiguity flags
-        view._set_shape_and_strides(shape, strides, True, True)
-        return view
+        return self._view(shape, strides, False, True)
 
     cpdef _update_c_contiguity(self):
         if self.size == 0:
