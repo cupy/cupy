@@ -1575,7 +1575,9 @@ cdef class ndarray:
             self._update_c_contiguity()
 
     cdef function.CPointer get_pointer(self):
-        return CArray(self)
+        cdef CArray ret = CArray.__new__(CArray)
+        ret._init(self)
+        return ret
 
     cpdef object toDlpack(self):
         """Zero-copy conversion to a DLPack tensor.
