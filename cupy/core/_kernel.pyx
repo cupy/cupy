@@ -18,6 +18,7 @@ from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport _convert_object_with_cuda_array_interface
+from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
@@ -32,6 +33,13 @@ cpdef inline bint _is_fusing() except? -1:
         return _thread_local.history is not None
     except AttributeError:
         _thread_local.history = None
+    return False
+
+
+cdef inline bint _contain_zero(const vector.vector[Py_ssize_t]& v) except? -1:
+    for i in range(v.size()):
+        if v[i] == 0:
+            return True
     return False
 
 
@@ -472,17 +480,16 @@ cdef tuple _decide_params_type_core(
     return in_types, out_types, type_map
 
 
-cdef tuple _broadcast(list args, tuple params, bint use_size):
+cdef list _broadcast(list args, tuple params, bint use_size,
+                     vector.vector[Py_ssize_t]& shape):
     cdef Py_ssize_t i
     cdef ParameterInfo p
     cdef bint any_nonraw_array = False
-    cdef vector.vector[Py_ssize_t] shape
 
     # Collect non-raw arrays
     value = []
-    for i in range(len(args)):
+    for i, a in enumerate(args):
         p = params[i]
-        a = args[i]
         if not p.raw and isinstance(a, ndarray):
             # Non-raw array
             any_nonraw_array = True
@@ -506,8 +513,7 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
     for i, a in enumerate(value):
         if a is None:
             value[i] = args[i]
-
-    return value, tuple(shape)
+    return value
 
 
 cdef _numpy_can_cast = numpy.can_cast
@@ -520,24 +526,27 @@ cdef bint _can_cast(d1, d2, casting):
     return _numpy_can_cast(d1, d2, casting=casting)
 
 
-cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
+cdef list _get_out_args(list out_args, tuple out_types,
+                        const vector.vector[Py_ssize_t]& out_shape,
                         casting):
+    cdef ndarray arr
     if not out_args:
-        return [ndarray(out_shape, t) for t in out_types]
+        return [_ndarray_init(out_shape, t) for t in out_types]
 
     for i, a in enumerate(out_args):
         if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
-        if a.shape != out_shape:
+        arr = a
+        if not internal.vector_equal(arr._shape, out_shape):
             raise ValueError('Out shape is mismatched')
         out_type = out_types[i]
-        if not _can_cast(out_type, a.dtype, casting):
+        if not _can_cast(out_type, arr.dtype, casting):
             msg = 'output (typecode \'{}\') could not be coerced to ' \
                   'provided output parameter (typecode \'{}\') according to ' \
                   'the casting rule "{}"'.format(
                       get_dtype(out_type).char,
-                      a.dtype.char,
+                      arr.dtype.char,
                       casting)
             raise TypeError(msg)
     return out_args
@@ -557,8 +566,9 @@ cdef _copy_in_args_if_needed(list in_args, list out_args):
 
 
 cdef list _get_out_args_with_params(
-        list out_args, tuple out_types, tuple out_shape, tuple out_params,
-        bint is_size_specified):
+        list out_args, tuple out_types,
+        const vector.vector[Py_ssize_t]& out_shape,
+        tuple out_params, bint is_size_specified):
     cdef ParameterInfo p
     cdef ndarray arr
     cdef vector.vector[Py_ssize_t] shape
@@ -567,18 +577,15 @@ cdef list _get_out_args_with_params(
         for p in out_params:
             if p.raw and not is_size_specified:
                 raise ValueError('Output array size is Undecided')
-        return [ndarray(out_shape, t) for t in out_types]
+        return [_ndarray_init(out_shape, t) for t in out_types]
 
-    shape.reserve(len(out_shape))
-    for x in out_shape:
-        shape.push_back(x)
     for i, p in enumerate(out_params):
         a = out_args[i]
         if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
         arr = a
-        if not p.raw and not internal.vector_equal(arr._shape, shape):
+        if not p.raw and not internal.vector_equal(arr._shape, out_shape):
             raise ValueError('Out shape is mismatched')
     return out_args
 
@@ -714,8 +721,9 @@ cdef class ElementwiseKernel:
         """
         cdef function.Function kern
         cdef Py_ssize_t size, i
-        cdef list values, in_args, out_args
+        cdef list in_args, out_args
         cdef tuple in_types, out_types, types, shape
+        cdef vector.vector[Py_ssize_t] vec_shape
 
         size = -1
         size = kwargs.pop('size', -1)
@@ -733,11 +741,11 @@ cdef class ElementwiseKernel:
                 'but given {}.'.format(
                     self.name, self.nin, self.nargs, n_args))
         dev_id = device.get_device_id()
-        args = _preprocess_args(dev_id, args, True)
+        arg_list = _preprocess_args(dev_id, args, True)
 
-        values, shape = _broadcast(args, self.params, size != -1)
-        in_args = values[:self.nin]
-        out_args = args[self.nin:]
+        out_args = arg_list[self.nin:]
+        in_args = _broadcast(
+            arg_list, self.params, size != -1, vec_shape)[:self.nin]
 
         in_ndarray_types = tuple(
             [a.dtype.type if isinstance(a, ndarray) else None
@@ -749,11 +757,11 @@ cdef class ElementwiseKernel:
 
         is_size_specified = False
         if size != -1:
-            shape = size,
+            vec_shape.assign(1, size)
             is_size_specified = True
 
         out_args = _get_out_args_with_params(
-            out_args, out_types, shape, self.out_params, is_size_specified)
+            out_args, out_types, vec_shape, self.out_params, is_size_specified)
         if self.no_return:
             ret = None
         elif not self.return_tuple and self.nout == 1:
@@ -761,7 +769,7 @@ cdef class ElementwiseKernel:
         else:
             ret = tuple(out_args)
 
-        if 0 in shape:
+        if _contain_zero(vec_shape):
             return ret
 
         for i, x in enumerate(in_args):
@@ -770,6 +778,7 @@ cdef class ElementwiseKernel:
 
         inout_args = in_args + out_args
 
+        shape = tuple(vec_shape)
         if self.reduce_dims:
             shape = _reduce_dims(inout_args, self.params, shape)
         indexer = _carray.Indexer(shape)
@@ -997,10 +1006,10 @@ cdef class ufunc:
                     self.name, self.nin, self.nargs, n_args))
 
         dev_id = device.get_device_id()
-        args = _preprocess_args(dev_id, args, False)
+        arg_list = _preprocess_args(dev_id, args, False)
         if out is None:
-            in_args = args[:self.nin]
-            out_args = args[self.nin:]
+            in_args = arg_list[:self.nin]
+            out_args = arg_list[self.nin:]
         else:
             if self.nout != 1:
                 raise ValueError('Cannot use \'out\' in %s' % self.name)
@@ -1008,26 +1017,23 @@ cdef class ufunc:
                 raise ValueError('Cannot specify \'out\' as both '
                                  'a positional and keyword argument')
 
-            in_args = list(args)
+            in_args = arg_list
             out_args = _preprocess_args(dev_id, (out,), False)
-            args += out_args
 
         _copy_in_args_if_needed(in_args, out_args)
         broad_values = in_args + out_args
         internal._broadcast_core(broad_values, vec_shape)
-        shape = tuple(vec_shape)
 
         op = self._ops.guess_routine(
             self.name, self._routine_cache, in_args, dtype, self._out_ops)
-        out_args = _get_out_args(out_args, op.out_types, shape, casting)
+        out_args = _get_out_args(out_args, op.out_types, vec_shape, casting)
         if self.nout == 1:
             ret = out_args[0]
         else:
             ret = tuple(out_args)
 
-        for s in vec_shape:
-            if s == 0:
-                return ret
+        if _contain_zero(vec_shape):
+            return ret
 
         inout_args = []
         for i, t in enumerate(op.in_types):
@@ -1036,7 +1042,7 @@ cdef class ufunc:
                 x if isinstance(x, ndarray) else
                 _scalar.CScalar.from_numpy_scalar_with_dtype(x, t))
         inout_args.extend(out_args)
-        shape = _reduce_dims(inout_args, self._params, shape)
+        shape = _reduce_dims(inout_args, self._params, tuple(vec_shape))
         indexer = _carray.Indexer(shape)
         inout_args.append(indexer)
         arginfos = _get_arginfos(inout_args)
