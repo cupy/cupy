@@ -606,7 +606,7 @@ class RandomState(object):
 
         n = functools.reduce(operator.mul, size, 1)
 
-        if n is 0:
+        if n == 0:
             return cupy.array(())
 
         sample = cupy.empty((n,), dtype=dtype)
