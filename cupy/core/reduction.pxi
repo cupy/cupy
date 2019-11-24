@@ -218,6 +218,7 @@ class simple_reduction_function(object):
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
         cdef ndarray arr, ret
+        cdef function.Function kern
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -389,6 +390,7 @@ class ReductionKernel(object):
         """
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
+        cdef function.Function kern
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
