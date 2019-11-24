@@ -103,9 +103,32 @@ class TestGetCContiguity(unittest.TestCase):
     def test_zero_in_shape(self):
         self.assertTrue(internal.get_c_contiguity((1, 0, 1), (1, 1, 1), 3))
 
-    def test_normal(self):
-        # TODO(unno): write test for normal case
-        pass
+    def test_all_one_shape(self):
+        self.assertTrue(internal.get_c_contiguity((1, 1, 1), (1, 1, 1), 3))
+
+    def test_normal1(self):
+        self.assertTrue(internal.get_c_contiguity((3, 4, 3), (24, 6, 2), 2))
+
+    def test_normal2(self):
+        self.assertTrue(internal.get_c_contiguity((3, 1, 3), (6, 100, 2), 2))
+
+    def test_normal3(self):
+        self.assertTrue(internal.get_c_contiguity((3,), (4, ), 4))
+
+    def test_normal4(self):
+        self.assertTrue(internal.get_c_contiguity((), (), 4))
+
+    def test_normal5(self):
+        self.assertTrue(internal.get_c_contiguity((3, 1), (4, 8), 4))
+
+    def test_no_contiguous1(self):
+        self.assertFalse(internal.get_c_contiguity((3, 4, 3), (30, 6, 2), 2))
+
+    def test_no_contiguous2(self):
+        self.assertFalse(internal.get_c_contiguity((3, 1, 3), (24, 6, 2), 2))
+
+    def test_no_contiguous3(self):
+        self.assertFalse(internal.get_c_contiguity((3, 1, 3), (6, 6, 4), 2))
 
 
 class TestInferUnknownDimension(unittest.TestCase):
