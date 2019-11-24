@@ -707,7 +707,7 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
 
 
 cdef dict _mst_unsigned_to_signed = {
-    i : (numpy.iinfo(j).max, (i, j))
+    i: (numpy.iinfo(j).max, (i, j))
     for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
                  for i in "BHILQ"]}
 cdef _numpy_min_scalar_type = numpy.min_scalar_type
