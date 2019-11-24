@@ -1,8 +1,11 @@
+cimport cython  # NOQA
+
 from libc.stdint cimport int8_t
 
 from cupy.cuda.function cimport CPointer
 
 
+@cython.final
 cdef class CScalar(CPointer):
 
     cdef:
