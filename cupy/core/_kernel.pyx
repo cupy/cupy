@@ -401,7 +401,7 @@ cdef list _get_out_args_with_params(
 @util.memoize(for_each_device=True)
 def _get_elementwise_kernel(
         tuple args_info, tuple types, tuple params, operation, name,
-        preamble, dict kwargs):
+        preamble, **kwargs):
     kernel_params = _get_kernel_params(params, args_info)
     types_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k) for k, v in types)
@@ -613,7 +613,7 @@ cdef class ElementwiseKernel:
             return kern
         kern = _get_elementwise_kernel(
             args_info, types, self.params, self.operation,
-            self.name, self.preamble, self.kwargs)
+            self.name, self.preamble, **self.kwargs)
 
         # Store the compiled kernel in the cache.
         # Potentially overwrite a duplicate cache entry because
