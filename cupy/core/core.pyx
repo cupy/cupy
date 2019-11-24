@@ -1510,7 +1510,7 @@ cdef class ndarray:
             self._c_contiguous = True
             return
         self._c_contiguous = internal.get_c_contiguity(
-            self._shape, self._strides, self.itemsize)
+            self._shape, self._strides, self.dtype.itemsize)
 
     cpdef _update_f_contiguity(self):
         cdef Py_ssize_t i, count
@@ -1528,7 +1528,7 @@ cdef class ndarray:
         rev_shape.assign(self._shape.rbegin(), self._shape.rend())
         rev_strides.assign(self._strides.rbegin(), self._strides.rend())
         self._f_contiguous = internal.get_c_contiguity(
-            rev_shape, rev_strides, self.itemsize)
+            rev_shape, rev_strides, self.dtype.itemsize)
 
     cpdef _update_contiguity(self):
         self._update_c_contiguity()
