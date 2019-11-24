@@ -135,6 +135,14 @@ cdef class ndarray:
         else:
             self.data = memptr
 
+    cdef _init_fast(self, const vector.vector[Py_ssize_t]& shape, dtype,
+                    bint c_order):
+        """ For internal ndarray creation. """
+        self._shape = shape
+        self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
+        self._set_contiguous_strides(itemsize, c_order)
+        self.data = memory.alloc(self.size * itemsize)
+
     @property
     def __cuda_array_interface__(self):
         desc = {
@@ -377,7 +385,7 @@ cdef class ndarray:
 
         if order_char == b'K':
             strides = _get_strides_for_order_K(self, dtype)
-            newarray = ndarray(self.shape, dtype=dtype)
+            newarray = _ndarray_init(self._shape, dtype)
             # TODO(niboshi): Confirm update_x_contiguity flags
             newarray._set_shape_and_strides(self._shape, strides, True, True)
         else:
@@ -419,6 +427,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.copy`
 
         """
+        cdef ndarray x
         if self.size == 0:
             return self.astype(self.dtype, order=order)
 
@@ -432,7 +441,7 @@ cdef class ndarray:
             x = self.astype(self.dtype, order=order, copy=False)
         finally:
             runtime.setDevice(dev_id)
-        newarray = ndarray(x.shape, dtype=x.dtype)
+        newarray = _ndarray_init(x._shape, x.dtype)
         if not x._c_contiguous and not x._f_contiguous:
             raise NotImplementedError(
                 'CuPy cannot copy non-contiguous array between devices.')
@@ -1994,7 +2003,7 @@ cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
 cpdef ndarray _internal_ascontiguousarray(ndarray a):
     if a._c_contiguous:
         return a
-    newarray = ndarray(a.shape, a.dtype)
+    newarray = _ndarray_init(a._shape, a.dtype)
     elementwise_copy(a, newarray)
     return newarray
 
@@ -2250,12 +2259,12 @@ cdef ndarray _mat_ptrs(ndarray a):
     cdef ndarray idx
     idx = _mat_ptrs_kernel(
         a.data.ptr, a._strides[0],
-        cupy.ndarray((a._shape[0],), dtype=numpy.uintp))
+        ndarray((a._shape[0],), dtype=numpy.uintp))
 
     for i in range(1, ndim - 2):
         idx = _mat_ptrs_kernel(
             idx[:, None], a._strides[i],
-            cupy.ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
+            ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
         idx = idx.ravel()
     return idx
 
@@ -2536,7 +2545,7 @@ cpdef ndarray tensordot_core(
 
     if not a.size or not b.size:
         if out is None:
-            out = ndarray(ret_shape, dtype=ret_dtype)
+            out = _ndarray_init(ret_shape, ret_dtype)
         out.fill(0)
         return out
 
@@ -2556,15 +2565,15 @@ cpdef ndarray tensordot_core(
         dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
 
     if out is None:
-        out = ndarray(ret_shape, dtype)
+        out = _ndarray_init(ret_shape, dtype)
         if dtype == ret_dtype:
             ret = out
         else:
-            ret = ndarray(ret_shape, ret_dtype)
+            ret = _ndarray_init(ret_shape, ret_dtype)
     else:
         ret = out
         if out.dtype != dtype:
-            out = ndarray(ret_shape, dtype)
+            out = _ndarray_init(ret_shape, dtype)
 
     if m == 1 and n == 1:
         _tensordot_core_mul_sum(
@@ -2767,3 +2776,9 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     mem = memory_module.UnownedMemory(desc['data'][0], nbytes, a)
     memptr = memory.MemoryPointer(mem, 0)
     return ndarray(shape, dtype, memptr, strides)
+
+
+cdef _ndarray_init(const vector.vector[Py_ssize_t]& shape, dtype):
+    cdef ndarray ret = ndarray.__new__(ndarray)
+    ret._init_fast(shape, dtype, True)
+    return ret
