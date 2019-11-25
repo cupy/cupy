@@ -401,6 +401,12 @@ def check_cutensor_version(compiler, settings):
 
     _cutensor_version = int(out)
 
+    if _cutensor_version < 1000:
+        utils.print_warning(
+            'Unsupported cuTENSOR version: {}'.format(_cutensor_version)
+        )
+        return False
+
     return True
 
 
