@@ -144,33 +144,6 @@ cpdef inline check_result(int result):
         raise CuFFTError(result)
 
 
-# for debugging
-def _multi_gpu_check_data_integraty(intptr_t in_arr=0):
-    cdef intptr_t ptr
-    cdef XtArray* xtArr
-
-    if in_arr == 0:
-        return
-    xtArr = <XtArray*>in_arr
-
-    print(xtArr.version)
-    print(xtArr.descriptor.version)
-    print(xtArr.descriptor.nGPUs)
-    for i in range(MAX_CUDA_DESCRIPTOR_GPUS):
-        print(xtArr.descriptor.GPUs[i], end=' ')
-    print()
-    for i in range(MAX_CUDA_DESCRIPTOR_GPUS):
-        print(<intptr_t>xtArr.descriptor.data[i], end=' ')
-    print()
-    for i in range(MAX_CUDA_DESCRIPTOR_GPUS):
-        print(xtArr.descriptor.size[i], end=' ')
-    print()
-    print(<intptr_t>xtArr.descriptor.cudaXtState)
-    print(xtArr.library)
-    print(<int>xtArr.subFormat)
-    print(<intptr_t>xtArr.libDescriptor)
-
-
 # This is necessary for single-batch transforms: "when batch is one, data is
 # left in the GPU memory in a permutation of the natural output", see
 # https://docs.nvidia.com/cuda/cufft/index.html#multiple-GPU-cufft-intermediate-helper  # NOQA
@@ -659,11 +632,6 @@ class Plan1d(object):
             raise ValueError(
                 'out dtype mismatch: found {}, expected {}'.format(
                     out.dtype, a.dtype))
-
-    # for debugging
-    def _multi_gpu_check_data_integraty(self, intptr_t in_arr=0):
-        cdef intptr_t ptr = self.xtArr
-        _multi_gpu_check_data_integraty(ptr)
 
 
 class PlanNd(object):
