@@ -8,6 +8,21 @@
 #include <library_types.h>
 #include <cutensor.h>
 
+void _cutensor_alloc_handle(cutensorHandle_t **handle);
+void _cutensor_free_handle(cutensorHandle_t *handle);
+
+void _cutensor_alloc_tensor_descriptor(cutensorTensorDescriptor_t **desc);
+void _cutensor_free_tensor_descriptor(cutensorTensorDescriptor_t *desc);
+
+void _cutensor_alloc_contraction_descriptor(cutensorContractionDescriptor_t **desc);
+void _cutensor_free_contraction_descriptor(cutensorContractionDescriptor_t *desc);
+
+void _cutensor_alloc_contraction_plan(cutensorContractionPlan_t **plan);
+void _cutensor_free_contraction_plan(cutensorContractionPlan_t *plan);
+
+void _cutensor_alloc_contraction_find(cutensorContractionFind_t **find);
+void _cutensor_free_contraction_find(cutensorContractionFind_t *find);
+
 #else // #ifndef CUPY_NO_CUDA
 
 #include "cupy_cuda_common.h"
@@ -71,11 +86,30 @@ extern "C" {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
+    cutensorStatus_t cutensorGetAlignmentRequirement(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
     const char* cutensorGetErrorString(...) {
 	return NULL;
     }
 
 } // extern "C"
+
+void _cutensor_alloc_handle(...) {}
+void _cutensor_free_handle(...) {}
+
+void _cutensor_alloc_tensor_descriptor(...) {}
+void _cutensor_free_tensor_descriptor(...) {}
+
+void _cutensor_alloc_contraction_descriptor(...) {}
+void _cutensor_free_contraction_descriptor(...) {}
+
+void _cutensor_alloc_contraction_plan(...) {}
+void _cutensor_free_contraction_plan(...) {}
+
+void _cutensor_alloc_contraction_find(...) {}
+void _cutensor_free_contraction_find(...) {}
 
 #endif // #ifndef CUPY_NO_CUDA
 

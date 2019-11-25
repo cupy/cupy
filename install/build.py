@@ -136,11 +136,6 @@ def get_compiler_setting(use_cpp11):
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
-    cutensor_path = os.environ.get('CUTENSOR_PATH', '')
-    if os.path.exists(cutensor_path):
-        include_dirs.append(os.path.join(cutensor_path, 'include'))
-        library_dirs.append(os.path.join(cutensor_path, 'lib'))
-
     cub_path = os.environ.get('CUB_PATH', '')
     if os.path.exists(cub_path):
         # for <cupy/complex.cuh>

@@ -170,7 +170,7 @@ MODULES = [
     {
         'name': 'cutensor',
         'file': [
-            'cupy.cuda.cutensor',
+            ('cupy.cuda.cutensor', ['cupy/cuda/cupy_cutensor.cu']),
         ],
         'include': [
             'cutensor.h',
@@ -178,6 +178,7 @@ MODULES = [
         'libraries': [
             'cutensor',
             'cublas',
+            'cudart',
         ],
         'check_method': build.check_cutensor_version,
         'version_method': build.get_cutensor_version,
@@ -331,6 +332,18 @@ def preconfigure_modules(compiler, settings):
         status = 'No'
         errmsg = []
 
+        if module['name'] == 'cutensor':
+            cuda_version = build.get_cuda_version()
+            cuda_version = str(cuda_version // 1000) + '.' + \
+                str((cuda_version // 10) % 100)
+            cutensor_path = os.environ.get('CUTENSOR_PATH', '')
+            inc_path = os.path.join(cutensor_path, 'include')
+            if os.path.exists(inc_path):
+                settings['include_dirs'].append(inc_path)
+            lib_path = os.path.join(cutensor_path, 'lib', cuda_version)
+            if os.path.exists(lib_path):
+                settings['library_dirs'].append(lib_path)
+
         print('')
         print('-------- Configuring Module: {} --------'.format(
             module['name']))
@@ -408,7 +421,7 @@ def preconfigure_modules(compiler, settings):
     ]
 
     print('\n'.join(summary))
-    return ret
+    return ret, settings
 
 
 def _rpath_base():
@@ -463,7 +476,7 @@ def make_extensions(options, compiler, use_cython):
     if no_cuda:
         available_modules = [m['name'] for m in MODULES]
     else:
-        available_modules = preconfigure_modules(compiler, settings)
+        available_modules, settings = preconfigure_modules(compiler, settings)
         if 'cuda' not in available_modules:
             raise Exception('Your CUDA environment is invalid. '
                             'Please check above error log.')
