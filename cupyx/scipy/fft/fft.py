@@ -8,11 +8,13 @@ from cupy.fft.fft import (_fft, _default_fft_func, hfft as _hfft,
                           ihfft as _ihfft)
 from cupy.fft.fft import fftshift, ifftshift, fftfreq, rfftfreq
 
+from cupyx.scipy.fftpack import get_fft_plan
 
 __all__ = ['fft', 'ifft', 'fft2', 'ifft2', 'fftn', 'ifftn',
            'rfft', 'irfft', 'rfft2', 'irfft2', 'rfftn', 'irfftn',
            'hfft', 'ihfft',
-           'fftshift', 'ifftshift', 'fftfreq', 'rfftfreq']
+           'fftshift', 'ifftshift', 'fftfreq', 'rfftfreq',
+           'get_fft_plan']
 
 try:
     import scipy.fft as _scipy_fft
