@@ -2763,7 +2763,7 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
         for sh, st in zip(shape, strides):
             nbytes = max(nbytes, abs(sh * st))
     else:
-        nbytes = internal.prod(shape) * dtype.itemsize
+        nbytes = internal.prod_sequence(shape) * dtype.itemsize
     mem = memory_module.UnownedMemory(desc['data'][0], nbytes, a)
     memptr = memory.MemoryPointer(mem, 0)
     return ndarray(shape, dtype, memptr, strides)

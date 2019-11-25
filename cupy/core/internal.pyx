@@ -20,6 +20,14 @@ cpdef inline Py_ssize_t prod(const vector.vector[Py_ssize_t]& args):
 
 
 @cython.profile(False)
+cpdef inline Py_ssize_t prod_sequence(object args):
+    cdef Py_ssize_t i, n = 1
+    for i in args:
+        n *= i
+    return n
+
+
+@cython.profile(False)
 cpdef inline tuple get_size(object size):
     if size is None:
         return ()

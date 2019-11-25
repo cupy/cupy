@@ -18,16 +18,16 @@ class TestProd(unittest.TestCase):
         self.assertEqual(internal.prod([2, 3]), 6)
 
 
-class TestProdSsizeT(unittest.TestCase):
+class TestProdSequence(unittest.TestCase):
 
     def test_empty(self):
-        self.assertEqual(internal.prod([]), 1)
+        self.assertEqual(internal.prod_sequence(()), 1)
 
     def test_one(self):
-        self.assertEqual(internal.prod([2]), 2)
+        self.assertEqual(internal.prod_sequence((2,)), 2)
 
     def test_two(self):
-        self.assertEqual(internal.prod([2, 3]), 6)
+        self.assertEqual(internal.prod_sequence((2, 3)), 6)
 
 
 class TestGetSize(unittest.TestCase):

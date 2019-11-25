@@ -765,7 +765,7 @@ cdef ndarray _concatenate_single_kernel(
 
     ret = core.ndarray(shape, dtype=dtype)
     if same_shape_and_contiguous:
-        base = internal.prod(shape[axis:]) // len(arrays)
+        base = internal.prod_sequence(shape[axis:]) // len(arrays)
         _concatenate_kernel_same_size(x, base, ret)
         return ret
 

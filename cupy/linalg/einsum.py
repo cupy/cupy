@@ -286,7 +286,7 @@ def _flatten_transpose(a, axeses):
         shapes.append([a.shape[axis] for axis in axes])
     return (
         a.transpose(transpose_axes).reshape(
-            tuple(cupy.core.internal.prod(shape) for shape in shapes)),
+            tuple([cupy.internal.prod(shape) for shape in shapes])),
         shapes
     )
 
