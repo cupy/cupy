@@ -75,26 +75,27 @@ cdef str _cupy_header = ''.join(
 # This is indirect include header list.
 # These header files are subject to a hash key.
 cdef list _cupy_extra_header_list = [
-    'cupy/complex/complex.h',
-    'cupy/complex/math_private.h',
-    'cupy/complex/complex_inl.h',
-    'cupy/complex/arithmetic.h',
-    'cupy/complex/cproj.h',
-    'cupy/complex/cexp.h',
-    'cupy/complex/cexpf.h',
-    'cupy/complex/clog.h',
-    'cupy/complex/clogf.h',
-    'cupy/complex/cpow.h',
-    'cupy/complex/ccosh.h',
-    'cupy/complex/ccoshf.h',
-    'cupy/complex/csinh.h',
-    'cupy/complex/csinhf.h',
-    'cupy/complex/ctanh.h',
-    'cupy/complex/ctanhf.h',
-    'cupy/complex/csqrt.h',
-    'cupy/complex/csqrtf.h',
-    'cupy/complex/catrig.h',
-    'cupy/complex/catrigf.h',
+    '/home/ecastill/thrust/thrust/complex.h',
+    '/home/ecastill/thrust/thrust/detail/complex/arithmetic.h',
+    '/home/ecastill/thrust/thrust/detail/complex/c99math.h',
+    '/home/ecastill/thrust/thrust/detail/complex/catrigf.h',
+    '/home/ecastill/thrust/thrust/detail/complex/catrig.h',
+    '/home/ecastill/thrust/thrust/detail/complex/ccoshf.h',
+    '/home/ecastill/thrust/thrust/detail/complex/ccosh.h',
+    '/home/ecastill/thrust/thrust/detail/complex/cexpf.h',
+    '/home/ecastill/thrust/thrust/detail/complex/cexp.h',
+    '/home/ecastill/thrust/thrust/detail/complex/clogf.h',
+    '/home/ecastill/thrust/thrust/detail/complex/clog.h',
+    '/home/ecastill/thrust/thrust/detail/complex/complex.inl',
+    '/home/ecastill/thrust/thrust/detail/complex/cpow.h',
+    '/home/ecastill/thrust/thrust/detail/complex/cproj.h',
+    '/home/ecastill/thrust/thrust/detail/complex/csinhf.h',
+    '/home/ecastill/thrust/thrust/detail/complex/csinh.h',
+    '/home/ecastill/thrust/thrust/detail/complex/csqrtf.h',
+    '/home/ecastill/thrust/thrust/detail/complex/csqrt.h',
+    '/home/ecastill/thrust/thrust/detail/complex/ctanhf.h',
+    '/home/ecastill/thrust/thrust/detail/complex/ctanh.h',
+    '/home/ecastill/thrust/thrust/detail/complex/math_private.h',
 ]
 
 cdef str _header_path_cache = None
@@ -115,8 +116,12 @@ cpdef str _get_header_source():
     if _header_source is None:
         source = []
         base_path = _get_header_dir_path()
-        for file_path in _cupy_header_list + _cupy_extra_header_list:
+        for file_path in _cupy_header_list:
             header_path = os.path.join(base_path, file_path)
+            with open(header_path) as header_file:
+                source.append(header_file.read())
+        _header_source = '\n'.join(source)
+        for header_path in _cupy_extra_header_list:
             with open(header_path) as header_file:
                 source.append(header_file.read())
         _header_source = '\n'.join(source)
