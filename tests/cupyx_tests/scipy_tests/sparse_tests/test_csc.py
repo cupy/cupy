@@ -1008,6 +1008,7 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     def test_getitem_slice_negative(self, xp, sp):
         return _make(xp, sp, self.dtype)[:, -2:-1]
 
+    @testing.with_reqires('scipy!=1.3.*')  # avoid segfault
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=IndexError)
     def test_getitem_slice_start_larger_than_stop(self, xp, sp):
         _make(xp, sp, self.dtype)[:, 3:2]
