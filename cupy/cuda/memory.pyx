@@ -554,6 +554,9 @@ cpdef set_allocator(allocator=None):
     global _current_allocator
     if allocator is None:
         allocator = _malloc
+    if getattr(_thread_local, 'allocator', None) is not None:
+        raise ValueError('Can\'t change the global allocator inside '
+                         '`using_allocator` context manager')
     _current_allocator = allocator
 
 

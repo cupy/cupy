@@ -636,6 +636,13 @@ class TestAllocator(unittest.TestCase):
             assert memory.get_allocator() == new_pool.malloc
         assert memory.get_allocator() == self.pool.malloc
 
+    def test_set_allocator_cm(self):
+        new_pool = memory.MemoryPool()
+        new_pool2 = memory.MemoryPool()
+        with memory.using_allocator(new_pool.malloc):
+            with self.assertRaises(ValueError):
+                memory.set_allocator(new_pool2.malloc)
+
     def test_allocator_nested_context_manager(self):
         new_pool = memory.MemoryPool()
         with memory.using_allocator(new_pool.malloc):
