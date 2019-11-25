@@ -4,6 +4,18 @@ _devices = None
 
 
 def set_cufft_gpus(gpus):
+    '''Set the GPUs to be used in multi-GPU FFT.
+
+    Args:
+        gpus (int or list of int): The number of GPUs or a list of GPUs
+            to be used. For the former case, the first ``gpus`` GPUs
+            will be used.
+
+    .. seealso:: `Multiple GPU cuFFT Transforms`_
+
+    .. _Multiple GPU cuFFT Transforms:
+        https://docs.nvidia.com/cuda/cufft/index.html#multiple-GPU-cufft-transforms
+    '''
     global _devices
 
     if isinstance(gpus, int):
