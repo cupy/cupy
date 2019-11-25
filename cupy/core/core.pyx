@@ -1510,8 +1510,6 @@ cdef class ndarray:
             view._update_f_contiguity()
             return view
 
-            newstrides.resize(1)
-
         internal.get_reduced_dims(
             self._shape, self._strides, self.dtype.itemsize, shape, strides)
         if ndim == <Py_ssize_t>shape.size():
