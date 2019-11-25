@@ -103,7 +103,7 @@ class TestFft(unittest.TestCase):
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
         # np.fft.fft alway returns np.complex128
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
         return out
@@ -118,7 +118,7 @@ class TestFft(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
         return out
@@ -143,7 +143,7 @@ class TestFftOrder(unittest.TestCase):
         out = xp.fft.fft(a, axis=self.axis)
 
         # np.fft.fft alway returns np.complex128
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
         return out
@@ -157,7 +157,7 @@ class TestFftOrder(unittest.TestCase):
             a = xp.asfortranarray(a)
         out = xp.fft.ifft(a, axis=self.axis)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
         return out
@@ -183,7 +183,7 @@ class TestMultiGpuFft(unittest.TestCase):
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
         # np.fft.fft alway returns np.complex128
-        if xp == np and dtype is np.complex64:
+        if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
         return out
@@ -200,7 +200,7 @@ class TestMultiGpuFft(unittest.TestCase):
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
         # np.fft.fft alway returns np.complex128
-        if xp == np and dtype is np.complex64:
+        if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
         return out
@@ -228,7 +228,7 @@ class TestMultiGpuFftOrder(unittest.TestCase):
         out = xp.fft.fft(a, axis=self.axis)
 
         # np.fft.fft alway returns np.complex128
-        if xp == np and dtype is np.complex64:
+        if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
         return out
@@ -244,7 +244,7 @@ class TestMultiGpuFftOrder(unittest.TestCase):
         out = xp.fft.ifft(a, axis=self.axis)
 
         # np.fft.fft alway returns np.complex128
-        if xp == np and dtype is np.complex64:
+        if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
         return out
@@ -329,7 +329,7 @@ class TestFft2(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft2(a, s=self.s, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
         return out
@@ -343,7 +343,7 @@ class TestFft2(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft2(a, s=self.s, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
         return out
@@ -381,7 +381,7 @@ class TestFftn(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
         return out
@@ -395,7 +395,7 @@ class TestFftn(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
         return out
@@ -435,7 +435,7 @@ class TestPlanCtxManagerFftn(unittest.TestCase):
         else:
             out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        if xp == np and dtype is np.complex64:
+        if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
 
         return out
@@ -455,7 +455,7 @@ class TestPlanCtxManagerFftn(unittest.TestCase):
         else:
             out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        if xp == np and dtype is np.complex64:
+        if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
 
         return out
@@ -517,7 +517,7 @@ class TestPlanCtxManagerFft(unittest.TestCase):
             out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
         # np.fft.fft alway returns np.complex128
-        if xp == np and dtype is np.complex64:
+        if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
 
         return out
@@ -537,7 +537,7 @@ class TestPlanCtxManagerFft(unittest.TestCase):
         else:
             out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
-        if xp == np and dtype is np.complex64:
+        if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
 
         return out
@@ -589,7 +589,7 @@ class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
             out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
         # np.fft.fft alway returns np.complex128
-        if xp == np and dtype is np.complex64:
+        if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
 
         return out
@@ -610,7 +610,7 @@ class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
         else:
             out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
-        if xp == np and dtype is np.complex64:
+        if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
 
         return out
@@ -710,7 +710,7 @@ class TestRfft(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.rfft(a, n=self.n, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
         return out
@@ -721,7 +721,7 @@ class TestRfft(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.irfft(a, n=self.n, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
 
         return out
@@ -761,7 +761,7 @@ class TestRfft2(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.rfft2(a, s=self.s, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
         return out
 
@@ -772,7 +772,7 @@ class TestRfft2(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.irfft2(a, s=self.s, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
         return out
 
@@ -806,7 +806,7 @@ class TestRfftn(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
         return out
@@ -818,7 +818,7 @@ class TestRfftn(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
 
         return out
@@ -839,7 +839,7 @@ class TestHfft(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.hfft(a, n=self.n, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
 
         return out
@@ -850,7 +850,7 @@ class TestHfft(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ihfft(a, n=self.n, norm=self.norm)
 
-        if xp == np and dtype in [np.float16, np.float32, np.complex64]:
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
         return out
