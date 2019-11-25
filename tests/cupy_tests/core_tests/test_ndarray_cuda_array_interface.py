@@ -18,7 +18,7 @@ class DummyObjectWithCudaArrayInterface(object):
             'typestr': self.a.dtype.str,
             'descr': self.a.dtype.descr,
             'data': (self.a.data.ptr, False),
-            'version': 0,
+            'version': 2,
         }
         return desc
 

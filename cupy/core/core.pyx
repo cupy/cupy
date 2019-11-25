@@ -2513,13 +2513,16 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     desc = a.__cuda_array_interface__
     shape = desc['shape']
     dtype = numpy.dtype(desc['typestr'])
-    if 'strides' in desc:
-        strides = desc['strides']
+    if 'mask' in desc:
+        mask = desc['mask']
+        if mask is not None:
+            raise ValueError('CuPy currently does not support masked arrays.')
+    strides = desc.get('strides')
+    if strides is not None:
         nbytes = 0
         for sh, st in zip(shape, strides):
             nbytes = max(nbytes, abs(sh * st))
     else:
-        strides = None
         nbytes = internal.prod(shape) * dtype.itemsize
     mem = memory_module.UnownedMemory(desc['data'][0], nbytes, a)
     memptr = memory.MemoryPointer(mem, 0)
