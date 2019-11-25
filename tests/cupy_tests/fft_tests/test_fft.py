@@ -69,8 +69,7 @@ def multi_gpu_config(gpu_configs=None):
                 for gpus in gpu_configs:
                     try:
                         nGPUs = len(gpus)
-                        if nGPUs < 2:
-                            raise ValueError('Must use at least two gpus')
+                        assert nGPUs >= 2, 'Must use at least two gpus'
                         config.use_multi_gpus = True
                         config.set_cufft_gpus(gpus)
 
