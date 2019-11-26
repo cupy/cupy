@@ -379,16 +379,18 @@ cdef list _get_out_args_with_params(
     cdef ParameterInfo p
     cdef ndarray arr
     cdef vector.vector[Py_ssize_t] shape
+    cdef Py_ssize_t x
     if not out_args:
         for p in out_params:
             if p.raw and not is_size_specified:
                 raise ValueError('Output array size is Undecided')
         return [ndarray(out_shape, t) for t in out_types]
 
-    shape = out_shape
-    for i in range(len(out_params)):
+    shape.reserve(len(out_shape))
+    for x in out_shape:
+        shape.push_back(x)
+    for i, p in enumerate(out_params):
         a = out_args[i]
-        p = out_params[i]
         if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
@@ -530,7 +532,7 @@ cdef class ElementwiseKernel:
         """
         cdef function.Function kern
         cdef Py_ssize_t size, i
-        cdef list in_args, out_args
+        cdef list values, in_args, out_args
         cdef tuple in_types, out_types, types, shape
 
         size = -1
