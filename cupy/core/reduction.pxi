@@ -217,7 +217,8 @@ class simple_reduction_function(object):
         cdef tuple in_sahpe, reduce_axis, out_axis
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
-        cdef ndarray arr
+        cdef ndarray arr, ret
+        cdef function.Function kern
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -247,8 +248,8 @@ class simple_reduction_function(object):
         del axis  # to avoid bug
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
         out_args = _get_out_args(out_args, out_types, out_shape, 'unsafe')
-        ret = out_args[0] if len(out_args) == 1 else tuple(out_args)
-        if (<ndarray>out_args[0]).size == 0:
+        ret = out_args[0]
+        if ret.size == 0:
             return ret
         if arr.size == 0 and self.identity is None:
             raise ValueError(('zero-size array to reduction operation'
@@ -269,7 +270,7 @@ class simple_reduction_function(object):
 
         kern = _get_simple_reduction_function(
             routine, self._params, args_info,
-            in_args[0].dtype.type, out_args[0].dtype.type, out_types,
+            arr.dtype.type, ret.dtype.type, out_types,
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
         kern.linear_launch(
@@ -389,6 +390,7 @@ class ReductionKernel(object):
         """
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
+        cdef function.Function kern
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)

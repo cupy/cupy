@@ -837,7 +837,7 @@ def get_rnn_lin_layer_matrix_params(
         cudnn.destroyFilterDescriptor(mat_desc)
     byte_size = _get_byte_size(data_type)
     offset = (ptr - w.data.ptr) // byte_size
-    size = internal.prod(dim)
+    size = internal.prod_sequence(dim)
     mat = w[offset:offset + size]
     return mat
 
@@ -855,7 +855,7 @@ def get_rnn_lin_layer_bias_params(
         cudnn.destroyFilterDescriptor(bias_desc)
     byte_size = _get_byte_size(data_type)
     offset = (ptr - w.data.ptr) // byte_size
-    size = internal.prod(dim)
+    size = internal.prod_sequence(dim)
     bias = w[offset:offset + size]
     return bias
 
