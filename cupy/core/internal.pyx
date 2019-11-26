@@ -56,39 +56,34 @@ cdef void get_reduced_dims(
         vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
         Py_ssize_t itemsize, vector.vector[Py_ssize_t]& reduced_shape,
         vector.vector[Py_ssize_t]& reduced_strides):
-    cdef vector.vector[Py_ssize_t] tmp_shape, tmp_strides
     cdef Py_ssize_t i, ndim, sh, st, prev_st, index
     ndim = shape.size()
     reduced_shape.clear()
     reduced_strides.clear()
     if ndim == 0:
         return
+    reduced_shape.reserve(ndim)
+    reduced_strides.reserve(ndim)
 
+    prev_st = 0
+    index = -1
     for i in range(ndim):
         sh = shape[i]
         if sh == 0:
-            reduced_shape.push_back(0)
-            reduced_strides.push_back(itemsize)
+            reduced_shape.assign(1, 0)
+            reduced_strides.assign(1, itemsize)
             return
-        if sh != 1:
-            tmp_shape.push_back(sh)
-            tmp_strides.push_back(strides[i])
-    if tmp_shape.size() == 0:
-        return
-
-    reduced_shape.push_back(tmp_shape[0])
-    reduced_strides.push_back(tmp_strides[0])
-    index = 0
-    for i in range(<Py_ssize_t>tmp_shape.size() - 1):
-        sh = tmp_shape[i + 1]
-        st = tmp_strides[i + 1]
-        if tmp_strides[i] == sh * st:
-            reduced_shape[index] *= sh
-            reduced_strides[index] = st
-        else:
+        if sh == 1:
+            continue
+        st = strides[i]
+        if index == -1 or prev_st != sh * st:
             reduced_shape.push_back(sh)
             reduced_strides.push_back(st)
             index += 1
+        else:
+            reduced_shape[index] *= sh
+            reduced_strides[index] = st
+        prev_st = st
 
 
 @cython.profile(False)
