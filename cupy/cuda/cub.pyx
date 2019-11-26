@@ -284,7 +284,8 @@ cdef bint _cub_device_segmented_reduce_axis_compatible(
     # This function checks if the reduced axes are contiguous.
 
     # the axes to be reduced must be C- or F- contiguous
-    if not numpy.all(numpy.diff(cub_axis) == 1):
+    if not all((ax - ax_prev) == 1
+               for ax, ax_prev in zip(cub_axis[1:], cub_axis[:-1])):
         return False
     if order not in ('c', 'C', 'f', 'F'):
         return False
