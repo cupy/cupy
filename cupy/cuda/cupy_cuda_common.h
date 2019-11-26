@@ -158,8 +158,7 @@ struct cudaTextureDesc {
 // library_types.h
 ///////////////////////////////////////////////////////////////////////////////
 
-typedef enum libraryPropertyType_t
-{
+typedef enum libraryPropertyType_t {
 	MAJOR_VERSION,
 	MINOR_VERSION,
 	PATCH_LEVEL

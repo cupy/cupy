@@ -30,7 +30,7 @@ cdef extern from 'cupy_cusolver.h' nogil:
     int cusolverSpSetStream(SpHandle handle, driver.Stream streamId)
 
     # Library Property
-    int cusolverGetProperty(LibraryPropertyType type, int *value)
+    int cusolverGetProperty(LibraryPropertyType type, int* value)
 
     # libraryPropertyType_t
     int MAJOR_VERSION
