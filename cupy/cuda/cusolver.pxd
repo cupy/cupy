@@ -202,10 +202,14 @@ cpdef zormqr(intptr_t handle, int side, int trans,
              int ldc, size_t work, int lwork, size_t devInfo)  # (obsoleted)
 
 # L*D*L**T,U*D*U**T factorization
-cpdef int ssytrf_bufferSize(intptr_t handle, int n, size_t A, int lda) except? -1
-cpdef int dsytrf_bufferSize(intptr_t handle, int n, size_t A, int lda) except? -1
-cpdef int csytrf_bufferSize(intptr_t handle, int n, size_t A, int lda) except? -1
-cpdef int zsytrf_bufferSize(intptr_t handle, int n, size_t A, int lda) except? -1
+cpdef int ssytrf_bufferSize(intptr_t handle, int n, size_t A,
+                            int lda) except? -1
+cpdef int dsytrf_bufferSize(intptr_t handle, int n, size_t A,
+                            int lda) except? -1
+cpdef int csytrf_bufferSize(intptr_t handle, int n, size_t A,
+                            int lda) except? -1
+cpdef int zsytrf_bufferSize(intptr_t handle, int n, size_t A,
+                            int lda) except? -1
 
 cpdef ssytrf(intptr_t handle, int uplo, int n, size_t A, int lda,
              size_t ipiv, size_t work, int lwork, size_t devInfo)
@@ -285,18 +289,20 @@ cpdef zheevd(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
 # Sparse LAPACK Functions
 ###############################################################################
 
-cpdef scsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                  size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
-                  int reorder, size_t x, size_t singularity)
-cpdef dcsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                  size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
-                  int reorder, size_t x, size_t singularity)
-cpdef ccsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA, size_t csrVal,
-                  size_t csrRowPtr, size_t csrColInd, size_t b, float tol,
-                  int reorder, size_t x, size_t singularity)
-cpdef zcsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA, size_t csrVal,
-                  size_t csrRowPtr, size_t csrColInd, size_t b, double tol,
-                  int reorder, size_t x, size_t singularity)
+cpdef scsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA,
+                  size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
+                  size_t b, float tol, int reorder, size_t x,
+                  size_t singularity)
+cpdef dcsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA,
+                  size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
+                  size_t b, double tol, int reorder, size_t x,
+                  size_t singularity)
+cpdef ccsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA,
+                  size_t csrVal, size_t csrRowPtr, size_t csrColInd, size_t b,
+                  float tol, int reorder, size_t x, size_t singularity)
+cpdef zcsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA,
+                  size_t csrVal, size_t csrRowPtr, size_t csrColInd, size_t b,
+                  double tol, int reorder, size_t x, size_t singularity)
 
 cpdef scsrlsvqr(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
                 size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
@@ -311,15 +317,19 @@ cpdef zcsrlsvqr(intptr_t handle, int m, int nnz, size_t descrA, size_t csrVal,
                 size_t csrRowPtr, size_t csrColInd, size_t b, double tol,
                 int reorder, size_t x, size_t singularity)
 
-cpdef scsreigvsi(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                 size_t csrRowPtrA, size_t csrColIndA, float mu0,
-                 size_t x0, int maxite, float eps, size_t mu, size_t x)
-cpdef dcsreigvsi(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                 size_t csrRowPtrA, size_t csrColIndA, double mu0,
-                 size_t x0, int maxite, double eps, size_t mu, size_t x)
-cpdef ccsreigvsi(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                 size_t csrRowPtrA, size_t csrColIndA, size_t mu0,
-                 size_t x0, int maxite, float eps, size_t mu, size_t x)
-cpdef zcsreigvsi(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                 size_t csrRowPtrA, size_t csrColIndA, size_t mu0,
-                 size_t x0, int maxite, double eps, size_t mu, size_t x)
+cpdef scsreigvsi(intptr_t handle, int m, int nnz, size_t descrA,
+                 size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
+                 float mu0, size_t x0, int maxite, float eps, size_t mu,
+                 size_t x)
+cpdef dcsreigvsi(intptr_t handle, int m, int nnz, size_t descrA,
+                 size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
+                 double mu0, size_t x0, int maxite, double eps, size_t mu,
+                 size_t x)
+cpdef ccsreigvsi(intptr_t handle, int m, int nnz, size_t descrA,
+                 size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
+                 size_t mu0, size_t x0, int maxite, float eps, size_t mu,
+                 size_t x)
+cpdef zcsreigvsi(intptr_t handle, int m, int nnz, size_t descrA,
+                 size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
+                 size_t mu0, size_t x0, int maxite, double eps, size_t mu,
+                 size_t x)

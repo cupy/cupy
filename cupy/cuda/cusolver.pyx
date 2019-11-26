@@ -1400,9 +1400,10 @@ cpdef zheevd(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
 ###############################################################################
 # Sparse LAPACK Functions
 ###############################################################################
-cpdef scsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                  size_t csrRowPtrA, size_t csrColIndA, size_t b, float tol,
-                  int reorder, size_t x, size_t singularity):
+cpdef scsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA,
+                  size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
+                  size_t b, float tol, int reorder, size_t x,
+                  size_t singularity):
     cdef int status
     spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1413,9 +1414,10 @@ cpdef scsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA
             tol, reorder, <float*> x, <int*> singularity)
     check_status(status)
 
-cpdef dcsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                  size_t csrRowPtrA, size_t csrColIndA, size_t b, double tol,
-                  int reorder, size_t x, size_t singularity):
+cpdef dcsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA,
+                  size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
+                  size_t b, double tol, int reorder, size_t x,
+                  size_t singularity):
     cdef int status
     spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1426,9 +1428,9 @@ cpdef dcsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA
             tol, reorder, <double*> x, <int*> singularity)
     check_status(status)
 
-cpdef ccsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA, size_t csrVal,
-                  size_t csrRowPtr, size_t csrColInd, size_t b, float tol,
-                  int reorder, size_t x, size_t singularity):
+cpdef ccsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA,
+                  size_t csrVal, size_t csrRowPtr, size_t csrColInd, size_t b,
+                  float tol, int reorder, size_t x, size_t singularity):
     cdef int status
     spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1439,9 +1441,9 @@ cpdef ccsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA, size_t csrVal,
             <cuComplex*>x, <int*>singularity)
     check_status(status)
 
-cpdef zcsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA, size_t csrVal,
-                  size_t csrRowPtr, size_t csrColInd, size_t b, double tol,
-                  int reorder, size_t x, size_t singularity):
+cpdef zcsrlsvchol(intptr_t handle, int m, int nnz, size_t descrA,
+                  size_t csrVal, size_t csrRowPtr, size_t csrColInd, size_t b,
+                  double tol, int reorder, size_t x, size_t singularity):
     cdef int status
     spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1504,9 +1506,10 @@ cpdef zcsrlsvqr(intptr_t handle, int m, int nnz, size_t descrA, size_t csrVal,
             <cuDoubleComplex*>x, <int*>singularity)
     check_status(status)
 
-cpdef scsreigvsi(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                 size_t csrRowPtrA, size_t csrColIndA, float mu0, size_t x0,
-                 int maxite, float eps, size_t mu, size_t x):
+cpdef scsreigvsi(intptr_t handle, int m, int nnz, size_t descrA,
+                 size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
+                 float mu0, size_t x0, int maxite, float eps, size_t mu,
+                 size_t x):
     cdef int status
     spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1517,9 +1520,10 @@ cpdef scsreigvsi(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
             <float*>mu, <float*>x)
     check_status(status)
 
-cpdef dcsreigvsi(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                 size_t csrRowPtrA, size_t csrColIndA, double mu0,
-                 size_t x0, int maxite, double eps, size_t mu, size_t x):
+cpdef dcsreigvsi(intptr_t handle, int m, int nnz, size_t descrA,
+                 size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
+                 double mu0, size_t x0, int maxite, double eps, size_t mu,
+                 size_t x):
     cdef int status
     spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1530,9 +1534,10 @@ cpdef dcsreigvsi(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
             <double*>mu, <double*>x)
     check_status(status)
 
-cpdef ccsreigvsi(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                 size_t csrRowPtrA, size_t csrColIndA, size_t mu0,
-                 size_t x0, int maxite, float eps, size_t mu, size_t x):
+cpdef ccsreigvsi(intptr_t handle, int m, int nnz, size_t descrA,
+                 size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
+                 size_t mu0, size_t x0, int maxite, float eps, size_t mu,
+                 size_t x):
     cdef int status
     spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1543,9 +1548,10 @@ cpdef ccsreigvsi(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
             maxite, eps, <cuComplex*>mu, <cuComplex*>x)
     check_status(status)
 
-cpdef zcsreigvsi(intptr_t handle, int m, int nnz, size_t descrA, size_t csrValA,
-                 size_t csrRowPtrA, size_t csrColIndA, size_t mu0,
-                 size_t x0, int maxite, double eps, size_t mu, size_t x):
+cpdef zcsreigvsi(intptr_t handle, int m, int nnz, size_t descrA,
+                 size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
+                 size_t mu0, size_t x0, int maxite, double eps, size_t mu,
+                 size_t x):
     cdef int status
     spSetStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
