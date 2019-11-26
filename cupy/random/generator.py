@@ -606,6 +606,9 @@ class RandomState(object):
 
         n = functools.reduce(operator.mul, size, 1)
 
+        if n == 0:
+            return cupy.array(())
+
         sample = cupy.empty((n,), dtype=dtype)
         n_rem = n  # The number of remaining elements to sample
         ret = None
@@ -632,6 +635,8 @@ class RandomState(object):
             n_rem -= n_succ
 
         assert n_rem == 0
+        assert n is not None
+
         return ret.reshape(size)
 
     def seed(self, seed=None):
