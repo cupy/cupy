@@ -74,8 +74,7 @@ cpdef _preprocess_array(ndarray arr, axis, bint keepdims, str order):
         axis_permutes = out_axis + reduce_axis
     elif order == 'F':
         axis_permutes = reduce_axis + out_axis
-    if axis_permutes != tuple(range(len(arr.shape))):
-        raise ValueError('should not happen')
+    assert axis_permutes == tuple(range(len(arr.shape)))
 
     for axis in reduce_axis:
         contiguous_size *= arr.shape[axis]
