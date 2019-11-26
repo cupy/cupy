@@ -49,7 +49,7 @@ def get_cuda_dtype(numpy_dtype):
         raise TypeError('Dtype {} is not supported'.format(numpy_dtype))
 
 
-def get_compute_dtype(numpy_dtype):
+def get_cutensor_dtype(numpy_dtype):
     if numpy_dtype == numpy.float16:
         return cutensor.R_MIN_16F
     elif numpy_dtype == numpy.float32:
@@ -67,6 +67,15 @@ def get_compute_dtype(numpy_dtype):
 def _convert_mode(mode):
     return numpy.array([ord(x) if isinstance(x, str) else x for x in mode],
                        dtype=numpy.int32)
+
+
+def _set_compute_dtype(array_dtype, compute_dtype=None):
+    if compute_dtype is None:
+        if array_dtype == numpy.float16:
+            compute_dtype = numpy.float32
+        else:
+            compute_dtype = array_dtype
+    return compute_dtype
 
 
 def create_tensor_descriptor(a, uop=cutensor.OP_IDENTITY):
@@ -91,9 +100,9 @@ def create_tensor_descriptor(a, uop=cutensor.OP_IDENTITY):
     num_modes = a.ndim
     extent = numpy.array(a.shape, dtype=numpy.int64)
     stride = numpy.array(a.strides, dtype=numpy.int64) // a.itemsize
-    data_type = get_cuda_dtype(a.dtype)
+    cuda_dtype = get_cuda_dtype(a.dtype)
     desc = cutensor.initTensorDescriptor(handle, num_modes, extent.ctypes.data,
-                                         stride.ctypes.data, data_type, uop)
+                                         stride.ctypes.data, cuda_dtype, uop)
     desc = Descriptor(desc, cutensor.destroyTensorDescriptor)
     _tensor_descriptors[key] = desc
     return desc
@@ -167,7 +176,7 @@ def elementwise_trinary(alpha, A, desc_A, mode_A,
     beta = numpy.array(beta, compute_dtype)
     gamma = numpy.array(gamma, compute_dtype)
     handle = get_handle()
-    compute_dtype = get_cuda_dtype(compute_dtype)
+    cuda_dtype = get_cuda_dtype(compute_dtype)
     cutensor.elementwiseTrinary(
         handle,
         alpha.ctypes.data,
@@ -177,7 +186,7 @@ def elementwise_trinary(alpha, A, desc_A, mode_A,
         gamma.ctypes.data,
         C.data.ptr, desc_C.value, mode_C.ctypes.data,
         out.data.ptr, desc_C.value, mode_C.ctypes.data,
-        op_AB, op_ABC, compute_dtype)
+        op_AB, op_ABC, cuda_dtype)
     return out
 
 
@@ -216,7 +225,7 @@ def elementwise_binary(alpha, A, desc_A, mode_A,
     alpha = numpy.array(alpha, compute_dtype)
     gamma = numpy.array(gamma, compute_dtype)
     handle = get_handle()
-    compute_dtype = get_cuda_dtype(compute_dtype)
+    cuda_dtype = get_cuda_dtype(compute_dtype)
     cutensor.elementwiseBinary(
         handle,
         alpha.ctypes.data,
@@ -224,22 +233,18 @@ def elementwise_binary(alpha, A, desc_A, mode_A,
         gamma.ctypes.data,
         C.data.ptr, desc_C.value, mode_C.ctypes.data,
         out.data.ptr, desc_C.value, mode_C.ctypes.data,
-        op_AC, compute_dtype)
+        op_AC, cuda_dtype)
     return out
 
 
 def _create_contraction_descriptor(A, desc_A, mode_A, B, desc_B, mode_B,
                                    C, desc_C, mode_C, compute_dtype=None):
-    """Create contraction descriptor"""
+    """Create a contraction descriptor"""
     assert A.dtype == B.dtype == C.dtype
     assert A.ndim == len(mode_A)
     assert B.ndim == len(mode_B)
     assert C.ndim == len(mode_C)
-    if compute_dtype is None:
-        if A.dtype == numpy.float16:
-            compute_dtype = numpy.float32
-        else:
-            compute_dtype = A.dtype
+    compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
     handle = get_handle()
     alignment_req_A = cutensor.getAlignmentRequirement(
         handle, A.data.ptr, desc_A.value)
@@ -254,27 +259,24 @@ def _create_contraction_descriptor(A, desc_A, mode_A, B, desc_B, mode_B,
     if key in _contraction_descriptors:
         desc = _contraction_descriptors[key]
         return desc
-    mode_A = numpy.array([ord(x) if isinstance(x, str) else x for x in mode_A],
-                         dtype=numpy.int32)
-    mode_B = numpy.array([ord(x) if isinstance(x, str) else x for x in mode_B],
-                         dtype=numpy.int32)
-    mode_C = numpy.array([ord(x) if isinstance(x, str) else x for x in mode_C],
-                         dtype=numpy.int32)
-    compute_dtype = get_compute_dtype(compute_dtype)
+    mode_A = _convert_mode(mode_A)
+    mode_B = _convert_mode(mode_B)
+    mode_C = _convert_mode(mode_C)
+    cutensor_dtype = get_cutensor_dtype(compute_dtype)
     desc = cutensor.initContractionDescriptor(
         handle,
         desc_A.value, mode_A.ctypes.data, alignment_req_A,
         desc_B.value, mode_B.ctypes.data, alignment_req_B,
         desc_C.value, mode_C.ctypes.data, alignment_req_C,
         desc_C.value, mode_C.ctypes.data, alignment_req_C,
-        compute_dtype)
+        cutensor_dtype)
     desc = Descriptor(desc, cutensor.destroyContractionDescriptor)
     _contraction_descriptors[key] = desc
     return desc
 
 
 def _create_contraction_plan(desc, algo, ws_pref):
-    """Create contraction plan"""
+    """Create a contraction plan"""
     handle = get_handle()
     key = (handle, algo)
     if key in _contraction_finds:
@@ -363,11 +365,7 @@ def contraction(alpha, A, desc_A, mode_A, B, desc_B, mode_B,
     assert B.ndim == len(mode_B)
     assert C.ndim == len(mode_C)
     out = C
-    if compute_dtype is None:
-        if A.dtype == numpy.float16:
-            compute_dtype = numpy.float32
-        else:
-            compute_dtype = A.dtype
+    compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
     handle = get_handle()
     alpha = numpy.array(alpha, compute_dtype)
     beta = numpy.array(beta, compute_dtype)
@@ -432,21 +430,17 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
     mode_A = _convert_mode(mode_A)
     mode_C = _convert_mode(mode_C)
     out = C
-    if compute_dtype is None:
-        if A.dtype == numpy.float16:
-            compute_dtype = numpy.float32
-        else:
-            compute_dtype = A.dtype
+    compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
     alpha = numpy.array(alpha, compute_dtype)
     beta = numpy.array(beta, compute_dtype)
     handle = get_handle()
-    compute_dtype = get_compute_dtype(compute_dtype)
+    cutensor_dtype = get_cutensor_dtype(compute_dtype)
     ws_size = cutensor.reductionGetWorkspace(
         handle,
         A.data.ptr, desc_A.value, mode_A.ctypes.data,
         C.data.ptr, desc_C.value, mode_C.ctypes.data,
         out.data.ptr, desc_C.value, mode_C.ctypes.data,
-        reduce_op, compute_dtype)
+        reduce_op, cutensor_dtype)
     try:
         ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
     except cupy.cuda.memory.OutOfMemoryError:
@@ -460,5 +454,5 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
                        beta.ctypes.data,
                        C.data.ptr, desc_C.value, mode_C.ctypes.data,
                        out.data.ptr, desc_C.value, mode_C.ctypes.data,
-                       reduce_op, compute_dtype, ws.data.ptr, ws_size)
+                       reduce_op, cutensor_dtype, ws.data.ptr, ws_size)
     return out
