@@ -635,7 +635,6 @@ class RandomState(object):
             n_rem -= n_succ
 
         assert n_rem == 0
-        assert n is not None
 
         return ret.reshape(size)
 
