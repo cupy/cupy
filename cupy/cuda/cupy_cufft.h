@@ -98,6 +98,11 @@ cufftResult_t cufftExecZ2D(...) {
     return CUFFT_SUCCESS;
 }
 
+// cuFFT Version
+cufftResult_t cufftGetVersion(...) {
+    return CUFFT_SUCCESS;
+}
+
 // cufftXt relavant data and functions
 typedef struct cudaXtDesc_t {
    int version;

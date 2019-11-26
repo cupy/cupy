@@ -8,6 +8,7 @@
 #if CUPY_USE_HIP
 
 #include "cupy_hip.h"
+#include "cupy_cuComplex.h"
 
 #elif !defined(CUPY_NO_CUDA)
 
@@ -95,6 +96,10 @@ CUresult cuLinkCreate (...) {
 }
 
 CUresult cuLinkAddData(...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuLinkAddFile(...) {
     return CUDA_SUCCESS;
 }
 

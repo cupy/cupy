@@ -121,6 +121,7 @@ cpdef _create_tensor_nd_descriptor(
         size_t desc, core.ndarray arr, int data_type=-1):
     cdef vector.vector[int] c_shape, c_strides
     cdef Py_ssize_t itemsize, s
+    cdef int next_stride, i
     if data_type == -1:  # `-1` is used instead of `None`
         data_type = get_data_type(arr.dtype)
     itemsize = arr.itemsize
@@ -128,6 +129,14 @@ cpdef _create_tensor_nd_descriptor(
         c_strides.push_back(s // itemsize)
     for s in arr._shape:
         c_shape.push_back(s)
+    # Use "c-contiguous stride" with the next axis, if ambiguous
+    next_stride = 1
+    for i in reversed(range(c_shape.size())):
+        if c_shape[i] <= 1:
+            c_strides[i] = next_stride
+        else:
+            next_stride = c_shape[i] * c_strides[i]
+
     cudnn.setTensorNdDescriptor(
         desc, data_type, arr._shape.size(), <size_t>&c_shape[0],
         <size_t>&c_strides[0])
@@ -828,7 +837,7 @@ def get_rnn_lin_layer_matrix_params(
         cudnn.destroyFilterDescriptor(mat_desc)
     byte_size = _get_byte_size(data_type)
     offset = (ptr - w.data.ptr) // byte_size
-    size = internal.prod(dim)
+    size = internal.prod_sequence(dim)
     mat = w[offset:offset + size]
     return mat
 
@@ -846,7 +855,7 @@ def get_rnn_lin_layer_bias_params(
         cudnn.destroyFilterDescriptor(bias_desc)
     byte_size = _get_byte_size(data_type)
     offset = (ptr - w.data.ptr) // byte_size
-    size = internal.prod(dim)
+    size = internal.prod_sequence(dim)
     bias = w[offset:offset + size]
     return bias
 
@@ -1015,7 +1024,7 @@ def rnn_forward_training(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
         lengths):
-    hx = _ascontiguousarray_normalized_strides(hx)
+    hx = core._internal_ascontiguousarray(hx)
     if cx is not None:
         cx = core._internal_ascontiguousarray(cx)
     w = core._internal_ascontiguousarray(w)
@@ -1887,6 +1896,8 @@ def pooling_forward(
         zero = <size_t>&float_zero
         one = <size_t>&float_one
     x = core._internal_ascontiguousarray(x)
+    if not y._c_contiguous:
+        raise ValueError('pooling_forward supports c-contiguous y only')
     handle = get_handle()
     x_desc = cudnn.createTensorDescriptor()
     y_desc = cudnn.createTensorDescriptor()
@@ -1921,6 +1932,7 @@ def pooling_backward(
 
     gx = core.ndarray(x._shape, x.dtype)
     x = core._internal_ascontiguousarray(x)
+    y = core._internal_ascontiguousarray(y)
     gy = core._internal_ascontiguousarray(gy)
 
     handle = get_handle()
@@ -1978,6 +1990,62 @@ def batch_normalization_forward_training(
         mean, inv_std, double eps, double decay,
         bint is_for_conv2d, int cudnn_mode, bint debug,
         int d_layout=cudnn.CUDNN_TENSOR_NCHW):
+
+    reserve_space, y, save_mean, save_inv_std = (
+        _batch_normalization_forward_training(
+            x, gamma, beta,
+            running_mean, running_var,
+            mean, inv_std,
+            eps, decay,
+            is_for_conv2d,
+            cudnn_mode,
+            debug,
+            d_layout))
+    if reserve_space is not None:
+        warnings.warn(
+            'Could be faster by calling '
+            'batch_normalization_forward_training_ex() instead of '
+            'batch_normalization_forward_training().',
+            util.PerformanceWarning)
+    if mean is None:
+        return y, save_mean, save_inv_std
+    else:
+        return y
+
+
+def batch_normalization_forward_training_ex(
+        core.ndarray x, core.ndarray gamma, core.ndarray beta,
+        core.ndarray running_mean, core.ndarray running_var,
+        mean, inv_std, double eps, double decay,
+        bint is_for_conv2d, int cudnn_mode, bint debug,
+        int d_layout=cudnn.CUDNN_TENSOR_NCHW):
+
+    reserve_space, y, save_mean, save_inv_std = (
+        _batch_normalization_forward_training(
+            x, gamma, beta,
+            running_mean, running_var,
+            mean, inv_std,
+            eps, decay,
+            is_for_conv2d,
+            cudnn_mode,
+            debug,
+            d_layout))
+    if mean is None:
+        return reserve_space, y, save_mean, save_inv_std
+    else:
+        return reserve_space, y
+
+
+cdef _batch_normalization_forward_training(
+        core.ndarray x, core.ndarray gamma, core.ndarray beta,
+        core.ndarray running_mean, core.ndarray running_var,
+        mean, inv_std, double eps, double decay,
+        bint is_for_conv2d, int cudnn_mode, bint debug,
+        int d_layout=cudnn.CUDNN_TENSOR_NCHW):
+
+    cdef memory.MemoryPointer workspace = None
+    cdef memory.MemoryPointer reserve_space = None
+
     # Usually supply None to mean and inv_std, which are left for backward
     # compatibility. See cupy#2060 and cupy#2070.
     if (mean is None) != (inv_std is None):
@@ -2030,13 +2098,77 @@ def batch_normalization_forward_training(
         # (instead of variance) to resultSaveInvVariance argument. The
         # current implementation of our BN depends on this behavior so that
         # we can reduce the number of reduction kernels.
-        cudnn.batchNormalizationForwardTraining(
-            handle, cudnn_mode, one, zero,
-            x_desc, x.data.ptr, x_desc, y.data.ptr,
-            derivedBnDesc, gamma.data.ptr,
-            beta.data.ptr, factor, running_mean_tmp.data.ptr,
-            running_var_tmp.data.ptr, eps,
-            save_mean.data.ptr, save_inv_std.data.ptr)
+
+        if _cudnn_version >= 7401:
+
+            bn_ops = cudnn.CUDNN_BATCHNORM_OPS_BN
+
+            if (
+                    cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT
+                    and x.dtype == numpy.float16
+                    and d_layout == cudnn.CUDNN_TENSOR_NHWC
+                    and x.shape[3] % 4 == 0  # C mod 4 == 0
+            ):
+
+                # Faster NHWC kernel can be triggered by allocating extra
+                # spaces.
+                # https://docs.nvidia.com/deeplearning/sdk/cudnn-archived/cudnn_741/cudnn-developer-guide/index.html#cudnnBatchNormalizationForwardTrainingEx  # NOQA
+                workspace_size = (
+                    cudnn.getBatchNormalizationForwardTrainingExWorkspaceSize(
+                        handle,
+                        cudnn_mode,
+                        bn_ops,
+                        x_desc,  # x
+                        x_desc,  # z
+                        x_desc,  # y
+                        derivedBnDesc,
+                        0,  # activation desc
+                    ))
+                workspace = memory.alloc(workspace_size)
+
+                reserve_space_size = (
+                    cudnn.getBatchNormalizationTrainingExReserveSpaceSize(
+                        handle,
+                        cudnn_mode,
+                        bn_ops,
+                        0,  # activation desc
+                        x_desc,
+                    ))
+                reserve_space = memory.alloc(reserve_space_size)
+
+            cudnn.batchNormalizationForwardTrainingEx(
+                handle,
+                cudnn_mode,
+                bn_ops,
+                one,  # alpha
+                zero,  # beta
+                x_desc, x.data.ptr,  # x
+                x_desc, 0,  # z
+                x_desc, y.data.ptr,  # y
+                derivedBnDesc,
+                gamma.data.ptr,
+                beta.data.ptr,
+                factor,
+                running_mean_tmp.data.ptr,
+                running_var_tmp.data.ptr,
+                eps,
+                save_mean.data.ptr,
+                save_inv_std.data.ptr,
+                0,  # activation
+                0 if workspace is None else workspace.ptr,
+                0 if workspace is None else workspace.mem.size,
+                0 if reserve_space is None else reserve_space.ptr,
+                0 if reserve_space is None else reserve_space.mem.size,
+            )
+
+        else:  # cuDNN < 7401
+            cudnn.batchNormalizationForwardTraining(
+                handle, cudnn_mode, one, zero,
+                x_desc, x.data.ptr, x_desc, y.data.ptr,
+                derivedBnDesc, gamma.data.ptr,
+                beta.data.ptr, factor, running_mean_tmp.data.ptr,
+                running_var_tmp.data.ptr, eps,
+                save_mean.data.ptr, save_inv_std.data.ptr)
 
         # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
         # there is a possibility of numerical overflow. You can use
@@ -2055,10 +2187,7 @@ def batch_normalization_forward_training(
     if running_mean is not running_mean_tmp:
         running_mean[...] = running_mean_tmp
         running_var[...] = running_var_tmp
-    if mean is None:
-        return y, save_mean, save_inv_std
-    else:
-        return y
+    return reserve_space, y, save_mean, save_inv_std
 
 
 def batch_normalization_forward_inference(
@@ -2110,9 +2239,14 @@ def batch_normalization_backward(
         core.ndarray x, core.ndarray gamma, core.ndarray gy,
         core.ndarray mean, core.ndarray inv_std,
         double eps, bint is_for_conv2d, int cudnn_mode, bint debug,
-        int d_layout=cudnn.CUDNN_TENSOR_NCHW):
+        int d_layout=cudnn.CUDNN_TENSOR_NCHW,
+        *,
+        memory.MemoryPointer reserve_space=None,
+):
     cdef core.ndarray ggamma, gbeta
     cdef bint need_cast
+    cdef memory.MemoryPointer workspace = None
+
     x = core._internal_ascontiguousarray(x)
     gy = core._internal_ascontiguousarray(gy)
     dtype = x.dtype
@@ -2142,12 +2276,60 @@ def batch_normalization_backward(
         ggamma = core.ndarray(gamma._shape, dtype_param)
         gbeta = core.ndarray(gamma._shape, dtype_param)
 
-        cudnn.batchNormalizationBackward(
-            handle, cudnn_mode, one, zero, one, zero,
-            x_desc, x.data.ptr,
-            x_desc, gy.data.ptr, x_desc, gx.data.ptr,
-            derivedBnDesc, gamma.data.ptr, ggamma.data.ptr, gbeta.data.ptr,
-            eps, mean.data.ptr, inv_std.data.ptr)
+        if _cudnn_version >= 7401:
+            bn_ops = cudnn.CUDNN_BATCHNORM_OPS_BN
+
+            workspace_size = (
+                cudnn.getBatchNormalizationBackwardExWorkspaceSize(
+                    handle,
+                    cudnn_mode,
+                    bn_ops,
+                    x_desc,
+                    x_desc,  # y
+                    x_desc,  # dy
+                    x_desc,  # dz
+                    x_desc,  # dx
+                    derivedBnDesc,
+                    0,  # activation desc
+                ))
+            workspace = memory.alloc(workspace_size)
+
+            cudnn.batchNormalizationBackwardEx(
+                handle,
+                cudnn_mode,
+                bn_ops,
+                one, zero, one, zero,
+                x_desc, x.data.ptr,
+                x_desc, 0,  # y
+                x_desc, gy.data.ptr,
+                x_desc, 0,  # dz
+                x_desc, gx.data.ptr,
+                derivedBnDesc,
+                gamma.data.ptr,
+                0,  # beta
+                ggamma.data.ptr,
+                gbeta.data.ptr,
+                eps,
+                mean.data.ptr,
+                inv_std.data.ptr,
+                0,  # activation desc
+                workspace,
+                workspace_size,
+                0 if reserve_space is None else reserve_space.ptr,
+                0 if reserve_space is None else reserve_space.mem.size,
+            )
+
+        else:
+            # cuDNN < 7401
+            if reserve_space is not None:
+                raise ValueError(
+                    'reserve_space can only be passed in cuDNN >= 7401')
+            cudnn.batchNormalizationBackward(
+                handle, cudnn_mode, one, zero, one, zero,
+                x_desc, x.data.ptr,
+                x_desc, gy.data.ptr, x_desc, gx.data.ptr,
+                derivedBnDesc, gamma.data.ptr, ggamma.data.ptr, gbeta.data.ptr,
+                eps, mean.data.ptr, inv_std.data.ptr)
 
         # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
         # there is a possibility of numerical overflow. You can use

@@ -37,7 +37,6 @@ requirements = {
     'test': [
         'pytest<4.2.0',  # 4.2.0 is slow collecting tests and times out on CI.
         'attrs<19.2.0',  # pytest 4.1.1 does not run with attrs==19.2.0
-        'pytest',
         'mock',
     ],
     'doctest': [
@@ -57,11 +56,8 @@ requirements = {
     ],
     'jenkins': [
         '-r test',
-        # pytest-timeout>=1.3.0 requires pytest>=3.6.
-        # TODO(niboshi): Consider upgrading pytest to >=3.6
-        'pytest-timeout<1.3.0',
+        'pytest-timeout',
         'pytest-cov',
-        'nose',
         'coveralls',
         'codecov',
     ],
@@ -137,6 +133,26 @@ here = os.path.abspath(os.path.dirname(__file__))
 # Get __version__ variable
 exec(open(os.path.join(here, 'cupy', '_version.py')).read())
 
+CLASSIFIERS = """\
+Development Status :: 5 - Production/Stable
+Intended Audience :: Science/Research
+Intended Audience :: Developers
+License :: OSI Approved :: MIT License
+Programming Language :: Python
+Programming Language :: Python :: 3
+Programming Language :: Python :: 3.5
+Programming Language :: Python :: 3.6
+Programming Language :: Python :: 3.7
+Programming Language :: Python :: 3 :: Only
+Programming Language :: Cython
+Topic :: Software Development
+Topic :: Scientific/Engineering
+Operating System :: Microsoft :: Windows
+Operating System :: POSIX
+Operating System :: MacOS
+"""
+
+
 setup(
     name=package_name,
     version=__version__,  # NOQA
@@ -146,6 +162,12 @@ setup(
     author_email='tokui@preferred.jp',
     url='https://cupy.chainer.org/',
     license='MIT License',
+    project_urls={
+        "Bug Tracker": "https://github.com/cupy/cupy/issues",
+        "Documentation": "https://docs-cupy.chainer.org/",
+        "Source Code": "https://github.com/cupy/cupy",
+    },
+    classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
     packages=[
         'cupy',
         'cupy.binary',

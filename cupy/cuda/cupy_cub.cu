@@ -6,13 +6,13 @@
 
 using namespace cub;
 
-// Minimum boilerplate to support complex numbers in sum(), min(), and max():
+/* ------------------------------------ Minimum boilerplate to support complex numbers ------------------------------------ */
 // - This works only because all data fields in the *Traits struct are not
 //   used in <cub/device/device_reduce.cuh>.
-// - DO NOT USE THIS STUB for supporting CUB sorting!!!!!!
 // - The Max() and Lowest() below are chosen to comply with NumPy's lexical
 //   ordering; note that std::numeric_limits<T> does not support complex
 //   numbers as in general the comparison is ill defined.
+// - DO NOT USE THIS STUB for supporting CUB sorting!!!!!!
 template <>
 struct FpLimits<complex<float>>
 {
@@ -39,7 +39,247 @@ struct FpLimits<complex<double>>
 
 template <> struct NumericTraits<complex<float>>  : BaseTraits<FLOATING_POINT, true, false, unsigned int, complex<float>> {};
 template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, true, false, unsigned long long, complex<double>> {};
-// end of boilerplate
+/* ------------------------------------ end of boilerplate ------------------------------------ */
+
+
+/* ------------------------------------ "Patches" to CUB ------------------------------------
+   These stubs are needed because CUB does not handle NaNs properly, while NumPy has certain
+   behaviors with which we must comply.
+   TODO(leofang): support half precision?
+*/
+
+//
+// Max()
+//
+
+// specialization for float for handling NaNs
+template <>
+__host__ __device__ __forceinline__ float Max::operator()(const float &a, const float &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return CUB_MAX(a, b);}
+}
+
+// specialization for double for handling NaNs
+template <>
+__host__ __device__ __forceinline__ double Max::operator()(const double &a, const double &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return CUB_MAX(a, b);}
+}
+
+// specialization for complex<float> for handling NaNs
+template <>
+__host__ __device__ __forceinline__ complex<float> Max::operator()(const complex<float> &a, const complex<float> &b) const
+{
+    // - TODO(leofang): just call max() here when the bug in cupy/complex.cuh is fixed
+    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+    // - isnan() and max() are defined in cupy/complex.cuh
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return max(a, b);}
+}
+
+// specialization for complex<double> for handling NaNs
+template <>
+__host__ __device__ __forceinline__ complex<double> Max::operator()(const complex<double> &a, const complex<double> &b) const
+{
+    // - TODO(leofang): just call max() here when the bug in cupy/complex.cuh is fixed
+    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+    // - isnan() and max() are defined in cupy/complex.cuh
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return max(a, b);}
+}
+
+//
+// Min()
+//
+
+// specialization for float for handling NaNs
+template <>
+__host__ __device__ __forceinline__ float Min::operator()(const float &a, const float &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return CUB_MIN(a, b);}
+}
+
+// specialization for double for handling NaNs
+template <>
+__host__ __device__ __forceinline__ double Min::operator()(const double &a, const double &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return CUB_MIN(a, b);}
+}
+
+// specialization for complex<float> for handling NaNs
+template <>
+__host__ __device__ __forceinline__ complex<float> Min::operator()(const complex<float> &a, const complex<float> &b) const
+{
+    // - TODO(leofang): just call min() here when the bug in cupy/complex.cuh is fixed
+    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+    // - isnan() and min() are defined in cupy/complex.cuh
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return min(a, b);}
+}
+
+// specialization for complex<double> for handling NaNs
+template <>
+__host__ __device__ __forceinline__ complex<double> Min::operator()(const complex<double> &a, const complex<double> &b) const
+{
+    // - TODO(leofang): just call min() here when the bug in cupy/complex.cuh is fixed
+    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+    // - isnan() and min() are defined in cupy/complex.cuh
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return min(a, b);}
+}
+
+//
+// ArgMax()
+//
+
+// specialization for float for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, float> ArgMax::operator()(
+    const KeyValuePair<int, float> &a,
+    const KeyValuePair<int, float> &b) const
+{
+    if (isnan(a.value))
+        return a;
+    else if (isnan(b.value))
+        return b;
+    else if ((b.value > a.value) || ((a.value == b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+}
+
+// specialization for double for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, double> ArgMax::operator()(
+    const KeyValuePair<int, double> &a,
+    const KeyValuePair<int, double> &b) const
+{
+    if (isnan(a.value))
+        return a;
+    else if (isnan(b.value))
+        return b;
+    else if ((b.value > a.value) || ((a.value == b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+}
+
+// specialization for complex<float> for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, complex<float>> ArgMax::operator()(
+    const KeyValuePair<int, complex<float>> &a,
+    const KeyValuePair<int, complex<float>> &b) const
+{
+    if (isnan(a.value))
+        return a;
+    else if (isnan(b.value))
+        return b;
+    else if ((b.value > a.value) || ((a.value == b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+}
+
+// specialization for complex<double> for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMax::operator()(
+    const KeyValuePair<int, complex<double>> &a,
+    const KeyValuePair<int, complex<double>> &b) const
+{
+    if (isnan(a.value))
+        return a;
+    else if (isnan(b.value))
+        return b;
+    else if ((b.value > a.value) || ((a.value == b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+}
+
+//
+// ArgMin()
+//
+
+// specialization for float for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, float> ArgMin::operator()(
+    const KeyValuePair<int, float> &a,
+    const KeyValuePair<int, float> &b) const
+{
+    if (isnan(a.value))
+        return a;
+    else if (isnan(b.value))
+        return b;
+    else if ((b.value < a.value) || ((a.value == b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+}
+
+// specialization for double for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, double> ArgMin::operator()(
+    const KeyValuePair<int, double> &a,
+    const KeyValuePair<int, double> &b) const
+{
+    if (isnan(a.value))
+        return a;
+    else if (isnan(b.value))
+        return b;
+    else if ((b.value < a.value) || ((a.value == b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+}
+
+// specialization for complex<float> for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, complex<float>> ArgMin::operator()(
+    const KeyValuePair<int, complex<float>> &a,
+    const KeyValuePair<int, complex<float>> &b) const
+{
+    if (isnan(a.value))
+        return a;
+    else if (isnan(b.value))
+        return b;
+    else if ((b.value < a.value) || ((a.value == b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+}
+
+// specialization for complex<double> for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMin::operator()(
+    const KeyValuePair<int, complex<double>> &a,
+    const KeyValuePair<int, complex<double>> &b) const
+{
+    if (isnan(a.value))
+        return a;
+    else if (isnan(b.value))
+        return b;
+    else if ((b.value < a.value) || ((a.value == b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+}
+/* ------------------------------------ End of "patches" ------------------------------------ */
 
 
 //

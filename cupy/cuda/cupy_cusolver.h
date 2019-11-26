@@ -53,6 +53,11 @@ cusolverStatus_t cusolverSpSetStream(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+
+cusolverStatus_t cusolverGetProperty(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverDnSpotrf_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
