@@ -4,8 +4,8 @@
 
 import numpy
 
-from cupy.core.core cimport (ndarray, _internal_ascontiguousarray,  # noqa:E211
-                             _internal_asfortranarray)
+from cupy.core.core cimport ndarray, _internal_ascontiguousarray
+from cupy.core.core cimport _internal_asfortranarray
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream
 from cupy.cuda.driver cimport Stream as Stream_t
@@ -67,7 +67,6 @@ cpdef _preprocess_array(ndarray arr, axis, bint keepdims, str order):
 
     cdef tuple reduce_axis, out_axis, axis_permutes, out_shape
     cdef Py_ssize_t contiguous_size = 1
-    cdef list temp = []
 
     reduce_axis, out_axis = _get_axis(axis, arr._shape.size())
     # one more sanity check?
@@ -83,12 +82,8 @@ cpdef _preprocess_array(ndarray arr, axis, bint keepdims, str order):
     if not keepdims:
         out_shape = tuple([arr.shape[axis] for axis in out_axis])
     else:
-        for axis in range(arr.ndim):
-            if axis in out_axis:
-                temp.append(arr.shape[axis])
-            else:  # in reduce_axis
-                temp.append(1)
-        out_shape = tuple(temp)
+        out_shape = tuple([arr.shape[axis] if axis in out_axis else 1
+                           for axis in range(arr.ndim)])
 
     return out_shape, contiguous_size
 
