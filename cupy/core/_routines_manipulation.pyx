@@ -374,7 +374,7 @@ cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes):
         raise ValueError('Invalid axes value: %s' % str(axes))
 
     axis_flags.resize(ndim, 0)
-    for i in range(len(axes)):
+    for i in range(axes.size()):
         axis = axes[i]
         if axis < -ndim or axis >= ndim:
             raise IndexError('Axes overrun')
@@ -765,7 +765,7 @@ cdef ndarray _concatenate_single_kernel(
 
     ret = core.ndarray(shape, dtype=dtype)
     if same_shape_and_contiguous:
-        base = internal.prod(shape[axis:]) // len(arrays)
+        base = internal.prod_sequence(shape[axis:]) // len(arrays)
         _concatenate_kernel_same_size(x, base, ret)
         return ret
 
