@@ -108,7 +108,7 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
     input = cupy.ascontiguousarray(input)
     weights = cupy.ascontiguousarray(weights, cupy.float64)
     return _get_correlete_kernel(
-        input.ndim, mode, cval, input.shape, wshape, origin)(
+        input.ndim, mode, cval, input.shape, tuple(wshape), origin)(
         input, weights, output)
 
 
