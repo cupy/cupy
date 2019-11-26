@@ -376,7 +376,7 @@ def common_type(*arrays):
         else:
             dtypes.append(a.dtype)
 
-    return functools.reduce(numpy.promote_types, dtypes)
+    return functools.reduce(numpy.promote_types, dtypes).type
 
 
 def result_type(*arrays_and_dtypes):
