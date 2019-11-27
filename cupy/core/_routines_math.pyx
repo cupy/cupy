@@ -73,10 +73,10 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
 
 
 cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
+    cdef tuple reduce_axis, out_axis
     if cupy.cuda.cub_enabled:
         # if import at the top level, a segfault would happen when import cupy!
         from cupy.core._kernel import _get_axis
-        cdef tuple reduce_axis, out_axis
         reduce_axis, out_axis = _get_axis(axis, self.ndim)
         if cub.can_use_device_reduce(cub.CUPY_CUB_SUM, self.dtype, out_axis,
                                      dtype):

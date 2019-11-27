@@ -61,13 +61,18 @@ cdef extern from 'cupy_cub.h' nogil:
 # Python interface
 ###############################################################################
 
-cpdef _contig_axes(tuple axes):
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef bint _contig_axes(tuple axes):
     # True if the specified axes are in ascending order without gaps
-    unsigned int n
-    bint bool = True
+    cdef Py_ssize_t n
+    cdef bint contig = True
     for n in range(1, len(axes)):
-        bint = (axes[n] - axes[n - 1]) == 1
-    return bint
+        contig = (axes[n] - axes[n - 1]) == 1
+        if not contig:
+            break
+    return contig
 
 
 cpdef _preprocess_array(ndarray arr, tuple reduce_axis, tuple out_axis,
@@ -293,31 +298,23 @@ cdef bint _cub_device_segmented_reduce_axis_compatible(
     # This function checks if the reduced axes are contiguous.
 
     # the axes to be reduced must be C- or F- contiguous
-    if not _contig_axes(cub_axis):
-        return False
-    if order not in ('c', 'C', 'f', 'F'):
-        return False
-    if order in ('c', 'C')
-        if ((ndim - 1) not in cub_axis):
-            return False
-    elif order in ('f', 'F'):
-        if (0 not in cub_axis):
-            return False
-    else:
-        return False
-
-    return True
+    if _contig_axes(cub_axis):
+        if order in ('c', 'C'):
+            return ((ndim - 1) in cub_axis)
+        elif order in ('f', 'F'):
+            return (0 in cub_axis)
+    return False
 
 
 def can_use_device_reduce(int op, x_dtype, tuple out_axis, dtype=None):
     return out_axis is () and _cub_reduce_dtype_compatible(x_dtype, op, dtype)
 
 
-def can_use_device_segmented_reduce(int op, x_dtype, Py_ssize_t ndim, axis,
-                                    dtype=None, order='C'):
+def can_use_device_segmented_reduce(int op, x_dtype, Py_ssize_t ndim,
+                                    reduce_axis, dtype=None, order='C'):
     if not _cub_reduce_dtype_compatible(x_dtype, op, dtype):
         return False
-    return _cub_device_segmented_reduce_axis_compatible(axis, ndim, order)
+    return _cub_device_segmented_reduce_axis_compatible(reduce_axis, ndim, order)
 
 
 cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None,
