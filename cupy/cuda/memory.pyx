@@ -848,6 +848,35 @@ cpdef size_t _bin_index_from_size(size_t size):
     return (size - 1) // ALLOCATION_UNIT_SIZE
 
 
+cdef _gc_isenabled = gc.isenabled
+cdef _gc_disable = gc.disable
+cdef _gc_enable = gc.enable
+
+
+cdef bint _lock_no_gc(lock):
+    """Lock to ensure single thread execution and no garbage collection.
+
+    Returns:
+        bool: Whether GC is disabled.
+    """
+    rlock.lock_fastrlock(lock, -1, True)
+
+    # This function may be called from the context of finalizer
+    # (e.g., `__dealloc__` of PooledMemory class).
+    # If the process is going to be terminated, the module itself may
+    # already been unavailable.
+    if not _exit_mode and _gc_isenabled():
+        _gc_disable()
+        return True
+    return False
+
+
+cdef _unlock_no_gc(lock, bint gc_mode):
+    if gc_mode:
+        _gc_enable()
+    rlock.unlock_fastrlock(lock)
+
+
 cdef class LockAndNoGc:
     """A context manager that ensures single-thread execution
     and no garbage collection in the wrapped code.
@@ -862,20 +891,10 @@ cdef class LockAndNoGc:
         self._lock = lock
 
     def __enter__(self):
-        rlock.lock_fastrlock(self._lock, -1, True)
-
-        # This method may be called from the context of finalizer
-        # (e.g., `__dealloc__` of PooledMemory class).
-        # If the process is going to be terminated, the module itself may
-        # already been unavailable.
-        if gc is not None and gc.isenabled():
-            self._gc = True
-            gc.disable()
+        self._gc = _lock_no_gc(self._lock)
 
     def __exit__(self, t, v, tb):
-        if self._gc:
-            gc.enable()
-        rlock.unlock_fastrlock(self._lock)
+        _unlock_no_gc(self._lock, self._gc)
 
 
 @cython.final
@@ -1019,8 +1038,11 @@ cdef class SingleDeviceMemoryPool:
         stream_ptr = stream_module.get_current_stream_ptr()
 
         # find best-fit, or a smallest larger allocation
-        with LockAndNoGc(self._free_lock):
+        gc_mode = _lock_no_gc(self._free_lock)
+        try:
             chunk = _get_chunk(self, size, stream_ptr)
+        finally:
+            _unlock_no_gc(self._free_lock, gc_mode)
 
         if chunk is None:
             mem = _try_malloc(self, size)
@@ -1048,7 +1070,8 @@ cdef class SingleDeviceMemoryPool:
             rlock.unlock_fastrlock(self._in_use_lock)
         stream_ptr = chunk.stream_ptr
 
-        with LockAndNoGc(self._free_lock):
+        gc_mode = _lock_no_gc(self._free_lock)
+        try:
             arena = self._arena(stream_ptr)
 
             c = chunk.next
@@ -1061,6 +1084,8 @@ cdef class SingleDeviceMemoryPool:
                 chunk = c
 
             _append_to_free_list(arena, chunk)
+        finally:
+            _unlock_no_gc(self._free_lock, gc_mode)
 
     cpdef free_all_blocks(self, stream=None):
         """Free all **non-split** chunks"""
