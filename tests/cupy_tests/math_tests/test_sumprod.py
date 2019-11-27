@@ -23,6 +23,12 @@ class TestSumprod(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_sum_all_keepdims(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return a.sum(keepdims=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_external_sum_all(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.sum(a)
@@ -130,6 +136,11 @@ class TestSumprod(unittest.TestCase):
     def test_sum_keepdims(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         return a.sum(axis=1, keepdims=True)
+
+    @testing.numpy_cupy_allclose()
+    def test_sum_keepdims_multiple_axes(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        return a.sum(axis=(1, 2), keepdims=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
