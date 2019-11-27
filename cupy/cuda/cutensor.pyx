@@ -3,6 +3,7 @@
 """Thin wrapper of cuTENSOR."""
 
 cimport cython  # NOQA
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t  # NOQA
 
 from cupy.cuda cimport driver
@@ -15,22 +16,16 @@ cdef extern from 'cupy_cutensor.h' nogil:
     ctypedef int WorksizePreference 'cutensorWorksizePreference_t'
     ctypedef int DataType 'cudaDataType_t'
     ctypedef int ComputeType 'cutensorComputeType_t'
-    cdef struct _Handle:
+    ctypedef struct Handle 'cutensorHandle_t':
         int64_t fields[512]
-    ctypedef _Handle Handle 'cutensorHandle_t'
-    cdef struct _TensorDescriptor:
+    ctypedef struct TensorDescriptor 'cutensorTensorDescriptor_t':
         int64_t fields[64]
-    ctypedef _TensorDescriptor TensorDescriptor 'cutensorTensorDescriptor_t'
-    cdef struct _ContractionDescriptor:
+    ctypedef struct ContractionDescriptor 'cutensorContractionDescriptor_t':
         int64_t fields[256]
-    ctypedef _ContractionDescriptor ContractionDescriptor \
-        'cutensorContractionDescriptor_t'
-    cdef struct _ContractionPlan:
+    ctypedef struct ContractionPlan 'cutensorContractionPlan_t':
         int64_t fields[640]
-    ctypedef _ContractionPlan ContractionPlan 'cutensorContractionPlan_t'
-    cdef struct _ContractionFind:
+    ctypedef struct ContractionFind 'cutensorContractionFind_t':
         int64_t fields[64]
-    ctypedef _ContractionFind ContractionFind 'cutensorContractionFind_t'
 
     const char* cutensorGetErrorString(Status status)
 
@@ -127,21 +122,6 @@ cdef extern from 'cupy_cutensor.h' nogil:
         void* ptr,
         TensorDescriptor* desc,
         uint32_t* alignmentReq)
-
-    void _cutensor_alloc_handle(Handle **handle)
-    void _cutensor_free_handle(Handle *handle)
-
-    void _cutensor_alloc_tensor_descriptor(TensorDescriptor **desc)
-    void _cutensor_free_tensor_descriptor(TensorDescriptor *desc)
-
-    void _cutensor_alloc_contraction_descriptor(ContractionDescriptor **desc)
-    void _cutensor_free_contraction_descriptor(ContractionDescriptor *desc)
-
-    void _cutensor_alloc_contraction_plan(ContractionPlan **plan)
-    void _cutensor_free_contraction_plan(ContractionPlan *plan)
-
-    void _cutensor_alloc_contraction_find(ContractionFind **find)
-    void _cutensor_free_contraction_find(ContractionFind *find)
 
 
 ###############################################################################
@@ -248,12 +228,11 @@ cpdef inline check_status(int status):
 
 cpdef size_t init() except? 0:
     """Initializes the cuTENSOR library"""
-    cdef Handle *handle
-    _cutensor_alloc_handle(&handle)
+    cdef Handle *handle = <Handle*>PyMem_Malloc(sizeof(Handle))
     with nogil:
         status = cutensorInit(handle)
     check_status(status)
-    return <size_t> handle
+    return <size_t>handle
 
 
 ###############################################################################
@@ -290,7 +269,7 @@ cpdef size_t initTensorDescriptor(size_t handle,
             allocated tensor descriptor object should be stored
     """
     cdef TensorDescriptor *desc
-    _cutensor_alloc_tensor_descriptor(&desc)
+    desc = <TensorDescriptor*>PyMem_Malloc(sizeof(TensorDescriptor))
     status = cutensorInitTensorDescriptor(
         <Handle*> handle, desc, numModes,
         <int64_t*> extent, <int64_t*> stride,
@@ -300,7 +279,7 @@ cpdef size_t initTensorDescriptor(size_t handle,
 
 
 cpdef destroyTensorDescriptor(size_t desc):
-    _cutensor_free_tensor_descriptor(<TensorDescriptor*>desc)
+    PyMem_Free(<TensorDescriptor*>desc)
 
 
 ###############################################################################
@@ -522,7 +501,7 @@ cpdef size_t initContractionDescriptor(
             computation of typeCompute T = A * B
     """
     cdef ContractionDescriptor *desc
-    _cutensor_alloc_contraction_descriptor(&desc)
+    desc = <ContractionDescriptor*>PyMem_Malloc(sizeof(ContractionDescriptor))
     status = cutensorInitContractionDescriptor(
         <Handle*> handle, desc,
         <TensorDescriptor*> descA, <int32_t*> modeA, alignmentReqA,
@@ -535,7 +514,7 @@ cpdef size_t initContractionDescriptor(
 
 
 cpdef destroyContractionDescriptor(size_t desc):
-    _cutensor_free_contraction_descriptor(<ContractionDescriptor*>desc)
+    PyMem_Free(<ContractionDescriptor*>desc)
 
 
 cpdef size_t initContractionFind(size_t handle, int algo):
@@ -558,14 +537,14 @@ cpdef size_t initContractionFind(size_t handle, int algo):
         find (cutensorContractionFind_t*):
     """
     cdef ContractionFind* find
-    _cutensor_alloc_contraction_find(&find)
+    find = <ContractionFind*>PyMem_Malloc(sizeof(ContractionFind))
     status = cutensorInitContractionFind(<Handle*> handle, find, <Algo> algo)
     check_status(status)
     return <size_t> find
 
 
 cpdef destroyContractionFind(size_t find):
-    _cutensor_free_contraction_find(<ContractionFind*>find)
+    PyMem_Free(<ContractionFind*>find)
 
 
 cpdef size_t initContractionPlan(size_t handle, size_t desc, size_t find,
@@ -588,7 +567,7 @@ cpdef size_t initContractionPlan(size_t handle, size_t desc, size_t find,
             problem).
     """
     cdef ContractionPlan* plan
-    _cutensor_alloc_contraction_plan(&plan)
+    plan = <ContractionPlan*>PyMem_Malloc(sizeof(ContractionPlan))
     status = cutensorInitContractionPlan(
         <Handle*> handle, plan, <ContractionDescriptor*> desc,
         <ContractionFind*> find, worksize)
@@ -597,7 +576,7 @@ cpdef size_t initContractionPlan(size_t handle, size_t desc, size_t find,
 
 
 cpdef destroyContractionPlan(size_t plan):
-    _cutensor_free_contraction_plan(<ContractionPlan*>plan)
+    PyMem_Free(<ContractionPlan*>plan)
 
 
 cpdef contraction(size_t handle, size_t plan,

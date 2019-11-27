@@ -170,7 +170,7 @@ MODULES = [
     {
         'name': 'cutensor',
         'file': [
-            ('cupy.cuda.cutensor', ['cupy/cuda/cupy_cutensor.cu']),
+            'cupy.cuda.cutensor',
         ],
         'include': [
             'cutensor.h',
