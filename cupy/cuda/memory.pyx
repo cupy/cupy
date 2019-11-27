@@ -853,7 +853,7 @@ cdef _gc_enable = gc.enable
 cdef bint _lock_no_gc(lock):
     rlock.lock_fastrlock(lock, -1, True)
 
-    # This method may be called from the context of finalizer
+    # This function may be called from the context of finalizer
     # (e.g., `__dealloc__` of PooledMemory class).
     # If the process is going to be terminated, the module itself may
     # already been unavailable.
