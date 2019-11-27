@@ -1,4 +1,5 @@
 # distutils: language = c++
+import functools
 import sys
 
 import numpy
@@ -615,7 +616,8 @@ cpdef ndarray concatenate_method(tup, int axis):
         raise ValueError('Cannot concatenate from empty tuple')
 
     if not have_same_types:
-        dtype = numpy.find_common_type([a.dtype for a in arrays], [])
+        dtype = functools.reduce(numpy.promote_types,
+                                 set([a.dtype for a in arrays]))
     return _concatenate(arrays, axis, tuple(shape), dtype)
 
 

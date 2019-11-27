@@ -215,7 +215,7 @@ def slogdet(a):
                'Array must be at least two-dimensional' % a.ndim)
         raise linalg.LinAlgError(msg)
 
-    dtype = numpy.find_common_type((a.dtype.char, 'f'), ())
+    dtype = numpy.promote_types(a.dtype.char, 'f')
     shape = a.shape[:-2]
     sign = cupy.empty(shape, dtype)
     logdet = cupy.empty(shape, dtype)

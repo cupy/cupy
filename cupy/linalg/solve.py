@@ -52,7 +52,7 @@ def solve(a, b):
     if a.dtype.char == 'f' or a.dtype.char == 'd':
         dtype = a.dtype
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ())
+        dtype = numpy.promote_types(a.dtype.char, 'f')
 
     cublas_handle = device.get_cublas_handle()
     cusolver_handle = device.get_cusolver_handle()
@@ -280,7 +280,7 @@ def inv(a):
     if a.dtype.char in 'fdFD':
         dtype = a.dtype.char
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+        dtype = numpy.promote_types(a.dtype.char, 'f')
 
     cusolver_handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
