@@ -4,7 +4,7 @@
 
 cimport cython  # NOQA
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
-from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t  # NOQA
+from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport stream as stream_module
@@ -340,7 +340,7 @@ cpdef elementwiseTrinary(size_t handle,
      - D_{a,b,c,d} = min((2.2 * A_{b,d,a,c} + 1.3 * B_{c,b,d,a}), C_{a,b,c,d})
 
     Args:
-        handle (cutensorHandle_t): Opaque handle holding CUTENSOR's library
+        handle (cutensorHandle_t*): Opaque handle holding CUTENSOR's library
             context.
         alpha (void*): Scaling factor for A (see equation above) of the type
             typeCompute. Pointer to the host memory. Note that A is not read if
