@@ -20,28 +20,33 @@ from cupy.core cimport internal
 
 cdef Py_ssize_t PY_SSIZE_T_MAX = sys.maxsize
 
-cdef tuple _broadcast_core(arrays):
+
+cdef _broadcast_core(list arrays, vector.vector[Py_ssize_t]& shape):
     cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh, nd
-    cdef vector.vector[Py_ssize_t] shape, strides
+    cdef vector.vector[Py_ssize_t] strides
+    cdef vector.vector[int] index
     cdef ndarray a
     cdef list ret
 
-    ret = list(arrays)
+    shape.clear()
+    index.reserve(len(arrays))
     nd = 0
-    for i, x in enumerate(ret):
+    for i, x in enumerate(arrays):
         if not isinstance(x, ndarray):
-            ret[i] = None
             continue
         a = x
+        index.push_back(i)
         nd = max(nd, <Py_ssize_t>a._shape.size())
+
+    if index.size() == 0:
+        return
 
     shape.reserve(nd)
     for i in range(nd):
         smin = PY_SSIZE_T_MAX
         smax = 0
-        for a in ret:
-            if a is None:
-                continue
+        for j in index:
+            a = arrays[j]
             a_ndim = <Py_ssize_t>a._shape.size()
             if i >= nd - a_ndim:
                 s = a._shape[i - (nd - a_ndim)]
@@ -53,10 +58,8 @@ cdef tuple _broadcast_core(arrays):
                 'single shape')
         shape.push_back(0 if smin == 0 else smax)
 
-    for i, a in enumerate(ret):
-        if a is None:
-            ret[i] = arrays[i]
-            continue
+    for i in index:
+        a = arrays[i]
         if internal.vector_equal(a._shape, shape):
             continue
 
@@ -74,8 +77,7 @@ cdef tuple _broadcast_core(arrays):
                                    else '()' for x in arrays])))
 
         # TODO(niboshi): Confirm update_x_contiguity flags
-        ret[i] = a._view(shape, strides, True, True)
-    return ret, tuple(shape)
+        arrays[i] = a._view(shape, strides, True, True)
 
 
 @cython.final
@@ -99,14 +101,13 @@ cdef class broadcast:
     """
 
     def __init__(self, *arrays):
-        cdef Py_ssize_t x
-        values, shape = _broadcast_core(arrays)
-        self.values = tuple(values)
-        self.shape = shape
-        self.nd = len(shape)
-        self.size = 1
-        for x in shape:
-            self.size *= x
+        cdef vector.vector[Py_ssize_t] shape
+        cdef list val = list(arrays)
+        _broadcast_core(val, shape)
+        self.values = tuple(val)
+        self.shape = tuple(shape)
+        self.nd = <Py_ssize_t>shape.size()
+        self.size = internal.prod(shape)
 
 
 # ndarray members

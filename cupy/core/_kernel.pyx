@@ -307,6 +307,7 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
     cpdef Py_ssize_t i
     cpdef ParameterInfo p
     cpdef bint is_none, is_not_none
+    cdef vector.vector[Py_ssize_t] shape
     value = []
     is_none = False
     is_not_none = False
@@ -327,11 +328,11 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
     else:
         if not is_not_none:
             raise ValueError('Loop size is Undecided')
-    value, shape = _broadcast_core(value)
+    _broadcast_core(value, shape)
     for i, a in enumerate(value):
         if a is None:
             value[i] = args[i]
-    return value, shape
+    return value, tuple(shape)
 
 
 cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
@@ -824,7 +825,9 @@ cdef class ufunc:
 
         cdef function.Function kern
         cdef list broad_values
+        cdef vector.vector[Py_ssize_t] vec_shape
         cdef tuple shape
+        cdef Py_ssize_t s
 
         out = kwargs.pop('out', None)
         dtype = kwargs.pop('dtype', None)
@@ -856,7 +859,9 @@ cdef class ufunc:
             args += out_args
 
         in_args = _copy_in_args_if_needed(in_args, out_args)
-        broad_values, shape = _broadcast_core(in_args + out_args)
+        broad_values = in_args + out_args
+        _broadcast_core(broad_values, vec_shape)
+        shape = tuple(vec_shape)
 
         op = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
@@ -867,8 +872,9 @@ cdef class ufunc:
         else:
             ret = tuple(out_args)
 
-        if 0 in shape:
-            return ret
+        for s in vec_shape:
+            if s == 0:
+                return ret
 
         inout_args = []
         for i, t in enumerate(in_types):
