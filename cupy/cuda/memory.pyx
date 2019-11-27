@@ -851,6 +851,11 @@ cdef _gc_enable = gc.enable
 
 
 cdef bint _lock_no_gc(lock):
+    """Lock to ensure single thread execution and no garbage collection.
+
+    Returns:
+        bool: Whether GC is disabled.
+    """
     rlock.lock_fastrlock(lock, -1, True)
 
     # This function may be called from the context of finalizer
