@@ -61,6 +61,15 @@ cdef extern from 'cupy_cub.h' nogil:
 # Python interface
 ###############################################################################
 
+cpdef _contig_axes(tuple axes):
+    # True if the specified axes are in ascending order without gaps
+    unsigned int n
+    bint bool = True
+    for n in range(1, len(axes)):
+        bint = (axes[n] - axes[n - 1]) == 1
+    return bint
+
+
 cpdef _preprocess_array(ndarray arr, tuple reduce_axis, tuple out_axis,
                         bint keepdims, str order):
     '''
@@ -284,14 +293,17 @@ cdef bint _cub_device_segmented_reduce_axis_compatible(
     # This function checks if the reduced axes are contiguous.
 
     # the axes to be reduced must be C- or F- contiguous
-    if not all((ax - ax_prev) == 1
-               for ax, ax_prev in zip(cub_axis[1:], cub_axis[:-1])):
+    if not _contig_axes(cub_axis):
         return False
     if order not in ('c', 'C', 'f', 'F'):
         return False
-    if order in ('c', 'C') and ((ndim - 1) not in cub_axis):
-        return False
-    if order in ('f', 'F') and (0 not in cub_axis):
+    if order in ('c', 'C')
+        if ((ndim - 1) not in cub_axis):
+            return False
+    elif order in ('f', 'F'):
+        if (0 not in cub_axis):
+            return False
+    else:
         return False
 
     return True
