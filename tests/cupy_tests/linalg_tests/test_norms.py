@@ -178,14 +178,7 @@ class TestSlogdet(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_singular_errstate(self, xp, dtype):
         a = xp.zeros((3, 3), dtype)
-<<<<<<< HEAD
         sign, logdet = xp.linalg.slogdet(a)
-=======
-        with cupyx.errstate(linalg='raise'):
-            # `cupy.linalg.slogdet` internally catches `dev_info < 0` from
-            # cuSOLVER, which should not affect `dev_info > 0` cases.
-            sign, logdet = xp.linalg.slogdet(a)
->>>>>>> 4a8105f88... Merge pull request #2660 from toslunar/slogdet-nosync
         return xp.array([sign, logdet], dtype)
 
     @testing.for_float_dtypes(no_float16=True)

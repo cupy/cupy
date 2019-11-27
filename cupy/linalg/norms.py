@@ -228,13 +228,8 @@ def _slogdet_one(a):
 
     handle = device.get_cusolver_handle()
     m = len(a)
-<<<<<<< HEAD
-    ipiv = cupy.empty(m, 'i')
-    info = cupy.empty((), 'i')
-=======
     ipiv = cupy.empty(m, dtype=numpy.int32)
     dev_info = cupy.empty((), dtype=numpy.int32)
->>>>>>> 4a8105f88... Merge pull request #2660 from toslunar/slogdet-nosync
 
     # Need to make a copy because getrf works inplace
     a_copy = a.copy(order='F')
@@ -249,23 +244,6 @@ def _slogdet_one(a):
     buffersize = getrf_bufferSize(handle, m, m, a_copy.data.ptr, m)
     workspace = cupy.empty(buffersize, dtype=dtype)
     getrf(handle, m, m, a_copy.data.ptr, m, workspace.data.ptr,
-<<<<<<< HEAD
-          ipiv.data.ptr, info.data.ptr)
-
-    if info[()] == 0:
-        diag = cupy.diag(a_copy)
-        # ipiv is 1-origin
-        non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, m + 1)) +
-                    cupy.count_nonzero(diag < 0))
-        # Note: sign == -1 ** (non_zero % 2)
-        sign = (non_zero % 2) * -2 + 1
-        logdet = cupy.log(abs(diag)).sum()
-    else:
-        sign = cupy.array(0.0, dtype=dtype)
-        logdet = cupy.array(float('-inf'), dtype)
-
-    return sign, logdet
-=======
           ipiv.data.ptr, dev_info.data.ptr)
 
     # dev_info < 0 means illegal value (in dimensions, strides, and etc.) that
@@ -287,7 +265,6 @@ def _slogdet_one(a):
         cupy.where(singular, dtype.type(0), sign),
         cupy.where(singular, dtype.type('-inf'), logdet),
     )
->>>>>>> 4a8105f88... Merge pull request #2660 from toslunar/slogdet-nosync
 
 
 def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
