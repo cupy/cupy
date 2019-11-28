@@ -1023,7 +1023,7 @@ class RandomState(object):
                 block_size *= 2
             for j_start in range(0, num, block_size):
                 j_end = j_start + block_size
-                _cupy_permutation()(sample, j_start, j_end, array, size=num)
+                _cupy_permutation(sample, j_start, j_end, array, size=num)
         else:
             # When num > 32M, argsort is used, because it is faster than
             # custom kernel. See https://github.com/cupy/cupy/pull/603.
@@ -1085,61 +1085,60 @@ class RandomState(object):
         return x
 
 
-def _cupy_permutation():
-    return core.ElementwiseKernel(
-        'raw int32 sample, int32 j_start, int32 _j_end',
-        'raw int32 array',
-        '''
-            const int invalid = -1;
-            const int num = _ind.size();
-            int j = (sample[i] & 0x7fffffff) % num;
-            int j_end = _j_end;
-            if (j_end > num) j_end = num;
-            if (j == i || j < j_start || j >= j_end) continue;
+_cupy_permutation = core.ElementwiseKernel(
+    'raw int32 sample, int32 j_start, int32 _j_end',
+    'raw int32 array',
+    '''
+        const int invalid = -1;
+        const int num = _ind.size();
+        int j = (sample[i] & 0x7fffffff) % num;
+        int j_end = _j_end;
+        if (j_end > num) j_end = num;
+        if (j == i || j < j_start || j >= j_end) continue;
 
-            // If a thread fails to do data swaping once, it changes j
-            // value using j_offset below and try data swaping again.
-            // This process is repeated until data swapping is succeeded.
-            // The j_offset is determined from the initial j
-            // (random number assigned to each thread) and the initial
-            // offset between j and i (ID of each thread).
-            // If a given number sequence in sample is really random,
-            // this j-update would not be necessary. This is work-around
-            // mainly to avoid potential eternal conflict when sample has
-            // rather synthetic number sequence.
-            int j_offset = ((2*j - i + num) % (num - 1)) + 1;
+        // If a thread fails to do data swaping once, it changes j
+        // value using j_offset below and try data swaping again.
+        // This process is repeated until data swapping is succeeded.
+        // The j_offset is determined from the initial j
+        // (random number assigned to each thread) and the initial
+        // offset between j and i (ID of each thread).
+        // If a given number sequence in sample is really random,
+        // this j-update would not be necessary. This is work-around
+        // mainly to avoid potential eternal conflict when sample has
+        // rather synthetic number sequence.
+        int j_offset = ((2*j - i + num) % (num - 1)) + 1;
 
-            // A thread gives up to do data swapping if loop count exceed
-            // a threathod determined below. This is kind of safety
-            // mechanism to escape the eternal race condition, though I
-            // believe it never happens.
-            int loops = 256;
+        // A thread gives up to do data swapping if loop count exceed
+        // a threathod determined below. This is kind of safety
+        // mechanism to escape the eternal race condition, though I
+        // believe it never happens.
+        int loops = 256;
 
-            bool do_next = true;
-            while (do_next && loops > 0) {
-                // try to swap the contents of array[i] and array[j]
-                if (i != j) {
-                    int val_j = atomicExch(&array[j], invalid);
-                    if (val_j != invalid) {
-                        int val_i = atomicExch(&array[i], invalid);
-                        if (val_i != invalid) {
-                            array[i] = val_j;
-                            array[j] = val_i;
-                            do_next = false;
-                            // done
-                        }
-                        else {
-                            // restore array[j]
-                            array[j] = val_j;
-                        }
+        bool do_next = true;
+        while (do_next && loops > 0) {
+            // try to swap the contents of array[i] and array[j]
+            if (i != j) {
+                int val_j = atomicExch(&array[j], invalid);
+                if (val_j != invalid) {
+                    int val_i = atomicExch(&array[i], invalid);
+                    if (val_i != invalid) {
+                        array[i] = val_j;
+                        array[j] = val_i;
+                        do_next = false;
+                        // done
+                    }
+                    else {
+                        // restore array[j]
+                        array[j] = val_j;
                     }
                 }
-                j = (j + j_offset) % num;
-                loops--;
             }
-        ''',
-        'cupy_permutation',
-    )
+            j = (j + j_offset) % num;
+            loops--;
+        }
+    ''',
+    'cupy_permutation',
+)
 
 
 def seed(seed=None):
