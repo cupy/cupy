@@ -231,6 +231,16 @@ cdef class ndarray:
         """
         return self.size * self.dtype.itemsize
 
+    def __sizeof__(self):
+        """Total size of all elements in bytes.
+
+        It does not count skips between elements.
+
+        .. seealso:: :func:`sys.getsizeof`
+
+        """
+        return self.nbytes
+
     # -------------------------------------------------------------------------
     # Other attributes
     # -------------------------------------------------------------------------
