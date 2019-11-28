@@ -621,8 +621,8 @@ cpdef contraction(intptr_t handle, size_t plan,
     check_status(status)
 
 
-cpdef uint64_t contractionGetWorkspace(intptr_t handle, size_t desc, size_t find,
-                                       int pref):
+cpdef uint64_t contractionGetWorkspace(intptr_t handle, size_t desc,
+                                       size_t find, int pref):
     """Determines the required workspaceSize for a given tensor contraction
 
     Args:
@@ -761,7 +761,8 @@ cpdef uint64_t reductionGetWorkspace(intptr_t handle,
     return workspaceSize
 
 
-cpdef uint32_t getAlignmentRequirement(intptr_t handle, size_t ptr, size_t desc):
+cpdef uint32_t getAlignmentRequirement(intptr_t handle, size_t ptr,
+                                       size_t desc):
     """Computes the minimal alignment requirement for a given pointer and
        descriptor
 
