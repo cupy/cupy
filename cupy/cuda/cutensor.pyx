@@ -4,7 +4,7 @@
 
 cimport cython  # NOQA
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
-from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t
+from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
 
 from cupy.cuda cimport driver
 from cupy.cuda cimport stream as stream_module
@@ -226,20 +226,20 @@ cpdef inline check_status(int status):
 # Handler initialization
 ###############################################################################
 
-cpdef size_t init() except? 0:
+cpdef intptr_t init() except? 0:
     """Initializes the cuTENSOR library"""
     cdef Handle *handle = <Handle*>PyMem_Malloc(sizeof(Handle))
     with nogil:
         status = cutensorInit(handle)
     check_status(status)
-    return <size_t>handle
+    return <intptr_t>handle
 
 
 ###############################################################################
 # Tensor descriptor initialization
 ###############################################################################
 
-cpdef size_t initTensorDescriptor(size_t handle,
+cpdef size_t initTensorDescriptor(intptr_t handle,
                                   uint32_t numModes,
                                   size_t extent,
                                   size_t stride,
@@ -286,7 +286,7 @@ cpdef destroyTensorDescriptor(size_t desc):
 # Tensor elementwise operations
 ###############################################################################
 
-cpdef elementwiseTrinary(size_t handle,
+cpdef elementwiseTrinary(intptr_t handle,
                          size_t alpha,
                          size_t A, size_t descA, size_t modeA,
                          size_t beta,
@@ -413,7 +413,7 @@ cpdef elementwiseTrinary(size_t handle,
     check_status(status)
 
 
-cpdef elementwiseBinary(size_t handle,
+cpdef elementwiseBinary(intptr_t handle,
                         size_t alpha,
                         size_t A, size_t descA, size_t modeA,
                         size_t gamma,
@@ -448,7 +448,7 @@ cpdef elementwiseBinary(size_t handle,
 ###############################################################################
 
 cpdef size_t initContractionDescriptor(
-        size_t handle,
+        intptr_t handle,
         size_t descA, size_t modeA, uint32_t alignmentReqA,
         size_t descB, size_t modeB, uint32_t alignmentReqB,
         size_t descC, size_t modeC, uint32_t alignmentReqC,
@@ -517,7 +517,7 @@ cpdef destroyContractionDescriptor(size_t desc):
     PyMem_Free(<ContractionDescriptor*>desc)
 
 
-cpdef size_t initContractionFind(size_t handle, int algo):
+cpdef size_t initContractionFind(intptr_t handle, int algo):
     """Limits the search space of viable candidates
 
     This function gives the user finer control over the candidates that the
@@ -547,7 +547,7 @@ cpdef destroyContractionFind(size_t find):
     PyMem_Free(<ContractionFind*>find)
 
 
-cpdef size_t initContractionPlan(size_t handle, size_t desc, size_t find,
+cpdef size_t initContractionPlan(intptr_t handle, size_t desc, size_t find,
                                  uint64_t worksize):
     """Initializes the contraction plan
 
@@ -579,7 +579,7 @@ cpdef destroyContractionPlan(size_t plan):
     PyMem_Free(<ContractionPlan*>plan)
 
 
-cpdef contraction(size_t handle, size_t plan,
+cpdef contraction(intptr_t handle, size_t plan,
                   size_t alpha, size_t A, size_t B,
                   size_t beta, size_t C, size_t D,
                   size_t workspace, uint64_t workspaceSize):
@@ -621,7 +621,7 @@ cpdef contraction(size_t handle, size_t plan,
     check_status(status)
 
 
-cpdef uint64_t contractionGetWorkspace(size_t handle, size_t desc, size_t find,
+cpdef uint64_t contractionGetWorkspace(intptr_t handle, size_t desc, size_t find,
                                        int pref):
     """Determines the required workspaceSize for a given tensor contraction
 
@@ -668,7 +668,7 @@ cpdef int32_t contractionMaxAlgos():
 # Tensor reduction
 ###############################################################################
 
-cpdef reduction(size_t handle,
+cpdef reduction(intptr_t handle,
                 size_t alpha,
                 size_t A, size_t descA, size_t modeA,
                 size_t beta,
@@ -736,7 +736,7 @@ cpdef reduction(size_t handle,
     check_status(status)
 
 
-cpdef uint64_t reductionGetWorkspace(size_t handle,
+cpdef uint64_t reductionGetWorkspace(intptr_t handle,
                                      size_t A, size_t descA, size_t modeA,
                                      size_t C, size_t descC, size_t modeC,
                                      size_t D, size_t descD, size_t modeD,
@@ -761,7 +761,7 @@ cpdef uint64_t reductionGetWorkspace(size_t handle,
     return workspaceSize
 
 
-cpdef uint32_t getAlignmentRequirement(size_t handle, size_t ptr, size_t desc):
+cpdef uint32_t getAlignmentRequirement(intptr_t handle, size_t ptr, size_t desc):
     """Computes the minimal alignment requirement for a given pointer and
        descriptor
 
