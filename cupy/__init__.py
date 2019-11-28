@@ -37,7 +37,8 @@ original error: {}'''.format(exc_info[1]))  # NOQA
 
 
 from cupy import cuda
-import cupyx
+# Do not make `cupy.cupyx` available because it is confusing.
+import cupyx as _cupyx
 
 
 def is_available():
@@ -765,5 +766,5 @@ def get_default_pinned_memory_pool():
 
 def show_config():
     """Prints the current runtime configuration to standard output."""
-    sys.stdout.write(str(cupyx.get_runtime_info()))
+    sys.stdout.write(str(_cupyx.get_runtime_info()))
     sys.stdout.flush()
