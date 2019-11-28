@@ -28,7 +28,9 @@ import string
 from cupy.core import _errors
 from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
+from cupy.core import _optimize
 from cupy.cuda import compiler
+from cupy.cuda import stream as stream_module
 from cupy import util
 
 
@@ -177,21 +179,24 @@ cdef Py_ssize_t _get_contiguous_size(
     return contiguous_size
 
 
+cdef Py_ssize_t _default_block_size = 256 if runtime._is_hip_environment else 512
+
+
 cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
         Py_ssize_t in_size, Py_ssize_t out_size,
-        Py_ssize_t contiguous_size) except*:
+        Py_ssize_t contiguous_size,
+        Py_ssize_t block_size) except*:
     cdef Py_ssize_t reduce_block_size, block_stride, out_block_num
+    if block_size == -1:
+        block_size = _default_block_size
 
     reduce_block_size = max(1, in_size // out_size)
     contiguous_size = min(contiguous_size, 32)
-    block_stride = max(contiguous_size, _block_size // reduce_block_size)
+    block_stride = max(contiguous_size, block_size // reduce_block_size)
     block_stride = internal.clp2(block_stride // 2 + 1)  # floor
     out_block_num = (out_size + block_stride - 1) // block_stride
 
-    return _block_size, block_stride, out_block_num
-
-
-cdef Py_ssize_t _block_size = 256 if runtime._is_hip_environment else 512
+    return block_size, block_stride, out_block_num
 
 
 def _sort_axis(tuple axis, tuple strides):
@@ -276,13 +281,97 @@ cdef class _AbstractReductionKernel:
             out_shape = _reduce_dims(out_args, self.out_params, out_shape)
 
         # Calculate the reduction block dimensions.
-        contiguous_size = _get_contiguous_size(
-            in_args, self.in_params, len(in_shape), len(out_shape))
-        block_size, block_stride, out_block_num = _get_block_specs(
-            internal.prod_sequence(in_shape),
-            internal.prod_sequence(out_shape),
-            contiguous_size)
+        optimize_context = _optimize._get_current_context()
+        if optimize_context is None:
+            # Calculate manually
+            contiguous_size = _get_contiguous_size(
+                in_args, self.in_params, len(in_shape), len(out_shape))
+            block_size, block_stride, out_block_num = _get_block_specs(
+                internal.prod_sequence(in_shape),
+                internal.prod_sequence(out_shape),
+                contiguous_size, -1)
+        else:
+            # Optimize dynamically
+            params = optimize_context.get_params()
+            if params is None:
+                params = self._optimize_params(
+                    in_args, out_args, in_shape, out_shape,
+                    contiguous_size, types,
+                    map_expr, reduce_expr, post_map_expr, reduce_type,
+                    stream)
+                optimize_context.set_params(params)
+            block_size, block_stride, out_block_num = params
 
+        # Launch the kernel
+        self._launch(
+            out_block_num,
+            block_size,
+            block_stride,
+            in_args, out_args,
+            in_shape, out_shape,
+            types,
+            map_expr, reduce_expr, post_map_expr, reduce_type,
+            stream)
+        return ret
+
+    def _optimize_params(
+            self, in_args, out_args, in_shape, out_shape,
+            contiguous_size, types,
+            map_expr, reduce_expr, post_map_expr, reduce_type,
+            stream):
+        import optuna
+        def objective(trial):
+            block_size_exp = trial.suggest_int('block_size_exp', 5, 9)
+            block_size = 2 ** block_size_exp
+
+            # Calculate the reduction block dimensions.
+            contiguous_size = _get_contiguous_size(
+                in_args, self.in_params, len(in_shape), len(out_shape))
+            block_size, block_stride, out_block_num = _get_block_specs(
+                internal.prod_sequence(in_shape),
+                internal.prod_sequence(out_shape),
+                contiguous_size,
+                block_size)
+
+            trial.set_user_attr('block_size', block_size)
+            trial.set_user_attr('block_stride', block_stride)
+            trial.set_user_attr('out_block_num', out_block_num)
+
+            stream = stream_module.get_current_stream()
+            stream.synchronize()
+            ev1 = stream_module.Event()
+            ev2 = stream_module.Event()
+            ev1.synchronize()
+            ev1.record()
+
+            for _ in range(100):
+                self._launch(
+                    out_block_num,
+                    block_size,
+                    block_stride,
+                    in_args, out_args,
+                    in_shape, out_shape,
+                    types,
+                    map_expr, reduce_expr, post_map_expr, reduce_type,
+                    stream)
+
+            ev2.record()
+            ev2.synchronize()
+            time = stream_module.get_elapsed_time(ev1, ev2) * 1e-3
+            return time
+
+        study = optuna.create_study()
+        study.optimize(objective, n_trials=100)
+        best = study.best_trial
+        return [
+            best.user_attrs[key] for key in (
+                'block_size', 'block_stride', 'out_block_num')]
+
+    cpdef _launch(
+            self, out_block_num, block_size, block_stride,
+            in_args, out_args, in_shape, out_shape, types,
+            map_expr, reduce_expr, post_map_expr, reduce_type,
+            stream):
         # Kernel arguments passed to the __global__ function.
         inout_args = (
             in_args
@@ -305,8 +394,6 @@ cdef class _AbstractReductionKernel:
         # Launch the kernel
         func.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
-
-        return ret
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
