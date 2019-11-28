@@ -29,6 +29,16 @@ ignore_cython_versions = [
 ]
 use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 
+
+# The value of the key 'file' is a list that contains extension names
+# or tuples of an extension name and a list of other souces files
+# required to build the extension such as .cpp files and .cu files.
+#
+#   <extension name> | (<extension name>, a list of <other source>)
+#
+# The extension name is also interpreted as the name of the Cython
+# source file required to build the extension with appending '.pyx'
+# file extension.
 MODULES = [
     {
         'name': 'cuda',
@@ -144,30 +154,6 @@ MODULES = [
         'check_method': build.check_nvtx,
     },
     {
-        # The value of the key 'file' is a list that contains extension names
-        # or tuples of an extension name and a list of other souces files
-        # required to build the extension such as .cpp files and .cu files.
-        #
-        #   <extension name> | (<extension name>, a list of <other source>)
-        #
-        # The extension name is also interpreted as the name of the Cython
-        # source file required to build the extension with appending '.pyx'
-        # file extension.
-        'name': 'thrust',
-        'file': [
-            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
-        ],
-        'include': [
-            'thrust/device_ptr.h',
-            'thrust/sequence.h',
-            'thrust/sort.h',
-        ],
-        'libraries': [
-            'cudart',
-        ],
-        'check_method': build.check_cuda_version,
-    },
-    {
         'name': 'cutensor',
         'file': [
             'cupy.cuda.cutensor',
@@ -196,6 +182,24 @@ MODULES = [
         'check_method': build.check_cuda_version,
     },
 ]
+
+
+if 1 == int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1)):
+    MODULES.append({
+        'name': 'thrust',
+        'file': [
+            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+        ],
+        'include': [
+            'thrust/device_ptr.h',
+            'thrust/sequence.h',
+            'thrust/sort.h',
+        ],
+        'libraries': [
+            'cudart',
+        ],
+        'check_method': build.check_cuda_version,
+    })
 
 
 def convert_modules_for_hip():
