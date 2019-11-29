@@ -214,63 +214,67 @@ def slogdet(a):
         msg = ('%d-dimensional array given. '
                'Array must be at least two-dimensional' % a.ndim)
         raise linalg.LinAlgError(msg)
+    util._assert_nd_squareness(a)
 
     dtype = numpy.promote_types(a.dtype.char, 'f')
-    shape = a.shape[:-2]
-    sign = cupy.empty(shape, dtype)
-    logdet = cupy.empty(shape, dtype)
+    real_dtype = dtype
 
-    a = a.astype(dtype)
-    for index in numpy.ndindex(*shape):
-        s, logd = _slogdet_one(a[index])
-        sign[index] = s
-        logdet[index] = logd
-    return sign, logdet
-
-
-def _slogdet_one(a):
-    util._assert_rank2(a)
-    util._assert_nd_squareness(a)
-    dtype = a.dtype
-
-    handle = device.get_cusolver_handle()
-    m = len(a)
-    ipiv = cupy.empty(m, dtype=numpy.int32)
-    dev_info = cupy.empty((), dtype=numpy.int32)
-
-    # Need to make a copy because getrf works inplace
-    a_copy = a.copy(order='F')
-
-    if dtype == 'f':
-        getrf_bufferSize = cusolver.sgetrf_bufferSize
-        getrf = cusolver.sgetrf
+    if dtype == cupy.float32:
+        getrfBatched = cupy.cuda.cublas.sgetrfBatched
+    elif dtype == cupy.float64:
+        getrfBatched = cupy.cuda.cublas.dgetrfBatched
     else:
-        getrf_bufferSize = cusolver.dgetrf_bufferSize
-        getrf = cusolver.dgetrf
+        # TODO(kataoka): support complex types
+        msg = ('dtype must be float32 or float64'
+               ' (actual: {})'.format(a.dtype))
+        raise ValueError(msg)
 
-    buffersize = getrf_bufferSize(handle, m, m, a_copy.data.ptr, m)
-    workspace = cupy.empty(buffersize, dtype=dtype)
-    getrf(handle, m, m, a_copy.data.ptr, m, workspace.data.ptr,
-          ipiv.data.ptr, dev_info.data.ptr)
+    a_shape = a.shape
+    shape = a_shape[:-2]
+    n = a_shape[-2]
+
+    if a.size == 0:
+        # empty batch (result is empty, too) or empty matrices det([[]]) == 1
+        sign = cupy.ones(shape, dtype)
+        logdet = cupy.zeros(shape, real_dtype)
+        return sign, logdet
+
+    # copy is necessary to present `a` to be overwritten.
+    a = a.astype(dtype, order='C').reshape(-1, n, n)
+
+    handle = device.get_cublas_handle()
+    batch_size = a.shape[0]
+    lda = n
+    step = n * lda * a.itemsize
+    start = a.data.ptr
+    stop = start + step * batch_size
+    a_array = cupy.arange(start, stop, step, dtype=cupy.uintp)
+    ipiv = cupy.empty((batch_size, n), dtype=cupy.int32)
+    dev_info = cupy.empty((batch_size,), dtype=cupy.int32)
+
+    getrfBatched(
+        handle, n, a_array.data.ptr, lda, ipiv.data.ptr,
+        dev_info.data.ptr, batch_size)
 
     # dev_info < 0 means illegal value (in dimensions, strides, and etc.) that
     # should never happen even if the matrix contains nan or inf.
     # TODO(kataoka): assert dev_info >= 0 if synchronization is allowed for
     # debugging purposes.
 
-    diag = cupy.diag(a_copy)
+    diag = cupy.diagonal(a, axis1=-2, axis2=-1)
+
     # ipiv is 1-origin
-    non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, m + 1)) +
-                cupy.count_nonzero(diag < 0))
+    non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1) +
+                cupy.count_nonzero(diag < 0, axis=-1))
 
     # Note: sign == -1 ** (non_zero % 2)
     sign = (non_zero % 2) * -2 + 1
-    logdet = cupy.log(abs(diag)).sum()
+    logdet = cupy.log(abs(diag)).sum(axis=-1)
 
     singular = dev_info > 0
     return (
-        cupy.where(singular, dtype.type(0), sign),
-        cupy.where(singular, dtype.type('-inf'), logdet),
+        cupy.where(singular, dtype.type(0), sign.astype(dtype)).reshape(shape),
+        cupy.where(singular, real_dtype.type('-inf'), logdet).reshape(shape),
     )
 
 
