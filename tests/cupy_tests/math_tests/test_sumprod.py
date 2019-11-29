@@ -132,14 +132,18 @@ class TestSumprod(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
         return a.sum(dtype=dst_dtype)
 
+    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
     @testing.numpy_cupy_allclose()
-    def test_sum_keepdims(self, xp):
-        a = testing.shaped_arange((2, 3, 4), xp)
-        return a.sum(axis=1, keepdims=True)
+    def test_sum_keepdims_and_dtype(self, xp, src_dtype, dst_dtype):
+        if not xp.can_cast(src_dtype, dst_dtype):
+            return xp.array([])  # skip
+        a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
+        return a.sum(axis=1, dtype=dst_dtype, keepdims=True)
 
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_sum_keepdims_multiple_axes(self, xp):
-        a = testing.shaped_arange((2, 3, 4), xp)
+    def test_sum_keepdims_multiple_axes(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.sum(axis=(1, 2), keepdims=True)
 
     @testing.for_all_dtypes()
