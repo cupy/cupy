@@ -109,7 +109,7 @@ extern "C" __global__ void ${name}(${params}) {
 cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
     cdef Py_ssize_t dim
     if axis is None:
-        axis = tuple(range(ndim))
+        return (tuple(range(ndim)), ())
     elif sequence.PySequence_Check(axis):
         axis = tuple(axis)
     else:
