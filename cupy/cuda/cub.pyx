@@ -207,7 +207,7 @@ def device_segmented_reduce(ndarray x, int op, tuple reduce_axis,
 
     # prepare input
     contiguous_size = _preprocess_array(x, reduce_axis, out_axis, order)
-    out_shape = _get_output_shape(arr, out_axis, keepdims)
+    out_shape = _get_output_shape(x, out_axis, keepdims)
     x_ptr = <void*>x.data.ptr
     y = ndarray(out_shape, dtype=x.dtype, order=order)
     y_ptr = <void*>y.data.ptr
@@ -358,7 +358,7 @@ def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
     if op > CUPY_CUB_MAX:
         # For argmin and argmax, NumPy does not allow a tuple for axis.
         # Also, the keepdims and dtype kwargs are not provided.
-
+        #
         # For now we don't enforce these for consistency with existing CuPy
         # non-CUB reduction behavior.
         # https://github.com/cupy/cupy/issues/2595

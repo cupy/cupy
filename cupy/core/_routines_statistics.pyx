@@ -13,7 +13,6 @@ if cupy.cuda.cub_enabled:
 
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
-    cdef tuple reduce_axis, out_axis
     if cupy.cuda.cub_enabled:
         # result will be None if the reduction is not compatible with CUB
         result = cub.cub_reduction(self, cub.CUPY_CUB_MAX, axis, dtype, out,
@@ -24,7 +23,6 @@ cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
 
 
 cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
-    cdef tuple reduce_axis, out_axis
     if cupy.cuda.cub_enabled:
         # result will be None if the reduction is not compatible with CUB
         result = cub.cub_reduction(self, cub.CUPY_CUB_MIN, axis, out, dtype,
@@ -36,7 +34,6 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
 
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
-    cdef tuple reduce_axis, out_axis
     if cupy.cuda.cub_enabled:
         # result will be None if the reduction is not compatible with CUB
         result = cub.cub_reduction(self, cub.CUPY_CUB_ARGMAX, axis, dtype, out,
@@ -48,7 +45,6 @@ cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
 
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
-    cdef tuple reduce_axis, out_axis
     if cupy.cuda.cub_enabled:
         # result will be None if the reduction is not compatible with CUB
         result = cub.cub_reduction(self, cub.CUPY_CUB_ARGMIN, axis, dtype, out,
