@@ -80,14 +80,14 @@ class _Submodule(object):
     def code(self):
         params = ', '.join('{} &{}'.format(_dtype_to_ctype[t], s)
                            for t, s in self.in_params + self.out_params)
-        typedef = ''.join('typedef {} {}_type;\n'.format(_dtype_to_ctype[t], s)
+        typedef = ''.join('    typedef {} {}_type;\n'.format(_dtype_to_ctype[t], s)
                           for t, s in self.in_params + self.out_params)
         module_code = string.Template('''
-        __device__ void ${name}(${parameters}) {
-          ${typedef}
-          ${operation};
-        }
-        ''').substitute(
+__device__ void ${name}(${parameters}) {
+${typedef}
+    ${operation};
+}
+''').substitute(
             name=self.name,
             parameters=params,
             operation=self.op,

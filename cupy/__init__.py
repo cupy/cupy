@@ -51,6 +51,7 @@ __version__ = _version.__version__
 
 from cupy import binary  # NOQA
 import cupy.core.fusion  # NOQA
+import cupy.core.fusionx # NOQA
 from cupy import creation  # NOQA
 from cupy import fft  # NOQA
 from cupy import indexing  # NOQA
@@ -759,6 +760,7 @@ def get_array_module(*args):
 
 
 fuse = cupy.core.fusion.fuse
+fusex = cupy.core.fusionx.fusex
 
 disable_experimental_feature_warning = False
 
