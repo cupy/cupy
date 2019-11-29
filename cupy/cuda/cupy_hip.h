@@ -65,6 +65,10 @@ CUresult cuLinkAddData(...) {
     return hipErrorUnknown;
 }
 
+CUresult cuLinkAddFile(...) {
+    return hipErrorUnknown;
+}
+
 CUresult cuLinkComplete(...) {
     return hipErrorUnknown;
 }
