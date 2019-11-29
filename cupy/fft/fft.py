@@ -11,25 +11,28 @@ from cupy.cuda import cufft
 from cupy.fft import config
 
 
-def _output_dtype(a, value_type):
+@cupy.util.memoize()
+def _output_dtype(dtype, value_type):
     if value_type != 'R2C':
-        if a.dtype in [np.float16, np.float32]:
+        if dtype in [np.float16, np.float32]:
             return np.complex64
-        elif a.dtype not in [np.complex64, np.complex128]:
+        elif dtype not in [np.complex64, np.complex128]:
             return np.complex128
     else:
-        if a.dtype in [np.complex64, np.complex128]:
-            return a.real.dtype
-        elif a.dtype == np.float16:
+        if dtype in [np.complex64, np.complex128]:
+            return np.dtype(dtype.char.lower())
+        elif dtype == np.float16:
             return np.float32
-        elif a.dtype not in [np.float32, np.float64]:
+        elif dtype not in [np.float32, np.float64]:
             return np.float64
-    return a.dtype
+    return dtype
 
 
 def _convert_dtype(a, value_type):
-    out_dtype = _output_dtype(a, value_type)
-    return a.astype(out_dtype, copy=False)
+    out_dtype = _output_dtype(a.dtype, value_type)
+    if out_dtype != a.dtype:
+        a = a.astype(out_dtype)
+    return a
 
 
 def _cook_shape(a, s, axes, value_type, order='C'):
