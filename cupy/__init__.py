@@ -635,6 +635,7 @@ from cupy.sorting.search import flatnonzero  # NOQA
 from cupy.sorting.search import nonzero  # NOQA
 
 from cupy.sorting.search import where  # NOQA
+from cupy.sorting.search import searchsorted  # NOQA
 from cupy.sorting.search import argmax  # NOQA
 from cupy.sorting.search import nanargmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA

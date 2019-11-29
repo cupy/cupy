@@ -1,3 +1,4 @@
+import cupy
 from cupy import core
 from cupy.core import fusion
 
@@ -181,7 +182,179 @@ def where(condition, x=None, y=None):
     return _where_ufunc(condition.astype('?'), x, y)
 
 
-# TODO(okuta): Implement searchsorted
+# This is to allow using the same kernels for all dtypes, ints & floats
+# as nan is a special case
+_preamble = '''
+template<typename T>
+__device__ bool _isnan(T val) {
+    return false;
+}
+template<>
+__device__ bool _isnan<float16>(float16 val) {
+    return isnan(val);
+}
+template<>
+__device__ bool _isnan<float>(float val) {
+    return isnan(val);
+}
+template<>
+__device__ bool _isnan<double>(double val) {
+    return isnan(val);
+}
+template<>
+__device__ bool _isnan<const complex<double>&>(const complex<double>& val) {
+    return isnan(val);
+}
+template<>
+__device__ bool _isnan<const complex<float>&>(const complex<float>& val) {
+    return isnan(val);
+}
+'''
+
+_searchsorted_kernel_left = core.ElementwiseKernel(
+    'S x, raw T bins, int32 n_bins, bool check',
+    'U y',
+    '''
+    y = 0;
+    // Array is assumed to be monotonically
+    // increasing unless a check is requested
+    // because of functions like digitize
+    // allowing both, increasing and decreasing
+    bool inc = true;
+    if(check && n_bins >= 2) {
+        int i=0;
+        do {
+            inc = bins[i] <= bins[i+1];
+        } while (bins[i] == bins[++i]);
+    }
+    if (_isnan<S>(x)) {
+        y = (inc ? n_bins : 0);
+        return;
+    }
+    if (inc && x > bins[n_bins-1] || !inc && x <= bins[n_bins-1]) {
+        y = n_bins;
+        return;
+    }
+    size_t l = 0;
+    size_t r = n_bins-1;
+    while (l<r) {
+        size_t m = l + (r - l) / 2;
+        if ((inc && bins[m] >= x) || (!inc && bins[m] < x)) {
+            r = m;
+        } else {
+            l = m + 1;
+        }
+    }
+    y = r;
+    ''', preamble=_preamble)
+
+
+_searchsorted_kernel_right = core.ElementwiseKernel(
+    'S x, raw T bins, int32 n_bins, bool check',
+    'U y',
+    '''
+    y = 0;
+    // Array is assumed to be monotonically
+    // increasing unless a check is requested
+    // because of functions like digitize
+    // allowing both, increasing and decreasing
+    bool inc = true;
+    if(check && n_bins >= 2) {
+        int i=0;
+        do {
+            inc = bins[i] <= bins[i+1];
+        } while (bins[i] == bins[++i]);
+    }
+    if(_isnan<S>(x)) {
+        y = (inc ? n_bins : 0);
+        return;
+    }
+    if (inc && x >= bins[n_bins-1]) {
+        y = n_bins;
+        return;
+    }
+    size_t l = 0;
+    size_t r = n_bins-1;
+    while (l<r) {
+        size_t m = l + (r - l) / 2;
+        if ((inc && bins[m] <= x) || (!inc && bins[m] > x)) {
+            l = m + 1;
+        } else {
+            r = m;
+        }
+    }
+    y = r;
+    ''', preamble=_preamble)
+
+
+def searchsorted(a, v, side='left', sorter=None):
+    """Find indices where elements should be inserted to maintain order.
+
+    Find the indices into a sorted array a such that,
+    if the corresponding elements in v were inserted before the indices,
+    the order of a would be preserved.
+
+    Args:
+        a (cupy.ndarray): Input array. If ``sorter`` is None, then
+            it must be sorted in ascending order,
+            otherwise ``sorter`` must be an array of indices that sort it.
+        v (array like): Values to insert into a.
+        side : {'left', 'right'}
+            If ``left``, return the index of the first suitable location found
+            If ``right``, return the last such index.
+            If there is no suitable index, return either 0 or length of ``a``.
+        sorter : 1-D array_like
+            Optional array of integer indices that sort array a into ascending
+            order. They are typically the result of argsort.
+
+
+    Returns:
+        cupy.ndarray: Array of insertion points with the same shape as `v`.
+
+    .. note:: When a is not in ascending order, behavior is undefined.
+       NumPy avoids this check for efficiency
+
+    .. seealso:: :func:`numpy.searchsorted`
+
+    """
+    return searchsorted_internal(a, v, side, sorter, False)
+
+
+def searchsorted_internal(a, v, side, sorter, check_monotonicity):
+    a_iscomplex = a.dtype.kind == 'c'
+    v_iscomplex = v.dtype.kind == 'c'
+    if a_iscomplex and not v_iscomplex:
+        v = v.astype(a.dtype)
+    elif v_iscomplex and not a_iscomplex:
+        a = a.astype(v.dtype)
+
+    if a.ndim > 1:
+        raise ValueError('object too deep for desired array')
+    if a.ndim < 1:
+        raise ValueError('object of too small depth for desired array')
+    if a.size == 0:
+        return cupy.zeros(v.shape, dtype='l')
+    if not isinstance(a, cupy.ndarray):
+        raise NotImplementedError('Only int or ndarray are supported for v')
+
+    # Numpy does not check if the array is monotonic inside searchsorted
+    # which leds to undefined behavior in such cases
+    if sorter is not None:
+        if sorter.dtype.kind not in ('i', 'u'):
+            raise TypeError('sorter must be of integer type')
+        if sorter.size != a.size:
+            raise ValueError('sorter.size must equal a.size')
+        a = a.take(sorter)
+
+    # NumPy digitize reverses the array when its monotonically decreasing
+    # for CUDA is better to change the comparissons in the kernel rather
+    # than reversingly reading the array or use take
+    y = cupy.zeros(v.shape, dtype='l')
+    if side == 'right':
+        _searchsorted_kernel_right(v, a, a.size, check_monotonicity, y)
+    else:
+        _searchsorted_kernel_left(v, a, a.size, check_monotonicity, y)
+    return y
 
 
 # TODO(okuta): Implement extract
