@@ -287,6 +287,8 @@ class simple_reduction_function(_AbstractReductionKernel):
     def __call__(self, object a, axis=None, dtype=None, ndarray out=None,
                  bint keepdims=False):
 
+        cdef ndarray arr
+
         if isinstance(a, ndarray):
             arr = a
         elif hasattr(a, '__cuda_array_interface__'):
@@ -295,7 +297,6 @@ class simple_reduction_function(_AbstractReductionKernel):
             raise TypeError(
                 'Argument \'a\' has incorrect type (expected %s, got %s)' %
                 (ndarray, type(a)))
-        del a
         in_args = [arr]
 
         dev_id = device.get_device_id()
