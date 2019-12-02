@@ -338,9 +338,9 @@ cdef _numpy_can_cast = numpy.can_cast
 
 
 cdef bint _can_cast(d1, d2, casting):
-    if casting != 'no':
-        if d1 == d2:
-            return True
+    # almost ufunc passes `same_kind`
+    if casting == 'same_kind' and get_dtype(d1).kind == d2.kind:
+        return True
     return _numpy_can_cast(d1, d2, casting=casting)
 
 
