@@ -5,8 +5,10 @@
 #include <thrust/sort.h>
 #include <thrust/tuple.h>
 #include <thrust/execution_policy.h>
+//#include <thrust/complex.h>
 #include "cupy_common.h"
 #include "cupy_thrust.h"
+#include "cupy_cuComplex.h"
 
 using namespace thrust;
 
@@ -41,6 +43,65 @@ public:
         cupy_free(memory, ptr);
     }
 };
+
+
+/* ------------------------------------ Minimum boilerplate to support complex numbers ------------------------------------ */
+// copied from cupy/core/include/cupy/complex/arithmetic.h
+//template <typename T>
+//__host__ __device__ inline T thrust::complex<T>::real(const device_reference<complex<T>>& z) {
+//  return z.real();
+//}
+//
+//template <typename T>
+//__host__ __device__ inline bool thrust::operator<(const complex<T>& lhs,
+//                                                           const complex<T>& rhs) {
+//  if (lhs == rhs) {
+//      return false;
+//  } else if (lhs.real() < rhs.real()) {
+//      return true;
+//  } else if (lhs.real() == rhs.real()) {
+//      return lhs.imag() < rhs.imag();
+//  } else {
+//      return false;
+//  }
+//}
+__host__ __device__ inline bool operator<(const cuComplex& lhs,
+                                          const cuComplex& rhs) {
+  if (lhs.x == rhs.x && lhs.y == rhs.y) {
+      return false;
+  } else if (lhs.x < rhs.x) {
+      return true;
+  } else if (lhs.x == rhs.x) {
+      return lhs.y < rhs.y;
+  } else {
+      return false;
+  }
+}
+__host__ __device__ inline bool operator<(const cuDoubleComplex& lhs,
+                                          const cuDoubleComplex& rhs) {
+  if (lhs.x == rhs.x && lhs.y == rhs.y) {
+      return false;
+  } else if (lhs.x < rhs.x) {
+      return true;
+  } else if (lhs.x == rhs.x) {
+      return lhs.y < rhs.y;
+  } else {
+      return false;
+  }
+}
+
+//template <typename ValueType>
+//__host__ __device__ inline bool operator<(const ValueType& lhs,
+//                                 const complex<ValueType>& rhs) {
+//    return complex<ValueType>(lhs) < rhs;
+//}
+//
+//template <typename ValueType>
+//__host__ __device__ inline bool operator<(const complex<ValueType>& lhs,
+//                                 const ValueType& rhs) {
+//    return lhs < complex<ValueType>(rhs);
+//}
+/* ------------------------------------ end of boilerplate ------------------------------------ */
 
 
 /*
@@ -87,25 +148,33 @@ void cupy::thrust::_sort(void *data_start, size_t *keys_start,
     }
 }
 
-template void cupy::thrust::_sort<cpy_byte>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
-template void cupy::thrust::_sort<cpy_ubyte>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
-template void cupy::thrust::_sort<cpy_short>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
-template void cupy::thrust::_sort<cpy_ushort>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
-template void cupy::thrust::_sort<cpy_int>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
-template void cupy::thrust::_sort<cpy_uint>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
-template void cupy::thrust::_sort<cpy_long>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
-template void cupy::thrust::_sort<cpy_ulong>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
-template void cupy::thrust::_sort<cpy_float>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+//template void cupy::thrust::_sort<cpy_byte>(
+//    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+//template void cupy::thrust::_sort<cpy_ubyte>(
+//    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+//template void cupy::thrust::_sort<cpy_short>(
+//    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+//template void cupy::thrust::_sort<cpy_ushort>(
+//    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+//template void cupy::thrust::_sort<cpy_int>(
+//    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+//template void cupy::thrust::_sort<cpy_uint>(
+//    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+//template void cupy::thrust::_sort<cpy_long>(
+//    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+//template void cupy::thrust::_sort<cpy_ulong>(
+//    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+//template void cupy::thrust::_sort<cpy_float>(
+//    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
 template void cupy::thrust::_sort<cpy_double>(
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+//template void cupy::thrust::_sort<complex<float>>(
+//    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+//template void cupy::thrust::_sort<complex<double>>(
+//    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+template void cupy::thrust::_sort<cuComplex>(
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+template void cupy::thrust::_sort<cuDoubleComplex>(
     void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
 
 
@@ -146,24 +215,24 @@ void cupy::thrust::_lexsort(size_t *idx_start, void *keys_start, size_t k,
     }
 }
 
-template void cupy::thrust::_lexsort<cpy_byte>(
-    size_t *, void *, size_t, size_t, size_t, void *);
-template void cupy::thrust::_lexsort<cpy_ubyte>(
-    size_t *, void *, size_t, size_t, size_t, void *);
-template void cupy::thrust::_lexsort<cpy_short>(
-    size_t *, void *, size_t, size_t, size_t, void *);
-template void cupy::thrust::_lexsort<cpy_ushort>(
-    size_t *, void *, size_t, size_t, size_t, void *);
-template void cupy::thrust::_lexsort<cpy_int>(
-    size_t *, void *, size_t, size_t, size_t, void *);
-template void cupy::thrust::_lexsort<cpy_uint>(
-    size_t *, void *, size_t, size_t, size_t, void *);
-template void cupy::thrust::_lexsort<cpy_long>(
-    size_t *, void *, size_t, size_t, size_t, void *);
-template void cupy::thrust::_lexsort<cpy_ulong>(
-    size_t *, void *, size_t, size_t, size_t, void *);
-template void cupy::thrust::_lexsort<cpy_float>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+//template void cupy::thrust::_lexsort<cpy_byte>(
+//    size_t *, void *, size_t, size_t, size_t, void *);
+//template void cupy::thrust::_lexsort<cpy_ubyte>(
+//    size_t *, void *, size_t, size_t, size_t, void *);
+//template void cupy::thrust::_lexsort<cpy_short>(
+//    size_t *, void *, size_t, size_t, size_t, void *);
+//template void cupy::thrust::_lexsort<cpy_ushort>(
+//    size_t *, void *, size_t, size_t, size_t, void *);
+//template void cupy::thrust::_lexsort<cpy_int>(
+//    size_t *, void *, size_t, size_t, size_t, void *);
+//template void cupy::thrust::_lexsort<cpy_uint>(
+//    size_t *, void *, size_t, size_t, size_t, void *);
+//template void cupy::thrust::_lexsort<cpy_long>(
+//    size_t *, void *, size_t, size_t, size_t, void *);
+//template void cupy::thrust::_lexsort<cpy_ulong>(
+//    size_t *, void *, size_t, size_t, size_t, void *);
+//template void cupy::thrust::_lexsort<cpy_float>(
+//    size_t *, void *, size_t, size_t, size_t, void *);
 template void cupy::thrust::_lexsort<cpy_double>(
     size_t *, void *, size_t, size_t, size_t, void *);
 
@@ -235,33 +304,33 @@ void cupy::thrust::_argsort(size_t *idx_start, void *data_start,
     }
 }
 
-template void cupy::thrust::_argsort<cpy_byte>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
-    void *);
-template void cupy::thrust::_argsort<cpy_ubyte>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
-    void *);
-template void cupy::thrust::_argsort<cpy_short>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
-    void *);
-template void cupy::thrust::_argsort<cpy_ushort>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
-    void *);
-template void cupy::thrust::_argsort<cpy_int>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
-    void *);
-template void cupy::thrust::_argsort<cpy_uint>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
-    void *);
-template void cupy::thrust::_argsort<cpy_long>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
-    void *);
-template void cupy::thrust::_argsort<cpy_ulong>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
-    void *);
-template void cupy::thrust::_argsort<cpy_float>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
-    void *);
+//template void cupy::thrust::_argsort<cpy_byte>(
+//    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+//    void *);
+//template void cupy::thrust::_argsort<cpy_ubyte>(
+//    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+//    void *);
+//template void cupy::thrust::_argsort<cpy_short>(
+//    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+//    void *);
+//template void cupy::thrust::_argsort<cpy_ushort>(
+//    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+//    void *);
+//template void cupy::thrust::_argsort<cpy_int>(
+//    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+//    void *);
+//template void cupy::thrust::_argsort<cpy_uint>(
+//    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+//    void *);
+//template void cupy::thrust::_argsort<cpy_long>(
+//    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+//    void *);
+//template void cupy::thrust::_argsort<cpy_ulong>(
+//    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+//    void *);
+//template void cupy::thrust::_argsort<cpy_float>(
+//    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+//    void *);
 template void cupy::thrust::_argsort<cpy_double>(
     size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
     void *);
