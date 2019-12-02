@@ -48,6 +48,24 @@ cdef dict _typenames_base = {
 }
 
 
+cdef object _numpy_bool_ = numpy.bool_
+cdef object _numpy_int8 = numpy.int8
+cdef object _numpy_int16 = numpy.int16
+cdef object _numpy_int32 = numpy.int32
+cdef object _numpy_int64 = numpy.int64
+cdef object _numpy_uint8 = numpy.uint8
+cdef object _numpy_uint16 = numpy.uint16
+cdef object _numpy_uint32 = numpy.uint32
+cdef object _numpy_uint64 = numpy.uint64
+cdef object _numpy_float16 = numpy.float16
+cdef object _numpy_float32 = numpy.float32
+cdef object _numpy_float64 = numpy.float64
+cdef object _numpy_complex64 = numpy.complex64
+cdef object _numpy_complex128 = numpy.complex128
+cdef object _numpy_float_ = numpy.float_
+cdef object _numpy_complex_ = numpy.complex_
+
+
 cpdef str get_typename(dtype):
     if dtype is None:
         raise ValueError('dtype is None')
@@ -82,7 +100,7 @@ _int_iinfo = numpy.iinfo(int)
 cdef _int_min = _int_iinfo.min
 cdef _int_max = _int_iinfo.max
 cdef _int_type = _int_iinfo.dtype.type
-cdef bint _use_int32 = _int_type != numpy.int64
+cdef bint _use_int32 = _int_type != _numpy_int64
 del _int_iinfo
 
 
@@ -90,16 +108,16 @@ cpdef _python_scalar_to_numpy_scalar(x):
     # Note that isinstance(x, six_integer_types) matches with bool.
     typ = type(x)
     if typ is bool:
-        numpy_type = numpy.bool_
+        numpy_type = _numpy_bool_
     elif typ is float:
-        numpy_type = numpy.float_
+        numpy_type = _numpy_float_
     elif typ is complex:
-        numpy_type = numpy.complex_
+        numpy_type = _numpy_complex_
     else:
         if 0x8000000000000000 <= x:
-            numpy_type = numpy.uint64
+            numpy_type = _numpy_uint64
         elif _use_int32 and (x < _int_min or _int_max < x):
-            numpy_type = numpy.int64
+            numpy_type = _numpy_int64
         else:
             # Generally `_int_type` is `numpy.int64`.
             # On Windows, it is `numpy.int32`.
@@ -202,37 +220,37 @@ cdef class CScalar(CPointer):
 
     cpdef get_numpy_type(self):
         if self.kind == b'b':
-            return numpy.bool_
+            return _numpy_bool_
         elif self.kind == b'i':
             if self.size == 1:
-                return numpy.int8
+                return _numpy_int8
             elif self.size == 2:
-                return numpy.int16
+                return _numpy_int16
             elif self.size == 4:
-                return numpy.int32
+                return _numpy_int32
             elif self.size == 8:
-                return numpy.int64
+                return _numpy_int64
         elif self.kind == b'u':
             if self.size == 1:
-                return numpy.uint8
+                return _numpy_uint8
             elif self.size == 2:
-                return numpy.uint16
+                return _numpy_uint16
             elif self.size == 4:
-                return numpy.uint32
+                return _numpy_uint32
             elif self.size == 8:
-                return numpy.uint64
+                return _numpy_uint64
         elif self.kind == b'f':
             if self.size == 2:
-                return numpy.float16
+                return _numpy_float16
             elif self.size == 4:
-                return numpy.float32
+                return _numpy_float32
             elif self.size == 8:
-                return numpy.float64
+                return _numpy_float64
         elif self.kind == b'c':
             if self.size == 8:
-                return numpy.complex64
+                return _numpy_complex64
             elif self.size == 16:
-                return numpy.complex128
+                return _numpy_complex128
         assert False
 
 
