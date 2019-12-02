@@ -212,21 +212,15 @@ __device__ bool _isnan<const complex<float>&>(const complex<float>& val) {
 '''
 
 _searchsorted_kernel_left = core.ElementwiseKernel(
-    'S x, raw T bins, int32 n_bins, bool check',
+    'S x, raw T bins, int32 n_bins',
     'U y',
     '''
     y = 0;
     // Array is assumed to be monotonically
     // increasing unless a check is requested
     // because of functions like digitize
-    // allowing both, increasing and decreasing
+    // allowing both, increasing and decreasing.
     bool inc = true;
-    if(check && n_bins >= 2) {
-        int i=0;
-        do {
-            inc = bins[i] <= bins[i+1];
-        } while (bins[i] == bins[++i]);
-    }
     if (_isnan<S>(x)) {
         y = (inc ? n_bins : 0);
         return;
@@ -250,21 +244,15 @@ _searchsorted_kernel_left = core.ElementwiseKernel(
 
 
 _searchsorted_kernel_right = core.ElementwiseKernel(
-    'S x, raw T bins, int32 n_bins, bool check',
+    'S x, raw T bins, int32 n_bins',
     'U y',
     '''
     y = 0;
     // Array is assumed to be monotonically
     // increasing unless a check is requested
     // because of functions like digitize
-    // allowing both, increasing and decreasing
+    // allowing both, increasing and decreasing.
     bool inc = true;
-    if(check && n_bins >= 2) {
-        int i=0;
-        do {
-            inc = bins[i] <= bins[i+1];
-        } while (bins[i] == bins[++i]);
-    }
     if(_isnan<S>(x)) {
         y = (inc ? n_bins : 0);
         return;
@@ -317,28 +305,34 @@ def searchsorted(a, v, side='left', sorter=None):
     .. seealso:: :func:`numpy.searchsorted`
 
     """
-    return searchsorted_internal(a, v, side, sorter, False)
+    return searchsorted_internal(a, v, side, sorter)
 
 
-def searchsorted_internal(a, v, side, sorter, check_monotonicity):
-    a_iscomplex = a.dtype.kind == 'c'
-    v_iscomplex = v.dtype.kind == 'c'
-    if a_iscomplex and not v_iscomplex:
-        v = v.astype(a.dtype)
-    elif v_iscomplex and not a_iscomplex:
-        a = a.astype(v.dtype)
+def searchsorted_internal(a, v, side, sorter):
+
+    if not isinstance(a, cupy.ndarray):
+        raise NotImplementedError('Only int or ndarray are supported for a')
+
+    if not isinstance(v, cupy.ndarray):
+        raise NotImplementedError('Only int or ndarray are supported for v')
 
     if a.ndim > 1:
         raise ValueError('object too deep for desired array')
     if a.ndim < 1:
         raise ValueError('object of too small depth for desired array')
     if a.size == 0:
-        return cupy.zeros(v.shape, dtype='l')
-    if not isinstance(a, cupy.ndarray):
-        raise NotImplementedError('Only int or ndarray are supported for v')
+        return cupy.zeros(v.shape, dtype=cupy.int64)
+
+    a_iscomplex = a.dtype.kind == 'c'
+    v_iscomplex = v.dtype.kind == 'c'
+
+    if a_iscomplex and not v_iscomplex:
+        v = v.astype(a.dtype)
+    elif v_iscomplex and not a_iscomplex:
+        a = a.astype(v.dtype)
 
     # Numpy does not check if the array is monotonic inside searchsorted
-    # which leds to undefined behavior in such cases
+    # which leds to undefined behavior in such cases.
     if sorter is not None:
         if sorter.dtype.kind not in ('i', 'u'):
             raise TypeError('sorter must be of integer type')
@@ -346,14 +340,14 @@ def searchsorted_internal(a, v, side, sorter, check_monotonicity):
             raise ValueError('sorter.size must equal a.size')
         a = a.take(sorter)
 
-    # NumPy digitize reverses the array when its monotonically decreasing
-    # for CUDA is better to change the comparissons in the kernel rather
-    # than reversingly reading the array or use take
-    y = cupy.zeros(v.shape, dtype='l')
+    # NumPy digitize reverses the array when its monotonically decreasing.
+    # For CUDA it's better to change the comparisons in the kernel rather
+    # than reversingly reading the array or use take.
+    y = cupy.zeros(v.shape, dtype=cupy.int64)
     if side == 'right':
-        _searchsorted_kernel_right(v, a, a.size, check_monotonicity, y)
+        _searchsorted_kernel_right(v, a, a.size, y)
     else:
-        _searchsorted_kernel_left(v, a, a.size, check_monotonicity, y)
+        _searchsorted_kernel_left(v, a, a.size, y)
     return y
 
 
