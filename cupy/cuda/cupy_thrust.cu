@@ -394,3 +394,9 @@ void cupy::thrust::_argsort(size_t *idx_start, void *data_start,
 template void cupy::thrust::_argsort<cpy_double>(
     size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
     void *);
+template void cupy::thrust::_argsort<cuComplex>(
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    void *);
+template void cupy::thrust::_argsort<cuDoubleComplex>(
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    void *);

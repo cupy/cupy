@@ -195,12 +195,12 @@ cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
     if dtype == numpy.float64:
         _argsort[common.cpy_double](
             _idx_start, _data_start, _keys_start, shape, _strm, mem)
-#    elif dtype == numpy.complex64:
-#        _argsort[common.cpy_complex64](
-#            _idx_start, _data_start, _keys_start, shape, _strm, mem)
-#    elif dtype == numpy.complex128:
-#        _argsort[common.cpy_complex128](
-#            _idx_start, _data_start, _keys_start, shape, _strm, mem)
+    elif dtype == numpy.complex64:
+        _argsort[cpy_complex64](
+            _idx_start, _data_start, _keys_start, shape, _strm, mem)
+    elif dtype == numpy.complex128:
+        _argsort[cpy_complex128](
+            _idx_start, _data_start, _keys_start, shape, _strm, mem)
     else:
         raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '
                                   'supported'.format(dtype))
