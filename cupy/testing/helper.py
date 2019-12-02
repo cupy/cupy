@@ -16,7 +16,7 @@ import numpy
 import six
 
 import cupy
-from cupy import internal
+from cupy.core import internal
 from cupy.testing import array
 from cupy.testing import parameterized
 import cupyx
