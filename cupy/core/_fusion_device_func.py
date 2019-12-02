@@ -97,6 +97,7 @@ class _SubmoduleUfunc(_SubmoduleBase):
 class _SubmoduleReduction(_SubmoduleBase):
     """A device function for reduction operations.
     """
+
     def _parse_op_info(self, reduction_func, op_info):
         if reduction_func.identity is None:
             self.identity = ''

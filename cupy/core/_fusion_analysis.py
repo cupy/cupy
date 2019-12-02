@@ -264,6 +264,7 @@ class _VariableConductor(object):
 class _FusionHistory(object):
     """History of operation exectuted in the target function of fusion.
     """
+
     def __init__(self, name):
         self.name = name
         self.vc = _VariableConductor()
