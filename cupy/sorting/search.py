@@ -190,107 +190,90 @@ __device__ bool _isnan(T val) {
     return false;
 }
 template<>
-__device__ bool _isnan<float16>(float16 val) {
+__device__ bool _isnan(float16 val) {
     return isnan(val);
 }
 template<>
-__device__ bool _isnan<float>(float val) {
+__device__ bool _isnan(float val) {
     return isnan(val);
 }
 template<>
-__device__ bool _isnan<double>(double val) {
+__device__ bool _isnan(double val) {
     return isnan(val);
 }
 template<>
-__device__ bool _isnan<const complex<double>&>(const complex<double>& val) {
+__device__ bool _isnan(const complex<double>& val) {
     return isnan(val);
 }
 template<>
-__device__ bool _isnan<const complex<float>&>(const complex<float>& val) {
+__device__ bool _isnan(const complex<float>& val) {
     return isnan(val);
 }
 '''
 
-_searchsorted_kernel_left = core.ElementwiseKernel(
-    'S x, raw T bins, int32 n_bins',
-    'U y',
+
+_searchsorted_kernel = core.ElementwiseKernel(
+    'S x, raw T bins, int64 n_bins, bool side_is_right',
+    'int64 y',
     '''
-    y = 0;
-    if (_isnan<S>(x) || x > bins[n_bins-1]) {
+    if (_isnan<S>(x)) {
+        long long pos = n_bins;
+        if (!side_is_right) {
+            while (pos > 0 && _isnan<T>(bins[pos-1])) {
+                --pos;
+            }
+        }
+        y = pos;
+        return;
+    }
+    bool greater = (side_is_right ? x >= bins[n_bins-1] : x > bins[n_bins-1]);
+    if (greater) {
         y = n_bins;
         return;
     }
-    size_t l = 0;
-    size_t r = n_bins-1;
-    while (l<r) {
-        size_t m = l + (r - l) / 2;
-        if (bins[m] >= x) {
-            r = m;
+    long long left = 0;
+    long long right = n_bins-1;
+    while (left < right) {
+        long long m = left + (right - left) / 2;
+        if (side_is_right ? bins[m] <= x : bins[m] < x) {
+            left = m + 1;
         } else {
-            l = m + 1;
+            right = m;
         }
     }
-    y = r;
-    ''', preamble=_preamble)
-
-
-_searchsorted_kernel_right = core.ElementwiseKernel(
-    'S x, raw T bins, int32 n_bins',
-    'U y',
-    '''
-    y = 0;
-    if(_isnan<S>(x) || x >= bins[n_bins-1]) {
-        y = n_bins;
-        return;
-    }
-    size_t l = 0;
-    size_t r = n_bins-1;
-    while (l<r) {
-        size_t m = l + (r - l) / 2;
-        if (bins[m] <= x) {
-            l = m + 1;
-        } else {
-            r = m;
-        }
-    }
-    y = r;
+    y = right;
     ''', preamble=_preamble)
 
 
 def searchsorted(a, v, side='left', sorter=None):
-    """Find indices where elements should be inserted to maintain order.
+    """Finds indices where elements should be inserted to maintain order.
 
-    Find the indices into a sorted array a such that,
-    if the corresponding elements in v were inserted before the indices,
-    the order of a would be preserved.
+    Find the indices into a sorted array ``a`` such that,
+    if the corresponding elements in ``v`` were inserted before the indices,
+    the order of ``a`` would be preserved.
 
     Args:
-        a (cupy.ndarray): Input array. If ``sorter`` is None, then
+        a (cupy.ndarray): Input array. If ``sorter`` is ``None``, then
             it must be sorted in ascending order,
             otherwise ``sorter`` must be an array of indices that sort it.
-        v (array like): Values to insert into a.
+        v (cupy.ndarray): Values to insert into ``a``.
         side : {'left', 'right'}
             If ``left``, return the index of the first suitable location found
             If ``right``, return the last such index.
             If there is no suitable index, return either 0 or length of ``a``.
         sorter : 1-D array_like
-            Optional array of integer indices that sort array a into ascending
-            order. They are typically the result of argsort.
-
+            Optional array of integer indices that sort array ``a`` into
+            ascending order. They are typically the result of
+            :func:`~cupy.argsort`.
 
     Returns:
-        cupy.ndarray: Array of insertion points with the same shape as `v`.
+        cupy.ndarray: Array of insertion points with the same shape as ``v``.
 
     .. note:: When a is not in ascending order, behavior is undefined.
-       NumPy avoids this check for efficiency
 
     .. seealso:: :func:`numpy.searchsorted`
 
     """
-    return searchsorted_internal(a, v, side, sorter)
-
-
-def searchsorted_internal(a, v, side, sorter):
 
     if not isinstance(a, cupy.ndarray):
         raise NotImplementedError('Only int or ndarray are supported for a')
@@ -322,14 +305,8 @@ def searchsorted_internal(a, v, side, sorter):
             raise ValueError('sorter.size must equal a.size')
         a = a.take(sorter)
 
-    # NumPy digitize reverses the array when its monotonically decreasing.
-    # For CUDA it's better to change the comparisons in the kernel rather
-    # than reversingly reading the array or use take.
     y = cupy.zeros(v.shape, dtype=cupy.int64)
-    if side == 'right':
-        _searchsorted_kernel_right(v, a, a.size, y)
-    else:
-        _searchsorted_kernel_left(v, a, a.size, y)
+    _searchsorted_kernel(v, a, a.size, side == 'right', y)
     return y
 
 

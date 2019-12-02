@@ -442,6 +442,9 @@ class TestNanArgMax(unittest.TestCase):
         [0.0, 1.0, 2.5, 4.0, 10.0],
         [-1.0, 1.0, 2.5, 4.0, 20.0],
         [1.5, 2.5, 4.0, 6.0],
+        [float('-inf'), 1.5, 2.5, 4.0, 6.0],
+        [1.5, 2.5, 4.0, 6.0, float('inf')],
+        [float('-inf'), 1.5, 2.5, 4.0, 6.0, float('inf')],
         [0.0, 1.0, 1.0, 4.0, 4.0, 10.0],
         [0.0, 1.0, 1.0, 4.0, 4.0, 4.0, 4.0, 10.0],
     ],
@@ -461,14 +464,17 @@ class TestSearchSorted(unittest.TestCase):
 
 
 @testing.gpu
-class TestSearchSortedNan(unittest.TestCase):
+@testing.parameterize(
+    {'side': 'left'},
+    {'side': 'right'})
+class TestSearchSortedNanInf(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.10.0')
     @testing.numpy_cupy_array_list_equal()
     def test_searchsorted_nanbins(self, xp):
         x = testing.shaped_arange((10,), xp, xp.float64)
         bins = xp.array([0, 1, 2, 4, 10, float('nan')])
-        y = xp.searchsorted(bins, x)
+        y = xp.searchsorted(bins, x, side=self.side)
         return y,
 
     @testing.with_requires('numpy>=1.10.0')
@@ -477,7 +483,53 @@ class TestSearchSortedNan(unittest.TestCase):
         x = testing.shaped_arange((10,), xp, xp.float64)
         x[5] = float('nan')
         bins = xp.array([0, 1, 2, 4, 10])
-        y = xp.searchsorted(bins, x)
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_nan_last(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[-1] = float('nan')
+        bins = xp.array([0, 1, 2, 4, float('nan')])
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_nan_last_repeat(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[-1] = float('nan')
+        bins = xp.array([0, 1, 2, float('nan'), float('nan')])
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_all_nans(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[-1] = float('nan')
+        bins = xp.array([float('nan'), float('nan'), float('nan'),
+                         float('nan'), float('nan')])
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_inf(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[5] = float('inf')
+        bins = xp.array([0, 1, 2, 4, 10])
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_minf(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[5] = float('-inf')
+        bins = xp.array([0, 1, 2, 4, 10])
+        y = xp.searchsorted(bins, x, side=self.side)
         return y,
 
 
@@ -486,6 +538,7 @@ class TestSearchSortedInvalid(unittest.TestCase):
 
     # Cant test unordered bins due to numpy undefined
     # behavior for searchsorted
+
     @testing.with_requires('numpy>=1.10.0')
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_searchsorted_ndbins(self, xp):
