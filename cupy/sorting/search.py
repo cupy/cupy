@@ -216,16 +216,7 @@ _searchsorted_kernel_left = core.ElementwiseKernel(
     'U y',
     '''
     y = 0;
-    // Array is assumed to be monotonically
-    // increasing unless a check is requested
-    // because of functions like digitize
-    // allowing both, increasing and decreasing.
-    bool inc = true;
-    if (_isnan<S>(x)) {
-        y = (inc ? n_bins : 0);
-        return;
-    }
-    if (inc && x > bins[n_bins-1] || !inc && x <= bins[n_bins-1]) {
+    if (_isnan<S>(x) || x > bins[n_bins-1]) {
         y = n_bins;
         return;
     }
@@ -233,7 +224,7 @@ _searchsorted_kernel_left = core.ElementwiseKernel(
     size_t r = n_bins-1;
     while (l<r) {
         size_t m = l + (r - l) / 2;
-        if ((inc && bins[m] >= x) || (!inc && bins[m] < x)) {
+        if (bins[m] >= x) {
             r = m;
         } else {
             l = m + 1;
@@ -248,16 +239,7 @@ _searchsorted_kernel_right = core.ElementwiseKernel(
     'U y',
     '''
     y = 0;
-    // Array is assumed to be monotonically
-    // increasing unless a check is requested
-    // because of functions like digitize
-    // allowing both, increasing and decreasing.
-    bool inc = true;
-    if(_isnan<S>(x)) {
-        y = (inc ? n_bins : 0);
-        return;
-    }
-    if (inc && x >= bins[n_bins-1]) {
+    if(_isnan<S>(x) || x >= bins[n_bins-1]) {
         y = n_bins;
         return;
     }
@@ -265,7 +247,7 @@ _searchsorted_kernel_right = core.ElementwiseKernel(
     size_t r = n_bins-1;
     while (l<r) {
         size_t m = l + (r - l) / 2;
-        if ((inc && bins[m] <= x) || (!inc && bins[m] > x)) {
+        if (bins[m] <= x) {
             l = m + 1;
         } else {
             r = m;
