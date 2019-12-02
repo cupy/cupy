@@ -1,20 +1,14 @@
 from copy import copy
 from functools import reduce
-from operator import mul
-
-import six
+from math import sqrt
 
 import numpy as np
+import six
 
 import cupy
+from cupy.core.internal import prod
 from cupy.cuda import cufft
-from math import sqrt
 from cupy.fft import config
-
-
-def _prod(seq):
-    """fast alternative to numpy.prod for short sequences"""
-    return reduce(mul, seq)
 
 
 def _output_dtype(a, value_type):
@@ -286,8 +280,8 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
         plan_dimensions = copy(shape)
         if order == 'F':
             plan_dimensions = plan_dimensions[::-1]
-        idist = np.intp(_prod(shape))
-        odist = np.intp(_prod(shape))
+        idist = np.intp(prod(shape))
+        odist = np.intp(prod(shape))
         istride = ostride = 1
         inembed = onembed = None
         nbatch = 1
@@ -303,11 +297,11 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
         if 0 not in fft_axes:
             # don't FFT along the first min_axis_fft axes
             min_axis_fft = reduce(min, fft_axes)
-            nbatch = _prod(shape[:min_axis_fft])
+            nbatch = prod(shape[:min_axis_fft])
             if order == 'C':
                 # C-ordered GPU array with batch along first dim
-                idist = _prod(plan_dimensions)
-                odist = _prod(plan_dimensions)
+                idist = prod(plan_dimensions)
+                odist = prod(plan_dimensions)
                 istride = 1
                 ostride = 1
             elif order == 'F':
@@ -319,7 +313,7 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
         elif (ndim - 1) not in fft_axes:
             # don't FFT along the last axis
             num_axes_batch = ndim - len(fft_axes)
-            nbatch = _prod(shape[-num_axes_batch:])
+            nbatch = prod(shape[-num_axes_batch:])
             if order == 'C':
                 # C-ordered GPU array with batch along last dim
                 idist = 1
@@ -328,8 +322,8 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
                 ostride = nbatch
             elif order == 'F':
                 # F-ordered GPU array with batch along last dim
-                idist = _prod(plan_dimensions)
-                odist = _prod(plan_dimensions)
+                idist = prod(plan_dimensions)
+                odist = prod(plan_dimensions)
                 istride = 1
                 ostride = 1
         else:
@@ -400,7 +394,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     plan.fft(a, out, direction)
 
     # normalize by the product of the shape along the transformed axes
-    sz = _prod([out.shape[ax] for ax in axes])
+    sz = prod([out.shape[ax] for ax in axes])
     if norm is None:
         if direction == cufft.CUFFT_INVERSE:
             out /= sz
