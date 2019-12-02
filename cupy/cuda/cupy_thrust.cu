@@ -65,8 +65,40 @@ public:
 //      return false;
 //  }
 //}
+__host__ __device__ inline bool isnan(const cuComplex& z) {
+    return isnan(z.x) || isnan(z.y);
+}
+
+__host__ __device__ inline bool isnan(const cuDoubleComplex& z) {
+    return isnan(z.x) || isnan(z.y);
+}
+
 __host__ __device__ inline bool operator<(const cuComplex& lhs,
                                           const cuComplex& rhs) {
+  if (isnan(lhs)) {
+      if (!isnan(rhs)) {
+          return false;
+      } else if (isnan(lhs.x) && !isnan(rhs.x)) {
+          return false;
+      } else if (!isnan(lhs.x) && isnan(rhs.x)) {
+          return true;
+      } else if (isnan(lhs.y) && !isnan(rhs.y)) {
+          return false;
+      } else if (!isnan(lhs.y) && isnan(rhs.y)) {
+          return true;
+      } else if (isnan(lhs.y) && isnan(rhs.y)) {
+          return lhs.x < rhs.x;
+      } else if (isnan(lhs.x) && isnan(rhs.x)) {
+          return lhs.y < rhs.y;
+      } else { // both lhs & rhs = nan + nan I
+          return true;
+      }
+  } else { // !isnan(lhs)
+      if (isnan(rhs)) {
+          return true;
+      }
+  }
+
   if (lhs.x == rhs.x && lhs.y == rhs.y) {
       return false;
   } else if (lhs.x < rhs.x) {
@@ -79,6 +111,30 @@ __host__ __device__ inline bool operator<(const cuComplex& lhs,
 }
 __host__ __device__ inline bool operator<(const cuDoubleComplex& lhs,
                                           const cuDoubleComplex& rhs) {
+  if (isnan(lhs)) {
+      if (!isnan(rhs)) {
+          return false;
+      } else if (isnan(lhs.x) && !isnan(rhs.x)) {
+          return false;
+      } else if (!isnan(lhs.x) && isnan(rhs.x)) {
+          return true;
+      } else if (isnan(lhs.y) && !isnan(rhs.y)) {
+          return false;
+      } else if (!isnan(lhs.y) && isnan(rhs.y)) {
+          return true;
+      } else if (isnan(lhs.y) && isnan(rhs.y)) {
+          return lhs.x < rhs.x;
+      } else if (isnan(lhs.x) && isnan(rhs.x)) {
+          return lhs.y < rhs.y;
+      } else { // both lhs & rhs = nan + nan I
+          return true;
+      }
+  } else { // !isnan(lhs)
+      if (isnan(rhs)) {
+          return true;
+      }
+  }
+
   if (lhs.x == rhs.x && lhs.y == rhs.y) {
       return false;
   } else if (lhs.x < rhs.x) {
