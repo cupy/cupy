@@ -110,4 +110,4 @@ cpdef ndarray array(obj, dtype=*, bint copy=*, order=*, bint subok=*,
                     Py_ssize_t ndmin=*)
 cpdef ndarray _convert_object_with_cuda_array_interface(a)
 
-cdef _ndarray_init(const vector.vector[Py_ssize_t]& shape, dtype)
+cdef ndarray _ndarray_init(const vector.vector[Py_ssize_t]& shape, dtype)

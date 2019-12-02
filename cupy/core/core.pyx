@@ -2778,7 +2778,7 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     return ndarray(shape, dtype, memptr, strides)
 
 
-cdef _ndarray_init(const vector.vector[Py_ssize_t]& shape, dtype):
+cdef ndarray _ndarray_init(const vector.vector[Py_ssize_t]& shape, dtype):
     cdef ndarray ret = ndarray.__new__(ndarray)
     ret._init_fast(shape, dtype, True)
     return ret
