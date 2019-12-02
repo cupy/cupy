@@ -235,6 +235,10 @@ cpdef intptr_t init() except? 0:
     return <intptr_t>handle
 
 
+cpdef destroy(intptr_t handle):
+    PyMem_Free(<Handle*>handle)
+
+
 ###############################################################################
 # Tensor descriptor initialization
 ###############################################################################
