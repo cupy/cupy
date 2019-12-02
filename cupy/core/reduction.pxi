@@ -191,9 +191,12 @@ def _get_simple_reduction_function(
         type_preamble, input_expr, output_expr, _preamble, options)
 
 
-class _AbstractReductionKernel:
+cdef class _AbstractReductionKernel:
 
-    def _call(
+    cdef str name
+    cdef str identity
+
+    cpdef _call(
             self, in_args, out_args, params,
             a_shape, axis, dtype,
             bint keepdims, bint reduce_dims,
@@ -248,13 +251,13 @@ class _AbstractReductionKernel:
             out_block_num * block_size, inout_args, 0, block_size, stream)
         return ret
 
-    def _get_expressions_and_types(self, in_args, out_args, dtype):
+    cpdef _get_expressions_and_types(self, in_args, out_args, dtype):
         raise NotImplementedError()
 
-    def _get_out_args(self, out_args, out_types, out_shape):
+    cpdef _get_out_args(self, out_args, out_types, out_shape):
         raise NotImplementedError()
 
-    def _get_kernel(
+    cpdef _get_kernel(
             self,
             params, args_info, types,
             map_expr, reduce_expr, post_map_expr, reduce_type,
