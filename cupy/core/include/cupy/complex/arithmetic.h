@@ -48,6 +48,8 @@ __host__ __device__ inline complex<T> operator+(const T& lhs,
   return complex<T>(rhs.real() + lhs, rhs.imag());
 }
 
+// TODO(leofang): support operator+ for (complex<T0> x, complex<T1> y)
+
 template <typename T>
 __host__ __device__ inline complex<T> operator-(const complex<T>& lhs,
                                                 const complex<T>& rhs) {
@@ -65,6 +67,8 @@ __host__ __device__ inline complex<T> operator-(const T& lhs,
                                                 const complex<T>& rhs) {
   return complex<T>(lhs - rhs.real(), -rhs.imag());
 }
+
+// TODO(leofang): support operator- for (complex<T0> x, complex<T1> y)
 
 template <typename T>
 __host__ __device__ inline complex<T> operator*(const complex<T>& lhs,
@@ -84,6 +88,8 @@ __host__ __device__ inline complex<T> operator*(const T& lhs,
                                                 const complex<T>& rhs) {
   return complex<T>(rhs.real() * lhs, rhs.imag() * lhs);
 }
+
+// TODO(leofang): support operator* for (complex<T0> x, complex<T1> y)
 
 template <typename T>
 __host__ __device__ inline complex<T> operator/(const complex<T>& lhs,
@@ -112,6 +118,8 @@ __host__ __device__ inline complex<T> operator/(const T& lhs,
                                                 const complex<T>& rhs) {
   return complex<T>(lhs) / rhs;
 }
+
+// TODO(leofang): support operator/ for (complex<T0> x, complex<T1> y)
 
 /* --- Unary comparison with Numpy logic. This means that a + bi > c + di if either
  * a > c or a == c and b > d. --- */

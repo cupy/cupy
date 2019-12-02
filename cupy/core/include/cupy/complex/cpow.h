@@ -7,30 +7,19 @@ namespace thrust {
 template <typename T>
 __host__ __device__ inline complex<T> pow(const complex<T>& z,
                                           const complex<T>& exponent) {
-  const T absz = abs(z);
-  if (absz == 0) {
-    return complex<T>(0, 0);
-  }
-  const T real = exponent.real();
-  const T imag = exponent.imag();
-  const T argz = arg(z);
-  T r = ::pow(absz, real);
-  T theta = real * argz;
-  if (imag != 0) {
-    r *= ::exp(-imag * argz);
-    theta += imag * ::log(absz);
-  }
-  return complex<T>(r * cos(theta), r * sin(theta));
+  return exp(log(complex<T>(z)) * complex<T>(exponent));
 }
 
 template <typename T>
 __host__ __device__ inline complex<T> pow(const complex<T>& z, const T& exponent) {
-  return pow(z, complex<T>(exponent));
+  return exp(log(complex<T>(z)) * T(exponent));
 }
 
 template <typename T>
 __host__ __device__ inline complex<T> pow(const T& x, const complex<T>& exponent) {
-  return pow(complex<T>(x), exponent);
+  // Find `log` by ADL.
+  using std::log;
+  return exp(log(T(x)) * complex<T>(y));
 }
 
 template <typename T, typename U>
