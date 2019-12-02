@@ -184,7 +184,7 @@ MODULES = [
 ]
 
 
-if 1 == int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1)):
+if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     MODULES.append({
         'name': 'thrust',
         'file': [
