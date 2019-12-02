@@ -141,9 +141,7 @@ __host__ __device__ inline bool operator<(const complex<T>& lhs,
 template <typename T>
 __host__ __device__ inline bool operator<=(const complex<T>& lhs,
                                            const complex<T>& rhs) {
-  if (lhs == rhs) {
-      return true;
-  } else if (lhs < rhs) {
+  if (lhs == rhs || lhs < rhs) {
       return true;
   } else {
       return false;
@@ -155,8 +153,12 @@ __host__ __device__ inline bool operator>(const complex<T>& lhs,
                                           const complex<T>& rhs) {
   if (lhs == rhs) {
       return false;
+  } else if (lhs.real() > rhs.real()) {
+      return true;
+  } else if (lhs.real() == rhs.real()) {
+      return lhs.imag() > rhs.imag();
   } else {
-      return !(lhs < rhs);
+      return false;
   }
 }
 
