@@ -2,8 +2,6 @@ import numpy
 from numpy import linalg
 
 import cupy
-from cupy.cuda import cusolver
-from cupy.cuda import device
 from cupy.linalg import decomposition
 from cupy.linalg import util
 
@@ -219,12 +217,8 @@ def slogdet(a):
     dtype = numpy.promote_types(a.dtype.char, 'f')
     real_dtype = dtype
 
-    if dtype == cupy.float32:
-        getrfBatched = cupy.cuda.cublas.sgetrfBatched
-    elif dtype == cupy.float64:
-        getrfBatched = cupy.cuda.cublas.dgetrfBatched
-    else:
-        # TODO(kataoka): support complex types
+    # TODO(kataoka): support complex types
+    if dtype not in (numpy.float32, numpy.float64):
         msg = ('dtype must be float32 or float64'
                ' (actual: {})'.format(a.dtype))
         raise ValueError(msg)
@@ -239,29 +233,14 @@ def slogdet(a):
         logdet = cupy.zeros(shape, real_dtype)
         return sign, logdet
 
-    # copy is necessary to present `a` to be overwritten.
-    a = a.astype(dtype, order='C').reshape(-1, n, n)
-
-    handle = device.get_cublas_handle()
-    batch_size = a.shape[0]
-    lda = n
-    step = n * lda * a.itemsize
-    start = a.data.ptr
-    stop = start + step * batch_size
-    a_array = cupy.arange(start, stop, step, dtype=cupy.uintp)
-    ipiv = cupy.empty((batch_size, n), dtype=cupy.int32)
-    dev_info = cupy.empty((batch_size,), dtype=cupy.int32)
-
-    getrfBatched(
-        handle, n, a_array.data.ptr, lda, ipiv.data.ptr,
-        dev_info.data.ptr, batch_size)
+    lu, ipiv, dev_info = decomposition._lu_factor(a, dtype)
 
     # dev_info < 0 means illegal value (in dimensions, strides, and etc.) that
     # should never happen even if the matrix contains nan or inf.
     # TODO(kataoka): assert dev_info >= 0 if synchronization is allowed for
     # debugging purposes.
 
-    diag = cupy.diagonal(a, axis1=-2, axis2=-1)
+    diag = cupy.diagonal(lu, axis1=-2, axis2=-1)
 
     # ipiv is 1-origin
     non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1) +
