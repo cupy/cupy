@@ -291,6 +291,10 @@ void cupy::thrust::_lexsort(size_t *idx_start, void *keys_start, size_t k,
 //    size_t *, void *, size_t, size_t, size_t, void *);
 template void cupy::thrust::_lexsort<cpy_double>(
     size_t *, void *, size_t, size_t, size_t, void *);
+template void cupy::thrust::_lexsort<cuComplex>(
+    size_t *, void *, size_t, size_t, size_t, void *);
+template void cupy::thrust::_lexsort<cuDoubleComplex>(
+    size_t *, void *, size_t, size_t, size_t, void *);
 
 
 /*
