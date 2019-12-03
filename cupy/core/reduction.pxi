@@ -160,17 +160,20 @@ cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
 cpdef list _get_inout_args(
         list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
         Py_ssize_t block_stride, tuple params, bint reduce_dims):
+    # Returns a list of arguments passed to the __global__ function.
+
     if reduce_dims:
         in_shape = _reduce_dims(in_args, params, in_indexer.shape)
         out_shape = _reduce_dims(
             out_args, params[len(in_args):], out_indexer.shape)
         in_indexer.shape = in_shape
         out_indexer.shape = out_shape
-    cdef _scalar.CScalar s = _scalar.CScalar.__new__(_scalar.CScalar)
-    (<int32_t *>s.ptr)[0] = block_stride
-    s.kind = b'i'
-    s.size = 4
-    return in_args + out_args + [in_indexer, out_indexer, s]
+    return in_args + out_args + [
+        in_indexer,
+        out_indexer,
+        # The last argument is always block_stride.
+        _scalar.CScalar_from_int32(block_stride),
+    ]
 
 
 @util.memoize(for_each_device=True)

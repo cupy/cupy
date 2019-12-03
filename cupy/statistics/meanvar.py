@@ -1,3 +1,4 @@
+import functools
 import numpy
 
 import cupy
@@ -35,9 +36,10 @@ def average(a, axis=None, weights=None, returned=False):
         wgt = cupy.asarray(weights)
 
         if issubclass(a.dtype.type, (numpy.integer, numpy.bool_)):
-            result_dtype = numpy.result_type(a.dtype, wgt.dtype, 'f8')
+            result_dtype = functools.reduce(numpy.promote_types,
+                                            (a.dtype, wgt.dtype, 'f8'))
         else:
-            result_dtype = numpy.result_type(a.dtype, wgt.dtype)
+            result_dtype = numpy.promote_types(a.dtype, wgt.dtype)
 
         # Sanity checks
         if a.shape != wgt.shape:

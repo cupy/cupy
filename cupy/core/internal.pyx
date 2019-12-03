@@ -125,14 +125,23 @@ cdef inline Py_ssize_t set_contiguous_strides(
 cpdef inline bint get_c_contiguity(
         vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
         Py_ssize_t itemsize):
-    cdef vector.vector[Py_ssize_t] r_shape, r_strides
-    cpdef Py_ssize_t ndim
+    cdef Py_ssize_t i, prev_i, ndim, sh, st, index
     ndim = strides.size()
     if ndim == 0 or (ndim == 1 and strides[0] == itemsize):
         return True
-    get_reduced_dims(shape, strides, itemsize, r_shape, r_strides)
-    ndim = r_strides.size()
-    return ndim == 0 or (ndim == 1 and r_strides[0] == itemsize)
+    prev_i = -1
+    index = st = 0
+    for i in range(ndim):
+        sh = shape[i]
+        if sh == 0:
+            return True
+        if sh == 1:
+            continue
+        st = strides[i]
+        if prev_i == -1 or strides[prev_i] != sh * st:
+            index += 1
+        prev_i = i
+    return index == 0 or (index == 1 and st == itemsize)
 
 
 @cython.profile(False)

@@ -1,4 +1,5 @@
 from __future__ import division
+import functools
 import sys
 import warnings
 
@@ -37,7 +38,8 @@ original error: {}'''.format(exc_info[1]))  # NOQA
 
 
 from cupy import cuda
-import cupyx
+# Do not make `cupy.cupyx` available because it is confusing.
+import cupyx as _cupyx
 
 
 def is_available():
@@ -375,7 +377,7 @@ def common_type(*arrays):
         else:
             dtypes.append(a.dtype)
 
-    return numpy.find_common_type(dtypes, []).type
+    return functools.reduce(numpy.promote_types, dtypes).type
 
 
 def result_type(*arrays_and_dtypes):
@@ -631,14 +633,15 @@ pad = padding.pad.pad
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
 from cupy.sorting.count import count_nonzero  # NOQA
-from cupy.sorting.search import flatnonzero  # NOQA
-from cupy.sorting.search import nonzero  # NOQA
 
-from cupy.sorting.search import where  # NOQA
 from cupy.sorting.search import argmax  # NOQA
-from cupy.sorting.search import nanargmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
+from cupy.sorting.search import flatnonzero  # NOQA
+from cupy.sorting.search import nanargmax  # NOQA
 from cupy.sorting.search import nanargmin  # NOQA
+from cupy.sorting.search import nonzero  # NOQA
+from cupy.sorting.search import searchsorted  # NOQA
+from cupy.sorting.search import where  # NOQA
 
 from cupy.sorting.sort import argpartition  # NOQA
 from cupy.sorting.sort import argsort  # NOQA
@@ -801,7 +804,7 @@ def get_default_pinned_memory_pool():
 
 def show_config():
     """Prints the current runtime configuration to standard output."""
-    sys.stdout.write(str(cupyx.get_runtime_info()))
+    sys.stdout.write(str(_cupyx.get_runtime_info()))
     sys.stdout.flush()
 
 
