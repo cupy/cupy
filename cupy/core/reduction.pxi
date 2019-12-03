@@ -193,8 +193,9 @@ def _get_simple_reduction_function(
 
 cdef class _AbstractReductionKernel:
 
-    cdef str name
-    cdef str identity
+    cdef:
+        str name
+        object identity
 
     cpdef _call(
             self, in_args, out_args, params,
@@ -251,13 +252,13 @@ cdef class _AbstractReductionKernel:
             out_block_num * block_size, inout_args, 0, block_size, stream)
         return ret
 
-    cpdef _get_expressions_and_types(self, in_args, out_args, dtype):
+    cdef _get_expressions_and_types(self, in_args, out_args, dtype):
         raise NotImplementedError()
 
-    cpdef _get_out_args(self, out_args, out_types, out_shape):
+    cdef _get_out_args(self, out_args, out_types, out_shape):
         raise NotImplementedError()
 
-    cpdef _get_kernel(
+    cdef _get_kernel(
             self,
             params, args_info, types,
             map_expr, reduce_expr, post_map_expr, reduce_type,
@@ -265,12 +266,22 @@ cdef class _AbstractReductionKernel:
         raise NotImplementedError()
 
 
-class simple_reduction_function(_AbstractReductionKernel):
+cdef class simple_reduction_function(_AbstractReductionKernel):
+
+    cdef:
+        readonly object _ops
+        readonly _preamble
+        readonly int nin
+        readonly int nout
+        readonly tuple _params
+        readonly str _input_expr
+        readonly str _output_expr
+        readonly dict _routine_cache
 
     def __init__(self, name, ops, identity, preamble):
         self.name = name
-        self._ops = ops
         self.identity = identity
+        self._ops = ops
         self._preamble = preamble
         self.nin = 1
         self.nout = 1
@@ -313,7 +324,7 @@ class simple_reduction_function(_AbstractReductionKernel):
             in_args, out_args, self._params,
             arr.shape, axis, dtype, keepdims, reduce_dims, None)
 
-    def _get_expressions_and_types(self, in_args, out_args, dtype):
+    cdef _get_expressions_and_types(self, in_args, out_args, dtype):
         in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
         map_expr, reduce_expr, post_map_expr, reduce_type = routine
@@ -335,11 +346,11 @@ class simple_reduction_function(_AbstractReductionKernel):
             in_types, out_types, reduce_type,
             types)
 
-    def _get_out_args(self, out_args, out_types, out_shape):
+    cdef _get_out_args(self, out_args, out_types, out_shape):
         return _get_out_args(
             out_args, out_types, out_shape, 'unsafe')
 
-    def _get_kernel(
+    cdef _get_kernel(
             self,
             params, args_info, types,
             map_expr, reduce_expr, post_map_expr, reduce_type,
@@ -380,7 +391,7 @@ def _get_reduction_kernel(
         type_preamble, input_expr, output_expr, preamble, options)
 
 
-class ReductionKernel(_AbstractReductionKernel):
+cdef class ReductionKernel(_AbstractReductionKernel):
 
     """User-defined reduction kernel.
 
@@ -411,6 +422,22 @@ class ReductionKernel(_AbstractReductionKernel):
         options (tuple of str): Additional compilation options.
 
     """
+
+    cdef:
+        readonly object in_params
+        readonly object out_params
+        readonly int nin
+        readonly int nout
+        readonly int nargs
+        readonly tuple params
+        readonly str reduce_expr
+        readonly str map_expr
+        readonly str post_map_expr
+        readonly object options
+        readonly bint reduce_dims
+        readonly object reduce_type
+        readonly str preamble
+
     def __init__(self, in_params, out_params,
                  map_expr, reduce_expr, post_map_expr,
                  identity, name='reduce_kernel', reduce_type=None,
@@ -419,6 +446,8 @@ class ReductionKernel(_AbstractReductionKernel):
             raise ValueError(
                 'Invalid kernel name: "%s"' % name)
 
+        self.name = name
+        self.identity = identity
         self.in_params = _get_param_info(in_params, True)
         self.out_params = _get_param_info(out_params, False)
         self.nin = len(self.in_params)
@@ -428,13 +457,11 @@ class ReductionKernel(_AbstractReductionKernel):
             self.in_params + self.out_params +
             _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False) +
             _get_param_info('int32 _block_stride', True))
-        self.identity = identity
         self.reduce_expr = reduce_expr
         self.map_expr = map_expr
-        self.name = name
+        self.post_map_expr = post_map_expr
         self.options = options
         self.reduce_dims = reduce_dims
-        self.post_map_expr = post_map_expr
         if reduce_type is None:
             self.reduce_type = self.out_params[0].ctype
         else:
@@ -492,7 +519,7 @@ class ReductionKernel(_AbstractReductionKernel):
             broad_shape, axis, None,
             keepdims, self.reduce_dims, stream)
 
-    def _get_expressions_and_types(self, in_args, out_args, dtype):
+    cdef _get_expressions_and_types(self, in_args, out_args, dtype):
         in_ndarray_types = tuple(
             [a.dtype.type if isinstance(a, ndarray) else None
              for a in in_args])
@@ -507,11 +534,11 @@ class ReductionKernel(_AbstractReductionKernel):
             in_types, out_types, self.reduce_type,
             types)
 
-    def _get_out_args(self, out_args, out_types, out_shape):
+    cdef _get_out_args(self, out_args, out_types, out_shape):
         return _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params, False)
 
-    def _get_kernel(
+    cdef _get_kernel(
             self,
             params, args_info, types,
             map_expr, reduce_expr, post_map_expr, reduce_type,
