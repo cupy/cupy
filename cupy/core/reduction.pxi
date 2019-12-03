@@ -116,6 +116,7 @@ cpdef tuple _get_out_shape(
 
 cdef tuple _set_permuted_args(
         list args, tuple axis_permutes, tuple shape, tuple params):
+    """This function updates `args`"""
     cdef ParameterInfo p
     cdef Py_ssize_t i, s
     cdef bint need_permutation = False
