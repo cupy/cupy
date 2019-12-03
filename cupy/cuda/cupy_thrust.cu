@@ -56,86 +56,89 @@ public:
 // it exists. Non-nan values are sorted as before."
 // Ref: https://docs.scipy.org/doc/numpy/reference/generated/numpy.sort.html
 
-__host__ __device__ inline bool isnan(const cuComplex& z) {
-    return isnan(z.x) || isnan(z.y);
+template <typename T>
+__host__ __device__ __forceinline__ int _check_nan(const T& lhs, const T& rhs) {
+    // return values: +1: lhs < rhs; 0: neither is NaN; -1: lhs > rhs
+
+    bool lhsRe = isnan(lhs.x);
+    bool lhsIm = isnan(lhs.y);
+    bool rhsRe = isnan(rhs.x);
+    bool rhsIm = isnan(rhs.y);
+
+    if (!lhsRe && !lhsIm && !rhsRe && !rhsIm)
+        return 0;
+    if (!lhsRe && !lhsIm && (rhsRe || rhsIm))
+        return 1;
+    if ((lhsRe || lhsIm) && !rhsRe && !rhsIm)
+        return -1;
+
+    // at this point, we know both lhs and rhs have at least one NaN
+    if (lhsRe && !rhsRe)
+        return -1;
+    if (!lhsRe && rhsRe)
+        return 1;
+    if (lhsIm && !rhsIm)
+        return -1;
+    if (!lhsIm && rhsIm)
+        return 1;
+
+    // now compare the numerical values
+    if (lhsIm && rhsIm) {
+        if (lhs.x < rhs.x)
+            return 1;
+        else
+            return -1;
+    }
+    if (lhsRe && rhsRe) {
+        if (lhs.y < rhs.y)
+            return 1;
+        else
+            return -1;
+    }
+
+    // both are nan + nan * I
+    return -1;
 }
 
-__host__ __device__ inline bool isnan(const cuDoubleComplex& z) {
-    return isnan(z.x) || isnan(z.y);
+// Unfortunately we need explicit (instead of templated) definitions here, because the template specializations would
+// go through some wild routes in Thrust that passing by reference to device functions is not working...
+
+__host__ __device__ __forceinline__ bool operator<(const cuComplex& lhs, const cuComplex& rhs) {
+    int isnan = _check_nan(lhs, rhs);
+    if (isnan == 1) {
+        return true;
+    } else if (isnan == -1) {
+        return false;
+    } else {  // both are regular numbers
+        if (lhs.x == rhs.x && lhs.y == rhs.y) {
+            return false;
+        } else if (lhs.x < rhs.x) {
+            return true;
+        } else if (lhs.x == rhs.x) {
+            return lhs.y < rhs.y;
+        } else {
+            return false;
+        }
+    }
 }
 
-__host__ __device__ inline bool operator<(const cuComplex& lhs,
-                                          const cuComplex& rhs) {
-  if (isnan(lhs)) {
-      if (!isnan(rhs)) {
-          return false;
-      } else if (isnan(lhs.x) && !isnan(rhs.x)) {
-          return false;
-      } else if (!isnan(lhs.x) && isnan(rhs.x)) {
-          return true;
-      } else if (isnan(lhs.y) && !isnan(rhs.y)) {
-          return false;
-      } else if (!isnan(lhs.y) && isnan(rhs.y)) {
-          return true;
-      } else if (isnan(lhs.y) && isnan(rhs.y)) {
-          return lhs.x < rhs.x;
-      } else if (isnan(lhs.x) && isnan(rhs.x)) {
-          return lhs.y < rhs.y;
-      } else { // both lhs & rhs = nan + nan I
-          return true;
-      }
-  } else { // !isnan(lhs)
-      if (isnan(rhs)) {
-          return true;
-      }
-  }
-
-  if (lhs.x == rhs.x && lhs.y == rhs.y) {
-      return false;
-  } else if (lhs.x < rhs.x) {
-      return true;
-  } else if (lhs.x == rhs.x) {
-      return lhs.y < rhs.y;
-  } else {
-      return false;
-  }
-}
-
-__host__ __device__ inline bool operator<(const cuDoubleComplex& lhs,
-                                          const cuDoubleComplex& rhs) {
-  if (isnan(lhs)) {
-      if (!isnan(rhs)) {
-          return false;
-      } else if (isnan(lhs.x) && !isnan(rhs.x)) {
-          return false;
-      } else if (!isnan(lhs.x) && isnan(rhs.x)) {
-          return true;
-      } else if (isnan(lhs.y) && !isnan(rhs.y)) {
-          return false;
-      } else if (!isnan(lhs.y) && isnan(rhs.y)) {
-          return true;
-      } else if (isnan(lhs.y) && isnan(rhs.y)) {
-          return lhs.x < rhs.x;
-      } else if (isnan(lhs.x) && isnan(rhs.x)) {
-          return lhs.y < rhs.y;
-      } else { // both lhs & rhs = nan + nan I
-          return true;
-      }
-  } else { // !isnan(lhs)
-      if (isnan(rhs)) {
-          return true;
-      }
-  }
-
-  if (lhs.x == rhs.x && lhs.y == rhs.y) {
-      return false;
-  } else if (lhs.x < rhs.x) {
-      return true;
-  } else if (lhs.x == rhs.x) {
-      return lhs.y < rhs.y;
-  } else {
-      return false;
-  }
+__host__ __device__ __forceinline__ bool operator<(const cuDoubleComplex& lhs, const cuDoubleComplex& rhs) {
+    int isnan = _check_nan(lhs, rhs);
+    if (isnan == 1) {
+        return true;
+    } else if (isnan == -1) {
+        return false;
+    } else {  // both are regular numbers
+        if (lhs.x == rhs.x && lhs.y == rhs.y) {
+            return false;
+        } else if (lhs.x < rhs.x) {
+            return true;
+        } else if (lhs.x == rhs.x) {
+            return lhs.y < rhs.y;
+        } else {
+            return false;
+        }
+    }
 }
 /* ------------------------------------ end of boilerplate ------------------------------------ */
 
