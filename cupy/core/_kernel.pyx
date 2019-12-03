@@ -72,7 +72,8 @@ cdef inline int get_kind_score(int kind):
     return -1
 
 
-cdef _check_array_device_id(ndarray arr, int device_id):
+@cython.profile(False)
+cdef inline _check_array_device_id(ndarray arr, int device_id):
     if arr.data.device_id != device_id:
         raise ValueError(
             'Array device must be same as the current '
