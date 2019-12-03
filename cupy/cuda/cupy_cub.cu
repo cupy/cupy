@@ -107,8 +107,8 @@ template <>
 __host__ __device__ __forceinline__ __half Max::operator()(const __half &a, const __half &b) const
 {
     // NumPy behavior: NaN is always chosen!
-    if (isnan(a)) {return a;}
-    else if (isnan(b)) {return b;}
+    if (__hisnan(a)) {return a;}
+    else if (__hisnan(b)) {return b;}
     else {return CUB_MAX(a, b);}
 }
 #endif
@@ -167,8 +167,8 @@ template <>
 __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, const __half &b) const
 {
     // NumPy behavior: NaN is always chosen!
-    if (isnan(a)) {return a;}
-    else if (isnan(b)) {return b;}
+    if (__hisnan(a)) {return a;}
+    else if (__hisnan(b)) {return b;}
     else {return CUB_MIN(a, b);}
 }
 #endif
@@ -248,9 +248,9 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMax::operator()
     const KeyValuePair<int, __half> &a,
     const KeyValuePair<int, __half> &b) const
 {
-    if (isnan(a.value))
+    if (__hisnan(a.value))
         return a;
-    else if (isnan(b.value))
+    else if (__hisnan(b.value))
         return b;
     else if ((b.value > a.value) || ((a.value == b.value) && (b.key < a.key)))
         return b;
@@ -334,9 +334,9 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()
     const KeyValuePair<int, __half> &a,
     const KeyValuePair<int, __half> &b) const
 {
-    if (isnan(a.value))
+    if (__hisnan(a.value))
         return a;
-    else if (isnan(b.value))
+    else if (__hisnan(b.value))
         return b;
     else if ((b.value < a.value) || ((a.value == b.value) && (b.key < a.key)))
         return b;
