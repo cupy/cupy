@@ -713,6 +713,10 @@ cdef dict _mst_unsigned_to_signed = {
 cdef _numpy_min_scalar_type = numpy.min_scalar_type
 
 cdef _min_scalar_type(x):
+    # A non-negative integer may have two locally minimum scalar
+    # types: signed/unsigned integer.
+    # Return both for can_cast, while numpy.min_scalar_type only returns
+    # the unsigned type.
     t = _numpy_min_scalar_type(x)
     dt = t.type
     if t.kind == 'u':
