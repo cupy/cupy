@@ -254,6 +254,14 @@ cdef class CScalar(CPointer):
         assert False
 
 
+cdef CScalar CScalar_from_int32(int32_t value):
+    cdef CScalar s = CScalar.__new__(CScalar)
+    (<int32_t *>s.ptr)[0] = value
+    s.kind = b'i'
+    s.size = 4
+    return s
+
+
 cpdef CScalar _python_scalar_to_c_scalar(x):
     cdef CScalar ret = CScalar.__new__(CScalar)
     cdef Scalar* s = <Scalar*>ret.ptr
