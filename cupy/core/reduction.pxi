@@ -324,7 +324,7 @@ class simple_reduction_function(_AbstractReductionKernel):
         if out_args:
             out_type = out_args[0].dtype.type
         else:
-            out_type = get_dtype(out_types[0]).type
+            out_type = out_types[0]
 
         types = (
             ('type_in0_raw', in_args[0].dtype.type),
