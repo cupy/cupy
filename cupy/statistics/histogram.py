@@ -136,6 +136,3 @@ def bincount(x, weights=None, minlength=None):
         _bincount_with_weight_kernel(x, weights, b)
 
     return b
-
-
-# TODO(okuta): Implement digitize

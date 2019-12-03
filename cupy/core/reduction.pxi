@@ -1,5 +1,4 @@
 from cpython cimport sequence
-from libc.stdint cimport int32_t
 
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.cuda cimport runtime
@@ -178,6 +177,10 @@ cdef tuple _get_reduction_args(
         list in_args, list out_args, tuple in_params, tuple out_params,
         tuple axis_permutes, tuple a_shape, tuple out_shape,
         bint reduce_dims):
+    # Returns a tuple that contains following items
+    # - list of arguments passed to the __global__ function.
+    # - block_size
+    # - out_block_num
     cdef Py_ssize_t contiguous_size, block_size, block_stride, out_block_num
     in_shape = _set_permuted_args(
         in_args, axis_permutes, a_shape, in_params)
@@ -196,10 +199,8 @@ cdef tuple _get_reduction_args(
     in_indexer = Indexer(in_shape)
     out_indexer = Indexer(out_shape)
 
-    cdef _scalar.CScalar s = _scalar.CScalar.__new__(_scalar.CScalar)
-    (<int32_t *>s.ptr)[0] = block_stride
-    s.kind = b'i'
-    s.size = 4
+    # The last argument is always block_stride.
+    s = _scalar.CScalar_from_int32(block_stride)
     return (in_args + out_args + [in_indexer, out_indexer, s],
             block_size, out_block_num)
 

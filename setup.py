@@ -196,6 +196,7 @@ setup(
         'cupyx',
         'cupyx.fallback_mode',
         'cupyx.scipy',
+        'cupyx.scipy.fft',
         'cupyx.scipy.fftpack',
         'cupyx.scipy.ndimage',
         'cupyx.scipy.sparse',
