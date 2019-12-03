@@ -358,6 +358,7 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
 
 
 cdef _copy_in_args_if_needed(list in_args, list out_args):
+    # This function updates `in_args`
     cdef ndarray inp, out
     for i in range(len(in_args)):
         a = in_args[i]
@@ -851,7 +852,7 @@ cdef class ufunc:
             out_args = _preprocess_args(dev_id, (out,), False)
             args += out_args
 
-        in_args = _copy_in_args_if_needed(in_args, out_args)
+        _copy_in_args_if_needed(in_args, out_args)
         broad_values, shape = _broadcast_core(in_args + out_args)
 
         op = _guess_routine(
