@@ -5,7 +5,7 @@
 #include "cupy_cub.h"
 #include <stdexcept>
 
-#if __CUDACC_VER_MAJOR__ >= 9
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 #include <cuda_fp16.h>
 #endif
 
@@ -101,15 +101,22 @@ __host__ __device__ __forceinline__ complex<double> Max::operator()(const comple
     else {return max(a, b);}
 }
 
-#if __CUDACC_VER_MAJOR__ >= 9
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ __half Max::operator()(const __half &a, const __half &b) const
 {
     // NumPy behavior: NaN is always chosen!
+#ifdef __CUDA_ARCH__
     if (__hisnan(a)) {return a;}
     else if (__hisnan(b)) {return b;}
     else {return CUB_MAX(a, b);}
+#else
+    // TODO: avoid cast to float
+    if (isnan(__half2float(a))) {return a;}
+    else if (isnan(__half2float(b))) {return b;}
+    else {return __float2half(CUB_MAX(__half2float(a), __half2float(b)));}
+#endif
 }
 #endif
 
@@ -161,15 +168,22 @@ __host__ __device__ __forceinline__ complex<double> Min::operator()(const comple
     else {return min(a, b);}
 }
 
-#if __CUDACC_VER_MAJOR__ >= 9
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, const __half &b) const
 {
+#ifdef __CUDA_ARCH__
     // NumPy behavior: NaN is always chosen!
     if (__hisnan(a)) {return a;}
     else if (__hisnan(b)) {return b;}
     else {return CUB_MIN(a, b);}
+#else
+    // TODO: avoid cast to float
+    if (isnan(__half2float(a))) {return a;}
+    else if (isnan(__half2float(b))) {return b;}
+    else {return __float2half(CUB_MIN(__half2float(a), __half2float(b)));}
+#endif
 }
 #endif
 
@@ -241,13 +255,14 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMax::o
         return a;
 }
 
-#if __CUDACC_VER_MAJOR__ >= 9
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMax::operator()(
     const KeyValuePair<int, __half> &a,
     const KeyValuePair<int, __half> &b) const
 {
+#ifdef __CUDA_ARCH__
     if (__hisnan(a.value))
         return a;
     else if (__hisnan(b.value))
@@ -256,6 +271,18 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMax::operator()
         return b;
     else
         return a;
+#else
+    // TODO: avoid cast to float
+    if (isnan(__half2float(a.value)))
+        return a;
+    else if (isnan(__half2float(b.value)))
+        return b;
+    else if ((__half2float(b.value) > __half2float(a.value)) || 
+            ((__half2float(a.value) == __half2float(b.value)) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+#endif
 }
 #endif
 
@@ -327,13 +354,14 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMin::o
         return a;
 }
 
-#if __CUDACC_VER_MAJOR__ >= 9
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()(
     const KeyValuePair<int, __half> &a,
     const KeyValuePair<int, __half> &b) const
 {
+#ifdef __CUDA_ARCH__
     if (__hisnan(a.value))
         return a;
     else if (__hisnan(b.value))
@@ -342,6 +370,18 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()
         return b;
     else
         return a;
+#else
+    // TODO: avoid cast to float
+    if (isnan(__half2float(a.value)))
+        return a;
+    else if (isnan(__half2float(b.value)))
+        return b;
+    else if ((__half2float(b.value) < __half2float(a.value)) ||
+            ((__half2float(a.value) == __half2float(b.value)) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+#endif
 }
 #endif
 /* ------------------------------------ End of "patches" ------------------------------------ */
