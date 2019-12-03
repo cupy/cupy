@@ -135,7 +135,7 @@ cdef tuple _set_permuted_args(
 
 
 cdef Py_ssize_t _get_contiguous_size(
-        list args, tuple params, Py_ssize_t ndim, Py_ssize_t out_ndim) except*:
+        list args, tuple params, Py_ssize_t ndim, Py_ssize_t out_ndim) except -1:
     cdef int i, j
     cdef ParameterInfo p
     cdef Py_ssize_t contiguous_size, tmp_contiguous_size, itemsize
