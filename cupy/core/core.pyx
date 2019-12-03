@@ -699,8 +699,6 @@ cdef class ndarray:
         """
         return _sorting._ndarray_argpartition(self, kth, axis)
 
-    # TODO(okuta): Implement searchsorted
-
     cpdef tuple nonzero(self):
         """Return the indices of the elements that are non-zero.
 
