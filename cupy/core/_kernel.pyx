@@ -270,6 +270,16 @@ cdef class ParameterInfo:
             else:
                 raise Exception('Unknown keyword "%s"' % i)
 
+    def __repr__(self):
+        return '<ParameterInfo({})>'.format(
+            ' '.join([
+                'name={!r}'.format(self.name),
+                'dtype={!r}'.format(self.dtype),
+                'ctype={!r}'.format(self.ctype),
+                'raw={!r}'.format(self.raw),
+                'is_const={!r}'.format(self.is_const),
+            ]))
+
 
 @util.memoize()
 def _get_param_info(s, is_const):
