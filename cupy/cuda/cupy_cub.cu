@@ -51,7 +51,6 @@ template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, t
 /* ------------------------------------ "Patches" to CUB ------------------------------------
    These stubs are needed because CUB does not handle NaNs properly, while NumPy has certain
    behaviors with which we must comply.
-   TODO(leofang): support half precision?
 */
 
 //
@@ -102,6 +101,18 @@ __host__ __device__ __forceinline__ complex<double> Max::operator()(const comple
     else {return max(a, b);}
 }
 
+#if __CUDACC_VER_MAJOR__ >= 9
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ __half Max::operator()(const __half &a, const __half &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return CUB_MAX(a, b);}
+}
+#endif
+
 //
 // Min()
 //
@@ -149,6 +160,18 @@ __host__ __device__ __forceinline__ complex<double> Min::operator()(const comple
     else if (isnan(b)) {return b;}
     else {return min(a, b);}
 }
+
+#if __CUDACC_VER_MAJOR__ >= 9
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ __half Min::operator()(const __half &a, const __half &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return CUB_MIN(a, b);}
+}
+#endif
 
 //
 // ArgMax()
@@ -218,6 +241,24 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMax::o
         return a;
 }
 
+#if __CUDACC_VER_MAJOR__ >= 9
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMax::operator()(
+    const KeyValuePair<int, __half> &a,
+    const KeyValuePair<int, __half> &b) const
+{
+    if (isnan(a.value))
+        return a;
+    else if (isnan(b.value))
+        return b;
+    else if ((b.value > a.value) || ((a.value == b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+}
+#endif
+
 //
 // ArgMin()
 //
@@ -285,6 +326,24 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMin::o
     else
         return a;
 }
+
+#if __CUDACC_VER_MAJOR__ >= 9
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()(
+    const KeyValuePair<int, __half> &a,
+    const KeyValuePair<int, __half> &b) const
+{
+    if (isnan(a.value))
+        return a;
+    else if (isnan(b.value))
+        return b;
+    else if ((b.value < a.value) || ((a.value == b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+}
+#endif
 /* ------------------------------------ End of "patches" ------------------------------------ */
 
 
