@@ -1,3 +1,4 @@
+import functools
 import warnings
 
 import numpy
@@ -82,11 +83,12 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None):
         raise ValueError('Input must be <= 2-d')
 
     if y is None:
-        dtype = numpy.result_type(a.dtype, numpy.float64)
+        dtype = numpy.promote_types(a.dtype, numpy.float64)
     else:
         if y.ndim > 2:
             raise ValueError('y must be <= 2-d')
-        dtype = numpy.result_type(a.dtype, y.dtype, numpy.float64)
+        dtype = functools.reduce(numpy.promote_types,
+                                 (a.dtype, y.dtype, numpy.float64))
 
     X = cupy.array(a, ndmin=2, dtype=dtype)
     if not rowvar and X.shape[0] != 1:

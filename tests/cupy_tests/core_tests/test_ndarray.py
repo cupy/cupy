@@ -227,6 +227,23 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert iface['strides'] == (320, 40)
         assert iface['descr'] == [('', '<f8')]
 
+    def test_cuda_array_interface_zero_size(self):
+        arr = cupy.zeros(shape=(10,), dtype=cupy.float64)
+        view = arr[0:3:-1]
+        iface = view.__cuda_array_interface__
+        assert (set(iface.keys()) ==
+                set(['shape', 'typestr', 'data', 'version',
+                     'strides', 'descr']))
+        assert iface['shape'] == (0,)
+        assert iface['typestr'] == '<f8'
+        assert isinstance(iface['data'], tuple)
+        assert len(iface['data']) == 2
+        assert iface['data'][0] == 0
+        assert not iface['data'][1]
+        assert iface['version'] == 2
+        assert iface['strides'] is None
+        assert iface['descr'] == [('', '<f8')]
+
 
 @testing.parameterize(
     *testing.product({

@@ -1,4 +1,5 @@
 # distutils: language = c++
+import functools
 import sys
 
 import numpy
@@ -19,28 +20,33 @@ from cupy.core cimport internal
 
 cdef Py_ssize_t PY_SSIZE_T_MAX = sys.maxsize
 
-cdef tuple _broadcast_core(arrays):
+
+cdef _broadcast_core(list arrays, vector.vector[Py_ssize_t]& shape):
     cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh, nd
-    cdef vector.vector[Py_ssize_t] shape, strides
+    cdef vector.vector[Py_ssize_t] strides
+    cdef vector.vector[int] index
     cdef ndarray a
     cdef list ret
 
-    ret = list(arrays)
+    shape.clear()
+    index.reserve(len(arrays))
     nd = 0
-    for i, x in enumerate(ret):
+    for i, x in enumerate(arrays):
         if not isinstance(x, ndarray):
-            ret[i] = None
             continue
         a = x
+        index.push_back(i)
         nd = max(nd, <Py_ssize_t>a._shape.size())
+
+    if index.size() == 0:
+        return
 
     shape.reserve(nd)
     for i in range(nd):
         smin = PY_SSIZE_T_MAX
         smax = 0
-        for a in ret:
-            if a is None:
-                continue
+        for j in index:
+            a = arrays[j]
             a_ndim = <Py_ssize_t>a._shape.size()
             if i >= nd - a_ndim:
                 s = a._shape[i - (nd - a_ndim)]
@@ -52,10 +58,8 @@ cdef tuple _broadcast_core(arrays):
                 'single shape')
         shape.push_back(0 if smin == 0 else smax)
 
-    for i, a in enumerate(ret):
-        if a is None:
-            ret[i] = arrays[i]
-            continue
+    for i in index:
+        a = arrays[i]
         if internal.vector_equal(a._shape, shape):
             continue
 
@@ -73,8 +77,7 @@ cdef tuple _broadcast_core(arrays):
                                    else '()' for x in arrays])))
 
         # TODO(niboshi): Confirm update_x_contiguity flags
-        ret[i] = a._view(shape, strides, True, True)
-    return ret, tuple(shape)
+        arrays[i] = a._view(shape, strides, True, True)
 
 
 @cython.final
@@ -98,14 +101,13 @@ cdef class broadcast:
     """
 
     def __init__(self, *arrays):
-        cdef Py_ssize_t x
-        values, shape = _broadcast_core(arrays)
-        self.values = tuple(values)
-        self.shape = shape
-        self.nd = len(shape)
-        self.size = 1
-        for x in shape:
-            self.size *= x
+        cdef vector.vector[Py_ssize_t] shape
+        cdef list val = list(arrays)
+        _broadcast_core(val, shape)
+        self.values = tuple(val)
+        self.shape = tuple(shape)
+        self.nd = <Py_ssize_t>shape.size()
+        self.size = internal.prod(shape)
 
 
 # ndarray members
@@ -333,6 +335,11 @@ cpdef ndarray _reshape(ndarray self,
     if internal.vector_equal(shape, self._shape):
         return self.view()
 
+    cdef size_t shape_size = internal.prod(shape)
+    if self.size != shape_size:
+        raise ValueError('cannot reshape array of size {}'
+                         ' into shape {}'.format(self.size, shape_size))
+
     _get_strides_for_nocopy_reshape(self, shape, strides)
     if strides.size() == shape.size():
         return self._view(shape, strides, False, True)
@@ -369,7 +376,7 @@ cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes):
         raise ValueError('Invalid axes value: %s' % str(axes))
 
     axis_flags.resize(ndim, 0)
-    for i in range(len(axes)):
+    for i in range(axes.size()):
         axis = axes[i]
         if axis < -ndim or axis >= ndim:
             raise IndexError('Axes overrun')
@@ -610,7 +617,8 @@ cpdef ndarray concatenate_method(tup, int axis):
         raise ValueError('Cannot concatenate from empty tuple')
 
     if not have_same_types:
-        dtype = numpy.find_common_type([a.dtype for a in arrays], [])
+        dtype = functools.reduce(numpy.promote_types,
+                                 set([a.dtype for a in arrays]))
     return _concatenate(arrays, axis, tuple(shape), dtype)
 
 
@@ -760,7 +768,7 @@ cdef ndarray _concatenate_single_kernel(
 
     ret = core.ndarray(shape, dtype=dtype)
     if same_shape_and_contiguous:
-        base = internal.prod(shape[axis:]) // len(arrays)
+        base = internal.prod_sequence(shape[axis:]) // len(arrays)
         _concatenate_kernel_same_size(x, base, ret)
         return ret
 

@@ -16,7 +16,7 @@ import numpy
 import six
 
 import cupy
-from cupy import internal
+from cupy.core import internal
 from cupy.testing import array
 from cupy.testing import parameterized
 import cupyx
@@ -1126,6 +1126,10 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
         return xp.asarray((a * scale).astype(dtype))
     else:
         return xp.asarray((numpy.random.rand(*shape) * scale).astype(dtype))
+
+
+def empty(xp=cupy, dtype=numpy.float32):
+    return xp.zeros((0,))
 
 
 class NumpyError(object):

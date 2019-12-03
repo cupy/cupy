@@ -1,4 +1,5 @@
 from __future__ import division
+import functools
 import sys
 import warnings
 
@@ -37,7 +38,8 @@ original error: {}'''.format(exc_info[1]))  # NOQA
 
 
 from cupy import cuda
-import cupyx
+# Do not make `cupy.cupyx` available because it is confusing.
+import cupyx as _cupyx
 
 
 def is_available():
@@ -258,6 +260,7 @@ from cupy.creation.from_data import array  # NOQA
 from cupy.creation.from_data import asanyarray  # NOQA
 from cupy.creation.from_data import asarray  # NOQA
 from cupy.creation.from_data import ascontiguousarray  # NOQA
+from cupy.creation.from_data import fromfile  # NOQA
 
 from cupy.creation.ranges import arange  # NOQA
 from cupy.creation.ranges import linspace  # NOQA
@@ -374,7 +377,7 @@ def common_type(*arrays):
         else:
             dtypes.append(a.dtype)
 
-    return numpy.find_common_type(dtypes, []).type
+    return functools.reduce(numpy.promote_types, dtypes).type
 
 
 def result_type(*arrays_and_dtypes):
@@ -800,7 +803,7 @@ def get_default_pinned_memory_pool():
 
 def show_config():
     """Prints the current runtime configuration to standard output."""
-    sys.stdout.write(str(cupyx.get_runtime_info()))
+    sys.stdout.write(str(_cupyx.get_runtime_info()))
     sys.stdout.flush()
 
 

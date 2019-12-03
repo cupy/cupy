@@ -18,11 +18,14 @@ cdef class ndarray:
         # underlying memory is UnownedMemory.
         readonly ndarray base
 
+    cdef _init_fast(self, const vector.vector[Py_ssize_t]& shape, dtype,
+                    bint c_order)
     cpdef item(self)
     cpdef tolist(self)
+    cpdef bytes tobytes(self, order=*)
     cpdef tofile(self, fid, sep=*, format=*)
     cpdef dump(self, file)
-    cpdef dumps(self)
+    cpdef bytes dumps(self)
     cpdef ndarray astype(self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef ndarray copy(self, order=*)
     cpdef ndarray view(self, dtype=*)
@@ -99,10 +102,12 @@ cpdef ndarray asfortranarray(ndarray a, dtype=*)
 
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*,
-                                backend=*)
+                                backend=*, translate_cucomplex=*)
 
 
 # TODO(niboshi): Move to _routines_creation.pyx
 cpdef ndarray array(obj, dtype=*, bint copy=*, order=*, bint subok=*,
                     Py_ssize_t ndmin=*)
 cpdef ndarray _convert_object_with_cuda_array_interface(a)
+
+cdef ndarray _ndarray_init(const vector.vector[Py_ssize_t]& shape, dtype)

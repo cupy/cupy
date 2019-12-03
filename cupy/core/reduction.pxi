@@ -160,17 +160,20 @@ cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
 cpdef list _get_inout_args(
         list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
         Py_ssize_t block_stride, tuple params, bint reduce_dims):
+    # Returns a list of arguments passed to the __global__ function.
+
     if reduce_dims:
         in_shape = _reduce_dims(in_args, params, in_indexer.shape)
         out_shape = _reduce_dims(
             out_args, params[len(in_args):], out_indexer.shape)
         in_indexer.shape = in_shape
         out_indexer.shape = out_shape
-    cdef _scalar.CScalar s = _scalar.CScalar.__new__(_scalar.CScalar)
-    (<int32_t *>s.ptr)[0] = block_stride
-    s.kind = b'i'
-    s.size = 4
-    return in_args + out_args + [in_indexer, out_indexer, s]
+    return in_args + out_args + [
+        in_indexer,
+        out_indexer,
+        # The last argument is always block_stride.
+        _scalar.CScalar_from_int32(block_stride),
+    ]
 
 
 @util.memoize(for_each_device=True)
@@ -217,7 +220,8 @@ class simple_reduction_function(object):
         cdef tuple in_sahpe, reduce_axis, out_axis
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
-        cdef ndarray arr
+        cdef ndarray arr, ret
+        cdef function.Function kern
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -247,8 +251,8 @@ class simple_reduction_function(object):
         del axis  # to avoid bug
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
         out_args = _get_out_args(out_args, out_types, out_shape, 'unsafe')
-        ret = out_args[0] if len(out_args) == 1 else tuple(out_args)
-        if (<ndarray>out_args[0]).size == 0:
+        ret = out_args[0]
+        if ret.size == 0:
             return ret
         if arr.size == 0 and self.identity is None:
             raise ValueError(('zero-size array to reduction operation'
@@ -269,7 +273,7 @@ class simple_reduction_function(object):
 
         kern = _get_simple_reduction_function(
             routine, self._params, args_info,
-            in_args[0].dtype.type, out_args[0].dtype.type, out_types,
+            arr.dtype.type, ret.dtype.type, out_types,
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
         kern.linear_launch(
@@ -389,6 +393,7 @@ class ReductionKernel(object):
         """
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
+        cdef function.Function kern
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)

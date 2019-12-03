@@ -138,39 +138,66 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
 
 cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     """ Remove contiguous stride to optimize CUDA kernel."""
-    cdef int i, ax, last_ax, ndim
-    cdef Py_ssize_t total_size
-    cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
-    cdef vector.vector[int] array_indexes, axes
-    cdef vector.vector[vector.vector[Py_ssize_t]] args_strides
-    cdef ParameterInfo p
     cdef ndarray arr
-    cdef bint flag
 
-    ndim = len(shape)
-    if ndim <= 1:
+    if len(shape) <= 1 or len(args) == 0:
         return shape
 
+    if len(args) == 1:  # fast path for reduction
+        a = args[0]
+        if (<ParameterInfo>params[0]).raw or not isinstance(a, ndarray):
+            return shape
+        arr = a
+        arr = arr.reduced_view()
+        if arr is a:
+            return shape
+        else:
+            args[0] = arr
+            return arr.shape
+    return _reduced_view_core(args, params, shape)
+
+
+cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
+    cdef int i, ax, last_ax, ndim
+    cdef Py_ssize_t x, total_size
+    cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
+    cdef vector.vector[int] array_indexes, axes
+    cdef vector.vector[int] strides_indexes
+    cdef ParameterInfo p
+    cdef ndarray arr
+
+    ndim = len(shape)
+    array_indexes.reserve(len(args))
+    strides_indexes.reserve(len(args))
     for i in range(len(args)):
         p = params[i]
         if not p.raw and isinstance(args[i], ndarray):
             array_indexes.push_back(i)
             arr = args[i]
             if not arr._c_contiguous:
-                args_strides.push_back(arr._strides)
+                strides_indexes.push_back(i)
 
-    if args_strides.size() == 0:
+    if array_indexes.size() == 0:
+        return shape
+
+    if strides_indexes.size() == 0:
         # The input arrays are all c_contiguous
-        total_size = internal.prod(shape)
+        i = array_indexes[0]
+        arr = args[i]
+        total_size = arr.size
         newshape.assign(<Py_ssize_t>1, total_size)
+        newstrides.resize(1)
         for i in array_indexes:
             arr = args[i]
-            newstrides.assign(<Py_ssize_t>1, arr.dtype.itemsize)
+            newstrides[0] = arr.dtype.itemsize
             # TODO(niboshi): Confirm update_x_contiguity flags
             args[i] = arr._view(newshape, newstrides, False, True)
         return total_size,
 
-    vecshape = shape
+    axes.reserve(ndim)
+    vecshape.reserve(ndim)
+    for x in shape:
+        vecshape.push_back(x)
     last_ax = -1
     for ax in range(ndim):
         if vecshape[ax] == 1:
@@ -178,8 +205,9 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         if last_ax < 0:
             last_ax = ax
             continue
-        for st in args_strides:
-            if st[ax] * vecshape[ax] != st[last_ax]:
+        for i in strides_indexes:
+            arr = args[i]
+            if arr._strides[ax] * vecshape[ax] != arr._strides[last_ax]:
                 axes.push_back(last_ax)
                 break
         else:
@@ -190,6 +218,8 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     if <int>axes.size() == ndim:
         return shape
 
+    newshape.reserve(axes.size())
+    newstrides.reserve(axes.size())
     for ax in axes:
         newshape.push_back(vecshape[ax])
     for i in array_indexes:
@@ -307,6 +337,7 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
     cpdef Py_ssize_t i
     cpdef ParameterInfo p
     cpdef bint is_none, is_not_none
+    cdef vector.vector[Py_ssize_t] shape
     value = []
     is_none = False
     is_not_none = False
@@ -327,11 +358,11 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
     else:
         if not is_not_none:
             raise ValueError('Loop size is Undecided')
-    value, shape = _broadcast_core(value)
+    _broadcast_core(value, shape)
     for i, a in enumerate(value):
         if a is None:
             value[i] = args[i]
-    return value, shape
+    return value, tuple(shape)
 
 
 cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
@@ -379,16 +410,18 @@ cdef list _get_out_args_with_params(
     cdef ParameterInfo p
     cdef ndarray arr
     cdef vector.vector[Py_ssize_t] shape
+    cdef Py_ssize_t x
     if not out_args:
         for p in out_params:
             if p.raw and not is_size_specified:
                 raise ValueError('Output array size is Undecided')
         return [ndarray(out_shape, t) for t in out_types]
 
-    shape = out_shape
-    for i in range(len(out_params)):
+    shape.reserve(len(out_shape))
+    for x in out_shape:
+        shape.push_back(x)
+    for i, p in enumerate(out_params):
         a = out_args[i]
-        p = out_params[i]
         if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
@@ -419,6 +452,9 @@ cdef function.Function _get_elementwise_kernel(
     return _get_simple_elementwise_kernel(
         kernel_params, operation, name,
         preamble, **kwargs)
+
+
+cdef dict _elementwise_kernel_memo = {}
 
 
 cdef class ElementwiseKernel:
@@ -475,7 +511,6 @@ cdef class ElementwiseKernel:
         readonly bint no_return
         readonly bint return_tuple
         readonly dict kwargs
-        readonly dict _kernel_memo
         readonly dict _params_type_memo
 
     def __init__(self, in_params, out_params, operation,
@@ -499,7 +534,6 @@ cdef class ElementwiseKernel:
         self.no_return = no_return
         self.return_tuple = return_tuple
         self.kwargs = kwargs
-        self._kernel_memo = {}
         self._params_type_memo = {}
         names = [p.name for p in self.in_params + self.out_params]
         if 'i' in names:
@@ -529,7 +563,7 @@ cdef class ElementwiseKernel:
         """
         cdef function.Function kern
         cdef Py_ssize_t size, i
-        cdef list in_args, out_args
+        cdef list values, in_args, out_args
         cdef tuple in_types, out_types, types, shape
 
         size = -1
@@ -603,14 +637,26 @@ cdef class ElementwiseKernel:
 
     cpdef function.Function _get_elementwise_kernel(
             self, int dev_id, tuple args_info, tuple types):
-        key = (dev_id, args_info, types)
-        kern = self._kernel_memo.get(key, None)
+        key = (
+            self.params,
+            self.operation,
+            self.name,
+            self.preamble,
+            tuple(sorted(self.kwargs.items())),
+            dev_id,
+            args_info,
+            types)
+        kern = _elementwise_kernel_memo.get(key, None)
         if kern is not None:
             return kern
         kern = _get_elementwise_kernel(
             args_info, types, self.params, self.operation,
             self.name, self.preamble, self.kwargs)
-        self._kernel_memo[key] = kern
+
+        # Store the compiled kernel in the cache.
+        # Potentially overwrite a duplicate cache entry because
+        # _get_elementwise_kernel() may include IO wait.
+        _elementwise_kernel_memo[key] = kern
         return kern
 
 
@@ -809,7 +855,9 @@ cdef class ufunc:
 
         cdef function.Function kern
         cdef list broad_values
+        cdef vector.vector[Py_ssize_t] vec_shape
         cdef tuple shape
+        cdef Py_ssize_t s
 
         out = kwargs.pop('out', None)
         dtype = kwargs.pop('dtype', None)
@@ -841,7 +889,9 @@ cdef class ufunc:
             args += out_args
 
         in_args = _copy_in_args_if_needed(in_args, out_args)
-        broad_values, shape = _broadcast_core(in_args + out_args)
+        broad_values = in_args + out_args
+        _broadcast_core(broad_values, vec_shape)
+        shape = tuple(vec_shape)
 
         op = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
@@ -852,8 +902,9 @@ cdef class ufunc:
         else:
             ret = tuple(out_args)
 
-        if 0 in shape:
-            return ret
+        for s in vec_shape:
+            if s == 0:
+                return ret
 
         inout_args = []
         for i, t in enumerate(in_types):

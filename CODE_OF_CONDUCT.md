@@ -1,4 +1,4 @@
-# Chainer Code of Conduct
+# CuPy Code of Conduct
 
 CuPy follows the [NumFOCUS Code of Conduct][homepage] available at https://numfocus.org/code-of-conduct.
 

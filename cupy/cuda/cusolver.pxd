@@ -8,6 +8,8 @@
 from cupy.cuda.driver cimport Stream
 
 cdef extern from *:
+    ctypedef void* LibraryPropertyType 'libraryPropertyType_t'
+
     ctypedef void* Handle 'cusolverDnHandle_t'
     ctypedef void* SpHandle 'cusolverSpHandle_t'
 
@@ -34,6 +36,13 @@ cpdef enum:
 
     CUSOLVER_EIG_MODE_NOVECTOR = 0
     CUSOLVER_EIG_MODE_VECTOR = 1
+
+###############################################################################
+# Library Attributes
+###############################################################################
+
+cpdef int getProperty(int type)
+cpdef tuple _getVersion()
 
 ###############################################################################
 # Context

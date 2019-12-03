@@ -11,6 +11,15 @@
 using namespace thrust;
 
 
+#if CUPY_USE_HIP
+typedef hipStream_t cudaStream_t;
+namespace cuda {
+    using thrust::hip::par;
+}
+
+#endif // #if CUPY_USE_HIP
+
+
 extern "C" char *cupy_malloc(void *, ptrdiff_t);
 extern "C" void cupy_free(void *, char *);
 

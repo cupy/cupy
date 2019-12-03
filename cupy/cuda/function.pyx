@@ -231,6 +231,9 @@ cdef class LinkState:
         cdef bytes data_byte = data.encode()
         driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data_byte, name)
 
+    cpdef add_ptr_file(self, unicode path):
+        driver.linkAddFile(self.ptr, driver.CU_JIT_INPUT_LIBRARY, path)
+
     cpdef bytes complete(self):
         cubin = driver.linkComplete(self.ptr)
         return cubin
