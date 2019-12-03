@@ -197,9 +197,10 @@ cdef class _AbstractReductionKernel:
         str name
         object identity
 
-    cpdef _call(
-            self, in_args, out_args, params,
-            a_shape, axis, dtype,
+    cpdef ndarray _call(
+            self,
+            list in_args, list out_args, tuple params,
+            tuple a_shape, axis, dtype,
             bint keepdims, bint reduce_dims,
             stream):
         cdef tuple reduce_axis, out_axis
@@ -252,17 +253,19 @@ cdef class _AbstractReductionKernel:
             out_block_num * block_size, inout_args, 0, block_size, stream)
         return ret
 
-    cdef _get_expressions_and_types(self, in_args, out_args, dtype):
+    cdef tuple _get_expressions_and_types(
+            self, list in_args, list out_args, dtype):
         raise NotImplementedError()
 
-    cdef _get_out_args(self, out_args, out_types, out_shape):
+    cdef list _get_out_args(
+            self, list out_args, tuple out_types, tuple out_shape):
         raise NotImplementedError()
 
-    cdef _get_kernel(
+    cdef function.Function _get_kernel(
             self,
-            params, args_info, types,
-            map_expr, reduce_expr, post_map_expr, reduce_type,
-            block_size):
+            tuple params, tuple args_info, tuple types,
+            str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
+            Py_ssize_t block_size):
         raise NotImplementedError()
 
 
@@ -324,7 +327,9 @@ cdef class simple_reduction_function(_AbstractReductionKernel):
             in_args, out_args, self._params,
             arr.shape, axis, dtype, keepdims, reduce_dims, None)
 
-    cdef _get_expressions_and_types(self, in_args, out_args, dtype):
+    cdef tuple _get_expressions_and_types(
+            self, list in_args, list out_args, dtype):
+
         in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
         map_expr, reduce_expr, post_map_expr, reduce_type = routine
@@ -346,15 +351,16 @@ cdef class simple_reduction_function(_AbstractReductionKernel):
             in_types, out_types, reduce_type,
             types)
 
-    cdef _get_out_args(self, out_args, out_types, out_shape):
+    cdef list _get_out_args(
+            self, list out_args, tuple out_types, tuple out_shape):
         return _get_out_args(
             out_args, out_types, out_shape, 'unsafe')
 
-    cdef _get_kernel(
+    cdef function.Function _get_kernel(
             self,
-            params, args_info, types,
-            map_expr, reduce_expr, post_map_expr, reduce_type,
-            block_size):
+            tuple params, tuple args_info, tuple types,
+            str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
+            Py_ssize_t block_size):
         return _get_simple_reduction_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, args_info, types,
@@ -519,7 +525,9 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             broad_shape, axis, None,
             keepdims, self.reduce_dims, stream)
 
-    cdef _get_expressions_and_types(self, in_args, out_args, dtype):
+    cdef tuple _get_expressions_and_types(
+            self, list in_args, list out_args, dtype):
+
         in_ndarray_types = tuple(
             [a.dtype.type if isinstance(a, ndarray) else None
              for a in in_args])
@@ -534,15 +542,16 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             in_types, out_types, self.reduce_type,
             types)
 
-    cdef _get_out_args(self, out_args, out_types, out_shape):
+    cdef list _get_out_args(
+            self, list out_args, tuple out_types, tuple out_shape):
         return _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params, False)
 
-    cdef _get_kernel(
+    cdef function.Function _get_kernel(
             self,
-            params, args_info, types,
-            map_expr, reduce_expr, post_map_expr, reduce_type,
-            block_size):
+            tuple params, tuple args_info, tuple types,
+            str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
+            Py_ssize_t block_size):
         return _get_reduction_kernel(
             self.nin, self.nout, params, args_info, types,
             self.name, block_size, reduce_type, self.identity,
