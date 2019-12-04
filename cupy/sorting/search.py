@@ -213,20 +213,46 @@ __device__ bool _isnan(const complex<float>& val) {
 
 
 _searchsorted_kernel = core.ElementwiseKernel(
-    'S x, raw T bins, int64 n_bins, bool side_is_right',
+    'S x, raw T bins, int64 n_bins, bool side_is_right, bool check_mono',
     'int64 y',
     '''
+    // Array is assumed to be monotonically
+    // increasing unless a check is requested
+    // because of functions like digitize
+    // allowing both, increasing and decreasing
+    bool inc = true;
+    if (check_mono && n_bins >= 2) {
+        int i=0;
+        do {
+            inc = bins[i] <= bins[i+1];
+        } while (bins[i] == bins[++i]);
+    }
+
     if (_isnan<S>(x)) {
-        long long pos = n_bins;
+        // TODO check increase and decrease
+        long long pos = (inc ? n_bins : 0);
         if (!side_is_right) {
-            while (pos > 0 && _isnan<T>(bins[pos-1])) {
-                --pos;
+            if (inc) {
+                while (pos > 0 && _isnan<T>(bins[pos-1])) {
+                    --pos;
+                }
+            }
+        } else {
+            if (!inc) {
+                while (pos < n_bins && _isnan<T>(bins[pos+1])) {
+                    ++pos;
+                }
             }
         }
         y = pos;
         return;
     }
-    bool greater = (side_is_right ? x >= bins[n_bins-1] : x > bins[n_bins-1]);
+    bool greater = false;
+    if (side_is_right) {
+        greater = inc && x >= bins[n_bins-1];
+    } else {
+        greater = (inc ? x > bins[n_bins-1] : x <= bins[n_bins-1]);
+    }
     if (greater) {
         y = n_bins;
         return;
@@ -235,7 +261,13 @@ _searchsorted_kernel = core.ElementwiseKernel(
     long long right = n_bins-1;
     while (left < right) {
         long long m = left + (right - left) / 2;
-        if (side_is_right ? bins[m] <= x : bins[m] < x) {
+        bool look_left = true;
+        if (side_is_right) {
+            look_left = (inc ? bins[m] <= x : bins[m] > x);
+        } else {
+            look_left = (inc ? bins[m] < x : bins[m] >= x);
+        }
+        if (look_left) {
             left = m + 1;
         } else {
             right = m;
@@ -274,7 +306,10 @@ def searchsorted(a, v, side='left', sorter=None):
     .. seealso:: :func:`numpy.searchsorted`
 
     """
+    return _searchsorted(a, v, side, sorter, False)
 
+
+def _searchsorted(a, v, side, sorter, check):
     if not isinstance(a, cupy.ndarray):
         raise NotImplementedError('Only int or ndarray are supported for a')
 
@@ -306,7 +341,7 @@ def searchsorted(a, v, side='left', sorter=None):
         a = a.take(sorter)
 
     y = cupy.zeros(v.shape, dtype=cupy.int64)
-    _searchsorted_kernel(v, a, a.size, side == 'right', y)
+    _searchsorted_kernel(v, a, a.size, side == 'right', check, y)
     return y
 
 
