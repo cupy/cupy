@@ -260,10 +260,6 @@ cdef class _AbstractReductionKernel:
         cdef ndarray ret
         cdef function.Function kern
 
-        if self.identity is None and 0 in a_shape:
-            raise ValueError(('zero-size array to reduction operation'
-                              ' %s which has no identity') % self.name)
-
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -279,6 +275,10 @@ cdef class _AbstractReductionKernel:
         ret = out_args[0]
         if ret.size == 0:
             return ret
+
+        if self.identity == '' and 0 in a_shape:
+            raise ValueError(('zero-size array to reduction operation'
+                              ' %s which has no identity') % self.name)
 
         in_args = [x if isinstance(x, ndarray) else
                    _scalar.get_scalar_from_numpy(x, t)
