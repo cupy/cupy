@@ -3,7 +3,7 @@ import six
 
 import cupy
 from cupy import core
-from cupy import internal
+from cupy.core import internal
 
 from cupy.linalg.solve import inv
 from cupy import util
