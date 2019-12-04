@@ -165,6 +165,7 @@ cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
     reduce_block_size = max(1, in_size // out_size)
     contiguous_size = min(contiguous_size, 32)
     block_stride = max(contiguous_size, _block_size // reduce_block_size)
+    block_stride = min(block_stride, (out_size + 31) // 32)
     block_stride = internal.clp2(block_stride // 2 + 1)  # floor
     out_block_num = (out_size + block_stride - 1) // block_stride
 
