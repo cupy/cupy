@@ -129,6 +129,11 @@ class TestFusionCache(unittest.TestCase):
         result.append(f(x, y))
         m.check_call_count(xp, 3)
 
+        x = testing.shaped_random((1, 1), xp, 'int32', scale=10, seed=8)
+        y = testing.shaped_random((1, 1), xp, 'int32', scale=10, seed=9)
+        result.append(f(x, y))
+        m.check_call_count(xp, 3)
+
         x = testing.shaped_random((2, 5), xp, 'int32', scale=10, seed=10)
         y = testing.shaped_random((4, 5), xp, 'int32', scale=10, seed=11)
         with self.assertRaises(ValueError, msg='could not be broadcast'):
@@ -137,7 +142,33 @@ class TestFusionCache(unittest.TestCase):
 
         return result
 
+    @mock_fusion_history()
+    def test_memoryspace_combinations(self, xp, m):
+        @cupy.fuse()
+        def f(x, y):
+            return x + y
 
-# TODO(asi1024): Add tests for inputs share the same memory each other.
+        result = []
+        m.check_call_count(xp, 0)
 
-# TODO(asi1024): Add unit tests for shape constraints.
+        x = testing.shaped_random((3, 4), xp, 'int32', scale=10, seed=0)
+        y = x
+        result.append(f(x, y))
+        m.check_call_count(xp, 1)
+
+        x = testing.shaped_random((3, 4), xp, 'int32', scale=10, seed=2)
+        y = testing.shaped_random((3, 4), xp, 'int32', scale=10, seed=3)
+        result.append(f(x, y))
+        m.check_call_count(xp, 2)
+
+        x = testing.shaped_random((3, 3), xp, 'int32', scale=10, seed=4)
+        y = x
+        result.append(f(x, y))
+        m.check_call_count(xp, 2)
+
+        x = testing.shaped_random((3, 3), xp, 'int32', scale=10, seed=6)
+        y = x.T
+        result.append(f(x, y))
+        m.check_call_count(xp, 3)
+
+        return result
