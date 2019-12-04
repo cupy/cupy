@@ -678,6 +678,7 @@ from cupy.statistics.meanvar import nanstd  # NOQA
 from cupy.statistics.meanvar import nanvar  # NOQA
 
 from cupy.statistics.histogram import bincount  # NOQA
+from cupy.statistics.histogram import digitize  # NOQA
 from cupy.statistics.histogram import histogram  # NOQA
 
 # -----------------------------------------------------------------------------

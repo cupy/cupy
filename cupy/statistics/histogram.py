@@ -136,3 +136,48 @@ def bincount(x, weights=None, minlength=None):
         _bincount_with_weight_kernel(x, weights, b)
 
     return b
+
+
+def digitize(x, bins, right=False):
+    """ Finds the indices of the bins to which each value in input array belongs.
+
+    .. note::
+
+        In order to avoid device synchronization, digitize does not raise
+        an exception when the array is not monotonic
+
+    Args:
+        x (cupy.ndarray): Input array.
+        bins (cupy.ndarray): Array of bins.
+            It has to be 1-dimensional and monotonic increasing or decreasing.
+        right (bool):
+            Indicates whether the intervals include the right or the left bin
+            edge.
+
+    Returns:
+        cupy.ndarray: Output array of indices, of same shape as ``x``.
+
+    .. seealso:: :func:`numpy.digitize`
+    """
+    bins = cupy.asarray(bins)
+
+    # This is for NumPy compat, although it works fine
+    if x.dtype.kind == 'c':
+        raise TypeError("x may not be complex")
+
+    if bins.ndim > 1:
+        raise ValueError('object too deep for desired array')
+    if bins.ndim < 1:
+        raise ValueError('object of too small depth for desired array')
+
+    if not isinstance(bins, cupy.ndarray):
+        raise NotImplementedError('Only int or ndarray are supported for bins')
+
+    # As the order of the arguments are reversed, the side must be too.
+    side = 'left' if right else 'right'
+    if right:
+        return cupy.sorting.search._searchsorted(
+            bins, x, side, None, True)
+    else:
+        return cupy.sorting.search._searchsorted(
+            bins, x, side, None, True)

@@ -223,23 +223,21 @@ _searchsorted_kernel = core.ElementwiseKernel(
     bool inc = true;
     if (check_mono && n_bins >= 2) {
         int i=0;
+        // Need to iterate because of possible NaN values
         do {
             inc = bins[i] <= bins[i+1];
         } while (bins[i] == bins[++i]);
     }
 
     if (_isnan<S>(x)) {
-        // TODO check increase and decrease
         long long pos = (inc ? n_bins : 0);
         if (!side_is_right) {
             if (inc) {
                 while (pos > 0 && _isnan<T>(bins[pos-1])) {
                     --pos;
                 }
-            }
-        } else {
-            if (!inc) {
-                while (pos < n_bins && _isnan<T>(bins[pos+1])) {
+            } else {
+                while (pos < n_bins && _isnan<T>(bins[pos])) {
                     ++pos;
                 }
             }
@@ -247,6 +245,7 @@ _searchsorted_kernel = core.ElementwiseKernel(
         y = pos;
         return;
     }
+
     bool greater = false;
     if (side_is_right) {
         greater = inc && x >= bins[n_bins-1];
@@ -257,7 +256,20 @@ _searchsorted_kernel = core.ElementwiseKernel(
         y = n_bins;
         return;
     }
+
     long long left = 0;
+    // In the case the bins is all NaNs, digitize
+    // needs to place all the valid values to the right
+    if (!inc) {
+        while (_isnan<T>(bins[left]) && left < n_bins) {
+            ++left;
+        }
+        if (left == n_bins) {
+            y = n_bins;
+            return;
+        }
+    }
+
     long long right = n_bins-1;
     while (left < right) {
         long long m = left + (right - left) / 2;
