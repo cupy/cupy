@@ -195,7 +195,7 @@ cdef class _AbstractReductionKernel:
 
     cdef:
         str name
-        object identity
+        public object identity
 
     cpdef ndarray _call(
             self,
