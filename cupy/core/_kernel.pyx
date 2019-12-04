@@ -286,7 +286,7 @@ cdef class ParameterInfo:
 
 
 @util.memoize()
-def _get_param_info(s, is_const):
+def _get_param_info(str s, is_const):
     if len(s) == 0:
         return ()
     return tuple([ParameterInfo(i, is_const) for i in s.strip().split(',')])

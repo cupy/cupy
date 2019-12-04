@@ -232,20 +232,24 @@ cdef class _AbstractReductionKernel:
         readonly tuple _params
 
     def __init__(
-            self, str name, str identity, tuple in_params, tuple out_params):
+            self, str name, str identity, str in_params, str out_params):
         assert name is not None
         assert identity is not None
+        assert in_params is not None
+        assert out_params is not None
 
+        in_params_ = _get_param_info(in_params, True)
+        out_params_ = _get_param_info(out_params, False)
         params = (
-            in_params
-            + out_params
+            in_params_
+            + out_params_
             + _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False)
             + _get_param_info('int32 _block_stride', True))
 
         self.name = name
         self.identity = identity
-        self.in_params = in_params
-        self.out_params = out_params
+        self.in_params = in_params_
+        self.out_params = out_params_
         self._params = params
 
     cpdef ndarray _call(
@@ -327,8 +331,8 @@ cdef class simple_reduction_function(_AbstractReductionKernel):
         super().__init__(
             name,
             '' if identity is None else str(identity),
-            _get_param_info('T in0', True),
-            _get_param_info('T out0', False),
+            'T in0',
+            'T out0',
         )
         self._ops = ops
         self._preamble = preamble
@@ -482,7 +486,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         readonly object reduce_type
         readonly str preamble
 
-    def __init__(self, in_params, out_params,
+    def __init__(self, str in_params, str out_params,
                  map_expr, reduce_expr, post_map_expr,
                  identity, name='reduce_kernel', reduce_type=None,
                  reduce_dims=True, preamble='', options=()):
@@ -493,8 +497,8 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         super().__init__(
             name,
             identity if identity is None else str(identity),
-            _get_param_info(in_params, True),
-            _get_param_info(out_params, False),
+            in_params,
+            out_params,
         )
         self.nin = len(self.in_params)
         self.nout = len(self.out_params)
