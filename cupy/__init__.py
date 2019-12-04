@@ -5,7 +5,12 @@ import warnings
 import numpy
 import six
 
+from cupy import _environment
 from cupy import _version
+
+
+if sys.platform.startswith('win32') and (3, 8) <= sys.version_info:  # NOQA
+    _environment._setup_win32_dll_directory()  # NOQA
 
 
 try:
