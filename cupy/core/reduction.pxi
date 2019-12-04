@@ -15,8 +15,6 @@ cpdef _get_simple_reduction_kernel(
         name, block_size, reduce_type, params, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_preamble, input_expr, output_expr, preamble, options):
-    if identity is None:
-        identity = ''
     module_code = string.Template('''
 ${type_preamble}
 ${preamble}
@@ -195,7 +193,13 @@ cdef class _AbstractReductionKernel:
 
     cdef:
         str name
-        public object identity
+        public str identity
+
+    def __init__(self, str name, str identity):
+        assert name is not None
+        assert identity is not None
+        self.name = name
+        self.identity = identity
 
     cpdef ndarray _call(
             self,
@@ -282,8 +286,9 @@ cdef class simple_reduction_function(_AbstractReductionKernel):
         readonly dict _routine_cache
 
     def __init__(self, name, ops, identity, preamble):
-        self.name = name
-        self.identity = identity
+        super().__init__(
+            name,
+            '' if identity is None else str(identity))
         self._ops = ops
         self._preamble = preamble
         self.nin = 1
@@ -452,8 +457,9 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             raise ValueError(
                 'Invalid kernel name: "%s"' % name)
 
-        self.name = name
-        self.identity = identity
+        super().__init__(
+            name,
+            identity if identity is None else str(identity))
         self.in_params = _get_param_info(in_params, True)
         self.out_params = _get_param_info(out_params, False)
         self.nin = len(self.in_params)
