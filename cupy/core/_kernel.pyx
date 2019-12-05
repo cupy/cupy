@@ -72,6 +72,15 @@ cdef inline int get_kind_score(int kind):
     return -1
 
 
+@cython.profile(False)
+cdef inline _check_array_device_id(ndarray arr, int device_id):
+    if arr.data.device_id != device_id:
+        raise ValueError(
+            'Array device must be same as the current '
+            'device: array device = %d while current = %d'
+            % (arr.data.device_id, device_id))
+
+
 cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     """Preprocesses arguments for kernel invocation
 
@@ -90,12 +99,7 @@ cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
                 raise TypeError('Unsupported type %s' % type(arg))
             arg = _convert_object_with_cuda_array_interface(arg)
 
-        arr_dev_id = (<ndarray>arg).data.device_id
-        if arr_dev_id != dev_id:
-            raise ValueError(
-                'Array device must be same as the current '
-                'device: array device = %d while current = %d'
-                % (arr_dev_id, dev_id))
+        _check_array_device_id(<ndarray>arg, dev_id)
         ret.append(arg)
 
     return ret
@@ -282,7 +286,7 @@ cdef class ParameterInfo:
 
 
 @util.memoize()
-def _get_param_info(s, is_const):
+def _get_param_info(str s, is_const):
     if len(s) == 0:
         return ()
     return tuple([ParameterInfo(i, is_const) for i in s.strip().split(',')])

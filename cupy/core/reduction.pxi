@@ -14,8 +14,6 @@ cpdef _get_simple_reduction_kernel(
         name, block_size, reduce_type, params, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_preamble, input_expr, output_expr, preamble, options):
-    if identity is None:
-        identity = ''
     module_code = string.Template('''
 ${type_preamble}
 ${preamble}
@@ -208,51 +206,146 @@ cdef tuple _get_reduction_args(
 
 @util.memoize(for_each_device=True)
 def _get_simple_reduction_function(
-        routine, params, args_info, in_arg_dtype, out_arg_dtype, out_types,
+        map_expr, reduce_expr, post_map_expr, reduce_type,
+        params, args_info, types,
         name, block_size, identity, input_expr, output_expr, _preamble,
         options):
-    reduce_type = routine[3]
-    if reduce_type is None:
-        reduce_type = _get_typename(out_types[0])
-
-    t = (_get_typename(in_arg_dtype), _get_typename(out_arg_dtype))
-    type_preamble = 'typedef %s type_in0_raw; typedef %s type_out0_raw;' % t
-
     params = _get_kernel_params(params, args_info)
+
+    type_preamble = '\n'.join(
+        'typedef %s %s;' % (_get_typename(v), k)
+        for k, v in types)
+
     return _get_simple_reduction_kernel(
         name, block_size, reduce_type, params, identity,
-        routine[0], routine[1], routine[2],
+        map_expr, reduce_expr, post_map_expr,
         type_preamble, input_expr, output_expr, _preamble, options)
 
 
-class simple_reduction_function(object):
+cdef class _AbstractReductionKernel:
+
+    cdef:
+        readonly str name
+        public str identity
+        readonly tuple in_params
+        readonly tuple out_params
+        readonly tuple _params
+
+    def __init__(
+            self, str name, str identity, str in_params, str out_params):
+        assert name is not None
+        assert identity is not None
+        assert in_params is not None
+        assert out_params is not None
+
+        in_params_ = _get_param_info(in_params, True)
+        out_params_ = _get_param_info(out_params, False)
+        params = (
+            in_params_
+            + out_params_
+            + _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False)
+            + _get_param_info('int32 _block_stride', True))
+
+        self.name = name
+        self.identity = identity
+        self.in_params = in_params_
+        self.out_params = out_params_
+        self._params = params
+
+    cpdef ndarray _call(
+            self,
+            list in_args, list out_args,
+            tuple a_shape, axis, dtype,
+            bint keepdims, bint reduce_dims,
+            stream):
+        cdef tuple reduce_axis, out_axis
+        cdef Py_ssize_t contiguous_size
+        cdef Py_ssize_t block_size, block_stride, out_block_num
+        cdef ndarray ret
+        cdef function.Function kern
+
+        if dtype is not None:
+            dtype = get_dtype(dtype).type
+
+        (
+            map_expr, reduce_expr, post_map_expr,
+            in_types, out_types, reduce_type,
+            types,
+        ) = self._get_expressions_and_types(in_args, out_args, dtype)
+
+        reduce_axis, out_axis = _get_axis(axis, len(a_shape))
+        out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
+        out_args = self._get_out_args(out_args, out_types, out_shape)
+        ret = out_args[0]
+        if ret.size == 0:
+            return ret
+
+        if self.identity == '' and 0 in a_shape:
+            raise ValueError(('zero-size array to reduction operation'
+                              ' %s which has no identity') % self.name)
+
+        in_args = [x if isinstance(x, ndarray) else
+                   _scalar.get_scalar_from_numpy(x, t)
+                   for x, t in zip(in_args, in_types)]
+        inout_args, block_size, out_block_num = _get_reduction_args(
+            in_args, out_args, self.in_params, self.out_params,
+            reduce_axis + out_axis, a_shape, out_shape, reduce_dims)
+        args_info = _get_args_info(inout_args)
+
+        kern = self._get_kernel(
+            self._params, args_info, types,
+            map_expr, reduce_expr, post_map_expr, reduce_type,
+            block_size)
+        kern.linear_launch(
+            out_block_num * block_size, inout_args, 0, block_size, stream)
+        return ret
+
+    cdef tuple _get_expressions_and_types(
+            self, list in_args, list out_args, dtype):
+        raise NotImplementedError()
+
+    cdef list _get_out_args(
+            self, list out_args, tuple out_types, tuple out_shape):
+        raise NotImplementedError()
+
+    cdef function.Function _get_kernel(
+            self,
+            tuple params, tuple args_info, tuple types,
+            str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
+            Py_ssize_t block_size):
+        raise NotImplementedError()
+
+
+cdef class simple_reduction_function(_AbstractReductionKernel):
+
+    cdef:
+        readonly object _ops
+        readonly _preamble
+        readonly int nin
+        readonly int nout
+        readonly str _input_expr
+        readonly str _output_expr
+        readonly dict _routine_cache
 
     def __init__(self, name, ops, identity, preamble):
-        self.name = name
+        super().__init__(
+            name,
+            '' if identity is None else str(identity),
+            'T in0',
+            'T out0',
+        )
         self._ops = ops
-        self.identity = identity
         self._preamble = preamble
         self.nin = 1
         self.nout = 1
-        self._in_params = _get_param_info('T in0', True)
-        self._out_params = _get_param_info('T out0', False)
-        self._params = (
-            self._in_params + self._out_params +
-            _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False) +
-            _get_param_info('int32 _block_stride', True))
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
 
     def __call__(self, object a, axis=None, dtype=None, ndarray out=None,
                  bint keepdims=False):
-        cdef list in_args, out_args
-        cdef tuple in_sahpe, reduce_axis, out_axis
-        cdef Py_ssize_t block_size, out_block_num
-        cdef ndarray arr, ret
-        cdef function.Function kern
-        if dtype is not None:
-            dtype = get_dtype(dtype).type
+
+        cdef ndarray arr
 
         if isinstance(a, ndarray):
             arr = a
@@ -262,44 +355,61 @@ class simple_reduction_function(object):
             raise TypeError(
                 'Argument \'a\' has incorrect type (expected %s, got %s)' %
                 (ndarray, type(a)))
-        del a
         in_args = [arr]
-        a_shape = arr.shape
+
         dev_id = device.get_device_id()
+        _check_array_device_id(arr, dev_id)
+
         if out is None:
-            _preprocess_args(dev_id, (arr,), False)
             out_args = []
         else:
-            _preprocess_args(dev_id, (arr, out), False)
+            _check_array_device_id(out, dev_id)
             out_args = [out]
+
+        reduce_dims = True
+        return self._call(
+            in_args, out_args,
+            arr.shape, axis, dtype, keepdims, reduce_dims, None)
+
+    cdef tuple _get_expressions_and_types(
+            self, list in_args, list out_args, dtype):
 
         in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
+        map_expr, reduce_expr, post_map_expr, reduce_type = routine
 
-        reduce_axis, out_axis = _get_axis(axis, arr._shape.size())
-        del axis  # to avoid bug
-        out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
-        out_args = _get_out_args(out_args, out_types, out_shape, 'unsafe')
-        ret = out_args[0]
-        if ret.size == 0:
-            return ret
-        if arr.size == 0 and self.identity is None:
-            raise ValueError(('zero-size array to reduction operation'
-                              ' %s which has no identity') % self.name)
+        if reduce_type is None:
+            reduce_type = _get_typename(out_types[0])
 
-        inout_args, block_size, out_block_num = _get_reduction_args(
-            in_args, out_args, self._in_params, self._out_params,
-            reduce_axis + out_axis, a_shape, out_shape, True)
-        args_info = _get_args_info(inout_args)
+        if out_args:
+            out_type = out_args[0].dtype.type
+        else:
+            out_type = out_types[0]
 
-        kern = _get_simple_reduction_function(
-            routine, self._params, args_info,
-            arr.dtype.type, ret.dtype.type, out_types,
+        types = (
+            ('type_in0_raw', in_args[0].dtype.type),
+            ('type_out0_raw', out_type))
+
+        return (
+            map_expr, reduce_expr, post_map_expr,
+            in_types, out_types, reduce_type,
+            types)
+
+    cdef list _get_out_args(
+            self, list out_args, tuple out_types, tuple out_shape):
+        return _get_out_args(
+            out_args, out_types, out_shape, 'unsafe')
+
+    cdef function.Function _get_kernel(
+            self,
+            tuple params, tuple args_info, tuple types,
+            str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
+            Py_ssize_t block_size):
+        return _get_simple_reduction_function(
+            map_expr, reduce_expr, post_map_expr, reduce_type,
+            params, args_info, types,
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
-        kern.linear_launch(
-            out_block_num * block_size, inout_args, 0, block_size)
-        return ret
 
 
 @util.memoize(for_each_device=True)
@@ -331,7 +441,7 @@ def _get_reduction_kernel(
         type_preamble, input_expr, output_expr, preamble, options)
 
 
-class ReductionKernel(object):
+cdef class ReductionKernel(_AbstractReductionKernel):
 
     """User-defined reduction kernel.
 
@@ -362,7 +472,21 @@ class ReductionKernel(object):
         options (tuple of str): Additional compilation options.
 
     """
-    def __init__(self, in_params, out_params,
+
+    cdef:
+        readonly int nin
+        readonly int nout
+        readonly int nargs
+        readonly tuple params
+        readonly str reduce_expr
+        readonly str map_expr
+        readonly str post_map_expr
+        readonly object options
+        readonly bint reduce_dims
+        readonly object reduce_type
+        readonly str preamble
+
+    def __init__(self, str in_params, str out_params,
                  map_expr, reduce_expr, post_map_expr,
                  identity, name='reduce_kernel', reduce_type=None,
                  reduce_dims=True, preamble='', options=()):
@@ -370,22 +494,20 @@ class ReductionKernel(object):
             raise ValueError(
                 'Invalid kernel name: "%s"' % name)
 
-        self.in_params = _get_param_info(in_params, True)
-        self.out_params = _get_param_info(out_params, False)
+        super().__init__(
+            name,
+            '' if identity is None else str(identity),
+            in_params,
+            out_params,
+        )
         self.nin = len(self.in_params)
         self.nout = len(self.out_params)
         self.nargs = self.nin + self.nout
-        self.params = (
-            self.in_params + self.out_params +
-            _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False) +
-            _get_param_info('int32 _block_stride', True))
-        self.identity = identity
         self.reduce_expr = reduce_expr
         self.map_expr = map_expr
-        self.name = name
+        self.post_map_expr = post_map_expr
         self.options = options
         self.reduce_dims = reduce_dims
-        self.post_map_expr = post_map_expr
         if reduce_type is None:
             self.reduce_type = self.out_params[0].ctype
         else:
@@ -412,8 +534,6 @@ class ReductionKernel(object):
             ``__init__`` method.
 
         """
-        cdef Py_ssize_t block_size, out_block_num
-        cdef function.Function kern
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
@@ -440,9 +560,13 @@ class ReductionKernel(object):
         out_args = _preprocess_args(dev_id, out_args, False)
         in_args, broad_shape = _broadcast(in_args, self.in_params, False)
 
-        if self.identity is None and 0 in broad_shape:
-            raise ValueError(('zero-size array to reduction operation'
-                              ' %s which has no identity') % self.name)
+        return self._call(
+            in_args, out_args,
+            broad_shape, axis, None,
+            keepdims, self.reduce_dims, stream)
+
+    cdef tuple _get_expressions_and_types(
+            self, list in_args, list out_args, dtype):
 
         in_ndarray_types = tuple(
             [a.dtype.type if isinstance(a, ndarray) else None
@@ -453,34 +577,26 @@ class ReductionKernel(object):
         in_types, out_types, types = _decide_params_type(
             self.in_params, self.out_params,
             in_ndarray_types, out_ndarray_types)
-
-        reduce_axis, out_axis = _get_axis(axis, len(broad_shape))
-        out_shape = _get_out_shape(
-            broad_shape, reduce_axis, out_axis, keepdims)
-        out_args = _get_out_args_with_params(
-            out_args, out_types, out_shape, self.out_params, False)
-        ret = out_args[0]
-        if 0 in out_shape:
-            return ret
-
-        in_args = [x if isinstance(x, ndarray) else
-                   _scalar.get_scalar_from_numpy(x, t)
-                   for x, t in zip(in_args, in_types)]
-
-        inout_args, block_size, out_block_num = _get_reduction_args(
-            in_args, out_args, self.in_params, self.out_params,
-            reduce_axis + out_axis, broad_shape, out_shape,
-            self.reduce_dims)
-        args_info = _get_args_info(inout_args)
-
-        kern = _get_reduction_kernel(
-            self.nin, self.nout, self.params, args_info, types,
-            self.name, block_size, self.reduce_type, self.identity,
+        return (
             self.map_expr, self.reduce_expr, self.post_map_expr,
+            in_types, out_types, self.reduce_type,
+            types)
+
+    cdef list _get_out_args(
+            self, list out_args, tuple out_types, tuple out_shape):
+        return _get_out_args_with_params(
+            out_args, out_types, out_shape, self.out_params, False)
+
+    cdef function.Function _get_kernel(
+            self,
+            tuple params, tuple args_info, tuple types,
+            str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
+            Py_ssize_t block_size):
+        return _get_reduction_kernel(
+            self.nin, self.nout, params, args_info, types,
+            self.name, block_size, reduce_type, self.identity,
+            map_expr, reduce_expr, post_map_expr,
             self.preamble, self.options)
-        kern.linear_launch(
-            out_block_num * block_size, inout_args, 0, block_size, stream)
-        return ret
 
 
 cpdef create_reduction_func(name, ops, routine=None, identity=None,
