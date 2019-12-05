@@ -398,20 +398,17 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
     return out_args
 
 
-cdef list _copy_in_args_if_needed(list in_args, list out_args):
-    cdef int i, j
-    cdef list ret = []
-
+cdef _copy_in_args_if_needed(list in_args, list out_args):
+    # This function updates `in_args`
+    cdef ndarray inp, out
     for i in range(len(in_args)):
-        inp = in_args[i]
-        if isinstance(inp, ndarray):
-            for j in range(len(out_args)):
-                out = out_args[j]
+        a = in_args[i]
+        if isinstance(a, ndarray):
+            inp = a
+            for out in out_args:
                 if inp is not out and may_share_bounds(inp, out):
-                    inp = inp.copy()
+                    in_args[i] = inp.copy()
                     break
-        ret.append(inp)
-    return ret
 
 
 cdef list _get_out_args_with_params(
@@ -898,7 +895,7 @@ cdef class ufunc:
             out_args = _preprocess_args(dev_id, (out,), False)
             args += out_args
 
-        in_args = _copy_in_args_if_needed(in_args, out_args)
+        _copy_in_args_if_needed(in_args, out_args)
         broad_values = in_args + out_args
         _broadcast_core(broad_values, vec_shape)
         shape = tuple(vec_shape)
