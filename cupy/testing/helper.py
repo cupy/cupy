@@ -5,7 +5,6 @@ import contextlib
 import functools
 import inspect
 import os
-import pkg_resources
 import random
 import sys
 import traceback
@@ -1017,6 +1016,7 @@ def with_requires(*requirements):
             run a given test case.
 
     """
+    import pkg_resources
     ws = pkg_resources.WorkingSet()
     try:
         ws.require(*requirements)
@@ -1034,6 +1034,7 @@ def numpy_satisfies(version_range):
     Args:
         version_range: A version specifier (e.g., `>=1.13.0`).
     """
+    import pkg_resources
     spec = 'numpy{}'.format(version_range)
     try:
         pkg_resources.require(spec)
