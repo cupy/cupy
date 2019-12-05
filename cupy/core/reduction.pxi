@@ -1,5 +1,4 @@
 from cpython cimport sequence
-from libc.stdint cimport int32_t
 
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.cuda cimport runtime
@@ -114,63 +113,97 @@ cpdef tuple _get_out_shape(
     return tuple([shape[i] for i in out_axis])
 
 
-cpdef tuple _get_permuted_args(
-        list args, tuple axis_permutes, tuple shape, tuple params,
-        Py_ssize_t out_ndim):
+cdef tuple _set_permuted_args(
+        list args, tuple axis_permutes, tuple shape, tuple params):
+    # This function updates `args`
+    cdef ParameterInfo p
+    cdef Py_ssize_t i, s
+    cdef bint need_permutation = False
+    for i, s in enumerate(axis_permutes):
+        if i != s:
+            need_permutation = True
+            break
+    if need_permutation:
+        for p in params:
+            if p.raw:
+                raise NotImplementedError('Illegal conditions')
+        for i, a in enumerate(args):
+            if isinstance(a, ndarray):
+                args[i] = _manipulation._transpose(a, axis_permutes)
+        shape = tuple([shape[i] for i in axis_permutes])
+    return shape
+
+
+cdef Py_ssize_t _get_contiguous_size(
+        list args, tuple params, Py_ssize_t ndim,
+        Py_ssize_t out_ndim) except -1:
+    cdef int i, j
     cdef ParameterInfo p
     cdef Py_ssize_t contiguous_size, tmp_contiguous_size, itemsize
-
-    if axis_permutes != tuple(range(len(shape))):
-        if params is not None:
-            for p in params:
-                if p.raw:
-                    raise NotImplementedError('Illegal conditions')
-        args = [_manipulation._transpose(a, axis_permutes)
-                if isinstance(a, ndarray) else a for a in args]
-        shape = tuple([shape[i] for i in axis_permutes])
-
     contiguous_size = 1
-    for a in args:
+    for i, a in enumerate(args):
         if not isinstance(a, ndarray):
+            continue
+        p = params[i]
+        if p.raw:
             continue
         tmp_contiguous_size = 1
         itemsize = a.dtype.itemsize
-        for i in range(out_ndim):
-            if a.strides[-i-1] != tmp_contiguous_size * itemsize:
+        for j in range(out_ndim):
+            if a._strides[ndim-j-1] != tmp_contiguous_size * itemsize:
                 break
-            tmp_contiguous_size *= a.shape[-i-1]
+            tmp_contiguous_size *= a._shape[ndim-j-1]
         contiguous_size = max(contiguous_size, tmp_contiguous_size)
-    return args, shape, contiguous_size
+    return contiguous_size
 
 
 cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
-        Indexer in_indexer, Indexer out_indexer, Py_ssize_t contiguous_size):
-    cdef Py_ssize_t block_size, reduce_block_size, block_stride, out_block_num
-    block_size = 256 if runtime._is_hip_environment else 512
+        Py_ssize_t in_size, Py_ssize_t out_size,
+        Py_ssize_t contiguous_size) except*:
+    cdef Py_ssize_t reduce_block_size, block_stride, out_block_num
 
-    reduce_block_size = max(1, in_indexer.size // out_indexer.size)
+    reduce_block_size = max(1, in_size // out_size)
     contiguous_size = min(contiguous_size, 32)
-    block_stride = max(contiguous_size, block_size // reduce_block_size)
+    block_stride = max(contiguous_size, _block_size // reduce_block_size)
     block_stride = internal.clp2(block_stride // 2 + 1)  # floor
-    out_block_num = (out_indexer.size + block_stride - 1) // block_stride
+    out_block_num = (out_size + block_stride - 1) // block_stride
 
-    return block_size, block_stride, out_block_num
+    return _block_size, block_stride, out_block_num
 
 
-cpdef list _get_inout_args(
-        list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
-        Py_ssize_t block_stride, tuple params, bint reduce_dims):
+cdef Py_ssize_t _block_size = 256 if runtime._is_hip_environment else 512
+
+
+cdef tuple _get_reduction_args(
+        list in_args, list out_args, tuple in_params, tuple out_params,
+        tuple axis_permutes, tuple a_shape, tuple out_shape,
+        bint reduce_dims):
+    # Returns a tuple that contains following items
+    # - list of arguments passed to the __global__ function.
+    # - block_size
+    # - out_block_num
+    cdef Py_ssize_t contiguous_size, block_size, block_stride, out_block_num
+    in_shape = _set_permuted_args(
+        in_args, axis_permutes, a_shape, in_params)
+    contiguous_size = _get_contiguous_size(
+        in_args, in_params, len(in_shape), len(out_shape))
+
     if reduce_dims:
-        in_shape = _reduce_dims(in_args, params, in_indexer.shape)
-        out_shape = _reduce_dims(
-            out_args, params[len(in_args):], out_indexer.shape)
-        in_indexer.shape = in_shape
-        out_indexer.shape = out_shape
-    cdef _scalar.CScalar s = _scalar.CScalar.__new__(_scalar.CScalar)
-    (<int32_t *>s.ptr)[0] = block_stride
-    s.kind = b'i'
-    s.size = 4
-    return in_args + out_args + [in_indexer, out_indexer, s]
+        in_shape = _reduce_dims(in_args, in_params, in_shape)
+        out_shape = _reduce_dims(out_args, out_params, out_shape)
+
+    block_size, block_stride, out_block_num = _get_block_specs(
+        internal.prod_sequence(in_shape),
+        internal.prod_sequence(out_shape),
+        contiguous_size)
+
+    in_indexer = Indexer(in_shape)
+    out_indexer = Indexer(out_shape)
+
+    # The last argument is always block_stride.
+    s = _scalar.CScalar_from_int32(block_stride)
+    return (in_args + out_args + [in_indexer, out_indexer, s],
+            block_size, out_block_num)
 
 
 @util.memoize(for_each_device=True)
@@ -201,10 +234,10 @@ class simple_reduction_function(object):
         self._preamble = preamble
         self.nin = 1
         self.nout = 1
-        in_params = _get_param_info('T in0', True)
-        out_params = _get_param_info('T out0', False)
+        self._in_params = _get_param_info('T in0', True)
+        self._out_params = _get_param_info('T out0', False)
         self._params = (
-            in_params + out_params +
+            self._in_params + self._out_params +
             _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False) +
             _get_param_info('int32 _block_stride', True))
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
@@ -215,8 +248,7 @@ class simple_reduction_function(object):
                  bint keepdims=False):
         cdef list in_args, out_args
         cdef tuple in_sahpe, reduce_axis, out_axis
-        cdef Py_ssize_t contiguous_size
-        cdef Py_ssize_t block_size, block_stride, out_block_num
+        cdef Py_ssize_t block_size, out_block_num
         cdef ndarray arr, ret
         cdef function.Function kern
         if dtype is not None:
@@ -255,17 +287,9 @@ class simple_reduction_function(object):
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
-        in_args, in_shape, contiguous_size = _get_permuted_args(
-            in_args, reduce_axis + out_axis, a_shape, None, len(out_axis))
-
-        in_indexer = Indexer(in_shape)
-        out_indexer = Indexer(out_shape)
-        block_size, block_stride, out_block_num = _get_block_specs(
-            in_indexer, out_indexer, contiguous_size)
-
-        inout_args = _get_inout_args(
-            in_args, out_args, in_indexer, out_indexer, block_stride,
-            self._params, True)
+        inout_args, block_size, out_block_num = _get_reduction_args(
+            in_args, out_args, self._in_params, self._out_params,
+            reduce_axis + out_axis, a_shape, out_shape, True)
         args_info = _get_args_info(inout_args)
 
         kern = _get_simple_reduction_function(
@@ -388,8 +412,7 @@ class ReductionKernel(object):
             ``__init__`` method.
 
         """
-        cdef Py_ssize_t contiguous_size
-        cdef Py_ssize_t block_size, block_stride, out_block_num
+        cdef Py_ssize_t block_size, out_block_num
         cdef function.Function kern
 
         out = kwargs.pop('out', None)
@@ -443,18 +466,11 @@ class ReductionKernel(object):
         in_args = [x if isinstance(x, ndarray) else
                    _scalar.get_scalar_from_numpy(x, t)
                    for x, t in zip(in_args, in_types)]
-        in_args, in_shape, contiguous_size = _get_permuted_args(
-            in_args, reduce_axis + out_axis, broad_shape, self.in_params,
-            len(out_axis))
 
-        in_indexer = Indexer(in_shape)
-        out_indexer = Indexer(out_shape)
-        block_size, block_stride, out_block_num = _get_block_specs(
-            in_indexer, out_indexer, contiguous_size)
-
-        inout_args = _get_inout_args(
-            in_args, out_args, in_indexer, out_indexer, block_stride,
-            self.params, self.reduce_dims)
+        inout_args, block_size, out_block_num = _get_reduction_args(
+            in_args, out_args, self.in_params, self.out_params,
+            reduce_axis + out_axis, broad_shape, out_shape,
+            self.reduce_dims)
         args_info = _get_args_info(inout_args)
 
         kern = _get_reduction_kernel(

@@ -6,7 +6,12 @@ import warnings
 import numpy
 import six
 
+from cupy import _environment
 from cupy import _version
+
+
+if sys.platform.startswith('win32') and (3, 8) <= sys.version_info:  # NOQA
+    _environment._setup_win32_dll_directory()  # NOQA
 
 
 try:
@@ -633,14 +638,15 @@ pad = padding.pad.pad
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
 from cupy.sorting.count import count_nonzero  # NOQA
-from cupy.sorting.search import flatnonzero  # NOQA
-from cupy.sorting.search import nonzero  # NOQA
 
-from cupy.sorting.search import where  # NOQA
 from cupy.sorting.search import argmax  # NOQA
-from cupy.sorting.search import nanargmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
+from cupy.sorting.search import flatnonzero  # NOQA
+from cupy.sorting.search import nanargmax  # NOQA
 from cupy.sorting.search import nanargmin  # NOQA
+from cupy.sorting.search import nonzero  # NOQA
+from cupy.sorting.search import searchsorted  # NOQA
+from cupy.sorting.search import where  # NOQA
 
 from cupy.sorting.sort import argpartition  # NOQA
 from cupy.sorting.sort import argsort  # NOQA
