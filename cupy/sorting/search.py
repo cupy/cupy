@@ -222,11 +222,10 @@ _searchsorted_kernel = core.ElementwiseKernel(
     // allowing both, increasing and decreasing
     bool inc = true;
     if (check_mono && n_bins >= 2) {
-        int i=0;
-        // Need to iterate because of possible NaN values
-        do {
-            inc = bins[i] <= bins[i+1];
-        } while (bins[i] == bins[++i]);
+        // In the case all the bins are nan the array is considered
+        // to be decreasing in numpy
+        inc = (bins[0] <= bins[n_bins-1]) \
+              || (!_isnan<T>(bins[0]) && _isnan<T>(bins[n_bins-1]));
     }
 
     if (_isnan<S>(x)) {
@@ -353,6 +352,7 @@ def _searchsorted(a, v, side, sorter, check):
         a = a.take(sorter)
 
     y = cupy.zeros(v.shape, dtype=cupy.int64)
+
     _searchsorted_kernel(v, a, a.size, side == 'right', check, y)
     return y
 
