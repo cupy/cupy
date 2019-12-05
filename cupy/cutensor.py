@@ -30,7 +30,9 @@ class Descriptor(object):
 def get_handle():
     dev = device.get_device_id()
     if dev not in _handles:
-        _handles[dev] = Descriptor(cutensor.init(), cutensor.destroy)
+        handle = cutensor.Handle()
+        cutensor.init(handle)
+        _handles[dev] = handle
     return _handles[dev]
 
 
@@ -93,7 +95,7 @@ def create_tensor_descriptor(a, uop=cutensor.OP_IDENTITY):
             tensor descriptor and its destructor.
     """
     handle = get_handle()
-    key = (handle.value, a.dtype, tuple(a.shape), tuple(a.strides), uop)
+    key = (handle.ptr, a.dtype, tuple(a.shape), tuple(a.strides), uop)
     if key in _tensor_descriptors:
         desc = _tensor_descriptors[key]
         return desc
@@ -102,7 +104,7 @@ def create_tensor_descriptor(a, uop=cutensor.OP_IDENTITY):
     stride = numpy.array(a.strides, dtype=numpy.int64) // a.itemsize
     cuda_dtype = get_cuda_dtype(a.dtype)
     desc = cutensor.initTensorDescriptor(
-        handle.value, num_modes, extent.ctypes.data, stride.ctypes.data,
+        handle, num_modes, extent.ctypes.data, stride.ctypes.data,
         cuda_dtype, uop)
     desc = Descriptor(desc, cutensor.destroyTensorDescriptor)
     _tensor_descriptors[key] = desc
@@ -179,7 +181,7 @@ def elementwise_trinary(alpha, A, desc_A, mode_A,
     handle = get_handle()
     cuda_dtype = get_cuda_dtype(compute_dtype)
     cutensor.elementwiseTrinary(
-        handle.value,
+        handle,
         alpha.ctypes.data,
         A.data.ptr, desc_A.value, mode_A.ctypes.data,
         beta.ctypes.data,
@@ -228,7 +230,7 @@ def elementwise_binary(alpha, A, desc_A, mode_A,
     handle = get_handle()
     cuda_dtype = get_cuda_dtype(compute_dtype)
     cutensor.elementwiseBinary(
-        handle.value,
+        handle,
         alpha.ctypes.data,
         A.data.ptr, desc_A.value, mode_A.ctypes.data,
         gamma.ctypes.data,
@@ -248,12 +250,12 @@ def _create_contraction_descriptor(A, desc_A, mode_A, B, desc_B, mode_B,
     compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
     handle = get_handle()
     alignment_req_A = cutensor.getAlignmentRequirement(
-        handle.value, A.data.ptr, desc_A.value)
+        handle, A.data.ptr, desc_A.value)
     alignment_req_B = cutensor.getAlignmentRequirement(
-        handle.value, B.data.ptr, desc_B.value)
+        handle, B.data.ptr, desc_B.value)
     alignment_req_C = cutensor.getAlignmentRequirement(
-        handle.value, C.data.ptr, desc_C.value)
-    key = (handle, compute_dtype,
+        handle, C.data.ptr, desc_C.value)
+    key = (handle.ptr, compute_dtype,
            desc_A, tuple(mode_A), alignment_req_A,
            desc_B, tuple(mode_B), alignment_req_B,
            desc_C, tuple(mode_C), alignment_req_C)
@@ -265,7 +267,7 @@ def _create_contraction_descriptor(A, desc_A, mode_A, B, desc_B, mode_B,
     mode_C = _convert_mode(mode_C)
     cutensor_dtype = get_cutensor_dtype(compute_dtype)
     desc = cutensor.initContractionDescriptor(
-        handle.value,
+        handle,
         desc_A.value, mode_A.ctypes.data, alignment_req_A,
         desc_B.value, mode_B.ctypes.data, alignment_req_B,
         desc_C.value, mode_C.ctypes.data, alignment_req_C,
@@ -279,17 +281,17 @@ def _create_contraction_descriptor(A, desc_A, mode_A, B, desc_B, mode_B,
 def _create_contraction_plan(desc, algo, ws_pref):
     """Create a contraction plan"""
     handle = get_handle()
-    key = (handle.value, algo)
+    key = (handle.ptr, algo)
     if key in _contraction_finds:
         find = _contraction_finds[key]
     else:
-        find = cutensor.initContractionFind(handle.value, algo)
+        find = cutensor.initContractionFind(handle, algo)
         find = Descriptor(find, cutensor.destroyContractionFind)
         _contraction_finds[key] = find
 
     ws_allocation_success = False
     for pref in (ws_pref, cutensor.WORKSPACE_MIN):
-        ws_size = cutensor.contractionGetWorkspace(handle.value, desc.value,
+        ws_size = cutensor.contractionGetWorkspace(handle, desc.value,
                                                    find.value, pref)
         try:
             ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
@@ -303,11 +305,11 @@ def _create_contraction_plan(desc, algo, ws_pref):
     if not ws_allocation_success:
         raise RuntimeError('cuTENSOR: failed to allocate memory of workspace.')
 
-    key = (handle.value, desc, find, ws_size)
+    key = (handle.ptr, desc, find, ws_size)
     if key in _contraction_plans:
         plan = _contraction_plans[key]
     else:
-        plan = cutensor.initContractionPlan(handle.value, desc.value,
+        plan = cutensor.initContractionPlan(handle, desc.value,
                                             find.value, ws_size)
         plan = Descriptor(plan, cutensor.destroyContractionPlan)
         _contraction_plans[key] = plan
@@ -375,7 +377,7 @@ def contraction(alpha, A, desc_A, mode_A, B, desc_B, mode_B,
                                           C, desc_C, mode_C,
                                           compute_dtype=compute_dtype)
     plan, ws, ws_size = _create_contraction_plan(desc, algo, ws_pref)
-    cutensor.contraction(handle.value, plan.value,
+    cutensor.contraction(handle, plan.value,
                          alpha.ctypes.data, A.data.ptr, B.data.ptr,
                          beta.ctypes.data, C.data.ptr, out.data.ptr,
                          ws.data.ptr, ws_size)
@@ -437,7 +439,7 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
     handle = get_handle()
     cutensor_dtype = get_cutensor_dtype(compute_dtype)
     ws_size = cutensor.reductionGetWorkspace(
-        handle.value,
+        handle,
         A.data.ptr, desc_A.value, mode_A.ctypes.data,
         C.data.ptr, desc_C.value, mode_C.ctypes.data,
         out.data.ptr, desc_C.value, mode_C.ctypes.data,
@@ -449,7 +451,7 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
                       '(size: {}).'.format(ws_size))
         ws_size = 0
         ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
-    cutensor.reduction(handle.value,
+    cutensor.reduction(handle,
                        alpha.ctypes.data,
                        A.data.ptr, desc_A.value, mode_A.ctypes.data,
                        beta.ctypes.data,

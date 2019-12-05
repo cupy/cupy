@@ -16,7 +16,7 @@ cdef extern from 'cupy_cutensor.h' nogil:
     ctypedef int WorksizePreference 'cutensorWorksizePreference_t'
     ctypedef int DataType 'cudaDataType_t'
     ctypedef int ComputeType 'cutensorComputeType_t'
-    ctypedef struct Handle 'cutensorHandle_t':
+    ctypedef struct cutensorHandle_t 'cutensorHandle_t':
         int64_t fields[512]
     ctypedef struct TensorDescriptor 'cutensorTensorDescriptor_t':
         int64_t fields[64]
@@ -29,10 +29,12 @@ cdef extern from 'cupy_cutensor.h' nogil:
 
     const char* cutensorGetErrorString(Status status)
 
-    int cutensorInit(Handle* handle)
+    int cutensorInit(cutensorHandle_t* handle)
+
+    # TODO(niboshi): Add const to input pointer parameters.
 
     int cutensorInitTensorDescriptor(
-        Handle* handle,
+        cutensorHandle_t* handle,
         TensorDescriptor* desc,
         uint32_t numModes,
         int64_t* extent,
@@ -41,7 +43,7 @@ cdef extern from 'cupy_cutensor.h' nogil:
         Operator unaryOp)
 
     int cutensorElementwiseTrinary(
-        Handle* handle,
+        cutensorHandle_t* handle,
         void* alpha,
         void* A, TensorDescriptor* descA, int32_t* modeA,
         void* beta,
@@ -53,7 +55,7 @@ cdef extern from 'cupy_cutensor.h' nogil:
         DataType typeScalar, driver.Stream stream)
 
     int cutensorElementwiseBinary(
-        Handle* handle,
+        cutensorHandle_t* handle,
         void* alpha,
         void* A, TensorDescriptor* descA, int32_t* modeA,
         void* gamma,
@@ -63,7 +65,7 @@ cdef extern from 'cupy_cutensor.h' nogil:
         DataType typeScalar, driver.Stream stream)
 
     int cutensorInitContractionDescriptor(
-        Handle* handle,
+        cutensorHandle_t* handle,
         ContractionDescriptor* desc,
         TensorDescriptor* descA, int32_t* modeA, uint32_t alignmentReqA,
         TensorDescriptor* descB, int32_t* modeB, uint32_t alignmentReqB,
@@ -72,26 +74,26 @@ cdef extern from 'cupy_cutensor.h' nogil:
         ComputeType typeCompute)
 
     int cutensorInitContractionFind(
-        Handle* handle,
+        cutensorHandle_t* handle,
         ContractionFind* find,
         Algo algo)
 
     int cutensorContractionGetWorkspace(
-        Handle* handle,
+        cutensorHandle_t* handle,
         ContractionDescriptor* desc,
         ContractionFind* find,
         WorksizePreference pref,
         uint64_t *workspaceSize)
 
     int cutensorInitContractionPlan(
-        Handle* handle,
+        cutensorHandle_t* handle,
         ContractionPlan* plan,
         ContractionDescriptor* desc,
         ContractionFind* find,
         uint64_t workspaceSize)
 
     int cutensorContraction(
-        Handle* handle,
+        cutensorHandle_t* handle,
         ContractionPlan* plan,
         void* alpha, void* A, void* B, void* beta, void* C, void* D,
         void *workspace, uint64_t workspaceSize, driver.Stream stream)
@@ -99,7 +101,7 @@ cdef extern from 'cupy_cutensor.h' nogil:
     int cutensorContractionMaxAlgos(int32_t* maxNumAlgos)
 
     int cutensorReduction(
-        Handle* handle,
+        cutensorHandle_t* handle,
         void* alpha,
         void* A, TensorDescriptor* descA, int32_t* modeA,
         void* beta,
@@ -110,7 +112,7 @@ cdef extern from 'cupy_cutensor.h' nogil:
         driver.Stream stream)
 
     int cutensorReductionGetWorkspace(
-        Handle* handle,
+        cutensorHandle_t* handle,
         void* A, TensorDescriptor* descA, int32_t* modeA,
         void* C, TensorDescriptor* descC, int32_t* modeC,
         void* D, TensorDescriptor* descD, int32_t* modeD,
@@ -118,7 +120,7 @@ cdef extern from 'cupy_cutensor.h' nogil:
         uint64_t* workspaceSize)
 
     int cutensorGetAlignmentRequirement(
-        Handle* handle,
+        cutensorHandle_t* handle,
         void* ptr,
         TensorDescriptor* desc,
         uint32_t* alignmentReq)
@@ -202,6 +204,26 @@ cpdef enum:
 
 
 ###############################################################################
+# Handle
+###############################################################################
+
+cdef class Handle:
+
+    cdef cutensorHandle_t* _ptr
+
+    def __init__(self):
+        self._ptr = <cutensorHandle_t*>PyMem_Malloc(sizeof(cutensorHandle_t))
+
+    def __del__(self):
+        PyMem_Free(self._ptr)
+        self._ptr = NULL
+
+    @property
+    def ptr(self):
+        return <intptr_t>self._ptr
+
+
+###############################################################################
 # Error handling
 ###############################################################################
 
@@ -223,27 +245,21 @@ cpdef inline check_status(int status):
 
 
 ###############################################################################
-# Handler initialization
+# cutensorHandle_tr initialization
 ###############################################################################
 
-cpdef intptr_t init() except? 0:
+cpdef void init(Handle handle) except *:
     """Initializes the cuTENSOR library"""
-    cdef Handle *handle = <Handle*>PyMem_Malloc(sizeof(Handle))
     with nogil:
-        status = cutensorInit(handle)
+        status = cutensorInit(handle._ptr)
     check_status(status)
-    return <intptr_t>handle
-
-
-cpdef destroy(intptr_t handle):
-    PyMem_Free(<Handle*>handle)
 
 
 ###############################################################################
 # Tensor descriptor initialization
 ###############################################################################
 
-cpdef size_t initTensorDescriptor(intptr_t handle,
+cpdef size_t initTensorDescriptor(Handle handle,
                                   uint32_t numModes,
                                   size_t extent,
                                   size_t stride,
@@ -252,8 +268,8 @@ cpdef size_t initTensorDescriptor(intptr_t handle,
     """Initializes a tesnor descriptor
 
     Args:
-        handle (cutensorHandle_t*): Opaque handle holding cuTENSOR's library
-            context.
+        handle (cutensorcutensorHandle_t_t*):
+            Opaque handle holding cuTENSOR's library context.
         numModes (uint32_t): number of modes
         extent (int64_t*): extent of each mode (must be larger than zero)
         stride (int64_t*): stride[i] denotes the displacement (stride)
@@ -275,7 +291,7 @@ cpdef size_t initTensorDescriptor(intptr_t handle,
     cdef TensorDescriptor *desc
     desc = <TensorDescriptor*>PyMem_Malloc(sizeof(TensorDescriptor))
     status = cutensorInitTensorDescriptor(
-        <Handle*> handle, desc, numModes,
+        handle._ptr, desc, numModes,
         <int64_t*> extent, <int64_t*> stride,
         <DataType> dataType, <Operator> unaryOp)
     check_status(status)
@@ -290,7 +306,7 @@ cpdef destroyTensorDescriptor(size_t desc):
 # Tensor elementwise operations
 ###############################################################################
 
-cpdef elementwiseTrinary(intptr_t handle,
+cpdef elementwiseTrinary(Handle handle,
                          size_t alpha,
                          size_t A, size_t descA, size_t modeA,
                          size_t beta,
@@ -344,7 +360,7 @@ cpdef elementwiseTrinary(intptr_t handle,
      - D_{a,b,c,d} = min((2.2 * A_{b,d,a,c} + 1.3 * B_{c,b,d,a}), C_{a,b,c,d})
 
     Args:
-        handle (cutensorHandle_t*): Opaque handle holding CUTENSOR's library
+        handle (Handle): Opaque handle holding CUTENSOR's library
             context.
         alpha (void*): Scaling factor for A (see equation above) of the type
             typeCompute. Pointer to the host memory. Note that A is not read if
@@ -404,7 +420,7 @@ cpdef elementwiseTrinary(intptr_t handle,
     """
     cdef size_t stream = stream_module.get_current_stream_ptr()
     status = cutensorElementwiseTrinary(
-        <Handle*> handle,
+        handle._ptr,
         <void*> alpha,
         <void*> A, <TensorDescriptor*> descA, <int32_t*> modeA,
         <void*> beta,
@@ -417,7 +433,7 @@ cpdef elementwiseTrinary(intptr_t handle,
     check_status(status)
 
 
-cpdef elementwiseBinary(intptr_t handle,
+cpdef elementwiseBinary(Handle handle,
                         size_t alpha,
                         size_t A, size_t descA, size_t modeA,
                         size_t gamma,
@@ -436,7 +452,7 @@ cpdef elementwiseBinary(intptr_t handle,
     """
     cdef size_t stream = stream_module.get_current_stream_ptr()
     status = cutensorElementwiseBinary(
-        <Handle*> handle,
+        handle._ptr,
         <void*> alpha,
         <void*> A, <TensorDescriptor*> descA, <int32_t*> modeA,
         <void*> gamma,
@@ -452,7 +468,7 @@ cpdef elementwiseBinary(intptr_t handle,
 ###############################################################################
 
 cpdef size_t initContractionDescriptor(
-        intptr_t handle,
+        Handle handle,
         size_t descA, size_t modeA, uint32_t alignmentReqA,
         size_t descB, size_t modeB, uint32_t alignmentReqB,
         size_t descC, size_t modeC, uint32_t alignmentReqC,
@@ -461,7 +477,7 @@ cpdef size_t initContractionDescriptor(
     """Initializes tensor contraction descriptor.
 
     Args:
-        handle (cutensorHandle_t*): Opaque handle holding cuTENSOR's library
+        handle (Handle): Opaque handle holding cuTENSOR's library
             context.
         descA (cutensorTensorDescriptor_t*): A descriptor that holds the
             information about the data type, modes and strides of A.
@@ -507,7 +523,7 @@ cpdef size_t initContractionDescriptor(
     cdef ContractionDescriptor *desc
     desc = <ContractionDescriptor*>PyMem_Malloc(sizeof(ContractionDescriptor))
     status = cutensorInitContractionDescriptor(
-        <Handle*> handle, desc,
+        handle._ptr, desc,
         <TensorDescriptor*> descA, <int32_t*> modeA, alignmentReqA,
         <TensorDescriptor*> descB, <int32_t*> modeB, alignmentReqB,
         <TensorDescriptor*> descC, <int32_t*> modeC, alignmentReqC,
@@ -521,14 +537,14 @@ cpdef destroyContractionDescriptor(size_t desc):
     PyMem_Free(<ContractionDescriptor*>desc)
 
 
-cpdef size_t initContractionFind(intptr_t handle, int algo):
+cpdef size_t initContractionFind(Handle handle, int algo):
     """Limits the search space of viable candidates
 
     This function gives the user finer control over the candidates that the
     subsequent call to cutensorInitContractionPlan() is allowed to evaluate.
 
     Args:
-        handle (cutensorHandle_t*): Opaque handle holding cuTENSOR's library
+        handle (Handle): Opaque handle holding cuTENSOR's library
             context.
         algo (cutensorAlgo_t): Allows users to select a specific algorithm.
             CUTENSOR_ALGO_DEFAULT lets the heuristic choose the algorithm.
@@ -542,7 +558,7 @@ cpdef size_t initContractionFind(intptr_t handle, int algo):
     """
     cdef ContractionFind* find
     find = <ContractionFind*>PyMem_Malloc(sizeof(ContractionFind))
-    status = cutensorInitContractionFind(<Handle*> handle, find, <Algo> algo)
+    status = cutensorInitContractionFind(handle._ptr, find, <Algo> algo)
     check_status(status)
     return <size_t> find
 
@@ -551,12 +567,12 @@ cpdef destroyContractionFind(size_t find):
     PyMem_Free(<ContractionFind*>find)
 
 
-cpdef size_t initContractionPlan(intptr_t handle, size_t desc, size_t find,
+cpdef size_t initContractionPlan(Handle handle, size_t desc, size_t find,
                                  uint64_t worksize):
     """Initializes the contraction plan
 
     Args:
-        handle (cutensorHandle_t*): Opaque handle holding cuTENSOR's library
+        handle (Handle): Opaque handle holding cuTENSOR's library
             context.
         desc (cutensorContractionDescriptor_t*) This opaque struct encodes the
             given tensor contraction problem.
@@ -573,7 +589,7 @@ cpdef size_t initContractionPlan(intptr_t handle, size_t desc, size_t find,
     cdef ContractionPlan* plan
     plan = <ContractionPlan*>PyMem_Malloc(sizeof(ContractionPlan))
     status = cutensorInitContractionPlan(
-        <Handle*> handle, plan, <ContractionDescriptor*> desc,
+        handle._ptr, plan, <ContractionDescriptor*> desc,
         <ContractionFind*> find, worksize)
     check_status(status)
     return <size_t> plan
@@ -583,7 +599,7 @@ cpdef destroyContractionPlan(size_t plan):
     PyMem_Free(<ContractionPlan*>plan)
 
 
-cpdef contraction(intptr_t handle, size_t plan,
+cpdef contraction(Handle handle, size_t plan,
                   size_t alpha, size_t A, size_t B,
                   size_t beta, size_t C, size_t D,
                   size_t workspace, uint64_t workspaceSize):
@@ -596,7 +612,7 @@ cpdef contraction(intptr_t handle, size_t plan,
      - D_{a,b,c,d} = 1.3 * A_{b,e,d,f} * B_{f,e,a,c}
 
     Args:
-        handle (cutensorHandle_t*): Opaque handle holding CUTENSOR's library
+        handle (Handle): Opaque handle holding CUTENSOR's library
             context.
         plan (cutensorContractionPlan_t*): Opaque handle holding the
             contraction execution plan.
@@ -619,18 +635,18 @@ cpdef contraction(intptr_t handle, size_t plan,
     """
     cdef size_t stream = stream_module.get_current_stream_ptr()
     status = cutensorContraction(
-        <Handle*> handle, <ContractionPlan*> plan, <void*> alpha,
+        handle._ptr, <ContractionPlan*> plan, <void*> alpha,
         <void*> A, <void*> B, <void*> beta, <void*> C, <void*> D,
         <void*> workspace, workspaceSize, <driver.Stream> stream)
     check_status(status)
 
 
-cpdef uint64_t contractionGetWorkspace(intptr_t handle, size_t desc,
+cpdef uint64_t contractionGetWorkspace(Handle handle, size_t desc,
                                        size_t find, int pref):
     """Determines the required workspaceSize for a given tensor contraction
 
     Args:
-        handle (cutensorHandle_t*): Opaque handle holding CUTENSOR's library
+        handle (Handle): Opaque handle holding CUTENSOR's library
             context.
         desc (cutensorContractionDescriptor_t*): This opaque struct encodes the
             given tensor contraction problem.
@@ -644,7 +660,7 @@ cpdef uint64_t contractionGetWorkspace(intptr_t handle, size_t desc,
     """
     cdef uint64_t workspaceSize
     status = cutensorContractionGetWorkspace(
-        <Handle*> handle, <ContractionDescriptor*> desc,
+        handle._ptr, <ContractionDescriptor*> desc,
         <ContractionFind*> find, <WorksizePreference> pref, &workspaceSize)
     check_status(status)
     return workspaceSize
@@ -672,7 +688,7 @@ cpdef int32_t contractionMaxAlgos():
 # Tensor reduction
 ###############################################################################
 
-cpdef reduction(intptr_t handle,
+cpdef reduction(Handle handle,
                 size_t alpha,
                 size_t A, size_t descA, size_t modeA,
                 size_t beta,
@@ -689,7 +705,7 @@ cpdef reduction(intptr_t handle,
      - D_{a,d} = 0.9 * A_{a,b,c,d} + 0.1 * C_{a,d}
 
     Args:
-        handle (cutensorHandle_t*): Opaque handle holding CUTENSOR's library
+        handle (Handle handle): Opaque handle holding CUTENSOR's library
             context.
         alpha (void*): Scaling for A. The data_type_t is determined by
             'typeCompute'. Pointer to the host memory.
@@ -729,7 +745,7 @@ cpdef reduction(intptr_t handle,
     """
     cdef size_t stream = stream_module.get_current_stream_ptr()
     status = cutensorReduction(
-        <Handle*> handle,
+        handle._ptr,
         <void*> alpha,
         <void*> A, <TensorDescriptor*> descA, <int32_t*> modeA,
         <void*> beta,
@@ -740,7 +756,7 @@ cpdef reduction(intptr_t handle,
     check_status(status)
 
 
-cpdef uint64_t reductionGetWorkspace(intptr_t handle,
+cpdef uint64_t reductionGetWorkspace(Handle handle,
                                      size_t A, size_t descA, size_t modeA,
                                      size_t C, size_t descC, size_t modeC,
                                      size_t D, size_t descD, size_t modeD,
@@ -756,7 +772,7 @@ cpdef uint64_t reductionGetWorkspace(intptr_t handle,
     """
     cdef uint64_t workspaceSize
     status = cutensorReductionGetWorkspace(
-        <Handle*> handle,
+        handle._ptr,
         <void*> A, <TensorDescriptor*> descA, <int32_t*> modeA,
         <void*> C, <TensorDescriptor*> descC, <int32_t*> modeC,
         <void*> D, <TensorDescriptor*> descD, <int32_t*> modeD,
@@ -765,13 +781,13 @@ cpdef uint64_t reductionGetWorkspace(intptr_t handle,
     return workspaceSize
 
 
-cpdef uint32_t getAlignmentRequirement(intptr_t handle, size_t ptr,
+cpdef uint32_t getAlignmentRequirement(Handle handle, size_t ptr,
                                        size_t desc):
     """Computes the minimal alignment requirement for a given pointer and
        descriptor
 
     Args:
-        handle (cutensorHandle_t*): Opaque handle holding CUTENSOR's library
+        handle (Handle): Opaque handle holding CUTENSOR's library
             context.
         ptr (void*): Raw pointer to the data of the respective tensor.
         desc (cutensorTensorDescriptor_t*): Tensor descriptor for ptr.
@@ -782,7 +798,7 @@ cpdef uint32_t getAlignmentRequirement(intptr_t handle, size_t ptr,
     """
     cdef uint32_t alignmentRequirement
     status = cutensorGetAlignmentRequirement(
-        <Handle*> handle, <void*> ptr, <TensorDescriptor*> desc,
+        handle._ptr, <void*> ptr, <TensorDescriptor*> desc,
         &alignmentRequirement)
     check_status(status)
     return alignmentRequirement
