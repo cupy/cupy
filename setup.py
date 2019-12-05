@@ -7,6 +7,11 @@ import sys
 import cupy_setup_build
 
 
+if sys.version_info[0] < 3:
+    print("Starting v7.0, CuPy no longer supports Python 2. "
+          "Python 2 users should stay on CuPy v6.x.")
+    sys.exit(1)
+
 if sys.version_info[:3] == (3, 5, 0):
     if not int(os.getenv('CUPY_PYTHON_350_FORCE', '0')):
         msg = """
