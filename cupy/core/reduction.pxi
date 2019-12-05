@@ -496,7 +496,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
 
         super().__init__(
             name,
-            identity if identity is None else str(identity),
+            '' if identity is None else str(identity),
             in_params,
             out_params,
         )
