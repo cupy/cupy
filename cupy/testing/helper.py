@@ -1016,7 +1016,10 @@ def with_requires(*requirements):
             run a given test case.
 
     """
+    # Delay import of pkg_resources because it is excruciatingly slow.
+    # See https://github.com/pypa/setuptools/issues/510
     import pkg_resources
+
     ws = pkg_resources.WorkingSet()
     try:
         ws.require(*requirements)
@@ -1034,7 +1037,10 @@ def numpy_satisfies(version_range):
     Args:
         version_range: A version specifier (e.g., `>=1.13.0`).
     """
+    # Delay import of pkg_resources because it is excruciatingly slow.
+    # See https://github.com/pypa/setuptools/issues/510
     import pkg_resources
+
     spec = 'numpy{}'.format(version_range)
     try:
         pkg_resources.require(spec)
