@@ -10,7 +10,7 @@ from cupy.cuda import compiler
 from cupy import util
 
 
-cpdef _get_simple_reduction_kernel(
+cpdef _create_reduction_kernel(
         name, block_size, reduce_type, params, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_preamble, input_expr, output_expr, preamble, options):
@@ -204,24 +204,6 @@ cdef tuple _get_reduction_args(
             block_size, out_block_num)
 
 
-@util.memoize(for_each_device=True)
-def _get_simple_reduction_function(
-        map_expr, reduce_expr, post_map_expr, reduce_type,
-        params, args_info, types,
-        name, block_size, identity, input_expr, output_expr, _preamble,
-        options):
-    params = _get_kernel_params(params, args_info)
-
-    type_preamble = '\n'.join(
-        'typedef %s %s;' % (_get_typename(v), k)
-        for k, v in types)
-
-    return _get_simple_reduction_kernel(
-        name, block_size, reduce_type, params, identity,
-        map_expr, reduce_expr, post_map_expr,
-        type_preamble, input_expr, output_expr, _preamble, options)
-
-
 cdef class _AbstractReductionKernel:
 
     cdef:
@@ -316,7 +298,34 @@ cdef class _AbstractReductionKernel:
         raise NotImplementedError()
 
 
-cdef class simple_reduction_function(_AbstractReductionKernel):
+# -----------------------------------------------------------------------------
+# create_reduction_func
+# -----------------------------------------------------------------------------
+
+cpdef create_reduction_func(name, ops, routine=None, identity=None,
+                            preamble=''):
+    _ops = []
+    for t in ops:
+        if not isinstance(t, tuple):
+            typ = t
+            rt = routine
+        else:
+            typ, rt = t
+            rt = tuple([i or j for i, j in zip(rt, routine)])
+
+        types = typ.split('->')
+        if len(types) == 1:
+            in_types = out_types = tuple(types)
+        else:
+            in_types, out_types = map(tuple, types)
+        in_types = tuple([get_dtype(t).type for t in in_types])
+        out_types = tuple([get_dtype(t).type for t in out_types])
+        _ops.append((in_types, out_types, rt))
+
+    return _SimpleReductionKernel(name, _ops, identity, preamble)
+
+
+cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
     cdef:
         readonly object _ops
@@ -405,7 +414,7 @@ cdef class simple_reduction_function(_AbstractReductionKernel):
             tuple params, tuple args_info, tuple types,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
             Py_ssize_t block_size):
-        return _get_simple_reduction_function(
+        return _SimpleReductionKernel_get_cached_kernel(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, args_info, types,
             self.name, block_size, self.identity,
@@ -413,32 +422,26 @@ cdef class simple_reduction_function(_AbstractReductionKernel):
 
 
 @util.memoize(for_each_device=True)
-def _get_reduction_kernel(
-        nin, nout, params, args_info, types,
-        name, block_size, reduce_type, identity, map_expr, reduce_expr,
-        post_map_expr, preamble, options):
-    kernel_params = _get_kernel_params(params, args_info)
-    params = params[:nin + nout]
-    args_info = args_info[:nin + nout]
-    in_arrays = [p for p, a in zip(params[:nin], args_info[:nin])
-                 if not p.raw and a[0] is ndarray]
-    out_arrays = [p for p, a in zip(params[nin:], args_info[nin:])
-                  if not p.raw and a[0] is ndarray]
+def _SimpleReductionKernel_get_cached_kernel(
+        map_expr, reduce_expr, post_map_expr, reduce_type,
+        params, args_info, types,
+        name, block_size, identity, input_expr, output_expr, _preamble,
+        options):
+    params = _get_kernel_params(params, args_info)
+
     type_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k)
         for k, v in types)
-    input_expr = '\n'.join(
-        [(('const {0} {1}' if p.is_const else '{0}& {1}') +
-          ' = _raw_{1}[_in_ind.get()];').format(p.ctype, p.name)
-         for p in in_arrays])
-    output_expr = '\n'.join(
-        ['{0} &{1} = _raw_{1}[_out_ind.get()];'.format(p.ctype, p.name)
-         for p in out_arrays if not p.is_const])
 
-    return _get_simple_reduction_kernel(
-        name, block_size, reduce_type, kernel_params, identity,
+    return _create_reduction_kernel(
+        name, block_size, reduce_type, params, identity,
         map_expr, reduce_expr, post_map_expr,
-        type_preamble, input_expr, output_expr, preamble, options)
+        type_preamble, input_expr, output_expr, _preamble, options)
+
+
+# -----------------------------------------------------------------------------
+# ReductionKernel
+# -----------------------------------------------------------------------------
 
 
 cdef class ReductionKernel(_AbstractReductionKernel):
@@ -592,31 +595,37 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             tuple params, tuple args_info, tuple types,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
             Py_ssize_t block_size):
-        return _get_reduction_kernel(
+        return _ReductionKernel_get_cached_kernel(
             self.nin, self.nout, params, args_info, types,
             self.name, block_size, reduce_type, self.identity,
             map_expr, reduce_expr, post_map_expr,
             self.preamble, self.options)
 
 
-cpdef create_reduction_func(name, ops, routine=None, identity=None,
-                            preamble=''):
-    _ops = []
-    for t in ops:
-        if not isinstance(t, tuple):
-            typ = t
-            rt = routine
-        else:
-            typ, rt = t
-            rt = tuple([i or j for i, j in zip(rt, routine)])
+@util.memoize(for_each_device=True)
+def _ReductionKernel_get_cached_kernel(
+        nin, nout, params, args_info, types,
+        name, block_size, reduce_type, identity, map_expr, reduce_expr,
+        post_map_expr, preamble, options):
+    kernel_params = _get_kernel_params(params, args_info)
+    params = params[:nin + nout]
+    args_info = args_info[:nin + nout]
+    in_arrays = [p for p, a in zip(params[:nin], args_info[:nin])
+                 if not p.raw and a[0] is ndarray]
+    out_arrays = [p for p, a in zip(params[nin:], args_info[nin:])
+                  if not p.raw and a[0] is ndarray]
+    type_preamble = '\n'.join(
+        'typedef %s %s;' % (_get_typename(v), k)
+        for k, v in types)
+    input_expr = '\n'.join(
+        [(('const {0} {1}' if p.is_const else '{0}& {1}') +
+          ' = _raw_{1}[_in_ind.get()];').format(p.ctype, p.name)
+         for p in in_arrays])
+    output_expr = '\n'.join(
+        ['{0} &{1} = _raw_{1}[_out_ind.get()];'.format(p.ctype, p.name)
+         for p in out_arrays if not p.is_const])
 
-        types = typ.split('->')
-        if len(types) == 1:
-            in_types = out_types = tuple(types)
-        else:
-            in_types, out_types = map(tuple, types)
-        in_types = tuple([get_dtype(t).type for t in in_types])
-        out_types = tuple([get_dtype(t).type for t in out_types])
-        _ops.append((in_types, out_types, rt))
-
-    return simple_reduction_function(name, _ops, identity, preamble)
+    return _create_reduction_kernel(
+        name, block_size, reduce_type, kernel_params, identity,
+        map_expr, reduce_expr, post_map_expr,
+        type_preamble, input_expr, output_expr, preamble, options)
