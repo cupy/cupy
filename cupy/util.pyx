@@ -1,5 +1,8 @@
 # distutils: language = c++
 
+from cpython cimport mem
+from libc.stdint cimport intptr_t
+
 import atexit
 import collections
 import functools
@@ -24,6 +27,16 @@ except AttributeError:  # python <3.3
 
 
 cdef list _memos = []
+
+
+cpdef intptr_t malloc(size_t size):
+    """Allocates a memory of specified size."""
+    return <intptr_t>mem.PyMem_Malloc(size)
+
+
+cpdef void free(intptr_t ptr):
+    """Frees the specified memory."""
+    mem.PyMem_Free(<void*>ptr)
 
 
 def _normalize_axis_index(axis, ndim):

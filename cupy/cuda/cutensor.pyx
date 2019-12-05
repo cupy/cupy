@@ -125,10 +125,12 @@ cdef extern from 'cupy_cutensor.h' nogil:
 
 
 ###############################################################################
-# Enum
+# Enum and constants
 ###############################################################################
 
 cpdef enum:
+    HANDLE_SIZE = sizeof(Handle)
+
     # cutensorAlgo_t (values > 0 correspond to certain algorithms of GETT)
     ALGO_GETT = -4     # NOQA, Choose the GETT algorithm
     ALGO_TGETT = -3    # NOQA, Transpose (A or B) + GETT
@@ -226,17 +228,11 @@ cpdef inline check_status(int status):
 # Handler initialization
 ###############################################################################
 
-cpdef intptr_t init() except? 0:
+cpdef void init(intptr_t handle) except *:
     """Initializes the cuTENSOR library"""
-    cdef Handle *handle = <Handle*>PyMem_Malloc(sizeof(Handle))
     with nogil:
-        status = cutensorInit(handle)
+        status = cutensorInit(<Handle*>handle)
     check_status(status)
-    return <intptr_t>handle
-
-
-cpdef destroy(intptr_t handle):
-    PyMem_Free(<Handle*>handle)
 
 
 ###############################################################################
