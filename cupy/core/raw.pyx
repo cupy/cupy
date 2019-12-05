@@ -21,8 +21,10 @@ cdef class RawKernel:
     Args:
         code (str): CUDA source code.
         name (str): Name of the kernel function.
-        options (str): Compiler options passed to NVRTC. For details, see
-            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
+        options (tuple of str): Compiler options passed to the backend (NVRTC
+            or NVCC). For details, see
+            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options or
+            https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#command-option-description
         backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
         translate_cucomplex (bool): Whether the CUDA source includes the header
             `cuComplex.h` or not. If set to ``True``, any code that uses the
@@ -216,9 +218,10 @@ cdef class RawModule:
 
     Args:
         code_or_path (str): CUDA source code or path to cubin.
-        options (str): Compiler options passed to NVRTC if compilation is
-            needed. For details, see
-            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
+        options (tuple of str): Compiler options passed to the backend (NVRTC
+            or NVCC). For details, see
+            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options or
+            https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#command-option-description
         backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
         translate_cucomplex (bool): Whether the CUDA source includes the header
             `cuComplex.h` or not. If set to ``True``, any code that uses the
