@@ -154,6 +154,7 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
         raise ValueError('Shape and axes have different lengths.')
 
     a = _convert_dtype(a, value_type)
+
     if axes is None:
         if s is None:
             dim = a.ndim
@@ -196,26 +197,26 @@ def _prep_fftn_axes(ndim, s=None, axes=None):
         else:
             dim = len(s)
         axes = tuple([i + ndim for i in six.moves.range(-dim, 0)])
-    elif np.isscalar(axes):
-        axes = axes,
+        axes_sorted = axes
     else:
-        axes = tuple(sorted([ax % ndim for ax in axes]))
-
-    if reduce(min, axes) < -ndim or reduce(max, axes) > ndim - 1:
-        raise ValueError("The specified axes exceed the array dimensions.")
+        axes = tuple(axes)
+        if reduce(min, axes) < -ndim or reduce(max, axes) > ndim - 1:
+            raise ValueError("The specified axes exceed the array dimensions.")
+        axes_sorted = tuple(sorted([ax % ndim for ax in axes]))
 
     # PlanNd supports 1D, 2D and 3D batch transforms over contiguous axes
     if (len(axes) > 3 or
             # PlanNd only possible if the first or last axis is in axes.
-            ((0 not in axes) and ((ndim - 1) not in axes)) or
+            ((0 not in axes_sorted) and ((ndim - 1) not in axes_sorted)) or
             # axes are not contiguous
-            not all([(axes[n + 1] - axes[n]) == 1
-                     for n in range(len(axes) - 1)])):
+            not all([(axes_sorted[n + 1] - axes_sorted[n]) == 1
+                     for n in range(len(axes_sorted) - 1)])):
         nd_plan_possible = False
     else:
         nd_plan_possible = True
 
-    return axes, nd_plan_possible
+    # unsorted axes for _cook_shape, sorted ones are otherwise used
+    return axes, axes_sorted, nd_plan_possible
 
 
 def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
@@ -246,7 +247,8 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
         # transform over all axes
         fft_axes = tuple(range(ndim))
     else:
-        fft_axes, nd_plan_possible = _prep_fftn_axes(ndim, s=None, axes=axes)
+        _, fft_axes, nd_plan_possible = _prep_fftn_axes(ndim, s=None,
+                                                        axes=axes)
 
     if len(fft_axes) < 1 or len(fft_axes) > 3:
         raise ValueError(
@@ -414,7 +416,7 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
                          % norm)
 
     a = _convert_dtype(a, value_type)
-    axes, _ = _prep_fftn_axes(a.ndim, s, axes)
+    axes, axes_sorted, _ = _prep_fftn_axes(a.ndim, s, axes)
 
     if order == 'A':
         if a.flags.f_contiguous:
@@ -427,13 +429,14 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
     elif order not in ['C', 'F']:
         raise ValueError('Unsupported order: {}'.format(order))
 
+    # Note: need to call_cook_shape prior to sorting the axes
     a = _cook_shape(a, s, axes, value_type, order=order)
+
     if order == 'C' and not a.flags.c_contiguous:
         a = cupy.ascontiguousarray(a)
     elif order == 'F' and not a.flags.f_contiguous:
         a = cupy.asfortranarray(a)
-
-    a = _exec_fftn(a, direction, value_type, norm=norm, axes=axes,
+    a = _exec_fftn(a, direction, value_type, norm=norm, axes=axes_sorted,
                    overwrite_x=overwrite_x, plan=plan, out=out)
     return a
 
@@ -453,8 +456,8 @@ def _default_fft_func(a, s=None, axes=None, plan=None):
           a.ndim == 1 or not config.enable_nd_planning):
         return _fft
 
-    axes, nd_plan_possible = _prep_fftn_axes(a.ndim, s, axes)
-    if len(axes) > 1 and nd_plan_possible:
+    _, axes_sorted, nd_plan_possible = _prep_fftn_axes(a.ndim, s, axes)
+    if len(axes_sorted) > 1 and nd_plan_possible:
         # prefer Plan1D in the 1D case
         return _fftn
     return _fft
