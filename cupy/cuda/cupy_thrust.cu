@@ -44,101 +44,69 @@ public:
 };
 
 
-/* ------------------------------------ Minimum boilerplate to support complex numbers ------------------------------------ */
-// We need a specialized operator< here in order to match the NumPy behavior:
-// "The sort order for complex numbers is lexicographic. If both the real and imaginary parts are non-nan then the order is
-// determined by the real parts except when they are equal, in which case the order is determined by the imaginary parts.
-//
-// In numpy versions >= 1.4.0 nan values are sorted to the end. The extended sort order is:
-//     Real: [R, nan]
-//     Complex: [R + Rj, R + nanj, nan + Rj, nan + nanj]
-// where R is a non-nan real value. Complex values with the same nan placements are sorted according to the non-nan part if
-// it exists. Non-nan values are sorted as before."
-// Ref: https://docs.scipy.org/doc/numpy/reference/generated/numpy.sort.html
+/*
+ * ------------------------------------ Minimum boilerplate to support complex numbers -------------------------------------
+ * We need a specialized operator< here in order to match the NumPy behavior:
+ * "The sort order for complex numbers is lexicographic. If both the real and imaginary parts are non-nan then the order is
+ * determined by the real parts except when they are equal, in which case the order is determined by the imaginary parts.
+ *
+ * In numpy versions >= 1.4.0 nan values are sorted to the end. The extended sort order is:
+ *     Real: [R, nan]
+ *     Complex: [R + Rj, R + nanj, nan + Rj, nan + nanj]
+ * where R is a non-nan real value. Complex values with the same nan placements are sorted according to the non-nan part if
+ * it exists. Non-nan values are sorted as before."
+ * Ref: https://docs.scipy.org/doc/numpy/reference/generated/numpy.sort.html
+ */
 
 template <typename T>
-__host__ __device__ __forceinline__ int _check_nan(const T& lhs, const T& rhs) {
-    // return values: +1: lhs < rhs; 0: neither is NaN; -1: lhs > rhs
-
+__host__ __device__ __forceinline__ bool _cmp_less(const T& lhs, const T& rhs) {
     bool lhsRe = isnan(lhs.x);
     bool lhsIm = isnan(lhs.y);
     bool rhsRe = isnan(rhs.x);
     bool rhsIm = isnan(rhs.y);
 
-    if (!lhsRe && !lhsIm && !rhsRe && !rhsIm)
-        return 0;
-    if (!lhsRe && !lhsIm && (rhsRe || rhsIm))
-        return 1;
-    if ((lhsRe || lhsIm) && !rhsRe && !rhsIm)
-        return -1;
-
-    // at this point, we know both lhs and rhs have at least one NaN
-    if (lhsRe && !rhsRe)
-        return -1;
-    if (!lhsRe && rhsRe)
-        return 1;
-    if (lhsIm && !rhsIm)
-        return -1;
-    if (!lhsIm && rhsIm)
-        return 1;
-
-    // now compare the numerical values
-    if (lhsIm && rhsIm) {
-        if (lhs.x < rhs.x)
-            return 1;
-        else
-            return -1;
-    }
-    if (lhsRe && rhsRe) {
-        if (lhs.y < rhs.y)
-            return 1;
-        else
-            return -1;
+    // neither side has nan
+    if (!lhsRe && !lhsIm && !rhsRe && !rhsIm) {
+        return (lhs.x < rhs.x || ((lhs.x == rhs.x) && (lhs.y < rhs.y)));
     }
 
-    // both are nan + nan * I
-    return -1;
+    // one side has nan, and the other does not
+    if (!lhsRe && !lhsIm && (rhsRe || rhsIm)) {
+        return true;
+    }
+    if ((lhsRe || lhsIm) && !rhsRe && !rhsIm) {
+        return false;
+    }
+
+    // pick 2 from 3 possibilities (R + nanj, nan + Rj, nan + nanj)
+    if (lhsRe && !rhsRe) {
+        return false;
+    }
+    if (!lhsRe && rhsRe) {
+        return true;
+    }
+    if (lhsIm && !rhsIm) {
+        return false;
+    }
+    if (!lhsIm && rhsIm) {
+        return true;
+    }
+
+    // pick 1 from 3 and compare the numerical values (nan+nan*I compares to itself as false)
+    return (((lhsIm && rhsIm) && (lhs.x < rhs.x)) || ((lhsRe && rhsRe) && (lhs.y < rhs.y)));
 }
 
-// Unfortunately we need explicit (instead of templated) definitions here, because the template specializations would
-// go through some wild routes in Thrust that passing by reference to device functions is not working...
+/*
+ * Unfortunately we need explicit (instead of templated) definitions here, because the template specializations would
+ * go through some wild routes in Thrust that passing by reference to device functions is not working...
+ */
 
 __host__ __device__ __forceinline__ bool operator<(const cuComplex& lhs, const cuComplex& rhs) {
-    int isnan = _check_nan(lhs, rhs);
-    if (isnan == 1) {
-        return true;
-    } else if (isnan == -1) {
-        return false;
-    } else {  // both are regular numbers
-        if (lhs.x == rhs.x && lhs.y == rhs.y) {
-            return false;
-        } else if (lhs.x < rhs.x) {
-            return true;
-        } else if (lhs.x == rhs.x) {
-            return lhs.y < rhs.y;
-        } else {
-            return false;
-        }
-    }
+    return _cmp_less(lhs, rhs);
 }
 
 __host__ __device__ __forceinline__ bool operator<(const cuDoubleComplex& lhs, const cuDoubleComplex& rhs) {
-    int isnan = _check_nan(lhs, rhs);
-    if (isnan == 1) {
-        return true;
-    } else if (isnan == -1) {
-        return false;
-    } else {  // both are regular numbers
-        if (lhs.x == rhs.x && lhs.y == rhs.y) {
-            return false;
-        } else if (lhs.x < rhs.x) {
-            return true;
-        } else if (lhs.x == rhs.x) {
-            return lhs.y < rhs.y;
-        } else {
-            return false;
-        }
-    }
+    return _cmp_less(lhs, rhs);
 }
 /* ------------------------------------ end of boilerplate ------------------------------------ */
 
