@@ -82,8 +82,6 @@ cpdef enum:
     CU_TRSF_NORMALIZED_COORDINATES = 0x02
     CU_TRSF_SRGB = 0x10
 
-    CU_PARAM_TR_DEFAULT = -1
-
 
 ###############################################################################
 # Primary context management
