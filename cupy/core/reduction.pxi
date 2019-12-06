@@ -10,7 +10,7 @@ from cupy.cuda import compiler
 from cupy import util
 
 
-cpdef _create_reduction_kernel(
+cpdef function.Function _create_reduction_function(
         name, block_size, reduce_type, params, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_preamble, input_expr, output_expr, preamble, options):
@@ -274,11 +274,11 @@ cdef class _AbstractReductionKernel:
             reduce_axis + out_axis, a_shape, out_shape, reduce_dims)
         args_info = _get_args_info(inout_args)
 
-        kern = self._get_kernel(
+        func = self._get_function(
             self._params, args_info, types,
             map_expr, reduce_expr, post_map_expr, reduce_type,
             block_size)
-        kern.linear_launch(
+        func.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
         return ret
 
@@ -290,7 +290,7 @@ cdef class _AbstractReductionKernel:
             self, list out_args, tuple out_types, tuple out_shape):
         raise NotImplementedError()
 
-    cdef function.Function _get_kernel(
+    cdef function.Function _get_function(
             self,
             tuple params, tuple args_info, tuple types,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
@@ -302,8 +302,8 @@ cdef class _AbstractReductionKernel:
 # create_reduction_func
 # -----------------------------------------------------------------------------
 
-cpdef create_reduction_func(name, ops, routine=None, identity=None,
-                            preamble=''):
+cpdef _SimpleReductionKernel create_reduction_func(
+        name, ops, routine=None, identity=None, preamble=''):
     _ops = []
     for t in ops:
         if not isinstance(t, tuple):
@@ -409,12 +409,12 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         return _get_out_args(
             out_args, out_types, out_shape, 'unsafe')
 
-    cdef function.Function _get_kernel(
+    cdef function.Function _get_function(
             self,
             tuple params, tuple args_info, tuple types,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
             Py_ssize_t block_size):
-        return _SimpleReductionKernel_get_cached_kernel(
+        return _SimpleReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, args_info, types,
             self.name, block_size, self.identity,
@@ -422,7 +422,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
 
 @util.memoize(for_each_device=True)
-def _SimpleReductionKernel_get_cached_kernel(
+def _SimpleReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, args_info, types,
         name, block_size, identity, input_expr, output_expr, _preamble,
@@ -433,7 +433,7 @@ def _SimpleReductionKernel_get_cached_kernel(
         'typedef %s %s;' % (_get_typename(v), k)
         for k, v in types)
 
-    return _create_reduction_kernel(
+    return _create_reduction_function(
         name, block_size, reduce_type, params, identity,
         map_expr, reduce_expr, post_map_expr,
         type_preamble, input_expr, output_expr, _preamble, options)
@@ -590,12 +590,12 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         return _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params, False)
 
-    cdef function.Function _get_kernel(
+    cdef function.Function _get_function(
             self,
             tuple params, tuple args_info, tuple types,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
             Py_ssize_t block_size):
-        return _ReductionKernel_get_cached_kernel(
+        return _ReductionKernel_get_cached_function(
             self.nin, self.nout, params, args_info, types,
             self.name, block_size, reduce_type, self.identity,
             map_expr, reduce_expr, post_map_expr,
@@ -603,7 +603,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
 
 
 @util.memoize(for_each_device=True)
-def _ReductionKernel_get_cached_kernel(
+def _ReductionKernel_get_cached_function(
         nin, nout, params, args_info, types,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
         post_map_expr, preamble, options):
@@ -625,7 +625,7 @@ def _ReductionKernel_get_cached_kernel(
         ['{0} &{1} = _raw_{1}[_out_ind.get()];'.format(p.ctype, p.name)
          for p in out_arrays if not p.is_const])
 
-    return _create_reduction_kernel(
+    return _create_reduction_function(
         name, block_size, reduce_type, kernel_params, identity,
         map_expr, reduce_expr, post_map_expr,
         type_preamble, input_expr, output_expr, preamble, options)
