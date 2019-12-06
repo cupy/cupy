@@ -157,10 +157,6 @@ CUresult cuTexRefSetMaxAnisotropy (...) {
     return hipErrorUnknown;
 }
 
-CUresult cuParamSetTexRef (...) {
-    return hipErrorUnknown;
-}
-
 // Occupancy
 typedef size_t (*CUoccupancyB2DSize)(int);
 
