@@ -139,7 +139,7 @@ def bincount(x, weights=None, minlength=None):
 
 
 def digitize(x, bins, right=False):
-    """ Finds the indices of the bins to which each value in input array belongs.
+    """Finds the indices of the bins to which each value in input array belongs.
 
     .. note::
 
@@ -159,25 +159,15 @@ def digitize(x, bins, right=False):
 
     .. seealso:: :func:`numpy.digitize`
     """
-    bins = cupy.asarray(bins)
-
     # This is for NumPy compat, although it works fine
     if x.dtype.kind == 'c':
-        raise TypeError("x may not be complex")
+        raise TypeError('x may not be complex')
 
     if bins.ndim > 1:
         raise ValueError('object too deep for desired array')
     if bins.ndim < 1:
         raise ValueError('object of too small depth for desired array')
 
-    if not isinstance(bins, cupy.ndarray):
-        raise NotImplementedError('Only int or ndarray are supported for bins')
-
     # As the order of the arguments are reversed, the side must be too.
     side = 'left' if right else 'right'
-    if right:
-        return cupy.sorting.search._searchsorted(
-            bins, x, side, None, True)
-    else:
-        return cupy.sorting.search._searchsorted(
-            bins, x, side, None, True)
+    return cupy.sorting.search._searchsorted(bins, x, side, None, False)

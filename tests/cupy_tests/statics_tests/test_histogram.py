@@ -153,19 +153,14 @@ class TestHistogram(unittest.TestCase):
 @testing.gpu
 @testing.parameterize(*testing.product(
     {'bins': [
-        [0, 1, 2, 4, 10],
-        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        [0.0, 1.0, 2.5, 4.0, 10.0],
-        [-1.0, 1.0, 2.5, 4.0, 20.0],
+        # Test monotonically increasing with in-bounds values
         [1.5, 2.5, 4.0, 6.0],
+        # Explicit out-of-bounds for x values
+        [-1.0, 1.0, 2.5, 4.0, 20.0],
+        # Repeated values should yield right-most or left-most indexes
         [0.0, 1.0, 1.0, 4.0, 4.0, 10.0],
-        [0.0, 1.0, 1.0, 4.0, 4.0, 4.0, 4.0, 10.0],
-        [10.0, 4.0, 2.5, 1.0, 0.0],
-        [10.0, 4.0, 4.0, 2.5, 1.0, 0.0],
-        [10.0, 10.0, 4.0, 4.0, 4.0, 4.0, 2.5, 1.0, 0.0, 0.0],
-        [15.0, 4.0, 2.5, 1.0, -1.0],
-        [4.0, 3.0, 2.5, 1.0],
     ],
+        'increasing': [True, False],
         'right': [True, False],
         'shape': [(), (10,), (6, 3, 3)]})
 )
@@ -176,7 +171,10 @@ class TestDigitize(unittest.TestCase):
     @testing.numpy_cupy_array_list_equal()
     def test_digitize(self, xp, dtype):
         x = testing.shaped_arange(self.shape, xp, dtype)
-        bins = xp.array(self.bins)
+        bins = self.bins
+        if not self.increasing:
+            bins = bins[::-1]
+        bins = xp.array(bins)
         y = xp.digitize(x, bins, right=self.right)
         return y,
 

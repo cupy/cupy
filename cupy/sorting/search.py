@@ -187,44 +187,25 @@ def where(condition, x=None, y=None):
 _preamble = '''
 template<typename T>
 __device__ bool _isnan(T val) {
-    return false;
-}
-template<>
-__device__ bool _isnan(float16 val) {
-    return isnan(val);
-}
-template<>
-__device__ bool _isnan(float val) {
-    return isnan(val);
-}
-template<>
-__device__ bool _isnan(double val) {
-    return isnan(val);
-}
-template<>
-__device__ bool _isnan(const complex<double>& val) {
-    return isnan(val);
-}
-template<>
-__device__ bool _isnan(const complex<float>& val) {
-    return isnan(val);
+    return val != val;
 }
 '''
 
 
 _searchsorted_kernel = core.ElementwiseKernel(
-    'S x, raw T bins, int64 n_bins, bool side_is_right, bool check_mono',
+    'S x, raw T bins, int64 n_bins, bool side_is_right, '
+    'bool assume_increassing',
     'int64 y',
     '''
     // Array is assumed to be monotonically
-    // increasing unless a check is requested
-    // because of functions like digitize
-    // allowing both, increasing and decreasing
+    // increasing unless a check is requested with the
+    // `assume_increassing = False` parameter.
+    // `digitize` allows increasing and decreasing arrays.
     bool inc = true;
-    if (check_mono && n_bins >= 2) {
+    if (!assume_increassing && n_bins >= 2) {
         // In the case all the bins are nan the array is considered
         // to be decreasing in numpy
-        inc = (bins[0] <= bins[n_bins-1]) \
+        inc = (bins[0] <= bins[n_bins-1])
               || (!_isnan<T>(bins[0]) && _isnan<T>(bins[n_bins-1]));
     }
 
@@ -267,18 +248,24 @@ _searchsorted_kernel = core.ElementwiseKernel(
             y = n_bins;
             return;
         }
+        if (side_is_right
+                && !_isnan<T>(bins[n_bins-1]) && !_isnan<S>(x)
+                && bins[n_bins-1] > x) {
+            y = n_bins;
+            return;
+        }
     }
 
     long long right = n_bins-1;
     while (left < right) {
         long long m = left + (right - left) / 2;
-        bool look_left = true;
+        bool look_right = true;
         if (side_is_right) {
-            look_left = (inc ? bins[m] <= x : bins[m] > x);
+            look_right = (inc ? bins[m] <= x : bins[m] > x);
         } else {
-            look_left = (inc ? bins[m] < x : bins[m] >= x);
+            look_right = (inc ? bins[m] < x : bins[m] >= x);
         }
-        if (look_left) {
+        if (look_right) {
             left = m + 1;
         } else {
             right = m;
@@ -317,10 +304,14 @@ def searchsorted(a, v, side='left', sorter=None):
     .. seealso:: :func:`numpy.searchsorted`
 
     """
-    return _searchsorted(a, v, side, sorter, False)
+    return _searchsorted(a, v, side, sorter, True)
 
 
-def _searchsorted(a, v, side, sorter, check):
+def _searchsorted(a, v, side, sorter, assume_increasing):
+    """`assume_increasing` is used in the kernel to
+    skip monotonically increasing or decreasing verification
+    inside the cuda kernel.
+    """
     if not isinstance(a, cupy.ndarray):
         raise NotImplementedError('Only int or ndarray are supported for a')
 
@@ -353,7 +344,7 @@ def _searchsorted(a, v, side, sorter, check):
 
     y = cupy.zeros(v.shape, dtype=cupy.int64)
 
-    _searchsorted_kernel(v, a, a.size, side == 'right', check, y)
+    _searchsorted_kernel(v, a, a.size, side == 'right', assume_increasing, y)
     return y
 
 
