@@ -197,6 +197,33 @@ In other words, you have control over grid size, block size, shared memory size 
           [30., 32., 34., 36., 38.],
           [40., 42., 44., 46., 48.]], dtype=float32)
 
+Raw kernels operating on complex-valued arrays can be created as well:
+
+.. doctest::
+
+   >>> complex_kernel = cp.RawKernel(r'''
+   ... #include <cupy/complex.cuh>
+   ... extern "C" __global__
+   ... void my_func(const complex<float>* x1, const complex<float>* x2,
+   ...              complex<float>* y, float a) {
+   ...     int tid = blockDim.x * blockIdx.x + threadIdx.x;
+   ...     y[tid] = x1[tid] + a * x2[tid];
+   ... }
+   ... ''', 'my_func')
+   >>> x1 = cupy.arange(25, dtype=cupy.complex64).reshape(5, 5)
+   >>> x2 = 1j*cupy.arange(25, dtype=cupy.complex64).reshape(5, 5)
+   >>> y = cupy.zeros((5, 5), dtype=cupy.complex64)
+   >>> complex_kernel((5,), (5,), (x1, x2, y, cupy.float32(2.0)))  # grid, block and arguments
+   >>> y
+   array([[ 0. +0.j,  1. +2.j,  2. +4.j,  3. +6.j,  4. +8.j],
+          [ 5.+10.j,  6.+12.j,  7.+14.j,  8.+16.j,  9.+18.j],
+          [10.+20.j, 11.+22.j, 12.+24.j, 13.+26.j, 14.+28.j],
+          [15.+30.j, 16.+32.j, 17.+34.j, 18.+36.j, 19.+38.j],
+          [20.+40.j, 21.+42.j, 22.+44.j, 23.+46.j, 24.+48.j]],
+         dtype=complex64)
+
+Note that while we encourage the usage of ``complex<T>`` types for complex numbers (available by including ``<cupy/complex.cuh>`` as shown above), for CUDA codes already written using functions from ``cuComplex.h`` there is no need to make the conversion yourself: just set the option ``translate_cucomplex=True`` when creating a :class:`~cupy.RawKernel` instance.
+
 The CUDA kernel attributes can be retrieved by either accessing the :attr:`~cupy.RawKernel.attributes` dictionary,
 or by accessing the :class:`~cupy.RawKernel` object's attributes directly; the latter can also be used to set certain
 attributes:
@@ -212,11 +239,15 @@ attributes:
    ... ''', 'my_add')
    >>> add_kernel.attributes  # doctest: +SKIP
    {'max_threads_per_block': 1024, 'shared_size_bytes': 0, 'const_size_bytes': 0, 'local_size_bytes': 0, 'num_regs': 10, 'ptx_version': 70, 'binary_version': 70, 'cache_mode_ca': 0, 'max_dynamic_shared_size_bytes': 49152, 'preferred_shared_memory_carveout': -1}
-   >>> add_kernel.max_dynamic_shared_size_bytes
+   >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
    49152
    >>> add_kernel.max_dynamic_shared_size_bytes = 50000  # set a new value for the attribute  # doctest: +SKIP
    >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
    50000
+
+Dynamical parallelism is supported by :class:`~cupy.RawKernel`. You just need to provide the linking flag (such as ``-dc``) to :class:`~cupy.RawKernel`'s ``options`` arugment. The static CUDA device runtime library (``cudadevrt``) is automatically discovered by CuPy. For further detail, see `CUDA Toolkit's documentation`_.
+
+.. _CUDA Toolkit's documentation: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compiling-and-linking
 
 Accessing texture memory in :class:`~cupy.RawKernel` is supported via CUDA Runtime's Texture Object API, see :class:`~cupy.cuda.texture.TextureObject`'s documentation as well as CUDA C Programming Guide. For using the Texture Reference API, which is marked as deprecated as of CUDA Toolkit 10.1, see the introduction to :class:`~cupy.RawModule` below.
 
@@ -277,6 +308,8 @@ For dealing a large raw CUDA source or loading an existing CUDA binary, the :cla
     >>> assert cp.allclose(y, x1 + x2)
     >>> ker_times((N,), (N,), (x1, x2, y, N**2)) # y = x1 * x2
     >>> assert cp.allclose(y, x1 * x2)
+
+The instruction above for using complex numbers in :class:`~cupy.RawKernel` also applies to :class:`~cupy.RawModule`.
 
 CuPy also supports the Texture Reference API. A handle to the texture reference in a module can be retrieved by name via :meth:`~cupy.RawModule.get_texref`. Then, you need to pass it to :class:`~cupy.cuda.texture.TextureReference`, along with a resource descriptor and texture descriptor, for binding the reference to the array. (The interface of :class:`~cupy.cuda.texture.TextureReference` is meant to mimic that of :class:`~cupy.cuda.texture.TextureObject` to help users make transition to the latter, since as of CUDA Toolkit 10.1 the former is marked as deprecated.)
 

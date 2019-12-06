@@ -12,7 +12,12 @@ i0 = ufunc.create_math_ufunc(
 
 
 sinc = core.create_ufunc(
-    'cupy_sinc', ('e->e', 'f->f', 'd->d'),
+    'cupy_sinc',
+    ('e->e', 'f->f', 'd->d',
+     ('F->F', 'in0_type pi_in0 = (in0_type) M_PI * in0;'
+              'out0 = abs(in0) > 1e-9 ? sin(pi_in0) / (pi_in0) : 1'),
+     ('D->D', 'in0_type pi_in0 = (in0_type) M_PI * in0;'
+              'out0 = abs(in0) > 1e-9 ? sin(pi_in0) / (pi_in0) : 1')),
     'out0 = abs(in0) > 1e-9 ? sinpi(in0) / (M_PI * in0) : 1',
     doc='''Elementwise sinc function.
 

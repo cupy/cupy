@@ -1,3 +1,5 @@
+import functools
+
 import numpy
 
 import cupy
@@ -31,7 +33,7 @@ class MatDescriptor(object):
 
 def _cast_common_type(*xs):
     dtypes = [x.dtype for x in xs if x is not None]
-    dtype = numpy.find_common_type(dtypes, [])
+    dtype = functools.reduce(numpy.promote_types, dtypes)
     return [x.astype(dtype) if x is not None and x.dtype != dtype else x
             for x in xs]
 

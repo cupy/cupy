@@ -24,9 +24,11 @@ using thrust::asin;
 using thrust::acos;
 using thrust::atan;
 
-template<typename T> __device__ bool isnan(complex<T> x) {
+template<typename T>
+__host__ __device__ bool isnan(complex<T> x) {
     return isnan(x.real()) || isnan(x.imag());
 }
+
 template<typename T> __device__ bool isinf(complex<T> x) {
     return isinf(x.real()) || isinf(x.imag());
 }
@@ -49,7 +51,8 @@ template<typename T> __device__ complex<T> expm1(complex<T> x) {
     return y;
 }
 
-template<typename T> __device__ complex<T> min(complex<T> x, complex<T> y) {
+template<typename T>
+__host__ __device__ complex<T> min(complex<T> x, complex<T> y) {
     if (isnan(x)) {
         return y;
     } else if (isnan(y)) {
@@ -64,7 +67,9 @@ template<typename T> __device__ complex<T> min(complex<T> x, complex<T> y) {
         return y;
     }
 }
-template<typename T> __device__ complex<T> max(complex<T> x, complex<T> y) {
+
+template<typename T>
+__host__ __device__ complex<T> max(complex<T> x, complex<T> y) {
     if (isnan(x)) {
         return y;
     } else if (isnan(y)) {

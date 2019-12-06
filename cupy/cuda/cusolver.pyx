@@ -29,6 +29,14 @@ cdef extern from 'cupy_cusolver.h' nogil:
     int cusolverDnSetStream(Handle handle, driver.Stream streamId)
     int cusolverSpSetStream(SpHandle handle, driver.Stream streamId)
 
+    # Library Property
+    int cusolverGetProperty(LibraryPropertyType type, int* value)
+
+    # libraryPropertyType_t
+    int MAJOR_VERSION
+    int MINOR_VERSION
+    int PATCH_LEVEL
+
     ###########################################################################
     # Dense LAPACK Functions (Linear Solver)
     ###########################################################################
@@ -430,6 +438,24 @@ class CUSOLVERError(RuntimeError):
 cpdef inline check_status(int status):
     if status != 0:
         raise CUSOLVERError(status)
+
+
+###############################################################################
+# Library Attributes
+###############################################################################
+
+cpdef int getProperty(int type):
+    cdef int value
+    with nogil:
+        status = cusolverGetProperty(<LibraryPropertyType>type, &value)
+    check_status(status)
+    return value
+
+
+cpdef tuple _getVersion():
+    return (getProperty(MAJOR_VERSION),
+            getProperty(MINOR_VERSION),
+            getProperty(PATCH_LEVEL))
 
 
 ###############################################################################

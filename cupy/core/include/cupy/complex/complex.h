@@ -62,7 +62,12 @@ struct _select_greater_type
  *
  */
 template <typename T>
+#if defined(__CUDACC__)
 struct __align__(sizeof(T)*2) complex {
+#else
+// ROCm (hipcc) does not support `__align__`
+struct complex {
+#endif
  public:
   /*! \p value_type is the type of \p complex's real and imaginary parts.
    */

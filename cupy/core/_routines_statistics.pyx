@@ -17,10 +17,17 @@ cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
                                      axis, dtype):
             return cub.device_reduce(self, cub.CUPY_CUB_MAX, out=out,
                                      keepdims=keepdims)
-        elif cub.can_use_device_segmented_reduce(
-                cub.CUPY_CUB_MAX, self.dtype, self.ndim, axis, dtype):
-            return cub.device_segmented_reduce(
-                self, cub.CUPY_CUB_MAX, axis, out=out, keepdims=keepdims)
+
+        if self.flags.c_contiguous:
+            order = 'C'
+        elif self.flags.f_contiguous:
+            order = 'F'
+        else:
+            order = None
+        if cub.can_use_device_segmented_reduce(cub.CUPY_CUB_MAX, self.dtype,
+                                               self.ndim, axis, dtype, order):
+            return cub.device_segmented_reduce(self, cub.CUPY_CUB_MAX, axis,
+                                               out=out, keepdims=keepdims)
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
@@ -30,10 +37,16 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
                                      axis, dtype):
             return cub.device_reduce(self, cub.CUPY_CUB_MIN, out=out,
                                      keepdims=keepdims)
-        elif cub.can_use_device_segmented_reduce(
-                cub.CUPY_CUB_MIN, self.dtype, self.ndim, axis, dtype):
-            return cub.device_segmented_reduce(
-                self, cub.CUPY_CUB_MIN, axis, out=out, keepdims=keepdims)
+        if self.flags.c_contiguous:
+            order = 'C'
+        elif self.flags.f_contiguous:
+            order = 'F'
+        else:
+            order = None
+        if cub.can_use_device_segmented_reduce(cub.CUPY_CUB_MIN, self.dtype,
+                                               self.ndim, axis, dtype, order):
+            return cub.device_segmented_reduce(self, cub.CUPY_CUB_MIN, axis,
+                                               out=out, keepdims=keepdims)
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
@@ -43,7 +56,7 @@ cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
         # Note that the NumPy signature of argmax only has axis and out, so we
         # need to disable the rest. Moreover, to be compatible with NumPy, axis
         # can only be None or integers
-        if axis is None and cub.can_use_device_reduce(
+        if cub.can_use_device_reduce(
                 cub.CUPY_CUB_ARGMAX, self.dtype, self.ndim, axis, None):
             return cub.device_reduce(self, cub.CUPY_CUB_ARGMAX, out=out,
                                      keepdims=False)
@@ -57,7 +70,7 @@ cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
         # Note that the NumPy signature of argmax only has axis and out, so we
         # need to disable the rest. Moreover, to be compatible with NumPy, axis
         # can only be None or integers
-        if axis is None and cub.can_use_device_reduce(
+        if cub.can_use_device_reduce(
                 cub.CUPY_CUB_ARGMIN, self.dtype, self.ndim, axis, None):
             return cub.device_reduce(self, cub.CUPY_CUB_ARGMIN, out=out,
                                      keepdims=False)

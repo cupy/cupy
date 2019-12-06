@@ -1,3 +1,5 @@
+import numpy
+
 from cupy import core
 from cupy.core import fusion
 
@@ -137,7 +139,16 @@ def copy(a, order='K'):
 # TODO(okuta): Implement frombuffer
 
 
-# TODO(okuta): Implement fromfile
+def fromfile(*args, **kwargs):
+    """Reads an array from a file.
+
+    .. note::
+        Uses NumPy's ``fromfile`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.fromfile`
+    """
+
+    return asarray(numpy.fromfile(*args, **kwargs))
 
 
 # TODO(okuta): Implement fromfunction
