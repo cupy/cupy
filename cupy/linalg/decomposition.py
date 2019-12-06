@@ -37,7 +37,10 @@ def _lu_factor(a_t, dtype):
     ipiv = cupy.empty((batch_size, n), dtype=numpy.int32)
     dev_info = cupy.empty((batch_size,), dtype=numpy.int32)
 
-    use_batched = True  # TODO(kataoka): cond from experiments
+    # Heuristic condition from some performance test.
+    # TODO(kataoka): autotune
+    use_batched = batch_size * 65536 >= n * n
+
     if use_batched:
         handle = device.get_cublas_handle()
         lda = n
