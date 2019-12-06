@@ -1,6 +1,7 @@
 from cpython cimport sequence
 
 from cupy.core cimport _routines_manipulation as _manipulation
+from cupy.cuda cimport function
 from cupy.cuda cimport runtime
 
 import string
