@@ -185,10 +185,6 @@ CUresult cuTexRefSetMaxAnisotropy (...) {
     return CUDA_SUCCESS;
 }
 
-CUresult cuParamSetTexRef (...) {
-    return CUDA_SUCCESS;
-}
-
 // Occupancy
 typedef size_t (*CUoccupancyB2DSize)(int);
 
