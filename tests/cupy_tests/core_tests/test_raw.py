@@ -276,11 +276,16 @@ class TestRaw(unittest.TestCase):
         _test_cache_dir = tempfile.mkdtemp()
         os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
 
-        self.kern = cupy.RawKernel(_test_source1, 'test_sum',
-                                   backend=self.backend)
-        self.mod2 = cupy.RawModule(_test_source2, backend=self.backend)
-        self.mod3 = cupy.RawModule(_test_source3, ('-DPRECISION=2',),
-                                   backend=self.backend)
+        self.kern = cupy.RawKernel(
+            _test_source1, 'test_sum',
+            backend=self.backend)
+        self.mod2 = cupy.RawModule(
+            code=_test_source2,
+            backend=self.backend)
+        self.mod3 = cupy.RawModule(
+            code=_test_source3,
+            options=('-DPRECISION=2',),
+            backend=self.backend)
 
     def tearDown(self):
         # To avoid cache interference, we remove cached files after every test,
@@ -346,8 +351,10 @@ class TestRaw(unittest.TestCase):
 
     def test_invalid_compiler_flag(self):
         with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-            cupy.RawModule(_test_source3, ('-DPRECISION=3',),
-                           backend=self.backend)
+            cupy.RawModule(
+                code=_test_source3,
+                options=('-DPRECISION=3',),
+                backend=self.backend)
         assert 'precision not supported' in str(ex.value)
 
     def test_module_load_failure(self):
@@ -355,8 +362,9 @@ class TestRaw(unittest.TestCase):
         # this error is more likely to appear when using RawModule, so
         # let us do it here
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
-            cupy.RawModule(os.path.expanduser('~/this_does_not_exist.cubin'),
-                           backend=self.backend)
+            cupy.RawModule(
+                path=os.path.expanduser('~/this_does_not_exist.cubin'),
+                backend=self.backend)
         assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)
 
     def test_get_function_failure(self):
@@ -397,7 +405,9 @@ class TestRaw(unittest.TestCase):
         grid = (N + block - 1) // block
         dtype = cupy.complex64
 
-        mod = cupy.RawModule(_test_cuComplex, translate_cucomplex=True)
+        mod = cupy.RawModule(
+            code=_test_cuComplex,
+            translate_cucomplex=True)
         a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
         a = a.astype(dtype)
         b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
@@ -451,7 +461,9 @@ class TestRaw(unittest.TestCase):
         grid = (N + block - 1) // block
         dtype = cupy.complex128
 
-        mod = cupy.RawModule(_test_cuComplex, translate_cucomplex=True)
+        mod = cupy.RawModule(
+            code=_test_cuComplex,
+            translate_cucomplex=True)
         a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
         a = a.astype(dtype)
         b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
