@@ -43,7 +43,7 @@ CUB_support_dtype = [numpy.int8, numpy.uint8,
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_cub.h' with nogil:
+cdef extern from 'cupy_cub.h' nogil:
     void cub_device_reduce(void*, size_t&, void*, void*, int, Stream_t,
                            int, int)
     void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, void*,
@@ -91,7 +91,7 @@ cpdef _preprocess_array(ndarray arr, axis, bint keepdims, str order):
     return out_shape, contiguous_size
 
 
-def device_reduce(ndarray x, op, out=None, bint keepdims=False):
+def device_reduce(ndarray x, int op, out=None, bint keepdims=False):
     cdef ndarray y, z
     cdef memory.MemoryPointer ws
     cdef int dtype_id, ndim_out, kv_bytes
@@ -158,7 +158,7 @@ def device_reduce(ndarray x, op, out=None, bint keepdims=False):
     return y
 
 
-def device_segmented_reduce(ndarray x, op, axis, out=None,
+def device_segmented_reduce(ndarray x, int op, axis, out=None,
                             bint keepdims=False):
     # if import at the top level, a segfault would happen when import cupy!
     from cupy.creation.ranges import arange
