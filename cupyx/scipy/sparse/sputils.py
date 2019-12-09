@@ -2,9 +2,7 @@ import cupy
 
 from cupy.core._dtype import get_dtype
 
-supported_dtypes = ['bool', 'int8', 'uint8', 'short', 'ushort', 'intc',
-                    'uintc', 'longlong', 'ulonglong', 'single', 'double',
-                    'longdouble', 'csingle', 'cdouble', 'clongdouble']
+supported_dtypes = ['single', 'double', 'csingle', 'cdouble']
 supported_dtypes = [get_dtype(x) for x in supported_dtypes]
 
 
@@ -24,19 +22,18 @@ def get_index_dtype(arrays=(), maxval=None, check_contents=False):
     """
     Based on input (integer) arrays `a`, determine a suitable index data
     type that can hold the data in the arrays.
-    Parameters
-    ----------
-    arrays : tuple of array_like
-        Input arrays whose types/contents to check
-    maxval : float, optional
-        Maximum value needed
-    check_contents : bool, optional
-        Whether to check the values in the arrays and not just their types.
-        Default: False (check only the types)
-    Returns
-    -------
-    dtype : dtype
-        Suitable index data type (int32 or int64)
+
+    Args:
+        arrays (tuple of array_like):
+            Input arrays whose types/contents to check
+        maxval (float, optional):
+            Maximum value needed
+        check_contents (bool, optional):
+            Whether to check the values in the arrays and not just their types.
+            Default: False (check only the types)
+
+    Returns:
+        dtype: Suitable index data type (int32 or int64)
     """
 
     int32min = cupy.iinfo(cupy.int32).min
@@ -73,17 +70,16 @@ def get_index_dtype(arrays=(), maxval=None, check_contents=False):
 def upcast(*args):
     """Returns the nearest supported sparse dtype for the
     combination of one or more types.
+
     upcast(t0, t1, ..., tn) -> T  where T is a supported dtype
-    Examples
-    --------
-    >>> upcast('int32')
-    <type 'numpy.int32'>
-    >>> upcast('bool')
-    <type 'numpy.bool_'>
-    >>> upcast('int32','float32')
-    <type 'numpy.float64'>
-    >>> upcast('bool',complex,float)
-    <type 'numpy.complex128'>
+
+    Examples:
+        >>> upcast('int32')
+        <type 'numpy.int32'>
+        >>> upcast('int32','float32')
+        <type 'numpy.float64'>
+        >>> upcast('bool',float)
+        <type 'numpy.complex128'>
     """
 
     t = _upcast_memo.get(hash(args))

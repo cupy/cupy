@@ -7,6 +7,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupyx.scipy import sparse
+from cupyx.scipy.sparse import construct
 
 
 @testing.parameterize(*testing.product({
@@ -55,6 +56,184 @@ class TestSpdiags(unittest.TestCase):
         diags = xp.array([0, -1, 2], dtype='i')
         x = sp.spdiags(data, diags, 3, 4)
         return x
+
+
+class TestVstack(unittest.TestCase):
+
+    def data(self):
+
+        A = sparse.coo_matrix((cupy.asarray([1.0, 2.0, 3.0, 4.0]),
+                              (cupy.asarray([0, 0, 1, 1]),
+                              cupy.asarray([0, 1, 0, 1]))))
+        B = sparse.coo_matrix((cupy.asarray([5.0, 6.0]),
+                               (cupy.asarray([0, 0]),
+                                cupy.asarray([0, 1]))))
+
+        return A, B
+
+    def expected(self):
+
+        return cupy.asarray([[1, 2],
+                             [3, 4],
+                             [5, 6]])
+
+    def test_basic_vstack(self):
+
+        A, B = self.data()
+
+        actual = construct.vstack([A, B]).todense()
+        testing.assert_array_equal(actual, self.expected())
+
+    def test_dtype(self):
+
+        A, B = self.data()
+
+        actual = construct.vstack([A, B], dtype=cupy.float32)
+        self.assertEqual(actual.dtype, cupy.float32)
+
+    def test_csr(self):
+
+        A, B = self.data()
+
+        actual = construct.vstack([A.tocsr(), B.tocsr()]).todense()
+        testing.assert_array_equal(actual, self.expected())
+
+    def test_csr_with_dtype(self):
+
+        A, B = self.data()
+
+        actual = construct.vstack([A.tocsr(), B.tocsr()],
+                                  dtype=cupy.float32)
+        self.assertEqual(actual.dtype, cupy.float32)
+        self.assertEqual(actual.indices.dtype, cupy.int32)
+        self.assertEqual(actual.indptr.dtype, cupy.int32)
+
+
+class TestHstack(unittest.TestCase):
+
+    def data(self):
+
+        A = sparse.coo_matrix((cupy.asarray([1.0, 2.0, 3.0, 4.0]),
+                              (cupy.asarray([0, 0, 1, 1]),
+                              cupy.asarray([0, 1, 0, 1]))))
+        B = sparse.coo_matrix((cupy.asarray([5.0, 6.0]),
+                               (cupy.asarray([0, 1]),
+                                cupy.asarray([0, 0]))))
+
+        return A, B
+
+    def expected(self):
+
+        return cupy.asarray([[1, 2, 5],
+                             [3, 4, 6]])
+
+    def test_basic_hstack(self):
+
+        A, B = self.data()
+        actual = construct.hstack([A, B]).todense()
+
+        testing.assert_array_equal(actual, self.expected())
+
+    def test_dtype(self):
+
+        A, B = self.data()
+        actual = construct.hstack([A, B], dtype=cupy.float32)
+
+        self.assertEqual(actual.dtype, cupy.float32)
+
+    def test_csc(self):
+        A, B = self.data()
+        actual = construct.hstack([A.tocsc(), B.tocsc()]).todense()
+        testing.assert_array_equal(actual, self.expected())
+
+    def test_csc_with_dtype(self):
+
+        A, B = self.data()
+
+        actual = construct.hstack([A.tocsc(), B.tocsc()],
+                                  dtype=cupy.float32)
+        self.assertEqual(actual.dtype, cupy.float32)
+        self.assertEqual(actual.indices.dtype, cupy.int32)
+        self.assertEqual(actual.indptr.dtype, cupy.int32)
+
+
+class TestBmat(unittest.TestCase):
+
+    def data(self):
+        A = sparse.csr_matrix(cupy.asarray([[1, 2], [3, 4]],
+                                           cupy.float32)).tocoo()
+        B = sparse.csr_matrix(cupy.asarray([[5], [6]],
+                                           cupy.float32)).tocoo()
+        C = sparse.csr_matrix(cupy.asarray([[7]],
+                                           cupy.float32)).tocoo()
+        D = sparse.coo_matrix((0, 0), dtype=cupy.float32)
+
+        return A, B, C, D
+
+    def test_basic_inputs(self):
+
+        A, B, C, D = self.data()
+
+        expected = cupy.asarray([[1, 2, 5],
+                                [3, 4, 6],
+                                [0, 0, 7]])
+
+        testing.assert_array_equal(
+            construct.bmat([[A, B], [None, C]]).todense(), expected
+        )
+
+        expected = cupy.asarray([[1, 2, 0],
+                           [3, 4, 0],
+                           [0, 0, 7]])
+        testing.assert_array_equal(
+            construct.bmat([[A, None], [None, C]]).todense(), expected
+        )
+
+        expected = cupy.asarray([[0, 5],
+                           [0, 6],
+                           [7, 0]])
+
+        testing.assert_array_equal(
+            construct.bmat([[None, B], [C, None]]).todense(), expected
+        )
+
+    def test_empty(self):
+
+        A, B, C, D = self.data()
+
+        expected = cupy.empty((0, 0))
+        testing.assert_array_equal(construct.bmat([[None, None]]).todense(),
+                                   expected)
+        testing.assert_array_equal(construct.bmat([[None, D], [D, None]])
+                                   .todense(), expected)
+
+    def test_edge_cases(self):
+
+        """Catch-all for small edge cases"""
+
+        A, B, C, D = self.data()
+
+        expected = cupy.asarray([[7]])
+        testing.assert_array_equal(construct.bmat([[None, D], [C, None]])
+                                   .todense(), expected)
+
+    def test_failure_cases(self):
+
+        A, B, C, D = self.data()
+
+        # test failure cases
+        with self.assertRaises(ValueError) as excinfo:
+            construct.bmat([[A], [B]])
+        print(str(excinfo.__dict__))
+        self.assertRegex(str(excinfo.exception),
+                                 r'Got blocks\[1,0\]\.shape\[1\] '
+                                 r'== 1, expected 2')
+
+        with self.assertRaises(ValueError) as excinfo:
+            construct.bmat([[A, C]])
+        self.assertRegex(str(excinfo.exception),
+                                 r'Got blocks\[0,1\]\.shape\[0\] '
+                                 r'== 1, expected 2')
 
 
 @testing.parameterize(*testing.product({

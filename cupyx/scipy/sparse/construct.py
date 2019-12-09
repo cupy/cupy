@@ -127,28 +127,31 @@ def _compressed_sparse_stack(blocks, axis):
 def hstack(blocks, format=None, dtype=None):
     """
     Stack sparse matrices horizontally (column wise)
-    Parameters
-    ----------
-    blocks
-        sequence of sparse matrices with compatible shapes
-    format : str
-        sparse format of the result (e.g. "csr")
-        by default an appropriate sparse matrix format is returned.
-        This choice is subject to change.
-    dtype : dtype, optional
-        The data-type of the output matrix.  If not given, the dtype is
-        determined from that of `blocks`.
-    See Also
-    --------
-    vstack : stack sparse matrices vertically (row wise)
-    Examples
-    --------
-    >>> from cupy.sparse import coo_matrix, hstack
-    >>> A = coo_matrix([[1, 2], [3, 4]])
-    >>> B = coo_matrix([[5], [6]])
-    >>> hstack([A,B]).toarray()
-    array([[1, 2, 5],
-           [3, 4, 6]])
+
+    Args:
+        blocks (sequence of cupyx.scipy.sparse.spmatrix):
+            sparse matrices to stack
+
+        format (str):
+            sparse format of the result (e.g. "csr")
+            by default an appropriate sparse matrix format is returned.
+            This choice is subject to change.
+        dtype (dtype, optional):
+            The data-type of the output matrix.  If not given, the dtype is
+            determined from that of `blocks`.
+
+    Returns:
+        cupyx.scipy.sparse.spmatrix: the stacked sparse matrix
+
+    .. seealso:: :func:`scipy.sparse.hstack`
+
+    Examples:
+        >>> from cupy.sparse import coo_matrix, hstack
+        >>> A = coo_matrix([[1, 2], [3, 4]])
+        >>> B = coo_matrix([[5], [6]])
+        >>> hstack([A,B]).toarray()
+        array([[1, 2, 5],
+               [3, 4, 6]])
     """
     return bmat([blocks], format=format, dtype=dtype)
 
@@ -156,29 +159,30 @@ def hstack(blocks, format=None, dtype=None):
 def vstack(blocks, format=None, dtype=None):
     """
     Stack sparse matrices vertically (row wise)
-    Parameters
-    ----------
-    blocks
-        sequence of sparse matrices with compatible shapes
-    format : str, optional
-        sparse format of the result (e.g. "csr")
-        by default an appropriate sparse matrix format is returned.
-        This choice is subject to change.
-    dtype : dtype, optional
-        The data-type of the output matrix.  If not given, the dtype is
-        determined from that of `blocks`.
-    See Also
-    --------
-    hstack : stack sparse matrices horizontally (column wise)
-    Examples
-    --------
-    >>> from cupy.sparse import coo_matrix, vstack
-    >>> A = coo_matrix([[1, 2], [3, 4]])
-    >>> B = coo_matrix([[5, 6]])
-    >>> vstack([A, B]).toarray()
-    array([[1, 2],
-           [3, 4],
-           [5, 6]])
+    Args:
+        blocks (sequence of cupyx.scipy.sparse.spmatrix)
+            sparse matrices to stack
+        format (str, optional):
+            sparse format of the result (e.g. "csr")
+            by default an appropriate sparse matrix format is returned.
+            This choice is subject to change.
+        dtype (dtype, optional):
+            The data-type of the output matrix.  If not given, the dtype is
+            determined from that of `blocks`.
+
+    Returns:
+        cupyx.scipy.sparse.spmatrix: the stacked sparse matrix
+
+    .. seealso:: :func:`scipy.sparse.vstack`
+
+    Examples:
+        >>> from cupy.sparse import coo_matrix, vstack
+        >>> A = coo_matrix([[1, 2], [3, 4]])
+        >>> B = coo_matrix([[5, 6]])
+        >>> vstack([A, B]).toarray()
+        array([[1, 2],
+               [3, 4],
+               [5, 6]])
     """
     return bmat([[b] for b in blocks], format=format, dtype=dtype)
 
@@ -186,38 +190,35 @@ def vstack(blocks, format=None, dtype=None):
 def bmat(blocks, format=None, dtype=None):
     """
     Build a sparse matrix from sparse sub-blocks
-    Parameters
-    ----------
-    blocks : array_like
-        Grid of sparse matrices with compatible shapes.
-        An entry of None implies an all-zero matrix.
-    format : {'bsr', 'coo', 'csc', 'csr', 'dia', 'dok', 'lil'}, optional
-        The sparse format of the result (e.g. "csr").  By default an
-        appropriate sparse matrix format is returned.
-        This choice is subject to change.
-    dtype : dtype, optional
-        The data-type of the output matrix.  If not given, the dtype is
-        determined from that of `blocks`.
-    Returns
-    -------
-    bmat : sparse matrix
-    See Also
-    --------
-    block_diag, diags
-    Examples
-    --------
-    >>> from cupy.sparse import coo_matrix, bmat
-    >>> A = coo_matrix([[1, 2], [3, 4]])
-    >>> B = coo_matrix([[5], [6]])
-    >>> C = coo_matrix([[7]])
-    >>> bmat([[A, B], [None, C]]).toarray()
-    array([[1, 2, 5],
-           [3, 4, 6],
-           [0, 0, 7]])
-    >>> bmat([[A, None], [None, C]]).toarray()
-    array([[1, 2, 0],
-           [3, 4, 0],
-           [0, 0, 7]])
+    Args:
+        blocks (array_like):
+            Grid of sparse matrices with compatible shapes.
+            An entry of None implies an all-zero matrix.
+        format ({'bsr', 'coo', 'csc', 'csr', 'dia', 'dok', 'lil'}, optional):
+            The sparse format of the result (e.g. "csr").  By default an
+            appropriate sparse matrix format is returned.
+            This choice is subject to change.
+        dtype (dtype, optional):
+            The data-type of the output matrix.  If not given, the dtype is
+            determined from that of `blocks`.
+    Returns:
+        bmat (sparse matrix)
+
+    .. seealso:: :func: `scipy.sparse.bmat`
+
+    Examples:
+        >>> from cupy.sparse import coo_matrix, bmat
+        >>> A = coo_matrix([[1, 2], [3, 4]])
+        >>> B = coo_matrix([[5], [6]])
+        >>> C = coo_matrix([[7]])
+        >>> bmat([[A, B], [None, C]]).toarray()
+        array([[1, 2, 5],
+               [3, 4, 6],
+               [0, 0, 7]])
+        >>> bmat([[A, None], [None, C]]).toarray()
+        array([[1, 2, 0],
+               [3, 4, 0],
+               [0, 0, 7]])
     """
 
     # We assume here that blocks will be 2-D so we need to look, at most,
@@ -234,12 +235,16 @@ def bmat(blocks, format=None, dtype=None):
             if blocks[m][n] is not None:
                 blocks_flat.append(blocks[m][n])
 
+    if len(blocks_flat) == 0:
+        return coo.coo_matrix((0, 0), dtype=dtype)
+
     # if blocks.ndim != 2:
     #     raise ValueError('blocks must be 2-D')
 
     # check for fast path cases
-    if (N == 1 and format in (None, 'csr') and all(isinstance(b, csr.csr_matrix)
-                                                   for b in blocks_flat)):
+    if (N == 1 and format in (None, 'csr') and
+            all(isinstance(b, csr.csr_matrix)
+                for b in blocks_flat)):
         A = _compressed_sparse_stack(blocks_flat, 0)
         if dtype is not None:
             A = A.astype(dtype)
