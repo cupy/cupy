@@ -155,14 +155,17 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
     if (s is not None) and (axes is not None) and len(s) != len(axes):
         raise ValueError('Shape and axes have different lengths.')
 
-    a = _convert_dtype(a, value_type)
-
     if axes is None:
         if s is None:
             dim = a.ndim
         else:
             dim = len(s)
         axes = [i for i in six.moves.range(-dim, 0)]
+    else:
+        axes = tuple(axes)
+    if axes is ():
+        return a
+    a = _convert_dtype(a, value_type)
     a = _cook_shape(a, s, axes, value_type)
 
     if value_type == 'C2C':
@@ -213,7 +216,7 @@ def _prep_fftn_axes(ndim, s=None, axes=None):
 
 def _nd_plan_is_possible(axes_sorted, ndim):
     # PlanNd supports 1D, 2D and 3D batch transforms over contiguous axes
-    if (len(axes_sorted) > 3 or
+    if (len(axes_sorted) > 3 or len(axes_sorted) == 0 or
             # PlanNd only possible if the first or last axis is in axes.
             ((0 not in axes_sorted) and ((ndim - 1) not in axes_sorted)) or
             # axes are not contiguous
@@ -418,8 +421,10 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
         raise ValueError('Invalid norm value %s, should be None or "ortho".'
                          % norm)
 
-    a = _convert_dtype(a, value_type)
     axes, axes_sorted = _prep_fftn_axes(a.ndim, s, axes)
+    if axes_sorted is ():
+        return a
+    a = _convert_dtype(a, value_type)
 
     if order == 'A':
         if a.flags.f_contiguous:

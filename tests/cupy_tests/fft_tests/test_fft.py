@@ -261,6 +261,10 @@ class TestFftn(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
+        if self.axes is ():
+            assert out is a
+            return out
+
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
@@ -274,6 +278,10 @@ class TestFftn(unittest.TestCase):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        if self.axes is ():
+            assert out is a
+            return out
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
