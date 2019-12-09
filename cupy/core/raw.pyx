@@ -218,7 +218,8 @@ cdef class RawModule:
     similarly.
 
     Args:
-        code_or_path (str): CUDA source code or path to cubin/ptx.
+        code (str): CUDA source code. Mutually exclusive with ``path``.
+        path (str): Path to cubin/ptx. Mutually exclusive with ``code``.
         options (tuple of str): Compiler options passed to the backend (NVRTC
             or NVCC). For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options or
@@ -232,21 +233,21 @@ cdef class RawModule:
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
     """
-    def __init__(self, code_or_path, options=(), backend='nvrtc', *,
+    def __init__(self, *, code=None, path=None, options=(), backend='nvrtc',
                  translate_cucomplex=False):
-        if isinstance(code_or_path, six.binary_type):
-            code_or_path = code_or_path.decode('UTF-8')
+        if (code is None) == (path is None):
+            raise TypeError(
+                'Exactly one of `code` and `path` keyword arguments must be '
+                'given.')
+        if path is not None and isinstance(path, six.binary_type):
+            path = path.decode('UTF-8')
+        if code is not None and isinstance(code, six.binary_type):
+            code = code.decode('UTF-8')
         if isinstance(backend, six.binary_type):
             backend = backend.decode('UTF-8')
 
-        if code_or_path.endswith('.cubin') or code_or_path.endswith('.ptx'):
-            path = code_or_path
-            self.code = None
-            self.cubin_path = path
-        else:
-            code = code_or_path
-            self.code = code
-            self.cubin_path = None
+        self.code = code
+        self.cubin_path = path
 
         if self.code is not None:
             self.module = cupy.core.core.compile_with_cache(

@@ -302,9 +302,9 @@ class TestTexture(unittest.TestCase):
         if self.target == 'object':
             # create a texture object
             texobj = TextureObject(res, tex)
-            mod = cupy.RawModule(source_obj)
+            mod = cupy.RawModule(code=source_obj)
         else:  # self.target == 'reference'
-            mod = cupy.RawModule(source_ref)
+            mod = cupy.RawModule(code=source_ref)
             texref_name = 'texref'
             texref_name += '3D' if dim == 3 else '2D' if dim == 2 else '1D'
             texrefPtr = mod.get_texref(texref_name)
@@ -375,9 +375,9 @@ class TestTextureVectorType(unittest.TestCase):
         if self.target == 'object':
             # create a texture object
             texobj = TextureObject(res, tex)
-            mod = cupy.RawModule(source_obj)
+            mod = cupy.RawModule(code=source_obj)
         else:  # self.target == 'reference'
-            mod = cupy.RawModule(source_ref)
+            mod = cupy.RawModule(code=source_ref)
             texrefPtr = mod.get_texref('texref3Df4')
             # bind texture ref to resource
             texref = TextureReference(texrefPtr, res, tex)  # noqa
