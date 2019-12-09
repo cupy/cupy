@@ -367,6 +367,16 @@ class TestRaw(unittest.TestCase):
                 backend=self.backend)
         assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)
 
+    def test_module_neither_code_nor_path(self):
+        with pytest.raises(TypeError):
+            cupy.RawModule()
+
+    def test_module_both_code_and_path(self):
+        with pytest.raises(TypeError):
+            cupy.RawModule(
+                code=_test_source1,
+                path='test.cubin')
+
     def test_get_function_failure(self):
         # in principle this test is better done in test_driver.py, but
         # this error is more likely to appear when using RawModule, so
