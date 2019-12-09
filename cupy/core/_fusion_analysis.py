@@ -15,7 +15,7 @@ from cupy.core import _fusion_device_func
 from cupy.core import _fusion_op
 from cupy.core._fusion_emit_code import _CodeBlock
 from cupy.core import _fusion_runtime
-from cupy.core import _fusion_optimization as _opt
+from cupy.core import _fusion_optimization
 
 
 _accepted_types = six.integer_types + (float, bool, complex, numpy.generic)
@@ -276,11 +276,10 @@ class _FusionHistory(object):
     def _to_interface(x):
         """Returns an _array or a _scalar object which packs the given value.
         """
-        if isinstance(x, _fusion_variable._FusionCudaVarBase):
-            return x.as_interface()
         if x is None:
             return None
-        assert False
+        assert isinstance(x, _fusion_variable._FusionCudaVarBase)
+        return x.as_interface()
 
     def _from_arraylike_interface(self, x):
         """Returns ``_FusionCuda{Array/Scalar}`` object from the input.
@@ -510,48 +509,63 @@ class _FusionHistory(object):
 
         return self._to_interface(out_param)
 
-    def _call_function(self, func, args):
-        # Registers input variables.
+    def _trace_target_function(self, func, args):
+        """Call ``self.func`` with _FusionVariable arguments.
+
+        Returns:
+            out_params(list of _FusionVariable): The list of outputs.
+            return_size(int or str): If ``return_size`` is of int type,
+                it indicates the size of tuple of outputs.
+                If `none`, the output is ``None`` and ``out_params`` is empty.
+                If `single`, the output is single array and ``out_params``
+                is a singleton list.
+
+        During the function call, ``call_ufunc``, ``call_reduction`` and
+        ``call_indexing`` are called internally.
+        """
+
+        # Register input variables.
         in_params = []
+        array_dict = {}
+        memory_dict = {}
         for input_order, arg in enumerate(args):
             if arg is None:
                 var = None
             elif isinstance(arg, core.ndarray):
-                same_array_indices = [
-                    i for i in range(input_order) if arg is args[i]]
-                may_share_memory_indices = [
-                    i for i in range(input_order)
-                    if (isinstance(args[i], core.ndarray)
-                        and _base(arg) is _base(args[i]))]
-
-                if len(same_array_indices) > 0:
-                    i = same_array_indices[0]
-                    assert isinstance(in_params[i], _FusionCudaArray)
-                    var = in_params[i]
-                elif len(may_share_memory_indices) > 0:
-                    i = may_share_memory_indices[0]
-                    assert isinstance(in_params[i], _FusionCudaArray)
-                    var = self.vc.make_view(
-                        in_params[i], input_order=input_order)
+                arg_id = id(arg)
+                base_id = id(_base(arg))
+                if arg_id in array_dict:
+                    # The array is already given as an input.
+                    var = in_params[array_dict[arg_id]]
+                    assert isinstance(var, _FusionCudaArray)
+                elif base_id in memory_dict:
+                    # The is an array which shares the same memory.
+                    base = in_params[memory_dict[base_id]]
+                    assert isinstance(base, _FusionCudaArray)
+                    var = self.vc.make_view(base, input_order=input_order)
                 else:
+                    # Otherwise.
                     var = self.vc.generate_new_array(
                         arg.dtype, arg.shape, None, input_order=input_order)
+                array_dict[arg_id] = input_order
+                memory_dict[base_id] = input_order
             else:
+                # Scalar input.
                 dtype = numpy.dtype(type(arg))
                 var = self.vc.generate_new_scalar(
                     dtype, input_order=input_order)
             in_params.append(var)
 
-        # Calls the target function.
+        # Call the target function.
         out_params = func(*[self._to_interface(x) for x in in_params])
 
-        # Registers output variables.
-        if isinstance(out_params, tuple):
-            return_size = len(out_params)
-            out_params = [self._from_interface(x) for x in out_params]
-        elif out_params is None:
+        # Register output variables.
+        if out_params is None:
             return_size = 'none'
             out_params = []
+        elif isinstance(out_params, tuple):
+            return_size = len(out_params)
+            out_params = [self._from_interface(x) for x in out_params]
         else:
             return_size = 'single'
             out_params = [self._from_interface(out_params)]
@@ -560,7 +574,7 @@ class _FusionHistory(object):
             out_param.output_order = output_order
             out_param.memory.is_output = True
 
-        return in_params, out_params, return_size
+        return out_params, return_size
 
     def _get_ancestors(self, var):
         if var is None:
@@ -572,20 +586,15 @@ class _FusionHistory(object):
 
     def emit_kernel(self, func, args):
         # Call `func(args)` and update `op_list`.
-        in_params, out_params, return_size = self._call_function(func, args)
-        variables = self.vc.all_variables
-        ops = self.op_list
-        _opt.normalize_ashapes(ops, variables, self.shape_constraints)
-        ops = _opt.reduce_memory_access(ops)
-        ops = _opt.fuse_consecutive_ops(ops, self.shape_constraints)
-        ops = _opt.reduce_memory_access(ops)
-        self.op_list = ops
+        out_params, return_size = self._trace_target_function(func, args)
+        self.op_list = _fusion_optimization.optimize(
+            self.op_list, self.vc.all_variables, self.shape_constraints)
 
         # Make info passed to FusedKernel.
         kernel_params = _FusionVariableSet()
         for p in out_params:
             kernel_params += self._get_ancestors(p)
-        for op in ops:
+        for op in self.op_list:
             for p in op.in_params + op.out_params:
                 kernel_params += self._get_ancestors(p)
         kernel_params = list(kernel_params)

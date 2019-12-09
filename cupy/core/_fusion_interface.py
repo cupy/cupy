@@ -157,22 +157,26 @@ class _FusionVariableInterfaceBase(object):
         return _dtype_to_astype_dict[dtype](self)
 
     def sum(self, axis=None, dtype=None, out=None, keepdims=False):
-        return cupy.sum(self, axis=axis, dtype=dtype, out=out, keepdims=False)
+        return cupy.sum(
+            self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     def prod(self, axis=None, dtype=None, out=None, keepdims=False):
-        return cupy.prod(self, axis=axis, dtype=dtype, out=out, keepdims=False)
+        return cupy.prod(
+            self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     def max(self, axis=None, dtype=None, out=None, keepdims=False):
-        return cupy.max(self, axis=axis, dtype=dtype, out=out, keepdims=False)
+        return cupy.max(
+            self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     def min(self, axis=None, dtype=None, out=None, keepdims=False):
-        return cupy.min(self, axis=axis, dtype=dtype, out=out, keepdims=False)
+        return cupy.min(
+            self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     def all(self, axis=None, out=None, keepdims=False):
-        return cupy.all(self, axis=axis, out=out, keepdims=False)
+        return cupy.all(self, axis=axis, out=out, keepdims=keepdims)
 
     def any(self, axis=None, out=None, keepdims=False):
-        return cupy.any(self, axis=axis, out=out, keepdims=False)
+        return cupy.any(self, axis=axis, out=out, keepdims=keepdims)
 
     @property
     def dtype(self):

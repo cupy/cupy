@@ -2,6 +2,7 @@ import unittest
 
 import mock
 
+import cupy  # NOQA
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 

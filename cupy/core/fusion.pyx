@@ -18,7 +18,7 @@ _call_ufunc = _fusion_thread_local.call_ufunc
 _call_reduction = _fusion_thread_local.call_reduction
 
 
-cdef tuple _acceptable_types = six.integer_types + (
+cdef tuple _fusion_argument_types = six.integer_types + (
     core.ndarray, numpy.ndarray, numpy.generic,
     float, complex, bool, type(None))
 
@@ -61,9 +61,9 @@ class Fusion(object):
             # No cupy ndarray exists in the arguments
             return self.func(*args)
 
-        # Invalid argument types
+        # Check for invalid argument types
         for i in range(nargs):
-            if not isinstance(args[i], _acceptable_types):
+            if not isinstance(args[i], _fusion_argument_types):
                 mes = 'Invalid argument type for \'{}\': ({})'
                 arg_types = ', '.join(repr(type(a)) for a in args)
                 raise TypeError(mes.format(self.name, arg_types))
@@ -73,6 +73,9 @@ class Fusion(object):
         cdef list params_info = []
         cdef list shape_info = []
 
+        # Create cache keys to find a kernel already emitted:
+        #     param_key: ndims and dtypes of the arguments.
+        #     shape_key: shapes of the arguments.
         for i in range(nargs):
             arg = args[i]
             if isinstance(arg, core.ndarray):
@@ -109,7 +112,7 @@ class Fusion(object):
         #     value: Pair of cache_shape and kernel_list.
         # cache_shape(dict):
         #     key:   Tuple of shapes of the inputs (shape_key).
-        #     value: Runtime kernel.
+        #     value: Pair of Runtime kernel and its perfomance cookie.
         # kernel_list(list): List of Runtime kernel.
         cache_shape, kernel_list = self._cache.get(param_key, (None, None))
 
@@ -124,11 +127,15 @@ class Fusion(object):
 
         if kernel is None:
             # Find a cached kernel from kernel_list.
+
+            # Create a dim_map: a dictionary from _AbstractDim to int.
             dim_map = dict()
             for input_order, arg in enumerate(args):
                 if isinstance(arg, core.ndarray):
                     for axis, dim in enumerate(arg.shape):
                         dim_map[_AbstractDim(input_order, axis)] = dim
+
+            # Find a kernel that satisfies the shape constraints.
             for cand_kernel in kernel_list:
                 if cand_kernel.shape_constraints.satisfy(dim_map):
                     kernel = cand_kernel
@@ -153,6 +160,9 @@ class Fusion(object):
 
 
 def fuse(*args, **kwargs):
+    """Decorator that fuses a function.
+    """
+
     def wrapper(f, kernel_name=None):
         return Fusion(f, kernel_name)
 

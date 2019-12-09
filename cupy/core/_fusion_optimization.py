@@ -2,7 +2,7 @@ from cupy.core import _fusion_variable
 from cupy.core import _fusion_op
 
 
-def reduce_memory_access(ops):
+def _reduce_memory_access(ops):
     required_memories = set()
 
     for op in ops:
@@ -27,7 +27,7 @@ def reduce_memory_access(ops):
     return [op for op in ops if len(op.out_params) > 0]
 
 
-def normalize_ashapes(ops, variables, shape_constraints):
+def _normalize_ashapes(ops, variables, shape_constraints):
     def normalize(shape):
         return tuple([shape_constraints.evaluate(d) for d in shape])
 
@@ -67,7 +67,7 @@ def _fuse_two_ops(op1, op2):
     return op1
 
 
-def fuse_consecutive_ops(ops, shape_constraints):
+def _fuse_consecutive_ops(ops, shape_constraints):
     res = []
     for op in ops:
         if len(res) == 0:
@@ -80,3 +80,11 @@ def fuse_consecutive_ops(ops, shape_constraints):
             else:
                 res.append(new_op)
     return res
+
+
+def optimize(ops, variables, shape_constraints):
+    _normalize_ashapes(ops, variables, shape_constraints)
+    ops = _reduce_memory_access(ops)
+    ops = _fuse_consecutive_ops(ops, shape_constraints)
+    ops = _reduce_memory_access(ops)
+    return ops
