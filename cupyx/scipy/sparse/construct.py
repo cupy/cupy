@@ -306,9 +306,6 @@ def bmat(blocks, format=None, dtype=None):
     nnz = 0
     ii, jj = cupy.nonzero(block_mask)
     for i, j in zip(ii, jj):
-
-        print("i=%s, j=%s" % (int(i), int(j)))
-        print(str(blocks))
         B = blocks[int(i)][int(j)]
         idx = slice(nnz, nnz + B.nnz)
         data[idx] = B.data
