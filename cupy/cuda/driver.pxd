@@ -82,8 +82,6 @@ cpdef enum:
     CU_TRSF_NORMALIZED_COORDINATES = 0x02
     CU_TRSF_SRGB = 0x10
 
-    CU_PARAM_TR_DEFAULT = -1
-
 
 ###############################################################################
 # Primary context management
@@ -143,7 +141,6 @@ cpdef texRefSetFilterMode(intptr_t texref, int fm)
 cpdef texRefSetFlags(intptr_t texref, unsigned int Flags)
 cpdef texRefSetFormat(intptr_t texref, int fmt, int NumPackedComponents)
 cpdef texRefSetMaxAnisotropy(intptr_t texref, unsigned int maxAniso)
-cpdef paramSetTexRef(intptr_t func, intptr_t texref)
 
 ###############################################################################
 # Occupancy

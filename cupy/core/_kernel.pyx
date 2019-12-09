@@ -61,6 +61,15 @@ cdef inline int get_kind_score(int kind):
     return -1
 
 
+@cython.profile(False)
+cdef inline _check_array_device_id(ndarray arr, int device_id):
+    if arr.data.device_id != device_id:
+        raise ValueError(
+            'Array device must be same as the current '
+            'device: array device = %d while current = %d'
+            % (arr.data.device_id, device_id))
+
+
 cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     """Preprocesses arguments for kernel invocation
 
@@ -79,12 +88,7 @@ cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
                 raise TypeError('Unsupported type %s' % type(arg))
             arg = _convert_object_with_cuda_array_interface(arg)
 
-        arr_dev_id = (<ndarray>arg).data.device_id
-        if arr_dev_id != dev_id:
-            raise ValueError(
-                'Array device must be same as the current '
-                'device: array device = %d while current = %d'
-                % (arr_dev_id, dev_id))
+        _check_array_device_id(<ndarray>arg, dev_id)
         ret.append(arg)
 
     return ret
@@ -127,39 +131,66 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
 
 cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     """ Remove contiguous stride to optimize CUDA kernel."""
-    cdef int i, ax, last_ax, ndim
-    cdef Py_ssize_t total_size
-    cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
-    cdef vector.vector[int] array_indexes, axes
-    cdef vector.vector[vector.vector[Py_ssize_t]] args_strides
-    cdef ParameterInfo p
     cdef ndarray arr
-    cdef bint flag
 
-    ndim = len(shape)
-    if ndim <= 1:
+    if len(shape) <= 1 or len(args) == 0:
         return shape
 
+    if len(args) == 1:  # fast path for reduction
+        a = args[0]
+        if (<ParameterInfo>params[0]).raw or not isinstance(a, ndarray):
+            return shape
+        arr = a
+        arr = arr.reduced_view()
+        if arr is a:
+            return shape
+        else:
+            args[0] = arr
+            return arr.shape
+    return _reduced_view_core(args, params, shape)
+
+
+cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
+    cdef int i, ax, last_ax, ndim
+    cdef Py_ssize_t x, total_size
+    cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
+    cdef vector.vector[int] array_indexes, axes
+    cdef vector.vector[int] strides_indexes
+    cdef ParameterInfo p
+    cdef ndarray arr
+
+    ndim = len(shape)
+    array_indexes.reserve(len(args))
+    strides_indexes.reserve(len(args))
     for i in range(len(args)):
         p = params[i]
         if not p.raw and isinstance(args[i], ndarray):
             array_indexes.push_back(i)
             arr = args[i]
             if not arr._c_contiguous:
-                args_strides.push_back(arr._strides)
+                strides_indexes.push_back(i)
 
-    if args_strides.size() == 0:
+    if array_indexes.size() == 0:
+        return shape
+
+    if strides_indexes.size() == 0:
         # The input arrays are all c_contiguous
-        total_size = internal.prod(shape)
+        i = array_indexes[0]
+        arr = args[i]
+        total_size = arr.size
         newshape.assign(<Py_ssize_t>1, total_size)
+        newstrides.resize(1)
         for i in array_indexes:
             arr = args[i]
-            newstrides.assign(<Py_ssize_t>1, arr.dtype.itemsize)
+            newstrides[0] = arr.dtype.itemsize
             # TODO(niboshi): Confirm update_x_contiguity flags
             args[i] = arr._view(newshape, newstrides, False, True)
         return total_size,
 
-    vecshape = shape
+    axes.reserve(ndim)
+    vecshape.reserve(ndim)
+    for x in shape:
+        vecshape.push_back(x)
     last_ax = -1
     for ax in range(ndim):
         if vecshape[ax] == 1:
@@ -167,8 +198,9 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         if last_ax < 0:
             last_ax = ax
             continue
-        for st in args_strides:
-            if st[ax] * vecshape[ax] != st[last_ax]:
+        for i in strides_indexes:
+            arr = args[i]
+            if arr._strides[ax] * vecshape[ax] != arr._strides[last_ax]:
                 axes.push_back(last_ax)
                 break
         else:
@@ -179,6 +211,8 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     if <int>axes.size() == ndim:
         return shape
 
+    newshape.reserve(axes.size())
+    newstrides.reserve(axes.size())
     for ax in axes:
         newshape.push_back(vecshape[ax])
     for i in array_indexes:
@@ -229,9 +263,19 @@ cdef class ParameterInfo:
             else:
                 raise Exception('Unknown keyword "%s"' % i)
 
+    def __repr__(self):
+        return '<ParameterInfo({})>'.format(
+            ' '.join([
+                'name={!r}'.format(self.name),
+                'dtype={!r}'.format(self.dtype),
+                'ctype={!r}'.format(self.ctype),
+                'raw={!r}'.format(self.raw),
+                'is_const={!r}'.format(self.is_const),
+            ]))
+
 
 @util.memoize()
-def _get_param_info(s, is_const):
+def _get_param_info(str s, is_const):
     if len(s) == 0:
         return ()
     return tuple([ParameterInfo(i, is_const) for i in s.strip().split(',')])
@@ -347,20 +391,17 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
     return out_args
 
 
-cdef list _copy_in_args_if_needed(list in_args, list out_args):
-    cdef int i, j
-    cdef list ret = []
-
+cdef _copy_in_args_if_needed(list in_args, list out_args):
+    # This function updates `in_args`
+    cdef ndarray inp, out
     for i in range(len(in_args)):
-        inp = in_args[i]
-        if isinstance(inp, ndarray):
-            for j in range(len(out_args)):
-                out = out_args[j]
+        a = in_args[i]
+        if isinstance(a, ndarray):
+            inp = a
+            for out in out_args:
                 if inp is not out and may_share_bounds(inp, out):
-                    inp = inp.copy()
+                    in_args[i] = inp.copy()
                     break
-        ret.append(inp)
-    return ret
 
 
 cdef list _get_out_args_with_params(
@@ -656,7 +697,12 @@ cdef tuple _guess_routine_from_in_types(list ops, tuple in_types):
     for op in ops:
         op_types = op[0]
         for i in range(n):
-            if not can_cast(in_types[i], op_types[i]):
+            it = in_types[i]
+            ot = op_types[i]
+            if isinstance(it, tuple):
+                if not can_cast(it[0], ot) and not can_cast(it[1], ot):
+                    break
+            elif not can_cast(it, ot):
                 break
         else:
             return op
@@ -693,28 +739,46 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
             max_array_kind >= max_scalar_kind)
 
 
-cdef tuple _guess_routine(name, dict cache, list ops, list in_args, dtype):
+cdef dict _mst_unsigned_to_signed = {
+    i: (numpy.iinfo(j).max, (i, j))
+    for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
+                 for i in "BHILQ"]}
+cdef _numpy_min_scalar_type = numpy.min_scalar_type
+
+cdef _min_scalar_type(x):
+    # A non-negative integer may have two locally minimum scalar
+    # types: signed/unsigned integer.
+    # Return both for can_cast, while numpy.min_scalar_type only returns
+    # the unsigned type.
+    t = _numpy_min_scalar_type(x)
+    dt = t.type
+    if t.kind == 'u':
+        m, dt2 = <tuple>_mst_unsigned_to_signed[dt]
+        if x <= m:
+            return dt2
+    return dt
+
+
+cdef tuple _guess_routine(str name, dict cache, list ops, list in_args, dtype):
     if dtype is None:
         use_raw_value = _check_should_use_min_scalar(in_args)
         if use_raw_value:
-            in_types = tuple([i.dtype if isinstance(i, ndarray) else i
-                              for i in in_args])
-            op = ()
+            in_types = tuple([
+                i.dtype.type if isinstance(i, ndarray) else _min_scalar_type(i)
+                for i in in_args])
         else:
             in_types = tuple([i.dtype.type for i in in_args])
-            op = cache.get(in_types, ())
-
+        op = cache.get(in_types, ())
         if op is ():
             op = _guess_routine_from_in_types(ops, in_types)
-            if not use_raw_value:
-                cache[in_types] = op
+            cache[in_types] = op
     else:
         op = cache.get(dtype, ())
         if op is ():
             op = _guess_routine_from_dtype(ops, dtype)
             cache[dtype] = op
 
-    if op:
+    if op is not None:
         return op
     if dtype is None:
         dtype = tuple([i.dtype.type for i in in_args])
@@ -847,7 +911,7 @@ cdef class ufunc:
             out_args = _preprocess_args(dev_id, (out,), False)
             args += out_args
 
-        in_args = _copy_in_args_if_needed(in_args, out_args)
+        _copy_in_args_if_needed(in_args, out_args)
         broad_values = in_args + out_args
         _broadcast_core(broad_values, vec_shape)
         shape = tuple(vec_shape)

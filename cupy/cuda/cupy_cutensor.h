@@ -23,23 +23,19 @@ extern "C" {
     typedef enum {} cutensorAlgo_t;
     typedef enum {} cutensorOperator_t;
     typedef enum {} cutensorWorksizePreference_t;
+    typedef enum {} cutensorComputeType_t;
 
     typedef void* cutensorHandle_t;
     typedef void* cutensorTensorDescriptor_t;
+    typedef void* cutensorContractionDescriptor_t;
+    typedef void* cutensorContractionFind_t;
+    typedef void* cutensorContractionPlan_t;
 
-    cutensorStatus_t cutensorCreate(...) {
+    cutensorStatus_t cutensorInit(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
-    cutensorStatus_t cutensorDestroy(...) {
-	return CUTENSOR_STATUS_SUCCESS;
-    }
-
-    cutensorStatus_t cutensorCreateTensorDescriptor(...) {
-	return CUTENSOR_STATUS_SUCCESS;
-    }
-
-    cutensorStatus_t cutensorDestroyTensorDescriptor(...) {
+    cutensorStatus_t cutensorInitTensorDescriptor(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
@@ -48,6 +44,18 @@ extern "C" {
     }
 
     cutensorStatus_t cutensorElementwiseBinary(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorInitContractionDescriptor(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorInitContractionFind(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorInitContractionPlan(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
@@ -68,6 +76,10 @@ extern "C" {
     }
 
     cutensorStatus_t cutensorReductionGetWorkspace(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorGetAlignmentRequirement(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 

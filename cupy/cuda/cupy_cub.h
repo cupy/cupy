@@ -26,8 +26,10 @@
 
 void cub_device_reduce(void*, size_t&, void*, void*, int, cudaStream_t, int, int);
 void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, void*, void*, cudaStream_t, int, int);
+void cub_device_spmv(void*, size_t&, void*, void*, void*, void*, void*, int, int, int, cudaStream_t, int);
 size_t cub_device_reduce_get_workspace_size(void*, void*, int, cudaStream_t, int, int);
 size_t cub_device_segmented_reduce_get_workspace_size(void*, void*, int, void*, void*, cudaStream_t, int, int);
+size_t cub_device_spmv_get_workspace_size(void*, void*, void*, void*, void*, int, int, int, cudaStream_t, int);
 
 #else // CUPY_NO_CUDA
 
@@ -39,11 +41,18 @@ void cub_device_reduce(...) {
 void cub_device_segmented_reduce(...) {
 }
 
+void cub_device_spmv(...) {
+}
+
 size_t cub_device_reduce_get_workspace_size(...) {
     return 0;
 }
 
 size_t cub_device_segmented_reduce_get_workspace_size(...) {
+    return 0;
+}
+
+size_t cub_device_spmv_get_workspace_size(...) {
     return 0;
 }
 
