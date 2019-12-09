@@ -205,20 +205,21 @@ cdef class RawModule:
     """User-defined custom module.
 
     This class can be used to either compile raw CUDA sources or load CUDA
-    modules (\\*.cubin). This class is useful when a number of CUDA kernels in
-    the same source need to be retrieved.
+    modules (\\*.cubin, \\*.ptx). This class is useful when a number of CUDA
+    kernels in the same source need to be retrieved.
 
     For the former case, the CUDA source code is compiled when initializing a
     new instance of this class, and the kernels can be retrieved by calling
     :meth:`get_function`, which will return an instance of :class:`RawKernel`.
     (Same as in :class:`RawKernel`, the generated binary is also cached.)
 
-    For the latter case, an existing CUDA binary (\\*.cubin) can be loaded by
-    providing its path, and kernels therein can be retrieved similarly.
+    For the latter case, an existing CUDA binary (\\*.cubin) or a PTX file can
+    be loaded by providing its path, and kernels therein can be retrieved
+    similarly.
 
     Args:
         code (str): CUDA source code. Mutually exclusive with ``path``.
-        path (str): Path to cubin. Mutually exclusive with ``code``.
+        path (str): Path to cubin/ptx. Mutually exclusive with ``code``.
         options (tuple of str): Compiler options passed to the backend (NVRTC
             or NVCC). For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options or
