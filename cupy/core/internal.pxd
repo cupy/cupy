@@ -47,3 +47,5 @@ cpdef uint16_t to_float16(float f)
 cpdef float from_float16(uint16_t v)
 
 cdef int _normalize_order(order, cpp_bool allow_k=*) except? 0
+
+cdef _broadcast_core(list arrays, vector.vector[Py_ssize_t]& shape)

@@ -11,8 +11,8 @@ import cupy
 from cupy.core import _errors
 from cupy.core._kernel import create_ufunc
 from cupy.core._kernel import ElementwiseKernel
-from cupy.core._kernel import ReductionKernel
 from cupy.core._kernel import ufunc  # NOQA
+from cupy.core._reduction import ReductionKernel
 from cupy.core._ufuncs import elementwise_copy
 from cupy.core._ufuncs import elementwise_copy_where
 from cupy.core import flags

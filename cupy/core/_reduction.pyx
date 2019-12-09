@@ -1,12 +1,33 @@
 from cpython cimport sequence
 
+from cupy.core._dtype cimport get_dtype
+from cupy.core._kernel cimport _broadcast
+from cupy.core._kernel cimport _check_array_device_id
+from cupy.core._kernel cimport _get_args_info
+from cupy.core._kernel cimport _get_kernel_params
+from cupy.core._kernel cimport _get_out_args
+from cupy.core._kernel cimport _get_out_args_with_params
+from cupy.core._kernel cimport _guess_routine
+from cupy.core._kernel cimport _preprocess_args
+from cupy.core._kernel cimport _reduce_dims
+from cupy.core._kernel cimport ParameterInfo
 from cupy.core cimport _routines_manipulation as _manipulation
+from cupy.core cimport _scalar
+from cupy.core._scalar import get_typename as _get_typename
+from cupy.core.core cimport _convert_object_with_cuda_array_interface
+from cupy.core.core cimport compile_with_cache
+from cupy.core.core cimport Indexer
+from cupy.core.core cimport ndarray
+from cupy.core cimport internal
+from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport runtime
 
 import string
 
 from cupy.core import _errors
+from cupy.core._kernel import _get_param_info
+from cupy.core._kernel import _decide_params_type
 from cupy.cuda import compiler
 from cupy import util
 
@@ -206,13 +227,6 @@ cdef tuple _get_reduction_args(
 
 
 cdef class _AbstractReductionKernel:
-
-    cdef:
-        readonly str name
-        public str identity
-        readonly tuple in_params
-        readonly tuple out_params
-        readonly tuple _params
 
     def __init__(
             self, str name, str identity, str in_params, str out_params):
@@ -476,19 +490,6 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         options (tuple of str): Additional compilation options.
 
     """
-
-    cdef:
-        readonly int nin
-        readonly int nout
-        readonly int nargs
-        readonly tuple params
-        readonly str reduce_expr
-        readonly str map_expr
-        readonly str post_map_expr
-        readonly object options
-        readonly bint reduce_dims
-        readonly object reduce_type
-        readonly str preamble
 
     def __init__(self, str in_params, str out_params,
                  map_expr, reduce_expr, post_map_expr,

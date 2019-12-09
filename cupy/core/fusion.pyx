@@ -9,6 +9,7 @@ from cupy.core._dtype import get_dtype
 from cupy.core import _errors
 from cupy.core import _kernel
 from cupy.core._kernel import _is_fusing
+from cupy.core import _reduction
 from cupy.core import core
 
 
@@ -821,7 +822,7 @@ class _FusionHistory(object):
                 reduce_ctype, postmap_dtype, postmap_cast_code)
             submodule_code += self._emit_postmap_code(out_params, postmap_code)
 
-            kernel = _kernel.ReductionKernel(
+            kernel = _reduction.ReductionKernel(
                 in_params_code,
                 out_params_code,
                 '_pre_map({})'.format(', '.join([repr(p) for p in in_params])),
