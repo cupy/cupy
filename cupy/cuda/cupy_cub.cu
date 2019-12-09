@@ -53,6 +53,35 @@ template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, t
    behaviors with which we must comply.
 */
 
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+__host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
+#ifdef __CUDA_ARCH__
+    return __hisnan(x);
+#else
+    // TODO: avoid cast to float
+    return isnan(__half2float(x));
+#endif
+}
+
+__host__ __device__ __forceinline__ bool half_greater_than(const __half& l, const __half& r) {
+#ifdef __CUDA_ARCH__
+    return l < r;
+#else
+    // TODO: avoid cast to float
+    return __half2float(l) < __half2float(r);
+#endif
+}
+
+__host__ __device__ __forceinline__ bool half_equal(const __half& l, const __half& r) {
+#ifdef __CUDA_ARCH__
+    return l == r;
+#else
+    // TODO: avoid cast to float
+    return __half2float(l) == __half2float(r);
+#endif
+}
+#endif
+
 //
 // Max()
 //
@@ -107,16 +136,10 @@ template <>
 __host__ __device__ __forceinline__ __half Max::operator()(const __half &a, const __half &b) const
 {
     // NumPy behavior: NaN is always chosen!
-#ifdef __CUDA_ARCH__
-    if (__hisnan(a)) {return a;}
-    else if (__hisnan(b)) {return b;}
-    else {return CUB_MAX(a, b);}
-#else
-    // TODO: avoid cast to float
-    if (isnan(__half2float(a))) {return a;}
-    else if (isnan(__half2float(b))) {return b;}
-    else {return __float2half(CUB_MAX(__half2float(a), __half2float(b)));}
-#endif
+    if (half_isnan(a)) {return a;}
+    else if (half_isnan(b)) {return b;}
+    else if (half_greater_than(a, b)) {return b;}
+    else {return a;}
 }
 #endif
 
@@ -173,17 +196,11 @@ __host__ __device__ __forceinline__ complex<double> Min::operator()(const comple
 template <>
 __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, const __half &b) const
 {
-#ifdef __CUDA_ARCH__
     // NumPy behavior: NaN is always chosen!
-    if (__hisnan(a)) {return a;}
-    else if (__hisnan(b)) {return b;}
-    else {return CUB_MIN(a, b);}
-#else
-    // TODO: avoid cast to float
-    if (isnan(__half2float(a))) {return a;}
-    else if (isnan(__half2float(b))) {return b;}
-    else {return __float2half(CUB_MIN(__half2float(a), __half2float(b)));}
-#endif
+    if (half_isnan(a)) {return a;}
+    else if (half_isnan(b)) {return b;}
+    else if (half_greater_than(a, b)) {return a;}
+    else {return a;}
 }
 #endif
 
@@ -262,27 +279,15 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMax::operator()
     const KeyValuePair<int, __half> &a,
     const KeyValuePair<int, __half> &b) const
 {
-#ifdef __CUDA_ARCH__
-    if (__hisnan(a.value))
+    if (half_isnan(a.value))
         return a;
-    else if (__hisnan(b.value))
+    else if (half_isnan(b.value))
         return b;
-    else if ((b.value > a.value) || ((a.value == b.value) && (b.key < a.key)))
-        return b;
-    else
-        return a;
-#else
-    // TODO: avoid cast to float
-    if (isnan(__half2float(a.value)))
-        return a;
-    else if (isnan(__half2float(b.value)))
-        return b;
-    else if ((__half2float(b.value) > __half2float(a.value)) || 
-            ((__half2float(a.value) == __half2float(b.value)) && (b.key < a.key)))
+    else if ((half_greater_than(a.value, b.value)) ||
+             (half_equal(a.value, b.value) && (b.key < a.key)))
         return b;
     else
         return a;
-#endif
 }
 #endif
 
@@ -361,27 +366,16 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()
     const KeyValuePair<int, __half> &a,
     const KeyValuePair<int, __half> &b) const
 {
-#ifdef __CUDA_ARCH__
-    if (__hisnan(a.value))
+    if (half_isnan(a.value))
         return a;
-    else if (__hisnan(b.value))
+    else if (half_isnan(b.value))
         return b;
-    else if ((b.value < a.value) || ((a.value == b.value) && (b.key < a.key)))
-        return b;
-    else
-        return a;
-#else
-    // TODO: avoid cast to float
-    if (isnan(__half2float(a.value)))
-        return a;
-    else if (isnan(__half2float(b.value)))
-        return b;
-    else if ((__half2float(b.value) < __half2float(a.value)) ||
-            ((__half2float(a.value) == __half2float(b.value)) && (b.key < a.key)))
+    else if ((half_greater_than(b.value, a.value)) ||
+             (half_equal(a.value, b.value) && (b.key < a.key)))
         return b;
     else
         return a;
-#endif
+
 }
 #endif
 /* ------------------------------------ End of "patches" ------------------------------------ */
