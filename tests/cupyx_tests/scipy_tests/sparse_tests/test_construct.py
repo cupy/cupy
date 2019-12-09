@@ -63,8 +63,8 @@ class TestVstack(unittest.TestCase):
     def data(self):
 
         A = sparse.coo_matrix((cupy.asarray([1.0, 2.0, 3.0, 4.0]),
-                              (cupy.asarray([0, 0, 1, 1]),
-                              cupy.asarray([0, 1, 0, 1]))))
+                               (cupy.asarray([0, 0, 1, 1]),
+                                cupy.asarray([0, 1, 0, 1]))))
         B = sparse.coo_matrix((cupy.asarray([5.0, 6.0]),
                                (cupy.asarray([0, 0]),
                                 cupy.asarray([0, 1]))))
@@ -114,8 +114,8 @@ class TestHstack(unittest.TestCase):
     def data(self):
 
         A = sparse.coo_matrix((cupy.asarray([1.0, 2.0, 3.0, 4.0]),
-                              (cupy.asarray([0, 0, 1, 1]),
-                              cupy.asarray([0, 1, 0, 1]))))
+                               (cupy.asarray([0, 0, 1, 1]),
+                                cupy.asarray([0, 1, 0, 1]))))
         B = sparse.coo_matrix((cupy.asarray([5.0, 6.0]),
                                (cupy.asarray([0, 1]),
                                 cupy.asarray([0, 0]))))
@@ -175,23 +175,23 @@ class TestBmat(unittest.TestCase):
         A, B, C, D = self.data()
 
         expected = cupy.asarray([[1, 2, 5],
-                                [3, 4, 6],
-                                [0, 0, 7]])
+                                 [3, 4, 6],
+                                 [0, 0, 7]])
 
         testing.assert_array_equal(
             construct.bmat([[A, B], [None, C]]).todense(), expected
         )
 
         expected = cupy.asarray([[1, 2, 0],
-                           [3, 4, 0],
-                           [0, 0, 7]])
+                                 [3, 4, 0],
+                                 [0, 0, 7]])
         testing.assert_array_equal(
             construct.bmat([[A, None], [None, C]]).todense(), expected
         )
 
         expected = cupy.asarray([[0, 5],
-                           [0, 6],
-                           [7, 0]])
+                                 [0, 6],
+                                 [7, 0]])
 
         testing.assert_array_equal(
             construct.bmat([[None, B], [C, None]]).todense(), expected
@@ -208,7 +208,6 @@ class TestBmat(unittest.TestCase):
                                    .todense(), expected)
 
     def test_edge_cases(self):
-
         """Catch-all for small edge cases"""
 
         A, B, C, D = self.data()
@@ -226,14 +225,14 @@ class TestBmat(unittest.TestCase):
             construct.bmat([[A], [B]])
         print(str(excinfo.__dict__))
         self.assertRegex(str(excinfo.exception),
-                                 r'Got blocks\[1,0\]\.shape\[1\] '
-                                 r'== 1, expected 2')
+                         r'Got blocks\[1,0\]\.shape\[1\] '
+                         r'== 1, expected 2')
 
         with self.assertRaises(ValueError) as excinfo:
             construct.bmat([[A, C]])
         self.assertRegex(str(excinfo.exception),
-                                 r'Got blocks\[0,1\]\.shape\[0\] '
-                                 r'== 1, expected 2')
+                         r'Got blocks\[0,1\]\.shape\[0\] '
+                         r'== 1, expected 2')
 
 
 @testing.parameterize(*testing.product({
