@@ -6,6 +6,7 @@ import six
 import cupy
 from cupy import testing
 from cupy.testing import condition
+import cupyx
 
 
 def random_matrix(shape, dtype, scale, sym=False):
@@ -60,6 +61,23 @@ class TestCholeskyDecomposition(unittest.TestCase):
         self.check_L(A)
         # np.linalg.cholesky only uses a lower triangle of an array
         self.check_L(numpy.array([[1, 2], [1, 9]], dtype))
+
+
+@testing.gpu
+class TestCholeskyInvalid(unittest.TestCase):
+
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
+    def check_L(self, array, xp):
+        a = xp.asarray(array)
+        with cupyx.errstate(linalg='raise'):
+            xp.linalg.cholesky(a)
+
+    @testing.for_dtypes([
+        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
+        numpy.float32, numpy.float64])
+    def test_decomposition(self, dtype):
+        A = numpy.array([[1, -2], [-2, 1]]).astype(dtype)
+        self.check_L(A)
 
 
 @testing.parameterize(*testing.product({

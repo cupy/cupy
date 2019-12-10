@@ -99,6 +99,10 @@ CUresult cuLinkAddData(...) {
     return CUDA_SUCCESS;
 }
 
+CUresult cuLinkAddFile(...) {
+    return CUDA_SUCCESS;
+}
+
 CUresult cuLinkComplete(...) {
     return CUDA_SUCCESS;
 }
@@ -178,10 +182,6 @@ CUresult cuTexRefSetFormat (...) {
 }
 
 CUresult cuTexRefSetMaxAnisotropy (...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuParamSetTexRef (...) {
     return CUDA_SUCCESS;
 }
 

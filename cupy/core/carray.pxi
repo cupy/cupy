@@ -15,12 +15,16 @@ cdef struct _CArray:
     Py_ssize_t shape_and_strides[MAX_NDIM * 2]
 
 
+@cython.final
 cdef class CArray(CPointer):
 
     cdef:
         _CArray val
 
     def __init__(self, ndarray arr):
+        self._init(arr)
+
+    cdef _init(self, ndarray arr):
         cdef Py_ssize_t i
         cdef int ndim = arr._shape.size()
         self.val.data = <void*>arr.data.ptr

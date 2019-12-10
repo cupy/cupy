@@ -10,18 +10,16 @@ cdef pair[Py_ssize_t, Py_ssize_t] _get_bound(ndarray array):
     cdef Py_ssize_t left = array.data.ptr
     cdef Py_ssize_t right = left
     cdef pair[Py_ssize_t, Py_ssize_t] ret
-    cdef vector[Py_ssize_t] shape = array.shape
-    cdef vector[Py_ssize_t] strides = array.strides
     cdef int i
 
-    for i in range(array.ndim):
-        right += (shape[i] - 1) * strides[i]
+    for i in range(array._shape.size()):
+        right += (array._shape[i] - 1) * array._strides[i]
 
     if left > right:
         left, right = right, left
 
     ret.first = left
-    ret.second = right + <Py_ssize_t>array.itemsize
+    ret.second = right + <Py_ssize_t>array.dtype.itemsize
     return ret
 
 
