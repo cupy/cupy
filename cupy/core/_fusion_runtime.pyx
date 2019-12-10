@@ -3,11 +3,12 @@ import string
 from libcpp cimport vector
 import numpy
 
-from cupy.core import _scalar
 from cupy.core import _dtype
-from cupy.core import core
+from cupy.core._scalar import convert_scalar
+from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
-from cupy.core.core cimport ndarray, Indexer
+from cupy.core.core cimport ndarray
+from cupy.core.core cimport Indexer
 from cupy.core cimport internal
 from cupy.core import _fusion_op
 from cupy.core cimport _routines_manipulation as _manipulation
@@ -39,31 +40,6 @@ def _cuda_compile(preamble, name, cuda_params, cuda_body):
     # print(code)
 
     return module.get_function(name)
-
-
-cdef ndarray _reduce_dims_core(ndarray array):
-    """Reduce the number of dimensions of the input array.
-    """
-    cdef vector.vector[Py_ssize_t] shape, strides, new_shape, new_strides
-    cdef Py_ssize_t back
-    shape = array._shape
-    strides = array._strides
-    new_shape.push_back(shape.back())
-    shape.pop_back()
-    new_strides.push_back(strides.back())
-    strides.pop_back()
-    while shape.size() > 0:
-        if new_shape.back() * new_strides.back() == strides.back():
-            new_shape[new_shape.size() - 1] *= shape.back()
-        else:
-            new_shape.push_back(shape.back())
-            new_strides.push_back(strides.back())
-        shape.pop_back()
-        strides.pop_back()
-    new_shape = new_shape[::-1]
-    new_strides = new_strides[::-1]
-    # TODO(asi1024): Use ``_ndarray_init`` after cupy/cupy#2701 is merged.
-    return ndarray(new_shape, array.dtype, array.data, new_strides)
 
 
 cdef class FusedKernel(object):
@@ -184,9 +160,7 @@ cdef class FusedKernel(object):
             elif isinstance(param, _FusionCudaScalar):
                 array = None
             elif self._is_base[i]:
-                # TODO(asi1024): Use ``_ndarray_init`` after cupy/cupy#2701
-                # is merged.
-                array = ndarray(shape, self._dtypes[i])
+                array = _ndarray_init(shape, self._dtypes[i])
             else:
                 view_of = ndarray_list[<Py_ssize_t>self._view_of[i]]
                 if param.is_broadcast:
@@ -267,14 +241,15 @@ cdef class FusedKernel(object):
         """
         cdef list params = self._params
         cdef list ndims = []
+        cdef ndarray array
         cdef int i
 
         for i in range(len(params)):
             param = params[i]
-            array = ndarray_list[i]
-            if param.ndim < 2:
+            if param.ndim <= 1:
                 continue
-            array = _reduce_dims_core(array)
+            array = ndarray_list[i]
+            array = array.reduced_view()
             ndarray_list[i] = array
             ndims.append(array.ndim)
 
@@ -296,7 +271,7 @@ cdef class FusedKernel(object):
                 kern_size = max(kern_size, array.size)
             elif self._input_index[i] >= 0:
                 scalar = args[<Py_ssize_t>self._input_index[i]]
-                params.append(_scalar.convert_scalar(scalar, False))
+                params.append(convert_scalar(scalar, False))
 
         return params + indexers
 
