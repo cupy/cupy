@@ -142,7 +142,7 @@ def _get_reduction_dtypes_op(reduction, in_param, dtype=None):
     """Get the dtypes of parameters and operation code to be emitted.
 
     Args:
-        reduction(simple_reduction_function): The reduction object.
+        reduction(_SimpleReductionKernel): The reduction object.
         in_param(_FusionCudaScalar or _FusionCudaArray): The input.
         dtype(dtype): The dtype specified by users.
 
@@ -433,7 +433,7 @@ class _FusionHistory(object):
         """Register a reduction operation with the given parameters.
 
         Args:
-            reduce_func(_kernel.simple_reduction_kernel):
+            reduce_func(_kernel._SimpleReductionKernel):
                 The reduction function to operate.
             a(array_like): The input array.
             axis(int, tuple of int or None): The axis.
@@ -441,7 +441,7 @@ class _FusionHistory(object):
             out(_array or None): The output array.
         """
 
-        assert isinstance(reduce_func, _kernel.simple_reduction_function)
+        assert isinstance(reduce_func, _kernel._SimpleReductionKernel)
 
         # Parse inputs.
         in_param = self._from_arraylike_interface(a)
