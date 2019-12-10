@@ -212,9 +212,12 @@ class ndarray(object):
             if type(_stored) is cp.ndarray:
                 # _stored is in GPU memory (caller _store_array_from_cupy)
                 self._cupy_array = _stored
+                self._remember_numpy = False
             else:
                 # _stored is in CPU memory (caller _store_array_from_numpy)
                 self._numpy_array = _stored
+                self._cupy_array = cp.array(_stored)
+                self._remember_numpy = True
         else:
             self._numpy_array = _stored
 
@@ -259,62 +262,71 @@ class ndarray(object):
 
     def _get_cupy_array(self):
         """
-        Returns _cupy_array (cupy.ndarray) of ndarray object.
+        Returns _cupy_array (cupy.ndarray) of ndarray object. And marks 
+        self(ndarray) and it's base (if exist) as numpy not up-to-date.
         """
-        if self.base is None:
-            if self._cupy_array is None:
-                self._cupy_array = cp.array(self._numpy_array)
-        else:
-            base_arg = self.base
-            if base_arg._cupy_array is None:
-                base_arg._cupy_array = cp.array(base_arg._numpy_array)
-                base_arg._numpy_array = None  # forget
-                self._cupy_array = base_arg._cupy_array.view()
-            else:
-                if self._cupy_array is None:
-                    self._cupy_array = base_arg._cupy_array.view()
-        self._numpy_array = None  # forget
+        base = self.base
+        if base is not None:
+            base._remember_numpy = False
+        self._remember_numpy = False
         return self._cupy_array
 
     def _get_numpy_array(self):
         """
         Returns _numpy_array (ex: np.ndarray, numpy.ma.MaskedArray,
-        numpy.chararray etc.) of ndarray object.
+        numpy.chararray etc.) of ndarray object. And marks self(ndarray)
+        and it's base (if exist) as numpy up-to-date.
         """
-        _type = np.ndarray if self._class is cp.ndarray else self._class
-        if self.base is None:
-            if self._numpy_array is None:
-                self._numpy_array = cp.asnumpy(self._cupy_array)
-        else:
-            base_arg = self.base
-            if base_arg._numpy_array is None:
-                base_arg._numpy_array = cp.asnumpy(base_arg._cupy_array)
-                base_arg._cupy_array = None  # forget
-                self._numpy_array = base_arg._numpy_array.view(type=_type)
-            else:
-                if self._numpy_array is None:
-                    self._numpy_array = base_arg._numpy_array.view(type=_type)
-        self._cupy_array = None  # forget
+        base = self.base
+        if base is not None and base._class is cp.ndarray:
+            base._remember_numpy = True
+        if self._class is cp.ndarray:
+            self._remember_numpy = True
         return self._numpy_array
 
-    def _numpy_array_update(self):
+    def _update_numpy_array(self):
         """
-        Updates _numpy_array with _cupy_array
+        Updates _numpy_array from _cupy_array.
+        To be executed before calling numpy function.
         """
-        self._numpy_array = cp.asnumpy(self._cupy_array)
+        base = self.base
+        _type = np.ndarray if self._class is cp.ndarray else self._class
 
-    def _cupy_array_update(self):
-        """
-        Updates _cupy_array with _numpy_array.
-        If array is of type np.ma.MaskedArray or np.matrix,
-        then update array.base._cupy_array with array.base._numpy_array.
-        """
         if self._class is cp.ndarray:
-            self._cupy_array = cp.array(self._numpy_array)
+            # cupy-compatible
+            if base is None:
+                if not self._remember_numpy:
+                    if self._numpy_array is None:
+                        self._numpy_array = cp.asnumpy(self._cupy_array)
+                    else:
+                        self._cupy_array.get(out=self._numpy_array)
+            else:
+                if not base._remember_numpy:
+                    base._update_numpy_array()
+                    if self._numpy_array is None:
+                        self._numpy_array = base._numpy_array.view(type=_type)
+                        self._numpy_array.shape = self._cupy_array.shape
+                        self._numpy_array.strides = self._cupy_array.strides
+        else:
+            # not cupy-compatible
+            if base is not None:
+                assert base._class is cp.ndarray
+                if not base._remember_numpy:
+                    base._update_numpy_array()
 
-        if isinstance(self.base, ndarray) and \
-           self._class in [np.ma.MaskedArray, np.matrix]:
-            self.base._cupy_array_update()
+    def _update_cupy_array(self):
+        """
+        Updates _cupy_array from _numpy_array.
+        To be executed before calling cupy function.
+        """
+        base = self.base
+
+        if base is None:
+            if self._remember_numpy:
+                self._cupy_array[:] = self._numpy_array
+        else:
+            if base._remember_numpy:
+                base._update_cupy_array()
 
 
 def _create_magic_methods():
@@ -464,12 +476,12 @@ def _convert_cupy_to_fallback(cupy_res):
     return _get_xp_args(cp.ndarray, ndarray._store_array_from_cupy, cupy_res)
 
 
-def _update_after_cupy_call(args, kwargs):
-    return _get_xp_args(ndarray, ndarray._numpy_array_update, (args, kwargs))
+def _update_numpy_args(args, kwargs):
+    return _get_xp_args(ndarray, ndarray._update_numpy_array, (args, kwargs))
 
 
-def _update_after_numpy_call(args, kwargs):
-    return _get_xp_args(ndarray, ndarray._cupy_array_update, (args, kwargs))
+def _update_cupy_args(args, kwargs):
+    return _get_xp_args(ndarray, ndarray._update_cupy_array, (args, kwargs))
 
 
 # -----------------------------------------------------------------------------
@@ -491,9 +503,9 @@ def _call_cupy(func, args, kwargs):
         Result after calling func and performing data transfers.
     """
 
+    _update_cupy_args(args, kwargs)
     cupy_args, cupy_kwargs = _convert_fallback_to_cupy(args, kwargs)
     cupy_res = func(*cupy_args, **cupy_kwargs)
-    # _update_after_cupy_call(args, kwargs)
 
     # If existing argument is being returned
     ext_res = _get_same_reference(
@@ -529,9 +541,9 @@ def _call_numpy(func, args, kwargs):
         Result after calling func and performing data transfers.
     """
 
+    _update_numpy_args(args, kwargs)
     numpy_args, numpy_kwargs = _convert_fallback_to_numpy(args, kwargs)
     numpy_res = func(*numpy_args, **numpy_kwargs)
-    # _update_after_numpy_call(args, kwargs)
 
     # If existing argument is being returned
     ext_res = _get_same_reference(
