@@ -816,7 +816,7 @@ cdef class ufunc:
         readonly Py_ssize_t nargs
         readonly object name
         readonly list _ops  # normal routines
-        readonly list _out_ops  # routines based on output dtype
+        readonly list _out_ops  # routines based on explicitly given output dtype
         readonly object _preamble
         readonly object _loop_prep
         readonly object _default_casting
