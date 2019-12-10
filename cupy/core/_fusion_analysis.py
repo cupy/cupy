@@ -557,20 +557,33 @@ class _FusionHistory(object):
             in_params.append(var)
 
         # Call the target function.
-        out_params = func(*[self._to_interface(x) for x in in_params])
+        inputs = [self._to_interface(x) for x in in_params]
+        output = func(*inputs)
 
         # Register output variables.
-        if out_params is None:
+        if output is None:
             return_size = 'none'
             out_params = []
-        elif isinstance(out_params, tuple):
-            return_size = len(out_params)
-            out_params = [self._from_interface(x) for x in out_params]
-        else:
+        elif isinstance(output, _fusion_interface._ndarray):
             return_size = 'single'
-            out_params = [self._from_interface(out_params)]
+            out_params = [self._from_interface(output)]
+        elif isinstance(output, tuple):
+            if all(isinstance(x, _fusion_interface._ndarray) for x in output):
+                return_size = len(output)
+                out_params = [self._from_interface(x) for x in output]
+            else:
+                raise ValueError(
+                    'The all elements of return value of fused function '
+                    'must be of _ndarray type.'
+                )
+        else:
+            raise ValueError(
+                'The return value of fused functions must be `None`, '
+                'ndarray or a tuple of ndarays.'
+            )
 
         for output_order, out_param in enumerate(out_params):
+            assert isinstance(out_param, _FusionCudaArray)
             out_param.output_order = output_order
             out_param.memory.is_output = True
 
