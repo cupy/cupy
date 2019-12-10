@@ -828,7 +828,7 @@ cdef class ufunc:
         readonly object __module__
 
     def __init__(self, name, nin, nout, ops, preamble='', loop_prep='', doc='',
-                 default_casting=None, out_ops=None):
+                 default_casting=None, *, out_ops=None):
         self.name = name
         self.__name__ = name
         self.nin = nin
