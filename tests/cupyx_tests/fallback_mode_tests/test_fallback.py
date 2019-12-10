@@ -1,7 +1,10 @@
+import os
 import sys
 import pytest
 import unittest
 import functools
+
+os.environ['CUPY_EXPERIMENTAL_SLICE_COPY'] = str(1)
 
 import numpy
 
@@ -58,14 +61,11 @@ def numpy_fallback_array_equal(name='xp'):
             if isinstance(numpy_result, numpy.ndarray):
                 # if numpy returns ndarray, cupy must return ndarray
                 assert isinstance(fallback_result, fallback.ndarray)
-                assert fallback_result.dtype == numpy_result.dtype
 
-                if fallback_result._class is cupy.ndarray:
-                    testing.assert_array_equal(
-                        numpy_result, fallback_result._cupy_array)
-                else:
-                    testing.assert_array_equal(
-                        numpy_result, fallback_result._numpy_array)
+                fallback_mode.numpy.testing.assert_array_equal(
+                    numpy_result, fallback_result)
+
+                assert fallback_result.dtype == numpy_result.dtype
 
             elif isinstance(numpy_result, numpy.ScalarType):
                 # if numpy returns scalar
@@ -80,7 +80,7 @@ def numpy_fallback_array_equal(name='xp'):
     return decorator
 
 
-def numpy_fallback_array_allclose(name='xp'):
+def numpy_fallback_array_allclose(name='xp', rtol=1e-07):
     """
     Decorator that checks fallback_mode results are almost equal to NumPy ones.
     Checks ndarrays.
@@ -100,14 +100,11 @@ def numpy_fallback_array_allclose(name='xp'):
             numpy_result = impl(self, *args, **kwargs)
 
             assert isinstance(fallback_result, fallback.ndarray)
-            assert fallback_result.dtype == numpy_result.dtype
 
-            if fallback_result._class is cupy.ndarray:
-                testing.numpy_cupy_allclose(
-                    numpy_result, fallback_result._cupy_array)
-            else:
-                testing.numpy_cupy_allclose(
-                    numpy_result, fallback_result._numpy_array)
+            fallback_mode.numpy.testing.assert_allclose(
+                numpy_result, fallback_result, rtol=rtol)
+
+            assert fallback_result.dtype == numpy_result.dtype
 
         return test_func
     return decorator
@@ -456,7 +453,7 @@ class TestArrayMatmul(unittest.TestCase):
     @unittest.skipUnless(sys.version_info >= (3, 5),
                          '__matmul__ only for Python==3.5 or above')
     @testing.with_requires('numpy>=1.16')
-    @numpy_fallback_array_allclose()
+    @numpy_fallback_array_allclose(rtol=1e-05)
     def test_mm_matmul(self, xp):
         a = testing.shaped_random((4, 5), xp)
         b = testing.shaped_random((5, 3), xp, seed=5)
@@ -644,3 +641,13 @@ class TestArrayVariants(unittest.TestCase):
         assert mx.base is x
         mx += mx
         return x
+
+    # changes in base ndarray should be reflected in MaskedArray
+    @numpy_fallback_array_equal()
+    def test_ma_func_inverse(self, xp):
+        x = xp.array([1, 2, 3, 4])
+        mx = xp.ma.array(x, mask=[1, 0, 1, 0])
+        assert mx.base is x
+        mx += mx
+        x += x
+        return mx
