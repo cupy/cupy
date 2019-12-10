@@ -8,8 +8,8 @@ cdef class _AbstractDim(object):
     cdef:
         readonly int _value
 
-    def __init__(self, int input_order, int axis):
-        self._value = (input_order << 8) | axis
+    def __init__(self, int input_index, int axis):
+        self._value = (input_index << 8) | axis
 
     def __hash__(self):
         return self._value

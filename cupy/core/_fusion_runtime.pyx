@@ -82,7 +82,7 @@ cdef class FusedKernel(object):
         readonly list _reduction_out_array
         readonly vector.vector[bint] _is_base
         readonly list _dtypes
-        readonly vector.vector[Py_ssize_t] _input_order
+        readonly vector.vector[Py_ssize_t] _input_index
         readonly vector.vector[Py_ssize_t] _view_of
         readonly vector.vector[Py_ssize_t] _out_params
 
@@ -117,18 +117,18 @@ cdef class FusedKernel(object):
 
         for i, p in enumerate(self._params):
             view_of = -1
-            input_order = -1
-            if p.input_order is not None:
-                input_order = p.input_order
+            input_index = -1
+            if p.input_index is not None:
+                input_index = p.input_index
             if isinstance(p, _FusionCudaArray):
                 if p._view_of is not None:
                     view_of = array_dict[p._view_of.key()]
                 if p.is_output:
-                    self._out_params[p.output_order] = i
+                    self._out_params[p.output_index] = i
             array_dict[p.key()] = i
             self._is_base.push_back(p.is_base)
             self._dtypes.append(_dtype.get_dtype(p.dtype))
-            self._input_order.push_back(input_order)
+            self._input_index.push_back(input_index)
             self._view_of.push_back(view_of)
 
         self._block_strides = []
@@ -147,16 +147,16 @@ cdef class FusedKernel(object):
         """
         cdef dict dim_map = {}
         cdef list kernel_param_shapes = []
-        cdef int input_order
+        cdef int input_index
         cdef int axis
         cdef list shape
 
-        for input_order in range(len(args)):
-            arg = args[input_order]
+        for input_index in range(len(args)):
+            arg = args[input_index]
             if isinstance(arg, ndarray):
                 shape = arg._shape
                 for axis in range(len(shape)):
-                    dim_map[(input_order << 8) | axis] = shape[axis]
+                    dim_map[(input_index << 8) | axis] = shape[axis]
 
         for param in self._params:
             shape = []
@@ -179,8 +179,8 @@ cdef class FusedKernel(object):
         for i in range(len(params)):
             param = params[i]
             shape = shapes[i]
-            if self._input_order[i] >= 0:
-                array = args[<Py_ssize_t>self._input_order[i]]
+            if self._input_index[i] >= 0:
+                array = args[<Py_ssize_t>self._input_index[i]]
             elif isinstance(param, _FusionCudaScalar):
                 array = None
             elif self._is_base[i]:
@@ -294,8 +294,8 @@ cdef class FusedKernel(object):
                 params.append(array)
                 indexers.append(Indexer(array.shape))
                 kern_size = max(kern_size, array.size)
-            elif self._input_order[i] >= 0:
-                scalar = args[<Py_ssize_t>self._input_order[i]]
+            elif self._input_index[i] >= 0:
+                scalar = args[<Py_ssize_t>self._input_index[i]]
                 params.append(_scalar.convert_scalar(scalar, False))
 
         return params + indexers

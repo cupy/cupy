@@ -199,12 +199,12 @@ class _VariableConductor(object):
         memory.is_input = ret.is_input
         return self._normalize_variable(ret)
 
-    def generate_new_array(self, dtype, rshape, ashape, input_order=None):
+    def generate_new_array(self, dtype, rshape, ashape, input_index=None):
         """Generate new _FusionCudaArray object with a new memory space.
         """
         ret = self._generate_new_variable(
             _FusionCudaArray,
-            dtype, rshape=rshape, ashape=ashape, input_order=input_order)
+            dtype, rshape=rshape, ashape=ashape, input_index=input_index)
         ret.memory.base_ashape = ret.ashape
         return ret
 
@@ -528,7 +528,7 @@ class _FusionHistory(object):
         in_params = []
         array_dict = {}
         memory_dict = {}
-        for input_order, arg in enumerate(args):
+        for input_index, arg in enumerate(args):
             if arg is None:
                 var = None
             elif isinstance(arg, core.ndarray):
@@ -542,18 +542,18 @@ class _FusionHistory(object):
                     # The is an array which shares the same memory.
                     base = in_params[memory_dict[base_id]]
                     assert isinstance(base, _FusionCudaArray)
-                    var = self.vc.make_view(base, input_order=input_order)
+                    var = self.vc.make_view(base, input_index=input_index)
                 else:
                     # Otherwise.
                     var = self.vc.generate_new_array(
-                        arg.dtype, arg.shape, None, input_order=input_order)
-                array_dict[arg_id] = input_order
-                memory_dict[base_id] = input_order
+                        arg.dtype, arg.shape, None, input_index=input_index)
+                array_dict[arg_id] = input_index
+                memory_dict[base_id] = input_index
             else:
                 # Scalar input.
                 dtype = numpy.dtype(type(arg))
                 var = self.vc.generate_new_scalar(
-                    dtype, input_order=input_order)
+                    dtype, input_index=input_index)
             in_params.append(var)
 
         # Call the target function.
@@ -582,9 +582,9 @@ class _FusionHistory(object):
                 'ndarray or a tuple of ndarays.'
             )
 
-        for output_order, out_param in enumerate(out_params):
+        for output_index, out_param in enumerate(out_params):
             assert isinstance(out_param, _FusionCudaArray)
-            out_param.output_order = output_order
+            out_param.output_index = output_index
             out_param.memory.is_output = True
 
         return out_params, return_size

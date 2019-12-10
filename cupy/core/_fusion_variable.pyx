@@ -51,19 +51,19 @@ class _FusionCudaVarBase(object):
         dtype(dtype): The dtype of the variable.
         rshape(tuple of int): The real shape of the variable.
         ashape(tuple of _AbstractDim): An abstracted shape of the variable.
-        input_order(int or None): If not `None`, this variable is used as
-            the `input_order`-th input parameter.
-        output_order(int or None): If not `None`, this variable is used as
-            the `output_order`-th output parameter.
+        input_index(int or None): If not `None`, this variable is used as
+            the `input_index`-th input parameter.
+        output_index(int or None): If not `None`, this variable is used as
+            the `output_index`-th output parameter.
     """
     def __init__(
             self, memory_space, serial_number, dtype, rshape, ashape,
-            input_order, output_order):
+            input_index, output_index):
         assert isinstance(memory_space, _FusionMemorySpace)
         assert isinstance(serial_number, int)
         assert isinstance(dtype, numpy.dtype)
-        assert input_order is None or isinstance(input_order, int)
-        assert output_order is None or isinstance(output_order, int)
+        assert input_index is None or isinstance(input_index, int)
+        assert output_index is None or isinstance(output_index, int)
         assert isinstance(rshape, tuple)
         assert isinstance(ashape, tuple)
         assert len(rshape) == len(ashape)
@@ -76,8 +76,8 @@ class _FusionCudaVarBase(object):
         self.dtype = dtype
         self.rshape = rshape
         self.ashape = ashape
-        self.input_order = input_order
-        self.output_order = output_order
+        self.input_index = input_index
+        self.output_index = output_index
 
     @property
     def ndim(self):
@@ -89,11 +89,11 @@ class _FusionCudaVarBase(object):
 
     @property
     def is_input(self):
-        return self.input_order is not None
+        return self.input_index is not None
 
     @property
     def is_output(self):
-        return self.output_order is not None
+        return self.output_index is not None
 
     @property
     def var_name(self):
@@ -144,10 +144,10 @@ class _FusionCudaScalar(_FusionCudaVarBase):
 
     # TODO(asi1024): Remove index argument.
     def __init__(
-            self, index, serial_number, dtype, input_order=None, *,
+            self, index, serial_number, dtype, input_index=None, *,
             const_value=None,):
         super().__init__(
-            index, serial_number, dtype, (), (), input_order, None)
+            index, serial_number, dtype, (), (), input_index, None)
 
         self.const_value = const_value
 
@@ -187,18 +187,18 @@ class _FusionCudaArray(_FusionCudaVarBase):
     """
 
     def __init__(
-            self, index, serial_number, dtype, input_order=None,
-            output_order=None, *, rshape, ashape, **kwargs):
+            self, index, serial_number, dtype, input_index=None,
+            output_index=None, *, rshape, ashape, **kwargs):
 
         if ashape is None:
-            assert input_order is not None
+            assert input_index is not None
             ndim = len(rshape)
             ashape = tuple([
-                _AbstractDim(input_order, axis) for axis in range(ndim)])
+                _AbstractDim(input_index, axis) for axis in range(ndim)])
 
         super().__init__(
             index, serial_number, dtype, rshape, ashape,
-            input_order, output_order)
+            input_index, output_index)
 
         self._view_of = None
         self.is_broadcast = False
@@ -239,7 +239,7 @@ class _FusionCudaArray(_FusionCudaVarBase):
         """Two variables can be identified if they have the same key.
         """
         return (
-            self.memory.id, self.ashape, self.input_order,
+            self.memory.id, self.ashape, self.input_index,
             getattr(self._view_of, 'serial_number', None),
             self.is_broadcast, self.rotate_axis, self.slice_key,
         )

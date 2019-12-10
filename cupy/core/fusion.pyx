@@ -130,10 +130,10 @@ class Fusion(object):
 
             # Create a dim_map: a dictionary from _AbstractDim to int.
             dim_map = dict()
-            for input_order, arg in enumerate(args):
+            for input_index, arg in enumerate(args):
                 if isinstance(arg, core.ndarray):
                     for axis, dim in enumerate(arg.shape):
-                        dim_map[_AbstractDim(input_order, axis)] = dim
+                        dim_map[_AbstractDim(input_index, axis)] = dim
 
             # Find a kernel that satisfies the shape constraints.
             for cand_kernel in kernel_list:
