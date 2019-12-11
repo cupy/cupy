@@ -6,18 +6,23 @@ cdef class _AbstractDim(object):
     """
 
     cdef:
-        readonly int _value
+        readonly int input_index
+        readonly int axis
 
     def __init__(self, int input_index, int axis):
-        self._value = (input_index << 8) | axis
+        self.input_index = input_index
+        self.axis = axis
 
     def __hash__(self):
-        return self._value
+        return hash((self.input_index, self.axis))
 
     def __eq__(self, object other):
         if isinstance(other, int):
             return False
-        return self._value == other._value
+        return (
+            self.input_index == other.input_index
+            and self.axis == other.axis
+        )
 
 
 cdef class _ShapeConstraints(object):

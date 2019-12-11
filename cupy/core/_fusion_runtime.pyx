@@ -121,18 +121,9 @@ cdef class FusedKernel(object):
     def get_shapes_of_kernel_params(self, tuple args):
         """Returns the shapes of paramters passed to kern.linear_launch.
         """
-        cdef dict dim_map = {}
         cdef list kernel_param_shapes = []
-        cdef int input_index
         cdef int axis
         cdef list shape
-
-        for input_index in range(len(args)):
-            arg = args[input_index]
-            if isinstance(arg, ndarray):
-                shape = arg._shape
-                for axis in range(len(shape)):
-                    dim_map[(input_index << 8) | axis] = shape[axis]
 
         for param in self._params:
             shape = []
@@ -141,7 +132,7 @@ cdef class FusedKernel(object):
                 for axis in range(len(ashape)):
                     dim = ashape[axis]
                     if not isinstance(dim, int):
-                        dim = dim_map[dim._value]
+                        dim = args[dim.input_index].shape[dim.axis]
                     shape.append(dim)
             kernel_param_shapes.append(shape)
         return kernel_param_shapes
