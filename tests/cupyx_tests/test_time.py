@@ -7,7 +7,7 @@ import cupy
 import cupyx
 
 
-class TestRun(unittest.TestCase):
+class TestRepeat(unittest.TestCase):
 
     def test_cpu_routine(self):
         with mock.patch('time.perf_counter',
@@ -20,7 +20,7 @@ class TestRun(unittest.TestCase):
                 y = cupy.testing.shaped_random((2, 3), cupy, 'int32')
                 assert mock_func.call_count == 0
 
-                perf = cupyx.run(
+                perf = cupyx.time.repeat(
                     mock_func, (x, y), n=10, n_warmup=3)
 
                 assert perf.name == 'test_name_xxx'

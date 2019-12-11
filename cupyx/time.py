@@ -39,7 +39,7 @@ class _PerfCaseResult(object):
         return self.to_str(show_gpu=True)
 
 
-def run(func, args=(), n=10000, *, name=None, n_warmup=10):
+def repeat(func, args=(), n=10000, *, name=None, n_warmup=10):
     if name is None:
         name = func.__name__
 
