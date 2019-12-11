@@ -379,6 +379,16 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
     return value, tuple(shape)
 
 
+cdef _numpy_can_cast = numpy.can_cast
+
+
+cdef bint _can_cast(d1, d2, casting):
+    # most ufunc passes `same_kind`
+    if casting == 'same_kind' and get_dtype(d1).kind == d2.kind:
+        return True
+    return _numpy_can_cast(d1, d2, casting=casting)
+
+
 cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
                         casting):
     if not out_args:
@@ -391,7 +401,7 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
         if a.shape != out_shape:
             raise ValueError('Out shape is mismatched')
         out_type = out_types[i]
-        if not numpy.can_cast(out_type, a.dtype, casting=casting):
+        if not _can_cast(out_type, a.dtype, casting):
             msg = 'output (typecode \'{}\') could not be coerced to ' \
                   'provided output parameter (typecode \'{}\') according to ' \
                   'the casting rule "{}"'.format(
