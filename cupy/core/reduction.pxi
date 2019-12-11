@@ -14,7 +14,15 @@ from cupy import util
 cpdef function.Function _create_reduction_function(
         name, block_size, reduce_type, params, identity,
         pre_map_expr, reduce_expr, post_map_expr,
-        type_preamble, input_expr, output_expr, preamble, options):
+        type_preamble, input_expr, output_expr, preamble, options,
+        is_c_contiguous):
+    if is_c_contiguous:
+        thread_row_expr = 'threadIdx.x >> __popc(_block_stride - 1)'
+        thread_col_expr = 'threadIdx.x & (_block_stride - 1)'
+    else:
+        thread_row_expr = 'threadIdx.x & (_J_stride - 1)'
+        thread_col_expr = 'threadIdx.x >> __popc(_J_stride - 1)'
+
     module_code = string.Template('''
 ${type_preamble}
 ${preamble}
@@ -29,19 +37,24 @@ typedef ${reduce_type} _type_reduce;
 extern "C" __global__ void ${name}(${params}) {
   __shared__ char _sdata_raw[${block_size} * sizeof(_type_reduce)];
   _type_reduce *_sdata = reinterpret_cast<_type_reduce*>(_sdata_raw);
-  unsigned int _tid = threadIdx.x;
 
-  int _J_offset = _tid >> __popc(_block_stride - 1);  // _tid / _block_stride
-  ptrdiff_t _j_offset = (ptrdiff_t)_J_offset * _out_ind.size();
   int _J_stride = ${block_size} >> __popc(_block_stride - 1);
   ptrdiff_t _j_stride = (ptrdiff_t)_J_stride * _out_ind.size();
+
+  // _thread_row = _tid / _block_stride
+  // _thread_col = _tid % _block_stride
+  unsigned int _thread_row = ${thread_row_expr};
+  unsigned int _thread_col = ${thread_col_expr};
+  unsigned int _tid = _thread_row * _block_stride + _thread_col;
+
+  int _J_offset = _thread_row;
+  ptrdiff_t _j_offset = (ptrdiff_t)_J_offset * _out_ind.size();
 
   for (ptrdiff_t _i_base = (ptrdiff_t)blockIdx.x * _block_stride;
        _i_base < _out_ind.size();
        _i_base += (ptrdiff_t)gridDim.x * _block_stride) {
     _type_reduce _s = _type_reduce(${identity});
-    ptrdiff_t _i =
-        _i_base + (_tid & (_block_stride - 1));  // _tid % _block_stride
+    ptrdiff_t _i = _i_base + _thread_col;
     int _J = _J_offset;
     for (ptrdiff_t _j = _i + _j_offset; _j < _in_ind.size();
          _j += _j_stride, _J += _J_stride) {
@@ -59,10 +72,10 @@ extern "C" __global__ void ${name}(${params}) {
       }
       __syncthreads();
     }
-    if (_tid < _block_stride) {
-      _s = _sdata[_tid];
+    if (threadIdx.x < _block_stride) {
+      _s = _sdata[threadIdx.x];
     }
-    if (_tid < _block_stride && _i < _out_ind.size()) {
+    if (threadIdx.x < _block_stride && _i < _out_ind.size()) {
       _out_ind.set(static_cast<ptrdiff_t>(_i));
       ${output_expr}
       POST_MAP(_s);
@@ -73,6 +86,8 @@ extern "C" __global__ void ${name}(${params}) {
         block_size=block_size,
         reduce_type=reduce_type,
         params=params,
+        thread_row_expr=thread_row_expr,
+        thread_col_expr=thread_col_expr,
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
@@ -156,7 +171,7 @@ cdef Py_ssize_t _get_contiguous_size(
     return contiguous_size
 
 
-cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
+cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t, bint) _get_block_specs(  # NOQA
         Py_ssize_t in_size, Py_ssize_t out_size,
         Py_ssize_t contiguous_size) except*:
     cdef Py_ssize_t reduce_block_size, block_stride, out_block_num
@@ -167,7 +182,7 @@ cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
     block_stride = internal.clp2(block_stride // 2 + 1)  # floor
     out_block_num = (out_size + block_stride - 1) // block_stride
 
-    return _block_size, block_stride, out_block_num
+    return _block_size, block_stride, out_block_num, contiguous_size > 1
 
 
 cdef Py_ssize_t _block_size = 256 if runtime._is_hip_environment else 512
@@ -191,7 +206,7 @@ cdef tuple _get_reduction_args(
         in_shape = _reduce_dims(in_args, in_params, in_shape)
         out_shape = _reduce_dims(out_args, out_params, out_shape)
 
-    block_size, block_stride, out_block_num = _get_block_specs(
+    block_size, block_stride, out_block_num, c_contiguous = _get_block_specs(
         internal.prod_sequence(in_shape),
         internal.prod_sequence(out_shape),
         contiguous_size)
@@ -202,7 +217,7 @@ cdef tuple _get_reduction_args(
     # The last argument is always block_stride.
     s = _scalar.CScalar_from_int32(block_stride)
     return (in_args + out_args + [in_indexer, out_indexer, s],
-            block_size, out_block_num)
+            block_size, out_block_num, c_contiguous)
 
 
 cdef class _AbstractReductionKernel:
@@ -270,7 +285,7 @@ cdef class _AbstractReductionKernel:
         in_args = [x if isinstance(x, ndarray) else
                    _scalar.get_scalar_from_numpy(x, t)
                    for x, t in zip(in_args, in_types)]
-        inout_args, block_size, out_block_num = _get_reduction_args(
+        inout_args, block_size, out_block_num, is_c_contiguous = _get_reduction_args(
             in_args, out_args, self.in_params, self.out_params,
             reduce_axis + out_axis, a_shape, out_shape, reduce_dims)
         args_info = _get_args_info(inout_args)
@@ -278,7 +293,7 @@ cdef class _AbstractReductionKernel:
         func = self._get_function(
             self._params, args_info, types,
             map_expr, reduce_expr, post_map_expr, reduce_type,
-            block_size)
+            block_size, is_c_contiguous)
         func.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
         return ret
@@ -295,7 +310,7 @@ cdef class _AbstractReductionKernel:
             self,
             tuple params, tuple args_info, tuple types,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size):
+            Py_ssize_t block_size, bint is_c_contiguous):
         raise NotImplementedError()
 
 
@@ -414,12 +429,13 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple args_info, tuple types,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size):
+            Py_ssize_t block_size, bint is_c_contiguous):
         return _SimpleReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, args_info, types,
             self.name, block_size, self.identity,
-            self._input_expr, self._output_expr, self._preamble, ())
+            self._input_expr, self._output_expr, self._preamble, (),
+            is_c_contiguous)
 
 
 @util.memoize(for_each_device=True)
@@ -427,7 +443,7 @@ def _SimpleReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, args_info, types,
         name, block_size, identity, input_expr, output_expr, _preamble,
-        options):
+        options, is_c_contiguous):
     params = _get_kernel_params(params, args_info)
 
     type_preamble = '\n'.join(
@@ -437,7 +453,8 @@ def _SimpleReductionKernel_get_cached_function(
     return _create_reduction_function(
         name, block_size, reduce_type, params, identity,
         map_expr, reduce_expr, post_map_expr,
-        type_preamble, input_expr, output_expr, _preamble, options)
+        type_preamble, input_expr, output_expr, _preamble, options,
+        is_c_contiguous)
 
 
 # -----------------------------------------------------------------------------
@@ -595,19 +612,19 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple args_info, tuple types,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size):
+            Py_ssize_t block_size, bint is_c_contiguous):
         return _ReductionKernel_get_cached_function(
             self.nin, self.nout, params, args_info, types,
             self.name, block_size, reduce_type, self.identity,
             map_expr, reduce_expr, post_map_expr,
-            self.preamble, self.options)
+            self.preamble, self.options, is_c_contiguous)
 
 
 @util.memoize(for_each_device=True)
 def _ReductionKernel_get_cached_function(
         nin, nout, params, args_info, types,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
-        post_map_expr, preamble, options):
+        post_map_expr, preamble, options, is_c_contiguous):
     kernel_params = _get_kernel_params(params, args_info)
     params = params[:nin + nout]
     args_info = args_info[:nin + nout]
@@ -629,4 +646,5 @@ def _ReductionKernel_get_cached_function(
     return _create_reduction_function(
         name, block_size, reduce_type, kernel_params, identity,
         map_expr, reduce_expr, post_map_expr,
-        type_preamble, input_expr, output_expr, preamble, options)
+        type_preamble, input_expr, output_expr, preamble, options,
+        is_c_contiguous)
