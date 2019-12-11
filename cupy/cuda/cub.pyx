@@ -130,13 +130,7 @@ def device_reduce(ndarray x, int op, out=None, bint keepdims=False):
     ws = memory.alloc(ws_size)
     ws_ptr = <void *>ws.ptr
     with nogil:
-        cub_device_reduce(ws_ptr,
-                          ws_size,
-                          x_ptr,
-                          y_ptr,
-                          x_size,
-                          s,
-                          op,
+        cub_device_reduce(ws_ptr, ws_size, x_ptr, y_ptr, x_size, s, op,
                           dtype_id)
     if op == CUPY_CUB_ARGMIN or op == CUPY_CUB_ARGMAX:
         # get key from KeyValuePair: need to reinterpret the first 4 bytes
