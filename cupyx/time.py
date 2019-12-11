@@ -43,6 +43,17 @@ def run(func, args=(), n=10000, *, name=None, n_warmup=10):
     if name is None:
         name = func.__name__
 
+    if not callable(func):
+        raise ValueError('`func` should be a callable object.')
+    if not isinstance(args, tuple):
+        raise ValueError('`args` should be of tuple type.')
+    if not isinstance(n, int):
+        raise ValueError('`n` should be an integer.')
+    if not isinstance(name, str):
+        raise ValueError('`str` should be a string.')
+    if not isinstance(n_warmup, int):
+        raise ValueError('`n_warmup` should be an integer.')
+
     ts = numpy.empty((2, n,), dtype=numpy.float64)
     ev1 = cupy.cuda.stream.Event()
     ev2 = cupy.cuda.stream.Event()
