@@ -15,12 +15,13 @@ class TestRun(unittest.TestCase):
             with mock.patch('cupy.cuda.get_elapsed_time',
                             mock.Mock(return_value=2500)):
                 mock_func = mock.Mock()
+                mock_func.__name__ = 'test_name_xxx'
                 x = cupy.testing.shaped_random((2, 3), cupy, 'int32')
                 y = cupy.testing.shaped_random((2, 3), cupy, 'int32')
                 assert mock_func.call_count == 0
 
                 perf = cupyx.run(
-                    'test_name_xxx', mock_func, (x, y), n=10, n_warmup=3)
+                    mock_func, (x, y), n=10, n_warmup=3)
 
                 assert perf.name == 'test_name_xxx'
                 assert mock_func.call_count == 13

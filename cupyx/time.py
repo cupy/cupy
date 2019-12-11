@@ -39,7 +39,10 @@ class _PerfCaseResult(object):
         return self.to_str(show_gpu=True)
 
 
-def run(name, func, args=(), n=10000, *, n_warmup=10):
+def run(func, args=(), n=10000, *, name=None, n_warmup=10):
+    if name is None:
+        name = func.__name__
+
     ts = numpy.empty((2, n,), dtype=numpy.float64)
     ev1 = cupy.cuda.stream.Event()
     ev2 = cupy.cuda.stream.Event()
