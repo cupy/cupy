@@ -174,35 +174,16 @@ cdef Py_ssize_t _block_size = 256 if runtime._is_hip_environment else 512
 
 
 cdef tuple _get_reduction_args(
-        list in_args, list out_args, tuple in_params, tuple out_params,
-        tuple axis_permutes, tuple a_shape, tuple out_shape,
-        bint reduce_dims):
-    # Returns a tuple that contains following items
-    # - list of arguments passed to the __global__ function.
-    # - block_size
-    # - out_block_num
-    cdef Py_ssize_t contiguous_size, block_size, block_stride, out_block_num
-    in_shape = _set_permuted_args(
-        in_args, axis_permutes, a_shape, in_params)
-    contiguous_size = _get_contiguous_size(
-        in_args, in_params, len(in_shape), len(out_shape))
-
-    if reduce_dims:
-        in_shape = _reduce_dims(in_args, in_params, in_shape)
-        out_shape = _reduce_dims(out_args, out_params, out_shape)
-
-    block_size, block_stride, out_block_num = _get_block_specs(
-        internal.prod_sequence(in_shape),
-        internal.prod_sequence(out_shape),
-        contiguous_size)
-
+        list in_args, list out_args,
+        tuple in_shape, tuple out_shape,
+        Py_ssize_t block_stride):
+    # Returns a list of arguments passed to the __global__ function.
     in_indexer = Indexer(in_shape)
     out_indexer = Indexer(out_shape)
-
-    # The last argument is always block_stride.
     s = _scalar.CScalar_from_int32(block_stride)
-    return (in_args + out_args + [in_indexer, out_indexer, s],
-            block_size, out_block_num)
+    return (
+        # The last argument is always block_stride.
+        in_args + out_args + [in_indexer, out_indexer, s])
 
 
 cdef class _AbstractReductionKernel:
@@ -270,17 +251,39 @@ cdef class _AbstractReductionKernel:
         in_args = [x if isinstance(x, ndarray) else
                    _scalar.get_scalar_from_numpy(x, t)
                    for x, t in zip(in_args, in_types)]
-        inout_args, block_size, out_block_num = _get_reduction_args(
-            in_args, out_args, self.in_params, self.out_params,
-            reduce_axis + out_axis, a_shape, out_shape, reduce_dims)
-        args_info = _get_args_info(inout_args)
+        in_shape = _set_permuted_args(
+            in_args, reduce_axis + out_axis, a_shape, self.in_params)
 
+        if reduce_dims:
+            in_shape = _reduce_dims(in_args, self.in_params, in_shape)
+            out_shape = _reduce_dims(out_args, self.out_params, out_shape)
+
+        # Calculate the reduction block dimensions.
+        contiguous_size = _get_contiguous_size(
+            in_args, self.in_params, len(in_shape), len(out_shape))
+        block_size, block_stride, out_block_num = _get_block_specs(
+            internal.prod_sequence(in_shape),
+            internal.prod_sequence(out_shape),
+            contiguous_size)
+
+        # Pack kernel function arguments.
+        inout_args = _get_reduction_args(
+            in_args, out_args,
+            in_shape, out_shape,
+            block_stride)
+
+        # Retrieve the kernel function
         func = self._get_function(
-            self._params, args_info, types,
+            self._params,
+            _get_args_info(inout_args),
+            types,
             map_expr, reduce_expr, post_map_expr, reduce_type,
             block_size)
+
+        # Launch the kernel
         func.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
+
         return ret
 
     cdef tuple _get_expressions_and_types(
