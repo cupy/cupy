@@ -708,6 +708,11 @@ cdef class ndarray:
         Returns:
             tuple of arrays: Indices of elements that are non-zero.
 
+        .. warning::
+
+            This function may synchronize the device.
+            Avoid using it in a performance-critical code.
+
         .. seealso::
             :func:`numpy.nonzero`
 

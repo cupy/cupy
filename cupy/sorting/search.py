@@ -113,6 +113,11 @@ def nonzero(a):
     Returns:
         tuple of arrays: Indices of elements that are non-zero.
 
+    .. warning::
+
+        This function may synchronize the device.
+        Avoid using it in a performance-critical code.
+
     .. seealso:: :func:`numpy.nonzero`
 
     """
@@ -131,6 +136,11 @@ def flatnonzero(a):
     Returns:
         cupy.ndarray: Output array,
         containing the indices of the elements of a.ravel() that are non-zero.
+
+    .. warning::
+
+        This function may synchronize the device.
+        Avoid using it in a performance-critical code.
 
     .. seealso:: :func:`numpy.flatnonzero`
     """
@@ -166,6 +176,12 @@ def where(condition, x=None, y=None):
             ``condition`` is given, return the tuple ``condition.nonzero()``,
             the indices where ``condition`` is True.
 
+    .. warning::
+
+        This function may synchronize the device if both ``x`` and ``y`` are
+        omitted.
+        Avoid using it in a performance-critical code.
+
     .. seealso:: :func:`numpy.where`
 
     """
@@ -175,7 +191,7 @@ def where(condition, x=None, y=None):
     if missing == 1:
         raise ValueError('Must provide both \'x\' and \'y\' or neither.')
     if missing == 2:
-        return nonzero(condition)
+        return nonzero(condition)  # may synchronize
 
     if fusion._is_fusing():
         return fusion._call_ufunc(_where_ufunc, condition, x, y)

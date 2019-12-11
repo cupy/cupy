@@ -92,11 +92,17 @@ def nanmin(a, axis=None, out=None, keepdims=False):
     Returns:
         cupy.ndarray: The minimum of ``a``, along the axis if specified.
 
+    .. warning::
+
+        This function may synchronize the device.
+        Avoid using it in a performance-critical code.
+
     .. seealso:: :func:`numpy.nanmin`
 
     """
+    # TODO(niboshi): Avoid synchronization.
     res = core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
-    if content.isnan(res).any():
+    if content.isnan(res).any():  # synchronize!
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
     return res
 
@@ -118,11 +124,17 @@ def nanmax(a, axis=None, out=None, keepdims=False):
     Returns:
         cupy.ndarray: The maximum of ``a``, along the axis if specified.
 
+    .. warning::
+
+        This function may synchronize the device.
+        Avoid using it in a performance-critical code.
+
     .. seealso:: :func:`numpy.nanmax`
 
     """
+    # TODO(niboshi): Avoid synchronization.
     res = core.nanmax(a, axis=axis, out=out, keepdims=keepdims)
-    if content.isnan(res).any():
+    if content.isnan(res).any():  # synchronize!
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
     return res
 

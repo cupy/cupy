@@ -25,14 +25,20 @@ def place(arr, mask, vals):
     array([[ 0,  1,  2],
            [44, 55, 44]])
 
+    .. warning::
+
+        This function may synchronize the device.
+        Avoid using it in a performance-critical code.
+
     .. seealso:: :func:`numpy.place`
     """
+    # TODO(niboshi): Avoid nonzero which may synchronize the device.
     mask = cupy.asarray(mask)
     if arr.size != mask.size:
         raise ValueError('Mask and data must be the same size.')
     vals = cupy.asarray(vals)
 
-    mask_indices = mask.ravel().nonzero()[0]
+    mask_indices = mask.ravel().nonzero()[0]  # may synchronize
     if mask_indices.size == 0:
         return
     if vals.size == 0:
