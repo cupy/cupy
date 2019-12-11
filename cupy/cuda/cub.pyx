@@ -94,7 +94,7 @@ cpdef _preprocess_array(ndarray arr, axis, bint keepdims, str order):
 def device_reduce(ndarray x, int op, out=None, bint keepdims=False):
     cdef ndarray y, z
     cdef memory.MemoryPointer ws
-    cdef int dtype_id, ndim_out, kv_bytes
+    cdef int dtype_id, ndim_out, kv_bytes, x_size
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *y_ptr
