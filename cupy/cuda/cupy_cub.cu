@@ -63,7 +63,7 @@ __host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
 #endif
 }
 
-__host__ __device__ __forceinline__ bool half_greater_than(const __half& l, const __half& r) {
+__host__ __device__ __forceinline__ bool half_less(const __half& l, const __half& r) {
 #ifdef __CUDA_ARCH__
     return l < r;
 #else
@@ -138,7 +138,7 @@ __host__ __device__ __forceinline__ __half Max::operator()(const __half &a, cons
     // NumPy behavior: NaN is always chosen!
     if (half_isnan(a)) {return a;}
     else if (half_isnan(b)) {return b;}
-    else if (half_greater_than(a, b)) {return b;}
+    else if (half_less(a, b)) {return b;}
     else {return a;}
 }
 #endif
@@ -199,7 +199,7 @@ __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, cons
     // NumPy behavior: NaN is always chosen!
     if (half_isnan(a)) {return a;}
     else if (half_isnan(b)) {return b;}
-    else if (half_greater_than(a, b)) {return a;}
+    else if (half_less(a, b)) {return a;}
     else {return a;}
 }
 #endif
@@ -283,7 +283,7 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMax::operator()
         return a;
     else if (half_isnan(b.value))
         return b;
-    else if ((half_greater_than(a.value, b.value)) ||
+    else if ((half_less(a.value, b.value)) ||
              (half_equal(a.value, b.value) && (b.key < a.key)))
         return b;
     else
@@ -370,7 +370,7 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()
         return a;
     else if (half_isnan(b.value))
         return b;
-    else if ((half_greater_than(b.value, a.value)) ||
+    else if ((half_less(b.value, a.value)) ||
              (half_equal(a.value, b.value) && (b.key < a.key)))
         return b;
     else
