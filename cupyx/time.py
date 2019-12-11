@@ -61,8 +61,10 @@ def repeat(func, args=(), n=10000, *, name=None, n_warmup=10):
     for i in range(n_warmup):
         func(*args)
 
+    ev1.record()
+    ev1.synchronize()
+
     for i in range(n):
-        ev1.synchronize()
         ev1.record()
         t1 = time.perf_counter()
 
