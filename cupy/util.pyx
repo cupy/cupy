@@ -198,3 +198,14 @@ The interface can change in the future. ...
 
 class PerformanceWarning(RuntimeWarning):
     """Warning that indicates possible performance issues."""
+
+
+def check_array(obj, *, arg_name):
+    """Checks if the given object is an array.
+
+    This function raises :class:`TypeError` if ``obj`` is not an instance
+    of :type:`cupy.ndarray`\\ .
+    """
+    if not isinstance(obj, cupy.ndarray):
+        raise TypeError(
+            '\'{}\' must be an array, not {}.'.format(arg_name, type(obj)))
