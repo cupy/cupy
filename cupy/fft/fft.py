@@ -163,7 +163,7 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
         axes = [i for i in six.moves.range(-dim, 0)]
     else:
         axes = tuple(axes)
-    if axes is ():
+    if not axes:
         return a
     a = _convert_dtype(a, value_type)
     a = _cook_shape(a, s, axes, value_type)
@@ -204,7 +204,7 @@ def _prep_fftn_axes(ndim, s=None, axes=None):
         axes_sorted = axes
     else:
         axes = tuple(axes)
-        if axes is ():
+        if not axes:
             return (), ()
         if _reduce(min, axes) < -ndim or _reduce(max, axes) > ndim - 1:
             raise ValueError("The specified axes exceed the array dimensions.")
@@ -216,14 +216,12 @@ def _prep_fftn_axes(ndim, s=None, axes=None):
 
 def _nd_plan_is_possible(axes_sorted, ndim):
     # PlanNd supports 1D, 2D and 3D batch transforms over contiguous axes
-    if (len(axes_sorted) > 3 or len(axes_sorted) == 0 or
-            # PlanNd only possible if the first or last axis is in axes.
-            ((0 not in axes_sorted) and ((ndim - 1) not in axes_sorted)) or
-            # axes are not contiguous
-            not all([(axes_sorted[n + 1] - axes_sorted[n]) == 1
-                     for n in range(len(axes_sorted) - 1)])):
-        return False
-    return True
+    # Axes must be contiguous and the first or last axis must be in the axes.
+    return (0 < len(axes_sorted) <= 3
+            and (0 in axes_sorted or (ndim - 1) in axes_sorted)
+            and all([
+                (axes_sorted[n + 1] - axes_sorted[n]) == 1
+                for n in range(len(axes_sorted) - 1)]))
 
 
 def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
@@ -256,16 +254,12 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
     else:
         _, fft_axes = _prep_fftn_axes(ndim, s=None, axes=axes)
 
-    if len(fft_axes) < 1 or len(fft_axes) > 3:
-        raise ValueError(
-            ('CUFFT can only transform along 1, 2 or 3 axes, but {} axes were '
-             'specified.').format(len(fft_axes)))
-
     if not _nd_plan_is_possible(fft_axes, ndim):
         raise ValueError(
             "An n-dimensional cuFFT plan could not be created. The axes must "
-            "be contiguous and non-repeating. Either the first or last axis "
-            "must be included in axes.")
+            "be contiguous and non-repeating. Between one and three axes can "
+            "be transformed and either the first or last axis must be "
+            "included in axes.")
 
     if order not in ['C', 'F']:
         raise ValueError('order must be \'C\' or \'F\'')
@@ -422,7 +416,7 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
                          % norm)
 
     axes, axes_sorted = _prep_fftn_axes(a.ndim, s, axes)
-    if axes_sorted is ():
+    if not axes_sorted:
         return a
     a = _convert_dtype(a, value_type)
 
