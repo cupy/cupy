@@ -173,7 +173,7 @@ cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
 cdef Py_ssize_t _block_size = 256 if runtime._is_hip_environment else 512
 
 
-cdef tuple _get_reduction_args(
+cdef list _get_reduction_args(
         list in_args, list out_args,
         tuple in_shape, tuple out_shape,
         Py_ssize_t block_stride):
