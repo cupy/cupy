@@ -59,7 +59,7 @@ cdef tuple _ndarray_nonzero(ndarray self):
         nonzero = cupy.core.not_equal(r, 0, ndarray(r.shape, dtype))
         del r
         scan_index = _math.scan(nonzero)
-        count_nonzero = int(scan_index[-1])
+        count_nonzero = int(scan_index[-1])  # synchronize!
     ndim = max(self._shape.size(), 1)
     if count_nonzero == 0:
         return (ndarray((0,), dtype=dtype),) * ndim
