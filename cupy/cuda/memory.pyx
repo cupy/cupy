@@ -122,7 +122,8 @@ cdef class UnownedMemory(BaseMemory):
     def __init__(self, intptr_t ptr, size_t size, object owner,
                  int device_id=-1):
         cdef runtime.PointerAttributes ptr_attrs
-        if device_id < 0:
+        # ptr=0 for 0-size arrays from __cuda_array_interface__ v2 
+        if device_id < 0 and ptr > 0:
             ptr_attrs = runtime.pointerGetAttributes(ptr)
             device_id = ptr_attrs.device
         self.size = size
