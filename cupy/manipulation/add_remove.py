@@ -57,7 +57,6 @@ def unique(ar, return_index=False, return_inverse=False,
     .. warning::
 
         This function may synchronize the device.
-        Avoid using it in a performance-critical code.
 
     .. seealso:: :func:`numpy.unique`
     """

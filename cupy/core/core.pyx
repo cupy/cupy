@@ -711,7 +711,6 @@ cdef class ndarray:
         .. warning::
 
             This function may synchronize the device.
-            Avoid using it in a performance-critical code.
 
         .. seealso::
             :func:`numpy.nonzero`

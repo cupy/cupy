@@ -116,7 +116,6 @@ def nonzero(a):
     .. warning::
 
         This function may synchronize the device.
-        Avoid using it in a performance-critical code.
 
     .. seealso:: :func:`numpy.nonzero`
 
@@ -140,7 +139,6 @@ def flatnonzero(a):
     .. warning::
 
         This function may synchronize the device.
-        Avoid using it in a performance-critical code.
 
     .. seealso:: :func:`numpy.flatnonzero`
     """
@@ -180,7 +178,6 @@ def where(condition, x=None, y=None):
 
         This function may synchronize the device if both ``x`` and ``y`` are
         omitted.
-        Avoid using it in a performance-critical code.
 
     .. seealso:: :func:`numpy.where`
 

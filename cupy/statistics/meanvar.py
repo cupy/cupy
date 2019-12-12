@@ -28,7 +28,6 @@ def average(a, axis=None, weights=None, returned=False):
     .. warning::
 
         This function may synchronize the device if ``weight`` is given.
-        Avoid using it in a performance-critical code.
 
     .. seealso:: :func:`numpy.average`
     """

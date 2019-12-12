@@ -148,7 +148,6 @@ class RandomState(object):
         .. warning::
 
             This function may synchronize the device.
-            Avoid using it in a performance-critical code.
 
         .. seealso::
             :func:`cupy.random.exponential` for full documentation,
@@ -293,7 +292,6 @@ class RandomState(object):
         .. warning::
 
             This function may synchronize the device.
-            Avoid using it in a performance-critical code.
 
         .. seealso::
             :func:`cupy.random.logseries` for full documentation,
@@ -373,7 +371,6 @@ class RandomState(object):
         .. warning::
 
             This function may synchronize the device.
-            Avoid using it in a performance-critical code.
 
         .. seealso::
             :func:`cupy.random.negative_binomial` for full documentation,
@@ -428,7 +425,6 @@ class RandomState(object):
         .. warning::
 
             This function may synchronize the device.
-            Avoid using it in a performance-critical code.
 
         .. seealso::
             :func:`cupy.random.noncentral_chisquare` for full documentation,
@@ -453,7 +449,6 @@ class RandomState(object):
         .. warning::
 
             This function may synchronize the device.
-            Avoid using it in a performance-critical code.
 
         .. seealso::
             :func:`cupy.random.noncentral_f` for full documentation,
@@ -497,7 +492,6 @@ class RandomState(object):
         .. warning::
 
             This function may synchronize the device.
-            Avoid using it in a performance-critical code.
 
         .. seealso::
             :func:`cupy.random.power` for full documentation,
@@ -577,7 +571,6 @@ class RandomState(object):
         .. warning::
 
             This function may synchronize the device.
-            Avoid using it in a performance-critical code.
 
         .. seealso::
             :func:`cupy.random.rayleigh` for full documentation,
@@ -817,7 +810,6 @@ class RandomState(object):
         .. warning::
 
             This function may synchronize the device.
-            Avoid using it in a performance-critical code.
 
         .. seealso::
             :func:`cupy.random.triangular` for full documentation,
@@ -912,7 +904,6 @@ class RandomState(object):
         .. warning::
 
             This function may synchronize the device.
-            Avoid using it in a performance-critical code.
 
         .. seealso::
             :func:`cupy.random.weibull` for full documentation,
@@ -932,7 +923,6 @@ class RandomState(object):
         .. warning::
 
             This function may synchronize the device.
-            Avoid using it in a performance-critical code.
 
         .. seealso::
             :func:`cupy.random.zipf` for full documentation,

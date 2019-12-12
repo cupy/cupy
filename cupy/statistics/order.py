@@ -95,7 +95,6 @@ def nanmin(a, axis=None, out=None, keepdims=False):
     .. warning::
 
         This function may synchronize the device.
-        Avoid using it in a performance-critical code.
 
     .. seealso:: :func:`numpy.nanmin`
 
@@ -127,7 +126,6 @@ def nanmax(a, axis=None, out=None, keepdims=False):
     .. warning::
 
         This function may synchronize the device.
-        Avoid using it in a performance-critical code.
 
     .. seealso:: :func:`numpy.nanmax`
 

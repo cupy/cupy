@@ -51,7 +51,6 @@ def histogram(x, bins=10):
     .. warning::
 
         This function may synchronize the device.
-        Avoid using it in a performance-critical code.
 
     .. seealso:: :func:`numpy.histogram`
     """
@@ -114,7 +113,6 @@ def bincount(x, weights=None, minlength=None):
     .. warning::
 
         This function may synchronize the device.
-        Avoid using it in a performance-critical code.
 
     .. seealso:: :func:`numpy.bincount`
 

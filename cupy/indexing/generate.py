@@ -225,7 +225,6 @@ def ix_(*args):
     .. warning::
 
         This function may synchronize the device.
-        Avoid using it in a performance-critical code.
 
      .. seealso:: :func:`numpy.ix_`
 
@@ -275,7 +274,6 @@ def unravel_index(indices, dims, order='C'):
     .. warning::
 
         This function may synchronize the device.
-        Avoid using it in a performance-critical code.
 
     .. seealso:: :func:`numpy.unravel_index`
 
