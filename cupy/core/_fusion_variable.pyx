@@ -69,7 +69,7 @@ class _FusionCudaVarBase(object):
         assert len(rshape) == len(ashape)
         for rdim, adim in zip(rshape, ashape):
             assert isinstance(rdim, int)
-            assert isinstance(adim, _AbstractDim)
+            assert isinstance(adim, (int, _AbstractDim))
 
         self.memory = memory_space
         self.serial_number = serial_number
@@ -238,10 +238,26 @@ class _FusionCudaArray(_FusionCudaVarBase):
     def key(self):
         """Two variables can be identified if they have the same key.
         """
+        if isinstance(self.slice_key, tuple):
+            slice_key = []
+            for s in self.slice_key:
+                if isinstance(s, slice):
+                    if not (s.start is None
+                            and s.stop is None
+                            and s.step in (None, 1, -1)):
+                        raise NotImplementedError(
+                            'Basic slice supports only x[::] and x[::-1].')
+                    slice_key.append((s.start, s.stop, s.step))
+                else:
+                    slice_key.append(s)
+            slice_key = tuple(slice_key)
+        else:
+            slice_key = self.slice_key
+
         return (
             self.memory.id, self.ashape, self.input_index,
             getattr(self._view_of, 'serial_number', None),
-            self.is_broadcast, self.rotate_axis, self.slice_key,
+            self.is_broadcast, self.rotate_axis, slice_key,
         )
 
 

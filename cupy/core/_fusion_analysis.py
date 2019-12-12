@@ -232,27 +232,44 @@ class _VariableConductor(object):
         assert isinstance(var, _FusionCudaArray)
         return self.make_view(var, rotated_from=var, axis=axis)
 
-    def index_with_int(self, var, key):
-        """Make a view of an array. by indexing ``var`` with given integer.
-        """
-        return self.index_with_tuple(var, (key,))
-
-    def index_with_tuple(self, var, key):
+    def indexing(self, var, indices):
         """Make a view of an array. by indexing ``var`` with given tuple.
         """
-        for k in key:
-            if not isinstance(k, int):
-                raise IndexError(
-                    'Cannot subscript by type {}.'.format(type(k)))
-        if len(key) > var.ndim:
-            raise IndexError('too many indices for array.')
+        skip = var.ndim - sum([isinstance(x, (int, slice)) for x in indices])
+        it = 0
+        ashape = []
+        rshape = []
 
-        ashape = var.ashape[len(key):]
-        rshape = var.rshape[len(key):]
+        if skip < 0:
+            raise IndexError('Too many indices for array.')
+
+        for index in indices:
+            if isinstance(index, int):
+                it += 1
+            elif isinstance(index, slice):
+                if not (index.start is None
+                        and index.stop is None
+                        and index.step in (1, -1, None)):
+                    raise NotImplementedError(
+                        'Only full range ``x[::]`` or reverse ``x[::-1]`` is '
+                        'supported for basic slicing in CuPy fusion.')
+                ashape.append(var.ashape[it])
+                rshape.append(var.rshape[it])
+                it += 1
+            elif index is None:
+                ashape.append(1)
+                rshape.append(1)
+            elif index is Ellipsis:
+                ashape.extend(var.ashape[it:it + skip])
+                rshape.extend(var.rshape[it:it + skip])
+                it += skip
+
+        ashape.extend(var.ashape[it:var.ndim])
+        rshape.extend(var.rshape[it:var.ndim])
 
         return self.make_view(
-            var, indexed_from=var, index_key=key,
-            ashape=ashape, rshape=rshape)
+            var, indexed_from=var, index_key=indices,
+            ashape=tuple(ashape), rshape=tuple(rshape))
 
     @property
     def all_variables(self):
@@ -495,18 +512,27 @@ class _FusionHistory(object):
         # Returns.
         return self._to_interface(out_param)
 
-    def call_indexing(self, in_param, index):
+    def call_indexing(self, in_param, indices):
         """Call indexing routines.
         """
         in_param = self._from_arraylike_interface(in_param)
-        assert isinstance(in_param, _FusionCudaArray)
-        if isinstance(index, int):
-            out_param = self.vc.index_with_int(in_param, index)
-        elif isinstance(index, tuple):
-            out_param = self.vc.index_with_tuple(in_param, index)
-        else:
-            raise NotImplementedError
 
+        if not isinstance(indices, tuple):
+            indices = (indices,)
+
+        for x in indices:
+            if isinstance(indices, (list, _FusionCudaArray)):
+                # Advanced indexing
+                raise NotImplementedError(
+                    'Advanced indexing is not supported, currently.')
+
+            if not (isinstance(x, (int, slice)) or x is None or x is Ellipsis):
+                raise IndexError(
+                    'Indices must be integers, slices, ellipsis, None or '
+                    'integer or boolean arrays.')
+
+        # Basic indexing
+        out_param = self.vc.indexing(in_param, indices)
         return self._to_interface(out_param)
 
     def _trace_target_function(self, func, args):

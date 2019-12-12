@@ -134,7 +134,7 @@ cdef class FusedKernel(object):
                     if not isinstance(dim, int):
                         dim = args[dim.input_index].shape[dim.axis]
                     shape.append(dim)
-            kernel_param_shapes.append(shape)
+            kernel_param_shapes.append(tuple(shape))
         return kernel_param_shapes
 
     cdef list _get_ndarray_list(self, tuple args, list shapes):
@@ -167,7 +167,11 @@ cdef class FusedKernel(object):
                     array = _manipulation._transpose(view_of, axis_permutes)
                 else:
                     assert False
+            # For debug
+            # if isinstance(array, ndarray) and param.rotate_axis is None:
+            #     assert array.shape == shape, (array.shape, shape)
             ndarray_list.append(array)
+
         return ndarray_list
 
     cdef object _get_return_value(self, list ndarray_list):
