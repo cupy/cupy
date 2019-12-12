@@ -6,6 +6,7 @@ from cupyx.scatter import scatter_max  # NOQA
 from cupyx.scatter import scatter_min  # NOQA
 
 from cupyx import linalg  # NOQA
+from cupyx import time  # NOQA
 from cupyx import scipy  # NOQA
 
 from cupyx._ufunc_config import errstate  # NOQA
