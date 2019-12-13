@@ -11,6 +11,11 @@ import six
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import nvrtc
+<<<<<<< HEAD
+=======
+from cupy.cuda import runtime
+from cupy import util
+>>>>>>> f121d14f6... Merge pull request #2809 from emcastillo/fix_shutdown
 
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
@@ -237,7 +242,9 @@ class _NVRTCProgram(object):
         self.name = name
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
+        if is_shutting_down():
+            return
         if self.ptr:
             nvrtc.destroyProgram(self.ptr)
 
