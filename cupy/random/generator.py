@@ -51,8 +51,10 @@ class RandomState(object):
         self._generator = curand.createGenerator(method)
         self.seed(seed)
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
         # When createGenerator raises an error, _generator is not initialized
+        if is_shutting_down():
+            return
         if hasattr(self, '_generator'):
             curand.destroyGenerator(self._generator)
 
