@@ -163,14 +163,9 @@ class Stream(object):
         else:
             self.ptr = runtime.streamCreate()
 
-<<<<<<< HEAD
-    def __del__(self):
-=======
     def __del__(self, is_shutting_down=util.is_shutting_down):
-        cdef intptr_t current_ptr
         if is_shutting_down():
             return
->>>>>>> f121d14f6... Merge pull request #2809 from emcastillo/fix_shutdown
         if self.ptr:
             current_ptr = get_current_stream_ptr()
             if self.ptr == current_ptr:

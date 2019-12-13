@@ -11,11 +11,7 @@ import six
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import nvrtc
-<<<<<<< HEAD
-=======
-from cupy.cuda import runtime
 from cupy import util
->>>>>>> f121d14f6... Merge pull request #2809 from emcastillo/fix_shutdown
 
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
