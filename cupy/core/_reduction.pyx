@@ -321,21 +321,17 @@ cdef class _AbstractReductionKernel:
             stream):
         import optuna
         def objective(trial):
+            out_dims = internal.prod_sequence(out_shape)
+
             block_size_exp = trial.suggest_int('block_size_exp', 5, 9)
             block_size = 2 ** block_size_exp
 
-            # Calculate the reduction block dimensions.
-            contiguous_size = _get_contiguous_size(
-                in_args, self.in_params, len(in_shape), len(out_shape))
-            block_size, block_stride, out_block_num = _get_block_specs(
-                internal.prod_sequence(in_shape),
-                internal.prod_sequence(out_shape),
-                contiguous_size,
-                block_size)
+            block_stride_exp = trial.suggest_int('block_stride_exp', 0, block_size_exp)
+            block_stride = 2 ** block_stride_exp
+            out_block_num = trial.suggest_int('out_block_num', 1, out_dims)
 
             trial.set_user_attr('block_size', block_size)
             trial.set_user_attr('block_stride', block_stride)
-            trial.set_user_attr('out_block_num', out_block_num)
 
             stream = stream_module.get_current_stream()
             stream.synchronize()
@@ -363,9 +359,10 @@ cdef class _AbstractReductionKernel:
         study = optuna.create_study()
         study.optimize(objective, n_trials=100)
         best = study.best_trial
-        return [
-            best.user_attrs[key] for key in (
-                'block_size', 'block_stride', 'out_block_num')]
+        return (
+            best.user_attrs['block_size'],
+            best.user_attrs['block_stride'],
+            best.params['out_block_num'])
 
     cpdef _launch(
             self, out_block_num, block_size, block_stride,
