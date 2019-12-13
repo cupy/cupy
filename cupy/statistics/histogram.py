@@ -48,6 +48,10 @@ def histogram(x, bins=10):
         storing the values of the histogram, and ``bin_edges`` is a
         :class:`cupy.ndarray` storing the bin edges.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`numpy.histogram`
     """
 
@@ -68,7 +72,7 @@ def histogram(x, bins=10):
         bin_type = cupy.result_type(min_value, max_value, x)
         bins = cupy.linspace(min_value, max_value, bins + 1, dtype=bin_type)
     elif isinstance(bins, cupy.ndarray):
-        if (bins[:-1] > bins[1:]).any():
+        if (bins[:-1] > bins[1:]).any():  # synchronize!
             raise ValueError('bins must increase monotonically.')
     else:
         raise NotImplementedError('Only int or ndarray are supported for bins')
@@ -106,6 +110,10 @@ def bincount(x, weights=None, minlength=None):
         cupy.ndarray: The result of binning the input array. The length of
             output is equal to ``max(cupy.max(x) + 1, minlength)``.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`numpy.bincount`
 
     """
@@ -115,7 +123,7 @@ def bincount(x, weights=None, minlength=None):
         raise ValueError('object of too small depth for desired array')
     if x.dtype.kind == 'f':
         raise TypeError('x must be int array')
-    if (x < 0).any():
+    if (x < 0).any():  # synchronize!
         raise ValueError('The first argument of bincount must be non-negative')
     if weights is not None and x.shape != weights.shape:
         raise ValueError('The weights and list don\'t have the same length.')

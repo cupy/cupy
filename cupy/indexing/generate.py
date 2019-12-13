@@ -222,9 +222,14 @@ def ix_(*args):
     (array([[0],
            [1]]), array([[2, 4]]))
 
+    .. warning::
+
+        This function may synchronize the device.
+
      .. seealso:: :func:`numpy.ix_`
 
     """
+    # TODO(niboshi): Avoid nonzero which may synchronize the device.
     out = []
     nd = len(args)
     for k, new in enumerate(args):
@@ -235,7 +240,7 @@ def ix_(*args):
             # Explicitly type empty arrays to avoid float default
             new = new.astype(numpy.intp)
         if cupy.issubdtype(new.dtype, cupy.bool_):
-            new, = new.nonzero()
+            new, = new.nonzero()  # may synchronize
         new = new.reshape((1,) * k + (new.size,) + (1,) * (nd - k - 1))
         out.append(new)
     return tuple(out)
@@ -266,6 +271,10 @@ def unravel_index(indices, dims, order='C'):
     >>> cupy.unravel_index(cupy.array([31, 41, 13]), (7, 6), order='F')
     (array([3, 6, 6]), array([4, 5, 1]))
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`numpy.unravel_index`
 
     """
@@ -286,7 +295,7 @@ def unravel_index(indices, dims, order='C'):
             'according to the rule \'same_kind\''.format(
                 indices.dtype, cupy.int64().dtype))
 
-    if (indices < 0).any():
+    if (indices < 0).any():  # synchronize!
         raise ValueError('invalid entry in index array')
 
     unraveled_coords = []
@@ -294,7 +303,7 @@ def unravel_index(indices, dims, order='C'):
         unraveled_coords.append(indices % dim)
         indices = indices // dim
 
-    if (indices > 0).any():
+    if (indices > 0).any():  # synchronize!
         raise ValueError('invalid entry in index array')
 
     if order == 'C':
