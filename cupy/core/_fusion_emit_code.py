@@ -1,5 +1,3 @@
-import string
-
 import numpy
 
 
@@ -23,34 +21,34 @@ _dtype_to_ctype = {
 
 class _CodeBlock(object):
     """Code fragment for the readable format.
-
-    RFC(asi1024): I implemented this class to emit human readble CUDA code,
-    but I feel the current behavior is not intuitive...
     """
 
-    def __init__(self, *args, **kwargs):
-        codes = []
-        for item in args:
-            if isinstance(item, str):
-                code = string.Template(item).substitute(**kwargs)
-            elif isinstance(item, list):
-                code = _CodeBlock(*item, **kwargs)
-            elif isinstance(item, _CodeBlock):
-                code = item
-            else:
-                assert False, 'Not supported: {}'.format(type(item))
-            codes.append(code)
-        self.codes = codes
+    def __init__(self, head, codes):
+        self._head = '' if head == '' else head + ' '
+        self._codes = codes
 
     def _to_str_list(self, indent_width=0):
         codes = []
-        for code in self.codes:
+        codes.append(' ' * indent_width + self._head + '{')
+        for code in self._codes:
+            next_indent_width = indent_width + 2
             if isinstance(code, str):
-                codes.append(' ' * indent_width + code)
+                codes.append(' ' * next_indent_width + code)
             elif isinstance(code, _CodeBlock):
-                new_indent_width = indent_width + 4
-                codes += code._to_str_list(indent_width=new_indent_width)
+                codes += code._to_str_list(indent_width=next_indent_width)
+            else:
+                assert False
+        codes.append(' ' * indent_width + '}')
         return codes
 
     def __str__(self):
+        """Emit CUDA program like the following format.
+
+        <<head>> {
+          <<begin codes>>
+          ...;
+          <end codes>>
+        }
+        """
+
         return '\n'.join(self._to_str_list())

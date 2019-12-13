@@ -77,15 +77,8 @@ class _SubmoduleUfunc(_SubmoduleBase):
         write = ['{}_ = {};'.format(s, s, s) for _, _, s in out_params]
 
         return _fusion_emit_code._CodeBlock(
-            '__device__ void ${name}(${params}) {', [
-                *typedef,
-                *read,
-                '${operation};',
-                *write],
-            '}',
-            name=self.name,
-            params=params_code,
-            operation=self.op_expr)
+            '__device__ void {}({})'.format(self.name, params_code),
+            typedef + read + [self.op_expr + ';'] + write)
 
     def emit_call_code(self):
         params = self.in_params + self.out_params

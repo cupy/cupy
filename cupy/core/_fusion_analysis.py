@@ -13,7 +13,7 @@ from cupy.core._fusion_variable import _FusionVariableSet
 from cupy.core import _fusion_shape
 from cupy.core import _fusion_device_func
 from cupy.core import _fusion_op
-from cupy.core._fusion_emit_code import _CodeBlock
+from cupy.core import _fusion_emit_code
 from cupy.core import _fusion_runtime
 from cupy.core import _fusion_optimization
 
@@ -641,16 +641,16 @@ class _FusionHistory(object):
         # Emit __device__ functions.
         preambles = list(set([s.preamble for s in self.submodules.values()]))
         submodules = [str(sub.emit_code()) for sub in self.submodules.values()]
-        submodule_code = '\n'.join([
+        submodule_code = '\n\n'.join([
             s for s in preambles + submodules if s != ''])
 
         # Emit the function body of a __global__ function.
         codes = []
         for op in self.op_list:
-            codes += op.emit_code().codes
+            codes.append(op.emit_code())
             codes.append('__syncthreads();')
 
-        cuda_body = str(_CodeBlock(codes))
+        cuda_body = str(_fusion_emit_code._CodeBlock('', codes))
 
         # This attribute is referred in mock tests.
         self.kernel_params = kernel_params

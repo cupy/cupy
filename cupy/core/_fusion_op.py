@@ -1,7 +1,7 @@
 from cupy.core._fusion_variable import _FusionCudaArray
 from cupy.core._fusion_variable import _FusionVariableSet
 from cupy.core import _fusion_thread_local
-from cupy.core._fusion_emit_code import _CodeBlock
+from cupy.core import _fusion_emit_code
 from cupy.core._fusion_device_func import _SubmoduleUfunc
 from cupy.core._fusion_device_func import _SubmoduleReduction
 
@@ -11,10 +11,10 @@ def _emit_set_index_code(indexed_params, tid):
     _fusion_thread_local.check_not_runtime()
     assert isinstance(indexed_params, _FusionVariableSet)
 
-    return _CodeBlock(*[
+    return [
         p.format('${indexer}.set(${tid});', tid=tid)
         for p in indexed_params
-    ])
+    ]
 
 
 # Returns a tuple of size 2.
@@ -36,7 +36,7 @@ def _emit_declaration_code(params, in_params):
             f = '${type} ${lvar};'
         code.append(var.format(f))
 
-    return _CodeBlock(*code), indexed_arrays
+    return code, indexed_arrays
 
 
 # Returns a tuple of size 2.
@@ -55,7 +55,7 @@ def _emit_after_operation(out_params):
             f = '${var} = ${lvar};'
         codes.append(var.format(f))
 
-    return _CodeBlock(*codes), indexed_arrays
+    return codes, indexed_arrays
 
 
 class _FusionElementwiseOp(object):
@@ -102,22 +102,16 @@ class _FusionElementwiseOp(object):
         _fusion_thread_local.check_not_runtime()
 
         declaration, s1 = _emit_declaration_code(self.params, self.in_params)
-        operation = _CodeBlock(*[op.emit_call_code() for op in self.ops])
+        operation = [op.emit_call_code() for op in self.ops]
         after_operation, s2 = _emit_after_operation(self.out_params)
         index_name = 'i'
         indexed_array = s1 + s2
         indexer_name = next(iter(indexed_array)).indexer_name
         indexer_setup = _emit_set_index_code(indexed_array, index_name)
 
-        return _CodeBlock(
-            'CUPY_FOR(${index_name}, ${indexer}.size()) {', [
-                *indexer_setup.codes,
-                *declaration.codes,
-                *operation.codes,
-                *after_operation.codes],
-            '}',
-            index_name=index_name,
-            indexer=indexer_name)
+        return _fusion_emit_code._CodeBlock(
+            'CUPY_FOR({}, {}.size())'.format(index_name, indexer_name),
+            indexer_setup + declaration + operation + after_operation)
 
 
 class _FusionReductionOp(object):
@@ -163,8 +157,5 @@ class _FusionReductionOp(object):
             in_param.indexer_name,
             out_param.indexer_name,
         ])
-        return _CodeBlock(
-            '${name}(${params}, ${block_stride});',
-            name=self.reduce_op.name,
-            params=params,
-            block_stride=self.block_stride_name)
+        return '{}({}, {});'.format(
+            self.reduce_op.name, params, self.block_stride_name)

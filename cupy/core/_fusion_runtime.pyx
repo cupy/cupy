@@ -23,21 +23,19 @@ from cupy.cuda cimport runtime
 @util.memoize()
 def _cuda_compile(preamble, name, cuda_params, cuda_body):
     code = string.Template(
-        '${preamble}\n'
-        'extern "C" __global__ void ${name}(${cuda_params}) {\n'
-        '${cuda_body}\n'
-        '}\n'
+        '${preamble}\n\n'
+        'extern "C" __global__ void ${name}(${cuda_params}) ${cuda_body}\n'
     ).substitute(
         preamble=preamble,
         name=name,
         cuda_params=cuda_params,
         cuda_body=cuda_body)
-    module = compile_with_cache(code)
 
     # (For contributers) We can view the whole generated CUDA code
     # by uncommenting the following line.
-
     # print(code)
+
+    module = compile_with_cache(code)
 
     return module.get_function(name)
 
@@ -223,7 +221,8 @@ cdef class FusedKernel(object):
             contiguous_size = min(contiguous_size, 32)
 
             reduce_block_size = max(1, in_array.size // max(1, out_array.size))
-            block_stride = max(contiguous_size, block_size // reduce_block_size)
+            block_stride = max(
+                contiguous_size, block_size // reduce_block_size)
             block_stride = internal.clp2(block_stride // 2 + 1)  # floor
             block_strides.append(block_stride)
 
