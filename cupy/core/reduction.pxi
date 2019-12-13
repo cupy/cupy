@@ -173,19 +173,6 @@ cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
 cdef Py_ssize_t _block_size = 256 if runtime._is_hip_environment else 512
 
 
-cdef list _get_reduction_args(
-        list in_args, list out_args,
-        tuple in_shape, tuple out_shape,
-        Py_ssize_t block_stride):
-    # Returns a list of arguments passed to the __global__ function.
-    in_indexer = Indexer(in_shape)
-    out_indexer = Indexer(out_shape)
-    s = _scalar.CScalar_from_int32(block_stride)
-    return (
-        # The last argument is always block_stride.
-        in_args + out_args + [in_indexer, out_indexer, s])
-
-
 cdef class _AbstractReductionKernel:
 
     cdef:
@@ -266,11 +253,16 @@ cdef class _AbstractReductionKernel:
             internal.prod_sequence(out_shape),
             contiguous_size)
 
-        # Pack kernel function arguments.
-        inout_args = _get_reduction_args(
-            in_args, out_args,
-            in_shape, out_shape,
-            block_stride)
+        # Kernel arguments passed to the __global__ function.
+        inout_args = (
+            in_args
+            + out_args
+            + [
+                Indexer(in_shape),
+                Indexer(out_shape),
+                # block_stride is passed as the last argument.
+                _scalar.CScalar_from_int32(block_stride),
+            ])
 
         # Retrieve the kernel function
         func = self._get_function(
