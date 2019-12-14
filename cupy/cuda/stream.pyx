@@ -2,6 +2,8 @@ from cupy.cuda import runtime
 import threading
 import weakref
 
+from cupy import util
+
 
 cdef object _thread_local = threading.local()
 
@@ -176,8 +178,10 @@ class Stream(object):
         else:
             self.ptr = runtime.streamCreate()
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
         cdef intptr_t current_ptr
+        if is_shutting_down():
+            return
         if self.ptr:
             tls = _StreamThreadLocal.get()
             current_ptr = <intptr_t>tls.get_current_stream_ptr()
