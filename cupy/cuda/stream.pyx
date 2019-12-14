@@ -3,6 +3,8 @@ from cpython cimport pythread
 import threading
 import weakref
 
+from cupy import util
+
 
 cdef object _thread_local = threading.local()
 cdef int _current_stream_key = pythread.PyThread_create_key()
@@ -161,7 +163,9 @@ class Stream(object):
         else:
             self.ptr = runtime.streamCreate()
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
+        if is_shutting_down():
+            return
         if self.ptr:
             current_ptr = get_current_stream_ptr()
             if self.ptr == current_ptr:

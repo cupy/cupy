@@ -3,6 +3,7 @@ import numpy
 import cupy
 from cupy.cuda import cusparse
 from cupy.cuda import device
+from cupy import util
 import cupyx.scipy.sparse
 
 
@@ -16,7 +17,9 @@ class MatDescriptor(object):
         descr = cusparse.createMatDescr()
         return MatDescriptor(descr)
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
+        if is_shutting_down():
+            return
         if self.descriptor:
             cusparse.destroyMatDescr(self.descriptor)
             self.descriptor = None
