@@ -23,6 +23,7 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport runtime
 
+import math
 import string
 
 from cupy.core import _errors
@@ -204,6 +205,50 @@ def _sort_axis(tuple axis, tuple strides):
     return tuple(sorted(axis, key=lambda i: -abs(strides[i])))
 
 
+cdef tuple _get_contiguous_axes(
+        tuple shape, tuple strides, Py_ssize_t itemsize):
+    # Returns the indices of contiguous axes sorted by the contiguous order.
+    # Axes with negative strides are indicated by axis + ndim.
+    # Axes with zero strides are indicated by axis + 2 * ndim.
+    #
+    # Examples (all itemsize=1):
+    #
+    # Shape     Strides    Returns
+    # (4, 3)    (3, 1)     (1, 0)   # C-contiguous
+    # (4, 3)    (1, 3)     (0, 1)   # F-contiguous
+    # (4, 3)    (6, 1)     (1,)     # Only axis 1 is contiguous
+    # (4, 3)    (3, -1)    (3, 0)   # Contiguous but axis 1 has negative stride
+    cdef Py_ssize_t ndim = len(shape)
+    cdef Py_ssize_t m = itemsize
+    cdef Py_ssize_t d
+    cdef Py_ssize_t s
+    cdef Py_ssize_t i
+    if ndim == 0:
+        return ()
+
+    # Axes are iterated in the increasing order of absolute values of strides
+    indices = [
+        xi[1] for xi in sorted([(abs(x), i) for i, x in enumerate(strides)])]
+
+    result = []
+    for i in indices:
+        s = strides[i]
+        d = shape[i]
+        if s == 0:  # zero stride
+            result.append(i + 2 * ndim)
+        elif s > 0:  # positive stride
+            if s != m:
+                break
+            m = s * d
+            result.append(i)
+        else:  # negative stride
+            if s != -m:
+                break
+            m = -s * d
+            result.append(i + ndim)
+    return tuple(result)
+
+
 cdef class _AbstractReductionKernel:
 
     def __init__(
@@ -236,6 +281,7 @@ cdef class _AbstractReductionKernel:
         cdef tuple reduce_axis, out_axis
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
+        cdef ndarray arr
         cdef ndarray ret
         cdef function.Function kern
 
@@ -292,14 +338,33 @@ cdef class _AbstractReductionKernel:
                 contiguous_size, -1)
         else:
             # Optimize dynamically
-            params = optimize_context.get_params()
+
+            # Calculate a key unique to the reduction setting.
+            contiguous_axes = []
+            for x in in_args + out_args:
+                if isinstance(x, ndarray):
+                    arr = x
+                    contiguous_axes.append(
+                        _get_contiguous_axes(
+                            arr.shape, arr.strides, arr.itemsize))
+                else:
+                    contiguous_axes.append(None)
+            key = (
+                self.name,
+                tuple(contiguous_axes),
+                in_types, out_types, reduce_type,
+                map_expr, reduce_expr, post_map_expr,
+            )
+
+            params = optimize_context.get_params(key)
             if params is None:
                 params = self._optimize_params(
+                    optimize_context,
                     in_args, out_args, in_shape, out_shape,
                     contiguous_size, types,
                     map_expr, reduce_expr, post_map_expr, reduce_type,
                     stream)
-                optimize_context.set_params(params)
+                optimize_context.set_params(key, params)
             block_size, block_stride, out_block_num = params
 
         # Launch the kernel
@@ -315,11 +380,14 @@ cdef class _AbstractReductionKernel:
         return ret
 
     def _optimize_params(
-            self, in_args, out_args, in_shape, out_shape,
+            self,
+            optimize_context,
+            in_args, out_args, in_shape, out_shape,
             contiguous_size, types,
             map_expr, reduce_expr, post_map_expr, reduce_type,
             stream):
         import optuna
+
         def objective(trial):
             out_dims = internal.prod_sequence(out_shape)
 
@@ -333,31 +401,52 @@ cdef class _AbstractReductionKernel:
             trial.set_user_attr('block_size', block_size)
             trial.set_user_attr('block_stride', block_stride)
 
-            stream = stream_module.get_current_stream()
-            stream.synchronize()
-            ev1 = stream_module.Event()
-            ev2 = stream_module.Event()
-            ev1.synchronize()
-            ev1.record()
+            def _measure(n):
+                # Returns total GPU time (in seconds)
+                stream = stream_module.get_current_stream()
+                stream.synchronize()
+                ev1 = stream_module.Event()
+                ev2 = stream_module.Event()
+                ev1.synchronize()
+                ev1.record()
 
-            for _ in range(100):
-                self._launch(
-                    out_block_num,
-                    block_size,
-                    block_stride,
-                    in_args, out_args,
-                    in_shape, out_shape,
-                    types,
-                    map_expr, reduce_expr, post_map_expr, reduce_type,
-                    stream)
+                for _ in range(n):
+                    self._launch(
+                        out_block_num,
+                        block_size,
+                        block_stride,
+                        in_args, out_args,
+                        in_shape, out_shape,
+                        types,
+                        map_expr, reduce_expr, post_map_expr, reduce_type,
+                        stream)
 
-            ev2.record()
-            ev2.synchronize()
-            time = stream_module.get_elapsed_time(ev1, ev2) * 1e-3
-            return time
+                ev2.record()
+                ev2.synchronize()
+                time = stream_module.get_elapsed_time(ev1, ev2) * 1e-3
+                return time
+
+            min_total_time = optimize_context.config.min_total_time_per_trial
+            expected_total_time = optimize_context.config.expected_total_time_per_trial
+
+            _measure(1)  # warmup
+
+            n = 1
+            while True:
+                total_time = _measure(n)
+                if total_time > min_total_time:
+                    break
+                n = max(
+                    n+1,
+                    int(math.ceil(expected_total_time * n / total_time)))
+
+            return total_time / n
 
         study = optuna.create_study()
-        study.optimize(objective, n_trials=100)
+        study.optimize(
+            objective,
+            n_trials=optimize_context.config.max_trials,
+            timeout=optimize_context.config.timeout)
         best = study.best_trial
         return (
             best.user_attrs['block_size'],
