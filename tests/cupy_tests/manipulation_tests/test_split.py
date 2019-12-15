@@ -39,6 +39,11 @@ class TestSplit(unittest.TestCase):
         return xp.array_split(a, [1])
 
     @testing.numpy_cupy_array_list_equal()
+    def test_array_split_unordered_sections(self, xp):
+        a = testing.shaped_arange((5,), xp)
+        return xp.array_split(a, [4, 2])
+
+    @testing.numpy_cupy_array_list_equal()
     def test_array_split_non_divisible(self, xp):
         a = testing.shaped_arange((5, 3), xp)
         return xp.array_split(a, 4)
@@ -83,6 +88,11 @@ class TestSplit(unittest.TestCase):
     def test_split_out_of_bound2(self, xp):
         a = testing.shaped_arange((0,), xp)
         return xp.split(a, [1])
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_split_unordered_sections(self, xp):
+        a = testing.shaped_arange((5,), xp)
+        return xp.split(a, [4, 2])
 
     @testing.numpy_cupy_array_list_equal()
     def test_vsplit(self, xp):
