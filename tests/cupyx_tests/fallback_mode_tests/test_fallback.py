@@ -1,10 +1,7 @@
-import os
 import sys
 import pytest
 import unittest
 import functools
-
-os.environ['CUPY_EXPERIMENTAL_SLICE_COPY'] = str(1)
 
 import numpy
 
@@ -107,6 +104,20 @@ def numpy_fallback_array_allclose(name='xp', rtol=1e-07):
             assert fallback_result.dtype == numpy_result.dtype
 
         return test_func
+    return decorator
+
+
+def enable_slice_copy(func):
+    """
+    Decorator that enables CUPY_EXPERIMENTAL_SLICE_COPY.
+    And then restores it to previous state.
+    """
+    def decorator(*args, **kwargs):
+        old = cupy.util.ENABLE_SLICE_COPY
+        cupy.util.ENABLE_SLICE_COPY = True
+        func(*args, **kwargs)
+        cupy.util.ENABLE_SLICE_COPY = old
+
     return decorator
 
 
@@ -643,6 +654,7 @@ class TestArrayVariants(unittest.TestCase):
         return x
 
     # changes in base ndarray should be reflected in MaskedArray
+    @enable_slice_copy
     @numpy_fallback_array_equal()
     def test_ma_func_inverse(self, xp):
         x = xp.array([1, 2, 3, 4])

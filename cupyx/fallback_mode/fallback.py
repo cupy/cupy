@@ -262,7 +262,7 @@ class ndarray(object):
 
     def _get_cupy_array(self):
         """
-        Returns _cupy_array (cupy.ndarray) of ndarray object. And marks 
+        Returns _cupy_array (cupy.ndarray) of ndarray object. And marks
         self(ndarray) and it's base (if exist) as numpy not up-to-date.
         """
         base = self.base
