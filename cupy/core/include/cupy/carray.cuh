@@ -5,7 +5,11 @@
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
-#if __CUDACC_VER_MAJOR__ >= 9
+#ifdef __HIPCC__
+
+#include <hip/hip_fp16.h>
+
+#elif __CUDACC_VER_MAJOR__ >= 9
 
 #include <cuda_fp16.h>
 
@@ -203,7 +207,7 @@ public:
     for (int dim = 0; dim < ndim; ++dim) {
       ptr += static_cast<ptrdiff_t>(strides_[dim]) * idx[dim];
     }
-    return reinterpret_cast<const T&>(*ptr);
+    return *reinterpret_cast<const T*>(ptr);
   }
 
   __device__ T& operator[](ptrdiff_t i) {
@@ -220,7 +224,7 @@ public:
       ptr += static_cast<ptrdiff_t>(strides_[0]) * i;
     }
 
-    return reinterpret_cast<const T&>(*ptr);
+    return *reinterpret_cast<const T*>(ptr);
   }
 };
 

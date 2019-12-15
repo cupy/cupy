@@ -1,7 +1,6 @@
 import functools
 import six
 import string
-import warnings
 
 import numpy
 
@@ -9,8 +8,8 @@ import cupy
 from cupy.core._dtype import get_dtype
 from cupy.core import _errors
 from cupy.core import _kernel
-from cupy.core import core
 from cupy.core._kernel import _is_fusing
+from cupy.core import core
 
 
 _thread_local = _kernel._thread_local
@@ -163,7 +162,7 @@ class _FusionOp(object):
 
     def __repr__(self):
         return '<_FusionOp #{}, {} types=[{}]>'.format(
-            self.index, self.submodule.name, ', '.join(self.dtypes))
+            self.index, self.submodule.name, ', '.join(map(str, self.dtypes)))
 
     def declaration_args(self):
         return ' '.join('{} v{}_{};'.format(_dtype_to_ctype[t], self.index, j)
@@ -433,8 +432,8 @@ class _FusionHistory(object):
         self.postmap_local_list = []
 
     def __repr__(self):
-        return '<_FusionMem, op_list={}, var_list={}>'.format(
-            self.op_list, self.var_list)
+        return '<_FusionMem, op_list={}, param_list={}, local_list={}>'.format(
+            self.op_list, self.param_list, self.local_list)
 
     def _has_reduction(self):
         return self.reduce_op is not None
@@ -516,7 +515,7 @@ class _FusionHistory(object):
         self.preamble_set.add(preamble)
 
     def _get_fusion_var(self, arg):
-        """This converts `arg` to _FusionVarScalr or _FusionVarArray data.
+        """This converts `arg` to _FusionVarScalar or _FusionVarArray data.
 
         Args:
             arg (_FusionVarScalar, _FusionVarArray or a primitive type)
@@ -534,7 +533,7 @@ class _FusionHistory(object):
                       (float, bool, complex, numpy.generic)):
             var = self._fresh_local(numpy.dtype(type(arg)), const_value=arg)
             return _FusionVarScalar(var, -1, self._has_reduction())
-        raise Exception('Unsupported type {}'.format(type(type)))
+        raise TypeError('Unsupported type {}'.format(type(arg)))
 
     def call_ufunc(self, ufunc, args, kwargs):
         nin = ufunc.nin

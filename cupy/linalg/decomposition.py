@@ -1,14 +1,10 @@
 import numpy
-from numpy import linalg
 
 import cupy
-from cupy import cuda
 from cupy.cuda import cublas
+from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import util
-
-if cuda.cusolver_enabled:
-    from cupy.cuda import cusolver
 
 
 def cholesky(a):
@@ -16,8 +12,7 @@ def cholesky(a):
 
     Decompose a given two-dimensional square matrix into ``L * L.T``,
     where ``L`` is a lower-triangular matrix and ``.T`` is a conjugate
-    transpose operator. Note that in the current implementation ``a`` must be
-    a real matrix, and only float32 and float64 are supported.
+    transpose operator.
 
     Args:
         a (cupy.ndarray): The input matrix with dimension ``(N, N)``
@@ -25,48 +20,52 @@ def cholesky(a):
     Returns:
         cupy.ndarray: The lower-triangular matrix.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
     util._assert_cupy_array(a)
     util._assert_rank2(a)
     util._assert_nd_squareness(a)
 
-    # Cast to float32 or float64
     if a.dtype.char == 'f' or a.dtype.char == 'd':
         dtype = a.dtype.char
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+        dtype = numpy.promote_types(a.dtype.char, 'f').char
 
     x = a.astype(dtype, order='C', copy=True)
     n = len(a)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
+
     if dtype == 'f':
-        buffersize = cusolver.spotrf_bufferSize(
-            handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
-        workspace = cupy.empty(buffersize, dtype=numpy.float32)
-        cusolver.spotrf(
-            handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
-            workspace.data.ptr, buffersize, dev_info.data.ptr)
-    else:  # dtype == 'd'
-        buffersize = cusolver.dpotrf_bufferSize(
-            handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
-        workspace = cupy.empty(buffersize, dtype=numpy.float64)
-        cusolver.dpotrf(
-            handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
-            workspace.data.ptr, buffersize, dev_info.data.ptr)
-    status = int(dev_info[0])
-    if status > 0:
-        raise linalg.LinAlgError(
-            'The leading minor of order {} '
-            'is not positive definite'.format(status))
-    elif status < 0:
-        raise linalg.LinAlgError(
-            'Parameter error (maybe caused by a bug in cupy.linalg?)')
+        potrf = cusolver.spotrf
+        potrf_bufferSize = cusolver.spotrf_bufferSize
+    elif dtype == 'd':
+        potrf = cusolver.dpotrf
+        potrf_bufferSize = cusolver.dpotrf_bufferSize
+    elif dtype == 'F':
+        potrf = cusolver.cpotrf
+        potrf_bufferSize = cusolver.cpotrf_bufferSize
+    else:  # dtype == 'D':
+        potrf = cusolver.zpotrf
+        potrf_bufferSize = cusolver.zpotrf_bufferSize
+
+    buffersize = potrf_bufferSize(
+        handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n)
+    workspace = cupy.empty(buffersize, dtype=dtype)
+    potrf(
+        handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
+        workspace.data.ptr, buffersize, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        potrf, dev_info)
+
     util._tril(x, k=0)
     return x
 
@@ -91,11 +90,15 @@ def qr(a, mode='reduced'):
             it returns a tuple of ``(Q, R)`` by default.
             For details, please see the document of :func:`numpy.linalg.qr`.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.qr`
     """
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
     util._assert_cupy_array(a)
     util._assert_rank2(a)
@@ -107,36 +110,55 @@ def qr(a, mode='reduced'):
         else:
             raise ValueError('Unrecognized mode \'{}\''.format(mode))
 
-    # Cast to float32 or float64
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
+    # support float32, float64, complex64, and complex128
+    if a.dtype.char in 'fdFD':
         dtype = a.dtype.char
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+        dtype = numpy.promote_types(a.dtype.char, 'f').char
 
     m, n = a.shape
-    x = a.transpose().astype(dtype, order='C', copy=True)
     mn = min(m, n)
+    if mn == 0:
+        if mode == 'reduced':
+            return cupy.empty((m, 0), dtype), cupy.empty((0, n), dtype)
+        elif mode == 'complete':
+            return cupy.identity(m, dtype), cupy.empty((m, n), dtype)
+        elif mode == 'r':
+            return cupy.empty((0, n), dtype)
+        else:  # mode == 'raw'
+            # compatibility with numpy.linalg.qr
+            dtype = numpy.promote_types(dtype, 'd')
+            return cupy.empty((n, m), dtype), cupy.empty((0,), dtype)
+
+    x = a.transpose().astype(dtype, order='C', copy=True)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
-    # compute working space of geqrf and ormqr, and solve R
+
     if dtype == 'f':
-        buffersize = cusolver.sgeqrf_bufferSize(handle, m, n, x.data.ptr, n)
-        workspace = cupy.empty(buffersize, dtype=numpy.float32)
-        tau = cupy.empty(mn, dtype=numpy.float32)
-        cusolver.sgeqrf(
-            handle, m, n, x.data.ptr, m,
-            tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
-    else:  # dtype == 'd'
-        buffersize = cusolver.dgeqrf_bufferSize(handle, n, m, x.data.ptr, n)
-        workspace = cupy.empty(buffersize, dtype=numpy.float64)
-        tau = cupy.empty(mn, dtype=numpy.float64)
-        cusolver.dgeqrf(
-            handle, m, n, x.data.ptr, m,
-            tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
-    status = int(dev_info[0])
-    if status < 0:
-        raise linalg.LinAlgError(
-            'Parameter error (maybe caused by a bug in cupy.linalg?)')
+        geqrf_bufferSize = cusolver.sgeqrf_bufferSize
+        geqrf = cusolver.sgeqrf
+    elif dtype == 'd':
+        geqrf_bufferSize = cusolver.dgeqrf_bufferSize
+        geqrf = cusolver.dgeqrf
+    elif dtype == 'F':
+        geqrf_bufferSize = cusolver.cgeqrf_bufferSize
+        geqrf = cusolver.cgeqrf
+    elif dtype == 'D':
+        geqrf_bufferSize = cusolver.zgeqrf_bufferSize
+        geqrf = cusolver.zgeqrf
+    else:
+        msg = ('dtype must be float32, float64, complex64 or complex128'
+               ' (actual: {})'.format(a.dtype))
+        raise ValueError(msg)
+
+    # compute working space of geqrf and solve R
+    buffersize = geqrf_bufferSize(handle, m, n, x.data.ptr, n)
+    workspace = cupy.empty(buffersize, dtype=dtype)
+    tau = cupy.empty(mn, dtype=dtype)
+    geqrf(handle, m, n, x.data.ptr, m,
+          tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        geqrf, dev_info)
 
     if mode == 'r':
         r = x[:, :mn].transpose()
@@ -149,6 +171,9 @@ def qr(a, mode='reduced'):
             # following code would be inappropriate, however, in this time
             # we explicitly convert them to float64 for compatibility.
             return x.astype(numpy.float64), tau.astype(numpy.float64)
+        elif a.dtype.char == 'F':
+            # The same applies to complex64
+            return x.astype(numpy.complex128), tau.astype(numpy.complex128)
         return x, tau
 
     if mode == 'complete' and m > n:
@@ -159,21 +184,28 @@ def qr(a, mode='reduced'):
         q = cupy.empty((n, m), dtype)
     q[:n] = x
 
-    # solve Q
+    # compute working space of orgqr and solve Q
     if dtype == 'f':
-        buffersize = cusolver.sorgqr_bufferSize(
-            handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
-        workspace = cupy.empty(buffersize, dtype=numpy.float32)
-        cusolver.sorgqr(
-            handle, m, mc, mn, q.data.ptr, m, tau.data.ptr,
-            workspace.data.ptr, buffersize, dev_info.data.ptr)
-    else:
-        buffersize = cusolver.dorgqr_bufferSize(
-            handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
-        workspace = cupy.empty(buffersize, dtype=numpy.float64)
-        cusolver.dorgqr(
-            handle, m, mc, mn, q.data.ptr, m, tau.data.ptr,
-            workspace.data.ptr, buffersize, dev_info.data.ptr)
+        orgqr_bufferSize = cusolver.sorgqr_bufferSize
+        orgqr = cusolver.sorgqr
+    elif dtype == 'd':
+        orgqr_bufferSize = cusolver.dorgqr_bufferSize
+        orgqr = cusolver.dorgqr
+    elif dtype == 'F':
+        orgqr_bufferSize = cusolver.cungqr_bufferSize
+        orgqr = cusolver.cungqr
+    elif dtype == 'D':
+        orgqr_bufferSize = cusolver.zungqr_bufferSize
+        orgqr = cusolver.zungqr
+
+    buffersize = orgqr_bufferSize(
+        handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
+    workspace = cupy.empty(buffersize, dtype=dtype)
+    orgqr(
+        handle, m, mc, mn, q.data.ptr, m, tau.data.ptr, workspace.data.ptr,
+        buffersize, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        orgqr, dev_info)
 
     q = q[:mc].transpose()
     r = x[:, :mc].transpose()
@@ -199,17 +231,21 @@ def svd(a, full_matrices=True, compute_uv=True):
         tuple of :class:`cupy.ndarray`:
             A tuple of ``(u, s, v)`` such that ``a = u * np.diag(s) * v``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.svd`
     """
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
     util._assert_cupy_array(a)
     util._assert_rank2(a)
 
     # Cast to float32 or float64
-    a_dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+    a_dtype = numpy.promote_types(a.dtype.char, 'f').char
     if a_dtype == 'f':
         s_dtype = 'f'
     elif a_dtype == 'd':
@@ -249,46 +285,32 @@ def svd(a, full_matrices=True, compute_uv=True):
     s = cupy.empty(mn, dtype=s_dtype)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
+
     if compute_uv:
         job = ord('A') if full_matrices else ord('S')
     else:
         job = ord('N')
-    if a_dtype == 'f':
-        buffersize = cusolver.sgesvd_bufferSize(handle, m, n)
-        workspace = cupy.empty(buffersize, dtype=a_dtype)
-        cusolver.sgesvd(
-            handle, job, job, m, n, x.data.ptr, m,
-            s.data.ptr, u_ptr, m, vt_ptr, n,
-            workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
-    elif a_dtype == 'd':
-        buffersize = cusolver.dgesvd_bufferSize(handle, m, n)
-        workspace = cupy.empty(buffersize, dtype=a_dtype)
-        cusolver.dgesvd(
-            handle, job, job, m, n, x.data.ptr, m,
-            s.data.ptr, u_ptr, m, vt_ptr, n,
-            workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
-    elif a_dtype == 'F':
-        buffersize = cusolver.cgesvd_bufferSize(handle, m, n)
-        workspace = cupy.empty(buffersize, dtype=a_dtype)
-        cusolver.cgesvd(
-            handle, job, job, m, n, x.data.ptr, m,
-            s.data.ptr, u_ptr, m, vt_ptr, n,
-            workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
-    else:  # a_dtype == 'D':
-        buffersize = cusolver.zgesvd_bufferSize(handle, m, n)
-        workspace = cupy.empty(buffersize, dtype=a_dtype)
-        cusolver.zgesvd(
-            handle, job, job, m, n, x.data.ptr, m,
-            s.data.ptr, u_ptr, m, vt_ptr, n,
-            workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
 
-    status = int(dev_info[0])
-    if status > 0:
-        raise linalg.LinAlgError(
-            'SVD computation does not converge')
-    elif status < 0:
-        raise linalg.LinAlgError(
-            'Parameter error (maybe caused by a bug in cupy.linalg?)')
+    if a_dtype == 'f':
+        gesvd = cusolver.sgesvd
+        gesvd_bufferSize = cusolver.sgesvd_bufferSize
+    elif a_dtype == 'd':
+        gesvd = cusolver.dgesvd
+        gesvd_bufferSize = cusolver.dgesvd_bufferSize
+    elif a_dtype == 'F':
+        gesvd = cusolver.cgesvd
+        gesvd_bufferSize = cusolver.cgesvd_bufferSize
+    else:  # a_dtype == 'D':
+        gesvd = cusolver.zgesvd
+        gesvd_bufferSize = cusolver.zgesvd_bufferSize
+
+    buffersize = gesvd_bufferSize(handle, m, n)
+    workspace = cupy.empty(buffersize, dtype=a_dtype)
+    gesvd(
+        handle, job, job, m, n, x.data.ptr, m, s.data.ptr, u_ptr, m, vt_ptr, n,
+        workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        gesvd, dev_info)
 
     # Note that the returned array may need to be transporsed
     # depending on the structure of an input

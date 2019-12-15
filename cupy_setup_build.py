@@ -27,42 +27,76 @@ from install.build import PLATFORM_WIN32
 required_cython_version = pkg_resources.parse_version('0.28.0')
 ignore_cython_versions = [
 ]
+use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 
-MODULES = [
-    {
+
+# The value of the key 'file' is a list that contains extension names
+# or tuples of an extension name and a list of other souces files
+# required to build the extension such as .cpp files and .cu files.
+#
+#   <extension name> | (<extension name>, a list of <other source>)
+#
+# The extension name is also interpreted as the name of the Cython
+# source file required to build the extension with appending '.pyx'
+# file extension.
+MODULES = []
+
+cuda_files = [
+    'cupy.core._dtype',
+    'cupy.core._kernel',
+    'cupy.core._memory_range',
+    'cupy.core._routines_indexing',
+    'cupy.core._routines_logic',
+    'cupy.core._routines_manipulation',
+    'cupy.core._routines_math',
+    'cupy.core._routines_sorting',
+    'cupy.core._routines_statistics',
+    'cupy.core._scalar',
+    'cupy.core.core',
+    'cupy.core.dlpack',
+    'cupy.core.flags',
+    'cupy.core.internal',
+    'cupy.core.fusion',
+    'cupy.core.raw',
+    'cupy.cuda.cublas',
+    'cupy.cuda.cufft',
+    'cupy.cuda.curand',
+    'cupy.cuda.cusparse',
+    'cupy.cuda.device',
+    'cupy.cuda.driver',
+    'cupy.cuda.memory',
+    'cupy.cuda.memory_hook',
+    'cupy.cuda.nvrtc',
+    'cupy.cuda.pinned_memory',
+    'cupy.cuda.profiler',
+    'cupy.cuda.function',
+    'cupy.cuda.stream',
+    'cupy.cuda.runtime',
+    'cupy.cuda.texture',
+    'cupy.util',
+]
+
+if use_hip:
+    MODULES.append({
         'name': 'cuda',
-        'file': [
-            'cupy.core._dtype',
-            'cupy.core._kernel',
-            'cupy.core._routines_indexing',
-            'cupy.core._routines_logic',
-            'cupy.core._routines_manipulation',
-            'cupy.core._routines_math',
-            'cupy.core._routines_sorting',
-            'cupy.core._routines_statistics',
-            'cupy.core._scalar',
-            'cupy.core.core',
-            'cupy.core.dlpack',
-            'cupy.core.flags',
-            'cupy.core.internal',
-            'cupy.core.fusion',
-            'cupy.core.raw',
-            'cupy.cuda.cublas',
-            'cupy.cuda.cufft',
-            'cupy.cuda.curand',
-            'cupy.cuda.cusparse',
-            'cupy.cuda.device',
-            'cupy.cuda.driver',
-            'cupy.cuda.memory',
-            'cupy.cuda.memory_hook',
-            'cupy.cuda.nvrtc',
-            'cupy.cuda.pinned_memory',
-            'cupy.cuda.profiler',
-            'cupy.cuda.function',
-            'cupy.cuda.stream',
-            'cupy.cuda.runtime',
-            'cupy.util',
+        'file': cuda_files,
+        'include': [
+            'hip/hip_runtime_api.h',
+            'hip/hiprtc.h',
+            'hipblas.h',
+            'hiprand/hiprand.h',
         ],
+        'libraries': [
+            'hiprtc',
+            'hip_hcc',
+            'hipblas',
+            'hiprand',
+        ],
+    })
+else:
+    MODULES.append({
+        'name': 'cuda',
+        'file': cuda_files,
         'include': [
             'cublas_v2.h',
             'cuda.h',
@@ -84,37 +118,17 @@ MODULES = [
         ],
         'check_method': build.check_cuda_version,
         'version_method': build.get_cuda_version,
-    },
-    {
-        'name': 'cudnn',
+    })
+
+if use_hip:
+    MODULES.append({
+        'name': 'cusolver',
         'file': [
-            'cupy.cuda.cudnn',
-            'cupy.cudnn',
+            'cupy.cuda.cusolver',
         ],
-        'include': [
-            'cudnn.h',
-        ],
-        'libraries': [
-            'cudnn',
-        ],
-        'check_method': build.check_cudnn_version,
-        'version_method': build.get_cudnn_version,
-    },
-    {
-        'name': 'nccl',
-        'file': [
-            'cupy.cuda.nccl',
-        ],
-        'include': [
-            'nccl.h',
-        ],
-        'libraries': [
-            'nccl',
-        ],
-        'check_method': build.check_nccl_version,
-        'version_method': build.get_nccl_version,
-    },
-    {
+    })
+else:
+    MODULES.append({
         'name': 'cusolver',
         'file': [
             'cupy.cuda.cusolver',
@@ -126,60 +140,115 @@ MODULES = [
             'cusolver',
         ],
         'check_method': build.check_cuda_version,
-    },
-    {
-        'name': 'nvtx',
-        'file': [
-            'cupy.cuda.nvtx',
-        ],
-        'include': [
-            'nvToolsExt.h',
-        ],
-        'libraries': [
-            'nvToolsExt' if not PLATFORM_WIN32 else 'nvToolsExt64_1',
-        ],
-        'check_method': build.check_nvtx,
-    },
-    {
-        # The value of the key 'file' is a list that contains extension names
-        # or tuples of an extension name and a list of other souces files
-        # required to build the extension such as .cpp files and .cu files.
-        #
-        #   <extension name> | (<extension name>, a list of <other source>)
-        #
-        # The extension name is also interpreted as the name of the Cython
-        # source file required to build the extension with appending '.pyx'
-        # file extension.
-        'name': 'thrust',
-        'file': [
-            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
-        ],
-        'include': [
-            'thrust/device_ptr.h',
-            'thrust/sequence.h',
-            'thrust/sort.h',
-        ],
-        'libraries': [
-            'cudart',
-        ],
-        'check_method': build.check_cuda_version,
-    },
-    {
-        'name': 'cutensor',
-        'file': [
-            'cupy.cuda.cutensor',
-        ],
-        'include': [
-            'cutensor.h',
-        ],
-        'libraries': [
-            'cutensor',
-            'cublas',
-        ],
-        'check_method': build.check_cutensor_version,
-        'version_method': build.get_cutensor_version,
-    },
-]
+    })
+
+MODULES.append({
+    'name': 'cudnn',
+    'file': [
+        'cupy.cuda.cudnn',
+        'cupy.cudnn',
+    ],
+    'include': [
+        'cudnn.h',
+    ],
+    'libraries': [
+        'cudnn',
+    ],
+    'check_method': build.check_cudnn_version,
+    'version_method': build.get_cudnn_version,
+})
+
+MODULES.append({
+    'name': 'nccl',
+    'file': [
+        'cupy.cuda.nccl',
+    ],
+    'include': [
+        'nccl.h',
+    ],
+    'libraries': [
+        'nccl',
+    ],
+    'check_method': build.check_nccl_version,
+    'version_method': build.get_nccl_version,
+})
+
+MODULES.append({
+    'name': 'nvtx',
+    'file': [
+        'cupy.cuda.nvtx',
+    ],
+    'include': [
+        'nvToolsExt.h',
+    ],
+    'libraries': [
+        'nvToolsExt' if not PLATFORM_WIN32 else 'nvToolsExt64_1',
+    ],
+    'check_method': build.check_nvtx,
+})
+
+MODULES.append({
+    'name': 'cutensor',
+    'file': [
+        'cupy.cuda.cutensor',
+    ],
+    'include': [
+        'cutensor.h',
+    ],
+    'libraries': [
+        'cutensor',
+        'cublas',
+    ],
+    'check_method': build.check_cutensor_version,
+    'version_method': build.get_cutensor_version,
+})
+
+MODULES.append({
+    'name': 'cub',
+    'file': [
+        ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+    ],
+    'include': [
+        'cub/util_namespace.cuh',  # dummy
+    ],
+    'libraries': [
+        'cudart',
+    ],
+    'check_method': build.check_cuda_version,
+})
+
+
+if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
+    if use_hip:
+        MODULES.append({
+            'name': 'thrust',
+            'file': [
+                ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+            ],
+            'include': [
+                'thrust/version.h',
+            ],
+            'libraries': [
+                'hiprtc',
+                'hip_hcc',
+            ],
+        })
+    else:
+        MODULES.append({
+            'name': 'thrust',
+            'file': [
+                ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+            ],
+            'include': [
+                'thrust/device_ptr.h',
+                'thrust/sequence.h',
+                'thrust/sort.h',
+            ],
+            'libraries': [
+                'cudart',
+            ],
+            'check_method': build.check_cuda_version,
+        })
 
 
 def ensure_module_file(file):
@@ -224,17 +293,19 @@ def check_readthedocs_environment():
 
 
 def check_library(compiler, includes=(), libraries=(),
-                  include_dirs=(), library_dirs=(), define_macros=None):
+                  include_dirs=(), library_dirs=(), define_macros=None,
+                  extra_compile_args=()):
 
     source = ''.join(['#include <%s>\n' % header for header in includes])
-    source += 'int main(int argc, char* argv[]) {return 0;}'
+    source += 'int main() {return 0;}'
     try:
         # We need to try to build a shared library because distutils
         # uses different option to build an executable and a shared library.
         # Especially when a user build an executable, distutils does not use
         # LDFLAGS environment variable.
         build.build_shlib(compiler, source, libraries,
-                          include_dirs, library_dirs, define_macros)
+                          include_dirs, library_dirs, define_macros,
+                          extra_compile_args)
     except Exception as e:
         print(e)
         sys.stdout.flush()
@@ -267,7 +338,8 @@ def preconfigure_modules(compiler, settings):
     ]
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
-                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC']:
+                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC',
+                'ROCM_HOME']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [
@@ -281,20 +353,36 @@ def preconfigure_modules(compiler, settings):
         status = 'No'
         errmsg = []
 
+        if module['name'] == 'cutensor':
+            cuda_version = build.get_cuda_version()
+            cuda_version = str(cuda_version // 1000) + '.' + \
+                str((cuda_version // 10) % 100)
+            cutensor_path = os.environ.get('CUTENSOR_PATH', '')
+            inc_path = os.path.join(cutensor_path, 'include')
+            if os.path.exists(inc_path):
+                settings['include_dirs'].append(inc_path)
+            lib_path = os.path.join(cutensor_path, 'lib', cuda_version)
+            if os.path.exists(lib_path):
+                settings['library_dirs'].append(lib_path)
+
         print('')
         print('-------- Configuring Module: {} --------'.format(
             module['name']))
         sys.stdout.flush()
-        if not check_library(compiler,
-                             includes=module['include'],
-                             include_dirs=settings['include_dirs'],
-                             define_macros=settings['define_macros']):
+        if not check_library(
+                compiler,
+                includes=module['include'],
+                include_dirs=settings['include_dirs'],
+                define_macros=settings['define_macros'],
+                extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Include files not found: %s' % module['include'],
                       'Check your CFLAGS environment variable.']
-        elif not check_library(compiler,
-                               libraries=module['libraries'],
-                               library_dirs=settings['library_dirs'],
-                               define_macros=settings['define_macros']):
+        elif not check_library(
+                compiler,
+                libraries=module['libraries'],
+                library_dirs=settings['library_dirs'],
+                define_macros=settings['define_macros'],
+                extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Cannot link libraries: %s' % module['libraries'],
                       'Check your LDFLAGS environment variable.']
         elif ('check_method' in module and
@@ -303,6 +391,10 @@ def preconfigure_modules(compiler, settings):
             installed = True
             errmsg = ['The library is installed but not supported.']
         elif module['name'] == 'thrust' and nvcc_path is None:
+            installed = True
+            errmsg = ['nvcc command could not be found in PATH.',
+                      'Check your PATH environment variable.']
+        elif module['name'] == 'cub' and nvcc_path is None:
             installed = True
             errmsg = ['nvcc command could not be found in PATH.',
                       'Check your PATH environment variable.']
@@ -350,7 +442,7 @@ def preconfigure_modules(compiler, settings):
     ]
 
     print('\n'.join(summary))
-    return ret
+    return ret, settings
 
 
 def _rpath_base():
@@ -366,7 +458,8 @@ def make_extensions(options, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
     no_cuda = options['no_cuda']
-    settings = build.get_compiler_setting()
+    use_hip = not no_cuda and options['use_hip']
+    settings = build.get_compiler_setting(use_hip)
 
     include_dirs = settings['include_dirs']
 
@@ -392,12 +485,15 @@ def make_extensions(options, compiler, use_cython):
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
     if no_cuda:
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
+    if use_hip:
+        settings['define_macros'].append(('CUPY_USE_HIP', '1'))
+        settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
 
     available_modules = []
     if no_cuda:
         available_modules = [m['name'] for m in MODULES]
     else:
-        available_modules = preconfigure_modules(compiler, settings)
+        available_modules, settings = preconfigure_modules(compiler, settings)
         if 'cuda' not in available_modules:
             raise Exception('Your CUDA environment is invalid. '
                             'Please check above error log.')
@@ -418,7 +514,9 @@ def make_extensions(options, compiler, use_cython):
             compile_args = s.setdefault('extra_compile_args', [])
             link_args = s.setdefault('extra_link_args', [])
             # openmp is required for cusolver
-            if compiler.compiler_type == 'unix' and not PLATFORM_DARWIN:
+            if use_hip:
+                pass
+            elif compiler.compiler_type == 'unix' and not PLATFORM_DARWIN:
                 # In mac environment, openmp is not required.
                 compile_args.append('-fopenmp')
                 link_args.append('-fopenmp')
@@ -456,7 +554,7 @@ def make_extensions(options, compiler, use_cython):
                 args = s.setdefault('extra_link_args', [])
                 args.append(ldflag)
                 if PLATFORM_DARWIN:
-                    # -rpath is only supported when targetting Mac OS X 10.5 or
+                    # -rpath is only supported when targeting Mac OS X 10.5 or
                     # later
                     args.append('-mmacosx-version-min=10.5')
 
@@ -467,6 +565,7 @@ def make_extensions(options, compiler, use_cython):
     return ret
 
 
+# TODO(oktua): use enviriment variable
 def parse_args():
     parser = argparse.ArgumentParser(add_help=False)
 
@@ -499,6 +598,9 @@ def parse_args():
     parser.add_argument(
         '--cupy-no-cuda', action='store_true', default=False,
         help='build CuPy with stub header file')
+    # parser.add_argument(
+    #     '--cupy-use-hip', action='store_true', default=False,
+    #     help='build CuPy with HIP')
 
     opts, sys.argv = parser.parse_known_args(sys.argv)
 
@@ -512,6 +614,7 @@ def parse_args():
         'linetrace': opts.cupy_coverage,
         'annotate': opts.cupy_coverage,
         'no_cuda': opts.cupy_no_cuda,
+        'use_hip': use_hip  # opts.cupy_use_hip,
     }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
@@ -728,6 +831,10 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             return unixccompiler.UnixCCompiler._compile(
                 self, obj, src, ext, cc_args, extra_postargs, pp_opts)
 
+        if use_hip:
+            return self._comiple_unix_hipcc(
+                obj, src, ext, cc_args, extra_postargs, pp_opts)
+
         # For CUDA C source files, compile them with NVCC.
         _compiler_so = self.compiler_so
         try:
@@ -737,13 +844,50 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
 
             cuda_version = build.get_cuda_version()
             postargs = _nvcc_gencode_options(cuda_version) + [
-                '-O2', '--compiler-options="-fPIC"']
+                '-O2', '--compiler-options="-fPIC"', '--std=c++11']
             print('NVCC options:', postargs)
 
             return unixccompiler.UnixCCompiler._compile(
                 self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
         finally:
             self.compiler_so = _compiler_so
+
+    def _comiple_unix_hipcc(self,
+                            obj, src, ext, cc_args, extra_postargs, pp_opts):
+        # For CUDA C source files, compile them with HIPCC.
+        _compiler_so = self.compiler_so
+        try:
+            rcom_path = build.get_hipcc_path()
+            base_opts = build.get_compiler_base_options()
+            self.set_executable('compiler_so', rcom_path)
+
+            postargs = ['-O2', '-fPIC']
+            print('HIPCC options:', postargs)
+
+            return unixccompiler.UnixCCompiler._compile(
+                self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
+        finally:
+            self.compiler_so = _compiler_so
+
+    def link(self, target_desc, objects, output_filename, *args):
+        use_hipcc = False
+        if use_hip:
+            for i in objects:
+                if 'cupy_thrust.o' in i:
+                    use_hipcc = True
+        if use_hipcc:
+            _compiler_cxx = self.compiler_cxx
+            try:
+                rcom_path = build.get_hipcc_path()
+                self.set_executable('compiler_cxx', rcom_path)
+
+                return unixccompiler.UnixCCompiler.link(
+                    self, target_desc, objects, output_filename, *args)
+            finally:
+                self.compiler_cxx = _compiler_cxx
+        else:
+            return unixccompiler.UnixCCompiler.link(
+                self, target_desc, objects, output_filename, *args)
 
 
 class _MSVCCompiler(msvccompiler.MSVCCompiler):

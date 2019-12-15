@@ -1,6 +1,7 @@
 import contextlib
 import os
 
+from cupy._environment import get_cuda_path  # NOQA
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
 from cupy.cuda import driver  # NOQA
@@ -12,13 +13,16 @@ from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import profiler  # NOQA
 from cupy.cuda import runtime  # NOQA
 from cupy.cuda import stream  # NOQA
+from cupy.cuda import texture  # NOQA
 
 
 _available = None
-_cuda_path = None
+_cub_disabled = None
 
 
 from cupy.cuda import cusolver  # NOQA
+# This flag is kept for backward compatibility.
+# It is always True as cuSOLVER library is always available in CUDA 8.0+.
 cusolver_enabled = True
 
 try:
@@ -32,6 +36,14 @@ try:
     thrust_enabled = True
 except ImportError:
     thrust_enabled = False
+
+cub_enabled = False
+if int(os.getenv('CUB_DISABLED', 0)) == 0:
+    try:
+        from cupy.cuda import cub  # NOQA
+        cub_enabled = True
+    except ImportError:
+        pass
 
 try:
     from cupy.cuda import nccl  # NOQA
@@ -59,28 +71,6 @@ def is_available():
     return _available
 
 
-def get_cuda_path():
-    global _cuda_path
-    if _cuda_path is None:
-        _cuda_path = os.getenv('CUDA_PATH', None)
-        if _cuda_path is not None:
-            return _cuda_path
-
-        for p in os.getenv('PATH', '').split(os.pathsep):
-            for cmd in ('nvcc', 'nvcc.exe'):
-                nvcc_path = os.path.join(p, cmd)
-                if not os.path.exists(nvcc_path):
-                    continue
-                nvcc_dir = os.path.dirname(os.path.abspath(nvcc_path))
-                _cuda_path = os.path.normpath(os.path.join(nvcc_dir, '..'))
-                return _cuda_path
-
-        if os.path.exists('/usr/local/cuda'):
-            _cuda_path = '/usr/local/cuda'
-
-    return _cuda_path
-
-
 # import class and function
 from cupy.cuda.compiler import compile_with_cache  # NOQA
 from cupy.cuda.device import Device  # NOQA
@@ -96,6 +86,7 @@ from cupy.cuda.memory import Memory  # NOQA
 from cupy.cuda.memory import MemoryPointer  # NOQA
 from cupy.cuda.memory import MemoryPool  # NOQA
 from cupy.cuda.memory import set_allocator  # NOQA
+from cupy.cuda.memory import get_allocator  # NOQA
 from cupy.cuda.memory import UnownedMemory  # NOQA
 from cupy.cuda.memory_hook import MemoryHook  # NOQA
 from cupy.cuda.pinned_memory import alloc_pinned_memory  # NOQA

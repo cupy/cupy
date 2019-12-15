@@ -3,13 +3,11 @@ import unittest
 import numpy
 
 import cupy
-from cupy import cuda
 from cupy import testing
 from cupy.testing import condition
+import cupyx
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 @testing.fix_random()
 class TestSolve(unittest.TestCase):
@@ -60,8 +58,6 @@ class TestSolve(unittest.TestCase):
 }))
 @testing.fix_random()
 @testing.gpu
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 class TestTensorSolve(unittest.TestCase):
 
     def setUp(self):
@@ -77,12 +73,10 @@ class TestTensorSolve(unittest.TestCase):
         return xp.linalg.tensorsolve(a, b, axes=self.axes)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestInv(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @condition.retry(10)
     def check_x(self, a_shape, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
@@ -114,16 +108,33 @@ class TestInv(unittest.TestCase):
         self.check_shape((2, 4, 3))
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
+class TestInvInvalid(unittest.TestCase):
+
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
+    @testing.for_float_dtypes(no_float16=True)
+    def test_inv(self, dtype, xp):
+        a = xp.array([[1, 2], [2, 4]]).astype(dtype)
+        with cupyx.errstate(linalg='raise'):
+            xp.linalg.inv(a)
+
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
+    @testing.for_float_dtypes(no_float16=True)
+    def test_batched_inv(self, dtype, xp):
+        a = xp.array([[[1, 2], [2, 4]]]).astype(dtype)
+        assert a.ndim >= 3  # CuPy internally uses a batched function.
+        with cupyx.errstate(linalg='raise'):
+            xp.linalg.inv(a)
+
+
 @testing.gpu
 class TestPinv(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @condition.retry(10)
     def check_x(self, a_shape, rcond, dtype):
-        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
-        a_gpu = cupy.asarray(a_cpu)
+        a_gpu = testing.shaped_random(a_shape, dtype=dtype)
+        a_cpu = cupy.asnumpy(a_gpu)
         a_gpu_copy = a_gpu.copy()
         result_cpu = numpy.linalg.pinv(a_cpu, rcond=rcond)
         result_gpu = cupy.linalg.pinv(a_gpu, rcond=rcond)
@@ -153,8 +164,6 @@ class TestPinv(unittest.TestCase):
         self.check_shape((4, 3, 2, 1), rcond=0.1)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestLstsq(unittest.TestCase):
 
@@ -227,8 +236,6 @@ class TestLstsq(unittest.TestCase):
         self.check_invalid_shapes((4, 3), (10, 3, 3))
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestTensorInv(unittest.TestCase):
 

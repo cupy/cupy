@@ -51,6 +51,13 @@ cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
     void _argsort[T](size_t *, void *, void *, const vector.vector[ptrdiff_t]&,
                      size_t, void *)
 
+cdef extern from 'cupy_cuComplex.h':
+    ctypedef struct cpy_complex64 'cuComplex':
+        float x, y
+
+    ctypedef struct cpy_complex128 'cuDoubleComplex':
+        double x, y
+
 
 ###############################################################################
 # Python interface
@@ -90,6 +97,10 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
         _sort[common.cpy_float](_data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.float64:
         _sort[common.cpy_double](_data_start, _keys_start, shape, _strm, mem)
+    elif dtype == numpy.complex64:
+        _sort[cpy_complex64](_data_start, _keys_start, shape, _strm, mem)
+    elif dtype == numpy.complex128:
+        _sort[cpy_complex128](_data_start, _keys_start, shape, _strm, mem)
     else:
         raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '
                                   'supported'.format(dtype))
@@ -127,6 +138,10 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
         _lexsort[common.cpy_float](idx_ptr, keys_ptr, k, n, _strm, mem)
     elif dtype == numpy.float64:
         _lexsort[common.cpy_double](idx_ptr, keys_ptr, k, n, _strm, mem)
+    elif dtype == numpy.complex64:
+        _lexsort[cpy_complex64](idx_ptr, keys_ptr, k, n, _strm, mem)
+    elif dtype == numpy.complex128:
+        _lexsort[cpy_complex128](idx_ptr, keys_ptr, k, n, _strm, mem)
     else:
         raise TypeError('Sorting keys with dtype \'{}\' is not '
                         'supported'.format(dtype))
@@ -176,6 +191,12 @@ cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
             _idx_start, _data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.float64:
         _argsort[common.cpy_double](
+            _idx_start, _data_start, _keys_start, shape, _strm, mem)
+    elif dtype == numpy.complex64:
+        _argsort[cpy_complex64](
+            _idx_start, _data_start, _keys_start, shape, _strm, mem)
+    elif dtype == numpy.complex128:
+        _argsort[cpy_complex128](
             _idx_start, _data_start, _keys_start, shape, _strm, mem)
     else:
         raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '

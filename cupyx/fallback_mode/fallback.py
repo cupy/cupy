@@ -69,6 +69,9 @@ class _RecursiveAttr(object):
         if numpy_object is np.ndarray:
             return ndarray
 
+        if numpy_object is np.vectorize:
+            return vectorize
+
         if numpy_object is cupy_object:
             return numpy_object
 
@@ -120,7 +123,7 @@ numpy = _RecursiveAttr(np, cp)
 
 
 # -----------------------------------------------------------------------------
-# ndarray wrapper and proxying of magic methods
+# proxying of ndarray magic methods and wrappers
 # -----------------------------------------------------------------------------
 
 
@@ -249,6 +252,28 @@ def _create_magic_methods():
 
 
 _create_magic_methods()
+
+
+class vectorize(object):
+
+    def __init__(self, *args, **kwargs):
+        # NumPy will raise error if pyfunc is a cupy method
+        if isinstance(args[0], _RecursiveAttr):
+            args = (args[0]._numpy_object,) + args[1:]
+        self.__dict__['vec_obj'] = np.vectorize(*args, **kwargs)
+
+    def __getattr__(self, attr):
+        return getattr(self.__dict__['vec_obj'], attr)
+
+    def __setattr__(self, name, value):
+        return setattr(self.vec_obj, name, value)
+
+    @property
+    def __doc__(self):
+        return self.vec_obj.__doc__
+
+    def __call__(self, *args, **kwargs):
+        return _call_numpy(self.vec_obj, args, kwargs)
 
 
 # -----------------------------------------------------------------------------

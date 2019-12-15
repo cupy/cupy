@@ -4,6 +4,7 @@ import unittest
 import numpy
 import six
 
+import cupy
 from cupy import cuda
 from cupy import random
 from cupy import testing
@@ -17,6 +18,13 @@ class TestRandint(unittest.TestCase):
     def test_lo_hi_reversed(self):
         with self.assertRaises(ValueError):
             random.randint(100, 1)
+
+    def test_zero_sizes(self):
+        a = random.randint(10, size=(0,))
+        testing.assert_array_equal(a, cupy.array(()))
+
+        a = random.randint(10, size=0)
+        testing.assert_array_equal(a, cupy.array(()))
 
 
 @testing.fix_random()

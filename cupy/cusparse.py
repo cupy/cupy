@@ -1,9 +1,12 @@
+import functools
+
 import numpy
 
 import cupy
 from cupy.cuda import cusparse
 from cupy.cuda import runtime
 from cupy.cuda import device
+from cupy import util
 import cupyx.scipy.sparse
 
 
@@ -17,7 +20,9 @@ class MatDescriptor(object):
         descr = cusparse.createMatDescr()
         return MatDescriptor(descr)
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
+        if is_shutting_down():
+            return
         if self.descriptor:
             cusparse.destroyMatDescr(self.descriptor)
             self.descriptor = None
@@ -31,7 +36,7 @@ class MatDescriptor(object):
 
 def _cast_common_type(*xs):
     dtypes = [x.dtype for x in xs if x is not None]
-    dtype = numpy.find_common_type(dtypes, [])
+    dtype = functools.reduce(numpy.promote_types, dtypes)
     return [x.astype(dtype) if x is not None and x.dtype != dtype else x
             for x in xs]
 
@@ -161,7 +166,7 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
         y (cupy.ndarray or None): Vector y. It must be F-contiguous.
         alpha (float): Coefficient for x.
         beta (float): Coefficient for y.
-        merge_path (bool): If ``True``, merge path algoritm is used.
+        merge_path (bool): If ``True``, merge path algorithm is used.
 
         All pointers must be aligned with 128 bytes.
 
@@ -525,13 +530,14 @@ def csrsort(x):
         x.indices.data.ptr)
     buf = cupy.empty(buffer_size, 'b')
     P = cupy.empty(nnz, 'i')
+    data_orig = x.data.copy()
     cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
     cusparse.xcsrsort(
         handle, m, n, nnz, x._descr.descriptor, x.indptr.data.ptr,
         x.indices.data.ptr, P.data.ptr, buf.data.ptr)
     _call_cusparse(
         'gthr', x.dtype,
-        handle, nnz, x.data.data.ptr, x.data.data.ptr,
+        handle, nnz, data_orig.data.ptr, x.data.data.ptr,
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 
@@ -553,17 +559,24 @@ def cscsort(x):
         x.indices.data.ptr)
     buf = cupy.empty(buffer_size, 'b')
     P = cupy.empty(nnz, 'i')
+    data_orig = x.data.copy()
     cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
     cusparse.xcscsort(
         handle, m, n, nnz, x._descr.descriptor, x.indptr.data.ptr,
         x.indices.data.ptr, P.data.ptr, buf.data.ptr)
     _call_cusparse(
         'gthr', x.dtype,
-        handle, nnz, x.data.data.ptr, x.data.data.ptr,
+        handle, nnz, data_orig.data.ptr, x.data.data.ptr,
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 
 def coosort(x):
+    """Sorts indices of COO-matrix in place.
+
+    Args:
+        x (cupyx.scipy.sparse.coo_matrix): A sparse matrix to sort.
+
+    """
     nnz = x.nnz
     if nnz == 0:
         return
@@ -574,13 +587,14 @@ def coosort(x):
         handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr)
     buf = cupy.empty(buffer_size, 'b')
     P = cupy.empty(nnz, 'i')
+    data_orig = x.data.copy()
     cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
     cusparse.xcoosortByRow(
         handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
         P.data.ptr, buf.data.ptr)
     _call_cusparse(
         'gthr', x.dtype,
-        handle, nnz, x.data.data.ptr, x.data.data.ptr,
+        handle, nnz, data_orig.data.ptr, x.data.data.ptr,
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 

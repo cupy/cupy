@@ -238,7 +238,7 @@ class spmatrix(object):
         if self.dtype.kind == 'f':
             return self
         else:
-            typ = numpy.result_type(self.dtype, 'f')
+            typ = numpy.promote_types(self.dtype, 'f')
             return self.astype(typ)
 
     def astype(self, t):
@@ -292,9 +292,17 @@ class spmatrix(object):
         """Number of non-zero entries, equivalent to"""
         raise NotImplementedError
 
-    def diagonal(self):
-        """Returns the main diagonal of the matrix"""
-        return self.tocsr().diagonal()
+    def diagonal(self, k=0):
+        """Returns the k-th diagonal of the matrix.
+
+        Args:
+            k (int, optional): Which diagonal to get, corresponding to elements
+            a[i, i+k]. Default: 0 (the main diagonal).
+
+        Returns:
+            cupy.ndarray : The k-th diagonal.
+        """
+        return self.tocsr().diagonal(k=k)
 
     def dot(self, other):
         """Ordinary dot product"""

@@ -1,6 +1,8 @@
+import functools
 import numpy
 
 import cupy
+from cupy.core import _routines_statistics as _statistics
 
 
 # TODO(okuta): Implement median
@@ -23,8 +25,13 @@ def average(a, axis=None, weights=None, returned=False):
         cupy.ndarray or tuple of cupy.ndarray: The average of the input array
             along the axis and the sum of weights.
 
+    .. warning::
+
+        This function may synchronize the device if ``weight`` is given.
+
     .. seealso:: :func:`numpy.average`
     """
+    # TODO(niboshi): Avoid synchronization.
     a = cupy.asarray(a)
 
     if weights is None:
@@ -34,9 +41,10 @@ def average(a, axis=None, weights=None, returned=False):
         wgt = cupy.asarray(weights)
 
         if issubclass(a.dtype.type, (numpy.integer, numpy.bool_)):
-            result_dtype = numpy.result_type(a.dtype, wgt.dtype, 'f8')
+            result_dtype = functools.reduce(numpy.promote_types,
+                                            (a.dtype, wgt.dtype, 'f8'))
         else:
-            result_dtype = numpy.result_type(a.dtype, wgt.dtype)
+            result_dtype = numpy.promote_types(a.dtype, wgt.dtype)
 
         # Sanity checks
         if a.shape != wgt.shape:
@@ -56,7 +64,7 @@ def average(a, axis=None, weights=None, returned=False):
             wgt = wgt.swapaxes(-1, axis)
 
         scl = wgt.sum(axis=axis, dtype=result_dtype)
-        if cupy.any(scl == 0.0):
+        if cupy.any(scl == 0.0):  # synchronize!
             raise ZeroDivisionError(
                 'Weights sum to zero, can\'t be normalized')
 
@@ -138,10 +146,81 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
                  keepdims=keepdims)
 
 
-# TODO(okuta): Implement nanmean
+def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
+    """Returns the arithmetic mean along an axis ignoring NaN values.
+
+    Args:
+        a (cupy.ndarray): Array to compute mean.
+        axis (int): Along which axis to compute mean. The flattened array is
+            used by default.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
+
+    Returns:
+        cupy.ndarray: The mean of the input array along the axis ignoring NaNs.
+
+    .. seealso:: :func:`numpy.nanmean`
+
+    """
+    if a.dtype.kind in 'biu':
+        return a.mean(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+    # TODO(okuta): check type
+    return _statistics._nanmean(
+        a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-# TODO(okuta): Implement nanstd
+def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    """Returns the variance along an axis ignoring NaN values.
+
+    Args:
+        a (cupy.ndarray): Array to compute variance.
+        axis (int): Along which axis to compute variance. The flattened array
+            is used by default.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
+
+    Returns:
+        cupy.ndarray: The variance of the input array along the axis.
+
+    .. seealso:: :func:`numpy.nanvar`
+
+    """
+    if a.dtype.kind in 'biu':
+        return a.var(axis=axis, dtype=dtype, out=out, ddof=ddof,
+                     keepdims=keepdims)
+
+    # TODO(okuta): check type
+    return _statistics._nanvar(
+        a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
-# TODO(okuta): Implement nanvar
+def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    """Returns the standard deviation along an axis ignoring NaN values.
+
+    Args:
+        a (cupy.ndarray): Array to compute standard deviation.
+        axis (int): Along which axis to compute standard deviation. The
+            flattened array is used by default.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
+
+    Returns:
+        cupy.ndarray: The standard deviation of the input array along the axis.
+
+    .. seealso:: :func:`numpy.nanstd`
+
+    """
+    if a.dtype.kind in 'biu':
+        return a.std(axis=axis, dtype=dtype, out=out, ddof=ddof,
+                     keepdims=keepdims)
+
+    # TODO(okuta): check type
+    return _statistics._nanstd(
+        a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)

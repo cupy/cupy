@@ -9,6 +9,8 @@ from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
 from cupyx.scipy.sparse import csc
+if cupy.cuda.cub_enabled:
+    from cupy.cuda.cub import device_csrmv
 
 
 class csr_matrix(compressed._compressed_sparse_matrix):
@@ -118,7 +120,12 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 other = cupy.asfortranarray(other)
                 # csrmvEx does not work if nnz == 0
                 if self.nnz > 0 and cusparse.csrmvExIsAligned(self, other):
-                    return cusparse.csrmvEx(self, other)
+                    if cupy.cuda.cub_enabled and other.flags.c_contiguous:
+                        return device_csrmv(
+                            self.shape[0], self.shape[1], self.nnz, self.data,
+                            self.indptr, self.indices, other)
+                    else:
+                        return cusparse.csrmvEx(self, other)
                 else:
                     return cusparse.csrmv(self, other)
             elif other.ndim == 2:
@@ -145,7 +152,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement argmin
     # TODO(unno): Implement check_format
 
-    def diagonal(self):
+    def diagonal(self, k=0):
         # TODO(unno): Implement diagonal
         raise NotImplementedError
 

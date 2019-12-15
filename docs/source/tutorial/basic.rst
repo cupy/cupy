@@ -193,14 +193,18 @@ to get host or device arrays from either CuPy or NumPy arrays.
 
 .. doctest::
 
-   >>> np.allclose(x_cpu, [1, 2, 3])
-   True
-   >>> np.allclose(x_gpu, [1, 2, 3])
+   >>> y_cpu = np.array([4, 5, 6])
+   >>> x_cpu + y_cpu
+   array([5, 7, 9])
+   >>> x_gpu + y_cpu
    Traceback (most recent call last):
    ...
-   ValueError: object __array__ method not producing an array
-   >>> np.allclose(cp.asnumpy(x_cpu), [1, 2, 3])
-   True
-   >>> np.allclose(cp.asnumpy(x_gpu), [1, 2, 3])
-   True
-
+   TypeError: Unsupported type <class 'numpy.ndarray'>
+   >>> cp.asnumpy(x_gpu) + y_cpu
+   array([5, 7, 9])
+   >>> cp.asnumpy(x_gpu) + cp.asnumpy(y_cpu)
+   array([5, 7, 9])
+   >>> x_gpu + cp.asarray(y_cpu)
+   array([5, 7, 9])
+   >>> cp.asarray(x_gpu) + cp.asarray(y_cpu)
+   array([5, 7, 9])

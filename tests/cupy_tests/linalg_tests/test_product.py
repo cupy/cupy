@@ -2,7 +2,6 @@ import unittest
 
 import numpy
 
-from cupy import cuda
 from cupy import testing
 
 
@@ -69,6 +68,39 @@ class TestDot(unittest.TestCase):
         out = xp.dot(a, b, out=c)
         self.assertIs(out, c)
         return c
+
+
+@testing.parameterize(*testing.product({
+    'params': [
+        #  Test for 0 dimension
+        ((3, ), (3, ), -1, -1, -1),
+        #  Test for basic cases
+        ((1, 2), (1, 2), -1, -1, 1),
+        ((1, 3), (1, 3), 1, -1, -1),
+        ((1, 2), (1, 3), -1, -1, 1),
+        ((2, 2), (1, 3), -1, -1, 0),
+        ((3, 3), (1, 2), 0, -1, -1),
+        ((0, 3), (0, 3), -1, -1, -1),
+        #  Test for higher dimensions
+        ((2, 0, 3), (2, 0, 3), 0, 0, 0),
+        ((2, 4, 5, 3), (2, 4, 5, 3), -1, -1, 0),
+        ((2, 4, 5, 2), (2, 4, 5, 2), 0, 0, -1),
+    ],
+}))
+@testing.gpu
+class TestCrossProduct(unittest.TestCase):
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.numpy_cupy_allclose()
+    def test_cross(self, xp, dtype_a, dtype_b):
+        if dtype_a == dtype_b == numpy.bool_:
+            # cross does not support bool-bool inputs.
+            return xp.array(True)
+        shape_a, shape_b, axisa, axisb, axisc = self.params
+        a = testing.shaped_arange(shape_a, xp, dtype_a)
+        b = testing.shaped_arange(shape_b, xp, dtype_b)
+        return xp.cross(a, b, axisa, axisb, axisc)
 
 
 @testing.parameterize(*testing.product({
@@ -371,8 +403,6 @@ class TestProductZeroLength(unittest.TestCase):
         return xp.tensordot(a, a, axes=axes)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Requires CUDA 8.0 for cuSOLVER')
 class TestMatrixPower(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -401,19 +431,22 @@ class TestMatrixPower(unittest.TestCase):
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_matrix_power_inv1(self, xp, dtype):
-        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        a = a * a % 30
         return xp.linalg.matrix_power(a, -1)
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_matrix_power_inv2(self, xp, dtype):
-        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        a = a * a % 30
         return xp.linalg.matrix_power(a, -2)
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4)
     def test_matrix_power_inv3(self, xp, dtype):
-        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        a = a * a % 30
         return xp.linalg.matrix_power(a, -3)
 
     @testing.for_all_dtypes()

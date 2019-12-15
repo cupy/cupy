@@ -34,14 +34,14 @@ class TestSort(unittest.TestCase):
 
     # Test dtypes
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_allclose()
     def test_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a.sort()
         return a
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_allclose()
     def test_external_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
@@ -184,7 +184,7 @@ class TestLexsort(unittest.TestCase):
 
     # Test dtypes
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_allclose()
     def test_lexsort_dtype(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
@@ -212,19 +212,19 @@ class TestArgsort(unittest.TestCase):
 
     # Test base cases
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_raises()
     def test_argsort_zero_dim(self, xp, dtype):
         a = testing.shaped_random((), xp, dtype)
         return self.argsort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_array_equal()
     def test_argsort_one_dim(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return self.argsort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_array_equal()
     def test_argsort_multi_dim(self, xp, dtype):
         a = testing.shaped_random((2, 3, 3), xp, dtype)
@@ -237,7 +237,7 @@ class TestArgsort(unittest.TestCase):
 
     # Test unsupported dtype
 
-    @testing.for_dtypes([numpy.float16, numpy.bool_, numpy.complex64])
+    @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_argsort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
         with self.assertRaises(NotImplementedError):
@@ -307,13 +307,13 @@ class TestMsort(unittest.TestCase):
         a = testing.shaped_random((), xp)
         return xp.msort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_array_equal()
     def test_msort_one_dim(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return xp.msort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_array_equal()
     def test_msort_multi_dim(self, xp, dtype):
         a = testing.shaped_random((2, 3), xp, dtype)
@@ -321,7 +321,7 @@ class TestMsort(unittest.TestCase):
 
     # Test unsupported dtype
 
-    @testing.for_dtypes([numpy.float16, numpy.bool_, numpy.complex64])
+    @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_msort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
         with self.assertRaises(NotImplementedError):

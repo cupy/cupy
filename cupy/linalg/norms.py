@@ -2,20 +2,15 @@ import numpy
 from numpy import linalg
 
 import cupy
-from cupy import cuda
+from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import decomposition
 from cupy.linalg import util
 
 
-if cuda.cusolver_enabled:
-    from cupy.cuda import cusolver
-
-
 def norm(x, ord=None, axis=None, keepdims=False):
     """Returns one of matrix norms specified by ``ord`` parameter.
 
-    Complex valued matrices and vectors are not supported.
     See numpy.linalg.norm for more detail.
 
     Args:
@@ -39,12 +34,12 @@ def norm(x, ord=None, axis=None, keepdims=False):
         ndim = x.ndim
         if (ord is None or (ndim == 1 and ord == 2) or
                 (ndim == 2 and ord in ('f', 'fro'))):
-            if issubclass(x.dtype.type, numpy.complexfloating):
+            if x.dtype.kind == 'c':
                 s = abs(x.ravel())
                 s *= s
                 ret = cupy.sqrt(s.sum())
             else:
-                ret = cupy.sqrt((x.ravel() ** 2).sum())
+                ret = cupy.sqrt((x * x).sum())
             if keepdims:
                 ret = ret.reshape((1,) * ndim)
             return ret
@@ -76,7 +71,11 @@ def norm(x, ord=None, axis=None, keepdims=False):
             return abs(x).sum(axis=axis, keepdims=keepdims)
         elif ord is None or ord == 2:
             # special case for speedup
-            s = (x.conj() * x).real
+            if x.dtype.kind == 'c':
+                s = abs(x)
+                s *= s
+            else:
+                s = x * x
             return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
         else:
             try:
@@ -117,12 +116,12 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 row_axis -= 1
             ret = abs(x).sum(axis=col_axis).min(axis=row_axis)
         elif ord in [None, 'fro', 'f']:
-            if issubclass(x.dtype.type, numpy.complexfloating):
+            if x.dtype.kind == 'c':
                 s = abs(x)
                 s *= s
                 ret = cupy.sqrt(s.sum(axis=axis))
             else:
-                ret = cupy.sqrt((x ** 2).sum(axis=axis))
+                ret = cupy.sqrt((x * x).sum(axis=axis))
         else:
             raise ValueError('Invalid norm order for matrices.')
         if keepdims:
@@ -198,17 +197,25 @@ def slogdet(a):
             The shapes of both ``sign`` and ``logdet`` are equal to
             ``a.shape[:-2]``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
+    .. warning::
+        To produce the same results as :func:`numpy.linalg.slogdet` for
+        singular inputs, set the `linalg` configuration to `raise`.
+
     .. seealso:: :func:`numpy.linalg.slogdet`
     """
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-
     if a.ndim < 2:
         msg = ('%d-dimensional array given. '
                'Array must be at least two-dimensional' % a.ndim)
         raise linalg.LinAlgError(msg)
 
-    dtype = numpy.find_common_type((a.dtype.char, 'f'), ())
+    dtype = numpy.promote_types(a.dtype.char, 'f')
     shape = a.shape[:-2]
     sign = cupy.empty(shape, dtype)
     logdet = cupy.empty(shape, dtype)
@@ -228,8 +235,8 @@ def _slogdet_one(a):
 
     handle = device.get_cusolver_handle()
     m = len(a)
-    ipiv = cupy.empty(m, 'i')
-    info = cupy.empty((), 'i')
+    ipiv = cupy.empty(m, dtype=numpy.int32)
+    dev_info = cupy.empty((), dtype=numpy.int32)
 
     # Need to make a copy because getrf works inplace
     a_copy = a.copy(order='F')
@@ -244,21 +251,27 @@ def _slogdet_one(a):
     buffersize = getrf_bufferSize(handle, m, m, a_copy.data.ptr, m)
     workspace = cupy.empty(buffersize, dtype=dtype)
     getrf(handle, m, m, a_copy.data.ptr, m, workspace.data.ptr,
-          ipiv.data.ptr, info.data.ptr)
+          ipiv.data.ptr, dev_info.data.ptr)
 
-    if info[()] == 0:
-        diag = cupy.diag(a_copy)
-        # ipiv is 1-origin
-        non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, m + 1)) +
-                    cupy.count_nonzero(diag < 0))
-        # Note: sign == -1 ** (non_zero % 2)
-        sign = (non_zero % 2) * -2 + 1
-        logdet = cupy.log(abs(diag)).sum()
-    else:
-        sign = cupy.array(0.0, dtype=dtype)
-        logdet = cupy.array(float('-inf'), dtype)
+    # dev_info < 0 means illegal value (in dimensions, strides, and etc.) that
+    # should never happen even if the matrix contains nan or inf.
+    # TODO(kataoka): assert dev_info >= 0 if synchronization is allowed for
+    # debugging purposes.
 
-    return sign, logdet
+    diag = cupy.diag(a_copy)
+    # ipiv is 1-origin
+    non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, m + 1)) +
+                cupy.count_nonzero(diag < 0))
+
+    # Note: sign == -1 ** (non_zero % 2)
+    sign = (non_zero % 2) * -2 + 1
+    logdet = cupy.log(abs(diag)).sum()
+
+    singular = dev_info > 0
+    return (
+        cupy.where(singular, dtype.type(0), sign),
+        cupy.where(singular, dtype.type('-inf'), logdet),
+    )
 
 
 def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):

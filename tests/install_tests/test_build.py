@@ -12,7 +12,7 @@ class TestCheckVersion(unittest.TestCase):
     def setUp(self):
         self.compiler = ccompiler.new_compiler()
         sysconfig.customize_compiler(self.compiler)
-        self.settings = build.get_compiler_setting()
+        self.settings = build.get_compiler_setting(False)
 
     @pytest.mark.gpu
     def test_check_cuda_version(self):

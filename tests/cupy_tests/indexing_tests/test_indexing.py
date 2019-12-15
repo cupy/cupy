@@ -85,11 +85,13 @@ class TestIndexing(unittest.TestCase):
         a = testing.shaped_arange((3, 3, 3), xp, dtype)
         return a.diagonal(0, -1, -3)
 
+    @testing.with_requires('numpy>=1.15')
     @testing.numpy_cupy_raises()
     def test_diagonal_invalid1(self, xp):
         a = testing.shaped_arange((3, 3, 3), xp)
         a.diagonal(0, 1, 3)
 
+    @testing.with_requires('numpy>=1.15')
     @testing.numpy_cupy_raises()
     def test_diagonal_invalid2(self, xp):
         a = testing.shaped_arange((3, 3, 3), xp)

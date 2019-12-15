@@ -51,7 +51,7 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
     if a.dtype.char in 'fd':
         dtype = a.dtype
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ())
+        dtype = numpy.promote_types(a.dtype.char, 'f')
 
     a = cupy.array(a, dtype=dtype, order='F', copy=False)
     b = cupy.array(b, dtype=dtype, order='F', copy=(not overwrite_b))
