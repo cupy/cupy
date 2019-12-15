@@ -161,26 +161,26 @@ class ndarray(object):
 
     def __new__(cls, *args, **kwargs):
         """
-        If `_stored` and `_class` are arguments, initialize cls(ndarray).
+        If `_initial_array` and `_class` are arguments, initialize cls(ndarray).
         Else get cupy.ndarray from provided arguments,
         then initialize cls(ndarray).
         """
-        _stored = kwargs.get('_stored', None)
-        if _stored is not None:
+        _initial_array = kwargs.get('_initial_array', None)
+        if _initial_array is not None:
             return object.__new__(cls)
 
         cupy_ndarray_init = cp.ndarray(*args, **kwargs)
-        return cls(_stored=cupy_ndarray_init, _class=cp.ndarray)
+        return cls(_initial_array=cupy_ndarray_init, _class=cp.ndarray)
 
     def __init__(self, *args, **kwargs):
         """
         Args:
-            _stored (None, cp.ndarray or np.ndarray(including variants)):
-                If _stored is None, object is not initialized.
-                Otherwise, _stored (ndarray) would be set to
+            _initial_array (None, cp.ndarray or np.ndarray(including variants)):
+                If _initial_array is None, object is not initialized.
+                Otherwise, _initial_array (ndarray) would be set to
                 _cupy_array and/or _numpy_array depending upon _class.
-            _class (ndarray type): If _class is `cp.ndarray`, _stored is
-                set as _cupy_array and _numpy_array. Otherwise, _stored is
+            _class (ndarray type): If _class is `cp.ndarray`, _initial_array is
+                set as _cupy_array and _numpy_array. Otherwise, _initial_array is
                 set as only _numpy_array. Intended values for _class are
                 `np.ndarray`, `np.ma.MaskedArray`, `np.matrix`,
                 `np.chararray`, `np.recarray`.
@@ -198,8 +198,8 @@ class ndarray(object):
         """
 
         _class = kwargs.pop('_class', None)
-        _stored = kwargs.pop('_stored', None)
-        if _stored is None:
+        _initial_array = kwargs.pop('_initial_array', None)
+        if _initial_array is None:
             return
 
         self._cupy_array = None
@@ -207,31 +207,31 @@ class ndarray(object):
         self.base = None
         self._class = _class
 
-        assert isinstance(_stored, (cp.ndarray, np.ndarray))
+        assert isinstance(_initial_array, (cp.ndarray, np.ndarray))
         if _class is cp.ndarray:
-            if type(_stored) is cp.ndarray:
-                # _stored is in GPU memory (caller _store_array_from_cupy)
-                self._cupy_array = _stored
+            if type(_initial_array) is cp.ndarray:
+                # _initial_array is in GPU memory (caller _store_array_from_cupy)
+                self._cupy_array = _initial_array
                 self._remember_numpy = False
             else:
-                # _stored is in CPU memory (caller _store_array_from_numpy)
-                self._numpy_array = _stored
-                self._cupy_array = cp.array(_stored)
+                # _initial_array is in CPU memory (caller _store_array_from_numpy)
+                self._numpy_array = _initial_array
+                self._cupy_array = cp.array(_initial_array)
                 self._remember_numpy = True
         else:
-            self._numpy_array = _stored
+            self._numpy_array = _initial_array
 
     @classmethod
     def _store_array_from_cupy(cls, array):
-        return cls(_stored=array, _class=cp.ndarray)
+        return cls(_initial_array=array, _class=cp.ndarray)
 
     @classmethod
     def _store_array_from_numpy(cls, array):
         if type(array) is np.ndarray and \
            array.dtype.kind in '?bhilqBHILQefdFD':
-            return cls(_stored=array, _class=cp.ndarray)
+            return cls(_initial_array=array, _class=cp.ndarray)
 
-        return cls(_stored=array, _class=array.__class__)
+        return cls(_initial_array=array, _class=array.__class__)
 
     def __getattr__(self, attr):
         """
