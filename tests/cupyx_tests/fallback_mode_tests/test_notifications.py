@@ -105,7 +105,7 @@ class TestNotifications(unittest.TestCase):
 @testing.parameterize(
     {'func': fallback_mode.numpy.array_equal, 'shape': (3, 4)},
     {'func': fallback_mode.numpy.array_equiv, 'shape': (3, 4)},
-    {'func': fallback_mode.numpy.cross, 'shape': (2, 3)},
+    {'func': fallback_mode.numpy.polyadd, 'shape': (2, 3)},
     {'func': fallback_mode.numpy.convolve, 'shape': (5,)}
 )
 @testing.gpu
