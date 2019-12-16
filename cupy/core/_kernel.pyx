@@ -1012,7 +1012,7 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
     _ops = _get_ops(ops, routine)
     _out_ops = None if out_ops is None else _get_ops(out_ops, routine)
     ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble,
-                loop_prep, doc, default_casting, _out_ops)
+                loop_prep, doc, default_casting, out_ops=_out_ops)
     return ret
 
 include 'reduction.pxi'
