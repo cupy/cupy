@@ -137,6 +137,10 @@ def _contains_signed_and_unsigned(kw):
 
 def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
                     scipy_name=None):
+    assert isinstance(name, str)
+    assert sp_name is None or isinstance(sp_name, str)
+    assert scipy_name is None or isinstance(scipy_name, str)
+
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -446,6 +450,10 @@ def numpy_cupy_array_list_equal(
 
     .. seealso:: :func:`cupy.testing.assert_array_list_equal`
     """  # NOQA
+    assert isinstance(name, str)
+    assert sp_name is None or isinstance(sp_name, str)
+    assert scipy_name is None or isinstance(scipy_name, str)
+
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -523,6 +531,10 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
     Decorated test fixture is required to return the same results
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
+    assert isinstance(name, str)
+    assert sp_name is None or isinstance(sp_name, str)
+    assert scipy_name is None or isinstance(scipy_name, str)
+
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -574,6 +586,9 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
     Decorated test fixture is required throw same errors
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
+    assert isinstance(name, str)
+    assert sp_name is None or isinstance(sp_name, str)
+    assert scipy_name is None or isinstance(scipy_name, str)
 
     def decorator(impl):
         @functools.wraps(impl)
