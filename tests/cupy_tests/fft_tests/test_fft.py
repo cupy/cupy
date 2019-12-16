@@ -426,7 +426,7 @@ class TestPlanCtxManagerFftn(unittest.TestCase):
     def test_fftn(self, xp, dtype, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp == cupy:
+        if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             plan = get_fft_plan(a, self.s, self.axes)
             with plan:
@@ -446,7 +446,7 @@ class TestPlanCtxManagerFftn(unittest.TestCase):
     def test_ifftn(self, xp, dtype, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp == cupy:
+        if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             plan = get_fft_plan(a, self.s, self.axes)
             with plan:
@@ -505,7 +505,7 @@ class TestPlanCtxManagerFft(unittest.TestCase):
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp == cupy:
+        if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
             plan = get_fft_plan(a, shape=shape)
@@ -526,7 +526,7 @@ class TestPlanCtxManagerFft(unittest.TestCase):
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp == cupy:
+        if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
             plan = get_fft_plan(a, shape=shape)
@@ -577,7 +577,7 @@ class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp == cupy:
+        if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
             plan = get_fft_plan(a, shape=shape)
@@ -599,7 +599,7 @@ class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp == cupy:
+        if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
             plan = get_fft_plan(a, shape=shape)
