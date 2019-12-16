@@ -987,6 +987,7 @@ cdef class ufunc:
 
 
 cdef list _get_ops(ops, routine):
+    """Parse dtype character mapping"""
     _ops = []
     for t in ops:
         if not isinstance(t, tuple):
