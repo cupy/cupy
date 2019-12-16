@@ -27,6 +27,7 @@ class TestSplit(unittest.TestCase):
         a = testing.shaped_arange((3, 11), xp)
         return xp.array_split(a, [])
 
+    @testing.with_requires('numpy>=1.11')
     @testing.numpy_cupy_array_list_equal()
     def test_array_split_out_of_bound1(self, xp):
         a = testing.shaped_arange((2, 3), xp)
@@ -72,6 +73,7 @@ class TestSplit(unittest.TestCase):
         a = testing.shaped_arange((3, 11), xp)
         return xp.split(a, (-9, 4, -2), 1)
 
+    @testing.with_requires('numpy>=1.11')
     @testing.numpy_cupy_array_list_equal()
     def test_split_out_of_bound1(self, xp):
         a = testing.shaped_arange((2, 3), xp)
