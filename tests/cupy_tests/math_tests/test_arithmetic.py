@@ -126,7 +126,7 @@ class TestComplex(unittest.TestCase):
         return y
 
 
-class ArithmeticBinaryBase():
+class ArithmeticBinaryBase:
 
     @testing.numpy_cupy_allclose(atol=1e-4)
     def check_binary(self, xp):
