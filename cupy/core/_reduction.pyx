@@ -194,6 +194,11 @@ cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
 cdef Py_ssize_t _block_size = 256 if runtime._is_hip_environment else 512
 
 
+def _sort_axis(tuple axis, tuple strides):
+    # Sorts axis in the decreasing order of absolute values of strides.
+    return tuple(sorted(axis, key=lambda i: -abs(strides[i])))
+
+
 cdef class _AbstractReductionKernel:
 
     def __init__(
@@ -239,6 +244,15 @@ cdef class _AbstractReductionKernel:
         ) = self._get_expressions_and_types(in_args, out_args, dtype)
 
         reduce_axis, out_axis = _get_axis(axis, len(a_shape))
+
+        # When there is only one input array, sort the axes in such a way that
+        # contiguous (C or F) axes can be squashed in _reduce_dims() later.
+        # TODO(niboshi): Support (out_axis) > 1
+        if len(in_args) == 1 and len(out_axis) <= 1:
+            strides = in_args[0].strides
+            reduce_axis = _sort_axis(reduce_axis, strides)
+            out_axis = _sort_axis(out_axis, strides)
+
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
         out_args = self._get_out_args(out_args, out_types, out_shape)
         ret = out_args[0]
