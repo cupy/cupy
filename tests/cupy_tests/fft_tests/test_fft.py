@@ -261,7 +261,7 @@ class TestFftn(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        if self.axes is ():
+        if self.axes is not None and not self.axes:
             assert out is a
             return out
 
@@ -279,7 +279,7 @@ class TestFftn(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
-        if self.axes is ():
+        if self.axes is not None and not self.axes:
             assert out is a
             return out
 
