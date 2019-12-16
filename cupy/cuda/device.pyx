@@ -2,6 +2,7 @@
 
 import threading
 
+from cupy.core import syncdetect
 from cupy.cuda import cublas
 from cupy.cuda import cusolver
 from cupy.cuda import cusparse
@@ -157,6 +158,7 @@ cdef class Device:
 
     cpdef synchronize(self):
         """Synchronizes the current thread to the device."""
+        syncdetect._declare_synchronize()
         with self:
             runtime.deviceSynchronize()
 
