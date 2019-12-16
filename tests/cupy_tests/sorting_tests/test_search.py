@@ -210,7 +210,7 @@ class TestWhereTwoArrays(unittest.TestCase):
 class TestWhereCond(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_list_equal(allow_synchronize=True)
     def test_where_cond(self, xp, dtype):
         m = testing.shaped_random(self.cond_shape, xp, xp.bool_)
         cond = testing.shaped_random(self.cond_shape, xp, dtype) * m
@@ -238,7 +238,7 @@ class TestWhereError(unittest.TestCase):
 class TestNonzero(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_list_equal(allow_synchronize=True)
     def test_nonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
         return xp.nonzero(array)
@@ -272,7 +272,7 @@ class TestNonzeroZeroDimension(unittest.TestCase):
 class TestFlatNonzero(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_array_equal(allow_synchronize=True)
     def test_flatnonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
         return xp.flatnonzero(array)

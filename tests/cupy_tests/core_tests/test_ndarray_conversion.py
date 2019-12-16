@@ -11,7 +11,7 @@ from cupy import testing
 class TestNdarrayItem(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(allow_synchronize=True)
     def test_item(self, xp, dtype):
         a = xp.full(self.shape, 3, dtype)
         return a.item()
@@ -24,7 +24,7 @@ class TestNdarrayItem(unittest.TestCase):
 )
 class TestNdarrayItemRaise(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
+    @testing.numpy_cupy_raises(allow_synchronize=True)
     def test_item(self, xp):
         a = testing.shaped_arange(self.shape, xp, xp.float32)
         a.item()
@@ -40,7 +40,7 @@ class TestNdarrayItemRaise(unittest.TestCase):
 class TestNdarrayToBytes(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(allow_synchronize=True)
     def test_item(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         if hasattr(self, 'order'):

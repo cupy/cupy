@@ -1,6 +1,7 @@
 import numpy.testing
 
 import cupy
+import cupyx
 
 
 # NumPy-like assertion functions that accept both NumPy and CuPy arrays
@@ -21,9 +22,10 @@ def assert_allclose(actual, desired, rtol=1e-7, atol=0, err_msg='',
     .. seealso:: :func:`numpy.testing.assert_allclose`
 
     """  # NOQA
-    numpy.testing.assert_allclose(
-        cupy.asnumpy(actual), cupy.asnumpy(desired),
-        rtol=rtol, atol=atol, err_msg=err_msg, verbose=verbose)
+    with cupyx.allow_synchronize(True):
+        numpy.testing.assert_allclose(
+            cupy.asnumpy(actual), cupy.asnumpy(desired),
+            rtol=rtol, atol=atol, err_msg=err_msg, verbose=verbose)
 
 
 def assert_array_almost_equal(x, y, decimal=6, err_msg='', verbose=True):
@@ -39,9 +41,10 @@ def assert_array_almost_equal(x, y, decimal=6, err_msg='', verbose=True):
 
     .. seealso:: :func:`numpy.testing.assert_array_almost_equal`
     """  # NOQA
-    numpy.testing.assert_array_almost_equal(
-        cupy.asnumpy(x), cupy.asnumpy(y), decimal=decimal,
-        err_msg=err_msg, verbose=verbose)
+    with cupyx.allow_synchronize(True):
+        numpy.testing.assert_array_almost_equal(
+            cupy.asnumpy(x), cupy.asnumpy(y), decimal=decimal,
+            err_msg=err_msg, verbose=verbose)
 
 
 def assert_array_almost_equal_nulp(x, y, nulp=1):
@@ -54,8 +57,9 @@ def assert_array_almost_equal_nulp(x, y, nulp=1):
 
     .. seealso:: :func:`numpy.testing.assert_array_almost_equal_nulp`
     """
-    numpy.testing.assert_array_almost_equal_nulp(
-        cupy.asnumpy(x), cupy.asnumpy(y), nulp=nulp)
+    with cupyx.allow_synchronize(True):
+        numpy.testing.assert_array_almost_equal_nulp(
+            cupy.asnumpy(x), cupy.asnumpy(y), nulp=nulp)
 
 
 def assert_array_max_ulp(a, b, maxulp=1, dtype=None):
@@ -70,8 +74,9 @@ def assert_array_max_ulp(a, b, maxulp=1, dtype=None):
 
     .. seealso:: :func:`numpy.testing.assert_array_max_ulp`
     """  # NOQA
-    numpy.testing.assert_array_max_ulp(
-        cupy.asnumpy(a), cupy.asnumpy(b), maxulp=maxulp, dtype=dtype)
+    with cupyx.allow_synchronize(True):
+        numpy.testing.assert_array_max_ulp(
+            cupy.asnumpy(a), cupy.asnumpy(b), maxulp=maxulp, dtype=dtype)
 
 
 def assert_array_equal(x, y, err_msg='', verbose=True, strides_check=False):
@@ -88,9 +93,10 @@ def assert_array_equal(x, y, err_msg='', verbose=True, strides_check=False):
 
     .. seealso:: :func:`numpy.testing.assert_array_equal`
     """
-    numpy.testing.assert_array_equal(
-        cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
-        verbose=verbose)
+    with cupyx.allow_synchronize(True):
+        numpy.testing.assert_array_equal(
+            cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
+            verbose=verbose)
 
     if strides_check:
         if x.strides != y.strides:
@@ -134,10 +140,11 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
             'List or tuple is expected, but was {}'.format(x_type))
     if len(xlist) != len(ylist):
         raise AssertionError('List size is different')
-    for x, y in zip(xlist, ylist):
-        numpy.testing.assert_array_equal(
-            cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
-            verbose=verbose)
+    with cupyx.allow_synchronize(True):
+        for x, y in zip(xlist, ylist):
+            numpy.testing.assert_array_equal(
+                cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
+                verbose=verbose)
 
 
 def assert_array_less(x, y, err_msg='', verbose=True):
@@ -152,6 +159,7 @@ def assert_array_less(x, y, err_msg='', verbose=True):
 
     .. seealso:: :func:`numpy.testing.assert_array_less`
     """  # NOQA
-    numpy.testing.assert_array_less(
-        cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
-        verbose=verbose)
+    with cupyx.allow_synchronize(True):
+        numpy.testing.assert_array_less(
+            cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
+            verbose=verbose)

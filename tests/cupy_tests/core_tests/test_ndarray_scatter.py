@@ -4,6 +4,9 @@ import numpy
 
 import cupy
 from cupy import testing
+import cupyx
+
+from cupy_tests import utils
 
 
 @testing.parameterize(
@@ -118,7 +121,9 @@ class TestScatterParametrized(unittest.TestCase):
     def test_scatter_add(self, xp, dtype):
         a = xp.zeros(self.shape, dtype)
         if xp is cupy:
-            a.scatter_add(self.slices, self.value)
+            allow_sync = utils.is_indexing_cause_synchronize(self.slices)
+            with cupyx.allow_synchronize(allow_sync):
+                a.scatter_add(self.slices, self.value)
         else:
             numpy.add.at(a, self.slices, self.value)
         return a
@@ -129,7 +134,9 @@ class TestScatterParametrized(unittest.TestCase):
     def test_scatter_max(self, xp, dtype):
         a = xp.zeros(self.shape, dtype)
         if xp is cupy:
-            a.scatter_max(self.slices, self.value)
+            allow_sync = utils.is_indexing_cause_synchronize(self.slices)
+            with cupyx.allow_synchronize(allow_sync):
+                a.scatter_max(self.slices, self.value)
         else:
             numpy.maximum.at(a, self.slices, self.value)
         return a
@@ -140,7 +147,9 @@ class TestScatterParametrized(unittest.TestCase):
     def test_scatter_min(self, xp, dtype):
         a = xp.zeros(self.shape, dtype)
         if xp is cupy:
-            a.scatter_min(self.slices, self.value)
+            allow_sync = utils.is_indexing_cause_synchronize(self.slices)
+            with cupyx.allow_synchronize(allow_sync):
+                a.scatter_min(self.slices, self.value)
         else:
             numpy.minimum.at(a, self.slices, self.value)
         return a

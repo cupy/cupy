@@ -605,6 +605,11 @@ class RandomState(object):
             If ``tuple``, multi-dimensional array with shape
             ``size`` is returned.
             Currently, only 32 bit or 64 bit integers can be sampled.
+
+        .. warning::
+
+            This function may synchronize the device.
+
         """  # NOQA
         if size is None:
             size = ()
@@ -648,7 +653,7 @@ class RandomState(object):
             if ret is None:
                 # If the sampling has finished in the first iteration,
                 # just return the sample.
-                if success.all():
+                if success.all():  # synchronize!
                     n_rem = 0
                     ret = sample
                     break
@@ -656,7 +661,7 @@ class RandomState(object):
                 # Allocate the return array.
                 ret = cupy.empty((n,), dtype=dtype)
 
-            n_succ = min(n_rem, int(success.sum()))
+            n_succ = min(n_rem, int(success.sum()))  # synchronize!
             ret[n - n_rem:n - n_rem + n_succ] = sample[success][:n_succ]
             n_rem -= n_succ
 
@@ -940,6 +945,10 @@ class RandomState(object):
     def choice(self, a, size=None, replace=True, p=None):
         """Returns an array of random values from a given 1-D array.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.choice` for full document,
             :meth:`numpy.random.choice
@@ -969,7 +978,7 @@ class RandomState(object):
                 raise ValueError('p must be 1-dimensional')
             if len(p) != a_size:
                 raise ValueError('a and p must have same size')
-            if not (p >= 0).all():
+            if not (p >= 0).all():  # synchronize!
                 raise ValueError('probabilities are not non-negative')
             p_sum = cupy.sum(p).get()
             if not numpy.allclose(p_sum, 1):
@@ -1003,7 +1012,7 @@ class RandomState(object):
             if not isinstance(shape, six.integer_types):
                 index = cupy.reshape(index, shape)
         else:
-            index = self.randint(0, a_size, size=shape)
+            index = self.randint(0, a_size, size=shape)  # may synchronize
             # Align the dtype with NumPy
             index = index.astype(cupy.int64, copy=False)
 
@@ -1092,6 +1101,10 @@ class RandomState(object):
     def randint(self, low, high=None, size=None, dtype='l'):
         """Returns a scalar or an array of integer values over ``[low, high)``.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.randint` for full documentation,
             :meth:`numpy.random.RandomState.randint
@@ -1114,6 +1127,7 @@ class RandomState(object):
                 'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
 
         diff = hi1 - lo
+        # may synchronize
         x = self._interval(diff, size).astype(dtype, copy=False)
         cupy.add(x, lo, out=x)
         return x

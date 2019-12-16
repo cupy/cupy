@@ -16,10 +16,19 @@ import six
 
 import cupy
 from cupy.core import internal
+from cupy.core import syncdetect
 from cupy.testing import array
 from cupy.testing import parameterized
 import cupyx
 import cupyx.scipy.sparse
+
+
+def _replace_exc(old_exc, new_exc):
+    try:
+        raise new_exc from old_exc
+    except Exception as e:
+        tb_str = traceback.format_exc()
+        return e, tb_str
 
 
 def _call_func(self, impl, args, kw):
@@ -32,9 +41,23 @@ def _call_func(self, impl, args, kw):
         if tb.tb_next is None:
             # failed before impl is called, e.g. invalid kw
             raise e
+
+        tb_str = traceback.format_exc()
         result = None
         error = e
-        tb_str = traceback.format_exc()
+
+        # Replace the error with better error message
+        if isinstance(error, syncdetect.DeviceSynchronized):
+            new_msg = (
+                'Device synchronization was detected in a test body. '
+                'Either remove the synchronization from implementation, '
+                'specify `allow_synchronize=True` in the test helper '
+                'decorator, '
+                'or enclose the test code in question with '
+                '`with cupyx.allow_synchronize(True)`.'
+            )
+            error, tb_str = (
+                _replace_exc(error, syncdetect.DeviceSynchronized(new_msg)))
 
     return result, error, tb_str
 
@@ -73,10 +96,12 @@ def _call_func_numpy(self, impl, args, kw, name, sp_name, scipy_name):
     return result, error, tb
 
 
-def _call_func_numpy_cupy(self, impl, args, kw, name, sp_name, scipy_name):
+def _call_func_numpy_cupy(
+        self, impl, args, kw, name, sp_name, scipy_name, allow_synchronize):
     # Run cupy
-    cupy_result, cupy_error, cupy_tb = _call_func_cupy(
-        self, impl, args, kw, name, sp_name, scipy_name)
+    with cupyx.allow_synchronize(allow_synchronize):
+        cupy_result, cupy_error, cupy_tb = _call_func_cupy(
+            self, impl, args, kw, name, sp_name, scipy_name)
 
     # Run numpy
     numpy_result, numpy_error, numpy_tb = _call_func_numpy(
@@ -187,8 +212,8 @@ def _contains_signed_and_unsigned(kw):
         any(d in vs for d in _float_dtypes + _signed_dtypes)
 
 
-def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
-                    scipy_name=None):
+def _make_decorator(check_func, name, type_check, accept_error, sp_name,
+                    scipy_name, allow_synchronize):
     assert isinstance(name, str)
     assert sp_name is None or isinstance(sp_name, str)
     assert scipy_name is None or isinstance(scipy_name, str)
@@ -201,7 +226,8 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
                 cupy_result, cupy_error, cupy_tb,
                 numpy_result, numpy_error, numpy_tb) = (
                     _call_func_numpy_cupy(
-                        self, impl, args, kw, name, sp_name, scipy_name))
+                        self, impl, args, kw, name, sp_name, scipy_name,
+                        allow_synchronize))
             assert cupy_result is not None or cupy_error is not None
             assert numpy_result is not None or numpy_error is not None
 
@@ -252,7 +278,9 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
 
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
                         name='xp', type_check=True, accept_error=False,
-                        sp_name=None, scipy_name=None, contiguous_check=True):
+                        sp_name=None, scipy_name=None, contiguous_check=True,
+                        *,
+                        allow_synchronize=False):
     """Decorator that checks NumPy results and CuPy ones are close.
 
     Args:
@@ -322,13 +350,15 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
                     '(cupy_result:{} numpy_result:{})'.format(
                         c.flags.f_contiguous, n.flags.f_contiguous))
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+                           scipy_name, allow_synchronize)
 
 
 def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
                                   name='xp', type_check=True,
                                   accept_error=False, sp_name=None,
-                                  scipy_name=None):
+                                  scipy_name=None,
+                                  *,
+                                  allow_synchronize=False):
     """Decorator that checks NumPy results and CuPy ones are almost equal.
 
     Args:
@@ -362,12 +392,14 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
         array.assert_array_almost_equal(
             x, y, decimal, err_msg, verbose)
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+                           scipy_name, allow_synchronize)
 
 
 def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
                                        accept_error=False, sp_name=None,
-                                       scipy_name=None):
+                                       scipy_name=None,
+                                       *,
+                                       allow_synchronize=False):
     """Decorator that checks results of NumPy and CuPy are equal w.r.t. spacing.
 
     Args:
@@ -397,12 +429,14 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
     def check_func(x, y):
         array.assert_array_almost_equal_nulp(x, y, nulp)
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name=None)
+                           scipy_name, allow_synchronize)
 
 
 def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
                              accept_error=False, sp_name=None,
-                             scipy_name=None):
+                             scipy_name=None,
+                             *,
+                             allow_synchronize=False):
     """Decorator that checks results of NumPy and CuPy ones are equal w.r.t. ulp.
 
     Args:
@@ -436,12 +470,14 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
     def check_func(x, y):
         array.assert_array_max_ulp(x, y, maxulp, dtype)
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+                           scipy_name, allow_synchronize)
 
 
 def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
                            type_check=True, accept_error=False, sp_name=None,
-                           scipy_name=None, strides_check=False):
+                           scipy_name=None, strides_check=False,
+                           *,
+                           allow_synchronize=False):
     """Decorator that checks NumPy results and CuPy ones are equal.
 
     Args:
@@ -483,11 +519,13 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
         array.assert_array_equal(x, y, err_msg, verbose, strides_check)
 
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+                           scipy_name, allow_synchronize)
 
 
 def numpy_cupy_array_list_equal(
-        err_msg='', verbose=True, name='xp', sp_name=None, scipy_name=None):
+        err_msg='', verbose=True, name='xp', sp_name=None, scipy_name=None,
+        *,
+        allow_synchronize=False):
     """Decorator that checks the resulting lists of NumPy and CuPy's one are equal.
 
     Args:
@@ -510,12 +548,15 @@ def numpy_cupy_array_list_equal(
     """  # NOQA
     def check_func(x, y):
         array.assert_array_equal(x, y, err_msg, verbose)
-    return _make_decorator(check_func, name, False, False, sp_name, scipy_name)
+    return _make_decorator(check_func, name, False, False, sp_name, scipy_name,
+                           allow_synchronize)
 
 
 def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
                           type_check=True, accept_error=False, sp_name=None,
-                          scipy_name=None):
+                          scipy_name=None,
+                          *,
+                          allow_synchronize=False):
     """Decorator that checks the CuPy result is less than NumPy result.
 
     Args:
@@ -546,10 +587,13 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
     def check_func(x, y):
         array.assert_array_less(x, y, err_msg, verbose)
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+                           scipy_name, allow_synchronize)
 
 
-def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
+def numpy_cupy_equal(
+        name='xp', sp_name=None, scipy_name=None,
+        *,
+        allow_synchronize=False):
     """Decorator that checks NumPy results are equal to CuPy ones.
 
     Args:
@@ -573,7 +617,15 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
                 cupy_result, cupy_error, cupy_tb,
                 numpy_result, numpy_error, numpy_tb) = (
                     _call_func_numpy_cupy(
-                        self, impl, args, kw, name, sp_name, scipy_name))
+                        self, impl, args, kw, name, sp_name, scipy_name,
+                        allow_synchronize))
+
+            # Check errors raised
+            if cupy_error or numpy_error:
+                _check_cupy_numpy_error(self, cupy_error, cupy_tb,
+                                        numpy_error, numpy_tb,
+                                        accept_error=False)
+                return
 
             if cupy_result != numpy_result:
                 message = '''Results are not equal:
@@ -585,7 +637,9 @@ numpy: %s''' % (str(cupy_result), str(numpy_result))
 
 
 def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
-                      accept_error=Exception):
+                      accept_error=Exception,
+                      *,
+                      allow_synchronize=False):
     """Decorator that checks the NumPy and CuPy throw same errors.
 
     Args:
@@ -615,7 +669,8 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
                 cupy_result, cupy_error, cupy_tb,
                 numpy_result, numpy_error, numpy_tb) = (
                     _call_func_numpy_cupy(
-                        self, impl, args, kw, name, sp_name, scipy_name))
+                        self, impl, args, kw, name, sp_name, scipy_name,
+                        allow_synchronize))
 
             _check_cupy_numpy_error(self, cupy_error, cupy_tb,
                                     numpy_error, numpy_tb,

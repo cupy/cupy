@@ -5,6 +5,9 @@ import numpy
 
 import cupy
 from cupy import testing
+import cupyx
+
+from cupy_tests import utils
 
 
 def perm(iterable):
@@ -118,7 +121,9 @@ class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_adv_getitem(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
-        return a[self.indexes]
+        allow_sync = utils.is_indexing_cause_synchronize(self.indexes)
+        with cupyx.allow_synchronize(allow_sync):
+            return a[self.indexes]
 
 
 @testing.parameterize(
@@ -135,7 +140,9 @@ class TestArrayAdvancedIndexingGetitemParametrized2(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_adv_getitem(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
-        return a[self.indexes]
+        allow_sync = utils.is_indexing_cause_synchronize(self.indexes)
+        with cupyx.allow_synchronize(allow_sync):
+            return a[self.indexes]
 
 
 @testing.parameterize(
@@ -462,7 +469,9 @@ class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_adv_setitem(self, xp, dtype):
         a = xp.zeros(self.shape, dtype=dtype)
-        a[self.indexes] = self.value
+        allow_sync = utils.is_indexing_cause_synchronize(self.indexes)
+        with cupyx.allow_synchronize(allow_sync):
+            a[self.indexes] = self.value
         return a
 
 
@@ -480,7 +489,9 @@ class TestArrayAdvancedIndexingSetitemScalarValue2(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_adv_setitem(self, xp, dtype):
         a = xp.zeros(self.shape, dtype=dtype)
-        a[self.indexes] = self.value
+        allow_sync = utils.is_indexing_cause_synchronize(self.indexes)
+        with cupyx.allow_synchronize(allow_sync):
+            a[self.indexes] = self.value
         return a
 
 
@@ -552,7 +563,9 @@ class TestArrayAdvancedIndexingVectorValue(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_adv_setitem(self, xp, dtype):
         a = xp.zeros(self.shape, dtype=dtype)
-        a[self.indexes] = self.value.astype(a.dtype)
+        allow_sync = utils.is_indexing_cause_synchronize(self.indexes)
+        with cupyx.allow_synchronize(allow_sync):
+            a[self.indexes] = self.value.astype(a.dtype)
         return a
 
 
@@ -618,7 +631,8 @@ class TestArrayAdvancedIndexingSetitemDifferetnDtypes(unittest.TestCase):
         shape = (2, 3)
         a = xp.zeros(shape, dtype=src_dtype)
         indexes = xp.array([True, False])
-        a[indexes] = xp.array(1, dtype=dst_dtype)
+        with cupyx.allow_synchronize(True):
+            a[indexes] = xp.array(1, dtype=dst_dtype)
         return a
 
 

@@ -14,6 +14,7 @@ from cupy import testing
 from cupy.testing import attr
 from cupy.testing import condition
 from cupy.testing import hypothesis
+import cupyx
 
 
 def numpy_cupy_equal_continuous_distribution(significance_level, name='xp'):
@@ -86,11 +87,16 @@ class RandomGeneratorTestCase(unittest.TestCase):
         self.__seed = testing.generate_seed()
         self.rs = generator.RandomState(seed=self.__seed)
 
-    def _get_generator_func(self, *args, **kwargs):
+    def _get_generator_func(self, *args, _allow_synchronize, **kwargs):
         assert isinstance(self.target_method, str), (
             'generate_method must be overridden')
         f = getattr(self.rs, self.target_method)
-        return lambda: f(*args, **kwargs)
+
+        def wrap():
+            with cupyx.allow_synchronize(_allow_synchronize):
+                return f(*args, **kwargs)
+
+        return wrap
 
     def _generate_check_repro(self, func, seed):
         # Sample a random array while checking reproducibility
@@ -103,19 +109,25 @@ class RandomGeneratorTestCase(unittest.TestCase):
             'Randomly generated arrays with the same seed did not match')
         return x
 
-    def generate(self, *args, **kwargs):
+    def generate(self, *args, _allow_synchronize=False, **kwargs):
         # Pick one sample from generator.
         # Reproducibility is checked by repeating seed-and-sample cycle twice.
-        func = self._get_generator_func(*args, **kwargs)
+        func = self._get_generator_func(
+            *args,
+            _allow_synchronize=_allow_synchronize,
+            **kwargs)
         return self._generate_check_repro(func, self.__seed)
 
-    def generate_many(self, *args, **kwargs):
+    def generate_many(self, *args, _allow_synchronize=False, **kwargs):
         # Pick many samples from generator.
         # Reproducibility is checked only for the first sample,
         # because it's very slow to set seed every time.
         _count = kwargs.pop('_count', None)
         assert _count is not None, '_count is required'
-        func = self._get_generator_func(*args, **kwargs)
+        func = self._get_generator_func(
+            *args,
+            _allow_synchronize=_allow_synchronize,
+            **kwargs)
 
         if _count == 0:
             return []
@@ -131,11 +143,14 @@ class RandomGeneratorTestCase(unittest.TestCase):
 
     def _check_ks(
             self, significance_level, cupy_len, numpy_len,
-            *args, **kwargs):
+            *args, _allow_synchronize=False, **kwargs):
         assert 'size' in kwargs
 
         # cupy
-        func = self._get_generator_func(*args, **kwargs)
+        func = self._get_generator_func(
+            *args,
+            _allow_synchronize=_allow_synchronize,
+            **kwargs)
         vals_cupy = func()
         assert vals_cupy.size > 0
         count = 1 + (cupy_len - 1) // vals_cupy.size
@@ -310,13 +325,16 @@ class TestExponential(RandomGeneratorTestCase):
     target_method = 'exponential'
 
     def test_exponential(self):
-        self.generate(scale=self.scale, size=(3, 2))
+        self.generate(
+            scale=self.scale, size=(3, 2),
+            _allow_synchronize=True)
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(10, 3)
     def test_exponential_ks(self, dtype):
         self.check_ks(0.05)(
-            self.scale, size=2000, dtype=dtype)
+            self.scale, size=2000, dtype=dtype,
+            _allow_synchronize=True)
 
 
 @testing.parameterize(
@@ -518,7 +536,9 @@ class TestLogseries(RandomGeneratorTestCase):
     target_method = 'logseries'
 
     def test_logseries(self):
-        self.generate(p=self.p, size=(3, 2))
+        self.generate(
+            p=self.p, size=(3, 2),
+            _allow_synchronize=True)
 
     # TODO(kataoka): add distribution test
 
@@ -568,7 +588,9 @@ class TestNegativeBinomial(RandomGeneratorTestCase):
     target_method = 'negative_binomial'
 
     def test_negative_binomial(self):
-        self.generate(n=self.n, p=self.p, size=(3, 2))
+        self.generate(
+            n=self.n, p=self.p, size=(3, 2),
+            _allow_synchronize=True)
 
     # TODO(kataoka): add distribution test
 
@@ -585,13 +607,16 @@ class TestNoncentralChisquare(RandomGeneratorTestCase):
     target_method = 'noncentral_chisquare'
 
     def test_noncentral_chisquare(self):
-        self.generate(df=self.df, nonc=self.nonc, size=(3, 2))
+        self.generate(
+            df=self.df, nonc=self.nonc, size=(3, 2),
+            _allow_synchronize=True)
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(10, 3)
     def test_noncentral_chisquare_ks(self, dtype):
         self.check_ks(0.05)(
-            self.df, self.nonc, size=2000, dtype=dtype)
+            self.df, self.nonc, size=2000, dtype=dtype,
+            _allow_synchronize=True)
 
 
 @testing.parameterize(
@@ -606,13 +631,15 @@ class TestNoncentralF(RandomGeneratorTestCase):
 
     def test_noncentral_f(self):
         self.generate(
-            dfnum=self.dfnum, dfden=self.dfden, nonc=self.nonc, size=(3, 2))
+            dfnum=self.dfnum, dfden=self.dfden, nonc=self.nonc, size=(3, 2),
+            _allow_synchronize=True)
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(10, 3)
     def test_noncentral_f_ks(self, dtype):
         self.check_ks(0.05)(
-            self.dfnum, self.dfden, self.nonc, size=2000, dtype=dtype)
+            self.dfnum, self.dfden, self.nonc, size=2000, dtype=dtype,
+            _allow_synchronize=True)
 
 
 @testing.gpu
@@ -780,13 +807,16 @@ class TestPower(RandomGeneratorTestCase):
     target_method = 'power'
 
     def test_power(self):
-        self.generate(a=self.a, size=(3, 2))
+        self.generate(
+            a=self.a, size=(3, 2),
+            _allow_synchronize=True)
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(10, 3)
     def test_power_ks(self, dtype):
         self.check_ks(0.05)(
-            a=self.a, size=2000, dtype=dtype)
+            a=self.a, size=2000, dtype=dtype,
+            _allow_synchronize=True)
 
 
 @testing.parameterize(
@@ -800,13 +830,16 @@ class TestRayleigh(RandomGeneratorTestCase):
     target_method = 'rayleigh'
 
     def test_rayleigh(self):
-        self.generate(scale=self.scale, size=(3, 2))
+        self.generate(
+            scale=self.scale, size=(3, 2),
+            _allow_synchronize=True)
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(10, 3)
     def test_rayleigh_ks(self, dtype):
         self.check_ks(0.05)(
-            scale=self.scale, size=2000, dtype=dtype)
+            scale=self.scale, size=2000, dtype=dtype,
+            _allow_synchronize=True)
 
 
 @testing.gpu
@@ -816,19 +849,24 @@ class TestStandardCauchy(RandomGeneratorTestCase):
     target_method = 'standard_cauchy'
 
     def test_standard_cauchy(self):
-        self.generate(size=(3, 2))
+        self.generate(
+            size=(3, 2),
+            _allow_synchronize=True)
 
     @attr.slow
     @condition.repeat(10)
     def test_standard_cauchy_isfinite(self):
-        x = self.generate(size=10**7)
+        x = self.generate(
+            size=10**7,
+            _allow_synchronize=True)
         self.assertTrue(cupy.isfinite(x).all())
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(10, 3)
     def test_standard_cauchy_ks(self, dtype):
         self.check_ks(0.05)(
-            size=2000, dtype=dtype)
+            size=2000, dtype=dtype,
+            _allow_synchronize=True)
 
 
 @testing.parameterize(
@@ -860,7 +898,9 @@ class TestInterval(RandomGeneratorTestCase):
 
     def test_zero(self):
         shape = (2, 3)
-        vals = self.generate_many(0, shape, _count=10)
+        vals = self.generate_many(
+            0, shape, _count=10,
+            _allow_synchronize=True)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype.kind in 'iu'
@@ -869,7 +909,9 @@ class TestInterval(RandomGeneratorTestCase):
 
     def test_shape_zero(self):
         mx = 10
-        vals = self.generate_many(mx, None, _count=10)
+        vals = self.generate_many(
+            mx, None, _count=10,
+            _allow_synchronize=True)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype.kind in 'iu'
@@ -881,7 +923,9 @@ class TestInterval(RandomGeneratorTestCase):
     def test_shape_one_dim(self):
         mx = 10
         size = 20
-        vals = self.generate_many(mx, size, _count=10)
+        vals = self.generate_many(
+            mx, size, _count=10,
+            _allow_synchronize=True)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype.kind in 'iu'
@@ -893,7 +937,9 @@ class TestInterval(RandomGeneratorTestCase):
     def test_shape_multi_dim(self):
         mx = 10
         shape = (1, 2)
-        vals = self.generate_many(mx, shape, _count=10)
+        vals = self.generate_many(
+            mx, shape, _count=10,
+            _allow_synchronize=True)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype.kind in 'iu'
@@ -903,7 +949,9 @@ class TestInterval(RandomGeneratorTestCase):
         # TODO(niboshi): Distribution test
 
     def test_bound_1(self):
-        vals = self.generate_many(10, (2, 3), _count=10)
+        vals = self.generate_many(
+            10, (2, 3), _count=10,
+            _allow_synchronize=True)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype.kind in 'iu'
@@ -912,7 +960,9 @@ class TestInterval(RandomGeneratorTestCase):
             assert (val <= 10).all()
 
     def test_bound_2(self):
-        vals = self.generate_many(2, None, _count=20)
+        vals = self.generate_many(
+            2, None, _count=20,
+            _allow_synchronize=True)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype.kind in 'iu'
@@ -924,7 +974,9 @@ class TestInterval(RandomGeneratorTestCase):
     def test_goodness_of_fit(self):
         mx = 5
         trial = 100
-        vals = self.generate_many(mx, None, _count=trial)
+        vals = self.generate_many(
+            mx, None, _count=trial,
+            _allow_synchronize=True)
         vals = [val.get() for val in vals]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
         expected = numpy.array([float(trial) / (mx + 1)] * (mx + 1))
@@ -933,8 +985,10 @@ class TestInterval(RandomGeneratorTestCase):
     @condition.repeat(3)
     def test_goodness_of_fit_2(self):
         mx = 5
-        vals = self.generate(mx, (5, 5)).get()
-        counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
+        vals = self.generate(
+            mx, (5, 5),
+            _allow_synchronize=True)
+        counts = numpy.histogram(vals.get(), bins=numpy.arange(mx + 2))[0]
         expected = numpy.array([float(vals.size) / (mx + 1)] * (mx + 1))
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
@@ -979,7 +1033,9 @@ class TestChoice1(RandomGeneratorTestCase):
     target_method = 'choice'
 
     def test_dtype_shape(self):
-        v = self.generate(a=self.a, size=self.size, p=self.p)
+        v = self.generate(
+            a=self.a, size=self.size, p=self.p,
+            _allow_synchronize=True)
         if isinstance(self.size, six.integer_types):
             expected_shape = (self.size,)
         else:
@@ -994,7 +1050,8 @@ class TestChoice1(RandomGeneratorTestCase):
     @condition.repeat(3, 10)
     def test_bound(self):
         vals = self.generate_many(
-            a=self.a, size=self.size, p=self.p, _count=20)
+            a=self.a, size=self.size, p=self.p, _count=20,
+            _allow_synchronize=True)
         vals = [val.get() for val in vals]
         size_ = self.size if isinstance(self.size, tuple) else (self.size,)
         for val in vals:
@@ -1013,7 +1070,9 @@ class TestChoice2(RandomGeneratorTestCase):
     target_method = 'choice'
 
     def test_dtype_shape(self):
-        v = self.generate(a=self.a, size=self.size, p=self.p)
+        v = self.generate(
+            a=self.a, size=self.size, p=self.p,
+            _allow_synchronize=True)
         if isinstance(self.size, six.integer_types):
             expected_shape = (self.size,)
         else:
@@ -1028,7 +1087,8 @@ class TestChoice2(RandomGeneratorTestCase):
     @condition.repeat(3, 10)
     def test_bound(self):
         vals = self.generate_many(
-            a=self.a, size=self.size, p=self.p, _count=20)
+            a=self.a, size=self.size, p=self.p, _count=20,
+            _allow_synchronize=True)
         vals = [val.get() for val in vals]
         size_ = self.size if isinstance(self.size, tuple) else (self.size,)
         for val in vals:
@@ -1046,7 +1106,9 @@ class TestChoiceChi(RandomGeneratorTestCase):
     @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
         trial = 100
-        vals = self.generate_many(3, 1, True, [0.3, 0.3, 0.4], _count=trial)
+        vals = self.generate_many(
+            3, 1, True, [0.3, 0.3, 0.4], _count=trial,
+            _allow_synchronize=True)
         vals = [val.get() for val in vals]
         counts = numpy.histogram(vals, bins=numpy.arange(4))[0]
         expected = numpy.array([30, 30, 40])
@@ -1054,8 +1116,10 @@ class TestChoiceChi(RandomGeneratorTestCase):
 
     @condition.repeat(3, 10)
     def test_goodness_of_fit_2(self):
-        vals = self.generate(3, (5, 20), True, [0.3, 0.3, 0.4]).get()
-        counts = numpy.histogram(vals, bins=numpy.arange(4))[0]
+        vals = self.generate(
+            3, (5, 20), True, [0.3, 0.3, 0.4],
+            _allow_synchronize=True)
+        counts = numpy.histogram(vals.get(), bins=numpy.arange(4))[0]
         expected = numpy.array([30, 30, 40])
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
@@ -1066,7 +1130,7 @@ class TestChoiceMultinomial(unittest.TestCase):
 
     @condition.repeat(3, 10)
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=0.02)
+    @testing.numpy_cupy_allclose(atol=0.02, allow_synchronize=True)
     def test_choice_multinomial(self, xp, dtype):
         p = xp.array([0.5, 0.25, 0.125, 0.125], dtype)
         trial = 10000
@@ -1111,7 +1175,9 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
     target_method = 'choice'
 
     def test_dtype_shape(self):
-        v = self.generate(a=self.a, size=self.size, replace=False)
+        v = self.generate(
+            a=self.a, size=self.size, replace=False,
+            _allow_synchronize=True)
         if isinstance(self.size, six.integer_types):
             expected_shape = (self.size,)
         else:
@@ -1125,7 +1191,10 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
 
     @condition.repeat(3, 10)
     def test_bound(self):
-        val = self.generate(a=self.a, size=self.size, replace=False).get()
+        val = self.generate(
+            a=self.a, size=self.size, replace=False,
+            _allow_synchronize=True)
+        val = val.get()
         size = self.size if isinstance(self.size, tuple) else (self.size,)
         self.assertEqual(val.shape, size)
         self.assertTrue((0 <= val).all())
@@ -1169,28 +1238,44 @@ class TestRandint(RandomGeneratorTestCase):
     target_method = 'randint'
 
     def test_randint_1(self):
-        self.generate(3)
+        self.generate(
+            3,
+            _allow_synchronize=True)
 
     def test_randint_2(self):
-        self.generate(3, 4, size=(3, 2))
+        self.generate(
+            3, 4, size=(3, 2),
+            _allow_synchronize=True)
 
     def test_randint_empty1(self):
-        self.generate(3, 10, size=0)
+        self.generate(
+            3, 10, size=0,
+            _allow_synchronize=True)
 
     def test_randint_empty2(self):
-        self.generate(3, size=(4, 0, 5))
+        self.generate(
+            3, size=(4, 0, 5),
+            _allow_synchronize=True)
 
     def test_randint_overflow(self):
-        self.generate(numpy.int8(-100), numpy.int8(100))
+        self.generate(
+            numpy.int8(-100), numpy.int8(100),
+            _allow_synchronize=True)
 
     def test_randint_float1(self):
-        self.generate(-1.2, 3.4, 5)
+        self.generate(
+            -1.2, 3.4, 5,
+            _allow_synchronize=True)
 
     def test_randint_float2(self):
-        self.generate(6.7, size=(2, 3))
+        self.generate(
+            6.7, size=(2, 3),
+            _allow_synchronize=True)
 
     def test_randint_int64_1(self):
-        self.generate(2**34, 2**40, 3)
+        self.generate(
+            2**34, 2**40, 3,
+            _allow_synchronize=True)
 
 
 @testing.gpu
@@ -1273,13 +1358,16 @@ class TestWeibull(RandomGeneratorTestCase):
     target_method = 'weibull'
 
     def test_weibull(self):
-        self.generate(a=self.a, size=(3, 2))
+        self.generate(
+            a=self.a, size=(3, 2),
+            _allow_synchronize=True)
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(10, 3)
     def test_weibull_ks(self, dtype):
         self.check_ks(0.05)(
-            a=self.a, size=2000, dtype=dtype)
+            a=self.a, size=2000, dtype=dtype,
+            _allow_synchronize=True)
 
 
 @testing.parameterize(
@@ -1292,7 +1380,9 @@ class TestZipf(RandomGeneratorTestCase):
     target_method = 'zipf'
 
     def test_zipf(self):
-        self.generate(a=self.a, size=(3, 2))
+        self.generate(
+            a=self.a, size=(3, 2),
+            _allow_synchronize=True)
 
     # TODO(kataoka): add distribution test
 
@@ -1397,7 +1487,8 @@ class TestTriangular(RandomGeneratorTestCase):
 
     def test_triangular(self):
         self.generate(
-            left=self.left, mode=self.mode, right=self.right, size=(3, 2))
+            left=self.left, mode=self.mode, right=self.right, size=(3, 2),
+            _allow_synchronize=True)
 
 
 @testing.gpu
