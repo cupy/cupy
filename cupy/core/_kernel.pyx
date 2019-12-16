@@ -710,38 +710,6 @@ cdef function.Function _get_ufunc_kernel(
         kernel_params, operation, name, preamble, loop_prep=loop_prep)
 
 
-cdef tuple _guess_routine_from_in_types(list ops, tuple in_types):
-    cdef Py_ssize_t i, n
-    cdef tuple op, op_types
-    n = len(in_types)
-    can_cast = numpy.can_cast
-    for op in ops:
-        op_types = op[0]
-        for i in range(n):
-            it = in_types[i]
-            ot = op_types[i]
-            if isinstance(it, tuple):
-                if not can_cast(it[0], ot) and not can_cast(it[1], ot):
-                    break
-            elif not can_cast(it, ot):
-                break
-        else:
-            return op
-    return None
-
-
-cdef tuple _guess_routine_from_dtype(list ops, object dtype):
-    cdef tuple op, op_types
-    for op in ops:
-        op_types = op[1]
-        for t in op_types:
-            if t != dtype:
-                break
-        else:
-            return op
-    return None
-
-
 cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
     cdef int kind, max_array_kind, max_scalar_kind
     cdef bint all_scalars
@@ -780,33 +748,6 @@ cdef _min_scalar_type(x):
     return dt
 
 
-cdef tuple _guess_routine(str name, dict cache, list ops, list in_args, dtype):
-    if dtype is None:
-        use_raw_value = _check_should_use_min_scalar(in_args)
-        if use_raw_value:
-            in_types = tuple([
-                i.dtype.type if isinstance(i, ndarray) else _min_scalar_type(i)
-                for i in in_args])
-        else:
-            in_types = tuple([i.dtype.type for i in in_args])
-        op = cache.get(in_types, ())
-        if op is ():
-            op = _guess_routine_from_in_types(ops, in_types)
-            cache[in_types] = op
-    else:
-        op = cache.get(dtype, ())
-        if op is ():
-            op = _guess_routine_from_dtype(ops, dtype)
-            cache[dtype] = op
-
-    if op is not None:
-        return op
-    if dtype is None:
-        dtype = tuple([i.dtype.type for i in in_args])
-    raise TypeError('Wrong type (%s) of arguments for %s' %
-                    (dtype, name))
-
-
 cdef class ufunc:
 
     """Universal function.
@@ -824,7 +765,7 @@ cdef class ufunc:
         readonly Py_ssize_t nout
         readonly Py_ssize_t nargs
         readonly object name
-        readonly list _ops
+        readonly _Ops _ops
         readonly object _preamble
         readonly object _loop_prep
         readonly object _default_casting
@@ -835,8 +776,9 @@ cdef class ufunc:
         readonly object __name__
         readonly object __module__
 
-    def __init__(self, name, nin, nout, ops, preamble='', loop_prep='', doc='',
-                 default_casting=None):
+    def __init__(
+            self, name, nin, nout, _Ops ops, preamble='', loop_prep='', doc='',
+            default_casting=None):
         self.name = name
         self.__name__ = name
         self.nin = nin
@@ -873,9 +815,9 @@ cdef class ufunc:
 
         """
         types = []
-        for in_types, out_types, _ in self._ops:
-            in_str = ''.join([<str>get_dtype(t).char for t in in_types])
-            out_str = ''.join([<str>get_dtype(t).char for t in out_types])
+        for op in self._ops:
+            in_str = ''.join([<str>get_dtype(t).char for t in op.in_types])
+            out_str = ''.join([<str>get_dtype(t).char for t in op.out_types])
             types.append('%s->%s' % (in_str, out_str))
         return types
 
@@ -937,10 +879,9 @@ cdef class ufunc:
         _broadcast_core(broad_values, vec_shape)
         shape = tuple(vec_shape)
 
-        op = _guess_routine(
-            self.name, self._routine_cache, self._ops, in_args, dtype)
-        in_types, out_types, routine = op
-        out_args = _get_out_args(out_args, out_types, shape, casting)
+        op = self._ops.guess_routine(
+            self.name, self._routine_cache, in_args, dtype)
+        out_args = _get_out_args(out_args, op.out_types, shape, casting)
         if self.nout == 1:
             ret = out_args[0]
         else:
@@ -951,7 +892,7 @@ cdef class ufunc:
                 return ret
 
         inout_args = []
-        for i, t in enumerate(in_types):
+        for i, t in enumerate(op.in_types):
             x = broad_values[i]
             inout_args.append(x if isinstance(x, ndarray) else
                               _scalar.get_scalar_from_numpy(x, t))
@@ -977,29 +918,41 @@ cdef class ufunc:
         return '{}__{}'.format(self.name, '_'.join(inout_type_words))
 
     cdef function.Function _get_ufunc_kernel(
-            self, int dev_id, tuple op, tuple args_info):
+            self, int dev_id, _Op op, tuple args_info):
         cdef function.Function kern
         key = (dev_id, op, args_info)
         kern = self._kernel_memo.get(key, None)
         if kern is None:
-            in_types, out_types, routine = op
             name = self._get_name_with_type(args_info)
             kern = _get_ufunc_kernel(
-                in_types, out_types, routine, args_info,
+                op.in_types, op.out_types, op.routine, args_info,
                 self._params, name, self._preamble, self._loop_prep)
             self._kernel_memo[key] = kern
         return kern
 
 
-cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
-                   default_casting=None, loop_prep=''):
-    _ops = []
-    for t in ops:
-        if not isinstance(t, tuple):
-            typ = t
-            rt = routine
-        else:
-            typ, rt = t
+cdef class _Op:
+    """Simple data structure that represents a kernel routine with single
+concrete dtype mapping.
+    """
+    cdef readonly routine
+    cdef readonly tuple in_types
+    cdef readonly tuple out_types
+    cdef readonly int nin
+    cdef readonly int nout
+
+    def __init__(self, routine, tuple in_types, tuple out_types):
+        self.routine = routine
+        self.in_types = in_types
+        self.out_types = out_types
+        self.nin = len(in_types)
+        self.nout = len(out_types)
+
+    @staticmethod
+    cdef _Op from_type_and_routine(str typ, routine):
+        """Creates an op instance parsing a dtype mpping."""
+        # TODO(niboshi): Write type mapping specification.
+        rt = routine
 
         types = typ.split('->')
         if len(types) == 1:
@@ -1008,10 +961,105 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
             in_types, out_types = map(tuple, types)
         in_types = tuple([get_dtype(t).type for t in in_types])
         out_types = tuple([get_dtype(t).type for t in out_types])
-        _ops.append((in_types, out_types, rt))
+        return _Op(rt, in_types, out_types)
 
-    ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble,
-                loop_prep, doc, default_casting=default_casting)
-    return ret
+
+cdef class _Ops:
+    """A kernel routine representation with various dtype mappings.
+    """
+
+    cdef readonly tuple ops
+    cdef readonly int nin
+    cdef readonly int nout
+
+    def __init__(self, tuple ops):
+        assert len(ops) > 0
+        nin = ops[0].nin
+        nout = ops[0].nout
+        assert all(op.nin == nin for op in ops)
+        assert all(op.nout == nout for op in ops)
+        self.ops = ops
+        self.nin = nin
+        self.nout = nout
+
+    @staticmethod
+    cdef _Ops from_tuples(object ops, routine):
+        ops_ = []
+        for t in ops:
+            if isinstance(t, tuple):
+                typ, rt = t
+            else:
+                assert isinstance(t, str)
+                typ, rt = t, routine
+            ops_.append(_Op.from_type_and_routine(typ, rt))
+        return _Ops(tuple(ops_))
+
+    cdef _Op guess_routine(self, str name, dict cache, list in_args, dtype):
+        """Queries a single op from input arguments."""
+        if dtype is None:
+            use_raw_value = _check_should_use_min_scalar(in_args)
+            if use_raw_value:
+                in_types = tuple([
+                    i.dtype.type if isinstance(i, ndarray)
+                    else _min_scalar_type(i)
+                    for i in in_args])
+            else:
+                in_types = tuple([i.dtype.type for i in in_args])
+            op = cache.get(in_types, ())
+            if op is ():
+                op = self._guess_routine_from_in_types(in_types)
+                cache[in_types] = op
+        else:
+            op = cache.get(dtype, ())
+            if op is ():
+                op = self._guess_routine_from_dtype(dtype)
+                cache[dtype] = op
+
+        if op is not None:
+            return op
+        if dtype is None:
+            dtype = tuple([i.dtype.type for i in in_args])
+        raise TypeError('Wrong type (%s) of arguments for %s' %
+                        (dtype, name))
+
+    cdef _Op _guess_routine_from_in_types(self, tuple in_types):
+        cdef _Op op
+        cdef tuple op_types
+        cdef Py_ssize_t n = len(in_types)
+        cdef Py_ssize_t i
+        can_cast = numpy.can_cast
+        for op in self.ops:
+            op_types = op.in_types
+            for i in range(n):
+                it = in_types[i]
+                ot = op_types[i]
+                if isinstance(it, tuple):
+                    if not can_cast(it[0], ot) and not can_cast(it[1], ot):
+                        break
+                elif not can_cast(it, ot):
+                    break
+            else:
+                return op
+        return None
+
+    cdef _Op _guess_routine_from_dtype(self, object dtype):
+        cdef _Op op
+        cdef tuple op_types
+        for op in self.ops:
+            op_types = op.out_types
+            for t in op_types:
+                if t != dtype:
+                    break
+            else:
+                return op
+        return None
+
+
+cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
+                   default_casting=None, loop_prep=''):
+    ops_ = _Ops.from_tuples(ops, routine)
+    return ufunc(
+        name, ops_.nin, ops_.nout, ops_, preamble,
+        loop_prep, doc, default_casting=default_casting)
 
 include 'reduction.pxi'
