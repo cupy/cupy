@@ -238,6 +238,7 @@ class TestArithmeticBinary(ArithmeticBinaryBase, unittest.TestCase):
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
         'name': ['true_divide'],
         'dtype': [numpy.float64],
+        'use_dtype': [True, False],
     }) + testing.product({
         'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in float_types] + [0.0, 2.0, -2.0],
@@ -245,6 +246,7 @@ class TestArithmeticBinary(ArithmeticBinaryBase, unittest.TestCase):
                  for d in float_types] + [0.0, 2.0, -2.0],
         'name': ['power', 'true_divide', 'subtract'],
         'dtype': [numpy.float64],
+        'use_dtype': [True, False],
     }) + testing.product({
         'arg1': [testing.shaped_arange((2, 3), numpy, dtype=d)
                  for d in no_complex_types
@@ -254,6 +256,7 @@ class TestArithmeticBinary(ArithmeticBinaryBase, unittest.TestCase):
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
         'name': ['floor_divide', 'fmod', 'remainder'],
         'dtype': [numpy.float64],
+        'use_dtype': [True, False],
     }) + testing.product({
         'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in negative_no_complex_types
@@ -263,17 +266,15 @@ class TestArithmeticBinary(ArithmeticBinaryBase, unittest.TestCase):
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
         'name': ['floor_divide', 'fmod', 'remainder'],
         'dtype': [numpy.float64],
+        'use_dtype': [True, False],
     })
 ))
 class TestArithmeticBinary2(ArithmeticBinaryBase, unittest.TestCase):
 
     def test_binary(self):
-        self.use_dtype = False
-        self.check_binary()
-
-    @testing.with_requires('numpy>=1.10')
-    def test_binary_with_dtype(self):
-        self.use_dtype = True
+        if (self.use_dtype and
+                numpy.lib.NumpyVersion(numpy.__version__) < '1.10.0'):
+            raise unittest.SkipTest('Test for numpy>=1.10')
         self.check_binary()
 
 
