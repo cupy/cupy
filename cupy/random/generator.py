@@ -51,8 +51,10 @@ class RandomState(object):
         self._generator = curand.createGenerator(method)
         self.seed(seed)
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
         # When createGenerator raises an error, _generator is not initialized
+        if is_shutting_down():
+            return
         if hasattr(self, '_generator'):
             curand.destroyGenerator(self._generator)
 
@@ -145,13 +147,17 @@ class RandomState(object):
     def exponential(self, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a exponential distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.exponential` for full documentation,
             :meth:`numpy.random.RandomState.exponential
             <numpy.random.mtrand.RandomState.exponential>`
         """
         scale = cupy.asarray(scale, dtype)
-        if (scale < 0).any():
+        if (scale < 0).any():  # synchronize!
             raise ValueError('scale < 0')
         if size is None:
             size = scale.shape
@@ -285,6 +291,10 @@ class RandomState(object):
     def logseries(self, p, size=None, dtype=int):
         """Returns an array of samples drawn from a log series distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.logseries` for full documentation,
             :meth:`numpy.random.RandomState.logseries
@@ -292,9 +302,9 @@ class RandomState(object):
 
         """
         p = cupy.asarray(p)
-        if cupy.any(p <= 0):
+        if cupy.any(p <= 0):  # synchronize!
             raise ValueError('p <= 0.0')
-        if cupy.any(p >= 1):
+        if cupy.any(p >= 1):  # synchronize!
             raise ValueError('p >= 1.0')
         if size is None:
             size = p.shape
@@ -360,6 +370,10 @@ class RandomState(object):
     def negative_binomial(self, n, p, size=None, dtype=int):
         """Returns an array of samples drawn from the negative binomial distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.negative_binomial` for full documentation,
             :meth:`numpy.random.RandomState.negative_binomial
@@ -367,11 +381,11 @@ class RandomState(object):
         """
         n = cupy.asarray(n)
         p = cupy.asarray(p)
-        if cupy.any(n <= 0):
+        if cupy.any(n <= 0):  # synchronize!
             raise ValueError('n <= 0')
-        if cupy.any(p < 0):
+        if cupy.any(p < 0):  # synchronize!
             raise ValueError('p < 0')
-        if cupy.any(p > 1):
+        if cupy.any(p > 1):  # synchronize!
             raise ValueError('p > 1')
         y = self.gamma(n, (1-p)/p, size)
         return self.poisson(y, dtype=dtype)
@@ -410,15 +424,19 @@ class RandomState(object):
         """Returns an array of samples drawn from the noncentral chi-square
         distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.noncentral_chisquare` for full documentation,
             :meth:`numpy.random.RandomState.noncentral_chisquare
             <numpy.random.mtrand.RandomState.noncentral_chisquare>`
         """
         df, nonc = cupy.asarray(df), cupy.asarray(nonc)
-        if cupy.any(df <= 0):
+        if cupy.any(df <= 0):  # synchronize!
             raise ValueError('df <= 0')
-        if cupy.any(nonc < 0):
+        if cupy.any(nonc < 0):  # synchronize!
             raise ValueError('nonc < 0')
         if size is None:
             size = cupy.broadcast(df, nonc).shape
@@ -430,6 +448,10 @@ class RandomState(object):
     def noncentral_f(self, dfnum, dfden, nonc, size=None, dtype=float):
         """Returns an array of samples drawn from the noncentral F distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.noncentral_f` for full documentation,
             :meth:`numpy.random.RandomState.noncentral_f
@@ -437,11 +459,11 @@ class RandomState(object):
         """
         dfnum, dfden, nonc = \
             cupy.asarray(dfnum), cupy.asarray(dfden), cupy.asarray(nonc)
-        if cupy.any(dfnum <= 0):
+        if cupy.any(dfnum <= 0):  # synchronize!
             raise ValueError('dfnum <= 0')
-        if cupy.any(dfden <= 0):
+        if cupy.any(dfden <= 0):  # synchronize!
             raise ValueError('dfden <= 0')
-        if cupy.any(nonc < 0):
+        if cupy.any(nonc < 0):  # synchronize!
             raise ValueError('nonc < 0')
         if size is None:
             size = cupy.broadcast(dfnum, dfden, nonc).shape
@@ -469,13 +491,17 @@ class RandomState(object):
     def power(self, a, size=None, dtype=float):
         """Returns an array of samples drawn from the power distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.power` for full documentation,
             :meth:`numpy.random.RandomState.power
             <numpy.random.mtrand.RandomState.power>`
         """
         a = cupy.asarray(a)
-        if cupy.any(a < 0):
+        if cupy.any(a < 0):  # synchronize!
             raise ValueError('a < 0')
         if size is None:
             size = a.shape
@@ -544,6 +570,10 @@ class RandomState(object):
     def rayleigh(self, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a rayleigh distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.rayleigh` for full documentation,
             :meth:`numpy.random.RandomState.rayleigh
@@ -552,7 +582,7 @@ class RandomState(object):
         scale = cupy.asarray(scale)
         if size is None:
             size = scale.shape
-        if cupy.any(scale < 0):
+        if cupy.any(scale < 0):  # synchronize!
             raise ValueError('scale < 0')
         x = self._random_sample_raw(size, dtype)
         x = cupy.log(x, out=x)
@@ -779,6 +809,10 @@ class RandomState(object):
     def triangular(self, left, mode, right, size=None, dtype=float):
         """Returns an array of samples drawn from the triangular distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.triangular` for full documentation,
             :meth:`numpy.random.RandomState.triangular
@@ -786,11 +820,11 @@ class RandomState(object):
         """
         left, mode, right = \
             cupy.asarray(left), cupy.asarray(mode), cupy.asarray(right)
-        if cupy.any(left > mode):
+        if cupy.any(left > mode):  # synchronize!
             raise ValueError('left > mode')
-        if cupy.any(mode > right):
+        if cupy.any(mode > right):  # synchronize!
             raise ValueError('mode > right')
-        if cupy.any(left == right):
+        if cupy.any(left == right):  # synchronize!
             raise ValueError('left == right')
         if size is None:
             size = cupy.broadcast(left, mode, right).shape
@@ -869,13 +903,17 @@ class RandomState(object):
     def weibull(self, a, size=None, dtype=float):
         """Returns an array of samples drawn from the weibull distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.weibull` for full documentation,
             :meth:`numpy.random.RandomState.weibull
             <numpy.random.mtrand.RandomState.weibull>`
         """
         a = cupy.asarray(a)
-        if cupy.any(a < 0):
+        if cupy.any(a < 0):  # synchronize!
             raise ValueError('a < 0')
         x = self.standard_exponential(size, dtype)
         cupy.power(x, 1./a, out=x)
@@ -884,13 +922,17 @@ class RandomState(object):
     def zipf(self, a, size=None, dtype=int):
         """Returns an array of samples drawn from the Zipf distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.zipf` for full documentation,
             :meth:`numpy.random.RandomState.zipf
             <numpy.random.mtrand.RandomState.zipf>`
         """
         a = cupy.asarray(a)
-        if cupy.any(a <= 1.0):
+        if cupy.any(a <= 1.0):  # synchronize!
             raise ValueError('\'a\' must be a valid float > 1.0')
         if size is None:
             size = a.shape
