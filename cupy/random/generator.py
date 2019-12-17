@@ -617,7 +617,8 @@ class RandomState(object):
 
         if mx == 0:
             return cupy.zeros(size, dtype=numpy.int32)
-
+        generator = self._generator
+        curand_generate = curand.generate
         if mx < 0:
             raise ValueError(
                 'mx must be non-negative (actual: {})'.format(mx))
@@ -626,8 +627,9 @@ class RandomState(object):
         elif mx <= 0xffffffff:
             dtype = numpy.uint32
         else:
-            raise ValueError(
-                'mx must be within uint32 range (actual: {})'.format(mx))
+            generator = curand.createGenerator(curand.CURAND_RNG_QUASI_SOBOL64)
+            curand_generate = curand.generateLongLong
+            dtype = numpy.uint64
 
         mask = (1 << mx.bit_length()) - 1
         mask = cupy.array(mask, dtype=dtype)
@@ -641,8 +643,8 @@ class RandomState(object):
         n_rem = n  # The number of remaining elements to sample
         ret = None
         while n_rem > 0:
-            curand.generate(
-                self._generator, sample.data.ptr, sample.size)
+            curand_generate(
+                generator, sample.data.ptr, sample.size)
             # Drop the samples that exceed the upper limit
             sample &= mask
             success = sample <= mx
@@ -1116,10 +1118,6 @@ class RandomState(object):
                 'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
 
         diff = hi - lo - 1
-        if diff > cupy.iinfo(cupy.int32).max - cupy.iinfo(cupy.int32).min + 1:
-            raise NotImplementedError(
-                'Sampling from a range whose extent is larger than int32 '
-                'range is currently not supported')
         x = self._interval(diff, size).astype(dtype, copy=False)
         cupy.add(x, lo, out=x)
         return x
