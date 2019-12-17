@@ -17,7 +17,6 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
-from cupy.core._routines_manipulation cimport _broadcast_core
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport _convert_object_with_cuda_array_interface
 from cupy.core.core cimport compile_with_cache
@@ -81,7 +80,7 @@ cdef inline _check_array_device_id(ndarray arr, int device_id):
             % (arr.data.device_id, device_id))
 
 
-cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
+cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     """Preprocesses arguments for kernel invocation
 
     - Checks device compatibility for ndarrays
@@ -140,7 +139,7 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
     return ', '.join(ret)
 
 
-cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
+cdef tuple _reduce_dims(list args, tuple params, tuple shape):
     """ Remove contiguous stride to optimize CUDA kernel."""
     cdef ndarray arr
 
@@ -237,12 +236,6 @@ cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
 
 
 cdef class ParameterInfo:
-    cdef:
-        readonly str name
-        readonly object dtype
-        readonly str ctype
-        readonly bint raw
-        readonly bint is_const
 
     def __init__(self, str param, bint is_const):
         self.name = None
@@ -372,7 +365,7 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
     else:
         if not is_not_none:
             raise ValueError('Loop size is Undecided')
-    _broadcast_core(value, shape)
+    internal._broadcast_core(value, shape)
     for i, a in enumerate(value):
         if a is None:
             value[i] = args[i]
@@ -934,7 +927,7 @@ cdef class ufunc:
 
         _copy_in_args_if_needed(in_args, out_args)
         broad_values = in_args + out_args
-        _broadcast_core(broad_values, vec_shape)
+        internal._broadcast_core(broad_values, vec_shape)
         shape = tuple(vec_shape)
 
         op = _guess_routine(
@@ -1013,5 +1006,3 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
     ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble,
                 loop_prep, doc, default_casting=default_casting)
     return ret
-
-include 'reduction.pxi'

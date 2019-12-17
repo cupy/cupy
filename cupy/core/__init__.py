@@ -4,11 +4,11 @@ from cupy.core import internal  # NOQA
 
 # import class and function
 from cupy.core._errors import _AxisError  # NOQA
-from cupy.core._kernel import create_reduction_func  # NOQA
 from cupy.core._kernel import create_ufunc  # NOQA
 from cupy.core._kernel import ElementwiseKernel  # NOQA
-from cupy.core._kernel import ReductionKernel  # NOQA
 from cupy.core._kernel import ufunc  # NOQA
+from cupy.core._reduction import create_reduction_func  # NOQA
+from cupy.core._reduction import ReductionKernel  # NOQA
 from cupy.core._routines_manipulation import array_split  # NOQA
 from cupy.core._routines_manipulation import broadcast  # NOQA
 from cupy.core._routines_manipulation import broadcast_to  # NOQA
