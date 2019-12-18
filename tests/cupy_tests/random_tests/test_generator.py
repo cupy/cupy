@@ -1192,6 +1192,19 @@ class TestRandint(RandomGeneratorTestCase):
         self.generate(3, 10, size=0)
 
 
+class TestRandintMisc(unittest.TestCase):
+
+    def test_randint_overflow(self):
+        cupy.random.randint(numpy.int8(-100), numpy.int8(100))
+
+    def test_randint_float(self):
+        cupy.random.randint(1.2, 3.4, 5)
+
+    @testing.numpy_cupy_array_equal()
+    def test_randint_empty(self, xp):
+        return xp.random.randint(3, size=(4, 0, 5))
+
+
 @testing.gpu
 @testing.fix_random()
 class TestUniform(RandomGeneratorTestCase):
