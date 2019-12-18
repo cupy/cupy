@@ -14,6 +14,7 @@ cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy.cuda cimport device
+from cupy.cuda cimport driver
 from cupy.cuda cimport function
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
@@ -289,6 +290,12 @@ def _get_param_info(str s, is_const):
 def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     return _decide_params_type_core(in_params, out_params, in_args_dtype,
                                     out_args_dtype)
+
+
+@util.memoize(for_each_device=True)
+def _occupancy_max_potential_block_size(func_ptr, shared_mem, block_max_size):
+    return driver.occupancyMaxPotentialBlockSize(
+        func_ptr, shared_mem, block_max_size)
 
 
 cdef tuple _decide_params_type_core(
@@ -579,6 +586,7 @@ cdef class ElementwiseKernel:
         cdef Py_ssize_t size, i
         cdef list values, in_args, out_args
         cdef tuple in_types, out_types, types, shape
+        cdef size_t gridx, blockx
 
         size = -1
         size = kwargs.pop('size', -1)
@@ -634,8 +642,8 @@ cdef class ElementwiseKernel:
 
         args_info = _get_args_info(inout_args)
         kern = self._get_elementwise_kernel(dev_id, args_info, types)
-        kern.linear_launch(indexer.size, inout_args, shared_mem=0,
-                           block_max_size=128, stream=stream)
+        gridx, blockx = _occupancy_max_potential_block_size(kern.ptr, 0, 128)
+        kern.launch(inout_args, gridx, blockx, 0, stream)
         return ret
 
     cpdef tuple _decide_params_type(
@@ -895,6 +903,7 @@ cdef class ufunc:
         cdef vector.vector[Py_ssize_t] vec_shape
         cdef tuple shape
         cdef Py_ssize_t s
+        cdef size_t gridx, blockx
 
         out = kwargs.pop('out', None)
         dtype = kwargs.pop('dtype', None)
@@ -955,8 +964,8 @@ cdef class ufunc:
         args_info = _get_args_info(inout_args)
 
         kern = self._get_ufunc_kernel(dev_id, op, args_info)
-
-        kern.linear_launch(indexer.size, inout_args)
+        gridx, blockx = _occupancy_max_potential_block_size(kern.ptr, 0, 128)
+        kern.launch(inout_args, gridx, blockx, 0)
         return ret
 
     cdef str _get_name_with_type(self, tuple args_info):

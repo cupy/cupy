@@ -28,6 +28,7 @@ import string
 from cupy.core import _errors
 from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
+from cupy.core._kernel import _occupancy_max_potential_block_size
 from cupy.cuda import compiler
 from cupy import util
 
@@ -228,6 +229,7 @@ cdef class _AbstractReductionKernel:
         cdef Py_ssize_t block_size, block_stride, out_block_num
         cdef ndarray ret
         cdef function.Function kern
+        cdef size_t gridx, blockx
 
         if dtype is not None:
             dtype = get_dtype(dtype).type
@@ -287,8 +289,8 @@ cdef class _AbstractReductionKernel:
             block_size)
 
         # Launch the kernel
-        func.linear_launch(
-            out_block_num * block_size, inout_args, 0, block_size, stream)
+        gridx, blockx = _occupancy_max_potential_block_size(func.ptr, 0, 128)
+        func.launch(inout_args, gridx, blockx, 0, stream)
 
         return ret
 
