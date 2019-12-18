@@ -95,7 +95,7 @@ cpdef Py_ssize_t _preprocess_array(ndarray arr, tuple reduce_axis,
     reduction.pxi. The input array arr is C- or F- contiguous along axis.
     '''
     # if import at the top level, a segfault would happen when import cupy!
-    from cupy.core._kernel import _get_axis
+    from cupy.core._reduction import _get_axis
 
     cdef tuple axis_permutes, out_shape
     cdef Py_ssize_t contiguous_size = 1
@@ -352,7 +352,7 @@ def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
     If the specified reduction is not possible, None is returned.
     """
     # if import at the top level, a segfault would happen when import cupy!
-    from cupy.core._kernel import _get_axis
+    from cupy.core._reduction import _get_axis
     cdef bint enforce_numpy_API = False
 
     if op > CUPY_CUB_MAX:
