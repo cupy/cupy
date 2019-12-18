@@ -7,22 +7,48 @@ from cupy import core
 from cupy import testing
 
 
-@testing.gpu
-class SimpleReductionFunction(unittest.TestCase):
+_noncontiguous_params = [
+    # reduce at head axes
+    {'shape': (2, 4, 3), 'trans': (2, 1, 0), 'axis': (0, 1)},
+    # reduce at middle axes
+    {'shape': (2, 4, 5, 3), 'trans': (3, 2, 1, 0), 'axis': (1, 2)},
+    # reduce at tail axes
+    {'shape': (2, 4, 3), 'trans': (2, 1, 0), 'axis': (1, 2)},
+    # out_axis = (0,)
+    {'shape': (0, 4, 3), 'trans': (2, 1, 0), 'axis': (0, 1)},
+    # out_axis = ()
+    {'shape': (2, 4, 3), 'trans': (2, 1, 0), 'axis': (0, 1, 2)},
+]
 
-    def setUp(self):
-        self.my_int8_sum = core.create_reduction_func(
-            'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None))
 
-    @testing.numpy_cupy_allclose()
-    def check_int8_sum(self, shape, xp, axis=None, keepdims=False):
+class AbstractReductionTestBase:
+
+    def get_sum_func(self):
+        raise NotImplementedError()
+
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def check_int8_sum(self, shape, xp, axis=None, keepdims=False, trans=None):
         a = testing.shaped_random(shape, xp, 'b')
+        if trans:
+            a = a.transpose(*trans)
+        sum_func = self.get_sum_func()
         if xp == cupy:
-            return self.my_int8_sum(
+            return sum_func(
                 a, axis=axis, keepdims=keepdims)
         else:
             return a.sum(axis=axis, keepdims=keepdims, dtype='b')
 
+
+class SimpleReductionFunctionTestBase(AbstractReductionTestBase):
+
+    def get_sum_func(self):
+        return core.create_reduction_func(
+            'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None))
+
+
+@testing.gpu
+class SimpleReductionFunctionTest(
+        unittest.TestCase, SimpleReductionFunctionTestBase):
     def test_shape1(self):
         for i in six.moves.range(1, 10):
             self.check_int8_sum((2 ** i,))
@@ -56,20 +82,23 @@ class SimpleReductionFunction(unittest.TestCase):
 
 
 @testing.gpu
-class TestReductionKernel(unittest.TestCase):
+@testing.parameterize(*_noncontiguous_params)
+class TestSimpleReductionFunctionNonContiguous(
+        SimpleReductionFunctionTestBase, unittest.TestCase):
 
-    def setUp(self):
-        self.my_sum = cupy.ReductionKernel(
+    def test_noncontiguous(self):
+        self.check_int8_sum(self.shape, trans=self.trans, axis=self.axis)
+
+
+class ReductionKernelTestBase(AbstractReductionTestBase):
+
+    def get_sum_func(self):
+        return cupy.ReductionKernel(
             'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
 
-    @testing.numpy_cupy_allclose()
-    def check_int8_sum(self, shape, xp, axis=None, keepdims=False):
-        a = testing.shaped_random(shape, xp, 'b')
-        if xp == cupy:
-            return self.my_sum(
-                a, axis=axis, keepdims=keepdims)
-        else:
-            return a.sum(axis=axis, keepdims=keepdims, dtype='b')
+
+@testing.gpu
+class TestReductionKernel(ReductionKernelTestBase, unittest.TestCase):
 
     def test_shape1(self):
         for i in six.moves.range(1, 10):
@@ -94,6 +123,15 @@ class TestReductionKernel(unittest.TestCase):
         self.check_int8_sum((512, 256 * 256), axis=1)
         self.check_int8_sum((512 + 1, 256 * 256 + 1), axis=0)
         self.check_int8_sum((512 + 1, 256 * 256 + 1), axis=1)
+
+
+@testing.gpu
+@testing.parameterize(*_noncontiguous_params)
+class TestReductionKernelNonContiguous(
+        ReductionKernelTestBase, unittest.TestCase):
+
+    def test_noncontiguous(self):
+        self.check_int8_sum(self.shape, trans=self.trans, axis=self.axis)
 
 
 @testing.gpu
