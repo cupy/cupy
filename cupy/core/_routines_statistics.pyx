@@ -38,6 +38,22 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
+# TODO(grlee77): this signature is incompatible with NumPy!
+cdef ndarray _ndarray_ptp(ndarray self, axis, out, dtype, keepdims):
+    if cupy.cuda.cub_enabled:
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_MAX, axis, out, dtype,
+                                   keepdims)
+        if result is not None:
+            result -= cub.cub_reduction(self, cub.CUPY_CUB_MIN, axis, None, dtype,
+                                   keepdims)
+            return result
+
+    result = _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+    result -= _amin(self, axis=axis, out=None, dtype=dtype, keepdims=keepdims)
+    return result
+
+
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled and self._c_contiguous:

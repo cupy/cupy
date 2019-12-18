@@ -127,7 +127,31 @@ def nanmax(a, axis=None, out=None, keepdims=False):
     return res
 
 
-# TODO(okuta): Implement ptp
+def ptp(a, axis=None, out=None, keepdims=False, dtype=None):
+    """Returns the range of values (maximum - minimum) along an axis.
+
+    .. note::
+
+       The name of the function comes from the acronym for 'peak to peak'.
+
+       When at least one element is NaN, the corresponding ptp value will be
+       NaN.
+
+    Args:
+        a (cupy.ndarray): Array over which to take the range.
+        axis (int): Axis along which to take the minimum. The flattened
+            array is used by default.
+        out (cupy.ndarray): Output array.
+        keepdims (bool): If ``True``, the axis is retained as an axis of
+            size one.
+
+    Returns:
+        cupy.ndarray: The minimum of ``a``, along the axis if specified.
+
+    .. seealso:: :func:`numpy.amin`
+
+    """
+    return a.ptp(axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 def percentile(a, q, axis=None, out=None, interpolation='linear',
