@@ -94,9 +94,6 @@ cpdef Py_ssize_t _preprocess_array(ndarray arr, tuple reduce_axis,
     This function more or less follows the logic of _get_permuted_args() in
     reduction.pxi. The input array arr is C- or F- contiguous along axis.
     '''
-    # if import at the top level, a segfault would happen when import cupy!
-    from cupy.core._reduction import _get_axis
-
     cdef tuple axis_permutes, out_shape
     cdef Py_ssize_t contiguous_size = 1
 
