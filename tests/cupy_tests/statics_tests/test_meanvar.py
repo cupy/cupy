@@ -84,7 +84,16 @@ class TestMeanVar(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.mean(a, axis=1)
 
+<<<<<<< HEAD
     @testing.for_all_dtypes(no_complex=True)
+=======
+    @testing.numpy_cupy_allclose()
+    def test_mean_all_dtype(self, xp):
+        a = xp.full((2, 3, 4), 123456789, dtype=numpy.int64)
+        return xp.mean(a, dtype=numpy.float64)
+
+    @testing.for_all_dtypes()
+>>>>>>> b544536a3... Merge pull request #2076 from okuta/fix-true-divide
     @testing.numpy_cupy_allclose()
     def test_var_all(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)

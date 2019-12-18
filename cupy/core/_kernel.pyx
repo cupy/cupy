@@ -684,7 +684,32 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
             max_array_kind >= max_scalar_kind)
 
 
+<<<<<<< HEAD
 cdef tuple _guess_routine(name, dict cache, list ops, list in_args, dtype):
+=======
+cdef dict _mst_unsigned_to_signed = {
+    i: (numpy.iinfo(j).max, (i, j))
+    for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
+                 for i in "BHILQ"]}
+cdef _numpy_min_scalar_type = numpy.min_scalar_type
+
+cdef _min_scalar_type(x):
+    # A non-negative integer may have two locally minimum scalar
+    # types: signed/unsigned integer.
+    # Return both for can_cast, while numpy.min_scalar_type only returns
+    # the unsigned type.
+    t = _numpy_min_scalar_type(x)
+    dt = t.type
+    if t.kind == 'u':
+        m, dt2 = <tuple>_mst_unsigned_to_signed[dt]
+        if x <= m:
+            return dt2
+    return dt
+
+
+cdef tuple _guess_routine(
+        str name, dict cache, list ops, list in_args, dtype, list out_ops):
+>>>>>>> b544536a3... Merge pull request #2076 from okuta/fix-true-divide
     if dtype is None:
         use_raw_value = _check_should_use_min_scalar(in_args)
         if use_raw_value:
@@ -702,7 +727,7 @@ cdef tuple _guess_routine(name, dict cache, list ops, list in_args, dtype):
     else:
         op = cache.get(dtype, ())
         if op is ():
-            op = _guess_routine_from_dtype(ops, dtype)
+            op = _guess_routine_from_dtype(out_ops, dtype)
             cache[dtype] = op
 
     if op:
@@ -730,7 +755,9 @@ cdef class ufunc:
         readonly Py_ssize_t nout
         readonly Py_ssize_t nargs
         readonly object name
-        readonly list _ops
+        readonly list _ops  # normal routines
+        readonly list _out_ops
+        # routines based on explicitly given output dtype
         readonly object _preamble
         readonly object _loop_prep
         readonly object _default_casting
@@ -742,7 +769,7 @@ cdef class ufunc:
         readonly object __module__
 
     def __init__(self, name, nin, nout, ops, preamble='', loop_prep='', doc='',
-                 default_casting=None):
+                 default_casting=None, *, out_ops=None):
         self.name = name
         self.__name__ = name
         self.nin = nin
@@ -756,6 +783,7 @@ cdef class ufunc:
             self._default_casting = 'same_kind'
         else:
             self._default_casting = default_casting
+        self._out_ops = ops if out_ops is None else out_ops
         _in_params = tuple(
             ParameterInfo('T in%d' % i, True)
             for i in range(nin))
@@ -839,7 +867,8 @@ cdef class ufunc:
         broad_values, shape = _broadcast_core(args)
 
         op = _guess_routine(
-            self.name, self._routine_cache, self._ops, in_args, dtype)
+            self.name, self._routine_cache, self._ops, in_args, dtype,
+            self._out_ops)
         in_types, out_types, routine = op
         out_args = _get_out_args(out_args, out_types, shape, casting)
         if self.nout == 1:
@@ -880,8 +909,8 @@ cdef class ufunc:
         return kern
 
 
-cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
-                   default_casting=None, loop_prep=''):
+cdef list _get_ops(ops, routine):
+    """Parse dtype character mapping"""
     _ops = []
     for t in ops:
         if not isinstance(t, tuple):
@@ -898,9 +927,15 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
         in_types = tuple([get_dtype(t).type for t in in_types])
         out_types = tuple([get_dtype(t).type for t in out_types])
         _ops.append((in_types, out_types, rt))
+    return _ops
 
+
+cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
+                   default_casting=None, loop_prep='', out_ops=None):
+    _ops = _get_ops(ops, routine)
+    _out_ops = None if out_ops is None else _get_ops(out_ops, routine)
     ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble,
-                loop_prep, doc, default_casting=default_casting)
+                loop_prep, doc, default_casting, out_ops=_out_ops)
     return ret
 
 include 'reduction.pxi'
