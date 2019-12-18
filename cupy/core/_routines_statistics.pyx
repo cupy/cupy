@@ -1,8 +1,8 @@
 import numpy
 from numpy import nan
 
-from cupy.core._kernel import create_reduction_func
-from cupy.core._kernel import ReductionKernel
+from cupy.core._reduction import create_reduction_func
+from cupy.core._reduction import ReductionKernel
 
 from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray

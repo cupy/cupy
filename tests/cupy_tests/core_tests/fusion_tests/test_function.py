@@ -195,13 +195,15 @@ class TestFusionKernelName(unittest.TestCase):
         # Test kernel name (with mock)
         if xp is cupy:
             target = (
-                'cupy.core._kernel.ElementwiseKernel' if is_elementwise
-                else 'cupy.core._kernel.ReductionKernel')
+                cupy.ElementwiseKernel if is_elementwise
+                else cupy.ReductionKernel)
+            target_full_name = '{}.{}'.format(
+                target.__module__, target.__name__)
 
-            with mock.patch(target) as Kernel:
+            with mock.patch(target_full_name) as kernel:
                 func(a, b, c)
-                Kernel.assert_called_once()
-                self.assertEqual(Kernel.call_args[1]['name'], expected_name)
+                kernel.assert_called_once()
+                self.assertEqual(kernel.call_args[1]['name'], expected_name)
 
         # Test there's no error in computation (without mock)
         return func(a, b, c)

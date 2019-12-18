@@ -107,13 +107,15 @@ class TestConvolveAndCorrelateSpecialCases(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self._filter(cupyx.scipy, a, w, mode='unknown')
 
+    # SciPy behavior fixed in 1.2.0: https://github.com/scipy/scipy/issues/822
+    @testing.with_requires('scipy>=1.2.0')
     def test_invalid_origin(self):
         a = testing.shaped_random((3, ) * self.ndim, cupy, self.dtype)
-        w = testing.shaped_random((3, ) * self.ndim, cupy, self.dtype)
-        for origin in (-3, -2, 2, 3):
-            if self.filter == 'correlate' and origin == 2:
-                continue
-            if self.filter == 'convolve' and origin == -2:
-                continue
-            with self.assertRaises(ValueError):
-                self._filter(cupyx.scipy, a, w, origin=origin)
+        for lenw in [3, 4]:
+            w = testing.shaped_random((lenw, ) * self.ndim, cupy, self.dtype)
+            for origin in range(-3, 4):
+                if (lenw // 2 + origin < 0) or (lenw // 2 + origin >= lenw):
+                    with self.assertRaises(ValueError):
+                        self._filter(cupyx.scipy, a, w, origin=origin)
+                else:
+                    self._filter(cupyx.scipy, a, w, origin=origin)

@@ -96,7 +96,7 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
             if weights.shape[ii] % 2 == 0:
                 origin[ii] -= 1
     for _origin, lenw in zip(origin, wshape):
-        if (lenw // 2 + _origin < 0) or (lenw // 2 + _origin > lenw):
+        if (lenw // 2 + _origin < 0) or (lenw // 2 + _origin >= lenw):
             raise ValueError('invalid origin')
     if mode not in ('reflect', 'constant', 'nearest', 'mirror', 'wrap'):
         msg = 'boundary mode not supported (actual: {}).'.format(mode)

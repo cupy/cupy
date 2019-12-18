@@ -59,7 +59,7 @@ class SimpleReductionFunction(unittest.TestCase):
 class TestReductionKernel(unittest.TestCase):
 
     def setUp(self):
-        self.my_sum = core.ReductionKernel(
+        self.my_sum = cupy.ReductionKernel(
             'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
 
     @testing.numpy_cupy_allclose()
@@ -101,5 +101,5 @@ class TestReductionKernelInvalidArgument(unittest.TestCase):
 
     def test_invalid_kernel_name(self):
         with six.assertRaisesRegex(self, ValueError, 'Invalid kernel name'):
-            core.ReductionKernel(
+            cupy.ReductionKernel(
                 'T x', 'T y', 'x', 'a + b', 'y = a', '0', name='1')
