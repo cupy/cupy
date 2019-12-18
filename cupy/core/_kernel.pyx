@@ -643,7 +643,7 @@ cdef class ElementwiseKernel:
         args_info = _get_args_info(inout_args)
         kern = self._get_elementwise_kernel(dev_id, args_info, types)
         gridx, blockx = _occupancy_max_potential_block_size(kern.ptr, 0, 128)
-        kern.launch(inout_args, gridx, blockx, 0, stream)
+        kern.linear_launch(inout_args, gridx, blockx, 0, stream)
         return ret
 
     cpdef tuple _decide_params_type(
@@ -965,7 +965,7 @@ cdef class ufunc:
 
         kern = self._get_ufunc_kernel(dev_id, op, args_info)
         gridx, blockx = _occupancy_max_potential_block_size(kern.ptr, 0, 128)
-        kern.launch(inout_args, gridx, blockx, 0)
+        kern.linear_launch(inout_args, gridx, blockx, 0)
         return ret
 
     cdef str _get_name_with_type(self, tuple args_info):

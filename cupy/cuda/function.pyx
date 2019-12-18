@@ -166,21 +166,12 @@ cdef class Function:
             max(1, block[0]), max(1, block[1]), max(1, block[2]),
             args, shared_mem, s)
 
-    cpdef launch(
+    cpdef linear_launch(
             self, args, size_t gridx, size_t blockx, size_t shared_mem=0,
             stream=None):
         _launch(
             self.ptr, gridx, 1, 1, blockx, 1, 1,
             args, shared_mem, _get_stream(stream))
-
-    cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
-                        size_t block_max_size=128, stream=None):
-        # TODO(beam2d): Tune it
-        cdef size_t gridx = min(
-            0x7fffffffUL, (size + block_max_size - 1) // block_max_size)
-        cdef size_t blockx = min(block_max_size, size)
-        s = _get_stream(stream)
-        self.launch(args, gridx, blockx, shared_mem, stream)
 
 
 cdef class Module:

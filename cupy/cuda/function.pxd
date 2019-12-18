@@ -11,11 +11,8 @@ cdef class Function:
         public Module module
         public intptr_t ptr
 
-    cpdef launch(
+    cpdef linear_launch(
         self, args, size_t gridx, size_t blockx, size_t shared_mem=*, stream=*)
-
-    cpdef linear_launch(self, size_t size, args, size_t shared_mem=*,
-                        size_t block_max_size=*, stream=*)
 
 
 cdef class Module:

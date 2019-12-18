@@ -289,7 +289,7 @@ cdef class _AbstractReductionKernel:
 
         # Launch the kernel
         gridx, blockx = _occupancy_max_potential_block_size(func.ptr, 0, 128)
-        func.launch(inout_args, gridx, blockx, 0, stream)
+        func.linear_launch(inout_args, gridx, blockx, 0, stream)
 
         return ret
 
