@@ -129,7 +129,7 @@ cdef class UnownedMemory(BaseMemory):
                 ptr_attrs = runtime.pointerGetAttributes(ptr)
                 device_id = ptr_attrs.device
             else:
-                raise RuntimeError
+                raise RuntimeError('UnownedMemory requires explicit device ID for a null pointer.')
         self.size = size
         self.device_id = device_id
         self.ptr = ptr
