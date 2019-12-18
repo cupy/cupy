@@ -248,7 +248,9 @@ cdef class _AbstractReductionKernel:
         # When there is only one input array, sort the axes in such a way that
         # contiguous (C or F) axes can be squashed in _reduce_dims() later.
         # TODO(niboshi): Support (out_axis) > 1
-        if len(in_args) == 1 and len(out_axis) <= 1:
+        if (len(in_args) == 1
+                and len(out_axis) <= 1
+                and not in_args[0]._c_contiguous):
             strides = in_args[0].strides
             reduce_axis = _sort_axis(reduce_axis, strides)
             out_axis = _sort_axis(out_axis, strides)
