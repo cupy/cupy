@@ -1,5 +1,6 @@
 from cpython cimport sequence
 
+from cupy.core cimport _carray
 from cupy.core._dtype cimport get_dtype
 from cupy.core._kernel cimport _broadcast
 from cupy.core._kernel cimport _check_array_device_id
@@ -16,7 +17,6 @@ from cupy.core cimport _scalar
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport _convert_object_with_cuda_array_interface
 from cupy.core.core cimport compile_with_cache
-from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.cuda cimport device
@@ -272,8 +272,8 @@ cdef class _AbstractReductionKernel:
             in_args
             + out_args
             + [
-                Indexer(in_shape),
-                Indexer(out_shape),
+                _carray.Indexer(in_shape),
+                _carray.Indexer(out_shape),
                 # block_stride is passed as the last argument.
                 _scalar.CScalar_from_int32(block_stride),
             ])
