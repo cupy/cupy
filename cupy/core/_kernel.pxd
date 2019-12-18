@@ -11,7 +11,7 @@ cdef class ParameterInfo:
 
 
 cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
-                   default_casting=*, loop_prep=*)
+                   default_casting=*, loop_prep=*, out_ops=*)
 
 cpdef tuple _get_args_info(list args)
 
@@ -28,7 +28,8 @@ cdef list _get_out_args_with_params(
 
 cdef tuple _guess_routine_from_dtype(list ops, object dtype)
 
-cdef tuple _guess_routine(str name, dict cache, list ops, list in_args, dtype)
+cdef tuple _guess_routine(
+    str name, dict cache, list ops, list in_args, dtype, list out_ops)
 
 cdef _check_array_device_id(ndarray arr, int device_id)
 

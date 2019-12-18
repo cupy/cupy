@@ -394,7 +394,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self, list in_args, list out_args, dtype):
 
         in_types, out_types, routine = _guess_routine(
-            self.name, self._routine_cache, self._ops, in_args, dtype)
+            self.name, self._routine_cache, self._ops, in_args, dtype,
+            self._ops)
         map_expr, reduce_expr, post_map_expr, reduce_type = routine
 
         if reduce_type is None:
