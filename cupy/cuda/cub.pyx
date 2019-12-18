@@ -46,7 +46,7 @@ CUB_support_dtype = [numpy.int8, numpy.uint8,
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_cub.h':
+cdef extern from 'cupy_cub.h' nogil:
     void cub_device_reduce(void*, size_t&, void*, void*, int, Stream_t,
                            int, int)
     void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, void*,
@@ -98,9 +98,8 @@ cpdef Py_ssize_t _preprocess_array(ndarray arr, tuple reduce_axis,
 
 def device_reduce(ndarray x, int op, tuple out_axis, out=None,
                   bint keepdims=False):
-    cdef ndarray y
     cdef memory.MemoryPointer ws
-    cdef int dtype_id, ndim_out, kv_bytes
+    cdef int dtype_id, ndim_out, kv_bytes, x_size
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *y_ptr
@@ -136,12 +135,14 @@ def device_reduce(ndarray x, int op, tuple out_axis, out=None,
     y_ptr = <void *>y.data.ptr
     dtype_id = _get_dtype_id(x.dtype)
     s = <Stream_t>stream.get_current_stream_ptr()
-
+    x_size = <int>x.size
     ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x.size, s,
                                                    op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void *>ws.ptr
-    cub_device_reduce(ws_ptr, ws_size, x_ptr, y_ptr, x.size, s, op, dtype_id)
+    with nogil:
+        cub_device_reduce(ws_ptr, ws_size, x_ptr, y_ptr, x_size, s, op,
+                          dtype_id)
     if op == CUPY_CUB_ARGMIN or op == CUPY_CUB_ARGMAX:
         # get key from KeyValuePair: need to reinterpret the first 4 bytes
         # and then cast it
@@ -215,9 +216,10 @@ def device_segmented_reduce(ndarray x, int op, tuple reduce_axis,
         op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void*>ws.ptr
-    cub_device_segmented_reduce(ws_ptr, ws_size, x_ptr, y_ptr, n_segments,
-                                offset_start_ptr, offset_end_ptr, s,
-                                op, dtype_id)
+    with nogil:
+        cub_device_segmented_reduce(ws_ptr, ws_size, x_ptr, y_ptr, n_segments,
+                                    offset_start_ptr, offset_end_ptr, s,
+                                    op, dtype_id)
 
     if out is not None:
         out[...] = y
@@ -271,9 +273,10 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
         n_cols, nnz, s, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void *>ws.ptr
-    cub_device_spmv(ws_ptr, ws_size, values_ptr, row_offsets_ptr,
-                    col_indices_ptr, x_ptr, y_ptr, n_rows, n_cols, nnz, s,
-                    dtype_id)
+    with nogil:
+        cub_device_spmv(ws_ptr, ws_size, values_ptr, row_offsets_ptr,
+                        col_indices_ptr, x_ptr, y_ptr, n_rows, n_cols, nnz, s,
+                        dtype_id)
 
     return y
 
