@@ -27,6 +27,17 @@ class TestSplit(unittest.TestCase):
         a = testing.shaped_arange((3, 11), xp)
         return xp.array_split(a, [])
 
+    @testing.with_requires('numpy>=1.11')
+    @testing.numpy_cupy_array_list_equal()
+    def test_array_split_out_of_bound1(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        return xp.array_split(a, [3])
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_array_split_out_of_bound2(self, xp):
+        a = testing.shaped_arange((0,), xp)
+        return xp.array_split(a, [1])
+
     @testing.numpy_cupy_array_list_equal()
     def test_array_split_non_divisible(self, xp):
         a = testing.shaped_arange((5, 3), xp)
@@ -61,6 +72,17 @@ class TestSplit(unittest.TestCase):
     def test_split_by_sections3(self, xp):
         a = testing.shaped_arange((3, 11), xp)
         return xp.split(a, (-9, 4, -2), 1)
+
+    @testing.with_requires('numpy>=1.11')
+    @testing.numpy_cupy_array_list_equal()
+    def test_split_out_of_bound1(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        return xp.split(a, [3])
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_split_out_of_bound2(self, xp):
+        a = testing.shaped_arange((0,), xp)
+        return xp.split(a, [1])
 
     @testing.numpy_cupy_array_list_equal()
     def test_vsplit(self, xp):
