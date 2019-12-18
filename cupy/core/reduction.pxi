@@ -274,7 +274,13 @@ class simple_reduction_function(object):
             out_args = [out]
 
         in_types, out_types, routine = _guess_routine(
+<<<<<<< HEAD:cupy/core/reduction.pxi
             self.name, self._routine_cache, self._ops, in_args, dtype)
+=======
+            self.name, self._routine_cache, self._ops, in_args, dtype,
+            self._ops)
+        map_expr, reduce_expr, post_map_expr, reduce_type = routine
+>>>>>>> b544536a3... Merge pull request #2076 from okuta/fix-true-divide:cupy/core/_reduction.pyx
 
         reduce_axis, out_axis = _get_axis(axis, arr._shape.size())
         del axis  # to avoid bug
