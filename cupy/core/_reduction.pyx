@@ -178,18 +178,17 @@ cdef Py_ssize_t _get_contiguous_size(
     return contiguous_size
 
 
-cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
+cpdef (Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
         Py_ssize_t in_size, Py_ssize_t out_size,
         Py_ssize_t contiguous_size) except*:
-    cdef Py_ssize_t reduce_block_size, block_stride, out_block_num
+    cdef Py_ssize_t reduce_block_size, block_stride
 
     reduce_block_size = max(1, in_size // out_size)
     contiguous_size = min(contiguous_size, 32)
     block_stride = max(contiguous_size, _block_size // reduce_block_size)
     block_stride = internal.clp2(block_stride // 2 + 1)  # floor
-    out_block_num = (out_size + block_stride - 1) // block_stride
 
-    return _block_size, block_stride, out_block_num
+    return _block_size, block_stride
 
 
 cdef Py_ssize_t _block_size = 256 if runtime._is_hip_environment else 512
@@ -226,7 +225,7 @@ cdef class _AbstractReductionKernel:
             stream):
         cdef tuple reduce_axis, out_axis
         cdef Py_ssize_t contiguous_size
-        cdef Py_ssize_t block_size, block_stride, out_block_num
+        cdef Py_ssize_t block_size, block_stride
         cdef ndarray ret
         cdef function.Function kern
         cdef size_t gridx, blockx
@@ -264,7 +263,7 @@ cdef class _AbstractReductionKernel:
         # Calculate the reduction block dimensions.
         contiguous_size = _get_contiguous_size(
             in_args, self.in_params, len(in_shape), len(out_shape))
-        block_size, block_stride, out_block_num = _get_block_specs(
+        block_size, block_stride = _get_block_specs(
             internal.prod_sequence(in_shape),
             internal.prod_sequence(out_shape),
             contiguous_size)
