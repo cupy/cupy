@@ -7,6 +7,93 @@ from cupy.cuda import device
 from cupy.linalg import util
 
 
+def _lu_factor(a_t, dtype):
+    """Compute pivoted LU decomposition.
+
+    Decompose a given batch of square matrices. Inputs and outputs are
+    transposed.
+
+    Args:
+        a_t (cupy.ndarray): The input matrix with dimension ``(..., N, N)``.
+            The dimension condition is not checked.
+        dtype (numpy.dtype): float32, float64, complex64, or complex128.
+
+    Returns:
+        lu_t (cupy.ndarray): ``L`` without its unit diagonal and ``U`` with
+            dimension ``(..., N, N)``.
+        piv (cupy.ndarray): 1-origin pivot indices with dimension
+            ``(..., N)``.
+        dev_info (cupy.ndarray): ``getrf`` info with dimension ``(...)``.
+
+    .. seealso:: :func:`scipy.linalg.lu_factor`
+
+    """
+    orig_shape = a_t.shape
+    n = orig_shape[-2]
+
+    # copy is necessary to present `a` to be overwritten.
+    a_t = a_t.astype(dtype, order='C').reshape(-1, n, n)
+    batch_size = a_t.shape[0]
+    ipiv = cupy.empty((batch_size, n), dtype=numpy.int32)
+    dev_info = cupy.empty((batch_size,), dtype=numpy.int32)
+
+    # Heuristic condition from some performance test.
+    # TODO(kataoka): autotune
+    use_batched = batch_size * 65536 >= n * n
+
+    if use_batched:
+        handle = device.get_cublas_handle()
+        lda = n
+        step = n * lda * a_t.itemsize
+        start = a_t.data.ptr
+        stop = start + step * batch_size
+        a_array = cupy.arange(start, stop, step, dtype=cupy.uintp)
+
+        if dtype == numpy.float32:
+            getrfBatched = cupy.cuda.cublas.sgetrfBatched
+        elif dtype == numpy.float64:
+            getrfBatched = cupy.cuda.cublas.dgetrfBatched
+        elif dtype == numpy.complex64:
+            getrfBatched = cupy.cuda.cublas.cgetrfBatched
+        elif dtype == numpy.complex128:
+            getrfBatched = cupy.cuda.cublas.zgetrfBatched
+        else:
+            assert False
+
+        getrfBatched(
+            handle, n, a_array.data.ptr, lda, ipiv.data.ptr,
+            dev_info.data.ptr, batch_size)
+
+    else:
+        handle = device.get_cusolver_handle()
+        if dtype == numpy.float32:
+            getrf_bufferSize = cusolver.sgetrf_bufferSize
+            getrf = cusolver.sgetrf
+        elif dtype == numpy.float64:
+            getrf_bufferSize = cusolver.dgetrf_bufferSize
+            getrf = cusolver.dgetrf
+        elif dtype == numpy.complex64:
+            getrfBatched = cupy.cuda.cublas.cgetrfBatched
+        elif dtype == numpy.complex128:
+            getrfBatched = cupy.cuda.cublas.zgetrfBatched
+        else:
+            assert False
+
+        for i in range(batch_size):
+            a_ptr = a_t[i].data.ptr
+            buffersize = getrf_bufferSize(handle, n, n, a_ptr, n)
+            workspace = cupy.empty(buffersize, dtype=dtype)
+            getrf(
+                handle, n, n, a_ptr, n, workspace.data.ptr,
+                ipiv[i].data.ptr, dev_info[i].data.ptr)
+
+    return (
+        a_t.reshape(orig_shape),
+        ipiv.reshape(orig_shape[:-1]),
+        dev_info.reshape(orig_shape[:-2]),
+    )
+
+
 def cholesky(a):
     """Cholesky decomposition.
 
