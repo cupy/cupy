@@ -17,7 +17,6 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
-from cupy.core._routines_manipulation cimport _broadcast_core
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport _convert_object_with_cuda_array_interface
 from cupy.core.core cimport compile_with_cache
@@ -81,7 +80,7 @@ cdef inline _check_array_device_id(ndarray arr, int device_id):
             % (arr.data.device_id, device_id))
 
 
-cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
+cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     """Preprocesses arguments for kernel invocation
 
     - Checks device compatibility for ndarrays
@@ -140,7 +139,7 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
     return ', '.join(ret)
 
 
-cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
+cdef tuple _reduce_dims(list args, tuple params, tuple shape):
     """ Remove contiguous stride to optimize CUDA kernel."""
     cdef ndarray arr
 
@@ -237,12 +236,6 @@ cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
 
 
 cdef class ParameterInfo:
-    cdef:
-        readonly str name
-        readonly object dtype
-        readonly str ctype
-        readonly bint raw
-        readonly bint is_const
 
     def __init__(self, str param, bint is_const):
         self.name = None
@@ -372,7 +365,7 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
     else:
         if not is_not_none:
             raise ValueError('Loop size is Undecided')
-    _broadcast_core(value, shape)
+    internal._broadcast_core(value, shape)
     for i, a in enumerate(value):
         if a is None:
             value[i] = args[i]
@@ -765,7 +758,9 @@ cdef class ufunc:
         readonly Py_ssize_t nout
         readonly Py_ssize_t nargs
         readonly object name
-        readonly _Ops _ops
+        readonly _Ops _ops  # normal routines
+        # routines based on explicitly given output dtype
+        readonly _Ops _out_ops
         readonly object _preamble
         readonly object _loop_prep
         readonly object _default_casting
@@ -778,13 +773,14 @@ cdef class ufunc:
 
     def __init__(
             self, name, nin, nout, _Ops ops, preamble='', loop_prep='', doc='',
-            default_casting=None):
+            default_casting=None, *, _Ops out_ops=None):
         self.name = name
         self.__name__ = name
         self.nin = nin
         self.nout = nout
         self.nargs = nin + nout
         self._ops = ops
+        self._out_ops = ops if out_ops is None else out_ops
         self._preamble = preamble
         self._loop_prep = loop_prep
         self.__doc__ = doc
@@ -876,11 +872,11 @@ cdef class ufunc:
 
         _copy_in_args_if_needed(in_args, out_args)
         broad_values = in_args + out_args
-        _broadcast_core(broad_values, vec_shape)
+        internal._broadcast_core(broad_values, vec_shape)
         shape = tuple(vec_shape)
 
         op = self._ops.guess_routine(
-            self.name, self._routine_cache, in_args, dtype)
+            self.name, self._routine_cache, in_args, dtype, self._out_ops)
         out_args = _get_out_args(out_args, op.out_types, shape, casting)
         if self.nout == 1:
             ret = out_args[0]
@@ -932,14 +928,6 @@ cdef class ufunc:
 
 
 cdef class _Op:
-    """Simple data structure that represents a kernel routine with single
-concrete dtype mapping.
-    """
-    cdef readonly routine
-    cdef readonly tuple in_types
-    cdef readonly tuple out_types
-    cdef readonly int nin
-    cdef readonly int nout
 
     def __init__(self, routine, tuple in_types, tuple out_types):
         self.routine = routine
@@ -950,7 +938,6 @@ concrete dtype mapping.
 
     @staticmethod
     cdef _Op from_type_and_routine(str typ, routine):
-        """Creates an op instance parsing a dtype mpping."""
         # TODO(niboshi): Write type mapping specification.
         rt = routine
 
@@ -965,12 +952,6 @@ concrete dtype mapping.
 
 
 cdef class _Ops:
-    """A kernel routine representation with various dtype mappings.
-    """
-
-    cdef readonly tuple ops
-    cdef readonly int nin
-    cdef readonly int nout
 
     def __init__(self, tuple ops):
         assert len(ops) > 0
@@ -994,8 +975,8 @@ cdef class _Ops:
             ops_.append(_Op.from_type_and_routine(typ, rt))
         return _Ops(tuple(ops_))
 
-    cdef _Op guess_routine(self, str name, dict cache, list in_args, dtype):
-        """Queries a single op from input arguments."""
+    cdef _Op guess_routine(
+            self, str name, dict cache, list in_args, dtype, _Ops out_ops):
         if dtype is None:
             use_raw_value = _check_should_use_min_scalar(in_args)
             if use_raw_value:
@@ -1012,7 +993,7 @@ cdef class _Ops:
         else:
             op = cache.get(dtype, ())
             if op is ():
-                op = self._guess_routine_from_dtype(dtype)
+                op = out_ops._guess_routine_from_dtype(dtype)
                 cache[dtype] = op
 
         if op is not None:
@@ -1056,10 +1037,9 @@ cdef class _Ops:
 
 
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
-                   default_casting=None, loop_prep=''):
+                   default_casting=None, loop_prep='', out_ops=None):
     ops_ = _Ops.from_tuples(ops, routine)
+    _out_ops = None if out_ops is None else _Ops.from_tuples(out_ops, routine)
     return ufunc(
         name, ops_.nin, ops_.nout, ops_, preamble,
-        loop_prep, doc, default_casting=default_casting)
-
-include 'reduction.pxi'
+        loop_prep, doc, default_casting=default_casting, out_ops=_out_ops)

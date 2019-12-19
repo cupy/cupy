@@ -3,7 +3,7 @@ import pytest
 
 from cupy import testing
 import cupyx.scipy.fftpack  # NOQA
-from cupy.fft.fft import _default_plan_type
+from cupy.fft.fft import _default_fft_func, _fftn
 
 if cupyx.scipy._scipy_available:
     import scipy.fftpack  # NOQA
@@ -226,7 +226,7 @@ class TestFft2(unittest.TestCase):
     def test_fft2_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
@@ -244,7 +244,7 @@ class TestFft2(unittest.TestCase):
     def test_fft2_overwrite_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
@@ -264,7 +264,7 @@ class TestFft2(unittest.TestCase):
     def test_fft2_plan_manager(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if scp is cupyx.scipy:
             from cupy.cuda.cufft import get_current_plan
@@ -301,7 +301,7 @@ class TestFft2(unittest.TestCase):
     def test_ifft2_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
@@ -319,7 +319,7 @@ class TestFft2(unittest.TestCase):
     def test_ifft2_overwrite_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
@@ -339,7 +339,7 @@ class TestFft2(unittest.TestCase):
     def test_ifft2_plan_manager(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if scp is cupyx.scipy:
             from cupy.cuda.cufft import get_current_plan
@@ -394,7 +394,7 @@ class TestFftn(unittest.TestCase):
     def test_fftn_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
@@ -412,7 +412,7 @@ class TestFftn(unittest.TestCase):
     def test_fftn_overwrite_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
@@ -432,7 +432,7 @@ class TestFftn(unittest.TestCase):
     def test_fftn_plan_manager(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if scp is cupyx.scipy:
             from cupy.cuda.cufft import get_current_plan
@@ -469,7 +469,7 @@ class TestFftn(unittest.TestCase):
     def test_ifftn_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
@@ -487,7 +487,7 @@ class TestFftn(unittest.TestCase):
     def test_ifftn_overwrite_plan(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if scp is cupyx.scipy:
             import cupy.fft.config as config
@@ -507,7 +507,7 @@ class TestFftn(unittest.TestCase):
     def test_ifftn_plan_manager(self, xp, scp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         if scp is cupyx.scipy:
             from cupy.cuda.cufft import get_current_plan
@@ -526,7 +526,7 @@ class TestFftn(unittest.TestCase):
         import cupyx.scipy.fftpack as fftpack
         x = testing.shaped_random(self.shape, cupy, dtype)
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
-        if _default_plan_type(x, s=self.s, axes=self.axes) != 'nd':
+        if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return
         plan = fftpack.get_fft_plan(x, shape=self.s, axes=self.axes)
         with pytest.raises(RuntimeError) as ex, plan:

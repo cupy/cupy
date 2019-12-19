@@ -4,7 +4,7 @@ import numpy
 import six
 
 import cupy
-from cupy.core._kernel import create_reduction_func
+from cupy.core._reduction import create_reduction_func
 from cupy.core._kernel import create_ufunc
 from cupy.core._scalar import get_typename
 from cupy.core._ufuncs import elementwise_copy
@@ -554,7 +554,9 @@ _true_divide = create_ufunc(
 
     .. seealso:: :data:`numpy.true_divide`
 
-    ''')
+    ''',
+    out_ops=('ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+)
 
 
 if six.PY3:
