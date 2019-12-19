@@ -107,9 +107,17 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
         return output
     input = cupy.ascontiguousarray(input)
     weights = cupy.ascontiguousarray(weights, cupy.float64)
+
+    # The kernel needs only the non-zero kernel values and their coordinates.
+    # This allows us to use a single for loop to compute the ndim convolution.
+    # The loop will be over only the the non-zero entries of the filter.
+    wlocs = cupy.where(weights)
+    wvals = weights[wlocs]     # (nnz,) array of non-zero values
+    wlocs = cupy.stack(wlocs)  # (ndim, nnz) array of indices for these values
+
     return _get_correlete_kernel(
-        input.ndim, mode, cval, input.shape, tuple(wshape), tuple(origin))(
-        input, weights, output)
+        input.ndim, mode, cval, input.shape, weights.shape, wvals.size,
+        tuple(origin))(input, wlocs, wvals, output)
 
 
 def _generate_boundary_condition_ops(mode, ix, xsize):
@@ -148,60 +156,79 @@ def _generate_boundary_condition_ops(mode, ix, xsize):
     return ops
 
 
-def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
-    in_params = 'raw X x, raw W w'
-    out_params = 'Y y'
+def _generate_correlete_kernel(mode, cval, xshape, wshape, nnz, origin):
+    in_params = "raw X x, raw I wlocs, raw W wvals"
+    out_params = "Y y"
+
+    ndim = len(wshape)
 
     ops = []
-    ops.append('const int sx_{} = 1;'.format(ndim-1))
-    for j in range(ndim-1, 0, -1):
-        ops.append('int sx_{jm} = sx_{j} * {xsize_j};'.
-                   format(jm=j-1, j=j, xsize_j=xshape[j]))
+    ops.append('const int sx_{} = 1;'.format(ndim - 1))
+    for j in range(ndim - 1, 0, -1):
+        ops.append(
+            'int sx_{jm} = sx_{j} * {xsize_j};'.format(
+                jm=j - 1, j=j, xsize_j=xshape[j]
+            )
+        )
     ops.append('int _i = i;')
-    for j in range(ndim-1, -1, -1):
-        ops.append('int cx_{j} = _i % {xsize} - ({wsize} / 2) - ({origin});'
-                   .format(j=j, xsize=xshape[j], wsize=wshape[j],
-                           origin=origin[j]))
-        if (j > 0):
+    for j in range(ndim - 1, -1, -1):
+        ops.append(
+            'int cx_{j} = _i % {xsize} - ({wsize} / 2) - ({origin});'.format(
+                j=j, xsize=xshape[j], wsize=wshape[j], origin=origin[j]
+            )
+        )
+        if j > 0:
             ops.append('_i /= {xsize};'.format(xsize=xshape[j]))
     ops.append('W sum = (W)0;')
-    ops.append('int iw = 0;')
-
+    ops.append(
+        """
+        for (int iw = 0; iw < {nnz}; iw++)
+        {{
+        """.format(nnz=nnz)
+    )
     for j in range(ndim):
-        ops.append('''
-    for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)
-    {{
-        int ix_{j} = cx_{j} + iw_{j};'''.format(j=j, wsize=wshape[j]))
+        ops.append(
+            """
+                int iw_{j} = wlocs[iw + {j} * {nnz}];
+                int ix_{j} = cx_{j} + iw_{j};""".format(j=j, nnz=nnz)
+        )
         ixvar = 'ix_{}'.format(j)
         ops.append(_generate_boundary_condition_ops(mode, ixvar, xshape[j]))
         ops.append('        ix_{j} *= sx_{j};'.format(j=j))
-
     _cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
     _expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
-    ops.append('''
+    ops.append(
+        """
         if ({cond}) {{
-            sum += (W){cval} * w[iw];
+            sum += (W){cval} * wvals[iw];
         }} else {{
             int ix = {expr};
-            sum += (W)x[ix] * w[iw];
+            sum += (W)x[ix] * wvals[iw];
         }}
-        iw += 1;'''.format(cond=_cond, expr=_expr, cval=cval))
+        """.format(
+            cond=_cond, expr=_expr, cval=cval,
+        )
+    )
 
-    ops.append('} ' * ndim)
+    ops.append('}')
     ops.append('y = (Y)sum;')
     operation = '\n'.join(ops)
 
-    name = 'cupy_ndimage_correlate_{}d_{}_x{}_w{}'.format(
-        ndim, mode, '_'.join(['{}'.format(j) for j in xshape]),
-        '_'.join(['{}'.format(j) for j in wshape]))
+    name = 'cupy_ndimage_correlate_{}d_{}_x{}_w{}_masked'.format(
+        ndim,
+        mode,
+        '_'.join(['{}'.format(j) for j in xshape]),
+        '_'.join(['{}'.format(j) for j in wshape]),
+        nnz,
+    )
     return in_params, out_params, operation, name
 
 
 @util.memoize()
-def _get_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
+def _get_correlete_kernel(ndim, mode, cval, xshape, wshape, nnz, origin):
     # weights is always casted to float64 in order to get an output compatible
     # with SciPy, thought float32 might be sufficient when input dtype is low
     # precision.
     in_params, out_params, operation, name = _generate_correlete_kernel(
-        ndim, mode, cval, xshape, wshape, origin)
+        mode, cval, xshape, wshape, nnz, origin)
     return cupy.ElementwiseKernel(in_params, out_params, operation, name)
