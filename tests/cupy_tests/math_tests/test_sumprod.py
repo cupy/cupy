@@ -138,7 +138,7 @@ class TestSumprod(unittest.TestCase):
         if not xp.can_cast(src_dtype, dst_dtype):
             return xp.array([])  # skip
         a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
-        return a.sum(axis=1, dtype=dst_dtype, keepdims=True)
+        return a.sum(axis=2, dtype=dst_dtype, keepdims=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
