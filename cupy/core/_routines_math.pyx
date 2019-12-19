@@ -554,7 +554,9 @@ _true_divide = create_ufunc(
 
     .. seealso:: :data:`numpy.true_divide`
 
-    ''')
+    ''',
+    out_ops=('ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+)
 
 
 if six.PY3:
