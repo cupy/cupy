@@ -970,7 +970,7 @@ cdef class _Ops:
             if isinstance(t, tuple):
                 typ, rt = t
                 if isinstance(rt, tuple):
-                    rt = tuple([i or j for i, j in zip(rt, routine)])
+                    rt = tuple([r1 or r2 for r1, r2 in zip(rt, routine)])
             else:
                 assert isinstance(t, str)
                 typ, rt = t, routine
@@ -983,11 +983,11 @@ cdef class _Ops:
             use_raw_value = _check_should_use_min_scalar(in_args)
             if use_raw_value:
                 in_types = tuple([
-                    i.dtype.type if isinstance(i, ndarray)
-                    else _min_scalar_type(i)
-                    for i in in_args])
+                    a.dtype.type if isinstance(a, ndarray)
+                    else _min_scalar_type(a)
+                    for a in in_args])
             else:
-                in_types = tuple([i.dtype.type for i in in_args])
+                in_types = tuple([a.dtype.type for a in in_args])
             op = cache.get(in_types, ())
             if op is ():
                 op = self._guess_routine_from_in_types(in_types)
@@ -1001,7 +1001,7 @@ cdef class _Ops:
         if op is not None:
             return op
         if dtype is None:
-            dtype = tuple([i.dtype.type for i in in_args])
+            dtype = tuple([a.dtype.type for a in in_args])
         raise TypeError('Wrong type (%s) of arguments for %s' %
                         (dtype, name))
 
