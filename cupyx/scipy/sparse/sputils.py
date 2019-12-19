@@ -19,8 +19,7 @@ def isscalarlike(x):
 
 
 def get_index_dtype(arrays=(), maxval=None, check_contents=False):
-    """
-    Based on input (integer) arrays `a`, determine a suitable index data
+    """Based on input (integer) arrays ``a``, determines a suitable index data
     type that can hold the data in the arrays.
 
     Args:

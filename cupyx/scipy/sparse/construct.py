@@ -4,7 +4,7 @@ from cupyx.scipy.sparse import coo
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import csr
 from cupyx.scipy.sparse import dia
-from cupyx.scipy.sparse.sputils import get_index_dtype, upcast, isscalarlike
+from cupyx.scipy.sparse import sputils
 
 
 def eye(m, n=None, k=0, dtype='d', format=None):
@@ -89,15 +89,14 @@ def spdiags(data, diags, m, n, format=None):
 
 
 def _compressed_sparse_stack(blocks, axis):
-    """
-    Stacking fast path for CSR/CSC matrices
+    """Fast path for stacking CSR/CSC matrices
     (i) vstack for CSR, (ii) hstack for CSC.
     """
     other_axis = 1 if axis == 0 else 0
     data = cupy.concatenate([b.data for b in blocks])
     constant_dim = blocks[0].shape[other_axis]
-    idx_dtype = get_index_dtype(arrays=[b.indptr for b in blocks],
-                                maxval=max(data.size, constant_dim))
+    idx_dtype = sputils.get_index_dtype(arrays=[b.indptr for b in blocks],
+                                        maxval=max(data.size, constant_dim))
     indices = cupy.empty(data.size, dtype=idx_dtype)
     indptr = cupy.empty(sum(b.shape[axis]
                             for b in blocks) + 1, dtype=idx_dtype)
@@ -125,8 +124,7 @@ def _compressed_sparse_stack(blocks, axis):
 
 
 def hstack(blocks, format=None, dtype=None):
-    """
-    Stack sparse matrices horizontally (column wise)
+    """Stacks sparse matrices horizontally (column wise)
 
     Args:
         blocks (sequence of cupyx.scipy.sparse.spmatrix):
@@ -138,7 +136,7 @@ def hstack(blocks, format=None, dtype=None):
             This choice is subject to change.
         dtype (dtype, optional):
             The data-type of the output matrix.  If not given, the dtype is
-            determined from that of `blocks`.
+            determined from that of ``blocks``.
 
     Returns:
         cupyx.scipy.sparse.spmatrix: the stacked sparse matrix
@@ -157,8 +155,7 @@ def hstack(blocks, format=None, dtype=None):
 
 
 def vstack(blocks, format=None, dtype=None):
-    """
-    Stack sparse matrices vertically (row wise)
+    """Stacks sparse matrices vertically (row wise)
     Args:
         blocks (sequence of cupyx.scipy.sparse.spmatrix)
             sparse matrices to stack
@@ -188,8 +185,7 @@ def vstack(blocks, format=None, dtype=None):
 
 
 def bmat(blocks, format=None, dtype=None):
-    """
-    Build a sparse matrix from sparse sub-blocks
+    """Builds a sparse matrix from sparse sub-blocks
     Args:
         blocks (array_like):
             Grid of sparse matrices with compatible shapes.
@@ -291,7 +287,7 @@ def bmat(blocks, format=None, dtype=None):
     nnz = sum(block.nnz for block in blocks_flat)
     if dtype is None:
         all_dtypes = [blk.dtype for blk in blocks_flat]
-        dtype = upcast(*all_dtypes) if all_dtypes else None
+        dtype = sputils.upcast(*all_dtypes) if all_dtypes else None
 
     row_offsets = cupy.cumsum(brow_lengths)
     col_offsets = cupy.cumsum(bcol_lengths)
@@ -299,12 +295,12 @@ def bmat(blocks, format=None, dtype=None):
     shape = (row_offsets[-1], col_offsets[-1])
 
     data = cupy.empty(nnz, dtype=dtype)
-    idx_dtype = get_index_dtype(maxval=max(shape))
+    idx_dtype = sputils.get_index_dtype(maxval=max(shape))
     row = cupy.empty(nnz, dtype=idx_dtype)
     col = cupy.empty(nnz, dtype=idx_dtype)
 
     nnz = 0
-    ii, jj = cupy.nonzero(block_mask)
+    ii, jj = cupy.nonzero(block_mask)  # synchronizes current stream
     for i, j in zip(ii, jj):
         B = blocks[int(i)][int(j)]
         idx = slice(nnz, nnz + B.nnz)
@@ -437,9 +433,9 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
         Repeated diagonal offsets are disallowed.
     """
     # if offsets is not a sequence, assume that there's only one diagonal
-    if isscalarlike(offsets):
+    if sputils.isscalarlike(offsets):
         # now check that there's actually only one diagonal
-        if len(diagonals) == 0 or isscalarlike(diagonals[0]):
+        if len(diagonals) == 0 or sputils.isscalarlike(diagonals[0]):
             diagonals = [cupy.atleast_1d(diagonals)]
         else:
             raise ValueError('Different number of diagonals and offsets.')
