@@ -57,6 +57,7 @@ class TestRandint2(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_bound_overflow(self):
+        # 100 - (-100) exceeds the range of int8
         val = random.randint(numpy.int8(-100), numpy.int8(100), size=20).get()
         self.assertEqual(val.shape, (20,))
         self.assertGreaterEqual(val.min(), -100)
