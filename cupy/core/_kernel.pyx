@@ -969,6 +969,8 @@ cdef class _Ops:
         for t in ops:
             if isinstance(t, tuple):
                 typ, rt = t
+                if isinstance(rt, tuple):
+                    rt = tuple([i or j for i, j in zip(rt, routine)])
             else:
                 assert isinstance(t, str)
                 typ, rt = t, routine
