@@ -214,7 +214,7 @@ def _generate_correlete_kernel(mode, cval, xshape, wshape, nnz, origin):
     ops.append('y = (Y)sum;')
     operation = '\n'.join(ops)
 
-    name = 'cupy_ndimage_correlate_{}d_{}_x{}_w{}_masked'.format(
+    name = 'cupy_ndimage_correlate_{}d_{}_x{}_w{}_nnz{}'.format(
         ndim,
         mode,
         '_'.join(['{}'.format(j) for j in xshape]),
