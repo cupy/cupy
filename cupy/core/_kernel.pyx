@@ -684,32 +684,8 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
             max_array_kind >= max_scalar_kind)
 
 
-<<<<<<< HEAD
-cdef tuple _guess_routine(name, dict cache, list ops, list in_args, dtype):
-=======
-cdef dict _mst_unsigned_to_signed = {
-    i: (numpy.iinfo(j).max, (i, j))
-    for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
-                 for i in "BHILQ"]}
-cdef _numpy_min_scalar_type = numpy.min_scalar_type
-
-cdef _min_scalar_type(x):
-    # A non-negative integer may have two locally minimum scalar
-    # types: signed/unsigned integer.
-    # Return both for can_cast, while numpy.min_scalar_type only returns
-    # the unsigned type.
-    t = _numpy_min_scalar_type(x)
-    dt = t.type
-    if t.kind == 'u':
-        m, dt2 = <tuple>_mst_unsigned_to_signed[dt]
-        if x <= m:
-            return dt2
-    return dt
-
-
 cdef tuple _guess_routine(
         str name, dict cache, list ops, list in_args, dtype, list out_ops):
->>>>>>> b544536a3... Merge pull request #2076 from okuta/fix-true-divide
     if dtype is None:
         use_raw_value = _check_should_use_min_scalar(in_args)
         if use_raw_value:
