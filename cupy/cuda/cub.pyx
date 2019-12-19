@@ -8,6 +8,7 @@ import numpy
 
 from cupy.core.core cimport ndarray, _internal_ascontiguousarray
 from cupy.core.core cimport _internal_asfortranarray
+from cupy.core.internal cimport _contig_axes
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream
 from cupy.cuda.driver cimport Stream as Stream_t
@@ -62,20 +63,6 @@ cdef extern from 'cupy_cub.h' nogil:
 ###############################################################################
 # Python interface
 ###############################################################################
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cpdef bint _contig_axes(tuple axes):
-    # True if the specified axes are in ascending order without gaps
-    cdef Py_ssize_t n
-    cdef bint contig = True
-    for n in range(1, len(axes)):
-        contig = (axes[n] - axes[n - 1]) == 1
-        if not contig:
-            break
-    return contig
-
 
 cdef tuple _get_output_shape(ndarray arr, tuple out_axis, bint keepdims):
     cdef tuple out_shape
