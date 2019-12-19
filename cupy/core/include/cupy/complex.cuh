@@ -29,23 +29,31 @@ __host__ __device__ bool isnan(complex<T> x) {
     return isnan(x.real()) || isnan(x.imag());
 }
 
-template<typename T> __device__ bool isinf(complex<T> x) {
+template<typename T>
+__host__ __device__ bool isinf(complex<T> x) {
     return isinf(x.real()) || isinf(x.imag());
 }
-template<typename T> __device__ bool isfinite(complex<T> x) {
+
+template<typename T>
+__host__ __device__ bool isfinite(complex<T> x) {
     return isfinite(x.real()) && isfinite(x.imag());
 }
 
-template<typename T> __device__ complex<T> log1p(complex<T> x) {
+template<typename T>
+__host__ __device__ complex<T> log1p(complex<T> x) {
     x += 1;
     return log(x);
 }
-template<typename T> __device__ complex<T> log2(complex<T> x) {
+
+template<typename T>
+__host__ __device__ complex<T> log2(complex<T> x) {
     complex<T> y = log(x);
     y /= log(T(2));
     return y;
 }
-template<typename T> __device__ complex<T> expm1(complex<T> x) {
+
+template<typename T>
+__host__ __device__ complex<T> expm1(complex<T> x) {
     complex<T> y = exp(x);
     y -= 1;
     return y;
@@ -85,7 +93,8 @@ __host__ __device__ complex<T> max(complex<T> x, complex<T> y) {
     }
 }
 
-template<typename T> __device__ complex<T> rint(complex<T> x) {
+template<typename T>
+__host__ __device__ complex<T> rint(complex<T> x) {
     return complex<T>(rint(x.real()), rint(x.imag()));
 }
 

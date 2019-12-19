@@ -22,6 +22,7 @@
 namespace thrust {
 
 /* --- Constructors --- */
+// TODO(leofang): support more kinds of constructors from upstream
 
 template <typename T>
 inline __host__ __device__ complex<T>::complex(const T& re, const T& im) {
@@ -39,18 +40,17 @@ inline __host__ __device__ complex<T>::complex(const complex<X>& z) {
 }
 
 /* --- Compound Assignment Operators --- */
+// TODO(leofang): support operators with argument of type T, see upstream
 
 template <typename T>
 __host__ __device__ inline complex<T>& complex<T>::operator+=(const complex<T> z) {
-  real(real() + z.real());
-  imag(imag() + z.imag());
+  *this = *this + z;
   return *this;
 }
 
 template <typename T>
 __host__ __device__ inline complex<T>& complex<T>::operator-=(const complex<T> z) {
-  real(real() - z.real());
-  imag(imag() - z.imag());
+  *this = *this - z;
   return *this;
 }
 
@@ -70,32 +70,23 @@ __host__ __device__ inline complex<T>& complex<T>::operator/=(const complex<T> z
 
 template <typename T>
 __host__ __device__ inline bool operator==(const complex<T>& lhs,
-                                  const complex<T>& rhs) {
-  if (lhs.real() == rhs.real() && lhs.imag() == rhs.imag()) {
-    return true;
-  }
-  return false;
+                                           const complex<T>& rhs) {
+  return lhs.real() == rhs.real() && lhs.imag() == rhs.imag();
 }
 
 template <typename T>
 __host__ __device__ inline bool operator==(const T& lhs, const complex<T>& rhs) {
-  if (lhs == rhs.real() && rhs.imag() == 0) {
-    return true;
-  }
-  return false;
+  return lhs == rhs.real() && rhs.imag() == 0;
 }
 
 template <typename T>
 __host__ __device__ inline bool operator==(const complex<T>& lhs, const T& rhs) {
-  if (lhs.real() == rhs && lhs.imag() == 0) {
-    return true;
-  }
-  return false;
+  return lhs.real() == rhs && lhs.imag() == 0;
 }
 
 template <typename T>
 __host__ __device__ inline bool operator!=(const complex<T>& lhs,
-                                  const complex<T>& rhs) {
+                                           const complex<T>& rhs) {
   return !(lhs == rhs);
 }
 
