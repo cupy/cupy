@@ -60,7 +60,7 @@ class TestRandint2(unittest.TestCase):
         val = random.randint(numpy.int8(-100), numpy.int8(100), size=20).get()
         self.assertEqual(val.shape, (20,))
         self.assertGreaterEqual(val.min(), -100)
-        self.assertLess(val.min(), 100)
+        self.assertLess(val.max(), 100)
 
     @condition.repeat(3, 10)
     def test_bound_float1(self):
