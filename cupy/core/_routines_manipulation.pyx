@@ -374,7 +374,7 @@ cpdef array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
         stride = 0
     for index in indices:
         index = min(index, size)
-        shape[axis] = index - prev
+        shape[axis] = max(index - prev, 0)
         v = ary.view()
         v.data = ary.data + prev * stride
         # TODO(niboshi): Confirm update_x_contiguity flags
