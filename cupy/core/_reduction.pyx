@@ -1,13 +1,13 @@
 from cpython cimport sequence
 
 from cupy.core._dtype cimport get_dtype
+from cupy.core cimport _kernel
 from cupy.core._kernel cimport _broadcast
 from cupy.core._kernel cimport _check_array_device_id
 from cupy.core._kernel cimport _get_args_info
 from cupy.core._kernel cimport _get_kernel_params
 from cupy.core._kernel cimport _get_out_args
 from cupy.core._kernel cimport _get_out_args_with_params
-from cupy.core._kernel cimport _guess_routine
 from cupy.core._kernel cimport _preprocess_args
 from cupy.core._kernel cimport _reduce_dims
 from cupy.core._kernel cimport ParameterInfo
@@ -330,31 +330,14 @@ cdef class _AbstractReductionKernel:
 
 cpdef _SimpleReductionKernel create_reduction_func(
         name, ops, routine=None, identity=None, preamble=''):
-    _ops = []
-    for t in ops:
-        if not isinstance(t, tuple):
-            typ = t
-            rt = routine
-        else:
-            typ, rt = t
-            rt = tuple([i or j for i, j in zip(rt, routine)])
-
-        types = typ.split('->')
-        if len(types) == 1:
-            in_types = out_types = tuple(types)
-        else:
-            in_types, out_types = map(tuple, types)
-        in_types = tuple([get_dtype(t).type for t in in_types])
-        out_types = tuple([get_dtype(t).type for t in out_types])
-        _ops.append((in_types, out_types, rt))
-
-    return _SimpleReductionKernel(name, _ops, identity, preamble)
+    ops = _kernel._Ops.from_tuples(ops, routine)
+    return _SimpleReductionKernel(name, ops, identity, preamble)
 
 
 cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
     cdef:
-        readonly object _ops
+        readonly _kernel._Ops _ops
         readonly _preamble
         readonly int nin
         readonly int nout
@@ -362,7 +345,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         readonly str _output_expr
         readonly dict _routine_cache
 
-    def __init__(self, name, ops, identity, preamble):
+    def __init__(self, name, _kernel._Ops ops, identity, preamble):
         super().__init__(
             name,
             '' if identity is None else str(identity),
@@ -408,19 +391,19 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
+        cdef _kernel._Op op
 
-        in_types, out_types, routine = _guess_routine(
-            self.name, self._routine_cache, self._ops, in_args, dtype,
-            self._ops)
-        map_expr, reduce_expr, post_map_expr, reduce_type = routine
+        op = self._ops.guess_routine(
+            self.name, self._routine_cache, in_args, dtype, self._ops)
+        map_expr, reduce_expr, post_map_expr, reduce_type = op.routine
 
         if reduce_type is None:
-            reduce_type = _get_typename(out_types[0])
+            reduce_type = _get_typename(op.out_types[0])
 
         if out_args:
             out_type = out_args[0].dtype.type
         else:
-            out_type = out_types[0]
+            out_type = op.out_types[0]
 
         types = (
             ('type_in0_raw', in_args[0].dtype.type),
@@ -428,7 +411,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
         return (
             map_expr, reduce_expr, post_map_expr,
-            in_types, out_types, reduce_type,
+            op.in_types, op.out_types, reduce_type,
             types)
 
     cdef list _get_out_args(
