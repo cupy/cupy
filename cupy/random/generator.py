@@ -636,16 +636,13 @@ class RandomState(object):
             return cupy.array(())
 
         sample = cupy.empty((n,), dtype=dtype)
-        # 32-bit RNG will be called to fill 32-bit or 64-bit `sample`
-        generate_args = (
-            self._generator,
-            sample.data.ptr,
-            sample.view(dtype=numpy.uint32).size,
-        )
+        size32 = sample.view(dtype=numpy.uint32).size
         n_rem = n  # The number of remaining elements to sample
         ret = None
         while n_rem > 0:
-            curand.generate(*generate_args)
+            # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
+            curand.generate(
+                self._generator, sample.data.ptr, size32)
             # Drop the samples that exceed the upper limit
             sample &= mask
             success = sample <= mx
