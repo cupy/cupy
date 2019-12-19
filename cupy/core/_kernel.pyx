@@ -780,7 +780,7 @@ cdef class ufunc:
         self.nout = nout
         self.nargs = nin + nout
         self._ops = ops
-        self._out_ops = ops if out_ops is None else out_ops
+        self._out_ops = out_ops
         self._preamble = preamble
         self._loop_prep = loop_prep
         self.__doc__ = doc
@@ -979,6 +979,7 @@ cdef class _Ops:
 
     cdef _Op guess_routine(
             self, str name, dict cache, list in_args, dtype, _Ops out_ops):
+        cdef _Ops ops_
         if dtype is None:
             use_raw_value = _check_should_use_min_scalar(in_args)
             if use_raw_value:
@@ -995,7 +996,8 @@ cdef class _Ops:
         else:
             op = cache.get(dtype, ())
             if op is ():
-                op = out_ops._guess_routine_from_dtype(dtype)
+                ops_ = out_ops or self
+                op = ops_._guess_routine_from_dtype(dtype)
                 cache[dtype] = op
 
         if op is not None:
