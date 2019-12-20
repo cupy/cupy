@@ -176,9 +176,9 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
         ops.append(_generate_boundary_condition_ops(mode, ixvar, xshape[j]))
         ops.append('        ix_{j} *= sx_{j};'.format(j=j))
 
-    ops.append('W wval = w[iw];')
     ops.append("""
-    if (wval == 0) {{
+    W wval = w[iw];
+    if (wval == (W)0) {{
         iw += 1;
         continue;
     }}""")
