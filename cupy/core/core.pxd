@@ -87,14 +87,6 @@ cdef class ndarray:
     cpdef object toDlpack(self)
 
 
-cdef class Indexer:
-    cdef:
-        readonly Py_ssize_t size
-        readonly tuple shape
-
-    cdef CPointer get_pointer(self)
-
-
 cpdef ndarray _internal_ascontiguousarray(ndarray a)
 cpdef ndarray _internal_asfortranarray(ndarray a)
 cpdef ndarray ascontiguousarray(ndarray a, dtype=*)

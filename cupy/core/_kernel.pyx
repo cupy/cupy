@@ -15,12 +15,12 @@ from libcpp cimport vector
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
+from cupy.core cimport _carray
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport _convert_object_with_cuda_array_interface
 from cupy.core.core cimport compile_with_cache
-from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.core._memory_range cimport may_share_bounds
@@ -108,7 +108,7 @@ cpdef tuple _get_args_info(list args):
     ret = []
     for a in args:
         t = type(a)
-        if t is Indexer:
+        if t is _carray.Indexer:
             dtype = None
         elif t is _scalar.CScalar:
             dtype = (<_scalar.CScalar>a).get_numpy_type()
@@ -125,7 +125,7 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
         p = params[i]
         type, dtype, ndim = <tuple>(args_info[i])
         is_array = type is ndarray
-        if type is Indexer:
+        if type is _carray.Indexer:
             t = 'CIndexer<%d>' % ndim
         else:
             t = _get_typename(dtype)
@@ -629,7 +629,7 @@ cdef class ElementwiseKernel:
 
         if self.reduce_dims:
             shape = _reduce_dims(inout_args, self.params, shape)
-        indexer = Indexer(shape)
+        indexer = _carray.Indexer(shape)
         inout_args.append(indexer)
 
         args_info = _get_args_info(inout_args)
@@ -894,7 +894,7 @@ cdef class ufunc:
                               _scalar.get_scalar_from_numpy(x, t))
         inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
-        indexer = Indexer(shape)
+        indexer = _carray.Indexer(shape)
         inout_args.append(indexer)
         args_info = _get_args_info(inout_args)
 
@@ -909,7 +909,7 @@ cdef class ufunc:
             dtype = str(numpy.dtype(dtype))
             if t is _scalar.CScalar:
                 inout_type_words.append(dtype.rstrip('0123456789'))
-            elif t is not Indexer:
+            elif t is not _carray.Indexer:
                 inout_type_words.append(dtype)
         return '{}__{}'.format(self.name, '_'.join(inout_type_words))
 

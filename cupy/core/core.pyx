@@ -1,7 +1,10 @@
 # distutils: language = c++
 
 from __future__ import division
+import os
+import re
 import sys
+import warnings
 
 import ctypes
 import numpy
@@ -16,6 +19,7 @@ from cupy.core._reduction import ReductionKernel
 from cupy.core._ufuncs import elementwise_copy
 from cupy.core._ufuncs import elementwise_copy_where
 from cupy.core import flags
+from cupy import cuda
 from cupy.cuda import device
 from cupy.cuda import memory as memory_module
 
@@ -27,6 +31,7 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
 
+from cupy.core cimport _carray
 from cupy.core cimport _dtype
 from cupy.core._dtype cimport get_dtype
 from cupy.core._kernel cimport create_ufunc
@@ -44,9 +49,6 @@ from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
-
-
-DEF MAX_NDIM = 25
 
 
 @cython.profile(False)
@@ -273,7 +275,7 @@ cdef class ndarray:
         definition of C type is written in ``cupy/carray.cuh``.
 
         """
-        return CArray(self)
+        return _CArray_from_ndarray(self)
 
     # -------------------------------------------------------------------------
     # Array conversion
@@ -1599,9 +1601,7 @@ cdef class ndarray:
             self._update_c_contiguity()
 
     cdef function.CPointer get_pointer(self):
-        cdef CArray ret = CArray.__new__(CArray)
-        ret._init(self)
-        return ret
+        return _CArray_from_ndarray(self)
 
     cpdef object toDlpack(self):
         """Zero-copy conversion to a DLPack tensor.
@@ -1637,6 +1637,15 @@ cdef class ndarray:
         return dlpack.toDlpack(self)
 
 
+cdef inline _carray.CArray _CArray_from_ndarray(ndarray arr):
+    # Creates CArray from ndarray.
+    # Note that this function cannot be defined in _carray.pxd because that
+    # would cause cyclic cimport dependencies.
+    cdef _carray.CArray carr = _carray.CArray.__new__(_carray.CArray)
+    carr.init(<void*>arr.data.ptr, arr.size, arr._shape, arr._strides)
+    return carr
+
+
 cpdef int _update_order_char(ndarray x, int order_char):
     # update order_char based on array contiguity
     if order_char == b'A':
@@ -1670,7 +1679,134 @@ cpdef vector.vector[Py_ssize_t] _get_strides_for_order_K(ndarray x, dtype,
 _HANDLED_TYPES = (ndarray, numpy.ndarray)
 
 
-include 'carray.pxi'
+# =============================================================================
+# compile_with_cache
+# =============================================================================
+# TODO(niboshi): Move it out of core.pyx
+
+cdef list _cupy_header_list = [
+    'cupy/complex.cuh',
+    'cupy/carray.cuh',
+    'cupy/atomics.cuh',
+]
+cdef str _cupy_header = ''.join(
+    ['#include <%s>\n' % i for i in _cupy_header_list])
+
+# This is indirect include header list.
+# These header files are subject to a hash key.
+cdef list _cupy_extra_header_list = [
+    'cupy/complex/complex.h',
+    'cupy/complex/math_private.h',
+    'cupy/complex/complex_inl.h',
+    'cupy/complex/arithmetic.h',
+    'cupy/complex/cproj.h',
+    'cupy/complex/cexp.h',
+    'cupy/complex/cexpf.h',
+    'cupy/complex/clog.h',
+    'cupy/complex/clogf.h',
+    'cupy/complex/cpow.h',
+    'cupy/complex/ccosh.h',
+    'cupy/complex/ccoshf.h',
+    'cupy/complex/csinh.h',
+    'cupy/complex/csinhf.h',
+    'cupy/complex/ctanh.h',
+    'cupy/complex/ctanhf.h',
+    'cupy/complex/csqrt.h',
+    'cupy/complex/csqrtf.h',
+    'cupy/complex/catrig.h',
+    'cupy/complex/catrigf.h',
+]
+
+cdef str _header_path_cache = None
+cdef str _header_source = None
+
+
+cpdef str _get_header_dir_path():
+    global _header_path_cache
+    if _header_path_cache is None:
+        # Cython cannot use __file__ in global scope
+        _header_path_cache = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), 'include'))
+    return _header_path_cache
+
+
+cpdef str _get_header_source():
+    global _header_source
+    if _header_source is None:
+        source = []
+        base_path = _get_header_dir_path()
+        for file_path in _cupy_header_list + _cupy_extra_header_list:
+            header_path = os.path.join(base_path, file_path)
+            with open(header_path) as header_file:
+                source.append(header_file.read())
+        _header_source = '\n'.join(source)
+    return _header_source
+
+
+# added at the module level for precompiling the regex
+_cucomplex_include_tokens = ['', '#', 'include', '<', r'cuComplex\.h', '>']
+_cucomplex_include_pattern = re.compile(r'\s*'.join(_cucomplex_include_tokens))
+
+
+cdef inline str _translate_cucomplex_to_thrust(str source):
+    lines = []
+    for line in source.splitlines(keepends=True):
+        if _cucomplex_include_pattern.match(line):
+            lines += '#include <cupy/cuComplex_bridge.h>  '\
+                     '// translate_cucomplex\n'
+        else:
+            lines += line
+    return ''.join(lines)
+
+
+cpdef function.Module compile_with_cache(
+        str source, tuple options=(), arch=None, cachd_dir=None,
+        prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False):
+    if translate_cucomplex:
+        source = _translate_cucomplex_to_thrust(source)
+        _cupy_header_list.append('cupy/cuComplex_bridge.h')
+        prepend_cupy_headers = True
+
+    if prepend_cupy_headers:
+        source = _cupy_header + source
+    extra_source = _get_header_source()
+    options += ('-I%s' % _get_header_dir_path(),)
+
+    # The variable _cuda_runtime_version is declared in cupy/core/core.pyx,
+    # but it might not have been set appropriately before coming here.
+    global _cuda_runtime_version
+    if _cuda_runtime_version < 0:
+        _cuda_runtime_version = runtime.runtimeGetVersion()
+
+    if _cuda_runtime_version >= 9000:
+        if 9020 <= _cuda_runtime_version < 9030:
+            bundled_include = 'cuda-9.2'
+        elif 10000 <= _cuda_runtime_version < 10010:
+            bundled_include = 'cuda-10.0'
+        elif 10010 <= _cuda_runtime_version < 10020:
+            bundled_include = 'cuda-10.1'
+        else:
+            # CUDA v9.0, v9.1 or versions not yet supported.
+            bundled_include = None
+
+        cuda_path = cuda.get_cuda_path()
+
+        if bundled_include is None and cuda_path is None:
+            raise RuntimeError(
+                'Failed to auto-detect CUDA root directory. '
+                'Please specify `CUDA_PATH` environment variable if you '
+                'are using CUDA v9.0, v9.1 or versions not yet supported by '
+                'CuPy.')
+
+        if bundled_include is not None:
+            options += ('-I ' + os.path.join(
+                _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
+
+        if cuda_path is not None:
+            options += ('-I ' + os.path.join(cuda_path, 'include'),)
+
+    return cuda.compile_with_cache(source, options, arch, cachd_dir,
+                                   extra_source, backend)
 
 
 # =============================================================================
