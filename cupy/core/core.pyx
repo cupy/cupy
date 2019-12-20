@@ -2776,7 +2776,7 @@ not_equal = create_comparison(
 
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
     cdef Py_ssize_t sh, st
-    cdef dict desc = a.__cuda_array_interface__
+    cdef object desc = a.__cuda_array_interface__
     cdef tuple shape = desc['shape']
     cdef int dev_id = -1
     cdef int nbytes
