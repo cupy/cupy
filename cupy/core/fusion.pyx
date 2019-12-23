@@ -499,8 +499,9 @@ class _FusionHistory(object):
 
     def set_reduce_op(self, raw, arg, kwargs):
         assert self.reduce_op is None
-        for op in raw._ops:
-            (input_type,), (output_type,), _ = op
+        for op in raw._ops.ops:
+            input_type, = op.in_types
+            output_type, = op.out_types
             if numpy.can_cast(arg.dtype.type, input_type):
                 return_dtype = numpy.dtype(output_type)
                 self.premap_ret = self._get_fusion_var(arg)._var
@@ -618,9 +619,10 @@ class _FusionHistory(object):
 
         # Typecast and add an operation
         can_cast = can_cast1 if _should_use_min_scalar(var_list) else can_cast2
-        for in_dtypes, out_dtypes, op in ufunc._ops:
-            in_dtypes = [numpy.dtype(t) for t in in_dtypes]
-            out_dtypes = [numpy.dtype(t) for t in out_dtypes]
+        # TODO(asi1024): Fix to use ``guess_routine``.
+        for op in ufunc._ops.ops:
+            in_dtypes = [numpy.dtype(t) for t in op.in_types]
+            out_dtypes = [numpy.dtype(t) for t in op.out_types]
             if can_cast(var_list, in_dtypes):
                 ret = []
                 for i in six.moves.range(nout):
@@ -645,7 +647,7 @@ class _FusionHistory(object):
                              for i, _ in enumerate(in_vars)]
                 out_params = [(out_dtypes[i], 'out{}'.format(i))
                               for i, _ in enumerate(out_vars)]
-                subm = _Submodule(ufunc, in_params, out_params, op)
+                subm = _Submodule(ufunc, in_params, out_params, op.routine)
                 self.add_op(subm, [v._var for v in in_vars + out_vars])
                 return ret[0] if len(ret) == 1 else tuple(ret)
         in_dtypes = [v.dtype for v in in_vars]
@@ -795,11 +797,11 @@ class _FusionHistory(object):
                 name=name)
             return kernel, {}
         else:
-            _, (postmap_type,), (_, reduce_code, postmap_cast_code,
-                                 reduce_ctype) = self.reduce_op
+            _, reduce_expr, postmap_expr, reduce_ctype = self.reduce_op.routine
             if reduce_ctype is None:
                 reduce_ctype = 'type_in0_raw'
 
+            postmap_type, = self.reduce_op.out_types
             postmap_dtype = numpy.dtype(postmap_type)
             postmap_ctype = _dtype_to_ctype[postmap_dtype]
 
@@ -819,14 +821,14 @@ class _FusionHistory(object):
             submodule_code += 'typedef {} type_out0_raw;\n'.format(
                 postmap_ctype)
             submodule_code += self._emit_postmap_cast_code(
-                reduce_ctype, postmap_dtype, postmap_cast_code)
+                reduce_ctype, postmap_dtype, postmap_expr)
             submodule_code += self._emit_postmap_code(out_params, postmap_code)
 
             kernel = _reduction.ReductionKernel(
                 in_params_code,
                 out_params_code,
                 '_pre_map({})'.format(', '.join([repr(p) for p in in_params])),
-                reduce_code,
+                reduce_expr,
                 '_post_map(_postmap_cast(a), {})'.format(
                     ', '.join([repr(p) for p in out_params])),
                 self.reduce_identity,

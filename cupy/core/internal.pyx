@@ -357,3 +357,16 @@ cdef _broadcast_core(list arrays, vector.vector[Py_ssize_t]& shape):
 
         # TODO(niboshi): Confirm update_x_contiguity flags
         arrays[i] = a._view(shape, strides, True, True)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef bint _contig_axes(tuple axes):
+    # Indicate if the specified axes are in ascending order without gaps.
+    cdef Py_ssize_t n
+    cdef bint contig = True
+    for n in range(1, len(axes)):
+        contig = (axes[n] - axes[n - 1]) == 1
+        if not contig:
+            break
+    return contig
