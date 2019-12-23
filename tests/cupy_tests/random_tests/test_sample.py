@@ -19,6 +19,21 @@ class TestRandint(unittest.TestCase):
         with self.assertRaises(ValueError):
             random.randint(100, 1)
 
+    def test_lo_hi_equal(self):
+        with self.assertRaises(ValueError):
+            random.randint(3, 3, size=0)
+
+        with self.assertRaises(ValueError):
+            # int(-0.2) is not less than int(0.3)
+            random.randint(-0.2, 0.3)
+
+    def test_lo_hi_nonrandom(self):
+        a = random.randint(-0.9, 1.1, size=3)
+        testing.assert_array_equal(a, cupy.full((3,), 0))
+
+        a = random.randint(-1.1, -0.9, size=(2, 2))
+        testing.assert_array_equal(a, cupy.full((2, 2), -1))
+
     def test_zero_sizes(self):
         a = random.randint(10, size=(0,))
         testing.assert_array_equal(a, cupy.array(()))
@@ -46,6 +61,33 @@ class TestRandint2(unittest.TestCase):
             self.assertEqual(val.shape, ())
         self.assertEqual(min(vals), 0)
         self.assertEqual(max(vals), 1)
+
+    @condition.repeat(3, 10)
+    def test_bound_overflow(self):
+        # 100 - (-100) exceeds the range of int8
+        val = random.randint(numpy.int8(-100), numpy.int8(100), size=20).get()
+        self.assertEqual(val.shape, (20,))
+        self.assertGreaterEqual(val.min(), -100)
+        self.assertLess(val.max(), 100)
+
+    @condition.repeat(3, 10)
+    def test_bound_float1(self):
+        # generate floats s.t. int(low) < int(high)
+        low, high = sorted(numpy.random.uniform(-5, 5, size=2))
+        low -= 1
+        high += 1
+        vals = [random.randint(low, high, (2, 3)).get() for _ in range(10)]
+        for val in vals:
+            self.assertEqual(val.shape, (2, 3))
+        self.assertEqual(min(_.min() for _ in vals), int(low))
+        self.assertEqual(max(_.max() for _ in vals), int(high) - 1)
+
+    def test_bound_float2(self):
+        vals = [random.randint(-1.0, 1.0, (2, 3)).get() for _ in range(10)]
+        for val in vals:
+            self.assertEqual(val.shape, (2, 3))
+        self.assertEqual(min(_.min() for _ in vals), -1)
+        self.assertEqual(max(_.max() for _ in vals), 0)
 
     @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
