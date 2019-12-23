@@ -579,11 +579,9 @@ class RandomState(object):
             Currently, only 32 bit or 64 bit integers can be sampled.
         """  # NOQA
         if size is None:
-            return self._interval(mx, 1).reshape(())
-        elif size == 0:
-            return cupy.array(())
+            size = ()
         elif isinstance(size, int):
-            size = (size, )
+            size = size,
 
         if mx == 0:
             return cupy.zeros(size, dtype=numpy.uint32)
@@ -605,7 +603,7 @@ class RandomState(object):
         n = functools.reduce(operator.mul, size, 1)
 
         if n == 0:
-            return cupy.array(())
+            return cupy.empty(size, dtype=dtype)
 
         sample = cupy.empty((n,), dtype=dtype)
         size32 = sample.view(dtype=numpy.uint32).size
@@ -1061,21 +1059,21 @@ class RandomState(object):
         """
         if high is None:
             lo = 0
-            hi = low
+            hi1 = int(low) - 1
         else:
-            lo = low
-            hi = high
+            lo = int(low)
+            hi1 = int(high) - 1
 
-        if lo >= hi:
+        if lo > hi1:
             raise ValueError('low >= high')
         if lo < cupy.iinfo(dtype).min:
             raise ValueError(
                 'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
-        if hi > cupy.iinfo(dtype).max + 1:
+        if hi1 > cupy.iinfo(dtype).max:
             raise ValueError(
                 'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
 
-        diff = hi - lo - 1
+        diff = hi1 - lo
         x = self._interval(diff, size).astype(dtype, copy=False)
         cupy.add(x, lo, out=x)
         return x
