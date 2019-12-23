@@ -685,7 +685,7 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
 
 
 cdef tuple _guess_routine(
-        str name, dict cache, list ops, list in_args, dtype, list out_ops):
+        name, dict cache, list ops, list in_args, dtype, list out_ops):
     if dtype is None:
         use_raw_value = _check_should_use_min_scalar(in_args)
         if use_raw_value:
