@@ -1188,9 +1188,27 @@ class TestRandint(RandomGeneratorTestCase):
     def test_randint_2(self):
         self.generate(3, 4, size=(3, 2))
 
-    def test_randint_3(self):
+    def test_randint_empty1(self):
         self.generate(3, 10, size=0)
 
+<<<<<<< HEAD
+=======
+    def test_randint_empty2(self):
+        self.generate(3, size=(4, 0, 5))
+
+    def test_randint_overflow(self):
+        self.generate(numpy.int8(-100), numpy.int8(100))
+
+    def test_randint_float1(self):
+        self.generate(-1.2, 3.4, 5)
+
+    def test_randint_float2(self):
+        self.generate(6.7, size=(2, 3))
+
+    def test_randint_int64_1(self):
+        self.generate(2**34, 2**40, 3)
+
+>>>>>>> c3a21bdc5... Merge pull request #2828 from toslunar/fix-randint
 
 @testing.gpu
 @testing.fix_random()
