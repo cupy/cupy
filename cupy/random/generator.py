@@ -1075,15 +1075,11 @@ class RandomState(object):
             raise ValueError(
                 'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
 
-<<<<<<< HEAD
-        diff = hi - lo - 1
+        diff = hi1 - lo
         if diff > cupy.iinfo(cupy.int32).max - cupy.iinfo(cupy.int32).min + 1:
             raise NotImplementedError(
                 'Sampling from a range whose extent is larger than int32 '
                 'range is currently not supported')
-=======
-        diff = hi1 - lo
->>>>>>> c3a21bdc5... Merge pull request #2828 from toslunar/fix-randint
         x = self._interval(diff, size).astype(dtype, copy=False)
         cupy.add(x, lo, out=x)
         return x

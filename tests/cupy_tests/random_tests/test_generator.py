@@ -1191,8 +1191,6 @@ class TestRandint(RandomGeneratorTestCase):
     def test_randint_empty1(self):
         self.generate(3, 10, size=0)
 
-<<<<<<< HEAD
-=======
     def test_randint_empty2(self):
         self.generate(3, size=(4, 0, 5))
 
@@ -1208,7 +1206,6 @@ class TestRandint(RandomGeneratorTestCase):
     def test_randint_int64_1(self):
         self.generate(2**34, 2**40, 3)
 
->>>>>>> c3a21bdc5... Merge pull request #2828 from toslunar/fix-randint
 
 @testing.gpu
 @testing.fix_random()
