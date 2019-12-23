@@ -228,7 +228,7 @@ class TestNonzero(unittest.TestCase):
 class TestNonzeroZeroDimension(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises(DeprecationWarning)
+    @testing.numpy_cupy_raises(accept_error=DeprecationWarning)
     def test_nonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
         return xp.nonzero(array)
