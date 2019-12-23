@@ -242,7 +242,8 @@ class simple_reduction_function(object):
             out_args = [out]
 
         in_types, out_types, routine = _guess_routine(
-            self.name, self._routine_cache, self._ops, in_args, dtype)
+            self.name, self._routine_cache, self._ops, in_args, dtype,
+            self._ops)
 
         reduce_axis, out_axis = _get_axis(axis, arr._shape.size())
         del axis  # to avoid bug
