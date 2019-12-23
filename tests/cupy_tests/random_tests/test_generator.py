@@ -1203,6 +1203,7 @@ class TestRandint(RandomGeneratorTestCase):
     def test_randint_float2(self):
         self.generate(6.7, size=(2, 3))
 
+    @unittest.skip('64bit randint is only supported from v8')
     def test_randint_int64_1(self):
         self.generate(2**34, 2**40, 3)
 
