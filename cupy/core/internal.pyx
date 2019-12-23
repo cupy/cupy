@@ -291,3 +291,16 @@ cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     else:
         raise TypeError('order not understood')
     return order_char
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef bint _contig_axes(tuple axes):
+    # Indicate if the specified axes are in ascending order without gaps.
+    cdef Py_ssize_t n
+    cdef bint contig = True
+    for n in range(1, len(axes)):
+        contig = (axes[n] - axes[n - 1]) == 1
+        if not contig:
+            break
+    return contig
