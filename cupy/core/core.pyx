@@ -740,7 +740,7 @@ cdef class ndarray:
     # -------------------------------------------------------------------------
     # Calculation
     # -------------------------------------------------------------------------
-    cpdef ndarray max(self, axis=None, out=None, dtype=None, keepdims=False):
+    cpdef ndarray max(self, axis=None, out=None, keepdims=False):
         """Returns the maximum along a given axis.
 
         .. seealso::
@@ -748,7 +748,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.max`
 
         """
-        return _statistics._ndarray_max(self, axis, out, dtype, keepdims)
+        return _statistics._ndarray_max(self, axis, out, None, keepdims)
 
     cpdef ndarray argmax(self, axis=None, out=None, dtype=None,
                          keepdims=False):
@@ -761,7 +761,7 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmax(self, axis, out, dtype, keepdims)
 
-    cpdef ndarray min(self, axis=None, out=None, dtype=None, keepdims=False):
+    cpdef ndarray min(self, axis=None, out=None, keepdims=False):
         """Returns the minimum along a given axis.
 
         .. seealso::
@@ -769,7 +769,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.min`
 
         """
-        return _statistics._ndarray_min(self, axis, out, dtype, keepdims)
+        return _statistics._ndarray_min(self, axis, out, None, keepdims)
 
     cpdef ndarray argmin(self, axis=None, out=None, dtype=None,
                          keepdims=False):
