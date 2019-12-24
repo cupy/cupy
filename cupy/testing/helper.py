@@ -563,11 +563,15 @@ numpy: %s''' % (str(cupy_result), str(numpy_result))
     return decorator
 
 
-def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
-                      accept_error=Exception):
+def numpy_cupy_raises(
+        accept_error, *, name='xp', sp_name=None, scipy_name=None):
     """Decorator that checks the NumPy and CuPy throw same errors.
 
     Args:
+         accept_error(Exception or tuple of Exception): Specify
+             acceptable errors. When both NumPy test and CuPy test raises the
+             same type of errors, and the type of the errors is specified with
+             this argument, the errors are ignored and not raised.
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          sp_name(str or None): Argument name whose value is either
@@ -576,12 +580,6 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
              the modules.
-         accept_error(bool, Exception or tuple of Exception): Specify
-             acceptable errors. When both NumPy test and CuPy test raises the
-             same type of errors, and the type of the errors is specified with
-             this argument, the errors are ignored and not raised.
-             If it is ``True`` all error types are acceptable.
-             If it is ``False`` no error is acceptable.
 
     Decorated test fixture is required throw same errors
     even if ``xp`` is ``numpy`` or ``cupy``.
@@ -589,6 +587,18 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
     assert isinstance(name, str)
     assert sp_name is None or isinstance(sp_name, str)
     assert scipy_name is None or isinstance(scipy_name, str)
+
+    while True:
+        if (isinstance(accept_error, type)
+                and issubclass(accept_error, Exception)):
+            break
+        if (isinstance(accept_error, tuple)
+                and all(isinstance(ex, type) for ex in accept_error)
+                and all(issubclass(ex, Exception) for ex in accept_error)):
+            break
+        raise TypeError(
+            'accept_error must be a subtype of Exception or a tuple of such '
+            'types.')
 
     def decorator(impl):
         @functools.wraps(impl)
