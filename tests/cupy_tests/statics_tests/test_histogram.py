@@ -148,3 +148,132 @@ class TestHistogram(unittest.TestCase):
     def test_bincount_too_small_minlength(self, xp, dtype):
         x = testing.shaped_arange((3,), xp, dtype)
         return xp.bincount(x, minlength=-1)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product(
+    {'bins': [
+        # Test monotonically increasing with in-bounds values
+        [1.5, 2.5, 4.0, 6.0],
+        # Explicit out-of-bounds for x values
+        [-1.0, 1.0, 2.5, 4.0, 20.0],
+        # Repeated values should yield right-most or left-most indexes
+        [0.0, 1.0, 1.0, 4.0, 4.0, 10.0],
+    ],
+        'increasing': [True, False],
+        'right': [True, False],
+        'shape': [(), (10,), (6, 3, 3)]})
+)
+class TestDigitize(unittest.TestCase):
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_digitize(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype)
+        bins = self.bins
+        if not self.increasing:
+            bins = bins[::-1]
+        bins = xp.array(bins)
+        y = xp.digitize(x, bins, right=self.right)
+        return y,
+
+
+@testing.gpu
+@testing.parameterize(
+    {'right': True},
+    {'right': False})
+class TestDigitizeNanInf(unittest.TestCase):
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_digitize_nan(self, xp):
+        x = testing.shaped_arange((14,), xp, xp.float32)
+        x[5] = float('nan')
+        bins = xp.array([1.0, 3.0, 5.0, 8.0, 12.0], xp.float32)
+        y = xp.digitize(x, bins, right=self.right)
+        return y,
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_digitize_nan_bins(self, xp):
+        x = testing.shaped_arange((14,), xp, xp.float32)
+        bins = xp.array([1.0, 3.0, 5.0, 8.0, float('nan')], xp.float32)
+        y = xp.digitize(x, bins, right=self.right)
+        return y,
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_digitize_nan_bins_repeated(self, xp):
+        x = testing.shaped_arange((14,), xp, xp.float32)
+        x[5] = float('nan')
+        bins = [1.0, 3.0, 5.0, 8.0, float('nan'), float('nan')]
+        bins = xp.array(bins, xp.float32)
+        y = xp.digitize(x, bins, right=self.right)
+        return y,
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_digitize_nan_bins_decreasing(self, xp):
+        x = testing.shaped_arange((14,), xp, xp.float32)
+        x[5] = float('nan')
+        bins = [float('nan'), 8.0, 5.0, 3.0, 1.0]
+        bins = xp.array(bins, xp.float32)
+        y = xp.digitize(x, bins, right=self.right)
+        return y,
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_digitize_nan_bins_decreasing_repeated(self, xp):
+        x = testing.shaped_arange((14,), xp, xp.float32)
+        x[5] = float('nan')
+        bins = [float('nan'), float('nan'), float('nan'), 5.0, 3.0, 1.0]
+        bins = xp.array(bins, xp.float32)
+        y = xp.digitize(x, bins, right=self.right)
+        return y,
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_digitize_all_nan_bins(self, xp):
+        x = testing.shaped_arange((14,), xp, xp.float32)
+        x[5] = float('nan')
+        bins = [float('nan'), float('nan'), float('nan'), float('nan')]
+        bins = xp.array(bins, xp.float32)
+        y = xp.digitize(x, bins, right=self.right)
+        return y,
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_inf(self, xp):
+        x = testing.shaped_arange((14,), xp, xp.float64)
+        x[5] = float('inf')
+        bins = xp.array([0, 1, 2, 4, 10])
+        y = xp.digitize(x, bins, right=self.right)
+        return y,
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_minf(self, xp):
+        x = testing.shaped_arange((14,), xp, xp.float64)
+        x[5] = float('-inf')
+        bins = xp.array([0, 1, 2, 4, 10])
+        y = xp.digitize(x, bins, right=self.right)
+        return y,
+
+
+@testing.gpu
+class TestDigitizeInvalid(unittest.TestCase):
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_digitize_complex(self, xp):
+        x = testing.shaped_arange((14,), xp, xp.complex)
+        bins = xp.array([1.0, 3.0, 5.0, 8.0, 12.0], xp.complex)
+        xp.digitize(x, bins)
+
+    @testing.with_requires('numpy>=1.10.0')
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_digitize_nd_bins(self, xp):
+        x = testing.shaped_arange((14,), xp, xp.float64)
+        bins = xp.array([[1], [2]])
+        xp.digitize(x, bins)
