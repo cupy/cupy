@@ -2526,16 +2526,11 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
         for sh, st in zip(shape, strides):
             nbytes = max(nbytes, abs(sh * st))
     else:
-<<<<<<< HEAD
         nbytes = internal.prod(shape) * dtype.itemsize
-    mem = memory_module.UnownedMemory(desc['data'][0], nbytes, a)
-=======
-        nbytes = internal.prod_sequence(shape) * dtype.itemsize
     # the v2 protocol sets ptr=0 for 0-size arrays, so we can't look up
     # the pointer attributes and must use the current device
     if nbytes == 0:
         dev_id = device.get_device_id()
     mem = memory_module.UnownedMemory(ptr, nbytes, a, dev_id)
->>>>>>> 2e736e334... Merge pull request #2802 from leofang/patch-2
     memptr = memory.MemoryPointer(mem, 0)
     return ndarray(shape, dtype, memptr, strides)
