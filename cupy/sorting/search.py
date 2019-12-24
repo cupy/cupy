@@ -20,6 +20,14 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
     Returns:
         cupy.ndarray: The indices of the maximum of ``a`` along an axis.
 
+    .. note::
+       ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
+       not in NumPy.
+
+    .. note::
+       ``axis`` argument accepts a tuple of ints, but this is specific to
+       CuPy. NumPy does not support it.
+
     .. seealso:: :func:`numpy.argmax`
 
     """
@@ -66,6 +74,14 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
 
     Returns:
         cupy.ndarray: The indices of the minimum of ``a`` along an axis.
+
+    .. note::
+       ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
+       not in NumPy.
+
+    .. note::
+       ``axis`` argument accepts a tuple of ints, but this is specific to
+       CuPy. NumPy does not support it.
 
     .. seealso:: :func:`numpy.argmin`
 
