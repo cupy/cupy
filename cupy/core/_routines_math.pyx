@@ -11,6 +11,7 @@ from cupy.core._ufuncs import elementwise_copy
 from cupy import util
 
 from cupy.core._dtype cimport get_dtype
+from cupy.core cimport _kernel
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 
@@ -358,9 +359,19 @@ _nanprod_complex_dtype = create_reduction_func(
      'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 cdef create_arithmetic(name, op, boolop, doc):
+    # boolop is either
+    #  - str (the operator for bool-bool inputs) or
+    #  - callable (a function to raise an error for bool-bool inputs).
+    if isinstance(boolop, str):
+        boolop_ = _kernel._Op.from_type_and_routine(
+            '??->?', 'out0 = in0 %s in1' % boolop)
+    else:
+        assert callable(boolop)
+        boolop_ = _kernel._Op.from_type_and_error_func('??->?', boolop)
+
     return create_ufunc(
         'cupy_' + name,
-        (('??->?', 'out0 = in0 %s in1' % boolop),
+        (boolop_,
          'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
          'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
          'DD->D'),
@@ -526,8 +537,14 @@ _power = create_ufunc(
     ''')
 
 
+def _subtract_boolean_error():
+    raise TypeError(
+        'cupy boolean subtract, the `-` operator, is deprecated, use the '
+        'bitwise_xor, the `^` operator, or the logical_xor function instead.')
+
+
 _subtract = create_arithmetic(
-    'subtract', '-', '^',
+    'subtract', '-', _subtract_boolean_error,
     '''Subtracts arguments elementwise.
 
     .. seealso:: :data:`numpy.subtract`
