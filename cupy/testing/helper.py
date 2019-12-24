@@ -1145,9 +1145,9 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
         return xp.asarray(numpy.random.randint(2, size=shape).astype(dtype))
     elif dtype.kind == 'c':
         a = numpy.random.rand(*shape) + 1j * numpy.random.rand(*shape)
-        return xp.asarray((a * scale).astype(dtype))
+        return xp.asarray(a * scale, dtype=dtype)
     else:
-        return xp.asarray((numpy.random.rand(*shape) * scale).astype(dtype))
+        return xp.asarray(numpy.random.rand(*shape) * scale, dtype=dtype)
 
 
 def empty(xp=cupy, dtype=numpy.float32):

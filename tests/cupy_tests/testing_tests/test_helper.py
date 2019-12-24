@@ -426,6 +426,21 @@ class TestShapedRandom(unittest.TestCase):
         self.assertTrue(self.xp.any(a.imag))
 
 
+@testing.parameterize(*testing.product({
+    'xp': [numpy, cupy],
+    'shape': [(3, 2), (), (3, 0, 2)],
+}))
+@testing.gpu
+class TestShapedRandomShape(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_shape(self, dtype):
+        a = testing.shaped_random(self.shape, self.xp, dtype)
+        self.assertIsInstance(a, self.xp.ndarray)
+        self.assertTrue(a.shape == self.shape)
+        self.assertTrue(a.dtype == dtype)
+
+
 class TestSkip(unittest.TestCase):
 
     @testing.numpy_cupy_allclose()
