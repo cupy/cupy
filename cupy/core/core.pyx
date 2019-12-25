@@ -2510,13 +2510,16 @@ not_equal = create_comparison(
 
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
     cdef Py_ssize_t sh, st
-    desc = a.__cuda_array_interface__
-    shape = desc['shape']
+    cdef object desc = a.__cuda_array_interface__
+    cdef tuple shape = desc['shape']
+    cdef int dev_id = -1
+    cdef int nbytes
+
+    ptr = desc['data'][0]
     dtype = numpy.dtype(desc['typestr'])
-    if 'mask' in desc:
-        mask = desc['mask']
-        if mask is not None:
-            raise ValueError('CuPy currently does not support masked arrays.')
+    mask = desc.get('mask')
+    if mask is not None:
+        raise ValueError('CuPy currently does not support masked arrays.')
     strides = desc.get('strides')
     if strides is not None:
         nbytes = 0
@@ -2524,6 +2527,10 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
             nbytes = max(nbytes, abs(sh * st))
     else:
         nbytes = internal.prod(shape) * dtype.itemsize
-    mem = memory_module.UnownedMemory(desc['data'][0], nbytes, a)
+    # the v2 protocol sets ptr=0 for 0-size arrays, so we can't look up
+    # the pointer attributes and must use the current device
+    if nbytes == 0:
+        dev_id = device.get_device_id()
+    mem = memory_module.UnownedMemory(ptr, nbytes, a, dev_id)
     memptr = memory.MemoryPointer(mem, 0)
     return ndarray(shape, dtype, memptr, strides)
