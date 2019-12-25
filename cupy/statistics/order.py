@@ -7,7 +7,7 @@ from cupy.core import fusion
 from cupy.logic import content
 
 
-def amin(a, axis=None, out=None, keepdims=False, dtype=None):
+def amin(a, axis=None, out=None, keepdims=False):
     """Returns the minimum of an array or the minimum along an axis.
 
     .. note::
@@ -22,7 +22,6 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
-        dtype: Data type specifier.
 
     Returns:
         cupy.ndarray: The minimum of ``a``, along the axis if specified.
@@ -35,13 +34,13 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
             raise NotImplementedError(
                 'cupy.amin does not support `keepdims` in fusion yet.')
         return fusion._call_reduction(_statistics.amin,
-                                      a, axis=axis, dtype=dtype, out=out)
+                                      a, axis=axis, out=out)
 
     # TODO(okuta): check type
-    return a.min(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return a.min(axis=axis, out=out, keepdims=keepdims)
 
 
-def amax(a, axis=None, out=None, keepdims=False, dtype=None):
+def amax(a, axis=None, out=None, keepdims=False):
     """Returns the maximum of an array or the maximum along an axis.
 
     .. note::
@@ -56,7 +55,6 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
-        dtype: Data type specifier.
 
     Returns:
         cupy.ndarray: The maximum of ``a``, along the axis if specified.
@@ -69,10 +67,10 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
             raise NotImplementedError(
                 'cupy.amax does not support `keepdims` in fusion yet.')
         return fusion._call_reduction(_statistics.amax,
-                                      a, axis=axis, dtype=dtype, out=out)
+                                      a, axis=axis, out=out)
 
     # TODO(okuta): check type
-    return a.max(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return a.max(axis=axis, out=out, keepdims=keepdims)
 
 
 def nanmin(a, axis=None, out=None, keepdims=False):

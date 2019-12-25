@@ -44,10 +44,10 @@ cdef class ndarray:
     cpdef ndarray argpartition(self, kth, axis=*)
     cpdef tuple nonzero(self)
     cpdef ndarray diagonal(self, offset=*, axis1=*, axis2=*)
-    cpdef ndarray max(self, axis=*, out=*, dtype=*, keepdims=*)
+    cpdef ndarray max(self, axis=*, out=*, keepdims=*)
     cpdef ndarray argmax(self, axis=*, out=*, dtype=*,
                          keepdims=*)
-    cpdef ndarray min(self, axis=*, out=*, dtype=*, keepdims=*)
+    cpdef ndarray min(self, axis=*, out=*, keepdims=*)
     cpdef ndarray argmin(self, axis=*, out=*, dtype=*,
                          keepdims=*)
     cpdef ndarray clip(self, a_min=*, a_max=*, out=*)
