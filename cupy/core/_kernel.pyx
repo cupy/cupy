@@ -337,7 +337,7 @@ cdef tuple _decide_params_type_core(
                       for p in in_params])
     out_types = tuple([type_dict[p.ctype] if p.dtype is None else p.dtype
                        for p in out_params])
-    return in_types, out_types, tuple(type_dict.items())
+    return in_types, out_types, tuple(sorted(type_dict.items()))
 
 
 cdef tuple _broadcast(list args, tuple params, bint use_size):
