@@ -359,24 +359,26 @@ class TestNumPyCuPyRaise(unittest.TestCase, NumPyCuPyDecoratorBase):
 
 class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
 
-    @helper.for_unsigned_dtypes('dtype1')
-    @helper.for_signed_dtypes('dtype2')
     @helper.numpy_cupy_allclose()
-    def correct_failure(self, xp, dtype1, dtype2):
+    def correct_failure(self, dtype1, dtype2, xp):
         if xp == numpy:
             return xp.array(-1, dtype=numpy.float32)
         else:
             return xp.array(-2, dtype=numpy.float32)
 
     @testing.with_requires('numpy>=1.16.1')
-    def test_correct_failure(self):
+    @helper.for_unsigned_dtypes('dtype1')
+    @helper.for_signed_dtypes('dtype2')
+    def test_correct_failure(self, dtype1, dtype2):
         with six.assertRaisesRegex(self, AssertionError, 'Mismatch: 100%'):
-            self.correct_failure()
+            self.correct_failure(dtype1, dtype2)
 
     @testing.with_requires('numpy<1.16.1')
-    def test_correct_failure_old_np(self):
+    @helper.for_unsigned_dtypes('dtype1')
+    @helper.for_signed_dtypes('dtype2')
+    def test_correct_failure_old_np(self, dtype1, dtype2):
         with six.assertRaisesRegex(self, AssertionError, 'mismatch 100\\.0%'):
-            self.correct_failure()
+            self.correct_failure(dtype1, dtype2)
 
     @helper.for_unsigned_dtypes('dtype1')
     @helper.for_signed_dtypes('dtype2')
