@@ -47,8 +47,11 @@ cdef ndarray _ndarray_real_setter(ndarray self, value):
 
 cdef ndarray _ndarray_imag_getter(ndarray self):
     if self.dtype.kind == 'c':
+        dtype = get_dtype(self.dtype.char.lower())
+        if self.size == 0:
+            return ndarray(shape=self._shape, dtype=dtype)
         view = ndarray(
-            shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
+            shape=self._shape, dtype=dtype,
             memptr=self.data + self.dtype.itemsize // 2,
             strides=self._strides)
         view.base = self.base if self.base is not None else self
