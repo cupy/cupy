@@ -748,6 +748,14 @@ cdef class ndarray:
                          keepdims=False):
         """Returns the indices of the maximum along a given axis.
 
+        .. note::
+           ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
+           not in NumPy.
+
+        .. note::
+           ``axis`` argument accepts a tuple of ints, but this is specific to
+           CuPy. NumPy does not support it.
+
         .. seealso::
            :func:`cupy.argmax` for full documentation,
            :meth:`numpy.ndarray.argmax`
@@ -768,6 +776,14 @@ cdef class ndarray:
     cpdef ndarray argmin(self, axis=None, out=None, dtype=None,
                          keepdims=False):
         """Returns the indices of the minimum along a given axis.
+
+        .. note::
+           ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
+           not in NumPy.
+
+        .. note::
+           ``axis`` argument accepts a tuple of ints, but this is specific to
+           CuPy. NumPy does not support it.
 
         .. seealso::
            :func:`cupy.argmin` for full documentation,
