@@ -4,6 +4,7 @@ import numpy
 
 from cupy.core import _errors
 from cupy.core import _kernel
+from cupy.core import _reduction
 from cupy.core import core
 from cupy.core import _fusion_interface
 from cupy.core import _fusion_variable
@@ -65,104 +66,23 @@ def _normalize_axis(axes, ndim):
     return tuple(sorted(res))
 
 
-_kind_score = {
-    'b': 0,
-    'u': 1,
-    'i': 1,
-    'f': 2,
-    'c': 2,
-}
+def _guess_routine(func, args, dtype):
+    new_args = []
+    for x in args:
+        if isinstance(x, _FusionCudaScalar):
+            new_args.append(x.dtype.type(0))
+        else:
+            new_args.append(core.ndarray((0,), x.dtype))
+    op = func._ops.guess_routine(
+        func.name, func._routine_cache, new_args, dtype, None)
+    in_dtype = tuple([numpy.dtype(t) for t in op.in_types])
+    out_dtype = tuple([numpy.dtype(t) for t in op.out_types])
+    return in_dtype, out_dtype, op.routine
 
 
 def _base(array):
     assert isinstance(array, core.ndarray)
     return array if array.base is None else array.base
-
-
-def _get_ufunc_dtypes_op(ufunc, in_params, dtype=None):
-    """Get the dtypes of parameters and operation code to be emitted.
-
-    Args:
-        ufunc(ufunc): The ufunc.
-        in_params(list of {_FusionCudaScalar or _FusionCudaArray}): The inputs.
-        dtype(dtype): The dtype specified by users.
-
-    Returns: A tuple of size 3. The first element indicates the dtypes of the
-        inputs, the second element indicates the dtypes of the outputs, and the
-        third element is the CUDA device function body of string type.
-    """
-    if dtype is not None:
-        raise NotImplementedError(
-            'dtype keyword argument is not supported, currently.')
-
-    # Corresponds to _checkshould_use_min_scalar in _kernel.pyx.
-    # This function decides which typecast rule to use.
-    max_array_kind = -2
-    max_scalar_kind = -1
-    for p in in_params:
-        kind = _kind_score[p.dtype.kind]
-        if isinstance(p, _FusionCudaArray):
-            max_array_kind = max(max_array_kind, kind)
-        elif isinstance(p, _FusionCudaScalar):
-            max_scalar_kind = max(max_scalar_kind, kind)
-        else:
-            assert False
-    _should_use_min_scalar = (
-        max_scalar_kind != -1 and max_array_kind >= max_scalar_kind)
-
-    for in_dtypes, out_dtypes, op in ufunc._ops:
-        in_dtypes = [numpy.dtype(t) for t in in_dtypes]
-        out_dtypes = [numpy.dtype(t) for t in out_dtypes]
-        can_cast = True
-        for param, dtype in zip(in_params, in_dtypes):
-            assert isinstance(param, (_FusionCudaScalar, _FusionCudaArray))
-            if _should_use_min_scalar and isinstance(param, _FusionCudaScalar):
-                if param.const_value is None:
-                    # This typecast is not safe.
-                    # The result of a typecast of an element-wise operation
-                    # between a numpy ndarray and a numpy scalar is not
-                    # decidable statically, because it depends on the value
-                    # of the scalar variable.
-                    cast_from = param.dtype.type(0)
-                else:
-                    cast_from = param.const_value
-            else:
-                cast_from = param.dtype
-            if not numpy.can_cast(cast_from, dtype):
-                can_cast = False
-                break
-        if can_cast:
-            return in_dtypes, out_dtypes, op
-
-    raise TypeError('Invalid type cast in \'{}\' dtypes={}'.format(
-        ufunc.name, [param.dtype for param in in_params]))
-
-
-def _get_reduction_dtypes_op(reduction, in_param, dtype=None):
-    """Get the dtypes of parameters and operation code to be emitted.
-
-    Args:
-        reduction(_SimpleReductionKernel): The reduction object.
-        in_param(_FusionCudaScalar or _FusionCudaArray): The input.
-        dtype(dtype): The dtype specified by users.
-
-    Returns: Similar to ``_get_ufunc_dtypes_op``.
-    """
-    assert isinstance(in_param, _FusionCudaArray)
-
-    for in_dtypes, out_dtypes, op in reduction._ops:
-        in_dtype, = [numpy.dtype(t) for t in in_dtypes]
-        out_dtype, = [numpy.dtype(t) for t in out_dtypes]
-
-        if dtype is None:
-            if numpy.can_cast(in_param.dtype, in_dtype):
-                return in_dtypes, out_dtypes, out_dtype, op
-        else:
-            if numpy.can_cast(dtype, in_dtype):
-                return in_dtypes, out_dtypes, out_dtype, op
-
-    raise TypeError('Invalid type cast in \'{}\' dtype={}'.format(
-        reduction.name, in_param.dtype))
 
 
 class _VariableConductor(object):
@@ -331,6 +251,7 @@ class _FusionHistory(object):
         # Parse Inputs.
         nin = ufunc.nin
         nout = ufunc.nout
+        dtype = kwargs.pop('dtype', None)
 
         if 'out' in kwargs and len(args) > nin:
             raise ValueError(
@@ -398,7 +319,8 @@ class _FusionHistory(object):
                 in_params[i] = self.vc.broadcast_to(p, out_ashape, out_rshape)
 
         # Get operation code from dtypes.
-        in_dtypes, out_dtypes, op = _get_ufunc_dtypes_op(ufunc, in_params)
+        in_dtypes, out_dtypes, expr = _guess_routine(ufunc, in_params, dtype)
+
         ret = []
         for i in range(nout):
             if i >= len(out_params):
@@ -429,7 +351,7 @@ class _FusionHistory(object):
         name = ufunc.name + '_' + str(len(self.op_list))
         dtypes = in_dtypes + out_dtypes
         subm = _fusion_device_func._SubmoduleUfunc(
-            name, ufunc, (op, dtypes), in_params, out_params)
+            name, ufunc, (expr, dtypes), in_params, out_params)
         self.submodules[subm.name] = subm
 
         # Register Op.
@@ -450,7 +372,7 @@ class _FusionHistory(object):
         """Register a reduction operation with the given parameters.
 
         Args:
-            reduce_func(_kernel._SimpleReductionKernel):
+            reduce_func(_reduction._SimpleReductionKernel):
                 The reduction function to operate.
             a(array_like): The input array.
             axis(int, tuple of int or None): The axis.
@@ -458,7 +380,7 @@ class _FusionHistory(object):
             out(_array or None): The output array.
         """
 
-        assert isinstance(reduce_func, _kernel._SimpleReductionKernel)
+        assert isinstance(reduce_func, _reduction._SimpleReductionKernel)
 
         # Parse inputs.
         in_param = self._from_arraylike_interface(a)
@@ -487,11 +409,11 @@ class _FusionHistory(object):
             in_param = self.vc.rotate_with_axis(in_param, axes)
 
         # Get operation code from dtypes.
-        in_dtypes, out_dtypes, op_dtype, reduce_op = _get_reduction_dtypes_op(
-            reduce_func, in_param, dtype)
+        _, (out_dtype,), expr = _guess_routine(reduce_func, [in_param], dtype)
+
         if out is None:
             out_param = self.vc.generate_new_array(
-                op_dtype, out_rshape, out_ashape)
+                out_dtype, out_rshape, out_ashape)
         else:
             out_param = self._from_arraylike_interface(out)
             if out_param.rshape != out_rshape:
@@ -502,7 +424,7 @@ class _FusionHistory(object):
         # Make submodule.
         name = 'reduce{}'.format(len(self.op_list))
         subm = _fusion_device_func._SubmoduleReduction(
-            name, reduce_func, reduce_op, [in_param], [out_param])
+            name, reduce_func, expr, [in_param], [out_param])
         self.submodules[subm.name] = subm
 
         # Register Op.

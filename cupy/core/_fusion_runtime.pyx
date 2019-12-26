@@ -4,11 +4,11 @@ from libcpp cimport vector
 import numpy
 
 from cupy.core import _dtype
+from cupy.core._carray cimport Indexer
 from cupy.core._scalar import convert_scalar
 from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
-from cupy.core.core cimport Indexer
 from cupy.core cimport internal
 from cupy.core import _fusion_op
 from cupy.core cimport _routines_manipulation as _manipulation

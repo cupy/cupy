@@ -92,18 +92,6 @@ class TestFusionReductionSpecifyDtype(unittest.TestCase):
     def test_sum(self, xp, dtype1, dtype2):
         return lambda x: x.sum(axis=0, dtype=dtype2)
 
-    @testing.for_all_dtypes_combination(
-        names=('dtype1', 'dtype2'), no_bool=True, no_complex=True)
-    @fusion_utils.check_fusion(accept_error=TypeError)
-    def test_max(self, xp, dtype1, dtype2):
-        return lambda x: x.sum(axis=0, dtype=dtype2)
-
-    # TODO(asi1024): Support cupy.argmax in fusion.
-    # @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    # @fusion_utils.check_fusion(accept_error=TypeError)
-    # def test_argmax(self, xp, dtype1, dtype2):
-    #     return lambda x: xp.argmax(x, axis=0, dtype=dtype2)
-
 
 @testing.gpu
 @testing.parameterize(*testing.product({

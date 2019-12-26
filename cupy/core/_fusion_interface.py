@@ -164,13 +164,11 @@ class _FusionVariableInterfaceBase(object):
         return cupy.prod(
             self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
-    def max(self, axis=None, dtype=None, out=None, keepdims=False):
-        return cupy.max(
-            self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    def max(self, axis=None, out=None, keepdims=False):
+        return cupy.max(self, axis=axis, out=out, keepdims=keepdims)
 
-    def min(self, axis=None, dtype=None, out=None, keepdims=False):
-        return cupy.min(
-            self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    def min(self, axis=None, out=None, keepdims=False):
+        return cupy.min(self, axis=axis, out=out, keepdims=keepdims)
 
     def all(self, axis=None, out=None, keepdims=False):
         return cupy.all(self, axis=axis, out=out, keepdims=keepdims)

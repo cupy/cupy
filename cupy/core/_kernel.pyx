@@ -966,7 +966,7 @@ cdef class _Ops:
             ops_.append(_Op.from_type_and_routine(typ, rt))
         return _Ops(tuple(ops_))
 
-    cdef _Op guess_routine(
+    cpdef _Op guess_routine(
             self, str name, dict cache, list in_args, dtype, _Ops out_ops):
         cdef _Ops ops_
         if dtype is None:
