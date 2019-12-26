@@ -55,9 +55,13 @@ cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
 
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
+    if (cupy.cuda.cub_enabled and self.size != 0):
+        result = cub.cub_reduction(self, cub.CUPY_CUB_SUM, axis, dtype, out,
+                                   keepdims)
+        if result is not None:
+            result /= (self.size / result.size)
+            return result
     return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
-
-
 cdef ndarray _ndarray_var(ndarray self, axis, dtype, out, ddof, keepdims):
     return _var(
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
