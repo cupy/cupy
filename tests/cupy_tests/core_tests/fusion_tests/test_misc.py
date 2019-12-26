@@ -183,10 +183,14 @@ class TestFusionKernelName(unittest.TestCase):
 
         # Test kernel name (with mock)
         if xp is cupy:
-            with mock.patch('cupy.core._fusion_runtime.FusedKernel') as Kernel:
+            target = cupy.core._fusion_runtime.FusedKernel
+            target_full_name = '{}.{}'.format(
+                target.__module__, target.__name__)
+
+            with mock.patch(target_full_name) as kernel:
                 func(a, b, c)
-                Kernel.assert_called_once()
-                self.assertEqual(Kernel.call_args.args[0], expected_name)
+                kernel.assert_called_once()
+                self.assertEqual(kernel.call_args.args[0], expected_name)
 
         # Test there's no error in computation (without mock)
         return func(a, b, c)

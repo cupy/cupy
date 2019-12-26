@@ -113,9 +113,35 @@ class TestDet(unittest.TestCase):
         return xp.linalg.det(a)
 
     @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_det_empty_batch(self, xp, dtype):
+        a = xp.empty((2, 0, 3, 3), dtype)
+        return xp.linalg.det(a)
+
+    @testing.with_requires('numpy>=1.13')
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_det_empty_matrix(self, xp, dtype):
+        a = xp.empty((0, 0), dtype)
+        return xp.linalg.det(a)
+
+    @testing.with_requires('numpy>=1.13')
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_det_empty_matrices(self, xp, dtype):
+        a = xp.empty((2, 3, 0, 0), dtype)
+        return xp.linalg.det(a)
+
+    @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
     def test_det_different_last_two_dims(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 2), xp, dtype)
+        return xp.linalg.det(a)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
+    def test_det_different_last_two_dims_empty_batch(self, xp, dtype):
+        a = xp.empty((0, 3, 2), dtype)
         return xp.linalg.det(a)
 
     @testing.for_float_dtypes(no_float16=True)

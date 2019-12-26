@@ -44,10 +44,10 @@ cdef class ndarray:
     cpdef ndarray argpartition(self, kth, axis=*)
     cpdef tuple nonzero(self)
     cpdef ndarray diagonal(self, offset=*, axis1=*, axis2=*)
-    cpdef ndarray max(self, axis=*, out=*, dtype=*, keepdims=*)
+    cpdef ndarray max(self, axis=*, out=*, keepdims=*)
     cpdef ndarray argmax(self, axis=*, out=*, dtype=*,
                          keepdims=*)
-    cpdef ndarray min(self, axis=*, out=*, dtype=*, keepdims=*)
+    cpdef ndarray min(self, axis=*, out=*, keepdims=*)
     cpdef ndarray argmin(self, axis=*, out=*, dtype=*,
                          keepdims=*)
     cpdef ndarray clip(self, a_min=*, a_max=*, out=*)
@@ -85,14 +85,6 @@ cdef class ndarray:
         self, Py_ssize_t itemsize, bint is_c_contiguous)
     cdef CPointer get_pointer(self)
     cpdef object toDlpack(self)
-
-
-cdef class Indexer:
-    cdef:
-        readonly Py_ssize_t size
-        readonly tuple shape
-
-    cdef CPointer get_pointer(self)
 
 
 cpdef ndarray _internal_ascontiguousarray(ndarray a)

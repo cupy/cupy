@@ -12,6 +12,7 @@ from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
 from libcpp cimport vector
 
+from cupy.core cimport _carray
 from cupy.core cimport core
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
@@ -88,8 +89,8 @@ cdef inline CPointer _pointer(x):
         return CPointer()
     if isinstance(x, core.ndarray):
         return (<core.ndarray>x).get_pointer()
-    if isinstance(x, core.Indexer):
-        return (<core.Indexer>x).get_pointer()
+    if isinstance(x, _carray.Indexer):
+        return (<_carray.Indexer>x).get_pointer()
 
     if isinstance(x, CPointer):
         return x

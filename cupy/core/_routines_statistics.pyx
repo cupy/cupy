@@ -1,8 +1,8 @@
 import numpy
 from numpy import nan
 
-from cupy.core._kernel import create_reduction_func
-from cupy.core._kernel import ReductionKernel
+from cupy.core._reduction import create_reduction_func
+from cupy.core._reduction import ReductionKernel
 
 from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray
@@ -14,75 +14,54 @@ if cupy.cuda.cub_enabled:
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        if cub.can_use_device_reduce(cub.CUPY_CUB_MAX, self.dtype, self.ndim,
-                                     axis, dtype):
-            return cub.device_reduce(self, cub.CUPY_CUB_MAX, out=out,
-                                     keepdims=keepdims)
-
-        if self.flags.c_contiguous:
-            order = 'C'
-        elif self.flags.f_contiguous:
-            order = 'F'
-        else:
-            order = None
-        if cub.can_use_device_segmented_reduce(cub.CUPY_CUB_MAX, self.dtype,
-                                               self.ndim, axis, dtype, order):
-            return cub.device_segmented_reduce(self, cub.CUPY_CUB_MAX, axis,
-                                               out=out, keepdims=keepdims)
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_MAX, axis, dtype, out,
+                                   keepdims)
+        if result is not None:
+            return result
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        if cub.can_use_device_reduce(cub.CUPY_CUB_MIN, self.dtype, self.ndim,
-                                     axis, dtype):
-            return cub.device_reduce(self, cub.CUPY_CUB_MIN, out=out,
-                                     keepdims=keepdims)
-        if self.flags.c_contiguous:
-            order = 'C'
-        elif self.flags.f_contiguous:
-            order = 'F'
-        else:
-            order = None
-        if cub.can_use_device_segmented_reduce(cub.CUPY_CUB_MIN, self.dtype,
-                                               self.ndim, axis, dtype, order):
-            return cub.device_segmented_reduce(self, cub.CUPY_CUB_MIN, axis,
-                                               out=out, keepdims=keepdims)
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_MIN, axis, out, dtype,
+                                   keepdims)
+        if result is not None:
+            return result
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        # Note that the NumPy signature of argmax only has axis and out, so we
-        # need to disable the rest. Moreover, to be compatible with NumPy, axis
-        # can only be None or integers
-        if cub.can_use_device_reduce(
-                cub.CUPY_CUB_ARGMAX, self.dtype, self.ndim, axis, None):
-            return cub.device_reduce(self, cub.CUPY_CUB_ARGMAX, out=out,
-                                     keepdims=False)
-        # TODO(leofang): support device_segmented_reduce for axis=-1?
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_ARGMAX, axis, dtype, out,
+                                   keepdims)
+        if result is not None:
+            return result
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        # Note that the NumPy signature of argmax only has axis and out, so we
-        # need to disable the rest. Moreover, to be compatible with NumPy, axis
-        # can only be None or integers
-        if cub.can_use_device_reduce(
-                cub.CUPY_CUB_ARGMIN, self.dtype, self.ndim, axis, None):
-            return cub.device_reduce(self, cub.CUPY_CUB_ARGMIN, out=out,
-                                     keepdims=False)
-        # TODO(leofang): support device_segmented_reduce for axis=-1?
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_ARGMIN, axis, dtype, out,
+                                   keepdims)
+        if result is not None:
+            return result
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
+    if (cupy.cuda.cub_enabled and self.size != 0):
+        result = cub.cub_reduction(self, cub.CUPY_CUB_SUM, axis, dtype, out,
+                                   keepdims)
+        if result is not None:
+            result /= (self.size / result.size)
+            return result
     return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
-
-
 cdef ndarray _ndarray_var(ndarray self, axis, dtype, out, ddof, keepdims):
     return _var(
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
