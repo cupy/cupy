@@ -19,6 +19,7 @@ from cupy.core._reduction import ReductionKernel
 from cupy.core._ufuncs import elementwise_copy
 from cupy.core._ufuncs import elementwise_copy_where
 from cupy.core import flags
+from cupy.core import syncdetect
 from cupy import cuda
 from cupy.cuda import device
 from cupy.cuda import memory as memory_module
@@ -1443,6 +1444,8 @@ cdef class ndarray:
             else:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
+
+        syncdetect._declare_synchronize()
         ptr = ctypes.c_void_p(a_cpu.__array_interface__['data'][0])
         with self.device:
             if stream is not None:
