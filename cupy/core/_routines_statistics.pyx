@@ -225,13 +225,13 @@ nanmax = create_reduction_func(
 
 cdef _argmin = create_reduction_func(
     'cupy_argmin',
-    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
-     'q->q', 'Q->q',
-     ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('F->q', (None, 'my_argmin_complex(a, b)', None, None)),
-     ('D->q', (None, 'my_argmin_complex(a, b)', None, None))),
+    tuple(['{}->{}'.format(d, r) for r in 'qlihb' for d in '?BhHiIlLqQ'])
+    + (
+        ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
+        ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
+        ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
+        ('F->q', (None, 'my_argmin_complex(a, b)', None, None)),
+        ('D->q', (None, 'my_argmin_complex(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -239,13 +239,13 @@ cdef _argmin = create_reduction_func(
 
 cdef _argmax = create_reduction_func(
     'cupy_argmax',
-    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
-     'q->q', 'Q->q',
-     ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('F->q', (None, 'my_argmax_complex(a, b)', None, None)),
-     ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
+    tuple(['{}->{}'.format(d, r) for r in 'qlihb' for d in '?BhHiIlLqQ'])
+    + (
+        ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
+        ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
+        ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
+        ('F->q', (None, 'my_argmax_complex(a, b)', None, None)),
+        ('D->q', (None, 'my_argmax_complex(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
