@@ -62,6 +62,8 @@ cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
             result /= (self.size / result.size)
             return result
     return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+
 cdef ndarray _ndarray_var(ndarray self, axis, dtype, out, ddof, keepdims):
     return _var(
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
