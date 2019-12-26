@@ -577,6 +577,8 @@ class _FusionHistory(object):
         # This attribute is referred in mock tests.
         self.kernel_params = kernel_params
 
+        # print(cuda_body)
+
         return _fusion_runtime.FusedKernel(
             self.name, self.op_list, cuda_body, kernel_params, return_size,
             submodule_code, self.shape_constraints)

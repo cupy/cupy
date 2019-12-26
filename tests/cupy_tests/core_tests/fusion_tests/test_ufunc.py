@@ -20,6 +20,7 @@ def _permutate_shapes(shapes_list):
         # Same shapes
         ((1,), (1,)),
         ((3, 4), (3, 4)),
+
         # Broadcast
         ((10,), (1,)),
         ((3, 4), (3, 1)),
@@ -28,20 +29,25 @@ def _permutate_shapes(shapes_list):
         ((3, 4), (1, 1)),
         ((3, 4), (1,)),
         ((2, 3, 4), (1, 1, 1)),
+        ((3, 1), (1, 4)),
+        ((2, 1, 4), (3, 1)),
+
         # TODO(asi1024): Fix testing.shaped_random to support 0-dim array.
         # # 0-dim shape
         # ((), ()),
         # ((1,), ()),
         # ((3,), ()),
         # ((2, 3), ()),
+
         # 0-size shape
         ((0,), (0,)),
         ((0,), (1,)),
         ((2, 0, 3), (2, 0, 3)),
         ((2, 0, 3), (0, 1)),
 
-        ((3, 1), (1, 4)),
-        ((2, 1, 4), (3, 1)),
+        # Large case
+        ((256, 256), (256,)),
+        ((256, 256), (256, 1)),
     ])
 }))
 class TestFusionBroadcast(unittest.TestCase):

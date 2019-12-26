@@ -204,7 +204,9 @@ cdef class FusedKernel(object):
                 kern_size = max(kern_size, <Py_ssize_t>array.size)
 
         if len(self._reduction_in_array) == 0:
-            return [], 128, 0, kern_size
+            # TODO(asi1024): Tune it.
+            kern_size = 256
+            return [], 256, 0, kern_size
 
         block_size = 256 if runtime._is_hip_environment else 512
         for i in range(len(self._reduction_in_array)):
@@ -228,6 +230,8 @@ cdef class FusedKernel(object):
 
         kern_size = (kern_size + block_size - 1) // block_size * block_size
         shared_mem = block_size * 32  # max bytesize of reduce_ctype.
+        # TODO(asi1024): Tune it.
+        kern_size = block_size
         return block_strides, block_size, shared_mem, kern_size
 
     cdef tuple _reduce_dims(self, list ndarray_list):

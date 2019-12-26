@@ -39,8 +39,8 @@ cdef class _ShapeConstraints(object):
 
     def add_eq_constraint(self, x, y):
         _fusion_thread_local.check_not_runtime()
-        assert isinstance(x, _AbstractDim)
-        assert isinstance(y, _AbstractDim)
+        assert isinstance(x, (_AbstractDim, int))
+        assert isinstance(y, (_AbstractDim, int))
         x = self.evaluate(x)
         y = self.evaluate(y)
         if x == y:
@@ -56,7 +56,7 @@ cdef class _ShapeConstraints(object):
 
     def add_const_constraint(self, x, value):
         _fusion_thread_local.check_not_runtime()
-        assert isinstance(x, _AbstractDim)
+        assert isinstance(x, (_AbstractDim, int))
         assert isinstance(value, int)
         x = self.evaluate(x)
         if isinstance(x, _AbstractDim):

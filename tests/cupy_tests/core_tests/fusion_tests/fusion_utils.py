@@ -87,7 +87,8 @@ def check_fusion(
                 raise err_a
             check(xp, ret_a, ret_e)
         else:
-            assert err_a is not None
+            if err_a is None:
+                raise err_e
 
     def deco(func):
         def wrapper(self, **generate_inputs_kwargs):
