@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -11,11 +12,15 @@ class TestSort(unittest.TestCase):
 
     # Test ranks
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.numpy_cupy_raises()
     def test_sort_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
         a.sort()
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.numpy_cupy_raises()
     def test_external_sort_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
@@ -161,6 +166,8 @@ class TestLexsort(unittest.TestCase):
 
     # Test ranks
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.numpy_cupy_raises()
     def test_lexsort_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
@@ -212,6 +219,8 @@ class TestArgsort(unittest.TestCase):
 
     # Test base cases
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_raises()
     def test_argsort_zero_dim(self, xp, dtype):
@@ -302,6 +311,8 @@ class TestMsort(unittest.TestCase):
 
     # Test base cases
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.numpy_cupy_raises()
     def test_msort_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
@@ -345,6 +356,8 @@ class TestPartition(unittest.TestCase):
 
     # Test base cases
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.numpy_cupy_raises()
     def test_partition_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
@@ -510,6 +523,8 @@ class TestArgpartition(unittest.TestCase):
 
     # Test base cases
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.numpy_cupy_raises()
     def test_argpartition_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
