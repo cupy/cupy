@@ -393,37 +393,47 @@ class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
             return xp.array(-2, dtype=dtype1)
 
 
-@testing.parameterize(
-    {'xp': numpy},
-    {'xp': cupy},
-)
+@testing.parameterize(*testing.product({
+    'xp': [numpy, cupy],
+    'shape': [(3, 2), (), (3, 0, 2)],
+}))
 @testing.gpu
 class TestShapedRandom(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_shape_and_dtype(self, dtype):
-        a = testing.shaped_random((2, 3), self.xp, dtype)
-        self.assertTrue(a.shape == (2, 3))
+        a = testing.shaped_random(self.shape, self.xp, dtype)
+        self.assertIsInstance(a, self.xp.ndarray)
+        self.assertTrue(a.shape == self.shape)
         self.assertTrue(a.dtype == dtype)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     def test_value_range(self, dtype):
-        a = testing.shaped_random((2, 3), self.xp, dtype)
+        a = testing.shaped_random(self.shape, self.xp, dtype)
         self.assertTrue(self.xp.all(0 <= a))
         self.assertTrue(self.xp.all(a < 10))
+
+    @testing.for_complex_dtypes()
+    def test_complex(self, dtype):
+        a = testing.shaped_random(self.shape, self.xp, dtype)
+        self.assertTrue(self.xp.all(0 <= a.real))
+        self.assertTrue(self.xp.all(a.real < 10))
+        if 0 not in self.shape:
+            # TODO(niboshi): imag causes an error if size=0. Fix it.
+            self.assertTrue(self.xp.all(0 <= a.imag))
+            self.assertTrue(self.xp.all(a.imag < 10))
+            self.assertTrue(self.xp.any(a.imag))
+
+
+@testing.parameterize(*testing.product({
+    'xp': [numpy, cupy],
+}))
+@testing.gpu
+class TestShapedRandomBool(unittest.TestCase):
 
     def test_bool(self):
         a = testing.shaped_random(10000, self.xp, numpy.bool_)
         self.assertTrue(4000 < self.xp.sum(a) < 6000)
-
-    @testing.for_complex_dtypes()
-    def test_complex(self, dtype):
-        a = testing.shaped_random((2, 3), self.xp, dtype)
-        self.assertTrue(self.xp.all(0 <= a.real))
-        self.assertTrue(self.xp.all(a.real < 10))
-        self.assertTrue(self.xp.all(0 <= a.imag))
-        self.assertTrue(self.xp.all(a.imag < 10))
-        self.assertTrue(self.xp.any(a.imag))
 
 
 class TestSkip(unittest.TestCase):
