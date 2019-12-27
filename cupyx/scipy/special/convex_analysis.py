@@ -2,54 +2,47 @@ from cupy import core
 
 
 _float_preamble = '''
-#ifndef NAN
-#define NAN __int_as_float(0x7fffffff)
-#endif
-
-#ifndef INF
-#define INF __int_as_float(0x7f800000)
-#endif
-
+#include <math_constants.h>
 
 double __device__ entr(double x) {
     if (isnan(x)) {
-        return NAN;
+        return CUDART_NAN;
     } else if (x > 0){
         return -x * log(x);
     } else if (x == 0){
         return 0;
     } else {
-        return -INF;
+        return -CUDART_INF;
     }
 }
 
 double __device__ kl_div(double x, double y) {
     if (isnan(x) || isnan(y)) {
-        return NAN;
+        return CUDART_NAN;
     } else if (x > 0 && y > 0) {
         return x * log(x / y) - x + y;
     } else if (x == 0 && y >= 0) {
         return y;
     } else {
-        return INF;
+        return CUDART_INF;
     }
 }
 
 double __device__ rel_entr(double x, double y) {
     if (isnan(x) || isnan(y)) {
-        return NAN;
+        return CUDART_NAN;
     } else if (x > 0 && y > 0) {
         return x * log(x / y);
     } else if (x == 0 && y >= 0) {
         return 0;
     } else {
-        return INF;
+        return CUDART_INF;
     }
 }
 
 double __device__ huber(double delta, double r) {
     if (delta < 0) {
-        return INF;
+        return CUDART_INF;
     } else if (abs(r) <= delta) {
         return 0.5 * r * r;
     } else {
@@ -59,7 +52,7 @@ double __device__ huber(double delta, double r) {
 
 double __device__ pseudo_huber(double delta, double r) {
     if (delta < 0) {
-        return INF;
+        return CUDART_INF;
     } else if (delta == 0 || r == 0) {
         return 0;
     } else {
