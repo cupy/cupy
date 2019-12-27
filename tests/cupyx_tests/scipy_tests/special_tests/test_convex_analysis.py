@@ -43,7 +43,6 @@ class TestSpecialConvex(unittest.TestCase):
         values = (0, 0.5, 1.0)
         signs = [-1, 1]
         arr = []
-        arr = []
         for sgna, va, sgnb, vb in itertools.product(signs, values, signs,
                                                     values):
             arr.append((sgna*va, sgnb*vb))
