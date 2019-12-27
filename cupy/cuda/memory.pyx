@@ -782,7 +782,7 @@ cdef class _Arena:
         free_list.add(chunk)
         self._flag[index] = 1
 
-    cdef bint remove_from_free_list(self, _Chunk chunk) except *:
+    cdef bint remove_from_free_list(self, _Chunk chunk):
         """Removes the chunk from the free list (need self._free_lock).
 
         Returns:
