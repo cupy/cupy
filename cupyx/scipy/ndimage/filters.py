@@ -176,12 +176,12 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
         ops.append(_generate_boundary_condition_ops(mode, ixvar, xshape[j]))
         ops.append('        ix_{j} *= sx_{j};'.format(j=j))
 
-    ops.append("""
-    W wval = w[iw];
-    if (wval == (W)0) {{
-        iw += 1;
-        continue;
-    }}""")
+    ops.append('''
+        W wval = w[iw];
+        if (wval == (W)0) {{
+            iw += 1;
+            continue;
+        }}''')
     _cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
     _expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
     ops.append('''
