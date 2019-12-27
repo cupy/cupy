@@ -12,12 +12,11 @@ _float_preamble = '''
 
 
 double __device__ entr(double x) {
-    if(isnan(x)) {
+    if (isnan(x)) {
         return NAN;
-    }
-    else if(x > 0){
+    } else if (x > 0){
         return -x * log(x);
-    } else if(x == 0){
+    } else if (x == 0){
         return 0;
     } else {
         return -INF;
@@ -25,11 +24,11 @@ double __device__ entr(double x) {
 }
 
 double __device__ kl_div(double x, double y) {
-    if (isnan(x) | isnan(y)) {
+    if (isnan(x) || isnan(y)) {
         return NAN;
-    } else if (x > 0 & y > 0) {
+    } else if (x > 0 && y > 0) {
         return x * log(x / y) - x + y;
-    } else if (x == 0 & y >= 0) {
+    } else if (x == 0 && y >= 0) {
         return y;
     } else {
         return INF;
@@ -37,11 +36,11 @@ double __device__ kl_div(double x, double y) {
 }
 
 double __device__ rel_entr(double x, double y) {
-    if (isnan(x) | isnan(y)) {
-        return out0_type(NAN);
-    } else if (x > 0 & y > 0) {
+    if (isnan(x) || isnan(y)) {
+        return NAN;
+    } else if (x > 0 && y > 0) {
         return x * log(x / y);
-    } else if (x == 0 & y >= 0) {
+    } else if (x == 0 && y >= 0) {
         return 0;
     } else {
         return INF;
@@ -59,14 +58,13 @@ double __device__ huber(double delta, double r) {
 }
 
 double __device__ pseudo_huber(double delta, double r) {
-    double u, v;
     if (delta < 0) {
         return INF;
-    } else if (delta == 0 | r == 0) {
+    } else if (delta == 0 || r == 0) {
         return 0;
     } else {
-        u = delta;
-        v = r / delta;
+        double u = delta;
+        double v = r / delta;
         return u * u * (sqrt(1 + v * v) - 1);
     }
 }

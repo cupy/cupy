@@ -3,9 +3,9 @@ import unittest
 
 import cupy
 import numpy
+
 from cupy import testing
 import scipy.special  # NOQA
-
 import cupyx.scipy.special
 
 
@@ -20,14 +20,14 @@ class TestSpecialConvex(unittest.TestCase):
         testing.assert_allclose(cupyx.scipy.special.huber(2, 2.5),
                                 2 * (2.5 - 0.5 * 2))
 
-    @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_huber(self, xp, scp, dtype):
         z = testing.shaped_random((10, 2), xp=xp, dtype=dtype)
         return scp.special.huber(z[:, 0], z[:, 1])
 
-    @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_entr(self, xp, scp, dtype):
         values = (0, 0.5, 1.0, cupy.inf)
         signs = [-1, 1]
@@ -37,8 +37,8 @@ class TestSpecialConvex(unittest.TestCase):
         z = xp.asarray(arr, dtype=dtype)
         return scp.special.entr(z)
 
-    @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_rel_entr(self, xp, scp, dtype):
         values = (0, 0.5, 1.0)
         signs = [-1, 1]
@@ -50,8 +50,8 @@ class TestSpecialConvex(unittest.TestCase):
         z = xp.asarray(numpy.array(arr, dtype=dtype))
         return scp.special.kl_div(z[:, 0], z[:, 1])
 
-    @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_pseudo_huber(self, xp, scp, dtype):
         z = testing.shaped_random((10, 2), xp=numpy, dtype=dtype).tolist()
         z = xp.asarray(z + [[0, 0.5], [0.5, 0]], dtype=dtype)
