@@ -52,17 +52,17 @@ class TestShape(unittest.TestCase):
         return a.reshape(3, -1, order=order)
 
     @testing.numpy_cupy_raises()
-    def test_reshape_with_multiple_unknown_dimensions(self):
+    def test_reshape_with_multiple_unknown_dimensions(self, xp):
         a = testing.shaped_arange((2, 3, 4))
         a.reshape(3, -1, -1)
 
     @testing.numpy_cupy_raises()
-    def test_reshape_with_changed_arraysize(self):
+    def test_reshape_with_changed_arraysize(self, xp):
         a = testing.shaped_arange((2, 3, 4))
         a.reshape(2, 4, 4)
 
     @testing.numpy_cupy_raises()
-    def test_reshape_invalid_order(self):
+    def test_reshape_invalid_order(self, xp):
         a = testing.shaped_arange((2, 3, 4))
         a.reshape(2, 4, 4, order='K')
 
