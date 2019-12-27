@@ -769,7 +769,7 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
 
-    cpdef ndarray ptp(self, axis=None, out=None, dtype=None, keepdims=False):
+    cpdef ndarray ptp(self, axis=None, out=None, keepdims=False):
         """Returns (maximum - minimum) along a given axis.
 
         .. seealso::
@@ -777,7 +777,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.ptp`
 
         """
-        return _statistics._ndarray_ptp(self, axis, out, dtype, keepdims)
+        return _statistics._ndarray_ptp(self, axis, out, keepdims)
 
     cpdef ndarray clip(self, a_min=None, a_max=None, out=None):
         """Returns an array with values limited to [a_min, a_max].

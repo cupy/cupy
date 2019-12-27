@@ -127,7 +127,7 @@ def nanmax(a, axis=None, out=None, keepdims=False):
     return res
 
 
-def ptp(a, axis=None, out=None, keepdims=False, dtype=None):
+def ptp(a, axis=None, out=None, keepdims=False):
     """Returns the range of values (maximum - minimum) along an axis.
 
     .. note::
@@ -151,7 +151,7 @@ def ptp(a, axis=None, out=None, keepdims=False, dtype=None):
     .. seealso:: :func:`numpy.amin`
 
     """
-    return a.ptp(axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+    return a.ptp(axis=axis, out=out, keepdims=keepdims)
 
 
 def percentile(a, q, axis=None, out=None, interpolation='linear',
