@@ -368,8 +368,14 @@ class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
         else:
             return xp.array(-2, dtype=numpy.float32)
 
-    @testing.with_requires('numpy>=1.16.1')
+    @testing.with_requires('numpy>=1.18.0')
     def test_correct_failure(self):
+        with six.assertRaisesRegex(self, AssertionError,
+                                   'Mismatched elements:'' 1 / 1 \\(100%\\)'):
+            self.correct_failure()
+
+    @testing.with_requires('numpy>=1.16.1,<1.18.0')
+    def test_correct_failure_np_16_17(self):
         with six.assertRaisesRegex(self, AssertionError, 'Mismatch: 100%'):
             self.correct_failure()
 
