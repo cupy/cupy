@@ -53,12 +53,15 @@ cdef extern from 'cupy_cub.h' nogil:
                                      void*, Stream_t, int, int)
     void cub_device_spmv(void*, size_t&, void*, void*, void*, void*, void*,
                          int, int, int, Stream_t, int)
+    void cub_device_scan(void*, size_t&, void*, void*, int, Stream_t, int, int)
     size_t cub_device_reduce_get_workspace_size(void*, void*, int, Stream_t,
                                                 int, int)
     size_t cub_device_segmented_reduce_get_workspace_size(
         void*, void*, int, void*, void*, Stream_t, int, int)
     size_t cub_device_spmv_get_workspace_size(
         void*, void*, void*, void*, void*, int, int, int, Stream_t, int)
+    size_t cub_device_scan_get_workspace_size(
+        void*, void*, int, Stream_t, int, int)
 
 ###############################################################################
 # Python interface
@@ -279,6 +282,44 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
                         col_indices_ptr, x_ptr, y_ptr, n_rows, n_cols, nnz, s,
                         dtype_id)
 
+    return y
+
+
+def device_scan(ndarray x, int op, out=None):
+    cdef ndarray y, z
+    cdef memory.MemoryPointer ws
+    cdef int dtype_id, ndim_out, kv_bytes, x_size
+    cdef size_t ws_size
+    cdef void *x_ptr
+    cdef void *y_ptr
+    cdef void *ws_ptr
+    cdef Stream_t s
+    cdef tuple out_shape
+
+    if out is not None and out.shape != x.shape:
+        raise ValueError()
+    if op != CUPY_CUB_SUM:
+        raise ValueError('only CUPY_CUB_SUM is supported.')
+    if x.size == 0:
+        raise ValueError()
+
+    x = _internal_ascontiguousarray(x)
+    x_ptr = <void *>x.data.ptr
+    y = ndarray(x.shape, x.dtype)
+    y_ptr = <void *>y.data.ptr
+    dtype_id = _get_dtype_id(x.dtype)
+    s = <Stream_t>stream.get_current_stream_ptr()
+    x_size = <int>x.size
+    ws_size = cub_device_scan_get_workspace_size(x_ptr, y_ptr, x_size, s,
+                                                 op, dtype_id)
+    ws = memory.alloc(ws_size)
+    ws_ptr = <void *>ws.ptr
+    with nogil:
+        cub_device_scan(ws_ptr, ws_size, x_ptr, y_ptr, x_size, s, op, dtype_id)
+
+    if out is not None:
+        out[...] = y
+        y = out
     return y
 
 

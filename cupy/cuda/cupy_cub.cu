@@ -2,6 +2,7 @@
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_spmv.cuh>
+#include <cub/device/device_scan.cuh>
 #include "cupy_cub.h"
 #include <stdexcept>
 
@@ -432,6 +433,21 @@ struct _cub_device_spmv {
 };
 
 //
+// **** CUB InclusiveSum  ****
+//
+struct _cub_inclusive_sum {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
+        int num_items, cudaStream_t s)
+    {
+        DeviceScan::InclusiveSum(workspace, workspace_size, static_cast<T*>(input),
+            static_cast<T*>(output), num_items, s);
+    }
+};
+
+// TODO(leofang): add InclusiveScan to support cumprod
+
+//
 // APIs exposed to CuPy
 //
 
@@ -519,5 +535,26 @@ size_t cub_device_spmv_get_workspace_size(void* values, void* row_offsets,
     size_t workspace_size = 0;
     cub_device_spmv(NULL, workspace_size, values, row_offsets, column_indices,
                     x, y, num_rows, num_cols, num_nonzeros, stream, dtype_id);
+    return workspace_size;
+}
+
+/* -------- device scan -------- */
+
+void cub_device_scan(void* workspace, size_t& workspace_size, void* x, void* y,
+    int num_items, cudaStream_t stream, int op, int dtype_id)
+{
+    switch(op) {
+    case CUPY_CUB_SUM:      return dtype_dispatcher(dtype_id, _cub_inclusive_sum(),
+                                workspace, workspace_size, x, y, num_items, stream);
+    default:            throw std::runtime_error("Unsupported operation");
+    }
+}
+
+size_t cub_device_scan_get_workspace_size(void* x, void* y, int num_items,
+    cudaStream_t stream, int op, int dtype_id)
+{
+    size_t workspace_size = 0;
+    cub_device_scan(NULL, workspace_size, x, y, num_items, stream,
+                    op, dtype_id);
     return workspace_size;
 }
