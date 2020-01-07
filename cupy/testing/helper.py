@@ -230,7 +230,7 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
                     assert cupy_r.dtype == numpy_r.dtype
 
             for cupy_r, numpy_r in zip(cupy_result, numpy_result):
-                assert cupy_r.shape == numpy_r.shape
+                assert cupy_r.shape == numpy_r.shape, (cupy_r.shape, numpy_r.shape)
 
                 # Behavior of assigning a negative value to an unsigned integer
                 # variable is undefined.

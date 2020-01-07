@@ -12,48 +12,6 @@ cdef class ParameterInfo:
         readonly bint is_const
 
 
-cdef enum _ArgKind:
-    ARG_KIND_NDARRAY = 1
-    ARG_KIND_INDEXER
-    ARG_KIND_SCALAR
-
-
-cdef class _ArgInfo:
-    # Holds metadata of an argument.
-    # This class is immutable and used as a part of hash keys.
-
-    cdef:
-        readonly _ArgKind arg_kind
-        readonly type type
-        readonly object dtype
-        readonly int ndim
-        readonly bint c_contiguous
-
-    @staticmethod
-    cdef _ArgInfo from_arg(object arg)
-
-    @staticmethod
-    cdef _ArgInfo from_ndarray(ndarray arg)
-
-    @staticmethod
-    cdef _ArgInfo from_scalar(_scalar.CScalar arg)
-
-    @staticmethod
-    cdef _ArgInfo from_indexer(_carray.Indexer arg)
-
-    cdef _ArgInfo as_ndarray_with_ndim(self, int ndim)
-
-    cdef bint is_ndarray(self)
-
-    cdef bint is_scalar(self)
-
-    cdef str get_c_type(self)
-
-    cdef str get_param_c_type(self, ParameterInfo p)
-
-    cdef str get_c_var_name(self, ParameterInfo p)
-
-
 cdef class _TypeMap:
     # Typedef mapping between C types.
     # This class is immutable.
@@ -120,8 +78,6 @@ cdef class _Ops:
 cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
                    default_casting=*, loop_prep=*, out_ops=*)
 
-cpdef tuple _get_arginfos(list args)
-
 cpdef str _get_kernel_params(tuple params, tuple arginfos)
 
 cdef tuple _broadcast(list args, tuple params, bint use_size)
@@ -136,6 +92,6 @@ cdef list _get_out_args_with_params(
 
 cdef _check_array_device_id(ndarray arr, int device_id)
 
-cdef list _preprocess_args(int dev_id, args, bint use_c_scalar)
+cdef list _preprocess_args(int dev_id, args)
 
 cdef tuple _reduce_dims(list args, tuple params, tuple shape)
