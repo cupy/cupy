@@ -13,6 +13,13 @@ cdef class CScalar(CPointer):
         char kind
         int8_t size
 
+        # None if initialized by from_int32().
+        public object dtype
+
+        # Corresponding NumPy scalar.
+        # None if initialized by from_int32().
+        object numpy_value
+
     @staticmethod
     cdef CScalar from_int32(int32_t value)
 
@@ -25,6 +32,7 @@ cdef class CScalar(CPointer):
     @staticmethod
     cdef CScalar _from_numpy_scalar(object x)
 
+    cdef object min_scalar_type(self)
     cpdef apply_dtype(self, dtype)
     cpdef get_numpy_type(self)
 

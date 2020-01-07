@@ -556,8 +556,8 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             out_args = [out]
 
         dev_id = device.get_device_id()
-        in_args = _preprocess_args(dev_id, args[:self.nin], False)
-        out_args = _preprocess_args(dev_id, out_args, False)
+        in_args = _preprocess_args(dev_id, args[:self.nin])
+        out_args = _preprocess_args(dev_id, out_args)
         in_args, broad_shape = _broadcast(in_args, self.in_params, False)
 
         return self._call(

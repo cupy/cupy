@@ -80,23 +80,17 @@ cdef inline _check_array_device_id(ndarray arr, int device_id):
             % (arr.data.device_id, device_id))
 
 
-cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
+cdef list _preprocess_args(int dev_id, args):
     """Preprocesses arguments for kernel invocation
 
     - Checks device compatibility for ndarrays
-    - Converts Python/NumPy scalars:
-      - If use_c_scalar is True, into CScalars.
-      - If use_c_scalar is False, into NumPy scalars.
+    - Converts Python/NumPy scalars into CScalars.
     """
     cdef list ret = []
 
     for arg in args:
         if type(arg) is not ndarray:
-            if use_c_scalar:
-                s = _scalar.scalar_to_c_scalar(arg)
-            else:
-                s = _scalar.scalar_to_numpy_scalar(arg)
-
+            s = _scalar.scalar_to_c_scalar(arg)
             if s is not None:
                 ret.append(s)
                 continue
@@ -602,7 +596,7 @@ cdef class ElementwiseKernel:
         if n_args != self.nin and n_args != self.nargs:
             raise TypeError('Wrong number of arguments for %s' % self.name)
         dev_id = device.get_device_id()
-        args = _preprocess_args(dev_id, args, True)
+        args = _preprocess_args(dev_id, args)
 
         values, shape = _broadcast(args, self.params, size != -1)
         in_args = values[:self.nin]
@@ -733,26 +727,6 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
             max_array_kind >= max_scalar_kind)
 
 
-cdef dict _mst_unsigned_to_signed = {
-    i: (numpy.iinfo(j).max, (i, j))
-    for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
-                 for i in "BHILQ"]}
-cdef _numpy_min_scalar_type = numpy.min_scalar_type
-
-cdef _min_scalar_type(x):
-    # A non-negative integer may have two locally minimum scalar
-    # types: signed/unsigned integer.
-    # Return both for can_cast, while numpy.min_scalar_type only returns
-    # the unsigned type.
-    t = _numpy_min_scalar_type(x)
-    dt = t.type
-    if t.kind == 'u':
-        m, dt2 = <tuple>_mst_unsigned_to_signed[dt]
-        if x <= m:
-            return dt2
-    return dt
-
-
 cdef class ufunc:
 
     """Universal function.
@@ -867,7 +841,7 @@ cdef class ufunc:
             raise TypeError('Wrong number of arguments for %s' % self.name)
 
         dev_id = device.get_device_id()
-        args = _preprocess_args(dev_id, args, False)
+        args = _preprocess_args(dev_id, args)
         if out is None:
             in_args = args[:self.nin]
             out_args = args[self.nin:]
@@ -879,7 +853,7 @@ cdef class ufunc:
                                  'a positional and keyword argument')
 
             in_args = list(args)
-            out_args = _preprocess_args(dev_id, (out,), False)
+            out_args = _preprocess_args(dev_id, (out,))
             args += out_args
 
         _copy_in_args_if_needed(in_args, out_args)
@@ -902,9 +876,9 @@ cdef class ufunc:
         inout_args = []
         for i, t in enumerate(op.in_types):
             x = broad_values[i]
-            inout_args.append(
-                x if isinstance(x, ndarray) else
-                _scalar.CScalar.from_numpy_scalar_with_dtype(x, t))
+            if isinstance(x, _scalar.CScalar):
+                x.apply_dtype(t)
+            inout_args.append(x)
         inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
         indexer = _carray.Indexer(shape)
@@ -998,7 +972,7 @@ cdef class _Ops:
             if use_raw_value:
                 in_types = tuple([
                     a.dtype.type if isinstance(a, ndarray)
-                    else _min_scalar_type(a)
+                    else (<_scalar.CScalar>a).min_scalar_type()
                     for a in in_args])
             else:
                 in_types = tuple([a.dtype.type for a in in_args])

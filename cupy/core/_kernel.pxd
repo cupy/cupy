@@ -67,6 +67,6 @@ cdef list _get_out_args_with_params(
 
 cdef _check_array_device_id(ndarray arr, int device_id)
 
-cdef list _preprocess_args(int dev_id, args, bint use_c_scalar)
+cdef list _preprocess_args(int dev_id, args)
 
 cdef tuple _reduce_dims(list args, tuple params, tuple shape)

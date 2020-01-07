@@ -125,6 +125,14 @@ cpdef _python_scalar_to_numpy_scalar(x):
     return numpy_type(x)
 
 
+cdef dict _mst_unsigned_to_signed = {
+    i: (numpy.iinfo(j).max, (i, j))
+    for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
+                 for i in "BHILQ"]}
+
+cdef _numpy_min_scalar_type = numpy.min_scalar_type
+
+
 cdef class CScalar(CPointer):
 
     ndim = 0
@@ -134,6 +142,8 @@ cdef class CScalar(CPointer):
             max(sizeof(Scalar), sizeof(double complex)))
         self.kind = 0
         self.size = -1
+        self.numpy_value = None
+        self.dtype = None
 
     def __dealloc__(self):
         mem.PyMem_Free(self.ptr)
@@ -178,13 +188,16 @@ cdef class CScalar(CPointer):
                 s.int64_ = x
                 ret.kind = b'i'
             ret.size = 8
+        ret.numpy_value = _python_scalar_to_numpy_scalar(x)
+        ret.dtype = ret.numpy_value.dtype
         return ret
 
     @staticmethod
     cdef CScalar _from_numpy_scalar(object x):
         cdef CScalar ret = CScalar.__new__(CScalar)
         cdef Scalar* s = <Scalar*>ret.ptr
-        ret.kind = ord(x.dtype.kind)
+        dtype = x.dtype
+        ret.kind = ord(dtype.kind)
         if ret.kind == b'i':
             s.int64_ = x
             ret.size = 8
@@ -202,7 +215,25 @@ cdef class CScalar(CPointer):
             ret.size = 16
         else:
             assert False
+        ret.numpy_value = x
+        ret.dtype = dtype
         return ret
+
+    cdef object min_scalar_type(self):
+        # Returns the minimum type to hold the scalar value.
+        assert self.numpy_value is not None
+        x = self.numpy_value
+        # A non-negative integer may have two locally minimum scalar
+        # types: signed/unsigned integer.
+        # Return both for can_cast, while numpy.min_scalar_type only returns
+        # the unsigned type.
+        t = _numpy_min_scalar_type(x)
+        dt = t.type
+        if t.kind == 'u':
+            m, dt2 = <tuple>_mst_unsigned_to_signed[dt]
+            if x <= m:
+                return dt2
+        return dt
 
     cpdef apply_dtype(self, dtype):
         cdef Scalar* s = <Scalar*>self.ptr
@@ -282,6 +313,7 @@ cdef class CScalar(CPointer):
             assert False
         self.kind = kind
         self.size = size
+        self.dtype = dtype
 
     cpdef get_numpy_type(self):
         if self.kind == b'b':
