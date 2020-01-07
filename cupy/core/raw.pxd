@@ -7,6 +7,7 @@ cdef class RawKernel:
         object _kernel
         readonly str backend
         bint translate_cucomplex
+        readonly bint grid_sync
 
 
 cdef class RawModule:

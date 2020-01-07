@@ -257,6 +257,23 @@ __global__ void test_upcast(cuComplex* arr, cuDoubleComplex* out) {
 '''
 
 
+# grid synchronization
+_test_grid_sync = r'''
+#include <cooperative_groups.h>
+
+extern "C" __global__
+void test_grid_sync(const float* x1, const float* x2, float* y) {
+    namespace cg = cooperative_groups;
+    cg::grid_group grid = cg::this_grid();
+    int size = gridDim.x * blockDim.x;
+    int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    y[tid] = x1[tid];
+    cg::sync(grid);
+    y[size - tid - 1] += x2[size - tid - 1];
+}
+'''
+
+
 if 'CUPY_CACHE_DIR' in os.environ:
     _old_cache_dir = os.environ['CUPY_CACHE_DIR']
     _is_cache_env_var_set = True
@@ -519,3 +536,23 @@ class TestRaw(unittest.TestCase):
         ker = mod.get_function('test_downcast')
         ker((grid,), (block,), (a, out_down))
         assert (out_down == a.astype(cupy.complex64)).all()
+
+
+class TestRawGridSync(unittest.TestCase):
+
+    def setUp(self):
+        global _test_cache_dir
+        _test_cache_dir = tempfile.mkdtemp()
+        os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
+
+        self.kern_grid_sync = cupy.RawKernel(
+            _test_grid_sync, 'test_grid_sync',
+            backend='nvcc', grid_sync=True)
+
+    def test_grid_sync(self):
+        n = 10
+        x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
+        x2 = cupy.ones((n, n), dtype='float32')
+        y = cupy.zeros((n, n), dtype='float32')
+        self.kern_grid_sync((n,), (n,), (x1, x2, y, n ** 2))
+        assert cupy.allclose(y, x1 + x2)
