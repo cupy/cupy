@@ -286,30 +286,30 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
 
 
 def device_scan(ndarray x, int op, out=None):
-    cdef ndarray y, z
+    cdef ndarray y
     cdef memory.MemoryPointer ws
-    cdef int dtype_id, ndim_out, kv_bytes, x_size
+    cdef int dtype_id, x_size
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *y_ptr
     cdef void *ws_ptr
     cdef Stream_t s
-    cdef tuple out_shape
 
     if out is not None and out.shape != x.shape:
         raise ValueError()
-    if op != CUPY_CUB_SUM:
-        raise ValueError('only CUPY_CUB_SUM is supported.')
+    if op != CUPY_CUB_CUMSUM and op != CUPY_CUB_CUMPROD:
+        raise ValueError('only CUPY_CUB_CUMSUM and CUPY_CUB_CUMPROD '
+                         'are supported.')
     if x.size == 0:
         raise ValueError()
 
     x = _internal_ascontiguousarray(x)
     x_ptr = <void *>x.data.ptr
+    x_size = <int>x.size
     y = ndarray(x.shape, x.dtype)
     y_ptr = <void *>y.data.ptr
-    dtype_id = _get_dtype_id(x.dtype)
     s = <Stream_t>stream.get_current_stream_ptr()
-    x_size = <int>x.size
+    dtype_id = _get_dtype_id(x.dtype)
     ws_size = cub_device_scan_get_workspace_size(x_ptr, y_ptr, x_size, s,
                                                  op, dtype_id)
     ws = memory.alloc(ws_size)
@@ -423,6 +423,28 @@ def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
 
     if can_use_device_reduce(op, arr.dtype, out_axis, dtype):
         return device_reduce(arr, op, out_axis, out, keepdims)
+    return None
+
+
+def can_use_device_scan(int op, x_dtype, dtype=None):
+    #return out_axis is () and _cub_reduce_dtype_compatible(x_dtype, op, dtype)
+    return True
+
+
+def cub_scan(arr, op, axis=None, dtype=None, out=None):
+    """Perform a prefix scan using CUB.
+
+    If the specified scan is not possible, None is returned.
+    """
+    if axis is not None:
+        return None
+
+    if op < CUPY_CUB_CUMSUM or op > CUPY_CUB_CUMPROD:
+        return None
+
+    if can_use_device_scan(op, arr.dtype, dtype):
+        return device_scan(arr, op, out)
+
     return None
 
 

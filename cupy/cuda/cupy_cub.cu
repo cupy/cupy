@@ -445,7 +445,29 @@ struct _cub_inclusive_sum {
     }
 };
 
-// TODO(leofang): add InclusiveScan to support cumprod
+//
+// **** CUB inclusive product  ****
+//
+struct _cub_inclusive_product {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
+        int num_items, cudaStream_t s)
+    {
+        _multiply product_op;
+        DeviceScan::InclusiveScan(workspace, workspace_size, static_cast<T*>(input),
+            static_cast<T*>(output), product_op, num_items, s);
+    }
+
+    // product functor
+    struct _multiply
+    {
+        template <typename T>
+        __host__ __device__ __forceinline__
+        T operator()(const T &a, const T &b) const {
+            return a * b;
+        }
+    };
+};
 
 //
 // APIs exposed to CuPy
@@ -544,9 +566,14 @@ void cub_device_scan(void* workspace, size_t& workspace_size, void* x, void* y,
     int num_items, cudaStream_t stream, int op, int dtype_id)
 {
     switch(op) {
-    case CUPY_CUB_SUM:      return dtype_dispatcher(dtype_id, _cub_inclusive_sum(),
+    case CUPY_CUB_CUMSUM:
+        return dtype_dispatcher(dtype_id, _cub_inclusive_sum(),
                                 workspace, workspace_size, x, y, num_items, stream);
-    default:            throw std::runtime_error("Unsupported operation");
+    case CUPY_CUB_CUMPROD:
+        return dtype_dispatcher(dtype_id, _cub_inclusive_product(),
+                                workspace, workspace_size, x, y, num_items, stream);
+    default:
+        throw std::runtime_error("Unsupported operation");
     }
 }
 

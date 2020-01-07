@@ -20,6 +20,8 @@
 #define CUPY_CUB_MAX     2
 #define CUPY_CUB_ARGMIN  3
 #define CUPY_CUB_ARGMAX  4
+#define CUPY_CUB_CUMSUM  5
+#define CUPY_CUB_CUMPROD 6
 
 #ifndef CUPY_NO_CUDA
 #include <cuda_runtime.h>  // for cudaStream_t
