@@ -402,7 +402,7 @@ def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
     from cupy.core._reduction import _get_axis
     cdef bint enforce_numpy_API = False
 
-    if op > CUPY_CUB_MAX:
+    if op == CUPY_CUB_ARGMIN or op == CUPY_CUB_ARGMAX:
         # For argmin and argmax, NumPy does not allow a tuple for axis.
         # Also, the keepdims and dtype kwargs are not provided.
         #
@@ -432,7 +432,7 @@ def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
     if can_use_device_reduce(op, arr.dtype, out_axis, dtype):
         return device_reduce(arr, op, out_axis, out, keepdims)
 
-    if op > CUPY_CUB_MAX:
+    if op == CUPY_CUB_ARGMIN or op == CUPY_CUB_ARGMAX:
         # segmented reduction not currently implemented for argmax, argmin
         return None
 
