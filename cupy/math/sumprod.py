@@ -6,6 +6,9 @@ from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
 
+if cupy.cuda.cub_enabled:
+    from cupy.cuda import cub
+
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the sum of an array along given axes.
@@ -147,8 +150,15 @@ def _proc_as_batch(proc, x, axis):
     return r.reshape(s).transpose(revert)
 
 
-def _cum_core(a, axis, dtype, out, kern, batch_kern):
+def _cum_core(a, axis, dtype, out, kern, batch_kern, *, op=None):
     a = cupy.asarray(a)
+
+    if cupy.cuda.cub_enabled:
+        # result will be None if the scan is not compatible with CUB
+        result = cub.cub_scan(a, op, axis, dtype, out)
+        if result is not None:
+            return result
+
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
@@ -219,7 +229,8 @@ def cumsum(a, axis=None, dtype=None, out=None):
     .. seealso:: :func:`numpy.cumsum`
 
     """
-    return _cum_core(a, axis, dtype, out, _cumsum_kern, _cumsum_batch_kern)
+    return _cum_core(a, axis, dtype, out, _cumsum_kern, _cumsum_batch_kern,
+                     op=cub.CUPY_CUB_CUMSUM)
 
 
 _cumprod_batch_kern = core.ElementwiseKernel(
@@ -262,7 +273,8 @@ def cumprod(a, axis=None, dtype=None, out=None):
     .. seealso:: :func:`numpy.cumprod`
 
     """
-    return _cum_core(a, axis, dtype, out, _cumprod_kern, _cumprod_batch_kern)
+    return _cum_core(a, axis, dtype, out, _cumprod_kern, _cumprod_batch_kern,
+                     op=cub.CUPY_CUB_CUMPROD)
 
 
 def diff(a, n=1, axis=-1, prepend=None, append=None):
