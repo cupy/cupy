@@ -139,6 +139,71 @@ cdef class CScalar(CPointer):
         mem.PyMem_Free(self.ptr)
         self.ptr = <void*>0
 
+    @staticmethod
+    cdef CScalar from_int32(int32_t value):
+        cdef CScalar s = CScalar.__new__(CScalar)
+        (<int32_t *>s.ptr)[0] = value
+        s.kind = b'i'
+        s.size = 4
+        return s
+
+    @staticmethod
+    cdef CScalar from_numpy_scalar_with_dtype(object x, object dtype):
+        cdef CScalar ret = CScalar._from_numpy_scalar(x)
+        ret.apply_dtype(dtype)
+        return ret
+
+    @staticmethod
+    cdef CScalar _from_python_scalar(object x):
+        cdef CScalar ret = CScalar.__new__(CScalar)
+        cdef Scalar* s = <Scalar*>ret.ptr
+        typ = type(x)
+        if typ is bool:
+            s.bool_ = x
+            ret.kind = b'b'
+            ret.size = 1
+        elif typ is float:
+            s.float64_ = x
+            ret.kind = b'f'
+            ret.size = 8
+        elif typ is complex:
+            (<double complex*>ret.ptr)[0] = x
+            ret.kind = b'c'
+            ret.size = 16
+        else:
+            if 0x8000000000000000 <= x:
+                s.uint64_ = x
+                ret.kind = b'u'
+            else:
+                s.int64_ = x
+                ret.kind = b'i'
+            ret.size = 8
+        return ret
+
+    @staticmethod
+    cdef CScalar _from_numpy_scalar(object x):
+        cdef CScalar ret = CScalar.__new__(CScalar)
+        cdef Scalar* s = <Scalar*>ret.ptr
+        ret.kind = ord(x.dtype.kind)
+        if ret.kind == b'i':
+            s.int64_ = x
+            ret.size = 8
+        elif ret.kind == b'u':
+            s.uint64_ = x
+            ret.size = 8
+        elif ret.kind == b'f':
+            s.float64_ = x
+            ret.size = 8
+        elif ret.kind == b'b':
+            s.bool_ = x
+            ret.size = 1
+        elif ret.kind == b'c':
+            (<double complex*>ret.ptr)[0] = x
+            ret.size = 16
+        else:
+            assert False
+        return ret
+
     cpdef apply_dtype(self, dtype):
         cdef Scalar* s = <Scalar*>self.ptr
         if self.kind == b'b':
@@ -254,79 +319,23 @@ cdef class CScalar(CPointer):
         assert False
 
 
-cdef CScalar CScalar_from_int32(int32_t value):
-    cdef CScalar s = CScalar.__new__(CScalar)
-    (<int32_t *>s.ptr)[0] = value
-    s.kind = b'i'
-    s.size = 4
-    return s
-
-
-cpdef CScalar _python_scalar_to_c_scalar(x):
-    cdef CScalar ret = CScalar.__new__(CScalar)
-    cdef Scalar* s = <Scalar*>ret.ptr
-    typ = type(x)
-    if typ is bool:
-        s.bool_ = x
-        ret.kind = b'b'
-        ret.size = 1
-    elif typ is float:
-        s.float64_ = x
-        ret.kind = b'f'
-        ret.size = 8
-    elif typ is complex:
-        (<double complex*>ret.ptr)[0] = x
-        ret.kind = b'c'
-        ret.size = 16
-    else:
-        if 0x8000000000000000 <= x:
-            s.uint64_ = x
-            ret.kind = b'u'
-        else:
-            s.int64_ = x
-            ret.kind = b'i'
-        ret.size = 8
-    return ret
-
-
-cpdef CScalar _numpy_scalar_to_c_scalar(x):
-    cdef CScalar ret = CScalar.__new__(CScalar)
-    cdef Scalar* s = <Scalar*>ret.ptr
-    ret.kind = ord(x.dtype.kind)
-    if ret.kind == b'i':
-        s.int64_ = x
-        ret.size = 8
-    elif ret.kind == b'u':
-        s.uint64_ = x
-        ret.size = 8
-    elif ret.kind == b'f':
-        s.float64_ = x
-        ret.size = 8
-    elif ret.kind == b'b':
-        s.bool_ = x
-        ret.size = 1
-    elif ret.kind == b'c':
-        (<double complex*>ret.ptr)[0] = x
-        ret.size = 16
-    else:
-        assert False
-    return ret
-
-
-cpdef get_scalar_from_numpy(x, dtype):
-    cdef CScalar ret = _numpy_scalar_to_c_scalar(x)
-    ret.apply_dtype(dtype)
-    return ret
-
-
-cpdef convert_scalar(x, bint use_c_scalar):
+cdef CScalar scalar_to_c_scalar(object x):
+    # Converts a Python or NumPy scalar to a CScalar.
+    # Returns None if the argument is not a scalar.
     typ = type(x)
     if typ in _python_scalar_type_set:
-        if use_c_scalar:
-            return _python_scalar_to_c_scalar(x)
+        return CScalar._from_python_scalar(x)
+    elif typ in _numpy_scalar_type_set:
+        return CScalar._from_numpy_scalar(x)
+    return None
+
+
+cdef object scalar_to_numpy_scalar(object x):
+    # Converts a Python or NumPy scalar to a NumPy scalar.
+    # Returns None if the argument is not a scalar.
+    typ = type(x)
+    if typ in _python_scalar_type_set:
         return _python_scalar_to_numpy_scalar(x)
     elif typ in _numpy_scalar_type_set:
-        if use_c_scalar:
-            return _numpy_scalar_to_c_scalar(x)
         return x
     return None

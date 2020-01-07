@@ -266,7 +266,7 @@ cdef class _AbstractReductionKernel:
                               ' %s which has no identity') % self.name)
 
         in_args = [x if isinstance(x, ndarray) else
-                   _scalar.get_scalar_from_numpy(x, t)
+                   _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
                    for x, t in zip(in_args, in_types)]
         in_shape = _set_permuted_args(
             in_args, reduce_axis + out_axis, a_shape, self.in_params)
@@ -291,7 +291,7 @@ cdef class _AbstractReductionKernel:
                 _carray.Indexer(in_shape),
                 _carray.Indexer(out_shape),
                 # block_stride is passed as the last argument.
-                _scalar.CScalar_from_int32(block_stride),
+                _scalar.CScalar.from_int32(block_stride),
             ])
 
         # Retrieve the kernel function
