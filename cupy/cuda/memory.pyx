@@ -11,12 +11,13 @@ import threading
 import warnings
 import weakref
 
+from cupy.cuda import runtime
+from cupy.core import syncdetect
+
 from fastrlock cimport rlock
 from libc.stdint cimport int8_t
 from libc.stdint cimport intptr_t
 from libcpp cimport algorithm
-
-from cupy.cuda import runtime
 
 from cupy.cuda cimport device
 from cupy.cuda cimport device as device_mod
@@ -101,6 +102,7 @@ cdef class Memory(BaseMemory):
 
     def __dealloc__(self):
         if self.ptr:
+            syncdetect._declare_synchronize()
             runtime.free(self.ptr)
 
 
