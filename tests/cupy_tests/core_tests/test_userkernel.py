@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -65,6 +66,132 @@ class TestUserkernel(unittest.TestCase):
 
         expected = in1_cpu + dtype(2)
         testing.assert_array_equal(out1, expected)
+
+
+class TestElementwiseKernelSize(unittest.TestCase):
+    # Tests to check whether size argument raises ValueError correctly
+    # depending on the raw specifiers of a user kernel.
+
+    def setUp(self):
+        self.arr1 = cupy.array([1, 2], dtype='float32')
+        self.arr2 = cupy.array([3, 4], dtype='float32')
+
+    def raises_size_not_allowed(self):
+        return pytest.raises(ValueError, match=r'^Specified \'size\' can')
+
+    def raises_size_required(self):
+        return pytest.raises(ValueError, match=r'^Loop size is undecided\.')
+
+    def create_kernel(self, input_raw, output_raw):
+        # Creates a no-op kernel with given parameter specification.
+        # input_raw and output_raw are tuples of True/False whose
+        # corresponding parameter will be designated as 'raw' if True.
+        input_types = (
+            ', '.join([
+                '{}float32 x{}'.format(
+                    ('raw ' if raw else ''), i)
+                for i, raw in enumerate(input_raw)]))
+        output_types = (
+            ', '.join([
+                '{}float32 y{}'.format(
+                    ('raw ' if raw else ''), i)
+                for i, raw in enumerate(output_raw)]))
+        return cupy.ElementwiseKernel(input_types, output_types, '', 'kernel')
+
+    def test_all_raws(self):
+        # Input arrays are all raw -> size required
+        kernel1 = self.create_kernel((True, True), (False,))
+        kernel1(self.arr1, self.arr2, size=2)
+        with self.raises_size_required():
+            kernel1(self.arr1, self.arr2)
+        kernel2 = self.create_kernel((True, True), (True,))
+        kernel2(self.arr1, self.arr2, size=2)
+        with self.raises_size_required():
+            kernel2(self.arr1, self.arr2)
+
+    def test_all_nonraws(self):
+        # All arrays are not raw -> size not allowed
+        kernel1 = self.create_kernel((False, False), (False,))
+        with self.raises_size_not_allowed():
+            kernel1(self.arr1, self.arr2, size=2)
+        kernel2 = self.create_kernel((False, False), (True,))
+        with self.raises_size_not_allowed():
+            kernel2(self.arr1, self.arr2, size=2)
+
+    def test_some_nonraws(self):
+        # Some arrays are not raw -> size not allowed
+        kernel1 = self.create_kernel((True, False), (False,))
+        with self.raises_size_not_allowed():
+            kernel1(self.arr1, self.arr2, size=2)
+        kernel2 = self.create_kernel((False, True), (False,))
+        with self.raises_size_not_allowed():
+            kernel2(self.arr1, self.arr2, size=2)
+        kernel3 = self.create_kernel((True, False), (True,))
+        with self.raises_size_not_allowed():
+            kernel3(self.arr1, self.arr2, size=2)
+        kernel4 = self.create_kernel((False, True), (True,))
+        with self.raises_size_not_allowed():
+            kernel4(self.arr1, self.arr2, size=2)
+
+    def test_scalars_and_nonraws(self):
+        # Combination of scalars and non-raw arrays -> size not allowed
+        kernel1 = self.create_kernel((False, False), (False,))
+        with self.raises_size_not_allowed():
+            kernel1(self.arr1, 7, size=2)
+        kernel2 = self.create_kernel((False, False), (False,))
+        with self.raises_size_not_allowed():
+            kernel2(7, self.arr1, size=2)
+        kernel3 = self.create_kernel((False, False), (True,))
+        with self.raises_size_not_allowed():
+            kernel3(self.arr1, 7, size=2)
+        kernel4 = self.create_kernel((False, False), (True,))
+        with self.raises_size_not_allowed():
+            kernel4(7, self.arr1, size=2)
+
+    def test_scalars_and_raws_and_nonraws(self):
+        # Combination of scalars and raw arrays and non-raw arrays
+        #                                                   -> size not allowed
+        kernel1 = self.create_kernel((False, False, True), (False,))
+        with self.raises_size_not_allowed():
+            kernel1(self.arr1, 7, self.arr2, size=2)
+        kernel2 = self.create_kernel((False, False, True), (True,))
+        with self.raises_size_not_allowed():
+            kernel2(self.arr1, 7, self.arr2, size=2)
+
+    def test_scalars_and_raws(self):
+        # Combination of scalars and raw arrays -> size required
+        kernel1 = self.create_kernel((True, False), (False,))
+        kernel1(self.arr1, 7, size=2)
+        with self.raises_size_required():
+            kernel1(self.arr1, 7)
+        kernel2 = self.create_kernel((False, True), (False,))
+        kernel2(7, self.arr1, size=2)
+        with self.raises_size_required():
+            kernel2(7, self.arr1)
+        kernel3 = self.create_kernel((True, False), (True,))
+        kernel3(self.arr1, 7, size=2)
+        with self.raises_size_required():
+            kernel3(self.arr1, 7)
+        kernel4 = self.create_kernel((False, True), (True,))
+        kernel4(7, self.arr1, size=2)
+        with self.raises_size_required():
+            kernel4(7, self.arr1)
+
+    def test_size_determined_by_output(self):
+        # All the input args are unsized, but the size can be determined by the
+        # output arg. size argument is not allowed.
+
+        # Raw input
+        kernel1 = self.create_kernel((True,), (False,))
+        kernel1(self.arr1, self.arr2)
+        with self.raises_size_not_allowed():
+            kernel1(self.arr1, self.arr2, size=2)
+
+        # Scalar input
+        kernel2 = self.create_kernel((False,), (False,))
+        kernel2(self.arr1, self.arr2)
+        with self.raises_size_not_allowed():
+            kernel2(7, self.arr2, size=2)
 
 
 @testing.parameterize(*testing.product({

@@ -341,34 +341,40 @@ cdef tuple _decide_params_type_core(
 
 
 cdef tuple _broadcast(list args, tuple params, bint use_size):
-    cpdef Py_ssize_t i
-    cpdef ParameterInfo p
-    cpdef bint is_none, is_not_none
+    cdef Py_ssize_t i
+    cdef ParameterInfo p
+    cdef bint any_nonraw_array = False
     cdef vector.vector[Py_ssize_t] shape
+
+    # Collect non-raw arrays
     value = []
-    is_none = False
-    is_not_none = False
     for i in range(len(args)):
         p = params[i]
         a = args[i]
         if not p.raw and isinstance(a, ndarray):
-            is_not_none = True
+            # Non-raw array
+            any_nonraw_array = True
             value.append(a)
         else:
-            is_none = True
             value.append(None)
 
     if use_size:
-        if not is_none:
+        if any_nonraw_array:
             raise ValueError('Specified \'size\' can be used only '
                              'if all of the ndarray are \'raw\'.')
     else:
-        if not is_not_none:
-            raise ValueError('Loop size is Undecided')
+        if not any_nonraw_array:
+            raise ValueError('Loop size is undecided.')
+
+    # Perform broadcast.
+    # Note that arrays in `value` are replaced with broadcasted ones.
     internal._broadcast_core(value, shape)
+
+    # Restore raw arrays and scalars from the original list.
     for i, a in enumerate(value):
         if a is None:
             value[i] = args[i]
+
     return value, tuple(shape)
 
 
