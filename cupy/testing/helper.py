@@ -123,12 +123,15 @@ def _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
                 for err in errors])
 
 
-def _fail_test_with_unexpected_errors(testcase, msg_format, cupy_tb, numpy_tb):
+def _fail_test_with_unexpected_errors(
+        testcase, msg_format, cupy_error, cupy_tb, numpy_error, numpy_tb):
     # Fails the test due to unexpected errors raised from the test.
     # msg_format may include format placeholders '{cupy_tb}' '{numpy_tb}'
 
     msg = msg_format.format(
+        cupy_error=''.join(str(cupy_error)),
         cupy_tb=''.join(traceback.format_tb(cupy_tb)),
+        numpy_error=''.join(str(numpy_error)),
         numpy_tb=''.join(traceback.format_tb(numpy_tb)))
 
     # Fail the test with the traceback of the error (for pytest --pdb)
@@ -160,13 +163,13 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
     elif cupy_error is None:
         _fail_test_with_unexpected_errors(
             self,
-            'Only numpy raises error\n\n{numpy_tb}',
-            None, numpy_tb)
+            'Only numpy raises error\n\n{numpy_tb}{numpy_error}',
+            None, None, numpy_error, numpy_tb)
     elif numpy_error is None:
         _fail_test_with_unexpected_errors(
             self,
-            'Only cupy raises error\n\n{cupy_tb}',
-            cupy_tb, None)
+            'Only cupy raises error\n\n{cupy_tb}{cupy_error}',
+            cupy_error, cupy_tb, None, None)
 
     elif not _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
         _fail_test_with_unexpected_errors(
@@ -174,11 +177,12 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
             '''Different types of errors occurred
 
 cupy
-{cupy_tb}
+{cupy_tb}{cupy_error}
+
 numpy
-{numpy_tb}
+{numpy_tb}{numpy_error}
 ''',
-            cupy_tb, numpy_tb)
+            cupy_error, cupy_tb, numpy_error, numpy_tb)
 
     elif not (isinstance(cupy_error, accept_error)
               and isinstance(numpy_error, accept_error)):
@@ -187,11 +191,12 @@ numpy
             '''Both cupy and numpy raise exceptions
 
 cupy
-{cupy_tb}
+{cupy_tb}{cupy_error}
+
 numpy
-{numpy_tb}
+{numpy_tb}{numpy_error}
 ''',
-            cupy_tb, numpy_tb)
+            cupy_error, cupy_tb, numpy_error, numpy_tb)
 
 
 def _make_positive_mask(self, impl, args, kw, name, sp_name, scipy_name):
