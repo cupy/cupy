@@ -174,14 +174,20 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
         ops.append(_generate_boundary_condition_ops(mode, ixvar, xshape[j]))
         ops.append('        ix_{j} *= sx_{j};'.format(j=j))
 
+    ops.append('''
+        W wval = w[iw];
+        if (wval == (W)0) {{
+            iw += 1;
+            continue;
+        }}''')
     _cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
     _expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
     ops.append('''
         if ({cond}) {{
-            sum += (W){cval} * w[iw];
+            sum += (W){cval} * wval;
         }} else {{
             int ix = {expr};
-            sum += (W)x[ix] * w[iw];
+            sum += (W)x[ix] * wval;
         }}
         iw += 1;'''.format(cond=_cond, expr=_expr, cval=cval))
 
