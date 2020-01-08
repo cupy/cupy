@@ -109,7 +109,8 @@ class _RecursiveAttr(object):
             return all([_RecursiveAttr._is_cupy_compatible(i) for i in arg])
 
         if isinstance(arg, dict):
-            return all([_RecursiveAttr._is_cupy_compatible(arg[key]) for key in arg])
+            bools = [_RecursiveAttr._is_cupy_compatible(arg[i]) for i in arg]
+            return all(bools)
 
         return True
 
@@ -134,7 +135,8 @@ class _RecursiveAttr(object):
         if self._fallback_array is not None:
             args = ((self._fallback_array,) + args)
 
-        if self._cupy_object is not None and _RecursiveAttr._is_cupy_compatible((args, kwargs)):
+        if self._cupy_object is not None and \
+           _RecursiveAttr._is_cupy_compatible((args, kwargs)):
             try:
                 return _call_cupy(self._cupy_object, args, kwargs)
             except Exception:
@@ -290,7 +292,8 @@ class ndarray(object):
         To be executed before calling numpy function.
         """
         base = self.base
-        _type = np.ndarray if self._supports_cupy else self._numpy_array.__class__
+        _type = np.ndarray if self._supports_cupy \
+            else self._numpy_array.__class__
 
         if self._supports_cupy:
             # cupy-compatible
@@ -338,7 +341,7 @@ def _create_magic_methods():
     def make_method(name):
         def method(self, *args, **kwargs):
             CLASS = cp.ndarray if self._supports_cupy \
-                    else self._numpy_array.__class__
+                else self._numpy_array.__class__
             _method = getattr(CLASS, name)
             args = ((self,) + args)
             if self._supports_cupy:
