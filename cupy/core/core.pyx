@@ -1827,7 +1827,7 @@ cpdef function.Module compile_with_cache(
 
     return cuda.compile_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,
-        enable_cooperative_groups)
+        enable_cooperative_groups=enable_cooperative_groups)
 
 
 # =============================================================================

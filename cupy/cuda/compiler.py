@@ -278,7 +278,7 @@ _empty_file_preprocess_cache = {}
 
 def compile_with_cache(
         source, options=(), arch=None, cache_dir=None, extra_source=None,
-        backend='nvrtc', enable_cooperative_groups=False):
+        backend='nvrtc', *, enable_cooperative_groups=False):
 
     if enable_cooperative_groups and backend != 'nvcc':
         raise ValueError(
