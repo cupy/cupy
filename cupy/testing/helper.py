@@ -126,7 +126,8 @@ def _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
 def _fail_test_with_unexpected_errors(
         testcase, msg_format, cupy_error, cupy_tb, numpy_error, numpy_tb):
     # Fails the test due to unexpected errors raised from the test.
-    # msg_format may include format placeholders '{cupy_tb}' '{numpy_tb}'
+    # msg_format may include format placeholders:
+    # '{cupy_error}' '{cupy_tb}' '{numpy_error}' '{numpy_tb}'
 
     msg = msg_format.format(
         cupy_error=''.join(str(cupy_error)),
