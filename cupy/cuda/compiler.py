@@ -278,9 +278,9 @@ _empty_file_preprocess_cache = {}
 
 def compile_with_cache(
         source, options=(), arch=None, cache_dir=None, extra_source=None,
-        backend='nvrtc', grid_sync=False):
+        backend='nvrtc', enable_cooperative_groups=False):
 
-    if grid_sync and backend != 'nvcc':
+    if enable_cooperative_groups and backend != 'nvcc':
         raise ValueError(
             'Cooperative groups is supported only in NVCC backend.')
 
@@ -290,12 +290,12 @@ def compile_with_cache(
     else:
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
-            grid_sync)
+            enable_cooperative_groups)
 
 
 def _compile_with_cache_cuda(
         source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
-        grid_sync=False):
+        enable_cooperative_groups=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -305,7 +305,7 @@ def _compile_with_cache_cuda(
 
     options += ('-ftz=true',)
 
-    if grid_sync:
+    if enable_cooperative_groups:
         options += ('-rdc=true', '-Xcompiler', '-fPIC', '-shared')
 
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):

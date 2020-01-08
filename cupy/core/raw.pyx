@@ -33,7 +33,7 @@ cdef class RawKernel:
     """
 
     def __init__(self, code, name, options=(), backend='nvrtc', *,
-                 translate_cucomplex=False, grid_sync=False):
+                 translate_cucomplex=False, enable_cooperative_groups=False):
         if isinstance(code, six.binary_type):
             code = code.decode('UTF-8')
         if isinstance(name, six.binary_type):
@@ -47,7 +47,7 @@ cdef class RawKernel:
         self.backend = backend
         self.translate_cucomplex = translate_cucomplex
         self._kernel = None
-        self.grid_sync = grid_sync
+        self.enable_cooperative_groups = enable_cooperative_groups
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -71,7 +71,7 @@ cdef class RawKernel:
         if self._kernel is None:
             self._kernel = _get_raw_kernel(
                 self.code, self.name, self.options, self.backend,
-                self.translate_cucomplex, self.grid_sync)
+                self.translate_cucomplex, self.enable_cooperative_groups)
         return self._kernel
 
     @property
@@ -195,10 +195,12 @@ cdef class RawKernel:
 
 @cupy.util.memoize(for_each_device=True)
 def _get_raw_kernel(code, name, options=(), backend='nvrtc',
-                    translate_cucomplex=False, grid_sync=False):
+                    translate_cucomplex=False,
+                    enable_cooperative_groups=False):
     module = cupy.core.core.compile_with_cache(
         code, options, prepend_cupy_headers=False, backend=backend,
-        translate_cucomplex=translate_cucomplex, grid_sync=grid_sync)
+        translate_cucomplex=translate_cucomplex,
+        enable_cooperative_groups=enable_cooperative_groups)
     return module.get_function(name)
 
 

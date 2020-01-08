@@ -95,7 +95,7 @@ cpdef ndarray asfortranarray(ndarray a, dtype=*)
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*,
                                 backend=*, translate_cucomplex=*,
-                                grid_sync=*)
+                                enable_cooperative_groups=*)
 
 
 # TODO(niboshi): Move to _routines_creation.pyx
