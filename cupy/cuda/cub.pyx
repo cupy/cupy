@@ -290,6 +290,7 @@ def device_scan(ndarray x, int op, dtype=None, ndarray out=None):
     cdef ndarray y
     cdef memory.MemoryPointer ws
     cdef int dtype_id, x_size
+    cdef tuple shape
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *y_ptr
@@ -302,6 +303,7 @@ def device_scan(ndarray x, int op, dtype=None, ndarray out=None):
         raise ValueError('only CUPY_CUB_CUMSUM and CUPY_CUB_CUMPROD '
                          'are supported.')
 
+    # determine dtype
     x_dtype = x.dtype
     if dtype is None:
         dtype = x_dtype
@@ -312,23 +314,26 @@ def device_scan(ndarray x, int op, dtype=None, ndarray out=None):
         dtype = numpy.uint64
     else:
         dtype = x_dtype
-    x = x.astype(dtype)
-    if out is not None:
-        y = out.astype(dtype)
-    else:
-        y = ndarray(x.shape, dtype)
 
-    if x.size == 0:
-        if out is not None:
-            out = out.reshape((0,))
-            y = out
-        else:
-            y = ndarray((0,), dtype=dtype)
+    # determine shape: x is either 1D (with axis=None,0) or ND but ravelled.
+    x_size = <int>x.size
+    if x.ndim != 1:
+        shape = (x_size,)
+    else:
+        shape = x.shape
+
+    x = x.astype(dtype).reshape(shape)
+    if out is not None:
+        out = out.astype(dtype).reshape(shape)
+        y = out
+    else:
+        y = ndarray(shape, dtype)
+
+    if x_size == 0:
         return y
 
     x = _internal_ascontiguousarray(x)
     x_ptr = <void *>x.data.ptr
-    x_size = <int>x.size
     y_ptr = <void *>y.data.ptr
     s = <Stream_t>stream.get_current_stream_ptr()
     dtype_id = _get_dtype_id(dtype)
@@ -338,10 +343,6 @@ def device_scan(ndarray x, int op, dtype=None, ndarray out=None):
     ws_ptr = <void *>ws.ptr
     with nogil:
         cub_device_scan(ws_ptr, ws_size, x_ptr, y_ptr, x_size, s, op, dtype_id)
-
-    if out is not None:
-        out[...] = y
-        y = out
     return y
 
 
