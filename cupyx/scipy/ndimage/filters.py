@@ -1,5 +1,3 @@
-import numpy
-
 import cupy
 from cupy import util
 
@@ -80,7 +78,7 @@ def _get_output(output, input, shape=None):
 
 def _correlate_or_convolve(input, weights, output, mode, cval, origin,
                            convolution):
-    if input.dtype in (numpy.complex64, numpy.complex128, numpy.complex256):
+    if input.dtype.kind == 'c':
         raise TypeError('Complex type not supported.')
     if not hasattr(origin, '__getitem__'):
         origin = [origin, ] * input.ndim
