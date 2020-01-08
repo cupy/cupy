@@ -84,13 +84,19 @@ cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     """Preprocesses arguments for kernel invocation
 
     - Checks device compatibility for ndarrays
-    - Converts Python scalars into NumPy scalars
+    - Converts Python/NumPy scalars:
+      - If use_c_scalar is True, into CScalars.
+      - If use_c_scalar is False, into NumPy scalars.
     """
     cdef list ret = []
 
     for arg in args:
         if type(arg) is not ndarray:
-            s = _scalar.convert_scalar(arg, use_c_scalar)
+            if use_c_scalar:
+                s = _scalar.scalar_to_c_scalar(arg)
+            else:
+                s = _scalar.scalar_to_numpy_scalar(arg)
+
             if s is not None:
                 ret.append(s)
                 continue
@@ -896,8 +902,9 @@ cdef class ufunc:
         inout_args = []
         for i, t in enumerate(op.in_types):
             x = broad_values[i]
-            inout_args.append(x if isinstance(x, ndarray) else
-                              _scalar.get_scalar_from_numpy(x, t))
+            inout_args.append(
+                x if isinstance(x, ndarray) else
+                _scalar.CScalar.from_numpy_scalar_with_dtype(x, t))
         inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
         indexer = _carray.Indexer(shape)
