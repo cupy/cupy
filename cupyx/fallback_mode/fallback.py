@@ -92,7 +92,7 @@ class _RecursiveAttr(object):
         return self._numpy_object.__doc__
 
     @staticmethod
-    def _assert_cupy_compatible(arg):
+    def _is_cupy_compatible(arg):
         """
         Returns False if CuPy's functions never accept the arguments as
         parameters due to the following reasons.
@@ -102,15 +102,16 @@ class _RecursiveAttr(object):
         """
 
         if isinstance(arg, ndarray):
-            assert arg._supports_cupy
+            if not arg._supports_cupy:
+                return False
 
         if isinstance(arg, (tuple, list)):
-            for i in arg:
-                _RecursiveAttr._assert_cupy_compatible(i)
+            return all([_RecursiveAttr._is_cupy_compatible(i) for i in arg])
 
         if isinstance(arg, dict):
-            for key in arg:
-                _RecursiveAttr._assert_cupy_compatible(arg[key])
+            return all([_RecursiveAttr._is_cupy_compatible(arg[key]) for key in arg])
+
+        return True
 
     def __call__(self, *args, **kwargs):
         """
@@ -133,13 +134,11 @@ class _RecursiveAttr(object):
         if self._fallback_array is not None:
             args = ((self._fallback_array,) + args)
 
-        if self._cupy_object is not None:
+        if self._cupy_object is not None and _RecursiveAttr._is_cupy_compatible((args, kwargs)):
             try:
-                _RecursiveAttr._assert_cupy_compatible((args, kwargs))
                 return _call_cupy(self._cupy_object, args, kwargs)
             except Exception:
-                # not cupy compatible
-                pass
+                return _call_numpy(self._numpy_object, args, kwargs)
 
         return _call_numpy(self._numpy_object, args, kwargs)
 
