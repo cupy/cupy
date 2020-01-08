@@ -177,6 +177,22 @@ class TestElementwiseKernelSize(unittest.TestCase):
         with self.raises_size_required():
             kernel4(7, self.arr1)
 
+    def test_size_determined_by_output(self):
+        # All the input args are unsized, but the size can be determined by the
+        # output arg. size argument is not allowed.
+
+        # Raw input
+        kernel1 = self.create_kernel((True,), (False,))
+        kernel1(self.arr1, self.arr2)
+        with self.raises_size_not_allowed():
+            kernel1(self.arr1, self.arr2, size=2)
+
+        # Scalar input
+        kernel2 = self.create_kernel((False,), (False,))
+        kernel2(self.arr1, self.arr2)
+        with self.raises_size_not_allowed():
+            kernel2(7, self.arr2, size=2)
+
 
 @testing.parameterize(*testing.product({
     'value': [-1, 2 ** 32, 2 ** 63 - 1, -(2 ** 63)],
