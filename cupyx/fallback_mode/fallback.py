@@ -102,7 +102,7 @@ class _RecursiveAttr(object):
         """
 
         if isinstance(arg, ndarray):
-            assert arg._class is cp.ndarray
+            assert arg._supports_cupy
 
         if isinstance(arg, (tuple, list)):
             for i in arg:
@@ -161,7 +161,7 @@ class ndarray(object):
 
     def __new__(cls, *args, **kwargs):
         """
-        If `_initial_array` and `_class` are arguments,
+        If `_initial_array` and `_supports_cupy` are arguments,
         initialize cls(ndarray).
         Else get cupy.ndarray from provided arguments,
         then initialize cls(ndarray).
@@ -171,7 +171,7 @@ class ndarray(object):
             return object.__new__(cls)
 
         cupy_ndarray_init = cp.ndarray(*args, **kwargs)
-        return cls(_initial_array=cupy_ndarray_init, _class=cp.ndarray)
+        return cls(_initial_array=cupy_ndarray_init, _supports_cupy=True)
 
     def __init__(self, *args, **kwargs):
         """
@@ -179,13 +179,10 @@ class ndarray(object):
             _initial_array (None, cp.ndarray/np.ndarray(including variants)):
                 If _initial_array is None, object is not initialized.
                 Otherwise, _initial_array (ndarray) would be set to
-                _cupy_array and/or _numpy_array depending upon _class.
-            _class (ndarray type): If _class is `cp.ndarray`, _initial_array
+                _cupy_array and/or _numpy_array depending upon _supports_cupy.
+            _supports_cupy (bool): If _supports_cupy is True, _initial_array
                 is set as _cupy_array and _numpy_array.
                 Otherwise, _initial_array is set as only _numpy_array.
-                Intended values for _class are `np.ndarray`,
-                `np.ma.MaskedArray`, `np.matrix`, `np.chararray`,
-                `np.recarray`.
 
         Attributes:
             _cupy_array (None or cp.ndarray): ndarray fully compatible with
@@ -194,12 +191,12 @@ class ndarray(object):
                 supported by CuPy. Such as np.ndarray (where dtype is not in
                 '?bhilqBHILQefdFD') and it's variants. This will be always set
                 to a ndarray in CPU.
-            _class (ndarray type): If _class is `cp.ndarray`, data of array
+            _supports_cupy (bool): If _supports_cupy is True, data of array
                 will contain in _cupy_array and _numpy_array.
-                In all other cases only _numpy_array will have the data.
+                Else only _numpy_array will have the data.
         """
 
-        _class = kwargs.pop('_class', None)
+        _supports_cupy = kwargs.pop('_supports_cupy', None)
         _initial_array = kwargs.pop('_initial_array', None)
         if _initial_array is None:
             return
@@ -207,10 +204,10 @@ class ndarray(object):
         self._cupy_array = None
         self._numpy_array = None
         self.base = None
-        self._class = _class
+        self._supports_cupy = _supports_cupy
 
         assert isinstance(_initial_array, (cp.ndarray, np.ndarray))
-        if _class is cp.ndarray:
+        if _supports_cupy:
             if type(_initial_array) is cp.ndarray:
                 # _initial_array is in GPU memory
                 # called by _store_array_from_cupy
@@ -227,15 +224,15 @@ class ndarray(object):
 
     @classmethod
     def _store_array_from_cupy(cls, array):
-        return cls(_initial_array=array, _class=cp.ndarray)
+        return cls(_initial_array=array, _supports_cupy=True)
 
     @classmethod
     def _store_array_from_numpy(cls, array):
         if type(array) is np.ndarray and \
            array.dtype.kind in '?bhilqBHILQefdFD':
-            return cls(_initial_array=array, _class=cp.ndarray)
+            return cls(_initial_array=array, _supports_cupy=True)
 
-        return cls(_initial_array=array, _class=array.__class__)
+        return cls(_initial_array=array, _supports_cupy=False)
 
     def __getattr__(self, attr):
         """
@@ -250,15 +247,15 @@ class ndarray(object):
             Returns self._array.attr if attr is not callable.
         """
 
-        if self._class is cp.ndarray:
+        if self._supports_cupy:
             cupy_object = getattr(cp.ndarray, attr, None)
             numpy_object = getattr(np.ndarray, attr)
         else:
             cupy_object = None
-            numpy_object = getattr(self._class, attr)
+            numpy_object = getattr(self._numpy_array.__class__, attr)
 
         if not callable(numpy_object):
-            if self._class is cp.ndarray:
+            if self._supports_cupy:
                 return getattr(self._cupy_array, attr)
             return getattr(self._numpy_array, attr)
 
@@ -282,9 +279,9 @@ class ndarray(object):
         and it's base (if exist) as numpy up-to-date.
         """
         base = self.base
-        if base is not None and base._class is cp.ndarray:
+        if base is not None and base._supports_cupy:
             base._remember_numpy = True
-        if self._class is cp.ndarray:
+        if self._supports_cupy:
             self._remember_numpy = True
         return self._numpy_array
 
@@ -294,9 +291,9 @@ class ndarray(object):
         To be executed before calling numpy function.
         """
         base = self.base
-        _type = np.ndarray if self._class is cp.ndarray else self._class
+        _type = np.ndarray if self._supports_cupy else self._numpy_array.__class__
 
-        if self._class is cp.ndarray:
+        if self._supports_cupy:
             # cupy-compatible
             if base is None:
                 if not self._remember_numpy:
@@ -314,7 +311,7 @@ class ndarray(object):
         else:
             # not cupy-compatible
             if base is not None:
-                assert base._class is cp.ndarray
+                assert base._supports_cupy
                 if not base._remember_numpy:
                     base._update_numpy_array()
 
@@ -341,9 +338,11 @@ def _create_magic_methods():
     # Decorator for ndarray magic methods
     def make_method(name):
         def method(self, *args, **kwargs):
-            _method = getattr(self._class, name)
+            CLASS = cp.ndarray if self._supports_cupy \
+                    else self._numpy_array.__class__
+            _method = getattr(CLASS, name)
             args = ((self,) + args)
-            if self._class is cp.ndarray:
+            if self._supports_cupy:
                 return _call_cupy(_method, args, kwargs)
             return _call_numpy(_method, args, kwargs)
         return method

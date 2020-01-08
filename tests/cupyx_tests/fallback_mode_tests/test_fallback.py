@@ -237,21 +237,21 @@ class FallbackArray(unittest.TestCase):
 
         a = fallback_mode.numpy.array([[1, 2], [3, 4]])
         assert isinstance(a, fallback.ndarray)
-        assert a._class is cupy.ndarray
+        assert a._supports_cupy
 
         b = fallback_mode.numpy.arange(9)
         assert isinstance(b, fallback.ndarray)
-        assert a._class is cupy.ndarray
+        assert a._supports_cupy
 
     def test_ndarray_creation_not_compatible(self):
 
         a = fallback_mode.numpy.array([1, 2, 3], dtype=object)
         assert isinstance(a, fallback.ndarray)
-        assert a._class is numpy.ndarray
+        assert not a._supports_cupy
 
         b = fallback_mode.numpy.array(['a', 'b', 'c', 'd'], dtype='|S1')
         assert isinstance(b, fallback.ndarray)
-        assert b._class is numpy.ndarray
+        assert not b._supports_cupy
 
         # Structured array will automatically be _numpy_array
         c = fallback_mode.numpy.array(
@@ -259,7 +259,7 @@ class FallbackArray(unittest.TestCase):
             dtype=[('name', 'U10'), ('age', 'i4'), ('weight', 'f4')])
 
         assert isinstance(c, fallback.ndarray)
-        assert c._class is numpy.ndarray
+        assert not c._supports_cupy
 
     def test_getitem(self):
 
@@ -632,9 +632,10 @@ class TestArrayVariants(unittest.TestCase):
         y = xp.asmatrix(x)
 
         if xp is fallback_mode.numpy:
-            assert x._class is cupy.ndarray
+            assert x._supports_cupy
             assert isinstance(y, fallback.ndarray)
-            assert y._class is numpy.matrix
+            assert not y._supports_cupy
+            assert y._numpy_array.__class__ is numpy.matrix
 
         return y
 
