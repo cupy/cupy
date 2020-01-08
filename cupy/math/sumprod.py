@@ -8,6 +8,8 @@ from cupy.core import fusion
 
 if cupy.cuda.cub_enabled:
     from cupy.cuda import cub
+else:
+    cub = None
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -229,8 +231,9 @@ def cumsum(a, axis=None, dtype=None, out=None):
     .. seealso:: :func:`numpy.cumsum`
 
     """
+    op = cub.CUPY_CUB_CUMSUM if cub is not None else None
     return _cum_core(a, axis, dtype, out, _cumsum_kern, _cumsum_batch_kern,
-                     op=cub.CUPY_CUB_CUMSUM)
+                     op=op)
 
 
 _cumprod_batch_kern = core.ElementwiseKernel(
@@ -273,8 +276,9 @@ def cumprod(a, axis=None, dtype=None, out=None):
     .. seealso:: :func:`numpy.cumprod`
 
     """
+    op = cub.CUPY_CUB_CUMPROD if cub is not None else None
     return _cum_core(a, axis, dtype, out, _cumprod_kern, _cumprod_batch_kern,
-                     op=cub.CUPY_CUB_CUMPROD)
+                     op=op)
 
 
 def diff(a, n=1, axis=-1, prepend=None, append=None):
