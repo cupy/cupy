@@ -543,6 +543,17 @@ class TestRawGridSync(unittest.TestCase):
             }''', 'test_grid_sync', backend='nvcc',
             enable_cooperative_groups=True)
 
+    def tearDown(self):
+        # To avoid cache interference, we remove cached files after every test,
+        # and restore users' old setting
+        global _test_cache_dir
+        shutil.rmtree(_test_cache_dir)
+        if _is_cache_env_var_set:
+            os.environ['CUPY_CACHE_DIR'] = _old_cache_dir
+        else:
+            os.environ.pop('CUPY_CACHE_DIR')
+        compiler._empty_file_preprocess_cache = {}
+
     def test_grid_sync(self):
         n = 10
         x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
