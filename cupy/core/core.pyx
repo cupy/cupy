@@ -1951,59 +1951,59 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 # When `copy` is False, `a` is same as `obj`.
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
-    elif hasattr(obj, '__cuda_array_interface__'):
+        return a
+
+    if hasattr(obj, '__cuda_array_interface__'):
         return array(_convert_object_with_cuda_array_interface(obj),
                      dtype, copy, order, subok, ndmin)
-    else:  # obj is sequence, numpy array, scalar or the other type of object
-        shape, elem_type, elem_dtype = _get_concat_shape(obj)
-        if shape is not None and shape[-1] != 0:
-            # obj is a non-empty sequence of ndarrays which share same shape
-            # and dtype
 
-            # resulting array is C order unless 'F' is explicitly specified
-            # (i.e., it ignores order of element arrays in the sequence)
-            order = (
-                'F'
-                if order is not None and len(order) >= 1 and order[0] in 'Ff'
-                else 'C')
-            ndim = len(shape)
-            if ndmin > ndim:
-                shape = (1,) * (ndmin - ndim) + shape
+    # obj is sequence, numpy array, scalar or the other type of object
+    shape, elem_type, elem_dtype = _get_concat_shape(obj)
+    if shape is not None and shape[-1] != 0:
+        # obj is a non-empty sequence of ndarrays which share same shape
+        # and dtype
 
-            if dtype is None:
-                dtype = elem_dtype
-            # Note: dtype might not be numpy.dtype in this place
+        # resulting array is C order unless 'F' is explicitly specified
+        # (i.e., it ignores order of element arrays in the sequence)
+        order = (
+            'F'
+            if order is not None and len(order) >= 1 and order[0] in 'Ff'
+            else 'C')
+        ndim = len(shape)
+        if ndmin > ndim:
+            shape = (1,) * (ndmin - ndim) + shape
 
-            if issubclass(elem_type, numpy.ndarray):
-                # obj is Seq[numpy.ndarray]
-                a = _send_numpy_array_list_to_gpu(
-                    obj, elem_dtype, dtype, shape, order, ndmin)
-            elif issubclass(elem_type, ndarray):
-                # obj is Seq[cupy.ndarray]
-                lst = _flatten_list(obj)
-                if len(shape) == 1:
-                    # convert each scalar (0-dim) ndarray to 1-dim
-                    lst = [cupy.expand_dims(x, 0) for x in lst]
+        if dtype is None:
+            dtype = elem_dtype
+        # Note: dtype might not be numpy.dtype in this place
 
-                a = (_manipulation.concatenate_method(lst, 0)
-                                  .reshape(shape)
-                                  .astype(dtype, order=order, copy=False))
-            else:
-                # should not be reached here
-                assert issubclass(elem_type, (numpy.ndarray, ndarray))
-        else:
-            # obj is:
-            # - numpy array
-            # - scalar or sequence of scalar
-            # - empty sequence or sequence with elements whose shapes or
-            #   dtypes are unmatched
-            # - other types
+        if issubclass(elem_type, numpy.ndarray):
+            # obj is Seq[numpy.ndarray]
+            return _send_numpy_array_list_to_gpu(
+                obj, elem_dtype, dtype, shape, order, ndmin)
 
-            # fallback to numpy array and send it to GPU
-            # Note: dtype might not be numpy.dtype in this place
-            a = _send_object_to_gpu(obj, dtype, order, ndmin)
+        # obj is Seq[cupy.ndarray]
+        assert issubclass(elem_type, ndarray), elem_type
+        lst = _flatten_list(obj)
+        if len(shape) == 1:
+            # convert each scalar (0-dim) ndarray to 1-dim
+            lst = [cupy.expand_dims(x, 0) for x in lst]
 
-    return a
+        a =_manipulation.concatenate_method(lst, 0)
+        a = a.reshape(shape)
+        a = a.astype(dtype, order=order, copy=False)
+        return a
+
+    # obj is:
+    # - numpy array
+    # - scalar or sequence of scalar
+    # - empty sequence or sequence with elements whose shapes or
+    #   dtypes are unmatched
+    # - other types
+
+    # fallback to numpy array and send it to GPU
+    # Note: dtype might not be numpy.dtype in this place
+    return _send_object_to_gpu(obj, dtype, order, ndmin)
 
 
 cdef tuple _get_concat_shape(object obj):
