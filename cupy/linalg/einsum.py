@@ -301,8 +301,6 @@ def _use_cutensor(dtype0, sub0, dtype1, sub1, batch_dims, contract_dims):
     if dtype0 not in (cupy.float32, cupy.float64,
                       cupy.complex64, cupy.complex128):
         return False
-    if len(sub0) == 0 or len(sub1) == 0:
-        return False
     if (len(contract_dims) >= 1 and (sub0[-1] in batch_dims or
                                      sub1[-1] in batch_dims)):
         return False
@@ -322,6 +320,9 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     set1 = set(sub1)
     assert len(set0) == len(sub0), 'operand 0 should be reduced: diagonal'
     assert len(set1) == len(sub1), 'operand 1 should be reduced: diagonal'
+
+    if len(sub0) == 0 or len(sub1) == 0:
+        return arr0 * arr1, sub0 + sub1
 
     set_others = set(sub_others)
     shared = set0 & set1
