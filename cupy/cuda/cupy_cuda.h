@@ -139,6 +139,10 @@ CUresult cuLaunchKernel(...) {
     return CUDA_SUCCESS;
 }
 
+CUresult cuLaunchCooperativeKernel(...) {
+    return CUDA_SUCCESS;
+}
+
 // Function attribute
 CUresult cuFuncGetAttribute(...) {
     return CUDA_SUCCESS;

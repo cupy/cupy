@@ -68,7 +68,10 @@ cdef class RawKernel:
                 bytes.
 
         """
-        self.kernel(grid, block, args, **kwargs)
+        self.kernel(
+            grid, block, args,
+            enable_cooperative_groups=self.enable_cooperative_groups,
+            **kwargs)
 
     @property
     def kernel(self):
