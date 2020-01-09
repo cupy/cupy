@@ -237,7 +237,7 @@ cdef class RawModule:
         Each kernel in ``RawModule`` possesses independent function attributes.
     """
     def __init__(self, *, code=None, path=None, options=(), backend='nvrtc',
-                 translate_cucomplex=False):
+                 translate_cucomplex=False, enable_cooperative_groups=False):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
@@ -251,11 +251,13 @@ cdef class RawModule:
 
         self.code = code
         self.cubin_path = path
+        self.enable_cooperative_groups = enable_cooperative_groups
 
         if self.code is not None:
             self.module = cupy.core.core.compile_with_cache(
                 code, options, prepend_cupy_headers=False, backend=backend,
-                translate_cucomplex=translate_cucomplex)
+                translate_cucomplex=translate_cucomplex,
+                enable_cooperative_groups=self.enable_cooperative_groups)
             self.options = options
             self.backend = backend
             self.translate_cucomplex = translate_cucomplex
@@ -280,8 +282,10 @@ cdef class RawModule:
         if name in self.kernels:
             return self.kernels[name]
         else:
-            ker = RawKernel(None, name, self.options, self.backend,
-                            translate_cucomplex=self.translate_cucomplex)
+            ker = RawKernel(
+                None, name, self.options, self.backend,
+                translate_cucomplex=self.translate_cucomplex,
+                enable_cooperative_groups=self.enable_cooperative_groups)
             ker._kernel = self.module.get_function(name)
             self.kernels[name] = ker
             return ker

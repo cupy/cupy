@@ -20,3 +20,4 @@ cdef class RawModule:
         readonly str backend
         object module
         bint translate_cucomplex
+        readonly bint enable_cooperative_groups
