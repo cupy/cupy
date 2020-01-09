@@ -51,13 +51,11 @@ try:
 except ImportError:
     nccl_enabled = False
 
-cutensor_enabled = False
-if int(os.getenv('CUTENSOR_DISABLED', 0)) == 0:
-    try:
-        from cupy.cuda import cutensor  # NOQA
-        cutensor_enabled = True
-    except ImportError:
-        pass
+try:
+    from cupy.cuda import cutensor  # NOQA
+    cutensor_enabled = True
+except ImportError:
+    cutensor_enabled = False
 
 
 def is_available():
