@@ -537,6 +537,9 @@ void test_grid_sync(const float* x1, const float* x2, float* y) {
 '''
 
 
+@unittest.skipUnless(
+    9000 <= cupy.cuda.runtime.runtimeGetVersion(),
+    'Requires CUDA 9.x or later')
 @testing.parameterize(*testing.product({
     'n': [10, 100, 256]
 }))
