@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -82,3 +83,18 @@ class TestUserkernelScalar(unittest.TestCase):
         else:
             kernel = cupy.ElementwiseKernel('T x, T y', 'T z', 'z = x + y')
             return kernel(x, self.value)
+
+
+class TestUserkernelManualBlockSize(unittest.TestCase):
+
+    def test_invalid_block_size(self):
+        x = testing.shaped_arange((2, 3, 4), cupy, cupy.float32)
+        kernel = cupy.ElementwiseKernel('T x, T y', 'T z', 'z = x + y')
+        with pytest.raises(ValueError):
+            kernel(x, 1, block_size=0)
+
+    def test_block_size(self):
+        x = testing.shaped_arange((2, 3, 4), cupy, cupy.float32)
+        kernel = cupy.ElementwiseKernel('T x, T y', 'T z', 'z = x + y')
+        y = kernel(x, 1, block_size=1)
+        testing.assert_array_equal(y, x + 1)

@@ -588,7 +588,8 @@ cdef class ElementwiseKernel:
         block_size = kwargs.pop('block_size', 128)
         if len(kwargs):
             raise TypeError('Wrong arguments %s' % kwargs)
-
+        if block_size <= 0:
+            raise ValueError('block_size must be greater than zero')
         n_args = len(args)
         if n_args != self.nin and n_args != self.nargs:
             raise TypeError('Wrong number of arguments for %s' % self.name)
