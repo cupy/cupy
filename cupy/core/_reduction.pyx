@@ -5,7 +5,7 @@ from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
 from cupy.core._kernel cimport _broadcast
 from cupy.core._kernel cimport _check_array_device_id
-from cupy.core._kernel cimport _get_args_info
+from cupy.core._kernel cimport _get_arginfos
 from cupy.core._kernel cimport _get_kernel_params
 from cupy.core._kernel cimport _get_out_args
 from cupy.core._kernel cimport _get_out_args_with_params
@@ -33,9 +33,9 @@ from cupy import util
 
 
 cpdef function.Function _create_reduction_function(
-        name, block_size, reduce_type, params, identity,
+        name, block_size, reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
-        type_preamble, input_expr, output_expr, preamble, options):
+        _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
     module_code = string.Template('''
 ${type_preamble}
 ${preamble}
@@ -93,12 +93,12 @@ extern "C" __global__ void ${name}(${params}) {
         name=name,
         block_size=block_size,
         reduce_type=reduce_type,
-        params=params,
+        params=_kernel._get_kernel_params(params, arginfos),
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
         post_map_expr=post_map_expr,
-        type_preamble=type_preamble,
+        type_preamble=type_map.get_typedef_code(),
         input_expr=input_expr,
         output_expr=output_expr,
         preamble=preamble)
@@ -240,7 +240,7 @@ cdef class _AbstractReductionKernel:
         (
             map_expr, reduce_expr, post_map_expr,
             in_types, out_types, reduce_type,
-            types,
+            type_map,
         ) = self._get_expressions_and_types(in_args, out_args, dtype)
 
         reduce_axis, out_axis = _get_axis(axis, len(a_shape))
@@ -297,8 +297,8 @@ cdef class _AbstractReductionKernel:
         # Retrieve the kernel function
         func = self._get_function(
             self._params,
-            _get_args_info(inout_args),
-            types,
+            _get_arginfos(inout_args),
+            type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
             block_size)
 
@@ -318,7 +318,7 @@ cdef class _AbstractReductionKernel:
 
     cdef function.Function _get_function(
             self,
-            tuple params, tuple args_info, tuple types,
+            tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
             Py_ssize_t block_size):
         raise NotImplementedError()
@@ -405,14 +405,15 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         else:
             out_type = op.out_types[0]
 
-        types = (
+        type_map = _kernel._TypeMap((
             ('type_in0_raw', in_args[0].dtype.type),
-            ('type_out0_raw', out_type))
+            ('type_out0_raw', out_type),
+        ))
 
         return (
             map_expr, reduce_expr, post_map_expr,
             op.in_types, op.out_types, reduce_type,
-            types)
+            type_map)
 
     cdef list _get_out_args(
             self, list out_args, tuple out_types, tuple out_shape):
@@ -421,12 +422,12 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
     cdef function.Function _get_function(
             self,
-            tuple params, tuple args_info, tuple types,
+            tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
             Py_ssize_t block_size):
         return _SimpleReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
-            params, args_info, types,
+            params, arginfos, type_map,
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
 
@@ -434,19 +435,14 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 @util.memoize(for_each_device=True)
 def _SimpleReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
-        params, args_info, types,
+        params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, input_expr, output_expr, _preamble,
         options):
-    params = _get_kernel_params(params, args_info)
-
-    type_preamble = '\n'.join(
-        'typedef %s %s;' % (_get_typename(v), k)
-        for k, v in types)
 
     return _create_reduction_function(
-        name, block_size, reduce_type, params, identity,
+        name, block_size, reduce_type, params, arginfos, identity,
         map_expr, reduce_expr, post_map_expr,
-        type_preamble, input_expr, output_expr, _preamble, options)
+        type_map, input_expr, output_expr, _preamble, options)
 
 
 # -----------------------------------------------------------------------------
@@ -574,13 +570,13 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         out_ndarray_types = tuple(
             [a.dtype.type if isinstance(a, ndarray) else None
              for a in out_args])
-        in_types, out_types, types = _decide_params_type(
+        in_types, out_types, type_map = _decide_params_type(
             self.in_params, self.out_params,
             in_ndarray_types, out_ndarray_types)
         return (
             self.map_expr, self.reduce_expr, self.post_map_expr,
             in_types, out_types, self.reduce_type,
-            types)
+            type_map)
 
     cdef list _get_out_args(
             self, list out_args, tuple out_types, tuple out_shape):
@@ -589,11 +585,11 @@ cdef class ReductionKernel(_AbstractReductionKernel):
 
     cdef function.Function _get_function(
             self,
-            tuple params, tuple args_info, tuple types,
+            tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
             Py_ssize_t block_size):
         return _ReductionKernel_get_cached_function(
-            self.nin, self.nout, params, args_info, types,
+            self.nin, self.nout, params, arginfos, type_map,
             self.name, block_size, reduce_type, self.identity,
             map_expr, reduce_expr, post_map_expr,
             self.preamble, self.options)
@@ -601,19 +597,17 @@ cdef class ReductionKernel(_AbstractReductionKernel):
 
 @util.memoize(for_each_device=True)
 def _ReductionKernel_get_cached_function(
-        nin, nout, params, args_info, types,
+        nin, nout, params, arginfos, _kernel._TypeMap type_map,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
         post_map_expr, preamble, options):
-    kernel_params = _get_kernel_params(params, args_info)
-    params = params[:nin + nout]
-    args_info = args_info[:nin + nout]
-    in_arrays = [p for p, a in zip(params[:nin], args_info[:nin])
-                 if not p.raw and a[0] is ndarray]
-    out_arrays = [p for p, a in zip(params[nin:], args_info[nin:])
-                  if not p.raw and a[0] is ndarray]
-    type_preamble = '\n'.join(
-        'typedef %s %s;' % (_get_typename(v), k)
-        for k, v in types)
+    cdef _kernel.ParameterInfo p
+    cdef _kernel._ArgInfo arginfo
+    in_arrays = [
+        p for p, arginfo in zip(params[:nin], arginfos[:nin])
+        if not p.raw and arginfo.is_ndarray()]
+    out_arrays = [
+        p for p, arginfo in zip(params[nin:nin+nout], arginfos[nin:nin+nout])
+        if not p.raw and arginfo.is_ndarray()]
     input_expr = '\n'.join(
         [(('const {0} {1}' if p.is_const else '{0}& {1}') +
           ' = _raw_{1}[_in_ind.get()];').format(p.ctype, p.name)
@@ -623,6 +617,6 @@ def _ReductionKernel_get_cached_function(
          for p in out_arrays if not p.is_const])
 
     return _create_reduction_function(
-        name, block_size, reduce_type, kernel_params, identity,
+        name, block_size, reduce_type, params, arginfos, identity,
         map_expr, reduce_expr, post_map_expr,
-        type_preamble, input_expr, output_expr, preamble, options)
+        type_map, input_expr, output_expr, preamble, options)
