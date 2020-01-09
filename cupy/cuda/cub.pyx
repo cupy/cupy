@@ -98,7 +98,7 @@ cpdef Py_ssize_t _preprocess_array(ndarray arr, tuple reduce_axis,
 
 def device_reduce(ndarray x, int op, tuple out_axis, out=None,
                   bint keepdims=False):
-    cdef ndarray y, z
+    cdef ndarray y
     cdef memory.MemoryPointer ws
     cdef int dtype_id, ndim_out, kv_bytes
     cdef size_t ws_size
@@ -376,8 +376,10 @@ def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
     else:
         order = None
 
-    if can_use_device_reduce(op, arr.dtype, out_axis, dtype):
-        return device_reduce(arr, op, out_axis, out, keepdims)
+    if can_use_device_segmented_reduce(op, arr.dtype, arr.ndim,
+                                       reduce_axis, dtype, order):
+        return device_segmented_reduce(arr, op, reduce_axis, out_axis,
+                                       out, keepdims)
     return None
 
 
