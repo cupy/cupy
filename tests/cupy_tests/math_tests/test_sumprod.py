@@ -58,7 +58,6 @@ class TestSumprod(unittest.TestCase):
         return a.sum(axis=1)
 
     @testing.slow
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_allclose()
     def test_sum_axis_huge(self, xp):
         a = testing.shaped_random((2048, 1, 1024), xp, 'b')
@@ -303,14 +302,12 @@ class TestNansumNanprodHuge(unittest.TestCase):
         return xp.nansum(a, axis=2)
 
     @testing.slow
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_allclose(atol=1e-1)
     def test_nansum_axis_huge(self, xp):
         return self._test(
             xp, (slice(None, None), slice(None, None), slice(1, 2)))
 
     @testing.slow
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_allclose(atol=1e-2)
     def test_nansum_axis_huge_halfnan(self, xp):
         return self._test(
@@ -358,7 +355,6 @@ class TestCumsum(unittest.TestCase):
         return xp.cumsum(a, axis=self.axis)
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_invalid_axis_lower1(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
@@ -371,7 +367,6 @@ class TestCumsum(unittest.TestCase):
             return cupy.cumsum(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_invalid_axis_upper1(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
@@ -435,7 +430,6 @@ class TestCumprod(unittest.TestCase):
         cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_invalid_axis_lower1(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
@@ -448,7 +442,6 @@ class TestCumprod(unittest.TestCase):
             return cupy.cumprod(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_invalid_axis_upper1(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
@@ -472,7 +465,6 @@ class TestCumprod(unittest.TestCase):
 
 
 @testing.gpu
-@testing.with_requires('numpy>=1.14')  # NumPy issue #9251
 class TestDiff(unittest.TestCase):
 
     @testing.for_all_dtypes()

@@ -167,7 +167,6 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
         return func
 
-    @testing.with_requires('numpy>=1.10')
     @unittest.skipUnless(six.PY3, 'Only for py3')
     @testing.for_int_dtypes(no_bool=True)
     @fusion_utils.check_fusion(accept_error=(TypeError,))
@@ -177,7 +176,6 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
         return func
 
-    @testing.with_requires('numpy>=1.10')
     @unittest.skipUnless(six.PY2, 'Only for py2')
     @testing.for_int_dtypes(no_bool=True)
     @fusion_utils.check_fusion()

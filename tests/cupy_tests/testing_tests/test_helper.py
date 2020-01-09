@@ -171,7 +171,6 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         with six.assertRaisesRegex(self, AssertionError, pattern):
             dummy_axis_error(self)
 
-    @testing.with_requires('numpy>=1.13')
     def test_axis_error_value_different_type(self):
         @testing.helper.numpy_cupy_raises()
         def dummy_axis_error(self, xp):
@@ -185,7 +184,6 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         with six.assertRaisesRegex(self, AssertionError, pattern):
             dummy_axis_error(self)
 
-    @testing.with_requires('numpy>=1.13')
     def test_axis_error_index_different_type(self):
         @testing.helper.numpy_cupy_raises()
         def dummy_axis_error(self, xp):
@@ -199,7 +197,6 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         with six.assertRaisesRegex(self, AssertionError, pattern):
             dummy_axis_error(self)
 
-    @testing.with_requires('numpy<1.13')
     def test_axis_error_value(self):
         @testing.helper.numpy_cupy_raises()
         def dummy_axis_error(self, xp):
@@ -210,7 +207,6 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
         dummy_axis_error(self)
 
-    @testing.with_requires('numpy<1.13')
     def test_axis_error_index(self):
         @testing.helper.numpy_cupy_raises()
         def dummy_axis_error(self, xp):

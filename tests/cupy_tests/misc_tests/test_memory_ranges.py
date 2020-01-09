@@ -6,7 +6,6 @@ from cupy import testing
 
 
 @testing.gpu
-@testing.with_requires('numpy>=1.11')
 class TestMayShareMemory(unittest.TestCase):
 
     @testing.numpy_cupy_equal()

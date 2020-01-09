@@ -23,7 +23,6 @@ class TestNpz(unittest.TestCase):
 
         testing.assert_array_equal(a, b)
 
-    @testing.with_requires('numpy>=1.10')
     def test_save_pickle(self):
         data = object()
 
@@ -36,7 +35,6 @@ class TestNpz(unittest.TestCase):
         cupy.save(sio, data, allow_pickle=True)
         sio.close()
 
-    @testing.with_requires('numpy>=1.10')
     def test_load_pickle(self):
         a = testing.shaped_arange((2, 3, 4), dtype=cupy.float32)
 
@@ -88,7 +86,6 @@ class TestNpz(unittest.TestCase):
         testing.assert_array_equal(a, b)
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.10')
     def test_dump(self, dtype):
         a = testing.shaped_arange((2, 3, 4), dtype=dtype)
 
