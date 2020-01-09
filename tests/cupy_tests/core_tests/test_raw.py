@@ -537,6 +537,9 @@ void test_grid_sync(const float* x1, const float* x2, float* y) {
 '''
 
 
+@testing.parameterize(*testing.product({
+    'n': [10, 100, 256]
+}))
 class TestRawGridSync(unittest.TestCase):
 
     def setUp(self):
@@ -563,7 +566,7 @@ class TestRawGridSync(unittest.TestCase):
         compiler._empty_file_preprocess_cache = {}
 
     def test_grid_sync_rawkernel(self):
-        n = 10
+        n = self.n
         x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
         x2 = cupy.ones((n, n), dtype='float32')
         y = cupy.zeros((n, n), dtype='float32')
@@ -571,7 +574,7 @@ class TestRawGridSync(unittest.TestCase):
         assert cupy.allclose(y, x1 + x2)
 
     def test_grid_sync_rawmodule(self):
-        n = 10
+        n = self.n
         x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
         x2 = cupy.ones((n, n), dtype='float32')
         y = cupy.zeros((n, n), dtype='float32')
