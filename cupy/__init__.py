@@ -648,12 +648,12 @@ from cupy.sorting.search import nonzero  # NOQA
 from cupy.sorting.search import searchsorted  # NOQA
 from cupy.sorting.search import where  # NOQA
 
-from cupy.sorting.sort import argpartition  # NOQA
-from cupy.sorting.sort import argsort  # NOQA
-from cupy.sorting.sort import lexsort  # NOQA
-from cupy.sorting.sort import msort  # NOQA
-from cupy.sorting.sort import partition  # NOQA
-from cupy.sorting.sort import sort  # NOQA
+from cupy.sorting._sort import argpartition  # NOQA
+from cupy.sorting._sort import argsort  # NOQA
+from cupy.sorting._sort import lexsort  # NOQA
+from cupy.sorting._sort import msort  # NOQA
+from cupy.sorting._sort import partition  # NOQA
+from cupy.sorting._sort import sort  # NOQA
 
 # -----------------------------------------------------------------------------
 # Statistics

@@ -4,4 +4,4 @@
 # "NOQA" to suppress flake8 warning
 from cupy.sorting import count  # NOQA
 from cupy.sorting import search  # NOQA
-from cupy.sorting import sort  # NOQA
+from cupy.sorting import _sort  # NOQA
