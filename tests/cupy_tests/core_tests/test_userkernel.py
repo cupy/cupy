@@ -193,6 +193,19 @@ class TestElementwiseKernelSize(unittest.TestCase):
         with self.raises_size_not_allowed():
             kernel2(7, self.arr2, size=2)
 
+        # No input
+        kernel3 = self.create_kernel((), (False,))
+        kernel3(self.arr1)
+        with self.raises_size_not_allowed():
+            kernel3(self.arr1, size=2)
+
+    def test_no_input_and_raw_output(self):
+        # No input and the given output is raw -> size required
+        kernel1 = self.create_kernel((), (True,))
+        kernel1(self.arr1, size=2)
+        with self.raises_size_required():
+            kernel1(self.arr1)
+
 
 @testing.parameterize(*testing.product({
     'value': [-1, 2 ** 32, 2 ** 63 - 1, -(2 ** 63)],
