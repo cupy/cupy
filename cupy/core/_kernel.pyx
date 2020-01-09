@@ -457,9 +457,10 @@ cdef list _get_out_args_with_params(
     return out_args
 
 
-cdef function.Function _get_elementwise_kernel(
+@util.memoize(for_each_device=True)
+def _get_elementwise_kernel(
         tuple args_info, tuple types, tuple params, operation, name,
-        preamble, dict kwargs):
+        preamble, **kwargs):
     kernel_params = _get_kernel_params(params, args_info)
     types_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k) for k, v in types)
@@ -478,9 +479,6 @@ cdef function.Function _get_elementwise_kernel(
     return _get_simple_elementwise_kernel(
         kernel_params, operation, name,
         preamble, **kwargs)
-
-
-cdef dict _elementwise_kernel_memo = {}
 
 
 cdef class ElementwiseKernel:
@@ -538,6 +536,7 @@ cdef class ElementwiseKernel:
         readonly bint return_tuple
         readonly dict kwargs
         readonly dict _params_type_memo
+        readonly dict _elementwise_kernel_memo
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='',
@@ -564,6 +563,7 @@ cdef class ElementwiseKernel:
         names = [p.name for p in self.in_params + self.out_params]
         if 'i' in names:
             raise ValueError('Can not use \'i\' as a parameter name')
+        self._elementwise_kernel_memo = {}
 
     def __call__(self, *args, **kwargs):
         """Compiles and invokes the elementwise kernel.
@@ -664,25 +664,20 @@ cdef class ElementwiseKernel:
     cpdef function.Function _get_elementwise_kernel(
             self, int dev_id, tuple args_info, tuple types):
         key = (
-            self.params,
-            self.operation,
-            self.name,
-            self.preamble,
-            tuple(sorted(self.kwargs.items())),
             dev_id,
             args_info,
             types)
-        kern = _elementwise_kernel_memo.get(key, None)
+        kern = self._elementwise_kernel_memo.get(key, None)
         if kern is not None:
             return kern
         kern = _get_elementwise_kernel(
             args_info, types, self.params, self.operation,
-            self.name, self.preamble, self.kwargs)
+            self.name, self.preamble, **self.kwargs)
 
         # Store the compiled kernel in the cache.
         # Potentially overwrite a duplicate cache entry because
         # _get_elementwise_kernel() may include IO wait.
-        _elementwise_kernel_memo[key] = kern
+        self._elementwise_kernel_memo[key] = kern
         return kern
 
 
