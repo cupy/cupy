@@ -30,6 +30,10 @@ cdef class RawKernel:
             `cuComplex.h` or not. If set to ``True``, any code that uses the
             functions from `cuComplex.h` will be translated to its Thrust
             counterpart. Defaults to ``False``.
+        enable_cooperative_groups (bool): Whether to enable cooperative groups
+            in the CUDA source. If set to ``True``, compile options are
+            configured properly so that cooperative groups can be used from the
+            CUDA source.
     """
 
     def __init__(self, code, name, options=(), backend='nvrtc', *,
@@ -232,6 +236,10 @@ cdef class RawModule:
             `cuComplex.h` or not. If set to ``True``, any code that uses the
             functions from `cuComplex.h` will be translated to its Thrust
             counterpart. Defaults to ``False``.
+        enable_cooperative_groups (bool): Whether to enable cooperative groups
+            in the CUDA source. If set to ``True``, compile options are
+            configured properly so that cooperative groups can be used from the
+            CUDA source.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
