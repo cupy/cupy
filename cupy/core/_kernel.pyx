@@ -580,6 +580,8 @@ cdef class ElementwiseKernel:
                 This parameter must be specified if and only if all ndarrays
                 are `raw` and the range size cannot be determined
                 automatically.
+            block_size (int): Number of threads per block. By default, the
+                value is set to 128.
 
         Returns:
             If ``no_return`` has not set, arrays are returned according to the
@@ -595,9 +597,11 @@ cdef class ElementwiseKernel:
         size = -1
         size = kwargs.pop('size', -1)
         stream = kwargs.pop('stream', None)
+        block_size = kwargs.pop('block_size', 128)
         if len(kwargs):
             raise TypeError('Wrong arguments %s' % kwargs)
-
+        if block_size <= 0:
+            raise ValueError('block_size must be greater than zero')
         n_args = len(args)
         if n_args != self.nin and n_args != self.nargs:
             raise TypeError('Wrong number of arguments for %s' % self.name)
@@ -647,7 +651,7 @@ cdef class ElementwiseKernel:
         args_info = _get_args_info(inout_args)
         kern = self._get_elementwise_kernel(dev_id, args_info, types)
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
-                           block_max_size=128, stream=stream)
+                           block_max_size=block_size, stream=stream)
         return ret
 
     cpdef tuple _decide_params_type(
