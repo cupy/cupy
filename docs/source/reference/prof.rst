@@ -10,3 +10,14 @@ time range
 
    cupy.prof.TimeRangeDecorator
    cupy.prof.time_range
+
+
+Device synchronization detection
+--------------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.allow_synchronize
+   cupyx.DeviceSynchronized

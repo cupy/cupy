@@ -19,6 +19,7 @@ from cupy.core._reduction import ReductionKernel
 from cupy.core._ufuncs import elementwise_copy
 from cupy.core._ufuncs import elementwise_copy_where
 from cupy.core import flags
+from cupy.core import syncdetect
 from cupy import cuda
 from cupy.cuda import device
 from cupy.cuda import memory as memory_module
@@ -754,6 +755,14 @@ cdef class ndarray:
                          keepdims=False):
         """Returns the indices of the maximum along a given axis.
 
+        .. note::
+           ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
+           not in NumPy.
+
+        .. note::
+           ``axis`` argument accepts a tuple of ints, but this is specific to
+           CuPy. NumPy does not support it.
+
         .. seealso::
            :func:`cupy.argmax` for full documentation,
            :meth:`numpy.ndarray.argmax`
@@ -774,6 +783,14 @@ cdef class ndarray:
     cpdef ndarray argmin(self, axis=None, out=None, dtype=None,
                          keepdims=False):
         """Returns the indices of the minimum along a given axis.
+
+        .. note::
+           ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
+           not in NumPy.
+
+        .. note::
+           ``axis`` argument accepts a tuple of ints, but this is specific to
+           CuPy. NumPy does not support it.
 
         .. seealso::
            :func:`cupy.argmin` for full documentation,
@@ -1443,6 +1460,8 @@ cdef class ndarray:
             else:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
+
+        syncdetect._declare_synchronize()
         ptr = ctypes.c_void_p(a_cpu.__array_interface__['data'][0])
         with self.device:
             if stream is not None:
@@ -1761,7 +1780,8 @@ cdef inline str _translate_cucomplex_to_thrust(str source):
 
 cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None,
-        prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False):
+        prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False,
+        enable_cooperative_groups=False):
     if translate_cucomplex:
         source = _translate_cucomplex_to_thrust(source)
         _cupy_header_list.append('cupy/cuComplex_bridge.h')
@@ -1805,8 +1825,9 @@ cpdef function.Module compile_with_cache(
         if cuda_path is not None:
             options += ('-I ' + os.path.join(cuda_path, 'include'),)
 
-    return cuda.compile_with_cache(source, options, arch, cachd_dir,
-                                   extra_source, backend)
+    return cuda.compile_with_cache(
+        source, options, arch, cachd_dir, extra_source, backend,
+        enable_cooperative_groups=enable_cooperative_groups)
 
 
 # =============================================================================

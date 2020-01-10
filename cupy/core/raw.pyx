@@ -30,10 +30,16 @@ cdef class RawKernel:
             `cuComplex.h` or not. If set to ``True``, any code that uses the
             functions from `cuComplex.h` will be translated to its Thrust
             counterpart. Defaults to ``False``.
+        enable_cooperative_groups (bool): Whether to enable cooperative groups
+            in the CUDA source. If set to ``True``, compile options are
+            configured properly and the kernel is launched with
+            ``cuLaunchCooperativeKernel`` so that cooperative groups can be
+            used from the CUDA source.
+            This feature is only supported in CUDA 9 or later.
     """
 
     def __init__(self, code, name, options=(), backend='nvrtc', *,
-                 translate_cucomplex=False):
+                 translate_cucomplex=False, enable_cooperative_groups=False):
         if isinstance(code, six.binary_type):
             code = code.decode('UTF-8')
         if isinstance(name, six.binary_type):
@@ -47,6 +53,7 @@ cdef class RawKernel:
         self.backend = backend
         self.translate_cucomplex = translate_cucomplex
         self._kernel = None
+        self.enable_cooperative_groups = enable_cooperative_groups
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -63,14 +70,17 @@ cdef class RawKernel:
                 bytes.
 
         """
-        self.kernel(grid, block, args, **kwargs)
+        self.kernel(
+            grid, block, args,
+            enable_cooperative_groups=self.enable_cooperative_groups,
+            **kwargs)
 
     @property
     def kernel(self):
         if self._kernel is None:
             self._kernel = _get_raw_kernel(
                 self.code, self.name, self.options, self.backend,
-                self.translate_cucomplex)
+                self.translate_cucomplex, self.enable_cooperative_groups)
         return self._kernel
 
     @property
@@ -194,10 +204,12 @@ cdef class RawKernel:
 
 @cupy.util.memoize(for_each_device=True)
 def _get_raw_kernel(code, name, options=(), backend='nvrtc',
-                    translate_cucomplex=False):
+                    translate_cucomplex=False,
+                    enable_cooperative_groups=False):
     module = cupy.core.core.compile_with_cache(
         code, options, prepend_cupy_headers=False, backend=backend,
-        translate_cucomplex=translate_cucomplex)
+        translate_cucomplex=translate_cucomplex,
+        enable_cooperative_groups=enable_cooperative_groups)
     return module.get_function(name)
 
 
@@ -229,12 +241,18 @@ cdef class RawModule:
             `cuComplex.h` or not. If set to ``True``, any code that uses the
             functions from `cuComplex.h` will be translated to its Thrust
             counterpart. Defaults to ``False``.
+        enable_cooperative_groups (bool): Whether to enable cooperative groups
+            in the CUDA source. If set to ``True``, compile options are
+            configured properly and the kernel is launched with
+            ``cuLaunchCooperativeKernel`` so that cooperative groups can be
+            used from the CUDA source.
+            This feature is only supported in CUDA 9 or later.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
     """
     def __init__(self, *, code=None, path=None, options=(), backend='nvrtc',
-                 translate_cucomplex=False):
+                 translate_cucomplex=False, enable_cooperative_groups=False):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
@@ -248,11 +266,13 @@ cdef class RawModule:
 
         self.code = code
         self.cubin_path = path
+        self.enable_cooperative_groups = enable_cooperative_groups
 
         if self.code is not None:
             self.module = cupy.core.core.compile_with_cache(
                 code, options, prepend_cupy_headers=False, backend=backend,
-                translate_cucomplex=translate_cucomplex)
+                translate_cucomplex=translate_cucomplex,
+                enable_cooperative_groups=self.enable_cooperative_groups)
             self.options = options
             self.backend = backend
             self.translate_cucomplex = translate_cucomplex
@@ -277,8 +297,10 @@ cdef class RawModule:
         if name in self.kernels:
             return self.kernels[name]
         else:
-            ker = RawKernel(None, name, self.options, self.backend,
-                            translate_cucomplex=self.translate_cucomplex)
+            ker = RawKernel(
+                None, name, self.options, self.backend,
+                translate_cucomplex=self.translate_cucomplex,
+                enable_cooperative_groups=self.enable_cooperative_groups)
             ker._kernel = self.module.get_function(name)
             self.kernels[name] = ker
             return ker

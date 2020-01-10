@@ -276,18 +276,30 @@ def get_cache_dir():
 _empty_file_preprocess_cache = {}
 
 
-def compile_with_cache(source, options=(), arch=None, cache_dir=None,
-                       extra_source=None, backend='nvrtc'):
+def compile_with_cache(
+        source, options=(), arch=None, cache_dir=None, extra_source=None,
+        backend='nvrtc', *, enable_cooperative_groups=False):
+
+    if enable_cooperative_groups:
+        if backend != 'nvcc':
+            raise ValueError(
+                'Cooperative groups is supported only in NVCC backend.')
+        if runtime.is_hip:
+            raise ValueError(
+                'Cooperative groups is not supported in HIP.')
+
     if runtime.is_hip:
-        return _compile_with_cache_hipcc(source, options, arch, cache_dir,
-                                         extra_source)
+        return _compile_with_cache_hipcc(
+            source, options, arch, cache_dir, extra_source)
     else:
-        return _compile_with_cache_cuda(source, options, arch, cache_dir,
-                                        extra_source, backend)
+        return _compile_with_cache_cuda(
+            source, options, arch, cache_dir, extra_source, backend,
+            enable_cooperative_groups)
 
 
-def _compile_with_cache_cuda(source, options, arch, cache_dir,
-                             extra_source=None, backend='nvrtc'):
+def _compile_with_cache_cuda(
+        source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
+        enable_cooperative_groups=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -296,6 +308,12 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
         arch = _get_arch()
 
     options += ('-ftz=true',)
+
+    if enable_cooperative_groups:
+        # `cooperative_groups` requires `-rdc=true`.
+        # The three latter flags are to resolve linker error.
+        # (https://devtalk.nvidia.com/default/topic/1023604/linker-error/)
+        options += ('-rdc=true', '-Xcompiler', '-fPIC', '-shared')
 
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
