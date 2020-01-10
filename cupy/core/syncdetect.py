@@ -1,6 +1,8 @@
 import contextlib
 import threading
 
+from cupy import util
+
 
 _thread_local = threading.local()
 
@@ -45,7 +47,7 @@ thread.
     Note that there can be false negatives and positives.
     Device synchronization outside CuPy will not be detected.
     """
-
+    util.experimental('cupyx.allow_synchronize')
     old = _is_allowed()
     _thread_local.allowed = allow
     try:
