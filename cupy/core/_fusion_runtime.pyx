@@ -21,11 +21,16 @@ from cupy.cuda cimport runtime
 
 
 @util.memoize()
-def _cuda_compile(preamble, name, cuda_params, cuda_body):
-    code = string.Template(
+def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
+    template = (
         '${preamble}\n\n'
         'extern "C" __global__ void ${name}(${cuda_params}) ${cuda_body}\n'
-    ).substitute(
+    )
+
+    if use_grid_sync:
+        template = '#include <cooperative_groups.h>\n\n' + template
+
+    code = string.Template(template).substitute(
         preamble=preamble,
         name=name,
         cuda_params=cuda_params,
@@ -35,7 +40,11 @@ def _cuda_compile(preamble, name, cuda_params, cuda_body):
     # by uncommenting the following line.
     # print(code)
 
-    module = compile_with_cache(code)
+    if use_grid_sync:
+        module = compile_with_cache(
+            code, (), None, None, True, 'nvcc', False, True)
+    else:
+        module = compile_with_cache(code)
 
     return module.get_function(name)
 
@@ -51,6 +60,7 @@ cdef class FusedKernel(object):
         readonly str _cuda_body
         readonly dict _cuda_params_memo
         readonly list _block_strides
+        readonly bint _use_grid_sync
 
         readonly list _reduction_in_array
         readonly list _reduction_out_array
@@ -62,7 +72,7 @@ cdef class FusedKernel(object):
 
     def __init__(
             self, name, op_list, cuda_body, params, return_size,
-            submodule_code, shape_constraints):
+            submodule_code, shape_constraints, use_grid_sync):
         self.shape_constraints = shape_constraints
 
         self._name = name
@@ -70,6 +80,7 @@ cdef class FusedKernel(object):
         self._submodule_code = submodule_code
         self._cuda_body = cuda_body
         self._cuda_params_memo = {}
+        self._use_grid_sync = use_grid_sync
 
         if return_size == 'none':
             self._return_size = -1
@@ -204,8 +215,6 @@ cdef class FusedKernel(object):
                 kern_size = max(kern_size, <Py_ssize_t>array.size)
 
         if len(self._reduction_in_array) == 0:
-            # TODO(asi1024): Tune it.
-            kern_size = 256
             return [], 256, 0, kern_size
 
         block_size = 256 if runtime._is_hip_environment else 512
@@ -229,9 +238,12 @@ cdef class FusedKernel(object):
             block_strides.append(block_stride)
 
         kern_size = (kern_size + block_size - 1) // block_size * block_size
+        # TODO(asi1024): Use `cuOccupancyMaxActiveBlocksPerMultiprocessor`.
+        # note:
+        # cupy.cuda.driver.CUDADriverError: CUDA_ERROR_COOPERATIVE_LAUNCH_TOO_LARGE: too many blocks in cooperative launch
+        kern_size = min(kern_size, 32 * 1024)
+        print(kern_size, block_size)
         shared_mem = block_size * 32  # max bytesize of reduce_ctype.
-        # TODO(asi1024): Tune it.
-        kern_size = block_size
         return block_strides, block_size, shared_mem, kern_size
 
     cdef tuple _reduce_dims(self, list ndarray_list):
@@ -313,7 +325,10 @@ cdef class FusedKernel(object):
         cuda_params = self._get_cuda_params(reduce_key, ndarray_list)
         # assert len(cuda_params) == len(inout_args) + len(block_strides)
         kern = _cuda_compile(
-            self._submodule_code, self._name, cuda_params, self._cuda_body)
+            self._submodule_code, self._name, cuda_params, self._cuda_body,
+            self._use_grid_sync)
         kargs = inout_args + block_strides
-        kern.linear_launch(size, kargs, shared_mem, block_size)
+        kern.linear_launch(
+            size, kargs, shared_mem, block_size,
+            enable_cooperative_groups=self._use_grid_sync)
         return ret

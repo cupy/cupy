@@ -568,17 +568,24 @@ class _FusionHistory(object):
 
         # Emit the function body of a __global__ function.
         codes = []
-        for op in self.op_list:
+
+        use_grid_sync = len(self.op_list) > 1
+
+        if use_grid_sync:
+            codes.append('namespace _cg = cooperative_groups;')
+            codes.append('_cg::grid_group _grid = _cg::this_grid();')
+
+        for i, op in enumerate(self.op_list):
+            if i > 0:
+                codes.append('_cg::sync(_grid);')
             codes.append(op.emit_code())
-            codes.append('__syncthreads();')
+            # codes.append('__syncthreads();')
 
         cuda_body = str(_fusion_emit_code._CodeBlock('', codes))
 
         # This attribute is referred in mock tests.
         self.kernel_params = kernel_params
 
-        # print(cuda_body)
-
         return _fusion_runtime.FusedKernel(
             self.name, self.op_list, cuda_body, kernel_params, return_size,
-            submodule_code, self.shape_constraints)
+            submodule_code, self.shape_constraints, use_grid_sync)

@@ -174,14 +174,16 @@ cdef class Function:
             args, shared_mem, s, enable_cooperative_groups)
 
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
-                        size_t block_max_size=128, stream=None):
+                        size_t block_max_size=128, stream=None,
+                        bint enable_cooperative_groups=False):
         # TODO(beam2d): Tune it
         cdef size_t gridx = min(
             0x7fffffffUL, (size + block_max_size - 1) // block_max_size)
         cdef size_t blockx = min(block_max_size, size)
         s = _get_stream(stream)
-        _launch(self.ptr,
-                gridx, 1, 1, blockx, 1, 1, args, shared_mem, s)
+        _launch(
+            self.ptr, gridx, 1, 1, blockx, 1, 1, args, shared_mem, s,
+            enable_cooperative_groups)
 
 
 cdef class Module:
