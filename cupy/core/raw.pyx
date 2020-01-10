@@ -32,8 +32,10 @@ cdef class RawKernel:
             counterpart. Defaults to ``False``.
         enable_cooperative_groups (bool): Whether to enable cooperative groups
             in the CUDA source. If set to ``True``, compile options are
-            configured properly so that cooperative groups can be used from the
-            CUDA source.
+            configured properly and the kernel is launched with
+            ``cuLaunchCooperativeKernel`` so that cooperative groups can be
+            used from the CUDA source.
+            This feature is only supported in CUDA 9 or later.
     """
 
     def __init__(self, code, name, options=(), backend='nvrtc', *,
@@ -241,8 +243,10 @@ cdef class RawModule:
             counterpart. Defaults to ``False``.
         enable_cooperative_groups (bool): Whether to enable cooperative groups
             in the CUDA source. If set to ``True``, compile options are
-            configured properly so that cooperative groups can be used from the
-            CUDA source.
+            configured properly and the kernel is launched with
+            ``cuLaunchCooperativeKernel`` so that cooperative groups can be
+            used from the CUDA source.
+            This feature is only supported in CUDA 9 or later.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
