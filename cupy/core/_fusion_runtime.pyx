@@ -5,7 +5,7 @@ import numpy
 
 from cupy.core import _dtype
 from cupy.core._carray cimport Indexer
-from cupy.core._scalar import convert_scalar
+from cupy.core._scalar cimport scalar_to_numpy_scalar
 from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
@@ -269,7 +269,7 @@ cdef class FusedKernel(object):
                 kern_size = max(kern_size, array.size)
             elif self._input_index[i] >= 0:
                 scalar = args[<Py_ssize_t>self._input_index[i]]
-                params.append(convert_scalar(scalar, False))
+                params.append(scalar_to_numpy_scalar(scalar))
 
         return params + indexers
 
