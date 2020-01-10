@@ -604,7 +604,11 @@ cdef class ElementwiseKernel:
             raise ValueError('block_size must be greater than zero')
         n_args = len(args)
         if n_args != self.nin and n_args != self.nargs:
-            raise TypeError('Wrong number of arguments for %s' % self.name)
+            raise TypeError(
+                'Wrong number of arguments for {!r}. '
+                'It must be either {} or {} (with outputs), '
+                'but given {}.'.format(
+                    self.name, self.nin, self.nargs, n_args))
         dev_id = device.get_device_id()
         args = _preprocess_args(dev_id, args, True)
 
@@ -863,7 +867,11 @@ cdef class ufunc:
 
         n_args = len(args)
         if n_args != self.nin and n_args != self.nargs:
-            raise TypeError('Wrong number of arguments for %s' % self.name)
+            raise TypeError(
+                'Wrong number of arguments for {!r}. '
+                'It must be either {} or {} (with outputs), '
+                'but given {}.'.format(
+                    self.name, self.nin, self.nargs, n_args))
 
         dev_id = device.get_device_id()
         args = _preprocess_args(dev_id, args, False)
