@@ -27,6 +27,7 @@ Memory management
    cupy.cuda.alloc
    cupy.cuda.alloc_pinned_memory
    cupy.cuda.set_allocator
+   cupy.cuda.memory.using_allocator
    cupy.cuda.set_pinned_memory_allocator
    cupy.cuda.MemoryPool
    cupy.cuda.PinnedMemoryPool
