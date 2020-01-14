@@ -55,7 +55,7 @@ def copyto(dst, src, casting='same_kind', where=None):
 
     if where is None:
         if _can_memcpy(dst, src):
-            dst.data.copy_from(src.data, src.nbytes)
+            dst.data.copy_from_async(src.data, src.nbytes)
         else:
             device = dst.device
             with device:
