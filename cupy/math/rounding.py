@@ -1,4 +1,5 @@
 from cupy import core
+from cupy.core import _routines_creation as _creation
 from cupy.core import fusion
 from cupy.math import ufunc
 
@@ -21,7 +22,7 @@ def around(a, decimals=0, out=None):
     """
     if fusion._is_fusing():
         return fusion._call_ufunc(core.core._round_ufunc, a, decimals, out=out)
-    a = core.array(a, copy=False)
+    a = _creation.array(a, copy=False)
     return a.round(decimals, out=out)
 
 

@@ -1,6 +1,7 @@
 import numpy
 
 from cupy import core
+from cupy.core import _routines_creation as _creation
 from cupy.core import fusion
 
 
@@ -40,7 +41,7 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
     .. seealso:: :func:`numpy.array`
 
     """
-    return core.array(obj, dtype, copy, order, subok, ndmin)
+    return _creation.array(obj, dtype, copy, order, subok, ndmin)
 
 
 def asarray(a, dtype=None, order=None):
@@ -65,7 +66,7 @@ def asarray(a, dtype=None, order=None):
     .. seealso:: :func:`numpy.asarray`
 
     """
-    return core.array(a, dtype, False, order)
+    return _creation.array(a, dtype, False, order)
 
 
 def asanyarray(a, dtype=None, order=None):
@@ -79,7 +80,7 @@ def asanyarray(a, dtype=None, order=None):
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 
     """
-    return core.array(a, dtype, False, order)
+    return _creation.array(a, dtype, False, order)
 
 
 def ascontiguousarray(a, dtype=None):
@@ -96,7 +97,7 @@ def ascontiguousarray(a, dtype=None):
     .. seealso:: :func:`numpy.ascontiguousarray`
 
     """
-    return core.ascontiguousarray(a, dtype)
+    return _creation.ascontiguousarray(a, dtype)
 
 
 # TODO(okuta): Implement asmatrix

@@ -1,4 +1,5 @@
 from cupy import core
+from cupy.core import _routines_creation as _creation
 from cupy.core import fusion
 
 
@@ -39,7 +40,7 @@ def real(val):
     if fusion._is_fusing():
         return fusion._call_ufunc(core.real, val)
     if not isinstance(val, core.ndarray):
-        val = core.array(val)
+        val = _creation.array(val)
     return val.real
 
 
@@ -52,7 +53,7 @@ def imag(val):
     if fusion._is_fusing():
         return fusion._call_ufunc(core.imag, val)
     if not isinstance(val, core.ndarray):
-        val = core.array(val)
+        val = _creation.array(val)
     return val.imag
 
 

@@ -18,8 +18,9 @@ from cupy.cuda cimport function
 from cupy.core cimport _carray
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
+from cupy.core cimport _routines_creation as _creation
 from cupy.core._scalar import get_typename as _get_typename
-from cupy.core.core cimport _convert_object_with_cuda_array_interface
+from cupy.core cimport core
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
@@ -102,7 +103,7 @@ cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
                 continue
             if not hasattr(arg, '__cuda_array_interface__'):
                 raise TypeError('Unsupported type %s' % type(arg))
-            arg = _convert_object_with_cuda_array_interface(arg)
+            arg = core._convert_object_with_cuda_array_interface(arg)
 
         _check_array_device_id(<ndarray>arg, dev_id)
         ret.append(arg)

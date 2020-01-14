@@ -6,8 +6,8 @@ from cpython cimport sequence
 
 import numpy
 
-from cupy.core.core cimport ndarray, _internal_ascontiguousarray
-from cupy.core.core cimport _internal_asfortranarray
+from cupy.core.core cimport ndarray
+from cupy.core cimport _routines_creation as _creation
 from cupy.core.internal cimport _contig_axes
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream
@@ -124,7 +124,7 @@ def device_reduce(ndarray x, int op, tuple out_axis, out=None,
     if x.size == 0 and op != CUPY_CUB_SUM:
         raise ValueError('zero-size array to reduction operation {} which has '
                          'no identity'.format(op.name))
-    x = _internal_ascontiguousarray(x)
+    x = _creation.internal_ascontiguousarray(x)
 
     if CUPY_CUB_SUM <= op <= CUPY_CUB_MAX:
         y = ndarray((), x.dtype)

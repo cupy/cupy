@@ -14,8 +14,9 @@ from cupy.core._kernel cimport _reduce_dims
 from cupy.core._kernel cimport ParameterInfo
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport _scalar
+from cupy.core cimport _routines_creation as _creation
 from cupy.core._scalar import get_typename as _get_typename
-from cupy.core.core cimport _convert_object_with_cuda_array_interface
+from cupy.core cimport core
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
@@ -26,8 +27,7 @@ from cupy.cuda cimport runtime
 import string
 
 from cupy.core import _errors
-from cupy.core._kernel import _get_param_info
-from cupy.core._kernel import _decide_params_type
+from cupy.core import _kernel
 from cupy.cuda import compiler
 from cupy import util
 
@@ -208,13 +208,14 @@ cdef class _AbstractReductionKernel:
         assert in_params is not None
         assert out_params is not None
 
-        in_params_ = _get_param_info(in_params, True)
-        out_params_ = _get_param_info(out_params, False)
+        in_params_ = _kernel._get_param_info(in_params, True)
+        out_params_ = _kernel._get_param_info(out_params, False)
         params = (
             in_params_
             + out_params_
-            + _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False)
-            + _get_param_info('int32 _block_stride', True))
+            + _kernel._get_param_info(
+                'CIndexer _in_ind, CIndexer _out_ind', False)
+            + _kernel._get_param_info('int32 _block_stride', True))
 
         self.name = name
         self.identity = identity
@@ -368,7 +369,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         if isinstance(a, ndarray):
             arr = a
         elif hasattr(a, '__cuda_array_interface__'):
-            arr = _convert_object_with_cuda_array_interface(a)
+            arr = core._convert_object_with_cuda_array_interface(a)
         else:
             raise TypeError(
                 'Argument \'a\' has incorrect type (expected %s, got %s)' %
@@ -574,7 +575,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         out_ndarray_types = tuple(
             [a.dtype.type if isinstance(a, ndarray) else None
              for a in out_args])
-        in_types, out_types, types = _decide_params_type(
+        in_types, out_types, types = _kernel._decide_params_type(
             self.in_params, self.out_params,
             in_ndarray_types, out_ndarray_types)
         return (

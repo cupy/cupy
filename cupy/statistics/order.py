@@ -2,6 +2,7 @@ import warnings
 
 import cupy
 from cupy import core
+from cupy.core import _routines_creation as _creation
 from cupy.core import _routines_statistics as _statistics
 from cupy.core import fusion
 from cupy.logic import content
@@ -248,4 +249,4 @@ def percentile(a, q, axis=None, out=None, interpolation='linear',
             keepdim = (-1,) + keepdim
         ret = ret.reshape(keepdim)
 
-    return core._internal_ascontiguousarray(ret)
+    return _creation.internal_ascontiguousarray(ret)

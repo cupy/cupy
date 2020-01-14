@@ -116,7 +116,7 @@ class TestNdarrayInitRaise(unittest.TestCase):
     def test_unsupported_type(self):
         arr = numpy.ndarray((2, 3), dtype=object)
         with pytest.raises(ValueError):
-            core.array(arr)
+            cupy.array(arr)
 
 
 @testing.parameterize(

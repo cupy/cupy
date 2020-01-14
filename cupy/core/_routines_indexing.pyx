@@ -11,6 +11,7 @@ from cupy.core._ufuncs import elementwise_copy
 from libcpp cimport vector
 
 from cupy.core cimport core
+from cupy.core cimport _routines_creation as _creation
 from cupy.core cimport _routines_math as _math
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core.core cimport ndarray
@@ -207,7 +208,7 @@ cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
                 'arrays used as indices must be of integer or boolean '
                 'type. (actual: {})'.format(s.dtype.type))
         if to_gpu:
-            slice_list[i] = core.array(s)
+            slice_list[i] = _creation.array(s)
 
     if not mask_exists and len(slice_list) > ndim + n_newaxes:
         raise IndexError('too many indices for array')
@@ -614,7 +615,7 @@ cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
         cdim = 1
     else:
         if not isinstance(indices, ndarray):
-            indices = core.array(indices, dtype=int)
+            indices = _creation.array(indices, dtype=int)
         indices_shape = indices.shape
         cdim = indices.size
 
@@ -677,7 +678,7 @@ cdef _scatter_op_single(
         raise ValueError('Axis overrun')
 
     if not isinstance(v, ndarray):
-        v = core.array(v, dtype=a.dtype)
+        v = _creation.array(v, dtype=a.dtype)
     else:
         v = v.astype(a.dtype, copy=False)
 
@@ -747,7 +748,7 @@ cdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
         return
 
     if not isinstance(v, ndarray):
-        src = core.array(v, dtype=a.dtype)
+        src = _creation.array(v, dtype=a.dtype)
     else:
         src = v
         # Cython's static resolution does not work because of omitted arguments

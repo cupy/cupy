@@ -12,6 +12,7 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
 
+from cupy.core cimport _routines_creation as _creation
 from cupy.core cimport _routines_indexing as _indexing
 from cupy.core cimport core
 from cupy.core.core cimport ndarray
@@ -703,7 +704,7 @@ cdef ndarray _concatenate_single_kernel(
     ptrs = numpy.ndarray(len(arrays), numpy.int64)
     for i, a in enumerate(arrays):
         ptrs[i] = a.data.ptr
-    x = core.array(ptrs)
+    x = _creation.array(ptrs)
 
     ret = core.ndarray(shape, dtype=dtype)
     if same_shape_and_contiguous:
@@ -722,7 +723,7 @@ cdef ndarray _concatenate_single_kernel(
         cum += <int>a._shape[axis]
 
     _concatenate_kernel(
-        x, axis, core.array(cum_sizes), core.array(x_strides), ret)
+        x, axis, _creation.array(cum_sizes), _creation.array(x_strides), ret)
     return ret
 
 

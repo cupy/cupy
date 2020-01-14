@@ -33,11 +33,6 @@ from cupy.core._routines_math import subtract  # NOQA
 from cupy.core._routines_math import true_divide  # NOQA
 from cupy.core._routines_statistics import nanmax  # NOQA
 from cupy.core._routines_statistics import nanmin  # NOQA
-from cupy.core.core import _internal_ascontiguousarray  # NOQA
-from cupy.core.core import _internal_asfortranarray  # NOQA
-from cupy.core.core import array  # NOQA
-from cupy.core.core import ascontiguousarray  # NOQA
-from cupy.core.core import asfortranarray  # NOQA
 from cupy.core.core import bitwise_and  # NOQA
 from cupy.core.core import bitwise_or  # NOQA
 from cupy.core.core import bitwise_xor  # NOQA
