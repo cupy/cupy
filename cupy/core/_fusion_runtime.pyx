@@ -17,6 +17,7 @@ from cupy.core._fusion_shape import _AbstractDim
 from cupy.core._fusion_variable import _FusionCudaVarBase
 from cupy.core._fusion_variable import _FusionCudaScalar
 from cupy.core._fusion_variable import _FusionCudaArray
+from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 
 
@@ -207,15 +208,9 @@ cdef class FusedKernel(object):
         cdef Py_ssize_t block_size, block_stride, contiguous_size
 
         cdef list block_strides = []
-        cdef Py_ssize_t kern_size = 1
-
-        for i in range(len(self._params)):
-            array = ndarray_list[i]
-            if isinstance(array, ndarray):
-                kern_size = max(kern_size, <Py_ssize_t>array.size)
 
         if len(self._reduction_in_array) == 0:
-            return [], 256, 0, kern_size
+            return [], 256, 0
 
         block_size = 256 if runtime._is_hip_environment else 512
         for i in range(len(self._reduction_in_array)):
@@ -237,14 +232,8 @@ cdef class FusedKernel(object):
             block_stride = internal.clp2(block_stride // 2 + 1)  # floor
             block_strides.append(block_stride)
 
-        kern_size = (kern_size + block_size - 1) // block_size * block_size
-        # TODO(asi1024): Use `cuOccupancyMaxActiveBlocksPerMultiprocessor`.
-        # note:
-        # cupy.cuda.driver.CUDADriverError: CUDA_ERROR_COOPERATIVE_LAUNCH_TOO_LARGE: too many blocks in cooperative launch
-        kern_size = min(kern_size, 32 * 1024)
-        print(kern_size, block_size)
         shared_mem = block_size * 32  # max bytesize of reduce_ctype.
-        return block_strides, block_size, shared_mem, kern_size
+        return block_strides, block_size, shared_mem
 
     cdef tuple _reduce_dims(self, list ndarray_list):
         """Reduce number of dimensions of ndarrays and returns the cache key.
@@ -271,14 +260,12 @@ cdef class FusedKernel(object):
         cdef list params = []
         cdef list indexers = []
         cdef list block_strides = []
-        cdef int kern_size = 1
 
         for i in range(len(self._params)):
             array = ndarray_list[i]
             if isinstance(array, ndarray):
                 params.append(array)
                 indexers.append(Indexer(array.shape))
-                kern_size = max(kern_size, array.size)
             elif self._input_index[i] >= 0:
                 scalar = args[<Py_ssize_t>self._input_index[i]]
                 params.append(scalar_to_numpy_scalar(scalar))
@@ -319,7 +306,7 @@ cdef class FusedKernel(object):
         ndarray_list = self._get_ndarray_list(args, shapes)
         ret = self._get_return_value(ndarray_list)
         size_info = self._get_kernel_size(ndarray_list)
-        block_strides, block_size, shared_mem, size = size_info
+        block_strides, block_size, shared_mem = size_info
         reduce_key = self._reduce_dims(ndarray_list)
         inout_args = self._get_inout_args(args, ndarray_list)
         cuda_params = self._get_cuda_params(reduce_key, ndarray_list)
@@ -328,7 +315,12 @@ cdef class FusedKernel(object):
             self._submodule_code, self._name, cuda_params, self._cuda_body,
             self._use_grid_sync)
         kargs = inout_args + block_strides
+
+        # TODO(asi1024): Optimize kernel size perameter.
+        kern_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
+            kern.ptr, block_size, shared_mem) * block_size
+
         kern.linear_launch(
-            size, kargs, shared_mem, block_size,
+            kern_size, kargs, shared_mem, block_size,
             enable_cooperative_groups=self._use_grid_sync)
         return ret
