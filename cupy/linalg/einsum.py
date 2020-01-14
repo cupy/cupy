@@ -9,6 +9,8 @@ import cupy
 from cupy import util
 from cupy.linalg.einsum_opt import _greedy_path
 from cupy.linalg.einsum_opt import _optimal_path
+if cupy.cuda.cutensor_enabled:
+    from cupy import cutensor
 
 
 options = {
@@ -291,11 +293,36 @@ def _flatten_transpose(a, axeses):
     )
 
 
+def _use_cutensor(dtype0, sub0, dtype1, sub1, batch_dims, contract_dims):
+    if not cupy.cuda.cutensor_enabled:
+        return False
+    if dtype0 != dtype1:
+        return False
+    if dtype0 not in (cupy.float32, cupy.float64,
+                      cupy.complex64, cupy.complex128):
+        return False
+    if (len(contract_dims) >= 1 and (sub0[-1] in batch_dims or
+                                     sub1[-1] in batch_dims)):
+        return False
+    return True
+
+
+def _get_out_shape(shape0, sub0, shape1, sub1, sub_out):
+    extent = {}
+    for size, i in zip(shape0 + shape1, sub0 + sub1):
+        extent[i] = size
+    out_shape = [extent[i] for i in sub_out]
+    return out_shape
+
+
 def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     set0 = set(sub0)
     set1 = set(sub1)
     assert len(set0) == len(sub0), 'operand 0 should be reduced: diagonal'
     assert len(set1) == len(sub1), 'operand 1 should be reduced: diagonal'
+
+    if len(sub0) == 0 or len(sub1) == 0:
+        return arr0 * arr1, sub0 + sub1
 
     set_others = set(sub_others)
     shared = set0 & set1
@@ -305,12 +332,6 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     bs0, cs0, ts0 = _make_transpose_axes(sub0, batch_dims, contract_dims)
     bs1, cs1, ts1 = _make_transpose_axes(sub1, batch_dims, contract_dims)
 
-    tmp0, shapes0 = _flatten_transpose(arr0, [bs0, ts0, cs0])
-    tmp1, shapes1 = _flatten_transpose(arr1, [bs1, cs1, ts1])
-    shapes_out = shapes0[0] + shapes0[1] + shapes1[2]
-    assert shapes0[0] == shapes1[0]
-    arr_out = cupy.matmul(tmp0, tmp1).reshape(shapes_out)
-
     sub_b = [sub0[axis] for axis in bs0]
     assert sub_b == [sub1[axis] for axis in bs1]
     sub_l = [sub0[axis] for axis in ts0]
@@ -319,6 +340,29 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     sub_out = sub_b + sub_l + sub_r
     assert set(sub_out) <= set_others, 'operands should be reduced: unary sum'
 
+    if _use_cutensor(arr0.dtype, sub0, arr1.dtype, sub1,
+                     batch_dims, contract_dims):
+        if len(sub_out) == len(sub_others):
+            sub_out = sub_others
+        out_shape = _get_out_shape(arr0.shape, sub0, arr1.shape, sub1, sub_out)
+        arr_out = cupy.empty(out_shape, arr0.dtype)
+        arr0 = cupy.ascontiguousarray(arr0)
+        arr1 = cupy.ascontiguousarray(arr1)
+        desc_0 = cutensor.create_tensor_descriptor(arr0)
+        desc_1 = cutensor.create_tensor_descriptor(arr1)
+        desc_out = cutensor.create_tensor_descriptor(arr_out)
+        arr_out = cutensor.contraction(1.0,
+                                       arr0, desc_0, sub0,
+                                       arr1, desc_1, sub1,
+                                       0.0,
+                                       arr_out, desc_out, sub_out)
+        return arr_out, sub_out
+
+    tmp0, shapes0 = _flatten_transpose(arr0, [bs0, ts0, cs0])
+    tmp1, shapes1 = _flatten_transpose(arr1, [bs1, cs1, ts1])
+    shapes_out = shapes0[0] + shapes0[1] + shapes1[2]
+    assert shapes0[0] == shapes1[0]
+    arr_out = cupy.matmul(tmp0, tmp1).reshape(shapes_out)
     return arr_out, sub_out
 
 
