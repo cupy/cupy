@@ -2,6 +2,7 @@ import functools
 import unittest
 
 import numpy as np
+import pytest
 
 import cupy
 from cupy import testing
