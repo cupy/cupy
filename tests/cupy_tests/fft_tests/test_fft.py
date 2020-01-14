@@ -50,6 +50,15 @@ def nd_planning_states(states=[True, False], name='enable_nd'):
     return decorator
 
 
+def _size_last_transform_axis(shape, s, axes):
+    if s is not None:
+        if s[-1] is not None:
+            return s[-1]
+    elif axes is not None:
+        return shape[axes[-1]]
+    return shape[-1]
+
+
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
     'shape': [(10,), (10, 10)],
@@ -629,6 +638,11 @@ class TestRfftn(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfftn(self, xp, dtype):
+        if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010 and
+                int(cupy.cuda.device.get_compute_capability()) < 70 and
+                _size_last_transform_axis(self.shape, self.s, self.axes) == 2):
+            pytest.skip('work-around for cuFFT issue')
+
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
