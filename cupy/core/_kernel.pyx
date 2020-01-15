@@ -345,6 +345,22 @@ cdef class ParameterInfo:
             else:
                 raise Exception('Unknown keyword "%s"' % i)
 
+    def __hash__(self):
+        return hash((
+            self.name, self.dtype, self.ctype, self.raw, self.is_const))
+
+    def __eq__(self, other):
+        cdef ParameterInfo oth
+        if not isinstance(other, ParameterInfo):
+            return False
+        oth = other
+        return (
+            self.name == oth.name
+            and self.dtype == oth.dtype
+            and self.ctype == oth.ctype
+            and self.raw == oth.raw
+            and self.is_const == oth.is_const)
+
     def __repr__(self):
         return '<ParameterInfo({})>'.format(
             ' '.join([
