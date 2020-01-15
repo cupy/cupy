@@ -367,6 +367,22 @@ class TestRaw(unittest.TestCase):
                 backend=self.backend)
         assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)
 
+    def test_kernel_no_name(self):
+        with pytest.raises(ValueError):
+            cupy.RawKernel(
+                code=_test_source1)
+
+    def test_kernel_neither_code_or_kernel(self):
+        with pytest.raises(TypeError):
+            cupy.RawKernel(name='')
+
+    def test_kernel_both_code_and_kernel(self):
+        with pytest.raises(TypeError):
+            cupy.RawKernel(
+                code=_test_source1,
+                name='',
+                kernel=self.kern.kernel)
+
     def test_module_neither_code_nor_path(self):
         with pytest.raises(TypeError):
             cupy.RawModule()

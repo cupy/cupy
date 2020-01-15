@@ -17,7 +17,7 @@ cdef class RawKernel:
     binary is reused by other processes.
 
     Args:
-        code (str): CUDA source code.
+        code (str): CUDA source code. Mutually exclusive with ``kernel``
         name (str): Name of the kernel function.
         options (tuple of str): Compiler options passed to the backend (NVRTC
             or NVCC). For details, see
@@ -34,6 +34,8 @@ cdef class RawKernel:
             ``cuLaunchCooperativeKernel`` so that cooperative groups can be
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
+        kernel (:class:`cupy.cuda.function.Function`): Kernel object obtained
+            from the compilation backend. Mutually exclusive with ``code``
     """
 
     def __init__(self, code, name, options=(), backend='nvrtc', *,
@@ -50,8 +52,8 @@ cdef class RawKernel:
         self.options = options
         self.backend = backend
         self.translate_cucomplex = translate_cucomplex
-        self._kernel = None
         self.enable_cooperative_groups = enable_cooperative_groups
+        self._kernel = kernel
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -295,13 +297,15 @@ cdef class RawModule:
         if name in self.kernels:
             return self.kernels[name]
         else:
-            ker = RawKernel(
-                None, name, self.options, self.backend,
+            kernel = self.module.get_function(name)
+            r_kernel = RawKernel(
+                name=name, options=self.options,
+                backend=self.backend,
                 translate_cucomplex=self.translate_cucomplex,
-                enable_cooperative_groups=self.enable_cooperative_groups)
-            ker._kernel = self.module.get_function(name)
-            self.kernels[name] = ker
-            return ker
+                enable_cooperative_groups=self.enable_cooperative_groups,
+                kernel=kernel)
+            self.kernels[name] = r_kernel
+            return r_kernel
 
     def get_texref(self, name):
         '''Retrieve a texture reference by its name from the module.
