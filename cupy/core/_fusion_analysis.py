@@ -70,7 +70,7 @@ class _VariableConductor(object):
 
     This class calls ``_FusionCudaArray`` or ``_FusionCudaScalar`` internally
     with unique serial numbers and returns the variable object. In
-    ``_FusionHistory`` class, a method of ``history.vc``, which is of
+    ``FusedKernelCompiler`` class, a method of ``history.vc``, which is of
     ``_VariableConduductor`` class, should be called instead of
     ```_FusionCudaArray.__init__`` or ``_FusionCudaScalar.__init__``.
     """
@@ -178,7 +178,7 @@ class _VariableConductor(object):
         return list(self._variables_dict.values())
 
 
-class _FusionHistory(object):
+class FusedKernelCompiler:
     """History of operation exectuted in the target function of fusion.
     """
 

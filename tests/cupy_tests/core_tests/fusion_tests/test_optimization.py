@@ -43,7 +43,7 @@ def check_number_of_ops(
         loops, submodules, memories, variables, lookup, mutate):
     def wrapper(test_method):
         def new_impl(self, *args, **kwargs):
-            target = 'cupy.core._fusion_analysis._FusionHistory'
+            target = 'cupy.core._fusion_analysis.FusedKernelCompiler'
             with mock.patch(target, CreateMock(target)) as m:
                 result = test_method(self, *args, **kwargs)
                 m.check_number_of_ops(

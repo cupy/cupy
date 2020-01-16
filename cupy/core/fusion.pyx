@@ -145,7 +145,7 @@ class Fusion(object):
 
         if kernel is None:
             # If not cached at all, analyze the target function.
-            history = _fusion_analysis._FusionHistory(self.name)
+            history = _fusion_analysis.FusedKernelCompiler(self.name)
             try:
                 _thread_local.history = history
                 kernel = history.emit_kernel(self.func, args)
