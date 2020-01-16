@@ -2,7 +2,6 @@ import six
 
 import numpy
 
-from cupy.core import _errors
 from cupy.core import _kernel
 from cupy.core import _reduction
 from cupy.core import core
@@ -17,6 +16,7 @@ from cupy.core import _fusion_op
 from cupy.core import _fusion_emit_code
 from cupy.core import _fusion_runtime
 from cupy.core import _fusion_optimization
+from cupy import util
 
 
 _accepted_types = six.integer_types + (float, bool, complex, numpy.generic)
@@ -39,31 +39,6 @@ def _broadcast_shapes(shapes):
         result_shape.append(out_dim)
 
     return tuple(result_shape)
-
-
-def _normalize_axis(axes, ndim):
-    """Normalize axes. Returns a tuple of ints in [0, ndim) range.
-    """
-    if axes is None:
-        axes = tuple(range(ndim))
-    elif not isinstance(axes, tuple):
-        axes = axes,
-
-    res = []
-    for axis in axes:
-        if not isinstance(axis, int):
-            raise TypeError(
-                '{} cannot be interpreted as an integer.'.format(type(axis)))
-        if not (-ndim <= axis < ndim):
-            raise _errors._AxisError(
-                'axis {} is out of bounds for array of dimension {}.'.format(
-                    axis, ndim))
-        axis %= ndim
-        if axis in res:
-            raise ValueError('Duplicate value in \'axis\'')
-        res.append(axis % ndim)
-
-    return tuple(sorted(res))
 
 
 def _guess_routine(func, args, dtype):
@@ -389,7 +364,7 @@ class _FusionHistory(object):
             raise NotImplementedError(
                 'Reduction for scalar arguments is not supported.')
 
-        axes = _normalize_axis(axis, in_param.ndim)
+        axes = util._normalize_axis_indices(axis, in_param.ndim)
 
         if dtype is not None:
             dtype = numpy.dtype(dtype)
