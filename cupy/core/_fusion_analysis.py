@@ -198,9 +198,11 @@ class FusedKernelCompiler:
         assert isinstance(x, _fusion_variable._FusionCudaVarBase)
         return x.as_interface()
 
-    def _from_arraylike_interface(self, x):
+    def _unwrap_interface(self, x, *, allow_none=False):
         """Returns ``_FusionCuda{Array/Scalar}`` object from the input.
         """
+        if allow_none and x is None:
+            return None
         if isinstance(x, _fusion_interface._FusionVariableInterfaceBase):
             return x.content
         if isinstance(x, _accepted_types):
@@ -209,13 +211,6 @@ class FusedKernelCompiler:
         if isinstance(x, (numpy.ndarray, core.ndarray)):
             raise TypeError('Concrete ndarray is not supported in fusion.')
         raise TypeError('{} type is not supported'.format(type(x)))
-
-    def _from_interface(self, x):
-        """Returns ``_FusionCuda{Array/Scalar}`` object or ``None``.
-        """
-        if x is None:
-            return None
-        return self._from_arraylike_interface(x)
 
     def call_ufunc(self, ufunc, *args, **kwargs):
         """Register an elementwise operation with the given parameters.
@@ -238,9 +233,9 @@ class FusedKernelCompiler:
                 'cannot specify \'out\' as both a positional and '
                 'keyword argument')
 
-        in_params = [self._from_arraylike_interface(x) for x in args[:nin]]
+        in_params = [self._unwrap_interface(x) for x in args[:nin]]
         out_params = [
-            self._from_interface(x)
+            self._unwrap_interface(x, allow_none=True)
             for x in args[nin:] + (kwargs.pop('out', None),)
             if x is not None
         ]
@@ -266,7 +261,7 @@ class FusedKernelCompiler:
                 for out_param in out_params
             ])
             if should_copy:
-                in_params[i] = self._from_arraylike_interface(
+                in_params[i] = self._unwrap_interface(
                     self.call_ufunc(
                         core.elementwise_copy,
                         self._make_interface(in_param)))
@@ -299,7 +294,8 @@ class FusedKernelCompiler:
                 in_params[i] = self.vc.broadcast_to(p, out_ashape, out_rshape)
 
         # Get operation code from dtypes.
-        in_dtypes, out_dtypes, expr = _guess_routine(ufunc, in_params, dtype)
+        in_dtypes, out_dtypes, expr = _guess_routine(
+            ufunc, in_params, dtype)
 
         ret = []
         for i in range(nout):
@@ -363,7 +359,7 @@ class FusedKernelCompiler:
         assert isinstance(reduce_func, _reduction._SimpleReductionKernel)
 
         # Parse inputs.
-        in_param = self._from_arraylike_interface(a)
+        in_param = self._unwrap_interface(a)
 
         if not isinstance(in_param, _FusionCudaArray):
             raise NotImplementedError(
@@ -395,7 +391,7 @@ class FusedKernelCompiler:
             out_param = self.vc.generate_new_array(
                 out_dtype, out_rshape, out_ashape)
         else:
-            out_param = self._from_arraylike_interface(out)
+            out_param = self._unwrap_interface(out)
             if out_param.rshape != out_rshape:
                 raise ValueError(
                     'Shape of specified output variable is not consistent '
@@ -417,7 +413,7 @@ class FusedKernelCompiler:
     def call_indexing(self, in_param, indices):
         """Call indexing routines.
         """
-        in_param = self._from_arraylike_interface(in_param)
+        in_param = self._unwrap_interface(in_param)
 
         if not isinstance(indices, tuple):
             indices = (indices,)
@@ -494,11 +490,12 @@ class FusedKernelCompiler:
             out_params = []
         elif isinstance(output, _fusion_interface._ndarray):
             return_size = 'single'
-            out_params = [self._from_interface(output)]
+            out_params = [self._unwrap_interface(output, allow_none=True)]
         elif isinstance(output, tuple):
             if all(isinstance(x, _fusion_interface._ndarray) for x in output):
                 return_size = len(output)
-                out_params = [self._from_interface(x) for x in output]
+                out_params = [
+                    self._unwrap_interface(x, allow_none=True) for x in output]
             else:
                 raise ValueError(
                     'The all elements of return value of fused function '
