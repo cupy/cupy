@@ -317,10 +317,7 @@ def device_scan(ndarray x, int op, dtype=None, ndarray out=None):
 
     # determine shape: x is either 1D (with axis=None,0) or ND but ravelled.
     x_size = <int>x.size
-    if x.ndim != 1:
-        shape = (x_size,)
-    else:
-        shape = x.shape
+    shape = (x_size,)
 
     x = x.astype(dtype).reshape(shape)
     if out is not None:
@@ -372,8 +369,7 @@ def can_use_device_segmented_reduce(int op, x_dtype, Py_ssize_t ndim,
                                                         order)
 
 
-cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None,
-                                  bint segmented=False):
+cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None):
     if dtype is None:
         if op == CUPY_CUB_SUM:
             # auto dtype:
@@ -450,9 +446,11 @@ def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
 
 
 def can_use_device_scan(x_dtype, dtype=None):
+    # cub_device_scan seems buggy for complex128:
+    # https://github.com/cupy/cupy/pull/2919#issuecomment-574633590
     if dtype is not None:
-        return (dtype in CUB_support_dtype)
-    return (x_dtype in CUB_support_dtype)
+        return (dtype in CUB_support_dtype and dtype != numpy.complex128)
+    return (x_dtype in CUB_support_dtype and x_dtype != numpy.complex128)
 
 
 def cub_scan(arr, op, axis=None, dtype=None, out=None):
