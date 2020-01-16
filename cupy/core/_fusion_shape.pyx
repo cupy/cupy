@@ -2,7 +2,7 @@ from cupy.core import _fusion_thread_local
 
 
 cdef class _AbstractDim(object):
-    """An abstrated data structure for length of dimensions.
+    """An abstrated data structure for a length of dimensions.
     """
 
     cdef:
@@ -26,7 +26,7 @@ cdef class _AbstractDim(object):
 
 
 cdef class _ShapeConstraints(object):
-    """The data structure which manages the conditions between the shapes.
+    """A data structure that manages the conditions between the shapes.
     """
 
     cdef:

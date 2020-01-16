@@ -190,7 +190,7 @@ class _FusionVariableInterfaceBase(object):
 
 
 class _scalar(_FusionVariableInterfaceBase):
-    """Abstracted scalar object passed to the target function.
+    """An abstracted scalar object passed to the target function.
 
     Attributes:
         dtype(dtype): The dtype of the array.
@@ -205,7 +205,7 @@ class _scalar(_FusionVariableInterfaceBase):
 
 
 class _ndarray(_FusionVariableInterfaceBase):
-    """Abstracted array object passed to the target function.
+    """An abstracted array object passed to the target function.
 
     Attributes:
         dtype(dtype): The dtype of the array.

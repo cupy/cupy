@@ -179,7 +179,7 @@ class _VariableConductor(object):
 
 
 class FusedKernelCompiler:
-    """History of operation exectuted in the target function of fusion.
+    """Emit a fused kernel from the given target function.
     """
 
     def __init__(self, name):
@@ -255,6 +255,8 @@ class FusedKernelCompiler:
                     # NumPy does not raise this error.
                     raise ValueError('Outputs of ufunc must not share memory')
 
+        # Copy the input array data before the operation when the input array
+        # shares the same memory area with an output array.
         for i, in_param in enumerate(in_params):
             should_copy = any([
                 in_param.memory == out_param.memory and in_param != out_param
@@ -297,9 +299,11 @@ class FusedKernelCompiler:
         in_dtypes, out_dtypes, expr = _guess_routine(
             ufunc, in_params, dtype)
 
+        # Make output arrays.
         ret = []
         for i in range(nout):
             if i >= len(out_params):
+                # Omitted output.
                 out_pvar = self.vc.generate_new_array(
                     out_dtypes[i], out_rshape, out_ashape)
                 out_params.append(out_pvar)
@@ -387,7 +391,9 @@ class FusedKernelCompiler:
         # Get operation code from dtypes.
         _, (out_dtype,), expr = _guess_routine(reduce_func, [in_param], dtype)
 
+        # Make an output array.
         if out is None:
+            # Omitted output.
             out_param = self.vc.generate_new_array(
                 out_dtype, out_rshape, out_ashape)
         else:

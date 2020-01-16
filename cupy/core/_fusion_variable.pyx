@@ -135,7 +135,7 @@ class _FusionCudaVarBase(object):
 
 
 class _FusionCudaScalar(_FusionCudaVarBase):
-    """Abstracted scalar object.
+    """An abstracted scalar object.
 
     Attributes:
         const_value(scalar object or None): A compile-time constant value.
@@ -176,7 +176,7 @@ class _FusionCudaScalar(_FusionCudaVarBase):
 
 
 class _FusionCudaArray(_FusionCudaVarBase):
-    """Abstracted array object.
+    """An abstracted array object.
 
     Attributes:
         broadcasted_from(_FusionCudaArray optional): TODO

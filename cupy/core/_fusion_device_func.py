@@ -7,7 +7,8 @@ _dtype_to_ctype = _fusion_emit_code._dtype_to_ctype
 
 
 class _SubmoduleBase(object):
-    "A Base class of device function"
+    """A base class of device function.
+    """
 
     def _parse_op_info(self, func, op_info):
         raise NotImplementedError
