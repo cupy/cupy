@@ -42,17 +42,20 @@ def _broadcast_shapes(shapes):
 
 
 def _guess_routine(func, args, dtype):
-    new_args = []
+    assert isinstance(func, (_kernel.ufunc, _reduction._SimpleReductionKernel))
+
+    # Feeds dummy arguments with appropriate dtypes passed to `guess_routine`.
+    dummy_args = []
     for x in args:
         if isinstance(x, _FusionCudaScalar):
-            new_args.append(x.dtype.type(0))
+            dummy_args.append(x.dtype.type(0))
         else:
-            new_args.append(core.ndarray((0,), x.dtype))
+            assert isinstance(x, _FusionCudaArray)
+            dummy_args.append(core.ndarray((0,), x.dtype))
+
     op = func._ops.guess_routine(
-        func.name, func._routine_cache, new_args, dtype, None)
-    in_dtype = tuple([numpy.dtype(t) for t in op.in_types])
-    out_dtype = tuple([numpy.dtype(t) for t in op.out_types])
-    return in_dtype, out_dtype, op.routine
+        func.name, func._routine_cache, dummy_args, dtype, None)
+    return op.get_in_dtypes(), op.get_out_dtypes(), op.routine
 
 
 def _base(array):

@@ -1053,6 +1053,12 @@ cdef class _Op:
         out_types = tuple([get_dtype(t).type for t in out_types])
         return _Op(rt, in_types, out_types)
 
+    cpdef tuple get_in_dtypes(self):
+        return tuple([get_dtype(t) for t in self.in_types])
+
+    cpdef tuple get_out_dtypes(self):
+        return tuple([get_dtype(t) for t in self.out_types])
+
 
 cdef class _Ops:
 

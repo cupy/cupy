@@ -79,6 +79,10 @@ concrete dtype mapping.
     @staticmethod
     cdef _Op from_type_and_routine(str typ, routine)
 
+    cpdef tuple get_in_dtypes(self)
+
+    cpdef tuple get_out_dtypes(self)
+
 
 cdef class _Ops:
     """A kernel routine representation with various dtype mappings.
