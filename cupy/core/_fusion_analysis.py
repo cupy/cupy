@@ -190,7 +190,7 @@ class FusedKernelCompiler:
         self.submodules = {}
 
     @staticmethod
-    def _to_interface(x):
+    def _make_interface(x):
         """Returns an _array or a _scalar object which packs the given value.
         """
         if x is None:
@@ -269,7 +269,7 @@ class FusedKernelCompiler:
                 in_params[i] = self._from_arraylike_interface(
                     self.call_ufunc(
                         core.elementwise_copy,
-                        self._to_interface(in_param)))
+                        self._make_interface(in_param)))
 
         # Broadcast shapes
         out_rshape = _broadcast_shapes([p.rshape for p in params])
@@ -342,9 +342,9 @@ class FusedKernelCompiler:
         # Returns.
         assert len(ret) > 0
         if len(ret) == 1:
-            return self._to_interface(ret[0])
+            return self._make_interface(ret[0])
         else:
-            return tuple([self._to_interface(x) for x in ret])
+            return tuple([self._make_interface(x) for x in ret])
 
     def call_reduction(
             self, reduce_func, a, axis=None, dtype=None, out=None,
@@ -412,7 +412,7 @@ class FusedKernelCompiler:
         self.op_list.append(op)
 
         # Returns.
-        return self._to_interface(out_param)
+        return self._make_interface(out_param)
 
     def call_indexing(self, in_param, indices):
         """Call indexing routines.
@@ -435,7 +435,7 @@ class FusedKernelCompiler:
 
         # Basic indexing
         out_param = self.vc.indexing(in_param, indices)
-        return self._to_interface(out_param)
+        return self._make_interface(out_param)
 
     def _trace_target_function(self, func, args):
         """Call ``self.func`` with _FusionVariable arguments.
@@ -485,7 +485,7 @@ class FusedKernelCompiler:
             in_params.append(var)
 
         # Call the target function.
-        inputs = [self._to_interface(x) for x in in_params]
+        inputs = [self._make_interface(x) for x in in_params]
         output = func(*inputs)
 
         # Register output variables.
