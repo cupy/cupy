@@ -34,8 +34,8 @@ cdef class RawKernel:
             ``cuLaunchCooperativeKernel`` so that cooperative groups can be
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
-        kernel (:class:`cupy.cuda.function.Function`): Kernel object obtained
-            from the compilation backend. Mutually exclusive with ``code``
+        kernel (:class:`cupy.cuda.Function`): CUDA Kernel object 
+            to be executed. Mutually exclusive with ``code``
     """
 
     def __init__(self, code, name, options=(), backend='nvrtc', *,
