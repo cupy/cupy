@@ -59,6 +59,8 @@ def _guess_routine(func, args, dtype):
 
 
 def _base(array):
+    """Returns the base array object of given array.
+    """
     assert isinstance(array, core.ndarray)
     return array if array.base is None else array.base
 
