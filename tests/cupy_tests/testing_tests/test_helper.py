@@ -197,26 +197,6 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         with six.assertRaisesRegex(self, AssertionError, pattern):
             dummy_axis_error(self)
 
-    def test_axis_error_value(self):
-        @testing.helper.numpy_cupy_raises()
-        def dummy_axis_error(self, xp):
-            if xp is cupy:
-                raise cupy.core._errors._AxisError(self.tbs.get(cupy))
-            elif xp is numpy:
-                raise ValueError(self.tbs.get(numpy))
-
-        dummy_axis_error(self)
-
-    def test_axis_error_index(self):
-        @testing.helper.numpy_cupy_raises()
-        def dummy_axis_error(self, xp):
-            if xp is cupy:
-                raise cupy.core._errors._AxisError(self.tbs.get(cupy))
-            elif xp is numpy:
-                raise IndexError(self.tbs.get(numpy))
-
-        dummy_axis_error(self)
-
 
 class NumPyCuPyDecoratorBase(object):
 
