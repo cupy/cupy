@@ -503,12 +503,12 @@ from cupy.logic.truth import in1d  # NOQA
 from cupy.logic.truth import isin  # NOQA
 
 
-def isscalar(num):
+def isscalar(element):
     """Returns True if the type of num is a scalar type.
 
     .. seealso:: :func:`numpy.isscalar`
     """
-    return numpy.isscalar(num)
+    return numpy.isscalar(element)
 
 
 from cupy.logic.ops import logical_and  # NOQA
