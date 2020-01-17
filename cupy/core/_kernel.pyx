@@ -1115,16 +1115,18 @@ cdef class _Ops:
     cdef _Ops from_tuples(object ops, routine):
         ops_ = []
         for t in ops:
-            if isinstance(t, _Op):
-                ops_.append(t)
-            elif isinstance(t, tuple):
+            if isinstance(t, tuple):
                 typ, rt = t
                 if isinstance(rt, tuple):
                     rt = tuple([r1 or r2 for r1, r2 in zip(rt, routine)])
-                ops_.append(_Op.from_type_and_routine(typ, rt))
+                elif not isinstance(rt, str):
+                    # TODO(kataoka): assert isinstance(rt, callable)
+                    ops_.append(_Op.from_type_and_error_func(typ, rt))
+                    continue
             else:
                 assert isinstance(t, str)
-                ops_.append(_Op.from_type_and_routine(t, routine))
+                typ, rt = t, routine
+            ops_.append(_Op.from_type_and_routine(typ, rt))
         return _Ops(tuple(ops_))
 
     cdef _Op guess_routine(
