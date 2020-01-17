@@ -332,7 +332,7 @@ def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
     If the specified reduction is not possible, None is returned.
     """
     # if import at the top level, a segfault would happen when import cupy!
-    from cupy.core._reduction import _get_axis
+    from cupy.core._kernel import _get_axis
     cdef bint enforce_numpy_API = False
 
     if op > CUPY_CUB_MAX:
