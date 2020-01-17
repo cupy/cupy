@@ -315,15 +315,38 @@ def _get_out_shape(shape0, sub0, shape1, sub1, sub_out):
     return out_shape
 
 
-def _reshape_transpose(arr, sub, sub_out):
-    sub = list(sub)
+def _reshape_transpose(arr, mode, mode_out):
+    """Return a reshaped and transposed array.
+
+    The input array ``arr`` having ``mode`` as its modes is reshaped and
+    transposed so that modes of the output becomes ``mode_out``.
+
+    Example
+        >>> import cupy
+        >>> a = cupy.zeros((10, 20))
+        >>> mode_a = ('A', 'B')
+        >>> mode_out = ('B', 'C', 'A')
+        >>> out = cupy.linalg.einsum._reshape_transpose(a, mode_a, mode_out)
+        >>> out.shape
+        (20, 1, 10)
+
+    Args:
+        arr (cupy.ndarray):
+        mode (tuple or list): The modes of input array.
+        mode_out (tuple or list): The modes of output array.
+
+    Returns:
+        cupy.ndarray: The reshaped and transposed array.
+
+    """
+    mode = list(mode)
     shape = list(arr.shape)
     axes = []
-    for i in sub_out:
-        if i not in sub:
-            sub.append(i)
+    for i in mode_out:
+        if i not in mode:
+            mode.append(i)
             shape.append(1)
-        axes.append(sub.index(i))
+        axes.append(mode.index(i))
     return cupy.transpose(arr.reshape(shape), axes)
 
 
@@ -353,7 +376,9 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     assert set(sub_out) <= set_others, 'operands should be reduced: unary sum'
 
     if len(contract_dims) == 0:
+        # Use element-wise multiply when no contraction is needed
         if len(sub_out) == len(sub_others):
+            # to assure final output of einsum is C-contiguous
             sub_out = sub_others
         arr0 = _reshape_transpose(arr0, sub0, sub_out)
         arr1 = _reshape_transpose(arr1, sub1, sub_out)
@@ -362,6 +387,7 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     if _use_cutensor(arr0.dtype, sub0, arr1.dtype, sub1,
                      batch_dims, contract_dims):
         if len(sub_out) == len(sub_others):
+            # to assure final output of einsum is C-contiguous
             sub_out = sub_others
         out_shape = _get_out_shape(arr0.shape, sub0, arr1.shape, sub1, sub_out)
         arr_out = cupy.empty(out_shape, arr0.dtype)
