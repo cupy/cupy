@@ -69,15 +69,30 @@ concrete dtype mapping.
     """
 
     cdef:
-        readonly routine
         readonly tuple in_types
         readonly tuple out_types
         readonly int nin
         readonly int nout
+        readonly object routine
+        # If the type combination specified by in_types and out_types is
+        # disallowed, error_func must be set instead of routine.
+        # It's called by check_valid() method.
+        readonly object error_func
+
+    @staticmethod
+    cdef _Op _from_type_and_routine_or_error_func(
+        str typ, object routine, object error_func)
 
     # Creates an op instance parsing a dtype mpping.
     @staticmethod
     cdef _Op from_type_and_routine(str typ, routine)
+
+    # Creates an op instance parsing a dtype mpping with given error function.
+    @staticmethod
+    cdef _Op from_type_and_error_func(str typ, error_func)
+
+    # Raises an error if error_func is given.
+    cdef check_valid(self)
 
 
 cdef class _Ops:

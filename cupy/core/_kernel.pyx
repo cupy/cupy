@@ -1059,18 +1059,24 @@ cdef class ufunc:
 
 cdef class _Op:
 
-    def __init__(self, routine, tuple in_types, tuple out_types):
-        self.routine = routine
+    def __init__(
+            self, tuple in_types, tuple out_types, object routine,
+            object error_func):
+        if error_func is None:
+            assert routine is not None
+        else:
+            assert callable(error_func)
         self.in_types = in_types
         self.out_types = out_types
         self.nin = len(in_types)
         self.nout = len(out_types)
+        self.routine = routine
+        self.error_func = error_func
 
     @staticmethod
-    cdef _Op from_type_and_routine(str typ, routine):
+    cdef _Op _from_type_and_routine_or_error_func(
+            str typ, object routine, object error_func):
         # TODO(niboshi): Write type mapping specification.
-        rt = routine
-
         types = typ.split('->')
         if len(types) == 1:
             in_types = out_types = tuple(types)
@@ -1078,7 +1084,19 @@ cdef class _Op:
             in_types, out_types = map(tuple, types)
         in_types = tuple([get_dtype(t).type for t in in_types])
         out_types = tuple([get_dtype(t).type for t in out_types])
-        return _Op(rt, in_types, out_types)
+        return _Op(in_types, out_types, routine, error_func)
+
+    @staticmethod
+    cdef _Op from_type_and_routine(str typ, routine):
+        return _Op._from_type_and_routine_or_error_func(typ, routine, None)
+
+    @staticmethod
+    cdef _Op from_type_and_error_func(str typ, error_func):
+        return _Op._from_type_and_routine_or_error_func(typ, None, error_func)
+
+    cdef check_valid(self):
+        if self.error_func is not None:
+            self.error_func()
 
 
 cdef class _Ops:
@@ -1097,14 +1115,16 @@ cdef class _Ops:
     cdef _Ops from_tuples(object ops, routine):
         ops_ = []
         for t in ops:
-            if isinstance(t, tuple):
+            if isinstance(t, _Op):
+                ops_.append(t)
+            elif isinstance(t, tuple):
                 typ, rt = t
                 if isinstance(rt, tuple):
                     rt = tuple([r1 or r2 for r1, r2 in zip(rt, routine)])
+                ops_.append(_Op.from_type_and_routine(typ, rt))
             else:
                 assert isinstance(t, str)
-                typ, rt = t, routine
-            ops_.append(_Op.from_type_and_routine(typ, rt))
+                ops_.append(_Op.from_type_and_routine(t, routine))
         return _Ops(tuple(ops_))
 
     cdef _Op guess_routine(
@@ -1131,7 +1151,11 @@ cdef class _Ops:
                 cache[dtype] = op
 
         if op is not None:
+            # raise TypeError if the type combination is disallowed
+            (<_Op>op).check_valid()
+
             return op
+
         if dtype is None:
             dtype = tuple([a.dtype.type for a in in_args])
         raise TypeError('Wrong type (%s) of arguments for %s' %
