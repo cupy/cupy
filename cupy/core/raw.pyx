@@ -21,17 +21,25 @@ cdef class RawKernel:
     Args:
         code (str): CUDA source code.
         name (str): Name of the kernel function.
-        options (str): Compiler options passed to NVRTC. For details, see
-            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
+        options (tuple of str): Compiler options passed to the backend (NVRTC
+            or NVCC). For details, see
+            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options or
+            https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#command-option-description
         backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
         translate_cucomplex (bool): Whether the CUDA source includes the header
             `cuComplex.h` or not. If set to ``True``, any code that uses the
             functions from `cuComplex.h` will be translated to its Thrust
             counterpart. Defaults to ``False``.
+        enable_cooperative_groups (bool): Whether to enable cooperative groups
+            in the CUDA source. If set to ``True``, compile options are
+            configured properly and the kernel is launched with
+            ``cuLaunchCooperativeKernel`` so that cooperative groups can be
+            used from the CUDA source.
+            This feature is only supported in CUDA 9 or later.
     """
 
     def __init__(self, code, name, options=(), backend='nvrtc', *,
-                 translate_cucomplex=False):
+                 translate_cucomplex=False, enable_cooperative_groups=False):
         if isinstance(code, six.binary_type):
             code = code.decode('UTF-8')
         if isinstance(name, six.binary_type):
@@ -45,6 +53,7 @@ cdef class RawKernel:
         self.backend = backend
         self.translate_cucomplex = translate_cucomplex
         self._kernel = None
+        self.enable_cooperative_groups = enable_cooperative_groups
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -61,14 +70,17 @@ cdef class RawKernel:
                 bytes.
 
         """
-        self.kernel(grid, block, args, **kwargs)
+        self.kernel(
+            grid, block, args,
+            enable_cooperative_groups=self.enable_cooperative_groups,
+            **kwargs)
 
     @property
     def kernel(self):
         if self._kernel is None:
             self._kernel = _get_raw_kernel(
                 self.code, self.name, self.options, self.backend,
-                self.translate_cucomplex)
+                self.translate_cucomplex, self.enable_cooperative_groups)
         return self._kernel
 
     @property
@@ -192,10 +204,12 @@ cdef class RawKernel:
 
 @cupy.util.memoize(for_each_device=True)
 def _get_raw_kernel(code, name, options=(), backend='nvrtc',
-                    translate_cucomplex=False):
+                    translate_cucomplex=False,
+                    enable_cooperative_groups=False):
     module = cupy.core.core.compile_with_cache(
         code, options, prepend_cupy_headers=False, backend=backend,
-        translate_cucomplex=translate_cucomplex)
+        translate_cucomplex=translate_cucomplex,
+        enable_cooperative_groups=enable_cooperative_groups)
     return module.get_function(name)
 
 
@@ -203,51 +217,62 @@ cdef class RawModule:
     """User-defined custom module.
 
     This class can be used to either compile raw CUDA sources or load CUDA
-    modules (\\*.cubin). This class is useful when a number of CUDA kernels in
-    the same source need to be retrieved.
+    modules (\\*.cubin, \\*.ptx). This class is useful when a number of CUDA
+    kernels in the same source need to be retrieved.
 
     For the former case, the CUDA source code is compiled when initializing a
     new instance of this class, and the kernels can be retrieved by calling
     :meth:`get_function`, which will return an instance of :class:`RawKernel`.
     (Same as in :class:`RawKernel`, the generated binary is also cached.)
 
-    For the latter case, an existing CUDA binary (\\*.cubin) can be loaded by
-    providing its path, and kernels therein can be retrieved similarly.
+    For the latter case, an existing CUDA binary (\\*.cubin) or a PTX file can
+    be loaded by providing its path, and kernels therein can be retrieved
+    similarly.
 
     Args:
-        code_or_path (str): CUDA source code or path to cubin.
-        options (str): Compiler options passed to NVRTC if compilation is
-            needed. For details, see
-            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
+        code (str): CUDA source code. Mutually exclusive with ``path``.
+        path (str): Path to cubin/ptx. Mutually exclusive with ``code``.
+        options (tuple of str): Compiler options passed to the backend (NVRTC
+            or NVCC). For details, see
+            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options or
+            https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#command-option-description
         backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
         translate_cucomplex (bool): Whether the CUDA source includes the header
             `cuComplex.h` or not. If set to ``True``, any code that uses the
             functions from `cuComplex.h` will be translated to its Thrust
             counterpart. Defaults to ``False``.
+        enable_cooperative_groups (bool): Whether to enable cooperative groups
+            in the CUDA source. If set to ``True``, compile options are
+            configured properly and the kernel is launched with
+            ``cuLaunchCooperativeKernel`` so that cooperative groups can be
+            used from the CUDA source.
+            This feature is only supported in CUDA 9 or later.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
     """
-    def __init__(self, code_or_path, options=(), backend='nvrtc', *,
-                 translate_cucomplex=False):
-        if isinstance(code_or_path, six.binary_type):
-            code_or_path = code_or_path.decode('UTF-8')
+    def __init__(self, *, code=None, path=None, options=(), backend='nvrtc',
+                 translate_cucomplex=False, enable_cooperative_groups=False):
+        if (code is None) == (path is None):
+            raise TypeError(
+                'Exactly one of `code` and `path` keyword arguments must be '
+                'given.')
+        if path is not None and isinstance(path, six.binary_type):
+            path = path.decode('UTF-8')
+        if code is not None and isinstance(code, six.binary_type):
+            code = code.decode('UTF-8')
         if isinstance(backend, six.binary_type):
             backend = backend.decode('UTF-8')
 
-        if code_or_path.endswith('.cubin'):
-            path = code_or_path
-            self.code = None
-            self.cubin_path = path
-        else:
-            code = code_or_path
-            self.code = code
-            self.cubin_path = None
+        self.code = code
+        self.cubin_path = path
+        self.enable_cooperative_groups = enable_cooperative_groups
 
         if self.code is not None:
             self.module = cupy.core.core.compile_with_cache(
                 code, options, prepend_cupy_headers=False, backend=backend,
-                translate_cucomplex=translate_cucomplex)
+                translate_cucomplex=translate_cucomplex,
+                enable_cooperative_groups=self.enable_cooperative_groups)
             self.options = options
             self.backend = backend
             self.translate_cucomplex = translate_cucomplex
@@ -272,8 +297,10 @@ cdef class RawModule:
         if name in self.kernels:
             return self.kernels[name]
         else:
-            ker = RawKernel(None, name, self.options, self.backend,
-                            translate_cucomplex=self.translate_cucomplex)
+            ker = RawKernel(
+                None, name, self.options, self.backend,
+                translate_cucomplex=self.translate_cucomplex,
+                enable_cooperative_groups=self.enable_cooperative_groups)
             ker._kernel = self.module.get_function(name)
             self.kernels[name] = ker
             return ker

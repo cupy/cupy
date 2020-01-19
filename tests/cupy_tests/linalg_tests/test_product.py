@@ -431,19 +431,22 @@ class TestMatrixPower(unittest.TestCase):
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_matrix_power_inv1(self, xp, dtype):
-        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        a = a * a % 30
         return xp.linalg.matrix_power(a, -1)
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_matrix_power_inv2(self, xp, dtype):
-        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        a = a * a % 30
         return xp.linalg.matrix_power(a, -2)
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4)
     def test_matrix_power_inv3(self, xp, dtype):
-        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        a = a * a % 30
         return xp.linalg.matrix_power(a, -3)
 
     @testing.for_all_dtypes()

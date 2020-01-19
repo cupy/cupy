@@ -9,6 +9,8 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
+import threading
+
 cimport cpython  # NOQA
 cimport cython  # NOQA
 
@@ -24,6 +26,29 @@ cdef class PointerAttributes:
         self.hostPointer = hostPointer
         self.isManaged = isManaged
         self.memoryType = memoryType
+
+
+###############################################################################
+# Thread-local storage
+###############################################################################
+
+cdef object _thread_local = threading.local()
+
+
+cdef class _ThreadLocal:
+
+    cdef bint context_initialized
+
+    def __init__(self):
+        self.context_initialized = False
+
+    @staticmethod
+    cdef _ThreadLocal get():
+        try:
+            tls = _thread_local.tls
+        except AttributeError:
+            tls = _thread_local.tls = _ThreadLocal()
+        return <_ThreadLocal>tls
 
 
 ###############################################################################
@@ -611,20 +636,16 @@ cpdef eventSynchronize(intptr_t event):
 # util
 ##############################################################################
 
-cdef int _context_initialized = cpython.PyThread_create_key()
-
-
 cdef _ensure_context():
     """Ensure that CUcontext bound to the calling host thread exists.
 
     See discussion on https://github.com/cupy/cupy/issues/72 for details.
     """
-    cdef void* status = NULL
-    status = cpython.PyThread_get_key_value(_context_initialized)
-    if status == NULL:
+    tls = _ThreadLocal.get()
+    if not tls.context_initialized:
         # Call Runtime API to establish context on this host thread.
         memGetInfo()
-        cpython.PyThread_set_key_value(_context_initialized, <void *>1)
+        tls.context_initialized = True
 
 
 ##############################################################################

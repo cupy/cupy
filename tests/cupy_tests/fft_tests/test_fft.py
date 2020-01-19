@@ -7,7 +7,7 @@ import numpy as np
 import cupy
 from cupy import testing
 from cupy.fft import config
-from cupy.fft.fft import _default_plan_type
+from cupy.fft.fft import _default_fft_func, _fft, _fftn
 
 import six
 
@@ -48,6 +48,15 @@ def nd_planning_states(states=[True, False], name='enable_nd'):
 
         return test_func
     return decorator
+
+
+def _size_last_transform_axis(shape, s, axes):
+    if s is not None:
+        if s[-1] is not None:
+            return s[-1]
+    elif axes is not None:
+        return shape[axes[-1]]
+    return shape[-1]
 
 
 @testing.parameterize(*testing.product({
@@ -131,29 +140,29 @@ class TestFftOrder(unittest.TestCase):
 class TestDefaultPlanType(unittest.TestCase):
 
     @nd_planning_states()
-    def test_default_plan_type(self, enable_nd):
+    def test_default_fft_func(self, enable_nd):
         # test cases where nd CUFFT plan is possible
         ca = cupy.ones((16, 16, 16))
         for axes in [(0, 1), (1, 2), None, (0, 1, 2)]:
-            plan_type = _default_plan_type(ca, axes=axes)
+            fft_func = _default_fft_func(ca, axes=axes)
             if enable_nd:
-                self.assertEqual(plan_type, 'nd')
+                assert fft_func is _fftn
             else:
-                self.assertEqual(plan_type, '1d')
+                assert fft_func is _fft
 
         # only a single axis is transformed -> 1d plan preferred
         for axes in [(0, ), (1, ), (2, )]:
-            self.assertEqual(_default_plan_type(ca, axes=axes), '1d')
+            assert _default_fft_func(ca, axes=axes) is _fft
 
         # non-contiguous axes -> nd plan not possible
-        self.assertEqual(_default_plan_type(ca, axes=(0, 2)), '1d')
+        assert _default_fft_func(ca, axes=(0, 2)) is _fft
 
         # >3 axes transformed -> nd plan not possible
         ca = cupy.ones((2, 4, 6, 8))
-        self.assertEqual(_default_plan_type(ca), '1d')
+        assert _default_fft_func(ca) is _fft
 
         # first or last axis not included -> nd plan not possible
-        self.assertEqual(_default_plan_type(ca, axes=(1, )), '1d')
+        assert _default_fft_func(ca, axes=(1, )) is _fft
 
 
 @testing.gpu
@@ -232,7 +241,9 @@ class TestFft2(unittest.TestCase):
     {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': [-1, -2], 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
@@ -243,6 +254,7 @@ class TestFft2(unittest.TestCase):
     {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': (4, 3, 2), 'axes': (2, 0, 1), 'norm': 'ortho'},
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
 )
 @testing.gpu
@@ -258,6 +270,10 @@ class TestFftn(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
+        if self.axes is not None and not self.axes:
+            assert out is a
+            return out
+
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
@@ -271,6 +287,10 @@ class TestFftn(unittest.TestCase):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        if self.axes is not None and not self.axes:
+            assert out is a
+            return out
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
@@ -464,8 +484,8 @@ class TestFftnContiguity(unittest.TestCase):
                 a = cupy.asfortranarray(a)
             out = cupy.fft.fftn(a, s=self.s, axes=self.axes)
 
-            plan_type = _default_plan_type(a, s=self.s, axes=self.axes)
-            if plan_type == 'nd':
+            fft_func = _default_fft_func(a, s=self.s, axes=self.axes)
+            if fft_func is _fftn:
                 # nd plans have output with contiguity matching the input
                 self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
                 self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
@@ -483,8 +503,8 @@ class TestFftnContiguity(unittest.TestCase):
                 a = cupy.asfortranarray(a)
             out = cupy.fft.ifftn(a, s=self.s, axes=self.axes)
 
-            plan_type = _default_plan_type(a, s=self.s, axes=self.axes)
-            if plan_type == 'nd':
+            fft_func = _default_fft_func(a, s=self.s, axes=self.axes)
+            if fft_func is _fftn:
                 # nd plans have output with contiguity matching the input
                 self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
                 self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
@@ -618,6 +638,11 @@ class TestRfftn(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfftn(self, xp, dtype):
+        if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010 and
+                int(cupy.cuda.device.get_compute_capability()) < 70 and
+                _size_last_transform_axis(self.shape, self.s, self.axes) == 2):
+            pytest.skip('work-around for cuFFT issue')
+
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 

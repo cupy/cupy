@@ -1,16 +1,51 @@
 import contextlib
 import threading
 
-config = threading.local()
-config.divide = None
-config.over = None
-config.under = None
-config.invalid = None
-# In favor of performance, the `devInfo` input/output from cuSOLVER routine
-# calls that is necessary to check the validity of the other outputs, are
-# ignored, as D2H copy incurring device synchronizations would otherwise be
-# required.
-config.linalg = 'ignore'
+_config = threading.local()
+
+
+def get_config_divide():
+    try:
+        value = _config.divide
+    except AttributeError:
+        value = _config.divide = None
+    return value
+
+
+def get_config_over():
+    try:
+        value = _config.over
+    except AttributeError:
+        value = _config.over = None
+    return value
+
+
+def get_config_under():
+    try:
+        value = _config.under
+    except AttributeError:
+        value = _config.under = None
+    return value
+
+
+def get_config_invalid():
+    try:
+        value = _config.invalid
+    except AttributeError:
+        value = _config.invalid = None
+    return value
+
+
+def get_config_linalg():
+    # In favor of performance, the `devInfo` input/output from cuSOLVER routine
+    # calls that is necessary to check the validity of the other outputs, are
+    # ignored, as D2H copy incurring device synchronizations would otherwise be
+    # required.
+    try:
+        value = _config.linalg
+    except AttributeError:
+        value = _config.linalg = 'ignore'
+    return value
 
 
 @contextlib.contextmanager
@@ -44,11 +79,11 @@ def seterr(*, divide=None, over=None, under=None, invalid=None, linalg=None):
 
     old_state = geterr()
 
-    config.divide = divide
-    config.under = under
-    config.over = over
-    config.invalid = invalid
-    config.linalg = linalg
+    _config.divide = divide
+    _config.under = under
+    _config.over = over
+    _config.invalid = invalid
+    _config.linalg = linalg
 
     return old_state
 
@@ -58,9 +93,9 @@ def geterr():
     TODO(hvy): Write docs.
     """
     return dict(
-        divide=config.divide,
-        over=config.over,
-        under=config.under,
-        invalid=config.invalid,
-        linalg=config.linalg,
+        divide=get_config_divide(),
+        over=get_config_over(),
+        under=get_config_under(),
+        invalid=get_config_invalid(),
+        linalg=get_config_linalg(),
     )

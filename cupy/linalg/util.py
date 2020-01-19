@@ -33,8 +33,7 @@ def _check_cusolver_dev_info_if_synchronization_allowed(routine, dev_info):
     # documentation.
     assert isinstance(dev_info, core.ndarray)
     assert dev_info.size == 1
-
-    config_linalg = cupyx._ufunc_config.config.linalg
+    config_linalg = cupyx._ufunc_config.get_config_linalg()
     # Only 'ignore' and 'raise' are currently supported.
     if config_linalg == 'ignore':
         return
@@ -55,7 +54,7 @@ def _check_cublas_info_array_if_synchronization_allowed(routine, info_array):
     assert isinstance(info_array, core.ndarray)
     assert info_array.ndim == 1
 
-    config_linalg = cupyx._ufunc_config.config.linalg
+    config_linalg = cupyx._ufunc_config.get_config_linalg()
     # Only 'ignore' and 'raise' are currently supported.
     if config_linalg == 'ignore':
         return

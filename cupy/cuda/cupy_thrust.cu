@@ -7,8 +7,18 @@
 #include <thrust/execution_policy.h>
 #include "cupy_common.h"
 #include "cupy_thrust.h"
+#include "cupy_cuComplex.h"
 
 using namespace thrust;
+
+
+#if CUPY_USE_HIP
+typedef hipStream_t cudaStream_t;
+namespace cuda {
+    using thrust::hip::par;
+}
+
+#endif // #if CUPY_USE_HIP
 
 
 extern "C" char *cupy_malloc(void *, ptrdiff_t);
@@ -32,6 +42,73 @@ public:
         cupy_free(memory, ptr);
     }
 };
+
+
+/*
+ * ------------------------------------ Minimum boilerplate to support complex numbers -------------------------------------
+ * We need a specialized operator< here in order to match the NumPy behavior:
+ * "The sort order for complex numbers is lexicographic. If both the real and imaginary parts are non-nan then the order is
+ * determined by the real parts except when they are equal, in which case the order is determined by the imaginary parts.
+ *
+ * In numpy versions >= 1.4.0 nan values are sorted to the end. The extended sort order is:
+ *     Real: [R, nan]
+ *     Complex: [R + Rj, R + nanj, nan + Rj, nan + nanj]
+ * where R is a non-nan real value. Complex values with the same nan placements are sorted according to the non-nan part if
+ * it exists. Non-nan values are sorted as before."
+ * Ref: https://docs.scipy.org/doc/numpy/reference/generated/numpy.sort.html
+ */
+
+template <typename T>
+__host__ __device__ __forceinline__ bool _cmp_less(const T& lhs, const T& rhs) {
+    bool lhsRe = isnan(lhs.x);
+    bool lhsIm = isnan(lhs.y);
+    bool rhsRe = isnan(rhs.x);
+    bool rhsIm = isnan(rhs.y);
+
+    // neither side has nan
+    if (!lhsRe && !lhsIm && !rhsRe && !rhsIm) {
+        return (lhs.x < rhs.x || ((lhs.x == rhs.x) && (lhs.y < rhs.y)));
+    }
+
+    // one side has nan, and the other does not
+    if (!lhsRe && !lhsIm && (rhsRe || rhsIm)) {
+        return true;
+    }
+    if ((lhsRe || lhsIm) && !rhsRe && !rhsIm) {
+        return false;
+    }
+
+    // pick 2 from 3 possibilities (R + nanj, nan + Rj, nan + nanj)
+    if (lhsRe && !rhsRe) {
+        return false;
+    }
+    if (!lhsRe && rhsRe) {
+        return true;
+    }
+    if (lhsIm && !rhsIm) {
+        return false;
+    }
+    if (!lhsIm && rhsIm) {
+        return true;
+    }
+
+    // pick 1 from 3 and compare the numerical values (nan+nan*I compares to itself as false)
+    return (((lhsIm && rhsIm) && (lhs.x < rhs.x)) || ((lhsRe && rhsRe) && (lhs.y < rhs.y)));
+}
+
+/*
+ * Unfortunately we need explicit (instead of templated) definitions here, because the template specializations would
+ * go through some wild routes in Thrust that passing by reference to device functions is not working...
+ */
+
+__host__ __device__ __forceinline__ bool operator<(const cuComplex& lhs, const cuComplex& rhs) {
+    return _cmp_less(lhs, rhs);
+}
+
+__host__ __device__ __forceinline__ bool operator<(const cuDoubleComplex& lhs, const cuDoubleComplex& rhs) {
+    return _cmp_less(lhs, rhs);
+}
+/* ------------------------------------ end of boilerplate ------------------------------------ */
 
 
 /*
@@ -98,6 +175,10 @@ template void cupy::thrust::_sort<cpy_float>(
     void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
 template void cupy::thrust::_sort<cpy_double>(
     void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+template void cupy::thrust::_sort<cuComplex>(
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+template void cupy::thrust::_sort<cuDoubleComplex>(
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
 
 
 /*
@@ -156,6 +237,10 @@ template void cupy::thrust::_lexsort<cpy_ulong>(
 template void cupy::thrust::_lexsort<cpy_float>(
     size_t *, void *, size_t, size_t, size_t, void *);
 template void cupy::thrust::_lexsort<cpy_double>(
+    size_t *, void *, size_t, size_t, size_t, void *);
+template void cupy::thrust::_lexsort<cuComplex>(
+    size_t *, void *, size_t, size_t, size_t, void *);
+template void cupy::thrust::_lexsort<cuDoubleComplex>(
     size_t *, void *, size_t, size_t, size_t, void *);
 
 
@@ -254,5 +339,11 @@ template void cupy::thrust::_argsort<cpy_float>(
     size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
     void *);
 template void cupy::thrust::_argsort<cpy_double>(
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    void *);
+template void cupy::thrust::_argsort<cuComplex>(
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    void *);
+template void cupy::thrust::_argsort<cuDoubleComplex>(
     size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
     void *);

@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 from cupy import core
-from cupy.core._kernel import _get_axis
+from cupy.core._reduction import _get_axis
 
 
 def flip(a, axis):
