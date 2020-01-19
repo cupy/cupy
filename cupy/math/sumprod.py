@@ -155,12 +155,6 @@ def _proc_as_batch(proc, x, axis):
 def _cum_core(a, axis, dtype, out, kern, batch_kern, *, op=None):
     a = cupy.asarray(a)
 
-    if cupy.cuda.cub_enabled:
-        # result will be None if the scan is not compatible with CUB
-        result = cub.cub_scan(a, op, axis, dtype, out)
-        if result is not None:
-            return result
-
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
@@ -183,6 +177,12 @@ def _cum_core(a, axis, dtype, out, kern, batch_kern, *, op=None):
         raise core._AxisError('axis(={}) out of bounds'.format(axis))
     else:
         return _proc_as_batch(batch_kern, out, axis=axis)
+
+    if cupy.cuda.cub_enabled:
+        # result will be None if the scan is not compatible with CUB
+        result = cub.cub_scan(out, op)
+        if result is not None:
+            return result
 
     pos = 1
     while pos < out.size:

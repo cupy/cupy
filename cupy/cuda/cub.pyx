@@ -286,61 +286,35 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
     return y
 
 
-def device_scan(ndarray x, int op, dtype=None, ndarray out=None):
-    cdef ndarray y
+def device_scan(ndarray x, int op):
     cdef memory.MemoryPointer ws
     cdef int dtype_id, x_size
-    cdef tuple shape
     cdef size_t ws_size
     cdef void *x_ptr
-    cdef void *y_ptr
     cdef void *ws_ptr
     cdef Stream_t s
 
-    if out is not None and out.shape != x.shape:
-        raise ValueError('shape mismatch')
     if op != CUPY_CUB_CUMSUM and op != CUPY_CUB_CUMPROD:
         raise ValueError('only CUPY_CUB_CUMSUM and CUPY_CUB_CUMPROD '
                          'are supported.')
 
-    # determine dtype
-    x_dtype = x.dtype
-    if dtype is None:
-        dtype = x_dtype
-    # TODO(leofang): how to determine system's default integer type?
-    if dtype in (numpy.int8, numpy.int16, numpy.int32):
-        dtype = numpy.int64
-    elif dtype in (numpy.uint8, numpy.uint16, numpy.uint32):
-        dtype = numpy.uint64
-    else:
-        dtype = x_dtype
-
     # determine shape: x is either 1D (with axis=None,0) or ND but ravelled.
     x_size = <int>x.size
-    shape = (x_size,)
-
-    x = x.astype(dtype).reshape(shape)
-    if out is not None:
-        out = out.astype(dtype).reshape(shape)
-        y = out
-    else:
-        y = ndarray(shape, dtype)
-
     if x_size == 0:
-        return y
+        return x
 
     x = _internal_ascontiguousarray(x)
     x_ptr = <void *>x.data.ptr
-    y_ptr = <void *>y.data.ptr
     s = <Stream_t>stream.get_current_stream_ptr()
-    dtype_id = _get_dtype_id(dtype)
-    ws_size = cub_device_scan_get_workspace_size(x_ptr, y_ptr, x_size, s,
+    dtype_id = _get_dtype_id(x.dtype)
+    ws_size = cub_device_scan_get_workspace_size(x_ptr, x_ptr, x_size, s,
                                                  op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void *>ws.ptr
     with nogil:
-        cub_device_scan(ws_ptr, ws_size, x_ptr, y_ptr, x_size, s, op, dtype_id)
-    return y
+        # the scan is in-place
+        cub_device_scan(ws_ptr, ws_size, x_ptr, x_ptr, x_size, s, op, dtype_id)
+    return x
 
 
 cdef bint _cub_device_segmented_reduce_axis_compatible(
@@ -445,33 +419,19 @@ def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
     return None
 
 
-def can_use_device_scan(x_dtype, dtype=None):
-    # cub_device_scan seems buggy for complex128:
-    # https://github.com/cupy/cupy/pull/2919#issuecomment-574633590
-    if dtype is not None:
-        return (dtype in CUB_support_dtype and dtype != numpy.complex128)
-    return (x_dtype in CUB_support_dtype and x_dtype != numpy.complex128)
-
-
-def cub_scan(arr, op, axis=None, dtype=None, out=None):
-    """Perform a prefix scan using CUB.
+def cub_scan(arr, op):
+    """Perform an (in-place) prefix scan using CUB.
 
     If the specified scan is not possible, None is returned.
     """
-    if axis is not None:
-        if sequence.PySequence_Check(axis):
-            raise TypeError(
-                "'tuple' object cannot be interpreted as an integer")
-        if not (-arr.ndim <= axis < arr.ndim):
-            raise _AxisError('axis(={}) out of bounds'.format(axis))
-        if arr.ndim != 1 or axis != 0:
-            return None
-
     if op < CUPY_CUB_CUMSUM or op > CUPY_CUB_CUMPROD:
         return None
 
-    if can_use_device_scan(arr.dtype, dtype):
-        return device_scan(arr, op, dtype, out)
+    # cub_device_scan seems buggy for complex128:
+    # https://github.com/cupy/cupy/pull/2919#issuecomment-574633590
+    x_dtype = arr.dtype
+    if (x_dtype in CUB_support_dtype and x_dtype != numpy.complex128):
+        return device_scan(arr, op)
 
     return None
 
