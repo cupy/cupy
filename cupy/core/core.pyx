@@ -1099,6 +1099,9 @@ cdef class ndarray:
     cpdef ndarray conj(self):
         return _math._ndarray_conj(self)
 
+    cpdef ndarray conjugate(self):
+        return _math._ndarray_conj(self)
+
     @property
     def real(self):
         return _math._ndarray_real_getter(self)

@@ -24,7 +24,7 @@ if cupy.cuda.cub_enabled:
 
 cdef ndarray _ndarray_conj(ndarray self):
     if self.dtype.kind == 'c':
-        return _conj(self)
+        return _conjugate(self)
     else:
         return self
 
@@ -388,8 +388,8 @@ _add = create_arithmetic(
     ''')
 
 
-_conj = create_ufunc(
-    'cupy_conj',
+_conjugate = create_ufunc(
+    'cupy_conjugate',
     ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
      'Q->Q', 'e->e', 'f->f', 'd->d',
      ('F->F', 'out0 = conj(in0)'),
@@ -397,7 +397,7 @@ _conj = create_ufunc(
     'out0 = in0',
     doc='''Returns the complex conjugate, element-wise.
 
-    .. seealso:: :data:`numpy.conj`
+    .. seealso:: :data:`numpy.conjugate`
 
     ''')
 
@@ -639,7 +639,7 @@ _clip = create_ufunc(
 
 
 add = _add
-conj = _conj
+conjugate = _conjugate
 angle = _angle
 real = _real
 imag = _imag

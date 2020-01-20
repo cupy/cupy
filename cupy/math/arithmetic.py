@@ -24,7 +24,7 @@ reciprocal = core.create_ufunc(
 negative = core.negative
 
 
-conj = core.conj
+conjugate = core.conjugate
 
 
 angle = core.angle
