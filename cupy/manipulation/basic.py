@@ -3,7 +3,7 @@ import six
 
 from cupy import core
 from cupy.core import fusion
-from cupy.sorting import search
+from cupy._sorting import search
 
 
 def copyto(dst, src, casting='same_kind', where=None):

@@ -64,7 +64,7 @@ from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import padding  # NOQA
 from cupy import random  # NOQA
-from cupy import sorting  # NOQA
+from cupy import _sorting  # NOQA
 from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
@@ -637,23 +637,23 @@ pad = padding.pad.pad
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
-from cupy.sorting.count import count_nonzero  # NOQA
+from cupy._sorting.count import count_nonzero  # NOQA
 
-from cupy.sorting.search import argmax  # NOQA
-from cupy.sorting.search import argmin  # NOQA
-from cupy.sorting.search import flatnonzero  # NOQA
-from cupy.sorting.search import nanargmax  # NOQA
-from cupy.sorting.search import nanargmin  # NOQA
-from cupy.sorting.search import nonzero  # NOQA
-from cupy.sorting.search import searchsorted  # NOQA
-from cupy.sorting.search import where  # NOQA
+from cupy._sorting.search import argmax  # NOQA
+from cupy._sorting.search import argmin  # NOQA
+from cupy._sorting.search import flatnonzero  # NOQA
+from cupy._sorting.search import nanargmax  # NOQA
+from cupy._sorting.search import nanargmin  # NOQA
+from cupy._sorting.search import nonzero  # NOQA
+from cupy._sorting.search import searchsorted  # NOQA
+from cupy._sorting.search import where  # NOQA
 
-from cupy.sorting.sort import argpartition  # NOQA
-from cupy.sorting.sort import argsort  # NOQA
-from cupy.sorting.sort import lexsort  # NOQA
-from cupy.sorting.sort import msort  # NOQA
-from cupy.sorting.sort import partition  # NOQA
-from cupy.sorting.sort import sort  # NOQA
+from cupy._sorting.sort import argpartition  # NOQA
+from cupy._sorting.sort import argsort  # NOQA
+from cupy._sorting.sort import lexsort  # NOQA
+from cupy._sorting.sort import msort  # NOQA
+from cupy._sorting.sort import partition  # NOQA
+from cupy._sorting.sort import sort  # NOQA
 
 # -----------------------------------------------------------------------------
 # Statistics

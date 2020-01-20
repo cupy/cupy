@@ -188,7 +188,7 @@ setup(
         'cupy.padding',
         'cupy.prof',
         'cupy.random',
-        'cupy.sorting',
+        'cupy._sorting',
         'cupy.sparse',
         'cupy.sparse.linalg',
         'cupy.statistics',
