@@ -315,7 +315,7 @@ def _get_out_shape(shape0, sub0, shape1, sub1, sub_out):
     return out_shape
 
 
-def _reshape_transpose(arr, mode, mode_out):
+def _expand_dims_transpose(arr, mode, mode_out):
     """Return a reshaped and transposed array.
 
     The input array ``arr`` having ``mode`` as its modes is reshaped and
@@ -326,7 +326,8 @@ def _reshape_transpose(arr, mode, mode_out):
         >>> a = cupy.zeros((10, 20))
         >>> mode_a = ('A', 'B')
         >>> mode_out = ('B', 'C', 'A')
-        >>> out = cupy.linalg.einsum._reshape_transpose(a, mode_a, mode_out)
+        >>> out = cupy.linalg.einsum._expand_dims_transpose(a, mode_a,
+        ...                                                 mode_out)
         >>> out.shape
         (20, 1, 10)
 
@@ -380,8 +381,8 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
         if len(sub_out) == len(sub_others):
             # to assure final output of einsum is C-contiguous
             sub_out = sub_others
-        arr0 = _reshape_transpose(arr0, sub0, sub_out)
-        arr1 = _reshape_transpose(arr1, sub1, sub_out)
+        arr0 = _expand_dims_transpose(arr0, sub0, sub_out)
+        arr1 = _expand_dims_transpose(arr1, sub1, sub_out)
         return arr0 * arr1, sub_out
 
     if _use_cutensor(arr0.dtype, sub0, arr1.dtype, sub1,
