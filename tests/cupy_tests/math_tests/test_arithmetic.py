@@ -139,6 +139,7 @@ class TestComplex(unittest.TestCase):
         x_ = x.copy()
         real = x_.real
         # real returns a view
+        assert real.base is x_
         x_ += 1 + 1j
         testing.assert_array_equal(real, x.real + 1)
         return real
@@ -150,6 +151,7 @@ class TestComplex(unittest.TestCase):
         x_ = x.copy()
         real = xp.real(x_)
         # real returns a view
+        assert real.base is x_
         x_ += 1 + 1j
         testing.assert_array_equal(real, x.real + 1)
         return real
@@ -161,6 +163,7 @@ class TestComplex(unittest.TestCase):
         x_ = x.copy()
         imag = x_.imag
         # imag returns a view
+        assert imag.base is x_
         x_ += 1 + 1j
         testing.assert_array_equal(imag, x.imag + 1)
         return imag
@@ -172,6 +175,7 @@ class TestComplex(unittest.TestCase):
         x_ = x.copy()
         imag = xp.imag(x_)
         # imag returns a view
+        assert imag.base is x_
         x_ += 1 + 1j
         testing.assert_array_equal(imag, x.imag + 1)
         return imag
