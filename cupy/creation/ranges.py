@@ -104,7 +104,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
             _linspace_ufunc(start, step, ret, casting='unsafe')
 
         if endpoint:
-            # num == div + 1 > 1
+            # Here num == div + 1 > 1 is ensured.
             ret[-1] = stop
 
     if retstep:
