@@ -1,12 +1,7 @@
-import six
 import warnings
 
 import cupy
 from cupy import core
-
-
-zip_longest = six.moves.zip_longest
-six_zip = six.moves.zip
 
 
 # Shape map for atleast_nd functions

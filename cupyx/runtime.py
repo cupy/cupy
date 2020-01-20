@@ -1,6 +1,6 @@
 import inspect
+import io
 import os
-import six
 
 import cupy
 
@@ -163,7 +163,7 @@ class _RuntimeInfo(object):
 
         width = max([len(r[0]) for r in records]) + 2
         fmt = '{:' + str(width) + '}: {}\n'
-        s = six.StringIO()
+        s = io.StringIO()
         for k, v in records:
             s.write(fmt.format(k, v))
 
