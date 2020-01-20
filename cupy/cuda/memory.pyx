@@ -287,6 +287,11 @@ cdef class MemoryPointer:
         """Returns the pointer value."""
         return self.ptr
 
+    def __repr__(self):
+        return '<{} 0x{:x} device={} mem={!r}>'.format(
+            self.__class__.__name__,
+            self.ptr, self.device_id, self.mem)
+
     @property
     def device(self):
         return device.Device(self.device_id)
