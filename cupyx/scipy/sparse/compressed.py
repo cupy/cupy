@@ -285,7 +285,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix):
             raise ValueError('slicing with step != 1 not supported')
 
         if not (major_start <= major_stop):
-            raise IndexError('index out of bounds')
+            # will give an empty slice, but preserve shape on the other axis
+            major_start = major_stop
 
         start = self.indptr[major_start]
         stop = self.indptr[major_stop]

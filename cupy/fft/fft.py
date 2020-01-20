@@ -1,6 +1,7 @@
 import copy
 import functools
 import math
+import warnings
 
 import numpy as np
 import six
@@ -709,6 +710,15 @@ def rfftn(a, s=None, axes=None, norm=None):
     return _fft(a, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C')
 
 
+def _size_last_transform_axis(shape, s, axes):
+    if s is not None:
+        if s[-1] is not None:
+            return s[-1]
+    elif axes is not None:
+        return shape[axes[-1]]
+    return shape[-1]
+
+
 def irfftn(a, s=None, axes=None, norm=None):
     """Compute the N-dimensional inverse FFT for real input.
 
@@ -730,6 +740,12 @@ def irfftn(a, s=None, axes=None, norm=None):
 
     .. seealso:: :func:`numpy.fft.irfftn`
     """
+    if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010 and
+            int(cupy.cuda.device.get_compute_capability()) < 70 and
+            _size_last_transform_axis(a.shape, s, axes) == 2):
+        warnings.warn('Output of irfftn might not be correct due to issue '
+                      'of cuFFT in CUDA 10.1/10.2 on Pascal or older GPUs.')
+
     return _fft(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R')
 
 

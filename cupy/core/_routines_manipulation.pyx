@@ -273,7 +273,7 @@ cpdef ndarray _reshape(ndarray self,
     if internal.vector_equal(shape, self._shape):
         return self.view()
 
-    cdef size_t shape_size = internal.prod(shape)
+    cdef Py_ssize_t shape_size = internal.prod(shape)
     if self.size != shape_size:
         raise ValueError('cannot reshape array of size {}'
                          ' into shape {}'.format(self.size, shape_size))
@@ -303,18 +303,19 @@ cpdef ndarray _T(ndarray self):
 cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes):
     cdef vector.vector[Py_ssize_t] a_axes
     cdef vector.vector[char] axis_flags
-    cdef Py_ssize_t i, ndim, axis
+    cdef Py_ssize_t i, ndim, axis, axes_size
     cdef bint is_normal = True, is_trans = True
 
-    if axes.size() == 0:
+    axes_size = axes.size()
+    if axes_size == 0:
         return _T(self)
 
     ndim = self._shape.size()
-    if <Py_ssize_t>axes.size() != ndim:
+    if axes_size != ndim:
         raise ValueError('Invalid axes value: %s' % str(axes))
 
     axis_flags.resize(ndim, 0)
-    for i in range(axes.size()):
+    for i in range(axes_size):
         axis = axes[i]
         if axis < -ndim or axis >= ndim:
             raise IndexError('Axes overrun')

@@ -119,6 +119,11 @@ cpdef launchKernel(
     unsigned int block_dim_y, unsigned int block_dim_z,
     unsigned int shared_mem_bytes, intptr_t stream, intptr_t kernel_params,
     intptr_t extra)
+cpdef launchCooperativeKernel(
+    intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
+    unsigned int grid_dim_z, unsigned int block_dim_x,
+    unsigned int block_dim_y, unsigned int block_dim_z,
+    unsigned int shared_mem_bytes, intptr_t stream, intptr_t kernel_params)
 
 ###############################################################################
 # Kernel attributes

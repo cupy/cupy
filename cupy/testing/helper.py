@@ -26,7 +26,7 @@ def _call_func(self, impl, args, kw):
     try:
         result = impl(self, *args, **kw)
         error = None
-        tb_str = None
+        tb = None
     except Exception as e:
         _, _, tb = sys.exc_info()  # e.__traceback__ is py3 only
         if tb.tb_next is None:
@@ -34,9 +34,8 @@ def _call_func(self, impl, args, kw):
             raise e
         result = None
         error = e
-        tb_str = traceback.format_exc()
 
-    return result, error, tb_str
+    return result, error, tb
 
 
 def _call_func_cupy(self, impl, args, kw, name, sp_name, scipy_name):
@@ -124,6 +123,26 @@ def _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
                 for err in errors])
 
 
+def _fail_test_with_unexpected_errors(
+        testcase, msg_format, cupy_error, cupy_tb, numpy_error, numpy_tb):
+    # Fails the test due to unexpected errors raised from the test.
+    # msg_format may include format placeholders:
+    # '{cupy_error}' '{cupy_tb}' '{numpy_error}' '{numpy_tb}'
+
+    msg = msg_format.format(
+        cupy_error=''.join(str(cupy_error)),
+        cupy_tb=''.join(traceback.format_tb(cupy_tb)),
+        numpy_error=''.join(str(numpy_error)),
+        numpy_tb=''.join(traceback.format_tb(numpy_tb)))
+
+    # Fail the test with the traceback of the error (for pytest --pdb)
+    try:
+        testcase.fail(msg)
+    except AssertionError as e:
+        raise e.with_traceback(cupy_tb or numpy_tb)
+    assert False  # never reach
+
+
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
                             numpy_tb, accept_error=False):
     # Skip the test if both raised SkipTest.
@@ -143,30 +162,42 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
     if cupy_error is None and numpy_error is None:
         self.fail('Both cupy and numpy are expected to raise errors, but not')
     elif cupy_error is None:
-        self.fail('Only numpy raises error\n\n' + numpy_tb)
+        _fail_test_with_unexpected_errors(
+            self,
+            'Only numpy raises error\n\n{numpy_tb}{numpy_error}',
+            None, None, numpy_error, numpy_tb)
     elif numpy_error is None:
-        self.fail('Only cupy raises error\n\n' + cupy_tb)
+        _fail_test_with_unexpected_errors(
+            self,
+            'Only cupy raises error\n\n{cupy_tb}{cupy_error}',
+            cupy_error, cupy_tb, None, None)
 
     elif not _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
-        msg = '''Different types of errors occurred
+        _fail_test_with_unexpected_errors(
+            self,
+            '''Different types of errors occurred
 
 cupy
-%s
+{cupy_tb}{cupy_error}
+
 numpy
-%s
-''' % (cupy_tb, numpy_tb)
-        self.fail(msg)
+{numpy_tb}{numpy_error}
+''',
+            cupy_error, cupy_tb, numpy_error, numpy_tb)
 
     elif not (isinstance(cupy_error, accept_error)
               and isinstance(numpy_error, accept_error)):
-        msg = '''Both cupy and numpy raise exceptions
+        _fail_test_with_unexpected_errors(
+            self,
+            '''Both cupy and numpy raise exceptions
 
 cupy
-%s
+{cupy_tb}{cupy_error}
+
 numpy
-%s
-''' % (cupy_tb, numpy_tb)
-        self.fail(msg)
+{numpy_tb}{numpy_error}
+''',
+            cupy_error, cupy_tb, numpy_error, numpy_tb)
 
 
 def _make_positive_mask(self, impl, args, kw, name, sp_name, scipy_name):

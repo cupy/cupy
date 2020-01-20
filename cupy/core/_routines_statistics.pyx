@@ -56,10 +56,15 @@ cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
     if (cupy.cuda.cub_enabled and self.size != 0):
-        result = cub.cub_reduction(self, cub.CUPY_CUB_SUM, axis, dtype, out,
-                                   keepdims)
+        dtype_sum = dtype
+        if dtype is None and self.dtype.kind in 'iub':
+            # cast integer types to float (like the _mean ufunc)
+            dtype_sum = numpy.float64
+        result = cub.cub_reduction(self, cub.CUPY_CUB_SUM, axis, dtype_sum,
+                                   out, keepdims)
         if result is not None:
-            result /= (self.size / result.size)
+            n = self.size // result.size
+            cupy.true_divide(result, n, out=result, casting='unsafe')
             return result
     return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 

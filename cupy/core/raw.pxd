@@ -7,6 +7,7 @@ cdef class RawKernel:
         object _kernel
         readonly str backend
         bint translate_cucomplex
+        readonly bint enable_cooperative_groups
 
 
 cdef class RawModule:
@@ -19,3 +20,4 @@ cdef class RawModule:
         readonly str backend
         object module
         bint translate_cucomplex
+        readonly bint enable_cooperative_groups

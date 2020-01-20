@@ -131,7 +131,8 @@ cdef inline size_t _get_stream(stream) except *:
 
 cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
              Py_ssize_t block0, int block1, int block2,
-             args, Py_ssize_t shared_mem, size_t stream):
+             args, Py_ssize_t shared_mem, size_t stream,
+             bint enable_cooperative_groups=False):
     cdef list pargs = []
     cdef vector.vector[void*] kargs
     cdef CPointer cp
@@ -142,9 +143,15 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
         kargs.push_back(cp.ptr)
 
     runtime._ensure_context()
-    driver.launchKernel(
-        func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
-        <int>shared_mem, stream, <intptr_t>&(kargs[0]), <intptr_t>0)
+
+    if enable_cooperative_groups:
+        driver.launchCooperativeKernel(
+            func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
+            <int>shared_mem, stream, <intptr_t>&(kargs[0]))
+    else:
+        driver.launchKernel(
+            func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
+            <int>shared_mem, stream, <intptr_t>&(kargs[0]), <intptr_t>0)
 
 
 cdef class Function:
@@ -156,7 +163,7 @@ cdef class Function:
         self.ptr = driver.moduleGetFunction(module.ptr, funcname)
 
     def __call__(self, tuple grid, tuple block, args, size_t shared_mem=0,
-                 stream=None):
+                 stream=None, enable_cooperative_groups=False):
         grid = (grid + (1, 1))[:3]
         block = (block + (1, 1))[:3]
         s = _get_stream(stream)
@@ -164,7 +171,7 @@ cdef class Function:
             self.ptr,
             max(1, grid[0]), max(1, grid[1]), max(1, grid[2]),
             max(1, block[0]), max(1, block[1]), max(1, block[2]),
-            args, shared_mem, s)
+            args, shared_mem, s, enable_cooperative_groups)
 
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
                         size_t block_max_size=128, stream=None):
