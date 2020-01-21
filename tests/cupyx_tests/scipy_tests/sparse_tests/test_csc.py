@@ -124,7 +124,7 @@ class TestCscMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
         self.assertEqual(n.shape, self.m.shape)
 
-    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @testing.with_requires('scipy')
     def test_init_copy_scipy_sparse(self):
         m = _make(numpy, scipy.sparse, self.dtype)
         n = sparse.csc_matrix(m)
@@ -136,7 +136,7 @@ class TestCscMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.indptr, m.indptr)
         self.assertEqual(n.shape, m.shape)
 
-    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @testing.with_requires('scipy')
     def test_init_copy_other_scipy_sparse(self):
         m = _make(numpy, scipy.sparse, self.dtype)
         n = sparse.csc_matrix(m.tocsr())
@@ -188,7 +188,7 @@ class TestCscMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.indices, [0])
         cupy.testing.assert_array_equal(n.indptr, [0, 1])
 
-    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
     def test_init_dense_invalid_ndim(self, xp, sp):
         m = xp.zeros((1, 1, 1), dtype=self.dtype)
@@ -219,7 +219,7 @@ class TestCscMatrix(unittest.TestCase):
         n = _make_complex(cupy, sparse, self.dtype)
         cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
-    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @testing.with_requires('scipy')
     def test_get(self):
         m = self.m.get()
         self.assertIsInstance(m, scipy.sparse.csc_matrix)
@@ -230,7 +230,7 @@ class TestCscMatrix(unittest.TestCase):
         ]
         numpy.testing.assert_allclose(m.toarray(), expect)
 
-    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @testing.with_requires('scipy')
     def test_str(self):
         if numpy.dtype(self.dtype).kind == 'f':
             expect = '''  (0, 0)\t0.0
@@ -259,7 +259,7 @@ class TestCscMatrix(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 class TestCscMatrixInit(unittest.TestCase):
 
     def setUp(self):
@@ -391,7 +391,7 @@ class TestCscMatrixInit(unittest.TestCase):
         '_make_shape'],
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 class TestCscMatrixScipyComparison(unittest.TestCase):
 
     @property
@@ -816,7 +816,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     'ret_dtype': [None, numpy.float32, numpy.float64],
     'axis': [None, 0, 1, -1, -2],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 class TestCscMatrixSum(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -844,7 +844,7 @@ class TestCscMatrixSum(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 class TestCscMatrixScipyCompressed(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
@@ -856,7 +856,7 @@ class TestCscMatrixScipyCompressed(unittest.TestCase):
         return _make(xp, sp, self.dtype).getnnz()
 
 
-@unittest.skipUnless(scipy_available, 'requires scipy>=0.19')
+@testing.with_requires('scipy>=0.19.0')
 class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
 
     def test_min_sparse_axis_0(self):
@@ -1143,7 +1143,7 @@ class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 class TestCscMatrixData(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
@@ -1197,7 +1197,7 @@ class TestCscMatrixData(unittest.TestCase):
         'tan', 'tanh', 'trunc',
     ],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 class TestUfunc(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
@@ -1237,7 +1237,7 @@ class TestIsspmatrixCsc(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 class TestCsrMatrixGetitem(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
@@ -1304,7 +1304,7 @@ class TestCsrMatrixGetitem(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@testing.with_requires('scipy>=1.0')
+@testing.with_requires('scipy>=1.0.0')
 class TestCsrMatrixGetitem2(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
