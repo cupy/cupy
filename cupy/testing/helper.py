@@ -281,6 +281,46 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
     return decorator
 
 
+def numpy_cupy_run(name='xp', sp_name=None, scipy_name=None):
+    """Decorator for parameterized array module test."""
+    def check_func(c, n):
+        bad = []
+        if c is not None:
+            bad.append('cupy')
+        if n is not None:
+            bad.append('numpy')
+        if bad:
+            raise AssertionError(
+                'Test decorated by `numpy_cupy_run` returned value(s) for {}'
+                .format(', '.join(bad)))
+
+    assert isinstance(name, str)
+    assert sp_name is None or isinstance(sp_name, str)
+    assert scipy_name is None or isinstance(scipy_name, str)
+
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            # Run cupy and numpy
+            (
+                cupy_result, cupy_error, cupy_tb,
+                numpy_result, numpy_error, numpy_tb) = (
+                    _call_func_numpy_cupy(
+                        self, impl, args, kw, name, sp_name, scipy_name))
+
+            # Check errors raised
+            if cupy_error or numpy_error:
+                _check_cupy_numpy_error(self, cupy_error, cupy_tb,
+                                        numpy_error, numpy_tb,
+                                        accept_error=False)
+                return
+
+            check_func(cupy_result, numpy_result)
+
+        return test_func
+    return decorator
+
+
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
                         name='xp', type_check=True, accept_error=False,
                         sp_name=None, scipy_name=None, contiguous_check=True):
