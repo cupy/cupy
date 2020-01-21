@@ -1,6 +1,5 @@
-import numpy
-
 import cupy
+from cupy import util
 
 
 def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
@@ -79,7 +78,7 @@ def _get_output(output, input, shape=None):
 
 def _correlate_or_convolve(input, weights, output, mode, cval, origin,
                            convolution):
-    if input.dtype in (numpy.complex64, numpy.complex128, numpy.complex256):
+    if input.dtype.kind == 'c':
         raise TypeError('Complex type not supported.')
     if not hasattr(origin, '__getitem__'):
         origin = [origin, ] * input.ndim
@@ -95,7 +94,7 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
             if weights.shape[ii] % 2 == 0:
                 origin[ii] -= 1
     for _origin, lenw in zip(origin, wshape):
-        if (lenw // 2 + _origin < 0) or (lenw // 2 + _origin > lenw):
+        if (lenw // 2 + _origin < 0) or (lenw // 2 + _origin >= lenw):
             raise ValueError('invalid origin')
     if mode not in ('reflect', 'constant', 'nearest', 'mirror', 'wrap'):
         msg = 'boundary mode not supported (actual: {}).'.format(mode)
@@ -106,12 +105,8 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
         return output
     input = cupy.ascontiguousarray(input)
     weights = cupy.ascontiguousarray(weights, cupy.float64)
-    # weights is always casted to float64 in order to get an output compatible
-    # with SciPy, thought float32 might be sufficient when input dtype is low
-    # precision.
-    in_params, out_params, operation, name = _generate_correlete_kernel(
-        input.ndim, mode, cval, input.shape, wshape, origin)
-    return cupy.ElementwiseKernel(in_params, out_params, operation, name)(
+    return _get_correlete_kernel(
+        input.ndim, mode, cval, input.shape, tuple(wshape), tuple(origin))(
         input, weights, output)
 
 
@@ -179,14 +174,20 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
         ops.append(_generate_boundary_condition_ops(mode, ixvar, xshape[j]))
         ops.append('        ix_{j} *= sx_{j};'.format(j=j))
 
+    ops.append('''
+        W wval = w[iw];
+        if (wval == (W)0) {{
+            iw += 1;
+            continue;
+        }}''')
     _cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
     _expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
     ops.append('''
         if ({cond}) {{
-            sum += (W){cval} * w[iw];
+            sum += (W){cval} * wval;
         }} else {{
             int ix = {expr};
-            sum += (W)x[ix] * w[iw];
+            sum += (W)x[ix] * wval;
         }}
         iw += 1;'''.format(cond=_cond, expr=_expr, cval=cval))
 
@@ -198,3 +199,13 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
         ndim, mode, '_'.join(['{}'.format(j) for j in xshape]),
         '_'.join(['{}'.format(j) for j in wshape]))
     return in_params, out_params, operation, name
+
+
+@util.memoize()
+def _get_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
+    # weights is always casted to float64 in order to get an output compatible
+    # with SciPy, thought float32 might be sufficient when input dtype is low
+    # precision.
+    in_params, out_params, operation, name = _generate_correlete_kernel(
+        ndim, mode, cval, xshape, wshape, origin)
+    return cupy.ElementwiseKernel(in_params, out_params, operation, name)

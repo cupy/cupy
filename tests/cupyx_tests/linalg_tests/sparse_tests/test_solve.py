@@ -40,13 +40,13 @@ class TestLschol(unittest.TestCase):
             self.decimal = 3
 
     @testing.numpy_cupy_raises()
-    def test_size(self):
+    def test_size(self, xp):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
         b = cp.array(numpy.append(self.b, [1]), dtype=self.dtype)
         cupyx.linalg.sparse.lschol(A, b)
 
     @testing.numpy_cupy_raises()
-    def test_shape(self):
+    def test_shape(self, xp):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
         b = cp.array(numpy.tile(self.b, (2, 1)), dtype=self.dtype)
         cupyx.linalg.sparse.lschol(A, b)

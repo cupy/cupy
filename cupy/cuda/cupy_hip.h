@@ -65,6 +65,10 @@ CUresult cuLinkAddData(...) {
     return hipErrorUnknown;
 }
 
+CUresult cuLinkAddFile(...) {
+    return hipErrorUnknown;
+}
+
 CUresult cuLinkComplete(...) {
     return hipErrorUnknown;
 }
@@ -157,10 +161,6 @@ CUresult cuTexRefSetMaxAnisotropy (...) {
     return hipErrorUnknown;
 }
 
-CUresult cuParamSetTexRef (...) {
-    return hipErrorUnknown;
-}
-
 // Occupancy
 typedef size_t (*CUoccupancyB2DSize)(int);
 
@@ -209,6 +209,14 @@ cudaError_t cudaGetDevice(int *deviceId) {
 cudaError_t cudaDeviceGetAttribute(int* pi, cudaDeviceAttr attr,
                                    int deviceId) {
     return hipDeviceGetAttribute(pi, attr, deviceId);
+}
+
+cudaError_t cudaDeviceGetByPCIBusId(int *device, const char *pciBusId) {
+    return hipDeviceGetByPCIBusId(device, pciBusId);
+}
+
+cudaError_t cudaDeviceGetPCIBusId(char *pciBusId, int len, int device) {
+    return hipDeviceGetPCIBusId(pciBusId, len, device);
 }
 
 cudaError_t cudaGetDeviceCount(int *count) {

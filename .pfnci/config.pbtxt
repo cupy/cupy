@@ -1,4 +1,114 @@
 configs {
+  key: "cupy.py27and35.gpu"
+  value {
+    requirement {
+      cpu: 8
+      memory: 24
+      disk: 10
+      gpu: 2
+    }
+    time_limit {
+      seconds: 1800
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: "bash .pfnci/script.sh py27and35"
+  }
+}
+configs {
+  key: "cupy.py37.gpu"
+  value {
+    requirement {
+      cpu: 8
+      memory: 24
+      disk: 10
+      gpu: 2
+    }
+    time_limit {
+      seconds: 1800
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: "bash .pfnci/script.sh py37"
+  }
+}
+
+# CuPy CI related targets: cupy.docker.{version}.{action}.
+# - version should be either "py37" or "py27and35".
+# - action should be either "test" or "push".  "test" only builds a Docker
+#   image, and "push" additionally pushes the Docker image to Google Container
+#   Registry.
+configs {
+  key: "cupy.docker.py37.test"
+  value {
+    requirement {
+      cpu: 2
+      memory: 12
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    command: "bash .pfnci/script.sh docker.py37.test"
+  }
+}
+configs {
+  key: "cupy.docker.py27and35.test"
+  value {
+    requirement {
+      cpu: 2
+      memory: 12
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    command: "bash .pfnci/script.sh docker.py27and35.test"
+  }
+}
+configs {
+  key: "cupy.docker.py37.push"
+  value {
+    requirement {
+      cpu: 2
+      memory: 12
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    command: "bash .pfnci/script.sh docker.py37.push"
+  }
+}
+configs {
+  key: "cupy.docker.py27and35.push"
+  value {
+    requirement {
+      cpu: 2
+      memory: 12
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    command: "bash .pfnci/script.sh docker.py27and35.push"
+  }
+}
+
+# Nightly wheels for ChainerCV tests
+configs {
   key: "cupy.wheel.nightly"
   value {
     requirement {
@@ -27,63 +137,33 @@ configs {
     command: "true"
   }
 }
+
+# ChainerCV's tests are disabled in the master branch, but configs can be removed
+# only after removing web hooks.
 configs {
   key: "cupy.py3.cv.gpu"
   value {
-    requirement {
-      cpu: 4
-      memory: 24
-      disk: 10
-      gpu: 1
-    }
-    time_limit {
-      seconds: 1800
-    }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    command: "git clone https://github.com/chainer/chainercv.git --depth 1 && sh chainercv/.pfnci/tests_gpu.sh"
-    environment_variables {
-      key: "REPOSITORY"
-      value: "cupy"
-    }
-    environment_variables {
-      key: "PYTHON"
-      value: "3"
-    }
-    environment_variables {
-      key: "OPTIONAL_MODULES"
-      value: "1"
-    }
+    command: "true"
   }
 }
 configs {
   key: "cupy.py3.cv.examples"
   value {
+    command: "true"
+  }
+}
+
+# ROCm build test
+configs {
+  key: "cupy.py37.amd"
+  value {
     requirement {
-      cpu: 6
-      memory: 36
-      disk: 10
-      gpu: 2
+      cpu: 2
+      memory: 10
     }
-    time_limit {
+    time_limit: {
       seconds: 3600
     }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    command: "git clone https://github.com/chainer/chainercv.git --depth 1 && sh chainercv/.pfnci/examples_tests.sh"
-    environment_variables {
-      key: "REPOSITORY"
-      value: "cupy"
-    }
-    environment_variables {
-      key: "PYTHON"
-      value: "3"
-    }
-    environment_variables {
-      key: "OPTIONAL_MODULES"
-      value: "1"
-    }
+    command: "bash .pfnci/script.sh py37.amd"
   }
 }

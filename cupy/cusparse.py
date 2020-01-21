@@ -1,9 +1,12 @@
+import functools
+
 import numpy
 
 import cupy
 from cupy.cuda import cusparse
 from cupy.cuda import runtime
 from cupy.cuda import device
+from cupy import util
 import cupyx.scipy.sparse
 
 
@@ -17,7 +20,9 @@ class MatDescriptor(object):
         descr = cusparse.createMatDescr()
         return MatDescriptor(descr)
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
+        if is_shutting_down():
+            return
         if self.descriptor:
             cusparse.destroyMatDescr(self.descriptor)
             self.descriptor = None
@@ -31,7 +36,7 @@ class MatDescriptor(object):
 
 def _cast_common_type(*xs):
     dtypes = [x.dtype for x in xs if x is not None]
-    dtype = numpy.find_common_type(dtypes, [])
+    dtype = functools.reduce(numpy.promote_types, dtypes)
     return [x.astype(dtype) if x is not None and x.dtype != dtype else x
             for x in xs]
 

@@ -13,9 +13,14 @@ from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import nvrtc
 from cupy.cuda import runtime
+from cupy import util
 
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
+_win32 = sys.platform.startswith('win32')
+_rdc_flags = ('--device-c', '-dc', '-rdc=true',
+              '--relocatable-device-code=true')
+_cudadevrt = None
 
 
 class NVCCException(Exception):
@@ -65,6 +70,39 @@ def _get_arch():
 
     return min(device.Device().compute_capability,
                _nvrtc_max_compute_capability)
+
+
+def _is_cudadevrt_needed(options):
+    return any(o for o in options if o in _rdc_flags)
+
+
+def _get_cudadevrt_path():
+    # defer import to here to avoid circular dependency
+    from cupy.cuda import get_cuda_path
+    global _win32
+
+    cudadevrt = get_cuda_path()
+    if cudadevrt is None:
+        raise RuntimeError('CUDA is not found.')
+
+    if _win32:
+        # rely on os.altsep
+        cudadevrt += '/lib/x64/cudadevrt.lib'
+    else:  # linux & osx: search twice as in cupy/install/build.py
+        cudadevrt64 = cudadevrt + '/lib64/libcudadevrt.a'
+        if not os.path.isfile(cudadevrt64):
+            cudadevrt += '/lib/libcudadevrt.a'
+        else:
+            cudadevrt = cudadevrt64
+    if not os.path.isfile(cudadevrt):
+        raise RuntimeError(
+            'Relocatable PTX code is requested, but cudadevrt '
+            'is not found.')
+    return cudadevrt
+
+
+def _remove_rdc_option(options):
+    return tuple(o for o in options if o not in _rdc_flags)
 
 
 class TemporaryDirectory(object):
@@ -117,15 +155,18 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
 
 
 def compile_using_nvcc(source, options=(), arch=None,
-                       filename='kern.cu', code_type='cubin'):
+                       filename='kern.cu', code_type='cubin',
+                       separate_compilation=False):
     if not arch:
         arch = _get_arch()
 
     if code_type not in ('cubin', 'ptx'):
         raise ValueError('Invalid code_type %s. Should be cubin or ptx')
+    if code_type == 'ptx':
+        assert not separate_compilation
 
     arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
-    cmd = ['nvcc', '--%s' % code_type, arch_str] + list(options)
+    cmd = ['nvcc', arch_str]
 
     with TemporaryDirectory() as root_dir:
         first_part = filename.split('.')[0]
@@ -137,19 +178,53 @@ def compile_using_nvcc(source, options=(), arch=None,
         with open(cu_path, 'w') as cu_file:
             cu_file.write(source)
 
-        cmd.append(cu_path)
+        if not separate_compilation:  # majority cases
+            cmd.append('--%s' % code_type)
+            cmd += list(options)
+            cmd.append(cu_path)
 
-        try:
-            _run_nvcc(cmd, root_dir)
-        except NVCCException as e:
-            cex = CompileException(str(e), source, cu_path, options, 'nvcc')
+            try:
+                _run_nvcc(cmd, root_dir)
+            except NVCCException as e:
+                cex = CompileException(str(e), source, cu_path, options,
+                                       'nvcc')
 
-            dump = _get_bool_env_variable(
-                'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
-            if dump:
-                cex.dump(sys.stderr)
+                dump = _get_bool_env_variable(
+                    'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+                if dump:
+                    cex.dump(sys.stderr)
 
-            raise cex
+                raise cex
+        else:  # two steps: compile to object and device-link
+            cmd_partial = cmd.copy()
+            cmd_partial.append('--cubin')
+
+            obj = path + '.o'
+            cmd += list(options + ('-o', obj))
+            cmd.append(cu_path)
+
+            try:
+                _run_nvcc(cmd, root_dir)
+            except NVCCException as e:
+                cex = CompileException(str(e), source, cu_path, options,
+                                       'nvcc')
+
+                dump = _get_bool_env_variable(
+                    'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+                if dump:
+                    cex.dump(sys.stderr)
+
+                raise cex
+
+            options = _remove_rdc_option(options)
+            options += ('--device-link', obj, '-o', path + '.cubin')
+            cmd = cmd_partial + list(options)
+
+            try:
+                _run_nvcc(cmd, root_dir)
+            except NVCCException as e:
+                cex = CompileException(str(e), '', '', options, 'nvcc')
+                raise cex
 
         if code_type == 'ptx':
             with open(result_path, 'rb') as ptx_file:
@@ -201,18 +276,30 @@ def get_cache_dir():
 _empty_file_preprocess_cache = {}
 
 
-def compile_with_cache(source, options=(), arch=None, cache_dir=None,
-                       extra_source=None, backend='nvrtc'):
+def compile_with_cache(
+        source, options=(), arch=None, cache_dir=None, extra_source=None,
+        backend='nvrtc', *, enable_cooperative_groups=False):
+
+    if enable_cooperative_groups:
+        if backend != 'nvcc':
+            raise ValueError(
+                'Cooperative groups is supported only in NVCC backend.')
+        if runtime.is_hip:
+            raise ValueError(
+                'Cooperative groups is not supported in HIP.')
+
     if runtime.is_hip:
-        return _compile_with_cache_hipcc(source, options, arch, cache_dir,
-                                         extra_source)
+        return _compile_with_cache_hipcc(
+            source, options, arch, cache_dir, extra_source)
     else:
-        return _compile_with_cache_cuda(source, options, arch, cache_dir,
-                                        extra_source, backend)
+        return _compile_with_cache_cuda(
+            source, options, arch, cache_dir, extra_source, backend,
+            enable_cooperative_groups)
 
 
-def _compile_with_cache_cuda(source, options, arch, cache_dir,
-                             extra_source=None, backend='nvrtc'):
+def _compile_with_cache_cuda(
+        source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
+        enable_cooperative_groups=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -221,6 +308,12 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
         arch = _get_arch()
 
     options += ('-ftz=true',)
+
+    if enable_cooperative_groups:
+        # `cooperative_groups` requires `-rdc=true`.
+        # The three latter flags are to resolve linker error.
+        # (https://devtalk.nvidia.com/default/topic/1023604/linker-error/)
+        options += ('-rdc=true', '-Xcompiler', '-fPIC', '-shared')
 
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
@@ -263,10 +356,17 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
         ptx = compile_using_nvrtc(source, options, arch, name + '.cu')
         ls = function.LinkState()
         ls.add_ptr_data(ptx, 'cupy.ptx')
+        # for separate compilation
+        if _is_cudadevrt_needed(options):
+            global _cudadevrt
+            if _cudadevrt is None:
+                _cudadevrt = _get_cudadevrt_path()
+            ls.add_ptr_file(_cudadevrt)
         cubin = ls.complete()
     elif backend == 'nvcc':
+        rdc = _is_cudadevrt_needed(options)
         cubin = compile_using_nvcc(source, options, arch, name + '.cu',
-                                   code_type='cubin')
+                                   code_type='cubin', separate_compilation=rdc)
     else:
         raise ValueError('Invalid backend %s' % backend)
 
@@ -344,7 +444,9 @@ class _NVRTCProgram(object):
         self.name = name
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
+        if is_shutting_down():
+            return
         if self.ptr:
             nvrtc.destroyProgram(self.ptr)
 
@@ -383,7 +485,7 @@ def _run_hipcc(cmd, cwd='.', env=None):
             'command: {0}\n'
             'return-code: {1}\n'
             'stdout/stderr: \n'
-            '{2}'.format(e.cmd, e.returncode, e.output))
+            '{2}'.format(e.cmd, e.returncode, e.output.decode('utf-8')))
     except OSError as e:
         raise OSError('Failed to run `hipcc` command. '
                       'Check PATH environment variable: '
@@ -452,6 +554,8 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
         cache_dir = get_cache_dir()
     if arch is None:
         arch = os.environ.get('HCC_AMDGPU_TARGET')
+        if arch is None:
+            raise RuntimeError('HCC_AMDGPU_TARGET is not set')
     if use_converter:
         source = _convert_to_hip_source(source)
 

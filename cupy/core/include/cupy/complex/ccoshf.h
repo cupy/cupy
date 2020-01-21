@@ -57,7 +57,7 @@ namespace complex {
 
 using thrust::complex;
 
-__device__ inline complex<float> ccoshf(const complex<float>& z) {
+__host__ __device__ inline complex<float> ccoshf(const complex<float>& z) {
   float x, y, h;
   uint32_t hx, hy, ix, iy;
   const float huge = 1.70141183460469231731687303716e+38;  // 0x1p127;
@@ -114,7 +114,7 @@ __device__ inline complex<float> ccoshf(const complex<float>& z) {
   return (complex<float>((x * x) * (y - y), (x + x) * (y - y)));
 }
 
-__device__ inline complex<float> ccosf(const complex<float>& z) {
+__host__ __device__ inline complex<float> ccosf(const complex<float>& z) {
   return (ccoshf(complex<float>(-z.imag(), z.real())));
 }
 
@@ -123,12 +123,12 @@ __device__ inline complex<float> ccosf(const complex<float>& z) {
 }  // namespace detail
 
 template <>
-__device__ inline complex<float> cos(const complex<float>& z) {
+__host__ __device__ inline complex<float> cos(const complex<float>& z) {
   return detail::complex::ccosf(z);
 }
 
 template <>
-__device__ inline complex<float> cosh(const complex<float>& z) {
+__host__ __device__ inline complex<float> cosh(const complex<float>& z) {
   return detail::complex::ccoshf(z);
 }
 

@@ -6,6 +6,7 @@ import six
 import cupy
 from cupy import testing
 from cupy.testing import condition
+import cupyx
 
 
 def random_matrix(shape, dtype, scale, sym=False):
@@ -62,6 +63,23 @@ class TestCholeskyDecomposition(unittest.TestCase):
         self.check_L(numpy.array([[1, 2], [1, 9]], dtype))
 
 
+@testing.gpu
+class TestCholeskyInvalid(unittest.TestCase):
+
+    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
+    def check_L(self, array, xp):
+        a = xp.asarray(array)
+        with cupyx.errstate(linalg='raise'):
+            xp.linalg.cholesky(a)
+
+    @testing.for_dtypes([
+        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
+        numpy.float32, numpy.float64])
+    def test_decomposition(self, dtype):
+        A = numpy.array([[1, -2], [-2, 1]]).astype(dtype)
+        self.check_L(A)
+
+
 @testing.parameterize(*testing.product({
     'mode': ['r', 'raw', 'complete', 'reduced'],
 }))
@@ -88,6 +106,11 @@ class TestQRDecomposition(unittest.TestCase):
         self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
+
+    @testing.with_requires('numpy>=1.16')
+    def test_empty_array(self):
+        self.check_mode(numpy.empty((0, 3)), mode=self.mode)
+        self.check_mode(numpy.empty((3, 0)), mode=self.mode)
 
 
 @testing.parameterize(*testing.product({

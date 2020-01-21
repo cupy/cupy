@@ -57,7 +57,7 @@ namespace complex {
 
 using thrust::complex;
 
-__device__ inline complex<float> csqrtf(const complex<float>& z) {
+__host__ __device__ inline complex<float> csqrtf(const complex<float>& z) {
   float a = z.real(), b = z.imag();
   float t;
   int scale;
@@ -134,7 +134,7 @@ __device__ inline complex<float> csqrtf(const complex<float>& z) {
 }  // namespace detail
 
 template <>
-__device__ inline complex<float> sqrt(const complex<float>& z) {
+__host__ __device__ inline complex<float> sqrt(const complex<float>& z) {
   return detail::complex::csqrtf(z);
 }
 

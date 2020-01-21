@@ -60,7 +60,7 @@ cdef tuple _ndarray_nonzero(ndarray self):
         nonzero = cupy.core.not_equal(r, 0, ndarray(r.shape, dtype))
         del r
         scan_index = _math.scan(nonzero)
-        count_nonzero = int(scan_index[-1])
+        count_nonzero = int(scan_index[-1])  # synchronize!
     ndim = max(<int>self._shape.size(), 1)
     if count_nonzero == 0:
         return (ndarray((0,), dtype=dtype),) * ndim
@@ -687,14 +687,14 @@ cdef _scatter_op_single(
 
     lshape = a_shape[:li]
     rshape = a_shape[ri + 1:]
-    adim = internal.prod(a_shape[li:ri + 1])
+    adim = internal.prod_sequence(a_shape[li:ri + 1])
 
     indices_shape = indices.shape
     v_shape = lshape + indices_shape + rshape
     v = _manipulation.broadcast_to(v, v_shape)
 
     cdim = indices.size
-    rdim = internal.prod(rshape)
+    rdim = internal.prod_sequence(rshape)
     indices = _manipulation._reshape(
         indices,
         (1,) * len(lshape) + indices_shape + (1,) * len(rshape))

@@ -57,7 +57,7 @@ namespace complex {
 
 using thrust::complex;
 
-__device__ inline complex<double> csqrt(const complex<double>& z) {
+__host__ __device__ inline complex<double> csqrt(const complex<double>& z) {
   complex<double> result;
   double a, b;
   double t;
@@ -132,12 +132,12 @@ __device__ inline complex<double> csqrt(const complex<double>& z) {
 }  // namespace detail
 
 template <typename ValueType>
-__device__ inline complex<ValueType> sqrt(const complex<ValueType>& z) {
+__host__ __device__ inline complex<ValueType> sqrt(const complex<ValueType>& z) {
   return thrust::polar(::sqrt(thrust::abs(z)), thrust::arg(z) / ValueType(2));
 }
 
 template <>
-__device__ inline complex<double> sqrt(const complex<double>& z) {
+__host__ __device__ inline complex<double> sqrt(const complex<double>& z) {
   return detail::complex::csqrt(z);
 }
 

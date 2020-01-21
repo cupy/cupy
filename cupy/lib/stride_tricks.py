@@ -4,6 +4,7 @@ import cupy
 def as_strided(x, shape=None, strides=None):
     """
     Create a view into the array with the given shape and strides.
+
     .. warning:: This function has to be used with extreme care, see notes.
 
     Parameters
