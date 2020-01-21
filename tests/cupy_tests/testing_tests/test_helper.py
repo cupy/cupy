@@ -357,6 +357,21 @@ class TestNumPyCuPyRaise(unittest.TestCase, NumPyCuPyDecoratorBase):
             decorated_func(self)
 
 
+@testing.parameterize(
+    {'decorator': 'numpy_cupy_run'}
+)
+class TestNumPyCuPyRun(unittest.TestCase, NumPyCuPyDecoratorBase):
+
+    def valid_func(self, xp):
+        return make_result(xp, None, None)
+
+    def invalid_func(self, xp):
+        return make_result(xp, numpy.array(1), cupy.array(1))
+
+    def strange_kw_func(self, foo):
+        return make_result(foo, None, None)
+
+
 class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
 
     @helper.for_unsigned_dtypes('dtype1')
