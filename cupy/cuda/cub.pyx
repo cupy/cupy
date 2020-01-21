@@ -96,6 +96,19 @@ cpdef Py_ssize_t _preprocess_array(ndarray arr, tuple reduce_axis,
     return contiguous_size
 
 
+_op_names = {CUPY_CUB_SUM: 'sum',
+             CUPY_CUB_MIN: 'min',
+             CUPY_CUB_MAX: 'max',
+             CUPY_CUB_ARGMIN: 'argmin',
+             CUPY_CUB_ARGMAX: 'argmax'}
+
+
+def _get_op_name(int op):
+    if op in _op_names:
+        return _op_names[op]
+    return 'unknown'
+
+
 def device_reduce(ndarray x, int op, tuple out_axis, out=None,
                   bint keepdims=False):
     cdef ndarray y
@@ -123,7 +136,7 @@ def device_reduce(ndarray x, int op, tuple out_axis, out=None,
                          'CUPY_CUB_ARGMIN, and CUPY_CUB_ARGMAX are supported.')
     if x.size == 0 and op != CUPY_CUB_SUM:
         raise ValueError('zero-size array to reduction operation {} which has '
-                         'no identity'.format(op.name))
+                         'no identity'.format(_get_op_name(op)))
     x = _internal_ascontiguousarray(x)
 
     if CUPY_CUB_SUM <= op <= CUPY_CUB_MAX:
@@ -181,7 +194,7 @@ def device_segmented_reduce(ndarray x, int op, tuple reduce_axis,
                          'are supported.')
     if x.size == 0 and op != CUPY_CUB_SUM:
         raise ValueError('zero-size array to reduction operation {} which has '
-                         'no identity'.format(op.name))
+                         'no identity'.format(_get_op_name(op)))
     if x.flags.c_contiguous:
         order = 'C'
     elif x.flags.f_contiguous:
