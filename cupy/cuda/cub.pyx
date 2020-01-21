@@ -2,10 +2,13 @@
 
 """Wrapper of CUB functions for CuPy API."""
 
+from cpython cimport sequence
+
 import numpy
 
 from cupy.core.core cimport ndarray, _internal_ascontiguousarray
 from cupy.core.core cimport _internal_asfortranarray
+from cupy.core.internal cimport _contig_axes
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream
 from cupy.cuda.driver cimport Stream as Stream_t
@@ -43,7 +46,7 @@ CUB_support_dtype = [numpy.int8, numpy.uint8,
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_cub.h':
+cdef extern from 'cupy_cub.h' nogil:
     void cub_device_reduce(void*, size_t&, void*, void*, int, Stream_t,
                            int, int)
     void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, void*,
@@ -61,18 +64,26 @@ cdef extern from 'cupy_cub.h':
 # Python interface
 ###############################################################################
 
-cpdef _preprocess_array(ndarray arr, axis, bint keepdims, str order):
+cdef tuple _get_output_shape(ndarray arr, tuple out_axis, bint keepdims):
+    cdef tuple out_shape
+
+    if not keepdims:
+        out_shape = tuple([arr.shape[axis] for axis in out_axis])
+    else:
+        out_shape = tuple([arr.shape[axis] if axis in out_axis else 1
+                           for axis in range(arr.ndim)])
+    return out_shape
+
+
+cpdef Py_ssize_t _preprocess_array(ndarray arr, tuple reduce_axis,
+                                   tuple out_axis, str order):
     '''
     This function more or less follows the logic of _get_permuted_args() in
     reduction.pxi. The input array arr is C- or F- contiguous along axis.
     '''
-    # if import at the top level, a segfault would happen when import cupy!
-    from cupy.core._kernel import _get_axis
-
-    cdef tuple reduce_axis, out_axis, axis_permutes, out_shape
+    cdef tuple axis_permutes, out_shape
     cdef Py_ssize_t contiguous_size = 1
 
-    reduce_axis, out_axis = _get_axis(axis, arr._shape.size())
     # one more sanity check?
     if order == 'C':
         axis_permutes = out_axis + reduce_axis
@@ -82,26 +93,27 @@ cpdef _preprocess_array(ndarray arr, axis, bint keepdims, str order):
 
     for axis in reduce_axis:
         contiguous_size *= arr.shape[axis]
-    if not keepdims:
-        out_shape = tuple([arr.shape[axis] for axis in out_axis])
-    else:
-        out_shape = tuple([arr.shape[axis] if axis in out_axis else 1
-                           for axis in range(arr.ndim)])
-
-    return out_shape, contiguous_size
+    return contiguous_size
 
 
-def device_reduce(ndarray x, op, out=None, bint keepdims=False):
-    cdef ndarray y, z
+def device_reduce(ndarray x, int op, tuple out_axis, out=None,
+                  bint keepdims=False):
+    cdef ndarray y
     cdef memory.MemoryPointer ws
-    cdef int dtype_id, ndim_out, kv_bytes
+    cdef int dtype_id, ndim_out, kv_bytes, x_size
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *y_ptr
     cdef void *ws_ptr
     cdef Stream_t s
+    cdef tuple out_shape
 
-    ndim_out = keepdims
+    if keepdims:
+        out_shape = _get_output_shape(x, out_axis, keepdims)
+        ndim_out = len(out_shape)
+    else:
+        ndim_out = 0
+
     if out is not None and out.ndim != ndim_out:
         raise ValueError(
             'output parameter for reduction operation has the wrong number of '
@@ -124,12 +136,14 @@ def device_reduce(ndarray x, op, out=None, bint keepdims=False):
     y_ptr = <void *>y.data.ptr
     dtype_id = _get_dtype_id(x.dtype)
     s = <Stream_t>stream.get_current_stream_ptr()
-
+    x_size = <int>x.size
     ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x.size, s,
                                                    op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void *>ws.ptr
-    cub_device_reduce(ws_ptr, ws_size, x_ptr, y_ptr, x.size, s, op, dtype_id)
+    with nogil:
+        cub_device_reduce(ws_ptr, ws_size, x_ptr, y_ptr, x_size, s, op,
+                          dtype_id)
     if op == CUPY_CUB_ARGMIN or op == CUPY_CUB_ARGMAX:
         # get key from KeyValuePair: need to reinterpret the first 4 bytes
         # and then cast it
@@ -137,15 +151,15 @@ def device_reduce(ndarray x, op, out=None, bint keepdims=False):
         y = y.reshape(())
 
     if keepdims:
-        y = y.reshape((1,))
+        y = y.reshape(out_shape)
     if out is not None:
         out[...] = y
         y = out
     return y
 
 
-def device_segmented_reduce(ndarray x, op, axis, out=None,
-                            bint keepdims=False):
+def device_segmented_reduce(ndarray x, int op, tuple reduce_axis,
+                            tuple out_axis, out=None, bint keepdims=False):
     # if import at the top level, a segfault would happen when import cupy!
     from cupy.creation.ranges import arange
 
@@ -176,7 +190,8 @@ def device_segmented_reduce(ndarray x, op, axis, out=None,
         raise RuntimeError('input is neither C- nor F- contiguous.')
 
     # prepare input
-    out_shape, contiguous_size = _preprocess_array(x, axis, keepdims, order)
+    contiguous_size = _preprocess_array(x, reduce_axis, out_axis, order)
+    out_shape = _get_output_shape(x, out_axis, keepdims)
     x_ptr = <void*>x.data.ptr
     y = ndarray(out_shape, dtype=x.dtype, order=order)
     y_ptr = <void*>y.data.ptr
@@ -202,9 +217,10 @@ def device_segmented_reduce(ndarray x, op, axis, out=None,
         op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void*>ws.ptr
-    cub_device_segmented_reduce(ws_ptr, ws_size, x_ptr, y_ptr, n_segments,
-                                offset_start_ptr, offset_end_ptr, s,
-                                op, dtype_id)
+    with nogil:
+        cub_device_segmented_reduce(ws_ptr, ws_size, x_ptr, y_ptr, n_segments,
+                                    offset_start_ptr, offset_end_ptr, s,
+                                    op, dtype_id)
 
     if out is not None:
         out[...] = y
@@ -258,64 +274,38 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
         n_cols, nnz, s, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void *>ws.ptr
-    cub_device_spmv(ws_ptr, ws_size, values_ptr, row_offsets_ptr,
-                    col_indices_ptr, x_ptr, y_ptr, n_rows, n_cols, nnz, s,
-                    dtype_id)
+    with nogil:
+        cub_device_spmv(ws_ptr, ws_size, values_ptr, row_offsets_ptr,
+                        col_indices_ptr, x_ptr, y_ptr, n_rows, n_cols, nnz, s,
+                        dtype_id)
 
     return y
 
 
-cdef bint _cub_device_reduce_axis_compatible(axis, Py_ssize_t ndim):
-    if ((axis is None) or ndim == 1 or axis == tuple(range(ndim))):
-        return True
+cdef bint _cub_device_segmented_reduce_axis_compatible(
+        tuple cub_axis, Py_ssize_t ndim, order):
+    # Implementation borrowed from cupy.fft.fft._get_cufft_plan_nd().
+    # This function checks if the reduced axes are contiguous.
+
+    # the axes to be reduced must be C- or F- contiguous
+    if _contig_axes(cub_axis):
+        if order in ('c', 'C'):
+            return ((ndim - 1) in cub_axis)
+        elif order in ('f', 'F'):
+            return (0 in cub_axis)
     return False
 
 
-cdef bint _cub_device_segmented_reduce_axis_compatible(
-        axis, Py_ssize_t ndim, order):
-    # Implementation borrowed from cupy.fft.fft._get_cufft_plan_nd().
-    # This function checks if the reduced axes are contiguous.
-    cdef tuple cub_axis
-
-    if axis is None:
-        # this is impossible, just in case
-        raise ValueError('axis cannot be None.')
-    else:
-        if numpy.isscalar(axis):
-            axis = (axis,)
-        axis = tuple(axis)
-
-        if numpy.min(axis) < -ndim or numpy.max(axis) > ndim - 1:
-            raise ValueError('The specified axis exceed the array dimensions.')
-
-        # sort the provided axis in ascending order
-        cub_axis = tuple(sorted(numpy.mod(axis, ndim)))
-
-        # the axes to be reduced must be C- or F- contiguous
-        if not numpy.all(numpy.diff(cub_axis) == 1):
-            return False
-        if order not in ('c', 'C', 'f', 'F'):
-            return False
-        if order in ('c', 'C') and ((ndim - 1) not in cub_axis):
-            return False
-        if order in ('f', 'F') and (0 not in cub_axis):
-            return False
-
-    return True
+def can_use_device_reduce(int op, x_dtype, tuple out_axis, dtype=None):
+    return out_axis is () and _cub_reduce_dtype_compatible(x_dtype, op, dtype)
 
 
-def can_use_device_reduce(int op, x_dtype, Py_ssize_t ndim, axis=None,
-                          dtype=None):
+def can_use_device_segmented_reduce(int op, x_dtype, Py_ssize_t ndim,
+                                    reduce_axis, dtype=None, order='C'):
     if not _cub_reduce_dtype_compatible(x_dtype, op, dtype):
         return False
-    return _cub_device_reduce_axis_compatible(axis, ndim)
-
-
-def can_use_device_segmented_reduce(int op, x_dtype, Py_ssize_t ndim, axis,
-                                    dtype=None, order='C'):
-    if not _cub_reduce_dtype_compatible(x_dtype, op, dtype):
-        return False
-    return _cub_device_segmented_reduce_axis_compatible(axis, ndim, order)
+    return _cub_device_segmented_reduce_axis_compatible(reduce_axis, ndim,
+                                                        order)
 
 
 cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None,
@@ -338,6 +328,63 @@ cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None,
     if x_dtype not in support_dtype:
         return False
     return True
+
+
+def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
+    """Perform a reduction using CUB.
+
+    If the specified reduction is not possible, None is returned.
+    """
+    # if import at the top level, a segfault would happen when import cupy!
+    from cupy.core._reduction import _get_axis
+    cdef bint enforce_numpy_API = False
+
+    if op > CUPY_CUB_MAX:
+        # For argmin and argmax, NumPy does not allow a tuple for axis.
+        # Also, the keepdims and dtype kwargs are not provided.
+        #
+        # For now we don't enforce these for consistency with existing CuPy
+        # non-CUB reduction behavior.
+        # https://github.com/cupy/cupy/issues/2595
+        enforce_numpy_API = False
+        if enforce_numpy_API:
+            # numpy's argmin and argmax do not support a tuple of axes
+            if sequence.PySequence_Check(axis):
+                raise TypeError(
+                    "'tuple' object cannot be interpreted as an integer")
+            if keepdims:
+                raise TypeError(
+                    "'keepdims' is an invalid keyword argument for "
+                    "argmin or argmax.")
+            if dtype is not None:
+                raise TypeError(
+                    "'dtype' is an invalid keyword argument for "
+                    "argmin or argmax.")
+        else:
+            if dtype is not None:
+                # fallback to existing non-CUB behavior
+                return None
+
+    reduce_axis, out_axis = _get_axis(axis, arr.ndim)
+    if can_use_device_reduce(op, arr.dtype, out_axis, dtype):
+        return device_reduce(arr, op, out_axis, out, keepdims)
+
+    if op > CUPY_CUB_MAX:
+        # segmented reduction not currently implemented for argmax, argmin
+        return None
+
+    if arr.flags.c_contiguous:
+        order = 'C'
+    elif arr.flags.f_contiguous:
+        order = 'F'
+    else:
+        order = None
+
+    if can_use_device_segmented_reduce(op, arr.dtype, arr.ndim,
+                                       reduce_axis, dtype, order):
+        return device_segmented_reduce(arr, op, reduce_axis, out_axis,
+                                       out, keepdims)
+    return None
 
 
 def _get_dtype_id(dtype):

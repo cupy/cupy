@@ -57,7 +57,7 @@ Some features in CuPy will only be enabled if the corresponding libraries are in
 * `NCCL <https://developer.nvidia.com/nccl>`_  (library to perform collective multi-GPU / multi-node computations)
     * Supported Versions: v1.3.4, v2, v2.1, v2.2, v2.3 and v2.4.
 * `cuTENSOR <https://developer.nvidia.com/cuda-math-library-early-access-program-page>`_ (library for high-performance tensor operations)
-    * Supported Versions: v0.2.2 (experimental)
+    * Supported Versions: v1.0.0 (experimental)
 
 
 Install CuPy

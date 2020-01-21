@@ -120,11 +120,11 @@ def map_coordinates(input, coordinates, output=None, order=None,
             else:
                 sides.append([0, 1])
 
-        out = cupy.zeros(coordinates.shape[1], dtype=input.dtype)
+        out = cupy.zeros(coordinates.shape[1:], dtype=input.dtype)
         if input.dtype in (cupy.float64, cupy.complex128):
-            weight = cupy.empty(coordinates.shape[1], dtype=cupy.float64)
+            weight = cupy.empty(coordinates.shape[1:], dtype=cupy.float64)
         else:
-            weight = cupy.empty(coordinates.shape[1], dtype=cupy.float32)
+            weight = cupy.empty(coordinates.shape[1:], dtype=cupy.float32)
         for side in itertools.product(*sides):
             weight.fill(1)
             ind = []
@@ -139,7 +139,7 @@ def map_coordinates(input, coordinates, output=None, order=None,
         del weight
 
     if mode == 'constant':
-        mask = cupy.zeros(coordinates.shape[1], dtype=cupy.bool_)
+        mask = cupy.zeros(coordinates.shape[1:], dtype=cupy.bool_)
         for i in six.moves.range(input.ndim):
             mask += coordinates[i] < 0
             mask += coordinates[i] > input.shape[i] - 1

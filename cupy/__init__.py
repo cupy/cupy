@@ -64,7 +64,7 @@ from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import padding  # NOQA
 from cupy import random  # NOQA
-from cupy import sorting  # NOQA
+from cupy import _sorting  # NOQA
 from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
@@ -503,12 +503,12 @@ from cupy.logic.truth import in1d  # NOQA
 from cupy.logic.truth import isin  # NOQA
 
 
-def isscalar(num):
+def isscalar(element):
     """Returns True if the type of num is a scalar type.
 
     .. seealso:: :func:`numpy.isscalar`
     """
-    return numpy.isscalar(num)
+    return numpy.isscalar(element)
 
 
 from cupy.logic.ops import logical_and  # NOQA
@@ -637,23 +637,23 @@ pad = padding.pad.pad
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
-from cupy.sorting.count import count_nonzero  # NOQA
+from cupy._sorting.count import count_nonzero  # NOQA
 
-from cupy.sorting.search import argmax  # NOQA
-from cupy.sorting.search import argmin  # NOQA
-from cupy.sorting.search import flatnonzero  # NOQA
-from cupy.sorting.search import nanargmax  # NOQA
-from cupy.sorting.search import nanargmin  # NOQA
-from cupy.sorting.search import nonzero  # NOQA
-from cupy.sorting.search import searchsorted  # NOQA
-from cupy.sorting.search import where  # NOQA
+from cupy._sorting.search import argmax  # NOQA
+from cupy._sorting.search import argmin  # NOQA
+from cupy._sorting.search import flatnonzero  # NOQA
+from cupy._sorting.search import nanargmax  # NOQA
+from cupy._sorting.search import nanargmin  # NOQA
+from cupy._sorting.search import nonzero  # NOQA
+from cupy._sorting.search import searchsorted  # NOQA
+from cupy._sorting.search import where  # NOQA
 
-from cupy.sorting.sort import argpartition  # NOQA
-from cupy.sorting.sort import argsort  # NOQA
-from cupy.sorting.sort import lexsort  # NOQA
-from cupy.sorting.sort import msort  # NOQA
-from cupy.sorting.sort import partition  # NOQA
-from cupy.sorting.sort import sort  # NOQA
+from cupy._sorting.sort import argpartition  # NOQA
+from cupy._sorting.sort import argsort  # NOQA
+from cupy._sorting.sort import lexsort  # NOQA
+from cupy._sorting.sort import msort  # NOQA
+from cupy._sorting.sort import partition  # NOQA
+from cupy._sorting.sort import sort  # NOQA
 
 # -----------------------------------------------------------------------------
 # Statistics
@@ -678,6 +678,7 @@ from cupy.statistics.meanvar import nanstd  # NOQA
 from cupy.statistics.meanvar import nanvar  # NOQA
 
 from cupy.statistics.histogram import bincount  # NOQA
+from cupy.statistics.histogram import digitize  # NOQA
 from cupy.statistics.histogram import histogram  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -695,7 +696,7 @@ from cupy.util import memoize  # NOQA
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import RawKernel  # NOQA
 from cupy.core import RawModule  # NOQA
-from cupy.core import ReductionKernel  # NOQA
+from cupy.core._reduction import ReductionKernel  # NOQA
 
 # -----------------------------------------------------------------------------
 # DLPack

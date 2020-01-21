@@ -38,6 +38,9 @@ cdef class MemoryPointer:
     cpdef memset(self, int value, size_t size)
     cpdef memset_async(self, int value, size_t size, stream=?)
 
+    @staticmethod
+    cdef _set_peer_access(int device, int peer)
+
 
 cpdef MemoryPointer alloc(size)
 

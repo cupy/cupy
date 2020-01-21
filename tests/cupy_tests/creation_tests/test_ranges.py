@@ -89,13 +89,14 @@ class TestRanges(unittest.TestCase):
         self.assertTrue(math.isnan(step))
         return x
 
-    @testing.with_requires('numpy>=1.10')
+    @testing.with_requires('numpy>=1.18')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_linspace_one_num_no_endopoint_with_retstep(self, xp, dtype):
-        x, step = xp.linspace(0, 10, 1, dtype=dtype, endpoint=False,
+        start, stop = 3, 7
+        x, step = xp.linspace(start, stop, 1, dtype=dtype, endpoint=False,
                               retstep=True)
-        self.assertTrue(math.isnan(step))
+        self.assertEqual(step, stop - start)
         return x
 
     @testing.for_all_dtypes(no_bool=True)

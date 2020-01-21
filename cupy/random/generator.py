@@ -604,32 +604,26 @@ class RandomState(object):
             If ``int``, 1-D array of length size is returned.
             If ``tuple``, multi-dimensional array with shape
             ``size`` is returned.
-            Currently, only 32 bit integers can be sampled.
-            If 0 :math:`\\leq` ``mx`` :math:`\\leq` 0x7fffffff,
-            a ``numpy.int32`` array is returned.
-            If 0x80000000 :math:`\\leq` ``mx`` :math:`\\leq` 0xffffffff,
-            a ``numpy.uint32`` array is returned.
+            Currently, only 32 bit or 64 bit integers can be sampled.
         """  # NOQA
         if size is None:
-            return self._interval(mx, 1).reshape(())
-        elif size == 0:
-            return cupy.array(())
+            size = ()
         elif isinstance(size, int):
-            size = (size, )
+            size = size,
 
         if mx == 0:
-            return cupy.zeros(size, dtype=numpy.int32)
+            return cupy.zeros(size, dtype=numpy.uint32)
 
         if mx < 0:
             raise ValueError(
                 'mx must be non-negative (actual: {})'.format(mx))
-        elif mx <= 0x7fffffff:
-            dtype = numpy.int32
         elif mx <= 0xffffffff:
             dtype = numpy.uint32
+        elif mx <= 0xffffffffffffffff:
+            dtype = numpy.uint64
         else:
             raise ValueError(
-                'mx must be within uint32 range (actual: {})'.format(mx))
+                'mx must be within uint64 range (actual: {})'.format(mx))
 
         mask = (1 << mx.bit_length()) - 1
         mask = cupy.array(mask, dtype=dtype)
@@ -637,14 +631,16 @@ class RandomState(object):
         n = functools.reduce(operator.mul, size, 1)
 
         if n == 0:
-            return cupy.array(())
+            return cupy.empty(size, dtype=dtype)
 
         sample = cupy.empty((n,), dtype=dtype)
+        size32 = sample.view(dtype=numpy.uint32).size
         n_rem = n  # The number of remaining elements to sample
         ret = None
         while n_rem > 0:
+            # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
             curand.generate(
-                self._generator, sample.data.ptr, sample.size)
+                self._generator, sample.data.ptr, size32)
             # Drop the samples that exceed the upper limit
             sample &= mask
             success = sample <= mx
@@ -1103,25 +1099,21 @@ class RandomState(object):
         """
         if high is None:
             lo = 0
-            hi = low
+            hi1 = int(low) - 1
         else:
-            lo = low
-            hi = high
+            lo = int(low)
+            hi1 = int(high) - 1
 
-        if lo >= hi:
+        if lo > hi1:
             raise ValueError('low >= high')
         if lo < cupy.iinfo(dtype).min:
             raise ValueError(
                 'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
-        if hi > cupy.iinfo(dtype).max + 1:
+        if hi1 > cupy.iinfo(dtype).max:
             raise ValueError(
                 'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
 
-        diff = hi - lo - 1
-        if diff > cupy.iinfo(cupy.int32).max - cupy.iinfo(cupy.int32).min + 1:
-            raise NotImplementedError(
-                'Sampling from a range whose extent is larger than int32 '
-                'range is currently not supported')
+        diff = hi1 - lo
         x = self._interval(diff, size).astype(dtype, copy=False)
         cupy.add(x, lo, out=x)
         return x
