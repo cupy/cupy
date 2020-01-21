@@ -89,9 +89,10 @@ class TestNdarrayInit(unittest.TestCase):
             (2, 3), numpy.float32, buf.data, strides=(8, 4), order='C')
         assert a.strides == (8, 4)
 
-    @testing.numpy_cupy_raises(accept_error=TypeError)
+    @testing.numpy_cupy_run()
     def test_strides_is_given_but_order_is_invalid(self, xp):
-        xp.ndarray((2, 3), numpy.float32, strides=(8, 4), order='!')
+        with pytest.raises(TypeError):
+            xp.ndarray((2, 3), numpy.float32, strides=(8, 4), order='!')
 
     def test_order(self):
         shape = (2, 3, 4)
