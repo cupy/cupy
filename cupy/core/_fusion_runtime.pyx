@@ -120,7 +120,7 @@ cdef class FusedKernel(object):
         self._block_strides = []
 
         for op in op_list:
-            if isinstance(op, _fusion_op._FusionReductionOp):
+            if isinstance(op, _fusion_op._ReductionTraceOp):
                 self._reduction_in_array.append(
                     array_dict[op.in_params.item().key()])
                 self._reduction_out_array.append(

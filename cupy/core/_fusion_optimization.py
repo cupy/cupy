@@ -35,7 +35,7 @@ def _normalize_ashapes(ops, variables, shape_constraints):
         var.ashape = normalize(var.ashape)
 
     for op in ops:
-        if isinstance(op, _fusion_op._FusionElementwiseOp):
+        if isinstance(op, _fusion_op._ElementwiseTraceOp):
             op.ashape = normalize(op.ashape)
 
 
@@ -43,11 +43,11 @@ def _fuse_two_ops(op1, op2):
     """Returns a fused Op if the two ops can be fused, and ``None`` otherwise.
     """
     # TODO(asi1024): Supoort reduction postmap.
-    if not isinstance(op1, _fusion_op._FusionElementwiseOp):
+    if not isinstance(op1, _fusion_op._ElementwiseTraceOp):
         return None
 
     # TODO(asi1024): Supoort reduction premap.
-    if not isinstance(op2, _fusion_op._FusionElementwiseOp):
+    if not isinstance(op2, _fusion_op._ElementwiseTraceOp):
         return None
 
     if op1.ashape != op2.ashape:

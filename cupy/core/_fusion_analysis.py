@@ -1,3 +1,4 @@
+import itertools
 import six
 
 import numpy
@@ -11,7 +12,6 @@ from cupy.core._fusion_variable import _FusionCudaScalar
 from cupy.core._fusion_variable import _FusionCudaArray
 from cupy.core._fusion_variable import _FusionVariableSet
 from cupy.core import _fusion_shape
-from cupy.core import _fusion_device_func
 from cupy.core import _fusion_op
 from cupy.core import _fusion_emit_code
 from cupy.core import _fusion_runtime
@@ -187,7 +187,6 @@ class FusedKernelCompiler:
         self.vc = _VariableConductor()
         self.shape_constraints = _fusion_shape._ShapeConstraints()
         self.op_list = []
-        self.submodules = {}
 
     @staticmethod
     def _make_interface(x):
@@ -327,16 +326,12 @@ class FusedKernelCompiler:
                     '"same_kind"'.format(
                         out_dtypes[i].char, out_params[i].dtype.char))
 
-        # Make submodule.
-        name = ufunc.name + '_' + str(len(self.op_list))
-        dtypes = in_dtypes + out_dtypes
-        subm = _fusion_device_func._SubmoduleUfunc(
-            name, ufunc, (expr, dtypes), in_params, out_params)
-        self.submodules[subm.name] = subm
-
         # Register Op.
-        op = _fusion_op._FusionElementwiseOp(
-            subm, in_params, out_params, out_ashape)
+        name = ufunc.name + '_' + str(len(self.op_list))
+        ufunc_routine = _fusion_op._UfuncRoutine(
+            name, ufunc, expr, in_params, out_params, in_dtypes + out_dtypes)
+        op = _fusion_op._ElementwiseTraceOp(
+            [ufunc_routine], in_params, out_params, out_ashape)
         self.op_list.append(op)
 
         # Returns.
@@ -403,14 +398,10 @@ class FusedKernelCompiler:
                     'Shape of specified output variable is not consistent '
                     'with reduced shape.')
 
-        # Make submodule.
-        name = 'reduce{}'.format(len(self.op_list))
-        subm = _fusion_device_func._SubmoduleReduction(
-            name, reduce_func, expr, [in_param], [out_param])
-        self.submodules[subm.name] = subm
-
         # Register Op.
-        op = _fusion_op._FusionReductionOp(subm, in_param, out_param, axes)
+        name = 'reduce{}'.format(len(self.op_list))
+        op = _fusion_op._ReductionTraceOp(
+            name, reduce_func, expr, in_param, out_param, axes)
         self.op_list.append(op)
 
         # Returns.
@@ -544,10 +535,10 @@ class FusedKernelCompiler:
         kernel_params = list(kernel_params)
 
         # Emit __device__ functions.
-        preambles = list(set([s.preamble for s in self.submodules.values()]))
-        submodules = [str(sub.emit_code()) for sub in self.submodules.values()]
-        submodule_code = '\n\n'.join([
-            s for s in preambles + submodules if s != ''])
+        submodule_code = '\n\n'.join(set(itertools.chain.from_iterable([
+            op.emit_preamble_codes() for op in self.op_list]))) + '\n\n'
+        submodule_code += '\n\n'.join(itertools.chain.from_iterable([
+            op.emit_submodule_codes() for op in self.op_list]))
 
         # Emit the function body of a __global__ function.
         codes = []

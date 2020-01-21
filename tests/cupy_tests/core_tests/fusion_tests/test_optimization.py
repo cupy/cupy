@@ -19,9 +19,8 @@ class CreateMock(object):
         return ret
 
     def check_number_of_ops(
-            self, loops, submodules, memories, variables, lookup, mutate):
+            self, loops, memories, variables, lookup, mutate):
         assert isinstance(loops, int)
-        assert isinstance(submodules, int)
         assert isinstance(memories, int)
         assert isinstance(variables, int)
         assert isinstance(lookup, list)
@@ -31,7 +30,6 @@ class CreateMock(object):
         assert len(self.retvals) == 1
         history = self.retvals[0]
         assert len(history.op_list) == loops
-        assert len(history.submodules) == submodules
         assert len(set([p.memory for p in history.kernel_params])) == memories
         assert len(history.kernel_params) == variables
         for op, r, w in zip(history.op_list, lookup, mutate):
@@ -40,14 +38,14 @@ class CreateMock(object):
 
 
 def check_number_of_ops(
-        loops, submodules, memories, variables, lookup, mutate):
+        loops, memories, variables, lookup, mutate):
     def wrapper(test_method):
         def new_impl(self, *args, **kwargs):
             target = 'cupy.core._fusion_analysis.FusedKernelCompiler'
             with mock.patch(target, CreateMock(target)) as m:
                 result = test_method(self, *args, **kwargs)
                 m.check_number_of_ops(
-                    loops, submodules, memories, variables, lookup, mutate)
+                    loops, memories, variables, lookup, mutate)
             return result
         return new_impl
     return wrapper
@@ -71,13 +69,13 @@ class TestOptimizations(unittest.TestCase):
         return (x, x, x.T), {}
 
     @check_number_of_ops(
-        loops=1, submodules=1, memories=3, variables=3, lookup=[2], mutate=[1])
+        loops=1, memories=3, variables=3, lookup=[2], mutate=[1])
     @fusion_utils.check_fusion()
     def test_one_elementwise_op(self, xp):
         return lambda x, y: x + y
 
     @check_number_of_ops(
-        loops=1, submodules=3, memories=3, variables=3, lookup=[2], mutate=[1])
+        loops=1, memories=3, variables=3, lookup=[2], mutate=[1])
     @fusion_utils.check_fusion()
     def test_fuse_elementwise_op_1(self, xp):
         def impl(x, y):
@@ -85,7 +83,7 @@ class TestOptimizations(unittest.TestCase):
         return impl
 
     @check_number_of_ops(
-        loops=1, submodules=2, memories=3, variables=3, lookup=[2], mutate=[1])
+        loops=1, memories=3, variables=3, lookup=[2], mutate=[1])
     @fusion_utils.check_fusion()
     def test_fuse_elementwise_op_2(self, xp):
         def impl(x, y):
@@ -95,8 +93,7 @@ class TestOptimizations(unittest.TestCase):
 
     @check_number_of_ops(
         # TODO(asi1024): memory space = 3.
-        loops=1, submodules=20, memories=4, variables=4,
-        lookup=[3], mutate=[1])
+        loops=1, memories=4, variables=4, lookup=[3], mutate=[1])
     @fusion_utils.check_fusion()
     def test_fuse_elementwise_ops_4(self, xp):
         def impl(x, y):
@@ -107,7 +104,7 @@ class TestOptimizations(unittest.TestCase):
         return impl
 
     @check_number_of_ops(
-        loops=0, submodules=1, memories=1, variables=1, lookup=[], mutate=[])
+        loops=0, memories=1, variables=1, lookup=[], mutate=[])
     @fusion_utils.check_fusion()
     def test_ignore_op(self, xp):
         def impl(x, y):
@@ -116,7 +113,7 @@ class TestOptimizations(unittest.TestCase):
         return impl
 
     @check_number_of_ops(
-        loops=1, submodules=2, memories=4, variables=4, lookup=[2], mutate=[2])
+        loops=1, memories=4, variables=4, lookup=[2], mutate=[2])
     @fusion_utils.check_fusion()
     def test_returns_tuple(self, xp):
         def impl(x, y):
@@ -124,8 +121,7 @@ class TestOptimizations(unittest.TestCase):
         return impl
 
     @check_number_of_ops(
-        loops=2, submodules=5, memories=4, variables=6,
-        lookup=[1, 3], mutate=[1, 1])
+        loops=2, memories=4, variables=6, lookup=[1, 3], mutate=[1, 1])
     @fusion_utils.check_fusion(
         generate_inputs_name='generate_input_broadcast')
     def test_different_shapes(self, xp):
@@ -137,7 +133,7 @@ class TestOptimizations(unittest.TestCase):
         return impl
 
     @check_number_of_ops(
-        loops=1, submodules=3, memories=2, variables=2, lookup=[2], mutate=[2])
+        loops=1, memories=2, variables=2, lookup=[2], mutate=[2])
     @fusion_utils.check_fusion()
     def test_inplace_elementwise_1(self, xp):
         def impl(x, y):
@@ -147,7 +143,7 @@ class TestOptimizations(unittest.TestCase):
         return impl
 
     @check_number_of_ops(
-        loops=1, submodules=2, memories=3, variables=3, lookup=[2], mutate=[2])
+        loops=1, memories=3, variables=3, lookup=[2], mutate=[2])
     @fusion_utils.check_fusion()
     def test_inplace_elementwise_2(self, xp):
         def impl(x, y):
@@ -156,7 +152,7 @@ class TestOptimizations(unittest.TestCase):
         return impl
 
     @check_number_of_ops(
-        loops=1, submodules=2, memories=1, variables=1, lookup=[1], mutate=[1])
+        loops=1, memories=1, variables=1, lookup=[1], mutate=[1])
     @fusion_utils.check_fusion(
         generate_inputs_name='generate_input_same_memory')
     def test_inplace_same_variable(self, xp):
@@ -166,7 +162,7 @@ class TestOptimizations(unittest.TestCase):
         return impl
 
     @check_number_of_ops(
-        loops=4, submodules=4, memories=3, variables=4,
+        loops=4, memories=3, variables=4,
         lookup=[1, 2, 1, 2], mutate=[1, 1, 1, 1])
     @fusion_utils.check_fusion(
         generate_inputs_name='generate_input_same_memory')
@@ -177,21 +173,20 @@ class TestOptimizations(unittest.TestCase):
         return impl
 
     @check_number_of_ops(
-        loops=1, submodules=1, memories=2, variables=2, lookup=[1], mutate=[1])
+        loops=1, memories=2, variables=2, lookup=[1], mutate=[1])
     @fusion_utils.check_fusion()
     def test_one_reduction_op(self, xp):
         return lambda x, y: xp.sum(x, axis=0)
 
     @check_number_of_ops(
-        loops=1, submodules=1, memories=2, variables=3, lookup=[1], mutate=[1])
+        loops=1, memories=2, variables=3, lookup=[1], mutate=[1])
     @fusion_utils.check_fusion()
     def test_one_reduction_op_rotate(self, xp):
         return lambda x, y: xp.sum(x, axis=1)
 
     # TODO(asi1024): Fix parameters after optimization.
     @check_number_of_ops(
-        loops=2, submodules=2, memories=4, variables=4,
-        lookup=[2, 1], mutate=[1, 1])
+        loops=2, memories=4, variables=4, lookup=[2, 1], mutate=[1, 1])
     @fusion_utils.check_fusion()
     def test_one_fuse_reduction_premap(self, xp):
         def impl(x, y):
