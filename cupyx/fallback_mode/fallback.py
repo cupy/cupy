@@ -218,7 +218,6 @@ class ndarray(object):
                 # _initial_array is in CPU memory
                 # called by _store_array_from_numpy
                 self._numpy_array = _initial_array
-                self._cupy_array = cp.array(_initial_array)
                 self._remember_numpy = True
         else:
             self._numpy_array = _initial_array
@@ -234,6 +233,12 @@ class ndarray(object):
             return cls(_initial_array=array, _supports_cupy=True)
 
         return cls(_initial_array=array, _supports_cupy=False)
+
+    @property
+    def dtype(self):
+        if self._supports_cupy and not self._remember_numpy:
+            return self._cupy_array.dtype
+        return self._numpy_array.dtype
 
     def __getattr__(self, attr):
         """
@@ -257,7 +262,12 @@ class ndarray(object):
 
         if not callable(numpy_object):
             if self._supports_cupy:
+                if self._remember_numpy:
+                    self._update_cupy_array()
                 return getattr(self._cupy_array, attr)
+
+            if self._supports_cupy and not self._remember_numpy:
+                self._update_numpy_array()
             return getattr(self._numpy_array, attr)
 
         return _RecursiveAttr(numpy_object, cupy_object, self)
@@ -326,7 +336,10 @@ class ndarray(object):
 
         if base is None:
             if self._remember_numpy:
-                self._cupy_array[:] = self._numpy_array
+                if self._cupy_array is None:
+                    self._cupy_array = cp.array(self._numpy_array)
+                else:
+                    self._cupy_array[:] = self._numpy_array
         else:
             if base._remember_numpy:
                 base._update_cupy_array()
