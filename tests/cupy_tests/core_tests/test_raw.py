@@ -311,7 +311,7 @@ class TestRaw(unittest.TestCase):
         assert cupy.allclose(y, x1 + x2)
 
     def test_kernel_attributes(self):
-        attrs = self.kern.attributes
+        attrs = self.kern.kernel.attributes
         for attribute in ['binary_version',
                           'cache_mode_ca',
                           'const_size_bytes',
@@ -323,9 +323,9 @@ class TestRaw(unittest.TestCase):
                           'ptx_version',
                           'shared_size_bytes']:
             assert attribute in attrs
-        assert self.kern.num_regs > 0
-        assert self.kern.max_threads_per_block > 0
-        assert self.kern.shared_size_bytes == 0
+        assert self.kern.kernel.num_regs > 0
+        assert self.kern.kernel.max_threads_per_block > 0
+        assert self.kern.kernel.shared_size_bytes == 0
 
     def test_module(self):
         module = self.mod2
