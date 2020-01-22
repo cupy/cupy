@@ -2,7 +2,6 @@ import threading
 import unittest
 
 import mock
-import six
 
 import cupy
 from cupy import testing
@@ -13,7 +12,7 @@ class FusionTestBase(unittest.TestCase):
     def generate_inputs(self, xp, nargs, dtype):
         inputs = [
             testing.shaped_random((3, 4), xp, dtype, scale=10, seed=seed)
-            for seed in six.moves.range(nargs)
+            for seed in range(nargs)
         ]
         return inputs, {}
 
@@ -527,16 +526,16 @@ class TestFusionThread(unittest.TestCase):
             t.daemon = True
             t.start()
 
-        for tid in six.moves.range(0, 50):
+        for tid in range(0, 50):
             run_thread(tid)
 
-        for tid in six.moves.range(0, 50):
+        for tid in range(0, 50):
             threads[tid].join()
 
-        for tid in six.moves.range(50, 100):
+        for tid in range(50, 100):
             run_thread(tid)
 
-        for tid in six.moves.range(50, 100):
+        for tid in range(50, 100):
             threads[tid].join()
 
         return xp.concatenate(out)

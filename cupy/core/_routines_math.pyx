@@ -1,7 +1,6 @@
 import string
 
 import numpy
-import six
 
 import cupy
 from cupy.core._reduction import create_reduction_func
@@ -480,23 +479,6 @@ _multiply = create_arithmetic(
     ''')
 
 
-_divide = create_ufunc(
-    'cupy_divide',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q',
-     ('ee->e', 'out0 = in0 / in1'),
-     ('ff->f', 'out0 = in0 / in1'),
-     ('dd->d', 'out0 = in0 / in1'),
-     ('FF->F', 'out0 = in0 / in1'),
-     ('DD->D', 'out0 = in0 / in1')),
-    'out0 = in1 == 0 ? 0 : floor((double)in0 / (double)in1)',
-    doc='''Divides arguments elementwise.
-
-    .. seealso:: :data:`numpy.divide`
-
-    ''')
-
-
 # `integral_power` should return somewhat appropriate values for negative
 # integral powers (for which NumPy would raise errors). Hence the branches in
 # the beginning. This behavior is not officially documented and could change.
@@ -566,8 +548,7 @@ _true_divide = create_ufunc(
 )
 
 
-if six.PY3:
-    _divide = _true_divide
+_divide = _true_divide
 
 
 _floor_divide = create_ufunc(

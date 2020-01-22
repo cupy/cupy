@@ -1,5 +1,4 @@
 import itertools
-import six
 import unittest
 
 import numpy
@@ -66,8 +65,8 @@ class TestBasic(unittest.TestCase):
             with cuda.Device(dev3):
                 c = testing.shaped_arange((2, 3, 4), cupy, '?')
             with cuda.Device(dev4):
-                with six.assertRaisesRegex(
-                        self, ValueError,
+                with self.assertRaisesRegex(
+                        ValueError,
                         '^Array device must be same as the current device'):
                     cupy.copyto(a, b, where=c)
 

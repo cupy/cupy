@@ -1,7 +1,6 @@
 import unittest
 
 import numpy
-import six
 
 import cupy
 from cupy import testing
@@ -93,7 +92,7 @@ class TestQRDecomposition(unittest.TestCase):
         result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
         if isinstance(result_cpu, tuple):
-            for b_cpu, b_gpu in six.moves.zip(result_cpu, result_gpu):
+            for b_cpu, b_gpu in zip(result_cpu, result_gpu):
                 self.assertEqual(b_cpu.dtype, b_gpu.dtype)
                 cupy.testing.assert_allclose(b_cpu, b_gpu, atol=1e-4)
         else:

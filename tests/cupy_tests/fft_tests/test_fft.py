@@ -9,8 +9,6 @@ from cupy import testing
 from cupy.fft import config
 from cupy.fft.fft import _default_fft_func, _fft, _fftn
 
-import six
-
 
 def nd_planning_states(states=[True, False], name='enable_nd'):
     """Decorator for parameterized tests with and wihout nd planning
@@ -174,7 +172,7 @@ class TestFftAllocate(unittest.TestCase):
         # See https://github.com/cupy/cupy/issues/1063
         # TODO(mizuno): Simplify "a" after memory compaction is implemented.
         a = []
-        for i in six.moves.range(10):
+        for i in range(10):
             a.append(cupy.empty(100000000))
         del a
         b = cupy.empty(100000007, dtype=cupy.float32)
