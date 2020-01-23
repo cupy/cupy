@@ -1,3 +1,4 @@
+import itertools
 import string
 
 from libcpp cimport vector
@@ -13,6 +14,7 @@ from cupy.core cimport internal
 from cupy.core import _fusion_op
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy import util
+from cupy.core import _fusion_emit_code
 from cupy.core._fusion_shape import _AbstractDim
 from cupy.core._fusion_variable import _FusionCudaVarBase
 from cupy.core._fusion_variable import _FusionCudaScalar
@@ -50,7 +52,7 @@ def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
     return module.get_function(name)
 
 
-cdef class FusedKernel(object):
+cdef class FusedKernel:
     cdef:
         readonly object shape_constraints
 
@@ -71,17 +73,37 @@ cdef class FusedKernel(object):
         readonly vector.vector[Py_ssize_t] _view_of
         readonly vector.vector[Py_ssize_t] _out_params
 
-    def __init__(
-            self, name, op_list, cuda_body, params, return_size,
-            submodule_code, shape_constraints, use_grid_sync):
+    def __init__(self, name, op_list, params, return_size, shape_constraints):
         self.shape_constraints = shape_constraints
 
         self._name = name
         self._params = sorted(params, key=lambda x: x.serial_number)
-        self._submodule_code = submodule_code
-        self._cuda_body = cuda_body
         self._cuda_params_memo = {}
-        self._use_grid_sync = use_grid_sync
+
+        # Generate the device functions.
+        submodule_code = '\n\n'.join(set(itertools.chain.from_iterable([
+            op.emit_preamble_codes() for op in op_list]))) + '\n\n'
+        submodule_code += '\n\n'.join(itertools.chain.from_iterable([
+            op.emit_submodule_codes() for op in op_list]))
+
+        # Generate the function body of a __global__ function.
+        codes = []
+
+        self._use_grid_sync = len(op_list) > 1
+
+        if self._use_grid_sync:
+            codes.append('namespace _cg = cooperative_groups;')
+            codes.append('_cg::grid_group _grid = _cg::this_grid();')
+
+        for i, op in enumerate(op_list):
+            if i > 0:
+                codes.append('_cg::sync(_grid);')
+            codes.append(op.emit_code())
+
+        self._submodule_code = submodule_code
+        self._cuda_body = str(_fusion_emit_code._CodeBlock('', codes))
+
+        # Check the format of the return value.
 
         if return_size == 'none':
             self._return_size = -1
@@ -95,6 +117,8 @@ cdef class FusedKernel(object):
 
         for p in self._params:
             assert isinstance(p, _FusionCudaVarBase)
+
+        # Analys the relationship between variables.
 
         array_dict = {}
         self._reduction_in_array = []

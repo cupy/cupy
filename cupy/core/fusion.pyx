@@ -5,6 +5,7 @@ import numpy
 
 from cupy.core import core
 from cupy.core import _fusion_analysis
+from cupy.core import _fusion_runtime
 from cupy.core import _fusion_thread_local
 from cupy.core._fusion_shape import _AbstractDim
 from cupy.core._fusion_interface import _scalar  # NOQA
@@ -23,7 +24,17 @@ cdef tuple _fusion_argument_types = six.integer_types + (
     float, complex, bool, type(None))
 
 
-class Fusion(object):
+def _get_fused_kernel(name, func, args):
+    try:
+        _thread_local.is_fusing = True
+        kernel_info = _fusion_analysis.trace(func, args)
+        kernel = _fusion_runtime.FusedKernel(name, *kernel_info)
+    finally:
+        _thread_local.is_fusing = False
+    return kernel
+
+
+class Fusion:
     """Function class.
 
     This class can be get by using `fuse` function
@@ -145,14 +156,8 @@ class Fusion(object):
 
         if kernel is None:
             # If not cached at all, analyze the target function.
-            history = _fusion_analysis.FusedKernelCompiler(self.name)
-            try:
-                _thread_local.history = history
-                kernel = history.emit_kernel(self.func, args)
-                shapes = kernel.get_shapes_of_kernel_params(args)
-            finally:
-                _thread_local.history = None
-
+            kernel = _get_fused_kernel(self.name, self.func, args)
+            shapes = kernel.get_shapes_of_kernel_params(args)
             cache_shape[shape_key] = kernel, shapes
             kernel_list.append(kernel)
 

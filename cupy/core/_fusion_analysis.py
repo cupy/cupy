@@ -1,4 +1,3 @@
-import itertools
 import six
 
 import numpy
@@ -7,18 +6,18 @@ from cupy.core import _kernel
 from cupy.core import _reduction
 from cupy.core import core
 from cupy.core import _fusion_interface
+from cupy.core import _fusion_thread_local
 from cupy.core import _fusion_variable
 from cupy.core._fusion_variable import _FusionCudaScalar
 from cupy.core._fusion_variable import _FusionCudaArray
 from cupy.core._fusion_variable import _FusionVariableSet
 from cupy.core import _fusion_shape
 from cupy.core import _fusion_op
-from cupy.core import _fusion_emit_code
-from cupy.core import _fusion_runtime
 from cupy.core import _fusion_optimization
 from cupy import util
 
 
+_thread_local = _fusion_thread_local.thread_local
 _accepted_types = six.integer_types + (float, bool, complex, numpy.generic)
 
 
@@ -65,12 +64,12 @@ def _base(array):
     return array if array.base is None else array.base
 
 
-class _VariableConductor(object):
+class _VariableConductor:
     """Variable constuct manager.
 
     This class calls ``_FusionCudaArray`` or ``_FusionCudaScalar`` internally
     with unique serial numbers and returns the variable object. In
-    ``FusedKernelCompiler`` class, a method of ``history.vc``, which is of
+    ``TraceImpl`` class, a method of ``history.vc``, which is of
     ``_VariableConduductor`` class, should be called instead of
     ```_FusionCudaArray.__init__`` or ``_FusionCudaScalar.__init__``.
     """
@@ -178,12 +177,11 @@ class _VariableConductor(object):
         return list(self._variables_dict.values())
 
 
-class FusedKernelCompiler:
+class TraceImpl:
     """Emit a fused kernel from the given target function.
     """
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self):
         self.vc = _VariableConductor()
         self.shape_constraints = _fusion_shape._ShapeConstraints()
         self.op_list = []
@@ -533,33 +531,18 @@ class FusedKernelCompiler:
             for p in op.in_params + op.out_params:
                 kernel_params += self._get_ancestors(p)
         kernel_params = list(kernel_params)
+        self.kernel_params = kernel_params  # used in mock tests.
 
-        # Emit __device__ functions.
-        submodule_code = '\n\n'.join(set(itertools.chain.from_iterable([
-            op.emit_preamble_codes() for op in self.op_list]))) + '\n\n'
-        submodule_code += '\n\n'.join(itertools.chain.from_iterable([
-            op.emit_submodule_codes() for op in self.op_list]))
+        return self.op_list, kernel_params, return_size, self.shape_constraints
 
-        # Emit the function body of a __global__ function.
-        codes = []
 
-        use_grid_sync = len(self.op_list) > 1
+def trace(func, args):
+    history = TraceImpl()
 
-        if use_grid_sync:
-            codes.append('namespace _cg = cooperative_groups;')
-            codes.append('_cg::grid_group _grid = _cg::this_grid();')
+    try:
+        _thread_local.history = history
+        op_list, params, return_size, shapec = history.emit_kernel(func, args)
+    finally:
+        _thread_local.history = None
 
-        for i, op in enumerate(self.op_list):
-            if i > 0:
-                codes.append('_cg::sync(_grid);')
-            codes.append(op.emit_code())
-            # codes.append('__syncthreads();')
-
-        cuda_body = str(_fusion_emit_code._CodeBlock('', codes))
-
-        # This attribute is referred in mock tests.
-        self.kernel_params = kernel_params
-
-        return _fusion_runtime.FusedKernel(
-            self.name, self.op_list, cuda_body, kernel_params, return_size,
-            submodule_code, self.shape_constraints, use_grid_sync)
+    return op_list, params, return_size, shapec
