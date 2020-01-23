@@ -1,5 +1,4 @@
 import functools
-import six
 
 import numpy
 
@@ -19,9 +18,9 @@ _call_ufunc = _fusion_thread_local.call_ufunc
 _call_reduction = _fusion_thread_local.call_reduction
 
 
-cdef tuple _fusion_argument_types = six.integer_types + (
+cdef tuple _fusion_argument_types = (
     core.ndarray, numpy.ndarray, numpy.generic,
-    float, complex, bool, type(None))
+    int, float, complex, bool, type(None))
 
 
 def _get_fused_kernel(name, func, args):
@@ -106,7 +105,7 @@ class Fusion:
                 params_info.append(None)
             elif isinstance(arg, float):
                 params_info.append('d')
-            elif isinstance(arg, six.integer_types):
+            elif isinstance(arg, int):
                 params_info.append('l')
             elif isinstance(arg, bool):
                 params_info.append('?')

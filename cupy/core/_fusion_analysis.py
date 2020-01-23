@@ -1,5 +1,3 @@
-import six
-
 import numpy
 
 from cupy.core import _kernel
@@ -18,7 +16,7 @@ from cupy import util
 
 
 _thread_local = _fusion_thread_local.thread_local
-_accepted_types = six.integer_types + (float, bool, complex, numpy.generic)
+_accepted_types = (int, float, bool, complex, numpy.generic)
 
 
 def _broadcast_shapes(shapes):

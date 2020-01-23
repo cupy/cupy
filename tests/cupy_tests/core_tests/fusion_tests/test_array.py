@@ -168,20 +168,9 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
         return func
 
     @testing.with_requires('numpy>=1.10')
-    @unittest.skipUnless(six.PY3, 'Only for py3')
     @testing.for_int_dtypes(no_bool=True)
     @fusion_utils.check_fusion(accept_error=(TypeError,))
     def test_int_itruediv_py3_raises(self, xp, dtype):
-        def func(x, y):
-            x /= y
-
-        return func
-
-    @testing.with_requires('numpy>=1.10')
-    @unittest.skipUnless(six.PY2, 'Only for py2')
-    @testing.for_int_dtypes(no_bool=True)
-    @fusion_utils.check_fusion()
-    def test_int_itruediv_py2(self, xp, dtype):
         def func(x, y):
             x /= y
 
