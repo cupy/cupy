@@ -1,7 +1,6 @@
-import warnings
-
 import cupy
 from cupy import core
+import cupy.core._routines_manipulation as _manipulation
 
 
 # Shape map for atleast_nd functions
@@ -144,18 +143,9 @@ def expand_dims(a, axis):
     .. seealso:: :func:`numpy.expand_dims`
 
     """
-    # TODO(okuta): check type
-    shape = a.shape
-    if axis < 0:
-        axis = axis + len(shape) + 1
-    if axis > a.ndim or axis < 0:
-        # TODO(unno): Too large and too small axis is deprecated in NumPy 1.13
-        # We need to fix this behavior after NumPy forbids it.
-        warnings.warn(
-            'Both axis > a.ndim and axis < -a.ndim - 1 are deprecated and '
-            'will raise an AxisError in the future.',
-            DeprecationWarning)
-    return a.reshape(shape[:axis] + (1,) + shape[axis:])
+    if type(axis) not in (tuple, list):
+        axis = axis,
+    return _manipulation._expand_dims(a, axis)
 
 
 def squeeze(a, axis=None):
