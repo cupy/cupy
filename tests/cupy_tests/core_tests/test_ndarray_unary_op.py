@@ -129,8 +129,8 @@ class TestBoolNeg(unittest.TestCase):
 
     def test_bool_neg(self):
         xp = self.xp
-        if xp is numpy and not testing.numpy_satisfies('>=1.14.0'):
-            raise unittest.SkipTest('NumPy<1.14.0')
+        if xp is numpy and not testing.numpy_satisfies('>=1.13.0'):
+            raise unittest.SkipTest('NumPy<1.13.0')
         shape = self.shape
         x = testing.shaped_random(shape, xp, dtype=numpy.bool_)
         with pytest.raises(TypeError):
