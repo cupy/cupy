@@ -118,3 +118,20 @@ class TestArrayIntUnaryOp(unittest.TestCase):
 
     def test_invert_zerodim(self):
         self.check_zerodim_op(operator.invert)
+
+
+@testing.parameterize(*testing.product({
+    'xp': [numpy, cupy],
+    'shape': [(3, 2), (), (3, 0, 2)]
+}))
+@testing.gpu
+class TestBoolNeg(unittest.TestCase):
+
+    def test_bool_neg(self):
+        xp = self.xp
+        if xp is numpy and not testing.numpy_satisfies('>=1.14.0'):
+            raise unittest.SkipTest('NumPy<1.14.0')
+        shape = self.shape
+        x = testing.shaped_random(shape, xp, dtype=numpy.bool_)
+        with pytest.raises(TypeError):
+            -x
