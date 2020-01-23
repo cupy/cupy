@@ -62,6 +62,7 @@ class TestArrayUnaryOp(unittest.TestCase):
     def test_pos_array(self):
         self.check_array_op(operator.pos)
 
+    @testing.with_requires('numpy<1.16')
     def test_pos_array_full(self):
         self.check_array_op_full(operator.pos)
 
