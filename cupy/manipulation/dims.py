@@ -1,5 +1,4 @@
 import six
-import warnings
 
 import cupy
 from cupy import core
