@@ -2,9 +2,9 @@ import string
 
 import numpy
 
-from cupy.core._fusion_variable import _FusionCudaVarBase
-from cupy.core._fusion_variable import _FusionCudaArray
-from cupy.core._fusion_variable import _FusionVariableSet
+from cupy.core._fusion_variable import _TraceVariable
+from cupy.core._fusion_variable import _TraceArray
+from cupy.core._fusion_variable import _VariableSet
 from cupy.core import _fusion_thread_local
 from cupy.core import _fusion_emit_code
 from cupy.core import _kernel
@@ -27,9 +27,9 @@ class _UfuncRoutine:
         assert isinstance(compute_dtypes, tuple)
         assert all(isinstance(t, numpy.dtype) for t in compute_dtypes)
         assert isinstance(in_params, list)
-        assert all(isinstance(p, _FusionCudaVarBase) for p in in_params)
+        assert all(isinstance(p, _TraceVariable) for p in in_params)
         assert isinstance(out_params, list)
-        assert all(isinstance(p, _FusionCudaArray) for p in out_params)
+        assert all(isinstance(p, _TraceArray) for p in out_params)
 
         self.name = name
         self.in_params = in_params
@@ -84,7 +84,7 @@ class _UfuncRoutine:
             params=', '.join([var.lvar_name for var in params]))
 
 
-class _ElementwiseTraceOp(object):
+class _ElementwiseTraceOp:
     """Ufunc or elementwise kernel with types.
     """
 
@@ -99,18 +99,18 @@ class _ElementwiseTraceOp(object):
         assert isinstance(ashape, tuple)
 
         self.ops = ufunc_routines
-        self.in_params = _FusionVariableSet(*in_params)
-        self.out_params = _FusionVariableSet(*out_params)
+        self.in_params = _VariableSet(*in_params)
+        self.out_params = _VariableSet(*out_params)
         self.ashape = ashape
 
     @property
     def params(self):
         """Returns the set of all variable the loop uses.
         """
-        res = _FusionVariableSet()
+        res = _VariableSet()
         for op in self.ops:
-            res += _FusionVariableSet(*op.in_params)
-            res += _FusionVariableSet(*op.out_params)
+            res += _VariableSet(*op.in_params)
+            res += _VariableSet(*op.out_params)
         return res
 
     @staticmethod
@@ -122,11 +122,11 @@ class _ElementwiseTraceOp(object):
         """
         _fusion_thread_local.check_not_runtime()
 
-        indexed_arrays = _FusionVariableSet()
+        indexed_arrays = _VariableSet()
         code = []
         for var in params:
             if var in in_params:
-                if isinstance(var, _FusionCudaArray):
+                if isinstance(var, _TraceArray):
                     indexed_arrays.add(var)
                     f = '${type} ${lvar} = ${var}[${indexer}.get()];'
                 else:
@@ -146,10 +146,10 @@ class _ElementwiseTraceOp(object):
 
         _fusion_thread_local.check_not_runtime()
 
-        indexed_arrays = _FusionVariableSet()
+        indexed_arrays = _VariableSet()
         codes = []
         for var in out_params:
-            if isinstance(var, _FusionCudaArray):
+            if isinstance(var, _TraceArray):
                 indexed_arrays.add(var)
                 f = '${var}[${indexer}.get()] = ${lvar};'
             else:
@@ -163,7 +163,7 @@ class _ElementwiseTraceOp(object):
         """Returns a CUDA code: setting a raw index to indexers.
         """
         _fusion_thread_local.check_not_runtime()
-        assert isinstance(indexed_params, _FusionVariableSet)
+        assert isinstance(indexed_params, _VariableSet)
 
         return [
             p.format('${indexer}.set(${tid});', tid=tid)
@@ -192,22 +192,22 @@ class _ElementwiseTraceOp(object):
         return [str(subm.emit_code()) for subm in self.ops]
 
 
-class _ReductionTraceOp(object):
+class _ReductionTraceOp:
     def __init__(self, name, reduce_func, expr, in_param, out_param, axis):
         """Reduction operation.
         """
         _fusion_thread_local.check_not_runtime()
         assert isinstance(name, str)
         assert isinstance(reduce_func, _reduction._SimpleReductionKernel)
-        assert isinstance(in_param, _FusionCudaArray)
-        assert isinstance(out_param, _FusionCudaArray)
+        assert isinstance(in_param, _TraceArray)
+        assert isinstance(out_param, _TraceArray)
         assert isinstance(axis, tuple)
         assert all([0 <= x < in_param.ndim for x in axis])
 
         self.name = name
         self.preamble = reduce_func._preamble
-        self.in_params = _FusionVariableSet(in_param)
-        self.out_params = _FusionVariableSet(out_param)
+        self.in_params = _VariableSet(in_param)
+        self.out_params = _VariableSet(out_param)
         self.block_stride_name = 'block_stride_' + name
         self.axis = axis
 

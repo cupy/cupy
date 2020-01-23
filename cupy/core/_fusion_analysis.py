@@ -3,12 +3,13 @@ import numpy
 from cupy.core import _kernel
 from cupy.core import _reduction
 from cupy.core import core
-from cupy.core import _fusion_interface
+from cupy.core._fusion_interface import _VariableProxy
+from cupy.core._fusion_interface import _ArrayProxy
 from cupy.core import _fusion_thread_local
 from cupy.core import _fusion_variable
-from cupy.core._fusion_variable import _FusionCudaScalar
-from cupy.core._fusion_variable import _FusionCudaArray
-from cupy.core._fusion_variable import _FusionVariableSet
+from cupy.core._fusion_variable import _TraceScalar
+from cupy.core._fusion_variable import _TraceArray
+from cupy.core._fusion_variable import _VariableSet
 from cupy.core import _fusion_shape
 from cupy.core import _fusion_op
 from cupy.core import _fusion_optimization
@@ -44,10 +45,10 @@ def _guess_routine(func, args, dtype):
     # Feeds dummy arguments with appropriate dtypes passed to `guess_routine`.
     dummy_args = []
     for x in args:
-        if isinstance(x, _FusionCudaScalar):
+        if isinstance(x, _TraceScalar):
             dummy_args.append(x.dtype.type(0))
         else:
-            assert isinstance(x, _FusionCudaArray)
+            assert isinstance(x, _TraceArray)
             dummy_args.append(core.ndarray((0,), x.dtype))
 
     op = func._ops.guess_routine(
@@ -62,14 +63,14 @@ def _base(array):
     return array if array.base is None else array.base
 
 
-class _VariableConductor:
+class _VariableCoordinator:
     """Variable constuct manager.
 
-    This class calls ``_FusionCudaArray`` or ``_FusionCudaScalar`` internally
+    This class calls ``_TraceArray`` or ``_TraceScalar`` internally
     with unique serial numbers and returns the variable object. In
     ``TraceImpl`` class, a method of ``history.vc``, which is of
     ``_VariableConduductor`` class, should be called instead of
-    ```_FusionCudaArray.__init__`` or ``_FusionCudaScalar.__init__``.
+    ```_TraceArray.__init__`` or ``_TraceScalar.__init__``.
     """
 
     def __init__(self):
@@ -87,7 +88,7 @@ class _VariableConductor:
 
     def _generate_new_variable(self, var_module, dtype, **kwargs):
         serial_number = self._serial_number
-        memory = _fusion_variable._FusionMemorySpace(
+        memory = _fusion_variable._MemorySpace(
             self._memory_number, serial_number)
         self._serial_number += 1
         self._memory_number += 1
@@ -97,21 +98,21 @@ class _VariableConductor:
         return self._normalize_variable(ret)
 
     def generate_new_array(self, dtype, rshape, ashape, input_index=None):
-        """Generate new _FusionCudaArray object with a new memory space.
+        """Generate new _TraceArray object with a new memory space.
         """
         ret = self._generate_new_variable(
-            _FusionCudaArray,
+            _TraceArray,
             dtype, rshape=rshape, ashape=ashape, input_index=input_index)
         ret.memory.base_ashape = ret.ashape
         return ret
 
     def generate_new_scalar(self, dtype, **kwargs):
-        """Generate new _FusionCudaArray object with a new memory space.
+        """Generate new _TraceArray object with a new memory space.
         """
-        return self._generate_new_variable(_FusionCudaScalar, dtype, **kwargs)
+        return self._generate_new_variable(_TraceScalar, dtype, **kwargs)
 
     def make_view(self, var, **kwargs):
-        assert isinstance(var, _FusionCudaArray)
+        assert isinstance(var, _TraceArray)
         serial_number = self._serial_number
         self._serial_number += 1
         ret = var.make_view(serial_number, **kwargs)
@@ -126,7 +127,7 @@ class _VariableConductor:
     def rotate_with_axis(self, var, axis):
         """Make a view of an array by rotating ``var`` with given axis.
         """
-        assert isinstance(var, _FusionCudaArray)
+        assert isinstance(var, _TraceArray)
         return self.make_view(var, rotated_from=var, axis=axis)
 
     def indexing(self, var, indices):
@@ -180,7 +181,7 @@ class TraceImpl:
     """
 
     def __init__(self):
-        self.vc = _VariableConductor()
+        self.vc = _VariableCoordinator()
         self.shape_constraints = _fusion_shape._ShapeConstraints()
         self.op_list = []
 
@@ -190,15 +191,15 @@ class TraceImpl:
         """
         if x is None:
             return None
-        assert isinstance(x, _fusion_variable._FusionCudaVarBase)
+        assert isinstance(x, _fusion_variable._TraceVariable)
         return x.as_interface()
 
     def _unwrap_interface(self, x, *, allow_none=False):
-        """Returns ``_FusionCuda{Array/Scalar}`` object from the input.
+        """Returns ``_TraceVariable`` object from the input.
         """
         if allow_none and x is None:
             return None
-        if isinstance(x, _fusion_interface._FusionVariableInterfaceBase):
+        if isinstance(x, _VariableProxy):
             return x.content
         if isinstance(x, _accepted_types):
             dtype = numpy.dtype(type(x))
@@ -240,7 +241,7 @@ class TraceImpl:
             raise TypeError('Wrong arguments {}'.format(kwargs))
         if len(in_params) != nin or len(out_params) > nout:
             raise ValueError('Invalid number of arguments')
-        if not all([isinstance(v, _FusionCudaArray) for v in out_params]):
+        if not all([isinstance(v, _TraceArray) for v in out_params]):
             raise TypeError('Return arrays must be of ArrayType')
 
         # Check for inplace operation.
@@ -286,7 +287,7 @@ class TraceImpl:
                         p.ashape[axis], 1)
                 else:
                     assert False
-            if isinstance(p, _FusionCudaArray) and p.rshape != out_rshape:
+            if isinstance(p, _TraceArray) and p.rshape != out_rshape:
                 # Broadcst input if needed.
                 in_params[i] = self.vc.broadcast_to(p, out_ashape, out_rshape)
 
@@ -303,7 +304,7 @@ class TraceImpl:
                     out_dtypes[i], out_rshape, out_ashape)
                 out_params.append(out_pvar)
                 ret.append(out_pvar)
-            elif isinstance(out_params, _FusionCudaScalar):
+            elif isinstance(out_params, _TraceScalar):
                 raise TypeError('return arrays must be of ArrayType')
             elif out_params[i].rshape != out_rshape:
                 raise ValueError(
@@ -356,7 +357,7 @@ class TraceImpl:
         # Parse inputs.
         in_param = self._unwrap_interface(a)
 
-        if not isinstance(in_param, _FusionCudaArray):
+        if not isinstance(in_param, _TraceArray):
             raise NotImplementedError(
                 'Reduction for scalar arguments is not supported.')
 
@@ -412,7 +413,7 @@ class TraceImpl:
             indices = (indices,)
 
         for x in indices:
-            if isinstance(indices, (list, _FusionCudaArray)):
+            if isinstance(indices, (list, _TraceArray)):
                 # Advanced indexing
                 raise NotImplementedError(
                     'Advanced indexing is not supported, currently.')
@@ -427,10 +428,10 @@ class TraceImpl:
         return self._make_interface(out_param)
 
     def _trace_target_function(self, func, args):
-        """Call ``self.func`` with _FusionVariable arguments.
+        """Call ``self.func`` with _TraceVariable arguments.
 
         Returns:
-            out_params(list of _FusionVariable): The list of outputs.
+            out_params(list of _TraceVariable): The list of outputs.
             return_size(int or str): If ``return_size`` is of int type,
                 it indicates the size of tuple of outputs.
                 If `none`, the output is ``None`` and ``out_params`` is empty.
@@ -454,11 +455,11 @@ class TraceImpl:
                 if arg_id in array_dict:
                     # The array is already given as an input.
                     var = in_params[array_dict[arg_id]]
-                    assert isinstance(var, _FusionCudaArray)
+                    assert isinstance(var, _TraceArray)
                 elif base_id in memory_dict:
                     # The is an array which shares the same memory.
                     base = in_params[memory_dict[base_id]]
-                    assert isinstance(base, _FusionCudaArray)
+                    assert isinstance(base, _TraceArray)
                     var = self.vc.make_view(base, input_index=input_index)
                 else:
                     # Otherwise.
@@ -481,18 +482,18 @@ class TraceImpl:
         if output is None:
             return_size = 'none'
             out_params = []
-        elif isinstance(output, _fusion_interface._ndarray):
+        elif isinstance(output, _ArrayProxy):
             return_size = 'single'
             out_params = [self._unwrap_interface(output, allow_none=True)]
         elif isinstance(output, tuple):
-            if all(isinstance(x, _fusion_interface._ndarray) for x in output):
+            if all(isinstance(x, _ArrayProxy) for x in output):
                 return_size = len(output)
                 out_params = [
                     self._unwrap_interface(x, allow_none=True) for x in output]
             else:
                 raise ValueError(
                     'The all elements of return value of fused function '
-                    'must be of _ndarray type.'
+                    'must be of _ArrayProxy type.'
                 )
         else:
             raise ValueError(
@@ -501,7 +502,7 @@ class TraceImpl:
             )
 
         for output_index, out_param in enumerate(out_params):
-            assert isinstance(out_param, _FusionCudaArray)
+            assert isinstance(out_param, _TraceArray)
             out_param.output_index = output_index
             out_param.memory.is_output = True
 
@@ -509,9 +510,9 @@ class TraceImpl:
 
     def _get_ancestors(self, var):
         if var is None:
-            return _FusionVariableSet()
-        res = _FusionVariableSet(var)
-        if isinstance(var, _FusionCudaArray):
+            return _VariableSet()
+        res = _VariableSet(var)
+        if isinstance(var, _TraceArray):
             res += self._get_ancestors(var._view_of)
         return res
 
@@ -522,7 +523,7 @@ class TraceImpl:
             self.op_list, self.vc.all_variables, self.shape_constraints)
 
         # Make info passed to FusedKernel.
-        kernel_params = _FusionVariableSet()
+        kernel_params = _VariableSet()
         for p in out_params:
             kernel_params += self._get_ancestors(p)
         for op in self.op_list:

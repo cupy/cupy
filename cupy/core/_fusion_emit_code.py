@@ -19,7 +19,7 @@ _dtype_to_ctype = {
 }
 
 
-class _CodeBlock(object):
+class _CodeBlock:
     """Code fragment for the readable format.
     """
 
@@ -47,7 +47,7 @@ class _CodeBlock(object):
         <<head>> {
           <<begin codes>>
           ...;
-          <end codes>>
+          <<end codes>>
         }
         """
 

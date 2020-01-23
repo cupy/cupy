@@ -7,7 +7,7 @@ from cupy.core._fusion_shape import _AbstractDim
 from cupy.core import _fusion_interface
 
 
-class _FusionMemorySpace():
+class _MemorySpace():
     """A memory space object.
 
     Attributes:
@@ -42,11 +42,11 @@ class _FusionMemorySpace():
         return self.is_input or self.is_output
 
 
-class _FusionCudaVarBase(object):
+class _TraceVariable:
     """Variable object to trace operations in the target function to be fused.
 
     Attributes:
-        index(_FusionMemorySpace): The memory space the variable uses.
+        index(_MemorySpace): The memory space the variable uses.
         serial_number(int): The serial number of the variable object.
         dtype(dtype): The dtype of the variable.
         rshape(tuple of int): The real shape of the variable.
@@ -59,7 +59,7 @@ class _FusionCudaVarBase(object):
     def __init__(
             self, memory_space, serial_number, dtype, rshape, ashape,
             input_index, output_index):
-        assert isinstance(memory_space, _FusionMemorySpace)
+        assert isinstance(memory_space, _MemorySpace)
         assert isinstance(serial_number, int)
         assert isinstance(dtype, numpy.dtype)
         assert input_index is None or isinstance(input_index, int)
@@ -130,11 +130,11 @@ class _FusionCudaVarBase(object):
 
     def __hash__(self):
         assert False, (
-            '__hash__ is not defined. Use _FusionVariableSet instead of '
+            '__hash__ is not defined. Use _VariableSet instead of '
             'set/dict because they do not gurantee the order of contents.')
 
 
-class _FusionCudaScalar(_FusionCudaVarBase):
+class _TraceScalar(_TraceVariable):
     """An abstracted scalar object.
 
     Attributes:
@@ -169,20 +169,20 @@ class _FusionCudaScalar(_FusionCudaVarBase):
         return 'v{}'.format(self.memory.id)
 
     def as_interface(self):
-        return _fusion_interface._scalar(self)
+        return _fusion_interface._ScalarProxy(self)
 
     def key(self):
         return (self.memory.id,)
 
 
-class _FusionCudaArray(_FusionCudaVarBase):
+class _TraceArray(_TraceVariable):
     """An abstracted array object.
 
     Attributes:
-        broadcasted_from(_FusionCudaArray optional): TODO
-        rotated_from(_FusionCudaArray optional): TODO
+        broadcasted_from(_TraceArray optional): TODO
+        rotated_from(_TraceArray optional): TODO
         axis(int optional): The axis to rotate.
-        indexed_from(_FusionCudaArray optional): TODO
+        indexed_from(_TraceArray optional): TODO
         index_key(slice): TODO
     """
 
@@ -226,12 +226,12 @@ class _FusionCudaArray(_FusionCudaVarBase):
         return 'v{}_{}'.format(self.memory.id, self.serial_number)
 
     def as_interface(self):
-        return _fusion_interface._ndarray(self)
+        return _fusion_interface._ArrayProxy(self)
 
     def make_view(self, serial_number, **kwargs):
         rshape = kwargs.pop('rshape', self.rshape)
         ashape = kwargs.pop('ashape', self.ashape)
-        return _FusionCudaArray(
+        return _TraceArray(
             self.memory, serial_number, self.dtype,
             rshape=rshape, ashape=ashape, **kwargs)
 
@@ -261,14 +261,14 @@ class _FusionCudaArray(_FusionCudaVarBase):
         )
 
 
-class _FusionVariableSet(object):
+class _VariableSet:
     """A stable set of variables
     """
 
     def __init__(self, *args):
         self.contents = []
         for x in args:
-            assert isinstance(x, _FusionCudaVarBase)
+            assert isinstance(x, _TraceVariable)
             if x not in self.contents:
                 self.contents.append(x)
 
@@ -284,13 +284,13 @@ class _FusionVariableSet(object):
             self.contents.append(x)
 
     def __iadd__(self, other):
-        assert isinstance(other, _FusionVariableSet)
+        assert isinstance(other, _VariableSet)
         for x in other.contents:
             self.add(x)
         return self
 
     def __add__(self, other):
-        res = _FusionVariableSet(*self.contents)
+        res = _VariableSet(*self.contents)
         res += other
         return res
 
@@ -301,13 +301,13 @@ class _FusionVariableSet(object):
         return iter(self.contents)
 
     def __isub__(self, other):
-        assert isinstance(other, _FusionVariableSet)
+        assert isinstance(other, _VariableSet)
         for x in other.contents:
             if x in self.contents:
                 self.contents.remove(x)
         return self
 
     def __sub__(self, other):
-        res = _FusionVariableSet(*self.contents)
+        res = _VariableSet(*self.contents)
         res -= other
         return res

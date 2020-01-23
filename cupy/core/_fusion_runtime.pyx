@@ -16,9 +16,9 @@ from cupy.core cimport _routines_manipulation as _manipulation
 from cupy import util
 from cupy.core import _fusion_emit_code
 from cupy.core._fusion_shape import _AbstractDim
-from cupy.core._fusion_variable import _FusionCudaVarBase
-from cupy.core._fusion_variable import _FusionCudaScalar
-from cupy.core._fusion_variable import _FusionCudaArray
+from cupy.core._fusion_variable import _TraceVariable
+from cupy.core._fusion_variable import _TraceScalar
+from cupy.core._fusion_variable import _TraceArray
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 
@@ -116,7 +116,7 @@ cdef class FusedKernel:
             self._out_params.resize(return_size)
 
         for p in self._params:
-            assert isinstance(p, _FusionCudaVarBase)
+            assert isinstance(p, _TraceVariable)
 
         # Analys the relationship between variables.
 
@@ -130,7 +130,7 @@ cdef class FusedKernel:
             input_index = -1
             if p.input_index is not None:
                 input_index = p.input_index
-            if isinstance(p, _FusionCudaArray):
+            if isinstance(p, _TraceArray):
                 if p._view_of is not None:
                     view_of = array_dict[p._view_of.key()]
                 if p.is_output:
@@ -161,7 +161,7 @@ cdef class FusedKernel:
 
         for param in self._params:
             shape = []
-            if isinstance(param, _FusionCudaArray):
+            if isinstance(param, _TraceArray):
                 ashape = param.ashape
                 for axis in range(len(ashape)):
                     dim = ashape[axis]
@@ -182,7 +182,7 @@ cdef class FusedKernel:
             shape = shapes[i]
             if self._input_index[i] >= 0:
                 array = args[<Py_ssize_t>self._input_index[i]]
-            elif isinstance(param, _FusionCudaScalar):
+            elif isinstance(param, _TraceScalar):
                 array = None
             elif self._is_base[i]:
                 array = _ndarray_init(shape, self._dtypes[i])
@@ -309,13 +309,13 @@ cdef class FusedKernel:
 
         for i in range(len(self._params)):
             a = self._params[i]
-            if isinstance(a, _FusionCudaArray):
+            if isinstance(a, _TraceArray):
                 ndim = ndarray_list[i].ndim
                 cuda_params.append(a.format(
                     'CArray<${type}, ${ndim}> ${var}', ndim=ndim))
                 indexers.append(
                     a.format('CIndexer<${ndim}> ${indexer}', ndim=ndim))
-            elif isinstance(a, _FusionCudaScalar):
+            elif isinstance(a, _TraceScalar):
                 if a.const_value is None:
                     cuda_params.append(a.format('${type} ${var}'))
             else:

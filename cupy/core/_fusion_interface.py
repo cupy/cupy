@@ -33,7 +33,7 @@ def _set_dtype_to_astype_dict():
         _dtype_to_astype_dict[t] = core.create_ufunc(name, rules, command)
 
 
-class _FusionVariableInterfaceBase(object):
+class _VariableProxy:
     """Abstracted array/scalar object passed to the target function.
     """
 
@@ -189,33 +189,33 @@ class _FusionVariableInterfaceBase(object):
         raise NotImplementedError('`shape` is not supported, currently.')
 
 
-class _scalar(_FusionVariableInterfaceBase):
+class _ScalarProxy(_VariableProxy):
     """An abstracted scalar object passed to the target function.
 
     Attributes:
         dtype(dtype): The dtype of the array.
-        imag(_ndarray): The imaginary part of the array (Not implemented yet)
-        real(_ndarray): The real part of the array (Not implemented yet)
+        imag(_ArrayProxy): The imaginary part of the array (Not implemented)
+        real(_ArrayProxy): The real part of the array (Not implemented)
         ndim(int): The number of dimensions of the array.
     """
 
     def __repr__(self):
-        return '_scalar({}, dtype={})'.format(
+        return '_ScalarProxy({}, dtype={})'.format(
             self._emit_param_name(), self.dtype)
 
 
-class _ndarray(_FusionVariableInterfaceBase):
+class _ArrayProxy(_VariableProxy):
     """An abstracted array object passed to the target function.
 
     Attributes:
         dtype(dtype): The dtype of the array.
-        imag(_ndarray): The imaginary part of the array (Not implemented yet)
-        real(_ndarray): The real part of the array (Not implemented yet)
+        imag(_ArrayProxy): The imaginary part of the array (Not implemented)
+        real(_ArrayProxy): The real part of the array (Not implemented)
         ndim(int): The number of dimensions of the array.
     """
 
     def __repr__(self):
-        return '_ndarray([...], dtype=\'{}\', ndim={})'.format(
+        return '_ArrayProxy([...], dtype=\'{}\', ndim={})'.format(
             self.dtype.char, self.ndim)
 
     def _inplace_op(self, ufunc, other):

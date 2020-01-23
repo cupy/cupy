@@ -7,8 +7,8 @@ from cupy.core import _fusion_analysis
 from cupy.core import _fusion_runtime
 from cupy.core import _fusion_thread_local
 from cupy.core._fusion_shape import _AbstractDim
-from cupy.core._fusion_interface import _scalar  # NOQA
-from cupy.core._fusion_interface import _ndarray  # NOQA
+from cupy.core._fusion_interface import _ScalarProxy  # NOQA
+from cupy.core._fusion_interface import _ArrayProxy  # NOQA
 from cupy.core._dtype cimport get_dtype
 
 

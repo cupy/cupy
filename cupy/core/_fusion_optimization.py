@@ -17,7 +17,7 @@ def _reduce_memory_access(ops):
         for p in op.out_params:
             if p.memory in required_memories:
                 new_out_params.append(p)
-        op.out_params = _fusion_variable._FusionVariableSet(*new_out_params)
+        op.out_params = _fusion_variable._VariableSet(*new_out_params)
 
         # TODO(asi1024): The following imporvemnet can be applicable only
         # when the memory space is used at most once.
