@@ -109,6 +109,7 @@ class TestArrayReduction(unittest.TestCase):
         a = testing.shaped_random((2, 3), xp, dtype)
         return a.ptp()
 
+    @testing.with_requires('numpy>=1.15')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_ptp_all_keepdims(self, xp, dtype):
@@ -139,12 +140,14 @@ class TestArrayReduction(unittest.TestCase):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         return a.ptp(axis=2)
 
+    @testing.with_requires('numpy>=1.15')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_ptp_multiple_axes(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         return a.ptp(axis=(1, 2))
 
+    @testing.with_requires('numpy>=1.15')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()
     def test_ptp_multiple_axes_keepdims(self, xp, dtype):
