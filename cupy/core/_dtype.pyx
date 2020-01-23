@@ -1,6 +1,5 @@
 cimport cython  # NOQA
 import numpy
-import six
 
 
 all_type_chars = '?bhilqBHILQefdFD'
@@ -28,7 +27,7 @@ cdef _dtype = numpy.dtype
 
 
 cdef _init_dtype_dict():
-    for i in six.integer_types + (float, bool, complex, None):
+    for i in (int, float, bool, complex, None):
         dtype = _dtype(i)
         _dtype_dict[i] = (dtype, dtype.itemsize)
     for i in all_type_chars:

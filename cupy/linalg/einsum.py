@@ -3,8 +3,6 @@ import itertools
 import string
 import warnings
 
-import six.moves
-
 import cupy
 from cupy import util
 from cupy.linalg.einsum_opt import _greedy_path
@@ -203,7 +201,7 @@ def _parse_ellipsis_subscript(subscript, idx, ndim=None, ellipsis_len=None):
                 'subscripts for operand %d' % (left_sub, right_sub, idx))
         ret = []
         ret.extend(ord(label) for label in left_sub)
-        ret.extend(six.moves.range(-ellipsis_len, 0))
+        ret.extend(range(-ellipsis_len, 0))
         ret.extend(ord(label) for label in right_sub)
         return ret
     else:
@@ -219,7 +217,7 @@ def _einsum_diagonals(input_subscripts, operands):
 
     This function mutates args.
     """
-    for idx in six.moves.range(len(input_subscripts)):
+    for idx in range(len(input_subscripts)):
         sub = input_subscripts[idx]
         arr = operands[idx]
 
@@ -243,7 +241,7 @@ def _einsum_diagonals(input_subscripts, operands):
                         % (idx, _chr(label), dim0, dim1)
                     )
 
-            sub, axeses = six.moves.zip(*axeses)  # axeses is not empty
+            sub, axeses = zip(*axeses)  # axeses is not empty
             input_subscripts[idx] = list(sub)
             operands[idx] = _transpose_ex(arr, axeses)
 
@@ -507,7 +505,7 @@ def einsum(*operands, **kwargs):
 
         # Don't squeeze if unary, because this affects later (in trivial sum)
         # whether the return is a writeable view.
-        for idx in six.moves.range(len(operands)):
+        for idx in range(len(operands)):
             arr = operands[idx]
             if 1 in arr.shape:
                 squeeze_indices = []
@@ -561,7 +559,7 @@ def einsum(*operands, **kwargs):
         'optimal': _optimal_path,
     }
     if optimize is False:
-        path = [tuple(six.moves.range(len(operands)))]
+        path = [tuple(range(len(operands)))]
     elif len(optimize) and (optimize[0] == 'einsum_path'):
         path = optimize[1:]
     else:

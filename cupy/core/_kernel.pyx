@@ -3,7 +3,6 @@ import string
 import threading
 
 import numpy
-import six
 
 from cupy.cuda import compiler
 from cupy import util

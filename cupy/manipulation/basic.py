@@ -1,5 +1,4 @@
 import numpy
-import six
 
 from cupy import core
 from cupy.core import fusion
@@ -26,9 +25,8 @@ def copyto(dst, src, casting='same_kind', where=None):
     """
 
     src_type = type(src)
-    src_is_python_scalar = (src_type in six.integer_types or
-                            src_type in (bool, float, complex) or
-                            src_type is fusion._FusionVarScalar)
+    src_is_python_scalar = src_type in (
+        int, bool, float, complex, fusion._FusionVarScalar)
     if src_is_python_scalar:
         src_dtype = numpy.dtype(type(src))
         can_cast = numpy.can_cast(src, dst.dtype, casting)

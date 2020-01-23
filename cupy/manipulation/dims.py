@@ -1,12 +1,6 @@
-import six
-
 import cupy
 from cupy import core
 import cupy.core._routines_manipulation as _manipulation
-
-
-zip_longest = six.moves.zip_longest
-six_zip = six.moves.zip
 
 
 # Shape map for atleast_nd functions

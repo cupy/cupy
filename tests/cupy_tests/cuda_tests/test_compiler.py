@@ -2,7 +2,6 @@ import pickle
 import unittest
 
 import mock
-import six
 
 import cupy
 from cupy.cuda import compiler
@@ -70,7 +69,7 @@ class TestNvrtcStderr(unittest.TestCase):
 
     def test(self):
         # An error message contains the file name `kern.cu`
-        with six.assertRaisesRegex(self, compiler.CompileException, 'kern.cu'):
+        with self.assertRaisesRegex(compiler.CompileException, 'kern.cu'):
             compiler.compile_using_nvrtc('a')
 
 
