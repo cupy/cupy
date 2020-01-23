@@ -739,9 +739,9 @@ def irfftn(a, s=None, axes=None, norm=None):
 
     .. seealso:: :func:`numpy.fft.irfftn`
     """
-    if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010 and
-            int(cupy.cuda.device.get_compute_capability()) < 70 and
-            _size_last_transform_axis(a.shape, s, axes) == 2):
+    if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
+            and int(cupy.cuda.device.get_compute_capability()) < 70
+            and _size_last_transform_axis(a.shape, s, axes) == 2):
         warnings.warn('Output of irfftn might not be correct due to issue '
                       'of cuFFT in CUDA 10.1/10.2 on Pascal or older GPUs.')
 
