@@ -97,7 +97,7 @@ def draw(X, pred, means, covariances, output):
         labels = X[pred == i]
         if xp is cupy:
             labels = labels.get()
-        plt.scatter(labels[:, 0], labels[:, 1], c=np.random.rand(3))
+        plt.scatter(labels[:, 0], labels[:, 1], c=np.random.rand(1, 3))
     if xp is cupy:
         means = means.get()
         covariances = covariances.get()
