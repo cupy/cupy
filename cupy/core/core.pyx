@@ -2,13 +2,13 @@
 
 from __future__ import division
 import os
+import pickle
 import re
 import sys
 import warnings
 
 import ctypes
 import numpy
-import six
 
 import cupy
 from cupy.core import _errors
@@ -328,11 +328,11 @@ cdef class ndarray:
         :func:`cupy.load`.
 
         """
-        six.moves.cPickle.dump(self, file, -1)
+        pickle.dump(self, file, -1)
 
     cpdef bytes dumps(self):
         """Dumps a pickle of the array to a string."""
-        return six.moves.cPickle.dumps(self, -1)
+        return pickle.dumps(self, -1)
 
     cpdef ndarray astype(
             self, dtype, order='K', casting=None, subok=None, copy=True):
@@ -1147,7 +1147,7 @@ cdef class ndarray:
     def __iter__(self):
         if self._shape.size() == 0:
             raise TypeError('iteration over a 0-d array')
-        return (self[i] for i in six.moves.range(self._shape[0]))
+        return (self[i] for i in range(self._shape[0]))
 
     def __len__(self):
         if self._shape.size() == 0:
@@ -1780,7 +1780,8 @@ cdef inline str _translate_cucomplex_to_thrust(str source):
 
 cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None,
-        prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False):
+        prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False,
+        enable_cooperative_groups=False):
     if translate_cucomplex:
         source = _translate_cucomplex_to_thrust(source)
         _cupy_header_list.append('cupy/cuComplex_bridge.h')
@@ -1824,8 +1825,9 @@ cpdef function.Module compile_with_cache(
         if cuda_path is not None:
             options += ('-I ' + os.path.join(cuda_path, 'include'),)
 
-    return cuda.compile_with_cache(source, options, arch, cachd_dir,
-                                   extra_source, backend)
+    return cuda.compile_with_cache(
+        source, options, arch, cachd_dir, extra_source, backend,
+        enable_cooperative_groups=enable_cooperative_groups)
 
 
 # =============================================================================

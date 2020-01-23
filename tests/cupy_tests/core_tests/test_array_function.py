@@ -1,7 +1,6 @@
 import unittest
 
 import numpy
-import six
 
 import cupy
 from cupy import testing
@@ -22,7 +21,7 @@ class TestArrayFunction(unittest.TestCase):
         qr_gpu = numpy.linalg.qr(a_gpu)
 
         if isinstance(qr_cpu, tuple):
-            for b_cpu, b_gpu in six.moves.zip(qr_cpu, qr_gpu):
+            for b_cpu, b_gpu in zip(qr_cpu, qr_gpu):
                 self.assertEqual(b_cpu.dtype, b_gpu.dtype)
                 cupy.testing.assert_allclose(b_cpu, b_gpu, atol=1e-4)
         else:

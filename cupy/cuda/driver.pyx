@@ -59,6 +59,13 @@ cdef extern from 'cupy_cuda.h' nogil:
         unsigned int sharedMemBytes, Stream hStream,
         void** kernelParams, void** extra)
 
+    int cuLaunchCooperativeKernel(
+        Function f, unsigned int gridDimX, unsigned int gridDimY,
+        unsigned int gridDimZ, unsigned int blockDimX,
+        unsigned int blockDimY, unsigned int blockDimZ,
+        unsigned int sharedMemBytes, Stream hStream,
+        void** kernelParams)
+
     # Kernel attributes
     int cuFuncGetAttribute(int *pi, CUfunction_attribute attrib,
                            Function hfunc)
@@ -289,6 +296,20 @@ cpdef launchKernel(
             block_dim_x, block_dim_y, block_dim_z,
             shared_mem_bytes, <Stream>stream,
             <void**>kernel_params, <void**>extra)
+    check_status(status)
+
+
+cpdef launchCooperativeKernel(
+        intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
+        unsigned int grid_dim_z, unsigned int block_dim_x,
+        unsigned int block_dim_y, unsigned int block_dim_z,
+        unsigned int shared_mem_bytes, intptr_t stream,
+        intptr_t kernel_params):
+    with nogil:
+        status = cuLaunchCooperativeKernel(
+            <Function>f, grid_dim_x, grid_dim_y, grid_dim_z,
+            block_dim_x, block_dim_y, block_dim_z,
+            shared_mem_bytes, <Stream>stream, <void**>kernel_params)
     check_status(status)
 
 

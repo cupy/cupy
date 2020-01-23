@@ -1,7 +1,6 @@
 import unittest
 
 import numpy
-import six
 
 import cupy
 from cupy import core
@@ -64,8 +63,7 @@ class TestElementwise(unittest.TestCase):
 class TestElementwiseInvalidShape(unittest.TestCase):
 
     def test_invalid_shape(self):
-        with six.assertRaisesRegex(
-                self, ValueError, 'Out shape is mismatched'):
+        with self.assertRaisesRegex(ValueError, 'Out shape is mismatched'):
             f = cupy.ElementwiseKernel('T x', 'T y', 'y += x')
             x = cupy.arange(12).reshape(3, 4)
             y = cupy.arange(4)
@@ -76,7 +74,7 @@ class TestElementwiseInvalidShape(unittest.TestCase):
 class TestElementwiseInvalidArgument(unittest.TestCase):
 
     def test_invalid_kernel_name(self):
-        with six.assertRaisesRegex(self, ValueError, 'Invalid kernel name'):
+        with self.assertRaisesRegex(ValueError, 'Invalid kernel name'):
             cupy.ElementwiseKernel('T x', '', '', '1')
 
 

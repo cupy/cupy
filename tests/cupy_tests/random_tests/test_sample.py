@@ -2,7 +2,6 @@ import mock
 import unittest
 
 import numpy
-import six
 
 import cupy
 from cupy import cuda
@@ -93,7 +92,7 @@ class TestRandint2(unittest.TestCase):
     def test_goodness_of_fit(self):
         mx = 5
         trial = 100
-        vals = [random.randint(mx).get() for _ in six.moves.xrange(trial)]
+        vals = [random.randint(mx).get() for _ in range(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(trial) / mx] * mx)
         self.assertTrue(hypothesis.chi_square_test(counts, expected))
@@ -188,7 +187,7 @@ class TestRandomIntegers2(unittest.TestCase):
     def test_goodness_of_fit(self):
         mx = 5
         trial = 100
-        vals = [random.randint(0, mx).get() for _ in six.moves.xrange(trial)]
+        vals = [random.randint(0, mx).get() for _ in range(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(trial) / mx] * mx)
         self.assertTrue(hypothesis.chi_square_test(counts, expected))

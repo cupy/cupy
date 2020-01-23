@@ -148,8 +148,6 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     def __rtruediv__(self, other):
         raise NotImplementedError
 
-    # TODO(unno): Implement argmax
-    # TODO(unno): Implement argmin
     # TODO(unno): Implement check_format
 
     def diagonal(self, k=0):
@@ -163,13 +161,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         self.indices = compress.indices
         self.indptr = compress.indptr
 
-    # TODO(unno): Implement max
-
     def maximum(self, other):
         # TODO(unno): Implement maximum
         raise NotImplementedError
-
-    # TODO(unno): Implement min
 
     def minimum(self, other):
         # TODO(unno): Implement minimum

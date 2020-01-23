@@ -3,7 +3,6 @@ import math
 import warnings
 
 import cupy
-import six
 
 
 def _get_output(output, input, shape=None):
@@ -91,10 +90,10 @@ def map_coordinates(input, coordinates, output=None, order=None,
     ret = _get_output(output, input, coordinates.shape[1:])
 
     if mode == 'nearest':
-        for i in six.moves.range(input.ndim):
+        for i in range(input.ndim):
             coordinates[i] = coordinates[i].clip(0, input.shape[i] - 1)
     elif mode == 'mirror':
-        for i in six.moves.range(input.ndim):
+        for i in range(input.ndim):
             length = input.shape[i] - 1
             if length == 0:
                 coordinates[i] = 0
@@ -113,7 +112,7 @@ def map_coordinates(input, coordinates, output=None, order=None,
         coordinates_ceil = coordinates_floor + 1
 
         sides = []
-        for i in six.moves.range(input.ndim):
+        for i in range(input.ndim):
             # TODO(mizuno): Use array_equal after it is implemented
             if cupy.all(coordinates[i] == coordinates_floor[i]):
                 sides.append([0])
@@ -128,7 +127,7 @@ def map_coordinates(input, coordinates, output=None, order=None,
         for side in itertools.product(*sides):
             weight.fill(1)
             ind = []
-            for i in six.moves.range(input.ndim):
+            for i in range(input.ndim):
                 if side[i] == 0:
                     ind.append(coordinates_floor[i])
                     weight *= coordinates_ceil[i] - coordinates[i]
@@ -140,7 +139,7 @@ def map_coordinates(input, coordinates, output=None, order=None,
 
     if mode == 'constant':
         mask = cupy.zeros(coordinates.shape[1:], dtype=cupy.bool_)
-        for i in six.moves.range(input.ndim):
+        for i in range(input.ndim):
             mask += coordinates[i] < 0
             mask += coordinates[i] > input.shape[i] - 1
         out[mask] = cval
