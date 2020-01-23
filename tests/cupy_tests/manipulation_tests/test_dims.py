@@ -125,13 +125,15 @@ class TestDims(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.18')
     @testing.numpy_cupy_array_list_equal()
-    def test_expand_dims_multiple(self, xp):
+    def test_expand_dims_tuple_axis(self, xp):
         a = testing.shaped_arange((2, 2, 2), xp)
         return [xp.expand_dims(a, axis) for axis in [
             (0, 1, 2),
             (0, -1, -2),
             (0, 3, 5),
             (0, -3, -5),
+            (),
+            (1,),
         ]]
 
     @testing.with_requires('numpy>=1.18')
