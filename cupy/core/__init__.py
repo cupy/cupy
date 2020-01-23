@@ -13,7 +13,6 @@ from cupy.core._routines_manipulation import array_split  # NOQA
 from cupy.core._routines_manipulation import broadcast  # NOQA
 from cupy.core._routines_manipulation import broadcast_to  # NOQA
 from cupy.core._routines_manipulation import concatenate_method  # NOQA
-from cupy.core._routines_manipulation import _expand_dims  # NOQA
 from cupy.core._routines_manipulation import moveaxis  # NOQA
 from cupy.core._routines_manipulation import rollaxis  # NOQA
 from cupy.core._routines_manipulation import size  # NOQA'

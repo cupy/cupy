@@ -2,6 +2,7 @@ import six
 
 import cupy
 from cupy import core
+import cupy.core._routines_manipulation as _manipulation
 
 
 zip_longest = six.moves.zip_longest
@@ -150,7 +151,7 @@ def expand_dims(a, axis):
     """
     if type(axis) not in (tuple, list):
         axis = axis,
-    return core._expand_dims(a, axis)
+    return _manipulation._expand_dims(a, axis)
 
 
 def squeeze(a, axis=None):
