@@ -295,9 +295,10 @@ class FallbackArray(unittest.TestCase):
 
         return x.shape
 
-    @numpy_fallback_array_allclose()
+    @numpy_fallback_equal()
     def test_ndarray_init(self, xp):
-        return xp.ndarray((3, 4))
+        a = xp.ndarray((3, 4))
+        return a.shape
 
     @numpy_fallback_equal()
     def test_ndarray_shape_creation(self, xp):
@@ -316,10 +317,11 @@ class FallbackArray(unittest.TestCase):
         a = fallback_mode.numpy.arange(3)
         assert isinstance(a, type(a))
 
-    @numpy_fallback_array_allclose()
+    @numpy_fallback_equal()
     def test_type_call(self, xp):
         a = xp.array([1])
-        return type(a)((2, 3))
+        b = type(a)((2, 3))
+        return b.shape
 
     @numpy_fallback_equal()
     def test_type_assert(self, xp):

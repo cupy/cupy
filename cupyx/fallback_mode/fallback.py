@@ -265,9 +265,6 @@ class ndarray(object):
                 if self._remember_numpy:
                     self._update_cupy_array()
                 return getattr(self._cupy_array, attr)
-
-            if self._supports_cupy and not self._remember_numpy:
-                self._update_numpy_array()
             return getattr(self._numpy_array, attr)
 
         return _RecursiveAttr(numpy_object, cupy_object, self)
