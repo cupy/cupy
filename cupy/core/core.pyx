@@ -1,6 +1,5 @@
 # distutils: language = c++
 
-from __future__ import division
 import os
 import pickle
 import re
