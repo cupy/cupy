@@ -278,7 +278,7 @@ def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan: This argument is ``None`` and currently not supported.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -306,7 +306,7 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan: This argument is ``None`` and currently not supported.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -334,7 +334,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan: This argument is ``None`` and currently not supported.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -363,7 +363,7 @@ def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan: This argument is ``None`` and currently not supported.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -393,7 +393,7 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan: This argument is ``None`` and currently not supported.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -423,7 +423,7 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan: This argument is ``None`` and currently not supported.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -456,7 +456,7 @@ def hfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan: This argument is ``None`` and currently not supported.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -485,7 +485,7 @@ def ihfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan: This argument is ``None`` and currently not supported.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
