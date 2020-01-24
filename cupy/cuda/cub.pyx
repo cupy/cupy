@@ -96,7 +96,7 @@ cpdef Py_ssize_t _preprocess_array(ndarray arr, tuple reduce_axis,
     return contiguous_size
 
 
-def device_reduce(ndarray x, int op, tuple out_axis, out=None,
+def device_reduce(ndarray x, op, tuple out_axis, out=None,
                   bint keepdims=False):
     cdef ndarray y
     cdef memory.MemoryPointer ws
@@ -156,7 +156,7 @@ def device_reduce(ndarray x, int op, tuple out_axis, out=None,
     return y
 
 
-def device_segmented_reduce(ndarray x, int op, tuple reduce_axis,
+def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
                             tuple out_axis, out=None, bint keepdims=False):
     # if import at the top level, a segfault would happen when import cupy!
     from cupy.creation.ranges import arange
