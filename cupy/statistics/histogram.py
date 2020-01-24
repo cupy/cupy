@@ -178,4 +178,4 @@ def digitize(x, bins, right=False):
 
     # As the order of the arguments are reversed, the side must be too.
     side = 'left' if right else 'right'
-    return cupy.sorting.search._searchsorted(bins, x, side, None, False)
+    return cupy._sorting.search._searchsorted(bins, x, side, None, False)

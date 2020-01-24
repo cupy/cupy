@@ -2,7 +2,6 @@ import operator
 import unittest
 
 import numpy
-import six
 
 import cupy
 from cupy import testing
@@ -69,25 +68,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_itruediv_scalar(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_scalar_op(operator.itruediv)
-
-    def test_div_scalar(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(operator.div)
-
-    def test_rdiv_scalar(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(operator.div, swap=True)
-
-    @testing.with_requires('numpy>=1.10')
-    def test_idiv_scalar(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(operator.idiv)
 
     def test_floordiv_scalar(self):
         with testing.NumpyError(divide='ignore'):
@@ -201,19 +181,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.itruediv)
 
-    def test_div_array(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_array_op(operator.div)
-
-    @testing.with_requires('numpy>=1.10')
-    def test_idiv_array(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_array_op(operator.idiv)
-
     def test_floordiv_array(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.floordiv, no_complex=True)
@@ -311,19 +278,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.itruediv)
 
-    def test_broadcasted_div(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_broadcasted_op(operator.div)
-
-    @testing.with_requires('numpy>=1.10')
-    def test_broadcasted_idiv(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_broadcasted_op(operator.idiv)
-
     def test_broadcasted_floordiv(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.floordiv, no_complex=True)
@@ -411,12 +365,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
             self.check_array_doubly_broadcasted_op(operator.floordiv,
                                                    no_complex=True)
 
-    def test_doubly_broadcasted_div(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_doubly_broadcasted_op(operator.div)
-
     def test_doubly_broadcasted_pow(self):
         self.check_array_doubly_broadcasted_op(operator.pow)
 
@@ -470,11 +418,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     def check_typecast(self, val, dtype):
-        operators = [operator.add, operator.sub, operator.mul]
-        if six.PY3:
-            operators.append(operator.truediv)
-        else:
-            operators.append(operator.div)
+        operators = [
+            operator.add, operator.sub, operator.mul, operator.truediv]
 
         for op in operators:
             with testing.NumpyError(divide='ignore', invalid='ignore'):

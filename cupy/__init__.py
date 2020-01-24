@@ -1,10 +1,8 @@
-from __future__ import division
 import functools
 import sys
 import warnings
 
 import numpy
-import six
 
 from cupy import _environment
 from cupy import _version
@@ -19,7 +17,7 @@ try:
         warnings.filterwarnings('ignore', category=ImportWarning,
                                 message='can\'t resolve package from __spec__')
         from cupy import core  # NOQA
-except ImportError:
+except ImportError as e:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
     # built.
@@ -39,7 +37,7 @@ Check the Installation Guide for details:
 
 original error: {}'''.format(exc_info[1]))  # NOQA
 
-    six.reraise(ImportError, ImportError(msg), exc_info[2])
+    raise ImportError(msg) from e
 
 
 from cupy import cuda
@@ -64,7 +62,7 @@ from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import padding  # NOQA
 from cupy import random  # NOQA
-from cupy import sorting  # NOQA
+from cupy import _sorting  # NOQA
 from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
@@ -503,12 +501,12 @@ from cupy.logic.truth import in1d  # NOQA
 from cupy.logic.truth import isin  # NOQA
 
 
-def isscalar(num):
+def isscalar(element):
     """Returns True if the type of num is a scalar type.
 
     .. seealso:: :func:`numpy.isscalar`
     """
-    return numpy.isscalar(num)
+    return numpy.isscalar(element)
 
 
 from cupy.logic.ops import logical_and  # NOQA
@@ -637,23 +635,23 @@ pad = padding.pad.pad
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
-from cupy.sorting.count import count_nonzero  # NOQA
+from cupy._sorting.count import count_nonzero  # NOQA
 
-from cupy.sorting.search import argmax  # NOQA
-from cupy.sorting.search import argmin  # NOQA
-from cupy.sorting.search import flatnonzero  # NOQA
-from cupy.sorting.search import nanargmax  # NOQA
-from cupy.sorting.search import nanargmin  # NOQA
-from cupy.sorting.search import nonzero  # NOQA
-from cupy.sorting.search import searchsorted  # NOQA
-from cupy.sorting.search import where  # NOQA
+from cupy._sorting.search import argmax  # NOQA
+from cupy._sorting.search import argmin  # NOQA
+from cupy._sorting.search import flatnonzero  # NOQA
+from cupy._sorting.search import nanargmax  # NOQA
+from cupy._sorting.search import nanargmin  # NOQA
+from cupy._sorting.search import nonzero  # NOQA
+from cupy._sorting.search import searchsorted  # NOQA
+from cupy._sorting.search import where  # NOQA
 
-from cupy.sorting.sort import argpartition  # NOQA
-from cupy.sorting.sort import argsort  # NOQA
-from cupy.sorting.sort import lexsort  # NOQA
-from cupy.sorting.sort import msort  # NOQA
-from cupy.sorting.sort import partition  # NOQA
-from cupy.sorting.sort import sort  # NOQA
+from cupy._sorting.sort import argpartition  # NOQA
+from cupy._sorting.sort import argsort  # NOQA
+from cupy._sorting.sort import lexsort  # NOQA
+from cupy._sorting.sort import msort  # NOQA
+from cupy._sorting.sort import partition  # NOQA
+from cupy._sorting.sort import sort  # NOQA
 
 # -----------------------------------------------------------------------------
 # Statistics
@@ -668,6 +666,7 @@ from cupy.statistics.order import amin as min  # NOQA
 from cupy.statistics.order import nanmax  # NOQA
 from cupy.statistics.order import nanmin  # NOQA
 from cupy.statistics.order import percentile  # NOQA
+from cupy.statistics.order import ptp  # NOQA
 
 from cupy.statistics.meanvar import average  # NOQA
 from cupy.statistics.meanvar import mean  # NOQA

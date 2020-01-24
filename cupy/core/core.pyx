@@ -1,14 +1,13 @@
 # distutils: language = c++
 
-from __future__ import division
 import os
+import pickle
 import re
 import sys
 import warnings
 
 import ctypes
 import numpy
-import six
 
 import cupy
 from cupy.core import _errors
@@ -328,11 +327,11 @@ cdef class ndarray:
         :func:`cupy.load`.
 
         """
-        six.moves.cPickle.dump(self, file, -1)
+        pickle.dump(self, file, -1)
 
     cpdef bytes dumps(self):
         """Dumps a pickle of the array to a string."""
-        return six.moves.cPickle.dumps(self, -1)
+        return pickle.dumps(self, -1)
 
     cpdef ndarray astype(
             self, dtype, order='K', casting=None, subok=None, copy=True):
@@ -799,7 +798,15 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
 
-    # TODO(okuta): Implement ptp
+    cpdef ndarray ptp(self, axis=None, out=None, keepdims=False):
+        """Returns (maximum - minimum) along a given axis.
+
+        .. seealso::
+           :func:`cupy.ptp` for full documentation,
+           :meth:`numpy.ndarray.ptp`
+
+        """
+        return _statistics._ndarray_ptp(self, axis, out, keepdims)
 
     cpdef ndarray clip(self, a_min=None, a_max=None, out=None):
         """Returns an array with values limited to [a_min, a_max].
@@ -1147,7 +1154,7 @@ cdef class ndarray:
     def __iter__(self):
         if self._shape.size() == 0:
             raise TypeError('iteration over a 0-d array')
-        return (self[i] for i in six.moves.range(self._shape[0]))
+        return (self[i] for i in range(self._shape[0]))
 
     def __len__(self):
         if self._shape.size() == 0:

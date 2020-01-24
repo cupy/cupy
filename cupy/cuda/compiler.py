@@ -7,8 +7,6 @@ import subprocess
 import sys
 import tempfile
 
-import six
-
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import nvrtc
@@ -262,7 +260,7 @@ def _preprocess(source, options, arch, backend):
     else:
         raise ValueError('Invalid backend %s' % backend)
 
-    assert isinstance(result, six.text_type)
+    assert isinstance(result, str)
     return result
 
 
@@ -347,7 +345,7 @@ def _compile_with_cache_cuda(
         if len(data) >= 32:
             hash = data[:32]
             cubin = data[32:]
-            cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
+            cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
             if hash == cubin_hash:
                 mod.load(cubin)
                 return mod
@@ -370,7 +368,7 @@ def _compile_with_cache_cuda(
     else:
         raise ValueError('Invalid backend %s' % backend)
 
-    cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
+    cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
 
     # shutil.move is not atomic operation, so it could result in a corrupted
     # file. We detect it by appending md5 hash at the beginning of each cache
@@ -435,9 +433,9 @@ class _NVRTCProgram(object):
                  include_names=()):
         self.ptr = None
 
-        if isinstance(src, six.binary_type):
+        if isinstance(src, bytes):
             src = src.decode('UTF-8')
-        if isinstance(name, six.binary_type):
+        if isinstance(name, bytes):
             name = name.decode('UTF-8')
 
         self.src = src
@@ -530,7 +528,7 @@ def _preprocess_hipcc(source, options):
 
         cmd.append(cu_path)
         pp_src = _run_hipcc(cmd, root_dir)
-        assert isinstance(pp_src, six.binary_type)
+        assert isinstance(pp_src, bytes)
         return re.sub(b'(?m)^#.*$', b'', pp_src)
 
 
@@ -587,7 +585,7 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
         if len(data) >= 32:
             hash_value = data[:32]
             binary = data[32:]
-            binary_hash = six.b(hashlib.md5(binary).hexdigest())
+            binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
             if hash_value == binary_hash:
                 mod.load(binary)
                 return mod
@@ -595,7 +593,7 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
     # TODO(leofang): catch HIPCCException and convert it to CompileException
     # with backend='hipcc'
     binary = _hipcc(source, options, arch)
-    binary_hash = six.b(hashlib.md5(binary).hexdigest())
+    binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
 
     # shutil.move is not atomic operation, so it could result in a corrupted
     # file. We detect it by appending md5 hash at the beginning of each cache

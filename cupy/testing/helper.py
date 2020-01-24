@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-
 import contextlib
 import functools
 import inspect
@@ -12,7 +9,6 @@ import unittest
 import warnings
 
 import numpy
-import six
 
 import cupy
 from cupy.core import internal
@@ -746,8 +742,8 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
     ...     @testing.for_all_dtypes()
     ...     def test_pickle(self, dtype):
     ...         a = testing.shaped_arange((2, 3, 4), dtype=dtype)
-    ...         s = six.moves.cPickle.dumps(a)
-    ...         b = six.moves.cPickle.loads(s)
+    ...         s = pickle.dumps(a)
+    ...         b = pickle.loads(s)
     ...         testing.assert_array_equal(a, b)
 
     Typically, we use this decorator in combination with
@@ -1229,10 +1225,7 @@ class NumpyAliasTestBase(unittest.TestCase):
 class NumpyAliasBasicTestBase(NumpyAliasTestBase):
 
     def test_argspec(self):
-        if six.PY2:
-            f = inspect.getargspec
-        else:
-            f = inspect.signature
+        f = inspect.signature
         assert f(self.cupy_func) == f(self.numpy_func)
 
     def test_docstring(self):

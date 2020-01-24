@@ -96,11 +96,11 @@ cpdef Py_ssize_t _preprocess_array(ndarray arr, tuple reduce_axis,
     return contiguous_size
 
 
-def device_reduce(ndarray x, int op, tuple out_axis, out=None,
+def device_reduce(ndarray x, op, tuple out_axis, out=None,
                   bint keepdims=False):
     cdef ndarray y
     cdef memory.MemoryPointer ws
-    cdef int dtype_id, ndim_out, kv_bytes, x_size
+    cdef int dtype_id, ndim_out, kv_bytes, x_size, _op
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *y_ptr
@@ -141,8 +141,9 @@ def device_reduce(ndarray x, int op, tuple out_axis, out=None,
                                                    op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void *>ws.ptr
+    _op = <int>op
     with nogil:
-        cub_device_reduce(ws_ptr, ws_size, x_ptr, y_ptr, x_size, s, op,
+        cub_device_reduce(ws_ptr, ws_size, x_ptr, y_ptr, x_size, s, _op,
                           dtype_id)
     if op == CUPY_CUB_ARGMIN or op == CUPY_CUB_ARGMAX:
         # get key from KeyValuePair: need to reinterpret the first 4 bytes
@@ -158,7 +159,7 @@ def device_reduce(ndarray x, int op, tuple out_axis, out=None,
     return y
 
 
-def device_segmented_reduce(ndarray x, int op, tuple reduce_axis,
+def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
                             tuple out_axis, out=None, bint keepdims=False):
     # if import at the top level, a segfault would happen when import cupy!
     from cupy.creation.ranges import arange
@@ -170,7 +171,7 @@ def device_segmented_reduce(ndarray x, int op, tuple reduce_axis,
     cdef void* y_ptr
     cdef void* ws_ptr
     cdef void* offset_start_ptr
-    cdef int dtype_id, n_segments
+    cdef int dtype_id, n_segments, _op
     cdef size_t ws_size
     cdef Py_ssize_t contiguous_size
     cdef tuple out_shape
@@ -217,10 +218,11 @@ def device_segmented_reduce(ndarray x, int op, tuple reduce_axis,
         op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void*>ws.ptr
+    _op = <int>op
     with nogil:
         cub_device_segmented_reduce(ws_ptr, ws_size, x_ptr, y_ptr, n_segments,
                                     offset_start_ptr, offset_end_ptr, s,
-                                    op, dtype_id)
+                                    _op, dtype_id)
 
     if out is not None:
         out[...] = y

@@ -3,8 +3,6 @@ from cupy import util
 from cupy.cuda cimport driver
 from cupy.cuda.function cimport Module
 
-import six
-
 
 cdef class RawKernel:
 
@@ -40,11 +38,11 @@ cdef class RawKernel:
 
     def __init__(self, code, name, options=(), backend='nvrtc', *,
                  translate_cucomplex=False, enable_cooperative_groups=False):
-        if isinstance(code, six.binary_type):
+        if isinstance(code, bytes):
             code = code.decode('UTF-8')
-        if isinstance(name, six.binary_type):
+        if isinstance(name, bytes):
             name = name.decode('UTF-8')
-        if isinstance(backend, six.binary_type):
+        if isinstance(backend, bytes):
             backend = backend.decode('UTF-8')
 
         self.code = code
@@ -257,11 +255,11 @@ cdef class RawModule:
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
                 'given.')
-        if path is not None and isinstance(path, six.binary_type):
+        if path is not None and isinstance(path, bytes):
             path = path.decode('UTF-8')
-        if code is not None and isinstance(code, six.binary_type):
+        if code is not None and isinstance(code, bytes):
             code = code.decode('UTF-8')
-        if isinstance(backend, six.binary_type):
+        if isinstance(backend, bytes):
             backend = backend.decode('UTF-8')
 
         self.code = code
