@@ -309,6 +309,7 @@ class TestFftn(unittest.TestCase):
     {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': (2, 3), 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
 )
 @testing.gpu
