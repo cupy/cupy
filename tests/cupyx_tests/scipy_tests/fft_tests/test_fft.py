@@ -67,8 +67,11 @@ class TestFft(unittest.TestCase):
         if self.n == 0:
             return x
         x_orig = x.copy()
-        overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(x, shape=self.n,
-                        axes=self.axis)} if xp is cp else {}
+        if xp is cp:
+            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis)}
+        else:
+            overwrite_kw = {}
         out = _fft_module(xp).fft(x, n=self.n, axis=self.axis, norm=self.norm,
                                   **overwrite_kw)
         testing.assert_array_equal(x, x_orig)
@@ -83,9 +86,11 @@ class TestFft(unittest.TestCase):
         # because cuFFT and numpy raise different kinds of exceptions
         if self.n == 0:
             return x
-        overwrite_kw = {} if xp is np else \
-                       {'plan': _fft_module(xp).get_fft_plan(x, shape=self.n,
-                        axes=self.axis), 'overwrite_x': True}
+        if xp is cp:
+            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis), 'overwrite_x': True}
+        else:
+            overwrite_kw = {}
         out = _fft_module(xp).fft(x, n=self.n, axis=self.axis, norm=self.norm,
                                   **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -143,8 +148,11 @@ class TestFft(unittest.TestCase):
         if self.n == 0:
             return x
         x_orig = x.copy()
-        overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(x, shape=self.n,
-                        axes=self.axis)} if xp is cp else {}
+        if xp is cp:
+            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis)}
+        else:
+            overwrite_kw = {}
         out = _fft_module(xp).ifft(x, n=self.n, axis=self.axis, norm=self.norm,
                                    **overwrite_kw)
         testing.assert_array_equal(x, x_orig)
@@ -159,9 +167,11 @@ class TestFft(unittest.TestCase):
         # because cuFFT and numpy raise different kinds of exceptions
         if self.n == 0:
             return x
-        overwrite_kw = {} if xp is np else \
-                       {'plan': _fft_module(xp).get_fft_plan(x, shape=self.n,
-                        axes=self.axis), 'overwrite_x': True}
+        if xp is cp:
+            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis), 'overwrite_x': True}
+        else:
+            overwrite_kw = {}
         out = _fft_module(xp).ifft(x, n=self.n, axis=self.axis, norm=self.norm,
                                    **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -236,8 +246,11 @@ class TestFft2(unittest.TestCase):
         if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         x_orig = x.copy()
-        overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(x, shape=self.s,
-                        axes=self.axes)} if xp is cp else {}
+        if xp is cp:
+            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.s, axes=self.axes)}
+        else:
+            overwrite_kw = {}
         out = _fft_module(xp).fft2(x, s=self.s, axes=self.axes, norm=self.norm,
                                    **overwrite_kw)
         testing.assert_array_equal(x, x_orig)
@@ -251,9 +264,11 @@ class TestFft2(unittest.TestCase):
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
         if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
-        overwrite_kw = {} if xp is np else \
-                       {'plan': _fft_module(xp).get_fft_plan(x, shape=self.s,
-                        axes=self.axes), 'overwrite_x': True}
+        if xp is cp:
+            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.s, axes=self.axes), 'overwrite_x': True}
+        else:
+            overwrite_kw = {}
         out = _fft_module(xp).fft2(x, s=self.s, axes=self.axes, norm=self.norm,
                                    **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -310,8 +325,11 @@ class TestFft2(unittest.TestCase):
         if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         x_orig = x.copy()
-        overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(x, shape=self.s,
-                        axes=self.axes)} if xp is cp else {}
+        if xp is cp:
+            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.s, axes=self.axes)}
+        else:
+            overwrite_kw = {}
         out = _fft_module(xp).ifft2(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         testing.assert_array_equal(x, x_orig)
@@ -325,9 +343,11 @@ class TestFft2(unittest.TestCase):
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
         if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
-        overwrite_kw = {} if xp is np else \
-                       {'plan': _fft_module(xp).get_fft_plan(x, shape=self.s,
-                        axes=self.axes), 'overwrite_x': True}
+        if xp is cp:
+            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.s, axes=self.axes), 'overwrite_x': True}
+        else:
+            overwrite_kw = {}
         out = _fft_module(xp).ifft2(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -408,8 +428,11 @@ class TestFftn(unittest.TestCase):
         if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         x_orig = x.copy()
-        overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(x, shape=self.s,
-                        axes=self.axes)} if xp is cp else {}
+        if xp is cp:
+            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.s, axes=self.axes)}
+        else:
+            overwrite_kw = {}
         out = _fft_module(xp).fftn(x, s=self.s, axes=self.axes, norm=self.norm,
                                    **overwrite_kw)
         testing.assert_array_equal(x, x_orig)
@@ -423,9 +446,11 @@ class TestFftn(unittest.TestCase):
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
         if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
-        overwrite_kw = {} if xp is np else \
-                       {'plan': _fft_module(xp).get_fft_plan(x, shape=self.s,
-                        axes=self.axes), 'overwrite_x': True}
+        if xp is cp:
+            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.s, axes=self.axes), 'overwrite_x': True}
+        else:
+            overwrite_kw = {}
         out = _fft_module(xp).fftn(x, s=self.s, axes=self.axes, norm=self.norm,
                                    **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -482,8 +507,11 @@ class TestFftn(unittest.TestCase):
         if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
         x_orig = x.copy()
-        overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(x, shape=self.s,
-                        axes=self.axes)} if xp is cp else {}
+        if xp is cp:
+            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.s, axes=self.axes)}
+        else:
+            overwrite_kw = {}
         out = _fft_module(xp).ifftn(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         testing.assert_array_equal(x, x_orig)
@@ -497,9 +525,11 @@ class TestFftn(unittest.TestCase):
         # hack: avoid testing the cases when getting a cuFFT plan is impossible
         if _default_fft_func(x, s=self.s, axes=self.axes) is not _fftn:
             return x
-        overwrite_kw = {} if xp is np else \
-                       {'plan': _fft_module(xp).get_fft_plan(x, shape=self.s,
-                        axes=self.axes), 'overwrite_x': True}
+        if xp is cp:
+            overwrite_kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.s, axes=self.axes), 'overwrite_x': True}
+        else:
+            overwrite_kw = {}
         out = _fft_module(xp).ifftn(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
