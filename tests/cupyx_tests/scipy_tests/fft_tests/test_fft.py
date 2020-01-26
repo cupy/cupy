@@ -623,7 +623,8 @@ class TestRfft2(unittest.TestCase):
     def test_rfft2(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        out = _fft_module(xp).rfft2(x, s=self.s, norm=self.norm)
+        out = _fft_module(xp).rfft2(x, s=self.s, axes=self.axes,
+                                    norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
@@ -633,8 +634,8 @@ class TestRfft2(unittest.TestCase):
     def test_rfft2_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         overwrite_kw = {} if xp == np else {'overwrite_x': True}
-        out = _fft_module(xp).rfft2(x, s=self.s, norm=self.norm,
-                                    **overwrite_kw)
+        out = _fft_module(xp).rfft2(x, s=self.s, axes=self.axes,
+                                    norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
     # TODO(leofang): rewrite this test when we support R2C/C2R cuFFT plans
@@ -651,7 +652,8 @@ class TestRfft2(unittest.TestCase):
     def test_irfft2(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        out = _fft_module(xp).irfft2(x, s=self.s, norm=self.norm)
+        out = _fft_module(xp).irfft2(x, s=self.s, axes=self.axes,
+                                     norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
@@ -661,8 +663,8 @@ class TestRfft2(unittest.TestCase):
     def test_irfft2_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         overwrite_kw = {} if xp == np else {'overwrite_x': True}
-        out = _fft_module(xp).irfft2(x, s=self.s, norm=self.norm,
-                                     **overwrite_kw)
+        out = _fft_module(xp).irfft2(x, s=self.s, axes=self.axes,
+                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
     # TODO(leofang): rewrite this test when we support R2C/C2R cuFFT plans
