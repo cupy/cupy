@@ -289,7 +289,7 @@ def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
-        return NotImplementedError('rfft plan is currently not supported')
+        raise NotImplementedError('rfft plan is currently not yet supported')
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_FORWARD, 'R2C',
                 overwrite_x=overwrite_x)
 
@@ -316,7 +316,7 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
-        return NotImplementedError('irfft plan is currently not supported')
+        raise NotImplementedError('irfft plan is currently not yet supported')
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R',
                 overwrite_x=overwrite_x)
 
@@ -346,7 +346,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
     """
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
-        return NotImplementedError('rfft2 plan is currently not supported')
+        raise NotImplementedError('rfft2 plan is currently not yet supported')
     return rfftn(x, s, axes, norm, overwrite_x)
 
 
@@ -377,7 +377,7 @@ def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
     """
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
-        return NotImplementedError('irfft2 plan is currently not supported')
+        raise NotImplementedError('irfft2 plan is currently not yet supported')
     return irfftn(x, s, axes, norm, overwrite_x)
 
 
@@ -405,7 +405,7 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
     """
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
-        return NotImplementedError('rfftn plan is currently not supported')
+        raise NotImplementedError('rfftn plan is currently not yet supported')
     s = _assequence(s)
     axes = _assequence(axes)
     return _fft(x, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C', overwrite_x)
@@ -437,7 +437,7 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
     """
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
-        return NotImplementedError('irfftn plan is currently not supported')
+        raise NotImplementedError('irfftn plan is currently not yet supported')
     s = _assequence(s)
     axes = _assequence(axes)
     return _fft(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R', overwrite_x)
@@ -469,7 +469,7 @@ def hfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
-        return NotImplementedError('hfft plan is currently not supported')
+        raise NotImplementedError('hfft plan is currently not yet supported')
     return _hfft(x, n, axis, norm)
 
 
@@ -497,5 +497,5 @@ def ihfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
-        return NotImplementedError('ihfft plan is currently not supported')
+        raise NotImplementedError('ihfft plan is currently not yet supported')
     return _ihfft(x, n, axis, norm)
