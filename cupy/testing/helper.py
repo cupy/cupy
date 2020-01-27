@@ -281,7 +281,7 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
     return decorator
 
 
-def numpy_cupy_run(name='xp', sp_name=None, scipy_name=None):
+def _numpy_cupy_run(name='xp', sp_name=None, scipy_name=None):
     """Decorator for parameterized array module test."""
     def check_func(c, n):
         bad = []
@@ -291,7 +291,7 @@ def numpy_cupy_run(name='xp', sp_name=None, scipy_name=None):
             bad.append('numpy')
         if bad:
             raise AssertionError(
-                'Test decorated by `numpy_cupy_run` returned value(s) for {}'
+                'Test decorated by `_numpy_cupy_run` returned value(s) for {}'
                 .format(', '.join(bad)))
 
     assert isinstance(name, str)

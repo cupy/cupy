@@ -358,7 +358,7 @@ class TestNumPyCuPyRaise(unittest.TestCase, NumPyCuPyDecoratorBase):
 
 
 @testing.parameterize(
-    {'decorator': 'numpy_cupy_run'}
+    {'decorator': '_numpy_cupy_run'}
 )
 class TestNumPyCuPyRun(unittest.TestCase, NumPyCuPyDecoratorBase):
 

@@ -105,12 +105,12 @@ class TestShowConfig(unittest.TestCase):
 
 class TestAliases(unittest.TestCase):
 
-    @testing.numpy_cupy_run()
+    @testing._numpy_cupy_run()
     def test_abs_is_absolute(self, xp):
         assert xp.abs is xp.absolute
 
     @pytest.mark.xfail(strict=True, reason='issue #2967')
-    @testing.numpy_cupy_run()
+    @testing._numpy_cupy_run()
     def test_conj_is_conjugate(self, xp):
         assert xp.conj is xp.conjugate
 
