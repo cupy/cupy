@@ -87,7 +87,7 @@ def fft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         plan (:class:`~cupy.cuda.cufft.Plan1d`) a cuFFT plan for transforming
             ``x`` over ``axis``, which can be obtained using::
 
-                plan = cupyx.scipy.fft.get_fft_plan(x, axis)
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis)
 
             Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
             an auto-generated plan behind the scene.
@@ -118,7 +118,7 @@ def ifft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         plan (:class:`~cupy.cuda.cufft.Plan1d`) a cuFFT plan for transforming
             ``x`` over ``axis``, which can be obtained using::
 
-                plan = cupyx.scipy.fft.get_fft_plan(x, axis)
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis)
 
             Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
             an auto-generated plan behind the scene.
@@ -149,7 +149,7 @@ def fft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *, plan=None):
         plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
             ``x`` over ``axis``, which can be obtained using::
 
-                plan = cupyx.scipy.fft.get_fft_plan(x, axis)
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
 
             Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
             an auto-generated plan behind the scene.
@@ -180,7 +180,7 @@ def ifft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
         plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
             ``x`` over ``axis``, which can be obtained using::
 
-                plan = cupyx.scipy.fft.get_fft_plan(x, axis)
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
 
             Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
             an auto-generated plan behind the scene.
@@ -210,7 +210,7 @@ def fftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
             ``x`` over ``axis``, which can be obtained using::
 
-                plan = cupyx.scipy.fft.get_fft_plan(x, axis)
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
 
             Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
             an auto-generated plan behind the scene.
@@ -244,7 +244,7 @@ def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
             ``x`` over ``axis``, which can be obtained using::
 
-                plan = cupyx.scipy.fft.get_fft_plan(x, axis)
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
 
             Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
             an auto-generated plan behind the scene.
