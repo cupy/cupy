@@ -1,5 +1,5 @@
+import io
 import json
-import six
 import unittest
 
 import cupy.cuda
@@ -12,7 +12,7 @@ from cupy import testing
 class TestDebugPrintHook(unittest.TestCase):
 
     def setUp(self):
-        self.io = six.StringIO()
+        self.io = io.StringIO()
         self.hook = memory_hooks.DebugPrintHook(file=self.io)
         self.pool = memory.MemoryPool()
 

@@ -1,7 +1,5 @@
 import unittest
 
-import six
-
 import cupy
 from cupy import core
 from cupy import testing
@@ -50,19 +48,19 @@ class SimpleReductionFunctionTestBase(AbstractReductionTestBase):
 class SimpleReductionFunctionTest(
         unittest.TestCase, SimpleReductionFunctionTestBase):
     def test_shape1(self):
-        for i in six.moves.range(1, 10):
+        for i in range(1, 10):
             self.check_int8_sum((2 ** i,))
             self.check_int8_sum((2 ** i - 1,))
             self.check_int8_sum((2 ** i + 1,))
 
     def test_shape2(self):
-        for i in six.moves.range(1, 10):
+        for i in range(1, 10):
             self.check_int8_sum((2 ** i, 1000), axis=0)
             self.check_int8_sum((2 ** i - 1, 1000), axis=0)
             self.check_int8_sum((2 ** i + 1, 1000), axis=0)
 
     def test_shape3(self):
-        for i in six.moves.range(1, 10):
+        for i in range(1, 10):
             self.check_int8_sum((2 ** i, 1000), axis=1)
             self.check_int8_sum((2 ** i - 1, 1000), axis=1)
             self.check_int8_sum((2 ** i + 1, 1000), axis=1)
@@ -101,19 +99,19 @@ class ReductionKernelTestBase(AbstractReductionTestBase):
 class TestReductionKernel(ReductionKernelTestBase, unittest.TestCase):
 
     def test_shape1(self):
-        for i in six.moves.range(1, 10):
+        for i in range(1, 10):
             self.check_int8_sum((2 ** i,))
             self.check_int8_sum((2 ** i - 1,))
             self.check_int8_sum((2 ** i + 1,))
 
     def test_shape2(self):
-        for i in six.moves.range(1, 10):
+        for i in range(1, 10):
             self.check_int8_sum((2 ** i, 1000), axis=0)
             self.check_int8_sum((2 ** i - 1, 1000), axis=0)
             self.check_int8_sum((2 ** i + 1, 1000), axis=0)
 
     def test_shape3(self):
-        for i in six.moves.range(1, 10):
+        for i in range(1, 10):
             self.check_int8_sum((2 ** i, 1000), axis=1)
             self.check_int8_sum((2 ** i - 1, 1000), axis=1)
             self.check_int8_sum((2 ** i + 1, 1000), axis=1)
@@ -138,6 +136,6 @@ class TestReductionKernelNonContiguous(
 class TestReductionKernelInvalidArgument(unittest.TestCase):
 
     def test_invalid_kernel_name(self):
-        with six.assertRaisesRegex(self, ValueError, 'Invalid kernel name'):
+        with self.assertRaisesRegex(ValueError, 'Invalid kernel name'):
             cupy.ReductionKernel(
                 'T x', 'T y', 'x', 'a + b', 'y = a', '0', name='1')

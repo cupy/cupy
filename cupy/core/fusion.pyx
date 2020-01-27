@@ -1,5 +1,4 @@
 import functools
-import six
 import string
 
 import numpy
@@ -42,9 +41,9 @@ cdef dict _dtype_to_ctype = {
 
 cdef list _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
 
-cdef tuple _acceptable_types = six.integer_types + (
+cdef tuple _acceptable_types = (
     core.ndarray, numpy.ndarray, numpy.generic,
-    float, complex, bool, type(None))
+    int, float, complex, bool, type(None))
 
 
 class _Submodule(object):
@@ -130,7 +129,7 @@ class _FusionVarCUDA(object):
             init = '= {}'.format(str(c).lower())
         elif isinstance(val, complex):
             init = '({}, {})'.format(c.real, c.imag)
-        elif isinstance(val, six.integer_types + (float,)):
+        elif isinstance(val, (int, float)):
             init = '= {}'.format(c)
         else:
             raise TypeError('Invalid constant type: {}'.format(type(c)))
@@ -171,7 +170,7 @@ class _FusionOp(object):
 
     def code(self):
         args_sub = ['v{}_{}'.format(self.index, i)
-                    for i in six.moves.range(len(self.args))]
+                    for i in range(len(self.args))]
         ctypes = [_dtype_to_ctype[t] for t in self.dtypes]
         args_list = list(zip(self.args, args_sub, ctypes))
         code = '// op  # {}\n'.format(self.index)
@@ -531,8 +530,7 @@ class _FusionHistory(object):
             else:
                 # Map operation between pre-map variable and post-map variable
                 raise Exception('Shape mismatch')
-        if isinstance(arg, six.integer_types +
-                      (float, bool, complex, numpy.generic)):
+        if isinstance(arg, (int, float, bool, complex, numpy.generic)):
             var = self._fresh_local(numpy.dtype(type(arg)), const_value=arg)
             return _FusionVarScalar(var, -1, self._has_reduction())
         raise TypeError('Unsupported type {}'.format(type(arg)))
@@ -558,7 +556,7 @@ class _FusionHistory(object):
                     max_array_kind >= max_scalar_kind)
 
         def can_cast1(args, in_dtypes):
-            for i in six.moves.range(nin):
+            for i in range(nin):
                 arg = args[i]
                 if isinstance(arg, _FusionVarArray):
                     if not numpy.can_cast(arg.dtype, in_dtypes[i]):
@@ -579,7 +577,7 @@ class _FusionHistory(object):
             return True
 
         def can_cast2(args, in_dtypes):
-            for i in six.moves.range(nin):
+            for i in range(nin):
                 if not numpy.can_cast(args[i].dtype, in_dtypes[i]):
                     return False
             return True
@@ -625,7 +623,7 @@ class _FusionHistory(object):
             out_dtypes = [numpy.dtype(t) for t in op.out_types]
             if can_cast(var_list, in_dtypes):
                 ret = []
-                for i in six.moves.range(nout):
+                for i in range(nout):
                     if i >= len(out_vars):
                         out_var = self._fresh_local(out_dtypes[i])
                         out_var = make_fusion_var(out_var, ndim)
@@ -891,7 +889,7 @@ class Fusion(object):
                 params_info.append(None)
             elif isinstance(arg, float):
                 params_info.append('d')
-            elif isinstance(arg, six.integer_types):
+            elif isinstance(arg, int):
                 params_info.append('l')
             elif isinstance(arg, bool):
                 params_info.append('?')

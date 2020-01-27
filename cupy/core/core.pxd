@@ -50,6 +50,7 @@ cdef class ndarray:
     cpdef ndarray min(self, axis=*, out=*, keepdims=*)
     cpdef ndarray argmin(self, axis=*, out=*, dtype=*,
                          keepdims=*)
+    cpdef ndarray ptp(self, axis=*, out=*, keepdims=*)
     cpdef ndarray clip(self, a_min=*, a_max=*, out=*)
     cpdef ndarray round(self, decimals=*, out=*)
 

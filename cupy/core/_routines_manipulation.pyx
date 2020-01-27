@@ -219,6 +219,24 @@ cdef ndarray _ndarray_repeat(ndarray self, repeats, axis):
 # exposed
 
 
+cpdef ndarray _expand_dims(ndarray a, tuple axis):
+    cdef vector.vector[Py_ssize_t] normalized_axis
+    cdef out_ndim = a.ndim + len(axis)
+    cdef vector.vector[Py_ssize_t] a_shape = a.shape, out_shape
+    _normalize_axis_tuple(axis, out_ndim, normalized_axis)
+    out_shape.assign(out_ndim, 0)
+    cdef Py_ssize_t i, j
+    for i in normalized_axis:
+        out_shape[i] = 1
+    j = 0
+    for i in range(out_ndim):
+        if out_shape[i] == 1:
+            continue
+        out_shape[i] = a_shape[j]
+        j += 1
+    return _reshape(a, out_shape)
+
+
 cpdef ndarray moveaxis(ndarray a, source, destination):
     cdef vector.vector[Py_ssize_t] src, dest
     _normalize_axis_tuple(source, a.ndim, src)

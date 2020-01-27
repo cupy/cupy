@@ -3,7 +3,6 @@ import unittest
 
 import numpy
 import pytest
-import six
 
 import cupy
 from cupy import testing
@@ -60,7 +59,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             if xp is cupy:
                 raise Exception(self.tbs.get(cupy))
 
-        with six.assertRaisesRegex(self, AssertionError, self.tbs.get(cupy)):
+        with self.assertRaisesRegex(AssertionError, self.tbs.get(cupy)):
             dummy_cupy_error(self)
 
     def test_numpy_error(self):
@@ -69,7 +68,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             if xp is numpy:
                 raise Exception(self.tbs.get(numpy))
 
-        with six.assertRaisesRegex(self, AssertionError, self.tbs.get(numpy)):
+        with self.assertRaisesRegex(AssertionError, self.tbs.get(numpy)):
             dummy_numpy_error(self)
 
     def test_cupy_numpy_different_error(self):
@@ -83,7 +82,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         # Use re.S mode to ignore new line characters
         pattern = re.compile(
             self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
-        with six.assertRaisesRegex(self, AssertionError, pattern):
+        with self.assertRaisesRegex(AssertionError, pattern):
             dummy_cupy_numpy_different_error(self)
 
     def test_cupy_derived_error(self):
@@ -108,7 +107,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         # be at least as explicit as the NumPy error
         pattern = re.compile(
             self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
-        with six.assertRaisesRegex(self, AssertionError, pattern):
+        with self.assertRaisesRegex(AssertionError, pattern):
             dummy_numpy_derived_error(self)
 
     def test_same_error(self):
@@ -130,7 +129,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         # therefore expect an error
         pattern = re.compile(
             self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
-        with six.assertRaisesRegex(self, AssertionError, pattern):
+        with self.assertRaisesRegex(AssertionError, pattern):
             dummy_cupy_derived_unaccept_error(self)
 
     def test_numpy_derived_unaccept_error(self):
@@ -145,7 +144,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         # error
         pattern = re.compile(
             self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
-        with six.assertRaisesRegex(self, AssertionError, pattern):
+        with self.assertRaisesRegex(AssertionError, pattern):
             dummy_numpy_derived_unaccept_error(self)
 
     def test_forbidden_error(self):
@@ -155,7 +154,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
         pattern = re.compile(
             self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
-        with six.assertRaisesRegex(self, AssertionError, pattern):
+        with self.assertRaisesRegex(AssertionError, pattern):
             dummy_forbidden_error(self)
 
     def test_axis_error_different_type(self):
@@ -168,7 +167,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
         pattern = re.compile(
             self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
-        with six.assertRaisesRegex(self, AssertionError, pattern):
+        with self.assertRaisesRegex(AssertionError, pattern):
             dummy_axis_error(self)
 
     @testing.with_requires('numpy>=1.13')
@@ -182,7 +181,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
         pattern = re.compile(
             self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
-        with six.assertRaisesRegex(self, AssertionError, pattern):
+        with self.assertRaisesRegex(AssertionError, pattern):
             dummy_axis_error(self)
 
     @testing.with_requires('numpy>=1.13')
@@ -196,7 +195,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
         pattern = re.compile(
             self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
-        with six.assertRaisesRegex(self, AssertionError, pattern):
+        with self.assertRaisesRegex(AssertionError, pattern):
             dummy_axis_error(self)
 
     @testing.with_requires('numpy<1.13')

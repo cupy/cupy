@@ -9,8 +9,6 @@ from cupy import testing
 from cupy.fft import config
 from cupy.fft.fft import _default_fft_func, _fft, _fftn
 
-import six
-
 
 def nd_planning_states(states=[True, False], name='enable_nd'):
     """Decorator for parameterized tests with and wihout nd planning
@@ -174,7 +172,7 @@ class TestFftAllocate(unittest.TestCase):
         # See https://github.com/cupy/cupy/issues/1063
         # TODO(mizuno): Simplify "a" after memory compaction is implemented.
         a = []
-        for i in six.moves.range(10):
+        for i in range(10):
             a.append(cupy.empty(100000000))
         del a
         b = cupy.empty(100000007, dtype=cupy.float32)
@@ -638,10 +636,11 @@ class TestRfftn(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfftn(self, xp, dtype):
-        if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010 and
-                int(cupy.cuda.device.get_compute_capability()) < 70 and
-                _size_last_transform_axis(self.shape, self.s, self.axes) == 2):
-            pytest.skip('work-around for cuFFT issue')
+        if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
+                and int(cupy.cuda.device.get_compute_capability()) < 70
+                and _size_last_transform_axis(
+                    self.shape, self.s, self.axes) == 2):
+            raise unittest.SkipTest('work-around for cuFFT issue')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)

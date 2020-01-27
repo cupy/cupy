@@ -1,14 +1,13 @@
 import unittest
 
 import numpy
-import six
 
 from cupy import testing
 
 
 def _calc_out_shape(shape, axis, keepdims):
     if axis is None:
-        axis = list(six.moves.range(len(shape)))
+        axis = list(range(len(shape)))
     elif isinstance(axis, int):
         axis = [axis]
     else:
