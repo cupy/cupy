@@ -3,11 +3,30 @@ import string
 import numpy
 
 from cupy.core._fusion_emit_code import _dtype_to_ctype
-from cupy.core._fusion_shape import _AbstractDim
 from cupy.core import _fusion_interface
 
 
-class _MemorySpace():
+cdef class _AbstractDim:
+    """An abstrated data structure for a length of dimensions.
+    """
+
+    def __init__(self, int input_index, int axis):
+        self.input_index = input_index
+        self.axis = axis
+
+    def __hash__(self):
+        return hash((self.input_index, self.axis))
+
+    def __eq__(self, object other):
+        if isinstance(other, int):
+            return False
+        return (
+            self.input_index == other.input_index
+            and self.axis == other.axis
+        )
+
+
+class _MemorySpace:
     """A memory space object.
 
     Attributes:

@@ -15,7 +15,7 @@ from cupy.core import _fusion_op
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy import util
 from cupy.core import _fusion_emit_code
-from cupy.core._fusion_shape import _AbstractDim
+from cupy.core._fusion_variable import _AbstractDim
 from cupy.core._fusion_variable import _TraceVariable
 from cupy.core._fusion_variable import _TraceScalar
 from cupy.core._fusion_variable import _TraceArray

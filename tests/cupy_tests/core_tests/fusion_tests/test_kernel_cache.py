@@ -27,7 +27,7 @@ class CreateMock(object):
 def mock_fusion_history():
     def wrapper(impl):
         def new_impl(self):
-            target = 'cupy.core._fusion_analysis.TraceImpl'
+            target = 'cupy.core._fusion_trace.TraceImpl'
             with mock.patch(target, CreateMock(target)) as m:
                 numpy_result = impl(self, numpy, m)
             with mock.patch(target, CreateMock(target)) as m:

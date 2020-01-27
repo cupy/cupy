@@ -3,12 +3,12 @@ import functools
 import numpy
 
 from cupy.core import core
-from cupy.core import _fusion_analysis
+from cupy.core import _fusion_trace
 from cupy.core import _fusion_kernel
 from cupy.core import _fusion_thread_local
-from cupy.core._fusion_shape import _AbstractDim
 from cupy.core._fusion_interface import _ScalarProxy  # NOQA
 from cupy.core._fusion_interface import _ArrayProxy  # NOQA
+from cupy.core._fusion_variable import _AbstractDim
 from cupy.core._dtype cimport get_dtype
 
 
@@ -26,7 +26,7 @@ cdef tuple _fusion_argument_types = (
 def _get_fused_kernel(name, func, args):
     try:
         _thread_local.is_fusing = True
-        kernel_info = _fusion_analysis.trace(func, args)
+        kernel_info = _fusion_trace.trace(func, args)
         kernel = _fusion_kernel.FusedKernel(name, *kernel_info)
     finally:
         _thread_local.is_fusing = False
@@ -78,7 +78,7 @@ class Fusion:
                 arg_types = ', '.join(repr(type(a)) for a in args)
                 raise TypeError(mes.format(self.name, arg_types))
 
-        # Cache the result of execution path analysis
+        # Cache the result of execution path trace
         # TODO(asi1024): Some ndarrays may share the same memory space.
         cdef list params_info = []
         cdef list shape_info = []
