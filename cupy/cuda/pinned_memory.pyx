@@ -9,6 +9,7 @@ from cupy.cuda import runtime
 
 from cupy.core cimport internal
 from cupy.cuda cimport runtime
+from cupy import util
 
 
 class PinnedMemory(object):
@@ -28,7 +29,9 @@ class PinnedMemory(object):
         if size > 0:
             self.ptr = runtime.hostAlloc(size, flags)
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
+        if is_shutting_down():
+            return
         if self.ptr:
             runtime.freeHost(self.ptr)
 

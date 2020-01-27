@@ -38,7 +38,7 @@ class TestMapCoordinates(unittest.TestCase):
 
         map_coordinates = scp.ndimage.map_coordinates
         if self.output == 'empty':
-            output = xp.empty(coordinates.shape[1], dtype=a.dtype)
+            output = xp.empty(coordinates.shape[1:], dtype=a.dtype)
             return_value = map_coordinates(a, coordinates, output, self.order,
                                            self.mode, self.cval,
                                            self.prefilter)
@@ -53,6 +53,14 @@ class TestMapCoordinates(unittest.TestCase):
     def test_map_coordinates_float(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         coordinates = testing.shaped_random((a.ndim, 100), xp, dtype)
+        return self._map_coordinates(xp, scp, a, coordinates)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    def test_map_coordinates_float_nd_coords(self, xp, scp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        coordinates = testing.shaped_random((a.ndim, 10, 10), xp, dtype,
+                                            scale=99.0)
         return self._map_coordinates(xp, scp, a, coordinates)
 
     @testing.for_int_dtypes(no_bool=True)

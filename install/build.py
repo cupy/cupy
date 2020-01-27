@@ -162,11 +162,6 @@ def get_compiler_setting(use_hip):
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
-    cutensor_path = os.environ.get('CUTENSOR_PATH', '')
-    if os.path.exists(cutensor_path):
-        include_dirs.append(os.path.join(cutensor_path, 'include'))
-        library_dirs.append(os.path.join(cutensor_path, 'lib'))
-
     cub_path = os.environ.get('CUB_PATH', '')
     if os.path.exists(cub_path):
         # for <cupy/complex.cuh>
@@ -431,6 +426,12 @@ def check_cutensor_version(compiler, settings):
         return False
 
     _cutensor_version = int(out)
+
+    if _cutensor_version < 1000:
+        utils.print_warning(
+            'Unsupported cuTENSOR version: {}'.format(_cutensor_version)
+        )
+        return False
 
     return True
 

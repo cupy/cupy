@@ -26,7 +26,7 @@ namespace complex {
 
 using thrust::complex;
 
-__device__ inline complex<float> cprojf(const complex<float>& z) {
+__host__ __device__ inline complex<float> cprojf(const complex<float>& z) {
   if (!isinf(z.real()) && !isinf(z.imag())) {
     return z;
   } else {
@@ -35,7 +35,7 @@ __device__ inline complex<float> cprojf(const complex<float>& z) {
   }
 }
 
-__device__ inline complex<double> cproj(const complex<double>& z) {
+__host__ __device__ inline complex<double> cproj(const complex<double>& z) {
   if (!isinf(z.real()) && !isinf(z.imag())) {
     return z;
   } else {
@@ -47,18 +47,18 @@ __device__ inline complex<double> cproj(const complex<double>& z) {
 }
 
 template <typename T>
-__device__ inline thrust::complex<T> proj(const thrust::complex<T>& z) {
+__host__ __device__ inline thrust::complex<T> proj(const thrust::complex<T>& z) {
   return detail::complex::cproj(z);
 }
 
 template <>
-__device__ inline thrust::complex<double> proj(
+__host__ __device__ inline thrust::complex<double> proj(
     const thrust::complex<double>& z) {
   return detail::complex::cproj(z);
 }
 
 template <>
-__device__ inline thrust::complex<float> proj(const thrust::complex<float>& z) {
+__host__ __device__ inline thrust::complex<float> proj(const thrust::complex<float>& z) {
   return detail::complex::cprojf(z);
 }
 }

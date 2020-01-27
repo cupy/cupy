@@ -1,7 +1,12 @@
 .. module:: cupyx.scipy.fftpack
 
-Discrete Fourier transforms
-===========================
+Legacy Discrete Fourier transforms (``scipy.fftpack``)
+======================================================
+
+.. note::
+
+   As of SciPy version 1.4.0, ``scipy.fft`` is recommended over
+   ``scipy.fftpack``. Consider using :mod:`cupyx.scipy.fft` instead.
 
 
 Fast Fourier Transforms

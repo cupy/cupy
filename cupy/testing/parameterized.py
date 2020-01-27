@@ -1,26 +1,11 @@
 import functools
 import itertools
-import sys
+import io
 import types
 import typing as tp  # NOQA
 import unittest
 
-import six
-
 from cupy.testing import _bundle
-
-
-def _raise_from(exc_type, message, orig_exc):
-    # Raises an exception that wraps another exception.
-    message = (
-        '{}\n\n'
-        '(caused by)\n'
-        '{}: {}\n'.format(message, type(orig_exc).__name__, orig_exc))
-    new_exc = exc_type(message)
-    if sys.version_info < (3,):
-        six.reraise(exc_type, new_exc, sys.exc_info()[2])
-    else:
-        six.raise_from(new_exc.with_traceback(orig_exc.__traceback__), None)
 
 
 def _param_to_str(obj):
@@ -97,14 +82,14 @@ def _parameterize_test_case(base, i, param):
             except unittest.SkipTest:
                 raise
             except Exception as e:
-                s = six.StringIO()
+                s = io.StringIO()
                 s.write('Parameterized test failed.\n\n')
                 s.write('Base test method: {}.{}\n'.format(
                     base.__name__, base_method.__name__))
                 s.write('Test parameters:\n')
                 for k, v in sorted(param.items()):
                     s.write('  {}: {}\n'.format(k, v))
-                _raise_from(e.__class__, s.getvalue(), e)
+                raise e.__class__(s.getvalue()) from e
         return new_method
 
     return (cls_name, mb, method_generator)
@@ -117,7 +102,7 @@ def parameterize(*params):
 
 
 def _values_to_dicts(names, values):
-    assert isinstance(names, six.string_types)
+    assert isinstance(names, str)
     assert isinstance(values, (tuple, list))
 
     def safe_zip(ns, vs):
@@ -167,5 +152,5 @@ def product(parameter):
 def product_dict(*parameters):
     # TODO(niboshi): Add documentation
     return [
-        {k: v for dic in dicts for k, v in six.iteritems(dic)}
+        {k: v for dic in dicts for k, v in dic.items()}
         for dicts in itertools.product(*parameters)]

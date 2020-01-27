@@ -15,7 +15,6 @@
 import inspect
 import os
 import pkg_resources
-import six
 import sys
 
 
@@ -430,7 +429,7 @@ def linkcode_resolve(domain, info):
 
     # Get the source line number
     _, linenum = inspect.getsourcelines(obj)
-    assert isinstance(linenum, six.integer_types)
+    assert isinstance(linenum, int)
 
     filename = os.path.realpath(filename)
     relpath = _get_source_relative_path(filename)

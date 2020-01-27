@@ -1,7 +1,6 @@
 import unittest
 
 import numpy
-import six
 
 import cupy
 from cupy import testing
@@ -20,6 +19,12 @@ class TestSumprod(unittest.TestCase):
     def test_sum_all(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.sum()
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_sum_all_keepdims(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return a.sum(keepdims=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -126,10 +131,19 @@ class TestSumprod(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
         return a.sum(dtype=dst_dtype)
 
+    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
     @testing.numpy_cupy_allclose()
-    def test_sum_keepdims(self, xp):
-        a = testing.shaped_arange((2, 3, 4), xp)
-        return a.sum(axis=1, keepdims=True)
+    def test_sum_keepdims_and_dtype(self, xp, src_dtype, dst_dtype):
+        if not xp.can_cast(src_dtype, dst_dtype):
+            return xp.array([])  # skip
+        a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
+        return a.sum(axis=2, dtype=dst_dtype, keepdims=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_sum_keepdims_multiple_axes(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return a.sum(axis=(1, 2), keepdims=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -325,21 +339,21 @@ class TestCumsum(unittest.TestCase):
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_cumsum_axis(self, xp, dtype):
         n = len(axes)
-        a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)
+        a = testing.shaped_arange(tuple(range(4, 4 + n)), xp, dtype)
         return xp.cumsum(a, axis=self.axis)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_ndarray_cumsum_axis(self, xp, dtype):
         n = len(axes)
-        a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)
+        a = testing.shaped_arange(tuple(range(4, 4 + n)), xp, dtype)
         return a.cumsum(axis=self.axis)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cumsum_axis_empty(self, xp, dtype):
         n = len(axes)
-        a = testing.shaped_arange(tuple(six.moves.range(0, n)), xp, dtype)
+        a = testing.shaped_arange(tuple(range(0, n)), xp, dtype)
         return xp.cumsum(a, axis=self.axis)
 
     @testing.for_all_dtypes()

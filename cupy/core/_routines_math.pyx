@@ -1,16 +1,16 @@
 import string
 
 import numpy
-import six
 
 import cupy
-from cupy.core._kernel import create_reduction_func
+from cupy.core._reduction import create_reduction_func
 from cupy.core._kernel import create_ufunc
 from cupy.core._scalar import get_typename
 from cupy.core._ufuncs import elementwise_copy
 from cupy import util
 
 from cupy.core._dtype cimport get_dtype
+from cupy.core cimport _kernel
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 
@@ -73,15 +73,12 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
 
 
 cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
-    if cupy.cuda.cub_enabled and self._c_contiguous:
-        if cub.can_use_device_reduce(cub.CUPY_CUB_SUM, self.dtype, self.ndim,
-                                     axis, dtype):
-            return cub.device_reduce(self, cub.CUPY_CUB_SUM, out=out,
-                                     keepdims=keepdims)
-        elif cub.can_use_device_segmented_reduce(
-                cub.CUPY_CUB_SUM, self.dtype, self.ndim, axis, dtype):
-            return cub.device_segmented_reduce(
-                self, cub.CUPY_CUB_SUM, axis, out=out, keepdims=keepdims)
+    if cupy.cuda.cub_enabled:
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_SUM, axis, dtype, out,
+                                   keepdims)
+        if result is not None:
+            return result
     if dtype is None:
         return _sum_auto_dtype(self, axis, dtype, out, keepdims)
     else:
@@ -361,9 +358,19 @@ _nanprod_complex_dtype = create_reduction_func(
      'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 cdef create_arithmetic(name, op, boolop, doc):
+    # boolop is either
+    #  - str (the operator for bool-bool inputs) or
+    #  - callable (a function to raise an error for bool-bool inputs).
+    if isinstance(boolop, str):
+        boolop_ = _kernel._Op.from_type_and_routine(
+            '??->?', 'out0 = in0 %s in1' % boolop)
+    else:
+        assert callable(boolop)
+        boolop_ = _kernel._Op.from_type_and_error_func('??->?', boolop)
+
     return create_ufunc(
         'cupy_' + name,
-        (('??->?', 'out0 = in0 %s in1' % boolop),
+        (boolop_,
          'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
          'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
          'DD->D'),
@@ -472,23 +479,6 @@ _multiply = create_arithmetic(
     ''')
 
 
-_divide = create_ufunc(
-    'cupy_divide',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q',
-     ('ee->e', 'out0 = in0 / in1'),
-     ('ff->f', 'out0 = in0 / in1'),
-     ('dd->d', 'out0 = in0 / in1'),
-     ('FF->F', 'out0 = in0 / in1'),
-     ('DD->D', 'out0 = in0 / in1')),
-    'out0 = in1 == 0 ? 0 : floor((double)in0 / (double)in1)',
-    doc='''Divides arguments elementwise.
-
-    .. seealso:: :data:`numpy.divide`
-
-    ''')
-
-
 # `integral_power` should return somewhat appropriate values for negative
 # integral powers (for which NumPy would raise errors). Hence the branches in
 # the beginning. This behavior is not officially documented and could change.
@@ -529,8 +519,14 @@ _power = create_ufunc(
     ''')
 
 
+def _subtract_boolean_error():
+    raise TypeError(
+        'cupy boolean subtract, the `-` operator, is deprecated, use the '
+        'bitwise_xor, the `^` operator, or the logical_xor function instead.')
+
+
 _subtract = create_arithmetic(
-    'subtract', '-', '^',
+    'subtract', '-', _subtract_boolean_error,
     '''Subtracts arguments elementwise.
 
     .. seealso:: :data:`numpy.subtract`
@@ -547,11 +543,12 @@ _true_divide = create_ufunc(
 
     .. seealso:: :data:`numpy.true_divide`
 
-    ''')
+    ''',
+    out_ops=('ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+)
 
 
-if six.PY3:
-    _divide = _true_divide
+_divide = _true_divide
 
 
 _floor_divide = create_ufunc(

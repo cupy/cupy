@@ -65,6 +65,10 @@ CUresult cuLinkAddData(...) {
     return hipErrorUnknown;
 }
 
+CUresult cuLinkAddFile(...) {
+    return hipErrorUnknown;
+}
+
 CUresult cuLinkComplete(...) {
     return hipErrorUnknown;
 }
@@ -154,10 +158,6 @@ CUresult cuTexRefSetFormat (...) {
 }
 
 CUresult cuTexRefSetMaxAnisotropy (...) {
-    return hipErrorUnknown;
-}
-
-CUresult cuParamSetTexRef (...) {
     return hipErrorUnknown;
 }
 
