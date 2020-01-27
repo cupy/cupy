@@ -22,6 +22,6 @@ RUN python3.7 -m pip install --upgrade pip setuptools
 RUN python3.7 -m pip install \
     'cython>=0.28.0' \
     'pytest==4.1.1' 'pytest-xdist==1.26.1' mock setuptools \
-    filelock 'numpy>=1.9.0' 'protobuf==3.6.1' 'six>=1.9.0'
+    filelock 'numpy>=1.9.0' 'protobuf==3.6.1'
 
 COPY --from=xpytest /usr/local/bin/xpytest /usr/local/bin/xpytest

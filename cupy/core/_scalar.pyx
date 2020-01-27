@@ -9,7 +9,6 @@ from libc.stdint cimport uint32_t
 from libc.stdint cimport uint64_t
 
 import numpy
-import six
 
 from cupy.core cimport _dtype
 from cupy.core import _dtype as _dtype_module
@@ -91,8 +90,7 @@ cdef _setup_type_dict():
 _setup_type_dict()
 
 
-cdef set _python_scalar_type_set = set(
-    six.integer_types + (float, bool, complex))
+cdef set _python_scalar_type_set = {int, float, bool, complex}
 cdef set _numpy_scalar_type_set = set(_typenames.keys())
 
 
@@ -105,7 +103,7 @@ del _int_iinfo
 
 
 cpdef _python_scalar_to_numpy_scalar(x):
-    # Note that isinstance(x, six_integer_types) matches with bool.
+    # Note that isinstance(x, int) matches with bool.
     typ = type(x)
     if typ is bool:
         numpy_type = _numpy_bool_

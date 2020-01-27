@@ -1,5 +1,4 @@
 import numpy
-import six
 
 import cupy
 from cupy import core
@@ -138,9 +137,9 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
 def _axis_to_first(x, axis):
     if axis < 0:
         axis = x.ndim + axis
-    trans = [axis] + [a for a in six.moves.range(x.ndim) if a != axis]
-    pre = list(six.moves.range(1, axis + 1))
-    succ = list(six.moves.range(axis + 1, x.ndim))
+    trans = [axis] + [a for a in range(x.ndim) if a != axis]
+    pre = list(range(1, axis + 1))
+    succ = list(range(axis + 1, x.ndim))
     revert = pre + [0] + succ
     return trans, revert
 

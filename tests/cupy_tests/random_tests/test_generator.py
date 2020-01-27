@@ -4,7 +4,6 @@ import threading
 import unittest
 
 import numpy
-import six
 
 import cupy
 from cupy import core
@@ -980,7 +979,7 @@ class TestChoice1(RandomGeneratorTestCase):
 
     def test_dtype_shape(self):
         v = self.generate(a=self.a, size=self.size, p=self.p)
-        if isinstance(self.size, six.integer_types):
+        if isinstance(self.size, int):
             expected_shape = (self.size,)
         else:
             expected_shape = self.size
@@ -1014,7 +1013,7 @@ class TestChoice2(RandomGeneratorTestCase):
 
     def test_dtype_shape(self):
         v = self.generate(a=self.a, size=self.size, p=self.p)
-        if isinstance(self.size, six.integer_types):
+        if isinstance(self.size, int):
             expected_shape = (self.size,)
         else:
             expected_shape = self.size
@@ -1112,7 +1111,7 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
 
     def test_dtype_shape(self):
         v = self.generate(a=self.a, size=self.size, replace=False)
-        if isinstance(self.size, six.integer_types):
+        if isinstance(self.size, int):
             expected_shape = (self.size,)
         else:
             expected_shape = self.size

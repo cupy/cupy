@@ -1,6 +1,8 @@
 import itertools
-import numpy
 import unittest
+
+import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -163,12 +165,11 @@ class ArithmeticBinaryBase:
         if isinstance(arg2, numpy.ndarray):
             arg2 = xp.asarray(arg2)
 
-        # NumPy>=1.13.0 does not support subtraction between booleans
-        # TODO(niboshi): Write a separate test to check both NumPy and CuPy
-        # raise TypeError.
-        if testing.numpy_satisfies('>=1.13.0') and self.name == 'subtract':
-            if dtype1 == numpy.bool_ and dtype2 == numpy.bool_:
-                return xp.array(True)
+        # Subtraction between booleans is not allowed (NumPy>=1.13.0).
+        if (self.name == 'subtract'
+                and dtype1 == numpy.bool_
+                and dtype2 == numpy.bool_):
+            return xp.array(True)
 
         func = getattr(xp, self.name)
         with testing.NumpyError(divide='ignore'):
@@ -289,3 +290,21 @@ class TestArithmeticModf(unittest.TestCase):
         d[0] = b
         d[1] = c
         return d
+
+
+@testing.parameterize(*testing.product({
+    'xp': [numpy, cupy],
+    'shape': [(3, 2), (), (3, 0, 2)]
+}))
+@testing.gpu
+class TestBoolSubtract(unittest.TestCase):
+
+    def test_bool_subtract(self):
+        xp = self.xp
+        if xp is numpy and not testing.numpy_satisfies('>=1.13.0'):
+            raise unittest.SkipTest('NumPy<1.13.0')
+        shape = self.shape
+        x = testing.shaped_random(shape, xp, dtype=numpy.bool_)
+        y = testing.shaped_random(shape, xp, dtype=numpy.bool_)
+        with pytest.raises(TypeError):
+            xp.subtract(x, y)

@@ -1,11 +1,10 @@
 import numpy
-import six
 
 import cupy
 from cupy import testing
 
 
-scalar_types = (numpy.generic, float, complex) + six.integer_types
+scalar_types = (numpy.generic, int, float, complex)
 
 
 def check_fusion(

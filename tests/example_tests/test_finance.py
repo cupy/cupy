@@ -2,8 +2,6 @@ import os
 import re
 import unittest
 
-import six
-
 from example_tests import example_test
 
 from cupy import testing
@@ -24,7 +22,7 @@ class TestBlackScholes(unittest.TestCase):
             r' CPU \(NumPy, Naive implementation\):\t[0-9\.]+ sec\n' +
             r' GPU \(CuPy, Naive implementation\):\t[0-9\.]+ sec\n' +
             r' GPU \(CuPy, Elementwise kernel\):\t[0-9\.]+ sec')
-        six.assertRegex(self, output.decode('utf-8'), pattern)
+        self.assertRegex(output.decode('utf-8'), pattern)
 
 
 class TestMonteCarlo(unittest.TestCase):
@@ -41,7 +39,7 @@ class TestMonteCarlo(unittest.TestCase):
             r'    # of samples per option: 100\n' +
             r'GPU \(CuPy, Monte Carlo method\):\t[0-9\.]+ sec\n' +
             r'Error: [0-9\.]+')
-        six.assertRegex(self, output.decode('utf-8'), pattern)
+        self.assertRegex(output.decode('utf-8'), pattern)
 
 
 class TestMonteCarloWithMultiGPU(unittest.TestCase):
@@ -61,4 +59,4 @@ class TestMonteCarloWithMultiGPU(unittest.TestCase):
             r'    # of samples per option: 200\n' +
             r'GPU \(CuPy, Monte Carlo method\):\t[0-9\.]+ sec\n' +
             r'Error: [0-9\.]+')
-        six.assertRegex(self, output.decode('utf-8'), pattern)
+        self.assertRegex(output.decode('utf-8'), pattern)

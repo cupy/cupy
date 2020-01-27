@@ -87,13 +87,12 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
         dtype = float
 
     ret = cupy.empty((num,), dtype=dtype)
-    if num == 0:
-        step = float('nan')
-    elif num == 1:
-        ret.fill(start)
+    div = (num - 1) if endpoint else num
+    if div <= 0:
+        if num > 0:
+            ret.fill(start)
         step = float('nan')
     else:
-        div = (num - 1) if endpoint else num
         step = float(stop - start) / div
         stop = float(stop)
 
@@ -105,6 +104,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
             _linspace_ufunc(start, step, ret, casting='unsafe')
 
         if endpoint:
+            # Here num == div + 1 > 1 is ensured.
             ret[-1] = stop
 
     if retstep:

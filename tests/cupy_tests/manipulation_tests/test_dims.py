@@ -115,13 +115,46 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp)
         return xp.expand_dims(a, -2)
 
-    @testing.with_requires('numpy>=1.13')
+    @testing.with_requires('numpy>=1.18')
     @testing.numpy_cupy_array_equal()
     def test_expand_dims_negative2(self, xp):
         a = testing.shaped_arange((2, 3), xp)
-        # Too large and too small axis is deprecated in NumPy 1.13
-        with testing.assert_warns(DeprecationWarning):
-            return xp.expand_dims(a, -4)
+        with self.assertRaises(numpy.AxisError):
+            xp.expand_dims(a, -4)
+        return xp.array(True)
+
+    @testing.with_requires('numpy>=1.18')
+    @testing.numpy_cupy_array_list_equal()
+    def test_expand_dims_tuple_axis(self, xp):
+        a = testing.shaped_arange((2, 2, 2), xp)
+        return [xp.expand_dims(a, axis) for axis in [
+            (0, 1, 2),
+            (0, -1, -2),
+            (0, 3, 5),
+            (0, -3, -5),
+            (),
+            (1,),
+        ]]
+
+    @testing.with_requires('numpy>=1.18')
+    @testing.numpy_cupy_array_equal()
+    def test_expand_dims_out_of_range(self, xp):
+        a = testing.shaped_arange((2, 2, 2), xp)
+        for axis in [
+                (1, -6),
+                (1, 5),
+        ]:
+            with self.assertRaises(numpy.AxisError):
+                xp.expand_dims(a, axis)
+        return xp.array(True)
+
+    @testing.with_requires('numpy>=1.18')
+    @testing.numpy_cupy_array_equal()
+    def test_expand_dims_repeated_axis(self, xp):
+        a = testing.shaped_arange((2, 2, 2), xp)
+        with self.assertRaises(ValueError):
+            xp.expand_dims(a, (1, 1))
+        return xp.array(True)
 
     @testing.numpy_cupy_array_equal()
     def test_squeeze1(self, xp):
