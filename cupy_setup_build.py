@@ -44,7 +44,7 @@ MODULES = []
 cuda_files = [
     'cupy.core._carray',
     'cupy.core._dtype',
-    'cupy.core._fusion_runtime',
+    'cupy.core._fusion_kernel',
     'cupy.core._fusion_shape',
     'cupy.core._fusion_thread_local',
     'cupy.core._fusion_variable',
