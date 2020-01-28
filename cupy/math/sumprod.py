@@ -135,7 +135,6 @@ def cumsum(a, axis=None, dtype=None, out=None):
     .. seealso:: :func:`numpy.cumsum`
 
     """
-    a = cupy.asarray(a)
     return _math.scan_core(a, axis, _math.scan_op.SCAN_SUM, dtype, out)
 
 
@@ -155,7 +154,6 @@ def cumprod(a, axis=None, dtype=None, out=None):
     .. seealso:: :func:`numpy.cumprod`
 
     """
-    a = cupy.asarray(a)
     return _math.scan_core(a, axis, _math.scan_op.SCAN_PROD, dtype, out)
 
 

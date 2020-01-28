@@ -382,15 +382,15 @@ class TestCumsum(unittest.TestCase):
         with self.assertRaises(cupy.core._AxisError):
             return cupy.cumsum(a, axis=a.ndim + 1)
 
-    @testing.numpy_cupy_allclose()
-    def test_cumsum_arraylike(self, xp):
-        return xp.cumsum((1, 2, 3))
+    def test_cumsum_arraylike(self):
+        with self.assertRaises(TypeError):
+            return cupy.cumsum((1, 2, 3))
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_cumsum_numpy_array(self, xp, dtype):
+    def test_cumsum_numpy_array(self, dtype):
         a_numpy = numpy.arange(8, dtype=dtype)
-        return xp.cumsum(a_numpy)
+        with self.assertRaises(TypeError):
+            return cupy.cumsum(a_numpy)
 
 
 @testing.gpu
@@ -459,15 +459,15 @@ class TestCumprod(unittest.TestCase):
         with self.assertRaises(cupy.core._AxisError):
             return cupy.cumprod(a, axis=a.ndim)
 
-    @testing.numpy_cupy_allclose()
-    def test_cumprod_arraylike(self, xp):
-        return xp.cumprod((1, 2, 3))
+    def test_cumprod_arraylike(self):
+        with self.assertRaises(TypeError):
+            return cupy.cumprod((1, 2, 3))
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_cumprod_numpy_array(self, xp, dtype):
+    def test_cumprod_numpy_array(self, dtype):
         a_numpy = numpy.arange(1, 6, dtype=dtype)
-        return xp.cumprod(a_numpy)
+        with self.assertRaises(TypeError):
+            return cupy.cumprod(a_numpy)
 
 
 @testing.gpu

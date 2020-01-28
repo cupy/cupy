@@ -350,12 +350,7 @@ def _add_scan_blocked_sum_kernel(dtype, op):
     return module.get_function(name)
 
 
-cdef ndarray scan(
-        ndarray a, op=scan_op.SCAN_SUM, dtype=None, ndarray out=None):
-    return _scan_op(a, op, dtype, out)
-
-
-cdef ndarray _scan_op(ndarray a, op, dtype, ndarray out=None):
+cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
     """Return the prefix sum(scan) of the elements.
 
     Args:
@@ -372,7 +367,7 @@ cdef ndarray _scan_op(ndarray a, op, dtype, ndarray out=None):
 
     cdef Py_ssize_t block_size = 256
     if out is None:
-        out = ndarray(a.shape, a.dtype)
+        out = cupy.core._ndarray_init(a.shape, a.dtype)
     else:
         if a.size != out.size:
             raise ValueError('Provided out is the wrong size')
@@ -385,7 +380,7 @@ cdef ndarray _scan_op(ndarray a, op, dtype, ndarray out=None):
 
     if (a.size - 1) // (block_size * 2) > 0:
         blocked_sum = out[block_size * 2 - 1:None:block_size * 2]
-        _scan_op(blocked_sum, op, dtype, blocked_sum)
+        scan(blocked_sum, op, dtype, blocked_sum)
         kern_add = _add_scan_blocked_sum_kernel(out.dtype, op)
         kern_add(grid=((a.size - 1) // (2 * block_size),),
                  block=(2 * block_size - 1,),
@@ -396,6 +391,7 @@ cdef ndarray _scan_op(ndarray a, op, dtype, ndarray out=None):
 cdef ndarray _batch_scan_op(ndarray a, op, dtype=None, out=None):
     batch_size = a.shape[1]
 
+    # block_size = cupy.core._reduction._block_size
     block_size = 512
     # Since we need to pad each batch we spawn more threads as some
     # of them will be idle
@@ -448,7 +444,7 @@ cdef _proc_as_batch(ndarray x, axis, dtype, op):
     return r.reshape(s).transpose(revert)
 
 
-cdef _cum_core(ndarray a, axis, op, dtype, ndarray out):
+cpdef scan_core(ndarray a, axis, op, dtype=None, ndarray out=None):
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
@@ -462,23 +458,18 @@ cdef _cum_core(ndarray a, axis, op, dtype, ndarray out):
                 dtype = a.dtype
         out = a.astype(dtype=dtype)
     else:
+        out = out.ravel()
         out[...] = a
     if axis is None:
         out = out.ravel()
-        return _scan_op(out, op, dtype, out)
-    elif not (-a.ndim <= axis < a.ndim):
-        raise cupy.core._AxisError('axis(={}) out of bounds'.format(axis))
-    else:
-        return _proc_as_batch(out, axis, dtype, op)
+        return scan(out, op, dtype, out)
+    axis = cupy.util._normalize_axis_index(axis, a.ndim)
+    return _proc_as_batch(out, axis, dtype, op)
 
 
 # Only for test
 def _scan_for_test(a, out=None):
     return scan(a, scan_op.SCAN_SUM, dtype=None, out=out)
-
-
-def scan_core(a, axis, op, dtype=None, out=None):
-    return _cum_core(a, axis, op, dtype, out)
 
 
 cpdef ndarray _nansum(ndarray a, axis, dtype, out, keepdims):
