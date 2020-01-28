@@ -31,7 +31,7 @@ You need to have the following components to use CuPy.
 * `Python <https://python.org/>`_
     * Supported Versions: 3.5.1+, 3.6.0+, 3.7.0+ and 3.8.0+.
 * `NumPy <http://www.numpy.org/>`_
-    * Supported Versions: 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 1.16 and 1.17.
+    * Supported Versions: 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 1.16, 1.17 and 1.18.
     * NumPy will be installed automatically during the installation of CuPy.
 
 Before installing CuPy, we recommend you to upgrade ``setuptools`` and ``pip``::
