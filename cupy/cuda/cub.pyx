@@ -100,7 +100,7 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
                   bint keepdims=False):
     cdef ndarray y
     cdef memory.MemoryPointer ws
-    cdef int dtype_id, ndim_out, kv_bytes, x_size, _op
+    cdef int dtype_id, ndim_out, kv_bytes, x_size, op_code
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *y_ptr
@@ -141,9 +141,9 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
                                                    op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void *>ws.ptr
-    _op = <int>op
+    op_code = <int>op
     with nogil:
-        cub_device_reduce(ws_ptr, ws_size, x_ptr, y_ptr, x_size, s, _op,
+        cub_device_reduce(ws_ptr, ws_size, x_ptr, y_ptr, x_size, s, op_code,
                           dtype_id)
     if op == CUPY_CUB_ARGMIN or op == CUPY_CUB_ARGMAX:
         # get key from KeyValuePair: need to reinterpret the first 4 bytes
@@ -171,7 +171,7 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
     cdef void* y_ptr
     cdef void* ws_ptr
     cdef void* offset_start_ptr
-    cdef int dtype_id, n_segments, _op
+    cdef int dtype_id, n_segments, op_code
     cdef size_t ws_size
     cdef Py_ssize_t contiguous_size
     cdef tuple out_shape
@@ -218,11 +218,11 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
         op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void*>ws.ptr
-    _op = <int>op
+    op_code = <int>op
     with nogil:
         cub_device_segmented_reduce(ws_ptr, ws_size, x_ptr, y_ptr, n_segments,
                                     offset_start_ptr, offset_end_ptr, s,
-                                    _op, dtype_id)
+                                    op_code, dtype_id)
 
     if out is not None:
         out[...] = y
