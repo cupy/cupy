@@ -1,4 +1,5 @@
 from numbers import Number
+import warnings
 
 import numpy as np
 
@@ -24,6 +25,15 @@ except ImportError:
             return None
 
     _scipy_fft = _DummyModule()
+
+try:
+    from _scipy_fft._lib._pep440 import Version
+except ImportError:
+    # either _scipy_fft is _DummyModule, or scipy < 1.4.0
+    _scipy_150 = False
+else:
+    _scipy_150 = Version(_scipy_fft.version.version) >= Version('1.5.0')
+    del Version
 
 # Backend support for scipy.fft
 
@@ -53,6 +63,8 @@ def __ua_function__(method, args, kwargs):
     fn = _implemented.get(method, None)
     if fn is None:
         return NotImplemented
+    if 'plan' in kwargs and not _scipy_150:
+        warnings.warn('The \'plan\' argument is supported in SciPy v1.5.0+')
     return fn(*args, **kwargs)
 
 
