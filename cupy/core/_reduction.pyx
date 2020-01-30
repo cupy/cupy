@@ -360,8 +360,7 @@ cdef class _AbstractReductionKernel:
             if params is None:
                 params = self._optimize_params(
                     optimize_context,
-                    in_args, out_args, in_shape, out_shape,
-                    contiguous_size, types,
+                    in_args, out_args, in_shape, out_shape, type_map,
                     map_expr, reduce_expr, post_map_expr, reduce_type,
                     stream)
                 optimize_context.set_params(key, params)
@@ -374,7 +373,7 @@ cdef class _AbstractReductionKernel:
             block_stride,
             in_args, out_args,
             in_shape, out_shape,
-            types,
+            type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
             stream)
         return ret
@@ -382,8 +381,7 @@ cdef class _AbstractReductionKernel:
     def _optimize_params(
             self,
             optimize_context,
-            in_args, out_args, in_shape, out_shape,
-            contiguous_size, types,
+            in_args, out_args, in_shape, out_shape, type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
             stream):
         import optuna
@@ -417,7 +415,7 @@ cdef class _AbstractReductionKernel:
                         block_stride,
                         in_args, out_args,
                         in_shape, out_shape,
-                        types,
+                        type_map,
                         map_expr, reduce_expr, post_map_expr, reduce_type,
                         stream)
 
@@ -455,7 +453,7 @@ cdef class _AbstractReductionKernel:
 
     cpdef _launch(
             self, out_block_num, block_size, block_stride,
-            in_args, out_args, in_shape, out_shape, types,
+            in_args, out_args, in_shape, out_shape, type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
             stream):
         # Kernel arguments passed to the __global__ function.
