@@ -1345,11 +1345,6 @@ cdef class ndarray:
     def __int__(self):
         return int(self.get())
 
-    if sys.version_info < (3,):
-        def __long__(self):
-            # Avoid using long() for flake8
-            return self.get().__long__()
-
     def __float__(self):
         return float(self.get())
 

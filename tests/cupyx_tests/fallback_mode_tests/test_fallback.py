@@ -1,4 +1,3 @@
-import sys
 import pytest
 import unittest
 import functools
@@ -303,28 +302,19 @@ class TestArrayComparison(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'func': '__str__', 'shape': (5, 6), 'v': None},
-    {'func': '__repr__', 'shape': (3, 4), 'v': None},
-    {'func': '__int__', 'shape': (1,), 'v': None},
-    {'func': '__float__', 'shape': (1, 1), 'v': None},
-    {'func': '__len__', 'shape': (3, 3), 'v': None},
-    {'func': '__bool__', 'shape': (1,), 'v': 3},
-    {'func': '__nonzero__', 'shape': (1,), 'v': 2},
-    {'func': '__long__', 'shape': (1,), 'v': 2}
+    {'func': '__str__', 'shape': (5, 6)},
+    {'func': '__repr__', 'shape': (3, 4)},
+    {'func': '__int__', 'shape': (1,)},
+    {'func': '__float__', 'shape': (1, 1)},
+    {'func': '__len__', 'shape': (3, 3)},
+    {'func': '__bool__', 'shape': (1,)},
 )
 @testing.gpu
 class TestArrayUnaryMethods(unittest.TestCase):
 
     @numpy_fallback_equal()
     def test_unary_methods(self, xp):
-
-        version = sys.version_info[0]
-        if self.v is not None and not version == self.v:
-            msg = "Test only for Python{}".format(self.v)
-            self.skipTest(msg)
-
         a = testing.shaped_random(self.shape, xp=xp)
-
         return getattr(a, self.func)()
 
 
@@ -346,42 +336,31 @@ class TestArrayUnaryMethodsArray(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'func': '__add__', 'shape': (3, 4), 'dtype': numpy.float32, 'v': None},
-    {'func': '__sub__', 'shape': (2, 2), 'dtype': numpy.float32, 'v': None},
-    {'func': '__mul__', 'shape': (5, 6), 'dtype': numpy.float32, 'v': None},
-    {'func': '__mod__', 'shape': (3, 4), 'dtype': numpy.float32, 'v': None},
-    {'func': '__iadd__', 'shape': (1,), 'dtype': numpy.float32, 'v': None},
-    {'func': '__imul__', 'shape': (1, 1), 'dtype': numpy.float32, 'v': None},
-    {'func': '__and__', 'shape': (3, 3), 'dtype': numpy.int32, 'v': None},
-    {'func': '__ipow__', 'shape': (4, 5), 'dtype': numpy.int32, 'v': None},
-    {'func': '__xor__', 'shape': (4, 4), 'dtype': numpy.int32, 'v': None},
-    {'func': '__lshift__', 'shape': (2,), 'dtype': numpy.int32, 'v': None},
-    {'func': '__irshift__', 'shape': (3, 2), 'dtype': numpy.int32, 'v': None},
-    {'func': '__div__', 'shape': (4, 3), 'dtype': numpy.float32, 'v': 2},
-    {'func': '__idiv__', 'shape': (3, 4), 'dtype': numpy.float32, 'v': 2}
+    {'func': '__add__', 'shape': (3, 4), 'dtype': numpy.float32},
+    {'func': '__sub__', 'shape': (2, 2), 'dtype': numpy.float32},
+    {'func': '__mul__', 'shape': (5, 6), 'dtype': numpy.float32},
+    {'func': '__mod__', 'shape': (3, 4), 'dtype': numpy.float32},
+    {'func': '__iadd__', 'shape': (1,), 'dtype': numpy.float32},
+    {'func': '__imul__', 'shape': (1, 1), 'dtype': numpy.float32},
+    {'func': '__and__', 'shape': (3, 3), 'dtype': numpy.int32},
+    {'func': '__ipow__', 'shape': (4, 5), 'dtype': numpy.int32},
+    {'func': '__xor__', 'shape': (4, 4), 'dtype': numpy.int32},
+    {'func': '__lshift__', 'shape': (2,), 'dtype': numpy.int32},
+    {'func': '__irshift__', 'shape': (3, 2), 'dtype': numpy.int32},
 )
 @testing.gpu
 class TestArrayArithmeticMethods(unittest.TestCase):
 
     @numpy_fallback_array_equal()
     def test_arithmetic_methods(self, xp):
-
-        version = sys.version_info[0]
-        if self.v is not None and not version == self.v:
-            msg = "Test only for Python{}".format(self.v)
-            self.skipTest(msg)
-
         a = testing.shaped_random(self.shape, xp=xp, dtype=self.dtype)
         b = testing.shaped_random(self.shape, xp=xp, dtype=self.dtype, seed=5)
-
         return getattr(a, self.func)(b)
 
 
 @testing.gpu
 class TestArrayMatmul(unittest.TestCase):
 
-    @unittest.skipUnless(sys.version_info >= (3, 5),
-                         '__matmul__ only for Python==3.5 or above')
     @testing.with_requires('numpy>=1.16')
     @numpy_fallback_array_allclose()
     def test_mm_matmul(self, xp):

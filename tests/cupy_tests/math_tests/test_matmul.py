@@ -1,5 +1,4 @@
 import operator
-import sys
 import unittest
 
 import numpy
@@ -56,8 +55,6 @@ from cupy import testing
 @testing.gpu
 class TestMatmul(unittest.TestCase):
 
-    @unittest.skipUnless(sys.version_info >= (3, 5),
-                         'Only for Python3.5 or higher')
     @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
@@ -108,8 +105,6 @@ class TestMatmulLarge(unittest.TestCase):
         (numpy.uint16, numpy.uint16),
     }
 
-    @unittest.skipUnless(sys.version_info >= (3, 5),
-                         'Only for Python3.5 or higher')
     @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
