@@ -1,6 +1,11 @@
+import string
+
 import numpy
 
 import cupy
+from cupy.core import _carray
+from cupy.core import _scalar
+from cupy.cuda import device
 
 
 def place(arr, mask, vals):
@@ -69,6 +74,25 @@ def put(a, ind, v, mode='wrap'):
 # TODO(okuta): Implement putmask
 
 
+_fill_diagonal_template = string.Template(r'''
+#include <cupy/carray.cuh>,
+extern "C" __global__
+void cupy_fill_diagonal(CArray<${type}, ${a_ndim}> a,
+                        CIndexer<${a_ndim}> a_ind,
+                        int start,
+                        int stop,
+                        int step,
+                        CArray<${type}, ${val_ndim}> val,
+                        CIndexer<${val_ndim}> val_ind) {
+    int n = (stop - start) / step + 1;
+    CUPY_FOR(i, n) {
+        a_ind.set(start + i * step);
+        val_ind.set(i % val_ind.size());
+        a[a_ind.get()] = val[val_ind.get()];
+    }
+}''')
+
+
 def fill_diagonal(a, val, wrap=False):
     """Fills the main diagonal of the given array of any dimensionality.
 
@@ -107,6 +131,25 @@ def fill_diagonal(a, val, wrap=False):
             raise ValueError('All dimensions of input must be of equal length')
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
-    # Since the current cupy does not support a.flat,
-    # we use a.ravel() instead of a.flat
-    a.ravel()[:end:step] = val
+    if not isinstance(val, cupy.ndarray):
+        val = cupy.array(val, dtype=a.dtype)
+    else:
+        val = val.astype(a.dtype, copy=False)
+
+    dev_id = device.get_device_id()
+    for arr in [a, val]:
+        if arr.data.device_id != dev_id:
+            raise ValueError(
+                'Array device must be same as the current '
+                'device: array device = %d while current = %d'
+                % (arr.data.device_id, device_id))
+
+    code = _fill_diagonal_template.substitute(
+        type=_scalar.get_typename(a.dtype), a_ndim=a.ndim, val_ndim=val.ndim)
+    fill_diagonal_kernel = cupy.RawKernel(code, 'cupy_fill_diagonal')
+
+    size = end // step + 1
+    a_ind = _carray.Indexer(a.shape)
+    val_ind = _carray.Indexer(val.shape)
+    fill_diagonal_kernel.kernel.linear_launch(
+        size, (a, a_ind, 0, end, step, val, val_ind))
