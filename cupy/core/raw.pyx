@@ -204,8 +204,9 @@ cdef class RawKernel:
 def _get_raw_kernel(code, name, options=(), backend='nvrtc',
                     translate_cucomplex=False,
                     enable_cooperative_groups=False):
+    # WIP: temporarily prepend cupy headers
     module = cupy.core.core.compile_with_cache(
-        code, options, prepend_cupy_headers=False, backend=backend,
+        code, options, prepend_cupy_headers=True, backend=backend,
         translate_cucomplex=translate_cucomplex,
         enable_cooperative_groups=enable_cooperative_groups)
     return module.get_function(name)

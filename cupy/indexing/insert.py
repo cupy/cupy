@@ -1,6 +1,10 @@
+import string
+
 import numpy
 
 import cupy
+from cupy.core import _carray
+from cupy.core import _scalar
 
 
 def place(arr, mask, vals):
@@ -107,6 +111,23 @@ def fill_diagonal(a, val, wrap=False):
             raise ValueError('All dimensions of input must be of equal length')
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
-    # Since the current cupy does not support a.flat,
-    # we use a.ravel() instead of a.flat
-    a.ravel()[:end:step] = val
+    fill_diagonal_kernel = cupy.RawKernel(string.Template(r'''
+extern "C" __global__
+void cupy_fill_diagonal(CArray<${type}, ${ndim}> a,
+                        CIndexer<${ndim}> ind,
+                        int start,
+                        int stop,
+                        int step,
+                        ${type} value) {
+    int n = (stop - start) / step + 1;
+    CUPY_FOR(i, n) {
+        ind.set(start + i * step);
+        a[ind.get()] = value;
+    }
+}''').substitute(type=_scalar.get_typename(a.dtype), ndim=a.ndim),
+    'cupy_fill_diagonal')
+
+    size = end // step + 1
+    indexer = _carray.Indexer(a.shape)
+    fill_diagonal_kernel.kernel.linear_launch(
+        size, (a, indexer, 0, end, step, val))
