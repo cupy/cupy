@@ -200,7 +200,7 @@ def _inclusive_batch_scan_kernel(dtype, block_size, op):
                     int index = ((threadIdx.x + 1) * 2 * i - 1);
                     int index_block = offset + index;
                     if (index < (pad_batch_size)){
-                        temp[index_block] ${op}= temp[index_block-i];
+                        temp[index_block] ${op}= temp[index_block - i];
                     }
                     __syncthreads();
                 }
@@ -363,7 +363,7 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
 
     """
     if a._shape.size() != 1:
-        a = a.ravel()
+        raise TypeError('Input array should be 1D array.')
 
     cdef Py_ssize_t block_size = 256
     if out is None:
@@ -390,8 +390,8 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
 
 cdef ndarray _batch_scan_op(ndarray a, op, dtype=None, out=None):
     batch_size = a.shape[1]
-
-    # block_size = cupy.core._reduction._block_size
+    # TODO(ecastill) replace this with "_reduction._block_size" once it is
+    # properly exposed
     block_size = 512
     # Since we need to pad each batch we spawn more threads as some
     # of them will be idle
@@ -420,8 +420,6 @@ cdef ndarray _batch_scan_op(ndarray a, op, dtype=None, out=None):
 
 
 cdef _axis_to_first(ndarray x, axis):
-    if axis < 0:
-        axis = x.ndim + axis
     trans = [axis] + [a for a in range(x.ndim) if a != axis]
     pre = list(range(1, axis + 1))
     succ = list(range(axis + 1, x.ndim))
@@ -456,15 +454,24 @@ cpdef scan_core(ndarray a, axis, op, dtype=None, ndarray out=None):
                 dtype = numpy.dtype('L')
             else:
                 dtype = a.dtype
-        out = a.astype(dtype=dtype)
+        result = a.astype(dtype=dtype)
     else:
-        out = out.ravel()
-        out[...] = a
+        if (out.flags.c_contiguous or out.flags.f_contiguous):
+            result = out
+        else:
+            result = a.astype(out.dtype)
+        result[...] = a
     if axis is None:
-        out = out.ravel()
-        return scan(out, op, dtype, out)
-    axis = cupy.util._normalize_axis_index(axis, a.ndim)
-    return _proc_as_batch(out, axis, dtype, op)
+        result = result.ravel()
+        scan(result, op, dtype, result)
+    else:
+        axis = cupy.util._normalize_axis_index(axis, a.ndim)
+        result = _proc_as_batch(result, axis, dtype, op)
+    if out is not None and out.data != result.data:
+        out[...] = result.reshape(out.shape)
+    else:
+        out = result
+    return out
 
 
 # Only for test

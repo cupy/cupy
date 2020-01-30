@@ -331,6 +331,22 @@ class TestCumsum(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_cumsum_out(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        out = xp.zeros((5,), dtype=dtype)
+        xp.cumsum(a, out=out)
+        return out
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumsum_out_noncontiguous(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        out = xp.zeros((10,), dtype=dtype)[::2]  # Non contiguous view
+        xp.cumsum(a, out=out)
+        return out
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_cumsum_2dim(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.cumsum(a)
@@ -341,6 +357,26 @@ class TestCumsum(unittest.TestCase):
         n = len(axes)
         a = testing.shaped_arange(tuple(range(4, 4 + n)), xp, dtype)
         return xp.cumsum(a, axis=self.axis)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumsum_axis_out(self, xp, dtype):
+        n = len(axes)
+        shape = tuple(range(4, 4 + n))
+        a = testing.shaped_arange(shape, xp, dtype)
+        out = xp.zeros(shape, dtype=dtype)
+        xp.cumsum(a, axis=self.axis, out=out)
+        return out
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumsum_axis_out_noncontiguous(self, xp, dtype):
+        n = len(axes)
+        shape = tuple(range(4, 4 + n))
+        a = testing.shaped_arange(shape, xp, dtype)
+        out = xp.zeros((8,)+shape[1:], dtype=dtype)[::2]  # Non contiguous view
+        xp.cumsum(a, axis=self.axis, out=out)
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
@@ -401,6 +437,22 @@ class TestCumprod(unittest.TestCase):
     def test_cumprod_1dim(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         return xp.cumprod(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumprod_out(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        out = xp.zeros((5,), dtype=dtype)
+        xp.cumprod(a, out=out)
+        return out
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumprod_out_noncontiguous(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        out = xp.zeros((10,), dtype=dtype)[::2]  # Non contiguous view
+        xp.cumprod(a, out=out)
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
