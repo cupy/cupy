@@ -2938,7 +2938,7 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     cdef object desc = a.__cuda_array_interface__
     cdef tuple shape = desc['shape']
     cdef int dev_id = -1
-    cdef int nbytes
+    cdef size_t nbytes
 
     ptr = desc['data'][0]
     dtype = numpy.dtype(desc['typestr'])
