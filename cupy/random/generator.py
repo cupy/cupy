@@ -313,17 +313,22 @@ class RandomState(object):
         self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
-    def multivariate_normal(self, mean, cov, size=None, check_valid='ignore',
-                            tol=1e-8, dtype=float):
-        """(experimental) Returns an array of samples drawn from the
-        multivariate normal distribution.
+    def multivariate_normal(self, mean, cov, size=None, dtype=float):
+        """Returns an array of samples drawn from the multivariate normal
+        distribution.
+
+        .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
         .. seealso::
             :func:`cupy.random.multivariate_normal` for full documentation,
             :meth:`numpy.random.RandomState.multivariate_normal
             <numpy.random.mtrand.RandomState.multivariate_normal>`
         """
-        util.experimental('cupy.random.RandomState.multivariate_normal')
         mean = cupy.asarray(mean, dtype=dtype)
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
@@ -342,28 +347,8 @@ class RandomState(object):
         shape += (len(mean),)
 
         x = self.standard_normal(size=shape, dtype=dtype)
-
-        u, s, v = cupy.linalg.svd(cov)
-
-        if check_valid != 'ignore':
-            if check_valid != 'warn' and check_valid != 'raise':
-                raise ValueError(
-                    'check_valid must equal \'warn\', \'raise\', or '
-                    '\'ignore\'')
-
-            a = cupy.dot(v.T * s, v)
-            b = cov
-            psd = cupy.all(cupy.abs(a-b) <= tol*(1+cupy.abs(b)))
-            if not psd:
-                if check_valid == 'warn':
-                    warnings.warn(
-                        'covariance is not symmetric positive-semidefinite.',
-                        RuntimeWarning)
-                else:
-                    raise ValueError(
-                        'covariance is not symmetric positive-semidefinite.')
-
-        x = cupy.dot(x, cupy.sqrt(s)[:, None] * v)
+        chol = cupy.linalg.cholesky(cov)
+        x = cupy.dot(chol, x.T)
         x += mean
         return x
 

@@ -438,9 +438,8 @@ def negative_binomial(n, p, size=None, dtype=int):
     return rs.negative_binomial(n, p, size=size, dtype=dtype)
 
 
-def multivariate_normal(mean, cov, size=None, check_valid='ignore', tol=1e-8,
-                        dtype=float):
-    """(experimental) Multivariate normal distribution.
+def multivariate_normal(mean, cov, size=None, dtype=float):
+    """Multivariate normal distribution.
 
     Returns an array of samples drawn from the multivariate normal
     distribution. Its probability density function is defined as
@@ -458,15 +457,18 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore', tol=1e-8,
             symmetric and positive-semidefinite for proper sampling.
         size (int or tuple of ints): The shape of the array. If ``None``, a
             zero-dimensional array is generated.
-        check_valid ('warn', 'raise', 'ignore'): Behavior when the covariance
-            matrix is not positive semidefinite.
-        tol (float): Tolerance when checking the singular values in
-            covariance matrix.
         dtype: Data type specifier. Only :class:`numpy.float32` and
             :class:`numpy.float64` types are allowed.
 
     Returns:
         cupy.ndarray: Samples drawn from the multivariate normal distribution.
+
+    .. warning::
+    This function calls one or more cuSOLVER routine(s) which may yield
+    invalid results if input conditions are not met.
+    To detect these invalid results, you can set the `linalg`
+    configuration to a value that is not `ignore` in
+    :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :meth:`numpy.random.multivariate_normal
                  <numpy.random.mtrand.RandomState.multivariate_normal>`
