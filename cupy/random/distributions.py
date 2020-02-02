@@ -1,6 +1,5 @@
 import cupy
 from cupy.random import generator
-from cupy import util
 
 
 # TODO(beam2d): Implement many distributions
@@ -474,9 +473,8 @@ def multivariate_normal(mean, cov, size=None, dtype=float):
                  <numpy.random.mtrand.RandomState.multivariate_normal>`
 
     """
-    util.experimental('cupy.random.multivariate_normal')
     rs = generator.get_random_state()
-    x = rs.multivariate_normal(mean, cov, size, check_valid, tol, dtype)
+    x = rs.multivariate_normal(mean, cov, size, dtype)
     return x
 
 

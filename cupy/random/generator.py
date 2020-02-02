@@ -6,7 +6,6 @@ import hashlib
 import operator
 import os
 import time
-import warnings
 
 import numpy
 
