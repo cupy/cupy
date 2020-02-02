@@ -463,11 +463,11 @@ def multivariate_normal(mean, cov, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the multivariate normal distribution.
 
     .. warning::
-    This function calls one or more cuSOLVER routine(s) which may yield
-    invalid results if input conditions are not met.
-    To detect these invalid results, you can set the `linalg`
-    configuration to a value that is not `ignore` in
-    :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :meth:`numpy.random.multivariate_normal
                  <numpy.random.mtrand.RandomState.multivariate_normal>`

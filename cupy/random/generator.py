@@ -317,11 +317,11 @@ class RandomState(object):
         distribution.
 
         .. warning::
-        This function calls one or more cuSOLVER routine(s) which may yield
-        invalid results if input conditions are not met.
-        To detect these invalid results, you can set the `linalg`
-        configuration to a value that is not `ignore` in
-        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+            This function calls one or more cuSOLVER routine(s) which may yield
+            invalid results if input conditions are not met.
+            To detect these invalid results, you can set the `linalg`
+            configuration to a value that is not `ignore` in
+            :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
         .. seealso::
             :func:`cupy.random.multivariate_normal` for full documentation,
