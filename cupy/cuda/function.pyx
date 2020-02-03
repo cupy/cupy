@@ -146,11 +146,11 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
     if enable_cooperative_groups:
         driver.launchCooperativeKernel(
             func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
-            <int>shared_mem, stream, <intptr_t>&(kargs[0]))
+            <int>shared_mem, stream, <intptr_t>kargs.data())
     else:
         driver.launchKernel(
             func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
-            <int>shared_mem, stream, <intptr_t>&(kargs[0]), <intptr_t>0)
+            <int>shared_mem, stream, <intptr_t>kargs.data(), <intptr_t>0)
 
 
 cdef class Function:
