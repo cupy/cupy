@@ -85,8 +85,8 @@ cpdef intptr_t createProgram(unicode src, unicode name, headers,
 
     with nogil:
         status = nvrtcCreateProgram(
-            &prog, src_ptr, name_ptr, num_headers, &(header_vec[0]),
-            &(include_name_vec[0]))
+            &prog, src_ptr, name_ptr, num_headers, header_vec.data(),
+            include_name_vec.data())
     check_status(status)
     return <intptr_t>prog
 
@@ -107,7 +107,7 @@ cpdef compileProgram(intptr_t prog, options):
 
     with nogil:
         status = nvrtcCompileProgram(<Program>prog, option_num,
-                                     &(option_vec[0]))
+                                     option_vec.data())
     check_status(status)
 
 
