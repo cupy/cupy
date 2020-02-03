@@ -437,8 +437,8 @@ def negative_binomial(n, p, size=None, dtype=int):
     return rs.negative_binomial(n, p, size=size, dtype=dtype)
 
 
-def multivariate_normal(mean, cov, check_valid='ignore', tol=1e-08,
-                        size=None, dtype=float):
+def multivariate_normal(mean, cov, size=None, check_valid='ignore',
+                        tol=1e-08, dtype=float):
     """Multivariate normal distribution.
 
     Returns an array of samples drawn from the multivariate normal
@@ -472,7 +472,7 @@ def multivariate_normal(mean, cov, check_valid='ignore', tol=1e-08,
 
     """
     rs = generator.get_random_state()
-    x = rs.multivariate_normal(mean, cov, check_valid, tol, size, dtype)
+    x = rs.multivariate_normal(mean, cov, size, check_valid, tol, dtype)
     return x
 
 

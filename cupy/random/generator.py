@@ -313,8 +313,8 @@ class RandomState(object):
         self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
-    def multivariate_normal(self, mean, cov, check_valid='ignore', tol=1e-08,
-                            size=None, dtype=float):
+    def multivariate_normal(self, mean, cov, size=None, check_valid='ignore',
+                            tol=1e-08, dtype=float):
         """Returns an array of samples drawn from the multivariate normal
         distribution.
 
