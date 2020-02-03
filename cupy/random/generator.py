@@ -348,7 +348,7 @@ class RandomState(object):
         x = self.standard_normal(size=shape, dtype=dtype)
         chol = cupy.linalg.cholesky(cov)
         x = cupy.dot(chol, x.T)
-        x += mean
+        x = mean[:, np.newaxis] + x
         return x
 
     def negative_binomial(self, n, p, size=None, dtype=int):
