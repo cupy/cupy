@@ -8,6 +8,7 @@ import os
 import time
 
 import numpy
+import warnings
 
 import cupy
 from cupy import core
@@ -312,7 +313,8 @@ class RandomState(object):
         self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
         return y
 
-    def multivariate_normal(self, mean, cov, size=None, dtype=float):
+    def multivariate_normal(self, mean, cov, check_valid='ignore', tol=1e-08,
+                            size=None, dtype=float):
         """Returns an array of samples drawn from the multivariate normal
         distribution.
 
@@ -345,10 +347,26 @@ class RandomState(object):
             raise ValueError('mean and cov must have same length')
         shape += (len(mean),)
 
+        if check_valid != 'ignore':
+            if check_valid != 'warn' and check_valid != 'raise':
+                raise ValueError(
+                    "check_valid must equal 'warn', 'raise', or 'ignore'")
+            else:
+                from cupy.linalg import eigh
+                (s, u) = eigh(cov)
+                psd = not cupy.any(s < -tol)
+            if not psd:
+                if check_valid == 'warn':
+                    warnings.warn("covariance is not positive-semidefinite.",
+                                  RuntimeWarning)
+                else:
+                    raise ValueError("covariance is not " +
+                                     "positive-semidefinite.")
+
         x = self.standard_normal(size=shape, dtype=dtype)
         chol = cupy.linalg.cholesky(cov)
         x = cupy.dot(chol, x.T)
-        x = mean[:, np.newaxis] + x
+        x = mean[:, cupy.newaxis] + x
         return x
 
     def negative_binomial(self, n, p, size=None, dtype=int):
