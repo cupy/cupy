@@ -3,6 +3,7 @@ import string
 import numpy
 
 import cupy
+from cupy import util
 from cupy.core import _carray
 from cupy.core import _scalar
 from cupy.cuda import device
@@ -93,6 +94,16 @@ void cupy_fill_diagonal(CArray<${type}, ${a_ndim}> a,
 }''')
 
 
+def _fill_diagonal_kernel(a, val):
+    @util.memoize(for_each_device=True)
+    def __fill_diagonal_kernel(type, a_ndim, val_ndim):
+        code = _fill_diagonal_template.substitute(
+            type=type, a_ndim=a_ndim, val_ndim=val_ndim)
+        return cupy.RawKernel(code, 'cupy_fill_diagonal')
+
+    return __fill_diagonal_kernel(
+        _scalar.get_typename(a.dtype), a.ndim, val.ndim)
+
 def fill_diagonal(a, val, wrap=False):
     """Fills the main diagonal of the given array of any dimensionality.
 
@@ -144,9 +155,7 @@ def fill_diagonal(a, val, wrap=False):
                 'device: array device = %d while current = %d'
                 % (arr.data.device_id, device_id))
 
-    code = _fill_diagonal_template.substitute(
-        type=_scalar.get_typename(a.dtype), a_ndim=a.ndim, val_ndim=val.ndim)
-    fill_diagonal_kernel = cupy.RawKernel(code, 'cupy_fill_diagonal')
+    fill_diagonal_kernel = _fill_diagonal_kernel(a, val)
 
     size = end // step + 1
     a_ind = _carray.Indexer(a.shape)
