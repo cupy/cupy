@@ -94,15 +94,11 @@ void cupy_fill_diagonal(CArray<${type}, ${a_ndim}> a,
 }''')
 
 
-def _fill_diagonal_kernel(a, val):
-    @util.memoize(for_each_device=True)
-    def __fill_diagonal_kernel(type, a_ndim, val_ndim):
-        code = _fill_diagonal_template.substitute(
-            type=type, a_ndim=a_ndim, val_ndim=val_ndim)
-        return cupy.RawKernel(code, 'cupy_fill_diagonal')
-
-    return __fill_diagonal_kernel(
-        _scalar.get_typename(a.dtype), a.ndim, val.ndim)
+@util.memoize(for_each_device=True)
+def _fill_diagonal_kernel(type, a_ndim, val_ndim):
+    code = _fill_diagonal_template.substitute(
+        type=type, a_ndim=a_ndim, val_ndim=val_ndim)
+    return cupy.RawKernel(code, 'cupy_fill_diagonal')
 
 
 def fill_diagonal(a, val, wrap=False):
@@ -156,7 +152,8 @@ def fill_diagonal(a, val, wrap=False):
                 'device: array device = %d while current = %d'
                 % (arr.data.device_id, dev_id))
 
-    fill_diagonal_kernel = _fill_diagonal_kernel(a, val)
+    typename = _scalar.get_typename(a.dtype)
+    fill_diagonal_kernel = _fill_diagonal_kernel(typename, a.ndim, val.ndim)
 
     size = end // step + 1
     a_ind = _carray.Indexer(a.shape)
