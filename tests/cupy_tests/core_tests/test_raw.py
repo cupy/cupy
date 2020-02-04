@@ -272,6 +272,9 @@ _test_cache_dir = None
 class TestRaw(unittest.TestCase):
 
     def setUp(self):
+        if self.backend == 'nvcc' and shutil.which('nvcc') is None:
+            raise unittest.SkipTest('nvcc command not found')
+
         global _test_cache_dir
         _test_cache_dir = tempfile.mkdtemp()
         os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
@@ -543,6 +546,7 @@ void test_grid_sync(const float* x1, const float* x2, float* y) {
 @testing.parameterize(*testing.product({
     'n': [10, 100, 256]
 }))
+@unittest.skipIf(shutil.which('nvcc') is None, 'nvcc command not found')
 class TestRawGridSync(unittest.TestCase):
 
     def setUp(self):
