@@ -17,6 +17,7 @@ from cupy.cuda import curand
 from cupy.cuda import device
 from cupy.random import _kernels
 from cupy import util
+from cupyx import seterr
 
 
 class RandomState(object):
@@ -330,6 +331,7 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.multivariate_normal
             <numpy.random.mtrand.RandomState.multivariate_normal>`
         """
+        util.experimental('cupy.random.RandomState.multivariate_normal')
         mean = cupy.asarray(mean, dtype=dtype)
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
@@ -364,7 +366,11 @@ class RandomState(object):
                                      "positive-semidefinite.")
 
         x = self.standard_normal(size=shape, dtype=dtype)
-        chol = cupy.linalg.cholesky(cov)
+        seterr(linalg='raise')
+        try:
+            chol = cupy.linalg.cholesky(cov)
+        except numpy.linalg.LinAlgError:
+            print("Matrix is not positive definite")
         x = cupy.dot(chol, x.T)
         x = x.T
         x += mean
