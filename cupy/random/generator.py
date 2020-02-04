@@ -370,7 +370,7 @@ class RandomState(object):
         try:
             chol = cupy.linalg.cholesky(cov)
         except numpy.linalg.LinAlgError:
-            print("Matrix is not positive definite")
+            raise numpy.linalg.LinAlgError("Matrix is not positive definite")
         x = cupy.dot(chol, x.T)
         x = x.T
         x += mean
