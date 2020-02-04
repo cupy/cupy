@@ -89,7 +89,7 @@ def _parameterize_test_case(base, i, param):
                 s.write('Test parameters:\n')
                 for k, v in sorted(param.items()):
                     s.write('  {}: {}\n'.format(k, v))
-                raise e.__class__(s.getvalue()) from e
+                raise e.__class__(s.getvalue()).with_traceback(e.__traceback__)
         return new_method
 
     return (cls_name, mb, method_generator)
