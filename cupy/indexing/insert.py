@@ -139,10 +139,7 @@ def fill_diagonal(a, val, wrap=False):
             raise ValueError('All dimensions of input must be of equal length')
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
-    if not isinstance(val, cupy.ndarray):
-        val = cupy.array(val, dtype=a.dtype)
-    else:
-        val = val.astype(a.dtype, copy=False)
+    val = cupy.asarray(val, dtype=a.dtype)
 
     dev_id = device.get_device_id()
     for arr in [a, val]:
