@@ -910,7 +910,8 @@ cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
         desc = cudnn.createTensorDescriptor()
         descs.append(desc)
         cudnn.setTensorNdDescriptor(
-            desc, data_type, 3, <size_t>c_shape.data(), <size_t>c_strides.data())
+            desc, data_type, 3,
+            <size_t>c_shape.data(), <size_t>c_strides.data())
 
     return descs
 
@@ -933,7 +934,8 @@ cdef _DescriptorArray _make_tensor_descriptor_array_for_padded(xs):
         desc = cudnn.createTensorDescriptor()
         descs.append(desc)
         cudnn.setTensorNdDescriptor(
-            desc, data_type, 3, <size_t>c_shape.data(), <size_t>c_strides.data())
+            desc, data_type, 3,
+            <size_t>c_shape.data(), <size_t>c_strides.data())
 
     return descs
 
