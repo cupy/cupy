@@ -13,8 +13,6 @@ from cupy import testing
 from cupy.fft.fft import _default_fft_func, _fftn
 import cupyx.scipy.fft as cp_fft
 from cupyx.scipy.fft import _scipy_150
-#scipy_fft = None  # force testing against numpy
-_scipy_150 = True  # force testing plan
 
 
 def _fft_module(xp):
@@ -284,7 +282,7 @@ class TestFft(unittest.TestCase):
             backend = 'scipy'
         with scipy_fft.set_backend(backend):
             out = scipy_fft.ifft(x, n=self.n, axis=self.axis, norm=self.norm,
-                                **overwrite_kw)
+                                 **overwrite_kw)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
@@ -535,7 +533,7 @@ class TestFft2(unittest.TestCase):
             backend = 'scipy'
         with scipy_fft.set_backend(backend):
             out = scipy_fft.ifft2(x, s=self.s, axes=self.axes, norm=self.norm,
-                                 **overwrite_kw)
+                                  **overwrite_kw)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
@@ -793,7 +791,7 @@ class TestFftn(unittest.TestCase):
             backend = 'scipy'
         with scipy_fft.set_backend(backend):
             out = scipy_fft.ifftn(x, s=self.s, axes=self.axes, norm=self.norm,
-                                 **overwrite_kw)
+                                  **overwrite_kw)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
@@ -894,14 +892,12 @@ class TestRfft(unittest.TestCase):
 
 @testing.parameterize(
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-#    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
     {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-#    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
@@ -1001,14 +997,12 @@ class TestRfft2(unittest.TestCase):
 
 @testing.parameterize(
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-#    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
     {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-#    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
