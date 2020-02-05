@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 try:
+    # scipy.fft is available since scipy v1.4.0+
     import scipy.fft as scipy_fft
 except ImportError:
     scipy_fft = None
@@ -15,7 +16,7 @@ from cupyx.scipy.fft import _scipy_150
 
 
 def _fft_module(xp):
-    if xp != np:
+    if xp is not np:
         return cp_fft
     else:
         if scipy_fft is not None:
@@ -26,7 +27,7 @@ def _fft_module(xp):
 
 def _correct_np_dtype(xp, dtype, out):
     # NumPy always transforms in double precision, cast output to correct type
-    if xp == np:
+    if xp is np:
         if dtype in [np.float16, np.float32, np.complex64]:
             if out.dtype.kind == 'f':
                 return out.astype(np.float32)
@@ -60,7 +61,7 @@ class TestFft(unittest.TestCase):
                                  contiguous_check=False)
     def test_fft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).fft(x, n=self.n, axis=self.axis, norm=self.norm,
                                   **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -141,7 +142,7 @@ class TestFft(unittest.TestCase):
                                  contiguous_check=False)
     def test_ifft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).ifft(x, n=self.n, axis=self.axis, norm=self.norm,
                                    **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -240,7 +241,7 @@ class TestFft2(unittest.TestCase):
                                  contiguous_check=False)
     def test_fft2_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).fft2(x, s=self.s, axes=self.axes,
                                    norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -319,7 +320,7 @@ class TestFft2(unittest.TestCase):
                                  contiguous_check=False)
     def test_ifft2_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).ifft2(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -422,7 +423,7 @@ class TestFftn(unittest.TestCase):
                                  contiguous_check=False)
     def test_fftn_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).fftn(x, s=self.s, axes=self.axes,
                                    norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -501,7 +502,7 @@ class TestFftn(unittest.TestCase):
                                  contiguous_check=False)
     def test_ifftn_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).ifftn(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -590,7 +591,7 @@ class TestRfft(unittest.TestCase):
                                  contiguous_check=False)
     def test_rfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).rfft(x, n=self.n, axis=self.axis,
                                    norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -619,7 +620,7 @@ class TestRfft(unittest.TestCase):
                                  contiguous_check=False)
     def test_irfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).irfft(x, n=self.n, axis=self.axis,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -671,7 +672,7 @@ class TestRfft2(unittest.TestCase):
                                  contiguous_check=False)
     def test_rfft2_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).rfft2(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -700,7 +701,7 @@ class TestRfft2(unittest.TestCase):
                                  contiguous_check=False)
     def test_irfft2_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).irfft2(x, s=self.s, axes=self.axes,
                                      norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -752,7 +753,7 @@ class TestRfftn(unittest.TestCase):
                                  contiguous_check=False)
     def test_rfftn_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).rfftn(x, s=self.s, axes=self.axes,
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -781,7 +782,7 @@ class TestRfftn(unittest.TestCase):
                                  contiguous_check=False)
     def test_irfftn_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).irfftn(x, s=self.s, axes=self.axes,
                                      norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -820,7 +821,7 @@ class TestHfft(unittest.TestCase):
                                  contiguous_check=False)
     def test_hfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).hfft(x, n=self.n, axis=self.axis, norm=self.norm,
                                    **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
@@ -848,7 +849,7 @@ class TestHfft(unittest.TestCase):
                                  contiguous_check=False)
     def test_ihfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp == np else {'overwrite_x': True}
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
         out = _fft_module(xp).ihfft(x, n=self.n, norm=self.norm,
                                     **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
