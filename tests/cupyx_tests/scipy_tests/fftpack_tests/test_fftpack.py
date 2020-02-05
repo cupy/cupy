@@ -1,6 +1,7 @@
 import unittest
 import pytest
 
+import cupy
 from cupy import testing
 import cupyx.scipy.fftpack  # NOQA
 from cupy.fft.fft import _default_fft_func, _fftn
@@ -578,3 +579,30 @@ class TestRfft(unittest.TestCase):
         x = testing.shaped_random(self.shape, xp, dtype)
         return scp.fftpack.irfft(x, n=self.n, axis=self.axis,
                                  overwrite_x=True)
+
+
+@testing.parameterize(
+    {'shape': (32, 16, 4), 'data_order': 'F'},
+    {'shape': (4, 32, 16), 'data_order': 'C'},
+)
+class TestFftnView(unittest.TestCase):
+
+    @testing.for_complex_dtypes()
+    def test_fortran_ordered_view(self, dtype):
+        # test case for: https://github.com/cupy/cupy/issues/3033
+        a = testing.shaped_random(self.shape, cupy, dtype)
+        if self.data_order == 'F':
+            a = cupy.asfortranarray(a)
+            sl = [Ellipsis, 0]
+        else:
+            sl = [0, Ellipsis]
+
+        # transform a contiguous view without pre-planning
+        view = a[sl]
+        expected = cupyx.scipy.fftpack.fftn(view)
+
+        # create plan and then apply it to a contiguous view
+        plan = cupyx.scipy.fftpack.get_fft_plan(view)
+        with plan:
+            out = cupyx.scipy.fftpack.fftn(view)
+        testing.assert_allclose(expected, out)
