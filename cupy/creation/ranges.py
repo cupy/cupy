@@ -145,11 +145,18 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
         raise ValueError('linspace with num<0 is not supported')
     div = (num - 1) if endpoint else num
 
-    if cupy.isscalar(start) and cupy.isscalar(stop):
+    scalar_start = cupy.isscalar(start)
+    scalar_stop = cupy.isscalar(stop)
+    if scalar_start and scalar_stop:
         return _linspace_scalar(start, stop, num, endpoint, retstep, dtype)
 
-    start = cupy.asarray(start) * 1.0
-    stop = cupy.asarray(stop) * 1.0
+    if not scalar_start:
+        if not (isinstance(start, cupy.ndarray) and start.dtype.kind == 'f'):
+            start = cupy.asarray(start) * 1.0
+
+    if not scalar_stop:
+        if not (isinstance(stop, cupy.ndarray) and stop.dtype.kind == 'f'):
+            stop = cupy.asarray(stop) * 1.0
 
     dt = cupy.result_type(start, stop, float(num))
     if dtype is None:
