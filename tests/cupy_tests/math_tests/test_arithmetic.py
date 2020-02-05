@@ -24,7 +24,7 @@ no_complex_types = [numpy.bool] + float_types + int_types
 @testing.parameterize(*(
     testing.product({
         'nargs': [1],
-        'name': ['reciprocal', 'conj', 'angle'],
+        'name': ['reciprocal', 'conj', 'conjugate', 'angle'],
     }) + testing.product({
         'nargs': [2],
         'name': [
@@ -55,7 +55,7 @@ class TestArithmeticRaisesWithNumpyInput(unittest.TestCase):
         'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
                   for d in all_types
                   ] + [0, 0.0j, 0j, 2, 2.0, 2j, True, False]),
-        'name': ['conj', 'angle', 'real', 'imag'],
+        'name': ['conj', 'conjugate', 'angle', 'real', 'imag'],
     }) + testing.product({
         'arg1': ([numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                   for d in negative_types

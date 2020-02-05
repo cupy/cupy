@@ -602,7 +602,8 @@ from cupy.math.arithmetic import subtract  # NOQA
 from cupy.math.arithmetic import true_divide  # NOQA
 
 from cupy.math.arithmetic import angle  # NOQA
-from cupy.math.arithmetic import conj  # NOQA
+from cupy.math.arithmetic import conjugate as conj  # NOQA
+from cupy.math.arithmetic import conjugate  # NOQA
 from cupy.math.arithmetic import imag  # NOQA
 from cupy.math.arithmetic import real  # NOQA
 
