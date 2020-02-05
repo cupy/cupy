@@ -5,6 +5,9 @@ import numpy
 from cupy import testing
 
 
+_obj_types = ['dtype', 'specifier', 'scalar', 'array', 'primitive']
+
+
 def _generate_type_routines_input(xp, dtype, obj_type):
     dtype = numpy.dtype(dtype)
     if obj_type == 'dtype':
@@ -17,12 +20,14 @@ def _generate_type_routines_input(xp, dtype, obj_type):
         return xp.zeros(3, dtype=dtype)
     if obj_type == 'primitive':
         return type(dtype.type(3).tolist())
+    if obj_type == 'zero_dim':
+        return xp.asarray(3, dtype=dtype)
     assert False
 
 
 @testing.parameterize(
     *testing.product({
-        'obj_type': ['dtype', 'specifier', 'scalar', 'array', 'primitive'],
+        'obj_type': _obj_types,
     })
 )
 class TestCanCast(unittest.TestCase):
@@ -74,8 +79,8 @@ class TestCommonType(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
-        'obj_type1': ['dtype', 'specifier', 'scalar', 'array', 'primitive'],
-        'obj_type2': ['dtype', 'specifier', 'scalar', 'array', 'primitive'],
+        'obj_type1': _obj_types + ['zero_dim'],
+        'obj_type2': _obj_types + ['zero_dim'],
     })
 )
 class TestResultType(unittest.TestCase):
