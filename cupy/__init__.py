@@ -389,8 +389,17 @@ def result_type(*arrays_and_dtypes):
 
     .. seealso:: :func:`numpy.result_type`
     """
-    dtypes = [a.dtype if isinstance(a, cupy.ndarray)
-              else a for a in arrays_and_dtypes]
+    dtypes = []
+    for a in arrays_and_dtypes:
+        if isinstance(a, cupy.ndarray):
+            if a.ndim == 0:
+                # NumPy handles 0-dimensional arrays differently
+                dtypes.append(numpy.asarray(0, dtype=a.dtype))
+            else:
+                dtypes.append(a.dtype)
+        else:
+            dtypes.append(a)
+
     return numpy.result_type(*dtypes)
 
 
