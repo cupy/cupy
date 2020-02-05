@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 
+from cupy.cuda import _environment
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import nvrtc
@@ -164,7 +165,7 @@ def compile_using_nvcc(source, options=(), arch=None,
         assert not separate_compilation
 
     arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
-    cmd = ['nvcc', arch_str]
+    cmd = [_environment.get_nvcc_path(), arch_str]
 
     with TemporaryDirectory() as root_dir:
         first_part = filename.split('.')[0]
