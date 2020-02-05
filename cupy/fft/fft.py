@@ -357,7 +357,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
         raise NotImplementedError('Only C2C and Z2Z are supported.')
 
     if a.base is not None:
-        a = a.copy()
+        a = a.copy(order='A')
 
     if a.flags.c_contiguous:
         order = 'C'
