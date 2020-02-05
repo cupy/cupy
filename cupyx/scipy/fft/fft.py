@@ -1,4 +1,5 @@
 from numbers import Number
+import warnings
 
 import numpy as np
 
@@ -24,6 +25,15 @@ except ImportError:
             return None
 
     _scipy_fft = _DummyModule()
+
+try:
+    from _scipy_fft._lib._pep440 import Version
+except ImportError:
+    # either _scipy_fft is _DummyModule, or scipy < 1.4.0
+    _scipy_150 = False
+else:
+    _scipy_150 = Version(_scipy_fft.version.version) >= Version('1.5.0')
+    del Version
 
 # Backend support for scipy.fft
 
@@ -53,6 +63,8 @@ def __ua_function__(method, args, kwargs):
     fn = _implemented.get(method, None)
     if fn is None:
         return NotImplemented
+    if 'plan' in kwargs and not _scipy_150:
+        warnings.warn('The \'plan\' argument is supported in SciPy v1.5.0+')
     return fn(*args, **kwargs)
 
 
@@ -73,7 +85,7 @@ def _assequence(x):
 
 
 @_implements(_scipy_fft.fft)
-def fft(x, n=None, axis=-1, norm=None, overwrite_x=False):
+def fft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """Compute the one-dimensional FFT.
 
     Args:
@@ -84,6 +96,13 @@ def fft(x, n=None, axis=-1, norm=None, overwrite_x=False):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (:class:`~cupy.cuda.cufft.Plan1d`) a cuFFT plan for transforming
+            ``x`` over ``axis``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis)
+
+            Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
+            an auto-generated plan behind the scene.
 
     Returns:
         cupy.ndarray:
@@ -93,11 +112,11 @@ def fft(x, n=None, axis=-1, norm=None, overwrite_x=False):
     .. seealso:: :func:`scipy.fft.fft`
     """
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_FORWARD,
-                overwrite_x=overwrite_x)
+                overwrite_x=overwrite_x, plan=plan)
 
 
 @_implements(_scipy_fft.ifft)
-def ifft(x, n=None, axis=-1, norm=None, overwrite_x=False):
+def ifft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """Compute the one-dimensional inverse FFT.
 
     Args:
@@ -108,6 +127,13 @@ def ifft(x, n=None, axis=-1, norm=None, overwrite_x=False):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (:class:`~cupy.cuda.cufft.Plan1d`) a cuFFT plan for transforming
+            ``x`` over ``axis``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis)
+
+            Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
+            an auto-generated plan behind the scene.
 
     Returns:
         cupy.ndarray:
@@ -117,11 +143,11 @@ def ifft(x, n=None, axis=-1, norm=None, overwrite_x=False):
     .. seealso:: :func:`scipy.fft.ifft`
     """
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_INVERSE,
-                overwrite_x=overwrite_x)
+                overwrite_x=overwrite_x, plan=plan)
 
 
 @_implements(_scipy_fft.fft2)
-def fft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
+def fft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *, plan=None):
     """Compute the two-dimensional FFT.
 
     Args:
@@ -132,6 +158,13 @@ def fft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
+            ``x`` over ``axis``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
+
+            Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
+            an auto-generated plan behind the scene.
 
     Returns:
         cupy.ndarray:
@@ -140,11 +173,12 @@ def fft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.fft2`
     """
-    return fftn(x, s, axes, norm, overwrite_x)
+    return fftn(x, s, axes, norm, overwrite_x, plan=plan)
 
 
 @_implements(_scipy_fft.ifft2)
-def ifft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
+def ifft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
+          plan=None):
     """Compute the two-dimensional inverse FFT.
 
     Args:
@@ -155,6 +189,13 @@ def ifft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
+            ``x`` over ``axis``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
+
+            Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
+            an auto-generated plan behind the scene.
 
     Returns:
         cupy.ndarray:
@@ -163,11 +204,11 @@ def ifft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.ifft2`
     """
-    return ifftn(x, s, axes, norm, overwrite_x)
+    return ifftn(x, s, axes, norm, overwrite_x, plan=plan)
 
 
 @_implements(_scipy_fft.fftn)
-def fftn(x, s=None, axes=None, norm=None, overwrite_x=False):
+def fftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
     """Compute the N-dimensional FFT.
 
     Args:
@@ -178,6 +219,13 @@ def fftn(x, s=None, axes=None, norm=None, overwrite_x=False):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
+            ``x`` over ``axis``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
+
+            Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
+            an auto-generated plan behind the scene.
 
     Returns:
         cupy.ndarray:
@@ -189,11 +237,12 @@ def fftn(x, s=None, axes=None, norm=None, overwrite_x=False):
     s = _assequence(s)
     axes = _assequence(axes)
     func = _default_fft_func(x, s, axes)
-    return func(x, s, axes, norm, cufft.CUFFT_FORWARD, overwrite_x=overwrite_x)
+    return func(x, s, axes, norm, cufft.CUFFT_FORWARD, overwrite_x=overwrite_x,
+                plan=plan)
 
 
 @_implements(_scipy_fft.ifftn)
-def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False):
+def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
     """Compute the N-dimensional inverse FFT.
 
     Args:
@@ -204,6 +253,13 @@ def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
+            ``x`` over ``axis``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
+
+            Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
+            an auto-generated plan behind the scene.
 
     Returns:
         cupy.ndarray:
@@ -215,11 +271,12 @@ def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False):
     s = _assequence(s)
     axes = _assequence(axes)
     func = _default_fft_func(x, s, axes)
-    return func(x, s, axes, norm, cufft.CUFFT_INVERSE, overwrite_x=overwrite_x)
+    return func(x, s, axes, norm, cufft.CUFFT_INVERSE, overwrite_x=overwrite_x,
+                plan=plan)
 
 
 @_implements(_scipy_fft.rfft)
-def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
+def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """Compute the one-dimensional FFT for real input.
 
     The returned array contains the positive frequency components of the
@@ -233,6 +290,7 @@ def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -241,12 +299,15 @@ def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
     .. seealso:: :func:`scipy.fft.rfft`
 
     """
+    # TODO(leofang): support R2C & C2R plans
+    if plan is not None:
+        raise NotImplementedError('rfft plan is currently not yet supported')
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_FORWARD, 'R2C',
                 overwrite_x=overwrite_x)
 
 
 @_implements(_scipy_fft.irfft)
-def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
+def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """Compute the one-dimensional inverse FFT for real input.
 
     Args:
@@ -257,6 +318,7 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -264,12 +326,16 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.irfft`
     """
+    # TODO(leofang): support R2C & C2R plans
+    if plan is not None:
+        raise NotImplementedError('irfft plan is currently not yet supported')
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R',
                 overwrite_x=overwrite_x)
 
 
 @_implements(_scipy_fft.rfft2)
-def rfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
+def rfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
+          plan=None):
     """Compute the two-dimensional FFT for real input.
 
     Args:
@@ -280,6 +346,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -289,11 +356,15 @@ def rfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.rfft2`
     """
+    # TODO(leofang): support R2C & C2R plans
+    if plan is not None:
+        raise NotImplementedError('rfft2 plan is currently not yet supported')
     return rfftn(x, s, axes, norm, overwrite_x)
 
 
 @_implements(_scipy_fft.irfft2)
-def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
+def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
+           plan=None):
     """Compute the two-dimensional inverse FFT for real input.
 
     Args:
@@ -304,6 +375,7 @@ def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -315,11 +387,14 @@ def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.irfft2`
     """
+    # TODO(leofang): support R2C & C2R plans
+    if plan is not None:
+        raise NotImplementedError('irfft2 plan is currently not yet supported')
     return irfftn(x, s, axes, norm, overwrite_x)
 
 
 @_implements(_scipy_fft.rfftn)
-def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False):
+def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
     """Compute the N-dimensional FFT for real input.
 
     Args:
@@ -330,6 +405,7 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -339,13 +415,16 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.rfftn`
     """
+    # TODO(leofang): support R2C & C2R plans
+    if plan is not None:
+        raise NotImplementedError('rfftn plan is currently not yet supported')
     s = _assequence(s)
     axes = _assequence(axes)
     return _fft(x, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C', overwrite_x)
 
 
 @_implements(_scipy_fft.irfftn)
-def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False):
+def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
     """Compute the N-dimensional inverse FFT for real input.
 
     Args:
@@ -356,6 +435,7 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -367,13 +447,16 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.irfftn`
     """
+    # TODO(leofang): support R2C & C2R plans
+    if plan is not None:
+        raise NotImplementedError('irfftn plan is currently not yet supported')
     s = _assequence(s)
     axes = _assequence(axes)
     return _fft(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R', overwrite_x)
 
 
 @_implements(_scipy_fft.hfft)
-def hfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
+def hfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """Compute the FFT of a signal that has Hermitian symmetry.
 
     Args:
@@ -385,6 +468,7 @@ def hfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -395,11 +479,14 @@ def hfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.hfft`
     """
+    # TODO(leofang): support R2C & C2R plans
+    if plan is not None:
+        raise NotImplementedError('hfft plan is currently not yet supported')
     return _hfft(x, n, axis, norm)
 
 
 @_implements(_scipy_fft.ihfft)
-def ihfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
+def ihfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     """Compute the FFT of a signal that has Hermitian symmetry.
 
     Args:
@@ -410,6 +497,7 @@ def ihfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (None): This argument is currently not supported.
 
     Returns:
         cupy.ndarray:
@@ -419,4 +507,7 @@ def ihfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
 
     .. seealso:: :func:`scipy.fft.ihfft`
     """
+    # TODO(leofang): support R2C & C2R plans
+    if plan is not None:
+        raise NotImplementedError('ihfft plan is currently not yet supported')
     return _ihfft(x, n, axis, norm)
