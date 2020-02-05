@@ -167,3 +167,25 @@ configs {
     command: "bash .pfnci/script.sh py37.amd"
   }
 }
+
+# Use CUB
+configs {
+  key: "cupy.py37.cub"
+  value {
+    requirement {
+      cpu: 8
+      memory: 24
+      disk: 10
+      gpu: 2
+    }
+    time_limit {
+      seconds: 1800
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2",
+                            key: "CUB_DISABLED" value:"0"}
+    command: "bash .pfnci/script.sh py37"
+  }
+}
