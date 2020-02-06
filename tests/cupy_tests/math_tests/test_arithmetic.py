@@ -96,36 +96,89 @@ class TestArithmeticUnary(unittest.TestCase):
         return y
 
 
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), (), (3, 0, 2)],
+}))
 @testing.gpu
 class TestComplex(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_equal()
-    def test_real_ndarray(self, xp, dtype):
-        x = testing.shaped_arange((2, 3), xp, dtype=dtype)
-        return x.real is x
+    @testing.numpy_cupy_array_equal()
+    def test_real_ndarray_nocomplex(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype=dtype)
+        real = x.real
+        assert real is x  # real returns self
+        return real
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_equal()
-    def test_real(self, xp, dtype):
-        x = testing.shaped_arange((2, 3), xp, dtype=dtype)
-        return xp.real(x) is x
+    @testing.numpy_cupy_array_equal()
+    def test_real_nocomplex(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype=dtype)
+        real = xp.real(x)
+        assert real is x  # real returns self
+        return real
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_imag_ndarray_nocomplex(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype=dtype)
+        imag = x.imag
+        return imag
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_imag_nocomplex(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype=dtype)
+        imag = xp.imag(x)
+        return imag
 
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_imag_ndarray(self, xp, dtype):
-        x = testing.shaped_arange((2, 3), xp, dtype=dtype)
-        y = x.imag
-        x += 1 + 1j
-        return y
+    def test_real_ndarray_complex(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype=dtype)
+        x_ = x.copy()
+        real = x_.real
+        # real returns a view
+        assert real.base is x_
+        x_ += 1 + 1j
+        testing.assert_array_equal(real, x.real + 1)
+        return real
 
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_imag(self, xp, dtype):
-        x = testing.shaped_arange((2, 3), xp, dtype=dtype)
-        y = xp.imag(x)
-        x += 1 + 1j
-        return y
+    def test_real_complex(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype=dtype)
+        x_ = x.copy()
+        real = xp.real(x_)
+        # real returns a view
+        assert real.base is x_
+        x_ += 1 + 1j
+        testing.assert_array_equal(real, x.real + 1)
+        return real
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_imag_ndarray_complex(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype=dtype)
+        x_ = x.copy()
+        imag = x_.imag
+        # imag returns a view
+        assert imag.base is x_
+        x_ += 1 + 1j
+        testing.assert_array_equal(imag, x.imag + 1)
+        return imag
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_imag_complex(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype=dtype)
+        x_ = x.copy()
+        imag = xp.imag(x_)
+        # imag returns a view
+        assert imag.base is x_
+        x_ += 1 + 1j
+        testing.assert_array_equal(imag, x.imag + 1)
+        return imag
 
 
 class ArithmeticBinaryBase:

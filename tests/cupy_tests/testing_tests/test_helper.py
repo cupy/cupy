@@ -411,10 +411,9 @@ class TestShapedRandom(unittest.TestCase):
         a = testing.shaped_random(self.shape, self.xp, dtype)
         self.assertTrue(self.xp.all(0 <= a.real))
         self.assertTrue(self.xp.all(a.real < 10))
+        self.assertTrue(self.xp.all(0 <= a.imag))
+        self.assertTrue(self.xp.all(a.imag < 10))
         if 0 not in self.shape:
-            # TODO(niboshi): imag causes an error if size=0. Fix it.
-            self.assertTrue(self.xp.all(0 <= a.imag))
-            self.assertTrue(self.xp.all(a.imag < 10))
             self.assertTrue(self.xp.any(a.imag))
 
 

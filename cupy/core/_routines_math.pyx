@@ -13,6 +13,7 @@ from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
+from cupy.cuda cimport memory
 
 if cupy.cuda.cub_enabled:
     from cupy.cuda import cub
@@ -46,10 +47,18 @@ cdef ndarray _ndarray_real_setter(ndarray self, value):
 
 
 cdef ndarray _ndarray_imag_getter(ndarray self):
+    cdef memory.MemoryPointer memptr
     if self.dtype.kind == 'c':
+        dtype = get_dtype(self.dtype.char.lower())
+        memptr = self.data
+        # Make the memory pointer point to the first imaginary element.
+        # Note that even if the array doesn't have a valid memory (e.g. 0-size
+        # array), the resulting array should be a view of the original array,
+        # aligning with NumPy behavior.
+        if memptr.ptr != 0:
+            memptr = memptr + self.dtype.itemsize // 2
         view = ndarray(
-            shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
-            memptr=self.data + self.dtype.itemsize // 2,
+            shape=self._shape, dtype=dtype, memptr=memptr,
             strides=self._strides)
         view.base = self.base if self.base is not None else self
         return view
