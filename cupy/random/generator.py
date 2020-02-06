@@ -9,6 +9,7 @@ import time
 
 import numpy
 import warnings
+from numpy.linalg import LinAlgError
 
 import cupy
 from cupy import core
@@ -17,7 +18,7 @@ from cupy.cuda import curand
 from cupy.cuda import device
 from cupy.random import _kernels
 from cupy import util
-from cupyx import seterr
+import cupyx
 
 
 class RandomState(object):
@@ -366,11 +367,11 @@ class RandomState(object):
                                      "positive-semidefinite.")
 
         x = self.standard_normal(size=shape, dtype=dtype)
-        seterr(linalg='raise')
-        try:
-            chol = cupy.linalg.cholesky(cov)
-        except numpy.linalg.LinAlgError:
-            raise numpy.linalg.LinAlgError("Matrix is not positive definite")
+        with cupyx.errstate(linalg='raise'):
+            try:
+                chol = cupy.linalg.cholesky(cov)
+            except LinAlgError:
+                raise LinAlgError("Matrix is not positive definite")
         x = cupy.dot(chol, x.T)
         x = x.T
         x += mean
