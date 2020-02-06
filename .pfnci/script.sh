@@ -21,7 +21,7 @@
 #       "1u5OYiPOL3XRppn73XBSgR-XyDuHKb_4Ilmx1kgJfa-k") to enable xpytest to
 #       report to a spreadsheet.
 
-set -eu
+set -eux
 
 ################################################################################
 # Main function
