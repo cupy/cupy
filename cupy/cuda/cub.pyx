@@ -148,7 +148,7 @@ def device_reduce(ndarray x, int op, tuple out_axis, out=None,
     with nogil:
         cub_device_reduce(ws_ptr, ws_size, x_ptr, y_ptr, x_size, s, op,
                           dtype_id)
-    if op == CUPY_CUB_ARGMIN or op == CUPY_CUB_ARGMAX:
+    if op in (CUPY_CUB_ARGMIN, CUPY_CUB_ARGMAX):
         # get key from KeyValuePair: need to reinterpret the first 4 bytes
         # and then cast it
         y = y[0:4].view(numpy.int32).astype(numpy.int64)[0]
@@ -286,15 +286,15 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
     return y
 
 
-def device_scan(ndarray x, int op):
+def device_scan(ndarray x, op):
     cdef memory.MemoryPointer ws
-    cdef int dtype_id, x_size
+    cdef int dtype_id, x_size, op_code
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *ws_ptr
     cdef Stream_t s
 
-    if op != CUPY_CUB_CUMSUM and op != CUPY_CUB_CUMPROD:
+    if op not in (CUPY_CUB_CUMSUM, CUPY_CUB_CUMPROD):
         raise ValueError('only CUPY_CUB_CUMSUM and CUPY_CUB_CUMPROD '
                          'are supported.')
 
@@ -311,9 +311,11 @@ def device_scan(ndarray x, int op):
                                                  op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void *>ws.ptr
+    op_code = <int>op
     with nogil:
         # the scan is in-place
-        cub_device_scan(ws_ptr, ws_size, x_ptr, x_ptr, x_size, s, op, dtype_id)
+        cub_device_scan(ws_ptr, ws_size, x_ptr, x_ptr, x_size, s,
+                        op_code, dtype_id)
     return x
 
 
@@ -373,7 +375,7 @@ def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
     from cupy.core._reduction import _get_axis
     cdef bint enforce_numpy_API = False
 
-    if op == CUPY_CUB_ARGMIN or op == CUPY_CUB_ARGMAX:
+    if op in (CUPY_CUB_ARGMIN, CUPY_CUB_ARGMAX):
         # For argmin and argmax, NumPy does not allow a tuple for axis.
         # Also, the keepdims and dtype kwargs are not provided.
         #
@@ -403,7 +405,7 @@ def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
     if can_use_device_reduce(op, arr.dtype, out_axis, dtype):
         return device_reduce(arr, op, out_axis, out, keepdims)
 
-    if op == CUPY_CUB_ARGMIN or op == CUPY_CUB_ARGMAX:
+    if op in (CUPY_CUB_ARGMIN, CUPY_CUB_ARGMAX):
         # segmented reduction not currently implemented for argmax, argmin
         return None
 
