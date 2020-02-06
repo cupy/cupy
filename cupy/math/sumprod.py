@@ -4,11 +4,7 @@ import cupy
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
-
-if cupy.cuda.cub_enabled:
-    from cupy.cuda import cub
-else:
-    cub = None
+from cupy.cuda import cub
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):

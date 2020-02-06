@@ -1,4 +1,5 @@
 import contextlib
+import os
 
 from cupy._environment import get_cuda_path  # NOQA
 from cupy.cuda import compiler  # NOQA
@@ -17,9 +18,9 @@ from cupy.cuda import texture  # NOQA
 
 
 _available = None
-_cuda_path = None
 cub_enabled = False  # default to not use CUB for backward compatibility
-
+if int(os.getenv('CUB_DISABLED', 1)) == 0:
+    cub_enabled = True
 
 from cupy.cuda import cusolver  # NOQA
 # This flag is kept for backward compatibility.
