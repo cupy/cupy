@@ -1,14 +1,13 @@
 # distutils: language = c++
 
-from __future__ import division
 import os
+import pickle
 import re
 import sys
 import warnings
 
 import ctypes
 import numpy
-import six
 
 import cupy
 from cupy.core import _errors
@@ -328,11 +327,11 @@ cdef class ndarray:
         :func:`cupy.load`.
 
         """
-        six.moves.cPickle.dump(self, file, -1)
+        pickle.dump(self, file, -1)
 
     cpdef bytes dumps(self):
         """Dumps a pickle of the array to a string."""
-        return six.moves.cPickle.dumps(self, -1)
+        return pickle.dumps(self, -1)
 
     cpdef ndarray astype(
             self, dtype, order='K', casting=None, subok=None, copy=True):
@@ -799,7 +798,15 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
 
-    # TODO(okuta): Implement ptp
+    cpdef ndarray ptp(self, axis=None, out=None, keepdims=False):
+        """Returns (maximum - minimum) along a given axis.
+
+        .. seealso::
+           :func:`cupy.ptp` for full documentation,
+           :meth:`numpy.ndarray.ptp`
+
+        """
+        return _statistics._ndarray_ptp(self, axis, out, keepdims)
 
     cpdef ndarray clip(self, a_min=None, a_max=None, out=None):
         """Returns an array with values limited to [a_min, a_max].
@@ -1099,6 +1106,9 @@ cdef class ndarray:
     cpdef ndarray conj(self):
         return _math._ndarray_conj(self)
 
+    cpdef ndarray conjugate(self):
+        return _math._ndarray_conj(self)
+
     @property
     def real(self):
         return _math._ndarray_real_getter(self)
@@ -1147,7 +1157,7 @@ cdef class ndarray:
     def __iter__(self):
         if self._shape.size() == 0:
             raise TypeError('iteration over a 0-d array')
-        return (self[i] for i in six.moves.range(self._shape[0]))
+        return (self[i] for i in range(self._shape[0]))
 
     def __len__(self):
         if self._shape.size() == 0:
@@ -1347,11 +1357,6 @@ cdef class ndarray:
 
     def __int__(self):
         return int(self.get())
-
-    if sys.version_info < (3,):
-        def __long__(self):
-            # Avoid using long() for flake8
-            return self.get().__long__()
 
     def __float__(self):
         return float(self.get())
@@ -1805,6 +1810,8 @@ cpdef function.Module compile_with_cache(
             bundled_include = 'cuda-10.0'
         elif 10010 <= _cuda_runtime_version < 10020:
             bundled_include = 'cuda-10.1'
+        elif 10020 <= _cuda_runtime_version < 10030:
+            bundled_include = 'cuda-10.2'
         else:
             # CUDA v9.0, v9.1 or versions not yet supported.
             bundled_include = None
@@ -2936,7 +2943,7 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     cdef object desc = a.__cuda_array_interface__
     cdef tuple shape = desc['shape']
     cdef int dev_id = -1
-    cdef int nbytes
+    cdef size_t nbytes
 
     ptr = desc['data'][0]
     dtype = numpy.dtype(desc['typestr'])

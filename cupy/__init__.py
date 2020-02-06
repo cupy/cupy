@@ -1,10 +1,8 @@
-from __future__ import division
 import functools
 import sys
 import warnings
 
 import numpy
-import six
 
 from cupy import _environment
 from cupy import _version
@@ -19,7 +17,7 @@ try:
         warnings.filterwarnings('ignore', category=ImportWarning,
                                 message='can\'t resolve package from __spec__')
         from cupy import core  # NOQA
-except ImportError:
+except ImportError as e:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
     # built.
@@ -39,7 +37,7 @@ Check the Installation Guide for details:
 
 original error: {}'''.format(exc_info[1]))  # NOQA
 
-    six.reraise(ImportError, ImportError(msg), exc_info[2])
+    raise ImportError(msg) from e
 
 
 from cupy import cuda
@@ -604,7 +602,8 @@ from cupy.math.arithmetic import subtract  # NOQA
 from cupy.math.arithmetic import true_divide  # NOQA
 
 from cupy.math.arithmetic import angle  # NOQA
-from cupy.math.arithmetic import conj  # NOQA
+from cupy.math.arithmetic import conjugate as conj  # NOQA
+from cupy.math.arithmetic import conjugate  # NOQA
 from cupy.math.arithmetic import imag  # NOQA
 from cupy.math.arithmetic import real  # NOQA
 
@@ -668,6 +667,7 @@ from cupy.statistics.order import amin as min  # NOQA
 from cupy.statistics.order import nanmax  # NOQA
 from cupy.statistics.order import nanmin  # NOQA
 from cupy.statistics.order import percentile  # NOQA
+from cupy.statistics.order import ptp  # NOQA
 
 from cupy.statistics.meanvar import average  # NOQA
 from cupy.statistics.meanvar import mean  # NOQA
@@ -812,18 +812,3 @@ def show_config():
     """Prints the current runtime configuration to standard output."""
     sys.stdout.write(str(_cupyx.get_runtime_info()))
     sys.stdout.flush()
-
-
-# -----------------------------------------------------------------------------
-# Warning for Python 2 users
-# -----------------------------------------------------------------------------
-if sys.version_info[:1] == (2,):
-    warnings.warn('''
---------------------------------------------------------------------------------
-CuPy is going to stop supporting Python 2 in v7.x releases.
-
-Future releases of CuPy v7.x will not run on Python 2.
-If you need to continue using Python 2, consider using CuPy v6.x, which
-will be the last version that runs on Python 2.
---------------------------------------------------------------------------------
-''')  # NOQA

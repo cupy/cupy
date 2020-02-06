@@ -1,5 +1,6 @@
 import atexit
 import binascii
+import collections.abc
 import functools
 import hashlib
 import operator
@@ -8,7 +9,6 @@ import time
 import warnings
 
 import numpy
-import six
 
 import cupy
 from cupy import core
@@ -65,7 +65,7 @@ class RandomState(object):
         # * curand.generateLogNormal
         # * curand.generateLogNormalDouble
         size = core.get_size(size)
-        element_size = six.moves.reduce(operator.mul, size, 1)
+        element_size = functools.reduce(operator.mul, size, 1)
         if element_size % 2 == 0:
             out = cupy.empty(size, dtype=dtype)
             func(self._generator, out.data.ptr, out.size, *args)
@@ -328,7 +328,7 @@ class RandomState(object):
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
             shape = ()
-        elif isinstance(size, cupy.util.collections_abc.Sequence):
+        elif isinstance(size, collections.abc.Sequence):
             shape = tuple(size)
         else:
             shape = size,
@@ -950,7 +950,7 @@ class RandomState(object):
             raise ValueError('a must be 1-dimensional or an integer')
         if isinstance(a, cupy.ndarray) and a.ndim == 0:
             raise NotImplementedError
-        if isinstance(a, six.integer_types):
+        if isinstance(a, int):
             a_size = a
             if a_size <= 0:
                 raise ValueError('a must be greater than 0')
@@ -985,7 +985,7 @@ class RandomState(object):
                 raise ValueError(
                     'Cannot take a larger sample than population when '
                     '\'replace=False\'')
-            if isinstance(a, six.integer_types):
+            if isinstance(a, int):
                 indices = cupy.arange(a, dtype='l')
             else:
                 indices = a.copy()
@@ -1000,14 +1000,14 @@ class RandomState(object):
             index = cupy.argmax(cupy.log(p) +
                                 self.gumbel(size=(size, a_size)),
                                 axis=1)
-            if not isinstance(shape, six.integer_types):
+            if not isinstance(shape, int):
                 index = cupy.reshape(index, shape)
         else:
             index = self.randint(0, a_size, size=shape)
             # Align the dtype with NumPy
             index = index.astype(cupy.int64, copy=False)
 
-        if isinstance(a, six.integer_types):
+        if isinstance(a, int):
             return index
 
         if index.ndim == 0:
@@ -1034,7 +1034,7 @@ class RandomState(object):
 
     def permutation(self, a):
         """Returns a permuted range or a permutation of an array."""
-        if isinstance(a, six.integer_types):
+        if isinstance(a, int):
             return self._permutation(a)
         else:
             return a[self._permutation(len(a))]

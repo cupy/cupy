@@ -15,14 +15,6 @@ ENABLE_SLICE_COPY = bool(
     int(os.environ.get('CUPY_EXPERIMENTAL_SLICE_COPY', 0)))
 
 
-# TODO(kmaehashi) remove this when `six.moves.collections_abc` is implemented.
-# See: https://github.com/chainer/chainer/issues/5097
-try:
-    collections_abc = collections.abc
-except AttributeError:  # python <3.3
-    collections_abc = collections
-
-
 cdef list _memos = []
 
 

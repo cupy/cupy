@@ -38,7 +38,6 @@ requirements = {
     ],
     'install': [
         'numpy>=1.9.0',
-        'six>=1.9.0',
         'fastrlock>=0.3',
     ],
     'stylecheck': [
@@ -128,6 +127,7 @@ package_data = {
         'core/include/cupy/carray.cuh',
         'core/include/cupy/complex.cuh',
         'core/include/cupy/atomics.cuh',
+        'core/include/cupy/cuComplex_bridge.h',
         'core/include/cupy/_cuda/cuda-*/*.h',
         'core/include/cupy/_cuda/cuda-*/*.hpp',
         'cuda/cupy_thrust.cu',
@@ -221,6 +221,7 @@ setup(
     ],
     package_data=package_data,
     zip_safe=False,
+    python_requires='>=3.5.0',
     setup_requires=setup_requires,
     install_requires=install_requires,
     tests_require=tests_require,

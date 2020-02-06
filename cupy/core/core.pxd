@@ -50,6 +50,7 @@ cdef class ndarray:
     cpdef ndarray min(self, axis=*, out=*, keepdims=*)
     cpdef ndarray argmin(self, axis=*, out=*, dtype=*,
                          keepdims=*)
+    cpdef ndarray ptp(self, axis=*, out=*, keepdims=*)
     cpdef ndarray clip(self, a_min=*, a_max=*, out=*)
     cpdef ndarray round(self, decimals=*, out=*)
 
@@ -67,6 +68,7 @@ cdef class ndarray:
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)
     cpdef ndarray conj(self)
+    cpdef ndarray conjugate(self)
     cpdef get(self, stream=*, order=*, out=*)
     cpdef set(self, arr, stream=*)
     cpdef ndarray reduced_view(self, dtype=*)

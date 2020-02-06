@@ -1,7 +1,6 @@
 import string
 
 import numpy
-import six
 
 import cupy
 from cupy.core._reduction import create_reduction_func
@@ -14,6 +13,7 @@ from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
+from cupy.cuda cimport memory
 
 from cupy.cuda import cub
 
@@ -23,7 +23,7 @@ from cupy.cuda import cub
 
 cdef ndarray _ndarray_conj(ndarray self):
     if self.dtype.kind == 'c':
-        return _conj(self)
+        return _conjugate(self)
     else:
         return self
 
@@ -46,10 +46,18 @@ cdef ndarray _ndarray_real_setter(ndarray self, value):
 
 
 cdef ndarray _ndarray_imag_getter(ndarray self):
+    cdef memory.MemoryPointer memptr
     if self.dtype.kind == 'c':
+        dtype = get_dtype(self.dtype.char.lower())
+        memptr = self.data
+        # Make the memory pointer point to the first imaginary element.
+        # Note that even if the array doesn't have a valid memory (e.g. 0-size
+        # array), the resulting array should be a view of the original array,
+        # aligning with NumPy behavior.
+        if memptr.ptr != 0:
+            memptr = memptr + self.dtype.itemsize // 2
         view = ndarray(
-            shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
-            memptr=self.data + self.dtype.itemsize // 2,
+            shape=self._shape, dtype=dtype, memptr=memptr,
             strides=self._strides)
         view.base = self.base if self.base is not None else self
         return view
@@ -387,8 +395,8 @@ _add = create_arithmetic(
     ''')
 
 
-_conj = create_ufunc(
-    'cupy_conj',
+_conjugate = create_ufunc(
+    'cupy_conjugate',
     ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
      'Q->Q', 'e->e', 'f->f', 'd->d',
      ('F->F', 'out0 = conj(in0)'),
@@ -396,7 +404,7 @@ _conj = create_ufunc(
     'out0 = in0',
     doc='''Returns the complex conjugate, element-wise.
 
-    .. seealso:: :data:`numpy.conj`
+    .. seealso:: :data:`numpy.conjugate`
 
     ''')
 
@@ -479,23 +487,6 @@ _multiply = create_arithmetic(
     ''')
 
 
-_divide = create_ufunc(
-    'cupy_divide',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q',
-     ('ee->e', 'out0 = in0 / in1'),
-     ('ff->f', 'out0 = in0 / in1'),
-     ('dd->d', 'out0 = in0 / in1'),
-     ('FF->F', 'out0 = in0 / in1'),
-     ('DD->D', 'out0 = in0 / in1')),
-    'out0 = in1 == 0 ? 0 : floor((double)in0 / (double)in1)',
-    doc='''Divides arguments elementwise.
-
-    .. seealso:: :data:`numpy.divide`
-
-    ''')
-
-
 # `integral_power` should return somewhat appropriate values for negative
 # integral powers (for which NumPy would raise errors). Hence the branches in
 # the beginning. This behavior is not officially documented and could change.
@@ -565,8 +556,7 @@ _true_divide = create_ufunc(
 )
 
 
-if six.PY3:
-    _divide = _true_divide
+_divide = _true_divide
 
 
 _floor_divide = create_ufunc(
@@ -638,7 +628,7 @@ _clip = create_ufunc(
 
 
 add = _add
-conj = _conj
+conjugate = _conjugate
 angle = _angle
 real = _real
 imag = _imag

@@ -1,7 +1,6 @@
 # class s_(object):
 
 import numpy
-import six
 
 import cupy
 from cupy import core
@@ -21,7 +20,7 @@ class AxisConcatenator(object):
         k2 = ndmin - ndim
         if trans1d < 0:
             trans1d += k2 + 1
-        defaxes = list(six.moves.range(ndmin))
+        defaxes = list(range(ndmin))
         k1 = trans1d
         axes = defaxes[:k1] + defaxes[k2:] + \
             defaxes[k1:k2]
@@ -40,7 +39,7 @@ class AxisConcatenator(object):
         scalars = []
         arraytypes = []
         scalartypes = []
-        if isinstance(key, six.string_types):
+        if isinstance(key, str):
             raise NotImplementedError
         if not isinstance(key, tuple):
             key = (key,)
@@ -49,7 +48,7 @@ class AxisConcatenator(object):
             scalar = False
             if isinstance(k, slice):
                 raise NotImplementedError
-            elif isinstance(k, six.string_types):
+            elif isinstance(k, str):
                 if i != 0:
                     raise ValueError(
                         'special directives must be the first entry.')

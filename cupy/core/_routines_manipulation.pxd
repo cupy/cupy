@@ -21,6 +21,7 @@ cdef ndarray _ndarray_ravel(ndarray self, order)
 cdef ndarray _ndarray_squeeze(ndarray self, axis)
 cdef ndarray _ndarray_repeat(ndarray self, repeats, axis)
 
+cpdef ndarray _expand_dims(ndarray a, tuple axis)
 cpdef ndarray moveaxis(ndarray a, source, destination)
 cpdef ndarray rollaxis(ndarray a, Py_ssize_t axis, Py_ssize_t start=*)
 cpdef ndarray broadcast_to(ndarray array, shape)

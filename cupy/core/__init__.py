@@ -19,7 +19,7 @@ from cupy.core._routines_manipulation import size  # NOQA'
 from cupy.core._routines_math import absolute  # NOQA
 from cupy.core._routines_math import add  # NOQA
 from cupy.core._routines_math import angle  # NOQA
-from cupy.core._routines_math import conj  # NOQA
+from cupy.core._routines_math import conjugate  # NOQA
 from cupy.core._routines_math import divide  # NOQA
 from cupy.core._routines_math import floor_divide  # NOQA
 from cupy.core._routines_math import imag  # NOQA

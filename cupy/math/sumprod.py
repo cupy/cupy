@@ -1,10 +1,14 @@
 import numpy
-import six
 
 import cupy
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
+
+if cupy.cuda.cub_enabled:
+    from cupy.cuda import cub
+else:
+    cub = None
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -124,9 +128,9 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
 def _axis_to_first(x, axis):
     if axis < 0:
         axis = x.ndim + axis
-    trans = [axis] + [a for a in six.moves.range(x.ndim) if a != axis]
-    pre = list(six.moves.range(1, axis + 1))
-    succ = list(six.moves.range(axis + 1, x.ndim))
+    trans = [axis] + [a for a in range(x.ndim) if a != axis]
+    pre = list(range(1, axis + 1))
+    succ = list(range(axis + 1, x.ndim))
     revert = pre + [0] + succ
     return trans, revert
 
@@ -147,8 +151,9 @@ def _proc_as_batch(proc, x, axis):
     return r.reshape(s).transpose(revert)
 
 
-def _cum_core(a, axis, dtype, out, kern, batch_kern):
+def _cum_core(a, axis, dtype, out, kern, batch_kern, *, op=None):
     a = cupy.asarray(a)
+
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
@@ -171,6 +176,12 @@ def _cum_core(a, axis, dtype, out, kern, batch_kern):
         raise core._AxisError('axis(={}) out of bounds'.format(axis))
     else:
         return _proc_as_batch(batch_kern, out, axis=axis)
+
+    if cupy.cuda.cub_enabled:
+        # result will be None if the scan is not compatible with CUB
+        result = cub.cub_scan(out, op)
+        if result is not None:
+            return result
 
     pos = 1
     while pos < out.size:
@@ -219,7 +230,9 @@ def cumsum(a, axis=None, dtype=None, out=None):
     .. seealso:: :func:`numpy.cumsum`
 
     """
-    return _cum_core(a, axis, dtype, out, _cumsum_kern, _cumsum_batch_kern)
+    op = cub.CUPY_CUB_CUMSUM if cub is not None else None
+    return _cum_core(a, axis, dtype, out, _cumsum_kern, _cumsum_batch_kern,
+                     op=op)
 
 
 _cumprod_batch_kern = core.ElementwiseKernel(
@@ -262,7 +275,9 @@ def cumprod(a, axis=None, dtype=None, out=None):
     .. seealso:: :func:`numpy.cumprod`
 
     """
-    return _cum_core(a, axis, dtype, out, _cumprod_kern, _cumprod_batch_kern)
+    op = cub.CUPY_CUB_CUMPROD if cub is not None else None
+    return _cum_core(a, axis, dtype, out, _cumprod_kern, _cumprod_batch_kern,
+                     op=op)
 
 
 def diff(a, n=1, axis=-1, prepend=None, append=None):

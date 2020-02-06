@@ -1,7 +1,6 @@
 # distutils: language = c++
 
 import numpy
-import six
 
 cimport cpython  # NOQA
 from libc.stdint cimport int8_t
@@ -99,7 +98,7 @@ cdef inline CPointer _pointer(x):
         return CUIntMax(x.ptr)
 
     if type(x) not in _pointer_numpy_types:
-        if isinstance(x, six.integer_types):
+        if isinstance(x, int):
             x = numpy.int64(x)
         elif isinstance(x, float):
             x = numpy.float64(x)
@@ -197,8 +196,8 @@ cdef class Module:
             self.ptr = 0
 
     cpdef load_file(self, filename):
-        if isinstance(filename, six.binary_type):
-            filename = six.u(filename)
+        if isinstance(filename, bytes):
+            filename = filename.decode()
         runtime._ensure_context()
         self.ptr = driver.moduleLoad(filename)
 
@@ -207,18 +206,18 @@ cdef class Module:
         self.ptr = driver.moduleLoadData(cubin)
 
     cpdef get_global_var(self, name):
-        if isinstance(name, six.binary_type):
-            name = six.u(name)
+        if isinstance(name, bytes):
+            name = name.decode()
         return driver.moduleGetGlobal(self.ptr, name)
 
     cpdef get_function(self, name):
-        if isinstance(name, six.binary_type):
-            name = six.u(name)
+        if isinstance(name, bytes):
+            name = name.decode()
         return Function(self, name)
 
     cpdef get_texref(self, name):
-        if isinstance(name, six.binary_type):
-            name = six.u(name)
+        if isinstance(name, bytes):
+            name = name.decode()
         return driver.moduleGetTexRef(self.ptr, name)
 
 
