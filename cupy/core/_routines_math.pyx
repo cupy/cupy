@@ -11,11 +11,14 @@ from cupy import util
 
 from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
+from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 
 if cupy.cuda.cub_enabled:
     from cupy.cuda import cub
+else:
+    cub = None
 
 
 # ndarray members
@@ -141,8 +144,8 @@ def _inclusive_batch_scan_kernel(dtype, block_size, op):
     Returns:
          cupy.cuda.Function: cuda function
     """
-    ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
-    elem = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
+    op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
+    identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
     name = 'inclusive_batch_scan_kernel'
     dtype = get_typename(dtype)
     source = string.Template("""
@@ -188,7 +191,7 @@ def _inclusive_batch_scan_kernel(dtype, block_size, op):
         const ptrdiff_t idx0_idx[] = {row, col};
 
         if(idx0 < n){
-            temp[thid] = (must_copy) ? src[idx0_idx] : (${dtype}) ${elem};
+            temp[thid] = (must_copy) ? src[idx0_idx] : (${dtype}) ${identity};
             __syncthreads();
             if (!n_batches_block) {
                 n_batches_block = 1;
@@ -219,7 +222,7 @@ def _inclusive_batch_scan_kernel(dtype, block_size, op):
         }
     }
     """).substitute(name=name, dtype=dtype, block_size=block_size,
-                    op=ops[op], elem=elem[op])
+                    op=op_char[op], identity=identity[op])
     module = compile_with_cache(source)
     return module.get_function(name)
 
@@ -248,8 +251,8 @@ def _inclusive_scan_kernel(dtype, block_size, op):
 
     name = 'inclusive_scan_kernel'
     dtype = get_typename(dtype)
-    ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
-    elem = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
+    op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
+    identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
     source = string.Template("""
     extern "C" __global__ void ${name}(const CArray<${dtype}, 1> src,
         CArray<${dtype}, 1> dst){
@@ -261,8 +264,12 @@ def _inclusive_scan_kernel(dtype, block_size, op):
         unsigned int idx0 = thid + block;
         unsigned int idx1 = thid + blockDim.x + block;
 
-        temp[thid] = (idx0 < n) ? src[idx0] : (${dtype}) ${elem};
-        temp[thid + blockDim.x] = (idx1 < n) ? src[idx1] : (${dtype}) ${elem};
+        temp[thid] = (idx0 < n) ? src[idx0] : (${dtype}) ${identity};
+        if (idx1 < n) {
+            temp[thid + blockDim.x] = src[idx1];
+        } else {
+            temp[thid + blockDim.x] = (${dtype}) ${identity};
+        }
         __syncthreads();
 
         for(int i = 1; i <= ${block_size}; i <<= 1){
@@ -289,7 +296,7 @@ def _inclusive_scan_kernel(dtype, block_size, op):
         }
     }
     """).substitute(name=name, dtype=dtype, block_size=block_size,
-                    op=ops[op], elem=elem[op])
+                    op=op_char[op], identity=identity[op])
     module = compile_with_cache(source)
     return module.get_function(name)
 
@@ -367,7 +374,7 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
 
     cdef Py_ssize_t block_size = 256
     if out is None:
-        out = cupy.core._ndarray_init(a.shape, a.dtype)
+        out = _ndarray_init(a.shape, a.dtype)
     else:
         if a.size != out.size:
             raise ValueError('Provided out is the wrong size')
@@ -388,7 +395,7 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
     return out
 
 
-cdef ndarray _batch_scan_op(ndarray a, op, dtype=None, out=None):
+cdef ndarray _batch_scan_op(ndarray a, scan_op op, dtype, ndarray out):
     batch_size = a.shape[1]
     # TODO(ecastill) replace this with "_reduction._block_size" once it is
     # properly exposed
@@ -419,7 +426,7 @@ cdef ndarray _batch_scan_op(ndarray a, op, dtype=None, out=None):
     return out
 
 
-cdef _axis_to_first(ndarray x, axis):
+cdef _axis_to_first(ndarray x, int axis):
     trans = [axis] + [a for a in range(x.ndim) if a != axis]
     pre = list(range(1, axis + 1))
     succ = list(range(axis + 1, x.ndim))
@@ -427,7 +434,7 @@ cdef _axis_to_first(ndarray x, axis):
     return trans, revert
 
 
-cdef _proc_as_batch(ndarray x, axis, dtype, op):
+cdef _proc_as_batch(ndarray x, int axis, dtype, scan_op op):
     if x.shape[axis] == 0:
         return cupy.empty_like(x)
     trans, revert = _axis_to_first(x, axis)
@@ -442,7 +449,7 @@ cdef _proc_as_batch(ndarray x, axis, dtype, op):
     return r.reshape(s).transpose(revert)
 
 
-cpdef scan_core(ndarray a, axis, op, dtype=None, ndarray out=None):
+cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
@@ -461,12 +468,22 @@ cpdef scan_core(ndarray a, axis, op, dtype=None, ndarray out=None):
         else:
             result = a.astype(out.dtype)
         result[...] = a
+
     if axis is None:
         result = result.ravel()
-        scan(result, op, dtype, result)
+        if cupy.cuda.cub_enabled:
+            # result will be None if the scan is not compatible with CUB
+            if op == scan_op.SCAN_SUM:
+                cub_op = cub.CUPY_CUB_CUMSUM
+            else:
+                cub_op = cub.CUPY_CUB_CUMPROD
+            res = cub.cub_scan(result, cub_op)
+        if not cupy.cuda.cub_enabled or res is None:
+            scan(result, op, dtype, result)
     else:
         axis = cupy.util._normalize_axis_index(axis, a.ndim)
         result = _proc_as_batch(result, axis, dtype, op)
+    # This is for when the original out param was not contiguous
     if out is not None and out.data != result.data:
         out[...] = result.reshape(out.shape)
     else:
