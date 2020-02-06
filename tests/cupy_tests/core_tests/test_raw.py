@@ -534,7 +534,7 @@ class TestRaw(unittest.TestCase):
         assert (out_down == a.astype(cupy.complex64)).all()
 
     def test_const_memory(self):
-        mod = cupy.RawModule(test_const_mem, backend=self.backend)
+        mod = cupy.RawModule(code=test_const_mem, backend=self.backend)
         ker = mod.get_function('multiply_by_const')
         mem_ptr = mod.get_global('some_array')
         const_arr = cupy.ndarray((100,), cupy.float32, mem_ptr)
