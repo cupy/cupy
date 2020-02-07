@@ -59,6 +59,8 @@ install:
 
 
 build_script:
+  # for CUB submodule
+  - "git submodule update --init --recursive"
   # Build the compiled extension
   - "%CMD_IN_ENV% python setup.py build install -vvvv"
 
