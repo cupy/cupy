@@ -1,0 +1,43 @@
+# Run this script with the following command:
+#
+#   mpiexec -n 2 python multple_devices.py
+#
+# This script executes simple communication and computation with 2 MPI
+# processes, each of which uses a different GPU
+
+import cupy
+from mpi4py import MPI  
+
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
+if size != 2:
+    raise RuntimeError("run this script with 2 processes: mpiexec -n 2 ...")
+
+# select device based on (local) MPI rank
+cupy.cuda.Device(rank).use()
+
+# send-recv
+if rank == 0:
+    arr = cupy.empty(100, dtype=cupy.int64)
+    comm.Recv(arr, source=1, tag=87)
+    assert (arr == cupy.arange(100).astype(cupy.int64)).all()
+else:
+    arr = cupy.arange(100).astype(cupy.int64)
+    comm.Send(arr, dest=0, tag=87)
+
+# allreduce
+arr1 = cupy.empty(1000)
+arr2 = cupy.random.random(1000)
+arr_total = arr2.copy()
+comm.Allreduce(MPI.IN_PLACE, arr_total)  # in-place reduction
+if rank == 0:
+    comm.Recv(arr1, source=1, tag=88)
+    comm.Send(arr2, dest=1, tag=89)
+else:
+    comm.Send(arr2, dest=0, tag=88)
+    comm.Recv(arr1, source=0, tag=89)
+assert (arr1 + arr2 == arr_total).all()
+
+print(f"process {rank}: finished")
