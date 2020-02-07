@@ -5,7 +5,6 @@ import cupy
 import numpy
 
 from cupy import testing
-import scipy.special  # NOQA
 import cupyx.scipy.special
 
 
@@ -23,12 +22,14 @@ class TestSpecialConvex(unittest.TestCase):
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_huber(self, xp, scp, dtype):
+        import scipy.special  # NOQA
         z = testing.shaped_random((10, 2), xp=xp, dtype=dtype)
         return scp.special.huber(z[:, 0], z[:, 1])
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_entr(self, xp, scp, dtype):
+        import scipy.special  # NOQA
         values = (0, 0.5, 1.0, cupy.inf)
         signs = [-1, 1]
         arr = []
@@ -40,6 +41,7 @@ class TestSpecialConvex(unittest.TestCase):
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_rel_entr(self, xp, scp, dtype):
+        import scipy.special  # NOQA
         values = (0, 0.5, 1.0)
         signs = [-1, 1]
         arr = []
@@ -52,6 +54,7 @@ class TestSpecialConvex(unittest.TestCase):
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_pseudo_huber(self, xp, scp, dtype):
+        import scipy.special  # NOQA
         z = testing.shaped_random((10, 2), xp=numpy, dtype=dtype).tolist()
         z = xp.asarray(z + [[0, 0.5], [0.5, 0]], dtype=dtype)
         return scp.special.pseudo_huber(z[:, 0], z[:, 1])
