@@ -58,7 +58,8 @@ cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
     dtype_sum = dtype_out = dtype
     if dtype is None:
         if self.dtype.kind in 'iub':
-            dtype_out = dtype_sum = numpy.float64
+            dtype_out = numpy.float64
+            dtype_sum = numpy.float64
         elif self.dtype.char == 'e':
             dtype_sum = numpy.float32
             dtype_out = numpy.float16
