@@ -6,7 +6,7 @@
 # processes, each of which uses a different GPU
 
 import cupy
-from mpi4py import MPI  
+from mpi4py import MPI
 
 
 comm = MPI.COMM_WORLD
@@ -15,8 +15,15 @@ size = comm.Get_size()
 if size != 2:
     raise RuntimeError("run this script with 2 processes: mpiexec -n 2 ...")
 
-# select device based on (local) MPI rank
-cupy.cuda.Device(rank).use()
+# Select device based on local MPI rank.
+# Caveat: for simplicity we assume local_rank == rank here, which may or may
+# not be the case depending how MPI processes are lauched and how your code
+# is written. For more robust usage, you may need to consult the user manual
+# for your MPI library. For example:
+# local_rank = int(os.getenv("OMPI_COMM_WORLD_LOCAL_RANK"))  # Open MPI
+# local_rank = int(os.getenv("MV2_COMM_WORLD_LOCAL_RANK"))   # MVAPICH2
+local_rank = rank
+cupy.cuda.Device(local_rank).use()
 
 # send-recv
 if rank == 0:
