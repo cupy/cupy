@@ -14,6 +14,9 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 if size != 2:
     raise RuntimeError("run this script with 2 processes: mpiexec -n 2 ...")
+device_count = cupy.cuda.runtime.getDeviceCount()
+if size > device_count:
+    raise RuntimeError("need {} GPUs, found {}".format(size, device_count))
 
 # Select device based on local MPI rank.
 # Caveat: for simplicity we assume local_rank == rank here, which may or may
