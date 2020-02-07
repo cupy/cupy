@@ -335,7 +335,7 @@ def _compile_with_cache_cuda(
             if not os.path.isdir(cache_dir):
                 raise
 
-    mod = function.Module()
+    mod = function.Module(enable_cooperative_groups)
     # To handle conflicts in concurrent situation, we adopt lock-free method
     # to avoid performance degradation.
     path = os.path.join(cache_dir, name)

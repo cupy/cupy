@@ -1,3 +1,5 @@
+import warnings
+
 import cupy
 from cupy import util
 from cupy.cuda cimport driver
@@ -17,7 +19,7 @@ cdef class RawKernel:
     binary is reused by other processes.
 
     Args:
-        code (str): CUDA source code. Mutually exclusive with ``kernel``
+        code (str): CUDA source code.
         name (str): Name of the kernel function.
         options (tuple of str): Compiler options passed to the backend (NVRTC
             or NVCC). For details, see
@@ -34,8 +36,6 @@ cdef class RawKernel:
             ``cuLaunchCooperativeKernel`` so that cooperative groups can be
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
-        kernel (:class:`cupy.cuda.Function`): CUDA Kernel object 
-            to be executed. Mutually exclusive with ``code``
     """
 
     def __init__(self, code, name, options=(), backend='nvrtc', *,
@@ -53,7 +53,7 @@ cdef class RawKernel:
         self.backend = backend
         self.translate_cucomplex = translate_cucomplex
         self.enable_cooperative_groups = enable_cooperative_groups
-        self._kernel = kernel
+        self._kernel = None
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -82,6 +82,146 @@ cdef class RawKernel:
                 self.translate_cucomplex, self.enable_cooperative_groups)
         return self._kernel
 
+    @property
+    def attributes(self):
+        """ (Deprecated) use `RawKernel.function.attributes` instead. """
+        warnings.warn(
+            'RawKernel.attributes is deprecated. '
+            'Use RawKernel.function.attributes instead.',
+            DeprecationWarning)
+        return self.function.attributes()
+
+    @property
+    def max_threads_per_block(self):
+        """ (Deprecated) use `RawKernel.function.max_threads_per_block`
+        instead.
+        """
+        warnings.warn(
+            'RawKernel.max_threads_per_block is deprecated. '
+            'Use RawKernel.function.max_threads_per_block instead.',
+            DeprecationWarning)
+        return self.function.max_threads_per_block()
+
+    @property
+    def shared_size_bytes(self):
+        """ (Deprecated) use `RawKernel.function.shared_size_bytes`
+        instead.
+        """
+        warnings.warn(
+            'RawKernel.shared_size_bytes is deprecated. '
+            'Use RawKernel.function.shared_size_bytes instead.',
+            DeprecationWarning)
+        return self.function.shared_size_bytes()
+
+    @property
+    def const_size_bytes(self):
+        """ (Deprecated) use `RawKernel.function.const_size_bytes`
+        instead.
+        """
+        warnings.warn(
+            'RawKernel.const_size_bytes is deprecated. '
+            'Use RawKernel.function.const_size_bytes instead.',
+            DeprecationWarning)
+        return self.function.const_size_bytes()
+
+    @property
+    def local_size_bytes(self):
+        """ (Deprecated) use `RawKernel.function.local_size_bytes`
+        instead.
+        """
+        warnings.warn(
+            'RawKernel.local_size_bytes is deprecated. '
+            'Use RawKernel.function.local_size_bytes instead.',
+            DeprecationWarning)
+        return self.function.local_size_bytes()
+
+    @property
+    def num_regs(self):
+        """ (Deprecated) use `RawKernel.function.num_regs`
+        instead.
+        """
+        warnings.warn(
+            'RawKernel.num_regs is deprecated. '
+            'Use RawKernel.function.num_regs instead.',
+            DeprecationWarning)
+        return self.function.num_regs()
+
+    @property
+    def ptx_version(self):
+        """ (Deprecated) use `RawKernel.function.ptx_version`
+        instead.
+        """
+        warnings.warn(
+            'RawKernel.ptx_version is deprecated. '
+            'Use RawKernel.function.ptx_version instead.',
+            DeprecationWarning)
+        return self.function.ptx_version()
+
+    @property
+    def binary_version(self):
+        """ (Deprecated) use `RawKernel.function.binary_version`
+        instead.
+        """
+        warnings.warn(
+            'RawKernel.binary_version is deprecated. '
+            'Use RawKernel.function.binary_version instead.',
+            DeprecationWarning)
+        return self.function.binary_version()
+
+    @property
+    def cache_mode_ca(self):
+        """ (Deprecated) use `RawKernel.function.cache_mode_ca`
+        instead.
+        """
+        warnings.warn(
+            'RawKernel.cache_mode_ca is deprecated. '
+            'Use RawKernel.function.cache_mode_ca instead.',
+            DeprecationWarning)
+        return self.function.cache_mode_ca()
+
+    @property
+    def max_dynamic_shared_size_bytes(self):
+        """ (Deprecated) use `RawKernel.function.max_dynamic_shared_size_bytes`
+        instead.
+        """
+        warnings.warn(
+            'RawKernel.max_dynamic_shared_size_bytes is deprecated. '
+            'Use RawKernel.function.max_dynamic_shared_size_bytes instead.',
+            DeprecationWarning)
+        return self.function.max_dynamic_shared_size_bytes()
+
+    @max_dynamic_shared_size_bytes.setter
+    def max_dynamic_shared_size_bytes(self, bytes):
+        """ (Deprecated) use `RawKernel.function.max_dynamic_shared_size_bytes`
+        instead.
+        """
+        warnings.warn(
+            'RawKernel.max_dynamic_shared_size_bytes is deprecated. '
+            'Use RawKernel.function.max_dynamic_shared_size_bytes instead.',
+            DeprecationWarning)
+        self.function.max_dynamic_shared_size_bytes(bytes)
+
+    @property
+    def preferred_shared_memory_carveout(self):
+        """ (Deprecated) use `RawKernel.function.preferred_shared_memory_carveout`
+        instead.
+        """
+        warnings.warn(
+            'RawKernel.preferred_shared_memory_carveout is deprecated. '
+            'Use RawKernel.function.preferred_shared_memory_carveout instead.',
+            DeprecationWarning)
+        return self.function.preferred_shared_memory_carveout()
+
+    @preferred_shared_memory_carveout.setter
+    def preferred_shared_memory_carveout(self, fraction):
+        """ (Deprecated) use `RawKernel.function.preferred_shared_memory_carveout`
+        instead.
+        """
+        warnings.warn(
+            'RawKernel.preferred_shared_memory_carveout is deprecated. '
+            'Use RawKernel.function.preferred_shared_memory_carveout instead.',
+            DeprecationWarning)
+        self.kernel.preferred_shared_memory_carveout(fraction)
 
 
 @cupy.util.memoize(for_each_device=True)
@@ -159,7 +299,7 @@ cdef class RawModule:
             self.backend = backend
             self.translate_cucomplex = translate_cucomplex
         elif self.cubin_path is not None:
-            self.module = Module()
+            self.module = Module(enable_cooperative_groups)
             self.module.load_file(self.cubin_path)
             self.options = ()
             self.backend = 'nvcc'

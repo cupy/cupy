@@ -157,12 +157,14 @@ cdef class Function:
 
     """CUDA kernel function."""
 
-    def __init__(self, Module module, str funcname):
+    def __init__(self, Module module, str funcname,
+                 bint enable_cooperative_groups):
         self.module = module  # to keep module loaded
         self.ptr = driver.moduleGetFunction(module.ptr, funcname)
+        self.enable_cooperative_groups = enable_cooperative_groups
 
     def __call__(self, tuple grid, tuple block, args, size_t shared_mem=0,
-                 stream=None, enable_cooperative_groups=False):
+                 stream=None):
         grid = (grid + (1, 1))[:3]
         block = (block + (1, 1))[:3]
         s = _get_stream(stream)
@@ -170,7 +172,7 @@ cdef class Function:
             self.ptr,
             max(1, grid[0]), max(1, grid[1]), max(1, grid[2]),
             max(1, block[0]), max(1, block[1]), max(1, block[2]),
-            args, shared_mem, s, enable_cooperative_groups)
+            args, shared_mem, s, self.enable_cooperative_groups)
 
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
                         size_t block_max_size=128, stream=None):
@@ -305,8 +307,9 @@ cdef class Module:
 
     """CUDA kernel module."""
 
-    def __init__(self):
+    def __init__(self, enable_cooperative_groups):
         self.ptr = 0
+        self.enable_cooperative_groups = enable_cooperative_groups
 
     def __dealloc__(self):
         if self.ptr:
@@ -331,7 +334,7 @@ cdef class Module:
     cpdef get_function(self, name):
         if isinstance(name, bytes):
             name = name.decode()
-        return Function(self, name)
+        return Function(self, name, self.enable_cooperative_groups)
 
     cpdef get_texref(self, name):
         if isinstance(name, bytes):

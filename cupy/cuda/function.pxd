@@ -10,6 +10,7 @@ cdef class Function:
     cdef:
         public Module module
         public intptr_t ptr
+        public enable_cooperative_groups
 
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=*,
                         size_t block_max_size=*, stream=*)
@@ -19,6 +20,7 @@ cdef class Module:
 
     cdef:
         public intptr_t ptr
+        public enable_cooperative_groups
 
     cpdef load_file(self, filename)
     cpdef load(self, bytes cubin)
