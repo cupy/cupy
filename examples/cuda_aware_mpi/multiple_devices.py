@@ -50,4 +50,4 @@ else:
     comm.Recv(arr1, source=0, tag=89)
 assert (arr1 + arr2 == arr_total).all()
 
-print(f"process {rank}: finished")
+print("process {}: finished".format(rank))
