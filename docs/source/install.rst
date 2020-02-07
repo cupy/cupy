@@ -117,6 +117,12 @@ the installation of a particular CUDA version (say 10.0) for driver compatibilit
 
     Currently cuTENSOR is not yet available on ``conda-forge``.
 
+.. note::
+
+    If you encounter any problem with CuPy from ``conda-forge``, please feel free to report to `cupy-feedstock 
+    <https://github.com/conda-forge/cupy-feedstock/issues>`_, and we will help investigate if it is just a packaging
+    issue in ``conda-forge``'s recipe or a real issue in CuPy.
+
 
 Install CuPy from Source
 ------------------------
