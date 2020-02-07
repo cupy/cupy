@@ -371,15 +371,11 @@ cdef create_arithmetic(name, op, boolop, doc):
     #  - str (the operator for bool-bool inputs) or
     #  - callable (a function to raise an error for bool-bool inputs).
     if isinstance(boolop, str):
-        boolop_ = _kernel._Op.from_type_and_routine(
-            '??->?', 'out0 = in0 %s in1' % boolop)
-    else:
-        assert callable(boolop)
-        boolop_ = _kernel._Op.from_type_and_error_func('??->?', boolop)
+        boolop = 'out0 = in0 %s in1' % boolop
 
     return create_ufunc(
         'cupy_' + name,
-        (boolop_,
+        (('??->?', boolop),
          'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
          'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
          'DD->D'),
@@ -466,9 +462,15 @@ _imag_setter = create_ufunc(
     ''')
 
 
+def _negative_boolean_error():
+    raise TypeError(
+        'The cupy boolean negative, the `-` operator, is not supported, '
+        'use the `~` operator or the logical_not function instead.')
+
+
 _negative = create_ufunc(
     'cupy_negative',
-    (('?->?', 'out0 = !in0'),
+    (('?->?', _negative_boolean_error),
      'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = -in0',
