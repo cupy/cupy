@@ -537,9 +537,6 @@ void test_grid_sync(const float* x1, const float* x2, float* y) {
 '''
 
 
-@unittest.skipUnless(
-    9000 <= cupy.cuda.runtime.runtimeGetVersion(),
-    'Requires CUDA 9.x or later')
 @testing.parameterize(*testing.product({
     'n': [10, 100, 256]
 }))
@@ -547,6 +544,10 @@ class TestRawGridSync(unittest.TestCase):
 
     def setUp(self):
         global _test_cache_dir
+        if cupy.cuda.runtime.runtimeGetVersion() < 9000:
+            pytest.skip('Requires CUDA 9.x or later')
+        if int(cupy.cuda.device.get_compute_capability()) <= 60:
+            pytest.skip('Requires compute capability 6.0 or later')
         _test_cache_dir = tempfile.mkdtemp()
         os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
 
