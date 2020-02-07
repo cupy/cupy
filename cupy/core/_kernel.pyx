@@ -1120,7 +1120,7 @@ cdef class _Ops:
                 if isinstance(rt, tuple):
                     rt = tuple([r1 or r2 for r1, r2 in zip(rt, routine)])
                 elif not isinstance(rt, str):
-                    # TODO(kataoka): assert isinstance(rt, callable)
+                    assert callable(rt)
                     ops_.append(_Op.from_type_and_error_func(typ, rt))
                     continue
             else:
