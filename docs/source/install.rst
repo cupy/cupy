@@ -98,6 +98,26 @@ Please make sure that only one CuPy package (``cupy`` or ``cupy-cudaXX`` where X
   $ pip freeze | grep cupy
 
 
+Install CuPy from conda-forge
+-----------------------------
+
+Conda/Anaconda is a cross-platform package management solution widely used in scientific computing and other fields.
+The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for Linux 64 systems
+once the CUDA driver is correctly set up, you can install CuPy from the ``conda-forge`` channel::
+
+    $ conda install -c conda-forge cupy
+
+and ``conda`` will install pre-built CuPy and most of the optional dependencies for you, including CUDA runtime libraries
+(``cudatoolkit``), NCCL, and cuDNN. It is not necessary to install CUDA Toolkit in advance. If you need to enforce
+the installation of a particular CUDA version (say 10.0) for driver compatibility, you can do::
+
+    $ conda install -c conda-forge cupy cudatoolkit=10.0
+
+.. note::
+
+    Currently cuTENSOR is not yet available on ``conda-forge``.
+
+
 Install CuPy from Source
 ------------------------
 
@@ -165,6 +185,10 @@ Use pip to uninstall CuPy::
 .. note::
 
    If you are using a wheel, ``cupy`` shall be replaced with ``cupy-cudaXX`` (where XX is a CUDA version number).
+
+.. note::
+
+   If CuPy is installed via ``conda``, please do ``conda uninstall cupy`` instead.
 
 
 Upgrade CuPy
@@ -242,7 +266,7 @@ If you need to pass environment variable (e.g., ``CUDA_PATH``), you need to spec
 
 If you are using certain versions of conda, it may fail to build CuPy with error ``g++: error: unrecognized command line option ‘-R’``.
 This is due to a bug in conda (see `conda/conda#6030 <https://github.com/conda/conda/issues/6030>`_ for details).
-If you encounter this problem, please downgrade or upgrade it.
+If you encounter this problem, please upgrade your conda.
 
 .. _install_cudnn:
 
@@ -331,11 +355,3 @@ For example, if you have CUDA installed at ``/usr/local/cuda-9.0``::
   export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
 
 Also see :ref:`install_cuda`.
-
-If you are installing CuPy on Anaconda environment, also make sure that the following packages are not installed.
-
-* `cudatoolkit <https://anaconda.org/anaconda/cudatoolkit>`__
-* `cudnn <https://anaconda.org/anaconda/cudnn>`__
-* `nccl <https://anaconda.org/anaconda/nccl>`__
-
-Use ``conda uninstall cudatoolkit cudnn nccl`` to remove these package.
