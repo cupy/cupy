@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 from cupy import testing
 
@@ -123,6 +124,16 @@ class TestFillDiagonal(unittest.TestCase):
     def test_fill_diagonal(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         xp.fill_diagonal(a, val=self.val, wrap=self.wrap)
+        return a
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_columnar_slice(self, xp, dtype):  # see cupy#2970
+        if self.shape == (2, 2, 2):
+            pytest.skip(
+                'The length of each dimension must be the same after slicing')
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        xp.fill_diagonal(a[:,1:], val=self.val, wrap=self.wrap)
         return a
 
     @testing.for_all_dtypes()
