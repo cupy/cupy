@@ -129,7 +129,7 @@ def fill_diagonal(a, val, wrap=False):
     # The followings are imported from the original numpy
     if a.ndim < 2:
         raise ValueError('array must be at least 2-d')
-    end = None
+    end = a.size
     if a.ndim == 2:
         step = a.shape[1] + 1
         if not wrap:
