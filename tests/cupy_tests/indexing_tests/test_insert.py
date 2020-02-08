@@ -113,17 +113,24 @@ class TestPutRaises(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(3, 3), (2, 2, 2), (3, 5), (5, 3)],
-    'val': [1, 0],
+    'val': [1, 0, (2,), (2, 2)],
     'wrap': [True, False],
 }))
 @testing.gpu
 class TestFillDiagonal(unittest.TestCase):
 
+    def _compute_val(self, xp):
+        if type(self.val) is int:
+            return self.val
+        else:
+            return xp.arange(numpy.prod(self.val)).reshape(self.val)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_fill_diagonal(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
-        xp.fill_diagonal(a, val=self.val, wrap=self.wrap)
+        val = self._compute_val(xp)
+        xp.fill_diagonal(a, val=val, wrap=self.wrap)
         return a
 
     @testing.for_all_dtypes()
@@ -133,11 +140,13 @@ class TestFillDiagonal(unittest.TestCase):
             pytest.skip(
                 'The length of each dimension must be the same after slicing')
         a = testing.shaped_arange(self.shape, xp, dtype)
-        xp.fill_diagonal(a[:,1:], val=self.val, wrap=self.wrap)
+        val = self._compute_val(xp)
+        xp.fill_diagonal(a[:, 1:], val=val, wrap=self.wrap)
         return a
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_1darray(self, xp, dtype):
         a = testing.shaped_arange(5, xp, dtype)
-        xp.fill_diagonal(a, val=self.val, wrap=self.wrap)
+        val = self._compute_val(xp)
+        xp.fill_diagonal(a, val=val, wrap=self.wrap)
