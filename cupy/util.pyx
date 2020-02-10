@@ -208,4 +208,4 @@ def check_array(obj, *, arg_name):
     """
     if not isinstance(obj, cupy.ndarray):
         raise TypeError(
-            '\'{}\' must be an array, not {}.'.format(arg_name, type(obj)))
+            '\'{}\' must be a cupy.ndarray object, not {}.'.format(arg_name, type(obj)))
