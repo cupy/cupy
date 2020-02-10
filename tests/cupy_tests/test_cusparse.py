@@ -156,3 +156,95 @@ class TestCsrmv(unittest.TestCase):
         expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
         self.assertIs(y, z)
         testing.assert_array_almost_equal(y, expect)
+
+    def test_csrmvEx_aligned(self):
+        a = sparse.csr_matrix(self.a)
+        x = cupy.array(self.x, order='f')
+
+        self.assertTrue(cupy.cusparse.csrmvExIsAligned(a, x))
+
+    def test_csrmvEx_not_aligned(self):
+        a = sparse.csr_matrix(self.a)
+        tmp = cupy.array(numpy.hstack([self.x, self.y]), order='f')
+        x = tmp[0:len(self.x)]
+        y = tmp[len(self.x):]
+        self.assertFalse(cupy.cusparse.csrmvExIsAligned(a, x, y))
+
+    def test_csrmvEx(self):
+        if self.transa:
+            # no support for transa
+            return
+
+        a = sparse.csr_matrix(self.a)
+        x = cupy.array(self.x, order='f')
+        y = cupy.cusparse.csrmvEx(a, x, alpha=self.alpha)
+        expect = self.alpha * self.op_a.dot(self.x)
+        testing.assert_array_almost_equal(y, expect)
+
+    def test_csrmvEx_with_y(self):
+        if self.transa:
+            # no support for transa
+            return
+        a = sparse.csr_matrix(self.a)
+        x = cupy.array(self.x, order='f')
+        y = cupy.array(self.y, order='f')
+        z = cupy.cusparse.csrmvEx(
+            a, x, y=y, alpha=self.alpha, beta=self.beta)
+        expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
+        self.assertIs(y, z)
+        testing.assert_array_almost_equal(y, expect)
+
+
+@testing.with_requires('scipy')
+class TestCoosort(unittest.TestCase):
+
+    def setUp(self):
+        self.a = scipy.sparse.random(
+            100, 100, density=0.9, dtype=numpy.float32, format='coo')
+
+    def test_coosort(self):
+        a = sparse.coo_matrix(self.a)
+        cupy.cusparse.coosort(a)
+        # lexsort by row first and col second
+        argsort = numpy.lexsort((self.a.col, self.a.row))
+        testing.assert_array_equal(self.a.row[argsort], a.row)
+        testing.assert_array_equal(self.a.col[argsort], a.col)
+        testing.assert_array_almost_equal(self.a.data[argsort], a.data)
+
+
+@testing.with_requires('scipy')
+class TestCsrsort(unittest.TestCase):
+
+    def setUp(self):
+        self.a = scipy.sparse.random(
+            1, 1000, density=0.9, dtype=numpy.float32, format='csr')
+        numpy.random.shuffle(self.a.indices)
+        self.a.has_sorted_indices = False
+
+    def test_csrsort(self):
+        a = sparse.csr_matrix(self.a)
+        cupy.cusparse.csrsort(a)
+
+        self.a.sort_indices()
+        testing.assert_array_equal(self.a.indptr, a.indptr)
+        testing.assert_array_equal(self.a.indices, a.indices)
+        testing.assert_array_almost_equal(self.a.data, a.data)
+
+
+@testing.with_requires('scipy')
+class TestCscsort(unittest.TestCase):
+
+    def setUp(self):
+        self.a = scipy.sparse.random(
+            1000, 1, density=0.9, dtype=numpy.float32, format='csc')
+        numpy.random.shuffle(self.a.indices)
+        self.a.has_sorted_indices = False
+
+    def test_csrsort(self):
+        a = sparse.csc_matrix(self.a)
+        cupy.cusparse.cscsort(a)
+
+        self.a.sort_indices()
+        testing.assert_array_equal(self.a.indptr, a.indptr)
+        testing.assert_array_equal(self.a.indices, a.indices)
+        testing.assert_array_almost_equal(self.a.data, a.data)

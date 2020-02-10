@@ -9,6 +9,10 @@ class TestIsScalar(testing.NumpyAliasBasicTestBase):
 
     func = 'isscalar'
 
+    @testing.with_requires('numpy>=1.18')
+    def test_argspec(self):
+        super().test_argspec()
+
 
 @testing.parameterize(
     *testing.product({
@@ -57,6 +61,17 @@ class TestTypeTestingFunctions(unittest.TestCase):
     def test(self, xp, dtype):
         return getattr(xp, self.func)(xp.ones(5, dtype=dtype))
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_scalar(self, xp, dtype):
+        return getattr(xp, self.func)(dtype(3))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_list(self, xp, dtype):
+        return getattr(xp, self.func)(
+            testing.shaped_arange((2, 3), xp, dtype).tolist())
+
 
 @testing.parameterize(
     {'func': 'iscomplexobj'},
@@ -68,3 +83,14 @@ class TestTypeTestingObjFunctions(unittest.TestCase):
     @testing.numpy_cupy_equal()
     def test(self, xp, dtype):
         return getattr(xp, self.func)(xp.ones(5, dtype=dtype))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_scalar(self, xp, dtype):
+        return getattr(xp, self.func)(dtype(3))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_list(self, xp, dtype):
+        return getattr(xp, self.func)(
+            testing.shaped_arange((2, 3), xp, dtype).tolist())

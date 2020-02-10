@@ -1,3 +1,4 @@
+import pickle
 import threading
 import unittest
 
@@ -34,3 +35,12 @@ class TestDriver(unittest.TestCase):
         # After the context is created, it should return the valid
         # context pointer.
         self.assertNotEqual(0, self._result1)
+
+
+class TestExceptionPicklable(unittest.TestCase):
+
+    def test(self):
+        e1 = driver.CUDADriverError(1)
+        e2 = pickle.loads(pickle.dumps(e1))
+        assert e1.args == e2.args
+        assert str(e1) == str(e2)

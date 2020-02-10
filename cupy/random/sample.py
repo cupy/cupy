@@ -1,5 +1,3 @@
-import six
-
 from cupy import core
 from cupy.creation import basic
 from cupy.random import distributions
@@ -22,7 +20,8 @@ def rand(*size, **kwarg):
     Returns:
         cupy.ndarray: A random array.
 
-    .. seealso:: :func:`numpy.random.rand`
+    .. seealso:: :meth:`numpy.random.rand
+                 <numpy.random.mtrand.RandomState.rand>`
 
     .. admonition:: Example
 
@@ -62,7 +61,8 @@ def randn(*size, **kwarg):
     Returns:
         cupy.ndarray: An array of standard normal random values.
 
-    .. seealso:: :func:`numpy.random.randn`
+    .. seealso:: :meth:`numpy.random.randn
+                 <numpy.random.mtrand.RandomState.randn>`
 
     .. admonition:: Example
 
@@ -151,7 +151,8 @@ def random_sample(size=None, dtype=float):
     Returns:
         cupy.ndarray: An array of uniformly distributed random values.
 
-    .. seealso:: :func:`numpy.random.random_sample`
+    .. seealso:: :meth:`numpy.random.random_sample
+                 <numpy.random.mtrand.RandomState.random_sample>`
 
     """
     rs = generator.get_random_state()
@@ -185,11 +186,23 @@ def choice(a, size=None, replace=True, p=None):
         cupy.ndarray: An array of ``a`` values distributed according to
                       ``p`` or uniformly.
 
-    .. seealso:: :func:`numpy.random.choice`
+    .. seealso:: :meth:`numpy.random.choice
+                 <numpy.random.mtrand.RandomState.choice>`
 
     """
     rs = generator.get_random_state()
     return rs.choice(a, size, replace, p)
+
+
+_multinominal_kernel = core.ElementwiseKernel(
+    'int64 x, int32 p, int32 n', 'raw U ys',
+    'atomicAdd(&ys[i / n * p + x], U(1))',
+    'cupy_random_multinomial',
+    preamble='''
+__device__ long long atomicAdd(long long *address, long long val) {
+    return atomicAdd(reinterpret_cast<unsigned long long*>(address),
+                     static_cast<unsigned long long>(val));
+}''')
 
 
 def multinomial(n, pvals, size=None):
@@ -211,13 +224,14 @@ def multinomial(n, pvals, size=None):
     .. note::
        It does not support ``sum(pvals) < 1`` case.
 
-    .. seealso:: :func:`numpy.random.multinomial`
+    .. seealso:: :meth:`numpy.random.multinomial
+                 <numpy.random.mtrand.RandomState.multinomial>`
     """
 
     if size is None:
         m = 1
         size = ()
-    elif isinstance(size, six.integer_types):
+    elif isinstance(size, int):
         m = size
         size = (size,)
     else:
@@ -228,12 +242,8 @@ def multinomial(n, pvals, size=None):
 
     p = len(pvals)
     shape = size + (p,)
-    # atomicAdd only supports int32
-    ys = basic.zeros(shape, 'i')
+    ys = basic.zeros(shape, 'l')
     if ys.size > 0:
         xs = choice(p, p=pvals, size=n * m)
-        core.ElementwiseKernel(
-            'int64 x, int32 p, int32 n', 'raw int32 ys',
-            'atomicAdd(&ys[i / n * p + x], 1)',
-            'cupy_random_multinomial')(xs, p, n, ys)
-    return ys.astype('l')
+        _multinominal_kernel(xs, p, n, ys)
+    return ys

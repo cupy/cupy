@@ -1,15 +1,14 @@
-import cupy
-from cupy import cuda
-from cupy.cuda import cublas
-from cupy.cuda import device
+import numpy
 
-if cuda.cusolver_enabled:
-    from cupy.cuda import cusolver
+import cupy
+from cupy.cuda import cublas
+from cupy.cuda import cusolver
+from cupy.cuda import device
 
 
 def _syevd(a, UPLO, with_eigen_vector):
     if UPLO not in ('L', 'U'):
-        raise ValueError("UPLO argument must be 'L' or 'U'")
+        raise ValueError('UPLO argument must be \'L\' or \'U\'')
 
     if a.dtype == 'f' or a.dtype == 'e':
         dtype = 'f'
@@ -48,7 +47,7 @@ def _syevd(a, UPLO, with_eigen_vector):
 
     m, lda = a.shape
     w = cupy.empty(m, inp_w_dtype)
-    dev_info = cupy.empty((), 'i')
+    dev_info = cupy.empty((), numpy.int32)
     handle = device.Device().cusolver_handle
 
     if with_eigen_vector:
@@ -83,6 +82,8 @@ def _syevd(a, UPLO, with_eigen_vector):
     syevd(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        syevd, dev_info)
 
     return w.astype(ret_w_dtype, copy=False), v.astype(ret_v_dtype, copy=False)
 
@@ -98,11 +99,7 @@ def eigh(a, UPLO='L'):
 
     .. note::
 
-       Currenlty only 2-D matrix is supported.
-
-    .. note::
-
-       CUDA >=8.0 is required.
+       Currently only 2-D matrix is supported.
 
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix.
@@ -115,10 +112,15 @@ def eigh(a, UPLO='L'):
             ``v`` contains eigenvectors. ``v[:, i]`` is an eigenvector
             corresponding to an eigenvalue ``w[i]``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.eigh`
     """
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
     return _syevd(a, UPLO, True)
 
 
@@ -136,10 +138,6 @@ def eigvalsh(a, UPLO='L'):
 
        Currenlty only 2-D matrix is supported.
 
-    .. note::
-
-       CUDA >=8.0 is required.
-
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix.
         UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
@@ -149,8 +147,13 @@ def eigvalsh(a, UPLO='L'):
         cupy.ndarray:
             Returns eigenvalues as a vector.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
     return _syevd(a, UPLO, False)[0]

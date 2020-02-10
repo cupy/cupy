@@ -20,6 +20,7 @@ Trigonometric functions
    cupy.arctan2
    cupy.degrees
    cupy.radians
+   cupy.unwrap
    cupy.deg2rad
    cupy.rad2deg
 
@@ -66,6 +67,9 @@ Sums, products, differences
    cupy.sum
    cupy.cumprod
    cupy.cumsum
+   cupy.nansum
+   cupy.nanprod
+   cupy.diff
 
 
 Exponents and logarithms

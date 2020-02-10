@@ -2,10 +2,9 @@ import argparse
 import contextlib
 import time
 
-from matplotlib import mlab
 import matplotlib.pyplot as plt
 import numpy as np
-import six
+from scipy import stats
 
 import cupy
 
@@ -55,7 +54,7 @@ def train_gmm(X, max_iter, tol, means, covariances):
     weights = xp.array([0.5, 0.5], dtype=np.float32)
     inv_cov = 1 / xp.sqrt(covariances)
 
-    for n_iter in six.moves.range(max_iter):
+    for n_iter in range(max_iter):
         prev_lower_bound = lower_bound
         log_prob_norm, log_resp = e_step(X, inv_cov, means, weights)
         weights, means, covariances = m_step(X, xp.exp(log_resp))
@@ -94,11 +93,11 @@ def calc_acc(X_train, y_train, X_test, y_test, max_iter, tol, means,
 
 def draw(X, pred, means, covariances, output):
     xp = cupy.get_array_module(X)
-    for i in six.moves.range(2):
+    for i in range(2):
         labels = X[pred == i]
         if xp is cupy:
             labels = labels.get()
-        plt.scatter(labels[:, 0], labels[:, 1], c=np.random.rand(3))
+        plt.scatter(labels[:, 0], labels[:, 1], c=np.random.rand(1, 3))
     if xp is cupy:
         means = means.get()
         covariances = covariances.get()
@@ -107,10 +106,9 @@ def draw(X, pred, means, covariances, output):
     x = np.linspace(-5, 5, 1000)
     y = np.linspace(-5, 5, 1000)
     X, Y = np.meshgrid(x, y)
-    for i in six.moves.range(2):
-        Z = mlab.bivariate_normal(X, Y, np.sqrt(covariances[i][0]),
-                                  np.sqrt(covariances[i][1]),
-                                  means[i][0], means[i][1])
+    for i in range(2):
+        dist = stats.multivariate_normal(means[i], covariances[i])
+        Z = dist.pdf(np.stack([X, Y], axis=-1))
         plt.contour(X, Y, Z)
     plt.savefig(output)
 

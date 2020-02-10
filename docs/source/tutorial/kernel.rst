@@ -186,9 +186,9 @@ In other words, you have control over grid size, block size, shared memory size 
    ...     y[tid] = x1[tid] + x2[tid];
    ... }
    ... ''', 'my_add')
-   >>> x1 = cupy.arange(25, dtype=cupy.float32).reshape(5, 5)
-   >>> x2 = cupy.arange(25, dtype=cupy.float32).reshape(5, 5)
-   >>> y = cupy.zeros((5, 5), dtype=cupy.float32)
+   >>> x1 = cp.arange(25, dtype=cp.float32).reshape(5, 5)
+   >>> x2 = cp.arange(25, dtype=cp.float32).reshape(5, 5)
+   >>> y = cp.zeros((5, 5), dtype=cp.float32)
    >>> add_kernel((5,), (5,), (x1, x2, y))  # grid, block and arguments
    >>> y
    array([[ 0.,  2.,  4.,  6.,  8.],
@@ -196,6 +196,60 @@ In other words, you have control over grid size, block size, shared memory size 
           [20., 22., 24., 26., 28.],
           [30., 32., 34., 36., 38.],
           [40., 42., 44., 46., 48.]], dtype=float32)
+
+Raw kernels operating on complex-valued arrays can be created as well:
+
+.. doctest::
+
+   >>> complex_kernel = cp.RawKernel(r'''
+   ... #include <cupy/complex.cuh>
+   ... extern "C" __global__
+   ... void my_func(const complex<float>* x1, const complex<float>* x2,
+   ...              complex<float>* y, float a) {
+   ...     int tid = blockDim.x * blockIdx.x + threadIdx.x;
+   ...     y[tid] = x1[tid] + a * x2[tid];
+   ... }
+   ... ''', 'my_func')
+   >>> x1 = cupy.arange(25, dtype=cupy.complex64).reshape(5, 5)
+   >>> x2 = 1j*cupy.arange(25, dtype=cupy.complex64).reshape(5, 5)
+   >>> y = cupy.zeros((5, 5), dtype=cupy.complex64)
+   >>> complex_kernel((5,), (5,), (x1, x2, y, cupy.float32(2.0)))  # grid, block and arguments
+   >>> y
+   array([[ 0. +0.j,  1. +2.j,  2. +4.j,  3. +6.j,  4. +8.j],
+          [ 5.+10.j,  6.+12.j,  7.+14.j,  8.+16.j,  9.+18.j],
+          [10.+20.j, 11.+22.j, 12.+24.j, 13.+26.j, 14.+28.j],
+          [15.+30.j, 16.+32.j, 17.+34.j, 18.+36.j, 19.+38.j],
+          [20.+40.j, 21.+42.j, 22.+44.j, 23.+46.j, 24.+48.j]],
+         dtype=complex64)
+
+Note that while we encourage the usage of ``complex<T>`` types for complex numbers (available by including ``<cupy/complex.cuh>`` as shown above), for CUDA codes already written using functions from ``cuComplex.h`` there is no need to make the conversion yourself: just set the option ``translate_cucomplex=True`` when creating a :class:`~cupy.RawKernel` instance.
+
+The CUDA kernel attributes can be retrieved by either accessing the :attr:`~cupy.RawKernel.attributes` dictionary,
+or by accessing the :class:`~cupy.RawKernel` object's attributes directly; the latter can also be used to set certain
+attributes:
+
+.. doctest::
+
+   >>> add_kernel = cp.RawKernel(r'''
+   ... extern "C" __global__
+   ... void my_add(const float* x1, const float* x2, float* y) {
+   ...     int tid = blockDim.x * blockIdx.x + threadIdx.x;
+   ...     y[tid] = x1[tid] + x2[tid];
+   ... }
+   ... ''', 'my_add')
+   >>> add_kernel.attributes  # doctest: +SKIP
+   {'max_threads_per_block': 1024, 'shared_size_bytes': 0, 'const_size_bytes': 0, 'local_size_bytes': 0, 'num_regs': 10, 'ptx_version': 70, 'binary_version': 70, 'cache_mode_ca': 0, 'max_dynamic_shared_size_bytes': 49152, 'preferred_shared_memory_carveout': -1}
+   >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
+   49152
+   >>> add_kernel.max_dynamic_shared_size_bytes = 50000  # set a new value for the attribute  # doctest: +SKIP
+   >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
+   50000
+
+Dynamical parallelism is supported by :class:`~cupy.RawKernel`. You just need to provide the linking flag (such as ``-dc``) to :class:`~cupy.RawKernel`'s ``options`` arugment. The static CUDA device runtime library (``cudadevrt``) is automatically discovered by CuPy. For further detail, see `CUDA Toolkit's documentation`_.
+
+.. _CUDA Toolkit's documentation: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compiling-and-linking
+
+Accessing texture memory in :class:`~cupy.RawKernel` is supported via CUDA Runtime's Texture Object API, see :class:`~cupy.cuda.texture.TextureObject`'s documentation as well as CUDA C Programming Guide. For using the Texture Reference API, which is marked as deprecated as of CUDA Toolkit 10.1, see the introduction to :class:`~cupy.RawModule` below.
 
 .. note::
     The kernel does not have return values.
@@ -210,3 +264,99 @@ In other words, you have control over grid size, block size, shared memory size 
 .. note::
     When using ``printf()`` in your CUDA kernel, you may need to synchronize the stream to see the output.
     You can use ``cupy.cuda.Stream.null.synchronize()`` if you are using the default stream.
+
+
+Raw modules
+-----------
+
+For dealing a large raw CUDA source or loading an existing CUDA binary, the :class:`~cupy.RawModule` class can be more handy. It can be initialized either by a CUDA source code, or by a path to the CUDA binary. The needed kernels can then be retrieved by calling the :meth:`~cupy.RawModule.get_function` method, which returns a :class:`~cupy.RawKernel` instance that can be invoked as discussed above.
+
+.. doctest::
+
+    >>> loaded_from_source = r'''
+    ... extern "C"{
+    ...
+    ... __global__ void test_sum(const float* x1, const float* x2, float* y, \
+    ...                          unsigned int N)
+    ... {
+    ...     unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    ...     if (tid < N)
+    ...     {
+    ...         y[tid] = x1[tid] + x2[tid];
+    ...     }
+    ... }
+    ...
+    ... __global__ void test_multiply(const float* x1, const float* x2, float* y, \
+    ...                               unsigned int N)
+    ... {
+    ...     unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    ...     if (tid < N)
+    ...     {
+    ...         y[tid] = x1[tid] * x2[tid];
+    ...     }
+    ... }
+    ...
+    ... }'''
+    >>> module = cp.RawModule(code=loaded_from_source)
+    >>> ker_sum = module.get_function('test_sum')
+    >>> ker_times = module.get_function('test_multiply')
+    >>> N = 10
+    >>> x1 = cp.arange(N**2, dtype=cp.float32).reshape(N, N)
+    >>> x2 = cp.ones((N, N), dtype=cp.float32)
+    >>> y = cp.zeros((N, N), dtype=cp.float32)
+    >>> ker_sum((N,), (N,), (x1, x2, y, N**2))   # y = x1 + x2
+    >>> assert cp.allclose(y, x1 + x2)
+    >>> ker_times((N,), (N,), (x1, x2, y, N**2)) # y = x1 * x2
+    >>> assert cp.allclose(y, x1 * x2)
+
+The instruction above for using complex numbers in :class:`~cupy.RawKernel` also applies to :class:`~cupy.RawModule`.
+
+CuPy also supports the Texture Reference API. A handle to the texture reference in a module can be retrieved by name via :meth:`~cupy.RawModule.get_texref`. Then, you need to pass it to :class:`~cupy.cuda.texture.TextureReference`, along with a resource descriptor and texture descriptor, for binding the reference to the array. (The interface of :class:`~cupy.cuda.texture.TextureReference` is meant to mimic that of :class:`~cupy.cuda.texture.TextureObject` to help users make transition to the latter, since as of CUDA Toolkit 10.1 the former is marked as deprecated.)
+
+
+Kernel fusion
+--------------------
+
+:func:`cupy.fuse` is a decorator that fuses functions.  This decorator can be used to define an elementwise or reduction kernel more easily than :class:`~cupy.ElementwiseKernel` or :class:`~cupy.ReductionKernel`.
+
+By using this decorator, we can define the ``squared_diff`` kernel as follows:
+
+.. doctest::
+
+   >>> @cp.fuse()
+   ... def squared_diff(x, y):
+   ...     return (x - y) * (x - y)
+
+The above kernel can be called on either scalars, NumPy arrays or CuPy arrays likes the original function.
+
+.. doctest::
+
+   >>> x_cp = cp.arange(10)
+   >>> y_cp = cp.arange(10)[::-1]
+   >>> squared_diff(x_cp, y_cp)
+   array([81, 49, 25,  9,  1,  1,  9, 25, 49, 81])
+   >>> x_np = np.arange(10)
+   >>> y_np = np.arange(10)[::-1]
+   >>> squared_diff(x_np, y_np)
+   array([81, 49, 25,  9,  1,  1,  9, 25, 49, 81])
+
+At the first function call, the fused function analyzes the original function based on the abstracted information of arguments (e.g. their dtypes and ndims) and creates and caches an actual CUDA kernel.  From the second function call with the same input types, the fused function calls the previously cached kernel, so it is highly recommended to reuse the same decorated functions instead of decorating local functions that are defined multiple times.
+
+:func:`cupy.fuse` also supports simple reduction kernel.
+
+.. doctest::
+
+   >>> @cp.fuse()
+   ... def sum_of_products(x, y):
+   ...     return cp.sum(x * y, axis = -1)
+
+You can specify the kernel name by using the ``kernel_name`` keyword argument as follows:
+
+.. doctest::
+
+   >>> @cp.fuse(kernel_name='squared_diff')
+   ... def squared_diff(x, y):
+   ...     return (x - y) * (x - y)
+
+.. note::
+   Currently, :func:`cupy.fuse` can fuse only simple elementwise and reduction operations.  Most other routines (e.g. :func:`cupy.matmul`, :func:`cupy.reshape`) are not supported.

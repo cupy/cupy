@@ -3,15 +3,17 @@
 #ifndef INCLUDE_GUARD_CUPY_CUDNN_H
 #define INCLUDE_GUARD_CUPY_CUDNN_H
 
-#include "cupy_cuda.h"
-
 #ifndef CUPY_NO_CUDA
 
 #include <cudnn.h>
 
 #else // #ifndef CUPY_NO_CUDA
 
+#include "cupy_cuda_common.h"
+
 #define CUDNN_VERSION 0
+
+#define CUDNN_BN_MIN_EPSILON 0.0
 
 extern "C" {
 
@@ -24,6 +26,7 @@ typedef enum {} cudnnActivationMode_t;
 typedef enum {} cudnnConvolutionFwdAlgo_t;
 typedef enum {} cudnnConvolutionFwdPreference_t;
 typedef enum {} cudnnConvolutionMode_t;
+typedef enum {} cudnnCTCLossAlgo_t;
 typedef enum {} cudnnDataType_t;
 typedef enum {} cudnnPoolingMode_t;
 typedef enum {} cudnnSoftmaxAlgorithm_t;
@@ -33,6 +36,7 @@ typedef enum {} cudnnErrQueryMode_t;
 typedef struct cudnnRuntimeTag_t cudnnRuntimeTag_t;
 
 typedef void* cudnnConvolutionDescriptor_t;
+typedef void* cudnnCTCLossDescriptor_t;
 typedef void* cudnnFilterDescriptor_t;
 typedef void* cudnnHandle_t;
 typedef void* cudnnPoolingDescriptor_t;
@@ -315,6 +319,26 @@ cudnnStatus_t cudnnActivationBackward_v4(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+// CTC
+cudnnStatus_t cudnnCreateCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnDestroyCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnSetCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnGetCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnGetCTCLossWorkspaceSize(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnCTCLoss(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 typedef enum {} cudnnMathType_t;
 
 cudnnStatus_t cudnnSetConvolutionMathType(...) {
@@ -564,6 +588,64 @@ cudnnStatus_t cudnnOpTensor(...) {
     return CUDNN_STATUS_SUCCESS;
 }
 
+// fused ops
+typedef void* cudnnFusedOpsConstParamPack_t;
+typedef void* cudnnFusedOpsVariantParamPack_t;
+typedef void* cudnnFusedOpsPlan_t;
+
+typedef enum {} cudnnFusedOps_t;
+typedef enum {} cudnnFusedOpsConstParamLabel_t;
+typedef enum {} cudnnFusedOpsPointerPlaceHolder_t;
+typedef enum {} cudnnFusedOpsVariantParamLabel_t;
+
+cudnnStatus_t cudnnCreateFusedOpsConstParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyFusedOpsConstParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetFusedOpsConstParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetFusedOpsConstParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateFusedOpsVariantParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyFusedOpsVariantParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetFusedOpsVariantParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetFusedOpsVariantParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateFusedOpsPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyFusedOpsPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnMakeFusedOpsPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFusedOpsExecute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 } // extern "C"
 
 #endif // #ifdef CUPY_NO_CUDA
@@ -672,6 +754,28 @@ cudnnStatus_t cudnnReduceTensor(...) {
 #define cudnnSetRNNDescriptor_v5 cudnnSetRNNDescriptor
 
 typedef enum {} cudnnMathType_t;
+typedef enum {} cudnnCTCLossAlgo_t;
+typedef void* cudnnCTCLossDescriptor_t;
+
+// CTC
+cudnnStatus_t cudnnCreateCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnDestroyCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnSetCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnGetCTCLossDescriptor(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnGetCTCLossWorkspaceSize(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+cudnnStatus_t cudnnCTCLoss(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
 
 cudnnStatus_t cudnnSetConvolutionMathType(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
@@ -787,7 +891,7 @@ typedef void* cudnnRNNDataDescriptor_t;
 
 typedef enum {} cudnnRNNDataLayout_t;
 typedef enum {} cudnnRNNPaddingMode_t;
-  
+
 cudnnStatus_t cudnnSetRNNPaddingMode(...) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
@@ -876,6 +980,68 @@ cudnnStatus_t cudnnGetBatchNormalizationTrainingExReserveSpaceSize(...) {
 }
 
 #endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7400)
+
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7600)
+
+// fused ops
+typedef void* cudnnFusedOpsConstParamPack_t;
+typedef void* cudnnFusedOpsVariantParamPack_t;
+typedef void* cudnnFusedOpsPlan_t;
+
+typedef enum {} cudnnFusedOps_t;
+typedef enum {} cudnnFusedOpsConstParamLabel_t;
+typedef enum {} cudnnFusedOpsPointerPlaceHolder_t;
+typedef enum {} cudnnFusedOpsVariantParamLabel_t;
+
+cudnnStatus_t cudnnCreateFusedOpsConstParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyFusedOpsConstParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetFusedOpsConstParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetFusedOpsConstParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateFusedOpsVariantParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyFusedOpsVariantParamPack(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetFusedOpsVariantParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetFusedOpsVariantParamPackAttribute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnCreateFusedOpsPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnDestroyFusedOpsPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnMakeFusedOpsPlan(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnFusedOpsExecute(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+#endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7600)
 
 } // extern "C"
 

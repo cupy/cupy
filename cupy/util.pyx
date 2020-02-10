@@ -3,21 +3,44 @@
 import atexit
 import collections
 import functools
+import os
 import warnings
 
 import cupy
 from cupy.cuda cimport device
+from cupy.core import _errors
 
 
-# TODO(kmaehashi) remove this when `six.moves.collections_abc` is implemented.
-# See: https://github.com/chainer/chainer/issues/5097
-try:
-    collections_abc = collections.abc
-except AttributeError:  # python <3.3
-    collections_abc = collections
+ENABLE_SLICE_COPY = bool(
+    int(os.environ.get('CUPY_EXPERIMENTAL_SLICE_COPY', 0)))
 
 
 cdef list _memos = []
+
+
+def _normalize_axis_index(axis, ndim):
+    """
+    Normalizes an axis index, ``axis``, such that is a valid positive index
+    into the shape of array with ``ndim`` dimensions. Raises a ValueError
+    with an appropriate message if this is not possible.
+
+    Args:
+        axis (int):
+            The un-normalized index of the axis. Can be negative
+        ndim (int):
+            The number of dimensions of the array that ``axis`` should be
+            normalized against
+
+    Returns:
+        int:
+            The normalized axis index, such that `0 <= normalized_axis < ndim`
+
+    """
+    if axis < 0:
+        axis += ndim
+    if not (0 <= axis < ndim):
+        raise _errors._AxisError('axis out of bounds')
+    return axis
 
 
 def memoize(bint for_each_device=False):
@@ -41,10 +64,12 @@ def memoize(bint for_each_device=False):
             cdef dict m = memo
             if for_each_device:
                 id = device.get_device_id()
-            arg_key = (id, args, frozenset(kwargs.items()))
-            if arg_key in m:
-                result = m[arg_key]
+            if len(kwargs):
+                arg_key = (id, args, frozenset(kwargs.items()))
             else:
+                arg_key = (id, args)
+            result = m.get(arg_key, m)
+            if result is m:
                 result = f(*args, **kwargs)
                 m[arg_key] = result
             return result
@@ -165,3 +190,28 @@ The interface can change in the future. ...
 
 class PerformanceWarning(RuntimeWarning):
     """Warning that indicates possible performance issues."""
+
+
+"""
+This code is to signal when the interpreter is in shutdown mode
+to prevent using globals that could be already deleted in
+objects `__del__` method
+
+This solution is taken from the Numba/llvmlite code
+"""
+_shutting_down = [False]
+
+
+@atexit.register
+def _at_shutdown():
+    _shutting_down[0] = True
+
+
+def is_shutting_down(_shutting_down=_shutting_down):
+    """
+    Whether the interpreter is currently shutting down.
+    For use in finalizers, __del__ methods, and similar; it is advised
+    to early bind this function rather than look it up when calling it,
+    since at shutdown module globals may be cleared.
+    """
+    return _shutting_down[0]

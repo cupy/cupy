@@ -8,6 +8,7 @@ import cupy
 from cupy import core
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import data
+from cupyx.scipy.sparse import util
 
 
 class dia_matrix(data._data_matrix):
@@ -64,7 +65,9 @@ class dia_matrix(data._data_matrix):
 
         self.data = data
         self.offsets = offsets
-        self._shape = shape
+        if not util.isshape(shape):
+            raise ValueError('invalid shape (must be a 2-tuple of int)')
+        self._shape = int(shape[0]), int(shape[1])
 
     def _with_data(self, data, copy=True):
         """Returns a matrix with the same sparsity structure as self,
@@ -176,6 +179,25 @@ class dia_matrix(data._data_matrix):
 
         """
         return self.tocsc().tocsr()
+
+    def diagonal(self, k=0):
+        """Returns the k-th diagonal of the matrix.
+
+        Args:
+            k (int, optional): Which diagonal to get, corresponding to elements
+            a[i, i+k]. Default: 0 (the main diagonal).
+
+        Returns:
+            cupy.ndarray : The k-th diagonal.
+        """
+        rows, cols = self.shape
+        if k <= -rows or k >= cols:
+            raise ValueError("k exceeds matrix dimensions")
+        idx, = cupy.nonzero(self.offsets == k)
+        first_col, last_col = max(0, k), min(rows + k, cols)
+        if idx.size == 0:
+            return cupy.zeros(last_col - first_col, dtype=self.data.dtype)
+        return self.data[idx[0], first_col:last_col]
 
 
 def isspmatrix_dia(x):

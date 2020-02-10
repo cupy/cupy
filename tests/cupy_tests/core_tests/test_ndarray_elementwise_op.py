@@ -2,7 +2,6 @@ import operator
 import unittest
 
 import numpy
-import six
 
 import cupy
 from cupy import testing
@@ -69,25 +68,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_itruediv_scalar(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_scalar_op(operator.itruediv)
-
-    def test_div_scalar(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(operator.div)
-
-    def test_rdiv_scalar(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(operator.div, swap=True)
-
-    @testing.with_requires('numpy>=1.10')
-    def test_idiv_scalar(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(operator.idiv)
 
     def test_floordiv_scalar(self):
         with testing.NumpyError(divide='ignore'):
@@ -159,9 +139,13 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
-    def check_array_array_op(self, op, xp, x_type, y_type, no_bool=False):
-        if no_bool and (numpy.dtype(x_type) == '?' and
-                        numpy.dtype(y_type) == '?'):
+    def check_array_array_op(self, op, xp, x_type, y_type,
+                             no_bool=False, no_complex=False):
+        x_dtype = numpy.dtype(x_type)
+        y_dtype = numpy.dtype(y_type)
+        if no_bool and x_dtype == '?' and y_dtype == '?':
+            return xp.array(True)
+        if no_complex and (x_dtype.kind == 'c' or y_dtype.kind == 'c'):
             return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[6, 5, 4], [3, 2, 1]], y_type)
@@ -197,25 +181,14 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.itruediv)
 
-    def test_div_array(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_array_op(operator.div)
-
-    @testing.with_requires('numpy>=1.10')
-    def test_idiv_array(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_array_op(operator.idiv)
-
     def test_floordiv_array(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.floordiv, no_complex=True)
 
     @testing.with_requires('numpy>=1.10')
     def test_ifloordiv_array(self):
+        if '1.16.1' <= numpy.lib.NumpyVersion(numpy.__version__) < '1.18.0':
+            self.skipTest("NumPy Issue #12927")
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.ifloordiv, no_complex=True)
 
@@ -262,13 +235,12 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_broadcasted_op(self, op, xp, x_type, y_type,
-                                   no_complex=False, no_bool=False):
-        if no_complex:
-            if numpy.dtype(x_type).kind == 'c' \
-                    or numpy.dtype(y_type).kind == 'c':
-                return xp.array(True)
-        if no_bool and (numpy.dtype(x_type) == '?' and
-                        numpy.dtype(y_type) == '?'):
+                                   no_bool=False, no_complex=False):
+        x_dtype = numpy.dtype(x_type)
+        y_dtype = numpy.dtype(y_type)
+        if no_bool and x_dtype == '?' and y_dtype == '?':
+            return xp.array(True)
+        if no_complex and (x_dtype.kind == 'c' or y_dtype.kind == 'c'):
             return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[1], [2]], y_type)
@@ -306,25 +278,14 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.itruediv)
 
-    def test_broadcasted_div(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_broadcasted_op(operator.div)
-
-    @testing.with_requires('numpy>=1.10')
-    def test_broadcasted_idiv(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_broadcasted_op(operator.idiv)
-
     def test_broadcasted_floordiv(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.floordiv, no_complex=True)
 
     @testing.with_requires('numpy>=1.10')
     def test_broadcasted_ifloordiv(self):
+        if '1.16.1' <= numpy.lib.NumpyVersion(numpy.__version__) < '1.18.0':
+            self.skipTest("NumPy Issue #12927")
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.ifloordiv,
                                             no_complex=True)
@@ -375,14 +336,13 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_doubly_broadcasted_op(self, op, xp, x_type, y_type,
-                                          no_complex=False, no_bool=False):
-        if no_complex:
-            if numpy.dtype(x_type).kind == 'c' \
-                    or numpy.dtype(y_type).kind == 'c':
-                return x_type(True)
-        if no_bool and (numpy.dtype(x_type) == '?' and
-                        numpy.dtype(y_type) == '?'):
-            return x_type(True)
+                                          no_bool=False, no_complex=False):
+        x_dtype = numpy.dtype(x_type)
+        y_dtype = numpy.dtype(y_type)
+        if no_bool and x_dtype == '?' and y_dtype == '?':
+            return xp.array(True)
+        if no_complex and (x_dtype.kind == 'c' or y_dtype.kind == 'c'):
+            return xp.array(True)
         a = xp.array([[[1, 2, 3]], [[4, 5, 6]]], x_type)
         b = xp.array([[1], [2], [3]], y_type)
         return op(a, b)
@@ -404,12 +364,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_doubly_broadcasted_op(operator.floordiv,
                                                    no_complex=True)
-
-    def test_doubly_broadcasted_div(self):
-        if six.PY3:
-            return
-        with testing.NumpyError(divide='ignore'):
-            self.check_array_doubly_broadcasted_op(operator.div)
 
     def test_doubly_broadcasted_pow(self):
         self.check_array_doubly_broadcasted_op(operator.pow)
@@ -464,11 +418,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     def check_typecast(self, val, dtype):
-        operators = [operator.add, operator.sub, operator.mul]
-        if six.PY3:
-            operators.append(operator.truediv)
-        else:
-            operators.append(operator.div)
+        operators = [
+            operator.add, operator.sub, operator.mul, operator.truediv]
 
         for op in operators:
             with testing.NumpyError(divide='ignore', invalid='ignore'):

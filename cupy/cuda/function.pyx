@@ -1,20 +1,22 @@
 # distutils: language = c++
 
 import numpy
-import six
 
 cimport cpython  # NOQA
 from libc.stdint cimport int8_t
 from libc.stdint cimport int16_t
 from libc.stdint cimport int32_t
 from libc.stdint cimport int64_t
+from libc.stdint cimport intptr_t
+from libc.stdint cimport uintmax_t
 from libcpp cimport vector
 
-
+from cupy.core cimport _carray
+from cupy.core cimport core
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
-from cupy.core cimport core
 from cupy.cuda cimport stream as stream_module
+from cupy.cuda.texture cimport TextureObject
 
 
 cdef class CPointer:
@@ -67,6 +69,15 @@ cdef class CInt128(CPointer):
         self.ptr = <void*>&self.val
 
 
+cdef class CUIntMax(CPointer):
+    cdef:
+        uintmax_t val
+
+    def __init__(self, uintmax_t v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
+
 cdef set _pointer_numpy_types = {numpy.dtype(i).type
                                  for i in '?bhilqBHILQefdFD'}
 
@@ -77,14 +88,17 @@ cdef inline CPointer _pointer(x):
         return CPointer()
     if isinstance(x, core.ndarray):
         return (<core.ndarray>x).get_pointer()
-    if isinstance(x, core.Indexer):
-        return (<core.Indexer>x).get_pointer()
+    if isinstance(x, _carray.Indexer):
+        return (<_carray.Indexer>x).get_pointer()
 
     if isinstance(x, CPointer):
         return x
 
+    if isinstance(x, TextureObject):
+        return CUIntMax(x.ptr)
+
     if type(x) not in _pointer_numpy_types:
-        if isinstance(x, six.integer_types):
+        if isinstance(x, int):
             x = numpy.int64(x)
         elif isinstance(x, float):
             x = numpy.float64(x)
@@ -114,9 +128,10 @@ cdef inline size_t _get_stream(stream) except *:
         return stream.ptr
 
 
-cdef _launch(size_t func, Py_ssize_t grid0, int grid1, int grid2,
+cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
              Py_ssize_t block0, int block1, int block2,
-             args, Py_ssize_t shared_mem, size_t stream):
+             args, Py_ssize_t shared_mem, size_t stream,
+             bint enable_cooperative_groups=False):
     cdef list pargs = []
     cdef vector.vector[void*] kargs
     cdef CPointer cp
@@ -127,9 +142,15 @@ cdef _launch(size_t func, Py_ssize_t grid0, int grid1, int grid2,
         kargs.push_back(cp.ptr)
 
     runtime._ensure_context()
-    driver.launchKernel(
-        func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
-        <int>shared_mem, stream, <size_t>&(kargs[0]), <size_t>0)
+
+    if enable_cooperative_groups:
+        driver.launchCooperativeKernel(
+            func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
+            <int>shared_mem, stream, <intptr_t>&(kargs[0]))
+    else:
+        driver.launchKernel(
+            func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
+            <int>shared_mem, stream, <intptr_t>&(kargs[0]), <intptr_t>0)
 
 
 cdef class Function:
@@ -141,7 +162,7 @@ cdef class Function:
         self.ptr = driver.moduleGetFunction(module.ptr, funcname)
 
     def __call__(self, tuple grid, tuple block, args, size_t shared_mem=0,
-                 stream=None):
+                 stream=None, enable_cooperative_groups=False):
         grid = (grid + (1, 1))[:3]
         block = (block + (1, 1))[:3]
         s = _get_stream(stream)
@@ -149,7 +170,7 @@ cdef class Function:
             self.ptr,
             max(1, grid[0]), max(1, grid[1]), max(1, grid[2]),
             max(1, block[0]), max(1, block[1]), max(1, block[2]),
-            args, shared_mem, s)
+            args, shared_mem, s, enable_cooperative_groups)
 
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
                         size_t block_max_size=128, stream=None):
@@ -175,8 +196,8 @@ cdef class Module:
             self.ptr = 0
 
     cpdef load_file(self, filename):
-        if isinstance(filename, six.binary_type):
-            filename = six.u(filename)
+        if isinstance(filename, bytes):
+            filename = filename.decode()
         runtime._ensure_context()
         self.ptr = driver.moduleLoad(filename)
 
@@ -185,14 +206,19 @@ cdef class Module:
         self.ptr = driver.moduleLoadData(cubin)
 
     cpdef get_global_var(self, name):
-        if isinstance(name, six.binary_type):
-            name = six.u(name)
+        if isinstance(name, bytes):
+            name = name.decode()
         return driver.moduleGetGlobal(self.ptr, name)
 
     cpdef get_function(self, name):
-        if isinstance(name, six.binary_type):
-            name = six.u(name)
+        if isinstance(name, bytes):
+            name = name.decode()
         return Function(self, name)
+
+    cpdef get_texref(self, name):
+        if isinstance(name, bytes):
+            name = name.decode()
+        return driver.moduleGetTexRef(self.ptr, name)
 
 
 cdef class LinkState:
@@ -211,6 +237,9 @@ cdef class LinkState:
     cpdef add_ptr_data(self, unicode data, unicode name):
         cdef bytes data_byte = data.encode()
         driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data_byte, name)
+
+    cpdef add_ptr_file(self, unicode path):
+        driver.linkAddFile(self.ptr, driver.CU_JIT_INPUT_LIBRARY, path)
 
     cpdef bytes complete(self):
         cubin = driver.linkComplete(self.ptr)
