@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import argparse
 import copy
 from distutils import ccompiler
@@ -42,9 +40,11 @@ use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 MODULES = []
 
 cuda_files = [
+    'cupy.core._carray',
     'cupy.core._dtype',
     'cupy.core._kernel',
     'cupy.core._memory_range',
+    'cupy.core._reduction',
     'cupy.core._routines_indexing',
     'cupy.core._routines_logic',
     'cupy.core._routines_manipulation',

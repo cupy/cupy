@@ -54,6 +54,10 @@ def unique(ar, return_index=False, return_inverse=False,
             * The number of times each of the unique values comes up in the
               original array. Only provided if `return_counts` is True.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`numpy.unique`
     """
     if axis is not None:
@@ -84,7 +88,7 @@ def unique(ar, return_index=False, return_inverse=False,
         inv_idx[perm] = imask
         ret += inv_idx,
     if return_counts:
-        nonzero = cupy.nonzero(mask)[0]
+        nonzero = cupy.nonzero(mask)[0]  # may synchronize
         idx = cupy.empty((nonzero.size + 1,), nonzero.dtype)
         idx[:-1] = nonzero
         idx[-1] = mask.size

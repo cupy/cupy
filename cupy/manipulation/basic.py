@@ -1,9 +1,8 @@
 import numpy
-import six
 
 from cupy import core
 from cupy.core import fusion
-from cupy.sorting import search
+from cupy._sorting import search
 
 
 def copyto(dst, src, casting='same_kind', where=None):
@@ -26,9 +25,8 @@ def copyto(dst, src, casting='same_kind', where=None):
     """
 
     src_type = type(src)
-    src_is_python_scalar = (src_type in six.integer_types or
-                            src_type in (bool, float, complex) or
-                            src_type is fusion._FusionVarScalar)
+    src_is_python_scalar = src_type in (
+        int, bool, float, complex, fusion._FusionVarScalar)
     if src_is_python_scalar:
         src_dtype = numpy.dtype(type(src))
         can_cast = numpy.can_cast(src, dst.dtype, casting)
@@ -55,7 +53,7 @@ def copyto(dst, src, casting='same_kind', where=None):
 
     if where is None:
         if _can_memcpy(dst, src):
-            dst.data.copy_from(src.data, src.nbytes)
+            dst.data.copy_from_async(src.data, src.nbytes)
         else:
             device = dst.device
             with device:

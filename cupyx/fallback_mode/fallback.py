@@ -2,7 +2,6 @@
 `fallback_mode` for cupy. Whenever a method is not yet implemented in CuPy,
 it will fallback to corresponding NumPy method.
 """
-import sys
 import types
 
 import numpy as np
@@ -194,8 +193,7 @@ def _create_magic_methods():
             return _get_fallback_result(res)
         return method
 
-    _common = [
-
+    for method in (
         # Comparison operators:
         '__eq__', '__ne__', '__lt__', '__gt__', '__le__', '__ge__',
 
@@ -211,11 +209,13 @@ def _create_magic_methods():
         '__iadd__', '__isub__', '__imul__', '__itruediv__', '__ifloordiv__',
         '__imod__', '__ipow__', '__ilshift__', '__irshift__',
         '__iand__', '__ior__', '__ixor__',
+        '__matmul__',
 
         # reflected-methods:
         '__radd__', '__rsub__', '__rmul__', '__rtruediv__', '__rfloordiv__',
         '__rmod__', '__rdivmod__', '__rpow__', '__rlshift__', '__rrshift__',
         '__rand__', '__ror__', '__rxor__',
+        '__rmatmul__',
 
         # For standard library functions:
         '__copy__', '__deepcopy__', '__reduce__',
@@ -224,26 +224,11 @@ def _create_magic_methods():
         '__iter__', '__len__', '__getitem__', '__setitem__',
 
         # Conversion:
-        '__int__', '__float__', '__complex__',
+        '__bool__', '__int__', '__float__', '__complex__',
 
         # String representations:
         '__repr__', '__str__'
-    ]
-
-    _py3 = [
-        '__matmul__', '__rmatmul__', '__bool__'
-    ]
-
-    _py2 = [
-        '__div__', '__rdiv__', '__idiv__', '__nonzero__',
-        '__long__', '__hex__', '__oct__'
-    ]
-
-    _specific = _py3
-    if sys.version_info[0] == 2:
-        _specific = _py2
-
-    for method in _common + _specific:
+    ):
         setattr(ndarray, method, make_method(method))
 
 

@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+import cupy
 from cupy import testing
 
 
@@ -153,6 +154,30 @@ class TestSearch(unittest.TestCase):
         return a.argmin(axis=1)
 
 
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'func': ['argmin', 'argmax'],
+    'is_module': [True, False],
+    'shape': [(3, 4), ()],
+}))
+class TestArgMinMaxDtype(unittest.TestCase):
+
+    @testing.for_dtypes(
+        dtypes=[numpy.int8, numpy.int16, numpy.int32, numpy.int64],
+        name='result_dtype')
+    @testing.for_all_dtypes(name='in_dtype')
+    def test_argminmax_dtype(self, in_dtype, result_dtype):
+        a = testing.shaped_random(self.shape, cupy, in_dtype)
+        if self.is_module:
+            func = getattr(cupy, self.func)
+            y = func(a, dtype=result_dtype)
+        else:
+            func = getattr(a, self.func)
+            y = func(dtype=result_dtype)
+        assert y.shape == ()
+        assert y.dtype == result_dtype
+
+
 @testing.parameterize(
     {'cond_shape': (2, 3, 4), 'x_shape': (2, 3, 4), 'y_shape': (2, 3, 4)},
     {'cond_shape': (4,),      'x_shape': (2, 3, 4), 'y_shape': (2, 3, 4)},
@@ -228,7 +253,7 @@ class TestNonzero(unittest.TestCase):
 class TestNonzeroZeroDimension(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises(DeprecationWarning)
+    @testing.numpy_cupy_raises(accept_error=DeprecationWarning)
     def test_nonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
         return xp.nonzero(array)

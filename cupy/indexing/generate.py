@@ -1,7 +1,6 @@
 # class s_(object):
 
 import numpy
-import six
 
 import cupy
 from cupy import core
@@ -21,7 +20,7 @@ class AxisConcatenator(object):
         k2 = ndmin - ndim
         if trans1d < 0:
             trans1d += k2 + 1
-        defaxes = list(six.moves.range(ndmin))
+        defaxes = list(range(ndmin))
         k1 = trans1d
         axes = defaxes[:k1] + defaxes[k2:] + \
             defaxes[k1:k2]
@@ -40,7 +39,7 @@ class AxisConcatenator(object):
         scalars = []
         arraytypes = []
         scalartypes = []
-        if isinstance(key, six.string_types):
+        if isinstance(key, str):
             raise NotImplementedError
         if not isinstance(key, tuple):
             key = (key,)
@@ -49,7 +48,7 @@ class AxisConcatenator(object):
             scalar = False
             if isinstance(k, slice):
                 raise NotImplementedError
-            elif isinstance(k, six.string_types):
+            elif isinstance(k, str):
                 if i != 0:
                     raise ValueError(
                         'special directives must be the first entry.')
@@ -222,9 +221,14 @@ def ix_(*args):
     (array([[0],
            [1]]), array([[2, 4]]))
 
+    .. warning::
+
+        This function may synchronize the device.
+
      .. seealso:: :func:`numpy.ix_`
 
     """
+    # TODO(niboshi): Avoid nonzero which may synchronize the device.
     out = []
     nd = len(args)
     for k, new in enumerate(args):
@@ -235,7 +239,7 @@ def ix_(*args):
             # Explicitly type empty arrays to avoid float default
             new = new.astype(numpy.intp)
         if cupy.issubdtype(new.dtype, cupy.bool_):
-            new, = new.nonzero()
+            new, = new.nonzero()  # may synchronize
         new = new.reshape((1,) * k + (new.size,) + (1,) * (nd - k - 1))
         out.append(new)
     return tuple(out)
@@ -266,6 +270,10 @@ def unravel_index(indices, dims, order='C'):
     >>> cupy.unravel_index(cupy.array([31, 41, 13]), (7, 6), order='F')
     (array([3, 6, 6]), array([4, 5, 1]))
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`numpy.unravel_index`
 
     """
@@ -286,7 +294,7 @@ def unravel_index(indices, dims, order='C'):
             'according to the rule \'same_kind\''.format(
                 indices.dtype, cupy.int64().dtype))
 
-    if (indices < 0).any():
+    if (indices < 0).any():  # synchronize!
         raise ValueError('invalid entry in index array')
 
     unraveled_coords = []
@@ -294,7 +302,7 @@ def unravel_index(indices, dims, order='C'):
         unraveled_coords.append(indices % dim)
         indices = indices // dim
 
-    if (indices > 0).any():
+    if (indices > 0).any():  # synchronize!
         raise ValueError('invalid entry in index array')
 
     if order == 'C':

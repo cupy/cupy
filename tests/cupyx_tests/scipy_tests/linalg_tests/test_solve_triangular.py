@@ -2,7 +2,6 @@ import unittest
 
 import cupy
 from cupy import testing
-from cupy.testing import condition
 import cupyx.scipy.linalg
 
 import numpy
@@ -26,10 +25,9 @@ except ImportError:
 class TestSolveTriangular(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
-    @condition.retry(10)
     def check_x(self, a_shape, b_shape, dtype):
-        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
-        b_cpu = numpy.random.randint(0, 10, size=b_shape).astype(dtype)
+        a_cpu = numpy.random.randint(1, 10, size=a_shape).astype(dtype)
+        b_cpu = numpy.random.randint(1, 10, size=b_shape).astype(dtype)
         a_cpu = numpy.tril(a_cpu)
 
         if self.lower is False:

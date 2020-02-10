@@ -57,14 +57,14 @@ namespace complex {
 
 using thrust::complex;
 
-__device__ inline void raise_inexact() {
+__host__ __device__ inline void raise_inexact() {
   const volatile float tiny = 7.888609052210118054117286e-31; /* 0x1p-100; */
   // needs the volatile to prevent compiler from ignoring it
   volatile float junk = 1 + tiny;
   (void)junk;
 }
 
-__device__ inline complex<double> clog_for_large_values(complex<double> z);
+__host__ __device__ inline complex<double> clog_for_large_values(complex<double> z);
 
 /*
  * Testing indicates that all these functions are accurate up to 4 ULP.
@@ -133,7 +133,7 @@ __device__ inline complex<double> clog_for_large_values(complex<double> z);
  * Function f(a, b, hypot_a_b) = (hypot(a, b) - b) / 2.
  * Pass hypot(a, b) as the third argument.
  */
-__device__ inline double f(double a, double b, double hypot_a_b) {
+__host__ __device__ inline double f(double a, double b, double hypot_a_b) {
   if (b < 0) return ((hypot_a_b - b) / 2);
   if (b == 0) return (a / 2);
   return (a * a / (hypot_a_b + b) / 2);
@@ -149,7 +149,7 @@ __device__ inline double f(double a, double b, double hypot_a_b) {
  * If returning sqrt_A2my2 has potential to result in an underflow, it is
  * rescaled, and new_y is similarly rescaled.
  */
-__device__ inline void do_hard_work(double x, double y, double* rx,
+__host__ __device__ inline void do_hard_work(double x, double y, double* rx,
                                     int* B_is_usable, double* B,
                                     double* sqrt_A2my2, double* new_y) {
   double R, S, A;  /* A, B, R, and S are as in Hull et al. */
@@ -274,7 +274,7 @@ __device__ inline void do_hard_work(double x, double y, double* rx,
  * Im(casinh(z)) = sign(x)*atan2(sign(x)*y, fabs(x)) + O(y/z^3)
  *    as z -> infinity, uniformly in y
  */
-__device__ inline complex<double> casinh(complex<double> z) {
+__host__ __device__ inline complex<double> casinh(complex<double> z) {
   double x, y, ax, ay, rx, ry, B, sqrt_A2my2, new_y;
   int B_is_usable;
   complex<double> w;
@@ -331,7 +331,7 @@ __device__ inline complex<double> casinh(complex<double> z) {
  * casin(z) = reverse(casinh(reverse(z)))
  * where reverse(x + I*y) = y + I*x = I*conj(z).
  */
-__device__ inline complex<double> casin(complex<double> z) {
+__host__ __device__ inline complex<double> casin(complex<double> z) {
   complex<double> w = casinh(complex<double>(z.imag(), z.real()));
 
   return (complex<double>(w.imag(), w.real()));
@@ -349,7 +349,7 @@ __device__ inline complex<double> casin(complex<double> z) {
  * Re(cacos(z)) = atan2(fabs(y), x) + O(y/z^3)
  *    as z -> infinity, uniformly in y
  */
-__device__ inline complex<double> cacos(complex<double> z) {
+__host__ __device__ inline complex<double> cacos(complex<double> z) {
   double x, y, ax, ay, rx, ry, B, sqrt_A2mx2, new_x;
   int sx, sy;
   int B_is_usable;
@@ -422,7 +422,7 @@ __device__ inline complex<double> cacos(complex<double> z) {
  * cacosh(z) = I*cacos(z) or -I*cacos(z)
  * where the sign is chosen so Re(cacosh(z)) >= 0.
  */
-__device__ inline complex<double> cacosh(complex<double> z) {
+__host__ __device__ inline complex<double> cacosh(complex<double> z) {
   complex<double> w;
   double rx, ry;
 
@@ -442,7 +442,7 @@ __device__ inline complex<double> cacosh(complex<double> z) {
 /*
  * Optimized version of clog() for |z| finite and larger than ~RECIP_EPSILON.
  */
-__device__ inline complex<double> clog_for_large_values(complex<double> z) {
+__host__ __device__ inline complex<double> clog_for_large_values(complex<double> z) {
   double x, y;
   double ax, ay, t;
   const double m_e = 2.7182818284590452e0; /*  0x15bf0a8b145769.0p-51 */
@@ -494,7 +494,7 @@ __device__ inline complex<double> clog_for_large_values(complex<double> z) {
    * Assumes y is non-negative.
    * Assumes fabs(x) >= DBL_EPSILON.
    */
-__device__ inline double sum_squares(double x, double y) {
+__host__ __device__ inline double sum_squares(double x, double y) {
   const double SQRT_MIN =
       1.491668146240041348658193e-154; /* = 0x1p-511; >= sqrt(DBL_MIN) */
   /* Avoid underflow when y is small. */
@@ -512,7 +512,7 @@ __device__ inline double sum_squares(double x, double y) {
  * This is only called in a context where inexact is always raised before
  * the call, so no effort is made to avoid or force inexact.
  */
-__device__ inline double real_part_reciprocal(double x, double y) {
+__host__ __device__ inline double real_part_reciprocal(double x, double y) {
   double scale;
   uint32_t hx, hy;
   int32_t ix, iy;
@@ -556,7 +556,7 @@ __device__ inline double real_part_reciprocal(double x, double y) {
  *    as z -> infinity, uniformly in x
  */
 #if __cplusplus >= 201103L || !defined _MSC_VER
-__device__ inline complex<double> catanh(complex<double> z) {
+__host__ __device__ inline complex<double> catanh(complex<double> z) {
   double x, y, ax, ay, rx, ry;
   const volatile double pio2_lo =
       6.1232339957367659e-17;                  /*  0x11a62633145c07.0p-106 */
@@ -625,7 +625,7 @@ __device__ inline complex<double> catanh(complex<double> z) {
  * catan(z) = reverse(catanh(reverse(z)))
  * where reverse(x + I*y) = y + I*x = I*conj(z).
  */
-__device__ inline complex<double> catan(complex<double> z) {
+__host__ __device__ inline complex<double> catan(complex<double> z) {
   complex<double> w = catanh(complex<double>(z.imag(), z.real()));
   return (complex<double>(w.imag(), w.real()));
 }
@@ -637,26 +637,26 @@ __device__ inline complex<double> catan(complex<double> z) {
 }  // namespace detail
 
 template <typename ValueType>
-__device__ inline complex<ValueType> acos(const complex<ValueType>& z) {
+__host__ __device__ inline complex<ValueType> acos(const complex<ValueType>& z) {
   const complex<ValueType> ret = thrust::asin(z);
   const ValueType pi = ValueType(3.14159265358979323846);
   return complex<ValueType>(pi / 2 - ret.real(), -ret.imag());
 }
 
 template <typename ValueType>
-__device__ inline complex<ValueType> asin(const complex<ValueType>& z) {
+__host__ __device__ inline complex<ValueType> asin(const complex<ValueType>& z) {
   const complex<ValueType> i(0, 1);
   return -i * asinh(i * z);
 }
 
 template <typename ValueType>
-__device__ inline complex<ValueType> atan(const complex<ValueType>& z) {
+__host__ __device__ inline complex<ValueType> atan(const complex<ValueType>& z) {
   const complex<ValueType> i(0, 1);
   return -i * thrust::atanh(i * z);
 }
 
 template <typename ValueType>
-__device__ inline complex<ValueType> acosh(const complex<ValueType>& z) {
+__host__ __device__ inline complex<ValueType> acosh(const complex<ValueType>& z) {
   thrust::complex<ValueType> ret(
       (z.real() - z.imag()) * (z.real() + z.imag()) - ValueType(1.0),
       ValueType(2.0) * z.real() * z.imag());
@@ -673,12 +673,12 @@ __device__ inline complex<ValueType> acosh(const complex<ValueType>& z) {
 }
 
 template <typename ValueType>
-__device__ inline complex<ValueType> asinh(const complex<ValueType>& z) {
+__host__ __device__ inline complex<ValueType> asinh(const complex<ValueType>& z) {
   return thrust::log(thrust::sqrt(z * z + ValueType(1)) + z);
 }
 
 template <typename ValueType>
-__device__ inline complex<ValueType> atanh(const complex<ValueType>& z) {
+__host__ __device__ inline complex<ValueType> atanh(const complex<ValueType>& z) {
   ValueType imag2 = z.imag() * z.imag();
   ValueType n = ValueType(1.0) + z.real();
   n = imag2 + n * n;
@@ -694,35 +694,35 @@ __device__ inline complex<ValueType> atanh(const complex<ValueType>& z) {
 }
 
 template <>
-__device__ inline complex<double> acos(const complex<double>& z) {
+__host__ __device__ inline complex<double> acos(const complex<double>& z) {
   return detail::complex::cacos(z);
 }
 
 template <>
-__device__ inline complex<double> asin(const complex<double>& z) {
+__host__ __device__ inline complex<double> asin(const complex<double>& z) {
   return detail::complex::casin(z);
 }
 
 #if __cplusplus >= 201103L || !defined _MSC_VER
 template <>
-__device__ inline complex<double> atan(const complex<double>& z) {
+__host__ __device__ inline complex<double> atan(const complex<double>& z) {
   return detail::complex::catan(z);
 }
 #endif
 
 template <>
-__device__ inline complex<double> acosh(const complex<double>& z) {
+__host__ __device__ inline complex<double> acosh(const complex<double>& z) {
   return detail::complex::cacosh(z);
 }
 
 template <>
-__device__ inline complex<double> asinh(const complex<double>& z) {
+__host__ __device__ inline complex<double> asinh(const complex<double>& z) {
   return detail::complex::casinh(z);
 }
 
 #if __cplusplus >= 201103L || !defined _MSC_VER
 template <>
-__device__ inline complex<double> atanh(const complex<double>& z) {
+__host__ __device__ inline complex<double> atanh(const complex<double>& z) {
   return detail::complex::catanh(z);
 }
 #endif
