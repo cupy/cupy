@@ -55,6 +55,7 @@ from cupy.core.core import less  # NOQA
 from cupy.core.core import less_equal  # NOQA
 from cupy.core.core import matmul  # NOQA
 from cupy.core.core import ndarray  # NOQA
+from cupy.core.core import ndim  # NOQA
 from cupy.core.core import not_equal  # NOQA
 from cupy.core.core import right_shift  # NOQA
 from cupy.core.core import tensordot_core  # NOQA

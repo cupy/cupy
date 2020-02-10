@@ -2970,3 +2970,21 @@ cdef ndarray _ndarray_init(const vector.vector[Py_ssize_t]& shape, dtype):
     cdef ndarray ret = ndarray.__new__(ndarray)
     ret._init_fast(shape, dtype, True)
     return ret
+
+
+cpdef Py_ssize_t ndim(object a):
+    """
+    Return the number of dimensions of an array.
+
+    Args:
+        a (array-like): If it is not already an cupy.ndarray, a conversion via
+            `:func:numpy.asarray` is attempted.
+
+    Returns:
+        n (int): The number of dimensions.
+        The number of dimensions in `a`.  Scalars are zero-dimensional.
+    """
+    try:
+        return a.ndim
+    except AttributeError:
+        return numpy.asarray(a).ndim

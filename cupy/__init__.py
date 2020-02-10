@@ -72,6 +72,7 @@ from cupy import lib  # NOQA
 
 # import class and function
 from cupy.core import ndarray  # NOQA
+from cupy.core import ndim  # NOQA
 from cupy.core import ufunc  # NOQA
 
 
