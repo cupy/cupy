@@ -83,11 +83,11 @@ concrete dtype mapping.
     cdef _Op _from_type_and_routine_or_error_func(
         str typ, object routine, object error_func)
 
-    # Creates an op instance parsing a dtype mpping.
+    # Creates an op instance parsing a dtype mapping.
     @staticmethod
     cdef _Op from_type_and_routine(str typ, routine)
 
-    # Creates an op instance parsing a dtype mpping with given error function.
+    # Creates an op instance parsing a dtype mapping with given error function.
     @staticmethod
     cdef _Op from_type_and_error_func(str typ, error_func)
 

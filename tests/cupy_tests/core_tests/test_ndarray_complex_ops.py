@@ -22,6 +22,20 @@ class TestConj(unittest.TestCase):
         self.assertIs(x, y)
         return y
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_almost_equal()
+    def test_conjugate(self, xp, dtype):
+        x = testing.shaped_arange((2, 3), xp, dtype)
+        return x.conjugate()
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_almost_equal()
+    def test_conjugate_pass(self, xp, dtype):
+        x = testing.shaped_arange((2, 3), xp, dtype)
+        y = x.conjugate()
+        self.assertIs(x, y)
+        return y
+
 
 @testing.gpu
 class TestAngle(unittest.TestCase):

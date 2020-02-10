@@ -1,7 +1,6 @@
 import ctypes
 import gc
 import pickle
-import sys
 import threading
 import unittest
 
@@ -687,8 +686,6 @@ class TestAllocator(unittest.TestCase):
         self.assertEqual(arr.data.mem.size, new_pool.used_bytes())
         assert arr.sum() == 128
 
-    @unittest.skipUnless(sys.version_info[0] >= 3,
-                         'Only for Python3 or higher')
     def test_reuse_between_thread(self):
         def job(self):
             cupy.arange(16)

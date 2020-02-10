@@ -20,6 +20,8 @@
 #define CUPY_CUB_MAX     2
 #define CUPY_CUB_ARGMIN  3
 #define CUPY_CUB_ARGMAX  4
+#define CUPY_CUB_CUMSUM  5
+#define CUPY_CUB_CUMPROD 6
 
 #ifndef CUPY_NO_CUDA
 #include <cuda_runtime.h>  // for cudaStream_t
@@ -27,9 +29,11 @@
 void cub_device_reduce(void*, size_t&, void*, void*, int, cudaStream_t, int, int);
 void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, void*, void*, cudaStream_t, int, int);
 void cub_device_spmv(void*, size_t&, void*, void*, void*, void*, void*, int, int, int, cudaStream_t, int);
+void cub_device_scan(void*, size_t&, void*, void*, int, cudaStream_t, int, int);
 size_t cub_device_reduce_get_workspace_size(void*, void*, int, cudaStream_t, int, int);
 size_t cub_device_segmented_reduce_get_workspace_size(void*, void*, int, void*, void*, cudaStream_t, int, int);
 size_t cub_device_spmv_get_workspace_size(void*, void*, void*, void*, void*, int, int, int, cudaStream_t, int);
+size_t cub_device_scan_get_workspace_size(void*, void*, int, cudaStream_t, int, int);
 
 #else // CUPY_NO_CUDA
 
@@ -44,6 +48,9 @@ void cub_device_segmented_reduce(...) {
 void cub_device_spmv(...) {
 }
 
+void cub_device_scan(...) {
+}
+
 size_t cub_device_reduce_get_workspace_size(...) {
     return 0;
 }
@@ -53,6 +60,10 @@ size_t cub_device_segmented_reduce_get_workspace_size(...) {
 }
 
 size_t cub_device_spmv_get_workspace_size(...) {
+    return 0;
+}
+
+size_t cub_device_scan_get_workspace_size(...) {
     return 0;
 }
 

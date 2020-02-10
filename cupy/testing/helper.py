@@ -1,12 +1,8 @@
-from __future__ import absolute_import
-from __future__ import print_function
-
 import contextlib
 import functools
 import inspect
 import os
 import random
-import sys
 import traceback
 import unittest
 import warnings
@@ -27,7 +23,7 @@ def _call_func(self, impl, args, kw):
         error = None
         tb = None
     except Exception as e:
-        _, _, tb = sys.exc_info()  # e.__traceback__ is py3 only
+        tb = e.__traceback__
         if tb.tb_next is None:
             # failed before impl is called, e.g. invalid kw
             raise e
