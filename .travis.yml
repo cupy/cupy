@@ -7,6 +7,9 @@ cache:
 python:
   - "3.5"
 
+env:
+  - CUPY_CI=travis
+
 install:
   - pip install -U pip wheel
   - pip install cython
