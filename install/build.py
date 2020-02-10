@@ -1,6 +1,8 @@
+import contextlib
 import distutils.util
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,6 +21,15 @@ maximum_cudnn_version = 7999
 _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
+
+
+@contextlib.contextmanager
+def _tempdir():
+    temp_dir = tempfile.mkdtemp()
+    try:
+        yield temp_dir
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def get_rocm_path():
@@ -205,7 +216,7 @@ def _get_compiler_base_options():
     # If the compilation fails, try to parse the output of compilation
     # and try to compose base options according to it.
     nvcc_path = get_nvcc_path()
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with _tempdir() as temp_dir:
         test_cu_path = os.path.join(temp_dir, 'test.cu')
         test_out_path = os.path.join(temp_dir, 'test.out')
         with open(test_cu_path, 'w') as f:
@@ -437,7 +448,7 @@ def get_cutensor_version(formatted=False):
 def build_shlib(compiler, source, libraries=(),
                 include_dirs=(), library_dirs=(), define_macros=None,
                 extra_compile_args=()):
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
@@ -462,7 +473,7 @@ def build_shlib(compiler, source, libraries=(),
 def build_and_run(compiler, source, libraries=(),
                   include_dirs=(), library_dirs=(), define_macros=None,
                   extra_compile_args=()):
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
