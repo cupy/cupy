@@ -1,18 +1,22 @@
 import string
 
-import six
 import numpy
 
 import cupy
-from cupy.core._kernel import create_reduction_func
+from cupy.core._reduction import create_reduction_func
 from cupy.core._kernel import create_ufunc
 from cupy.core._scalar import get_typename
 from cupy.core._ufuncs import elementwise_copy
 from cupy import util
 
 from cupy.core._dtype cimport get_dtype
+from cupy.core cimport _kernel
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
+from cupy.cuda cimport memory
+
+if cupy.cuda.cub_enabled:
+    from cupy.cuda import cub
 
 
 # ndarray members
@@ -20,7 +24,7 @@ from cupy.core.core cimport ndarray
 
 cdef ndarray _ndarray_conj(ndarray self):
     if self.dtype.kind == 'c':
-        return _conj(self)
+        return _conjugate(self)
     else:
         return self
 
@@ -43,10 +47,18 @@ cdef ndarray _ndarray_real_setter(ndarray self, value):
 
 
 cdef ndarray _ndarray_imag_getter(ndarray self):
+    cdef memory.MemoryPointer memptr
     if self.dtype.kind == 'c':
+        dtype = get_dtype(self.dtype.char.lower())
+        memptr = self.data
+        # Make the memory pointer point to the first imaginary element.
+        # Note that even if the array doesn't have a valid memory (e.g. 0-size
+        # array), the resulting array should be a view of the original array,
+        # aligning with NumPy behavior.
+        if memptr.ptr != 0:
+            memptr = memptr + self.dtype.itemsize // 2
         view = ndarray(
-            shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
-            memptr=self.data + self.dtype.itemsize // 2,
+            shape=self._shape, dtype=dtype, memptr=memptr,
             strides=self._strides)
         view.base = self.base if self.base is not None else self
         return view
@@ -70,6 +82,12 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
 
 
 cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
+    if cupy.cuda.cub_enabled:
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_SUM, axis, dtype, out,
+                                   keepdims)
+        if result is not None:
+            return result
     if dtype is None:
         return _sum_auto_dtype(self, axis, dtype, out, keepdims)
     else:
@@ -126,7 +144,7 @@ def _inclusive_scan_kernel(dtype, block_size):
          cupy.cuda.Function: cuda function
     """
 
-    name = "inclusive_scan_kernel"
+    name = 'inclusive_scan_kernel'
     dtype = get_typename(dtype)
     source = string.Template("""
     extern "C" __global__ void ${name}(const CArray<${dtype}, 1> src,
@@ -173,7 +191,7 @@ def _inclusive_scan_kernel(dtype, block_size):
 
 @util.memoize(for_each_device=True)
 def _add_scan_blocked_sum_kernel(dtype):
-    name = "add_scan_blocked_sum_kernel"
+    name = 'add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
     source = string.Template("""
     extern "C" __global__ void ${name}(CArray<${dtype}, 1> src_dst){
@@ -204,7 +222,7 @@ cdef ndarray scan(ndarray a, ndarray out=None):
 
     """
     if a._shape.size() != 1:
-        raise TypeError("Input array should be 1D array.")
+        raise TypeError('Input array should be 1D array.')
 
     cdef Py_ssize_t block_size = 256
 
@@ -212,7 +230,7 @@ cdef ndarray scan(ndarray a, ndarray out=None):
         out = ndarray(a.shape, dtype=a.dtype)
     else:
         if a.size != out.size:
-            raise ValueError("Provided out is the wrong size")
+            raise ValueError('Provided out is the wrong size')
 
     kern_scan = _inclusive_scan_kernel(a.dtype, block_size)
     kern_scan(grid=((a.size - 1) // (2 * block_size) + 1,),
@@ -235,6 +253,24 @@ def _scan_for_test(a, out=None):
     return scan(a, out)
 
 
+cpdef ndarray _nansum(ndarray a, axis, dtype, out, keepdims):
+    if cupy.iscomplexobj(a):
+        return _nansum_complex_dtype(a, axis, dtype, out, keepdims)
+    elif dtype is None:
+        return _nansum_auto_dtype(a, axis, dtype, out, keepdims)
+    else:
+        return _nansum_keep_dtype(a, axis, dtype, out, keepdims)
+
+
+cpdef ndarray _nanprod(ndarray a, axis, dtype, out, keepdims):
+    if cupy.iscomplexobj(a):
+        return _nanprod_complex_dtype(a, axis, dtype, out, keepdims)
+    elif dtype is None:
+        return _nanprod_auto_dtype(a, axis, dtype, out, keepdims)
+    else:
+        return _nanprod_keep_dtype(a, axis, dtype, out, keepdims)
+
+
 _sum_auto_dtype = create_reduction_func(
     'cupy_sum',
     ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
@@ -251,6 +287,36 @@ _sum_keep_dtype = create_reduction_func(
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
+
+
+_nansum_auto_dtype = create_reduction_func(
+    'cupy_nansum',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(0)',
+     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+
+
+_nansum_keep_dtype = create_reduction_func(
+    'cupy_nansum_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(0)',
+     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+
+
+_nansum_complex_dtype = create_reduction_func(
+    'cupy_nansum_complex_dtype',
+    ('F->F', 'D->D'),
+    ('''
+    type_in0_raw((in0.real() == in0.real()) ? in0.real() : 0,
+                 (in0.imag() == in0.imag()) ? in0.imag() : 0)
+    ''',
+     'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
 
 _prod_auto_dtype = create_reduction_func(
@@ -271,10 +337,45 @@ _prod_keep_dtype = create_reduction_func(
     ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
 
+_nanprod_auto_dtype = create_reduction_func(
+    'cupy_nanprod',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(1)',
+     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+
+
+_nanprod_keep_dtype = create_reduction_func(
+    'cupy_nanprod_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(1)',
+     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+
+
+_nanprod_complex_dtype = create_reduction_func(
+    'cupy_nanprod_complex_dtype',
+    ('F->F', 'D->D'),
+    ('''
+    type_in0_raw((in0.real() == in0.real()) ? in0.real() : 1,
+                 (in0.imag() == in0.imag()) ? in0.imag() : 1)
+    ''',
+     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+
 cdef create_arithmetic(name, op, boolop, doc):
+    # boolop is either
+    #  - str (the operator for bool-bool inputs) or
+    #  - callable (a function to raise an error for bool-bool inputs).
+    if isinstance(boolop, str):
+        boolop = 'out0 = in0 %s in1' % boolop
+
     return create_ufunc(
         'cupy_' + name,
-        (('??->?', 'out0 = in0 %s in1' % boolop),
+        (('??->?', boolop),
          'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
          'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
          'DD->D'),
@@ -291,8 +392,8 @@ _add = create_arithmetic(
     ''')
 
 
-_conj = create_ufunc(
-    'cupy_conj',
+_conjugate = create_ufunc(
+    'cupy_conjugate',
     ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
      'Q->Q', 'e->e', 'f->f', 'd->d',
      ('F->F', 'out0 = conj(in0)'),
@@ -300,7 +401,7 @@ _conj = create_ufunc(
     'out0 = in0',
     doc='''Returns the complex conjugate, element-wise.
 
-    .. seealso:: :data:`numpy.conj`
+    .. seealso:: :data:`numpy.conjugate`
 
     ''')
 
@@ -361,9 +462,15 @@ _imag_setter = create_ufunc(
     ''')
 
 
+def _negative_boolean_error():
+    raise TypeError(
+        'The cupy boolean negative, the `-` operator, is not supported, '
+        'use the `~` operator or the logical_not function instead.')
+
+
 _negative = create_ufunc(
     'cupy_negative',
-    (('?->?', 'out0 = !in0'),
+    (('?->?', _negative_boolean_error),
      'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = -in0',
@@ -383,22 +490,27 @@ _multiply = create_arithmetic(
     ''')
 
 
-_divide = create_ufunc(
-    'cupy_divide',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q',
-     ('ee->e', 'out0 = in0 / in1'),
-     ('ff->f', 'out0 = in0 / in1'),
-     ('dd->d', 'out0 = in0 / in1'),
-     ('FF->F', 'out0 = in0 / in1'),
-     ('DD->D', 'out0 = in0 / in1')),
-    'out0 = in1 == 0 ? 0 : floor((double)in0 / (double)in1)',
-    doc='''Divides arguments elementwise.
-
-    .. seealso:: :data:`numpy.divide`
-
-    ''')
-
+# `integral_power` should return somewhat appropriate values for negative
+# integral powers (for which NumPy would raise errors). Hence the branches in
+# the beginning. This behavior is not officially documented and could change.
+cdef _power_preamble = '''
+template <typename T>
+inline __device__ T integral_power(T in0, T in1) {
+    if (in1 < 0) {
+        if (in0 == -1) {return (in1 & 1) ? -1 : 1;}
+        else {return (in0 == 1) ? 1 : 0;}
+    }
+    T out0 = 1;
+    while (in1 > 0) {
+        if (in1 & 1) {
+            out0 *= in0;
+        }
+        in0 *= in0;
+        in1 >>= 1;
+    }
+    return out0;
+}
+'''
 
 _power = create_ufunc(
     'cupy_power',
@@ -409,7 +521,8 @@ _power = create_ufunc(
      ('dd->d', 'out0 = pow(in0, in1)'),
      ('FF->F', 'out0 = pow(in0, in1)'),
      ('DD->D', 'out0 = pow(in0, in1)')),
-    'out0 = rint(pow((double)in0, (double)in1))',
+    'out0 = integral_power(in0, in1)',
+    preamble=_power_preamble,
     doc='''Computes ``x1 ** x2`` elementwise.
 
     .. seealso:: :data:`numpy.power`
@@ -417,8 +530,14 @@ _power = create_ufunc(
     ''')
 
 
+def _subtract_boolean_error():
+    raise TypeError(
+        'cupy boolean subtract, the `-` operator, is deprecated, use the '
+        'bitwise_xor, the `^` operator, or the logical_xor function instead.')
+
+
 _subtract = create_arithmetic(
-    'subtract', '-', '^',
+    'subtract', '-', _subtract_boolean_error,
     '''Subtracts arguments elementwise.
 
     .. seealso:: :data:`numpy.subtract`
@@ -435,11 +554,12 @@ _true_divide = create_ufunc(
 
     .. seealso:: :data:`numpy.true_divide`
 
-    ''')
+    ''',
+    out_ops=('ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+)
 
 
-if six.PY3:
-    _divide = _true_divide
+_divide = _true_divide
 
 
 _floor_divide = create_ufunc(
@@ -511,7 +631,7 @@ _clip = create_ufunc(
 
 
 add = _add
-conj = _conj
+conjugate = _conjugate
 angle = _angle
 real = _real
 imag = _imag
@@ -527,5 +647,7 @@ absolute = _absolute
 sqrt = _sqrt
 
 sum_auto_dtype = _sum_auto_dtype  # used from cupy/math/sumprod.py
+nansum_auto_dtype = _nansum_auto_dtype  # used from cupy/math/sumprod.py
 prod_auto_dtype = _prod_auto_dtype  # used from cupy/math/sumprod.py
+nanprod_auto_dtype = _nanprod_auto_dtype  # used from cupy/math/sumprod.py
 clip = _clip  # used from cupy/math/misc.py

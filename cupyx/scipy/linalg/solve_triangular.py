@@ -51,7 +51,7 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
     if a.dtype.char in 'fd':
         dtype = a.dtype
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ())
+        dtype = numpy.promote_types(a.dtype.char, 'f')
 
     a = cupy.array(a, dtype=dtype, order='F', copy=False)
     b = cupy.array(b, dtype=dtype, order='F', copy=(not overwrite_b))
@@ -59,10 +59,10 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
     if check_finite:
         if a.dtype.kind == 'f' and not cupy.isfinite(a).all():
             raise ValueError(
-                "array must not contain infs or NaNs")
+                'array must not contain infs or NaNs')
         if b.dtype.kind == 'f' and not cupy.isfinite(b).all():
             raise ValueError(
-                "array must not contain infs or NaNs")
+                'array must not contain infs or NaNs')
 
     m, n = (b.size, 1) if b.ndim == 1 else b.shape
     cublas_handle = device.get_cublas_handle()

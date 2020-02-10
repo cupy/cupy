@@ -28,7 +28,9 @@ Searching
    :nosignatures:
 
    cupy.argmax
+   cupy.nanargmax
    cupy.argmin
+   cupy.nanargmin
    cupy.nonzero
    cupy.flatnonzero
    cupy.where

@@ -5,8 +5,6 @@ cache:
   - ccache
 
 python:
-  - "2.7"
-  - "3.4"
   - "3.5"
 
 install:
@@ -24,7 +22,7 @@ script:
   - python -Werror::DeprecationWarning -Wignore::DeprecationWarning:site -m compileall -f -q cupy cupyx examples tests docs
   - pip install scipy
   - pushd docs
-  - make html
+  - SPHINXOPTS=-W make html
   - popd
 
 sudo: false

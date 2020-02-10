@@ -18,11 +18,14 @@ cdef class ndarray:
         # underlying memory is UnownedMemory.
         readonly ndarray base
 
+    cdef _init_fast(self, const vector.vector[Py_ssize_t]& shape, dtype,
+                    bint c_order)
     cpdef item(self)
     cpdef tolist(self)
+    cpdef bytes tobytes(self, order=*)
     cpdef tofile(self, fid, sep=*, format=*)
     cpdef dump(self, file)
-    cpdef dumps(self)
+    cpdef bytes dumps(self)
     cpdef ndarray astype(self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef ndarray copy(self, order=*)
     cpdef ndarray view(self, dtype=*)
@@ -41,12 +44,13 @@ cdef class ndarray:
     cpdef ndarray argpartition(self, kth, axis=*)
     cpdef tuple nonzero(self)
     cpdef ndarray diagonal(self, offset=*, axis1=*, axis2=*)
-    cpdef ndarray max(self, axis=*, out=*, dtype=*, keepdims=*)
+    cpdef ndarray max(self, axis=*, out=*, keepdims=*)
     cpdef ndarray argmax(self, axis=*, out=*, dtype=*,
                          keepdims=*)
-    cpdef ndarray min(self, axis=*, out=*, dtype=*, keepdims=*)
+    cpdef ndarray min(self, axis=*, out=*, keepdims=*)
     cpdef ndarray argmin(self, axis=*, out=*, dtype=*,
                          keepdims=*)
+    cpdef ndarray ptp(self, axis=*, out=*, keepdims=*)
     cpdef ndarray clip(self, a_min=*, a_max=*, out=*)
     cpdef ndarray round(self, decimals=*, out=*)
 
@@ -54,7 +58,6 @@ cdef class ndarray:
                         out=*)
     cpdef ndarray sum(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray cumsum(self, axis=*, dtype=*, out=*)
-
     cpdef ndarray mean(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray var(self, axis=*, dtype=*, out=*, ddof=*,
                       keepdims=*)
@@ -62,10 +65,10 @@ cdef class ndarray:
                       keepdims=*)
     cpdef ndarray prod(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef ndarray cumprod(self, axis=*, dtype=*, out=*)
-
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)
     cpdef ndarray conj(self)
+    cpdef ndarray conjugate(self)
     cpdef get(self, stream=*, order=*, out=*)
     cpdef set(self, arr, stream=*)
     cpdef ndarray reduced_view(self, dtype=*)
@@ -86,19 +89,20 @@ cdef class ndarray:
     cpdef object toDlpack(self)
 
 
-cdef class Indexer:
-    cdef:
-        readonly Py_ssize_t size
-        readonly tuple shape
-
-    cdef CPointer get_pointer(self)
-
-
+cpdef ndarray _internal_ascontiguousarray(ndarray a)
+cpdef ndarray _internal_asfortranarray(ndarray a)
 cpdef ndarray ascontiguousarray(ndarray a, dtype=*)
+cpdef ndarray asfortranarray(ndarray a, dtype=*)
+
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
-                                cachd_dir=*, prepend_cupy_headers=*)
+                                cachd_dir=*, prepend_cupy_headers=*,
+                                backend=*, translate_cucomplex=*,
+                                enable_cooperative_groups=*)
 
 
 # TODO(niboshi): Move to _routines_creation.pyx
 cpdef ndarray array(obj, dtype=*, bint copy=*, order=*, bint subok=*,
                     Py_ssize_t ndmin=*)
+cpdef ndarray _convert_object_with_cuda_array_interface(a)
+
+cdef ndarray _ndarray_init(const vector.vector[Py_ssize_t]& shape, dtype)

@@ -24,6 +24,7 @@ cdef class Module:
     cpdef load(self, bytes cubin)
     cpdef get_global_var(self, name)
     cpdef get_function(self, name)
+    cpdef get_texref(self, name)
 
 
 cdef class LinkState:
@@ -32,4 +33,5 @@ cdef class LinkState:
         public intptr_t ptr
 
     cpdef add_ptr_data(self, unicode data, unicode name)
+    cpdef add_ptr_file(self, unicode path)
     cpdef bytes complete(self)

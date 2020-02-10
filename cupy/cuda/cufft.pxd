@@ -2,7 +2,7 @@ cdef extern from *:
     ctypedef float Float 'cufftReal'
     ctypedef double Double 'cufftDoubleReal'
     ctypedef int Result 'cufftResult_t'
-    ctypedef size_t Handle 'cufftHandle'
+    ctypedef int Handle 'cufftHandle'
     ctypedef int Type 'cufftType_t'
 
 
@@ -16,3 +16,6 @@ cpdef enum:
 
     CUFFT_FORWARD = -1
     CUFFT_INVERSE = 1
+
+
+cpdef get_current_plan()

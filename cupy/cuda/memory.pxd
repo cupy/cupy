@@ -38,11 +38,15 @@ cdef class MemoryPointer:
     cpdef memset(self, int value, size_t size)
     cpdef memset_async(self, int value, size_t size, stream=?)
 
+    @staticmethod
+    cdef _set_peer_access(int device, int peer)
+
 
 cpdef MemoryPointer alloc(size)
 
 
 cpdef set_allocator(allocator=*)
+cpdef get_allocator()
 
 
 cdef class MemoryPool:
@@ -57,6 +61,8 @@ cdef class MemoryPool:
     cpdef size_t used_bytes(self)
     cpdef size_t free_bytes(self)
     cpdef size_t total_bytes(self)
+    cpdef set_limit(self, size=?, fraction=?)
+    cpdef size_t get_limit(self)
 
 
 @cython.no_gc

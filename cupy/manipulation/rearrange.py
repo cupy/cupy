@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 from cupy import core
-from cupy.core._kernel import _get_axis
+from cupy.core._reduction import _get_axis
 
 
 def flip(a, axis):
@@ -105,7 +105,7 @@ def roll(a, shift, axis=None):
         broadcasted = numpy.broadcast(shift, axis)
         if broadcasted.nd > 1:
             raise ValueError(
-                "'shift' and 'axis' should be scalars or 1D sequences")
+                '\'shift\' and \'axis\' should be scalars or 1D sequences')
         shifts = {ax: 0 for ax in range(a.ndim)}
         for sh, ax in broadcasted:
             shifts[ax] += sh

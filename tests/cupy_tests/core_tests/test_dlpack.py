@@ -32,13 +32,19 @@ class TestDLPackConversion(unittest.TestCase):
 
 class TestDLTensorMemory(unittest.TestCase):
 
+    def setUp(self):
+        self.old_pool = cupy.get_default_memory_pool()
+        self.pool = cupy.cuda.MemoryPool()
+        cupy.cuda.set_allocator(self.pool.malloc)
+
+    def tearDown(self):
+        cupy.cuda.set_allocator(self.old_pool.malloc)
+
     def test_deleter(self):
-        pool = cupy.get_default_memory_pool()
-        pool.free_all_blocks()
         array = cupy.empty(10)
         tensor = array.toDlpack()
-        assert pool.n_free_blocks() == 0
+        assert self.pool.n_free_blocks() == 0
         del array
-        assert pool.n_free_blocks() == 0
+        assert self.pool.n_free_blocks() == 0
         del tensor
-        assert pool.n_free_blocks() == 1
+        assert self.pool.n_free_blocks() == 1

@@ -12,7 +12,7 @@ from cupy.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cuComplex.h":
+cdef extern from 'cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
@@ -300,6 +300,9 @@ class CUBLASError(RuntimeError):
     def __init__(self, status):
         self.status = status
         super(CUBLASError, self).__init__(STATUS[status])
+
+    def __reduce__(self):
+        return (type(self), (self.status,))
 
 
 @cython.profile(False)

@@ -1,5 +1,4 @@
 import itertools
-import six
 import unittest
 
 import numpy
@@ -66,8 +65,8 @@ class TestBasic(unittest.TestCase):
             with cuda.Device(dev3):
                 c = testing.shaped_arange((2, 3, 4), cupy, '?')
             with cuda.Device(dev4):
-                with six.assertRaisesRegex(
-                        self, ValueError,
+                with self.assertRaisesRegex(
+                        ValueError,
                         '^Array device must be same as the current device'):
                     cupy.copyto(a, b, where=c)
 
@@ -106,7 +105,7 @@ class TestBasic(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product(
-        {'src': [float(3.2), int(0), int(4), int(-4), True, False, 1+1j],
+        {'src': [float(3.2), int(0), int(4), int(-4), True, False, 1 + 1j],
          'dst_shape': [(), (0,), (1,), (1, 1), (2, 2)]}))
 @testing.gpu
 class TestCopytoFromScalar(unittest.TestCase):

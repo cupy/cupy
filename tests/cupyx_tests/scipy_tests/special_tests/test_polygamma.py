@@ -55,5 +55,5 @@ class TestPolygamma(unittest.TestCase):
         a = xp.asarray(a)
         b = xp.asarray(b)
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+            warnings.simplefilter('ignore')
             return scp.special.polygamma(a, b)

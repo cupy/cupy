@@ -9,6 +9,7 @@ from cupy.cuda import runtime
 
 from cupy.core cimport internal
 from cupy.cuda cimport runtime
+from cupy import util
 
 
 class PinnedMemory(object):
@@ -28,7 +29,9 @@ class PinnedMemory(object):
         if size > 0:
             self.ptr = runtime.hostAlloc(size, flags)
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
+        if is_shutting_down():
+            return
         if self.ptr:
             runtime.freeHost(self.ptr)
 
@@ -119,13 +122,13 @@ cdef class PinnedMemoryPointer:
 
     def __getreadbuffer__(self, Py_ssize_t idx, void **p):
         if idx != 0:
-            raise SystemError("accessing non-existent buffer segment")
+            raise SystemError('accessing non-existent buffer segment')
         p[0] = <void*>self.ptr
         return self.size()
 
     def __getwritebuffer__(self, Py_ssize_t idx, void **p):
         if idx != 0:
-            raise SystemError("accessing non-existent buffer segment")
+            raise SystemError('accessing non-existent buffer segment')
         p[0] = <void*>self.ptr
         return self.size()
 
@@ -302,7 +305,7 @@ cdef class PinnedMemoryPool:
                 try:
                     mem = self._alloc(size).mem
                 except runtime.CUDARuntimeError as e:
-                    if e.status != runtime.errorMemoryAllocation:
+                    if e.status != runtime.cudaErrorMemoryAllocation:
                         raise
                     self.free_all_blocks()
                     mem = self._alloc(size).mem

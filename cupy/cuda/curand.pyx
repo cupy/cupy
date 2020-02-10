@@ -10,7 +10,7 @@ from cupy.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cuda.h" nogil:
+cdef extern from 'cupy_cuda.h' nogil:
     # Generator
     int curandCreateGenerator(Generator* generator, int rng_type)
     int curandDestroyGenerator(Generator generator)
@@ -75,6 +75,9 @@ class CURANDError(RuntimeError):
     def __init__(self, status):
         self.status = status
         super(CURANDError, self).__init__(STATUS[status])
+
+    def __reduce__(self):
+        return (type(self), (self.status,))
 
 
 @cython.profile(False)

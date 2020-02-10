@@ -1,6 +1,37 @@
 import numpy
 
 import cupy
+from cupy import core
+
+
+_preamble = '''
+__device__ long long atomicAdd(long long *address, long long val) {
+    return atomicAdd(reinterpret_cast<unsigned long long*>(address),
+                     static_cast<unsigned long long>(val));
+}'''
+
+# TODO(unno): use searchsorted
+_histogram_kernel = core.ElementwiseKernel(
+    'S x, raw T bins, int32 n_bins',
+    'raw U y',
+    '''
+    if (x < bins[0] or bins[n_bins - 1] < x) {
+        return;
+    }
+    int high = n_bins - 1;
+    int low = 0;
+
+    while (high - low > 1) {
+        int mid = (high + low) / 2;
+        if (bins[mid] <= x) {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    atomicAdd(&y[low], U(1));
+    ''',
+    preamble=_preamble)
 
 
 def histogram(x, bins=10):
@@ -16,6 +47,10 @@ def histogram(x, bins=10):
         tuple: ``(hist, bin_edges)`` where ``hist`` is a :class:`cupy.ndarray`
         storing the values of the histogram, and ``bin_edges`` is a
         :class:`cupy.ndarray` storing the bin edges.
+
+    .. warning::
+
+        This function may synchronize the device.
 
     .. seealso:: :func:`numpy.histogram`
     """
@@ -37,43 +72,29 @@ def histogram(x, bins=10):
         bin_type = cupy.result_type(min_value, max_value, x)
         bins = cupy.linspace(min_value, max_value, bins + 1, dtype=bin_type)
     elif isinstance(bins, cupy.ndarray):
-        if cupy.any(bins[:-1] > bins[1:]):
+        if (bins[:-1] > bins[1:]).any():  # synchronize!
             raise ValueError('bins must increase monotonically.')
     else:
         raise NotImplementedError('Only int or ndarray are supported for bins')
 
-    # atomicAdd only supports int32
-    y = cupy.zeros(bins.size - 1, dtype=cupy.int32)
-
-    # TODO(unno): use searchsorted
-    cupy.ElementwiseKernel(
-        'S x, raw T bins, int32 n_bins',
-        'raw int32 y',
-        '''
-        if (x < bins[0] or bins[n_bins - 1] < x) {
-            return;
-        }
-        int high = n_bins - 1;
-        int low = 0;
-
-        while (high - low > 1) {
-            int mid = (high + low) / 2;
-            if (bins[mid] <= x) {
-                low = mid;
-            } else {
-                high = mid;
-            }
-        }
-        atomicAdd(&y[low], 1);
-        '''
-    )(x, bins, bins.size, y)
-    return y.astype('l'), bins
-
+    y = cupy.zeros(bins.size - 1, dtype='l')
+    _histogram_kernel(x, bins, bins.size, y)
+    return y, bins
 
 # TODO(okuta): Implement histogram2d
 
 
 # TODO(okuta): Implement histogramdd
+
+_bincount_kernel = core.ElementwiseKernel(
+    'S x', 'raw U bin',
+    'atomicAdd(&bin[x], U(1))',
+    'bincount_kernel',
+    preamble=_preamble)
+_bincount_with_weight_kernel = core.ElementwiseKernel(
+    'S x, T w', 'raw U bin',
+    'atomicAdd(&bin[x], w)',
+    'bincount_with_weight_kernel')
 
 
 def bincount(x, weights=None, minlength=None):
@@ -89,6 +110,10 @@ def bincount(x, weights=None, minlength=None):
         cupy.ndarray: The result of binning the input array. The length of
             output is equal to ``max(cupy.max(x) + 1, minlength)``.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`numpy.bincount`
 
     """
@@ -98,7 +123,7 @@ def bincount(x, weights=None, minlength=None):
         raise ValueError('object of too small depth for desired array')
     if x.dtype.kind == 'f':
         raise TypeError('x must be int array')
-    if (x < 0).any():
+    if (x < 0).any():  # synchronize!
         raise ValueError('The first argument of bincount must be non-negative')
     if weights is not None and x.shape != weights.shape:
         raise ValueError('The weights and list don\'t have the same length.')
@@ -112,25 +137,45 @@ def bincount(x, weights=None, minlength=None):
         size = max(size, minlength)
 
     if weights is None:
-        # atomicAdd for int64 is not provided
-        b = cupy.zeros((size,), dtype=cupy.int32)
-        cupy.ElementwiseKernel(
-            'S x', 'raw U bin',
-            'atomicAdd(&bin[x], 1)',
-            'bincount_kernel'
-        )(x, b)
-        b = b.astype(numpy.intp)
+        b = cupy.zeros((size,), dtype=numpy.intp)
+        _bincount_kernel(x, b)
     else:
-        # atomicAdd for float64 is not provided
-        b = cupy.zeros((size,), dtype=cupy.float32)
-        cupy.ElementwiseKernel(
-            'S x, T w', 'raw U bin',
-            'atomicAdd(&bin[x], w)',
-            'bincount_with_weight_kernel'
-        )(x, weights, b)
-        b = b.astype(cupy.float64)
+        b = cupy.zeros((size,), dtype=numpy.float64)
+        _bincount_with_weight_kernel(x, weights, b)
 
     return b
 
 
-# TODO(okuta): Implement digitize
+def digitize(x, bins, right=False):
+    """Finds the indices of the bins to which each value in input array belongs.
+
+    .. note::
+
+        In order to avoid device synchronization, digitize does not raise
+        an exception when the array is not monotonic
+
+    Args:
+        x (cupy.ndarray): Input array.
+        bins (cupy.ndarray): Array of bins.
+            It has to be 1-dimensional and monotonic increasing or decreasing.
+        right (bool):
+            Indicates whether the intervals include the right or the left bin
+            edge.
+
+    Returns:
+        cupy.ndarray: Output array of indices, of same shape as ``x``.
+
+    .. seealso:: :func:`numpy.digitize`
+    """
+    # This is for NumPy compat, although it works fine
+    if x.dtype.kind == 'c':
+        raise TypeError('x may not be complex')
+
+    if bins.ndim > 1:
+        raise ValueError('object too deep for desired array')
+    if bins.ndim < 1:
+        raise ValueError('object of too small depth for desired array')
+
+    # As the order of the arguments are reversed, the side must be too.
+    side = 'left' if right else 'right'
+    return cupy._sorting.search._searchsorted(bins, x, side, None, False)

@@ -3,7 +3,6 @@ import unittest
 import numpy
 
 import cupy
-from cupy import cuda
 from cupy.random import distributions
 from cupy import testing
 
@@ -333,8 +332,6 @@ class TestDistributionsLogseries(RandomDistributionsTestCase):
 })
 )
 @testing.gpu
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 class TestDistributionsMultivariateNormal(unittest.TestCase):
 
     def check_distribution(self, dist_func, mean_dtype, cov_dtype, dtype):
@@ -533,13 +530,6 @@ class TestDistributionsPower(RandomDistributionsTestCase):
     @cupy.testing.for_float_dtypes('a_dtype')
     def test_power(self, a_dtype, dtype):
         a = numpy.full(self.a_shape, 0.5, dtype=a_dtype)
-        self.check_distribution('power', {'a': a}, dtype)
-
-    @testing.with_requires('numpy>=1.12')
-    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
-    @cupy.testing.for_float_dtypes('a_dtype')
-    def test_power_for_zero_a(self, a_dtype, dtype):
-        a = numpy.zeros(self.a_shape, dtype=a_dtype)
         self.check_distribution('power', {'a': a}, dtype)
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)

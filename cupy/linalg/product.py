@@ -1,13 +1,13 @@
+import collections.abc
+
 import numpy
-import six
 
 import cupy
 from cupy import core
-from cupy import internal
+from cupy.core import internal
 
 from cupy.linalg.solve import inv
-from cupy.util import collections_abc
-
+from cupy import util
 
 matmul = core.matmul
 
@@ -57,6 +57,128 @@ def vdot(a, b):
         a = a.conj()
 
     return core.tensordot_core(a, b, None, 1, 1, a.size, ())
+
+
+def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
+    """Returns the cross product of two vectors.
+
+    The cross product of ``a`` and ``b`` in :math:`R^3` is a vector
+    perpendicular to both ``a`` and ``b``.  If ``a`` and ``b`` are arrays
+    of vectors, the vectors are defined by the last axis of ``a`` and ``b``
+    by default, and these axes can have dimensions 2 or 3.  Where the
+    dimension of either ``a`` or ``b`` is 2, the third component of the input
+    vector is assumed to be zero and the cross product calculated accordingly.
+    In cases where both input vectors have dimension 2, the z-component of
+    the cross product is returned.
+
+    Args:
+        a (cupy.ndarray): Components of the first vector(s).
+        b (cupy.ndarray): Components of the second vector(s).
+        axisa (int, optional):
+            Axis of ``a`` that defines the vector(s).
+            By default, the last axis.
+        axisb (int, optional):
+            Axis of ``b`` that defines the vector(s).
+            By default, the last axis.
+        axisc (int, optional):
+            Axis of ``c`` containing the cross product vector(s).  Ignored if
+            both input vectors have dimension 2, as the return is scalar.
+            By default, the last axis.
+        axis (int, optional):
+            If defined, the axis of ``a``, ``b`` and ``c``
+            that defines the vector(s) and cross product(s).
+            Overrides ``axisa``, ``axisb`` and ``axisc``.
+
+    Returns:
+        cupy.ndarray :
+            Vector cross product(s).
+
+    .. seealso:: :func:`numpy.cross`
+
+    """
+
+    if axis is not None:
+        axisa, axisb, axisc = (axis,) * 3
+    a = cupy.asarray(a)
+    b = cupy.asarray(b)
+    # Check axisa and axisb are within bounds
+    axisa = util._normalize_axis_index(axisa, a.ndim)
+    axisb = util._normalize_axis_index(axisb, b.ndim)
+
+    # Move working axis to the end of the shape
+    a = cupy.moveaxis(a, axisa, -1)
+    b = cupy.moveaxis(b, axisb, -1)
+    if a.shape[-1] not in (2, 3) or b.shape[-1] not in (2, 3):
+        msg = ('incompatible dimensions for cross product\n'
+               '(dimension must be 2 or 3)')
+        raise ValueError(msg)
+
+    # Create the output array
+    shape = cupy.broadcast(a[..., 0], b[..., 0]).shape
+    if a.shape[-1] == 3 or b.shape[-1] == 3:
+        shape += (3,)
+        # Check axisc is within bounds
+        axisc = util._normalize_axis_index(axisc, len(shape))
+    dtype = cupy.promote_types(a.dtype, b.dtype)
+    cp = cupy.empty(shape, dtype)
+
+    # create local aliases for readability
+    a0 = a[..., 0]
+    a1 = a[..., 1]
+    if a.shape[-1] == 3:
+        a2 = a[..., 2]
+    b0 = b[..., 0]
+    b1 = b[..., 1]
+    if b.shape[-1] == 3:
+        b2 = b[..., 2]
+    if cp.ndim != 0 and cp.shape[-1] == 3:
+        cp0 = cp[..., 0]
+        cp1 = cp[..., 1]
+        cp2 = cp[..., 2]
+
+    if a.shape[-1] == 2:
+        if b.shape[-1] == 2:
+            # a0 * b1 - a1 * b0
+            cupy.multiply(a0, b1, out=cp)
+            cp -= a1 * b0
+            return cp
+        else:
+            assert b.shape[-1] == 3
+            # cp0 = a1 * b2 - 0  (a2 = 0)
+            # cp1 = 0 - a0 * b2  (a2 = 0)
+            # cp2 = a0 * b1 - a1 * b0
+            cupy.multiply(a1, b2, out=cp0)
+            cupy.multiply(a0, b2, out=cp1)
+            cupy.negative(cp1, out=cp1)
+            cupy.multiply(a0, b1, out=cp2)
+            cp2 -= a1 * b0
+    else:
+        assert a.shape[-1] == 3
+        if b.shape[-1] == 3:
+            # cp0 = a1 * b2 - a2 * b1
+            # cp1 = a2 * b0 - a0 * b2
+            # cp2 = a0 * b1 - a1 * b0
+            cupy.multiply(a1, b2, out=cp0)
+            tmp = a2 * b1
+            cp0 -= tmp
+            cupy.multiply(a2, b0, out=cp1)
+            cupy.multiply(a0, b2, out=tmp)
+            cp1 -= tmp
+            cupy.multiply(a0, b1, out=cp2)
+            cupy.multiply(a1, b0, out=tmp)
+            cp2 -= tmp
+        else:
+            assert b.shape[-1] == 2
+            # cp0 = 0 - a2 * b1  (b2 = 0)
+            # cp1 = a2 * b0 - 0  (b2 = 0)
+            # cp2 = a0 * b1 - a1 * b0
+            cupy.multiply(a2, b1, out=cp0)
+            cupy.negative(cp0, out=cp0)
+            cupy.multiply(a2, b0, out=cp1)
+            cupy.multiply(a0, b1, out=cp2)
+            cp2 -= a1 * b0
+
+    return cupy.moveaxis(cp, -1, axisc)
 
 
 def inner(a, b):
@@ -162,7 +284,7 @@ def tensordot(a, b, axes=2):
             raise ValueError('An input is zero-dim while axes has dimensions')
         return cupy.multiply(a, b)
 
-    if isinstance(axes, collections_abc.Sequence):
+    if isinstance(axes, collections.abc.Sequence):
         if len(axes) != 2:
             raise ValueError('Axes must consist of two arrays.')
         a_axes, b_axes = axes
@@ -171,8 +293,8 @@ def tensordot(a, b, axes=2):
         if numpy.isscalar(b_axes):
             b_axes = b_axes,
     else:
-        a_axes = tuple(six.moves.range(a_ndim - axes, a_ndim))
-        b_axes = tuple(six.moves.range(axes))
+        a_axes = tuple(range(a_ndim - axes, a_ndim))
+        b_axes = tuple(range(axes))
 
     sum_ndim = len(a_axes)
     if sum_ndim != len(b_axes):
@@ -189,8 +311,10 @@ def tensordot(a, b, axes=2):
     ret_shape = a.shape[sum_ndim:] + b.shape[sum_ndim:]
 
     k = internal.prod(a.shape[:sum_ndim])
-    n = a.size // k
-    m = b.size // k
+    # Avoid division by zero: core.tensordot_core returns zeros without
+    # checking n, m consistency, thus allowing 0-length dimensions to work
+    n = a.size // k if k != 0 else 0
+    m = b.size // k if k != 0 else 0
 
     return core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
@@ -210,9 +334,9 @@ def matrix_power(M, n):
     ..seealso:: :func:`numpy.linalg.matrix_power`
     """
     if M.ndim != 2 or M.shape[0] != M.shape[1]:
-        raise ValueError("input must be a square array")
-    if not isinstance(n, six.integer_types):
-        raise TypeError("exponent must be an integer")
+        raise ValueError('input must be a square array')
+    if not isinstance(n, int):
+        raise TypeError('exponent must be an integer')
 
     if n == 0:
         return cupy.identity(M.shape[0], dtype=M.dtype)
@@ -270,7 +394,7 @@ def kron(a, b):
 
     axis = ndim - 1
     out = core.tensordot_core(a, b, None, a.size, b.size, 1, a_shape + b_shape)
-    for _ in six.moves.range(ndim):
+    for _ in range(ndim):
         out = core.concatenate_method(out, axis=axis)
 
     return out
@@ -285,4 +409,4 @@ def _move_axes_to_head(a, axes):
         return a
 
     return a.transpose(
-        axes + [i for i in six.moves.range(a.ndim) if i not in axes])
+        axes + [i for i in range(a.ndim) if i not in axes])

@@ -1,8 +1,12 @@
+import functools
+
 import numpy
 
 import cupy
 from cupy.cuda import cusparse
+from cupy.cuda import runtime
 from cupy.cuda import device
+from cupy import util
 import cupyx.scipy.sparse
 
 
@@ -16,7 +20,9 @@ class MatDescriptor(object):
         descr = cusparse.createMatDescr()
         return MatDescriptor(descr)
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
+        if is_shutting_down():
+            return
         if self.descriptor:
             cusparse.destroyMatDescr(self.descriptor)
             self.descriptor = None
@@ -30,7 +36,7 @@ class MatDescriptor(object):
 
 def _cast_common_type(*xs):
     dtypes = [x.dtype for x in xs if x is not None]
-    dtype = numpy.find_common_type(dtypes, [])
+    dtype = functools.reduce(numpy.promote_types, dtypes)
     return [x.astype(dtype) if x is not None and x.dtype != dtype else x
             for x in xs]
 
@@ -55,6 +61,19 @@ def _call_cusparse(name, dtype, *args):
         raise TypeError
     f = getattr(cusparse, prefix + name)
     return f(*args)
+
+
+def _dtype_to_DataType(dtype):
+    if dtype == 'f':
+        return runtime.CUDA_R_32F
+    elif dtype == 'd':
+        return runtime.CUDA_R_64F
+    elif dtype == 'F':
+        return runtime.CUDA_C_32F
+    elif dtype == 'D':
+        return runtime.CUDA_C_64F
+    else:
+        raise TypeError
 
 
 def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
@@ -93,6 +112,7 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
         y = cupy.zeros(m, dtype)
     alpha = numpy.array(alpha, dtype).ctypes
     beta = numpy.array(beta, dtype).ctypes
+
     _call_cusparse(
         'csrmv', dtype,
         handle, _transpose_flag(transa),
@@ -100,6 +120,101 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
         a.data.data.ptr, a.indptr.data.ptr, a.indices.data.ptr,
         x.data.ptr, beta.data, y.data.ptr)
 
+    return y
+
+
+def csrmvExIsAligned(a, x, y=None):
+    """Check if the pointers of arguments for csrmvEx are aligned or not
+
+    Args:
+        a (cupy.cusparse.csr_matrix): Matrix A.
+        x (cupy.ndarray): Vector x.
+        y (cupy.ndarray or None): Vector y.
+
+        Check if a, x, y pointers are aligned by 128 bytes as
+        required by csrmvEx.
+
+    Returns:
+        bool: ``True`` if all pointers are aligned.
+              ``False`` if otherwise.
+
+    """
+
+    if a.data.data.ptr % 128 != 0:
+        return False
+    if a.indptr.data.ptr % 128 != 0:
+        return False
+    if a.indices.data.ptr % 128 != 0:
+        return False
+    if x.data.ptr % 128 != 0:
+        return False
+    if y is not None and y.data.ptr % 128 != 0:
+        return False
+    return True
+
+
+def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
+    """Matrix-vector product for a CSR-matrix and a dense vector.
+
+    .. math::
+
+       y = \\alpha * A x + \\beta y,
+
+    Args:
+        a (cupy.cusparse.csr_matrix): Matrix A.
+        x (cupy.ndarray): Vector x.
+        y (cupy.ndarray or None): Vector y. It must be F-contiguous.
+        alpha (float): Coefficient for x.
+        beta (float): Coefficient for y.
+        merge_path (bool): If ``True``, merge path algorithm is used.
+
+        All pointers must be aligned with 128 bytes.
+
+    Returns:
+        cupy.ndarray: Calculated ``y``.
+
+    """
+    assert y is None or y.flags.f_contiguous
+
+    if a.shape[1] != len(x):
+        raise ValueError('dimension mismatch')
+
+    handle = device.get_cusparse_handle()
+    m, n = a.shape
+
+    a, x, y = _cast_common_type(a, x, y)
+    dtype = a.dtype
+    if y is None:
+        y = cupy.zeros(m, dtype)
+
+    datatype = _dtype_to_DataType(dtype)
+    algmode = cusparse.CUSPARSE_ALG_MERGE_PATH if \
+        merge_path else cusparse.CUSPARSE_ALG_NAIVE
+    transa_flag = cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+
+    alpha = numpy.array(alpha, dtype).ctypes
+    beta = numpy.array(beta, dtype).ctypes
+
+    assert csrmvExIsAligned(a, x, y)
+
+    bufferSize = cusparse.csrmvEx_bufferSize(
+        handle, algmode, transa_flag,
+        a.shape[0], a.shape[1], a.nnz, alpha.data, datatype,
+        a._descr.descriptor, a.data.data.ptr, datatype,
+        a.indptr.data.ptr, a.indices.data.ptr,
+        x.data.ptr, datatype, beta.data, datatype,
+        y.data.ptr, datatype, datatype)
+
+    buf = cupy.empty(bufferSize, 'b')
+    assert buf.data.ptr % 128 == 0
+
+    cusparse.csrmvEx(
+        handle, algmode, transa_flag,
+        a.shape[0], a.shape[1], a.nnz, alpha.data, datatype,
+        a._descr.descriptor, a.data.data.ptr, datatype,
+        a.indptr.data.ptr, a.indices.data.ptr,
+        x.data.ptr, datatype, beta.data, datatype,
+        y.data.ptr, datatype, datatype, buf.data.ptr)
     return y
 
 
@@ -415,13 +530,14 @@ def csrsort(x):
         x.indices.data.ptr)
     buf = cupy.empty(buffer_size, 'b')
     P = cupy.empty(nnz, 'i')
+    data_orig = x.data.copy()
     cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
     cusparse.xcsrsort(
         handle, m, n, nnz, x._descr.descriptor, x.indptr.data.ptr,
         x.indices.data.ptr, P.data.ptr, buf.data.ptr)
     _call_cusparse(
         'gthr', x.dtype,
-        handle, nnz, x.data.data.ptr, x.data.data.ptr,
+        handle, nnz, data_orig.data.ptr, x.data.data.ptr,
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 
@@ -443,17 +559,24 @@ def cscsort(x):
         x.indices.data.ptr)
     buf = cupy.empty(buffer_size, 'b')
     P = cupy.empty(nnz, 'i')
+    data_orig = x.data.copy()
     cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
     cusparse.xcscsort(
         handle, m, n, nnz, x._descr.descriptor, x.indptr.data.ptr,
         x.indices.data.ptr, P.data.ptr, buf.data.ptr)
     _call_cusparse(
         'gthr', x.dtype,
-        handle, nnz, x.data.data.ptr, x.data.data.ptr,
+        handle, nnz, data_orig.data.ptr, x.data.data.ptr,
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 
 def coosort(x):
+    """Sorts indices of COO-matrix in place.
+
+    Args:
+        x (cupyx.scipy.sparse.coo_matrix): A sparse matrix to sort.
+
+    """
     nnz = x.nnz
     if nnz == 0:
         return
@@ -464,13 +587,14 @@ def coosort(x):
         handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr)
     buf = cupy.empty(buffer_size, 'b')
     P = cupy.empty(nnz, 'i')
+    data_orig = x.data.copy()
     cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
     cusparse.xcoosortByRow(
         handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
         P.data.ptr, buf.data.ptr)
     _call_cusparse(
         'gthr', x.dtype,
-        handle, nnz, x.data.data.ptr, x.data.data.ptr,
+        handle, nnz, data_orig.data.ptr, x.data.data.ptr,
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 

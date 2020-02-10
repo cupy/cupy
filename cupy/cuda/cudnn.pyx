@@ -12,7 +12,7 @@ from cupy.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_cudnn.h" nogil:
+cdef extern from 'cupy_cudnn.h' nogil:
     # Types
     ctypedef int ActivationMode 'cudnnActivationMode_t'
     ctypedef int AddMode 'cudnnAddMode_t'
@@ -74,6 +74,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef int NanPropagation 'cudnnNanPropagation_t'
     ctypedef int PoolingMode 'cudnnPoolingMode_t'
     ctypedef int RNNInputMode 'cudnnRNNInputMode_t'
+    ctypedef int CTCLossAlgo 'cudnnCTCLossAlgo_t'
     ctypedef int RNNMode 'cudnnRNNMode_t'
     ctypedef int RNNAlgo 'cudnnRNNAlgo_t'
     ctypedef int RNNDataLayout 'cudnnRNNDataLayout_t'
@@ -87,6 +88,10 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef int ReduceTensorIndices 'cudnnReduceTensorIndices_t'
     ctypedef int IndicesType 'cudnnIndicesType_t'
     ctypedef int ErrQueryMode 'cudnnErrQueryMode_t'
+    ctypedef int FusedOps 'cudnnFusedOps_t'
+    ctypedef int FusedOpsConstParamLabel 'cudnnFusedOpsConstParamLabel_t'
+    ctypedef int FusedOpsPointerPlaceHolder 'cudnnFusedOpsPointerPlaceHolder_t'
+    ctypedef int FusedOpsVariantParamLabel 'cudnnFusedOpsVariantParamLabel_t'
     ctypedef struct RuntimeTag 'cudnnRuntimeTag_t'
 
     ctypedef void* ActivationDescriptor 'cudnnActivationDescriptor_t'
@@ -95,6 +100,7 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef void* FilterDescriptor 'cudnnFilterDescriptor_t'
     ctypedef void* Handle 'cudnnHandle_t'
     ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
+    ctypedef void* CTCLossDescriptor 'cudnnCTCLossDescriptor_t'
     ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
     ctypedef void* RNNDataDescriptor 'cudnnRNNDataDescriptor_t'
     ctypedef void* PersistentRNNPlan 'cudnnPersistentRNNPlan_t'
@@ -104,6 +110,9 @@ cdef extern from "cupy_cudnn.h" nogil:
     ctypedef void* SpatialTransformerDescriptor \
         'cudnnSpatialTransformerDescriptor_t'
     ctypedef void* SamplerType 'cudnnSamplerType_t'
+    ctypedef void* FusedOpsConstParamPack 'cudnnFusedOpsConstParamPack_t'
+    ctypedef void* FusedOpsVariantParamPack 'cudnnFusedOpsVariantParamPack_t'
+    ctypedef void* FusedOpsPlan 'cudnnFusedOpsPlan_t'
 
     # Error handling
     const char* cudnnGetErrorString(Status status)
@@ -509,6 +518,24 @@ cdef extern from "cupy_cudnn.h" nogil:
         TensorDescriptor dydesc, void* dy, TensorDescriptor dxdesc,
         void* dx, void* reserveSpace, size_t reserveSpaceSizeInBytes)
 
+    # CTC
+    int cudnnCreateCTCLossDescriptor(CTCLossDescriptor* ctcLossDesc)
+    int cudnnDestroyCTCLossDescriptor(CTCLossDescriptor ctcLossDesc)
+    int cudnnSetCTCLossDescriptor(
+        CTCLossDescriptor ctcLossDesc, DataType dataType)
+    int cudnnGetCTCLossDescriptor(
+        CTCLossDescriptor ctcLossDesc, DataType* dataType)
+    int cudnnGetCTCLossWorkspaceSize(
+        Handle handle, TensorDescriptor probsDesc,
+        TensorDescriptor gradientsDesc, int* labels,
+        int* labelLengths, int* inputLengths, CTCLossAlgo algo,
+        CTCLossDescriptor ctcLossDesc, size_t* sizeInBytes)
+    int cudnnCTCLoss(
+        Handle handle, TensorDescriptor probsDesc,
+        void* probs, int* labels, int* labelLengths, int* inputLengths,
+        void* costs, TensorDescriptor gradientsDesc, void* gradients,
+        CTCLossAlgo algo, CTCLossDescriptor ctcLossDesc,
+        void* workspace, size_t workSpaceSizeInBytes)
     # RNN
     int cudnnCreateRNNDescriptor(RNNDescriptor* rnnDesc)
     int cudnnDestroyRNNDescriptor(RNNDescriptor rnnDesc)
@@ -676,8 +703,39 @@ cdef extern from "cupy_cudnn.h" nogil:
         TensorDescriptor dyDesc, void* dy, void* grid,
         void* betaDgrid, void* dgrid)
 
+    # Fused Ops
+    int cudnnCreateFusedOpsConstParamPack(
+        FusedOpsConstParamPack* constPack, int ops)
+    int cudnnDestroyFusedOpsConstParamPack(FusedOpsConstParamPack constPack)
+    int cudnnSetFusedOpsConstParamPackAttribute(
+        FusedOpsConstParamPack constPack, FusedOpsConstParamLabel paramLabel,
+        const void *param)
+    int cudnnGetFusedOpsConstParamPackAttribute(
+        const FusedOpsConstParamPack constPack,
+        FusedOpsConstParamLabel paramLabel, void *param, int *isNULL)
+    int cudnnCreateFusedOpsVariantParamPack(
+        FusedOpsVariantParamPack *varPack, FusedOps ops)
+    int cudnnDestroyFusedOpsVariantParamPack(FusedOpsVariantParamPack varPack)
+    int cudnnSetFusedOpsVariantParamPackAttribute(
+        FusedOpsVariantParamPack varPack, FusedOpsVariantParamLabel paramLabel,
+        void *ptr)
+    int cudnnGetFusedOpsVariantParamPackAttribute(
+        const FusedOpsVariantParamPack varPack,
+        FusedOpsVariantParamLabel paramLabel, void *ptr)
+    int cudnnCreateFusedOpsPlan(FusedOpsPlan *plan, FusedOps ops)
+    int cudnnDestroyFusedOpsPlan(FusedOpsPlan plan)
+    int cudnnMakeFusedOpsPlan(
+        Handle handle, FusedOpsPlan plan,
+        const FusedOpsConstParamPack constPack, size_t *workspaceSizeInBytes)
+    int cudnnFusedOpsExecute(
+        Handle handle, const FusedOpsPlan plan,
+        FusedOpsVariantParamPack varPack)
+
     # Build-time version
     int CUDNN_VERSION
+
+    # Constants
+    double _CUDNN_BN_MIN_EPSILON 'CUDNN_BN_MIN_EPSILON'
 
 
 cdef class CuDNNAlgoPerf:
@@ -700,7 +758,25 @@ class CuDNNError(RuntimeError):
     def __init__(self, int status):
         self.status = status
         msg = cudnnGetErrorString(<Status>status)
-        super(CuDNNError, self).__init__(msg.decode())
+        super(CuDNNError, self).__init__(
+            'cuDNN Error: {}'.format(msg.decode()))
+        self._infos = []
+
+    def add_info(self, info):
+        assert isinstance(info, str)
+        self._infos.append(info)
+
+    def add_infos(self, infos):
+        assert isinstance(infos, list)
+        self._infos.extend(infos)
+
+    def __str__(self):
+        base = super(CuDNNError, self).__str__()
+        return base + ''.join(
+            '\n  ' + info for info in self._infos)
+
+    def __reduce__(self):
+        return (type(self), (self.status,))
 
 
 @cython.profile(False)
@@ -1516,7 +1592,7 @@ cpdef poolingBackward(
 # Batch Normalization
 ###############################################################################
 
-CUDNN_BN_MIN_EPSILON = 1e-5
+CUDNN_BN_MIN_EPSILON = _CUDNN_BN_MIN_EPSILON
 
 cpdef deriveBNTensorDescriptor(
         size_t derivedBnDesc, size_t xDesc, int mode):
@@ -1873,6 +1949,59 @@ cpdef dropoutBackward(
             <TensorDescriptor>dyDesc, <void*>dyData,
             <TensorDescriptor>dxDesc, <void*>dxData,
             <void*>reserveSpace, reserveSpaceSizeInBytes)
+    check_status(status)
+
+
+###############################################################################
+# CTC
+###############################################################################
+cpdef size_t createCTCLossDescriptor() except? 0:
+    cdef CTCLossDescriptor desc
+    status = cudnnCreateCTCLossDescriptor(&desc)
+    check_status(status)
+    return <size_t>desc
+
+cpdef destroyCTCLossDescriptor(size_t ctcLossDesc):
+    status = cudnnDestroyCTCLossDescriptor(<CTCLossDescriptor>ctcLossDesc)
+    check_status(status)
+
+cpdef setCTCLossDescriptor(size_t ctcLossDesc, int dataType):
+    status = cudnnSetCTCLossDescriptor(
+        <CTCLossDescriptor>ctcLossDesc, <DataType>dataType)
+    check_status(status)
+
+cpdef getCTCLossDescriptor(size_t ctcLossDesc):
+    cdef DataType compType
+    status = cudnnGetCTCLossDescriptor(
+        <CTCLossDescriptor>ctcLossDesc, &compType)
+    check_status(status)
+    return compType
+
+cpdef size_t getCTCLossWorkspaceSize(
+        size_t handle, size_t probsDesc, size_t gradientsDesc,
+        size_t labels, size_t labelLengths, size_t inputLengths,
+        int algo, size_t ctcLossDesc) except? 0:
+    cdef size_t sizeInBytes
+    status = cudnnGetCTCLossWorkspaceSize(
+        <Handle>handle, <TensorDescriptor>probsDesc,
+        <TensorDescriptor>gradientsDesc,
+        <int*>labels, <int*>labelLengths, <int*>inputLengths,
+        <CTCLossAlgo>algo, <CTCLossDescriptor>ctcLossDesc, &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
+cpdef CTCLoss(
+        size_t handle, size_t probsDesc,
+        size_t probs, size_t labels, size_t labelLengths, size_t inputLengths,
+        size_t costs, size_t gradientsDesc, size_t gradients,
+        int algo, size_t ctcLossDesc,
+        size_t workspace, size_t workSpaceSizeInBytes):
+    status = cudnnCTCLoss(
+        <Handle>handle, <TensorDescriptor>probsDesc, <void*>probs,
+        <int*>labels, <int*>labelLengths, <int*>inputLengths,
+        <void*>costs, <TensorDescriptor>gradientsDesc, <void*>gradients,
+        <CTCLossAlgo>algo, <CTCLossDescriptor>ctcLossDesc,
+        <void*>workspace, <size_t>workSpaceSizeInBytes)
     check_status(status)
 
 
@@ -2301,4 +2430,97 @@ cpdef spatialTfSamplerBackward(
             <TensorDescriptor>dxDesc, <void*>dx, <void*>alphaDgrid,
             <TensorDescriptor>dyDesc, <void*>dy, <void*>grid,
             <void*>betaDgrid, <void*>dgrid)
+    check_status(status)
+
+###############################################################################
+# Fused Ops
+###############################################################################
+
+cpdef createFusedOpsConstParamPack(int ops):
+    cdef FusedOpsConstParamPack constPack
+    with nogil:
+        status = cudnnCreateFusedOpsConstParamPack(&constPack, <FusedOps>ops)
+    check_status(status)
+    return <size_t>constPack
+
+cpdef destroyFusedOpsConstParamPack(size_t constPack):
+    with nogil:
+        status = cudnnDestroyFusedOpsConstParamPack(
+            <FusedOpsConstParamPack>constPack)
+    check_status(status)
+
+cpdef setFusedOpsConstParamPackAttribute(size_t constPack, int paramLabel,
+                                         size_t param):
+    with nogil:
+        status = cudnnSetFusedOpsConstParamPackAttribute(
+            <FusedOpsConstParamPack>constPack,
+            <FusedOpsConstParamLabel>paramLabel, <const void*>param)
+    check_status(status)
+
+cpdef getFusedOpsConstParamPackAttribute(size_t constPack, int paramLabel,
+                                         size_t param):
+    cdef int isNULL = 0
+    with nogil:
+        status = cudnnGetFusedOpsConstParamPackAttribute(
+            <const FusedOpsConstParamPack>constPack,
+            <FusedOpsConstParamLabel>paramLabel, <void*>param, &isNULL)
+    check_status(status)
+    return isNULL
+
+cpdef createFusedOpsVariantParamPack(int ops):
+    cdef FusedOpsVariantParamPack varPack
+    with nogil:
+        status = cudnnCreateFusedOpsVariantParamPack(&varPack, <FusedOps>ops)
+    check_status(status)
+    return <size_t>varPack
+
+cpdef destroyFusedOpsVariantParamPack(size_t varPack):
+    with nogil:
+        status = cudnnDestroyFusedOpsVariantParamPack(
+            <FusedOpsVariantParamPack>varPack)
+    check_status(status)
+
+cpdef setFusedOpsVariantParamPackAttribute(size_t varPack, int paramLabel,
+                                           size_t ptr):
+    with nogil:
+        status = cudnnSetFusedOpsVariantParamPackAttribute(
+            <FusedOpsVariantParamPack>varPack,
+            <FusedOpsVariantParamLabel>paramLabel, <void*>ptr)
+    check_status(status)
+
+cpdef getFusedOpsVariantParamPackAttribute(size_t varPack, int paramLabel,
+                                           size_t ptr):
+    with nogil:
+        status = cudnnGetFusedOpsVariantParamPackAttribute(
+            <const FusedOpsVariantParamPack>varPack,
+            <FusedOpsVariantParamLabel> paramLabel, <void*>ptr)
+    check_status(status)
+
+cpdef createFusedOpsPlan(int ops):
+    cdef FusedOpsPlan plan
+    with nogil:
+        status = cudnnCreateFusedOpsPlan(&plan, <FusedOps>ops)
+    check_status(status)
+    return <size_t>plan
+
+cpdef destroyFusedOpsPlan(size_t plan):
+    with nogil:
+        status = cudnnDestroyFusedOpsPlan(<FusedOpsPlan>plan)
+    check_status(status)
+
+cpdef makeFusedOpsPlan(size_t handle, size_t plan, size_t constPack):
+    cdef size_t workspaceSizeInBytes
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnMakeFusedOpsPlan(<Handle>handle, <FusedOpsPlan>plan,
+                                       <const FusedOpsConstParamPack>constPack,
+                                       &workspaceSizeInBytes)
+    check_status(status)
+    return workspaceSizeInBytes
+
+cpdef fusedOpsExecute(size_t handle, size_t plan, size_t varPack):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cudnnFusedOpsExecute(<Handle>handle, <const FusedOpsPlan>plan,
+                                      <FusedOpsVariantParamPack>varPack)
     check_status(status)

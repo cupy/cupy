@@ -1,6 +1,7 @@
 import numpy
 
 import cupy
+from cupy import core
 
 
 def diag(v, k=0):
@@ -40,7 +41,7 @@ def diag(v, k=0):
     elif ndim == 2:
         return cupy.array(v.diagonal(k))
     else:
-        raise ValueError("Input must be 1- or 2-d.")
+        raise ValueError('Input must be 1- or 2-d.')
 
 
 def diagflat(v, k=0):
@@ -58,6 +59,18 @@ def diagflat(v, k=0):
         v = numpy.asarray(v)
 
     return cupy.diag(v.ravel(), k)
+
+
+_tri_kernel = core.ElementwiseKernel(
+    'int32 m, int32 k',
+    'T out',
+    '''
+    int row = i / m;
+    int col = i % m;
+    out = (col <= row + k);
+    ''',
+    'tri',
+)
 
 
 def tri(N, M=None, k=0, dtype=float):
@@ -81,16 +94,7 @@ def tri(N, M=None, k=0, dtype=float):
         M = N
     out = cupy.empty((N, M), dtype=dtype)
 
-    return cupy.ElementwiseKernel(
-        'int32 m, int32 k',
-        'T out',
-        '''
-        int row = i % m;
-        int col = i / m;
-        out = (row <= col + k);
-        ''',
-        'tri',
-    )(M, k, out)
+    return _tri_kernel(M, k, out)
 
 
 def tril(m, k=0):

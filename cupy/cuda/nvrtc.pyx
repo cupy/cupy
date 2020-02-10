@@ -19,7 +19,7 @@ from libcpp cimport vector
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_nvrtc.h" nogil:
+cdef extern from 'cupy_nvrtc.h' nogil:
     const char *nvrtcGetErrorString(Result result)
     int nvrtcVersion(int *major, int *minor)
     int nvrtcCreateProgram(
@@ -46,6 +46,9 @@ class NVRTCError(RuntimeError):
         super(NVRTCError, self).__init__(
             '{} ({})'.format(msg.decode(), status))
 
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
 
 @cython.profile(False)
 cpdef inline check_status(int status):
@@ -65,8 +68,8 @@ cpdef tuple getVersion():
 # Program
 ###############################################################################
 
-cpdef size_t createProgram(unicode src, unicode name, headers,
-                           include_names) except? 0:
+cpdef intptr_t createProgram(unicode src, unicode name, headers,
+                             include_names) except? 0:
     cdef Program prog
     cdef bytes b_src = src.encode()
     cdef const char* src_ptr = b_src
@@ -75,40 +78,47 @@ cpdef size_t createProgram(unicode src, unicode name, headers,
     cdef int num_headers = len(headers)
     cdef vector.vector[const char*] header_vec
     cdef vector.vector[const char*] include_name_vec
+    cdef const char** header_vec_ptr = NULL
+    cdef const char** include_name_vec_ptr = NULL
+    assert num_headers == len(include_names)
     for i in headers:
         header_vec.push_back(<const char*>i)
     for i in include_names:
         include_name_vec.push_back(<const char*>i)
-
+    if num_headers > 0:
+        header_vec_ptr = header_vec.data()
+        include_name_vec_ptr = include_name_vec.data()
     with nogil:
         status = nvrtcCreateProgram(
-            &prog, src_ptr, name_ptr, num_headers, &(header_vec[0]),
-            &(include_name_vec[0]))
+            &prog, src_ptr, name_ptr, num_headers, header_vec_ptr,
+            include_name_vec_ptr)
     check_status(status)
-    return <size_t>prog
+    return <intptr_t>prog
 
 
-cpdef destroyProgram(size_t prog):
+cpdef destroyProgram(intptr_t prog):
     cdef Program p = <Program>prog
     with nogil:
         status = nvrtcDestroyProgram(&p)
     check_status(status)
 
 
-cpdef compileProgram(size_t prog, options):
+cpdef compileProgram(intptr_t prog, options):
     cdef int option_num = len(options)
     cdef vector.vector[const char*] option_vec
     cdef option_list = [opt.encode() for opt in options]
+    cdef const char** option_vec_ptr = NULL
     for i in option_list:
         option_vec.push_back(<const char*>i)
-
+    if option_num > 0:
+        option_vec_ptr = option_vec.data()
     with nogil:
         status = nvrtcCompileProgram(<Program>prog, option_num,
-                                     &(option_vec[0]))
+                                     option_vec_ptr)
     check_status(status)
 
 
-cpdef unicode getPTX(size_t prog):
+cpdef unicode getPTX(intptr_t prog):
     cdef size_t ptxSizeRet
     cdef bytes ptx
     cdef char* ptx_ptr
@@ -127,7 +137,7 @@ cpdef unicode getPTX(size_t prog):
     return ptx.decode('UTF-8')
 
 
-cpdef unicode getProgramLog(size_t prog):
+cpdef unicode getProgramLog(intptr_t prog):
     cdef size_t logSizeRet
     cdef bytes log
     cdef char* log_ptr

@@ -3,19 +3,21 @@ cimport cython  # NOQA
 
 import atexit
 import collections
+import contextlib
 import ctypes
 import gc
+import os
+import threading
 import warnings
 import weakref
 
-from cpython cimport pythread
-from cython.operator cimport dereference
+from cupy.cuda import runtime
+from cupy.core import syncdetect
+
 from fastrlock cimport rlock
 from libc.stdint cimport int8_t
 from libc.stdint cimport intptr_t
 from libcpp cimport algorithm
-
-from cupy.cuda import runtime
 
 from cupy.cuda cimport device
 from cupy.cuda cimport device as device_mod
@@ -33,11 +35,32 @@ def _exit():
 
 
 class OutOfMemoryError(MemoryError):
+    """Out-of-memory error.
 
-    def __init__(self, size, total):
-        msg = 'out of memory to allocate %d bytes ' \
-              '(total %d bytes)' % (size, total)
+    Args:
+        size (int): Size of memory about to be allocated.
+        total (int): Size of memory successfully allocated so far.
+        limit (int): Allocation limit.
+    """
+
+    def __init__(self, size, total, limit=0):
+        self._size = size
+        self._total = total
+        self._limit = limit
+
+        if limit == 0:
+            msg = (
+                'Out of memory allocating {:,} bytes '
+                '(allocated so far: {:,} bytes).'.format(size, total))
+        else:
+            msg = (
+                'Out of memory allocating {:,} bytes '
+                '(allocated so far: {:,} bytes, '
+                'limit set to: {:,} bytes).'.format(size, total, limit))
         super(OutOfMemoryError, self).__init__(msg)
+
+    def __reduce__(self):
+        return (type(self), (self._size, self._total, self._limit))
 
 
 @cython.no_gc
@@ -79,6 +102,7 @@ cdef class Memory(BaseMemory):
 
     def __dealloc__(self):
         if self.ptr:
+            syncdetect._declare_synchronize()
             runtime.free(self.ptr)
 
 
@@ -100,7 +124,12 @@ cdef class UnownedMemory(BaseMemory):
     def __init__(self, intptr_t ptr, size_t size, object owner,
                  int device_id=-1):
         cdef runtime.PointerAttributes ptr_attrs
+        # ptr=0 for 0-size arrays from __cuda_array_interface__ v2:
+        # we need a valid device id as null ptr can't be looked up
         if device_id < 0:
+            if ptr == 0:
+                raise RuntimeError('UnownedMemory requires explicit'
+                                   ' device ID for a null pointer.')
             ptr_attrs = runtime.pointerGetAttributes(ptr)
             device_id = ptr_attrs.device
         self.size = size
@@ -151,24 +180,6 @@ cdef class ManagedMemory(BaseMemory):
 cdef set _peer_access_checked = set()
 
 
-cpdef _set_peer_access(int device, int peer):
-    device_pair = device, peer
-
-    if device_pair in _peer_access_checked:
-        return
-    cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
-    _peer_access_checked.add(device_pair)
-    if not can_access:
-        return
-
-    cdef int current = runtime.getDevice()
-    runtime.setDevice(device)
-    try:
-        runtime.deviceEnablePeerAccess(peer)
-    finally:
-        runtime.setDevice(current)
-
-
 @cython.final
 cdef class _Chunk:
 
@@ -182,7 +193,7 @@ cdef class _Chunk:
         mem (~cupy.cuda.Memory): The device memory buffer.
         offset (int): An offset bytes from the head of the buffer.
         size (int): Chunk size in bytes.
-        stream_ptr (size_t): Raw stream handle of cupy.cuda.Stream
+        stream_ptr (intptr_t): Raw stream handle of cupy.cuda.Stream
 
     Attributes:
         mem (Memory): The device memory buffer.
@@ -198,7 +209,7 @@ cdef class _Chunk:
         readonly BaseMemory mem
         readonly ptrdiff_t offset
         readonly size_t size
-        readonly size_t stream_ptr
+        readonly intptr_t stream_ptr
         public _Chunk prev
         public _Chunk next
 
@@ -208,7 +219,7 @@ cdef class _Chunk:
         self._init(mem, offset, size, stream_ptr)
 
     cdef _init(self, BaseMemory mem, ptrdiff_t offset,
-               size_t size, Py_ssize_t stream_ptr):
+               size_t size, intptr_t stream_ptr):
         assert mem.ptr != 0 or offset == 0
         self.mem = mem
         self.offset = offset
@@ -276,6 +287,11 @@ cdef class MemoryPointer:
         """Returns the pointer value."""
         return self.ptr
 
+    def __repr__(self):
+        return '<{} 0x{:x} device={} mem={!r}>'.format(
+            self.__class__.__name__,
+            self.ptr, self.device_id, self.mem)
+
     @property
     def device(self):
         return device.Device(self.device_id)
@@ -317,7 +333,7 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
-            _set_peer_access(src.device_id, self.device_id)
+            MemoryPointer._set_peer_access(src.device_id, self.device_id)
             runtime.memcpy(self.ptr, src.ptr, size,
                            runtime.memcpyDefault)
 
@@ -337,7 +353,7 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            _set_peer_access(src.device_id, self.device_id)
+            MemoryPointer._set_peer_access(src.device_id, self.device_id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
                                 runtime.memcpyDefault, stream_ptr)
 
@@ -469,7 +485,30 @@ cdef class MemoryPointer:
         if size > 0:
             runtime.memsetAsync(self.ptr, value, size, stream_ptr)
 
+    @staticmethod
+    cdef _set_peer_access(int device, int peer):
+        device_pair = device, peer
 
+        if device_pair in _peer_access_checked:
+            return
+        cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
+        _peer_access_checked.add(device_pair)
+        if not can_access:
+            return
+
+        cdef int current = runtime.getDevice()
+        runtime.setDevice(device)
+        try:
+            runtime.deviceEnablePeerAccess(peer)
+        # peer access could already be set by external libraries at this point
+        except runtime.CUDARuntimeError as e:
+            if e.status != runtime.cudaErrorPeerAccessAlreadyEnabled:
+                raise
+        finally:
+            runtime.setDevice(current)
+
+
+# cpdef because unit-tested
 cpdef MemoryPointer _malloc(size_t size):
     mem = Memory(size)
     return MemoryPointer(mem, 0)
@@ -501,7 +540,7 @@ cpdef MemoryPointer malloc_managed(size_t size):
 
 
 cdef object _current_allocator = _malloc
-
+cdef object _thread_local = threading.local()
 
 cpdef MemoryPointer alloc(size):
     """Calls the current allocator.
@@ -515,7 +554,7 @@ cpdef MemoryPointer alloc(size):
         ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
     """
-    return _current_allocator(size)
+    return get_allocator()(size)
 
 
 cpdef set_allocator(allocator=None):
@@ -532,7 +571,49 @@ cpdef set_allocator(allocator=None):
     global _current_allocator
     if allocator is None:
         allocator = _malloc
+    if getattr(_thread_local, 'allocator', None) is not None:
+        raise ValueError('Can\'t change the global allocator inside '
+                         '`using_allocator` context manager')
     _current_allocator = allocator
+
+
+cpdef get_allocator():
+    """Returns the current allocator for GPU memory.
+
+    Returns:
+        function: CuPy memory allocator.
+    """
+    try:
+        allocator = _thread_local.allocator
+    except AttributeError:
+        _thread_local.allocator = allocator = None
+    if allocator is None:
+        return _current_allocator
+    else:
+        return allocator
+
+
+@contextlib.contextmanager
+def using_allocator(allocator=None):
+    """Sets a thread-local allocator for GPU memory inside
+       context manager
+
+    Args:
+        allocator (function): CuPy memory allocator. It must have the same
+            interface as the :func:`cupy.cuda.alloc` function, which takes the
+            buffer size as an argument and returns the device buffer of that
+            size. When ``None`` is specified, raw memory allocator will be
+            used (i.e., memory pool is disabled).
+
+    """
+    if allocator is None:
+        allocator = _malloc
+    previous_allocator = getattr(_thread_local, 'allocator', None)
+    _thread_local.allocator = allocator
+    try:
+        yield
+    finally:
+        _thread_local.allocator = previous_allocator
 
 
 @cython.final
@@ -550,6 +631,9 @@ cdef class PooledMemory(BaseMemory):
         readonly object pool
 
     def __init__(self, _Chunk chunk, pool):
+        self._init(chunk, pool)
+
+    cdef _init(self, _Chunk chunk, pool):
         self.ptr = chunk.ptr()
         self.size = chunk.size
         self.device_id = chunk.mem.device_id
@@ -578,9 +662,7 @@ cdef class PooledMemory(BaseMemory):
                 device_id = self.device_id
                 pmem_id = id(self)
 
-                # avoid six for performance
-                hooks_values = hooks.values()
-                for hook in hooks_values:
+                for hook in hooks.values():
                     hook.free_preprocess(device_id=device_id,
                                          mem_size=size,
                                          mem_ptr=ptr,
@@ -588,7 +670,7 @@ cdef class PooledMemory(BaseMemory):
                 try:
                     (<SingleDeviceMemoryPool>pool).free(ptr, size)
                 finally:
-                    for hook in hooks_values:
+                    for hook in hooks.values():
                         hook.free_postprocess(device_id=device_id,
                                               mem_size=size,
                                               mem_ptr=ptr,
@@ -602,156 +684,7 @@ cdef class PooledMemory(BaseMemory):
         self.free()
 
 
-cdef int _index_compaction_threshold = 512
-
-
-cdef _compact_index(SingleDeviceMemoryPool pool, size_t stream_ptr, bint free):
-    # need self._free_lock
-    cdef list arena, new_arena
-    cdef set free_list, keep_list
-    cdef vector.vector[size_t]* arena_index
-    cdef vector.vector[size_t] new_index
-    cdef size_t index
-
-    if stream_ptr not in pool._free:
-        return
-    new_arena = []
-    arena = pool._free[stream_ptr]
-    arena_index = pool._arena_index(stream_ptr)
-    for index, free_list in enumerate(arena):
-        if not free_list:
-            continue
-        if free:
-            keep_list = set()
-            for chunk in free_list:
-                if chunk.prev is not None or chunk.next is not None:
-                    keep_list.add(chunk)
-            if len(keep_list) == 0:
-                continue
-            free_list = keep_list
-
-        new_index.push_back(arena_index.at(index))
-        new_arena.append(free_list)
-    if free and len(new_arena) == 0:
-        pool._index.erase(stream_ptr)
-        pool._flag.erase(stream_ptr)
-        del pool._free[stream_ptr]
-    else:
-        arena_index.swap(new_index)
-        arena[:] = new_arena
-        pool._arena_flag(stream_ptr).assign(new_index.size(), <int8_t>1)
-
-
-cdef object _get_chunk(SingleDeviceMemoryPool pool, size_t size,
-                       size_t stream_ptr):
-    # need self._free_lock
-    cdef set free_list
-    cdef size_t i, index, length
-    cdef _Chunk chunk
-    cdef size_t bin_index = _bin_index_from_size(size)
-    cdef list arena = pool._arena(stream_ptr)
-    a_index = pool._arena_index(stream_ptr)
-    a_flag = pool._arena_flag(stream_ptr)
-    index = <size_t>(
-        algorithm.lower_bound(a_index.begin(), a_index.end(), bin_index)
-        - a_index.begin())
-    length = a_index.size()
-    for i in range(index, length):
-        if a_flag.at(i) == 0:
-            continue
-        free_list = arena[i]
-        chunk = free_list.pop()
-        if len(free_list) == 0:
-            dereference(a_flag)[i] = 0
-            arena[i] = None
-        if i - index >= _index_compaction_threshold:
-            _compact_index(pool, stream_ptr, False)
-        remaining = chunk.split(size)
-        if remaining is not None:
-            _append_to_free_list(arena, a_index, a_flag, remaining)
-        assert chunk.stream_ptr == stream_ptr
-        return chunk
-    return None
-
-
-cdef BaseMemory _try_malloc(SingleDeviceMemoryPool pool, size_t size):
-    try:
-        return pool._alloc(size).mem
-    except runtime.CUDARuntimeError as e:
-        if e.status != runtime.errorMemoryAllocation:
-            raise
-        pool.free_all_blocks()
-        try:
-            return pool._alloc(size).mem
-        except runtime.CUDARuntimeError as e:
-            if e.status != runtime.errorMemoryAllocation:
-                raise
-            gc.collect()
-            pool.free_all_blocks()
-            try:
-                return pool._alloc(size).mem
-            except runtime.CUDARuntimeError as e:
-                if e.status != runtime.errorMemoryAllocation:
-                    raise
-    total = size + pool.total_bytes()
-    raise OutOfMemoryError(size, total)
-
-
-cdef _append_to_free_list(list arena, vector.vector[size_t]* a_index,
-                          vector.vector[int8_t]* a_flag, _Chunk chunk):
-    # need self._free_lock
-    cdef size_t index, bin_index
-    cdef set free_list
-    bin_index = _bin_index_from_size(chunk.size)
-    index = <size_t>(
-        algorithm.lower_bound(a_index.begin(), a_index.end(), bin_index)
-        - a_index.begin())
-    if index < a_index.size() and a_index.at(index) == bin_index:
-        free_list = arena[index]
-        if free_list is None:
-            arena[index] = free_list = set()
-    else:
-        free_list = set()
-        a_index.insert(a_index.begin() + index, bin_index)
-        a_flag.insert(a_flag.begin() + index, 0)
-        arena.insert(index, free_list)
-    free_list.add(chunk)
-    dereference(a_flag)[index] = 1
-
-
-cdef bint _remove_from_free_list(list arena, vector.vector[size_t]* a_index,
-                                 vector.vector[int8_t]* a_flag,
-                                 _Chunk chunk) except *:
-    """Removes the chunk from the free list (need self._free_lock).
-
-    Returns:
-        bool: ``True`` if the chunk can successfully be removed from
-            the free list. ``False`` otherwise (e.g., the chunk could not
-            be found in the free list as the chunk is allocated.)
-    """
-
-    cdef size_t index, bin_index
-    cdef set free_list
-
-    bin_index = _bin_index_from_size(chunk.size)
-    if a_index.size() == 0:
-        return False
-    index = <size_t>(
-        algorithm.lower_bound(a_index.begin(), a_index.end(), bin_index)
-        - a_index.begin())
-    if index == a_index.size():
-        # Bin does not exist for the given chunk size.
-        return False
-    if a_index.at(index) != bin_index or a_flag.at(index) == 0:
-        return False
-    free_list = arena[index]
-    if chunk in free_list:
-        free_list.remove(chunk)
-        if len(free_list) == 0:
-            arena[index] = None
-            dereference(a_flag)[index] = 0
-        return True
-    return False
+cdef size_t _index_compaction_threshold = 512
 
 
 # cudaMalloc() is aligned to at least 512 bytes
@@ -773,6 +706,125 @@ cpdef size_t _bin_index_from_size(size_t size):
     return (size - 1) // ALLOCATION_UNIT_SIZE
 
 
+cdef _gc_isenabled = gc.isenabled
+cdef _gc_disable = gc.disable
+cdef _gc_enable = gc.enable
+
+
+cdef bint _lock_no_gc(lock):
+    """Lock to ensure single thread execution and no garbage collection.
+
+    Returns:
+        bool: Whether GC is disabled.
+    """
+    rlock.lock_fastrlock(lock, -1, True)
+
+    # This function may be called from the context of finalizer
+    # (e.g., `__dealloc__` of PooledMemory class).
+    # If the process is going to be terminated, the module itself may
+    # already been unavailable.
+    if not _exit_mode and _gc_isenabled():
+        _gc_disable()
+        return True
+    return False
+
+
+cdef _unlock_no_gc(lock, bint gc_mode):
+    if gc_mode:
+        _gc_enable()
+    rlock.unlock_fastrlock(lock)
+
+
+cdef class LockAndNoGc:
+    """A context manager that ensures single-thread execution
+    and no garbage collection in the wrapped code.
+    The purpose of disabling GC is to prevent unexpected recursion.
+    See gh-2074 for details.
+    """
+
+    cdef object _lock
+    cdef bint _gc
+
+    def __cinit__(self, lock):
+        self._lock = lock
+
+    def __enter__(self):
+        self._gc = _lock_no_gc(self._lock)
+
+    def __exit__(self, t, v, tb):
+        _unlock_no_gc(self._lock, self._gc)
+
+
+@cython.final
+cdef class _Arena:
+
+    cdef:
+        # `_free_lock` must be acquired to access it.
+        list _free
+        # `_free_lock` must be acquired to access it.
+        vector.vector[size_t] _index
+        # `_free_lock` must be acquired to access it.
+        vector.vector[int8_t] _flag
+
+    def __init__(self):
+        self._free = []
+
+    cdef append_to_free_list(self, _Chunk chunk):
+        # need self._free_lock
+        cdef size_t index, bin_index
+        cdef set free_list
+        cdef vector.vector[size_t].iterator it
+
+        bin_index = _bin_index_from_size(chunk.size)
+        it = algorithm.lower_bound(
+            self._index.begin(), self._index.end(), bin_index)
+        index = <size_t>(it - self._index.begin())
+        if index < self._index.size() and self._index.at(index) == bin_index:
+            free_list = self._free[index]
+            if free_list is None:
+                self._free[index] = free_list = set()
+        else:
+            free_list = set()
+            self._index.insert(self._index.begin() + index, bin_index)
+            self._flag.insert(self._flag.begin() + index, 0)
+            self._free.insert(index, free_list)
+        free_list.add(chunk)
+        self._flag[index] = 1
+
+    cdef bint remove_from_free_list(self, _Chunk chunk):
+        """Removes the chunk from the free list (need self._free_lock).
+
+        Returns:
+            bool: ``True`` if the chunk can successfully be removed from
+                the free list. ``False`` otherwise (e.g., the chunk could not
+                be found in the free list as the chunk is allocated.)
+        """
+
+        cdef size_t index, bin_index
+        cdef set free_list
+        cdef vector.vector[size_t].iterator it
+
+        bin_index = _bin_index_from_size(chunk.size)
+        if self._index.size() == 0:
+            return False
+        it = algorithm.lower_bound(
+            self._index.begin(), self._index.end(), bin_index)
+        index = <size_t>(it - self._index.begin())
+        if index == self._index.size():
+            # Bin does not exist for the given chunk size.
+            return False
+        if self._index.at(index) != bin_index or self._flag.at(index) == 0:
+            return False
+        free_list = self._free[index]
+        if chunk in free_list:
+            free_list.remove(chunk)
+            if len(free_list) == 0:
+                self._free[index] = None
+                self._flag[index] = 0
+            return True
+        return False
+
+
 @cython.final
 cdef class SingleDeviceMemoryPool:
     """Memory pool implementation for single device.
@@ -788,83 +840,70 @@ cdef class SingleDeviceMemoryPool:
     cdef:
         object _allocator
 
-        # Map from memory pointer of the chunk (size_t) to the corresponding
+        # Map from memory pointer of the chunk (intptr_t) to the corresponding
         # Chunk object. All chunks currently allocated to the application from
         # this pool are stored.
-        # `_in_use_lock` must be acquired to access.
+        # `_in_use_lock` must be acquired to access it.
         dict _in_use
 
-        # Map from stream pointer (int) to its arena (list) for the stream.
-        # `_free_lock` must be acquired to access.
-        dict _free
+        # Map from stream pointer (intptr_t) to its arena for the stream
+        # `_free_lock` must be acquired to access it.
+        dict _arenas
+
+        # Number of total bytes actually allocated on GPU.
+        # `_total_bytes_lock` must be acquired to access it.
+        size_t _total_bytes
+
+        # Upper limit of the amount to be allocated by this pool.
+        # `_total_bytes_lock` must be acquired to access it.
+        size_t _total_bytes_limit
 
         object __weakref__
         object _weakref
         object _free_lock
         object _in_use_lock
+        object _total_bytes_lock
         readonly int _device_id
 
-        # Map from stream pointer to its arena index.
-        # `_free_lock` must be acquired to access.
-        map.map[size_t, vector.vector[size_t]] _index
-        map.map[size_t, vector.vector[int8_t]] _flag
-
-    def __init__(self, allocator=_malloc):
+    def __init__(self, allocator=None):
+        if allocator is None:
+            allocator = _malloc
         self._in_use = {}
-        self._free = {}
+        self._arenas = {}
         self._allocator = allocator
         self._weakref = weakref.ref(self)
         self._device_id = device.get_device_id()
         self._free_lock = rlock.create_fastrlock()
         self._in_use_lock = rlock.create_fastrlock()
+        self._total_bytes_lock = rlock.create_fastrlock()
 
-    cpdef list _arena(self, size_t stream_ptr):
-        """Returns appropriate arena (list of bins) of a given stream.
+        self.set_limit(**(self._parse_limit_string()))
+
+    cdef _Arena _arena(self, intptr_t stream_ptr):
+        """Returns appropriate arena of a given stream.
 
         All free chunks in the stream belong to one of the bin in the arena.
 
         Caller is responsible to acquire `_free_lock`.
         """
-        ret = self._free.get(stream_ptr, None)
+        ret = self._arenas.get(stream_ptr, None)
         if ret is None:
-            self._free[stream_ptr] = ret = []
+            self._arenas[stream_ptr] = ret = _Arena()
         return ret
 
-    cdef inline vector.vector[size_t]* _arena_index(self, size_t stream_ptr):
-        """Returns appropriate arena sparse index of a given stream.
-
-        Each element of the returned vector is an index value of the arena
-        for the stream. The k-th element of the arena index is the bin index
-        of the arena. For example, when the arena index is `[1, 3]`, it means
-        that the arena has 2 bins, and `arena[0]` is for bin index 1 and
-        `arena[1]` is for bin index 3.
-
-        Caller is responsible to acquire `_free_lock`.
-        """
-        return &self._index[stream_ptr]
-
-    cdef vector.vector[int8_t]* _arena_flag(self, size_t stream_ptr):
-        """Returns appropriate arena used flag list of a given stream.
-
-        Caller is responsible to acquire `_free_lock`.
-        """
-        return &self._flag[stream_ptr]
-
-    cpdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
+    cdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
         if memory_hook._has_memory_hooks():
             hooks = memory_hook.get_memory_hooks()
             if hooks:
                 memptr = None
                 device_id = self._device_id
-                # avoid six for performance
-                hooks_values = hooks.values()
-                for hook in hooks_values:
+                for hook in hooks.values():
                     hook.alloc_preprocess(device_id=device_id,
                                           mem_size=rounded_size)
                 try:
                     memptr = self._allocator(rounded_size)
                 finally:
-                    for hook in hooks_values:
+                    for hook in hooks.values():
                         mem_ptr = memptr.ptr if memptr is not None else 0
                         hook.alloc_postprocess(device_id=device_id,
                                                mem_size=rounded_size,
@@ -879,9 +918,7 @@ cdef class SingleDeviceMemoryPool:
             if hooks:
                 memptr = None
                 device_id = self._device_id
-                # avoid six for performance
-                hooks_values = hooks.values()
-                for hook in hooks_values:
+                for hook in hooks.values():
                     hook.malloc_preprocess(device_id=device_id,
                                            size=size,
                                            mem_size=rounded_size)
@@ -894,7 +931,7 @@ cdef class SingleDeviceMemoryPool:
                     else:
                         mem_ptr = memptr.ptr
                         pmem_id = id(memptr.mem)
-                    for hook in hooks_values:
+                    for hook in hooks.values():
                         hook.malloc_postprocess(device_id=device_id,
                                                 size=size,
                                                 mem_size=rounded_size,
@@ -903,43 +940,44 @@ cdef class SingleDeviceMemoryPool:
                 return memptr
         return self._malloc(rounded_size)
 
-    cpdef MemoryPointer _malloc(self, size_t size):
+    cdef MemoryPointer _malloc(self, size_t size):
         cdef _Chunk chunk
-        cdef long current_thread
         cdef BaseMemory mem
+        cdef PooledMemory pmem
         cdef MemoryPointer ret
         if size == 0:
             return MemoryPointer(Memory(0), 0)
 
-        current_thread = pythread.PyThread_get_thread_ident()
         stream_ptr = stream_module.get_current_stream_ptr()
 
         # find best-fit, or a smallest larger allocation
-        rlock.lock_fastrlock(self._free_lock, current_thread, True)
+        gc_mode = _lock_no_gc(self._free_lock)
         try:
-            chunk = _get_chunk(self, size, stream_ptr)
+            chunk = self._get_chunk(size, stream_ptr)
         finally:
-            rlock.unlock_fastrlock(self._free_lock)
+            _unlock_no_gc(self._free_lock, gc_mode)
 
         if chunk is None:
-            mem = _try_malloc(self, size)
+            mem = self._try_malloc(size)
             chunk = _Chunk.__new__(_Chunk)
             # cudaMalloc if a cache is not found
             chunk._init(mem, 0, size, stream_ptr)
 
-        rlock.lock_fastrlock(self._in_use_lock, current_thread, True)
+        rlock.lock_fastrlock(self._in_use_lock, -1, True)
         try:
             self._in_use[chunk.ptr()] = chunk
         finally:
             rlock.unlock_fastrlock(self._in_use_lock)
-        pmem = PooledMemory(chunk, self._weakref)
-        return MemoryPointer(pmem, 0)
+        pmem = PooledMemory.__new__(PooledMemory)
+        pmem._init(chunk, self._weakref)
+        ret = MemoryPointer.__new__(MemoryPointer)
+        ret._init(pmem, 0)
+        return ret
 
     cpdef free(self, intptr_t ptr, size_t size):
         cdef _Chunk chunk, c
-        cdef long current_thread = pythread.PyThread_get_thread_ident()
 
-        rlock.lock_fastrlock(self._in_use_lock, current_thread, True)
+        rlock.lock_fastrlock(self._in_use_lock, -1, True)
         try:
             chunk = self._in_use.pop(ptr)
         except KeyError:
@@ -948,41 +986,34 @@ cdef class SingleDeviceMemoryPool:
             rlock.unlock_fastrlock(self._in_use_lock)
         stream_ptr = chunk.stream_ptr
 
-        rlock.lock_fastrlock(self._free_lock, current_thread, True)
+        gc_mode = _lock_no_gc(self._free_lock)
         try:
             arena = self._arena(stream_ptr)
-            a_index = self._arena_index(stream_ptr)
-            a_flag = self._arena_flag(stream_ptr)
 
             c = chunk.next
-            if c is not None and _remove_from_free_list(arena, a_index,
-                                                        a_flag, c):
+            if c is not None and arena.remove_from_free_list(c):
                 chunk.merge(c)
 
             c = chunk.prev
-            if c is not None and _remove_from_free_list(arena, a_index,
-                                                        a_flag, c):
+            if c is not None and arena.remove_from_free_list(c):
                 c.merge(chunk)
                 chunk = c
 
-            _append_to_free_list(arena, a_index, a_flag, chunk)
+            arena.append_to_free_list(chunk)
         finally:
-            rlock.unlock_fastrlock(self._free_lock)
+            _unlock_no_gc(self._free_lock, gc_mode)
 
     cpdef free_all_blocks(self, stream=None):
         """Free all **non-split** chunks"""
-        cdef size_t stream_ptr
+        cdef intptr_t stream_ptr
 
-        rlock.lock_fastrlock(self._free_lock, -1, True)
-        try:
+        with LockAndNoGc(self._free_lock):
             # free blocks in all arenas
             if stream is None:
-                for stream_ptr in list(self._free.iterkeys()):
-                    _compact_index(self, stream_ptr, True)
+                for stream_ptr in list(self._arenas.iterkeys()):
+                    self._compact_index(stream_ptr, True)
             else:
-                _compact_index(self, stream.ptr, True)
-        finally:
-            rlock.unlock_fastrlock(self._free_lock)
+                self._compact_index(stream.ptr, True)
 
     cpdef free_all_free(self):
         warnings.warn(
@@ -992,11 +1023,11 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef size_t n_free_blocks(self):
         cdef size_t n = 0
-        cdef set free_list
+        cdef _Arena arena
         rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
-            for arena in self._free.itervalues():
-                for v in arena:
+            for arena in self._arenas.itervalues():
+                for v in arena._free:
                     if v is not None:
                         n += len(v)
         finally:
@@ -1018,10 +1049,11 @@ cdef class SingleDeviceMemoryPool:
         cdef size_t size = 0
         cdef set free_list
         cdef _Chunk chunk
+        cdef _Arena arena
         rlock.lock_fastrlock(self._free_lock, -1, True)
         try:
-            for arena in self._free.itervalues():
-                for free_list in arena:
+            for arena in self._arenas.itervalues():
+                for free_list in arena._free:
                     if free_list is None:
                         continue
                     for chunk in free_list:
@@ -1031,7 +1063,150 @@ cdef class SingleDeviceMemoryPool:
         return size
 
     cpdef size_t total_bytes(self):
-        return self.used_bytes() + self.free_bytes()
+        with LockAndNoGc(self._total_bytes_lock):
+            return self._total_bytes
+
+    cpdef set_limit(self, size=None, fraction=None):
+        if size is None:
+            if fraction is None:
+                size = 0
+            else:
+                if not 0 <= fraction <= 1:
+                    raise ValueError(
+                        'memory limit fraction out of range: {}'.format(
+                            fraction))
+                _, total = runtime.memGetInfo()
+                size = fraction * total
+            self.set_limit(size=size)
+            return
+
+        if fraction is not None:
+            raise ValueError('size and fraction cannot be specified at '
+                             'one time')
+        if size < 0:
+            raise ValueError(
+                'memory limit size out of range: {}'.format(size))
+
+        with LockAndNoGc(self._total_bytes_lock):
+            self._total_bytes_limit = size
+
+    cpdef size_t get_limit(self):
+        with LockAndNoGc(self._total_bytes_lock):
+            return self._total_bytes_limit
+
+    # cpdef because uint-tested
+    cpdef dict _parse_limit_string(self, limit=None):
+        if limit is None:
+            limit = os.environ.get('CUPY_GPU_MEMORY_LIMIT')
+        size = None
+        fraction = None
+        if limit is not None:
+            if limit.endswith('%'):
+                fraction = float(limit[:-1]) / 100.0
+            else:
+                size = int(limit)
+        return {'size': size, 'fraction': fraction}
+
+    cdef _compact_index(self, intptr_t stream_ptr, bint free):
+        # need self._free_lock
+        cdef _Arena arena
+        cdef list new_free
+        cdef set free_list, keep_list
+        cdef vector.vector[size_t] new_index
+        cdef size_t index
+
+        if stream_ptr not in self._arenas:
+            return
+        new_free = []
+        arena = self._arenas[stream_ptr]
+
+        for index, free_list in enumerate(arena._free):
+            if not free_list:
+                continue
+            if free:
+                keep_list = set()
+                for chunk in free_list:
+                    if chunk.prev is not None or chunk.next is not None:
+                        keep_list.add(chunk)
+                if len(keep_list) == 0:
+                    continue
+                free_list = keep_list
+
+            new_index.push_back(arena._index.at(index))
+            new_free.append(free_list)
+        if free and len(new_free) == 0:
+            del self._arenas[stream_ptr]
+        else:
+            arena._free = new_free
+            arena._index.swap(new_index)
+            arena._flag.assign(new_index.size(), <int8_t>1)
+
+    cdef object _get_chunk(self, size_t size, intptr_t stream_ptr):
+        # need self._free_lock
+        cdef set free_list
+        cdef size_t i, index, length
+        cdef _Chunk chunk
+        cdef size_t bin_index = _bin_index_from_size(size)
+        cdef _Arena a = self._arena(stream_ptr)
+        index = <size_t>(
+            algorithm.lower_bound(a._index.begin(), a._index.end(), bin_index)
+            - a._index.begin())
+        length = a._index.size()
+        for i in range(index, length):
+            if a._flag.at(i) == 0:
+                continue
+            free_list = a._free[i]
+            chunk = free_list.pop()
+            if len(free_list) == 0:
+                a._flag[i] = 0
+                a._free[i] = None
+            if i - index >= _index_compaction_threshold:
+                self._compact_index(stream_ptr, False)
+            remaining = chunk.split(size)
+            if remaining is not None:
+                a.append_to_free_list(remaining)
+            assert chunk.stream_ptr == stream_ptr
+            return chunk
+        return None
+
+    cdef BaseMemory _try_malloc(self, size_t size):
+        with LockAndNoGc(self._total_bytes_lock):
+            total_bytes_limit = self._total_bytes_limit
+            total = self._total_bytes + size
+            if total_bytes_limit != 0 and total_bytes_limit < total:
+                raise OutOfMemoryError(size, total - size, total_bytes_limit)
+            self._total_bytes = total
+
+        mem = None
+        oom_error = False
+        try:
+            mem = self._alloc(size).mem
+        except runtime.CUDARuntimeError as e:
+            if e.status != runtime.cudaErrorMemoryAllocation:
+                raise
+            self.free_all_blocks()
+            try:
+                mem = self._alloc(size).mem
+            except runtime.CUDARuntimeError as e:
+                if e.status != runtime.cudaErrorMemoryAllocation:
+                    raise
+                gc.collect()
+                self.free_all_blocks()
+                try:
+                    mem = self._alloc(size).mem
+                except runtime.CUDARuntimeError as e:
+                    if e.status != runtime.cudaErrorMemoryAllocation:
+                        raise
+                    oom_error = True
+        finally:
+            if mem is None:
+                with LockAndNoGc(self._total_bytes_lock):
+                    self._total_bytes -= size
+                if oom_error:
+                    raise OutOfMemoryError(
+                        size, total - size, total_bytes_limit)
+
+        return mem
 
 
 cdef class MemoryPool(object):
@@ -1062,7 +1237,9 @@ cdef class MemoryPool(object):
 
     """
 
-    def __init__(self, allocator=_malloc):
+    def __init__(self, allocator=None):
+        if allocator is None:
+            allocator = _malloc
         self._pools = collections.defaultdict(
             lambda: SingleDeviceMemoryPool(allocator))
 
@@ -1090,7 +1267,7 @@ cdef class MemoryPool(object):
         return mp.malloc(size)
 
     cpdef free_all_blocks(self, stream=None):
-        """Release free blocks.
+        """Releases free blocks.
 
         Args:
             stream (cupy.cuda.Stream): Release free blocks in the arena
@@ -1108,7 +1285,7 @@ cdef class MemoryPool(object):
         self.free_all_blocks()
 
     cpdef size_t n_free_blocks(self):
-        """Count the total number of free blocks.
+        """Counts the total number of free blocks.
 
         Returns:
             int: The total number of free blocks.
@@ -1117,7 +1294,7 @@ cdef class MemoryPool(object):
         return mp.n_free_blocks()
 
     cpdef size_t used_bytes(self):
-        """Get the total number of bytes used.
+        """Gets the total number of bytes used.
 
         Returns:
             int: The total number of bytes used.
@@ -1126,7 +1303,7 @@ cdef class MemoryPool(object):
         return mp.used_bytes()
 
     cpdef size_t free_bytes(self):
-        """Get the total number of bytes acquired but not used in the pool.
+        """Gets the total number of bytes acquired but not used in the pool.
 
         Returns:
             int: The total number of bytes acquired but not used in the pool.
@@ -1135,7 +1312,7 @@ cdef class MemoryPool(object):
         return mp.free_bytes()
 
     cpdef size_t total_bytes(self):
-        """Get the total number of bytes acquired in the pool.
+        """Gets the total number of bytes acquired in the pool.
 
         Returns:
             int: The total number of bytes acquired in the pool.
@@ -1143,19 +1320,59 @@ cdef class MemoryPool(object):
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.total_bytes()
 
+    cpdef set_limit(self, size=None, fraction=None):
+        """Sets the upper limit of memory allocation of the current device.
+
+        When `fraction` is specified, its value will become a fraction of the
+        amount of GPU memory that is available for allocation.
+        For example, if you have a GPU with 2 GiB memory, you can either use
+        ``set_limit(fraction=0.5)`` or ``set_limit(size=1024**3)`` to limit
+        the memory size to 1 GiB.
+
+        ``size`` and ``fraction`` cannot be specified at one time.
+        If both of them are **not** specified or ``0`` is specified, the
+        limit will be disabled.
+
+        .. note::
+            You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
+            environment variable.
+            See :ref:`environment` for the details.
+            The limit set by this method supersedes the value specified in
+            the environment variable.
+
+            Also note that this method only changes the limit for the current
+            device, whereas the environment variable sets the default limit for
+            all devices.
+
+        Args:
+            size (int): Limit size in bytes.
+            fraction (float): Fraction in the range of ``[0, 1]``.
+        """
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        mp.set_limit(size, fraction)
+
+    cpdef size_t get_limit(self):
+        """Gets the upper limit of memory allocation of the current device.
+
+        Returns:
+            int: The number of bytes
+        """
+        mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
+        return mp.get_limit()
+
 
 ctypedef void*(*malloc_func_type)(void*, size_t, int)
 ctypedef void(*free_func_type)(void*, void*, int)
 
 
-cpdef size_t _call_malloc(intptr_t param, intptr_t malloc_func,
-                          Py_ssize_t size, int device_id):
-    return <size_t>((<malloc_func_type>malloc_func)(<void*>param, size,
-                                                    device_id))
+cdef size_t _call_malloc(
+        intptr_t param, intptr_t malloc_func, Py_ssize_t size, int device_id):
+    return <size_t>(
+        (<malloc_func_type>malloc_func)(<void*>param, size, device_id))
 
 
-cpdef void _call_free(intptr_t param, intptr_t free_func, intptr_t ptr,
-                      int device_id):
+cdef void _call_free(
+        intptr_t param, intptr_t free_func, intptr_t ptr, int device_id):
     (<free_func_type>free_func)(<void*>param, <void*>ptr, device_id)
 
 

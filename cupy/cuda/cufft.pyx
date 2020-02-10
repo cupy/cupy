@@ -1,5 +1,7 @@
 cimport cython  # NOQA
+from libc.stdint cimport intptr_t
 import numpy
+import threading
 
 import cupy
 from cupy.cuda cimport driver
@@ -7,7 +9,21 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 
 
-cdef extern from "cupy_cufft.h" nogil:
+cdef object _thread_local = threading.local()
+
+
+cpdef get_current_plan():
+    """Get current cuFFT plan.
+
+    Returns:
+        None or cupy.cuda.cufft.Plan1d or cupy.cuda.cufft.PlanNd
+    """
+    if not hasattr(_thread_local, '_current_plan'):
+        _thread_local._current_plan = None
+    return _thread_local._current_plan
+
+
+cdef extern from 'cupy_cufft.h' nogil:
     ctypedef struct Complex 'cufftComplex':
         float x, y
 
@@ -41,6 +57,9 @@ cdef extern from "cupy_cufft.h" nogil:
     Result cufftExecD2Z(Handle plan, Double *idata, DoubleComplex *odata)
     Result cufftExecZ2D(Handle plan, DoubleComplex *idata, Double *odata)
 
+    # Version
+    Result cufftGetVersion(int* version)
+
 
 cdef dict RESULT = {
     0: 'CUFFT_SUCCESS',
@@ -69,6 +88,9 @@ class CuFFTError(RuntimeError):
         self.result = result
         super(CuFFTError, self).__init__('%s' % (RESULT[result]))
 
+    def __reduce__(self):
+        return (type(self), (self.result,))
+
 
 @cython.profile(False)
 cpdef inline check_result(int result):
@@ -76,15 +98,19 @@ cpdef inline check_result(int result):
         raise CuFFTError(result)
 
 
+cpdef size_t getVersion() except? -1:
+    cdef int version
+    result = cufftGetVersion(&version)
+    check_result(result)
+    return version
+
+
 class Plan1d(object):
     def __init__(self, int nx, int fft_type, int batch):
         cdef Handle plan
         cdef size_t work_size
-        stream = stream_module.get_current_stream_ptr()
         with nogil:
             result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
             if result == 0:
@@ -108,6 +134,7 @@ class Plan1d(object):
         self.fft_type = fft_type
         self.plan = plan
         self.work_area = work_area
+        self.batch = batch
 
     def __del__(self):
         cdef Handle plan = self.plan
@@ -115,19 +142,31 @@ class Plan1d(object):
             result = cufftDestroy(plan)
         check_result(result)
 
+    def __enter__(self):
+        _thread_local._current_plan = self
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        _thread_local._current_plan = None
+
     def fft(self, a, out, direction):
+        cdef Handle plan = self.plan
+        stream = stream_module.get_current_stream_ptr()
+        with nogil:
+            result = cufftSetStream(plan, <driver.Stream>stream)
+        check_result(result)
         if self.fft_type == CUFFT_C2C:
-            execC2C(self.plan, a.data, out.data, direction)
+            execC2C(plan, a.data.ptr, out.data.ptr, direction)
         elif self.fft_type == CUFFT_R2C:
-            execR2C(self.plan, a.data, out.data)
+            execR2C(plan, a.data.ptr, out.data.ptr)
         elif self.fft_type == CUFFT_C2R:
-            execC2R(self.plan, a.data, out.data)
+            execC2R(plan, a.data.ptr, out.data.ptr)
         elif self.fft_type == CUFFT_Z2Z:
-            execZ2Z(self.plan, a.data, out.data, direction)
+            execZ2Z(plan, a.data.ptr, out.data.ptr, direction)
         elif self.fft_type == CUFFT_D2Z:
-            execD2Z(self.plan, a.data, out.data)
+            execD2Z(plan, a.data.ptr, out.data.ptr)
         else:
-            execZ2D(self.plan, a.data, out.data)
+            execZ2D(plan, a.data.ptr, out.data.ptr)
 
     def _output_dtype_and_shape(self, a):
         shape = list(a.shape)
@@ -166,10 +205,10 @@ class Plan1d(object):
         shape, dtype = self._output_dtype_and_shape(a)
         if out.shape != shape:
             raise ValueError(
-                ("out must have shape {}.").format(shape))
+                ('out must have shape {}.').format(shape))
         if out.dtype != dtype:
             raise ValueError(
-                "out dtype mismatch: found {}, expected {}".format(
+                'out dtype mismatch: found {}, expected {}'.format(
                     out.dtype, a.dtype))
 
 
@@ -200,11 +239,8 @@ class PlanNd(object):
             onembed_arr = numpy.asarray(onembed, dtype=numpy.intc)
             onembed_ptr = &onembed_arr[0]
 
-        stream = stream_module.get_current_stream_ptr()
         with nogil:
             result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
             if result == 0:
@@ -243,13 +279,25 @@ class PlanNd(object):
             result = cufftDestroy(plan)
         check_result(result)
 
+    def __enter__(self):
+        _thread_local._current_plan = self
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        _thread_local._current_plan = None
+
     def fft(self, a, out, direction):
+        cdef Handle plan = self.plan
+        stream = stream_module.get_current_stream_ptr()
+        with nogil:
+            result = cufftSetStream(plan, <driver.Stream>stream)
+        check_result(result)
         if self.fft_type == CUFFT_C2C:
-            execC2C(self.plan, a.data, out.data, direction)
+            execC2C(plan, a.data.ptr, out.data.ptr, direction)
         elif self.fft_type == CUFFT_Z2Z:
-            execZ2Z(self.plan, a.data, out.data, direction)
+            execZ2Z(plan, a.data.ptr, out.data.ptr, direction)
         else:
-            raise NotImplementedError("only C2C and Z2Z implemented")
+            raise NotImplementedError('only C2C and Z2Z implemented')
 
     def get_output_array(self, a, order='C'):
         shape = list(a.shape)
@@ -258,53 +306,53 @@ class PlanNd(object):
         elif self.fft_type == CUFFT_Z2Z:
             return cupy.empty(shape, numpy.complex128, order=order)
         else:
-            raise NotImplementedError("only C2C and Z2Z implemented")
+            raise NotImplementedError('only C2C and Z2Z implemented')
 
     def check_output_array(self, a, out):
         if out is a:
             return
         if out.dtype != a.dtype:
-            raise ValueError("output dtype mismatch")
+            raise ValueError('output dtype mismatch')
         if not ((out.flags.f_contiguous == a.flags.f_contiguous) and
                 (out.flags.c_contiguous == a.flags.c_contiguous)):
-            raise ValueError("output contiguity mismatch")
+            raise ValueError('output contiguity mismatch')
         if out.shape != a.shape:
-            raise ValueError("output shape mismatch")
+            raise ValueError('output shape mismatch')
 
 
-cpdef execC2C(size_t plan, size_t idata, size_t odata, int direction):
+cpdef execC2C(Handle plan, intptr_t idata, intptr_t odata, int direction):
     with nogil:
         result = cufftExecC2C(plan, <Complex*>idata, <Complex*>odata,
                               direction)
     check_result(result)
 
 
-cpdef execR2C(size_t plan, size_t idata, size_t odata):
+cpdef execR2C(Handle plan, intptr_t idata, intptr_t odata):
     with nogil:
         result = cufftExecR2C(plan, <Float*>idata, <Complex*>odata)
     check_result(result)
 
 
-cpdef execC2R(size_t plan, size_t idata, size_t odata):
+cpdef execC2R(Handle plan, intptr_t idata, intptr_t odata):
     with nogil:
         result = cufftExecC2R(plan, <Complex*>idata, <Float*>odata)
     check_result(result)
 
 
-cpdef execZ2Z(size_t plan, size_t idata, size_t odata, int direction):
+cpdef execZ2Z(Handle plan, intptr_t idata, intptr_t odata, int direction):
     with nogil:
         result = cufftExecZ2Z(plan, <DoubleComplex*>idata,
                               <DoubleComplex*>odata, direction)
     check_result(result)
 
 
-cpdef execD2Z(size_t plan, size_t idata, size_t odata):
+cpdef execD2Z(Handle plan, intptr_t idata, intptr_t odata):
     with nogil:
         result = cufftExecD2Z(plan, <Double*>idata, <DoubleComplex*>odata)
     check_result(result)
 
 
-cpdef execZ2D(size_t plan, size_t idata, size_t odata):
+cpdef execZ2D(Handle plan, intptr_t idata, intptr_t odata):
     with nogil:
         result = cufftExecZ2D(plan, <DoubleComplex*>idata, <Double*>odata)
     check_result(result)

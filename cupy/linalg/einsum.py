@@ -3,12 +3,12 @@ import itertools
 import string
 import warnings
 
-import six.moves
-
 import cupy
 from cupy import util
 from cupy.linalg.einsum_opt import _greedy_path
 from cupy.linalg.einsum_opt import _optimal_path
+if cupy.cuda.cutensor_enabled:
+    from cupy import cutensor
 
 
 options = {
@@ -53,8 +53,8 @@ def _parse_int_subscript(list_subscript):
             str_subscript += einsum_symbols[s]
         else:
             raise ValueError(
-                "each subscript must be either an integer or an ellipsis"
-                " to provide subscripts strings as lists")
+                'each subscript must be either an integer or an ellipsis'
+                ' to provide subscripts strings as lists')
     return str_subscript
 
 
@@ -93,9 +93,9 @@ def _parse_einsum_input(args):
 
     if len(args) == 0:
         raise ValueError(
-            "must specify the einstein sum subscripts string and at least one "
-            "operand, or at least one operand and its corresponding "
-            "subscripts list")
+            'must specify the einstein sum subscripts string and at least one '
+            'operand, or at least one operand and its corresponding '
+            'subscripts list')
 
     if isinstance(args[0], str):
         subscripts = args[0]
@@ -107,15 +107,15 @@ def _parse_einsum_input(args):
                 continue
             if s not in einsum_symbols:
                 raise ValueError(
-                    "invalid subscript '%s' in einstein sum subscripts string,"
-                    " subscripts must be letters" % s)
+                    'invalid subscript \'%s\' in einstein sum subscripts '
+                    'string, subscripts must be letters' % s)
 
         # Parse '...'
         subscripts = subscripts.replace('...', '@')
         if '.' in subscripts:
             raise ValueError(
-                "einstein sum subscripts string contains a '.' that is not "
-                "part of an ellipsis ('...')")
+                'einstein sum subscripts string contains a \'.\' that is not '
+                'part of an ellipsis (\'...\')')
 
         # Parse '->'
         if ('-' in subscripts) or ('>' in subscripts):
@@ -124,8 +124,8 @@ def _parse_einsum_input(args):
             subscripts = subscripts.split('->')
             if invalid or len(subscripts) != 2:
                 raise ValueError(
-                    "einstein sum subscript string does not contain proper "
-                    "'->' output specified")
+                    'einstein sum subscript string does not contain proper '
+                    '\'->\' output specified')
             input_subscripts, output_subscript = subscripts
             output_subscript = output_subscript.replace(' ', '')
 
@@ -135,10 +135,10 @@ def _parse_einsum_input(args):
 
         input_subscripts = input_subscripts.replace(' ', '').split(',')
         if len(input_subscripts) != len(operands):
-            msg = "more" if len(operands) > len(input_subscripts) else "fewer"
+            msg = 'more' if len(operands) > len(input_subscripts) else 'fewer'
             raise ValueError(
-                msg + " operands provided to einstein sum function than "
-                "specified in the subscripts string")
+                msg + ' operands provided to einstein sum function than '
+                'specified in the subscripts string')
 
     else:
         args = list(args)
@@ -184,12 +184,12 @@ def _parse_ellipsis_subscript(subscript, idx, ndim=None, ellipsis_len=None):
         if ndim is not None and len(sub) != ndim:
             if len(sub) > ndim:
                 raise ValueError(
-                    "einstein sum subscripts string %s contains too many "
-                    "subscripts for operand %d" % (sub, idx))
+                    'einstein sum subscripts string %s contains too many '
+                    'subscripts for operand %d' % (sub, idx))
             raise ValueError(
-                "operand %d has more dimensions than subscripts string %s "
-                "given in einstein sum, but no '...' ellipsis provided to "
-                "broadcast the extra dimensions." % (idx, sub))
+                'operand %d has more dimensions than subscripts string %s '
+                'given in einstein sum, but no \'...\' ellipsis provided to '
+                'broadcast the extra dimensions.' % (idx, sub))
         return [ord(label) for label in sub]
     elif len(subs) == 2:
         left_sub, right_sub = subs
@@ -197,19 +197,19 @@ def _parse_ellipsis_subscript(subscript, idx, ndim=None, ellipsis_len=None):
             ellipsis_len = ndim - (len(left_sub) + len(right_sub))
         if ellipsis_len < 0:
             raise ValueError(
-                "einstein sum subscripts string %s...%s contains too many "
-                "subscripts for operand %d" % (left_sub, right_sub, idx))
+                'einstein sum subscripts string %s...%s contains too many '
+                'subscripts for operand %d' % (left_sub, right_sub, idx))
         ret = []
         ret.extend(ord(label) for label in left_sub)
-        ret.extend(six.moves.range(-ellipsis_len, 0))
+        ret.extend(range(-ellipsis_len, 0))
         ret.extend(ord(label) for label in right_sub)
         return ret
     else:
         # >= 2 ellipses for an operand
         raise ValueError(
-            "einstein sum subscripts string contains a '.' that is not "
-            "part of an ellipsis ('...') " +
-            ("in the output" if idx is None else "for operand %d" % idx))
+            'einstein sum subscripts string contains a \'.\' that is not '
+            'part of an ellipsis (\'...\') ' +
+            ('in the output' if idx is None else 'for operand %d' % idx))
 
 
 def _einsum_diagonals(input_subscripts, operands):
@@ -217,7 +217,7 @@ def _einsum_diagonals(input_subscripts, operands):
 
     This function mutates args.
     """
-    for idx in six.moves.range(len(input_subscripts)):
+    for idx in range(len(input_subscripts)):
         sub = input_subscripts[idx]
         arr = operands[idx]
 
@@ -236,12 +236,12 @@ def _einsum_diagonals(input_subscripts, operands):
                     dim0 = dims.pop()
                     dim1 = dims.pop()
                     raise ValueError(
-                        "dimensions in operand %d"
-                        " for collapsing index '%s' don't match (%d != %d)"
+                        'dimensions in operand %d'
+                        ' for collapsing index \'%s\' don\'t match (%d != %d)'
                         % (idx, _chr(label), dim0, dim1)
                     )
 
-            sub, axeses = six.moves.zip(*axeses)  # axeses is not empty
+            sub, axeses = zip(*axeses)  # axeses is not empty
             input_subscripts[idx] = list(sub)
             operands[idx] = _transpose_ex(arr, axeses)
 
@@ -286,16 +286,77 @@ def _flatten_transpose(a, axeses):
         shapes.append([a.shape[axis] for axis in axes])
     return (
         a.transpose(transpose_axes).reshape(
-            tuple(cupy.core.internal.prod(shape) for shape in shapes)),
+            tuple([cupy.core.internal.prod(shape) for shape in shapes])),
         shapes
     )
+
+
+def _use_cutensor(dtype0, sub0, dtype1, sub1, batch_dims, contract_dims):
+    if not cupy.cuda.cutensor_enabled:
+        return False
+    if dtype0 != dtype1:
+        return False
+    if dtype0 not in (cupy.float32, cupy.float64,
+                      cupy.complex64, cupy.complex128):
+        return False
+    if (len(contract_dims) >= 1 and (sub0[-1] in batch_dims or
+                                     sub1[-1] in batch_dims)):
+        return False
+    return True
+
+
+def _get_out_shape(shape0, sub0, shape1, sub1, sub_out):
+    extent = {}
+    for size, i in zip(shape0 + shape1, sub0 + sub1):
+        extent[i] = size
+    out_shape = [extent[i] for i in sub_out]
+    return out_shape
+
+
+def _expand_dims_transpose(arr, mode, mode_out):
+    """Return a reshaped and transposed array.
+
+    The input array ``arr`` having ``mode`` as its modes is reshaped and
+    transposed so that modes of the output becomes ``mode_out``.
+
+    Example
+        >>> import cupy
+        >>> a = cupy.zeros((10, 20))
+        >>> mode_a = ('A', 'B')
+        >>> mode_out = ('B', 'C', 'A')
+        >>> out = cupy.linalg.einsum._expand_dims_transpose(a, mode_a,
+        ...                                                 mode_out)
+        >>> out.shape
+        (20, 1, 10)
+
+    Args:
+        arr (cupy.ndarray):
+        mode (tuple or list): The modes of input array.
+        mode_out (tuple or list): The modes of output array.
+
+    Returns:
+        cupy.ndarray: The reshaped and transposed array.
+
+    """
+    mode = list(mode)
+    shape = list(arr.shape)
+    axes = []
+    for i in mode_out:
+        if i not in mode:
+            mode.append(i)
+            shape.append(1)
+        axes.append(mode.index(i))
+    return cupy.transpose(arr.reshape(shape), axes)
 
 
 def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     set0 = set(sub0)
     set1 = set(sub1)
-    assert len(set0) == len(sub0), "operand 0 should be reduced: diagonal"
-    assert len(set1) == len(sub1), "operand 1 should be reduced: diagonal"
+    assert len(set0) == len(sub0), 'operand 0 should be reduced: diagonal'
+    assert len(set1) == len(sub1), 'operand 1 should be reduced: diagonal'
+
+    if len(sub0) == 0 or len(sub1) == 0:
+        return arr0 * arr1, sub0 + sub1
 
     set_others = set(sub_others)
     shared = set0 & set1
@@ -305,20 +366,47 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     bs0, cs0, ts0 = _make_transpose_axes(sub0, batch_dims, contract_dims)
     bs1, cs1, ts1 = _make_transpose_axes(sub1, batch_dims, contract_dims)
 
-    tmp0, shapes0 = _flatten_transpose(arr0, [bs0, ts0, cs0])
-    tmp1, shapes1 = _flatten_transpose(arr1, [bs1, cs1, ts1])
-    shapes_out = shapes0[0] + shapes0[1] + shapes1[2]
-    assert shapes0[0] == shapes1[0]
-    arr_out = cupy.matmul(tmp0, tmp1).reshape(shapes_out)
-
     sub_b = [sub0[axis] for axis in bs0]
     assert sub_b == [sub1[axis] for axis in bs1]
     sub_l = [sub0[axis] for axis in ts0]
     sub_r = [sub1[axis] for axis in ts1]
 
     sub_out = sub_b + sub_l + sub_r
-    assert set(sub_out) <= set_others, "operands should be reduced: unary sum"
+    assert set(sub_out) <= set_others, 'operands should be reduced: unary sum'
 
+    if len(contract_dims) == 0:
+        # Use element-wise multiply when no contraction is needed
+        if len(sub_out) == len(sub_others):
+            # to assure final output of einsum is C-contiguous
+            sub_out = sub_others
+        arr0 = _expand_dims_transpose(arr0, sub0, sub_out)
+        arr1 = _expand_dims_transpose(arr1, sub1, sub_out)
+        return arr0 * arr1, sub_out
+
+    if _use_cutensor(arr0.dtype, sub0, arr1.dtype, sub1,
+                     batch_dims, contract_dims):
+        if len(sub_out) == len(sub_others):
+            # to assure final output of einsum is C-contiguous
+            sub_out = sub_others
+        out_shape = _get_out_shape(arr0.shape, sub0, arr1.shape, sub1, sub_out)
+        arr_out = cupy.empty(out_shape, arr0.dtype)
+        arr0 = cupy.ascontiguousarray(arr0)
+        arr1 = cupy.ascontiguousarray(arr1)
+        desc_0 = cutensor.create_tensor_descriptor(arr0)
+        desc_1 = cutensor.create_tensor_descriptor(arr1)
+        desc_out = cutensor.create_tensor_descriptor(arr_out)
+        arr_out = cutensor.contraction(1.0,
+                                       arr0, desc_0, sub0,
+                                       arr1, desc_1, sub1,
+                                       0.0,
+                                       arr_out, desc_out, sub_out)
+        return arr_out, sub_out
+
+    tmp0, shapes0 = _flatten_transpose(arr0, [bs0, ts0, cs0])
+    tmp1, shapes1 = _flatten_transpose(arr1, [bs1, cs1, ts1])
+    shapes_out = shapes0[0] + shapes0[1] + shapes1[2]
+    assert shapes0[0] == shapes1[0]
+    arr_out = cupy.matmul(tmp0, tmp1).reshape(shapes_out)
     return arr_out, sub_out
 
 
@@ -383,7 +471,7 @@ def einsum(*operands, **kwargs):
     if optimize is True:
         optimize = 'greedy'
     if kwargs:
-        raise TypeError("Did not understand the following kwargs: %s"
+        raise TypeError('Did not understand the following kwargs: %s'
                         % list(kwargs.keys))
 
     result_dtype = cupy.result_type(*operands) if dtype is None else dtype
@@ -409,9 +497,10 @@ def einsum(*operands, **kwargs):
                     dimension_dict[label] = dim
                 elif dim not in (1, dimension_dict[label]):
                     dim_old = dimension_dict[label]
-                    raise ValueError("Size of label '%s' for operand %d (%d) "
-                                     "does not match previous terms (%d)."
-                                     % (_chr(label), idx, dim, dim_old))
+                    raise ValueError(
+                        'Size of label \'%s\' for operand %d (%d) '
+                        'does not match previous terms (%d).'
+                        % (_chr(label), idx, dim, dim_old))
             else:
                 dimension_dict[label] = dim
 
@@ -427,9 +516,9 @@ def einsum(*operands, **kwargs):
         if not options['sum_ellipsis']:
             if '@' not in output_subscript and -1 in dimension_dict:
                 raise ValueError(
-                    "output has more dimensions than subscripts "
-                    "given in einstein sum, but no '...' ellipsis "
-                    "provided to broadcast the extra dimensions.")
+                    'output has more dimensions than subscripts '
+                    'given in einstein sum, but no \'...\' ellipsis '
+                    'provided to broadcast the extra dimensions.')
         output_subscript = _parse_ellipsis_subscript(
             output_subscript, None,
             ellipsis_len=sum(label < 0 for label in dimension_dict.keys())
@@ -440,14 +529,14 @@ def einsum(*operands, **kwargs):
         for label in output_subscript:
             if label not in tmp_subscripts:
                 raise ValueError(
-                    "einstein sum subscripts string included output subscript "
-                    "'%s' which never appeared in an input" % _chr(label))
+                    'einstein sum subscripts string included output subscript '
+                    '\'%s\' which never appeared in an input' % _chr(label))
         if len(output_subscript) != len(set(output_subscript)):
             for label in output_subscript:
                 if output_subscript.count(label) >= 2:
                     raise ValueError(
-                        "einstein sum subscripts string includes output "
-                        "subscript '%s' multiple times" % _chr(label))
+                        'einstein sum subscripts string includes output '
+                        'subscript \'%s\' multiple times' % _chr(label))
 
     _einsum_diagonals(input_subscripts, operands)
 
@@ -462,7 +551,7 @@ def einsum(*operands, **kwargs):
 
         # Don't squeeze if unary, because this affects later (in trivial sum)
         # whether the return is a writeable view.
-        for idx in six.moves.range(len(operands)):
+        for idx in range(len(operands)):
             arr = operands[idx]
             if 1 in arr.shape:
                 squeeze_indices = []
@@ -516,7 +605,7 @@ def einsum(*operands, **kwargs):
         'optimal': _optimal_path,
     }
     if optimize is False:
-        path = [tuple(six.moves.range(len(operands)))]
+        path = [tuple(range(len(operands)))]
     elif len(optimize) and (optimize[0] == 'einsum_path'):
         path = optimize[1:]
     else:
@@ -528,7 +617,7 @@ def einsum(*operands, **kwargs):
                 algo = optimize_algorithms[optimize]
                 memory_limit = 2 ** 31  # TODO(kataoka): fix?
         except (TypeError, KeyError):  # unhashable type or not found
-            raise TypeError("Did not understand the path (optimize): %s"
+            raise TypeError('Did not understand the path (optimize): %s'
                             % str(optimize))
         input_sets = [set(sub) for sub in input_subscripts]
         output_set = set(output_subscript)

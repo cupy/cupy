@@ -6,7 +6,7 @@ Wrapper for NVIDIA Tools Extension Library (NVTX)
 """
 from libc cimport string
 
-cdef extern from "cupy_cuda.h" nogil:
+cdef extern from 'cupy_cuda.h' nogil:
     cdef int NVTX_VERSION
     cdef enum nvtxColorType_t:
         NVTX_COLOR_UNKNOWN

@@ -1,14 +1,10 @@
 import numpy
 
 import cupy
-from cupy import cuda
+from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import util
 import cupyx.scipy.sparse
-
-
-if cuda.cusolver_enabled:
-    from cupy.cuda import cusolver
 
 
 def lsqr(A, b):
@@ -35,9 +31,6 @@ def lsqr(A, b):
     .. seealso:: :func:`scipy.sparse.linalg.lsqr`
     """
 
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-
     if not cupyx.scipy.sparse.isspmatrix_csr(A):
         A = cupyx.scipy.sparse.csr_matrix(A)
     util._assert_nd_squareness(A)
@@ -50,7 +43,7 @@ def lsqr(A, b):
     if A.dtype == 'f' or A.dtype == 'd':
         dtype = A.dtype
     else:
-        dtype = numpy.find_common_type((A.dtype, 'f'), ())
+        dtype = numpy.promote_types(A.dtype, 'f')
 
     handle = device.get_cusolver_sp_handle()
     nnz = A.nnz

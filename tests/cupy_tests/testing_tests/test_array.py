@@ -2,7 +2,6 @@ import copy
 import unittest
 
 import numpy
-import six
 
 import cupy
 from cupy import testing
@@ -60,7 +59,7 @@ def _convert_array(xs, array_module):
 class TestListEqualityAssertion(unittest.TestCase):
 
     def setUp(self):
-        xs = [numpy.random.uniform(-1, 1, (2, 3)) for _ in six.moves.range(10)]
+        xs = [numpy.random.uniform(-1, 1, (2, 3)) for _ in range(10)]
         ys = copy.deepcopy(xs)
         self.xs = _convert_array(xs, self.array_module_x)
         self.ys = _convert_array(ys, self.array_module_y)
@@ -70,9 +69,32 @@ class TestListEqualityAssertion(unittest.TestCase):
 
     def test_inequality_numpy(self):
         self.xs[0] += 1
-        with six.assertRaisesRegex(self, AssertionError,
-                                   '^\nArrays are not equal'):
+        with self.assertRaisesRegex(
+                AssertionError, '^\nArrays are not equal'):
             testing.assert_array_list_equal(self.xs, self.ys)
+
+
+@testing.parameterize(
+    *testing.product({
+        'array_module_x': [numpy, cupy],
+        'array_module_y': [numpy, cupy]
+    })
+)
+@testing.gpu
+class TestStridesEqualityAssertion(unittest.TestCase):
+
+    def setUp(self):
+        val = numpy.random.uniform(-1, 1, (2, 3))
+        self.x = self.array_module_x.array(val, val.dtype, copy=True)
+        self.y = self.array_module_y.array(val, val.dtype, copy=True)
+
+    def test_equality_numpy(self):
+        testing.assert_array_equal(self.x, self.y, strides_check=True)
+
+    def test_inequality_numpy(self):
+        self.y = self.array_module_y.asfortranarray(self.y)
+        with self.assertRaises(AssertionError):
+            testing.assert_array_equal(self.x, self.y, strides_check=True)
 
 
 @testing.parameterize(
