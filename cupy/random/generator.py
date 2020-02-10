@@ -18,6 +18,7 @@ from cupy.cuda import curand
 from cupy.cuda import device
 from cupy.random import _kernels
 from cupy import util
+
 import cupyx
 
 
@@ -354,25 +355,32 @@ class RandomState(object):
             if check_valid != 'warn' and check_valid != 'raise':
                 raise ValueError(
                     "check_valid must equal 'warn', 'raise', or 'ignore'")
-            else:
-                from cupy.linalg import eigh
-                (s, u) = eigh(cov)
-                psd = not cupy.any(s < -tol)
-            if not psd:
-                if check_valid == 'warn':
-                    warnings.warn("covariance is not positive-semidefinite.",
-                                  RuntimeWarning)
-                else:
-                    raise ValueError("covariance is not " +
-                                     "positive-semidefinite.")
+            elif check_valid == 'warn':
+                with cupyx.errstate(linalg='raise'):
+                    try:
+                        chol = cupy.linalg.cholesky(cov)
+                    except LinAlgError:
+                        warnings.warn("Matrix is not positive definite, " + 
+                                      "trying einh decomposition.",
+                                      RuntimeWarning)
+                        (s, u) = cupy.linalg.einh(cov)
+                        psd = not cupy.any(s < -tol)
+                        decomp = u * cupy.sqrt(cupy.abs(s))
+                        if not psd:
+                            if check_valid == 'warn':
+                                warnings.warn("covariance is not positive-" +
+                                              "semidefinite.", RuntimeWarning)
+        else:
+            with cupyx.errstate(linalg=check_valid):
+                try:
+                    decomp = cupy.linalg.cholesky(cov)
+                except LinAlgError:
+                    raise LinAlgError("Matrix is not positive definite; if " +
+                                      "matrix is positive-semidefinite, set" +
+                                      "'check_valid' to 'warn'")
 
         x = self.standard_normal(size=shape, dtype=dtype)
-        with cupyx.errstate(linalg='raise'):
-            try:
-                chol = cupy.linalg.cholesky(cov)
-            except LinAlgError:
-                raise LinAlgError("Matrix is not positive definite")
-        x = cupy.dot(chol, x.T)
+        x = cupy.dot(decomp, x.T)
         x = x.T
         x += mean
         return x
