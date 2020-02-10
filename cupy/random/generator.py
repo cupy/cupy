@@ -358,9 +358,9 @@ class RandomState(object):
             elif check_valid == 'warn':
                 with cupyx.errstate(linalg='raise'):
                     try:
-                        chol = cupy.linalg.cholesky(cov)
+                        decomp = cupy.linalg.cholesky(cov)
                     except LinAlgError:
-                        warnings.warn("Matrix is not positive definite, " + 
+                        warnings.warn("Matrix is not positive definite, " +
                                       "trying einh decomposition.",
                                       RuntimeWarning)
                         (s, u) = cupy.linalg.einh(cov)
