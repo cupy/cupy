@@ -1106,6 +1106,9 @@ cdef class ndarray:
     cpdef ndarray conj(self):
         return _math._ndarray_conj(self)
 
+    cpdef ndarray conjugate(self):
+        return _math._ndarray_conj(self)
+
     @property
     def real(self):
         return _math._ndarray_real_getter(self)
@@ -1354,11 +1357,6 @@ cdef class ndarray:
 
     def __int__(self):
         return int(self.get())
-
-    if sys.version_info < (3,):
-        def __long__(self):
-            # Avoid using long() for flake8
-            return self.get().__long__()
 
     def __float__(self):
         return float(self.get())
@@ -1812,6 +1810,8 @@ cpdef function.Module compile_with_cache(
             bundled_include = 'cuda-10.0'
         elif 10010 <= _cuda_runtime_version < 10020:
             bundled_include = 'cuda-10.1'
+        elif 10020 <= _cuda_runtime_version < 10030:
+            bundled_include = 'cuda-10.2'
         else:
             # CUDA v9.0, v9.1 or versions not yet supported.
             bundled_include = None
@@ -2943,7 +2943,7 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     cdef object desc = a.__cuda_array_interface__
     cdef tuple shape = desc['shape']
     cdef int dev_id = -1
-    cdef int nbytes
+    cdef size_t nbytes
 
     ptr = desc['data'][0]
     dtype = numpy.dtype(desc['typestr'])

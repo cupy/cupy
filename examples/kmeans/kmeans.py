@@ -49,7 +49,7 @@ def fit_xp(X, n_clusters, max_iter):
     pred = xp.zeros(n_samples)
 
     # Choose the initial centroid for each cluster.
-    initial_indexes = numpy.random.choice(n_samples, n_clusters, replace=False)
+    initial_indexes = xp.random.choice(n_samples, n_clusters, replace=False)
     centers = X[initial_indexes]
 
     for _ in range(max_iter):
@@ -80,7 +80,7 @@ def fit_custom(X, n_clusters, max_iter):
 
     pred = cupy.zeros(n_samples)
 
-    initial_indexes = numpy.random.choice(n_samples, n_clusters, replace=False)
+    initial_indexes = cupy.random.choice(n_samples, n_clusters, replace=False)
     centers = X[initial_indexes]
 
     for _ in range(max_iter):

@@ -1,4 +1,3 @@
-import sys
 import unittest
 
 import numpy
@@ -32,10 +31,6 @@ class TestMapCoordinates(unittest.TestCase):
     _multiprocess_can_split = True
 
     def _map_coordinates(self, xp, scp, a, coordinates):
-        # scipy.ndimage has bug with Python2
-        if sys.version_info[0] == 2 and self.output == 'f':
-            return xp.empty(0)
-
         map_coordinates = scp.ndimage.map_coordinates
         if self.output == 'empty':
             output = xp.empty(coordinates.shape[1:], dtype=a.dtype)

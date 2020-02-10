@@ -13,6 +13,7 @@ from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
+from cupy.cuda cimport memory
 
 if cupy.cuda.cub_enabled:
     from cupy.cuda import cub
@@ -23,7 +24,7 @@ if cupy.cuda.cub_enabled:
 
 cdef ndarray _ndarray_conj(ndarray self):
     if self.dtype.kind == 'c':
-        return _conj(self)
+        return _conjugate(self)
     else:
         return self
 
@@ -46,10 +47,18 @@ cdef ndarray _ndarray_real_setter(ndarray self, value):
 
 
 cdef ndarray _ndarray_imag_getter(ndarray self):
+    cdef memory.MemoryPointer memptr
     if self.dtype.kind == 'c':
+        dtype = get_dtype(self.dtype.char.lower())
+        memptr = self.data
+        # Make the memory pointer point to the first imaginary element.
+        # Note that even if the array doesn't have a valid memory (e.g. 0-size
+        # array), the resulting array should be a view of the original array,
+        # aligning with NumPy behavior.
+        if memptr.ptr != 0:
+            memptr = memptr + self.dtype.itemsize // 2
         view = ndarray(
-            shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
-            memptr=self.data + self.dtype.itemsize // 2,
+            shape=self._shape, dtype=dtype, memptr=memptr,
             strides=self._strides)
         view.base = self.base if self.base is not None else self
         return view
@@ -362,15 +371,11 @@ cdef create_arithmetic(name, op, boolop, doc):
     #  - str (the operator for bool-bool inputs) or
     #  - callable (a function to raise an error for bool-bool inputs).
     if isinstance(boolop, str):
-        boolop_ = _kernel._Op.from_type_and_routine(
-            '??->?', 'out0 = in0 %s in1' % boolop)
-    else:
-        assert callable(boolop)
-        boolop_ = _kernel._Op.from_type_and_error_func('??->?', boolop)
+        boolop = 'out0 = in0 %s in1' % boolop
 
     return create_ufunc(
         'cupy_' + name,
-        (boolop_,
+        (('??->?', boolop),
          'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
          'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
          'DD->D'),
@@ -387,8 +392,8 @@ _add = create_arithmetic(
     ''')
 
 
-_conj = create_ufunc(
-    'cupy_conj',
+_conjugate = create_ufunc(
+    'cupy_conjugate',
     ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
      'Q->Q', 'e->e', 'f->f', 'd->d',
      ('F->F', 'out0 = conj(in0)'),
@@ -396,7 +401,7 @@ _conj = create_ufunc(
     'out0 = in0',
     doc='''Returns the complex conjugate, element-wise.
 
-    .. seealso:: :data:`numpy.conj`
+    .. seealso:: :data:`numpy.conjugate`
 
     ''')
 
@@ -457,9 +462,15 @@ _imag_setter = create_ufunc(
     ''')
 
 
+def _negative_boolean_error():
+    raise TypeError(
+        'The cupy boolean negative, the `-` operator, is not supported, '
+        'use the `~` operator or the logical_not function instead.')
+
+
 _negative = create_ufunc(
     'cupy_negative',
-    (('?->?', 'out0 = !in0'),
+    (('?->?', _negative_boolean_error),
      'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = -in0',
@@ -620,7 +631,7 @@ _clip = create_ufunc(
 
 
 add = _add
-conj = _conj
+conjugate = _conjugate
 angle = _angle
 real = _real
 imag = _imag
