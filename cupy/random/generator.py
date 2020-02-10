@@ -355,21 +355,20 @@ class RandomState(object):
             if check_valid != 'warn' and check_valid != 'raise':
                 raise ValueError(
                     "check_valid must equal 'warn', 'raise', or 'ignore'")
-            elif check_valid == 'warn':
-                with cupyx.errstate(linalg='raise'):
-                    try:
-                        decomp = cupy.linalg.cholesky(cov)
-                    except LinAlgError:
-                        warnings.warn("Matrix is not positive definite, " +
-                                      "trying einh decomposition.",
-                                      RuntimeWarning)
-                        (s, u) = cupy.linalg.einh(cov)
-                        psd = not cupy.any(s < -tol)
-                        decomp = u * cupy.sqrt(cupy.abs(s))
-                        if not psd:
-                            if check_valid == 'warn':
-                                warnings.warn("covariance is not positive-" +
-                                              "semidefinite.", RuntimeWarning)
+
+        if check_valid == 'warn':
+            with cupyx.errstate(linalg='raise'):
+                try:
+                    decomp = cupy.linalg.cholesky(cov)
+                except LinAlgError:
+                    (s, u) = cupy.linalg.eigh(cov)
+                    psd = not cupy.any(s < -tol)
+                    decomp = u * cupy.sqrt(cupy.abs(s))
+                    if not psd:
+                        if check_valid == 'warn':
+                            warnings.warn("covariance is not positive-" +
+                                          "semidefinite, output may be " +
+                                          "invalid.", RuntimeWarning)
         else:
             with cupyx.errstate(linalg=check_valid):
                 try:
