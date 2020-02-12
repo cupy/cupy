@@ -71,6 +71,8 @@ def seterr(*, divide=None, over=None, under=None,
     """
     TODO(hvy): Write docs.
     """
+    old_state = geterr()
+
     if divide is not None:
         raise NotImplementedError()
     if over is not None:
@@ -84,9 +86,6 @@ def seterr(*, divide=None, over=None, under=None,
             raise NotImplementedError()
     if fallback_mode is not None:
         fbm.seterr(fallback_mode)
-
-    old_state = geterr()
-
 
     _config.divide = divide
     _config.under = under
