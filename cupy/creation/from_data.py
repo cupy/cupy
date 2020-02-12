@@ -55,8 +55,8 @@ def asarray(a, dtype=None, order=None):
         order ({'C', 'F'}):
             Whether to use row-major (C-style) or column-major (Fortran-style)
             memory representation. Defaults to 'C'. ``order`` is ignored for
-            objects that are not a ``cupy.ndarray``, but have a
-            ``__cuda_array_interface__ attribute``.
+            objects that are not :class:`cupy.ndarray`, but have the
+            ``__cuda_array_interface__`` attribute.
 
     Returns:
         cupy.ndarray: An array on the current device. If ``a`` is already on
