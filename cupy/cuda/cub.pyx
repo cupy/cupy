@@ -123,7 +123,7 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
             'output parameter for reduction operation has the wrong number of '
             'dimensions')
     if op not in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX,
-        CUPY_CUB_ARGMIN, CUPY_CUB_ARGMAX):
+                  CUPY_CUB_ARGMIN, CUPY_CUB_ARGMAX):
         raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, '
                          'CUPY_CUB_MAX, CUPY_CUB_ARGMIN, and CUPY_CUB_ARGMAX '
                          'are supported.')
