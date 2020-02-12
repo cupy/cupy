@@ -162,11 +162,6 @@ def get_compiler_setting(use_hip):
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
-    cutensor_path = os.environ.get('CUTENSOR_PATH', '')
-    if os.path.exists(cutensor_path):
-        include_dirs.append(os.path.join(cutensor_path, 'include'))
-        library_dirs.append(os.path.join(cutensor_path, 'lib'))
-
     # for CUB, we need the complex and CUB headers
     cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                '../cupy/core/include')
