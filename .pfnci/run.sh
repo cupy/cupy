@@ -81,7 +81,7 @@ test_py37() {
   #     '/cupy/tests/**/test_*.py' \
   #     && :
   python3.7 -m pytest -m 'not slow' \
-      '/cupy/tests/**/test_*.py' \
+      /cupy/tests/ \
       && :
   py_test_status=$?
 
