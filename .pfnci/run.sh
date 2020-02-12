@@ -77,7 +77,10 @@ test_py37() {
   # TODO(niboshi): Allow option pass-through (https://github.com/chainer/xpytest/issues/14)
   export PYTEST_ADDOPTS=-rfEX
   # TODO(imos): Enable xpytest to support python_files setting in setup.cfg.
-  OMP_NUM_THREADS=1 xpytest "${xpytest_args[@]}" \
+  # OMP_NUM_THREADS=1 xpytest "${xpytest_args[@]}" \
+  #     '/cupy/tests/**/test_*.py' \
+  #     && :
+  python -m pytest -m 'not slow' \
       '/cupy/tests/**/test_*.py' \
       && :
   py_test_status=$?
