@@ -45,9 +45,7 @@ template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, t
 
 
 /* ------------------------------------ "Patches" to CUB ------------------------------------
-   These stubs are needed because CUB does not handle NaNs properly, while NumPy has certain
-   behaviors with which we must comply.
-   TODO(leofang): support half precision?
+   This stub is needed because CUB does not have a built-in "prod" operator
 */
 
 //
@@ -61,6 +59,12 @@ struct _multiply
         return a * b;
     }
 };
+
+/*
+   These stubs are needed because CUB does not handle NaNs properly, while NumPy has certain
+   behaviors with which we must comply.
+   TODO(leofang): support half precision?
+*/
 
 //
 // Max()
@@ -362,17 +366,19 @@ struct _cub_reduce_prod {
     }
 };
 
-//struct _cub_segmented_reduce_prod {
-//    template <typename T>
-//    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
-//        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
-//    {
-//        DeviceSegmentedReduce::Sum(workspace, workspace_size,
-//            static_cast<T*>(x), static_cast<T*>(y), num_segments,
-//            static_cast<int*>(offset_start),
-//            static_cast<int*>(offset_end), s);
-//    }
-//};
+struct _cub_segmented_reduce_prod {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
+    {
+        _multiply product_op;
+        DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+            static_cast<T*>(x), static_cast<T*>(y), num_segments,
+            static_cast<int*>(offset_start),
+            static_cast<int*>(offset_end),
+            product_op, static_cast<T>(1), s);
+    }
+};
 
 //
 // **** CUB Min ****
@@ -549,6 +555,10 @@ void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
                    offset_end, stream);
     case CUPY_CUB_MAX:
         return dtype_dispatcher(dtype_id, _cub_segmented_reduce_max(),
+                   workspace, workspace_size, x, y, num_segments, offset_start,
+                   offset_end, stream);
+    case CUPY_CUB_PROD:
+        return dtype_dispatcher(dtype_id, _cub_segmented_reduce_prod(),
                    workspace, workspace_size, x, y, num_segments, offset_start,
                    offset_end, stream);
     default:
