@@ -80,7 +80,7 @@ test_py37() {
   # OMP_NUM_THREADS=1 xpytest "${xpytest_args[@]}" \
   #     '/cupy/tests/**/test_*.py' \
   #     && :
-  python -m pytest -m 'not slow' \
+  python3.7 -m pytest -m 'not slow' \
       '/cupy/tests/**/test_*.py' \
       && :
   py_test_status=$?
