@@ -87,7 +87,6 @@ from cupy.cuda.memory import MemoryPointer  # NOQA
 from cupy.cuda.memory import MemoryPool  # NOQA
 from cupy.cuda.memory import set_allocator  # NOQA
 from cupy.cuda.memory import get_allocator  # NOQA
-from cupy.cuda.memory import using_allocator  # NOQA
 from cupy.cuda.memory import UnownedMemory  # NOQA
 from cupy.cuda.memory_hook import MemoryHook  # NOQA
 from cupy.cuda.pinned_memory import alloc_pinned_memory  # NOQA
