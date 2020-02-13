@@ -1114,6 +1114,7 @@ cdef class SingleDeviceMemoryPool:
         cdef set free_list, keep_list
         cdef vector.vector[size_t] new_index
         cdef size_t index
+        cdef size_t size_to_free = 0
 
         if stream_ptr not in self._arenas:
             return
@@ -1128,6 +1129,8 @@ cdef class SingleDeviceMemoryPool:
                 for chunk in free_list:
                     if chunk.prev is not None or chunk.next is not None:
                         keep_list.add(chunk)
+                    else:
+                        size_to_free += chunk.size
                 if len(keep_list) == 0:
                     continue
                 free_list = keep_list
@@ -1140,6 +1143,9 @@ cdef class SingleDeviceMemoryPool:
             arena._free = new_free
             arena._index.swap(new_index)
             arena._flag.assign(new_index.size(), <int8_t>1)
+        if size_to_free > 0:
+            with LockAndNoGc(self._total_bytes_lock):
+                self._total_bytes -= size_to_free
 
     cdef object _get_chunk(self, size_t size, intptr_t stream_ptr):
         # need self._free_lock
