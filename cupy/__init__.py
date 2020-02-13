@@ -697,10 +697,6 @@ def ndim(a):
     Returns:
         (int): The number of dimensions in `a`.
 
-    Note:
-        This function is consistent with Numpy when handling ndarrays, scalars
-        and simple iterables. It does not handle more complex general cases
-        such as iterables where individual elements are cupy.ndarrays.
     """
     try:
         return a.ndim
