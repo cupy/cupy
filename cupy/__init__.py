@@ -72,7 +72,6 @@ from cupy import lib  # NOQA
 
 # import class and function
 from cupy.core import ndarray  # NOQA
-from cupy.core import ndim  # NOQA
 from cupy.core import ufunc  # NOQA
 
 
@@ -686,6 +685,28 @@ from cupy.statistics.histogram import histogram  # NOQA
 # Undocumented functions
 # -----------------------------------------------------------------------------
 from cupy.core import size  # NOQA
+
+
+def ndim(a):
+    """Returns the number of dimensions of an array.
+
+    Args:
+        a (array-like): If it is not already an `cupy.ndarray`, a conversion
+            via :func:`numpy.asarray` is attempted.
+
+    Returns:
+        (int): The number of dimensions in `a`.
+
+    Note:
+        This function is consistent with Numpy when handling ndarrays, scalars
+        and simple iterables. It does not handle more complex general cases
+        such as iterables where individual elements are cupy.ndarrays.
+    """
+    try:
+        return a.ndim
+    except AttributeError:
+        return numpy.asarray(a).ndim
+
 
 # -----------------------------------------------------------------------------
 # CuPy specific functions
