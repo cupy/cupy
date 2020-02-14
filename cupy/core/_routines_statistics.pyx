@@ -69,18 +69,32 @@ cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
 
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
-    if (cupy.cuda.cub_enabled and self.size != 0):
-        dtype_sum = dtype
-        if dtype is None and self.dtype.kind in 'iub':
-            # cast integer types to float (like the _mean ufunc)
+    dtype_sum = dtype_out = dtype
+    if dtype is None:
+        if self.dtype.kind in 'iub':
+            dtype_out = numpy.float64
             dtype_sum = numpy.float64
+        elif self.dtype.char == 'e':
+            dtype_sum = numpy.float32
+            dtype_out = numpy.float16
+    elif numpy.dtype(dtype).kind in 'iub':
+        # output will be the requested type, but compute the mean using float
+        dtype_out = dtype
+        dtype_sum = numpy.float64
+
+    result = None
+    if (cupy.cuda.cub_enabled and self.size != 0):
         result = cub.cub_reduction(self, cub.CUPY_CUB_SUM, axis, dtype_sum,
                                    out, keepdims)
-        if result is not None:
-            n = self.size // result.size
-            cupy.true_divide(result, n, out=result, casting='unsafe')
-            return result
-    return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    if result is not None:
+        n = self.size // result.size
+        cupy.true_divide(result, n, out=result, casting='unsafe')
+    else:
+        result = _mean(self, axis=axis, dtype=dtype_sum, out=out,
+                       keepdims=keepdims)
+    if dtype_out is not None and out is None:
+        result = result.astype(dtype_out)
+    return result
 
 
 cdef ndarray _ndarray_var(ndarray self, axis, dtype, out, ddof, keepdims):
