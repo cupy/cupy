@@ -4,7 +4,12 @@ import cupy
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
-from cupy.cuda import cub
+
+# TODO(leofang): always import cub when hipCUB is supported
+if not cupy.cuda.runtime.is_hip:
+    from cupy.cuda import cub
+else:
+    cub = None
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):

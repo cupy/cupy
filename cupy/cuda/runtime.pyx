@@ -187,8 +187,8 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaDevAttrComputeCapabilityMajor
     int cudaDevAttrComputeCapabilityMinor
 
-_is_hip_environment = hip_environment
-is_hip = hip_environment
+_is_hip_environment = hip_environment  # for runtime being cimport'd
+is_hip = hip_environment  # for runtime being import'd
 deviceAttributeComputeCapabilityMajor = cudaDevAttrComputeCapabilityMajor
 deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 

@@ -3,7 +3,6 @@ import os
 
 from cupy._environment import get_cuda_path  # NOQA
 from cupy.cuda import compiler  # NOQA
-from cupy.cuda import cub  # NOQA
 from cupy.cuda import device  # NOQA
 from cupy.cuda import driver  # NOQA
 from cupy.cuda import function  # NOQA
@@ -18,9 +17,13 @@ from cupy.cuda import texture  # NOQA
 
 
 _available = None
+
 cub_enabled = False  # default to not use CUB for backward compatibility
-if int(os.getenv('CUB_DISABLED', 1)) == 0:
-    cub_enabled = True
+# TODO(leofang): always import cub (but not enable it) when hipCUB is supported
+if not runtime.is_hip:
+    from cupy.cuda import cub  # NOQA
+    if int(os.getenv('CUB_DISABLED', 1)) == 0:
+        cub_enabled = True
 
 from cupy.cuda import cusolver  # NOQA
 # This flag is kept for backward compatibility.
