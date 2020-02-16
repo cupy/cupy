@@ -24,4 +24,54 @@ def asfortranarray(a, dtype=None):
 # TODO(okuta): Implement asarray_chkfinite
 
 
-# TODO(okuta): Implement require
+def require(a, dtype=None, requirements=None):
+    """Return an array which satisfies the requirements.
+
+    Args:
+        a (~cupy.ndarray): The input array.
+        dtype (str or dtype object, optional): The required data-type.
+            If None preserve the current dtype.
+        requirements (str or list of str): The requirements can be any
+            of the following
+
+            * 'F_CONTIGUOUS' ('F','FORTRAN') - ensure a Fortran-contiguous
+                array.
+            * 'C_CONTIGUOUS' ('C','CONTIGUOUS') - ensure a C-contiguous array.
+            * 'OWNDATA' ('O')      - ensure an array that owns its own data.
+
+        The implmentation is inspired by numpy.require.
+
+    Returns:
+        ~cupy.ndarray: array a with specified requirements and type if given.
+
+    .. seealso:: :func:`numpy.require`
+
+    """
+
+    possible_flags = {'C': 'C', 'C_CONTIGUOUS': 'C', 'CONTIGUOUS': 'C',
+                      'F': 'F', 'F_CONTIGUOUS': 'F', 'FORTRAN': 'F',
+                      'O': 'OWNDATA', 'OWNDATA': 'OWNDATA'}
+
+    if not requirements:
+        return cupy.asanyarray(a, dtype=dtype)
+    else:
+        requirements = {possible_flags[x.upper()] for x in requirements}
+
+    order = 'A'
+    if requirements >= {'C', 'F'}:
+        raise ValueError('Cannot specify both "C" and "F" order')
+    elif 'F' in requirements:
+        order = 'F_CONTIGUOUS'
+        requirements.remove('F')
+    elif 'C' in requirements:
+        order = 'C_CONTIGUOUS'
+        requirements.remove('C')
+
+    arr = cupy.array(a, dtype=dtype, order=order, copy=False, subok=False)
+
+    for prop in requirements:
+        if not arr.flags[prop]:
+            arr = arr.copy(order)
+            break
+
+    return arr

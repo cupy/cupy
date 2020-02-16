@@ -58,3 +58,22 @@ class TestKind(unittest.TestCase):
             self.assertTrue(ret.flags.f_contiguous)
             return ret.strides
         self.assertEqual(func(numpy), func(cupy))
+
+
+
+    @testing.for_all_dtypes()
+    def test_require_flag_check(self, dtype):
+        possible_flags = [['C_CONTIGUOUS'], ['F_CONTIGUOUS']]
+        x = cupy.zeros((2, 3, 4), dtype)
+        for flags in possible_flags:
+            arr = cupy.require(x, dtype, flags)
+            for parameter in flags:
+                assert arr.flags[parameter]
+                assert arr.dtype == dtype
+
+    @testing.for_all_dtypes()
+    def test_require_owndata(self, dtype):
+        x = cupy.zeros((2, 3, 4), dtype)
+        arr = x.view()
+        arr = cupy.require(arr, dtype, ['O'])
+        assert arr.flags['OWNDATA']
