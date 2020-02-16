@@ -2901,8 +2901,8 @@ cpdef zgtsv2StridedBatch_bufferSizeExt(
             <size_t*>bufferSizeInBytes)
     check_status(status)
 
-cpdef sgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d, size_t du,
-                         size_t x, int batchCount, int batchStride,
+cpdef sgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d,
+                         size_t du, size_t x, int batchCount, int batchStride,
                          size_t pBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -2912,8 +2912,8 @@ cpdef sgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d, size_t du,
             <void*>pBuffer)
     check_status(status)
 
-cpdef dgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d, size_t du,
-                         size_t x, int batchCount, int batchStride,
+cpdef dgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d,
+                         size_t du, size_t x, int batchCount, int batchStride,
                          size_t pBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -2923,8 +2923,8 @@ cpdef dgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d, size_t du,
             <void*>pBuffer)
     check_status(status)
 
-cpdef cgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d, size_t du,
-                         size_t x, int batchCount, int batchStride,
+cpdef cgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d,
+                         size_t du, size_t x, int batchCount, int batchStride,
                          size_t pBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -2934,8 +2934,8 @@ cpdef cgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d, size_t du,
             batchCount, batchStride, <void*>pBuffer)
     check_status(status)
 
-cpdef zgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d, size_t du,
-                         size_t x, int batchCount, int batchStride,
+cpdef zgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d,
+                         size_t du, size_t x, int batchCount, int batchStride,
                          size_t pBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
