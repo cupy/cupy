@@ -1,3 +1,5 @@
+from libc.stdint cimport intptr_t
+
 cdef extern from *:
     ctypedef int IndexBase 'cusparseIndexBase_t'
     ctypedef int Status 'cusparseStatus_t'
