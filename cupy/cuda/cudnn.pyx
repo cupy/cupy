@@ -1005,7 +1005,8 @@ cpdef size_t getReductionIndicesSize(intptr_t handle, size_t reduceTensorDesc,
     return sizeInBytes
 
 
-cpdef size_t getReductionWorkspaceSize(intptr_t handle, size_t reduceTensorDesc,
+cpdef size_t getReductionWorkspaceSize(intptr_t handle, 
+                                       size_t reduceTensorDesc,
                                        size_t aDesc, size_t cDesc) except? 0:
     cdef size_t sizeInBytes
     status = cudnnGetReductionWorkspaceSize(

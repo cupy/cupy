@@ -401,8 +401,8 @@ cpdef convolutionBackwardBias(
     intptr_t handle, size_t alpha, size_t srcDesc, size_t srcData,
     size_t beta, size_t destDesc, size_t destData)
 cpdef findConvolutionBackwardFilterAlgorithm(
-    intptr_t handle, size_t xDesc, size_t dyDesc, size_t convDesc, size_t dwDesc,
-    int requestedAlgoCount)
+    intptr_t handle, size_t xDesc, size_t dyDesc, size_t convDesc,
+    size_t dwDesc, int requestedAlgoCount)
 cpdef list findConvolutionBackwardFilterAlgorithmEx(
     intptr_t handle, size_t xDesc, size_t x, size_t dyDesc, size_t dy,
     size_t convDesc, size_t dwDesc, size_t dw, int requestedAlgoCount,
@@ -426,8 +426,8 @@ cpdef convolutionBackwardFilter_v3(
     size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
     size_t gradDesc, size_t gradData)
 cpdef findConvolutionBackwardDataAlgorithm(
-    intptr_t handle, size_t wDesc, size_t dyDesc, size_t convDesc, size_t dxDesc,
-    int requestedAlgoCount)
+    intptr_t handle, size_t wDesc, size_t dyDesc, size_t convDesc,
+    size_t dxDesc, int requestedAlgoCount)
 cpdef list findConvolutionBackwardDataAlgorithmEx(
     intptr_t handle, size_t wDesc, size_t w, size_t dyDesc, size_t dy,
     size_t convDesc, size_t dxDesc, size_t dx,
