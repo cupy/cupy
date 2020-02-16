@@ -27,7 +27,7 @@ def asfortranarray(a, dtype=None):
 
 def require(a, dtype=None, requirements=None):
     """Return an array which satisfies the requirements.
-
+    
     Args:
         a (~cupy.ndarray): The input array.
         dtype (str or dtype object, optional): The required data-type.
@@ -35,15 +35,14 @@ def require(a, dtype=None, requirements=None):
         requirements (str or list of str): The requirements can be any
             of the following
 
-            * 'F_CONTIGUOUS' ('F','FORTRAN') - ensure a Fortran-contiguous
-                array.
-            * 'C_CONTIGUOUS' ('C','CONTIGUOUS') - ensure a C-contiguous array.
+            * 'F_CONTIGUOUS' ('F', 'FORTRAN') - ensure a Fortran-contiguous array.
+
+            * 'C_CONTIGUOUS' ('C', 'CONTIGUOUS') - ensure a C-contiguous array.
+
             * 'OWNDATA' ('O')      - ensure an array that owns its own data.
 
-        The implmentation is inspired by numpy.require.
-
     Returns:
-        ~cupy.ndarray: array a with specified requirements and type if given.
+        ~cupy.ndarray: The input array ``a`` with specified requirements and type if provided.
 
     .. seealso:: :func:`numpy.require`
 
