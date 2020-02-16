@@ -315,12 +315,12 @@ cpdef inline check_status(int status):
 # Context
 ###############################################################################
 
-cpdef size_t create() except? 0:
+cpdef intptr_t create() except? 0:
     cdef Handle handle
     with nogil:
         status = cublasCreate(&handle)
     check_status(status)
-    return <size_t>handle
+    return <intptr_t>handle
 
 
 cpdef destroy(intptr_t handle):
