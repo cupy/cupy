@@ -1,3 +1,4 @@
+import cupy
 from cupy import core
 
 
