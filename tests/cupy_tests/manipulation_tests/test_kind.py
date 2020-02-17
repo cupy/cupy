@@ -59,8 +59,6 @@ class TestKind(unittest.TestCase):
             return ret.strides
         self.assertEqual(func(numpy), func(cupy))
 
-
-
     @testing.for_all_dtypes()
     def test_require_flag_check(self, dtype):
         possible_flags = [['C_CONTIGUOUS'], ['F_CONTIGUOUS']]
