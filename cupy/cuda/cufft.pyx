@@ -447,7 +447,10 @@ class Plan1d(object):
         # We need to manage the buffers ourselves in order to avoid excessive,
         # uncessary memory usage. Note that these buffers are used for in-place
         # transforms, and are re-used (lifetime tied to the plan).
-        if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
+
+        # TODO(leofang): revisit this when NumPy support is added
+        # if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
+        if isinstance(a, cupy.ndarray):
             if self.xtArr == 0 and self.xtArr_buffer is None:
                 nGPUs = len(self.gpus)
 
@@ -464,8 +467,9 @@ class Plan1d(object):
                 # get buffer
                 if isinstance(a, cupy.ndarray):
                     fmt = CUFFT_XT_FORMAT_INPLACE
-                else:  # from numpy
-                    fmt = CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED
+                # TODO(leofang): revisit this when NumPy support is added
+                # else:  # from numpy
+                #     fmt = CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED
                 ptr, xtArr_buffer = _XtMalloc(self.gpus, sizes, fmt)
 
                 xtArr = <XtArray*>ptr
@@ -485,8 +489,9 @@ class Plan1d(object):
                 if self.batch == 1:
                     if isinstance(a, cupy.ndarray):
                         fmt = CUFFT_XT_FORMAT_INPLACE
-                    else:  # from numpy
-                        fmt = CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED
+                    # TODO(leofang): revisit this when NumPy support is added
+                    # else:  # from numpy
+                    #     fmt = CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED
                     xtArr.subFormat = fmt
         elif isinstance(a, list):
             # TODO(leofang): For users running Plan1d.fft() (bypassing all
@@ -506,7 +511,9 @@ class Plan1d(object):
         cdef intptr_t ptr, ptr2
         cdef size_t size
 
-        if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
+        # TODO(leofang): revisit this when NumPy support is added
+        # if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
+        if isinstance(a, cupy.ndarray):
             start = 0
             b = a.ravel()
             assert b.flags['OWNDATA'] is False
@@ -539,13 +546,14 @@ class Plan1d(object):
                             curr_event.synchronize()
                         start += count
                     assert start == b.size
-                else:  # numpy
-                    ptr2 = b.ctypes.data
-                    with nogil:
-                        result = cufftXtMemcpy(
-                            plan, <void*>arr, <void*>ptr2,
-                            CUFFT_COPY_HOST_TO_DEVICE)
-                    check_result(result)
+                # TODO(leofang): revisit this when NumPy support is added
+                # else:  # numpy
+                #     ptr2 = b.ctypes.data
+                #     with nogil:
+                #         result = cufftXtMemcpy(
+                #             plan, <void*>arr, <void*>ptr2,
+                #             CUFFT_COPY_HOST_TO_DEVICE)
+                #     check_result(result)
             elif action == 'gather':
                 if isinstance(a, cupy.ndarray):
                     if self.batch == 1:
@@ -571,13 +579,14 @@ class Plan1d(object):
                             curr_event.synchronize()
                         start += count
                     assert start == b.size
-                else:  # numpy
-                    ptr2 = b.ctypes.data
-                    with nogil:
-                        result = cufftXtMemcpy(
-                            plan, <void*>ptr2, <void*>arr,
-                            CUFFT_COPY_DEVICE_TO_HOST)
-                    check_result(result)
+                # TODO(leofang): revisit this when NumPy support is added
+                # else:  # numpy
+                #     ptr2 = b.ctypes.data
+                #     with nogil:
+                #         result = cufftXtMemcpy(
+                #             plan, <void*>ptr2, <void*>arr,
+                #             CUFFT_COPY_DEVICE_TO_HOST)
+                #     check_result(result)
             else:
                 raise ValueError
 
