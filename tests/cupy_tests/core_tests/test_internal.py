@@ -196,7 +196,6 @@ class TestCompleteSlice(unittest.TestCase):
             slice(*self.expect))
 
 
-@testing.with_requires('numpy>=1.12')
 class TestCompleteSliceError(unittest.TestCase):
 
     def test_invalid_step_value(self):

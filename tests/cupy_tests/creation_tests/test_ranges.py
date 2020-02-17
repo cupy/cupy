@@ -80,7 +80,6 @@ class TestRanges(unittest.TestCase):
     def test_linspace_zero_num(self, xp, dtype):
         return xp.linspace(0, 10, 0, dtype=dtype)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_linspace_zero_num_no_endopoint_with_retstep(self, xp, dtype):
@@ -128,7 +127,6 @@ class TestRanges(unittest.TestCase):
     def test_linspace_float_args_with_int_dtype(self, xp):
         return xp.linspace(0.1, 9.1, 11, dtype=int)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_raises()
     def test_linspace_neg_num(self, xp):
         return xp.linspace(0, 10, -1)
@@ -137,7 +135,6 @@ class TestRanges(unittest.TestCase):
     def test_linspace_float_overflow(self, xp):
         return xp.linspace(0., sys.float_info.max / 5, 10, dtype=float)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_array_equal()
     def test_linspace_float_underflow(self, xp):
         # find minimum subnormal number
@@ -183,7 +180,6 @@ class TestRanges(unittest.TestCase):
     def test_logspace_float_args_with_int_dtype(self, xp):
         return xp.logspace(0.1, 2.1, 11, dtype=int)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_raises()
     def test_logspace_neg_num(self, xp):
         return xp.logspace(0, 10, -1)

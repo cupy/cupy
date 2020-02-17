@@ -77,6 +77,5 @@ class TestCov(unittest.TestCase):
         self.check_raises((3, 4, 2))
         self.check_raises((2, 3), (3, 4, 2))
 
-    @testing.with_requires('numpy>=1.10')
     def test_cov_empty(self):
         self.check((0, 1))

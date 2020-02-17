@@ -36,8 +36,6 @@ class TestCanCast(unittest.TestCase):
         return ret
 
 
-# NumPy 1.9 cannot handle float16 in ``numpy.common_type``.
-@testing.with_requires('numpy>=1.10')
 class TestCommonType(unittest.TestCase):
 
     @testing.numpy_cupy_equal()

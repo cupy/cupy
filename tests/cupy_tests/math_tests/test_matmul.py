@@ -55,7 +55,6 @@ from cupy import testing
 @testing.gpu
 class TestMatmul(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -64,7 +63,6 @@ class TestMatmul(unittest.TestCase):
         x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
         return operator.matmul(x1, x2)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -105,7 +103,6 @@ class TestMatmulLarge(unittest.TestCase):
         (numpy.uint16, numpy.uint16),
     }
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -117,7 +114,6 @@ class TestMatmulLarge(unittest.TestCase):
         x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
         return operator.matmul(x1, x2)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -147,7 +143,6 @@ class TestMatmulLarge(unittest.TestCase):
 @testing.gpu
 class TestMatmulInvalidShape(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_invalid_shape(self, xp):
         shape1, shape2 = self.shape_pair

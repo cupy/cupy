@@ -57,7 +57,6 @@ class TestTrigonometric(unittest.TestCase):
 
 
 @testing.gpu
-@testing.with_requires('numpy>=1.14')  # NumPy issue #9251
 class TestUnwrap(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)

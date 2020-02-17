@@ -159,7 +159,6 @@ class TestRealImag(unittest.TestCase):
 class TestScalarConversion(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.12.0')
     def test_scalar_conversion(self, dtype):
         scalar = 1 + 1j if numpy.dtype(dtype).kind == 'c' else 1
         x_1d = cupy.array([scalar]).astype(dtype)

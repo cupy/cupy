@@ -34,7 +34,6 @@ def _correct_np_dtype(xp, dtype, out):
     'norm': [None, 'ortho']
 }))
 @testing.gpu
-@testing.with_requires('numpy>=1.10.0')
 class TestFft(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -214,7 +213,6 @@ class TestFft(unittest.TestCase):
         'norm': [None, 'ortho']
     })))
 @testing.gpu
-@testing.with_requires('numpy>=1.10.0')
 class TestFft2(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -395,7 +393,6 @@ class TestFft2(unittest.TestCase):
         'norm': [None, 'ortho']
     })))
 @testing.gpu
-@testing.with_requires('numpy>=1.10.0')
 class TestFftn(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -564,7 +561,6 @@ class TestFftn(unittest.TestCase):
     'norm': [None, 'ortho']
 }))
 @testing.gpu
-@testing.with_requires('numpy>=1.10.0')
 class TestRfft(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
@@ -644,7 +640,6 @@ class TestRfft(unittest.TestCase):
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.10.0')
 class TestRfft2(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
@@ -729,7 +724,6 @@ class TestRfft2(unittest.TestCase):
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.10.0')
 class TestRfftn(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
@@ -802,7 +796,6 @@ class TestRfftn(unittest.TestCase):
     'norm': [None, 'ortho'],
 }))
 @testing.gpu
-@testing.with_requires('numpy>=1.10.0')
 class TestHfft(unittest.TestCase):
 
     @testing.for_all_dtypes()
