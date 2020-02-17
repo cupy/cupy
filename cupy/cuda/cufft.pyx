@@ -68,7 +68,7 @@ cdef extern from 'cupy_cufft.h' nogil:
                         DoubleComplex *odata, int direction)
     Result cufftExecD2Z(Handle plan, Double *idata, DoubleComplex *odata)
     Result cufftExecZ2D(Handle plan, DoubleComplex *idata, Double *odata)
-    
+
     # Version
     Result cufftGetVersion(int* version)
 
@@ -248,8 +248,9 @@ cdef _XtFree(intptr_t ptr):
 
 class Plan1d(object):
     def __init__(self, int nx, int fft_type, int batch, *,
-                 use_multi_gpus=False, devices=None, out=None):
+                 devices=None, out=None):
         cdef Handle plan
+        cdef bint use_multi_gpus = 0 if devices is None else 1
 
         with nogil:
             result = cufftCreate(&plan)
@@ -267,7 +268,7 @@ class Plan1d(object):
         self.fft_type = fft_type
         self.batch = batch
 
-        self.use_multi_gpus = use_multi_gpus
+        self._use_multi_gpus = use_multi_gpus
         self.batch_share = None
         self.xtArr = <intptr_t>0  # pointer to metadata for multi-GPU buffer
         self.xtArr_buffer = None  # actual multi-GPU intermediate buffer
@@ -406,7 +407,7 @@ class Plan1d(object):
         _thread_local._current_plan = None
 
     def fft(self, a, out, direction):
-        if self.use_multi_gpus:
+        if self._use_multi_gpus:
             # Note: mult-GPU plans cannot set stream
             self._multi_gpu_fft(a, out, direction)
         else:

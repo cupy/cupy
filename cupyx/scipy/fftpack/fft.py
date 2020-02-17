@@ -108,11 +108,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
     else:  # 1D transform
         out_size = shape[axis1D]
         batch = prod(shape) // out_size
-        if not config.use_multi_gpus:
-            plan = cufft.Plan1d(out_size, fft_type, batch)
-        else:
-            plan = cufft.Plan1d(out_size, fft_type, batch,
-                                use_multi_gpus=True, devices=config._devices)
+        devices = None if not config.use_multi_gpus else config._devices
+        plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
 
     return plan
 

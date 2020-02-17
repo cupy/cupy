@@ -1,3 +1,6 @@
+from cupy import util
+
+
 enable_nd_planning = True
 use_multi_gpus = False
 _devices = None
@@ -11,11 +14,16 @@ def set_cufft_gpus(gpus):
             to be used. For the former case, the first ``gpus`` GPUs
             will be used.
 
+    .. warning::
+        This API is currently experimental and may be changed in the future
+        version.
+
     .. seealso:: `Multiple GPU cuFFT Transforms`_
 
     .. _Multiple GPU cuFFT Transforms:
         https://docs.nvidia.com/cuda/cufft/index.html#multiple-GPU-cufft-transforms
     '''
+    util.experimental('cupy.fft.config.set_cufft_gpus')
     global _devices
 
     if isinstance(gpus, int):

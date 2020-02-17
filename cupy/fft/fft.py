@@ -98,11 +98,8 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             raise RuntimeError('Use the cuFFT plan either as a context manager'
                                ' or as an argument.')
     if plan is None:
-        if not config.use_multi_gpus:
-            plan = cufft.Plan1d(out_size, fft_type, batch)
-        else:
-            plan = cufft.Plan1d(out_size, fft_type, batch,
-                                use_multi_gpus=True, devices=config._devices)
+        devices = None if not config.use_multi_gpus else config._devices
+        plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
     else:
         # check plan validity
         if not isinstance(plan, cufft.Plan1d):
@@ -113,7 +110,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             raise ValueError('Target array size does not match the plan.')
         if batch != plan.batch:
             raise ValueError('Batch size does not match the plan.')
-        if config.use_multi_gpus != plan.use_multi_gpus:
+        if config.use_multi_gpus != plan._use_multi_gpus:
             raise ValueError('Unclear if multiple GPUs are to be used or not.')
 
     if overwrite_x and value_type == 'C2C':
