@@ -676,6 +676,8 @@ class TestRfft2(unittest.TestCase):
             _fft_module(cp).rfft2(x, s=self.s, axes=self.axes,
                                   norm=self.norm, plan='abc')
 
+    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
+                        reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -687,6 +689,8 @@ class TestRfft2(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
+                        reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -757,6 +761,8 @@ class TestRfftn(unittest.TestCase):
             _fft_module(cp).rfftn(x, s=self.s, axes=self.axes,
                                   norm=self.norm, plan='abc')
 
+    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
+                        reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -768,6 +774,8 @@ class TestRfftn(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
+                        reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
