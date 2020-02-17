@@ -72,6 +72,34 @@ class _data_matrix(base.spmatrix):
 
         """
         return cupy.count_nonzero(self.data)
+    
+    def mean(self, axis=None):
+        """Compute the arithmetic mean along the specified axis.
+        
+        Args:
+            axis (int or ``None``): Axis along which the sum is comuted.
+                If it is ``None``, it computes the average of all the elements.
+                Select from ``{None, 0, 1, -2, -1}``.
+                
+        Returns:
+            cupy.ndarray: Summed array.
+            
+        .. seealso::
+           :meth:`scipy.sparse.spmatrix.mean`
+           
+        """
+        nRow = self.shape[0]
+        nCol = self.shape[1]
+        data = self.data.copy()
+        if not axis:
+            data = cupy.true_divide(data, nRow * nCol)
+            return self._with_data(data).sum(axis)
+        if axis == 0 or axis == -2:
+            data = cupy.true_divide(data, nRow)
+            return self._with_data(data).sum(axis)
+        else:
+            data = cupy.true_divide(data, nCol)
+            return self._with_data(data).sum(axis).flatten()
 
     def power(self, n, dtype=None):
         """Elementwise power function.
