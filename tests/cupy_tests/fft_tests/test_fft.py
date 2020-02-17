@@ -82,7 +82,7 @@ def multi_gpu_config(gpu_configs=None):
         return test_func
     return decorator
 
-  
+
 def _size_last_transform_axis(shape, s, axes):
     if s is not None:
         if s[-1] is not None:
