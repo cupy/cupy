@@ -72,7 +72,7 @@ class _data_matrix(base.spmatrix):
 
         """
         return cupy.count_nonzero(self.data)
-    
+
     def mean(self, axis=None):
         """Compute the arithmetic mean along the specified axis.
 
