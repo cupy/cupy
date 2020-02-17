@@ -99,7 +99,7 @@ class _data_matrix(base.spmatrix):
         if axis == 0 or axis == -2:
             data = cupy.true_divide(data, nRow)
             return self._with_data(data).sum(axis, dtype, out)
-        
+
         else:
             data = cupy.true_divide(data, nCol)
             return self._with_data(data).sum(axis, dtype, out).flatten()
