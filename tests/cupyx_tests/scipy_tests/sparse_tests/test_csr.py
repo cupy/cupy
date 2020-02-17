@@ -939,6 +939,7 @@ class TestCsrMatrixSum(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         return m.mean(axis=self.axis)
 
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
