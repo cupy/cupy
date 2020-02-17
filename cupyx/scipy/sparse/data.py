@@ -75,18 +75,18 @@ class _data_matrix(base.spmatrix):
     
     def mean(self, axis=None):
         """Compute the arithmetic mean along the specified axis.
-        
+
         Args:
             axis (int or ``None``): Axis along which the sum is comuted.
                 If it is ``None``, it computes the average of all the elements.
                 Select from ``{None, 0, 1, -2, -1}``.
-                
+
         Returns:
             cupy.ndarray: Summed array.
-            
+
         .. seealso::
            :meth:`scipy.sparse.spmatrix.mean`
-           
+
         """
         nRow = self.shape[0]
         nCol = self.shape[1]
