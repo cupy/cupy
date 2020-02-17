@@ -7,7 +7,7 @@ from cupy.core import fusion
 from cupy.logic import content
 
 
-def amin(a, axis=None, out=None, keepdims=False, dtype=None):
+def amin(a, axis=None, out=None, keepdims=False):
     """Returns the minimum of an array or the minimum along an axis.
 
     .. note::
@@ -22,7 +22,6 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
-        dtype: Data type specifier.
 
     Returns:
         cupy.ndarray: The minimum of ``a``, along the axis if specified.
@@ -35,13 +34,13 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
             raise NotImplementedError(
                 'cupy.amin does not support `keepdims` in fusion yet.')
         return fusion._call_reduction(_statistics.amin,
-                                      a, axis=axis, dtype=dtype, out=out)
+                                      a, axis=axis, out=out)
 
     # TODO(okuta): check type
-    return a.min(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return a.min(axis=axis, out=out, keepdims=keepdims)
 
 
-def amax(a, axis=None, out=None, keepdims=False, dtype=None):
+def amax(a, axis=None, out=None, keepdims=False):
     """Returns the maximum of an array or the maximum along an axis.
 
     .. note::
@@ -56,7 +55,6 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
-        dtype: Data type specifier.
 
     Returns:
         cupy.ndarray: The maximum of ``a``, along the axis if specified.
@@ -69,10 +67,10 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
             raise NotImplementedError(
                 'cupy.amax does not support `keepdims` in fusion yet.')
         return fusion._call_reduction(_statistics.amax,
-                                      a, axis=axis, dtype=dtype, out=out)
+                                      a, axis=axis, out=out)
 
     # TODO(okuta): check type
-    return a.max(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return a.max(axis=axis, out=out, keepdims=keepdims)
 
 
 def nanmin(a, axis=None, out=None, keepdims=False):
@@ -92,11 +90,16 @@ def nanmin(a, axis=None, out=None, keepdims=False):
     Returns:
         cupy.ndarray: The minimum of ``a``, along the axis if specified.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`numpy.nanmin`
 
     """
+    # TODO(niboshi): Avoid synchronization.
     res = core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
-    if content.isnan(res).any():
+    if content.isnan(res).any():  # synchronize!
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
     return res
 
@@ -118,16 +121,45 @@ def nanmax(a, axis=None, out=None, keepdims=False):
     Returns:
         cupy.ndarray: The maximum of ``a``, along the axis if specified.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`numpy.nanmax`
 
     """
+    # TODO(niboshi): Avoid synchronization.
     res = core.nanmax(a, axis=axis, out=out, keepdims=keepdims)
-    if content.isnan(res).any():
+    if content.isnan(res).any():  # synchronize!
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
     return res
 
 
-# TODO(okuta): Implement ptp
+def ptp(a, axis=None, out=None, keepdims=False):
+    """Returns the range of values (maximum - minimum) along an axis.
+
+    .. note::
+
+       The name of the function comes from the acronym for 'peak to peak'.
+
+       When at least one element is NaN, the corresponding ptp value will be
+       NaN.
+
+    Args:
+        a (cupy.ndarray): Array over which to take the range.
+        axis (int): Axis along which to take the minimum. The flattened
+            array is used by default.
+        out (cupy.ndarray): Output array.
+        keepdims (bool): If ``True``, the axis is retained as an axis of
+            size one.
+
+    Returns:
+        cupy.ndarray: The minimum of ``a``, along the axis if specified.
+
+    .. seealso:: :func:`numpy.amin`
+
+    """
+    return a.ptp(axis=axis, out=out, keepdims=keepdims)
 
 
 def percentile(a, q, axis=None, out=None, interpolation='linear',

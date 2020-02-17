@@ -2,8 +2,6 @@ import numpy
 from numpy import linalg
 
 import cupy
-from cupy.cuda import cusolver
-from cupy.cuda import device
 from cupy.linalg import decomposition
 from cupy.linalg import util
 
@@ -214,63 +212,48 @@ def slogdet(a):
         msg = ('%d-dimensional array given. '
                'Array must be at least two-dimensional' % a.ndim)
         raise linalg.LinAlgError(msg)
+    util._assert_nd_squareness(a)
 
     dtype = numpy.promote_types(a.dtype.char, 'f')
-    shape = a.shape[:-2]
-    sign = cupy.empty(shape, dtype)
-    logdet = cupy.empty(shape, dtype)
+    real_dtype = dtype
 
-    a = a.astype(dtype)
-    for index in numpy.ndindex(*shape):
-        s, logd = _slogdet_one(a[index])
-        sign[index] = s
-        logdet[index] = logd
-    return sign, logdet
+    # TODO(kataoka): support complex types
+    if dtype not in (numpy.float32, numpy.float64):
+        msg = ('dtype must be float32 or float64'
+               ' (actual: {})'.format(a.dtype))
+        raise ValueError(msg)
 
+    a_shape = a.shape
+    shape = a_shape[:-2]
+    n = a_shape[-2]
 
-def _slogdet_one(a):
-    util._assert_rank2(a)
-    util._assert_nd_squareness(a)
-    dtype = a.dtype
+    if a.size == 0:
+        # empty batch (result is empty, too) or empty matrices det([[]]) == 1
+        sign = cupy.ones(shape, dtype)
+        logdet = cupy.zeros(shape, real_dtype)
+        return sign, logdet
 
-    handle = device.get_cusolver_handle()
-    m = len(a)
-    ipiv = cupy.empty(m, dtype=numpy.int32)
-    dev_info = cupy.empty((), dtype=numpy.int32)
-
-    # Need to make a copy because getrf works inplace
-    a_copy = a.copy(order='F')
-
-    if dtype == 'f':
-        getrf_bufferSize = cusolver.sgetrf_bufferSize
-        getrf = cusolver.sgetrf
-    else:
-        getrf_bufferSize = cusolver.dgetrf_bufferSize
-        getrf = cusolver.dgetrf
-
-    buffersize = getrf_bufferSize(handle, m, m, a_copy.data.ptr, m)
-    workspace = cupy.empty(buffersize, dtype=dtype)
-    getrf(handle, m, m, a_copy.data.ptr, m, workspace.data.ptr,
-          ipiv.data.ptr, dev_info.data.ptr)
+    lu, ipiv, dev_info = decomposition._lu_factor(a, dtype)
 
     # dev_info < 0 means illegal value (in dimensions, strides, and etc.) that
     # should never happen even if the matrix contains nan or inf.
     # TODO(kataoka): assert dev_info >= 0 if synchronization is allowed for
     # debugging purposes.
 
-    diag = cupy.diag(a_copy)
+    diag = cupy.diagonal(lu, axis1=-2, axis2=-1)
+
     # ipiv is 1-origin
-    non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, m + 1)) +
-                cupy.count_nonzero(diag < 0))
+    non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1) +
+                cupy.count_nonzero(diag < 0, axis=-1))
 
     # Note: sign == -1 ** (non_zero % 2)
     sign = (non_zero % 2) * -2 + 1
-    logdet = cupy.log(abs(diag)).sum()
+    logdet = cupy.log(abs(diag)).sum(axis=-1)
 
     singular = dev_info > 0
     return (
-        cupy.where(singular, dtype.type(0), sign),
-        cupy.where(singular, dtype.type('-inf'), logdet),
+        cupy.where(singular, dtype.type(0), sign.astype(dtype)).reshape(shape),
+        cupy.where(singular, real_dtype.type('-inf'), logdet).reshape(shape),
     )
 
 

@@ -8,76 +8,14 @@ from cupy.core import _errors
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._ufuncs import elementwise_copy
 
-cimport cython  # NOQA
 cimport cpython  # NOQA
+cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy.core cimport _routines_indexing as _indexing
 from cupy.core cimport core
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
-
-
-cdef Py_ssize_t PY_SSIZE_T_MAX = sys.maxsize
-
-
-cdef _broadcast_core(list arrays, vector.vector[Py_ssize_t]& shape):
-    cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh, nd
-    cdef vector.vector[Py_ssize_t] strides
-    cdef vector.vector[int] index
-    cdef ndarray a
-    cdef list ret
-
-    shape.clear()
-    index.reserve(len(arrays))
-    nd = 0
-    for i, x in enumerate(arrays):
-        if not isinstance(x, ndarray):
-            continue
-        a = x
-        index.push_back(i)
-        nd = max(nd, <Py_ssize_t>a._shape.size())
-
-    if index.size() == 0:
-        return
-
-    shape.reserve(nd)
-    for i in range(nd):
-        smin = PY_SSIZE_T_MAX
-        smax = 0
-        for j in index:
-            a = arrays[j]
-            a_ndim = <Py_ssize_t>a._shape.size()
-            if i >= nd - a_ndim:
-                s = a._shape[i - (nd - a_ndim)]
-                smin = min(smin, s)
-                smax = max(smax, s)
-        if smin == 0 and smax > 1:
-            raise ValueError(
-                'shape mismatch: objects cannot be broadcast to a '
-                'single shape')
-        shape.push_back(0 if smin == 0 else smax)
-
-    for i in index:
-        a = arrays[i]
-        if internal.vector_equal(a._shape, shape):
-            continue
-
-        strides.assign(nd, <Py_ssize_t>0)
-        a_ndim = <Py_ssize_t>a._shape.size()
-        for j in range(a_ndim):
-            a_sh = a._shape[j]
-            if a_sh == shape[j + nd - a_ndim]:
-                strides[j + nd - a_ndim] = a._strides[j]
-            elif a_sh != 1:
-                raise ValueError(
-                    'operands could not be broadcast together with shapes '
-                    '{}'.format(
-                        ', '.join([str(x.shape) if isinstance(x, ndarray)
-                                   else '()' for x in arrays])))
-
-        # TODO(niboshi): Confirm update_x_contiguity flags
-        arrays[i] = a._view(shape, strides, True, True)
 
 
 @cython.final
@@ -103,7 +41,7 @@ cdef class broadcast:
     def __init__(self, *arrays):
         cdef vector.vector[Py_ssize_t] shape
         cdef list val = list(arrays)
-        _broadcast_core(val, shape)
+        internal._broadcast_core(val, shape)
         self.values = tuple(val)
         self.shape = tuple(shape)
         self.nd = <Py_ssize_t>shape.size()
@@ -281,6 +219,24 @@ cdef ndarray _ndarray_repeat(ndarray self, repeats, axis):
 # exposed
 
 
+cpdef ndarray _expand_dims(ndarray a, tuple axis):
+    cdef vector.vector[Py_ssize_t] normalized_axis
+    cdef out_ndim = a.ndim + len(axis)
+    cdef vector.vector[Py_ssize_t] a_shape = a.shape, out_shape
+    _normalize_axis_tuple(axis, out_ndim, normalized_axis)
+    out_shape.assign(out_ndim, 0)
+    cdef Py_ssize_t i, j
+    for i in normalized_axis:
+        out_shape[i] = 1
+    j = 0
+    for i in range(out_ndim):
+        if out_shape[i] == 1:
+            continue
+        out_shape[i] = a_shape[j]
+        j += 1
+    return _reshape(a, out_shape)
+
+
 cpdef ndarray moveaxis(ndarray a, source, destination):
     cdef vector.vector[Py_ssize_t] src, dest
     _normalize_axis_tuple(source, a.ndim, src)
@@ -335,7 +291,7 @@ cpdef ndarray _reshape(ndarray self,
     if internal.vector_equal(shape, self._shape):
         return self.view()
 
-    cdef size_t shape_size = internal.prod(shape)
+    cdef Py_ssize_t shape_size = internal.prod(shape)
     if self.size != shape_size:
         raise ValueError('cannot reshape array of size {}'
                          ' into shape {}'.format(self.size, shape_size))
@@ -365,18 +321,19 @@ cpdef ndarray _T(ndarray self):
 cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes):
     cdef vector.vector[Py_ssize_t] a_axes
     cdef vector.vector[char] axis_flags
-    cdef Py_ssize_t i, ndim, axis
+    cdef Py_ssize_t i, ndim, axis, axes_size
     cdef bint is_normal = True, is_trans = True
 
-    if axes.size() == 0:
+    axes_size = axes.size()
+    if axes_size == 0:
         return _T(self)
 
     ndim = self._shape.size()
-    if <Py_ssize_t>axes.size() != ndim:
+    if axes_size != ndim:
         raise ValueError('Invalid axes value: %s' % str(axes))
 
     axis_flags.resize(ndim, 0)
-    for i in range(axes.size()):
+    for i in range(axes_size):
         axis = axes[i]
         if axis < -ndim or axis >= ndim:
             raise IndexError('Axes overrun')
@@ -435,7 +392,8 @@ cpdef array_split(ndarray ary, indices_or_sections, Py_ssize_t axis):
     if ary.size == 0:
         stride = 0
     for index in indices:
-        shape[axis] = index - prev
+        index = min(index, size)
+        shape[axis] = max(index - prev, 0)
         v = ary.view()
         v.data = ary.data + prev * stride
         # TODO(niboshi): Confirm update_x_contiguity flags

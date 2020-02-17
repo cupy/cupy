@@ -489,6 +489,16 @@ class TestCudaArrayInterface(unittest.TestCase):
         assert a.strides == b.strides
         assert a.nbytes == b.data.mem.size
 
+    @testing.for_all_dtypes()
+    def test_with_zero_size_array(self, dtype):
+        a = testing.shaped_arange((0,), cupy, dtype)
+        b = cupy.asarray(
+            DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
+        assert a.strides == b.strides
+        assert a.nbytes == b.data.mem.size
+        assert a.data.ptr == 0
+        assert a.size == 0
+
 
 @testing.gpu
 @testing.parameterize(*testing.product({

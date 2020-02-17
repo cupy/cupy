@@ -63,7 +63,7 @@ namespace complex {
  * Input:  ln(DBL_MAX) <= x < ln(2 * DBL_MAX / DBL_MIN_DENORM) ~= 1454.91
  * Output: 2**1023 <= y < 2**1024
  */
-__device__ inline double frexp_exp(double x, int* expt) {
+__host__ __device__ inline double frexp_exp(double x, int* expt) {
   const uint32_t k = 1799;                    /* constant for reduction */
   const double kln2 = 1246.97177782734161156; /* k * ln2 */
 
@@ -83,7 +83,7 @@ __device__ inline double frexp_exp(double x, int* expt) {
   return (exp_x);
 }
 
-__device__ inline complex<double> ldexp_cexp(complex<double> z, int expt) {
+__host__ __device__ inline complex<double> ldexp_cexp(complex<double> z, int expt) {
   double x, y, exp_x, scale1, scale2;
   int ex_expt, half_expt;
 
@@ -105,7 +105,7 @@ __device__ inline complex<double> ldexp_cexp(complex<double> z, int expt) {
                           ::sin(y) * exp_x * scale1 * scale2));
 }
 
-__device__ inline complex<double> cexp(const complex<double>& z) {
+__host__ __device__ inline complex<double> cexp(const complex<double>& z) {
   double x, y, exp_x;
   uint32_t hx, hy, lx, ly;
 
@@ -161,12 +161,12 @@ __device__ inline complex<double> cexp(const complex<double>& z) {
 }  // namespace detail
 
 template <typename ValueType>
-__device__ inline complex<ValueType> exp(const complex<ValueType>& z) {
+__host__ __device__ inline complex<ValueType> exp(const complex<ValueType>& z) {
   return polar(::exp(z.real()), z.imag());
 }
 
 template <>
-__device__ inline complex<double> exp(const complex<double>& z) {
+__host__ __device__ inline complex<double> exp(const complex<double>& z) {
   return detail::complex::cexp(z);
 }
 

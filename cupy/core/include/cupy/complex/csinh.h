@@ -56,7 +56,7 @@ namespace complex {
 
 using thrust::complex;
 
-__device__ inline complex<double> csinh(const complex<double>& z) {
+__host__ __device__ inline complex<double> csinh(const complex<double>& z) {
   double x, y, h;
   uint32_t hx, hy, ix, iy, lx, ly;
   const double huge = 8.98846567431157953864652595395e+307;  // 0x1p1023;
@@ -155,7 +155,7 @@ __device__ inline complex<double> csinh(const complex<double>& z) {
   return (complex<double>((x * x) * (y - y), (x + x) * (y - y)));
 }
 
-__device__ inline complex<double> csin(complex<double> z) {
+__host__ __device__ inline complex<double> csin(complex<double> z) {
   /* csin(z) = -I * csinh(I * z) */
   z = csinh(complex<double>(-z.imag(), z.real()));
   return (complex<double>(z.imag(), -z.real()));
@@ -166,26 +166,26 @@ __device__ inline complex<double> csin(complex<double> z) {
 }  // namespace detail
 
 template <typename ValueType>
-__device__ inline complex<ValueType> sin(const complex<ValueType>& z) {
+__host__ __device__ inline complex<ValueType> sin(const complex<ValueType>& z) {
   const ValueType re = z.real();
   const ValueType im = z.imag();
   return complex<ValueType>(::sin(re) * ::cosh(im), ::cos(re) * ::sinh(im));
 }
 
 template <typename ValueType>
-__device__ inline complex<ValueType> sinh(const complex<ValueType>& z) {
+__host__ __device__ inline complex<ValueType> sinh(const complex<ValueType>& z) {
   const ValueType re = z.real();
   const ValueType im = z.imag();
   return complex<ValueType>(::sinh(re) * ::cos(im), ::cosh(re) * ::sin(im));
 }
 
 template <>
-__device__ inline complex<double> sin(const complex<double>& z) {
+__host__ __device__ inline complex<double> sin(const complex<double>& z) {
   return detail::complex::csin(z);
 }
 
 template <>
-__device__ inline complex<double> sinh(const complex<double>& z) {
+__host__ __device__ inline complex<double> sinh(const complex<double>& z) {
   return detail::complex::csinh(z);
 }
 

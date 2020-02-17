@@ -57,14 +57,14 @@ def allclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
             to NaN's in ``b``.
 
     Returns:
-        bool: if ``True``, two arrays are element-wise equal within a
-            tolerance.
+        cupy.ndarray: A boolean 0-dim array.
+            If its value is ``True``, two arrays are element-wise equal within
+            a tolerance.
 
     .. seealso:: :func:`numpy.allclose`
 
     """
-    res = isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan).all()
-    return bool(res)
+    return isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan).all()
 
 
 def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):

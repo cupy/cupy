@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import argparse
 import copy
 from distutils import ccompiler
@@ -29,43 +27,76 @@ ignore_cython_versions = [
 ]
 use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 
-MODULES = [
-    {
+
+# The value of the key 'file' is a list that contains extension names
+# or tuples of an extension name and a list of other souces files
+# required to build the extension such as .cpp files and .cu files.
+#
+#   <extension name> | (<extension name>, a list of <other source>)
+#
+# The extension name is also interpreted as the name of the Cython
+# source file required to build the extension with appending '.pyx'
+# file extension.
+MODULES = []
+
+cuda_files = [
+    'cupy.core._carray',
+    'cupy.core._dtype',
+    'cupy.core._kernel',
+    'cupy.core._memory_range',
+    'cupy.core._reduction',
+    'cupy.core._routines_indexing',
+    'cupy.core._routines_logic',
+    'cupy.core._routines_manipulation',
+    'cupy.core._routines_math',
+    'cupy.core._routines_sorting',
+    'cupy.core._routines_statistics',
+    'cupy.core._scalar',
+    'cupy.core.core',
+    'cupy.core.dlpack',
+    'cupy.core.flags',
+    'cupy.core.internal',
+    'cupy.core.fusion',
+    'cupy.core.raw',
+    'cupy.cuda.cublas',
+    'cupy.cuda.cufft',
+    'cupy.cuda.curand',
+    'cupy.cuda.cusparse',
+    'cupy.cuda.device',
+    'cupy.cuda.driver',
+    'cupy.cuda.memory',
+    'cupy.cuda.memory_hook',
+    'cupy.cuda.nvrtc',
+    'cupy.cuda.pinned_memory',
+    'cupy.cuda.profiler',
+    'cupy.cuda.function',
+    'cupy.cuda.stream',
+    'cupy.cuda.runtime',
+    'cupy.cuda.texture',
+    'cupy.util',
+]
+
+if use_hip:
+    MODULES.append({
         'name': 'cuda',
-        'file': [
-            'cupy.core._dtype',
-            'cupy.core._kernel',
-            'cupy.core._memory_range',
-            'cupy.core._routines_indexing',
-            'cupy.core._routines_logic',
-            'cupy.core._routines_manipulation',
-            'cupy.core._routines_math',
-            'cupy.core._routines_sorting',
-            'cupy.core._routines_statistics',
-            'cupy.core._scalar',
-            'cupy.core.core',
-            'cupy.core.dlpack',
-            'cupy.core.flags',
-            'cupy.core.internal',
-            'cupy.core.fusion',
-            'cupy.core.raw',
-            'cupy.cuda.cublas',
-            'cupy.cuda.cufft',
-            'cupy.cuda.curand',
-            'cupy.cuda.cusparse',
-            'cupy.cuda.device',
-            'cupy.cuda.driver',
-            'cupy.cuda.memory',
-            'cupy.cuda.memory_hook',
-            'cupy.cuda.nvrtc',
-            'cupy.cuda.pinned_memory',
-            'cupy.cuda.profiler',
-            'cupy.cuda.function',
-            'cupy.cuda.stream',
-            'cupy.cuda.runtime',
-            'cupy.cuda.texture',
-            'cupy.util',
+        'file': cuda_files,
+        'include': [
+            'hip/hip_runtime_api.h',
+            'hip/hiprtc.h',
+            'hipblas.h',
+            'hiprand/hiprand.h',
         ],
+        'libraries': [
+            'hiprtc',
+            'hip_hcc',
+            'hipblas',
+            'hiprand',
+        ],
+    })
+else:
+    MODULES.append({
+        'name': 'cuda',
+        'file': cuda_files,
         'include': [
             'cublas_v2.h',
             'cuda.h',
@@ -87,8 +118,19 @@ MODULES = [
         ],
         'check_method': build.check_cuda_version,
         'version_method': build.get_cuda_version,
-    },
-    {
+    })
+
+if use_hip:
+    MODULES.append({
+        'name': 'cusolver',
+        'file': [
+            'cupy.cuda.cusolver',
+        ],
+        'include': [],
+        'libraries': [],
+    })
+else:
+    MODULES.append({
         'name': 'cusolver',
         'file': [
             'cupy.cuda.cusolver',
@@ -100,8 +142,10 @@ MODULES = [
             'cusolver',
         ],
         'check_method': build.check_cuda_version,
-    },
-    {
+    })
+
+if not use_hip:
+    MODULES.append({
         'name': 'cudnn',
         'file': [
             'cupy.cuda.cudnn',
@@ -115,8 +159,9 @@ MODULES = [
         ],
         'check_method': build.check_cudnn_version,
         'version_method': build.get_cudnn_version,
-    },
-    {
+    })
+
+    MODULES.append({
         'name': 'nccl',
         'file': [
             'cupy.cuda.nccl',
@@ -129,8 +174,9 @@ MODULES = [
         ],
         'check_method': build.check_nccl_version,
         'version_method': build.get_nccl_version,
-    },
-    {
+    })
+
+    MODULES.append({
         'name': 'nvtx',
         'file': [
             'cupy.cuda.nvtx',
@@ -142,32 +188,9 @@ MODULES = [
             'nvToolsExt' if not PLATFORM_WIN32 else 'nvToolsExt64_1',
         ],
         'check_method': build.check_nvtx,
-    },
-    {
-        # The value of the key 'file' is a list that contains extension names
-        # or tuples of an extension name and a list of other souces files
-        # required to build the extension such as .cpp files and .cu files.
-        #
-        #   <extension name> | (<extension name>, a list of <other source>)
-        #
-        # The extension name is also interpreted as the name of the Cython
-        # source file required to build the extension with appending '.pyx'
-        # file extension.
-        'name': 'thrust',
-        'file': [
-            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
-        ],
-        'include': [
-            'thrust/device_ptr.h',
-            'thrust/sequence.h',
-            'thrust/sort.h',
-        ],
-        'libraries': [
-            'cudart',
-        ],
-        'check_method': build.check_cuda_version,
-    },
-    {
+    })
+
+    MODULES.append({
         'name': 'cutensor',
         'file': [
             'cupy.cuda.cutensor',
@@ -181,8 +204,9 @@ MODULES = [
         ],
         'check_method': build.check_cutensor_version,
         'version_method': build.get_cutensor_version,
-    },
-    {
+    })
+
+    MODULES.append({
         'name': 'cub',
         'file': [
             ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
@@ -194,51 +218,39 @@ MODULES = [
             'cudart',
         ],
         'check_method': build.check_cuda_version,
-    },
-]
+    })
 
-
-def convert_modules_for_hip():
-    global MODULES
-    if len(MODULES) == 3:
-        return
-    for m in MODULES:
-        if m['name'] == 'thrust':
-            mod_thrust = m
-    MODULES = MODULES[:2]
-    MODULES.append(mod_thrust)
-    mod_cuda = MODULES[0]
-    mod_cuda['include'] = [
-        'hip/hip_runtime_api.h',
-        'hip/hiprtc.h',
-        'hipblas.h',
-        'hiprand/hiprand.h',
-        #        'hipsparse.h',
-        #        'cuda_profiler_api.h',
-        #        'cufft.h',
-    ]
-    mod_cuda['libraries'] = [
-        'hiprtc',
-        'hip_hcc',
-        'hipblas',
-        'hiprand',
-        #        'hipsparse',
-        #        'cufft',
-    ]
-    del mod_cuda['version_method']
-    del mod_cuda['check_method']
-    mod_cusolver = MODULES[1]
-    mod_cusolver['include'] = []
-    mod_cusolver['libraries'] = []
-    del mod_cusolver['check_method']
-    mod_thrust['include'] = [
-        'thrust/version.h',
-    ]
-    mod_thrust['libraries'] = [
-        'hiprtc',
-        'hip_hcc',
-    ]
-    del mod_thrust['check_method']
+if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
+    if use_hip:
+        MODULES.append({
+            'name': 'thrust',
+            'file': [
+                ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+            ],
+            'include': [
+                'thrust/version.h',
+            ],
+            'libraries': [
+                'hiprtc',
+                'hip_hcc',
+            ],
+        })
+    else:
+        MODULES.append({
+            'name': 'thrust',
+            'file': [
+                ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+            ],
+            'include': [
+                'thrust/device_ptr.h',
+                'thrust/sequence.h',
+                'thrust/sort.h',
+            ],
+            'libraries': [
+                'cudart',
+            ],
+            'check_method': build.check_cuda_version,
+        })
 
 
 def ensure_module_file(file):
@@ -343,6 +355,18 @@ def preconfigure_modules(compiler, settings):
         status = 'No'
         errmsg = []
 
+        if module['name'] == 'cutensor':
+            cuda_version = build.get_cuda_version()
+            cuda_version = str(cuda_version // 1000) + '.' + \
+                str((cuda_version // 10) % 100)
+            cutensor_path = os.environ.get('CUTENSOR_PATH', '')
+            inc_path = os.path.join(cutensor_path, 'include')
+            if os.path.exists(inc_path):
+                settings['include_dirs'].append(inc_path)
+            lib_path = os.path.join(cutensor_path, 'lib', cuda_version)
+            if os.path.exists(lib_path):
+                settings['library_dirs'].append(lib_path)
+
         print('')
         print('-------- Configuring Module: {} --------'.format(
             module['name']))
@@ -420,7 +444,7 @@ def preconfigure_modules(compiler, settings):
     ]
 
     print('\n'.join(summary))
-    return ret
+    return ret, settings
 
 
 def _rpath_base():
@@ -438,9 +462,6 @@ def make_extensions(options, compiler, use_cython):
     no_cuda = options['no_cuda']
     use_hip = not no_cuda and options['use_hip']
     settings = build.get_compiler_setting(use_hip)
-
-    if use_hip:
-        convert_modules_for_hip()
 
     include_dirs = settings['include_dirs']
 
@@ -474,7 +495,7 @@ def make_extensions(options, compiler, use_cython):
     if no_cuda:
         available_modules = [m['name'] for m in MODULES]
     else:
-        available_modules = preconfigure_modules(compiler, settings)
+        available_modules, settings = preconfigure_modules(compiler, settings)
         if 'cuda' not in available_modules:
             raise Exception('Your CUDA environment is invalid. '
                             'Please check above error log.')

@@ -297,7 +297,7 @@ For dealing a large raw CUDA source or loading an existing CUDA binary, the :cla
     ... }
     ...
     ... }'''
-    >>> module = cp.RawModule(loaded_from_source)
+    >>> module = cp.RawModule(code=loaded_from_source)
     >>> ker_sum = module.get_function('test_sum')
     >>> ker_times = module.get_function('test_multiply')
     >>> N = 10

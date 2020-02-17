@@ -113,6 +113,10 @@ CUresult cuLaunchKernel(CUfunction f, uint32_t gridDimX, uint32_t gridDimY,
                                  sharedMemBytes, hStream, kernelParams, extra);
 }
 
+CUresult cuLaunchCooperativeKernel(...) {
+    return hipErrorUnknown;
+}
+
 
 // Function attribute
 CUresult cuFuncGetAttribute(...) {
@@ -158,10 +162,6 @@ CUresult cuTexRefSetFormat (...) {
 }
 
 CUresult cuTexRefSetMaxAnisotropy (...) {
-    return hipErrorUnknown;
-}
-
-CUresult cuParamSetTexRef (...) {
     return hipErrorUnknown;
 }
 
