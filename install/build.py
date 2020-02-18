@@ -23,6 +23,8 @@ _rocm_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
 
 
+# Using tempfile.TemporaryDirectory would cause an error during cleanup
+# due to a bug: https://bugs.python.org/issue26660
 @contextlib.contextmanager
 def _tempdir():
     temp_dir = tempfile.mkdtemp()
