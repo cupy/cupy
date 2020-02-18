@@ -77,7 +77,7 @@ class _data_matrix(base.spmatrix):
         """Compute the arithmetic mean along the specified axis.
 
         Args:
-            axis (int or ``None``): Axis along which the sum is comuted.
+            axis (int or ``None``): Axis along which the sum is computed.
                 If it is ``None``, it computes the average of all the elements.
                 Select from ``{None, 0, 1, -2, -1}``.
 
