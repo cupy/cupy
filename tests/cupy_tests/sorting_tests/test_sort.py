@@ -116,7 +116,6 @@ class TestSort(unittest.TestCase):
         a = testing.shaped_random((2, 3, 3), xp)
         return xp.sort(a, axis=None)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_sort_invalid_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
@@ -127,7 +126,6 @@ class TestSort(unittest.TestCase):
         with self.assertRaises(cupy.core._AxisError):
             a.sort(axis=3)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_external_sort_invalid_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
@@ -138,7 +136,6 @@ class TestSort(unittest.TestCase):
         with self.assertRaises(cupy.core._AxisError):
             cupy.sort(a, axis=3)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_sort_invalid_negative_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
@@ -149,7 +146,6 @@ class TestSort(unittest.TestCase):
         with self.assertRaises(cupy.core._AxisError):
             a.sort(axis=-4)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_external_sort_invalid_negative_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
@@ -269,7 +265,6 @@ class TestArgsort(unittest.TestCase):
         a = testing.shaped_random((2, 3, 3), xp)
         return self.argsort(a, axis=None)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_argsort_invalid_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
@@ -280,7 +275,6 @@ class TestArgsort(unittest.TestCase):
         with self.assertRaises(cupy.core._AxisError):
             return self.argsort(a, axis=3)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_argsort_invalid_negative_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
@@ -477,7 +471,6 @@ class TestPartition(unittest.TestCase):
         else:
             return None
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_partition_invalid_axis1(self, xp):
         a = testing.shaped_random((2, 2, self.length), xp)
@@ -492,7 +485,6 @@ class TestPartition(unittest.TestCase):
             axis = 3
             return self.partition(a, kth, axis=axis)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_partition_invalid_negative_axis1(self, xp):
         a = testing.shaped_random((2, 2, self.length), xp)
@@ -649,7 +641,6 @@ class TestArgpartition(unittest.TestCase):
         self.assertTrue((a1[idx[kth]] < a1[idx[kth + 1:]]).all())
         return idx[kth]
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_argpartition_invalid_axis1(self, xp):
         a = testing.shaped_random((2, 2, 2), xp, scale=100)
@@ -664,7 +655,6 @@ class TestArgpartition(unittest.TestCase):
         with self.assertRaises(cupy.core._AxisError):
             self.argpartition(a, kth, axis=axis)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_argpartition_invalid_negative_axis1(self, xp):
         a = testing.shaped_random((2, 2, 2), xp, scale=100)

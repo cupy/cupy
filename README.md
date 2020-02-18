@@ -44,6 +44,9 @@ $ pip install cupy-cuda100
 (Binary Package for CUDA 10.1)
 $ pip install cupy-cuda101
 
+(Binary Package for CUDA 10.2)
+$ pip install cupy-cuda102
+
 (Source Package)
 $ pip install cupy
 ```

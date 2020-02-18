@@ -313,3 +313,34 @@ cdef class RawModule:
             intptr_t: A ``CUtexref`` handle, to be passed to :class:`~cupy.cuda.texture.TextureReference`.
         '''  # noqa
         return self.module.get_texref(name)
+
+    def get_global(self, name):
+        '''Retrieve a pointer to a global symbol by its name from the module.
+
+        Args:
+            name (str): Name of the global symbol.
+
+        Returns:
+            ~cupy.cuda.MemoryPointer: A handle to the global symbol.
+
+        .. note::
+            This method can be used to access, for example, constant memory:
+
+            .. code-block:: python
+
+                # to get a pointer to "arr" declared in the source like this:
+                # __constant__ float arr[10];
+                memptr = mod.get_global("arr")
+                # ...wrap it using cupy.ndarray with a known shape
+                arr_ndarray = cp.ndarray((10,), cp.float32, memptr)
+                # ...perform data transfer to initialize it
+                arr_ndarray[...] = cp.random.random((10,), dtype=cp.float32)
+                # ...and arr is ready to be accessed by RawKernels
+
+        '''
+        from cupy.cuda.memory import MemoryPointer, UnownedMemory
+        ptr = self.module.get_global_var(name)
+        # unable to retrieve size, plus it's not used anywhere, so just put 0
+        mem = UnownedMemory(ptr, 0, self.module)
+        memptr = MemoryPointer(mem, 0)
+        return memptr

@@ -3,7 +3,6 @@ import functools
 import inspect
 import os
 import random
-import sys
 import traceback
 import unittest
 import warnings
@@ -24,7 +23,7 @@ def _call_func(self, impl, args, kw):
         error = None
         tb = None
     except Exception as e:
-        _, _, tb = sys.exc_info()  # e.__traceback__ is py3 only
+        tb = e.__traceback__
         if tb.tb_next is None:
             # failed before impl is called, e.g. invalid kw
             raise e
@@ -1041,12 +1040,12 @@ def with_requires(*requirements):
 
     .. admonition:: Example
 
-       This test case runs only when `numpy>=1.10` is installed.
+       This test case runs only when `numpy>=1.18` is installed.
 
        >>> from cupy import testing
        ... class Test(unittest.TestCase):
-       ...     @testing.with_requires('numpy>=1.10')
-       ...     def test_for_numpy_1_10(self):
+       ...     @testing.with_requires('numpy>=1.18')
+       ...     def test_for_numpy_1_18(self):
        ...         pass
 
     Args:

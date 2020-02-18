@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 
+from cupy.cuda import _environment
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import nvrtc
@@ -103,20 +104,6 @@ def _remove_rdc_option(options):
     return tuple(o for o in options if o not in _rdc_flags)
 
 
-class TemporaryDirectory(object):
-    def __enter__(self):
-        self.path = tempfile.mkdtemp()
-        return self.path
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_value is not None:
-            return
-
-        for name in os.listdir(self.path):
-            os.unlink(os.path.join(self.path, name))
-        os.rmdir(self.path)
-
-
 def _get_bool_env_variable(name, default):
     val = os.environ.get(name)
     if val is None or len(val) == 0:
@@ -133,7 +120,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
 
     options += ('-arch=compute_{}'.format(arch),)
 
-    with TemporaryDirectory() as root_dir:
+    with tempfile.TemporaryDirectory() as root_dir:
         cu_path = os.path.join(root_dir, filename)
 
         with open(cu_path, 'w') as cu_file:
@@ -164,9 +151,9 @@ def compile_using_nvcc(source, options=(), arch=None,
         assert not separate_compilation
 
     arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
-    cmd = ['nvcc', arch_str]
+    cmd = [_environment.get_nvcc_path(), arch_str]
 
-    with TemporaryDirectory() as root_dir:
+    with tempfile.TemporaryDirectory() as root_dir:
         first_part = filename.split('.')[0]
 
         path = os.path.join(root_dir, first_part)
@@ -494,7 +481,7 @@ def _hipcc(source, options, arch):
     cmd = ['hipcc', '--genco', '--targets=' + arch,
            '--flags="%s"' % ' '.join(options)]
 
-    with TemporaryDirectory() as root_dir:
+    with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         in_path = path + '.cpp'
         out_path = path + '.hsaco'
@@ -519,7 +506,7 @@ def _hipcc(source, options, arch):
 
 def _preprocess_hipcc(source, options):
     cmd = ['hipcc', '--preprocess'] + list(options)
-    with TemporaryDirectory() as root_dir:
+    with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         cu_path = '%s.cpp' % path
 

@@ -166,7 +166,6 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
         return func
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_int_dtypes(no_bool=True)
     @fusion_utils.check_fusion(accept_error=(TypeError,))
     def test_int_itruediv_py3_raises(self, xp, dtype):
