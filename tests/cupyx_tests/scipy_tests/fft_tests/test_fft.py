@@ -126,7 +126,7 @@ class TestFft(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -246,7 +246,7 @@ class TestFft(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -380,7 +380,7 @@ class TestFft2(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -497,7 +497,7 @@ class TestFft2(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -637,7 +637,7 @@ class TestFftn(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -754,7 +754,7 @@ class TestFftn(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -830,7 +830,7 @@ class TestRfft(unittest.TestCase):
             _fft_module(cp).rfft(x, n=self.n, axis=self.axis,
                                  norm=self.norm, plan='abc')
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
                                  contiguous_check=False)
@@ -872,7 +872,7 @@ class TestRfft(unittest.TestCase):
             _fft_module(cp).irfft(x, n=self.n, axis=self.axis,
                                   norm=self.norm, plan='abc')
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
                                  contiguous_check=False)
@@ -934,7 +934,7 @@ class TestRfft2(unittest.TestCase):
             _fft_module(cp).rfft2(x, s=self.s, axes=self.axes,
                                   norm=self.norm, plan='abc')
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -980,7 +980,7 @@ class TestRfft2(unittest.TestCase):
             _fft_module(cp).irfft2(x, s=self.s, axes=self.axes,
                                    norm=self.norm, plan='abc')
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1042,7 +1042,7 @@ class TestRfftn(unittest.TestCase):
             _fft_module(cp).rfftn(x, s=self.s, axes=self.axes,
                                   norm=self.norm, plan='abc')
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1088,7 +1088,7 @@ class TestRfftn(unittest.TestCase):
             _fft_module(cp).irfftn(x, s=self.s, axes=self.axes,
                                    norm=self.norm, plan='abc')
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1139,7 +1139,7 @@ class TestHfft(unittest.TestCase):
             _fft_module(cp).hfft(x, n=self.n, axis=self.axis,
                                  norm=self.norm, plan='abc')
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1180,7 +1180,7 @@ class TestHfft(unittest.TestCase):
             _fft_module(cp).ihfft(x, n=self.n, axis=self.axis,
                                   norm=self.norm, plan='abc')
 
-    @unittest.skipIf(scipy_fft is None, 'need scipy >= 1.4.0')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
