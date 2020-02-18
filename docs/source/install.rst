@@ -123,6 +123,10 @@ the installation of a particular CUDA version (say 10.0) for driver compatibilit
     <https://github.com/conda-forge/cupy-feedstock/issues>`_, and we will help investigate if it is just a packaging
     issue in ``conda-forge``'s recipe or a real issue in CuPy.
 
+.. note::
+
+    If you did not install CUDA Toolkit yourselves, the ``nvcc`` compiler might not be available. 
+    The ``cudatoolkit`` package from Anaconda does not have ``nvcc`` included.
 
 Install CuPy from Source
 ------------------------
