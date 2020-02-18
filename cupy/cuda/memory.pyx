@@ -3,7 +3,6 @@ cimport cython  # NOQA
 
 import atexit
 import collections
-import contextlib
 import ctypes
 import gc
 import os
@@ -593,8 +592,7 @@ cpdef get_allocator():
         return allocator
 
 
-@contextlib.contextmanager
-def using_allocator(allocator=None):
+def _using_allocator(allocator=None):
     """Sets a thread-local allocator for GPU memory inside
        context manager
 
