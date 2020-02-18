@@ -126,6 +126,8 @@ if use_hip:
         'file': [
             'cupy.cuda.cusolver',
         ],
+        'include': [],
+        'libraries': [],
     })
 else:
     MODULES.append({
@@ -142,81 +144,81 @@ else:
         'check_method': build.check_cuda_version,
     })
 
-MODULES.append({
-    'name': 'cudnn',
-    'file': [
-        'cupy.cuda.cudnn',
-        'cupy.cudnn',
-    ],
-    'include': [
-        'cudnn.h',
-    ],
-    'libraries': [
-        'cudnn',
-    ],
-    'check_method': build.check_cudnn_version,
-    'version_method': build.get_cudnn_version,
-})
+if not use_hip:
+    MODULES.append({
+        'name': 'cudnn',
+        'file': [
+            'cupy.cuda.cudnn',
+            'cupy.cudnn',
+        ],
+        'include': [
+            'cudnn.h',
+        ],
+        'libraries': [
+            'cudnn',
+        ],
+        'check_method': build.check_cudnn_version,
+        'version_method': build.get_cudnn_version,
+    })
 
-MODULES.append({
-    'name': 'nccl',
-    'file': [
-        'cupy.cuda.nccl',
-    ],
-    'include': [
-        'nccl.h',
-    ],
-    'libraries': [
-        'nccl',
-    ],
-    'check_method': build.check_nccl_version,
-    'version_method': build.get_nccl_version,
-})
+    MODULES.append({
+        'name': 'nccl',
+        'file': [
+            'cupy.cuda.nccl',
+        ],
+        'include': [
+            'nccl.h',
+        ],
+        'libraries': [
+            'nccl',
+        ],
+        'check_method': build.check_nccl_version,
+        'version_method': build.get_nccl_version,
+    })
 
-MODULES.append({
-    'name': 'nvtx',
-    'file': [
-        'cupy.cuda.nvtx',
-    ],
-    'include': [
-        'nvToolsExt.h',
-    ],
-    'libraries': [
-        'nvToolsExt' if not PLATFORM_WIN32 else 'nvToolsExt64_1',
-    ],
-    'check_method': build.check_nvtx,
-})
+    MODULES.append({
+        'name': 'nvtx',
+        'file': [
+            'cupy.cuda.nvtx',
+        ],
+        'include': [
+            'nvToolsExt.h',
+        ],
+        'libraries': [
+            'nvToolsExt' if not PLATFORM_WIN32 else 'nvToolsExt64_1',
+        ],
+        'check_method': build.check_nvtx,
+    })
 
-MODULES.append({
-    'name': 'cutensor',
-    'file': [
-        'cupy.cuda.cutensor',
-    ],
-    'include': [
-        'cutensor.h',
-    ],
-    'libraries': [
-        'cutensor',
-        'cublas',
-    ],
-    'check_method': build.check_cutensor_version,
-    'version_method': build.get_cutensor_version,
-})
+    MODULES.append({
+        'name': 'cutensor',
+        'file': [
+            'cupy.cuda.cutensor',
+        ],
+        'include': [
+            'cutensor.h',
+        ],
+        'libraries': [
+            'cutensor',
+            'cublas',
+        ],
+        'check_method': build.check_cutensor_version,
+        'version_method': build.get_cutensor_version,
+    })
 
-MODULES.append({
-    'name': 'cub',
-    'file': [
-        ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
-    ],
-    'include': [
-        'cub/util_namespace.cuh',  # dummy
-    ],
-    'libraries': [
-        'cudart',
-    ],
-    'check_method': build.check_cuda_version,
-})
-
+    MODULES.append({
+        'name': 'cub',
+        'file': [
+            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+        ],
+        'include': [
+            'cub/util_namespace.cuh',  # dummy
+        ],
+        'libraries': [
+            'cudart',
+        ],
+        'check_method': build.check_cuda_version,
+    })
 
 if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     if use_hip:

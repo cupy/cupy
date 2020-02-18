@@ -46,7 +46,6 @@ class TestTrace(unittest.TestCase):
 })
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.11.2')  # The old version dtype is strange
 class TestNorm(unittest.TestCase):
 
     # TODO(kmaehashi) Currently dtypes returned from CuPy is not compatible
@@ -74,11 +73,8 @@ class TestNorm(unittest.TestCase):
 @testing.gpu
 class TestMatrixRank(unittest.TestCase):
 
-    # matrix_rank of CuPy returns in dtype compatible with NumPy 1.14.
-    type_check = testing.numpy_satisfies('>=1.14')
-
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_array_equal(type_check=type_check)
+    @testing.numpy_cupy_array_equal(type_check=True)
     def test_matrix_rank(self, xp, dtype):
         a = xp.array(self.array, dtype=dtype)
         y = xp.linalg.matrix_rank(a, tol=self.tol)
@@ -118,14 +114,12 @@ class TestDet(unittest.TestCase):
         a = xp.empty((2, 0, 3, 3), dtype)
         return xp.linalg.det(a)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_det_empty_matrix(self, xp, dtype):
         a = xp.empty((0, 0), dtype)
         return xp.linalg.det(a)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_det_empty_matrices(self, xp, dtype):

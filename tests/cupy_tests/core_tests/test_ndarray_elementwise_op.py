@@ -32,7 +32,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_radd_scalar(self):
         self.check_array_scalar_op(operator.add, swap=True)
 
-    @testing.with_requires('numpy>=1.10')
     def test_iadd_scalar(self):
         self.check_array_scalar_op(operator.iadd)
 
@@ -42,7 +41,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_rsub_scalar(self):
         self.check_array_scalar_op(operator.sub, swap=True, no_bool=True)
 
-    @testing.with_requires('numpy>=1.10')
     def test_isub_scalar(self):
         self.check_array_scalar_op(operator.isub, no_bool=True)
 
@@ -52,7 +50,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_rmul_scalar(self):
         self.check_array_scalar_op(operator.mul, swap=True)
 
-    @testing.with_requires('numpy>=1.10')
     def test_imul_scalar(self):
         self.check_array_scalar_op(operator.imul)
 
@@ -64,7 +61,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_scalar_op(operator.truediv, swap=True)
 
-    @testing.with_requires('numpy>=1.10')
     def test_itruediv_scalar(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_scalar_op(operator.itruediv)
@@ -78,7 +74,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
             self.check_array_scalar_op(operator.floordiv, swap=True,
                                        no_complex=True)
 
-    @testing.with_requires('numpy>=1.10')
     def test_ifloordiv_scalar(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_scalar_op(operator.ifloordiv, no_complex=True)
@@ -95,7 +90,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         return operator.ipow(a, y_type(3))
 
-    @testing.with_requires('numpy>=1.10')
     def test_ipow_scalar(self):
         self.check_ipow_scalar()
 
@@ -154,21 +148,18 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_add_array(self):
         self.check_array_array_op(operator.add)
 
-    @testing.with_requires('numpy>=1.10')
     def test_iadd_array(self):
         self.check_array_array_op(operator.iadd)
 
     def test_sub_array(self):
         self.check_array_array_op(operator.sub, no_bool=True)
 
-    @testing.with_requires('numpy>=1.10')
     def test_isub_array(self):
         self.check_array_array_op(operator.isub, no_bool=True)
 
     def test_mul_array(self):
         self.check_array_array_op(operator.mul)
 
-    @testing.with_requires('numpy>=1.10')
     def test_imul_array(self):
         self.check_array_array_op(operator.imul)
 
@@ -176,7 +167,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.truediv)
 
-    @testing.with_requires('numpy>=1.10')
     def test_itruediv_array(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.itruediv)
@@ -185,7 +175,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.floordiv, no_complex=True)
 
-    @testing.with_requires('numpy>=1.10')
     def test_ifloordiv_array(self):
         if '1.16.1' <= numpy.lib.NumpyVersion(numpy.__version__) < '1.18.0':
             self.skipTest("NumPy Issue #12927")
@@ -202,7 +191,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
         b = xp.array([[6, 5, 4], [3, 2, 1]], y_type)
         return operator.ipow(a, b)
 
-    @testing.with_requires('numpy>=1.10')
     def test_ipow_array(self):
         self.check_ipow_array()
 
@@ -249,7 +237,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_broadcasted_add(self):
         self.check_array_broadcasted_op(operator.add)
 
-    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_iadd(self):
         self.check_array_broadcasted_op(operator.iadd)
 
@@ -257,7 +244,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
         # TODO(unno): sub for boolean array is deprecated in numpy>=1.13
         self.check_array_broadcasted_op(operator.sub, no_bool=True)
 
-    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_isub(self):
         # TODO(unno): sub for boolean array is deprecated in numpy>=1.13
         self.check_array_broadcasted_op(operator.isub, no_bool=True)
@@ -265,7 +251,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_broadcasted_mul(self):
         self.check_array_broadcasted_op(operator.mul)
 
-    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_imul(self):
         self.check_array_broadcasted_op(operator.imul)
 
@@ -273,7 +258,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.truediv)
 
-    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_itruediv(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.itruediv)
@@ -282,7 +266,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.floordiv, no_complex=True)
 
-    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_ifloordiv(self):
         if '1.16.1' <= numpy.lib.NumpyVersion(numpy.__version__) < '1.18.0':
             self.skipTest("NumPy Issue #12927")
@@ -293,7 +276,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_broadcasted_pow(self):
         self.check_array_broadcasted_op(operator.pow)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(atol=1.0, accept_error=TypeError)
     def check_broadcasted_ipow(self, xp, x_type, y_type):
@@ -301,7 +283,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
         b = xp.array([[1], [2]], y_type)
         return operator.ipow(a, b)
 
-    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_ipow(self):
         self.check_broadcasted_ipow()
 
@@ -568,35 +549,30 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
     def test_lshift_array(self):
         self.check_array_array_op(operator.lshift)
 
-    @testing.with_requires('numpy>=1.10')
     def test_ilshift_array(self):
         self.check_array_array_op(operator.ilshift)
 
     def test_rshift_array(self):
         self.check_array_array_op(operator.rshift)
 
-    @testing.with_requires('numpy>=1.10')
     def test_irshift_array(self):
         self.check_array_array_op(operator.irshift)
 
     def test_and_array(self):
         self.check_array_array_op(operator.and_)
 
-    @testing.with_requires('numpy>=1.10')
     def test_iand_array(self):
         self.check_array_array_op(operator.iand)
 
     def test_or_array(self):
         self.check_array_array_op(operator.or_)
 
-    @testing.with_requires('numpy>=1.10')
     def test_ior_array(self):
         self.check_array_array_op(operator.ior)
 
     def test_xor_array(self):
         self.check_array_array_op(operator.xor)
 
-    @testing.with_requires('numpy>=1.10')
     def test_ixor_array(self):
         self.check_array_array_op(operator.ixor)
 
@@ -604,7 +580,6 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore', invalid='ignore'):
             self.check_array_array_op(operator.mod)
 
-    @testing.with_requires('numpy>=1.10')
     def test_imod_array(self):
         with testing.NumpyError(divide='ignore', invalid='ignore'):
             self.check_array_array_op(operator.imod)
@@ -619,35 +594,30 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
     def test_broadcasted_lshift(self):
         self.check_array_broadcasted_op(operator.lshift)
 
-    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_ilshift(self):
         self.check_array_broadcasted_op(operator.ilshift)
 
     def test_broadcasted_rshift(self):
         self.check_array_broadcasted_op(operator.rshift)
 
-    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_irshift(self):
         self.check_array_broadcasted_op(operator.irshift)
 
     def test_broadcasted_and(self):
         self.check_array_broadcasted_op(operator.and_)
 
-    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_iand(self):
         self.check_array_broadcasted_op(operator.iand)
 
     def test_broadcasted_or(self):
         self.check_array_broadcasted_op(operator.or_)
 
-    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_ior(self):
         self.check_array_broadcasted_op(operator.ior)
 
     def test_broadcasted_xor(self):
         self.check_array_broadcasted_op(operator.xor)
 
-    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_ixor(self):
         self.check_array_broadcasted_op(operator.ixor)
 
@@ -655,7 +625,6 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore', invalid='ignore'):
             self.check_array_broadcasted_op(operator.mod)
 
-    @testing.with_requires('numpy>=1.10')
     def test_broadcasted_imod(self):
         with testing.NumpyError(divide='ignore', invalid='ignore'):
             self.check_array_broadcasted_op(operator.imod)

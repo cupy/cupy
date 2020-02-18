@@ -2,6 +2,7 @@ import operator
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -93,7 +94,6 @@ class TestArrayUnaryOp(unittest.TestCase):
     def test_abs_zerodim(self):
         self.check_zerodim_op_full(operator.abs)
 
-    @testing.with_requires('numpy<1.16')
     def test_abs_zerodim_full(self):
         self.check_zerodim_op_full(operator.abs)
 
@@ -118,3 +118,20 @@ class TestArrayIntUnaryOp(unittest.TestCase):
 
     def test_invert_zerodim(self):
         self.check_zerodim_op(operator.invert)
+
+
+@testing.parameterize(*testing.product({
+    'xp': [numpy, cupy],
+    'shape': [(3, 2), (), (3, 0, 2)]
+}))
+@testing.gpu
+class TestBoolNeg(unittest.TestCase):
+
+    def test_bool_neg(self):
+        xp = self.xp
+        if xp is numpy and not testing.numpy_satisfies('>=1.13.0'):
+            raise unittest.SkipTest('NumPy<1.13.0')
+        shape = self.shape
+        x = testing.shaped_random(shape, xp, dtype=numpy.bool_)
+        with pytest.raises(TypeError):
+            -x

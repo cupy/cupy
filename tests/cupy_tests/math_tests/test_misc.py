@@ -105,11 +105,6 @@ class TestMisc(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.clip(None, 3)
 
-    # Skip this test due to NumPy bug on Windows (fixed in NumPy 1.14.0).
-    # https://github.com/numpy/numpy/pull/9778
-    @unittest.skipIf(
-        sys.platform == 'win32' and testing.numpy_satisfies('<1.14'),
-        'This test requires 1.14.0 when running on Windows.')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip_max_none(self, xp, dtype):
@@ -144,12 +139,9 @@ class TestMisc(unittest.TestCase):
         a_max = xp.array([[10], [9], [8]], dtype=dtype)
         return a.clip(a_min, a_max)
 
-    @testing.with_requires('numpy>=1.11.2')
     def test_sqrt(self):
-        # numpy.sqrt is broken in numpy<1.11.2
         self.check_unary('sqrt')
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_cbrt(self, xp, dtype):
@@ -195,19 +187,15 @@ class TestMisc(unittest.TestCase):
     def test_fmin_nan(self):
         self.check_binary_nan('fmin')
 
-    @testing.with_requires('numpy>=1.10')
     def test_nan_to_num(self):
         self.check_unary('nan_to_num')
 
-    @testing.with_requires('numpy>=1.10')
     def test_nan_to_num_negative(self):
         self.check_unary_negative('nan_to_num')
 
-    @testing.with_requires('numpy<1.10')
     def test_nan_to_num_for_old_numpy(self):
         self.check_unary('nan_to_num', no_bool=True)
 
-    @testing.with_requires('numpy<1.10')
     def test_nan_to_num_negative_for_old_numpy(self):
         self.check_unary_negative('nan_to_num', no_bool=True)
 

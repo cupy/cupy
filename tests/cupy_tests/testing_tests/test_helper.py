@@ -170,7 +170,6 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, pattern):
             dummy_axis_error(self)
 
-    @testing.with_requires('numpy>=1.13')
     def test_axis_error_value_different_type(self):
         @testing.helper.numpy_cupy_raises()
         def dummy_axis_error(self, xp):
@@ -184,7 +183,6 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, pattern):
             dummy_axis_error(self)
 
-    @testing.with_requires('numpy>=1.13')
     def test_axis_error_index_different_type(self):
         @testing.helper.numpy_cupy_raises()
         def dummy_axis_error(self, xp):
@@ -197,28 +195,6 @@ class TestCheckCupyNumpyError(unittest.TestCase):
             self.tbs.get(cupy) + '.*' + self.tbs.get(numpy), re.S)
         with self.assertRaisesRegex(AssertionError, pattern):
             dummy_axis_error(self)
-
-    @testing.with_requires('numpy<1.13')
-    def test_axis_error_value(self):
-        @testing.helper.numpy_cupy_raises()
-        def dummy_axis_error(self, xp):
-            if xp is cupy:
-                raise cupy.core._errors._AxisError(self.tbs.get(cupy))
-            elif xp is numpy:
-                raise ValueError(self.tbs.get(numpy))
-
-        dummy_axis_error(self)
-
-    @testing.with_requires('numpy<1.13')
-    def test_axis_error_index(self):
-        @testing.helper.numpy_cupy_raises()
-        def dummy_axis_error(self, xp):
-            if xp is cupy:
-                raise cupy.core._errors._AxisError(self.tbs.get(cupy))
-            elif xp is numpy:
-                raise IndexError(self.tbs.get(numpy))
-
-        dummy_axis_error(self)
 
 
 class NumPyCuPyDecoratorBase(object):
@@ -411,10 +387,9 @@ class TestShapedRandom(unittest.TestCase):
         a = testing.shaped_random(self.shape, self.xp, dtype)
         self.assertTrue(self.xp.all(0 <= a.real))
         self.assertTrue(self.xp.all(a.real < 10))
+        self.assertTrue(self.xp.all(0 <= a.imag))
+        self.assertTrue(self.xp.all(a.imag < 10))
         if 0 not in self.shape:
-            # TODO(niboshi): imag causes an error if size=0. Fix it.
-            self.assertTrue(self.xp.all(0 <= a.imag))
-            self.assertTrue(self.xp.all(a.imag < 10))
             self.assertTrue(self.xp.any(a.imag))
 
 

@@ -1810,6 +1810,8 @@ cpdef function.Module compile_with_cache(
             bundled_include = 'cuda-10.0'
         elif 10010 <= _cuda_runtime_version < 10020:
             bundled_include = 'cuda-10.1'
+        elif 10020 <= _cuda_runtime_version < 10030:
+            bundled_include = 'cuda-10.2'
         else:
             # CUDA v9.0, v9.1 or versions not yet supported.
             bundled_include = None

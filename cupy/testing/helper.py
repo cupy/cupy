@@ -1040,12 +1040,12 @@ def with_requires(*requirements):
 
     .. admonition:: Example
 
-       This test case runs only when `numpy>=1.10` is installed.
+       This test case runs only when `numpy>=1.18` is installed.
 
        >>> from cupy import testing
        ... class Test(unittest.TestCase):
-       ...     @testing.with_requires('numpy>=1.10')
-       ...     def test_for_numpy_1_10(self):
+       ...     @testing.with_requires('numpy>=1.18')
+       ...     def test_for_numpy_1_18(self):
        ...         pass
 
     Args:
