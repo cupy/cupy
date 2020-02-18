@@ -59,7 +59,7 @@ cdef tuple _ndarray_nonzero(ndarray self):
         r = self.ravel()
         nonzero = cupy.core.not_equal(r, 0, ndarray(r.shape, dtype))
         del r
-        scan_index = _math.scan(nonzero)
+        scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM)
         count_nonzero = int(scan_index[-1])  # synchronize!
     ndim = max(<int>self._shape.size(), 1)
     if count_nonzero == 0:
@@ -548,7 +548,9 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
         mask_type = numpy.int32
     else:
         mask_type = numpy.int64
-    mask_scanned = _math.scan(mask.astype(mask_type).ravel())  # starts with 1
+    op = _math.scan_op.SCAN_SUM
+    # starts with 1
+    mask_scanned = _math.scan(mask.astype(mask_type).ravel(), op=op)
     n_true = int(mask_scanned[-1])
     masked_shape = lshape + (n_true,) + rshape
 
@@ -573,7 +575,7 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     else:
         mask_type = numpy.int64
     mask_scanned = _manipulation._reshape(
-        _math.scan(mask.astype(mask_type).ravel()),
+        _math.scan(mask.astype(mask_type).ravel(), op=_math.scan_op.SCAN_SUM),
         mask._shape)
     return mask, mask_scanned, masked_shape
 

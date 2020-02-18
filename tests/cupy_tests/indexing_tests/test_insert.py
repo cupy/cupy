@@ -14,7 +14,6 @@ class TestPlace(unittest.TestCase):
 
     # NumPy 1.9 don't wraps values.
     # https://github.com/numpy/numpy/pull/5821
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_place(self, xp, dtype):
@@ -47,7 +46,6 @@ class TestPlaceRaises(unittest.TestCase):
 
     # Before NumPy 1.12 it was TypeError.
     # https://github.com/numpy/numpy/pull/7003
-    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_place_shape_unmatch_error(self, xp, dtype):

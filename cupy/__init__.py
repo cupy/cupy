@@ -704,10 +704,6 @@ from cupy.core._reduction import ReductionKernel  # NOQA
 
 from cupy.core import fromDlpack  # NOQA
 
-# The following function is left for backward compatibility.
-# New CuPy specific routines should reside in cupyx package.
-from cupy.ext.scatter import scatter_add  # NOQA
-
 
 def asnumpy(a, stream=None, order='C'):
     """Returns an array on the host memory from an arbitrary source array.

@@ -337,7 +337,6 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 @testing.gpu
 class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_axis_overrun1(self, xp):
         a = testing.shaped_arange(self.shape, xp)

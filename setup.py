@@ -37,7 +37,7 @@ requirements = {
         'fastrlock>=0.3',
     ],
     'install': [
-        'numpy>=1.9.0',
+        'numpy>=1.15',
         'fastrlock>=0.3',
     ],
     'stylecheck': [
@@ -188,7 +188,6 @@ setup(
         'cupy.creation',
         'cupy.cuda',
         'cupy.cuda.memory_hooks',
-        'cupy.ext',
         'cupy.fft',
         'cupy.indexing',
         'cupy.io',
