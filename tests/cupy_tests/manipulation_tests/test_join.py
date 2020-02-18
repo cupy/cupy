@@ -328,6 +328,7 @@ class TestJoin(unittest.TestCase):
         xp.stack((a, b, c), axis=1, out=out)
         return out
 
+    @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_stack_out_invalid_shape(self, xp):
         a = testing.shaped_arange((3, 4), xp, xp.float64)
         b = testing.shaped_reverse_arange((3, 4), xp, xp.float64)
