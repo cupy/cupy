@@ -6,6 +6,11 @@
 #include "cupy_cub.h"
 #include <stdexcept>
 
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#include <cuda_fp16.h>
+#endif
+
+
 using namespace cub;
 
 /* ------------------------------------ Minimum boilerplate to support complex numbers ------------------------------------ */
@@ -47,8 +52,36 @@ template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, t
 /* ------------------------------------ "Patches" to CUB ------------------------------------
    These stubs are needed because CUB does not handle NaNs properly, while NumPy has certain
    behaviors with which we must comply.
-   TODO(leofang): support half precision?
 */
+
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+__host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
+#ifdef __CUDA_ARCH__
+    return __hisnan(x);
+#else
+    // TODO: avoid cast to float
+    return isnan(__half2float(x));
+#endif
+}
+
+__host__ __device__ __forceinline__ bool half_less(const __half& l, const __half& r) {
+#ifdef __CUDA_ARCH__
+    return l < r;
+#else
+    // TODO: avoid cast to float
+    return __half2float(l) < __half2float(r);
+#endif
+}
+
+__host__ __device__ __forceinline__ bool half_equal(const __half& l, const __half& r) {
+#ifdef __CUDA_ARCH__
+    return l == r;
+#else
+    // TODO: avoid cast to float
+    return __half2float(l) == __half2float(r);
+#endif
+}
+#endif
 
 //
 // Max()
@@ -98,6 +131,19 @@ __host__ __device__ __forceinline__ complex<double> Max::operator()(const comple
     else {return max(a, b);}
 }
 
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ __half Max::operator()(const __half &a, const __half &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (half_isnan(a)) {return a;}
+    else if (half_isnan(b)) {return b;}
+    else if (half_less(a, b)) {return b;}
+    else {return a;}
+}
+#endif
+
 //
 // Min()
 //
@@ -145,6 +191,19 @@ __host__ __device__ __forceinline__ complex<double> Min::operator()(const comple
     else if (isnan(b)) {return b;}
     else {return min(a, b);}
 }
+
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ __half Min::operator()(const __half &a, const __half &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (half_isnan(a)) {return a;}
+    else if (half_isnan(b)) {return b;}
+    else if (half_less(a, b)) {return a;}
+    else {return a;}
+}
+#endif
 
 //
 // ArgMax()
@@ -214,6 +273,25 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMax::o
         return a;
 }
 
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMax::operator()(
+    const KeyValuePair<int, __half> &a,
+    const KeyValuePair<int, __half> &b) const
+{
+    if (half_isnan(a.value))
+        return a;
+    else if (half_isnan(b.value))
+        return b;
+    else if ((half_less(a.value, b.value)) ||
+             (half_equal(a.value, b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+}
+#endif
+
 //
 // ArgMin()
 //
@@ -281,6 +359,26 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMin::o
     else
         return a;
 }
+
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()(
+    const KeyValuePair<int, __half> &a,
+    const KeyValuePair<int, __half> &b) const
+{
+    if (half_isnan(a.value))
+        return a;
+    else if (half_isnan(b.value))
+        return b;
+    else if ((half_less(b.value, a.value)) ||
+             (half_equal(a.value, b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+
+}
+#endif
 /* ------------------------------------ End of "patches" ------------------------------------ */
 
 
@@ -302,6 +400,9 @@ void dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args)
     case CUPY_CUB_UINT16:     return f.template operator()<unsigned short>(std::forward<Ts>(args)...);
     case CUPY_CUB_UINT32:     return f.template operator()<unsigned int>(std::forward<Ts>(args)...);
     case CUPY_CUB_UINT64:     return f.template operator()<unsigned long>(std::forward<Ts>(args)...);
+#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+    case CUPY_CUB_FLOAT16:    return f.template operator()<__half>(std::forward<Ts>(args)...);
+#endif
     case CUPY_CUB_FLOAT32:    return f.template operator()<float>(std::forward<Ts>(args)...);
     case CUPY_CUB_FLOAT64:    return f.template operator()<double>(std::forward<Ts>(args)...);
     case CUPY_CUB_COMPLEX64:  return f.template operator()<complex<float>>(std::forward<Ts>(args)...);
