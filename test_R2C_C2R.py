@@ -2,6 +2,9 @@ import cupy as cp
 import numpy as np
 
 
+cp.cuda.Device(9).use()
+
+
 #a = cp.random.random((2,3,7))
 #planR2C = cp.cuda.cufft.PlanNd((2,3,7), [2,3,7], 1, 2*3*7, 
 #                                        [2,3,4], 1, 2*3*4, 
@@ -18,37 +21,37 @@ import numpy as np
 
 
 a = cp.random.random((2,4,8)).astype(cp.float32)
-planR2C = cp.cuda.cufft.PlanNd((2,4,8), #[2,4,8], 1, 2*4*8, 
-                                        #[2,4,5], 1, 2*4*5, 
-                                        None, 1, 0,
-                                        None, 1, 0,
+planR2C = cp.cuda.cufft.PlanNd((2,4,8), [2,4,8], 1, 2*4*8, 
+                                        [2,4,5], 1, 2*4*5, 
+                                        #None, 1, 0,
+                                        #None, 1, 0,
                                         cp.cuda.cufft.CUFFT_R2C, 1, 'C', 2)
 
-b_np = np.fft.rfftn(cp.asnumpy(a))
 b_planR2C = cp.zeros((2,4,5), dtype=cp.complex64, order='c')
 planR2C.fft(a, b_planR2C, 0)
 #print(b_planR2C)
+
+b_np = np.fft.rfftn(cp.asnumpy(a))
 print(cp.allclose(b_np, b_planR2C))
 
 b_cp = cp.fft.rfftn(a)
 print(cp.allclose(b_np, b_cp))
 
-print(b_planR2C)
-
-planC2R = cp.cuda.cufft.PlanNd((2,4,8), None, 1, 0,
-                                        None, 1, 0,
-                                        #[2,4,8], 1, 2*4*8,
-                                        #[2,4,8], 1, 2*4*8,
+planC2R = cp.cuda.cufft.PlanNd((2,4,8), #None, 1, 0,
+                                        #None, 1, 0,
+                                        [2,4,5], 1, 2*4*5,
+                                        [2,4,8], 1, 2*4*8,
                                         cp.cuda.cufft.CUFFT_C2R, 1, 'C', 2)
-b_planC2R = cp.zeros((2,4,20), dtype=cp.float32, order='c')
+b_planC2R = cp.zeros((2,4,8), dtype=cp.float32, order='c')
 #print(b_planR2C.dtype)
-planR2C.fft(b_planR2C, b_planC2R, 0)
-print(cp.allclose(a, b_planC2R[..., :8]))
-print(a, "\n\n ***** \n\n", b_planC2R)
+planC2R.fft(b_planR2C, b_planC2R, 0)
+b_planC2R /= 2*4*8
+print(cp.allclose(a, b_planC2R))
+#print(a, "\n\n ***** \n\n", b_planC2R)
 
 cp.fft.config.enable_nd_planning = False
 b_final = cp.fft.irfftn(b_planR2C)
-print(cp.allclose(a, b_final))
+print(cp.allclose(a, b_final, rtol=1E-4))
 
 
 #a = cp.random.random((2,3,4)) + 1j*cp.random.random((2,3,4))
