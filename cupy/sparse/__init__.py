@@ -16,9 +16,9 @@ from cupyx.scipy.sparse.construct import rand  # NOQA
 from cupyx.scipy.sparse.construct import random  # NOQA
 from cupyx.scipy.sparse.construct import spdiags  # NOQA
 
-from cupyx.scipy.sparse.construct import vstack  # NOQA
-from cupyx.scipy.sparse.construct import hstack  # NOQA
 from cupyx.scipy.sparse.construct import bmat  # NOQA
+from cupyx.scipy.sparse.construct import hstack  # NOQA
+from cupyx.scipy.sparse.construct import vstack  # NOQA
 
 # TODO(unno): implement bsr_matrix
 # TODO(unno): implement dok_matrix
