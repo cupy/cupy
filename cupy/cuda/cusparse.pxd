@@ -1,3 +1,6 @@
+
+from libc.stdint cimport intptr_t
+
 cdef extern from *:
     ctypedef int IndexBase 'cusparseIndexBase_t'
     ctypedef int Status 'cusparseStatus_t'
@@ -56,5 +59,5 @@ cpdef enum:
     CUSPARSE_ALG_NAIVE = 0
     CUSPARSE_ALG_MERGE_PATH = 1
 
-cpdef size_t create() except? 0
-cpdef destroy(size_t handle)
+cpdef intptr_t create() except? 0
+cpdef destroy(intptr_t handle)
