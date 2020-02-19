@@ -1,9 +1,9 @@
 import cupy
 
-from cupy.core._dtype import get_dtype
+from cupy.core import _dtype
 
 supported_dtypes = ['single', 'double', 'csingle', 'cdouble']
-supported_dtypes = [get_dtype(x) for x in supported_dtypes]
+supported_dtypes = [get_dtype(x) for x in ('single', 'double', 'csingle', 'cdouble')]
 
 
 _upcast_memo = {}
@@ -81,7 +81,7 @@ def upcast(*args):
         <type 'numpy.complex128'>
     """
 
-    t = _upcast_memo.get(hash(args))
+    t = _upcast_memo.get(args)
     if t is not None:
         return t
 
@@ -89,7 +89,7 @@ def upcast(*args):
 
     for t in supported_dtypes:
         if cupy.can_cast(upcast, t):
-            _upcast_memo[hash(args)] = t
+            _upcast_memo[args] = t
             return t
 
     raise TypeError('no supported conversion for types: %r' % (args,))
