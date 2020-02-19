@@ -32,7 +32,7 @@ def column_stack(tup):
     return concatenate(lst, axis=1)
 
 
-def concatenate(tup, axis=0):
+def concatenate(tup, axis=0, out=None):
     """Joins arrays along an axis.
 
     Args:
@@ -41,6 +41,7 @@ def concatenate(tup, axis=0):
         axis (int or None): The axis to join arrays along.
             If axis is None, arrays are flattened before use.
             Default is 0.
+        out (cupy.ndarray): Output array.
 
     Returns:
         cupy.ndarray: Joined array.
@@ -51,7 +52,7 @@ def concatenate(tup, axis=0):
     if axis is None:
         tup = [m.ravel() for m in tup]
         axis = 0
-    return core.concatenate_method(tup, axis)
+    return core.concatenate_method(tup, axis, out)
 
 
 def dstack(tup):
@@ -113,12 +114,13 @@ def vstack(tup):
     return concatenate([cupy.atleast_2d(m) for m in tup], 0)
 
 
-def stack(tup, axis=0):
+def stack(tup, axis=0, out=None):
     """Stacks arrays along a new axis.
 
     Args:
         tup (sequence of arrays): Arrays to be stacked.
         axis (int): Axis along which the arrays are stacked.
+        out (cupy.ndarray): Output array.
 
     Returns:
         cupy.ndarray: Stacked array.
@@ -131,7 +133,7 @@ def stack(tup, axis=0):
             raise core._AxisError(
                 'axis {} out of bounds [{}, {}]'.format(
                     axis, -x.ndim - 1, x.ndim))
-    return concatenate([cupy.expand_dims(x, axis) for x in tup], axis)
+    return concatenate([cupy.expand_dims(x, axis) for x in tup], axis, out)
 
 
 def _get_positive_axis(ndim, axis):
