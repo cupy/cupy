@@ -110,6 +110,29 @@ class TestNdarrayInit(unittest.TestCase):
         assert a.strides == a_cpu.strides
 
 
+@testing.parameterize(
+    *testing.product({
+        'shape': [(), (1,), (1, 2), (1, 2, 3)],
+        'order': ['C', 'F'],
+        'dtype': [
+            numpy.uint8,  # itemsize=1
+            numpy.uint16,  # itemsize=2
+        ],
+    }))
+@testing.gpu
+class TestNdarrayInitStrides(unittest.TestCase):
+
+    # Check the strides given shape, itemsize and order.
+
+    @testing.numpy_cupy_equal()
+    def test_strides(self, xp):
+        arr = xp.ndarray(self.shape, dtype=self.dtype, order=self.order)
+        return (
+            arr.strides,
+            arr.flags.c_contiguous,
+            arr.flags.f_contiguous)
+
+
 @testing.gpu
 class TestNdarrayInitRaise(unittest.TestCase):
 
