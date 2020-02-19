@@ -217,7 +217,7 @@ class Plan1d(object):
 class PlanNd(object):
     def __init__(self, object shape, object inembed, int istride,
                  int idist, object onembed, int ostride, int odist,
-                 int fft_type, int batch):
+                 int fft_type, int batch, str order, int last_axis):
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, i
@@ -275,6 +275,8 @@ class PlanNd(object):
         self.fft_type = fft_type
         self.plan = plan
         self.work_area = work_area
+        self.order = order  # either 'C' or 'F'
+        self.last_axis = last_axis
 
     def __del__(self):
         cdef Handle plan = self.plan
@@ -316,18 +318,18 @@ class PlanNd(object):
         if self.fft_type == CUFFT_C2C:
             dtype = numpy.complex64
         elif self.fft_type == CUFFT_R2C:
-            shape[-1] = shape[-1] // 2 + 1
+            shape[self.last_axis] = shape[self.last_axis] // 2 + 1
             dtype = numpy.complex64
         elif self.fft_type == CUFFT_C2R:
-            shape[-1] = self.shape[-1]
+            shape[self.last_axis] = 2 * (self.shape[self.last_axis] - 1)
             dtype = numpy.float32
         elif self.fft_type == CUFFT_Z2Z:
             dtype = numpy.complex128
         elif self.fft_type == CUFFT_D2Z:
-            shape[-1] = shape[-1] // 2 + 1
+            shape[self.last_axis] = shape[self.last_axis] // 2 + 1
             dtype = numpy.complex128
         else:  # CUFFT_Z2D
-            shape[-1] = self.shape[-1]
+            shape[self.last_axis] = 2 * (self.shape[self.last_axis] - 1)
             dtype = numpy.float64
         return tuple(shape), dtype
 

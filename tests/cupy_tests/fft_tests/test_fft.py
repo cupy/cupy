@@ -571,10 +571,13 @@ class TestRfft(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestRfft2(unittest.TestCase):
 
+    @nd_planning_states()
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_rfft2(self, xp, dtype):
+    def test_rfft2(self, xp, dtype, enable_nd):
+        assert config.enable_nd_planning == enable_nd
+
         # the scaling of old Numpy is incorrect
         if np.__version__ < np.lib.NumpyVersion('1.13.0'):
             if self.s is not None:
@@ -587,10 +590,13 @@ class TestRfft2(unittest.TestCase):
             out = out.astype(np.complex64)
         return out
 
+    @nd_planning_states()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_irfft2(self, xp, dtype):
+    def test_irfft2(self, xp, dtype, enable_nd):
+        assert config.enable_nd_planning == enable_nd
+
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.irfft2(a, s=self.s, norm=self.norm)
 
@@ -621,10 +627,12 @@ class TestRfft2(unittest.TestCase):
 @testing.with_requires('numpy>=1.10.0')
 class TestRfftn(unittest.TestCase):
 
+    @nd_planning_states()
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_rfftn(self, xp, dtype):
+    def test_rfftn(self, xp, dtype, enable_nd):
+        assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -633,10 +641,12 @@ class TestRfftn(unittest.TestCase):
 
         return out
 
+    @nd_planning_states()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_irfftn(self, xp, dtype):
+    def test_irfftn(self, xp, dtype, enable_nd):
+        assert config.enable_nd_planning == enable_nd
         if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
                 and int(cupy.cuda.device.get_compute_capability()) < 70
                 and _size_last_transform_axis(
