@@ -219,6 +219,7 @@ def bmat(blocks, format=None, dtype=None):
 
     # We assume here that blocks will be 2-D so we need to look, at most,
     # 2 layers deep for the shape
+    # TODO: Check this assumption and raise ValueError
 
     # NOTE: We can't follow scipy exactly here
     # since we don't have an `object` datatype
@@ -233,9 +234,6 @@ def bmat(blocks, format=None, dtype=None):
 
     if len(blocks_flat) == 0:
         return coo.coo_matrix((0, 0), dtype=dtype)
-
-    # if blocks.ndim != 2:
-    #     raise ValueError('blocks must be 2-D')
 
     # check for fast path cases
     if (N == 1 and format in (None, 'csr') and
@@ -253,8 +251,8 @@ def bmat(blocks, format=None, dtype=None):
         return A
 
     block_mask = cupy.zeros((M, N), dtype=bool)
-    brow_lengths = cupy.zeros(M+1, dtype=cupy.int64)
-    bcol_lengths = cupy.zeros(N+1, dtype=cupy.int64)
+    brow_lengths = numpy.zeros(M+1, dtype=numpy.int64)
+    bcol_lengths = numpy.zeros(N+1, dtype=numpy.int64)
 
     # convert everything to COO format
     for i in range(M):
