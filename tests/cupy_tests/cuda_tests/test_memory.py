@@ -459,6 +459,9 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
 
         del p3
 
+        self.pool.free_all_blocks()
+        self.assertEqual(0, self.pool.total_bytes())
+
     def test_total_bytes_stream(self):
         p1 = self.pool.malloc(self.unit * 4)
         del p1
