@@ -55,9 +55,17 @@ def require(a, dtype=None, requirements=None):
                       'O': 'OWNDATA', 'OWNDATA': 'OWNDATA'}
 
     if not requirements:
-        return cupy.asanyarray(a, dtype=dtype)
+        try:
+            return cupy.asanyarray(a, dtype=dtype)
+        except TypeError:
+            raise(ValueError("Incorrect dtype \"{}\" provided".format(dtype)))
     else:
-        requirements = {possible_flags[x.upper()] for x in requirements}
+        try:
+            requirements = {possible_flags[x.upper()] for x in requirements}
+        except KeyError:
+            raise(ValueError("Incorrect flag \"{}\" in requirements".format(
+                             (set(requirements) -
+                              set(possible_flags.keys())).pop())))
 
     order = 'A'
     if requirements >= {'C', 'F'}:
@@ -69,11 +77,10 @@ def require(a, dtype=None, requirements=None):
         order = 'C_CONTIGUOUS'
         requirements.remove('C')
 
-    arr = cupy.array(a, dtype=dtype, order=order, copy=False, subok=False)
-
-    for prop in requirements:
-        if not arr.flags[prop]:
-            arr = arr.copy(order)
-            break
-
+    copy = 'OWNDATA' in requirements
+    try:
+        print("copy", copy)
+        arr = cupy.array(a, dtype=dtype, order=order, copy=copy, subok=False)
+    except TypeError:
+        raise(ValueError("Incorrect dtype \"{}\" provided".format(dtype)))
     return arr

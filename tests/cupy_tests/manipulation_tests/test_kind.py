@@ -1,4 +1,5 @@
 import unittest
+import pytest
 
 import numpy
 
@@ -75,3 +76,21 @@ class TestKind(unittest.TestCase):
         arr = x.view()
         arr = cupy.require(arr, dtype, ['O'])
         assert arr.flags['OWNDATA']
+
+    @testing.for_all_dtypes()
+    def test_require_C_and_F_flags(self, dtype):
+        x = cupy.zeros((2, 3, 4), dtype)
+        with pytest.raises(ValueError):
+            cupy.require(x, dtype, ['C', 'F'])
+
+    @testing.for_all_dtypes()
+    def test_require_incorrect_flags(self, dtype):
+        x = cupy.zeros((2, 3, 4), dtype)
+        with pytest.raises(ValueError):
+            cupy.require(x, dtype, ['W'])
+
+    @testing.for_all_dtypes()
+    def test_require_incorrect_dtype(self, dtype):
+        x = cupy.zeros((2, 3, 4), dtype)
+        with pytest.raises(ValueError):
+            cupy.require(x, 'random', 'C')
