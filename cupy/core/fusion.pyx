@@ -128,7 +128,7 @@ class Fusion:
 
         if cache_shape is None:
             # Initializes cache_shape and kernel_list.
-            cache_shape = dict()
+            cache_shape = {}
             kernel_list = []
             self._cache[param_key] = cache_shape, kernel_list
 
@@ -139,7 +139,7 @@ class Fusion:
             # Find a cached kernel from kernel_list.
 
             # Create a dim_map: a dictionary from _AbstractDim to int.
-            dim_map = dict()
+            dim_map = {}
             for input_index, arg in enumerate(args):
                 if isinstance(arg, core.ndarray):
                     for axis, dim in enumerate(arg.shape):
