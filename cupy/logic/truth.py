@@ -21,14 +21,14 @@ def all(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.all`
 
     """
-    util.check_array(a, arg_name='a')
-
     if fusion._is_fusing():
         if keepdims:
             raise NotImplementedError(
                 'cupy.all does not support `keepdims` in fusion yet.')
         return fusion._call_reduction(
             _logic.all, a, axis=axis, out=out)
+
+    util.check_array(a, arg_name='a')
 
     return a.all(axis=axis, out=out, keepdims=keepdims)
 
@@ -50,14 +50,14 @@ def any(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.any`
 
     """
-    util.check_array(a, arg_name='a')
-
     if fusion._is_fusing():
         if keepdims:
             raise NotImplementedError(
                 'cupy.any does not support `keepdims` in fusion yet.')
         return fusion._call_reduction(
             _logic.any, a, axis=axis, out=out)
+
+    util.check_array(a, arg_name='a')
 
     return a.any(axis=axis, out=out, keepdims=keepdims)
 
