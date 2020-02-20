@@ -321,7 +321,7 @@ class PlanNd(object):
             shape[self.last_axis] = shape[self.last_axis] // 2 + 1
             dtype = numpy.complex64
         elif self.fft_type == CUFFT_C2R:
-            shape[self.last_axis] = 2 * (self.shape[self.last_axis] - 1)
+            shape[self.last_axis] = self.shape[self.last_axis]
             dtype = numpy.float32
         elif self.fft_type == CUFFT_Z2Z:
             dtype = numpy.complex128
@@ -329,7 +329,7 @@ class PlanNd(object):
             shape[self.last_axis] = shape[self.last_axis] // 2 + 1
             dtype = numpy.complex128
         else:  # CUFFT_Z2D
-            shape[self.last_axis] = 2 * (self.shape[self.last_axis] - 1)
+            shape[self.last_axis] = self.shape[self.last_axis]
             dtype = numpy.float64
         return tuple(shape), dtype
 
