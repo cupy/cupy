@@ -611,6 +611,10 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
     Decorated test fixture is required throw same errors
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
+    warnings.warn(
+        'cupy.testing.numpy_cupy_raises is deprecated.',
+        DeprecationWarning)
+
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
