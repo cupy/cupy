@@ -478,7 +478,8 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
                         fft_type=fft_type,
                         batch=nbatch,
                         order=order,
-                        out_size=out_size)
+                        last_axis=axes[-1],
+                        last_size=out_size)
     return plan
 
 
@@ -531,7 +532,8 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     plan.fft(a, out, direction)
 
     # normalize by the product of the shape along the transformed axes
-    sz = _prod([out.shape[ax] for ax in axes])
+    arr = a if fft_type in (cufft.CUFFT_R2C, cufft.CUFFT_D2Z) else out
+    sz = _prod([arr.shape[ax] for ax in axes])
     if norm is None:
         if direction == cufft.CUFFT_INVERSE:
             out /= sz
