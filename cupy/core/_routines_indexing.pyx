@@ -165,14 +165,6 @@ cdef ndarray _ndarray_compress(ndarray self, condition, axis, out):
     
     res = _ndarray_nonzero(condition)
     
-    if out is None:
-        out = ndarray(out_shape, dtype=a.dtype)
-    else:
-        if out.dtype != a.dtype:
-            raise TypeError('Output dtype mismatch')
-        if out.shape != out_shape:
-            raise ValueError('Output shape mismatch')
-    
     return _ndarray_take(a, res[0], axis, out)
 
 
