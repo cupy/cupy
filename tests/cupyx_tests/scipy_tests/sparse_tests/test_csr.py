@@ -833,9 +833,9 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
             if m.nnz == 0:
                 # When there is no element, a SciPy's sparse matrix does
                 # not raise an error when it is multiplied with None.
-                pytest.skip()
-                with pytest.raises(TypeError):
-                    None * m
+                continue
+            with pytest.raises(TypeError):
+                None * m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sort_indices(self, xp, sp):

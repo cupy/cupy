@@ -791,7 +791,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
             # TODO(unno): When a sparse matrix has no element, scipy.sparse
             # does not raise an error.
             if m.nnz == 0:
-                raise pytest.skip()
+                continue
             with pytest.raises(TypeError):
                 None * m
 
