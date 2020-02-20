@@ -1,5 +1,7 @@
 # class s_(object):
 
+import numbers
+
 import numpy
 
 import cupy
@@ -244,7 +246,99 @@ def ix_(*args):
         out.append(new)
     return tuple(out)
 
-# TODO(okuta): Implement ravel_multi_index
+
+def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
+    """
+    Converts a tuple of index arrays into an array of flat
+    indices, applying boundary modes to the multi-index.
+
+    Args:
+        multi_index (tuple of cupy.ndarray) : A tuple of integer arrays, one
+            array for each dimension.
+        dims (tuple of ints): The shape of array into which the indices from
+            ``multi_index`` apply.
+        mode ('raise', 'wrap' or 'clip'), optional: Specifies how out-of-bounds
+            indices are handled.  Can specify either one mode or a tuple of
+            modes, one mode per index.
+            * 'raise' -- raise an error (default)
+            * 'wrap' -- wrap around
+            * 'clip' -- clip to the range
+            In 'clip' mode, a negative index which would normally wrap will
+            clip to 0 instead.
+        order ('C' or 'F'), optional: Determines whether the multi-index should
+            be viewed as indexing in row-major (C-style) or column-major
+            (Fortran-style) order.
+
+    Returns:
+        raveled_indices (cupy.ndarray): An array of indices into the flattened
+            version of an array of dimensions ``dims``.
+
+    Examples
+    --------
+    >>> cupy.ravel_multi_index(cupy.asarray([[3,6,6],[4,5,1]]), (7,6))
+    array([22, 41, 37])
+    >>> cupy.ravel_multi_index(cupy.asarray([[3,6,6],[4,5,1]]), (7,6),
+    ...                        order='F')
+    array([31, 41, 13])
+    >>> cupy.ravel_multi_index(cupy.asarray([[3,6,6],[4,5,1]]), (4,6),
+    ...                        mode='clip')
+    array([22, 23, 19])
+    >>> cupy.ravel_multi_index(cupy.asarray([[3,6,6],[4,5,1]]), (4,4),
+    ...                        mode=('clip', 'wrap'))
+    array([12, 13, 13])
+    >>> cupy.ravel_multi_index(cupy.asarray((3,1,4,1)), (6,7,8,9))
+    array(1621)
+
+    .. seealso:: :func:`numpy.ravel_multi_index`, :func:`unravel_index`
+    """
+
+    ndim = len(dims)
+    if len(multi_index) != ndim:
+        raise ValueError(
+            "parameter multi_index must be a sequence of "
+            "length {}".format(ndim))
+
+    for arr in multi_index:
+        if not isinstance(arr, cupy.ndarray):
+            raise TypeError("elements of multi_index must be cupy arrays")
+        if arr.dtype.kind not in 'iu':
+            raise TypeError("only int indices permitted")
+
+    for d in dims:
+        if not isinstance(d, numbers.Integral):
+            raise TypeError(
+                "{} object cannot be interpreted as an integer".format(
+                    type(d)))
+
+    if isinstance(mode, str):
+        mode = (mode, ) * ndim
+
+    s = 1
+    ravel_strides = [1] * ndim
+    if order == "C":
+        for i in range(ndim - 2, -1, -1):
+            s = s * dims[i + 1]
+            ravel_strides[i] = s
+    elif order == "F":
+        for i in range(1, ndim):
+            s = s * dims[i - 1]
+            ravel_strides[i] = s
+    else:
+        raise ValueError("only 'C' or 'F' order is permitted")
+
+    raveled_indices = 0
+    for d, stride, idx, _mode in zip(dims, ravel_strides, multi_index, mode):
+        if _mode == "raise":
+            if cupy.any(cupy.logical_or(idx >= d, idx < 0)):
+                raise ValueError("invalid entry in coordinates array")
+        elif _mode == "clip":
+            idx = cupy.clip(idx, 0, d - 1)
+        elif _mode == 'wrap':
+            idx = idx % d
+        else:
+            raise ValueError("Unrecognized mode: {}".format(_mode))
+        raveled_indices += stride * idx
+    return raveled_indices
 
 
 def unravel_index(indices, dims, order='C'):
@@ -274,7 +368,7 @@ def unravel_index(indices, dims, order='C'):
 
         This function may synchronize the device.
 
-    .. seealso:: :func:`numpy.unravel_index`
+    .. seealso:: :func:`numpy.unravel_index`, :func:`ravel_multi_index`
 
     """
     if order is None:
