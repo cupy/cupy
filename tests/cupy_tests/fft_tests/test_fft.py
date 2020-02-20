@@ -139,7 +139,7 @@ class TestDefaultPlanType(unittest.TestCase):
 
     @nd_planning_states()
     def test_default_fft_func(self, enable_nd):
-        # test cases where nd CUFFT plan is possible
+        # test cases where nd cuFFT plan is possible
         ca = cupy.ones((16, 16, 16))
         for axes in [(0, 1), (1, 2), None, (0, 1, 2)]:
             fft_func = _default_fft_func(ca, axes=axes)
@@ -411,7 +411,7 @@ class TestPlanCtxManagerFftn(unittest.TestCase):
         with pytest.raises(ValueError) as ex, plan_wrong:
             fftn(a, s=self.s, axes=self.axes, norm=self.norm)
         # targeting a particular error
-        assert 'The CUFFT plan and a.shape do not match' in str(ex.value)
+        assert 'The cuFFT plan and a.shape do not match' in str(ex.value)
 
 
 @testing.parameterize(*testing.product({

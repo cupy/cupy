@@ -9,6 +9,7 @@ import cupy
 from cupy.cuda import cufft
 from cupy.fft import config
 
+
 _reduce = functools.reduce
 _prod = cupy.core.internal.prod
 
@@ -105,7 +106,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         if not isinstance(plan, cufft.Plan1d):
             raise ValueError('expected plan to have type cufft.Plan1d')
         if fft_type != plan.fft_type:
-            raise ValueError('CUFFT plan dtype mismatch.')
+            raise ValueError('cuFFT plan dtype mismatch.')
         if out_size != plan.nx:
             raise ValueError('Target array size does not match the plan.')
         if batch != plan.batch:
@@ -239,18 +240,20 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
 
     Args:
         shape (tuple of int): The shape of the array to transform
-        fft_type ({cufft.CUFFT_C2C, cufft.CUFFT_Z2Z}): The FFT type to perform.
-            Currently only complex-to-complex transforms are supported.
+        fft_type (int): The FFT type to perform. Supported values are: 
+            `cufft.CUFFT_C2C`, `cufft.CUFFT_C2R`, `cufft.CUFFT_R2C`,
+            `cufft.CUFFT_Z2Z`, `cufft.CUFFT_Z2D`, and `cufft.CUFFT_D2Z`.
         axes (None or int or tuple of int):  The axes of the array to
             transform. Currently, these must be a set of up to three adjacent
             axes and must include either the first or the last axis of the
             array.  If `None`, it is assumed that all axes are transformed.
         order ({'C', 'F'}): Specify whether the data to be transformed has C or
             Fortran ordered data layout.
+        out_size (int): The output length along the last axis for R2C/C2R FFTs.
+            For C2C FFT, this is ignored (and set to `None`).
 
     Returns:
-        plan (cufft.PlanNd): The CUFFT Plan. This can be used with
-            cufft.fft.fftn or cufft.fft.ifftn.
+        plan (cufft.PlanNd): A cuFFT Plan for the chosen `fft_type`.
     """
     ndim = len(shape)
 
@@ -509,6 +512,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     else:
         if not isinstance(plan, cufft.PlanNd):
             raise ValueError('expected plan to have type cufft.PlanNd')
+        # TODO(leofang): this shape check needs to be modified for C2R
         if a.flags.c_contiguous:
             expected_shape = tuple(a.shape[ax] for ax in axes)
         else:
@@ -516,13 +520,22 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
             expected_shape = tuple(a.shape[ax] for ax in axes[::-1])
         if expected_shape != plan.shape:
             raise ValueError(
-                'The CUFFT plan and a.shape do not match: '
+                'The cuFFT plan and a.shape do not match: '
                 'plan.shape = {}, expected_shape={}, a.shape = {}'.format(
                     plan.shape, expected_shape, a.shape))
         if fft_type != plan.fft_type:
-            raise ValueError('CUFFT plan dtype mismatch.')
-        # TODO: also check the strides and axes of the plan?
+            raise ValueError('cuFFT plan dtype mismatch.')
+        if value_type != 'C2C':
+            if axes[-1] != plan.last_axis:
+                raise ValueError('The last axis for R2C/C2R mismatch')
+            if out_size != plan.last_size:
+                raise ValueError('The size along the last R2C/C2R axis '
+                                 'mismatch')
+        if order != plan.order:
+            raise ValueError('array orders mismatch (plan: {}, input: {})'
+                             .format(plan.order, order))
 
+    # TODO(leofang): support in-place transform for R2C/C2R
     if overwrite_x and value_type == 'C2C':
         out = a
     elif out is None:
