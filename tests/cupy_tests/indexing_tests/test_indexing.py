@@ -40,13 +40,13 @@ class TestIndexing(unittest.TestCase):
         a = testing.shaped_random((2, 4, 3), xp, dtype='float32')
         b = testing.shaped_random((30,), xp, dtype='int64', scale=24)
         return xp.take_along_axis(a, b, axis=None)
-    
+
     @testing.numpy_cupy_array_equal()
     def test_compress(self, xp):
         a = testing.shaped_arange((3, 4, 5), xp)
         b = xp.array([True, False, True])
         return xp.compress(b, a, axis=1)
-    
+
     @testing.numpy_cupy_array_equal()
     def test_compress_no_axis(self, xp):
         a = testing.shaped_arange((3, 4, 5), xp)

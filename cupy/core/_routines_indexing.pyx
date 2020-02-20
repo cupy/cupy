@@ -157,14 +157,14 @@ cdef ndarray _ndarray_compress(ndarray self, condition, axis, out):
 
     if numpy.isscalar(condition):
         raise ValueError('condition must be a 1-d array')
-    
+
     if not isinstance(condition, ndarray):
         condition = core.array(condition, dtype=int)
         if condition.ndim != 1:
             raise ValueError('condition must be a 1-d array')
-    
+
     res = _ndarray_nonzero(condition)
-    
+
     return _ndarray_take(a, res[0], axis, out)
 
 
