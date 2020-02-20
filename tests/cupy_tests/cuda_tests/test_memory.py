@@ -631,23 +631,23 @@ class TestAllocator(unittest.TestCase):
 
     def test_allocator_context_manager(self):
         new_pool = memory.MemoryPool()
-        with memory.using_allocator(new_pool.malloc):
+        with cupy.cuda.using_allocator(new_pool.malloc):
             assert memory.get_allocator() == new_pool.malloc
         assert memory.get_allocator() == self.pool.malloc
 
     def test_set_allocator_cm(self):
         new_pool = memory.MemoryPool()
         new_pool2 = memory.MemoryPool()
-        with memory.using_allocator(new_pool.malloc):
+        with cupy.cuda.using_allocator(new_pool.malloc):
             with self.assertRaises(ValueError):
                 memory.set_allocator(new_pool2.malloc)
 
     def test_allocator_nested_context_manager(self):
         new_pool = memory.MemoryPool()
-        with memory.using_allocator(new_pool.malloc):
+        with cupy.cuda.using_allocator(new_pool.malloc):
             new_pool2 = memory.MemoryPool()
             assert memory.get_allocator() == new_pool.malloc
-            with memory.using_allocator(new_pool2.malloc):
+            with cupy.cuda.using_allocator(new_pool2.malloc):
                 assert memory.get_allocator() == new_pool2.malloc
             assert memory.get_allocator() == new_pool.malloc
         assert memory.get_allocator() == self.pool.malloc
@@ -655,7 +655,7 @@ class TestAllocator(unittest.TestCase):
     def test_allocator_thread_local(self):
         def thread_body(self):
             new_pool = memory.MemoryPool()
-            with memory.using_allocator(new_pool.malloc):
+            with cupy.cuda.using_allocator(new_pool.malloc):
                 assert memory.get_allocator() == new_pool.malloc
                 threading.Barrier(2)
                 arr = cupy.zeros(128, dtype=cupy.int64)
@@ -679,7 +679,7 @@ class TestAllocator(unittest.TestCase):
     def test_thread_local_valid(self):
         new_pool = memory.MemoryPool()
         arr = None
-        with memory.using_allocator(new_pool.malloc):
+        with cupy.cuda.using_allocator(new_pool.malloc):
             arr = cupy.zeros(128, dtype=cupy.int64)
             arr += 1
         # Check that arr and the pool have not ben released
