@@ -234,7 +234,7 @@ def _nd_plan_is_possible(axes_sorted, ndim):
                 for n in range(len(axes_sorted) - 1)]))
 
 
-def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
+def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
     """Generate a CUDA FFT plan for transforming up to three axes.
 
     Args:
@@ -295,35 +295,37 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
     output[b * odist + ((x * onembed[1] + y) * onembed[2] + z) * ostride]
     """
     if fft_axes == tuple(range(ndim)):
+        print("array shape:", shape)
         # tranfsorm over all axes
         plan_dimensions = copy.copy(shape)
         if order == 'F':
             plan_dimensions = plan_dimensions[::-1]
-        #idist = np.intp(_prod(shape))
-        #if fft_type in (cufft.CUFFT_C2C, cufft.CUFFT_Z2Z):
-        #    odist = np.intp(_prod(shape))
         if fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
-        #    shape = list(shape)
+            # Create cuFFT C2R plan is tricky: we need to enter the output
+            # array dimensions
             plan_dimensions = list(plan_dimensions)
-            plan_dimensions[axes[-1]] = 2 * (plan_dimensions[axes[-1]] - 1)
-        #    odist = np.intp(_prod(shape))
-        #else:  # R2C & D2Z
-        #    shape = list(shape)
-        #    shape[axes[-1]] = shape[axes[-1]] // 2 + 1 
-        #    odist = np.intp(_prod(shape))
+            if out_size is None:
+                plan_dimensions[fft_axes[-1]] = 2 * (plan_dimensions[fft_axes[-1]] - 1)
+            else:
+                plan_dimensions[fft_axes[-1]] = out_size
+        # for full-array transform, we can simply use the default strides
         idist = odist = 0
         istride = ostride = 1
         inembed = onembed = None
         nbatch = 1
     else:
         plan_dimensions = []
-        for d in range(ndim):
-            if d in fft_axes:
+        for i, d in enumerate(fft_axes):
+            if i == len(fft_axes) and fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
+                if out_size is None:
+                    plan_dimensions.append(2 * (shape[d] - 1))
+                else:
+                    plan_dimensions.append(out_size)
+            else:
                 plan_dimensions.append(shape[d])
         plan_dimensions = tuple(plan_dimensions)
         if order == 'F':
             plan_dimensions = plan_dimensions[::-1]
-        inembed = plan_dimensions
         if 0 not in fft_axes:
             # don't FFT along the first min_axis_fft axes
             min_axis_fft = _reduce(min, fft_axes)
@@ -331,23 +333,32 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
             if order == 'C':
                 # C-ordered GPU array with batch along first dim
                 idist = _prod(plan_dimensions)
-                if fft_type in (cufft.CUFFT_C2C, cufft.CUFFT_Z2Z):
+                if fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
+                    inembed = plan_dimensions
+                    onembed = shape
+                    odist = np.intp(_prod(shape))
+                else:
+                    inembed = plan_dimensions
                     onembed = plan_dimensions
                     odist = _prod(plan_dimensions)
-                elif fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
-                    shape = list(plan_dimensions)
-                    shape[axes[-1]] = 2 * (shape[axes[-1]] - 1)
-                    onembed = shape
-                    odist = np.intp(_prod(shape))
-                else:  # R2C & D2Z
-                    shape = list(plan_dimensions)
-                    shape[axes[-1]] = shape[axes[-1]] // 2 + 1
-                    onembed = shape
-                    odist = np.intp(_prod(shape))
+                #if fft_type in (cufft.CUFFT_C2C, cufft.CUFFT_Z2Z):
+                #    onembed = plan_dimensions
+                #    odist = _prod(plan_dimensions)
+                #elif fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
+                #    shape = list(plan_dimensions)
+                #    shape[axes[-1]] = 2 * (shape[axes[-1]] - 1)
+                #    onembed = shape
+                #    odist = np.intp(_prod(shape))
+                #else:  # R2C & D2Z
+                #    shape = list(plan_dimensions)
+                #    shape[axes[-1]] = shape[axes[-1]] // 2 + 1
+                #    onembed = shape
+                #    odist = np.intp(_prod(shape))
                 istride = 1
                 ostride = 1
             elif order == 'F':
                 # F-ordered GPU array with batch along first dim
+                inembed = plan_dimensions
                 onembed = plan_dimensions
                 idist = 1
                 odist = 1
@@ -362,21 +373,30 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
                 idist = 1
                 odist = 1
                 istride = nbatch
-                if fft_type in (cufft.CUFFT_C2C, cufft.CUFFT_Z2Z):
+                if fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
+                    inembed = plan_dimensions
+                    onembed = plan_dimensions
+                    ostride = _prod(shape[-num_axes_batch:])
+                else:
+                    inembed = plan_dimensions
                     onembed = plan_dimensions
                     ostride = nbatch
-                elif fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
-                    shape = list(plan_dimensions)
-                    shape[axes[-1]] = 2 * (shape[axes[-1]] - 1)
-                    onembed = shape
-                    ostride = _prod(shape[-num_axes_batch:])
-                else:  # R2C & D2Z
-                    shape = list(plan_dimensions)
-                    shape[axes[-1]] = shape[axes[-1]] // 2 + 1
-                    onembed = shape
-                    ostride = _prod(shape[-num_axes_batch:])
+                #if fft_type in (cufft.CUFFT_C2C, cufft.CUFFT_Z2Z):
+                #    onembed = plan_dimensions
+                #    ostride = nbatch
+                #elif fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
+                #    shape = list(plan_dimensions)
+                #    shape[axes[-1]] = 2 * (shape[axes[-1]] - 1)
+                #    onembed = shape
+                #    ostride = _prod(shape[-num_axes_batch:])
+                #else:  # R2C & D2Z
+                #    shape = list(plan_dimensions)
+                #    shape[axes[-1]] = shape[axes[-1]] // 2 + 1
+                #    onembed = shape
+                #    ostride = _prod(shape[-num_axes_batch:])
             elif order == 'F':
                 # F-ordered GPU array with batch along last dim
+                inembed = plan_dimensions
                 onembed = plan_dimensions
                 idist = _prod(plan_dimensions)
                 odist = _prod(plan_dimensions)
@@ -404,7 +424,7 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C'):
 
 
 def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
-               plan=None, out=None):
+               plan=None, out=None, out_size=None):
 
     fft_type = _convert_fft_type(a, value_type)
 
@@ -424,7 +444,8 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
         # don't check repeated usage; it's done in _default_fft_func()
     if plan is None:
         # generate a plan
-        plan = _get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order)
+        plan = _get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order,
+                                  out_size=out_size)
     else:
         if not isinstance(plan, cufft.PlanNd):
             raise ValueError('expected plan to have type cufft.PlanNd')
@@ -490,8 +511,18 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
         a = cupy.ascontiguousarray(a)
     elif order == 'F' and not a.flags.f_contiguous:
         a = cupy.asfortranarray(a)
+    
+    if value_type == 'C2R':
+        # _cook_shape tells us input shape only, and no output shape
+        if (s is None) or (s[-1] is None):
+            out_size = a.shape[axes_sorted[-1]] * 2 - 2
+        else:
+            out_size = s[-1]
+    else:
+        out_size = None
     a = _exec_fftn(a, direction, value_type, norm=norm, axes=axes_sorted,
-                   overwrite_x=overwrite_x, plan=plan, out=out)
+                   overwrite_x=overwrite_x, plan=plan, out=out,
+                   out_size=out_size)
     return a
 
 
