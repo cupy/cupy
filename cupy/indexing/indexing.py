@@ -89,7 +89,7 @@ def compress(condition, a, axis=None, out=None):
             on the flattened array.
         out (cupy.ndarray): Output array. If provided, it should be of
             appropriate shape and dtype.
-    
+
     Returns:
         cupy.ndarray: A copy of a without the slices along axis for which
             condition is false.
