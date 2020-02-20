@@ -314,99 +314,158 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
         inembed = onembed = None
         nbatch = 1
     else:
-        plan_dimensions = []
-        for i, d in enumerate(fft_axes):
-            if i == len(fft_axes) and fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
-                if out_size is None:
-                    plan_dimensions.append(2 * (shape[d] - 1))
-                else:
-                    plan_dimensions.append(out_size)
-            else:
-                plan_dimensions.append(shape[d])
-        plan_dimensions = tuple(plan_dimensions)
-        if order == 'F':
-            plan_dimensions = plan_dimensions[::-1]
-        if 0 not in fft_axes:
-            # don't FFT along the first min_axis_fft axes
-            min_axis_fft = _reduce(min, fft_axes)
-            nbatch = _prod(shape[:min_axis_fft])
-            if order == 'C':
-                # C-ordered GPU array with batch along first dim
-                idist = _prod(plan_dimensions)
-                if fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
-                    inembed = plan_dimensions
-                    onembed = shape
-                    odist = np.intp(_prod(shape))
-                else:
-                    inembed = plan_dimensions
-                    onembed = plan_dimensions
+        if fft_type in (cufft.CUFFT_C2C, cufft.CUFFT_Z2Z):
+            plan_dimensions = []
+            for d in range(ndim):
+                if d in fft_axes:
+                    plan_dimensions.append(shape[d])
+            plan_dimensions = tuple(plan_dimensions)
+            if order == 'F':
+                plan_dimensions = plan_dimensions[::-1]
+            inembed = onembed = plan_dimensions
+            if 0 not in fft_axes:
+                # don't FFT along the first min_axis_fft axes
+                min_axis_fft = _reduce(min, fft_axes)
+                nbatch = _prod(shape[:min_axis_fft])
+                if order == 'C':
+                    # C-ordered GPU array with batch along first dim
+                    idist = _prod(plan_dimensions)
                     odist = _prod(plan_dimensions)
-                #if fft_type in (cufft.CUFFT_C2C, cufft.CUFFT_Z2Z):
-                #    onembed = plan_dimensions
-                #    odist = _prod(plan_dimensions)
-                #elif fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
-                #    shape = list(plan_dimensions)
-                #    shape[axes[-1]] = 2 * (shape[axes[-1]] - 1)
-                #    onembed = shape
-                #    odist = np.intp(_prod(shape))
-                #else:  # R2C & D2Z
-                #    shape = list(plan_dimensions)
-                #    shape[axes[-1]] = shape[axes[-1]] // 2 + 1
-                #    onembed = shape
-                #    odist = np.intp(_prod(shape))
-                istride = 1
-                ostride = 1
-            elif order == 'F':
-                # F-ordered GPU array with batch along first dim
-                inembed = plan_dimensions
-                onembed = plan_dimensions
-                idist = 1
-                odist = 1
-                istride = nbatch
-                ostride = nbatch
-        elif (ndim - 1) not in fft_axes:
-            # don't FFT along the last axis
-            num_axes_batch = ndim - len(fft_axes)
-            nbatch = _prod(shape[-num_axes_batch:])
-            if order == 'C':
-                # C-ordered GPU array with batch along last dim
-                idist = 1
-                odist = 1
-                istride = nbatch
-                if fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
-                    inembed = plan_dimensions
-                    onembed = plan_dimensions
-                    ostride = _prod(shape[-num_axes_batch:])
-                else:
-                    inembed = plan_dimensions
-                    onembed = plan_dimensions
+                    istride = 1
+                    ostride = 1
+                elif order == 'F':
+                    # F-ordered GPU array with batch along first dim
+                    idist = 1
+                    odist = 1
+                    istride = nbatch
                     ostride = nbatch
-                #if fft_type in (cufft.CUFFT_C2C, cufft.CUFFT_Z2Z):
-                #    onembed = plan_dimensions
-                #    ostride = nbatch
-                #elif fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
-                #    shape = list(plan_dimensions)
-                #    shape[axes[-1]] = 2 * (shape[axes[-1]] - 1)
-                #    onembed = shape
-                #    ostride = _prod(shape[-num_axes_batch:])
-                #else:  # R2C & D2Z
-                #    shape = list(plan_dimensions)
-                #    shape[axes[-1]] = shape[axes[-1]] // 2 + 1
-                #    onembed = shape
-                #    ostride = _prod(shape[-num_axes_batch:])
-            elif order == 'F':
-                # F-ordered GPU array with batch along last dim
-                inembed = plan_dimensions
-                onembed = plan_dimensions
-                idist = _prod(plan_dimensions)
-                odist = _prod(plan_dimensions)
-                istride = 1
-                ostride = 1
-        else:
-            raise ValueError(
-                'General subsets of FFT axes not currently supported for '
-                'GPU case (Can only batch FFT over the first or last '
-                'spatial axes).')
+            elif (ndim - 1) not in fft_axes:
+                # don't FFT along the last axis
+                num_axes_batch = ndim - len(fft_axes)
+                nbatch = _prod(shape[-num_axes_batch:])
+                if order == 'C':
+                    # C-ordered GPU array with batch along last dim
+                    idist = 1
+                    odist = 1
+                    istride = nbatch
+                    ostride = nbatch
+                elif order == 'F':
+                    # F-ordered GPU array with batch along last dim
+                    idist = _prod(plan_dimensions)
+                    odist = _prod(plan_dimensions)
+                    istride = 1
+                    ostride = 1
+            else:
+                raise ValueError(
+                    'General subsets of FFT axes not currently supported for '
+                    'GPU case (Can only batch FFT over the first or last '
+                    'spatial axes).')
+        elif fft_type in (cufft.CUFFT_R2C, cufft.CUFFT_D2Z):
+            plan_dimensions = []  # = input dimensions
+            for d in range(ndim):
+                if d in fft_axes:
+                    plan_dimensions.append(shape[d])
+            plan_dimensions = tuple(plan_dimensions)
+            if order == 'F':
+                plan_dimensions = plan_dimensions[::-1]
+            inembed = plan_dimensions
+            out_dimensions = list(plan_dimensions)
+            if out_size is not None:
+                if order == 'C':
+                    out_dimensions[-1] = out_size
+                else:  # order = 'F'
+                    out_dimensions[0] = out_size
+            onembed = out_dimensions = tuple(out_dimensions)
+            if 0 not in fft_axes:
+                # don't FFT along the first min_axis_fft axes
+                min_axis_fft = _reduce(min, fft_axes)
+                nbatch = _prod(shape[:min_axis_fft])
+                if order == 'C':
+                    # C-ordered GPU array with batch along first dim
+                    idist = _prod(plan_dimensions)
+                    odist = _prod(out_dimensions)
+                    istride = 1
+                    ostride = 1
+                elif order == 'F':
+                    # F-ordered GPU array with batch along first dim
+                    idist = 1
+                    odist = 1
+                    istride = nbatch
+                    ostride = nbatch
+            elif (ndim - 1) not in fft_axes:
+                # don't FFT along the last axis
+                num_axes_batch = ndim - len(fft_axes)
+                nbatch = _prod(shape[-num_axes_batch:])
+                if order == 'C':
+                    # C-ordered GPU array with batch along last dim
+                    idist = 1
+                    odist = 1
+                    istride = nbatch
+                    ostride = nbatch
+                elif order == 'F':
+                    # F-ordered GPU array with batch along last dim
+                    idist = _prod(plan_dimensions)
+                    odist = _prod(out_dimensions)
+                    istride = 1
+                    ostride = 1
+            else:
+                raise ValueError(
+                    'General subsets of FFT axes not currently supported for '
+                    'GPU case (Can only batch FFT over the first or last '
+                    'spatial axes).')
+        else:  # CUFFT_C2R or CUFFT_Z2D
+            in_dimensions = []
+            for d in range(ndim):
+                if d in fft_axes:
+                    in_dimensions.append(shape[d])
+            if order == 'F':
+                in_dimensions = in_dimensions[::-1]
+            plan_dimensions = copy.copy(in_dimensions)
+            inembed = in_dimensions = tuple(in_dimensions)
+            if out_size is not None:
+                if order == 'C':
+                    plan_dimensions[-1] = out_size
+                else:  # order = 'F'
+                    plan_dimensions[0] = out_size
+            plan_dimensions = tuple(plan_dimensions)
+            onembed = plan_dimensions
+            if 0 not in fft_axes:
+                # don't FFT along the first min_axis_fft axes
+                min_axis_fft = _reduce(min, fft_axes)
+                nbatch = _prod(shape[:min_axis_fft])
+                if order == 'C':
+                    # C-ordered GPU array with batch along first dim
+                    idist = _prod(in_dimensions)
+                    odist = _prod(plan_dimensions)
+                    istride = 1
+                    ostride = 1
+                elif order == 'F':
+                    # F-ordered GPU array with batch along first dim
+                    idist = 1
+                    odist = 1
+                    istride = nbatch
+                    ostride = nbatch
+            elif (ndim - 1) not in fft_axes:
+                # don't FFT along the last axis
+                num_axes_batch = ndim - len(fft_axes)
+                nbatch = _prod(shape[-num_axes_batch:])
+                if order == 'C':
+                    # C-ordered GPU array with batch along last dim
+                    idist = 1
+                    odist = 1
+                    istride = nbatch
+                    ostride = nbatch
+                elif order == 'F':
+                    # F-ordered GPU array with batch along last dim
+                    idist = _prod(in_dimensions)
+                    odist = _prod(plan_dimensions)
+                    istride = 1
+                    ostride = 1
+            else:
+                raise ValueError(
+                    'General subsets of FFT axes not currently supported for '
+                    'GPU case (Can only batch FFT over the first or last '
+                    'spatial axes).')
 
     print(plan_dimensions, inembed, istride, idist, onembed, ostride, odist, fft_type, nbatch, order, axes[-1])
     plan = cufft.PlanNd(shape=plan_dimensions,
@@ -419,7 +478,7 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
                         fft_type=fft_type,
                         batch=nbatch,
                         order=order,
-                        last_axis=axes[-1])
+                        out_size=out_size)
     return plan
 
 
@@ -512,13 +571,15 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
     elif order == 'F' and not a.flags.f_contiguous:
         a = cupy.asfortranarray(a)
     
+    # _cook_shape tells us input shape only, and no output shape
     if value_type == 'C2R':
-        # _cook_shape tells us input shape only, and no output shape
         if (s is None) or (s[-1] is None):
-            out_size = a.shape[axes_sorted[-1]] * 2 - 2
+            out_size = 2 * (a.shape[axes_sorted[-1]] - 1)
         else:
             out_size = s[-1]
-    else:
+    elif value_type == 'R2C':
+        out_size = a.shape[axes_sorted[-1]] // 2 + 1
+    else:  # C2C
         out_size = None
     a = _exec_fftn(a, direction, value_type, norm=norm, axes=axes_sorted,
                    overwrite_x=overwrite_x, plan=plan, out=out,
