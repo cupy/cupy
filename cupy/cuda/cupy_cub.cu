@@ -201,7 +201,7 @@ __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, cons
     if (half_isnan(a)) {return a;}
     else if (half_isnan(b)) {return b;}
     else if (half_less(a, b)) {return a;}
-    else {return a;}
+    else {return b;}
 }
 #endif
 
