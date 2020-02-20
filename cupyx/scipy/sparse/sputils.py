@@ -3,7 +3,8 @@ import cupy
 from cupy.core import _dtype
 
 supported_dtypes = ['single', 'double', 'csingle', 'cdouble']
-supported_dtypes = [get_dtype(x) for x in ('single', 'double', 'csingle', 'cdouble')]
+supported_dtypes = [get_dtype(x) for x in (
+    'single', 'double', 'csingle', 'cdouble')]
 
 
 _upcast_memo = {}
