@@ -240,7 +240,7 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
 
     Args:
         shape (tuple of int): The shape of the array to transform
-        fft_type (int): The FFT type to perform. Supported values are: 
+        fft_type (int): The FFT type to perform. Supported values are:
             `cufft.CUFFT_C2C`, `cufft.CUFFT_C2R`, `cufft.CUFFT_R2C`,
             `cufft.CUFFT_Z2Z`, `cufft.CUFFT_Z2D`, and `cufft.CUFFT_D2Z`.
         axes (None or int or tuple of int):  The axes of the array to
@@ -298,7 +298,6 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
     output[b * odist + ((x * onembed[1] + y) * onembed[2] + z) * ostride]
     """
     if fft_axes == tuple(range(ndim)):
-        print("array shape:", shape)
         # tranfsorm over all axes
         plan_dimensions = copy.copy(shape)
         if order == 'F':
@@ -306,11 +305,12 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
         if fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
             # Create cuFFT C2R plan is tricky: we need to enter the output
             # array dimensions
-            plan_dimensions = list(plan_dimensions)
+            dim = list(plan_dimensions)
             if out_size is None:
-                plan_dimensions[fft_axes[-1]] = 2 * (plan_dimensions[fft_axes[-1]] - 1)
+                dim[fft_axes[-1]] = 2 * (dim[fft_axes[-1]] - 1)
             else:
-                plan_dimensions[fft_axes[-1]] = out_size
+                dim[fft_axes[-1]] = out_size
+            plan_dimensions = tuple(dim)
         # for full-array transform, we can simply use the default strides
         idist = odist = 0
         istride = ostride = 1
@@ -494,7 +494,7 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
         a = cupy.ascontiguousarray(a)
     elif order == 'F' and not a.flags.f_contiguous:
         a = cupy.asfortranarray(a)
-    
+
     # _cook_shape tells us input shape only, and no output shape
     if value_type == 'C2R':
         if (s is None) or (s[-1] is None):
