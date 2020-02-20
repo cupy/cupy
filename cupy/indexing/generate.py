@@ -227,7 +227,7 @@ def ix_(*args):
 
         This function may synchronize the device.
 
-     .. seealso:: :func:`numpy.ix_`
+    .. seealso:: :func:`numpy.ix_`
 
     """
     # TODO(niboshi): Avoid nonzero which may synchronize the device.
@@ -249,8 +249,8 @@ def ix_(*args):
 
 def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
     """
-    Converts a tuple of index arrays into an array of flat
-    indices, applying boundary modes to the multi-index.
+    Converts a tuple of index arrays into an array of flat indices, applying
+    boundary modes to the multi-index.
 
     Args:
         multi_index (tuple of cupy.ndarray) : A tuple of integer arrays, one
@@ -301,7 +301,7 @@ def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
     for arr in multi_index:
         if not isinstance(arr, cupy.ndarray):
             raise TypeError("elements of multi_index must be cupy arrays")
-        if arr.dtype.kind not in 'iu':
+        if arr.dtype.kind not in 'iub':
             raise TypeError("only int indices permitted")
 
     for d in dims:
@@ -315,6 +315,8 @@ def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
 
     s = 1
     ravel_strides = [1] * ndim
+    if order is None:
+        order = "C"
     if order == "C":
         for i in range(ndim - 2, -1, -1):
             s = s * dims[i + 1]
@@ -324,7 +326,7 @@ def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
             s = s * dims[i - 1]
             ravel_strides[i] = s
     else:
-        raise ValueError("only 'C' or 'F' order is permitted")
+        raise TypeError("order not understood")
 
     raveled_indices = 0
     for d, stride, idx, _mode in zip(dims, ravel_strides, multi_index, mode):
