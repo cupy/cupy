@@ -244,6 +244,14 @@ class TestRavelMultiIndex(unittest.TestCase):
         a = tuple([xp.arange(d, dtype=dtype) for d in dims])
         xp.ravel_multi_index(a, dims, order='V')
 
+    @testing.for_orders(['C', 'F', None])
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_dims_overflow(self, xp, order, dtype):
+        dims = (8, 4)
+        a = tuple([xp.arange(d, dtype=dtype) for d in dims])
+        xp.ravel_multi_index(a, (xp.iinfo(xp.int64).max, 4), order=order)
+
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_raises(accept_error=TypeError)
     def test_invalid_mode(self, xp, dtype):

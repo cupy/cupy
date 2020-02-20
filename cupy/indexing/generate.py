@@ -1,6 +1,8 @@
 # class s_(object):
 
+import functools
 import numbers
+import operator
 
 import numpy
 
@@ -312,6 +314,10 @@ def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
 
     if isinstance(mode, str):
         mode = (mode, ) * ndim
+
+    if functools.reduce(operator.mul, dims) > cupy.iinfo(cupy.int64).max:
+        raise ValueError("invalid dims: array size defined by dims is larger "
+                         "than the maximum possible size")
 
     s = 1
     ravel_strides = [1] * ndim
