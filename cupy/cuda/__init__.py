@@ -116,7 +116,8 @@ def using_allocator(allocator=None):
     # function but `contextmanager` decoration doesn't behave well in Cython.
     if allocator is None:
         allocator = memory._malloc
-    previous_allocator = memory._set_thread_local_allocator(allocator)
+    previous_allocator = memory._get_thread_local_allocator()
+    memory._set_thread_local_allocator(allocator)
     try:
         yield
     finally:

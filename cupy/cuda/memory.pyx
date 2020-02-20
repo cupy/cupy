@@ -542,10 +542,16 @@ cdef object _current_allocator = _malloc
 cdef object _thread_local = threading.local()
 
 
+def _get_thread_local_allocator():
+    try:
+        allocator = _thread_local.allocator
+    except AttributeError:
+        allocator = _thread_local.allocator = None
+    return allocator
+
+
 def _set_thread_local_allocator(allocator):
-    previous_allocator = getattr(_thread_local, 'allocator', None)
     _thread_local.allocator = allocator
-    return previous_allocator
 
 
 cpdef MemoryPointer alloc(size):
