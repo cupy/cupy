@@ -162,6 +162,32 @@ class TestDefaultPlanType(unittest.TestCase):
         # first or last axis not included -> nd plan not possible
         assert _default_fft_func(ca, axes=(1, )) is _fft
 
+        # for rfftn
+        ca = cupy.random.random((4, 2, 6))
+        for s, axes in zip([(3, 4), None, (8, 7, 5)],
+                           [(-2, -1), (0, 1), None]):
+            fft_func = _default_fft_func(ca, s=s, axes=axes, value_type='R2C')
+            if enable_nd:
+                assert fft_func is _fftn
+            else:
+                assert fft_func is _fft
+
+        # nd plan not possible if last axis is not 0 or ndim-1
+        assert _default_fft_func(ca, axes=(2, 1), value_type='R2C') is _fft
+
+        # for irfftn
+        ca = cupy.random.random((4, 2, 6)).astype(cupy.complex128)
+        for s, axes in zip([(3, 4), None, (8, 7, 5)],
+                           [(-2, -1), (0, 1), None]):
+            fft_func = _default_fft_func(ca, s=s, axes=axes, value_type='C2R')
+            if enable_nd:
+                assert fft_func is _fftn
+            else:
+                assert fft_func is _fft
+
+        # nd plan not possible if last axis is not 0 or ndim-1
+        assert _default_fft_func(ca, axes=(2, 1), value_type='C2R') is _fft
+
 
 @testing.gpu
 @testing.slow
@@ -660,6 +686,67 @@ class TestRfftn(unittest.TestCase):
             out = out.astype(np.float32)
 
         return out
+
+
+# TODO(leofang): write a TestPlanCtxManagerRfftn class
+
+
+@testing.parameterize(
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
+)
+@testing.gpu
+class TestRfftnContiguity(unittest.TestCase):
+
+    @nd_planning_states([True])
+    @testing.for_float_dtypes()
+    def test_rfftn_orders(self, dtype, enable_nd):
+        for order in ['C', 'F']:
+            a = testing.shaped_random(self.shape, cupy, dtype)
+            if order == 'F':
+                a = cupy.asfortranarray(a)
+            out = cupy.fft.rfftn(a, s=self.s, axes=self.axes)
+
+            fft_func = _default_fft_func(a, s=self.s, axes=self.axes,
+                                         value_type='R2C')
+            if fft_func is _fftn:
+                # nd plans have output with contiguity matching the input
+                self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
+                self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
+            else:
+                # 1d planning case doesn't guarantee preserved contiguity
+                pass
+
+    @nd_planning_states([True])
+    @testing.for_all_dtypes()
+    def test_ifftn_orders(self, dtype, enable_nd):
+        for order in ['C', 'F']:
+
+            a = testing.shaped_random(self.shape, cupy, dtype)
+            if order == 'F':
+                a = cupy.asfortranarray(a)
+            out = cupy.fft.irfftn(a, s=self.s, axes=self.axes)
+
+            fft_func = _default_fft_func(a, s=self.s, axes=self.axes,
+                                         value_type='C2R')
+            if fft_func is _fftn:
+                # nd plans have output with contiguity matching the input
+                self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
+                self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
+            else:
+                # 1d planning case doesn't guarantee preserved contiguity
+                pass
 
 
 @testing.parameterize(*testing.product({
