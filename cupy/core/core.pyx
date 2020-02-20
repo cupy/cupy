@@ -10,7 +10,6 @@ import ctypes
 import numpy
 
 import cupy
-from cupy.core import _errors
 from cupy.core._kernel import create_ufunc
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._kernel import ufunc  # NOQA

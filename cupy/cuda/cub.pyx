@@ -6,7 +6,6 @@ from cpython cimport sequence
 
 import numpy
 
-from cupy.core._errors import _AxisError
 from cupy.core.core cimport _internal_ascontiguousarray
 from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport ndarray

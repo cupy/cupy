@@ -1,5 +1,6 @@
+import numpy
+
 import cupy
-from cupy.core import _errors
 
 
 def take(a, indices, axis=None, out=None):
@@ -52,7 +53,7 @@ def take_along_axis(a, indices, axis):
     ndim = a.ndim
 
     if not (-ndim <= axis < ndim):
-        raise _errors._AxisError('Axis overrun')
+        raise numpy.AxisError('Axis overrun')
 
     axis %= a.ndim
 
