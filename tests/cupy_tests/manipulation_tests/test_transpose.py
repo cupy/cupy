@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 import cupy
 from cupy import testing
 
@@ -45,7 +47,7 @@ class TestTranspose(unittest.TestCase):
 
     def test_moveaxis_invalid1_2(self):
         a = testing.shaped_arange((2, 3, 4), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             return cupy.moveaxis(a, [0, 1], [1, 3])
 
     # dim is too small
@@ -56,7 +58,7 @@ class TestTranspose(unittest.TestCase):
 
     def test_moveaxis_invalid2_2(self):
         a = testing.shaped_arange((2, 3, 4), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             return cupy.moveaxis(a, [0, -4], [1, 2])
 
     # len(source) != len(destination)
@@ -74,17 +76,17 @@ class TestTranspose(unittest.TestCase):
     # Use the same axis twice
     def test_moveaxis_invalid5_1(self):
         a = testing.shaped_arange((2, 3, 4), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             return cupy.moveaxis(a, [1, -1], [1, 3])
 
     def test_moveaxis_invalid5_2(self):
         a = testing.shaped_arange((2, 3, 4), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             return cupy.moveaxis(a, [0, 1], [-1, 2])
 
     def test_moveaxis_invalid5_3(self):
         a = testing.shaped_arange((2, 3, 4), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             return cupy.moveaxis(a, [0, 1], [1, 1])
 
     @testing.numpy_cupy_array_equal()

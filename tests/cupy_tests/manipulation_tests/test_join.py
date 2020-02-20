@@ -1,7 +1,8 @@
 import unittest
 
-import cupy
+import numpy
 
+import cupy
 from cupy import testing
 
 
@@ -306,7 +307,7 @@ class TestJoin(unittest.TestCase):
 
     def test_stack_out_of_bounds2(self):
         a = testing.shaped_arange((2, 3), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             return cupy.stack([a, a], axis=3)
 
     @testing.for_all_dtypes(name='dtype')

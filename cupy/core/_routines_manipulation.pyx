@@ -4,7 +4,6 @@ import sys
 
 import numpy
 
-from cupy.core import _errors
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._ufuncs import elementwise_copy
 
@@ -165,7 +164,7 @@ cdef ndarray _ndarray_squeeze(ndarray self, axis):
             if _axis < 0:
                 _axis += ndim
             if _axis < 0 or _axis >= ndim:
-                raise _errors._AxisError(
+                raise numpy.AxisError(
                     '\'axis\' entry %d is out of bounds [-%d, %d)' %
                     (axis_orig, ndim, ndim))
             if axis_flags[_axis] == 1:
@@ -182,7 +181,7 @@ cdef ndarray _ndarray_squeeze(ndarray self, axis):
             pass
         else:
             if _axis < 0 or _axis >= ndim:
-                raise _errors._AxisError(
+                raise numpy.AxisError(
                     '\'axis\' entry %d is out of bounds [-%d, %d)' %
                     (axis_orig, ndim, ndim))
             axis_flags[_axis] = 1
@@ -500,7 +499,7 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
             a = a.ravel()
             axis = 0
     elif not (-a.ndim <= axis < a.ndim):
-        raise _errors._AxisError(
+        raise numpy.AxisError(
             'axis {} is out of bounds for array of dimension {}'.format(
                 axis, a.ndim))
 
@@ -555,7 +554,7 @@ cpdef ndarray concatenate_method(tup, int axis, ndarray out=None):
             if axis < 0:
                 axis += ndim
             if axis < 0 or axis >= ndim:
-                raise _errors._AxisError(
+                raise numpy.AxisError(
                     'axis {} out of bounds [0, {})'.format(axis, ndim))
             dtype = a.dtype
             continue
@@ -717,11 +716,11 @@ cdef _normalize_axis_tuple(axis, Py_ssize_t ndim,
 
     for ax in axis:
         if ax >= ndim or ax < -ndim:
-            raise _errors._AxisError(
+            raise numpy.AxisError(
                 'axis {} is out of bounds for array of '
                 'dimension {}'.format(ax, ndim))
         if _has_element(ret, ax):
-            raise _errors._AxisError('repeated axis')
+            raise numpy.AxisError('repeated axis')
         ret.push_back(ax % ndim)
 
 

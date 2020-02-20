@@ -6,9 +6,10 @@ import functools
 import os
 import warnings
 
+import numpy
+
 import cupy
 from cupy.cuda cimport device
-from cupy.core import _errors
 
 
 ENABLE_SLICE_COPY = bool(
@@ -39,7 +40,7 @@ def _normalize_axis_index(axis, ndim):
     if axis < 0:
         axis += ndim
     if not (0 <= axis < ndim):
-        raise _errors._AxisError('axis out of bounds')
+        raise numpy.AxisError('axis out of bounds')
     return axis
 
 

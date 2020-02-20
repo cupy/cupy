@@ -4,7 +4,6 @@ import sys
 import numpy
 
 import cupy
-from cupy.core import _errors
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._ufuncs import elementwise_copy
 
@@ -602,7 +601,7 @@ cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
         ndim = 1
 
     if not (-ndim <= li < ndim and -ndim <= ri < ndim):
-        raise _errors._AxisError('Axis overrun')
+        raise numpy.AxisError('Axis overrun')
 
     if ndim == 1:
         li = ri = 0
@@ -828,7 +827,7 @@ cdef ndarray _diagonal(
         Py_ssize_t axis2=1):
     cdef Py_ssize_t ndim = a.ndim
     if not (-ndim <= axis1 < ndim and -ndim <= axis2 < ndim):
-        raise _errors._AxisError(
+        raise numpy.AxisError(
             'axis1(={0}) and axis2(={1}) must be within range '
             '(ndim={2})'.format(axis1, axis2, ndim))
 
