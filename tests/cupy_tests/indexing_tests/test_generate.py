@@ -176,16 +176,16 @@ class TestUnravelIndex(unittest.TestCase):
 @testing.gpu
 class TestRavelMultiIndex(unittest.TestCase):
 
-    @testing.for_int_dtypes()
     @testing.for_orders(['C', 'F', None])
+    @testing.for_int_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_basic(self, xp, order, dtype):
         dims = (8, 4)
         a = [xp.ones(5, dtype=dtype)] * len(dims)
         return xp.ravel_multi_index(a, dims, order=order)
 
-    @testing.for_int_dtypes()
     @testing.for_orders(['C', 'F', None])
+    @testing.for_int_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_basic_nd_coords(self, xp, order, dtype):
         dims = (8, 4)
@@ -243,3 +243,10 @@ class TestRavelMultiIndex(unittest.TestCase):
         dims = (8, 4)
         a = tuple([xp.arange(d, dtype=dtype) for d in dims])
         xp.ravel_multi_index(a, dims, order='V')
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_invalid_mode(self, xp, dtype):
+        dims = (8, 4)
+        a = tuple([xp.arange(d, dtype=dtype) for d in dims])
+        xp.ravel_multi_index(a, dims, mode='invalid')

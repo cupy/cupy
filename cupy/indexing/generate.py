@@ -338,7 +338,7 @@ def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
         elif _mode == 'wrap':
             idx = idx % d
         else:
-            raise ValueError("Unrecognized mode: {}".format(_mode))
+            raise TypeError("Unrecognized mode: {}".format(_mode))
         raveled_indices += stride * idx
     return raveled_indices
 
