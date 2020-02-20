@@ -84,7 +84,7 @@ class TestKind(unittest.TestCase):
             cupy.require(x, dtype, ['C', 'F'])
 
     @testing.for_all_dtypes()
-    def test_require_incorrect_flags(self, dtype):
+    def test_require_incorrect_requirments(self, dtype):
         x = cupy.zeros((2, 3, 4), dtype)
         with pytest.raises(ValueError):
             cupy.require(x, dtype, ['W'])
