@@ -374,7 +374,7 @@ cdef _cub_support_dtype(bint sum_mode, int dev_id):
 
     if dev_id not in support_dtype_dict:
         if int(device.get_compute_capability()) >= 53 and \
-                runtime.runtimeGetVersion() >= 9000:
+                runtime.runtimeGetVersion() >= 9020:
             support_dtype = with_half
         else:
             support_dtype = without_half
