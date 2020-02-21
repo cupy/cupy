@@ -541,6 +541,19 @@ cpdef MemoryPointer malloc_managed(size_t size):
 cdef object _current_allocator = _malloc
 cdef object _thread_local = threading.local()
 
+
+def _get_thread_local_allocator():
+    try:
+        allocator = _thread_local.allocator
+    except AttributeError:
+        allocator = _thread_local.allocator = None
+    return allocator
+
+
+def _set_thread_local_allocator(allocator):
+    _thread_local.allocator = allocator
+
+
 cpdef MemoryPointer alloc(size):
     """Calls the current allocator.
 
@@ -590,28 +603,6 @@ cpdef get_allocator():
         return _current_allocator
     else:
         return allocator
-
-
-def _using_allocator(allocator=None):
-    """Sets a thread-local allocator for GPU memory inside
-       context manager
-
-    Args:
-        allocator (function): CuPy memory allocator. It must have the same
-            interface as the :func:`cupy.cuda.alloc` function, which takes the
-            buffer size as an argument and returns the device buffer of that
-            size. When ``None`` is specified, raw memory allocator will be
-            used (i.e., memory pool is disabled).
-
-    """
-    if allocator is None:
-        allocator = _malloc
-    previous_allocator = getattr(_thread_local, 'allocator', None)
-    _thread_local.allocator = allocator
-    try:
-        yield
-    finally:
-        _thread_local.allocator = previous_allocator
 
 
 @cython.final

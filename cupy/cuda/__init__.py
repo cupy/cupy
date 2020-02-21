@@ -111,14 +111,17 @@ def using_allocator(allocator=None):
             buffer size as an argument and returns the device buffer of that
             size. When ``None`` is specified, raw memory allocator will be
             used (i.e., memory pool is disabled).
-
-    Note:
-        This wraps an internal version of this function to provide a
-        `contextmanager` as `contextmanger` decoration doesn't behave
-        well in Cython.
     """
-    for y in memory._using_allocator(allocator):
-        yield y
+    # Note: cupy/memory.pyx would be the better place to implement this
+    # function but `contextmanager` decoration doesn't behave well in Cython.
+    if allocator is None:
+        allocator = memory._malloc
+    previous_allocator = memory._get_thread_local_allocator()
+    memory._set_thread_local_allocator(allocator)
+    try:
+        yield
+    finally:
+        memory._set_thread_local_allocator(previous_allocator)
 
 
 @contextlib.contextmanager
