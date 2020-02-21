@@ -19,6 +19,10 @@ from cupy.random import _kernels
 from cupy import util
 
 
+_UINT32_MAX = 0xffffffff
+_UINT64_MAX = 0xffffffffffffffff
+
+
 class RandomState(object):
 
     """Portable container of a pseudo-random number generator.
@@ -58,6 +62,9 @@ class RandomState(object):
         if hasattr(self, '_generator'):
             curand.destroyGenerator(self._generator)
 
+    def _update_seed(self, size):
+        self._rk_seed = (self._rk_seed + size) % _UINT64_MAX
+
     def _generate_normal(self, func, size, dtype, *args):
         # curand functions below don't support odd size.
         # * curand.generateNormal
@@ -89,8 +96,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(a, b).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.beta_kernel(a, b, self.rk_seed, y)
-        self.rk_seed += numpy.prod(y.size, dtype=self.rk_seed.dtype)
+        _kernels.beta_kernel(a, b, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def binomial(self, n, p, size=None, dtype=int):
@@ -105,8 +112,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(n, p).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.binomial_kernel(n, p, self.rk_seed, y)
-        self.rk_seed += numpy.prod(y.size, dtype=self.rk_seed.dtype)
+        _kernels.binomial_kernel(n, p, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def chisquare(self, df, size=None, dtype=float):
@@ -121,8 +128,8 @@ class RandomState(object):
         if size is None:
             size = df.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.chisquare_kernel(df, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.chisquare_kernel(df, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def dirichlet(self, alpha, size=None, dtype=float):
@@ -139,9 +146,9 @@ class RandomState(object):
         else:
             size += alpha.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.standard_gamma_kernel(alpha, self.rk_seed, y)
+        _kernels.standard_gamma_kernel(alpha, self._rk_seed, y)
         y /= y.sum(axis=-1, keepdims=True)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        self._update_seed(y.size)
         return y
 
     def exponential(self, scale=1.0, size=None, dtype=float):
@@ -177,8 +184,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(dfnum, dfden).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.f_kernel(dfnum, dfden, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.f_kernel(dfnum, dfden, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def gamma(self, shape, scale=1.0, size=None, dtype=float):
@@ -193,9 +200,9 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(shape, scale).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.standard_gamma_kernel(shape, self.rk_seed, y)
+        _kernels.standard_gamma_kernel(shape, self._rk_seed, y)
         y *= scale
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        self._update_seed(y.size)
         return y
 
     def geometric(self, p, size=None, dtype=int):
@@ -210,8 +217,8 @@ class RandomState(object):
         if size is None:
             size = p.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.geometric_kernel(p, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.geometric_kernel(p, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def hypergeometric(self, ngood, nbad, nsample, size=None, dtype=int):
@@ -227,8 +234,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(ngood, nbad, nsample).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.hypergeometric_kernel(ngood, nbad, nsample, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.hypergeometric_kernel(ngood, nbad, nsample, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     _laplace_kernel = core.ElementwiseKernel(
@@ -264,8 +271,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(loc, scale).shape
         x = cupy.empty(shape=size, dtype=dtype)
-        _kernels.open_uniform_kernel(self.rk_seed, x)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.open_uniform_kernel(self._rk_seed, x)
+        self._update_seed(x.size)
         x = (1.0 - x) / x
         cupy.log(x, out=x)
         cupy.multiply(x, scale, out=x)
@@ -309,8 +316,8 @@ class RandomState(object):
         if size is None:
             size = p.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.logseries_kernel(p, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.logseries_kernel(p, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def multivariate_normal(self, mean, cov, size=None, check_valid='ignore',
@@ -441,8 +448,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(df, nonc).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.noncentral_chisquare_kernel(df, nonc, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.noncentral_chisquare_kernel(df, nonc, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def noncentral_f(self, dfnum, dfden, nonc, size=None, dtype=float):
@@ -468,8 +475,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(dfnum, dfden, nonc).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.noncentral_f_kernel(dfnum, dfden, nonc, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.noncentral_f_kernel(dfnum, dfden, nonc, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def poisson(self, lam=1.0, size=None, dtype=int):
@@ -484,8 +491,8 @@ class RandomState(object):
         if size is None:
             size = lam.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.poisson_kernel(lam, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.poisson_kernel(lam, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def power(self, a, size=None, dtype=float):
@@ -617,9 +624,9 @@ class RandomState(object):
         if mx < 0:
             raise ValueError(
                 'mx must be non-negative (actual: {})'.format(mx))
-        elif mx <= 0xffffffff:
+        elif mx <= _UINT32_MAX:
             dtype = numpy.uint32
-        elif mx <= 0xffffffffffffffff:
+        elif mx <= _UINT64_MAX:
             dtype = numpy.uint64
         else:
             raise ValueError(
@@ -676,18 +683,20 @@ class RandomState(object):
         if seed is None:
             try:
                 seed_str = binascii.hexlify(os.urandom(8))
-                seed = numpy.uint64(int(seed_str, 16))
+                seed = int(seed_str, 16)
             except NotImplementedError:
-                seed = numpy.uint64(time.clock() * 1000000)
+                seed = (time.clock() * 1000000) % _UINT64_MAX
         else:
             if isinstance(seed, numpy.ndarray):
                 seed = int(hashlib.md5(seed).hexdigest()[:16], 16)
-            seed = numpy.asarray(seed).astype(numpy.uint64, casting='safe')
+            else:
+                seed = int(
+                    numpy.asarray(seed).astype(numpy.uint64, casting='safe'))
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         curand.setGeneratorOffset(self._generator, 0)
 
-        self.rk_seed = numpy.uint64(seed)
+        self._rk_seed = seed
 
     def standard_cauchy(self, size=None, dtype=float):
         """Returns an array of samples drawn from the standard cauchy distribution.
@@ -723,8 +732,8 @@ class RandomState(object):
         if size is None:
             size = shape.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.standard_gamma_kernel(shape, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.standard_gamma_kernel(shape, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def standard_normal(self, size=None, dtype=float):
@@ -750,8 +759,8 @@ class RandomState(object):
         if size is None:
             size = df.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.standard_t_kernel(df, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.standard_t_kernel(df, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def tomaxint(self, size=None):
@@ -861,8 +870,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(mu, kappa).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.vonmises_kernel(mu, kappa, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.vonmises_kernel(mu, kappa, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     _wald_kernel = core.ElementwiseKernel(
@@ -933,8 +942,8 @@ class RandomState(object):
         if size is None:
             size = a.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.zipf_kernel(a, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.zipf_kernel(a, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def choice(self, a, size=None, replace=True, p=None):
