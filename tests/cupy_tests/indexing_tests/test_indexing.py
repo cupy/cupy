@@ -105,7 +105,7 @@ class TestIndexing(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_extract_no_bool(self, xp, dtype):
         a = testing.shaped_arange((3, 3), xp)
-        b = xp.array([[1, 0, 1],[0, 1, 0],[1, 0, 1]], dtype=dtype)
+        b = xp.array([[1, 0, 1], [0, 1, 0], [1, 0, 1]], dtype=dtype)
         return xp.extract(b, a)
 
 
