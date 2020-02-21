@@ -79,7 +79,6 @@ def require(a, dtype=None, requirements=None):
 
     copy = 'OWNDATA' in requirements
     try:
-        print("copy", copy)
         arr = cupy.array(a, dtype=dtype, order=order, copy=copy, subok=False)
     except TypeError:
         raise(ValueError("Incorrect dtype \"{}\" provided".format(dtype)))

@@ -94,3 +94,9 @@ class TestKind(unittest.TestCase):
         x = cupy.zeros((2, 3, 4), dtype)
         with pytest.raises(ValueError):
             cupy.require(x, 'random', 'C')
+
+    @testing.for_all_dtypes()
+    def test_require_empty_requirements(self, dtype):
+        x = cupy.zeros((2, 3, 4), dtype)
+        x = cupy.require(x, dtype, [])
+        assert x.flags['C_CONTIGUOUS']
