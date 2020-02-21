@@ -592,7 +592,7 @@ class TestRfft(unittest.TestCase):
                                  norm=self.norm, plan='abc')
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -603,7 +603,7 @@ class TestRfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
