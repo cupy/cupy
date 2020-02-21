@@ -249,7 +249,7 @@ def ix_(*args):
     return tuple(out)
 
 
-def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
+def ravel_multi_index(multi_index, dims, mode='wrap', order='C'):
     """
     Converts a tuple of index arrays into an array of flat indices, applying
     boundary modes to the multi-index.
@@ -262,8 +262,8 @@ def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
         mode ('raise', 'wrap' or 'clip'), optional: Specifies how out-of-bounds
             indices are handled.  Can specify either one mode or a tuple of
             modes, one mode per index.
-            * 'raise' -- raise an error (default)
-            * 'wrap' -- wrap around
+            * 'raise' -- raise an error
+            * 'wrap' -- wrap around (default)
             * 'clip' -- clip to the range
             In 'clip' mode, a negative index which would normally wrap will
             clip to 0 instead.
@@ -274,6 +274,15 @@ def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
     Returns:
         raveled_indices (cupy.ndarray): An array of indices into the flattened
             version of an array of dimensions ``dims``.
+
+    .. warning::
+
+        This function may synchronize the device when ``mode == 'raise'``.
+
+    Notes
+    -----
+    Note that the default `mode` (``'wrap'``) is different than in NumPy. This
+    is done to avoid potential device synchronization.
 
     Examples
     --------
