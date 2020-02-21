@@ -261,10 +261,12 @@ def ravel_multi_index(multi_index, dims, mode='wrap', order='C'):
             ``multi_index`` apply.
         mode ('raise', 'wrap' or 'clip'), optional: Specifies how out-of-bounds
             indices are handled.  Can specify either one mode or a tuple of
-            modes, one mode per index.
-            * 'raise' -- raise an error
-            * 'wrap' -- wrap around (default)
-            * 'clip' -- clip to the range
+            modes, one mode per index:
+
+            - *'raise'* -- raise an error
+            - *'wrap'* -- wrap around (default)
+            - *'clip'* -- clip to the range
+
             In 'clip' mode, a negative index which would normally wrap will
             clip to 0 instead.
         order ('C' or 'F'), optional: Determines whether the multi-index should
