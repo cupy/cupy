@@ -77,7 +77,7 @@ def choose(a, choices, out=None, mode='raise'):
 
 
 def compress(condition, a, axis=None, out=None):
-    """Return selected slices of an array along given axis.
+    """Returns selected slices of an array along given axis.
 
     Args:
         condition (1-D array of bools): Array that selects which entries to
@@ -94,7 +94,12 @@ def compress(condition, a, axis=None, out=None):
         cupy.ndarray: A copy of a without the slices along axis for which
             condition is false.
 
-    . seealso:: :func:`numpy.compress`
+    .. warning::
+
+            This function may synchronize the device.
+
+
+    .. seealso:: :func:`numpy.compress`
 
     """
     return a.compress(condition, axis, out)

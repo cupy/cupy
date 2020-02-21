@@ -163,7 +163,7 @@ cdef ndarray _ndarray_compress(ndarray self, condition, axis, out):
         if condition.ndim != 1:
             raise ValueError('condition must be a 1-d array')
 
-    res = _ndarray_nonzero(condition)
+    res = _ndarray_nonzero(condition)  # synchronize
 
     return _ndarray_take(a, res[0], axis, out)
 

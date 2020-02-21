@@ -725,7 +725,11 @@ cdef class ndarray:
         return _indexing._ndarray_nonzero(self)
 
     cpdef ndarray compress(self, condition, axis=None, out=None):
-        """Return selected slices of this array along given axis.
+        """Returns selected slices of this array along given axis.
+
+        .. warning::
+
+            This function may synchronize the device.
 
         .. seealso::
            :func:`cupy.compress` for full documentation,
