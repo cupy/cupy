@@ -53,6 +53,25 @@ class TestIndexing(unittest.TestCase):
         b = xp.array([True, False, True])
         return xp.compress(b, a)
 
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_compress_no_bool(self, xp, dtype):
+        a = testing.shaped_arange((3, 4, 5), xp)
+        b = testing.shaped_arange((3,), xp, dtype)
+        return xp.compress(b, a, axis=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_compress_empty_1dim(self, xp):
+        a = testing.shaped_arange((3, 4, 5), xp)
+        b = xp.array([])
+        return xp.compress(b, a, axis=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_compress_empty_1dim_no_axis(self, xp):
+        a = testing.shaped_arange((3, 4, 5), xp)
+        b = xp.array([])
+        return xp.compress(b, a)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_diagonal(self, xp, dtype):
