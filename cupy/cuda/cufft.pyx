@@ -348,8 +348,18 @@ class PlanNd(object):
             if out.dtype != a.dtype:
                 raise ValueError('output dtype mismatch')
         else:
-            # TODO(leofang): what's the valid checks here?
-            pass
+            if out.ndim != a.ndim:
+                raise ValueError('output dimension mismatch')
+            for i, size in enumerate(out.shape):
+                if (i != self.last_axis and size != a.shape[i]) or \
+                   (i == self.last_axis and size != self.last_size):
+                    raise ValueError('output shape is incorrecct')
+            if self.fft_type in (CUFFT_R2C, CUFFT_D2Z):
+                if out.dtype != cupy.dtype(a.dype.char.upper()):
+                    raise ValueError('output dtype is unexpected')
+            else:  # CUFFT_C2R or CUFFT_Z2D
+                if out.dtype != cupy.dtype(a.dype.char.lower()):
+                    raise ValueError('output dtype is unexpected')
         if not ((out.flags.f_contiguous == a.flags.f_contiguous) and
                 (out.flags.c_contiguous == a.flags.c_contiguous)):
             raise ValueError('output contiguity mismatch')
