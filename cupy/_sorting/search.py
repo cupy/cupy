@@ -1,6 +1,7 @@
 import cupy
 from cupy import core
 from cupy.core import fusion
+from cupy import util
 
 from cupy.core import _routines_statistics as _statistics
 
@@ -136,7 +137,7 @@ def nonzero(a):
     .. seealso:: :func:`numpy.nonzero`
 
     """
-    assert isinstance(a, core.ndarray)
+    util.check_array(a, arg_name='a')
     return a.nonzero()
 
 
@@ -158,7 +159,7 @@ def flatnonzero(a):
 
     .. seealso:: :func:`numpy.flatnonzero`
     """
-    assert isinstance(a, core.ndarray)
+    util.check_array(a, arg_name='a')
     return a.ravel().nonzero()[0]
 
 

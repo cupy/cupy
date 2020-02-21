@@ -193,6 +193,18 @@ class PerformanceWarning(RuntimeWarning):
     """Warning that indicates possible performance issues."""
 
 
+def check_array(obj, *, arg_name):
+    """Checks if the given object is an array.
+
+    This function raises :class:`TypeError` if ``obj`` is not an instance
+    of :type:`cupy.ndarray`\\ .
+    """
+    if not isinstance(obj, cupy.ndarray):
+        raise TypeError(
+            '\'{}\' must be a cupy.ndarray object, not {}.'.format(
+                arg_name, type(obj)))
+
+
 """
 This code is to signal when the interpreter is in shutdown mode
 to prevent using globals that could be already deleted in
