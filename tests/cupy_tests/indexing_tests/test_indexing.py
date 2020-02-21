@@ -93,6 +93,21 @@ class TestIndexing(unittest.TestCase):
         a = testing.shaped_arange((3, 3, 3), xp)
         a.diagonal(0, 2, -4)
 
+    @testing.numpy_cupy_array_equal()
+    def test_extract(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp)
+        b = xp.array([[True, False, True],
+                      [False, True, False],
+                      [True, False, True]])
+        return xp.extract(b, a)
+
+    @testing.for_signed_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_extract_no_bool(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp)
+        b = xp.array([[1, 0, 1],[0, 1, 0],[1, 0, 1]], dtype=dtype)
+        return xp.extract(b, a)
+
 
 @testing.gpu
 class TestChoose(unittest.TestCase):
