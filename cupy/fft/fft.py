@@ -306,10 +306,7 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
             # Create cuFFT C2R plan is tricky: we need to enter the output
             # array dimensions
             dim = list(plan_dimensions)
-            if out_size is None:
-                dim[fft_axes[-1]] = 2 * (dim[fft_axes[-1]] - 1)
-            else:
-                dim[fft_axes[-1]] = out_size
+            dim[fft_axes[-1]] = out_size
             plan_dimensions = tuple(dim)
         # for full-array transform, we can simply use the default strides
         idist = odist = 0
@@ -317,9 +314,7 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
         inembed = onembed = None
         nbatch = 1
     else:
-        in_dimensions = []
-        for d in fft_axes:
-            in_dimensions.append(shape[d])
+        in_dimensions = [shape[d] for d in fft_axes]
         if order == 'F':
             in_dimensions = in_dimensions[::-1]
         in_dimensions = tuple(in_dimensions)
@@ -329,7 +324,7 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
             plan_dimensions = in_dimensions
         else:
             out_dimensions = list(in_dimensions)
-            if out_size is not None:
+            if out_size is not None:  # for C2R & R2C
                 if order == 'C':
                     out_dimensions[-1] = out_size
                 else:  # order = 'F'
@@ -421,6 +416,9 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     else:
         if not isinstance(plan, cufft.PlanNd):
             raise ValueError('expected plan to have type cufft.PlanNd')
+        if order != plan.order:
+            raise ValueError('array orders mismatch (plan: {}, input: {})'
+                             .format(plan.order, order))
         # TODO(leofang): this shape check needs to be modified for C2R
         if a.flags.c_contiguous:
             expected_shape = tuple(a.shape[ax] for ax in axes)
@@ -440,9 +438,6 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
             if out_size != plan.last_size:
                 raise ValueError('The size along the last R2C/C2R axis '
                                  'mismatch')
-        if order != plan.order:
-            raise ValueError('array orders mismatch (plan: {}, input: {})'
-                             .format(plan.order, order))
 
     # TODO(leofang): support in-place transform for R2C/C2R
     if overwrite_x and value_type == 'C2C':
