@@ -10,3 +10,4 @@ Custom kernels
    cupy.RawKernel
    cupy.RawModule
    cupy.fuse
+   cupy.cuda.Function

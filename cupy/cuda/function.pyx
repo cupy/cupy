@@ -155,7 +155,11 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
 
 cdef class Function:
 
-    """CUDA kernel function."""
+    """CUDA kernel function.
+
+    Class dealing with the execution of a compiled CUDA function
+    and management of runtime attributes.
+    """
 
     def __init__(self, Module module, str funcname,
                  bint enable_cooperative_groups):
