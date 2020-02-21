@@ -134,7 +134,7 @@ def extract(condition, a):
 
     a = a.ravel()
     condition = condition.ravel()
-    
+
     return a.take(condition.nonzero()[0])
 
 
