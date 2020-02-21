@@ -28,12 +28,6 @@ class TestPadDefault(unittest.TestCase):
             # TODO: can remove this skip once cupy/cupy/#2330 is merged
             return array
 
-        if (self.mode == 'linear_ramp' and
-                numpy.lib.NumpyVersion(numpy.__version__) < '1.16.0'):
-            # skip linear_ramp test on older NumPy until pad is updated to
-            # use cupy.linspace with axis argument (cupy/cupy#2461).
-            return array
-
         # Older version of NumPy(<1.12) can emit ComplexWarning
         def f():
             return xp.pad(array, self.pad_width, mode=self.mode)
