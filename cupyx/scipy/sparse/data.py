@@ -91,18 +91,16 @@ class _data_matrix(base.spmatrix):
         validateaxis(axis)
         nRow, nCol = self.shape
         data = self.data.copy()
+        n = 1
 
         if not axis:
-            data = cupy.true_divide(data, nRow * nCol)
-            return self._with_data(data).sum(axis, dtype, out)
-
+            n = nRow * nCol
         if axis == 0 or axis == -2:
-            data = cupy.true_divide(data, nRow)
-            return self._with_data(data).sum(axis, dtype, out)
-
+            n = nRow
         else:
-            data = cupy.true_divide(data, nCol)
-            return self._with_data(data).sum(axis, dtype, out).flatten()
+            n = nCol
+
+        return self._with_data(data / n).sum(axis, dtype, out).flatten()
 
     def power(self, n, dtype=None):
         """Elementwise power function.
