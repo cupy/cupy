@@ -334,7 +334,7 @@ def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
     else:
         raise TypeError("order not understood")
 
-    raveled_indices = 0
+    raveled_indices = cupy.array(0, dtype=cupy.int64)
     for d, stride, idx, _mode in zip(dims, ravel_strides, multi_index, mode):
         if _mode == "raise":
             if cupy.any(cupy.logical_or(idx >= d, idx < 0)):
