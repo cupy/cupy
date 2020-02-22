@@ -185,6 +185,15 @@ class TestRavelMultiIndex(unittest.TestCase):
         return xp.ravel_multi_index(a, dims, order=order)
 
     @testing.for_orders(['C', 'F', None])
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_multi_index_broadcasting(self, xp, order, dtype):
+        dims = (3, 5)
+        x, y = xp.meshgrid(*[cupy.arange(s, dtype=dtype) for s in dims],
+                           sparse=True)
+        return xp.ravel_multi_index((x, y), dims, order=order)
+
+    @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_basic_nd_coords(self, xp, order, dtype):
