@@ -311,12 +311,6 @@ def ravel_multi_index(multi_index, dims, mode='wrap', order='C'):
             "parameter multi_index must be a sequence of "
             "length {}".format(ndim))
 
-    for arr in multi_index:
-        if not isinstance(arr, cupy.ndarray):
-            raise TypeError("elements of multi_index must be cupy arrays")
-        if arr.dtype.kind not in 'iub':
-            raise TypeError("only int indices permitted")
-
     for d in dims:
         if not isinstance(d, numbers.Integral):
             raise TypeError(
@@ -345,8 +339,19 @@ def ravel_multi_index(multi_index, dims, mode='wrap', order='C'):
     else:
         raise TypeError("order not understood")
 
-    raveled_indices = cupy.array(0, dtype=cupy.int64)
+    raveled_indices = cupy.zeros(multi_index[0].shape, dtype=cupy.int64)
+
     for d, stride, idx, _mode in zip(dims, ravel_strides, multi_index, mode):
+
+        if not isinstance(idx, cupy.ndarray):
+            raise TypeError("elements of multi_index must be cupy arrays")
+        if not cupy.can_cast(idx, cupy.int64, 'same_kind'):
+            raise TypeError(
+                'multi_index entries could not be cast from dtype(\'{}\') to '
+                'dtype(\'{}\') according to the rule \'same_kind\''.format(
+                    idx.dtype, cupy.int64().dtype))
+        idx = idx.astype(cupy.int64, copy=False)
+
         if _mode == "raise":
             if cupy.any(cupy.logical_or(idx >= d, idx < 0)):
                 raise ValueError("invalid entry in coordinates array")
