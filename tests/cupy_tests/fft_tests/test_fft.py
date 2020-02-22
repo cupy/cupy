@@ -231,12 +231,17 @@ class TestFftAllocate(unittest.TestCase):
 class TestFft2(unittest.TestCase):
 
     @nd_planning_states()
+    @testing.for_orders('CF')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_fft2(self, xp, dtype, enable_nd):
+    def test_fft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
+        if order == 'C':
+            a = xp.ascontiguousarray(a)
+        else:
+            a = xp.asfortranarray(a)
         out = xp.fft.fft2(a, s=self.s, norm=self.norm)
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
@@ -245,12 +250,17 @@ class TestFft2(unittest.TestCase):
         return out
 
     @nd_planning_states()
+    @testing.for_orders('CF')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_ifft2(self, xp, dtype, enable_nd):
+    def test_ifft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
+        if order == 'C':
+            a = xp.ascontiguousarray(a)
+        else:
+            a = xp.asfortranarray(a)
         out = xp.fft.ifft2(a, s=self.s, norm=self.norm)
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
@@ -286,12 +296,17 @@ class TestFft2(unittest.TestCase):
 class TestFftn(unittest.TestCase):
 
     @nd_planning_states()
+    @testing.for_orders('CF')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_fftn(self, xp, dtype, enable_nd):
+    def test_fftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
+        if order == 'C':
+            a = xp.ascontiguousarray(a)
+        else:
+            a = xp.asfortranarray(a)
         out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if self.axes is not None and not self.axes:
@@ -304,12 +319,17 @@ class TestFftn(unittest.TestCase):
         return out
 
     @nd_planning_states()
+    @testing.for_orders('CF')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_ifftn(self, xp, dtype, enable_nd):
+    def test_ifftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
+        if order == 'C':
+            a = xp.ascontiguousarray(a)
+        else:
+            a = xp.asfortranarray(a)
         out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if self.axes is not None and not self.axes:
@@ -598,18 +618,17 @@ class TestRfft(unittest.TestCase):
 class TestRfft2(unittest.TestCase):
 
     @nd_planning_states()
+    @testing.for_orders('CF')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_rfft2(self, xp, dtype, enable_nd):
+    def test_rfft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
-
-        # the scaling of old Numpy is incorrect
-        if np.__version__ < np.lib.NumpyVersion('1.13.0'):
-            if self.s is not None:
-                return xp.empty(0)
-
         a = testing.shaped_random(self.shape, xp, dtype)
+        if order == 'C':
+            a = xp.ascontiguousarray(a)
+        else:
+            a = xp.asfortranarray(a)
         out = xp.fft.rfft2(a, s=self.s, norm=self.norm)
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
@@ -617,13 +636,17 @@ class TestRfft2(unittest.TestCase):
         return out
 
     @nd_planning_states()
+    @testing.for_orders('CF')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_irfft2(self, xp, dtype, enable_nd):
+    def test_irfft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
-
         a = testing.shaped_random(self.shape, xp, dtype)
+        if order == 'C':
+            a = xp.ascontiguousarray(a)
+        else:
+            a = xp.asfortranarray(a)
         out = xp.fft.irfft2(a, s=self.s, norm=self.norm)
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
@@ -654,12 +677,17 @@ class TestRfft2(unittest.TestCase):
 class TestRfftn(unittest.TestCase):
 
     @nd_planning_states()
+    @testing.for_orders('CF')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_rfftn(self, xp, dtype, enable_nd):
+    def test_rfftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
+        if order == 'C':
+            a = xp.ascontiguousarray(a)
+        else:
+            a = xp.asfortranarray(a)
         out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
@@ -668,10 +696,11 @@ class TestRfftn(unittest.TestCase):
         return out
 
     @nd_planning_states()
+    @testing.for_orders('CF')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_irfftn(self, xp, dtype, enable_nd):
+    def test_irfftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
                 and int(cupy.cuda.device.get_compute_capability()) < 70
@@ -680,6 +709,10 @@ class TestRfftn(unittest.TestCase):
             raise unittest.SkipTest('work-around for cuFFT issue')
 
         a = testing.shaped_random(self.shape, xp, dtype)
+        if order == 'C':
+            a = xp.ascontiguousarray(a)
+        else:
+            a = xp.asfortranarray(a)
         out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp == np and dtype in [np.float16, np.float32, np.complex64]:
