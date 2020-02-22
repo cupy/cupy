@@ -339,8 +339,8 @@ def ravel_multi_index(multi_index, dims, mode='wrap', order='C'):
     else:
         raise TypeError("order not understood")
 
+    multi_index = cupy.broadcast_arrays(*multi_index)
     raveled_indices = cupy.zeros(multi_index[0].shape, dtype=cupy.int64)
-
     for d, stride, idx, _mode in zip(dims, ravel_strides, multi_index, mode):
 
         if not isinstance(idx, cupy.ndarray):
