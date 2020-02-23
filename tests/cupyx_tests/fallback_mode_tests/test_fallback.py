@@ -121,6 +121,10 @@ def enable_slice_copy(func):
     return decorator
 
 
+def get_numpy_version():
+    return tuple(map(int, numpy.__version__.split('.')))
+
+
 @testing.gpu
 class TestFallbackMode(unittest.TestCase):
 
@@ -191,19 +195,26 @@ class TestFallbackMethodsArrayExternal(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'func': 'min', 'shape': (3, 4), 'args': (), 'kwargs': {'axis': 0}},
-    {'func': 'argmin', 'shape': (3, 4), 'args': (), 'kwargs': {}},
-    {'func': 'arccos', 'shape': (2, 3), 'args': (), 'kwargs': {}},
-    {'func': 'fabs', 'shape': (2, 3), 'args': (), 'kwargs': {}},
-    {'func': 'nancumsum', 'shape': (5, 3), 'args': (), 'kwargs': {'axis': 1}},
+    {'func': 'min', 'shape': (3, 4), 'args': (), 'kwargs': {'axis': 0},
+     'numpy_version': None},
+    {'func': 'argmin', 'shape': (3, 4), 'args': (), 'kwargs': {},
+     'numpy_version': (1, 10, 0)},
+    {'func': 'arccos', 'shape': (2, 3), 'args': (), 'kwargs': {},
+     'numpy_version': None},
+    {'func': 'fabs', 'shape': (2, 3), 'args': (), 'kwargs': {},
+     'numpy_version': None},
+    {'func': 'nancumsum', 'shape': (5, 3), 'args': (), 'kwargs': {'axis': 1},
+     'numpy_version': (1, 12, 0)},
     {'func': 'nanpercentile', 'shape': (3, 4), 'args': (50,),
-     'kwargs': {'axis': 0}}
+     'kwargs': {'axis': 0}, 'numpy_version': None}
 )
 @testing.gpu
 class TestFallbackMethodsArrayExternalOut(unittest.TestCase):
 
     @numpy_fallback_array_equal()
     def test_fallback_methods_array_external_out(self, xp):
+        if self.numpy_version and get_numpy_version() < self.numpy_version:
+            self.skipTest('Test not supported for this version of numpy')
 
         a = testing.shaped_random(self.shape, xp=xp)
         kwargs = self.kwargs.copy()
@@ -531,6 +542,8 @@ class TestInplaceSpecialMethods(unittest.TestCase):
         a = testing.shaped_random((4,), xp, dtype=xp.int16)
         return a.byteswap()
 
+    @unittest.skipIf(get_numpy_version() < (1, 13, 0),
+                     'inplace kwarg for byteswap was added in numpy v1.13.0')
     @numpy_fallback_array_equal()
     def test_ndarray_byteswap_inplace(self, xp):
         a = testing.shaped_random((4,), xp, dtype=xp.int16)
@@ -543,6 +556,8 @@ class TestInplaceSpecialMethods(unittest.TestCase):
         xp.putmask(a, a > 2, a**2)
         return a
 
+    @unittest.skipIf(get_numpy_version() < (1, 15, 0),
+                     'put_along_axis introduced in numpy v1.15.0')
     @numpy_fallback_array_equal()
     def test_put_along_axis(self, xp):
         a = xp.array([[10, 30, 20], [60, 40, 50]])
@@ -550,6 +565,8 @@ class TestInplaceSpecialMethods(unittest.TestCase):
         xp.put_along_axis(a, ai, 99, axis=1)
         return a
 
+    @unittest.skipIf(get_numpy_version() < (1, 12, 0),
+                     'nancumsum introduced in numpy v1.12.0')
     @numpy_fallback_array_equal()
     def test_out_is_returned_when_fallbacked(self, xp):
         a = testing.shaped_random((3, 4), xp)
@@ -598,24 +615,19 @@ class TestArrayVariants(unittest.TestCase):
 
     @numpy_fallback_array_equal()
     def test_creation_char(self, xp):
-        cx = xp.chararray((3, 4), itemsize=3)
-        cx[:] = 'a'
+        cx = xp.char.array(['a', 'b', 'c'], itemsize=3)
         return cx
 
     @numpy_fallback_array_equal()
     def test_method_external_char(self, xp):
-        cx = xp.chararray((3, 4), itemsize=3)
-        cx[:] = 'a'
-        cy = xp.chararray((3, 4), itemsize=3)
-        cy[:] = 'b'
+        cx = xp.char.array(['a', 'b', 'c'], itemsize=3)
+        cy = xp.char.array(['a', 'b', 'c'], itemsize=3)
         return xp.char.add(cx, cy)
 
     @numpy_fallback_array_equal()
     def test_magic_method_char(self, xp):
-        cx = xp.chararray((3, 4), itemsize=3)
-        cx[:] = 'a'
-        cy = xp.chararray((3, 4), itemsize=3)
-        cy[:] = 'b'
+        cx = xp.char.array(['a', 'b', 'c'], itemsize=3)
+        cy = xp.char.array(['a', 'b', 'c'], itemsize=3)
         return cx == cy
 
     @numpy_fallback_array_equal()
