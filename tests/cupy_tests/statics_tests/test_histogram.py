@@ -58,10 +58,48 @@ class TestHistogram(unittest.TestCase):
         x = testing.shaped_arange((10,), xp, dtype)
         y, bin_edges = xp.histogram(x, density=True)
 
+        # check normalization
         area = xp.sum(y * xp.diff(bin_edges))
         testing.assert_allclose(area, 1)
-
         return y, bin_edges
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_histogram_range_lower_outliers(self, xp, dtype):
+        # Check that lower outliers are not tallied
+        a = xp.arange(10, dtype=dtype) + .5
+        h, b = xp.histogram(a, range=[0, 9])
+        assert int(h.sum()) == 9
+        return h, b
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_histogram_range_upper_outliers(self, xp, dtype):
+        # Check that upper outliers are not tallied
+        a = xp.arange(10, dtype=dtype) + .5
+        h, b = xp.histogram(a, range=[1, 10])
+        assert int(h.sum()) == 9
+        return h, b
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_histogram_range_with_density(self, xp, dtype):
+        a = xp.arange(10, dtype=dtype) + .5
+        h, b = xp.histogram(a, range=[1, 9], density=True)
+        # check normalization
+        testing.assert_allclose(float((h * xp.diff(b)).sum()), 1)
+        return h
+
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_histogram_invalid_range(self, xp):
+        # range must be None or have two elements
+        h, b = xp.histogram(xp.arange(10), range=[1, 9, 15])
+        return
+
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_histogram_invalid_range2(self, xp):
+        h, b = xp.histogram(xp.arange(10), range=10)
+        return
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_list_equal()

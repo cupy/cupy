@@ -1,4 +1,5 @@
 import numpy
+import operator
 
 import cupy
 from cupy import core
@@ -34,7 +35,97 @@ _histogram_kernel = core.ElementwiseKernel(
     preamble=_preamble)
 
 
-def histogram(x, bins=10, density=False):
+def _get_outer_edges(a, range):
+    """
+    Determine the outer bin edges to use, from either the data or the range
+    argument
+    """
+    if range is not None:
+        first_edge, last_edge = range
+        if first_edge > last_edge:
+            raise ValueError(
+                'max must be larger than min in range parameter.')
+        if not (numpy.isfinite(first_edge) and numpy.isfinite(last_edge)):
+            raise ValueError(
+                "supplied range of [{}, {}] is not finite".format(first_edge, last_edge))
+    elif a.size == 0:
+        first_edge = 0.0
+        last_edge = 1.0
+    else:
+        first_edge = float(a.min())
+        last_edge = float(a.max())
+        if not (cupy.isfinite(first_edge) and cupy.isfinite(last_edge)):
+            raise ValueError(
+                "autodetected range of [{}, {}] is not finite".format(
+                    first_edge, last_edge))
+
+    # expand empty range to avoid divide by zero
+    if first_edge == last_edge:
+        first_edge = first_edge - 0.5
+        last_edge = last_edge + 0.5
+
+    return first_edge, last_edge
+
+
+def _get_bin_edges(a, bins, range):
+    """
+    Computes the bins used internally by `histogram`.
+
+    Args:
+        a (ndarray): Ravelled data array
+        bins (int or ndarray): Forwarded argument from `histogram`.
+        range (None or tuple): Forwarded argument from `histogram`.
+
+    Returns:
+        bin_edges (ndarray): Array of bin edges
+        uniform_bins (Number, Number, int): The upper bound, lowerbound, and
+        number of bins, used in the implementation of `histogram` that works on
+        uniform bins.
+    """
+    # parse the overloaded bins argument
+    n_equal_bins = None
+    bin_edges = None
+
+    if isinstance(bins, int):  # cupy.ndim(bins) == 0:
+        try:
+            n_equal_bins = operator.index(bins)
+        except TypeError:
+            raise TypeError(
+                '`bins` must be an integer, a string, or an array')
+        if n_equal_bins < 1:
+            raise ValueError('`bins` must be positive, when an integer')
+
+        first_edge, last_edge = _get_outer_edges(a, range)
+
+    elif isinstance(bins, cupy.ndarray):
+        if bins.ndim == 1:    # cupy.ndim(bins) == 0:
+            bin_edges = cupy.asarray(bins)
+            if (bin_edges[:-1] > bin_edges[1:]).any():  # synchronize!
+                raise ValueError(
+                    '`bins` must increase monotonically, when an array')
+
+    elif isinstance(bins, str):
+        raise NotImplementedError(
+            "only integer and array bins are implemented")
+
+    if n_equal_bins is not None:
+        # numpy's gh-10322 means that type resolution rules are dependent on
+        # array shapes. To avoid this causing problems, we pick a type now and
+        # stick with it throughout.
+        bin_type = cupy.result_type(first_edge, last_edge, a)
+        if cupy.issubdtype(bin_type, cupy.integer):
+            bin_type = cupy.result_type(bin_type, float)
+
+        # bin edges must be computed
+        bin_edges = cupy.linspace(
+            first_edge, last_edge, n_equal_bins + 1,
+            endpoint=True, dtype=bin_type)
+        return bin_edges, (first_edge, last_edge, n_equal_bins)
+    else:
+        return bin_edges, None
+
+
+def histogram(x, bins=10, range=None, density=False):
     """Computes the histogram of a set of data.
 
     Args:
@@ -42,6 +133,13 @@ def histogram(x, bins=10, density=False):
         bins (int or cupy.ndarray): If ``bins`` is an int, it represents the
             number of bins. If ``bins`` is an :class:`~cupy.ndarray`, it
             represents a bin edges.
+        range (2-tuple of float, optional): The lower and upper range of the
+            bins.  If not provided, range is simply ``(a.min(), a.max())``.
+            Values outside the range are ignored. The first element of the
+            range must be less than or equal to the second. `range` affects the
+            automatic bin computation as well. While bin width is computed to
+            be optimal based on the actual data within `range`, the bin count
+            will fill the entire range including portions containing no data.
         density (bool, optional): If False, the default, returns the number of
             samples in each bin. If True, returns the probability *density*
             function at the bin, ``bin_count / sample_count / bin_volume``.
@@ -61,31 +159,15 @@ def histogram(x, bins=10, density=False):
         # TODO(unno): comparison between complex numbers is not implemented
         raise NotImplementedError('complex number is not supported')
 
-    if isinstance(bins, int):
-        if x.size == 0:
-            min_value = 0.0
-            max_value = 1.0
-        else:
-            min_value = float(x.min())
-            max_value = float(x.max())
-        if min_value == max_value:
-            min_value -= 0.5
-            max_value += 0.5
-        bin_type = cupy.result_type(min_value, max_value, x)
-        bins = cupy.linspace(min_value, max_value, bins + 1, dtype=bin_type)
-    elif isinstance(bins, cupy.ndarray):
-        if (bins[:-1] > bins[1:]).any():  # synchronize!
-            raise ValueError('bins must increase monotonically.')
-    else:
-        raise NotImplementedError('Only int or ndarray are supported for bins')
+    bin_edges, uniform_bins = _get_bin_edges(x, bins, range)
 
-    y = cupy.zeros(bins.size - 1, dtype='l')
-    _histogram_kernel(x, bins, bins.size, y)
+    y = cupy.zeros(bin_edges.size - 1, dtype='l')
+    _histogram_kernel(x, bin_edges, bin_edges.size, y)
 
     if density:
-        db = cupy.array(cupy.diff(bins), float)
-        return y/db/y.sum(), bins
-    return y, bins
+        db = cupy.array(cupy.diff(bin_edges), float)
+        return y/db/y.sum(), bin_edges
+    return y, bin_edges
 
 # TODO(okuta): Implement histogram2d
 
