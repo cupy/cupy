@@ -1,5 +1,7 @@
-import numpy
 import operator
+import warnings
+
+import numpy
 
 import cupy
 from cupy import core
@@ -33,6 +35,50 @@ _histogram_kernel = core.ElementwiseKernel(
     atomicAdd(&y[low], U(1));
     ''',
     preamble=_preamble)
+
+
+_weighted_histogram_kernel = core.ElementwiseKernel(
+    'S x, raw T bins, int32 n_bins, raw W weights',
+    'raw Y y',
+    '''
+    if (x < bins[0] or bins[n_bins - 1] < x) {
+        return;
+    }
+    int high = n_bins - 1;
+    int low = 0;
+
+    while (high - low > 1) {
+        int mid = (high + low) / 2;
+        if (bins[mid] <= x) {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    atomicAdd(&y[low], (Y)weights[i]);
+    ''',
+    preamble=_preamble)
+
+
+def _ravel_and_check_weights(a, weights):
+    """ Check a and weights have matching shapes, and ravel both """
+
+    # Ensure that the array is a "subtractable" dtype
+    if a.dtype == cupy.bool_:
+        warnings.warn("Converting input from {} to {} for compatibility."
+                      .format(a.dtype, cupy.uint8),
+                      RuntimeWarning, stacklevel=3)
+        a = a.astype(cupy.uint8)
+
+    if weights is not None:
+        if not isinstance(weights, cupy.ndarray):
+            raise ValueError("weights must be a cupy.ndarray")
+        if weights.shape != a.shape:
+            raise ValueError(
+                'weights should have the same shape as a.')
+        weights = weights.ravel()
+    a = a.ravel()
+    return a, weights
 
 
 def _get_outer_edges(a, range):
@@ -125,7 +171,7 @@ def _get_bin_edges(a, bins, range):
         return bin_edges, None
 
 
-def histogram(x, bins=10, range=None, density=False):
+def histogram(x, bins=10, range=None, weights=None, density=False):
     """Computes the histogram of a set of data.
 
     Args:
@@ -143,6 +189,9 @@ def histogram(x, bins=10, range=None, density=False):
         density (bool, optional): If False, the default, returns the number of
             samples in each bin. If True, returns the probability *density*
             function at the bin, ``bin_count / sample_count / bin_volume``.
+        weights (cupy.ndarray, optional): An array of weights, of the same
+            shape as `x`.  Each value in `x` only contributes its associated
+            weight towards the bin count (instead of 1).
     Returns:
         tuple: ``(hist, bin_edges)`` where ``hist`` is a :class:`cupy.ndarray`
         storing the values of the histogram, and ``bin_edges`` is a
@@ -159,10 +208,38 @@ def histogram(x, bins=10, range=None, density=False):
         # TODO(unno): comparison between complex numbers is not implemented
         raise NotImplementedError('complex number is not supported')
 
+    if not isinstance(x, cupy.ndarray):
+        raise ValueError("x must be a cupy.ndarray")
+
+    x, weights = _ravel_and_check_weights(x, weights)
     bin_edges, uniform_bins = _get_bin_edges(x, bins, range)
 
-    y = cupy.zeros(bin_edges.size - 1, dtype='l')
-    _histogram_kernel(x, bin_edges, bin_edges.size, y)
+    if weights is None:
+        y = cupy.zeros(bin_edges.size - 1, dtype='l')
+        _histogram_kernel(x, bin_edges, bin_edges.size, y)
+    else:
+        simple_weights = (
+            cupy.can_cast(weights.dtype, cupy.double) or
+            cupy.can_cast(weights.dtype, complex)
+        )
+        if not simple_weights:
+            # object dtype such as Decimal are supported in NumPy, but not here
+            raise NotImplementedError(
+                "only weights with dtype that can be cast to float or complex "
+                "are supported")
+        if weights.dtype.kind == 'c':
+            y = cupy.zeros(bin_edges.size - 1, dtype=complex)
+            _weighted_histogram_kernel(
+                x, bin_edges, bin_edges.size, weights.real, y.real)
+            _weighted_histogram_kernel(
+                x, bin_edges, bin_edges.size, weights.imag, y.imag)
+        else:
+            if weights.dtype.kind in 'bui':
+                y = cupy.zeros(bin_edges.size - 1, dtype=int)
+            else:
+                y = cupy.zeros(bin_edges.size - 1, dtype=float)
+            _weighted_histogram_kernel(
+                x, bin_edges, bin_edges.size, weights, y)
 
     if density:
         db = cupy.array(cupy.diff(bin_edges), float)
