@@ -54,6 +54,17 @@ class TestHistogram(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_list_equal()
+    def test_histogram_density(self, xp, dtype):
+        x = testing.shaped_arange((10,), xp, dtype)
+        y, bin_edges = xp.histogram(x, density=True)
+
+        area = xp.sum(y * xp.diff(bin_edges))
+        testing.assert_allclose(area, 1)
+
+        return y, bin_edges
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
     def test_histogram_empty(self, xp, dtype):
         x = xp.array([], dtype)
         y, bin_edges = xp.histogram(x)

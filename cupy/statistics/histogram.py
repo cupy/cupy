@@ -34,7 +34,7 @@ _histogram_kernel = core.ElementwiseKernel(
     preamble=_preamble)
 
 
-def histogram(x, bins=10):
+def histogram(x, bins=10, density=False):
     """Computes the histogram of a set of data.
 
     Args:
@@ -42,7 +42,9 @@ def histogram(x, bins=10):
         bins (int or cupy.ndarray): If ``bins`` is an int, it represents the
             number of bins. If ``bins`` is an :class:`~cupy.ndarray`, it
             represents a bin edges.
-
+        density (bool, optional): If False, the default, returns the number of
+            samples in each bin. If True, returns the probability *density*
+            function at the bin, ``bin_count / sample_count / bin_volume``.
     Returns:
         tuple: ``(hist, bin_edges)`` where ``hist`` is a :class:`cupy.ndarray`
         storing the values of the histogram, and ``bin_edges`` is a
@@ -79,6 +81,10 @@ def histogram(x, bins=10):
 
     y = cupy.zeros(bins.size - 1, dtype='l')
     _histogram_kernel(x, bins, bins.size, y)
+
+    if density:
+        db = cupy.array(cupy.diff(bins), float)
+        return y/db/y.sum(), bins
     return y, bins
 
 # TODO(okuta): Implement histogram2d
