@@ -66,10 +66,13 @@ log1p = ufunc.create_math_ufunc(
 
     ''')
 
+complex_logaddexp = 'out0 = max(in0, in1) + log1p(exp(-abs(in0 - in1)))'
+
 
 logaddexp = core.create_ufunc(
     'cupy_logaddexp',
-    ('ee->e', 'ff->f', 'dd->d'),
+    ('ee->e', 'ff->f', 'dd->d',
+     ('FF->F', complex_logaddexp), ('DD->D', complex_logaddexp)),
     'out0 = fmax(in0, in1) + log1p(exp(-fabs(in0 - in1)))',
     doc='''Computes ``log(exp(x1) + exp(x2))`` elementwise.
 

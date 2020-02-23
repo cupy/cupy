@@ -52,7 +52,7 @@ class TestExplog(unittest.TestCase):
         self.check_unary('log1p')
 
     def test_logaddexp(self):
-        self.check_binary('logaddexp', no_complex=True)
+        self.check_binary('logaddexp', no_complex=False)
 
     def test_logaddexp2(self):
         self.check_binary('logaddexp2', no_complex=True)
