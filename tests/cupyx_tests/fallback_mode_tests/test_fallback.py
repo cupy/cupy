@@ -577,7 +577,7 @@ class TestInplaceSpecialMethods(unittest.TestCase):
 
     @numpy_fallback_array_allclose()
     def test_out_is_returned_when_not_fallbacked(self, xp):
-        a = testing.shaped_random((3, 4), xp)
+        a = testing.shaped_random((3, 4), xp, dtype=xp.float64)
         z = xp.zeros((4,))
         res = xp.var(a, axis=0, out=z)
         assert res is z
