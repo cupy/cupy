@@ -3,9 +3,7 @@ import warnings
 
 import numpy
 
-import cupy
 from cupy import testing
-from cupy import util
 
 
 @testing.parameterize(
@@ -169,19 +167,3 @@ class TestArrayIndex(unittest.TestCase):
     def test_T_vector(self, xp):
         a = testing.shaped_arange((4,), xp)
         return a.T
-
-
-class TestSliceCopy(unittest.TestCase):
-
-    def setUp(self):
-        self.prev = util.ENABLE_SLICE_COPY
-        util.ENABLE_SLICE_COPY = True
-
-    def tearDown(self):
-        util.ENABLE_SLICE_COPY = self.prev
-
-    def test_setitem_slice_copy(self):
-        a = cupy.zeros((2, 3, 4))
-        a[:] = numpy.ones((2, 3, 4))
-        e = cupy.ones((2, 3, 4))
-        assert (a == e).all()
