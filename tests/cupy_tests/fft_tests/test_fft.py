@@ -238,9 +238,7 @@ class TestFft2(unittest.TestCase):
     def test_fft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'C':
-            a = xp.ascontiguousarray(a)
-        else:
+        if order == 'F':
             a = xp.asfortranarray(a)
         out = xp.fft.fft2(a, s=self.s, norm=self.norm)
 
@@ -257,9 +255,7 @@ class TestFft2(unittest.TestCase):
     def test_ifft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'C':
-            a = xp.ascontiguousarray(a)
-        else:
+        if order == 'F':
             a = xp.asfortranarray(a)
         out = xp.fft.ifft2(a, s=self.s, norm=self.norm)
 
@@ -303,9 +299,7 @@ class TestFftn(unittest.TestCase):
     def test_fftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'C':
-            a = xp.ascontiguousarray(a)
-        else:
+        if order == 'F':
             a = xp.asfortranarray(a)
         out = xp.fft.fftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -326,9 +320,7 @@ class TestFftn(unittest.TestCase):
     def test_ifftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'C':
-            a = xp.ascontiguousarray(a)
-        else:
+        if order == 'F':
             a = xp.asfortranarray(a)
         out = xp.fft.ifftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -625,9 +617,7 @@ class TestRfft2(unittest.TestCase):
     def test_rfft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'C':
-            a = xp.ascontiguousarray(a)
-        else:
+        if order == 'F':
             a = xp.asfortranarray(a)
         out = xp.fft.rfft2(a, s=self.s, norm=self.norm)
 
@@ -643,9 +633,7 @@ class TestRfft2(unittest.TestCase):
     def test_irfft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'C':
-            a = xp.ascontiguousarray(a)
-        else:
+        if order == 'F':
             a = xp.asfortranarray(a)
         out = xp.fft.irfft2(a, s=self.s, norm=self.norm)
 
@@ -684,9 +672,7 @@ class TestRfftn(unittest.TestCase):
     def test_rfftn(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'C':
-            a = xp.ascontiguousarray(a)
-        else:
+        if order == 'F':
             a = xp.asfortranarray(a)
         out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
@@ -709,9 +695,7 @@ class TestRfftn(unittest.TestCase):
             raise unittest.SkipTest('work-around for cuFFT issue')
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        if order == 'C':
-            a = xp.ascontiguousarray(a)
-        else:
+        if order == 'F':
             a = xp.asfortranarray(a)
         out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
