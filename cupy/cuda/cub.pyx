@@ -119,8 +119,8 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
                   bint keepdims=False):
     cdef ndarray y
     cdef memory.MemoryPointer ws
-    cdef int dtype_id, ndim_out, kv_bytes, x_size, op_code
-    cdef size_t ws_size
+    cdef int dtype_id, ndim_out, kv_bytes, op_code
+    cdef size_t x_size, ws_size
     cdef void *x_ptr
     cdef void *y_ptr
     cdef void *ws_ptr
@@ -155,7 +155,7 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
     y_ptr = <void *>y.data.ptr
     dtype_id = _get_dtype_id(x.dtype)
     s = <Stream_t>stream.get_current_stream_ptr()
-    x_size = <int>x.size
+    x_size = <size_t>x.size
     ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x.size, s,
                                                    op, dtype_id)
     ws = memory.alloc(ws_size)
