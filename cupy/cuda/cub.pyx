@@ -156,7 +156,7 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
     dtype_id = _get_dtype_id(x.dtype)
     s = <Stream_t>stream.get_current_stream_ptr()
     x_size = <size_t>x.size
-    ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x.size, s,
+    ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x_size, s,
                                                    op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void *>ws.ptr
