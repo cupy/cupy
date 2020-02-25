@@ -37,7 +37,7 @@ class TestIndexing(unittest.TestCase):
     def test_take_index_range_overflow(self, xp, dtype):
         iinfo = numpy.iinfo(dtype)
         a = testing.shaped_arange((iinfo.max + 1,), xp)
-        b = testing.shaped_random((1,), xp, dtype=dtype, scale=iinfo.max)
+        b = xp.array([0], dtype=dtype)
         return a.take(b)
 
     @testing.numpy_cupy_array_equal()
