@@ -167,7 +167,7 @@ class _VariableCoordinator:
         return ret
 
     def generate_new_scalar(self, dtype, **kwargs):
-        """Generate new _TraceArray object with a new memory space.
+        """Generate new _TraceScalar object with a new memory space.
         """
         return self._generate_new_variable(_TraceScalar, dtype, **kwargs)
 

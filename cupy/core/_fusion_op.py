@@ -41,7 +41,7 @@ class _UfuncRoutine:
     def emit_code(self):
         """Returns a CUDA device function code.
 
-        Returns a string like as:
+        Returns a string like:
         ```
         __device__ void cupy_add_0(int &in0_, float &in1_, double &out0_) {
             typedef double in0_type;

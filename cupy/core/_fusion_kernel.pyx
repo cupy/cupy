@@ -121,7 +121,7 @@ cdef class FusedKernel:
         for p in self._params:
             assert isinstance(p, _TraceVariable)
 
-        # Analys the relationship between variables.
+        # Analyse the relationship between variables.
 
         array_dict = {}
         self._reduction_in_array = []
@@ -156,7 +156,7 @@ cdef class FusedKernel:
                     'int {}'.format(op.block_stride_name))
 
     def get_shapes_of_kernel_params(self, tuple args):
-        """Returns the shapes of paramters passed to kern.linear_launch.
+        """Returns the shapes of parameters passed to kern.linear_launch.
         """
         cdef list kernel_param_shapes = []
         cdef int axis
