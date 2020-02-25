@@ -76,7 +76,33 @@ def choose(a, choices, out=None, mode='raise'):
     return a.choose(choices, out, mode)
 
 
-# TODO(okuta): Implement compress
+def compress(condition, a, axis=None, out=None):
+    """Returns selected slices of an array along given axis.
+
+    Args:
+        condition (1-D array of bools): Array that selects which entries to
+            return. If len(condition) is less than the size of a along the
+            given axis, then output is truncated to the length of the condition
+            array.
+        a (cupy.ndarray): Array from which to extract a part.
+        axis (int): Axis along which to take slices. If None (default), work
+            on the flattened array.
+        out (cupy.ndarray): Output array. If provided, it should be of
+            appropriate shape and dtype.
+
+    Returns:
+        cupy.ndarray: A copy of a without the slices along axis for which
+            condition is false.
+
+    .. warning::
+
+            This function may synchronize the device.
+
+
+    .. seealso:: :func:`numpy.compress`
+
+    """
+    return a.compress(condition, axis, out)
 
 
 def diagonal(a, offset=0, axis1=0, axis2=1):

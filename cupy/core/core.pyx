@@ -724,7 +724,19 @@ cdef class ndarray:
 
         return _indexing._ndarray_nonzero(self)
 
-    # TODO(okuta): Implement compress
+    cpdef ndarray compress(self, condition, axis=None, out=None):
+        """Returns selected slices of this array along given axis.
+
+        .. warning::
+
+            This function may synchronize the device.
+
+        .. seealso::
+           :func:`cupy.compress` for full documentation,
+           :meth:`numpy.ndarray.compress`
+
+        """
+        return _indexing._ndarray_compress(self, condition, axis, out)
 
     cpdef ndarray diagonal(self, offset=0, axis1=0, axis2=1):
         """Returns a view of the specified diagonals.
