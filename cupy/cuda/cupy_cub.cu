@@ -6,7 +6,8 @@
 #include "cupy_cub.h"
 #include <stdexcept>
 
-#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 #include <cuda_fp16.h>
 #endif
 
@@ -54,7 +55,8 @@ template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, t
    behaviors with which we must comply.
 */
 
-#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 __host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
 #ifdef __CUDA_ARCH__
     return __hisnan(x);
@@ -131,7 +133,8 @@ __host__ __device__ __forceinline__ complex<double> Max::operator()(const comple
     else {return max(a, b);}
 }
 
-#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ __half Max::operator()(const __half &a, const __half &b) const
@@ -192,7 +195,8 @@ __host__ __device__ __forceinline__ complex<double> Min::operator()(const comple
     else {return min(a, b);}
 }
 
-#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, const __half &b) const
@@ -201,7 +205,7 @@ __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, cons
     if (half_isnan(a)) {return a;}
     else if (half_isnan(b)) {return b;}
     else if (half_less(a, b)) {return a;}
-    else {return a;}
+    else {return b;}
 }
 #endif
 
@@ -273,7 +277,8 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMax::o
         return a;
 }
 
-#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMax::operator()(
@@ -360,7 +365,8 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMin::o
         return a;
 }
 
-#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()(
@@ -400,7 +406,8 @@ void dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args)
     case CUPY_CUB_UINT16:     return f.template operator()<unsigned short>(std::forward<Ts>(args)...);
     case CUPY_CUB_UINT32:     return f.template operator()<unsigned int>(std::forward<Ts>(args)...);
     case CUPY_CUB_UINT64:     return f.template operator()<unsigned long>(std::forward<Ts>(args)...);
-#if __CUDACC_VER_MAJOR__ >= 9 && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
     case CUPY_CUB_FLOAT16:    return f.template operator()<__half>(std::forward<Ts>(args)...);
 #endif
     case CUPY_CUB_FLOAT32:    return f.template operator()<float>(std::forward<Ts>(args)...);

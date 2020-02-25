@@ -3,7 +3,6 @@ import string
 import numpy
 
 import cupy
-from cupy.core import _errors
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core._ufuncs import elementwise_copy
 from cupy import util
@@ -39,7 +38,7 @@ cdef _ndarray_sort(ndarray self, int axis):
     if axis < 0:
         axis += ndim
     if not (0 <= axis < ndim):
-        raise _errors._AxisError('Axis out of range')
+        raise numpy.AxisError('Axis out of range')
 
     if axis == ndim - 1:
         data = self
@@ -83,7 +82,7 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
     if _axis < 0:
         _axis += ndim
     if not (0 <= _axis < ndim):
-        raise _errors._AxisError('Axis out of range')
+        raise numpy.AxisError('Axis out of range')
 
     if _axis == ndim - 1:
         data = data.copy()
@@ -143,7 +142,7 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
     if axis < 0:
         axis += ndim
     if not (0 <= axis < ndim):
-        raise _errors._AxisError('Axis out of range')
+        raise numpy.AxisError('Axis out of range')
 
     if axis == ndim - 1:
         data = self
@@ -240,7 +239,7 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
     if _axis < 0:
         _axis += ndim
     if not (0 <= _axis < ndim):
-        raise _errors._AxisError('Axis out of range')
+        raise numpy.AxisError('Axis out of range')
 
     length = data._shape[_axis]
     if isinstance(kth, int):

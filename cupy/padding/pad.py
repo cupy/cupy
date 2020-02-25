@@ -127,31 +127,25 @@ def _get_linear_ramps(padded, axis, width_pair, end_value_pair):
     """
     edge_pair = _get_edges(padded, axis, width_pair)
 
-    # TODO (grlee77): implement axis argument to cupy.linspace to avoid numpy
-    if numpy.lib.NumpyVersion(numpy.__version__) < '1.16.0':
-        # TODO (grlee77): remove once axis support is added to cupy.linspace
-        raise NotImplementedError(
-            "padding with 'linear_ramp' currently requires numpy >= 1.16")
-
-    left_ramp = cupy.asarray(numpy.linspace(
+    left_ramp = cupy.linspace(
         start=end_value_pair[0],
         # squeeze axis replaced by linspace
-        stop=cupy.asnumpy(edge_pair[0].squeeze(axis)),
+        stop=edge_pair[0].squeeze(axis),
         num=width_pair[0],
         endpoint=False,
         dtype=padded.dtype,
         axis=axis,
-    ))
+    )
 
-    right_ramp = cupy.asarray(numpy.linspace(
+    right_ramp = cupy.linspace(
         start=end_value_pair[1],
         # squeeze axis replaced by linspace
-        stop=cupy.asnumpy(edge_pair[1].squeeze(axis)),
+        stop=edge_pair[1].squeeze(axis),
         num=width_pair[1],
         endpoint=False,
         dtype=padded.dtype,
         axis=axis,
-    ))
+    )
     # Reverse linear space in appropriate dimension
     right_ramp = right_ramp[_slice_at_axis(slice(None, None, -1), axis)]
 

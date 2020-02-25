@@ -10,7 +10,6 @@ import ctypes
 import numpy
 
 import cupy
-from cupy.core import _errors
 from cupy.core._kernel import create_ufunc
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._kernel import ufunc  # NOQA
@@ -1615,7 +1614,7 @@ cdef class ndarray:
 
     cpdef _set_contiguous_strides(
             self, Py_ssize_t itemsize, bint is_c_contiguous):
-        self.size = internal.set_contiguous_strides(
+        self.size = internal.get_contiguous_strides_inplace(
             self._shape, self._strides, itemsize, is_c_contiguous)
         if is_c_contiguous:
             self._c_contiguous = True

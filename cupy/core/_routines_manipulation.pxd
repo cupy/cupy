@@ -29,5 +29,6 @@ cpdef ndarray _reshape(ndarray self,
                        const vector.vector[Py_ssize_t] &shape_spec)
 cpdef ndarray _T(ndarray self)
 cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes)
-cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype)
-cpdef ndarray concatenate_method(tup, int axis)
+cpdef ndarray _concatenate(
+    list arrays, Py_ssize_t axis, tuple shape, ndarray out)
+cpdef ndarray concatenate_method(tup, int axis, ndarray out=*)
