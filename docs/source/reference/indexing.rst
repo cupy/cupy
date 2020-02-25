@@ -17,6 +17,7 @@ Indexing Routines
    cupy.take
    cupy.take_along_axis
    cupy.choose
+   cupy.compress
    cupy.diag
    cupy.diagonal
    cupy.lib.stride_tricks.as_strided
