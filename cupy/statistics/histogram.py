@@ -93,7 +93,8 @@ def _get_outer_edges(a, range):
                 'max must be larger than min in range parameter.')
         if not (numpy.isfinite(first_edge) and numpy.isfinite(last_edge)):
             raise ValueError(
-                "supplied range of [{}, {}] is not finite".format(first_edge, last_edge))
+                "supplied range of [{}, {}] is not finite".format(
+                    first_edge, last_edge))
     elif a.size == 0:
         first_edge = 0.0
         last_edge = 1.0

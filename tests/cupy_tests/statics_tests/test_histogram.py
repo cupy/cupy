@@ -119,7 +119,7 @@ class TestHistogram(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose()
-    def test_histogram_int_weights(self, xp, dtype):
+    def test_histogram_int_weights_dtype(self, xp, dtype):
         # Check the type of the returned histogram
         a = xp.arange(10, dtype=dtype)
         h, b = xp.histogram(a, weights=xp.ones(10, int))
@@ -128,7 +128,7 @@ class TestHistogram(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose()
-    def test_histogram_float_weights(self, xp, dtype):
+    def test_histogram_float_weights_dtype(self, xp, dtype):
         # Check the type of the returned histogram
         a = xp.arange(10, dtype=dtype)
         h, b = xp.histogram(a, weights=xp.ones(10, float))
