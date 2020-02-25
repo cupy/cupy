@@ -13,6 +13,7 @@ Indexing Routines
    cupy.where
    cupy.indices
    cupy.ix_
+   cupy.ravel_multi_index
    cupy.unravel_index
    cupy.take
    cupy.take_along_axis
