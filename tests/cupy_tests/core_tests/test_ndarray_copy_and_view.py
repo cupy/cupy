@@ -197,7 +197,7 @@ class TestArrayCopyAndView(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_isinstance_numpy_copy_not_slice(self, xp):
         a = xp.arange(5, dtype=numpy.float64)
-        a[a<3] = 0
+        a[a < 3] = 0
         return a
 
 
