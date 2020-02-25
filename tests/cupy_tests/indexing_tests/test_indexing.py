@@ -34,7 +34,7 @@ class TestIndexing(unittest.TestCase):
     # see cupy#3017
     @testing.for_dtypes('bBhH')
     @testing.numpy_cupy_array_equal()
-    def test_take_index_range(self, xp, dtype):
+    def test_take_index_range_overflow(self, xp, dtype):
         iinfo = numpy.iinfo(dtype)
         a = testing.shaped_arange((iinfo.max + 1,), xp)
         b = testing.shaped_random((1,), xp, dtype=dtype, scale=iinfo.max)
