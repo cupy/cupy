@@ -80,6 +80,15 @@ cdef class _ShapeConstraints:
         return True
 
 
+class _TraceResult:
+
+    def __init__(self, op_list, params, return_size, shape_constraints):
+        self.op_list = op_list
+        self.params = params
+        self.return_size = return_size
+        self.shape_constraints = shape_constraints
+
+
 def _broadcast_shapes(shapes):
     """Returns the braodcasted shapes.
     """
@@ -576,7 +585,7 @@ class TraceImpl:
             res += self._get_ancestors(var._view_of)
         return res
 
-    def emit_kernel(self, func, args):
+    def trace(self, func, args):
         # Call `func(args)` and update `op_list`.
         out_params, return_size = self._trace_target_function(func, args)
         self.op_list = _fusion_optimization.optimize(
@@ -592,7 +601,8 @@ class TraceImpl:
         kernel_params = list(kernel_params)
         self.kernel_params = kernel_params  # used in mock tests.
 
-        return self.op_list, kernel_params, return_size, self.shape_constraints
+        return _TraceResult(
+            self.op_list, kernel_params, return_size, self.shape_constraints)
 
 
 def trace(func, args):
@@ -600,8 +610,8 @@ def trace(func, args):
 
     try:
         _thread_local.history = history
-        op_list, params, return_size, shapec = history.emit_kernel(func, args)
+        trace_result = history.trace(func, args)
     finally:
         _thread_local.history = None
 
-    return op_list, params, return_size, shapec
+    return trace_result

@@ -73,8 +73,11 @@ cdef class FusedKernel:
         readonly vector.vector[Py_ssize_t] _view_of
         readonly vector.vector[Py_ssize_t] _out_params
 
-    def __init__(self, name, op_list, params, return_size, shape_constraints):
-        self.shape_constraints = shape_constraints
+    def __init__(self, name, trace_result):
+        op_list = trace_result.op_list
+        params = trace_result.params
+        return_size = trace_result.return_size
+        self.shape_constraints = trace_result.shape_constraints
 
         self._name = name
         self._params = sorted(params, key=lambda x: x.serial_number)
@@ -104,7 +107,6 @@ cdef class FusedKernel:
         self._cuda_body = str(_fusion_emit_code._CodeBlock('', codes))
 
         # Check the format of the return value.
-
         if return_size == 'none':
             self._return_size = -1
             self._out_params.resize(0)

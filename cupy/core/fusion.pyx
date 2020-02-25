@@ -26,8 +26,8 @@ cdef tuple _fusion_argument_types = (
 def _get_fused_kernel(name, func, args):
     try:
         _thread_local.is_fusing = True
-        kernel_info = _fusion_trace.trace(func, args)
-        kernel = _fusion_kernel.FusedKernel(name, *kernel_info)
+        trace_result = _fusion_trace.trace(func, args)
+        kernel = _fusion_kernel.FusedKernel(name, trace_result)
     finally:
         _thread_local.is_fusing = False
     return kernel
