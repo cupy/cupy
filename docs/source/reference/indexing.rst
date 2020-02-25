@@ -19,6 +19,7 @@ Indexing Routines
    cupy.choose
    cupy.diag
    cupy.diagonal
+   cupy.extract
    cupy.lib.stride_tricks.as_strided
    cupy.place
    cupy.put
