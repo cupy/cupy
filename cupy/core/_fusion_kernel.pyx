@@ -21,6 +21,7 @@ from cupy.core._fusion_variable import _TraceScalar
 from cupy.core._fusion_variable import _TraceArray
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
+from cupy.core cimport _reduction
 
 
 @util.memoize()
@@ -238,7 +239,7 @@ cdef class FusedKernel:
         if len(self._reduction_in_array) == 0:
             return [], 256, 0
 
-        block_size = 256 if runtime._is_hip_environment else 512
+        block_size = _reduction._block_size
         for i in range(len(self._reduction_in_array)):
             in_array = ndarray_list[self._reduction_in_array[i]]
             out_array = ndarray_list[self._reduction_out_array[i]]
@@ -331,20 +332,20 @@ cdef class FusedKernel:
     def execute(self, tuple args, list shapes):
         ndarray_list = self._get_ndarray_list(args, shapes)
         ret = self._get_return_value(ndarray_list)
-        size_info = self._get_kernel_size(ndarray_list)
-        block_strides, block_size, shared_mem = size_info
         reduce_key = self._reduce_dims(ndarray_list)
         inout_args = self._get_inout_args(args, ndarray_list)
         cuda_params = self._get_cuda_params(reduce_key, ndarray_list)
-        # assert len(cuda_params) == len(inout_args) + len(block_strides)
         kern = _cuda_compile(
             self._submodule_code, self._name, cuda_params, self._cuda_body,
             self._use_grid_sync)
-        kargs = inout_args + block_strides
+
+        block_strides, block_size, shared_mem = (
+            self._get_kernel_size(ndarray_list))
 
         # TODO(asi1024): Optimize kernel size perameter.
         kern_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
             kern.ptr, block_size, shared_mem) * block_size
+        kargs = inout_args + block_strides
 
         kern.linear_launch(
             kern_size, kargs, shared_mem, block_size,
