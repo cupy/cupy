@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 import cupy
 from cupy import testing
 
@@ -27,6 +29,15 @@ class TestIndexing(unittest.TestCase):
     def test_take_no_axis(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         b = xp.array([[10, 5], [3, 20]])
+        return a.take(b)
+
+    # see cupy#3017
+    @testing.for_dtypes('bBhH')
+    @testing.numpy_cupy_array_equal()
+    def test_take_index_range(self, xp, dtype):
+        iinfo = numpy.iinfo(dtype)
+        a = testing.shaped_arange((iinfo.max + 1,), xp)
+        b = testing.shaped_random((1,), xp, dtype=dtype, scale=iinfo.max)
         return a.take(b)
 
     @testing.numpy_cupy_array_equal()
