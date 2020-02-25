@@ -52,15 +52,17 @@ class TestShape(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp)
         return a.reshape(3, -1, order=order)
 
-    @testing.numpy_cupy_raises()
-    def test_reshape_with_multiple_unknown_dimensions(self, xp):
-        a = testing.shaped_arange((2, 3, 4))
-        a.reshape(3, -1, -1)
+    def test_reshape_with_multiple_unknown_dimensions(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp)
+            with pytest.raises(ValueError):
+                a.reshape(3, -1, -1)
 
-    @testing.numpy_cupy_raises()
-    def test_reshape_with_changed_arraysize(self, xp):
-        a = testing.shaped_arange((2, 3, 4))
-        a.reshape(2, 4, 4)
+    def test_reshape_with_changed_arraysize(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp)
+            with pytest.raises(ValueError):
+                a.reshape(2, 4, 4)
 
     def test_reshape_invalid_order(self):
         for xp in (numpy, cupy):
@@ -68,10 +70,11 @@ class TestShape(unittest.TestCase):
             with pytest.raises(ValueError):
                 a.reshape(2, 4, 4, order='K')
 
-    @testing.numpy_cupy_raises()
-    def test_reshape_empty_invalid(self, xp):
-        a = testing.empty(xp)
-        a = a.reshape(())
+    def test_reshape_empty_invalid(self):
+        for xp in (numpy, cupy):
+            a = testing.empty(xp)
+            with pytest.raises(ValueError):
+                a.reshape(())
 
     @testing.numpy_cupy_array_equal()
     def test_reshape_empty(self, xp):
