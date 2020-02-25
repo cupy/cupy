@@ -2322,6 +2322,9 @@ invert = create_ufunc(
 
     Only integer and boolean arrays are handled.
 
+    .. note::
+        :func:`cupy.bitwise_not` is an alias for :func:`cupy.invert`.
+
     .. seealso:: :data:`numpy.invert`
 
     ''')
