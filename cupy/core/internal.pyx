@@ -278,7 +278,9 @@ cpdef float from_float16(uint16_t v):
 cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     cdef int order_char
     order_char = b'C' if len(order) == 0 else ord(order[0])
-    if allow_k and (order_char == b'K' or order_char == b'k'):
+    if order_char == b'K' or order_char == b'k':
+        if not allow_k:
+            raise ValueError('order \'K\' is not permitted')
         order_char = b'K'
     elif order_char == b'A' or order_char == b'a':
         order_char = b'A'

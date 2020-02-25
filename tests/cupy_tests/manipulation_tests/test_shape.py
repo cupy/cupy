@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -61,10 +62,11 @@ class TestShape(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4))
         a.reshape(2, 4, 4)
 
-    @testing.numpy_cupy_raises()
-    def test_reshape_invalid_order(self, xp):
-        a = testing.shaped_arange((2, 3, 4))
-        a.reshape(2, 4, 4, order='K')
+    def test_reshape_invalid_order(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp)
+            with pytest.raises(ValueError):
+                a.reshape(2, 4, 4, order='K')
 
     @testing.numpy_cupy_raises()
     def test_reshape_empty_invalid(self, xp):
