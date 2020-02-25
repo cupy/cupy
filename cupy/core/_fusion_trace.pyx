@@ -80,15 +80,6 @@ cdef class _ShapeConstraints:
         return True
 
 
-class _TraceResult:
-
-    def __init__(self, op_list, params, return_size, shape_constraints):
-        self.op_list = op_list
-        self.params = params
-        self.return_size = return_size
-        self.shape_constraints = shape_constraints
-
-
 def _broadcast_shapes(shapes):
     """Returns the braodcasted shapes.
     """
@@ -496,7 +487,7 @@ class TraceImpl:
         out_param = self.vc.indexing(in_param, indices)
         return self._make_interface(out_param)
 
-    def _trace_target_function(self, func, args):
+    def trace(self, func, args):
         """Call ``self.func`` with _TraceVariable arguments.
 
         Returns:
@@ -577,32 +568,23 @@ class TraceImpl:
 
         return out_params, return_size
 
-    def _get_ancestors(self, var):
-        if var is None:
-            return _VariableSet()
-        res = _VariableSet(var)
-        if isinstance(var, _TraceArray):
-            res += self._get_ancestors(var._view_of)
-        return res
 
-    def trace(self, func, args):
-        # Call `func(args)` and update `op_list`.
-        out_params, return_size = self._trace_target_function(func, args)
-        self.op_list = _fusion_optimization.optimize(
-            self.op_list, self.vc.all_variables, self.shape_constraints)
+def _get_ancestors_of_trace_variable(var):
+    if var is None:
+        return _VariableSet()
+    res = _VariableSet(var)
+    if isinstance(var, _TraceArray):
+        res += _get_ancestors_of_trace_variable(var._view_of)
+    return res
 
-        # Make info passed to FusedKernel.
-        kernel_params = _VariableSet()
-        for p in out_params:
-            kernel_params += self._get_ancestors(p)
-        for op in self.op_list:
-            for p in op.in_params + op.out_params:
-                kernel_params += self._get_ancestors(p)
-        kernel_params = list(kernel_params)
-        self.kernel_params = kernel_params  # used in mock tests.
 
-        return _TraceResult(
-            self.op_list, kernel_params, return_size, self.shape_constraints)
+class _TraceResult:
+
+    def __init__(self, op_list, params, return_size, shape_constraints):
+        self.op_list = op_list
+        self.params = params
+        self.return_size = return_size
+        self.shape_constraints = shape_constraints
 
 
 def trace(func, args):
@@ -610,8 +592,30 @@ def trace(func, args):
 
     try:
         _thread_local.history = history
-        trace_result = history.trace(func, args)
+
+        # Call `func(args)` and update `op_list`.
+        out_params, return_size = history.trace(func, args)
     finally:
         _thread_local.history = None
 
-    return trace_result
+    op_list = history.op_list
+    shape_constraints = history.shape_constraints
+    all_variables = history.vc.all_variables
+
+    op_list = _fusion_optimization.optimize(
+        op_list, all_variables, shape_constraints)
+
+    # Make info passed to FusedKernel.
+    kernel_params = _VariableSet()
+    for p in out_params:
+        kernel_params += _get_ancestors_of_trace_variable(p)
+    for op in op_list:
+        for p in op.in_params + op.out_params:
+            kernel_params += _get_ancestors_of_trace_variable(p)
+    kernel_params = list(kernel_params)
+
+    # used in mock tests.
+    history.kernel_params = kernel_params
+    history.op_list = op_list
+
+    return _TraceResult(op_list, kernel_params, return_size, shape_constraints)
