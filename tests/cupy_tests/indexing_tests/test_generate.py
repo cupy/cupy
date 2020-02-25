@@ -189,7 +189,7 @@ class TestRavelMultiIndex(unittest.TestCase):
     @testing.numpy_cupy_array_list_equal()
     def test_multi_index_broadcasting(self, xp, order, dtype):
         dims = (3, 5)
-        x, y = xp.meshgrid(*[cupy.arange(s, dtype=dtype) for s in dims],
+        x, y = xp.meshgrid(*[xp.arange(s, dtype=dtype) for s in dims],
                            sparse=True)
         return xp.ravel_multi_index((x, y), dims, order=order)
 
