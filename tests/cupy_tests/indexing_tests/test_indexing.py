@@ -94,7 +94,7 @@ class TestIndexing(unittest.TestCase):
         a.diagonal(0, 2, -4)
 
     @testing.numpy_cupy_array_equal()
-    def test_extract(self, xp, dtype):
+    def test_extract(self, xp):
         a = testing.shaped_arange((3, 3), xp)
         b = xp.array([[True, False, True],
                       [False, True, False],
