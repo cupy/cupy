@@ -606,3 +606,18 @@ class TestFftnView(unittest.TestCase):
         with plan:
             out = cupyx.scipy.fftpack.fftn(view)
         testing.assert_allclose(expected, out)
+
+    @testing.for_complex_dtypes()
+    def test_overwrite_x_with_contiguous_view(self, dtype):
+        # Test case for: https://github.com/cupy/cupy/issues/3079
+        a = testing.shaped_random(self.shape, cupy, dtype)
+        if self.data_order == 'C':
+            # C-contiguous view
+            b = a[:a.shape[0] // 2, ...]
+        else:
+            # F-contiguous view
+            a = cupy.asfortranarray(a)
+            b = a[..., :a.shape[-1] // 2]
+        b_ptr = b.data.ptr
+        out = cupyx.scipy.fftpack.fftn(b, overwrite_x=True)
+        assert out.data.ptr == b_ptr
