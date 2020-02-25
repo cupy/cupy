@@ -77,10 +77,9 @@ class TestArithmeticUnary(unittest.TestCase):
             arg1 = xp.asarray(arg1)
         y = getattr(xp, self.name)(arg1)
 
-        is_over_1_13 = testing.numpy_satisfies('>=1.13.0')
-        if is_over_1_13 and self.name in ('real', 'imag'):
-            # From NumPy>=1.13, some functions return Python scalars for Python
-            # scalar inputs.
+        if self.name in ('real', 'imag'):
+            # Some NumPy functions return Python scalars for Python scalar
+            # inputs.
             # We need to convert them to arrays to compare with CuPy outputs.
             if xp is numpy and isinstance(arg1, (bool, int, float, complex)):
                 y = xp.asarray(y)
@@ -218,7 +217,7 @@ class ArithmeticBinaryBase:
         if isinstance(arg2, numpy.ndarray):
             arg2 = xp.asarray(arg2)
 
-        # Subtraction between booleans is not allowed (NumPy>=1.13.0).
+        # Subtraction between booleans is not allowed.
         if (self.name == 'subtract'
                 and dtype1 == numpy.bool_
                 and dtype2 == numpy.bool_):

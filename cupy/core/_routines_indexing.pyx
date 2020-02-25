@@ -4,7 +4,6 @@ import sys
 import numpy
 
 import cupy
-from cupy.core import _errors
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._ufuncs import elementwise_copy
 
@@ -59,7 +58,7 @@ cdef tuple _ndarray_nonzero(ndarray self):
         r = self.ravel()
         nonzero = cupy.core.not_equal(r, 0, ndarray(r.shape, dtype))
         del r
-        scan_index = _math.scan(nonzero)
+        scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM)
         count_nonzero = int(scan_index[-1])  # synchronize!
     ndim = max(<int>self._shape.size(), 1)
     if count_nonzero == 0:
@@ -151,6 +150,22 @@ cdef ndarray _ndarray_choose(ndarray self, choices, out, mode):
         raise TypeError('clipmode not understood')
 
     return out
+
+
+cdef ndarray _ndarray_compress(ndarray self, condition, axis, out):
+    a = self
+
+    if numpy.isscalar(condition):
+        raise ValueError('condition must be a 1-d array')
+
+    if not isinstance(condition, ndarray):
+        condition = core.array(condition, dtype=int)
+        if condition.ndim != 1:
+            raise ValueError('condition must be a 1-d array')
+
+    res = _ndarray_nonzero(condition)  # synchronize
+
+    return _ndarray_take(a, res[0], axis, out)
 
 
 cdef ndarray _ndarray_diagonal(ndarray self, offset, axis1, axis2):
@@ -548,7 +563,9 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
         mask_type = numpy.int32
     else:
         mask_type = numpy.int64
-    mask_scanned = _math.scan(mask.astype(mask_type).ravel())  # starts with 1
+    op = _math.scan_op.SCAN_SUM
+    # starts with 1
+    mask_scanned = _math.scan(mask.astype(mask_type).ravel(), op=op)
     n_true = int(mask_scanned[-1])
     masked_shape = lshape + (n_true,) + rshape
 
@@ -573,7 +590,7 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     else:
         mask_type = numpy.int64
     mask_scanned = _manipulation._reshape(
-        _math.scan(mask.astype(mask_type).ravel()),
+        _math.scan(mask.astype(mask_type).ravel(), op=_math.scan_op.SCAN_SUM),
         mask._shape)
     return mask, mask_scanned, masked_shape
 
@@ -600,7 +617,7 @@ cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
         ndim = 1
 
     if not (-ndim <= li < ndim and -ndim <= ri < ndim):
-        raise _errors._AxisError('Axis overrun')
+        raise numpy.AxisError('Axis overrun')
 
     if ndim == 1:
         li = ri = 0
@@ -826,7 +843,7 @@ cdef ndarray _diagonal(
         Py_ssize_t axis2=1):
     cdef Py_ssize_t ndim = a.ndim
     if not (-ndim <= axis1 < ndim and -ndim <= axis2 < ndim):
-        raise _errors._AxisError(
+        raise numpy.AxisError(
             'axis1(={0}) and axis2(={1}) must be within range '
             '(ndim={2})'.format(axis1, axis2, ndim))
 

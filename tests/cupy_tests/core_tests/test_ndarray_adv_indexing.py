@@ -128,7 +128,6 @@ class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
     {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.13')
 class TestArrayAdvancedIndexingGetitemParametrized2(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -300,7 +299,6 @@ class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
      'indexes': numpy.random.choice([False, True], (1, 3))},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.13')
 class TestArrayInvalidIndexAdvGetitem2(unittest.TestCase):
 
     @testing.numpy_cupy_raises(accept_error=IndexError)
@@ -473,7 +471,6 @@ class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
     {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_), 'value': 1},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.13')
 class TestArrayAdvancedIndexingSetitemScalarValue2(unittest.TestCase):
 
     @testing.for_all_dtypes()

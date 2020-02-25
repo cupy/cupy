@@ -384,7 +384,6 @@ class TestDistributionsNegativeBinomial(RandomDistributionsTestCase):
     'dtype': _int_dtypes,  # to escape timeout
 })
 )
-@testing.with_requires('numpy>=1.10')
 @testing.gpu
 class TestDistributionsNoncentralChisquare(RandomDistributionsTestCase):
 
@@ -419,7 +418,6 @@ class TestDistributionsNoncentralChisquare(RandomDistributionsTestCase):
     'dtype': _int_dtypes,  # to escape timeout
 })
 )
-@testing.with_requires('numpy>=1.14')
 @testing.gpu
 class TestDistributionsNoncentralF(RandomDistributionsTestCase):
 
@@ -557,7 +555,6 @@ class TestDistributionsRayleigh(RandomDistributionsTestCase):
         self.check_distribution('rayleigh',
                                 {'scale': scale}, dtype)
 
-    @testing.with_requires('numpy>=1.12')
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
     @cupy.testing.for_float_dtypes('scale_dtype')
     def test_rayleigh_for_zero_scale(self, scale_dtype, dtype):

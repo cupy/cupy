@@ -44,7 +44,6 @@ class TestRepeatRepeatsNdarray(unittest.TestCase):
     {'repeats': [2], 'axis': 1},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.10')
 class TestRepeatListBroadcast(unittest.TestCase):
 
     """Test for `repeats` argument using single element list.
@@ -79,7 +78,6 @@ class TestRepeat1D(unittest.TestCase):
     {'repeats': [2], 'axis': 0},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.10')
 class TestRepeat1DListBroadcast(unittest.TestCase):
 
     """See comment in TestRepeatListBroadcast class."""

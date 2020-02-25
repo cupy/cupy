@@ -171,3 +171,99 @@ class TestUnravelIndex(unittest.TestCase):
     def test_invalid_dtype(self, xp, order, dtype):
         a = testing.shaped_arange((4, 3, 2), xp, dtype)
         xp.unravel_index(a, (6, 4), order=order)
+
+
+@testing.gpu
+class TestRavelMultiIndex(unittest.TestCase):
+
+    @testing.for_orders(['C', 'F', None])
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_basic(self, xp, order, dtype):
+        dims = (8, 4)
+        a = [xp.ones(5, dtype=dtype)] * len(dims)
+        return xp.ravel_multi_index(a, dims, order=order)
+
+    @testing.for_orders(['C', 'F', None])
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_multi_index_broadcasting(self, xp, order, dtype):
+        dims = (3, 5)
+        x, y = xp.meshgrid(*[xp.arange(s, dtype=dtype) for s in dims],
+                           sparse=True)
+        return xp.ravel_multi_index((x, y), dims, order=order)
+
+    @testing.for_orders(['C', 'F', None])
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_basic_nd_coords(self, xp, order, dtype):
+        dims = (8, 4)
+        a = [xp.ones((3, 3, 3), dtype=dtype)] * len(dims)
+        return xp.ravel_multi_index(a, dims, order=order)
+
+    @testing.for_orders(['C', 'F', None])
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_basic_clip(self, xp, order, dtype):
+        dims = (8, 4, 2)
+        a = [xp.arange(max(dims), dtype=dtype)] * len(dims)
+        return xp.ravel_multi_index(a, dims, order=order, mode='clip')
+
+    @testing.for_orders(['C', 'F', None])
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_basic_wrap(self, xp, order, dtype):
+        dims = (8, 4, 2)
+        a = [xp.arange(max(dims), dtype=dtype)] * len(dims)
+        return xp.ravel_multi_index(a, dims, order=order, mode='wrap')
+
+    @testing.for_orders(['C', 'F', None])
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_basic_raise(self, xp, order, dtype):
+        dims = (8, 4, 2)
+        a = [xp.arange(max(dims), dtype=dtype)] * len(dims)
+        return xp.ravel_multi_index(a, dims, order=order, mode='raise')
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_invalid_float_dims(self, xp, dtype):
+        a = xp.ones((3, 5), dtype=dtype)
+        xp.ravel_multi_index(a, (2., 4, 8.))
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_invalid_multi_index_dtype(self, xp, dtype):
+        a = xp.ones((3, 5), dtype=dtype)
+        xp.ravel_multi_index(a, (2, 4, 8))
+
+    @testing.for_orders(['C', 'F', None])
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_invalid_multi_index_shape(self, xp, order, dtype):
+        # a.shape[0] != len(dims)
+        dims = (2, 4)
+        a = xp.ones((len(dims) + 1, 5), dtype=dtype)
+        xp.ravel_multi_index(a, dims, order=order)
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_invalid_order(self, xp, dtype):
+        dims = (8, 4)
+        a = tuple([xp.arange(min(dims), dtype=dtype) for d in dims])
+        xp.ravel_multi_index(a, dims, order='V')
+
+    @testing.for_orders(['C', 'F', None])
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_dims_overflow(self, xp, order, dtype):
+        dims = (8, 4)
+        a = tuple([xp.arange(min(dims), dtype=dtype) for d in dims])
+        xp.ravel_multi_index(a, (xp.iinfo(xp.int64).max, 4), order=order)
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_invalid_mode(self, xp, dtype):
+        dims = (8, 4)
+        a = tuple([xp.arange(min(dims), dtype=dtype) for d in dims])
+        xp.ravel_multi_index(a, dims, mode='invalid')

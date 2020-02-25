@@ -432,9 +432,11 @@ from cupy.indexing.generate import c_  # NOQA
 from cupy.indexing.generate import indices  # NOQA
 from cupy.indexing.generate import ix_  # NOQA
 from cupy.indexing.generate import r_  # NOQA
+from cupy.indexing.generate import ravel_multi_index  # NOQA
 from cupy.indexing.generate import unravel_index  # NOQA
 
 from cupy.indexing.indexing import choose  # NOQA
+from cupy.indexing.indexing import compress  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
 from cupy.indexing.indexing import take  # NOQA
 from cupy.indexing.indexing import take_along_axis  # NOQA
@@ -703,10 +705,6 @@ from cupy.core._reduction import ReductionKernel  # NOQA
 # -----------------------------------------------------------------------------
 
 from cupy.core import fromDlpack  # NOQA
-
-# The following function is left for backward compatibility.
-# New CuPy specific routines should reside in cupyx package.
-from cupy.ext.scatter import scatter_add  # NOQA
 
 
 def asnumpy(a, stream=None, order='C'):
