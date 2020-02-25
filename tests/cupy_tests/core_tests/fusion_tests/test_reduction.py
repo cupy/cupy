@@ -3,7 +3,6 @@ import unittest
 import numpy
 
 import cupy
-from cupy.core import _errors
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 
@@ -19,13 +18,11 @@ class TestFusionReductionAxis(unittest.TestCase):
         x = testing.shaped_random(self.shape, xp, 'int64', scale=10, seed=0)
         return (x,), {}
 
-    @fusion_utils.check_fusion(
-        accept_error=(numpy.AxisError, _errors._AxisError))
+    @fusion_utils.check_fusion(accept_error=numpy.AxisError)
     def test_sum_axis(self, xp):
         return lambda x: cupy.sum(x, self.axis)
 
-    @fusion_utils.check_fusion(
-        accept_error=(numpy.AxisError, _errors._AxisError))
+    @fusion_utils.check_fusion(accept_error=numpy.AxisError)
     def test_sum_kwargs_axis(self, xp):
         return lambda x: cupy.sum(x, axis=self.axis)
 
@@ -45,13 +42,11 @@ class TestFusionReductionMultiAxis(unittest.TestCase):
         x = testing.shaped_random(self.shape, xp, 'int64', scale=10, seed=0)
         return (x,), {}
 
-    @fusion_utils.check_fusion(
-        accept_error=(ValueError, numpy.AxisError, _errors._AxisError))
+    @fusion_utils.check_fusion(accept_error=(ValueError, numpy.AxisError))
     def test_sum_axis(self, xp):
         return lambda x: cupy.sum(x, self.axis)
 
-    @fusion_utils.check_fusion(
-        accept_error=(ValueError, numpy.AxisError, _errors._AxisError))
+    @fusion_utils.check_fusion(accept_error=(ValueError, numpy.AxisError))
     def test_sum_kwargs_axis(self, xp):
         return lambda x: cupy.sum(x, axis=self.axis)
 
