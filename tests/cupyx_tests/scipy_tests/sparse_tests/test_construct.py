@@ -3,6 +3,11 @@ import unittest
 import mock
 import numpy
 import pytest
+try:
+    import scipy.sparse
+    scipy_available = True
+except ImportError:
+    scipy_available = False
 
 import cupy
 from cupy import testing
@@ -125,13 +130,15 @@ class TestRandom(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestRandomInvalidArgument(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_too_small_density(self, xp, sp):
-        sp.random(3, 4, density=-0.1)
+    def test_too_small_density(self):
+        for sp in (scipy.sparse, sparse):
+            with pytest.raises(ValueError):
+                sp.random(3, 4, density=-0.1)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_too_large_density(self, xp, sp):
-        sp.random(3, 4, density=1.1)
+    def test_too_large_density(self):
+        for sp in (scipy.sparse, sparse):
+            with pytest.raises(ValueError):
+                sp.random(3, 4, density=1.1)
 
     def test_invalid_dtype(self):
         # Note: SciPy 1.12+ accepts integer.
