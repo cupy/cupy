@@ -1,8 +1,6 @@
 import contextlib
 import threading
 
-from cupyx import fallback_mode as fbm
-
 
 _config = threading.local()
 
@@ -51,6 +49,14 @@ def get_config_linalg():
     return value
 
 
+def get_config_fallback_mode():
+    try:
+        value = _config.fallback_mode
+    except AttributeError:
+        value = _config.fallback_mode = 'warn'
+    return value
+
+
 @contextlib.contextmanager
 def errstate(*, divide=None, over=None, under=None,
              invalid=None, linalg=None, fallback_mode=None):
@@ -85,14 +91,17 @@ def seterr(*, divide=None, over=None, under=None,
         if linalg not in ('ignore', 'raise'):
             raise NotImplementedError()
     if fallback_mode is not None:
-        fbm.seterr(fallback_mode)
+        if fallback_mode in ['print', 'warn', 'ignore', 'raise']:
+            _config.fallback_mode = fallback_mode
+        else:
+            raise ValueError(
+                '{} is not a valid dispatch type'.format(fallback_mode))
 
     _config.divide = divide
     _config.under = under
     _config.over = over
     _config.invalid = invalid
     _config.linalg = linalg
-    _config.fallback_mode = fallback_mode
 
     return old_state
 
@@ -107,5 +116,5 @@ def geterr():
         under=get_config_under(),
         invalid=get_config_invalid(),
         linalg=get_config_linalg(),
-        fallback_mode=fbm.geterr(),
+        fallback_mode=get_config_fallback_mode(),
     )
