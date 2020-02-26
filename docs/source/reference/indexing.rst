@@ -21,6 +21,7 @@ Indexing Routines
    cupy.compress
    cupy.diag
    cupy.diagonal
+   cupy.extract
    cupy.lib.stride_tricks.as_strided
    cupy.place
    cupy.put

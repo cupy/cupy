@@ -124,6 +124,49 @@ class TestIndexing(unittest.TestCase):
         a = testing.shaped_arange((3, 3, 3), xp)
         a.diagonal(0, 2, -4)
 
+    @testing.numpy_cupy_array_equal()
+    def test_extract(self, xp):
+        a = testing.shaped_arange((3, 3), xp)
+        b = xp.array([[True, False, True],
+                      [False, True, False],
+                      [True, False, True]])
+        return xp.extract(b, a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_extract_no_bool(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp)
+        b = xp.array([[1, 0, 1], [0, 1, 0], [1, 0, 1]], dtype=dtype)
+        return xp.extract(b, a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_extract_shape_mismatch(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        b = xp.array([[True, False],
+                      [True, False],
+                      [True, False]])
+        return xp.extract(b, a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_extract_size_mismatch(self, xp):
+        a = testing.shaped_arange((3, 3), xp)
+        b = xp.array([[True, False, True],
+                      [False, True, False]])
+        return xp.extract(b, a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_extract_size_mismatch2(self, xp):
+        a = testing.shaped_arange((3, 3), xp)
+        b = xp.array([[True, False, True, False],
+                      [False, True, False, True]])
+        return xp.extract(b, a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_extract_empty_1dim(self, xp):
+        a = testing.shaped_arange((3, 3), xp)
+        b = xp.array([])
+        return xp.extract(b, a)
+
 
 @testing.gpu
 class TestChoose(unittest.TestCase):

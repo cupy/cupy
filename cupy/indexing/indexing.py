@@ -130,4 +130,38 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
     return a.diagonal(offset, axis1, axis2)
 
 
+def extract(condition, a):
+    """Return the elements of an array that satisfy some condition.
+
+    This is equivalent to ``np.compress(ravel(condition), ravel(arr))``.
+    If ``condition`` is boolean, ``np.extract`` is equivalent to
+    ``arr[condition]``.
+
+    Args:
+        condition (int or array_like): An array whose nonzero or True entries
+            indicate the elements of array to extract.
+        a (cupy.ndarray): Input array of the same size as condition.
+
+    Returns:
+        cupy.ndarray: Rank 1 array of values from arr where condition is True.
+
+    .. warning::
+
+            This function may synchronize the device.
+
+    .. seealso:: :func:`numpy.extract`
+    """
+
+    if not isinstance(a, cupy.ndarray):
+        raise TypeError('extract requires input array to be cupy.ndarray')
+
+    if not isinstance(condition, cupy.ndarray):
+        condition = cupy.array(condition)
+
+    a = a.ravel()
+    condition = condition.ravel()
+
+    return a.take(condition.nonzero()[0])
+
+
 # TODO(okuta): Implement select
