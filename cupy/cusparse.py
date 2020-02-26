@@ -753,3 +753,167 @@ def csr2csr_compress(x, tol):
 
     return cupyx.scipy.sparse.csr_matrix(
         (data, indices, indptr), shape=x.shape)
+
+
+def is_generic_api_available():
+    handle = device.get_cusparse_handle()
+    version = cusparse.getVersion(handle)
+    if version >= 10200:  # TODO(anaruse): check version
+        return True
+    else:
+        return False
+
+
+def _dtype_to_IndexType(dtype):
+    if dtype == 'uint16':
+        return cusparse.CUSPARSE_INDEX_16U
+    elif dtype == 'int32':
+        return cusparse.CUSPARSE_INDEX_32I
+    elif dtype == 'int64':
+        return cusparse.CUSPARSE_INDEX_64I
+    else:
+        raise TypeError
+
+
+def _create_spmat_desc(a):
+    rows, cols = a.shape
+    idx_base = cusparse.CUSPARSE_INDEX_BASE_ZERO
+    cuda_dtype = _dtype_to_DataType(a.dtype)
+    if a.format == 'csr':
+        desc = cusparse.createCsr(
+            rows, cols, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
+            a.data.data.ptr, _dtype_to_IndexType(a.indptr.dtype),
+            _dtype_to_IndexType(a.indices.dtype), idx_base, cuda_dtype)
+    elif a.format == 'coo':
+        desc = cusparse.createCoo(
+            rows, cols, a.nnz, a.row.data.ptr, a.col.data.ptr,
+            a.data.data.ptr, _dtype_to_IndexType(a.row.dtype),
+            idx_base, cuda_dtype)
+    else:
+        raise ValueError('csr and coo format are supported '
+                         '(actual: {}).'.format(a.format))
+    return desc
+
+
+def _create_dnvec_desc(x):
+    cuda_dtype = _dtype_to_DataType(x.dtype)
+    desc = cusparse.createDnVec(x.size, x.data.ptr, cuda_dtype)
+    return desc
+
+
+def _create_dnmat_desc(a):
+    assert a.ndim == 2
+    assert a.flags.f_contiguous
+    rows, cols = a.shape
+    ld = rows
+    cuda_dtype = _dtype_to_DataType(a.dtype)
+    order = cusparse.CUSPARSE_ORDER_COL
+    desc = cusparse.createDnMat(rows, cols, ld, a.data.ptr, cuda_dtype, order)
+    return desc
+
+
+def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
+    """Multiplication of sparse matrix and dense vector.
+
+    .. math::
+
+        y = \\alpha * op(A) x + \\beta * y
+
+    Args:
+        a (cupyx.scipy.sparse.csr_matrix or coo_matrix): Sparse matrix A
+        x (cupy.ndarray): Dense vector x
+        y (cupy.ndarray or None): Dense vector y
+        alpha (scalar): Coefficent
+        beta (scalar): Coefficent
+        transa (bool): If ``True``, op(A) = transpose of A.
+
+    Returns:
+        cupy.ndarray
+    """
+    if not is_generic_api_available():
+        raise RuntimeError('cuSparse generic API is not available.')
+
+    a_shape = a.shape if not transa else a.shape[::-1]
+    if a_shape[1] != len(x):
+        raise ValueError('dimension mismatch')
+    m, n = a_shape
+    a, x, y = _cast_common_type(a, x, y)
+    if y is None:
+        y = cupy.zeros(m, a.dtype)
+
+    desc_a = _create_spmat_desc(a)
+    desc_x = _create_dnvec_desc(x)
+    desc_y = _create_dnvec_desc(y)
+
+    handle = device.get_cusparse_handle()
+    op_a = _transpose_flag(transa)
+    alpha = numpy.array(alpha, a.dtype).ctypes
+    beta = numpy.array(beta, a.dtype).ctypes
+    cuda_dtype = _dtype_to_DataType(a.dtype)
+    alg = cusparse.CUSPARSE_MV_ALG_DEFAULT
+    buff_size = cusparse.spMV_bufferSize(handle, op_a, alpha.data, desc_a,
+                                         desc_x, beta.data, desc_y, cuda_dtype,
+                                         alg)
+    buff = cupy.empty(buff_size, cupy.int8)
+    cusparse.spMV(handle, op_a, alpha.data, desc_a, desc_x, beta.data, desc_y,
+                  cuda_dtype, alg, buff.data.ptr)
+
+    return y
+
+
+def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
+    """Multiplication of sparse matrix and dense matrix.
+
+    .. math::
+
+        C = \\alpha * op(A) op(B) + \\beta * C
+
+    Args:
+        a (cupyx.scipy.sparse.csr_matrix or coo_matrix): Sparse matrix A
+        b (cupy.ndarray): Dense matrix B
+        c (cupy.ndarray or None): Dense matrix C
+        alpha (scalar): Coefficent
+        beta (scalar): Coefficent
+        transa (bool): If ``True``, op(A) = transpose of A.
+        transa (bool): If ``True``, op(B) = transpose of B.
+
+    Returns:
+        cupy.ndarray
+    """
+    assert a.ndim == b.ndim == 2
+    assert b.flags.f_contiguous
+    assert c is None or c.flags.f_contiguous
+
+    if not is_generic_api_available():
+        raise RuntimeError('cuSparse generic API is not available.')
+
+    a_shape = a.shape if not transa else a.shape[::-1]
+    b_shape = b.shape if not transb else b.shape[::-1]
+    if a_shape[1] != b.shape[0]:
+        raise ValueError('dimension mismatch')
+    m, k = a_shape
+    _, n = b_shape
+    a, b, c = _cast_common_type(a, b, c)
+    if c is None:
+        c = cupy.zeros((m, n), a.dtype, 'F')
+
+    desc_a = _create_spmat_desc(a)
+    desc_b = _create_dnmat_desc(b)
+    desc_c = _create_dnmat_desc(c)
+
+    handle = device.get_cusparse_handle()
+    op_a = _transpose_flag(transa)
+    op_b = _transpose_flag(transb)
+    alpha = numpy.array(alpha, a.dtype).ctypes
+    beta = numpy.array(beta, a.dtype).ctypes
+    cuda_dtype = _dtype_to_DataType(a.dtype)
+    alg = cusparse.CUSPARSE_MM_ALG_DEFAULT
+    buff_size = cusparse.spMM_bufferSize(handle, op_a, op_b, alpha.data,
+                                         desc_a, desc_b, beta.data, desc_c,
+                                         cuda_dtype, alg)
+    buff = cupy.empty(buff_size, cupy.int8)
+    buff_size = cusparse.spMM(handle, op_a, op_b, alpha.data, desc_a,
+                              desc_b, beta.data, desc_c, cuda_dtype,
+                              alg, buff.data.ptr)
+
+    return c
