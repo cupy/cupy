@@ -49,16 +49,8 @@ class TestNdim(unittest.TestCase):
         assert xp.ndim({1, 2, 3}) == 1
 
     @testing.numpy_cupy_equal()
-    def test_ndim_list_of_ndarray(self, xp):
-        assert xp.ndim([xp.arange(5), ] * 3) == 2
-
-    @testing.numpy_cupy_equal()
-    def test_ndim_list_of_ndarray2(self, xp):
-        assert xp.ndim([xp.arange(5), xp.arange(3)]) == 1
-
-    @testing.numpy_cupy_equal()
     def test_ndim_object(self, xp):
-        assert xp.ndim(dict(a=5, b='b'))
+        assert xp.ndim(dict(a=5, b='b')) == 0
 
     # numpy.dim works on CuPy arrays and cupy.ndim works on NumPy arrays
     def test_ndim_array_function(self):
@@ -73,7 +65,3 @@ class TestNdim(unittest.TestCase):
 
         a = numpy.asarray(5)
         assert cupy.ndim(a) == 0
-
-    @testing.numpy_cupy_equal()
-    def test_ndim_mixed_list_of_ndarray(self, xp):
-        assert xp.ndim([cupy.arange(5), numpy.arange(5)]) == 2
