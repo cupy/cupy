@@ -112,7 +112,7 @@ def extract(condition, a):
     ``arr[condition]``.
 
     Args:
-        condition (cupy.ndarray): An array whose nonzero or True entries
+        condition (int or array_like): An array whose nonzero or True entries
             indicate the elements of array to extract.
         a (cupy.ndarray): Input array of the same size as condition.
 
