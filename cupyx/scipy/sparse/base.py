@@ -1,5 +1,4 @@
 import numpy
-import six
 
 import cupy
 from cupyx.scipy.sparse import util
@@ -48,7 +47,7 @@ class spmatrix(object):
         return str(self.get())
 
     def __iter__(self):
-        for r in six.moves.range(self.shape[0]):
+        for r in range(self.shape[0]):
             yield self[r, :]
 
     def __bool__(self):
@@ -238,7 +237,7 @@ class spmatrix(object):
         if self.dtype.kind == 'f':
             return self
         else:
-            typ = numpy.result_type(self.dtype, 'f')
+            typ = numpy.promote_types(self.dtype, 'f')
             return self.astype(typ)
 
     def astype(self, t):

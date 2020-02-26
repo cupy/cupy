@@ -83,6 +83,29 @@ __global__ void test_multiply(const TYPE* x1, const TYPE* x2, TYPE* y, \
 }
 '''
 
+# dynamic parallelism
+_test_source4 = r'''
+extern "C"{
+
+__global__ void test_kernel_inner(float *arr, int N)
+{
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (tid < N)
+        arr[tid] = 1.0;
+}
+
+__global__ void test_kernel(float *arr, int N, int inner_blk)
+{
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (tid < N/inner_blk)
+        test_kernel_inner<<<1, inner_blk>>>(arr+tid*inner_blk, inner_blk);
+}
+
+}
+'''
+
 _test_cuComplex = r'''
 #include <cuComplex.h>
 #define N 100
@@ -233,6 +256,19 @@ __global__ void test_upcast(cuComplex* arr, cuDoubleComplex* out) {
 }
 '''
 
+test_const_mem = r'''
+extern "C"{
+__constant__ float some_array[100];
+
+__global__ void multiply_by_const(float* x, int N) {
+    int id = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (id < N) {
+        x[id] *= some_array[id];
+    }
+}
+}
+'''
 
 if 'CUPY_CACHE_DIR' in os.environ:
     _old_cache_dir = os.environ['CUPY_CACHE_DIR']
@@ -253,11 +289,16 @@ class TestRaw(unittest.TestCase):
         _test_cache_dir = tempfile.mkdtemp()
         os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
 
-        self.kern = cupy.RawKernel(_test_source1, 'test_sum',
-                                   backend=self.backend)
-        self.mod2 = cupy.RawModule(_test_source2, backend=self.backend)
-        self.mod3 = cupy.RawModule(_test_source3, ('-DPRECISION=2',),
-                                   backend=self.backend)
+        self.kern = cupy.RawKernel(
+            _test_source1, 'test_sum',
+            backend=self.backend)
+        self.mod2 = cupy.RawModule(
+            code=_test_source2,
+            backend=self.backend)
+        self.mod3 = cupy.RawModule(
+            code=_test_source3,
+            options=('-DPRECISION=2',),
+            backend=self.backend)
 
     def tearDown(self):
         # To avoid cache interference, we remove cached files after every test,
@@ -323,8 +364,10 @@ class TestRaw(unittest.TestCase):
 
     def test_invalid_compiler_flag(self):
         with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-            cupy.RawModule(_test_source3, ('-DPRECISION=3',),
-                           backend=self.backend)
+            cupy.RawModule(
+                code=_test_source3,
+                options=('-DPRECISION=3',),
+                backend=self.backend)
         assert 'precision not supported' in str(ex.value)
 
     def test_module_load_failure(self):
@@ -332,17 +375,52 @@ class TestRaw(unittest.TestCase):
         # this error is more likely to appear when using RawModule, so
         # let us do it here
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
-            cupy.RawModule(os.path.expanduser('~/this_does_not_exist.cubin'),
-                           backend=self.backend)
+            cupy.RawModule(
+                path=os.path.expanduser('~/this_does_not_exist.cubin'),
+                backend=self.backend)
         assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)
+
+    def test_module_neither_code_nor_path(self):
+        with pytest.raises(TypeError):
+            cupy.RawModule()
+
+    def test_module_both_code_and_path(self):
+        with pytest.raises(TypeError):
+            cupy.RawModule(
+                code=_test_source1,
+                path='test.cubin')
 
     def test_get_function_failure(self):
         # in principle this test is better done in test_driver.py, but
         # this error is more likely to appear when using RawModule, so
         # let us do it here
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
-            self.mod2.get_function("no_such_kernel")
+            self.mod2.get_function('no_such_kernel')
         assert 'CUDA_ERROR_NOT_FOUND' in str(ex.value)
+
+    def test_dynamical_parallelism(self):
+        ker = cupy.RawKernel(_test_source4, 'test_kernel', options=('-dc',),
+                             backend=self.backend)
+        N = 169
+        inner_chunk = 13
+        x = cupy.zeros((N,), dtype=cupy.float32)
+        ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
+        assert (x == 1.0).all()
+
+    def test_dynamical_parallelism_compile_failure(self):
+        # no option for separate compilation is given should cause an error
+        ker = cupy.RawKernel(_test_source4, 'test_kernel',
+                             backend=self.backend)
+        N = 10
+        inner_chunk = 2
+        x = cupy.zeros((N,), dtype=cupy.float32)
+        if self.backend == 'nvrtc':
+            # raised when calling ls.complete()
+            with pytest.raises(cupy.cuda.driver.CUDADriverError):
+                ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
+        else:  # nvcc
+            with pytest.raises(cupy.cuda.compiler.CompileException):
+                ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
 
     def test_cuFloatComplex(self):
         N = 100
@@ -350,7 +428,9 @@ class TestRaw(unittest.TestCase):
         grid = (N + block - 1) // block
         dtype = cupy.complex64
 
-        mod = cupy.RawModule(_test_cuComplex, translate_cucomplex=True)
+        mod = cupy.RawModule(
+            code=_test_cuComplex,
+            translate_cucomplex=True)
         a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
         a = a.astype(dtype)
         b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
@@ -404,7 +484,9 @@ class TestRaw(unittest.TestCase):
         grid = (N + block - 1) // block
         dtype = cupy.complex128
 
-        mod = cupy.RawModule(_test_cuComplex, translate_cucomplex=True)
+        mod = cupy.RawModule(
+            code=_test_cuComplex,
+            translate_cucomplex=True)
         a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
         a = a.astype(dtype)
         b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
@@ -450,3 +532,82 @@ class TestRaw(unittest.TestCase):
         ker = mod.get_function('test_downcast')
         ker((grid,), (block,), (a, out_down))
         assert (out_down == a.astype(cupy.complex64)).all()
+
+    def test_const_memory(self):
+        mod = cupy.RawModule(code=test_const_mem, backend=self.backend)
+        ker = mod.get_function('multiply_by_const')
+        mem_ptr = mod.get_global('some_array')
+        const_arr = cupy.ndarray((100,), cupy.float32, mem_ptr)
+        data = cupy.arange(100, dtype=cupy.float32)
+        const_arr[...] = data
+        output_arr = cupy.ones(100, dtype=cupy.float32)
+        ker((1,), (100,), (output_arr, cupy.int32(100)))
+        assert (data == output_arr).all()
+
+
+_test_grid_sync = r'''
+#include <cooperative_groups.h>
+
+extern "C" __global__
+void test_grid_sync(const float* x1, const float* x2, float* y) {
+    namespace cg = cooperative_groups;
+    cg::grid_group grid = cg::this_grid();
+    int size = gridDim.x * blockDim.x;
+    int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    y[tid] = x1[tid];
+    cg::sync(grid);
+    y[size - tid - 1] += x2[size - tid - 1];
+}
+'''
+
+
+@testing.parameterize(*testing.product({
+    'n': [10, 100, 256]
+}))
+@unittest.skipUnless(
+    9000 <= cupy.cuda.runtime.runtimeGetVersion(),
+    'Requires CUDA 9.x or later')
+@unittest.skipUnless(
+    60 <= int(cupy.cuda.device.get_compute_capability()),
+    'Requires compute capability 6.0 or later')
+class TestRawGridSync(unittest.TestCase):
+
+    def setUp(self):
+        global _test_cache_dir
+        _test_cache_dir = tempfile.mkdtemp()
+        os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
+
+        self.kern_grid_sync = cupy.RawKernel(
+            _test_grid_sync, 'test_grid_sync', backend='nvcc',
+            enable_cooperative_groups=True)
+        self.mod_grid_sync = cupy.RawModule(
+            code=_test_grid_sync, backend='nvcc',
+            enable_cooperative_groups=True)
+
+    def tearDown(self):
+        # To avoid cache interference, we remove cached files after every test,
+        # and restore users' old setting
+        global _test_cache_dir
+        shutil.rmtree(_test_cache_dir)
+        if _is_cache_env_var_set:
+            os.environ['CUPY_CACHE_DIR'] = _old_cache_dir
+        else:
+            os.environ.pop('CUPY_CACHE_DIR')
+        compiler._empty_file_preprocess_cache = {}
+
+    def test_grid_sync_rawkernel(self):
+        n = self.n
+        x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
+        x2 = cupy.ones((n, n), dtype='float32')
+        y = cupy.zeros((n, n), dtype='float32')
+        self.kern_grid_sync((n,), (n,), (x1, x2, y, n ** 2))
+        assert cupy.allclose(y, x1 + x2)
+
+    def test_grid_sync_rawmodule(self):
+        n = self.n
+        x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
+        x2 = cupy.ones((n, n), dtype='float32')
+        y = cupy.zeros((n, n), dtype='float32')
+        kern = self.mod_grid_sync.get_function('test_grid_sync')
+        kern((n,), (n,), (x1, x2, y, n ** 2))
+        assert cupy.allclose(y, x1 + x2)

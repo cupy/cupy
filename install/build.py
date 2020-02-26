@@ -23,6 +23,8 @@ _rocm_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
 
 
+# Using tempfile.TemporaryDirectory would cause an error during cleanup
+# due to a bug: https://bugs.python.org/issue26660
 @contextlib.contextmanager
 def _tempdir():
     temp_dir = tempfile.mkdtemp()
@@ -98,9 +100,35 @@ def get_nvcc_path():
         return None
 
 
-def get_compiler_setting(use_cpp11):
-    cuda_path = get_cuda_path()
+def get_hipcc_path():
+    hipcc = os.environ.get('HIPCC', None)
+    if hipcc:
+        return distutils.util.split_quoted(hipcc)
+
     rocm_path = get_rocm_path()
+    if rocm_path is None:
+        return None
+
+    if PLATFORM_WIN32:
+        hipcc_bin = 'bin/hipcc.exe'
+    else:
+        hipcc_bin = 'bin/hipcc'
+
+    hipcc_path = os.path.join(rocm_path, hipcc_bin)
+    if os.path.exists(hipcc_path):
+        return [hipcc_path]
+    else:
+        return None
+
+
+def get_compiler_setting(use_hip):
+    cuda_path = None
+    rocm_path = None
+
+    if use_hip:
+        rocm_path = get_rocm_path()
+    else:
+        cuda_path = get_cuda_path()
 
     include_dirs = []
     library_dirs = []
@@ -122,7 +150,7 @@ def get_compiler_setting(use_cpp11):
         library_dirs.append(os.path.join(rocm_path, 'lib'))
         library_dirs.append(os.path.join(rocm_path, 'rocrand', 'lib'))
 
-    if use_cpp11:
+    if use_hip:
         extra_compile_args.append('-std=c++11')
 
     if PLATFORM_DARWIN:
@@ -135,11 +163,6 @@ def get_compiler_setting(use_cpp11):
             library_dirs.append(os.path.join(nvtoolsext_path, 'lib', 'x64'))
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
-
-    cutensor_path = os.environ.get('CUTENSOR_PATH', '')
-    if os.path.exists(cutensor_path):
-        include_dirs.append(os.path.join(cutensor_path, 'include'))
-        library_dirs.append(os.path.join(cutensor_path, 'lib'))
 
     cub_path = os.environ.get('CUB_PATH', '')
     if os.path.exists(cub_path):
@@ -405,6 +428,12 @@ def check_cutensor_version(compiler, settings):
         return False
 
     _cutensor_version = int(out)
+
+    if _cutensor_version < 1000:
+        utils.print_warning(
+            'Unsupported cuTENSOR version: {}'.format(_cutensor_version)
+        )
+        return False
 
     return True
 

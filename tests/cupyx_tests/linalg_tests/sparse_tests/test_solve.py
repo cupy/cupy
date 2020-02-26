@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 try:
     import scipy.linalg
     import scipy.sparse
@@ -39,17 +40,17 @@ class TestLschol(unittest.TestCase):
         else:
             self.decimal = 3
 
-    @testing.numpy_cupy_raises()
     def test_size(self):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
         b = cp.array(numpy.append(self.b, [1]), dtype=self.dtype)
-        cupyx.linalg.sparse.lschol(A, b)
+        with pytest.raises(ValueError):
+            cupyx.linalg.sparse.lschol(A, b)
 
-    @testing.numpy_cupy_raises()
     def test_shape(self):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
         b = cp.array(numpy.tile(self.b, (2, 1)), dtype=self.dtype)
-        cupyx.linalg.sparse.lschol(A, b)
+        with pytest.raises(ValueError):
+            cupyx.linalg.sparse.lschol(A, b)
 
     @condition.retry(10)
     def test_csrmatrix(self):

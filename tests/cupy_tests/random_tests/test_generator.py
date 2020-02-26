@@ -4,7 +4,6 @@ import threading
 import unittest
 
 import numpy
-import six
 
 import cupy
 from cupy import core
@@ -578,7 +577,6 @@ class TestNegativeBinomial(RandomGeneratorTestCase):
     {'df': 2.0, 'nonc': 0.0},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.11')
 @testing.fix_random()
 class TestNoncentralChisquare(RandomGeneratorTestCase):
 
@@ -863,7 +861,7 @@ class TestInterval(RandomGeneratorTestCase):
         vals = self.generate_many(0, shape, _count=10)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
-            assert val.dtype == numpy.int32
+            assert val.dtype.kind in 'iu'
             assert val.shape == shape
             assert (val == 0).all()
 
@@ -872,7 +870,7 @@ class TestInterval(RandomGeneratorTestCase):
         vals = self.generate_many(mx, None, _count=10)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
-            assert val.dtype == numpy.int32
+            assert val.dtype.kind in 'iu'
             assert val.shape == ()
             assert (0 <= val).all()
             assert (val <= mx).all()
@@ -884,7 +882,7 @@ class TestInterval(RandomGeneratorTestCase):
         vals = self.generate_many(mx, size, _count=10)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
-            assert val.dtype == numpy.int32
+            assert val.dtype.kind in 'iu'
             assert val.shape == (size,)
             assert (0 <= val).all()
             assert (val <= mx).all()
@@ -896,31 +894,17 @@ class TestInterval(RandomGeneratorTestCase):
         vals = self.generate_many(mx, shape, _count=10)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
-            assert val.dtype == numpy.int32
+            assert val.dtype.kind in 'iu'
             assert val.shape == shape
             assert (0 <= val).all()
             assert (val <= mx).all()
         # TODO(niboshi): Distribution test
 
-    def test_int32_range(self):
-        v = self.generate(0x00000000, 2)
-        assert v.dtype == numpy.int32
-
-        v = self.generate(0x7fffffff, 2)
-        assert v.dtype == numpy.int32
-
-    def test_uint32_range(self):
-        v = self.generate(0x80000000, 2)
-        assert v.dtype == numpy.uint32
-
-        v = self.generate(0xffffffff, 2)
-        assert v.dtype == numpy.uint32
-
     def test_bound_1(self):
         vals = self.generate_many(10, (2, 3), _count=10)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
-            assert val.dtype == numpy.int32
+            assert val.dtype.kind in 'iu'
             assert val.shape == (2, 3)
             assert (0 <= val).all()
             assert (val <= 10).all()
@@ -929,7 +913,7 @@ class TestInterval(RandomGeneratorTestCase):
         vals = self.generate_many(2, None, _count=20)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
-            assert val.dtype == numpy.int32
+            assert val.dtype.kind in 'iu'
             assert val.shape == ()
             assert (0 <= val).all()
             assert (val <= 2).all()
@@ -994,7 +978,7 @@ class TestChoice1(RandomGeneratorTestCase):
 
     def test_dtype_shape(self):
         v = self.generate(a=self.a, size=self.size, p=self.p)
-        if isinstance(self.size, six.integer_types):
+        if isinstance(self.size, int):
             expected_shape = (self.size,)
         else:
             expected_shape = self.size
@@ -1028,7 +1012,7 @@ class TestChoice2(RandomGeneratorTestCase):
 
     def test_dtype_shape(self):
         v = self.generate(a=self.a, size=self.size, p=self.p)
-        if isinstance(self.size, six.integer_types):
+        if isinstance(self.size, int):
             expected_shape = (self.size,)
         else:
             expected_shape = self.size
@@ -1126,7 +1110,7 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
 
     def test_dtype_shape(self):
         v = self.generate(a=self.a, size=self.size, replace=False)
-        if isinstance(self.size, six.integer_types):
+        if isinstance(self.size, int):
             expected_shape = (self.size,)
         else:
             expected_shape = self.size
@@ -1188,8 +1172,23 @@ class TestRandint(RandomGeneratorTestCase):
     def test_randint_2(self):
         self.generate(3, 4, size=(3, 2))
 
-    def test_randint_3(self):
+    def test_randint_empty1(self):
         self.generate(3, 10, size=0)
+
+    def test_randint_empty2(self):
+        self.generate(3, size=(4, 0, 5))
+
+    def test_randint_overflow(self):
+        self.generate(numpy.int8(-100), numpy.int8(100))
+
+    def test_randint_float1(self):
+        self.generate(-1.2, 3.4, 5)
+
+    def test_randint_float2(self):
+        self.generate(6.7, size=(2, 3))
+
+    def test_randint_int64_1(self):
+        self.generate(2**34, 2**40, 3)
 
 
 @testing.gpu

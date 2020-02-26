@@ -90,7 +90,6 @@ class TestDot(unittest.TestCase):
 @testing.gpu
 class TestCrossProduct(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
     def test_cross(self, xp, dtype_a, dtype_b):
@@ -230,7 +229,6 @@ class TestProduct(unittest.TestCase):
         return xp.inner(a, b)
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.10.2')
     @testing.numpy_cupy_allclose()
     def test_reversed_inner(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)[::-1]
@@ -392,7 +390,6 @@ class TestProduct(unittest.TestCase):
     ],
 }))
 @testing.gpu
-@testing.with_requires('numpy>=1.14.0')
 class TestProductZeroLength(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -431,19 +428,22 @@ class TestMatrixPower(unittest.TestCase):
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_matrix_power_inv1(self, xp, dtype):
-        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        a = a * a % 30
         return xp.linalg.matrix_power(a, -1)
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_matrix_power_inv2(self, xp, dtype):
-        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        a = a * a % 30
         return xp.linalg.matrix_power(a, -2)
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4)
     def test_matrix_power_inv3(self, xp, dtype):
-        a = testing.shaped_arange((3, 3), xp, dtype) ** 2
+        a = testing.shaped_arange((3, 3), xp, dtype)
+        a = a * a % 30
         return xp.linalg.matrix_power(a, -3)
 
     @testing.for_all_dtypes()

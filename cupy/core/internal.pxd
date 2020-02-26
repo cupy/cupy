@@ -5,6 +5,8 @@ from libc.stdint cimport uint16_t
 
 cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args)
 
+cpdef Py_ssize_t prod_sequence(object args)
+
 cpdef tuple get_size(object size)
 
 cpdef bint vector_equal(
@@ -15,13 +17,9 @@ cdef void get_reduced_dims(
     Py_ssize_t itemsize, vector.vector[Py_ssize_t]& reduced_shape,
     vector.vector[Py_ssize_t]& reduced_strides)
 
-cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
-    const vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
-    bint is_c_contiguous)
-
 # Computes the contiguous strides given a shape and itemsize.
 # Returns the size (total number of elements).
-cdef Py_ssize_t set_contiguous_strides(
+cdef Py_ssize_t get_contiguous_strides_inplace(
     const vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
     Py_ssize_t itemsize, bint is_c_contiguous)
 
@@ -45,3 +43,7 @@ cpdef uint16_t to_float16(float f)
 cpdef float from_float16(uint16_t v)
 
 cdef int _normalize_order(order, cpp_bool allow_k=*) except? 0
+
+cdef _broadcast_core(list arrays, vector.vector[Py_ssize_t]& shape)
+
+cpdef bint _contig_axes(tuple axes)

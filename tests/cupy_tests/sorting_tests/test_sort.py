@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -11,11 +12,15 @@ class TestSort(unittest.TestCase):
 
     # Test ranks
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.numpy_cupy_raises()
     def test_sort_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
         a.sort()
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.numpy_cupy_raises()
     def test_external_sort_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
@@ -34,14 +39,14 @@ class TestSort(unittest.TestCase):
 
     # Test dtypes
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_allclose()
     def test_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a.sort()
         return a
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_allclose()
     def test_external_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
@@ -111,7 +116,6 @@ class TestSort(unittest.TestCase):
         a = testing.shaped_random((2, 3, 3), xp)
         return xp.sort(a, axis=None)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_sort_invalid_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
@@ -119,10 +123,9 @@ class TestSort(unittest.TestCase):
 
     def test_sort_invalid_axis2(self):
         a = testing.shaped_random((2, 3, 3), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             a.sort(axis=3)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_external_sort_invalid_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
@@ -130,10 +133,9 @@ class TestSort(unittest.TestCase):
 
     def test_external_sort_invalid_axis2(self):
         a = testing.shaped_random((2, 3, 3), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             cupy.sort(a, axis=3)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_sort_invalid_negative_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
@@ -141,10 +143,9 @@ class TestSort(unittest.TestCase):
 
     def test_sort_invalid_negative_axis2(self):
         a = testing.shaped_random((2, 3, 3), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             a.sort(axis=-4)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_external_sort_invalid_negative_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
@@ -152,7 +153,7 @@ class TestSort(unittest.TestCase):
 
     def test_external_sort_invalid_negative_axis2(self):
         a = testing.shaped_random((2, 3, 3), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             cupy.sort(a, axis=-4)
 
 
@@ -161,6 +162,8 @@ class TestLexsort(unittest.TestCase):
 
     # Test ranks
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.numpy_cupy_raises()
     def test_lexsort_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
@@ -184,7 +187,7 @@ class TestLexsort(unittest.TestCase):
 
     # Test dtypes
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_allclose()
     def test_lexsort_dtype(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
@@ -212,19 +215,21 @@ class TestArgsort(unittest.TestCase):
 
     # Test base cases
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_raises()
     def test_argsort_zero_dim(self, xp, dtype):
         a = testing.shaped_random((), xp, dtype)
         return self.argsort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_array_equal()
     def test_argsort_one_dim(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return self.argsort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_array_equal()
     def test_argsort_multi_dim(self, xp, dtype):
         a = testing.shaped_random((2, 3, 3), xp, dtype)
@@ -237,7 +242,7 @@ class TestArgsort(unittest.TestCase):
 
     # Test unsupported dtype
 
-    @testing.for_dtypes([numpy.float16, numpy.bool_, numpy.complex64])
+    @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_argsort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
         with self.assertRaises(NotImplementedError):
@@ -260,7 +265,6 @@ class TestArgsort(unittest.TestCase):
         a = testing.shaped_random((2, 3, 3), xp)
         return self.argsort(a, axis=None)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_argsort_invalid_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
@@ -268,10 +272,9 @@ class TestArgsort(unittest.TestCase):
 
     def test_argsort_invalid_axis2(self):
         a = testing.shaped_random((2, 3, 3), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             return self.argsort(a, axis=3)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_argsort_invalid_negative_axis1(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
@@ -279,7 +282,7 @@ class TestArgsort(unittest.TestCase):
 
     def test_argsort_invalid_negative_axis2(self):
         a = testing.shaped_random((2, 3, 3), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             return self.argsort(a, axis=-4)
 
     # Misc tests
@@ -302,18 +305,20 @@ class TestMsort(unittest.TestCase):
 
     # Test base cases
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.numpy_cupy_raises()
     def test_msort_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
         return xp.msort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_array_equal()
     def test_msort_one_dim(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return xp.msort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_array_equal()
     def test_msort_multi_dim(self, xp, dtype):
         a = testing.shaped_random((2, 3), xp, dtype)
@@ -321,7 +326,7 @@ class TestMsort(unittest.TestCase):
 
     # Test unsupported dtype
 
-    @testing.for_dtypes([numpy.float16, numpy.bool_, numpy.complex64])
+    @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_msort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
         with self.assertRaises(NotImplementedError):
@@ -345,6 +350,8 @@ class TestPartition(unittest.TestCase):
 
     # Test base cases
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.numpy_cupy_raises()
     def test_partition_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
@@ -464,7 +471,6 @@ class TestPartition(unittest.TestCase):
         else:
             return None
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_partition_invalid_axis1(self, xp):
         a = testing.shaped_random((2, 2, self.length), xp)
@@ -474,12 +480,11 @@ class TestPartition(unittest.TestCase):
 
     def test_partition_invalid_axis2(self):
         a = testing.shaped_random((2, 2, self.length), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             kth = 2
             axis = 3
             return self.partition(a, kth, axis=axis)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_partition_invalid_negative_axis1(self, xp):
         a = testing.shaped_random((2, 2, self.length), xp)
@@ -489,7 +494,7 @@ class TestPartition(unittest.TestCase):
 
     def test_partition_invalid_negative_axis2(self):
         a = testing.shaped_random((2, 2, self.length), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             kth = 2
             axis = -4
             return self.partition(a, kth, axis=axis)
@@ -510,6 +515,8 @@ class TestArgpartition(unittest.TestCase):
 
     # Test base cases
 
+    # TODO(niboshi): Fix xfail
+    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.numpy_cupy_raises()
     def test_argpartition_zero_dim(self, xp):
         a = testing.shaped_random((), xp)
@@ -634,7 +641,6 @@ class TestArgpartition(unittest.TestCase):
         self.assertTrue((a1[idx[kth]] < a1[idx[kth + 1:]]).all())
         return idx[kth]
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_argpartition_invalid_axis1(self, xp):
         a = testing.shaped_random((2, 2, 2), xp, scale=100)
@@ -646,10 +652,9 @@ class TestArgpartition(unittest.TestCase):
         a = testing.shaped_random((2, 2, 2), cupy, scale=100)
         kth = 1
         axis = 3
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             self.argpartition(a, kth, axis=axis)
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_argpartition_invalid_negative_axis1(self, xp):
         a = testing.shaped_random((2, 2, 2), xp, scale=100)
@@ -661,5 +666,5 @@ class TestArgpartition(unittest.TestCase):
         a = testing.shaped_random((2, 2, 2), cupy, scale=100)
         kth = 1
         axis = -4
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             self.argpartition(a, kth, axis=axis)

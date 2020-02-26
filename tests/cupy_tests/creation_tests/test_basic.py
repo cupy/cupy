@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -142,17 +143,17 @@ class TestBasic(unittest.TestCase):
         self.assertEqual(b.strides, bg.strides)
         return
 
-    @testing.numpy_cupy_raises()
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises(accept_error=TypeError)
     def test_empty_like_invalid_order(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = xp.empty_like(a, order='Q')
         return b
 
-    @testing.numpy_cupy_raises()
     def test_empty_like_subok(self):
         a = testing.shaped_arange((2, 3, 4), cupy)
-        b = cupy.empty_like(a, subok=True)
-        return b
+        with pytest.raises(TypeError):
+            cupy.empty_like(a, subok=True)
 
     @testing.for_CF_orders()
     def test_empty_zero_sized_array_strides(self, order):
@@ -201,10 +202,10 @@ class TestBasic(unittest.TestCase):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
         return xp.zeros_like(a, order=order)
 
-    @testing.numpy_cupy_raises()
     def test_zeros_like_subok(self):
         a = cupy.ndarray((2, 3, 4))
-        return cupy.zeros_like(a, subok=True)
+        with pytest.raises(TypeError):
+            cupy.zeros_like(a, subok=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -218,10 +219,10 @@ class TestBasic(unittest.TestCase):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
         return xp.ones_like(a, order=order)
 
-    @testing.numpy_cupy_raises()
     def test_ones_like_subok(self):
         a = cupy.ndarray((2, 3, 4))
-        return cupy.ones_like(a, subok=True)
+        with pytest.raises(TypeError):
+            cupy.ones_like(a, subok=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -230,13 +231,11 @@ class TestBasic(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    @testing.with_requires('numpy>=1.12.0')
     def test_full_default_dtype(self, xp, dtype):
         return xp.full((2, 3, 4), xp.array(1, dtype=dtype))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    @testing.with_requires('numpy>=1.12.0')
     def test_full_default_dtype_cpu_input(self, xp, dtype):
         return xp.full((2, 3, 4), numpy.array(1, dtype=dtype))
 
@@ -247,10 +246,10 @@ class TestBasic(unittest.TestCase):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
         return xp.full_like(a, 1, order=order)
 
-    @testing.numpy_cupy_raises()
     def test_full_like_subok(self):
         a = cupy.ndarray((2, 3, 4))
-        return cupy.full_like(a, 1)
+        with pytest.raises(TypeError):
+            cupy.full_like(a, 1, subok=True)
 
 
 @testing.parameterize(

@@ -4,5 +4,4 @@
 # "NOQA" to suppress flake8 warning
 from cupy.io import formatting  # NOQA
 from cupy.io import npz  # NOQA
-from cupy.io import rawfile  # NOQA
 from cupy.io import text  # NOQA

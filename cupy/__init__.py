@@ -1,11 +1,15 @@
-from __future__ import division
+import functools
 import sys
 import warnings
 
 import numpy
-import six
 
+from cupy import _environment
 from cupy import _version
+
+
+if sys.platform.startswith('win32') and (3, 8) <= sys.version_info:  # NOQA
+    _environment._setup_win32_dll_directory()  # NOQA
 
 
 try:
@@ -13,7 +17,7 @@ try:
         warnings.filterwarnings('ignore', category=ImportWarning,
                                 message='can\'t resolve package from __spec__')
         from cupy import core  # NOQA
-except ImportError:
+except ImportError as e:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
     # built.
@@ -33,11 +37,12 @@ Check the Installation Guide for details:
 
 original error: {}'''.format(exc_info[1]))  # NOQA
 
-    six.reraise(ImportError, ImportError(msg), exc_info[2])
+    raise ImportError(msg) from e
 
 
 from cupy import cuda
-import cupyx
+# Do not make `cupy.cupyx` available because it is confusing.
+import cupyx as _cupyx
 
 
 def is_available():
@@ -57,7 +62,7 @@ from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import padding  # NOQA
 from cupy import random  # NOQA
-from cupy import sorting  # NOQA
+from cupy import _sorting  # NOQA
 from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
@@ -258,6 +263,7 @@ from cupy.creation.from_data import array  # NOQA
 from cupy.creation.from_data import asanyarray  # NOQA
 from cupy.creation.from_data import asarray  # NOQA
 from cupy.creation.from_data import ascontiguousarray  # NOQA
+from cupy.creation.from_data import fromfile  # NOQA
 
 from cupy.creation.ranges import arange  # NOQA
 from cupy.creation.ranges import linspace  # NOQA
@@ -302,6 +308,7 @@ from cupy.manipulation.join import stack  # NOQA
 from cupy.manipulation.join import vstack  # NOQA
 
 from cupy.manipulation.kind import asfortranarray  # NOQA
+from cupy.manipulation.kind import require  # NOQA
 
 from cupy.manipulation.split import array_split  # NOQA
 from cupy.manipulation.split import dsplit  # NOQA
@@ -326,6 +333,7 @@ from cupy.manipulation.rearrange import rot90  # NOQA
 from cupy.binary.elementwise import bitwise_and  # NOQA
 from cupy.binary.elementwise import bitwise_or  # NOQA
 from cupy.binary.elementwise import bitwise_xor  # NOQA
+from cupy.binary.elementwise import bitwise_not  # NOQA
 from cupy.binary.elementwise import invert  # NOQA
 from cupy.binary.elementwise import left_shift  # NOQA
 from cupy.binary.elementwise import right_shift  # NOQA
@@ -374,7 +382,7 @@ def common_type(*arrays):
         else:
             dtypes.append(a.dtype)
 
-    return numpy.find_common_type(dtypes, []).type
+    return functools.reduce(numpy.promote_types, dtypes).type
 
 
 def result_type(*arrays_and_dtypes):
@@ -426,9 +434,11 @@ from cupy.indexing.generate import c_  # NOQA
 from cupy.indexing.generate import indices  # NOQA
 from cupy.indexing.generate import ix_  # NOQA
 from cupy.indexing.generate import r_  # NOQA
+from cupy.indexing.generate import ravel_multi_index  # NOQA
 from cupy.indexing.generate import unravel_index  # NOQA
 
 from cupy.indexing.indexing import choose  # NOQA
+from cupy.indexing.indexing import compress  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
 from cupy.indexing.indexing import take  # NOQA
 from cupy.indexing.indexing import take_along_axis  # NOQA
@@ -495,12 +505,12 @@ from cupy.logic.truth import in1d  # NOQA
 from cupy.logic.truth import isin  # NOQA
 
 
-def isscalar(num):
+def isscalar(element):
     """Returns True if the type of num is a scalar type.
 
     .. seealso:: :func:`numpy.isscalar`
     """
-    return numpy.isscalar(num)
+    return numpy.isscalar(element)
 
 
 from cupy.logic.ops import logical_and  # NOQA
@@ -596,7 +606,8 @@ from cupy.math.arithmetic import subtract  # NOQA
 from cupy.math.arithmetic import true_divide  # NOQA
 
 from cupy.math.arithmetic import angle  # NOQA
-from cupy.math.arithmetic import conj  # NOQA
+from cupy.math.arithmetic import conjugate as conj  # NOQA
+from cupy.math.arithmetic import conjugate  # NOQA
 from cupy.math.arithmetic import imag  # NOQA
 from cupy.math.arithmetic import real  # NOQA
 
@@ -629,22 +640,23 @@ pad = padding.pad.pad
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
-from cupy.sorting.count import count_nonzero  # NOQA
-from cupy.sorting.search import flatnonzero  # NOQA
-from cupy.sorting.search import nonzero  # NOQA
+from cupy._sorting.count import count_nonzero  # NOQA
 
-from cupy.sorting.search import where  # NOQA
-from cupy.sorting.search import argmax  # NOQA
-from cupy.sorting.search import nanargmax  # NOQA
-from cupy.sorting.search import argmin  # NOQA
-from cupy.sorting.search import nanargmin  # NOQA
+from cupy._sorting.search import argmax  # NOQA
+from cupy._sorting.search import argmin  # NOQA
+from cupy._sorting.search import flatnonzero  # NOQA
+from cupy._sorting.search import nanargmax  # NOQA
+from cupy._sorting.search import nanargmin  # NOQA
+from cupy._sorting.search import nonzero  # NOQA
+from cupy._sorting.search import searchsorted  # NOQA
+from cupy._sorting.search import where  # NOQA
 
-from cupy.sorting.sort import argpartition  # NOQA
-from cupy.sorting.sort import argsort  # NOQA
-from cupy.sorting.sort import lexsort  # NOQA
-from cupy.sorting.sort import msort  # NOQA
-from cupy.sorting.sort import partition  # NOQA
-from cupy.sorting.sort import sort  # NOQA
+from cupy._sorting.sort import argpartition  # NOQA
+from cupy._sorting.sort import argsort  # NOQA
+from cupy._sorting.sort import lexsort  # NOQA
+from cupy._sorting.sort import msort  # NOQA
+from cupy._sorting.sort import partition  # NOQA
+from cupy._sorting.sort import sort  # NOQA
 
 # -----------------------------------------------------------------------------
 # Statistics
@@ -659,6 +671,7 @@ from cupy.statistics.order import amin as min  # NOQA
 from cupy.statistics.order import nanmax  # NOQA
 from cupy.statistics.order import nanmin  # NOQA
 from cupy.statistics.order import percentile  # NOQA
+from cupy.statistics.order import ptp  # NOQA
 
 from cupy.statistics.meanvar import average  # NOQA
 from cupy.statistics.meanvar import mean  # NOQA
@@ -669,6 +682,7 @@ from cupy.statistics.meanvar import nanstd  # NOQA
 from cupy.statistics.meanvar import nanvar  # NOQA
 
 from cupy.statistics.histogram import bincount  # NOQA
+from cupy.statistics.histogram import digitize  # NOQA
 from cupy.statistics.histogram import histogram  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -686,17 +700,13 @@ from cupy.util import memoize  # NOQA
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import RawKernel  # NOQA
 from cupy.core import RawModule  # NOQA
-from cupy.core import ReductionKernel  # NOQA
+from cupy.core._reduction import ReductionKernel  # NOQA
 
 # -----------------------------------------------------------------------------
 # DLPack
 # -----------------------------------------------------------------------------
 
 from cupy.core import fromDlpack  # NOQA
-
-# The following function is left for backward compatibility.
-# New CuPy specific routines should reside in cupyx package.
-from cupy.ext.scatter import scatter_add  # NOQA
 
 
 def asnumpy(a, stream=None, order='C'):
@@ -800,20 +810,5 @@ def get_default_pinned_memory_pool():
 
 def show_config():
     """Prints the current runtime configuration to standard output."""
-    sys.stdout.write(str(cupyx.get_runtime_info()))
+    sys.stdout.write(str(_cupyx.get_runtime_info()))
     sys.stdout.flush()
-
-
-# -----------------------------------------------------------------------------
-# Warning for Python 2 users
-# -----------------------------------------------------------------------------
-if sys.version_info[:1] == (2,):
-    warnings.warn('''
---------------------------------------------------------------------------------
-CuPy is going to stop supporting Python 2 in v7.x releases.
-
-Future releases of CuPy v7.x will not run on Python 2.
-If you need to continue using Python 2, consider using CuPy v6.x, which
-will be the last version that runs on Python 2.
---------------------------------------------------------------------------------
-''')  # NOQA

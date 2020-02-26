@@ -1,8 +1,8 @@
 import numpy
 from numpy import nan
 
-from cupy.core._kernel import create_reduction_func
-from cupy.core._kernel import ReductionKernel
+from cupy.core._reduction import create_reduction_func
+from cupy.core._reduction import ReductionKernel
 
 from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray
@@ -14,60 +14,88 @@ if cupy.cuda.cub_enabled:
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        if cub.can_use_device_reduce(cub.CUPY_CUB_MAX, self.dtype, self.ndim,
-                                     axis, dtype):
-            return cub.device_reduce(self, cub.CUPY_CUB_MAX, out=out,
-                                     keepdims=keepdims)
-        elif cub.can_use_device_segmented_reduce(
-                cub.CUPY_CUB_MAX, self.dtype, self.ndim, axis, dtype):
-            return cub.device_segmented_reduce(
-                self, cub.CUPY_CUB_MAX, axis, out=out, keepdims=keepdims)
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_MAX, axis, dtype, out,
+                                   keepdims)
+        if result is not None:
+            return result
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        if cub.can_use_device_reduce(cub.CUPY_CUB_MIN, self.dtype, self.ndim,
-                                     axis, dtype):
-            return cub.device_reduce(self, cub.CUPY_CUB_MIN, out=out,
-                                     keepdims=keepdims)
-        elif cub.can_use_device_segmented_reduce(
-                cub.CUPY_CUB_MIN, self.dtype, self.ndim, axis, dtype):
-            return cub.device_segmented_reduce(
-                self, cub.CUPY_CUB_MIN, axis, out=out, keepdims=keepdims)
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_MIN, axis, out, dtype,
+                                   keepdims)
+        if result is not None:
+            return result
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
+
+
+cdef ndarray _ndarray_ptp(ndarray self, axis, out, keepdims):
+    if cupy.cuda.cub_enabled:
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_MAX, axis, out, None,
+                                   keepdims)
+        if result is not None:
+            result -= cub.cub_reduction(self, cub.CUPY_CUB_MIN, axis, None,
+                                        None, keepdims)
+            return result
+
+    result = _amax(self, axis=axis, out=out, keepdims=keepdims)
+    result -= _amin(self, axis=axis, out=None, keepdims=keepdims)
+    return result
 
 
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        # Note that the NumPy signature of argmax only has axis and out, so we
-        # need to disable the rest. Moreover, to be compatible with NumPy, axis
-        # can only be None or integers
-        if axis is None and cub.can_use_device_reduce(
-                cub.CUPY_CUB_ARGMAX, self.dtype, self.ndim, axis, None):
-            return cub.device_reduce(self, cub.CUPY_CUB_ARGMAX, out=out,
-                                     keepdims=False)
-        # TODO(leofang): support device_segmented_reduce for axis=-1?
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_ARGMAX, axis, dtype, out,
+                                   keepdims)
+        if result is not None:
+            return result
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
     if cupy.cuda.cub_enabled:
-        # Note that the NumPy signature of argmax only has axis and out, so we
-        # need to disable the rest. Moreover, to be compatible with NumPy, axis
-        # can only be None or integers
-        if axis is None and cub.can_use_device_reduce(
-                cub.CUPY_CUB_ARGMIN, self.dtype, self.ndim, axis, None):
-            return cub.device_reduce(self, cub.CUPY_CUB_ARGMIN, out=out,
-                                     keepdims=False)
-        # TODO(leofang): support device_segmented_reduce for axis=-1?
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_ARGMIN, axis, dtype, out,
+                                   keepdims)
+        if result is not None:
+            return result
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
-    return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    dtype_sum = dtype_out = dtype
+    if dtype is None:
+        if self.dtype.kind in 'iub':
+            dtype_out = numpy.float64
+            dtype_sum = numpy.float64
+        elif self.dtype.char == 'e':
+            dtype_sum = numpy.float32
+            dtype_out = numpy.float16
+    elif numpy.dtype(dtype).kind in 'iub':
+        # output will be the requested type, but compute the mean using float
+        dtype_out = dtype
+        dtype_sum = numpy.float64
+
+    result = None
+    if (cupy.cuda.cub_enabled and self.size != 0):
+        result = cub.cub_reduction(self, cub.CUPY_CUB_SUM, axis, dtype_sum,
+                                   out, keepdims)
+    if result is not None:
+        n = self.size // result.size
+        cupy.true_divide(result, n, out=result, casting='unsafe')
+    else:
+        result = _mean(self, axis=axis, dtype=dtype_sum, out=out,
+                       keepdims=keepdims)
+    if dtype_out is not None and out is None:
+        result = result.astype(dtype_out)
+    return result
 
 
 cdef ndarray _ndarray_var(ndarray self, axis, dtype, out, ddof, keepdims):
@@ -218,13 +246,13 @@ nanmax = create_reduction_func(
 
 cdef _argmin = create_reduction_func(
     'cupy_argmin',
-    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
-     'q->q', 'Q->q',
-     ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('F->q', (None, 'my_argmin_float(a, b)', None, None)),
-     ('D->q', (None, 'my_argmin_float(a, b)', None, None))),
+    tuple(['{}->{}'.format(d, r) for r in 'qlihb' for d in '?BhHiIlLqQ'])
+    + (
+        ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
+        ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
+        ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
+        ('F->q', (None, 'my_argmin_float(a, b)', None, None)),
+        ('D->q', (None, 'my_argmin_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -232,13 +260,13 @@ cdef _argmin = create_reduction_func(
 
 cdef _argmax = create_reduction_func(
     'cupy_argmax',
-    ('?->q', 'B->q', 'h->q', 'H->q', 'i->q', 'I->q', 'l->q', 'L->q',
-     'q->q', 'Q->q',
-     ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('F->q', (None, 'my_argmax_float(a, b)', None, None)),
-     ('D->q', (None, 'my_argmax_float(a, b)', None, None))),
+    tuple(['{}->{}'.format(d, r) for r in 'qlihb' for d in '?BhHiIlLqQ'])
+    + (
+        ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
+        ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
+        ('d->q', (None, 'my_argmax_float(a, b)', None, None)),
+        ('F->q', (None, 'my_argmax_float(a, b)', None, None)),
+        ('D->q', (None, 'my_argmax_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)

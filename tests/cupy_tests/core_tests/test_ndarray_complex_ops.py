@@ -22,6 +22,20 @@ class TestConj(unittest.TestCase):
         self.assertIs(x, y)
         return y
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_almost_equal()
+    def test_conjugate(self, xp, dtype):
+        x = testing.shaped_arange((2, 3), xp, dtype)
+        return x.conjugate()
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_almost_equal()
+    def test_conjugate_pass(self, xp, dtype):
+        x = testing.shaped_arange((2, 3), xp, dtype)
+        y = x.conjugate()
+        self.assertIs(x, y)
+        return y
+
 
 @testing.gpu
 class TestAngle(unittest.TestCase):
@@ -145,7 +159,6 @@ class TestRealImag(unittest.TestCase):
 class TestScalarConversion(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.12.0')
     def test_scalar_conversion(self, dtype):
         scalar = 1 + 1j if numpy.dtype(dtype).kind == 'c' else 1
         x_1d = cupy.array([scalar]).astype(dtype)

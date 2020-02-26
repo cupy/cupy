@@ -24,8 +24,7 @@ requirements = {
         'fastrlock>=0.3',
     ],
     'install': [
-        'numpy>=1.9.0',
-        'six>=1.9.0',
+        'numpy>=1.15',
         'fastrlock>=0.3',
     ],
     'stylecheck': [
@@ -115,6 +114,7 @@ package_data = {
         'core/include/cupy/carray.cuh',
         'core/include/cupy/complex.cuh',
         'core/include/cupy/atomics.cuh',
+        'core/include/cupy/cuComplex_bridge.h',
         'core/include/cupy/_cuda/cuda-*/*.h',
         'core/include/cupy/_cuda/cuda-*/*.hpp',
         'cuda/cupy_thrust.cu',
@@ -133,6 +133,26 @@ here = os.path.abspath(os.path.dirname(__file__))
 # Get __version__ variable
 exec(open(os.path.join(here, 'cupy', '_version.py')).read())
 
+CLASSIFIERS = """\
+Development Status :: 5 - Production/Stable
+Intended Audience :: Science/Research
+Intended Audience :: Developers
+License :: OSI Approved :: MIT License
+Programming Language :: Python
+Programming Language :: Python :: 3
+Programming Language :: Python :: 3.5
+Programming Language :: Python :: 3.6
+Programming Language :: Python :: 3.7
+Programming Language :: Python :: 3 :: Only
+Programming Language :: Cython
+Topic :: Software Development
+Topic :: Scientific/Engineering
+Operating System :: Microsoft :: Windows
+Operating System :: POSIX
+Operating System :: MacOS
+"""
+
+
 setup(
     name=package_name,
     version=__version__,  # NOQA
@@ -142,6 +162,12 @@ setup(
     author_email='tokui@preferred.jp',
     url='https://cupy.chainer.org/',
     license='MIT License',
+    project_urls={
+        "Bug Tracker": "https://github.com/cupy/cupy/issues",
+        "Documentation": "https://docs-cupy.chainer.org/",
+        "Source Code": "https://github.com/cupy/cupy",
+    },
+    classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
     packages=[
         'cupy',
         'cupy.binary',
@@ -149,7 +175,6 @@ setup(
         'cupy.creation',
         'cupy.cuda',
         'cupy.cuda.memory_hooks',
-        'cupy.ext',
         'cupy.fft',
         'cupy.indexing',
         'cupy.io',
@@ -162,7 +187,7 @@ setup(
         'cupy.padding',
         'cupy.prof',
         'cupy.random',
-        'cupy.sorting',
+        'cupy._sorting',
         'cupy.sparse',
         'cupy.sparse.linalg',
         'cupy.statistics',
@@ -170,6 +195,7 @@ setup(
         'cupyx',
         'cupyx.fallback_mode',
         'cupyx.scipy',
+        'cupyx.scipy.fft',
         'cupyx.scipy.fftpack',
         'cupyx.scipy.ndimage',
         'cupyx.scipy.sparse',
@@ -181,6 +207,7 @@ setup(
     ],
     package_data=package_data,
     zip_safe=False,
+    python_requires='>=3.5.0',
     setup_requires=setup_requires,
     install_requires=install_requires,
     tests_require=tests_require,

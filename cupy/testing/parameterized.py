@@ -1,24 +1,64 @@
 import functools
-import inspect
 import itertools
-import sys
+import io
 import types
+import typing as tp  # NOQA
 import unittest
 
-import six
+from cupy.testing import _bundle
 
 
-def _gen_case(base, module, i, param):
-    cls_name = '%s_param_%d' % (base.__name__, i)
+def _param_to_str(obj):
+    if isinstance(obj, type):
+        return obj.__name__
+    elif hasattr(obj, '__name__') and isinstance(obj.__name__, str):
+        # print __name__ attribute for classes, functions and modules
+        return obj.__name__
+    return repr(obj)
 
-    # Add parameters as members
+
+def _shorten(s, maxlen):
+    # Shortens the string down to maxlen, by replacing the middle part with
+    # a 3-dots string '...'.
+    ellipsis = '...'
+    if len(s) <= maxlen:
+        return s
+    n1 = (maxlen - len(ellipsis)) // 2
+    n2 = maxlen - len(ellipsis) - n1
+    s = s[:n1] + ellipsis + s[-n2:]
+    assert len(s) == maxlen
+    return s
+
+
+def _make_class_name(base_class_name, i_param, param):
+    # Creates a class name for a single combination of parameters.
+    SINGLE_PARAM_MAXLEN = 100  # Length limit of a single parameter value
+    PARAMS_MAXLEN = 5000  # Length limit of the whole parameters part
+    param_strs = [
+        '{}={}'.format(k, _shorten(_param_to_str(v), SINGLE_PARAM_MAXLEN))
+        for k, v in sorted(param.items())]
+    param_strs = _shorten(', '.join(param_strs), PARAMS_MAXLEN)
+    cls_name = '{}_param_{}_{{{}}}'.format(
+        base_class_name, i_param, param_strs)
+    return cls_name
+
+
+def _parameterize_test_case_generator(base, params):
+    # Defines the logic to generate parameterized test case classes.
+
+    for i, param in enumerate(params):
+        yield _parameterize_test_case(base, i, param)
+
+
+def _parameterize_test_case(base, i, param):
+    cls_name = _make_class_name(base.__name__, i, param)
 
     def __str__(self):
         name = base.__str__(self)
         return '%s  parameter: %s' % (name, param)
 
     mb = {'__str__': __str__}
-    for k, v in six.iteritems(param):
+    for k, v in sorted(param.items()):
         if isinstance(v, types.FunctionType):
 
             def create_new_v():
@@ -32,68 +72,85 @@ def _gen_case(base, module, i, param):
         else:
             mb[k] = v
 
-    cls = type(cls_name, (base,), mb)
+    def method_generator(base_method):
+        # Generates a wrapped test method
 
-    # Wrap test methods to generate useful error message
-
-    def wrap_test_method(method):
-        @functools.wraps(method)
-        def wrap(*args, **kwargs):
+        @functools.wraps(base_method)
+        def new_method(self, *args, **kwargs):
             try:
-                return method(*args, **kwargs)
+                return base_method(self, *args, **kwargs)
             except unittest.SkipTest:
                 raise
             except Exception as e:
-                s = six.StringIO()
+                s = io.StringIO()
                 s.write('Parameterized test failed.\n\n')
                 s.write('Base test method: {}.{}\n'.format(
-                    base.__name__, method.__name__))
+                    base.__name__, base_method.__name__))
                 s.write('Test parameters:\n')
-                for k, v in six.iteritems(param):
+                for k, v in sorted(param.items()):
                     s.write('  {}: {}\n'.format(k, v))
-                s.write('\n')
-                s.write('{}: {}\n'.format(type(e).__name__, e))
-                e_new = AssertionError(s.getvalue())
-                if sys.version_info < (3,):
-                    six.reraise(AssertionError, e_new, sys.exc_info()[2])
-                else:
-                    six.raise_from(e_new.with_traceback(e.__traceback__), None)
-        return wrap
+                raise e.__class__(s.getvalue()).with_traceback(e.__traceback__)
+        return new_method
 
-    # ismethod for Python 2 and isfunction for Python 3
-    members = inspect.getmembers(
-        cls, predicate=lambda _: inspect.ismethod(_) or inspect.isfunction(_))
-    for name, method in members:
-        if name.startswith('test_'):
-            setattr(cls, name, wrap_test_method(method))
-
-    # Add new test class to module
-    setattr(module, cls_name, cls)
-
-
-def _gen_cases(name, base, params):
-    module = sys.modules[name]
-    for i, param in enumerate(params):
-        _gen_case(base, module, i, param)
+    return (cls_name, mb, method_generator)
 
 
 def parameterize(*params):
-    def f(klass):
-        assert issubclass(klass, unittest.TestCase)
-        _gen_cases(klass.__module__, klass, params)
-        # Remove original base class
-        return None
-    return f
+    # TODO(niboshi): Add documentation
+    return _bundle.make_decorator(
+        lambda base: _parameterize_test_case_generator(base, params))
+
+
+def _values_to_dicts(names, values):
+    assert isinstance(names, str)
+    assert isinstance(values, (tuple, list))
+
+    def safe_zip(ns, vs):
+        if len(ns) == 1:
+            return [(ns[0], vs)]
+        assert isinstance(vs, (tuple, list)) and len(ns) == len(vs)
+        return zip(ns, vs)
+
+    names = names.split(',')
+    params = [dict(safe_zip(names, value_list)) for value_list in values]
+    return params
+
+
+def from_pytest_parameterize(names, values):
+    # Pytest-style parameterization.
+    # TODO(niboshi): Add documentation
+    return _values_to_dicts(names, values)
+
+
+def parameterize_pytest(names, values):
+    # Pytest-style parameterization.
+    # TODO(niboshi): Add documentation
+    return parameterize(*from_pytest_parameterize(names, values))
 
 
 def product(parameter):
-    keys = sorted(parameter)
-    values = [parameter[key] for key in keys]
-    values_product = itertools.product(*values)
-    return [dict(zip(keys, vals)) for vals in values_product]
+    # TODO(niboshi): Add documentation
+    if isinstance(parameter, dict):
+        return product_dict(*[
+            _values_to_dicts(names, values)
+            for names, values in sorted(parameter.items())])
+
+    elif isinstance(parameter, list):
+        # list of lists of dicts
+        if not all(isinstance(_, list) for _ in parameter):
+            raise TypeError('parameter must be list of lists of dicts')
+        if not all(isinstance(_, dict) for l in parameter for _ in l):
+            raise TypeError('parameter must be list of lists of dicts')
+        return product_dict(*parameter)
+
+    else:
+        raise TypeError(
+            'parameter must be either dict or list. Actual: {}'.format(
+                type(parameter)))
 
 
 def product_dict(*parameters):
+    # TODO(niboshi): Add documentation
     return [
-        {k: v for dic in dicts for k, v in six.iteritems(dic)}
+        {k: v for dic in dicts for k, v in dic.items()}
         for dicts in itertools.product(*parameters)]

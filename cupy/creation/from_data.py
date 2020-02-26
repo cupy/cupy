@@ -1,3 +1,5 @@
+import numpy
+
 from cupy import core
 from cupy.core import fusion
 
@@ -53,8 +55,8 @@ def asarray(a, dtype=None, order=None):
         order ({'C', 'F'}):
             Whether to use row-major (C-style) or column-major (Fortran-style)
             memory representation. Defaults to 'C'. ``order`` is ignored for
-            objects that are not a ``cupy.ndarray``, but have a
-            ``__cuda_array_interface__ attribute``.
+            objects that are not :class:`cupy.ndarray`, but have the
+            ``__cuda_array_interface__`` attribute.
 
     Returns:
         cupy.ndarray: An array on the current device. If ``a`` is already on
@@ -137,7 +139,16 @@ def copy(a, order='K'):
 # TODO(okuta): Implement frombuffer
 
 
-# TODO(okuta): Implement fromfile
+def fromfile(*args, **kwargs):
+    """Reads an array from a file.
+
+    .. note::
+        Uses NumPy's ``fromfile`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.fromfile`
+    """
+
+    return asarray(numpy.fromfile(*args, **kwargs))
 
 
 # TODO(okuta): Implement fromfunction

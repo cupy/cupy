@@ -82,6 +82,8 @@ def _syevd(a, UPLO, with_eigen_vector):
     syevd(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        syevd, dev_info)
 
     return w.astype(ret_w_dtype, copy=False), v.astype(ret_v_dtype, copy=False)
 
@@ -97,7 +99,7 @@ def eigh(a, UPLO='L'):
 
     .. note::
 
-       Currenlty only 2-D matrix is supported.
+       Currently only 2-D matrix is supported.
 
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix.
@@ -109,6 +111,13 @@ def eigh(a, UPLO='L'):
             Returns a tuple ``(w, v)``. ``w`` contains eigenvalues and
             ``v`` contains eigenvectors. ``v[:, i]`` is an eigenvector
             corresponding to an eigenvalue ``w[i]``.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.eigh`
     """
@@ -137,6 +146,13 @@ def eigvalsh(a, UPLO='L'):
     Returns:
         cupy.ndarray:
             Returns eigenvalues as a vector.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """

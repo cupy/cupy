@@ -1,6 +1,7 @@
 import contextlib
 import os
 
+from cupy._environment import get_cuda_path  # NOQA
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
 from cupy.cuda import driver  # NOQA
@@ -16,7 +17,6 @@ from cupy.cuda import texture  # NOQA
 
 
 _available = None
-_cuda_path = None
 _cub_disabled = None
 
 
@@ -71,28 +71,6 @@ def is_available():
     return _available
 
 
-def get_cuda_path():
-    global _cuda_path
-    if _cuda_path is None:
-        _cuda_path = os.getenv('CUDA_PATH', None)
-        if _cuda_path is not None:
-            return _cuda_path
-
-        for p in os.getenv('PATH', '').split(os.pathsep):
-            for cmd in ('nvcc', 'nvcc.exe'):
-                nvcc_path = os.path.join(p, cmd)
-                if not os.path.exists(nvcc_path):
-                    continue
-                nvcc_dir = os.path.dirname(os.path.abspath(nvcc_path))
-                _cuda_path = os.path.normpath(os.path.join(nvcc_dir, '..'))
-                return _cuda_path
-
-        if os.path.exists('/usr/local/cuda'):
-            _cuda_path = '/usr/local/cuda'
-
-    return _cuda_path
-
-
 # import class and function
 from cupy.cuda.compiler import compile_with_cache  # NOQA
 from cupy.cuda.device import Device  # NOQA
@@ -120,6 +98,30 @@ from cupy.cuda.stream import Event  # NOQA
 from cupy.cuda.stream import get_current_stream  # NOQA
 from cupy.cuda.stream import get_elapsed_time  # NOQA
 from cupy.cuda.stream import Stream  # NOQA
+
+
+@contextlib.contextmanager
+def using_allocator(allocator=None):
+    """Sets a thread-local allocator for GPU memory inside
+       context manager
+
+    Args:
+        allocator (function): CuPy memory allocator. It must have the same
+            interface as the :func:`cupy.cuda.alloc` function, which takes the
+            buffer size as an argument and returns the device buffer of that
+            size. When ``None`` is specified, raw memory allocator will be
+            used (i.e., memory pool is disabled).
+    """
+    # Note: cupy/memory.pyx would be the better place to implement this
+    # function but `contextmanager` decoration doesn't behave well in Cython.
+    if allocator is None:
+        allocator = memory._malloc
+    previous_allocator = memory._get_thread_local_allocator()
+    memory._set_thread_local_allocator(allocator)
+    try:
+        yield
+    finally:
+        memory._set_thread_local_allocator(previous_allocator)
 
 
 @contextlib.contextmanager

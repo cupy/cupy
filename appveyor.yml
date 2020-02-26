@@ -27,6 +27,8 @@ environment:
       PYTHON_VERSION: "3.6.x"
       PYTHON_ARCH: "64"
 
+  CUPY_CI: appveyor
+
 install:
   - ECHO "Filesystem root:"
   - ps: "ls \"C:/\""

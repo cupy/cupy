@@ -1,5 +1,6 @@
 import atexit
 import binascii
+import collections.abc
 import functools
 import hashlib
 import operator
@@ -8,7 +9,6 @@ import time
 import warnings
 
 import numpy
-import six
 
 import cupy
 from cupy import core
@@ -17,6 +17,10 @@ from cupy.cuda import curand
 from cupy.cuda import device
 from cupy.random import _kernels
 from cupy import util
+
+
+_UINT32_MAX = 0xffffffff
+_UINT64_MAX = 0xffffffffffffffff
 
 
 class RandomState(object):
@@ -51,10 +55,15 @@ class RandomState(object):
         self._generator = curand.createGenerator(method)
         self.seed(seed)
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
         # When createGenerator raises an error, _generator is not initialized
+        if is_shutting_down():
+            return
         if hasattr(self, '_generator'):
             curand.destroyGenerator(self._generator)
+
+    def _update_seed(self, size):
+        self._rk_seed = (self._rk_seed + size) % _UINT64_MAX
 
     def _generate_normal(self, func, size, dtype, *args):
         # curand functions below don't support odd size.
@@ -63,7 +72,7 @@ class RandomState(object):
         # * curand.generateLogNormal
         # * curand.generateLogNormalDouble
         size = core.get_size(size)
-        element_size = six.moves.reduce(operator.mul, size, 1)
+        element_size = functools.reduce(operator.mul, size, 1)
         if element_size % 2 == 0:
             out = cupy.empty(size, dtype=dtype)
             func(self._generator, out.data.ptr, out.size, *args)
@@ -87,8 +96,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(a, b).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.beta_kernel(a, b, self.rk_seed, y)
-        self.rk_seed += numpy.prod(y.size, dtype=self.rk_seed.dtype)
+        _kernels.beta_kernel(a, b, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def binomial(self, n, p, size=None, dtype=int):
@@ -103,8 +112,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(n, p).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.binomial_kernel(n, p, self.rk_seed, y)
-        self.rk_seed += numpy.prod(y.size, dtype=self.rk_seed.dtype)
+        _kernels.binomial_kernel(n, p, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def chisquare(self, df, size=None, dtype=float):
@@ -119,8 +128,8 @@ class RandomState(object):
         if size is None:
             size = df.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.chisquare_kernel(df, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.chisquare_kernel(df, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def dirichlet(self, alpha, size=None, dtype=float):
@@ -137,13 +146,17 @@ class RandomState(object):
         else:
             size += alpha.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.standard_gamma_kernel(alpha, self.rk_seed, y)
+        _kernels.standard_gamma_kernel(alpha, self._rk_seed, y)
         y /= y.sum(axis=-1, keepdims=True)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        self._update_seed(y.size)
         return y
 
     def exponential(self, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a exponential distribution.
+
+        .. warning::
+
+            This function may synchronize the device.
 
         .. seealso::
             :func:`cupy.random.exponential` for full documentation,
@@ -151,7 +164,7 @@ class RandomState(object):
             <numpy.random.mtrand.RandomState.exponential>`
         """
         scale = cupy.asarray(scale, dtype)
-        if (scale < 0).any():
+        if (scale < 0).any():  # synchronize!
             raise ValueError('scale < 0')
         if size is None:
             size = scale.shape
@@ -171,8 +184,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(dfnum, dfden).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.f_kernel(dfnum, dfden, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.f_kernel(dfnum, dfden, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def gamma(self, shape, scale=1.0, size=None, dtype=float):
@@ -187,9 +200,9 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(shape, scale).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.standard_gamma_kernel(shape, self.rk_seed, y)
+        _kernels.standard_gamma_kernel(shape, self._rk_seed, y)
         y *= scale
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        self._update_seed(y.size)
         return y
 
     def geometric(self, p, size=None, dtype=int):
@@ -204,8 +217,8 @@ class RandomState(object):
         if size is None:
             size = p.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.geometric_kernel(p, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.geometric_kernel(p, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def hypergeometric(self, ngood, nbad, nsample, size=None, dtype=int):
@@ -221,8 +234,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(ngood, nbad, nsample).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.hypergeometric_kernel(ngood, nbad, nsample, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.hypergeometric_kernel(ngood, nbad, nsample, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     _laplace_kernel = core.ElementwiseKernel(
@@ -258,8 +271,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(loc, scale).shape
         x = cupy.empty(shape=size, dtype=dtype)
-        _kernels.open_uniform_kernel(self.rk_seed, x)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.open_uniform_kernel(self._rk_seed, x)
+        self._update_seed(x.size)
         x = (1.0 - x) / x
         cupy.log(x, out=x)
         cupy.multiply(x, scale, out=x)
@@ -285,6 +298,10 @@ class RandomState(object):
     def logseries(self, p, size=None, dtype=int):
         """Returns an array of samples drawn from a log series distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.logseries` for full documentation,
             :meth:`numpy.random.RandomState.logseries
@@ -292,15 +309,15 @@ class RandomState(object):
 
         """
         p = cupy.asarray(p)
-        if cupy.any(p <= 0):
+        if cupy.any(p <= 0):  # synchronize!
             raise ValueError('p <= 0.0')
-        if cupy.any(p >= 1):
+        if cupy.any(p >= 1):  # synchronize!
             raise ValueError('p >= 1.0')
         if size is None:
             size = p.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.logseries_kernel(p, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.logseries_kernel(p, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def multivariate_normal(self, mean, cov, size=None, check_valid='ignore',
@@ -318,7 +335,7 @@ class RandomState(object):
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
             shape = ()
-        elif isinstance(size, cupy.util.collections_abc.Sequence):
+        elif isinstance(size, collections.abc.Sequence):
             shape = tuple(size)
         else:
             shape = size,
@@ -360,6 +377,10 @@ class RandomState(object):
     def negative_binomial(self, n, p, size=None, dtype=int):
         """Returns an array of samples drawn from the negative binomial distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.negative_binomial` for full documentation,
             :meth:`numpy.random.RandomState.negative_binomial
@@ -367,11 +388,11 @@ class RandomState(object):
         """
         n = cupy.asarray(n)
         p = cupy.asarray(p)
-        if cupy.any(n <= 0):
+        if cupy.any(n <= 0):  # synchronize!
             raise ValueError('n <= 0')
-        if cupy.any(p < 0):
+        if cupy.any(p < 0):  # synchronize!
             raise ValueError('p < 0')
-        if cupy.any(p > 1):
+        if cupy.any(p > 1):  # synchronize!
             raise ValueError('p > 1')
         y = self.gamma(n, (1-p)/p, size)
         return self.poisson(y, dtype=dtype)
@@ -410,25 +431,33 @@ class RandomState(object):
         """Returns an array of samples drawn from the noncentral chi-square
         distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.noncentral_chisquare` for full documentation,
             :meth:`numpy.random.RandomState.noncentral_chisquare
             <numpy.random.mtrand.RandomState.noncentral_chisquare>`
         """
         df, nonc = cupy.asarray(df), cupy.asarray(nonc)
-        if cupy.any(df <= 0):
+        if cupy.any(df <= 0):  # synchronize!
             raise ValueError('df <= 0')
-        if cupy.any(nonc < 0):
+        if cupy.any(nonc < 0):  # synchronize!
             raise ValueError('nonc < 0')
         if size is None:
             size = cupy.broadcast(df, nonc).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.noncentral_chisquare_kernel(df, nonc, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.noncentral_chisquare_kernel(df, nonc, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def noncentral_f(self, dfnum, dfden, nonc, size=None, dtype=float):
         """Returns an array of samples drawn from the noncentral F distribution.
+
+        .. warning::
+
+            This function may synchronize the device.
 
         .. seealso::
             :func:`cupy.random.noncentral_f` for full documentation,
@@ -437,17 +466,17 @@ class RandomState(object):
         """
         dfnum, dfden, nonc = \
             cupy.asarray(dfnum), cupy.asarray(dfden), cupy.asarray(nonc)
-        if cupy.any(dfnum <= 0):
+        if cupy.any(dfnum <= 0):  # synchronize!
             raise ValueError('dfnum <= 0')
-        if cupy.any(dfden <= 0):
+        if cupy.any(dfden <= 0):  # synchronize!
             raise ValueError('dfden <= 0')
-        if cupy.any(nonc < 0):
+        if cupy.any(nonc < 0):  # synchronize!
             raise ValueError('nonc < 0')
         if size is None:
             size = cupy.broadcast(dfnum, dfden, nonc).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.noncentral_f_kernel(dfnum, dfden, nonc, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.noncentral_f_kernel(dfnum, dfden, nonc, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def poisson(self, lam=1.0, size=None, dtype=int):
@@ -462,12 +491,16 @@ class RandomState(object):
         if size is None:
             size = lam.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.poisson_kernel(lam, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.poisson_kernel(lam, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def power(self, a, size=None, dtype=float):
         """Returns an array of samples drawn from the power distribution.
+
+        .. warning::
+
+            This function may synchronize the device.
 
         .. seealso::
             :func:`cupy.random.power` for full documentation,
@@ -475,7 +508,7 @@ class RandomState(object):
             <numpy.random.mtrand.RandomState.power>`
         """
         a = cupy.asarray(a)
-        if cupy.any(a < 0):
+        if cupy.any(a < 0):  # synchronize!
             raise ValueError('a < 0')
         if size is None:
             size = a.shape
@@ -544,6 +577,10 @@ class RandomState(object):
     def rayleigh(self, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a rayleigh distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.rayleigh` for full documentation,
             :meth:`numpy.random.RandomState.rayleigh
@@ -552,7 +589,7 @@ class RandomState(object):
         scale = cupy.asarray(scale)
         if size is None:
             size = scale.shape
-        if cupy.any(scale < 0):
+        if cupy.any(scale < 0):  # synchronize!
             raise ValueError('scale < 0')
         x = self._random_sample_raw(size, dtype)
         x = cupy.log(x, out=x)
@@ -574,44 +611,43 @@ class RandomState(object):
             If ``int``, 1-D array of length size is returned.
             If ``tuple``, multi-dimensional array with shape
             ``size`` is returned.
-            Currently, only 32 bit integers can be sampled.
-            If 0 :math:`\\leq` ``mx`` :math:`\\leq` 0x7fffffff,
-            a ``numpy.int32`` array is returned.
-            If 0x80000000 :math:`\\leq` ``mx`` :math:`\\leq` 0xffffffff,
-            a ``numpy.uint32`` array is returned.
+            Currently, only 32 bit or 64 bit integers can be sampled.
         """  # NOQA
         if size is None:
-            return self._interval(mx, 1).reshape(())
-        elif size == 0:
-            return cupy.array(())
+            size = ()
         elif isinstance(size, int):
-            size = (size, )
+            size = size,
 
         if mx == 0:
-            return cupy.zeros(size, dtype=numpy.int32)
+            return cupy.zeros(size, dtype=numpy.uint32)
 
         if mx < 0:
             raise ValueError(
                 'mx must be non-negative (actual: {})'.format(mx))
-        elif mx <= 0x7fffffff:
-            dtype = numpy.int32
-        elif mx <= 0xffffffff:
+        elif mx <= _UINT32_MAX:
             dtype = numpy.uint32
+        elif mx <= _UINT64_MAX:
+            dtype = numpy.uint64
         else:
             raise ValueError(
-                'mx must be within uint32 range (actual: {})'.format(mx))
+                'mx must be within uint64 range (actual: {})'.format(mx))
 
         mask = (1 << mx.bit_length()) - 1
         mask = cupy.array(mask, dtype=dtype)
 
         n = functools.reduce(operator.mul, size, 1)
 
+        if n == 0:
+            return cupy.empty(size, dtype=dtype)
+
         sample = cupy.empty((n,), dtype=dtype)
+        size32 = sample.view(dtype=numpy.uint32).size
         n_rem = n  # The number of remaining elements to sample
         ret = None
         while n_rem > 0:
+            # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
             curand.generate(
-                self._generator, sample.data.ptr, sample.size)
+                self._generator, sample.data.ptr, size32)
             # Drop the samples that exceed the upper limit
             sample &= mask
             success = sample <= mx
@@ -632,6 +668,7 @@ class RandomState(object):
             n_rem -= n_succ
 
         assert n_rem == 0
+
         return ret.reshape(size)
 
     def seed(self, seed=None):
@@ -646,18 +683,20 @@ class RandomState(object):
         if seed is None:
             try:
                 seed_str = binascii.hexlify(os.urandom(8))
-                seed = numpy.uint64(int(seed_str, 16))
+                seed = int(seed_str, 16)
             except NotImplementedError:
-                seed = numpy.uint64(time.clock() * 1000000)
+                seed = (time.clock() * 1000000) % _UINT64_MAX
         else:
             if isinstance(seed, numpy.ndarray):
                 seed = int(hashlib.md5(seed).hexdigest()[:16], 16)
-            seed = numpy.asarray(seed).astype(numpy.uint64, casting='safe')
+            else:
+                seed = int(
+                    numpy.asarray(seed).astype(numpy.uint64, casting='safe'))
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         curand.setGeneratorOffset(self._generator, 0)
 
-        self.rk_seed = numpy.uint64(seed)
+        self._rk_seed = seed
 
     def standard_cauchy(self, size=None, dtype=float):
         """Returns an array of samples drawn from the standard cauchy distribution.
@@ -693,8 +732,8 @@ class RandomState(object):
         if size is None:
             size = shape.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.standard_gamma_kernel(shape, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.standard_gamma_kernel(shape, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def standard_normal(self, size=None, dtype=float):
@@ -720,8 +759,8 @@ class RandomState(object):
         if size is None:
             size = df.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.standard_t_kernel(df, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.standard_t_kernel(df, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def tomaxint(self, size=None):
@@ -775,6 +814,10 @@ class RandomState(object):
     def triangular(self, left, mode, right, size=None, dtype=float):
         """Returns an array of samples drawn from the triangular distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.triangular` for full documentation,
             :meth:`numpy.random.RandomState.triangular
@@ -782,11 +825,11 @@ class RandomState(object):
         """
         left, mode, right = \
             cupy.asarray(left), cupy.asarray(mode), cupy.asarray(right)
-        if cupy.any(left > mode):
+        if cupy.any(left > mode):  # synchronize!
             raise ValueError('left > mode')
-        if cupy.any(mode > right):
+        if cupy.any(mode > right):  # synchronize!
             raise ValueError('mode > right')
-        if cupy.any(left == right):
+        if cupy.any(left == right):  # synchronize!
             raise ValueError('left == right')
         if size is None:
             size = cupy.broadcast(left, mode, right).shape
@@ -827,8 +870,8 @@ class RandomState(object):
         if size is None:
             size = cupy.broadcast(mu, kappa).shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.vonmises_kernel(mu, kappa, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.vonmises_kernel(mu, kappa, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     _wald_kernel = core.ElementwiseKernel(
@@ -865,13 +908,17 @@ class RandomState(object):
     def weibull(self, a, size=None, dtype=float):
         """Returns an array of samples drawn from the weibull distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.weibull` for full documentation,
             :meth:`numpy.random.RandomState.weibull
             <numpy.random.mtrand.RandomState.weibull>`
         """
         a = cupy.asarray(a)
-        if cupy.any(a < 0):
+        if cupy.any(a < 0):  # synchronize!
             raise ValueError('a < 0')
         x = self.standard_exponential(size, dtype)
         cupy.power(x, 1./a, out=x)
@@ -880,19 +927,23 @@ class RandomState(object):
     def zipf(self, a, size=None, dtype=int):
         """Returns an array of samples drawn from the Zipf distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :func:`cupy.random.zipf` for full documentation,
             :meth:`numpy.random.RandomState.zipf
             <numpy.random.mtrand.RandomState.zipf>`
         """
         a = cupy.asarray(a)
-        if cupy.any(a <= 1.0):
+        if cupy.any(a <= 1.0):  # synchronize!
             raise ValueError('\'a\' must be a valid float > 1.0')
         if size is None:
             size = a.shape
         y = cupy.empty(shape=size, dtype=dtype)
-        _kernels.zipf_kernel(a, self.rk_seed, y)
-        self.rk_seed += numpy.prod(size, dtype=self.rk_seed.dtype)
+        _kernels.zipf_kernel(a, self._rk_seed, y)
+        self._update_seed(y.size)
         return y
 
     def choice(self, a, size=None, replace=True, p=None):
@@ -908,7 +959,7 @@ class RandomState(object):
             raise ValueError('a must be 1-dimensional or an integer')
         if isinstance(a, cupy.ndarray) and a.ndim == 0:
             raise NotImplementedError
-        if isinstance(a, six.integer_types):
+        if isinstance(a, int):
             a_size = a
             if a_size <= 0:
                 raise ValueError('a must be greater than 0')
@@ -943,7 +994,7 @@ class RandomState(object):
                 raise ValueError(
                     'Cannot take a larger sample than population when '
                     '\'replace=False\'')
-            if isinstance(a, six.integer_types):
+            if isinstance(a, int):
                 indices = cupy.arange(a, dtype='l')
             else:
                 indices = a.copy()
@@ -958,14 +1009,14 @@ class RandomState(object):
             index = cupy.argmax(cupy.log(p) +
                                 self.gumbel(size=(size, a_size)),
                                 axis=1)
-            if not isinstance(shape, six.integer_types):
+            if not isinstance(shape, int):
                 index = cupy.reshape(index, shape)
         else:
             index = self.randint(0, a_size, size=shape)
             # Align the dtype with NumPy
             index = index.astype(cupy.int64, copy=False)
 
-        if isinstance(a, six.integer_types):
+        if isinstance(a, int):
             return index
 
         if index.ndim == 0:
@@ -992,7 +1043,7 @@ class RandomState(object):
 
     def permutation(self, a):
         """Returns a permuted range or a permutation of an array."""
-        if isinstance(a, six.integer_types):
+        if isinstance(a, int):
             return self._permutation(a)
         else:
             return a[self._permutation(len(a))]
@@ -1019,7 +1070,7 @@ class RandomState(object):
                 block_size *= 2
             for j_start in range(0, num, block_size):
                 j_end = j_start + block_size
-                _cupy_permutation()(sample, j_start, j_end, array, size=num)
+                _cupy_permutation(sample, j_start, j_end, array, size=num)
         else:
             # When num > 32M, argsort is used, because it is faster than
             # custom kernel. See https://github.com/cupy/cupy/pull/603.
@@ -1057,85 +1108,80 @@ class RandomState(object):
         """
         if high is None:
             lo = 0
-            hi = low
+            hi1 = int(low) - 1
         else:
-            lo = low
-            hi = high
+            lo = int(low)
+            hi1 = int(high) - 1
 
-        if lo >= hi:
+        if lo > hi1:
             raise ValueError('low >= high')
         if lo < cupy.iinfo(dtype).min:
             raise ValueError(
                 'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
-        if hi > cupy.iinfo(dtype).max + 1:
+        if hi1 > cupy.iinfo(dtype).max:
             raise ValueError(
                 'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
 
-        diff = hi - lo - 1
-        if diff > cupy.iinfo(cupy.int32).max - cupy.iinfo(cupy.int32).min + 1:
-            raise NotImplementedError(
-                'Sampling from a range whose extent is larger than int32 '
-                'range is currently not supported')
+        diff = hi1 - lo
         x = self._interval(diff, size).astype(dtype, copy=False)
         cupy.add(x, lo, out=x)
         return x
 
 
-def _cupy_permutation():
-    return core.ElementwiseKernel(
-        'raw int32 sample, int32 j_start, int32 _j_end',
-        'raw int32 array',
-        '''
-            const int invalid = -1;
-            const int num = _ind.size();
-            int j = (sample[i] & 0x7fffffff) % num;
-            int j_end = _j_end;
-            if (j_end > num) j_end = num;
-            if (j == i || j < j_start || j >= j_end) continue;
+_cupy_permutation = core.ElementwiseKernel(
+    'raw int32 sample, int32 j_start, int32 _j_end',
+    'raw int32 array',
+    '''
+        const int invalid = -1;
+        const int num = _ind.size();
+        int j = (sample[i] & 0x7fffffff) % num;
+        int j_end = _j_end;
+        if (j_end > num) j_end = num;
+        if (j == i || j < j_start || j >= j_end) continue;
 
-            // If a thread fails to do data swaping once, it changes j
-            // value using j_offset below and try data swaping again.
-            // This process is repeated until data swapping is succeeded.
-            // The j_offset is determined from the initial j
-            // (random number assigned to each thread) and the initial
-            // offset between j and i (ID of each thread).
-            // If a given number sequence in sample is really random,
-            // this j-update would not be necessary. This is work-around
-            // mainly to avoid potential eternal conflict when sample has
-            // rather synthetic number sequence.
-            int j_offset = ((2*j - i + num) % (num - 1)) + 1;
+        // If a thread fails to do data swaping once, it changes j
+        // value using j_offset below and try data swaping again.
+        // This process is repeated until data swapping is succeeded.
+        // The j_offset is determined from the initial j
+        // (random number assigned to each thread) and the initial
+        // offset between j and i (ID of each thread).
+        // If a given number sequence in sample is really random,
+        // this j-update would not be necessary. This is work-around
+        // mainly to avoid potential eternal conflict when sample has
+        // rather synthetic number sequence.
+        int j_offset = ((2*j - i + num) % (num - 1)) + 1;
 
-            // A thread gives up to do data swapping if loop count exceed
-            // a threathod determined below. This is kind of safety
-            // mechanism to escape the eternal race condition, though I
-            // believe it never happens.
-            int loops = 256;
+        // A thread gives up to do data swapping if loop count exceed
+        // a threathod determined below. This is kind of safety
+        // mechanism to escape the eternal race condition, though I
+        // believe it never happens.
+        int loops = 256;
 
-            bool do_next = true;
-            while (do_next && loops > 0) {
-                // try to swap the contents of array[i] and array[j]
-                if (i != j) {
-                    int val_j = atomicExch(&array[j], invalid);
-                    if (val_j != invalid) {
-                        int val_i = atomicExch(&array[i], invalid);
-                        if (val_i != invalid) {
-                            array[i] = val_j;
-                            array[j] = val_i;
-                            do_next = false;
-                            // done
-                        }
-                        else {
-                            // restore array[j]
-                            array[j] = val_j;
-                        }
+        bool do_next = true;
+        while (do_next && loops > 0) {
+            // try to swap the contents of array[i] and array[j]
+            if (i != j) {
+                int val_j = atomicExch(&array[j], invalid);
+                if (val_j != invalid) {
+                    int val_i = atomicExch(&array[i], invalid);
+                    if (val_i != invalid) {
+                        array[i] = val_j;
+                        array[j] = val_i;
+                        do_next = false;
+                        // done
+                    }
+                    else {
+                        // restore array[j]
+                        array[j] = val_j;
                     }
                 }
-                j = (j + j_offset) % num;
-                loops--;
             }
-        ''',
-        'cupy_permutation',
-    )
+            j = (j + j_offset) % num;
+            loops--;
+        }
+    ''',
+    'cupy_permutation',
+)
 
 
 def seed(seed=None):

@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+import cupy
 from cupy import testing
 
 
@@ -153,6 +154,30 @@ class TestSearch(unittest.TestCase):
         return a.argmin(axis=1)
 
 
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'func': ['argmin', 'argmax'],
+    'is_module': [True, False],
+    'shape': [(3, 4), ()],
+}))
+class TestArgMinMaxDtype(unittest.TestCase):
+
+    @testing.for_dtypes(
+        dtypes=[numpy.int8, numpy.int16, numpy.int32, numpy.int64],
+        name='result_dtype')
+    @testing.for_all_dtypes(name='in_dtype')
+    def test_argminmax_dtype(self, in_dtype, result_dtype):
+        a = testing.shaped_random(self.shape, cupy, in_dtype)
+        if self.is_module:
+            func = getattr(cupy, self.func)
+            y = func(a, dtype=result_dtype)
+        else:
+            func = getattr(a, self.func)
+            y = func(dtype=result_dtype)
+        assert y.shape == ()
+        assert y.dtype == result_dtype
+
+
 @testing.parameterize(
     {'cond_shape': (2, 3, 4), 'x_shape': (2, 3, 4), 'y_shape': (2, 3, 4)},
     {'cond_shape': (4,),      'x_shape': (2, 3, 4), 'y_shape': (2, 3, 4)},
@@ -228,7 +253,7 @@ class TestNonzero(unittest.TestCase):
 class TestNonzeroZeroDimension(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises(DeprecationWarning)
+    @testing.numpy_cupy_raises(accept_error=DeprecationWarning)
     def test_nonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
         return xp.nonzero(array)
@@ -431,3 +456,135 @@ class TestNanArgMax(unittest.TestCase):
     def test_nanargmax_zero_size_axis1(self, xp, dtype):
         a = testing.shaped_random((0, 1), xp, dtype)
         return xp.nanargmax(a, axis=1)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product(
+    {'bins': [
+        [],
+        [0, 1, 2, 4, 10],
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        [0.0, 1.0, 2.5, 4.0, 10.0],
+        [-1.0, 1.0, 2.5, 4.0, 20.0],
+        [1.5, 2.5, 4.0, 6.0],
+        [float('-inf'), 1.5, 2.5, 4.0, 6.0],
+        [1.5, 2.5, 4.0, 6.0, float('inf')],
+        [float('-inf'), 1.5, 2.5, 4.0, 6.0, float('inf')],
+        [0.0, 1.0, 1.0, 4.0, 4.0, 10.0],
+        [0.0, 1.0, 1.0, 4.0, 4.0, 4.0, 4.0, 10.0],
+    ],
+        'side': ['left', 'right'],
+        'shape': [(), (10,), (6, 3, 3)]})
+)
+class TestSearchSorted(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype)
+        bins = xp.array(self.bins)
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+
+@testing.gpu
+@testing.parameterize(
+    {'side': 'left'},
+    {'side': 'right'})
+class TestSearchSortedNanInf(unittest.TestCase):
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_nanbins(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        bins = xp.array([0, 1, 2, 4, 10, float('nan')])
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_nan(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[5] = float('nan')
+        bins = xp.array([0, 1, 2, 4, 10])
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_nan_last(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[-1] = float('nan')
+        bins = xp.array([0, 1, 2, 4, float('nan')])
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_nan_last_repeat(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[-1] = float('nan')
+        bins = xp.array([0, 1, 2, float('nan'), float('nan')])
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_all_nans(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[-1] = float('nan')
+        bins = xp.array([float('nan'), float('nan'), float('nan'),
+                         float('nan'), float('nan')])
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_inf(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[5] = float('inf')
+        bins = xp.array([0, 1, 2, 4, 10])
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_searchsorted_minf(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[5] = float('-inf')
+        bins = xp.array([0, 1, 2, 4, 10])
+        y = xp.searchsorted(bins, x, side=self.side)
+        return y,
+
+
+@testing.gpu
+class TestSearchSortedInvalid(unittest.TestCase):
+
+    # Cant test unordered bins due to numpy undefined
+    # behavior for searchsorted
+
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_searchsorted_ndbins(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        bins = xp.array([[10, 4], [2, 1], [7, 8]])
+        y = xp.searchsorted(bins, x)
+        return y,
+
+
+@testing.gpu
+class TestSearchSortedWithSorter(unittest.TestCase):
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_sorter(self, xp):
+        x = testing.shaped_arange((12,), xp, xp.float64)
+        bins = xp.array([10, 4, 2, 1, 8])
+        sorter = xp.array([3, 2, 1, 4, 0])
+        y = xp.searchsorted(bins, x, sorter=sorter)
+        return y,
+
+    @testing.numpy_cupy_raises(accept_error=ValueError)
+    def test_invalid_sorter(self, xp):
+        x = testing.shaped_arange((12,), xp, xp.float64)
+        bins = xp.array([10, 4, 2, 1, 8])
+        sorter = xp.array([0])
+        xp.searchsorted(bins, x, sorter=sorter)
+
+    @testing.numpy_cupy_raises(accept_error=TypeError)
+    def test_nonint_sorter(self, xp):
+        x = testing.shaped_arange((12,), xp, xp.float64)
+        bins = xp.array([10, 4, 2, 1, 8])
+        sorter = xp.array([], dtype=xp.float64)
+        xp.searchsorted(bins, x, sorter=sorter)

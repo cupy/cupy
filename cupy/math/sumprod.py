@@ -1,8 +1,6 @@
 import numpy
-import six
 
 import cupy
-from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
 
@@ -121,88 +119,6 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
     return _math._nanprod(a, axis, dtype, out, keepdims)
 
 
-def _axis_to_first(x, axis):
-    if axis < 0:
-        axis = x.ndim + axis
-    trans = [axis] + [a for a in six.moves.range(x.ndim) if a != axis]
-    pre = list(six.moves.range(1, axis + 1))
-    succ = list(six.moves.range(axis + 1, x.ndim))
-    revert = pre + [0] + succ
-    return trans, revert
-
-
-def _proc_as_batch(proc, x, axis):
-    if x.shape[axis] == 0:
-        return cupy.empty_like(x)
-    trans, revert = _axis_to_first(x, axis)
-    t = x.transpose(trans)
-    s = t.shape
-    r = t.reshape(x.shape[axis], -1)
-    pos = 1
-    size = r.size
-    batch = r.shape[1]
-    while pos < size:
-        proc(pos, batch, r, size=size)
-        pos <<= 1
-    return r.reshape(s).transpose(revert)
-
-
-def _cum_core(a, axis, dtype, out, kern, batch_kern):
-    a = cupy.asarray(a)
-    if out is None:
-        if dtype is None:
-            kind = a.dtype.kind
-            if kind == 'b':
-                dtype = numpy.dtype('l')
-            elif kind == 'i' and a.dtype.itemsize < numpy.dtype('l').itemsize:
-                dtype = numpy.dtype('l')
-            elif kind == 'u' and a.dtype.itemsize < numpy.dtype('L').itemsize:
-                dtype = numpy.dtype('L')
-            else:
-                dtype = a.dtype
-
-        out = a.astype(dtype)
-    else:
-        out[...] = a
-
-    if axis is None:
-        out = out.ravel()
-    elif not (-a.ndim <= axis < a.ndim):
-        raise core._AxisError('axis(={}) out of bounds'.format(axis))
-    else:
-        return _proc_as_batch(batch_kern, out, axis=axis)
-
-    pos = 1
-    while pos < out.size:
-        kern(pos, out, size=out.size)
-        pos <<= 1
-    return out
-
-
-_cumsum_batch_kern = core.ElementwiseKernel(
-    'int64 pos, int64 batch', 'raw T x',
-    '''
-    ptrdiff_t b = i % batch;
-    ptrdiff_t j = i / batch;
-    if (j & pos) {
-      const ptrdiff_t dst_index[] = {j, b};
-      const ptrdiff_t src_index[] = {j ^ pos | (pos - 1), b};
-      x[dst_index] += x[src_index];
-    }
-    ''',
-    'cumsum_batch_kernel'
-)
-_cumsum_kern = core.ElementwiseKernel(
-    'int64 pos', 'raw T x',
-    '''
-    if (i & pos) {
-      x[i] += x[i ^ pos | (pos - 1)];
-    }
-    ''',
-    'cumsum_kernel'
-)
-
-
 def cumsum(a, axis=None, dtype=None, out=None):
     """Returns the cumulative sum of an array along a given axis.
 
@@ -219,31 +135,7 @@ def cumsum(a, axis=None, dtype=None, out=None):
     .. seealso:: :func:`numpy.cumsum`
 
     """
-    return _cum_core(a, axis, dtype, out, _cumsum_kern, _cumsum_batch_kern)
-
-
-_cumprod_batch_kern = core.ElementwiseKernel(
-    'int64 pos, int64 batch', 'raw T x',
-    '''
-    ptrdiff_t b = i % batch;
-    ptrdiff_t j = i / batch;
-    if (j & pos) {
-      const ptrdiff_t dst_index[] = {j, b};
-      const ptrdiff_t src_index[] = {j ^ pos | (pos - 1), b};
-      x[dst_index] *= x[src_index];
-    }
-    ''',
-    'cumprod_batch_kernel'
-)
-_cumprod_kern = core.ElementwiseKernel(
-    'int64 pos', 'raw T x',
-    '''
-    if (i & pos) {
-      x[i] *= x[i ^ pos | (pos - 1)];
-    }
-    ''',
-    'cumprod_kernel'
-)
+    return _math.scan_core(a, axis, _math.scan_op.SCAN_SUM, dtype, out)
 
 
 def cumprod(a, axis=None, dtype=None, out=None):
@@ -262,7 +154,7 @@ def cumprod(a, axis=None, dtype=None, out=None):
     .. seealso:: :func:`numpy.cumprod`
 
     """
-    return _cum_core(a, axis, dtype, out, _cumprod_kern, _cumprod_batch_kern)
+    return _math.scan_core(a, axis, _math.scan_op.SCAN_PROD, dtype, out)
 
 
 def diff(a, n=1, axis=-1, prepend=None, append=None):

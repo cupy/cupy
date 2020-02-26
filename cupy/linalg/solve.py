@@ -1,6 +1,5 @@
 import numpy
 from numpy import linalg
-import six
 
 import cupy
 from cupy.core import core
@@ -26,6 +25,13 @@ def solve(a, b):
         cupy.ndarray:
             The matrix with dimension ``(..., M)`` or ``(..., M, K)``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.solve`
     """
     # NOTE: Since cusolver in CUDA 8.0 does not support gesv,
@@ -45,7 +51,7 @@ def solve(a, b):
     if a.dtype.char == 'f' or a.dtype.char == 'd':
         dtype = a.dtype
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ())
+        dtype = numpy.promote_types(a.dtype.char, 'f')
 
     cublas_handle = device.get_cublas_handle()
     cusolver_handle = device.get_cusolver_handle()
@@ -57,7 +63,7 @@ def solve(a, b):
 
     x = cupy.empty_like(b)
     shape = a.shape[:-2]
-    for i in six.moves.range(numpy.prod(shape)):
+    for i in range(numpy.prod(shape)):
         index = numpy.unravel_index(i, shape)
         x[index] = _solve(a[index], b[index], cublas_handle, cusolver_handle)
     return x
@@ -102,28 +108,25 @@ def _solve(a, b, cublas_handle, cusolver_handle):
     workspace = cupy.empty(buffersize, dtype=dtype)
     tau = cupy.empty(m, dtype=dtype)
     geqrf(
-        cusolver_handle, m, m, a.data.ptr, m,
-        tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
-    _check_status(dev_info)
+        cusolver_handle, m, m, a.data.ptr, m, tau.data.ptr, workspace.data.ptr,
+        buffersize, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        geqrf, dev_info)
+
     # 2. ormqr (Q^T * B)
     ormqr(
-        cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans,
-        m, k, m, a.data.ptr, m, tau.data.ptr, b.data.ptr, m,
-        workspace.data.ptr, buffersize, dev_info.data.ptr)
-    _check_status(dev_info)
+        cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans, m, k, m, a.data.ptr,
+        m, tau.data.ptr, b.data.ptr, m, workspace.data.ptr, buffersize,
+        dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        ormqr, dev_info)
+
     # 3. trsm (X = R^{-1} * (Q^T * B))
     trsm(
         cublas_handle, cublas.CUBLAS_SIDE_LEFT, cublas.CUBLAS_FILL_MODE_UPPER,
         cublas.CUBLAS_OP_N, cublas.CUBLAS_DIAG_NON_UNIT,
         m, k, 1, a.data.ptr, m, b.data.ptr, m)
     return b
-
-
-def _check_status(dev_info):
-    status = int(dev_info)
-    if status < 0:
-        raise linalg.LinAlgError(
-            'Parameter error (maybe caused by a bug in cupy.linalg?)')
 
 
 def tensorsolve(a, b, axes=None):
@@ -142,17 +145,24 @@ def tensorsolve(a, b, axes=None):
         cupy.ndarray:
             The tensor with shape ``Q`` such that ``b.shape + Q == a.shape``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.tensorsolve`
     """
     if axes is not None:
-        allaxes = list(six.moves.range(a.ndim))
+        allaxes = list(range(a.ndim))
         for k in axes:
             allaxes.remove(k)
             allaxes.insert(a.ndim, k)
         a = a.transpose(allaxes)
 
     oldshape = a.shape[-(a.ndim - b.ndim):]
-    prod = cupy.internal.prod(oldshape)
+    prod = cupy.core.internal.prod(oldshape)
 
     a = a.reshape(-1, prod)
     b = b.ravel()
@@ -189,6 +199,13 @@ def lstsq(a, b, rcond=1e-15):
             but  iff b is 1-dimensional, this is a (1,) shape array, Otherwise
             the shape is (K,). The ``rank`` of matrix ``a`` is an integer. The
             singular values of ``a`` are ``s``.
+
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
     .. seealso:: :func:`numpy.linalg.lstsq`
     """
@@ -239,6 +256,13 @@ def inv(a):
     Returns:
         cupy.ndarray: The inverse of a matrix.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.inv`
     """
     if a.ndim >= 3:
@@ -255,7 +279,7 @@ def inv(a):
     if a.dtype.char in 'fdFD':
         dtype = a.dtype.char
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+        dtype = numpy.promote_types(a.dtype.char, 'f')
 
     cusolver_handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
@@ -289,14 +313,20 @@ def inv(a):
     workspace = cupy.empty(buffersize, dtype=dtype)
 
     # LU factorization
-    getrf(cusolver_handle, m, m, a.data.ptr, m, workspace.data.ptr,
-          ipiv.data.ptr, dev_info.data.ptr)
+    getrf(
+        cusolver_handle, m, m, a.data.ptr, m, workspace.data.ptr,
+        ipiv.data.ptr, dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        getrf, dev_info)
 
     b = cupy.eye(m, dtype=dtype)
 
     # solve for the inverse
-    getrs(cusolver_handle, 0, m, m, a.data.ptr, m, ipiv.data.ptr, b.data.ptr,
-          m, dev_info.data.ptr)
+    getrs(
+        cusolver_handle, 0, m, m, a.data.ptr, m, ipiv.data.ptr, b.data.ptr, m,
+        dev_info.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        getrs, dev_info)
 
     return b
 
@@ -344,20 +374,8 @@ def _batched_inv(a):
 
     getrf(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
           info_array.data.ptr, batch_size)
-
-    err = False
-    err_detail = ''
-    for i in range(batch_size):
-        info = info_array[i]
-        if info < 0:
-            err = True
-            err_detail += ('\tmatrix[{}]: illegal value at {}-the parameter.'
-                           '\n'.format(i, -info))
-        if info > 0:
-            err = True
-            err_detail += '\tmatrix[{}]: matrix is singular.\n'.format(i)
-    if err:
-        raise RuntimeError('matrix inversion failed at getrf.\n' + err_detail)
+    cupy.linalg.util._check_cublas_info_array_if_synchronization_allowed(
+        getrf, info_array)
 
     c = cupy.empty_like(a)
     ldc = lda
@@ -368,14 +386,8 @@ def _batched_inv(a):
 
     getri(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
           c_array.data.ptr, ldc, info_array.data.ptr, batch_size)
-
-    for i in range(batch_size):
-        info = info_array[i]
-        if info > 0:
-            err = True
-            err_detail += '\tmatrix[{}]: matrix is singular.\n'.format(i)
-    if err:
-        raise RuntimeError('matrix inversion failed at getri.\n' + err_detail)
+    cupy.linalg.util._check_cublas_info_array_if_synchronization_allowed(
+        getri, info_array)
 
     return c.reshape(a_shape)
 
@@ -396,9 +408,16 @@ def pinv(a, rcond=1e-15):
     Returns:
         cupy.ndarray: The pseudoinverse of ``a`` with dimension ``(N, M)``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.pinv`
     """
-    u, s, vt = decomposition.svd(a, full_matrices=False)
+    u, s, vt = decomposition.svd(a.conj(), full_matrices=False)
     cutoff = rcond * s.max()
     s1 = 1 / s
     s1[s <= cutoff] = 0
@@ -423,6 +442,13 @@ def tensorinv(a, ind=2):
             The inverse of a tensor whose shape is equivalent to
             ``a.shape[ind:] + a.shape[:ind]``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
     .. seealso:: :func:`numpy.linalg.tensorinv`
     """
     util._assert_cupy_array(a)
@@ -431,7 +457,7 @@ def tensorinv(a, ind=2):
         raise ValueError('Invalid ind argument')
     oldshape = a.shape
     invshape = oldshape[ind:] + oldshape[:ind]
-    prod = cupy.internal.prod(oldshape[ind:])
+    prod = cupy.core.internal.prod(oldshape[ind:])
     a = a.reshape(prod, -1)
     a_inv = inv(a)
     return a_inv.reshape(*invshape)

@@ -1,9 +1,7 @@
-from __future__ import division
 import string
 import threading
 
 import numpy
-import six
 
 from cupy.cuda import compiler
 from cupy import util
@@ -15,13 +13,12 @@ from libcpp cimport vector
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
+from cupy.core cimport _carray
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
-from cupy.core._routines_manipulation cimport _broadcast_core
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport _convert_object_with_cuda_array_interface
 from cupy.core.core cimport compile_with_cache
-from cupy.core.core cimport Indexer
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.core._memory_range cimport may_share_bounds
@@ -39,9 +36,11 @@ cpdef inline bint _is_fusing() except? -1:
 
 
 cpdef function.Function _get_simple_elementwise_kernel(
-        params, operation, name, preamble,
-        loop_prep='', after_loop='', options=()):
+        tuple params, tuple arginfos, str operation, str name,
+        _TypeMap type_map, str preamble, str loop_prep='', str after_loop='',
+        tuple options=()):
     module_code = string.Template('''
+    ${typedef_preamble}
     ${preamble}
     extern "C" __global__ void ${name}(${params}) {
       ${loop_prep};
@@ -52,7 +51,8 @@ cpdef function.Function _get_simple_elementwise_kernel(
       ${after_loop};
     }
     ''').substitute(
-        params=params,
+        typedef_preamble=type_map.get_typedef_code(),
+        params=_get_kernel_params(params, arginfos),
         operation=operation,
         name=name,
         preamble=preamble,
@@ -72,17 +72,32 @@ cdef inline int get_kind_score(int kind):
     return -1
 
 
-cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
+@cython.profile(False)
+cdef inline _check_array_device_id(ndarray arr, int device_id):
+    if arr.data.device_id != device_id:
+        raise ValueError(
+            'Array device must be same as the current '
+            'device: array device = %d while current = %d'
+            % (arr.data.device_id, device_id))
+
+
+cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     """Preprocesses arguments for kernel invocation
 
     - Checks device compatibility for ndarrays
-    - Converts Python scalars into NumPy scalars
+    - Converts Python/NumPy scalars:
+      - If use_c_scalar is True, into CScalars.
+      - If use_c_scalar is False, into NumPy scalars.
     """
     cdef list ret = []
 
     for arg in args:
         if type(arg) is not ndarray:
-            s = _scalar.convert_scalar(arg, use_c_scalar)
+            if use_c_scalar:
+                s = _scalar.scalar_to_c_scalar(arg)
+            else:
+                s = _scalar.scalar_to_numpy_scalar(arg)
+
             if s is not None:
                 ret.append(s)
                 continue
@@ -90,87 +105,178 @@ cpdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
                 raise TypeError('Unsupported type %s' % type(arg))
             arg = _convert_object_with_cuda_array_interface(arg)
 
-        arr_dev_id = (<ndarray>arg).data.device_id
-        if arr_dev_id != dev_id:
-            raise ValueError(
-                'Array device must be same as the current '
-                'device: array device = %d while current = %d'
-                % (arr_dev_id, dev_id))
+        _check_array_device_id(<ndarray>arg, dev_id)
         ret.append(arg)
 
     return ret
 
 
-cpdef tuple _get_args_info(list args):
-    ret = []
-    for a in args:
-        t = type(a)
-        if t is Indexer:
-            dtype = None
-        elif t is _scalar.CScalar:
-            dtype = (<_scalar.CScalar>a).get_numpy_type()
-        else:
-            dtype = a.dtype.type
-        ret.append((t, dtype, a.ndim))
-    return tuple(ret)
+cdef class _ArgInfo:
+    # Holds metadata of an argument.
+    # This class is immutable and used as a part of hash keys.
+
+    def __init__(self, _ArgKind arg_kind, type typ, object dtype, int ndim):
+        self.arg_kind = arg_kind
+        self.type = typ
+        self.dtype = dtype
+        self.ndim = ndim
+
+    @staticmethod
+    cdef _ArgInfo from_arg(object arg):
+        typ = type(arg)
+        if typ is ndarray:
+            return _ArgInfo.from_ndarray(arg)
+        if typ is _scalar.CScalar:
+            return _ArgInfo.from_scalar(arg)
+        if typ is _carray.Indexer:
+            return _ArgInfo.from_indexer(arg)
+        assert False, typ
+
+    @staticmethod
+    cdef _ArgInfo from_ndarray(ndarray arg):
+        return _ArgInfo(ARG_KIND_NDARRAY, ndarray, arg.dtype.type, arg.ndim)
+
+    @staticmethod
+    cdef _ArgInfo from_scalar(_scalar.CScalar arg):
+        dtype = arg.get_numpy_type()
+        return _ArgInfo(ARG_KIND_SCALAR, _scalar.CScalar, dtype, 0)
+
+    @staticmethod
+    cdef _ArgInfo from_indexer(_carray.Indexer arg):
+        return _ArgInfo(ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim)
+
+    def __hash__(self):
+        return hash((self.arg_kind, self.type, self.dtype, self.ndim))
+
+    def __eq__(self, other):
+        cdef _ArgInfo oth
+        if not isinstance(other, _ArgInfo):
+            return False
+        oth = other
+        return (
+            self.arg_kind == oth.arg_kind
+            and self.type is oth.type
+            and self.dtype == oth.dtype
+            and self.ndim == oth.ndim)
+
+    cdef _ArgInfo as_ndarray_with_ndim(self, int ndim):
+        # Returns an ndarray _ArgInfo with altered ndim.
+        # If ndim is the same, self is returned untouched.
+        assert self.arg_kind == ARG_KIND_NDARRAY
+        if self.ndim == ndim:
+            return self
+        return _ArgInfo(ARG_KIND_NDARRAY, ndarray, self.dtype, ndim)
+
+    cdef bint is_ndarray(self):
+        return self.arg_kind == ARG_KIND_NDARRAY
+
+    cdef bint is_scalar(self):
+        return self.arg_kind == ARG_KIND_SCALAR
+
+    cdef str get_c_type(self):
+        # Returns the C type representation.
+        if self.arg_kind == ARG_KIND_NDARRAY:
+            return 'CArray<%s, %d>' % (_get_typename(self.dtype), self.ndim)
+        if self.arg_kind == ARG_KIND_SCALAR:
+            return _get_typename(self.dtype)
+        if self.arg_kind == ARG_KIND_INDEXER:
+            return 'CIndexer<%d>' % self.ndim
+        assert False
+
+    cdef str get_param_c_type(self, ParameterInfo p):
+        # Returns the C type representation in the global function's
+        # parameter list.
+        cdef str ctyp = self.get_c_type()
+        if p.is_const:
+            return 'const ' + ctyp
+        return ctyp
+
+    cdef str get_c_var_name(self, ParameterInfo p):
+        if self.arg_kind == ARG_KIND_NDARRAY and not p.raw:
+            return '_raw_' + p.name
+        return p.name
 
 
-cpdef str _get_kernel_params(tuple params, tuple args_info):
+cpdef tuple _get_arginfos(list args):
+    return tuple([_ArgInfo.from_arg(a) for a in args])
+
+
+cpdef str _get_kernel_params(tuple params, tuple arginfos):
     cdef ParameterInfo p
-    ret = []
+    cdef _ArgInfo arginfo
+    assert len(params) == len(arginfos)
+    lst = []
     for i in range(len(params)):
         p = params[i]
-        type, dtype, ndim = <tuple>(args_info[i])
-        is_array = type is ndarray
-        if type is Indexer:
-            t = 'CIndexer<%d>' % ndim
-        else:
-            t = _get_typename(dtype)
-            if is_array:
-                t = 'CArray<%s, %d>' % (t, ndim)
-        ret.append('{}{} {}{}'.format(
-            'const ' if p.is_const else '',
-            t,
-            '_raw_' if is_array and not p.raw else '',
-            p.name))
-    return ', '.join(ret)
+        arginfo = arginfos[i]
+        lst.append('{} {}'.format(
+            arginfo.get_param_c_type(p),
+            arginfo.get_c_var_name(p)))
+    return ', '.join(lst)
 
 
-cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
+cdef tuple _reduce_dims(list args, tuple params, tuple shape):
     """ Remove contiguous stride to optimize CUDA kernel."""
-    cdef int i, ax, last_ax, ndim
-    cdef Py_ssize_t total_size
-    cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
-    cdef vector.vector[int] array_indexes, axes
-    cdef vector.vector[vector.vector[Py_ssize_t]] args_strides
-    cdef ParameterInfo p
     cdef ndarray arr
-    cdef bint flag
 
-    ndim = len(shape)
-    if ndim <= 1:
+    if len(shape) <= 1 or len(args) == 0:
         return shape
 
+    if len(args) == 1:  # fast path for reduction
+        a = args[0]
+        if (<ParameterInfo>params[0]).raw or not isinstance(a, ndarray):
+            return shape
+        arr = a
+        arr = arr.reduced_view()
+        if arr is a:
+            return shape
+        else:
+            args[0] = arr
+            return arr.shape
+    return _reduced_view_core(args, params, shape)
+
+
+cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
+    cdef int i, ax, last_ax, ndim
+    cdef Py_ssize_t x, total_size
+    cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
+    cdef vector.vector[int] array_indexes, axes
+    cdef vector.vector[int] strides_indexes
+    cdef ParameterInfo p
+    cdef ndarray arr
+
+    ndim = len(shape)
+    array_indexes.reserve(len(args))
+    strides_indexes.reserve(len(args))
     for i in range(len(args)):
         p = params[i]
         if not p.raw and isinstance(args[i], ndarray):
             array_indexes.push_back(i)
             arr = args[i]
             if not arr._c_contiguous:
-                args_strides.push_back(arr._strides)
+                strides_indexes.push_back(i)
 
-    if args_strides.size() == 0:
+    if array_indexes.size() == 0:
+        return shape
+
+    if strides_indexes.size() == 0:
         # The input arrays are all c_contiguous
-        total_size = internal.prod(shape)
+        i = array_indexes[0]
+        arr = args[i]
+        total_size = arr.size
         newshape.assign(<Py_ssize_t>1, total_size)
+        newstrides.resize(1)
         for i in array_indexes:
             arr = args[i]
-            newstrides.assign(<Py_ssize_t>1, arr.dtype.itemsize)
+            newstrides[0] = arr.dtype.itemsize
             # TODO(niboshi): Confirm update_x_contiguity flags
             args[i] = arr._view(newshape, newstrides, False, True)
         return total_size,
 
-    vecshape = shape
+    axes.reserve(ndim)
+    vecshape.reserve(ndim)
+    for x in shape:
+        vecshape.push_back(x)
     last_ax = -1
     for ax in range(ndim):
         if vecshape[ax] == 1:
@@ -178,8 +284,9 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
         if last_ax < 0:
             last_ax = ax
             continue
-        for st in args_strides:
-            if st[ax] * vecshape[ax] != st[last_ax]:
+        for i in strides_indexes:
+            arr = args[i]
+            if arr._strides[ax] * vecshape[ax] != arr._strides[last_ax]:
                 axes.push_back(last_ax)
                 break
         else:
@@ -190,6 +297,8 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     if <int>axes.size() == ndim:
         return shape
 
+    newshape.reserve(axes.size())
+    newstrides.reserve(axes.size())
     for ax in axes:
         newshape.push_back(vecshape[ax])
     for i in array_indexes:
@@ -203,12 +312,6 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
 
 
 cdef class ParameterInfo:
-    cdef:
-        readonly str name
-        readonly object dtype
-        readonly str ctype
-        readonly bint raw
-        readonly bint is_const
 
     def __init__(self, str param, bint is_const):
         self.name = None
@@ -240,9 +343,35 @@ cdef class ParameterInfo:
             else:
                 raise Exception('Unknown keyword "%s"' % i)
 
+    def __hash__(self):
+        return hash((
+            self.name, self.dtype, self.ctype, self.raw, self.is_const))
+
+    def __eq__(self, other):
+        cdef ParameterInfo oth
+        if not isinstance(other, ParameterInfo):
+            return False
+        oth = other
+        return (
+            self.name == oth.name
+            and self.dtype == oth.dtype
+            and self.ctype == oth.ctype
+            and self.raw == oth.raw
+            and self.is_const == oth.is_const)
+
+    def __repr__(self):
+        return '<ParameterInfo({})>'.format(
+            ' '.join([
+                'name={!r}'.format(self.name),
+                'dtype={!r}'.format(self.dtype),
+                'ctype={!r}'.format(self.ctype),
+                'raw={!r}'.format(self.raw),
+                'is_const={!r}'.format(self.is_const),
+            ]))
+
 
 @util.memoize()
-def _get_param_info(s, is_const):
+def _get_param_info(str s, is_const):
     if len(s) == 0:
         return ()
     return tuple([ParameterInfo(i, is_const) for i in s.strip().split(',')])
@@ -252,6 +381,29 @@ def _get_param_info(s, is_const):
 def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     return _decide_params_type_core(in_params, out_params, in_args_dtype,
                                     out_args_dtype)
+
+
+cdef class _TypeMap:
+
+    def __init__(self, pairs):
+        self._pairs = pairs
+
+    def __hash__(self):
+        return hash(self._pairs)
+
+    def __eq__(self, other):
+        if not isinstance(other, _TypeMap):
+            return False
+        return self._pairs == (<_TypeMap>other)._pairs
+
+    def __str__(self):
+        return '<_TypeMap {}>'.format(self._pairs)
+
+    cdef str get_typedef_code(self):
+        # Returns a code fragment of typedef statements used as preamble.
+        return ''.join([
+            'typedef %s %s;\n' % (_get_typename(ctype2), ctype1)
+            for ctype1, ctype2 in self._pairs])
 
 
 cdef tuple _decide_params_type_core(
@@ -300,38 +452,56 @@ cdef tuple _decide_params_type_core(
                       for p in in_params])
     out_types = tuple([type_dict[p.ctype] if p.dtype is None else p.dtype
                        for p in out_params])
-    return in_types, out_types, tuple(type_dict.items())
+    type_map = _TypeMap(tuple(sorted(type_dict.items())))
+    return in_types, out_types, type_map
 
 
 cdef tuple _broadcast(list args, tuple params, bint use_size):
-    cpdef Py_ssize_t i
-    cpdef ParameterInfo p
-    cpdef bint is_none, is_not_none
+    cdef Py_ssize_t i
+    cdef ParameterInfo p
+    cdef bint any_nonraw_array = False
+    cdef vector.vector[Py_ssize_t] shape
+
+    # Collect non-raw arrays
     value = []
-    is_none = False
-    is_not_none = False
     for i in range(len(args)):
         p = params[i]
         a = args[i]
         if not p.raw and isinstance(a, ndarray):
-            is_not_none = True
+            # Non-raw array
+            any_nonraw_array = True
             value.append(a)
         else:
-            is_none = True
             value.append(None)
 
     if use_size:
-        if not is_none:
+        if any_nonraw_array:
             raise ValueError('Specified \'size\' can be used only '
                              'if all of the ndarray are \'raw\'.')
     else:
-        if not is_not_none:
-            raise ValueError('Loop size is Undecided')
-    value, shape = _broadcast_core(value)
+        if not any_nonraw_array:
+            raise ValueError('Loop size is undecided.')
+
+    # Perform broadcast.
+    # Note that arrays in `value` are replaced with broadcasted ones.
+    internal._broadcast_core(value, shape)
+
+    # Restore raw arrays and scalars from the original list.
     for i, a in enumerate(value):
         if a is None:
             value[i] = args[i]
-    return value, shape
+
+    return value, tuple(shape)
+
+
+cdef _numpy_can_cast = numpy.can_cast
+
+
+cdef bint _can_cast(d1, d2, casting):
+    # most ufunc passes `same_kind`
+    if casting == 'same_kind' and get_dtype(d1).kind == d2.kind:
+        return True
+    return _numpy_can_cast(d1, d2, casting=casting)
 
 
 cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
@@ -346,7 +516,7 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
         if a.shape != out_shape:
             raise ValueError('Out shape is mismatched')
         out_type = out_types[i]
-        if not numpy.can_cast(out_type, a.dtype, casting=casting):
+        if not _can_cast(out_type, a.dtype, casting):
             msg = 'output (typecode \'{}\') could not be coerced to ' \
                   'provided output parameter (typecode \'{}\') according to ' \
                   'the casting rule "{}"'.format(
@@ -357,20 +527,17 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
     return out_args
 
 
-cdef list _copy_in_args_if_needed(list in_args, list out_args):
-    cdef int i, j
-    cdef list ret = []
-
+cdef _copy_in_args_if_needed(list in_args, list out_args):
+    # This function updates `in_args`
+    cdef ndarray inp, out
     for i in range(len(in_args)):
-        inp = in_args[i]
-        if isinstance(inp, ndarray):
-            for j in range(len(out_args)):
-                out = out_args[j]
+        a = in_args[i]
+        if isinstance(a, ndarray):
+            inp = a
+            for out in out_args:
                 if inp is not out and may_share_bounds(inp, out):
-                    inp = inp.copy()
+                    in_args[i] = inp.copy()
                     break
-        ret.append(inp)
-    return ret
 
 
 cdef list _get_out_args_with_params(
@@ -379,16 +546,18 @@ cdef list _get_out_args_with_params(
     cdef ParameterInfo p
     cdef ndarray arr
     cdef vector.vector[Py_ssize_t] shape
+    cdef Py_ssize_t x
     if not out_args:
         for p in out_params:
             if p.raw and not is_size_specified:
                 raise ValueError('Output array size is Undecided')
         return [ndarray(out_shape, t) for t in out_types]
 
-    shape = out_shape
-    for i in range(len(out_params)):
+    shape.reserve(len(out_shape))
+    for x in out_shape:
+        shape.push_back(x)
+    for i, p in enumerate(out_params):
         a = out_args[i]
-        p = out_params[i]
         if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
@@ -398,17 +567,15 @@ cdef list _get_out_args_with_params(
     return out_args
 
 
-cdef function.Function _get_elementwise_kernel(
-        tuple args_info, tuple types, tuple params, operation, name,
-        preamble, dict kwargs):
-    kernel_params = _get_kernel_params(params, args_info)
-    types_preamble = '\n'.join(
-        'typedef %s %s;' % (_get_typename(v), k) for k, v in types)
-    preamble = types_preamble + '\n' + preamble
+@util.memoize(for_each_device=True)
+def _get_elementwise_kernel(
+        tuple arginfos, _TypeMap type_map, tuple params, operation, name,
+        preamble, **kwargs):
+    cdef _ArgInfo arginfo
 
     op = []
-    for p, a in zip(params, args_info):
-        if not p.raw and a[0] == ndarray:
+    for p, arginfo in zip(params, arginfos):
+        if arginfo.is_ndarray() and not p.raw:
             if p.is_const:
                 fmt = 'const {t} &{n} = _raw_{n}[_ind.get()];'
             else:
@@ -417,7 +584,7 @@ cdef function.Function _get_elementwise_kernel(
     op.append(operation)
     operation = '\n'.join(op)
     return _get_simple_elementwise_kernel(
-        kernel_params, operation, name,
+        params, arginfos, operation, name, type_map,
         preamble, **kwargs)
 
 
@@ -475,8 +642,8 @@ cdef class ElementwiseKernel:
         readonly bint no_return
         readonly bint return_tuple
         readonly dict kwargs
-        readonly dict _kernel_memo
         readonly dict _params_type_memo
+        readonly dict _elementwise_kernel_memo
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='',
@@ -499,11 +666,11 @@ cdef class ElementwiseKernel:
         self.no_return = no_return
         self.return_tuple = return_tuple
         self.kwargs = kwargs
-        self._kernel_memo = {}
         self._params_type_memo = {}
         names = [p.name for p in self.in_params + self.out_params]
         if 'i' in names:
             raise ValueError('Can not use \'i\' as a parameter name')
+        self._elementwise_kernel_memo = {}
 
     def __call__(self, *args, **kwargs):
         """Compiles and invokes the elementwise kernel.
@@ -520,6 +687,8 @@ cdef class ElementwiseKernel:
                 This parameter must be specified if and only if all ndarrays
                 are `raw` and the range size cannot be determined
                 automatically.
+            block_size (int): Number of threads per block. By default, the
+                value is set to 128.
 
         Returns:
             If ``no_return`` has not set, arrays are returned according to the
@@ -529,18 +698,24 @@ cdef class ElementwiseKernel:
         """
         cdef function.Function kern
         cdef Py_ssize_t size, i
-        cdef list in_args, out_args
+        cdef list values, in_args, out_args
         cdef tuple in_types, out_types, types, shape
 
         size = -1
         size = kwargs.pop('size', -1)
         stream = kwargs.pop('stream', None)
+        block_size = kwargs.pop('block_size', 128)
         if len(kwargs):
             raise TypeError('Wrong arguments %s' % kwargs)
-
+        if block_size <= 0:
+            raise ValueError('block_size must be greater than zero')
         n_args = len(args)
         if n_args != self.nin and n_args != self.nargs:
-            raise TypeError('Wrong number of arguments for %s' % self.name)
+            raise TypeError(
+                'Wrong number of arguments for {!r}. '
+                'It must be either {} or {} (with outputs), '
+                'but given {}.'.format(
+                    self.name, self.nin, self.nargs, n_args))
         dev_id = device.get_device_id()
         args = _preprocess_args(dev_id, args, True)
 
@@ -553,7 +728,7 @@ cdef class ElementwiseKernel:
              for a in in_args])
         out_ndarray_types = tuple([a.dtype.type for a in out_args])
 
-        in_types, out_types, types = self._decide_params_type(
+        in_types, out_types, type_map = self._decide_params_type(
             in_ndarray_types, out_ndarray_types)
 
         is_size_specified = False
@@ -581,13 +756,13 @@ cdef class ElementwiseKernel:
 
         if self.reduce_dims:
             shape = _reduce_dims(inout_args, self.params, shape)
-        indexer = Indexer(shape)
+        indexer = _carray.Indexer(shape)
         inout_args.append(indexer)
 
-        args_info = _get_args_info(inout_args)
-        kern = self._get_elementwise_kernel(dev_id, args_info, types)
+        arginfos = _get_arginfos(inout_args)
+        kern = self._get_elementwise_kernel(dev_id, arginfos, type_map)
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
-                           block_max_size=128, stream=stream)
+                           block_max_size=block_size, stream=stream)
         return ret
 
     cpdef tuple _decide_params_type(
@@ -602,72 +777,52 @@ cdef class ElementwiseKernel:
         return ret
 
     cpdef function.Function _get_elementwise_kernel(
-            self, int dev_id, tuple args_info, tuple types):
-        key = (dev_id, args_info, types)
-        kern = self._kernel_memo.get(key, None)
+            self, int dev_id, tuple arginfos, _TypeMap type_map):
+        key = (
+            dev_id,
+            arginfos,
+            type_map)
+        kern = self._elementwise_kernel_memo.get(key, None)
         if kern is not None:
             return kern
         kern = _get_elementwise_kernel(
-            args_info, types, self.params, self.operation,
-            self.name, self.preamble, self.kwargs)
-        self._kernel_memo[key] = kern
+            arginfos, type_map, self.params, self.operation,
+            self.name, self.preamble, **self.kwargs)
+
+        # Store the compiled kernel in the cache.
+        # Potentially overwrite a duplicate cache entry because
+        # _get_elementwise_kernel() may include IO wait.
+        self._elementwise_kernel_memo[key] = kern
         return kern
 
 
 cdef function.Function _get_ufunc_kernel(
-        tuple in_types, tuple out_types, routine, tuple args_info, params,
+        tuple in_types, tuple out_types, routine, tuple arginfos, params,
         name, preamble, loop_prep):
-    kernel_params = _get_kernel_params(params, args_info)
+    cdef _ArgInfo arginfo
 
     types = []
     op = []
     for i, x in enumerate(in_types):
-        types.append('typedef %s in%d_type;' % (_get_typename(x), i))
-        if args_info[i][0] is ndarray:
+        types.append(('in%d_type' % i, x))
+        arginfo = arginfos[i]
+        if arginfo.is_ndarray():
             op.append(
                 'const in{0}_type in{0}(_raw_in{0}[_ind.get()]);'
                 .format(i))
 
     for i, x in enumerate(out_types):
-        types.append('typedef %s out%d_type;' % (
-            _get_typename(args_info[i + len(in_types)][1]), i))
+        arginfo = arginfos[i + len(in_types)]
+        types.append(('out%d_type' % i, arginfo.dtype))
         op.append('out{0}_type &out{0} = _raw_out{0}[_ind.get()];'.format(i))
+    type_map = _TypeMap(tuple(types))
 
     op.append(routine)
     operation = '\n'.join(op)
 
-    types.append(preamble)
-    preamble = '\n'.join(types)
-
     return _get_simple_elementwise_kernel(
-        kernel_params, operation, name, preamble, loop_prep=loop_prep)
-
-
-cdef tuple _guess_routine_from_in_types(list ops, tuple in_types):
-    cdef Py_ssize_t i, n
-    cdef tuple op, op_types
-    n = len(in_types)
-    can_cast = numpy.can_cast
-    for op in ops:
-        op_types = op[0]
-        for i in range(n):
-            if not can_cast(in_types[i], op_types[i]):
-                break
-        else:
-            return op
-    return None
-
-
-cdef tuple _guess_routine_from_dtype(list ops, object dtype):
-    cdef tuple op, op_types
-    for op in ops:
-        op_types = op[1]
-        for t in op_types:
-            if t != dtype:
-                break
-        else:
-            return op
-    return None
+        params, arginfos, operation, name, type_map, preamble,
+        loop_prep=loop_prep)
 
 
 cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
@@ -688,33 +843,24 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
             max_array_kind >= max_scalar_kind)
 
 
-cdef tuple _guess_routine(name, dict cache, list ops, list in_args, dtype):
-    if dtype is None:
-        use_raw_value = _check_should_use_min_scalar(in_args)
-        if use_raw_value:
-            in_types = tuple([i.dtype if isinstance(i, ndarray) else i
-                              for i in in_args])
-            op = ()
-        else:
-            in_types = tuple([i.dtype.type for i in in_args])
-            op = cache.get(in_types, ())
+cdef dict _mst_unsigned_to_signed = {
+    i: (numpy.iinfo(j).max, (i, j))
+    for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
+                 for i in "BHILQ"]}
+cdef _numpy_min_scalar_type = numpy.min_scalar_type
 
-        if op is ():
-            op = _guess_routine_from_in_types(ops, in_types)
-            if not use_raw_value:
-                cache[in_types] = op
-    else:
-        op = cache.get(dtype, ())
-        if op is ():
-            op = _guess_routine_from_dtype(ops, dtype)
-            cache[dtype] = op
-
-    if op:
-        return op
-    if dtype is None:
-        dtype = tuple([i.dtype.type for i in in_args])
-    raise TypeError('Wrong type (%s) of arguments for %s' %
-                    (dtype, name))
+cdef _min_scalar_type(x):
+    # A non-negative integer may have two locally minimum scalar
+    # types: signed/unsigned integer.
+    # Return both for can_cast, while numpy.min_scalar_type only returns
+    # the unsigned type.
+    t = _numpy_min_scalar_type(x)
+    dt = t.type
+    if t.kind == 'u':
+        m, dt2 = <tuple>_mst_unsigned_to_signed[dt]
+        if x <= m:
+            return dt2
+    return dt
 
 
 cdef class ufunc:
@@ -734,7 +880,9 @@ cdef class ufunc:
         readonly Py_ssize_t nout
         readonly Py_ssize_t nargs
         readonly object name
-        readonly list _ops
+        readonly _Ops _ops  # normal routines
+        # routines based on explicitly given output dtype
+        readonly _Ops _out_ops
         readonly object _preamble
         readonly object _loop_prep
         readonly object _default_casting
@@ -745,14 +893,16 @@ cdef class ufunc:
         readonly object __name__
         readonly object __module__
 
-    def __init__(self, name, nin, nout, ops, preamble='', loop_prep='', doc='',
-                 default_casting=None):
+    def __init__(
+            self, name, nin, nout, _Ops ops, preamble='', loop_prep='', doc='',
+            default_casting=None, *, _Ops out_ops=None):
         self.name = name
         self.__name__ = name
         self.nin = nin
         self.nout = nout
         self.nargs = nin + nout
         self._ops = ops
+        self._out_ops = out_ops
         self._preamble = preamble
         self._loop_prep = loop_prep
         self.__doc__ = doc
@@ -783,9 +933,9 @@ cdef class ufunc:
 
         """
         types = []
-        for in_types, out_types, _ in self._ops:
-            in_str = ''.join([<str>get_dtype(t).char for t in in_types])
-            out_str = ''.join([<str>get_dtype(t).char for t in out_types])
+        for op in self._ops:
+            in_str = ''.join([<str>get_dtype(t).char for t in op.in_types])
+            out_str = ''.join([<str>get_dtype(t).char for t in op.out_types])
             types.append('%s->%s' % (in_str, out_str))
         return types
 
@@ -809,7 +959,9 @@ cdef class ufunc:
 
         cdef function.Function kern
         cdef list broad_values
+        cdef vector.vector[Py_ssize_t] vec_shape
         cdef tuple shape
+        cdef Py_ssize_t s
 
         out = kwargs.pop('out', None)
         dtype = kwargs.pop('dtype', None)
@@ -822,7 +974,11 @@ cdef class ufunc:
 
         n_args = len(args)
         if n_args != self.nin and n_args != self.nargs:
-            raise TypeError('Wrong number of arguments for %s' % self.name)
+            raise TypeError(
+                'Wrong number of arguments for {!r}. '
+                'It must be either {} or {} (with outputs), '
+                'but given {}.'.format(
+                    self.name, self.nin, self.nargs, n_args))
 
         dev_id = device.get_device_id()
         args = _preprocess_args(dev_id, args, False)
@@ -840,72 +996,85 @@ cdef class ufunc:
             out_args = _preprocess_args(dev_id, (out,), False)
             args += out_args
 
-        in_args = _copy_in_args_if_needed(in_args, out_args)
-        broad_values, shape = _broadcast_core(in_args + out_args)
+        _copy_in_args_if_needed(in_args, out_args)
+        broad_values = in_args + out_args
+        internal._broadcast_core(broad_values, vec_shape)
+        shape = tuple(vec_shape)
 
-        op = _guess_routine(
-            self.name, self._routine_cache, self._ops, in_args, dtype)
-        in_types, out_types, routine = op
-        out_args = _get_out_args(out_args, out_types, shape, casting)
+        op = self._ops.guess_routine(
+            self.name, self._routine_cache, in_args, dtype, self._out_ops)
+        out_args = _get_out_args(out_args, op.out_types, shape, casting)
         if self.nout == 1:
             ret = out_args[0]
         else:
             ret = tuple(out_args)
 
-        if 0 in shape:
-            return ret
+        for s in vec_shape:
+            if s == 0:
+                return ret
 
         inout_args = []
-        for i, t in enumerate(in_types):
+        for i, t in enumerate(op.in_types):
             x = broad_values[i]
-            inout_args.append(x if isinstance(x, ndarray) else
-                              _scalar.get_scalar_from_numpy(x, t))
+            inout_args.append(
+                x if isinstance(x, ndarray) else
+                _scalar.CScalar.from_numpy_scalar_with_dtype(x, t))
         inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
-        indexer = Indexer(shape)
+        indexer = _carray.Indexer(shape)
         inout_args.append(indexer)
-        args_info = _get_args_info(inout_args)
+        arginfos = _get_arginfos(inout_args)
 
-        kern = self._get_ufunc_kernel(dev_id, op, args_info)
+        kern = self._get_ufunc_kernel(dev_id, op, arginfos)
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
 
-    cdef str _get_name_with_type(self, tuple args_info):
+    cdef str _get_name_with_type(self, tuple arginfos):
+        cdef _ArgInfo arginfo
         inout_type_words = []
-        for t, dtype, ndim in args_info:
-            dtype = str(numpy.dtype(dtype))
-            if t is _scalar.CScalar:
-                inout_type_words.append(dtype.rstrip('0123456789'))
-            elif t is not Indexer:
+        for arginfo in arginfos:
+            dtype = str(numpy.dtype(arginfo.dtype))
+            if arginfo.is_ndarray():
                 inout_type_words.append(dtype)
+            elif arginfo.is_scalar():
+                inout_type_words.append(dtype.rstrip('0123456789'))
         return '{}__{}'.format(self.name, '_'.join(inout_type_words))
 
     cdef function.Function _get_ufunc_kernel(
-            self, int dev_id, tuple op, tuple args_info):
+            self, int dev_id, _Op op, tuple arginfos):
         cdef function.Function kern
-        key = (dev_id, op, args_info)
+        key = (dev_id, op, arginfos)
         kern = self._kernel_memo.get(key, None)
         if kern is None:
-            in_types, out_types, routine = op
-            name = self._get_name_with_type(args_info)
+            name = self._get_name_with_type(arginfos)
             kern = _get_ufunc_kernel(
-                in_types, out_types, routine, args_info,
+                op.in_types, op.out_types, op.routine, arginfos,
                 self._params, name, self._preamble, self._loop_prep)
             self._kernel_memo[key] = kern
         return kern
 
 
-cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
-                   default_casting=None, loop_prep=''):
-    _ops = []
-    for t in ops:
-        if not isinstance(t, tuple):
-            typ = t
-            rt = routine
-        else:
-            typ, rt = t
+cdef class _Op:
 
+    def __init__(
+            self, tuple in_types, tuple out_types, object routine,
+            object error_func):
+        if error_func is None:
+            assert routine is not None
+        else:
+            assert callable(error_func)
+        self.in_types = in_types
+        self.out_types = out_types
+        self.nin = len(in_types)
+        self.nout = len(out_types)
+        self.routine = routine
+        self.error_func = error_func
+
+    @staticmethod
+    cdef _Op _from_type_and_routine_or_error_func(
+            str typ, object routine, object error_func):
+        # TODO(niboshi): Write type mapping specification.
         types = typ.split('->')
         if len(types) == 1:
             in_types = out_types = tuple(types)
@@ -913,10 +1082,122 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
             in_types, out_types = map(tuple, types)
         in_types = tuple([get_dtype(t).type for t in in_types])
         out_types = tuple([get_dtype(t).type for t in out_types])
-        _ops.append((in_types, out_types, rt))
+        return _Op(in_types, out_types, routine, error_func)
 
-    ret = ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble,
-                loop_prep, doc, default_casting=default_casting)
-    return ret
+    @staticmethod
+    cdef _Op from_type_and_routine(str typ, routine):
+        return _Op._from_type_and_routine_or_error_func(typ, routine, None)
 
-include 'reduction.pxi'
+    @staticmethod
+    cdef _Op from_type_and_error_func(str typ, error_func):
+        return _Op._from_type_and_routine_or_error_func(typ, None, error_func)
+
+    cdef check_valid(self):
+        if self.error_func is not None:
+            self.error_func()
+
+
+cdef class _Ops:
+
+    def __init__(self, tuple ops):
+        assert len(ops) > 0
+        nin = ops[0].nin
+        nout = ops[0].nout
+        assert all(op.nin == nin for op in ops)
+        assert all(op.nout == nout for op in ops)
+        self.ops = ops
+        self.nin = nin
+        self.nout = nout
+
+    @staticmethod
+    cdef _Ops from_tuples(object ops, routine):
+        ops_ = []
+        for t in ops:
+            if isinstance(t, tuple):
+                typ, rt = t
+                if isinstance(rt, tuple):
+                    rt = tuple([r1 or r2 for r1, r2 in zip(rt, routine)])
+                elif not isinstance(rt, str):
+                    assert callable(rt)
+                    ops_.append(_Op.from_type_and_error_func(typ, rt))
+                    continue
+            else:
+                assert isinstance(t, str)
+                typ, rt = t, routine
+            ops_.append(_Op.from_type_and_routine(typ, rt))
+        return _Ops(tuple(ops_))
+
+    cdef _Op guess_routine(
+            self, str name, dict cache, list in_args, dtype, _Ops out_ops):
+        cdef _Ops ops_
+        if dtype is None:
+            use_raw_value = _check_should_use_min_scalar(in_args)
+            if use_raw_value:
+                in_types = tuple([
+                    a.dtype.type if isinstance(a, ndarray)
+                    else _min_scalar_type(a)
+                    for a in in_args])
+            else:
+                in_types = tuple([a.dtype.type for a in in_args])
+            op = cache.get(in_types, ())
+            if op is ():
+                op = self._guess_routine_from_in_types(in_types)
+                cache[in_types] = op
+        else:
+            op = cache.get(dtype, ())
+            if op is ():
+                ops_ = out_ops or self
+                op = ops_._guess_routine_from_dtype(dtype)
+                cache[dtype] = op
+
+        if op is not None:
+            # raise TypeError if the type combination is disallowed
+            (<_Op>op).check_valid()
+
+            return op
+
+        if dtype is None:
+            dtype = tuple([a.dtype.type for a in in_args])
+        raise TypeError('Wrong type (%s) of arguments for %s' %
+                        (dtype, name))
+
+    cdef _Op _guess_routine_from_in_types(self, tuple in_types):
+        cdef _Op op
+        cdef tuple op_types
+        cdef Py_ssize_t n = len(in_types)
+        cdef Py_ssize_t i
+        can_cast = numpy.can_cast
+        for op in self.ops:
+            op_types = op.in_types
+            for i in range(n):
+                it = in_types[i]
+                ot = op_types[i]
+                if isinstance(it, tuple):
+                    if not can_cast(it[0], ot) and not can_cast(it[1], ot):
+                        break
+                elif not can_cast(it, ot):
+                    break
+            else:
+                return op
+        return None
+
+    cdef _Op _guess_routine_from_dtype(self, object dtype):
+        cdef _Op op
+        cdef tuple op_types
+        for op in self.ops:
+            op_types = op.out_types
+            for t in op_types:
+                if t != dtype:
+                    break
+            else:
+                return op
+        return None
+
+
+cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
+                   default_casting=None, loop_prep='', out_ops=None):
+    ops_ = _Ops.from_tuples(ops, routine)
+    _out_ops = None if out_ops is None else _Ops.from_tuples(out_ops, routine)
+    return ufunc(
+        name, ops_.nin, ops_.nout, ops_, preamble,
+        loop_prep, doc, default_casting=default_casting, out_ops=_out_ops)

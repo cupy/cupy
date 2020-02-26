@@ -1,13 +1,13 @@
+import collections.abc
+
 import numpy
-import six
 
 import cupy
 from cupy import core
-from cupy import internal
+from cupy.core import internal
 
 from cupy.linalg.solve import inv
 from cupy import util
-from cupy.util import collections_abc
 
 matmul = core.matmul
 
@@ -284,7 +284,7 @@ def tensordot(a, b, axes=2):
             raise ValueError('An input is zero-dim while axes has dimensions')
         return cupy.multiply(a, b)
 
-    if isinstance(axes, collections_abc.Sequence):
+    if isinstance(axes, collections.abc.Sequence):
         if len(axes) != 2:
             raise ValueError('Axes must consist of two arrays.')
         a_axes, b_axes = axes
@@ -293,8 +293,8 @@ def tensordot(a, b, axes=2):
         if numpy.isscalar(b_axes):
             b_axes = b_axes,
     else:
-        a_axes = tuple(six.moves.range(a_ndim - axes, a_ndim))
-        b_axes = tuple(six.moves.range(axes))
+        a_axes = tuple(range(a_ndim - axes, a_ndim))
+        b_axes = tuple(range(axes))
 
     sum_ndim = len(a_axes)
     if sum_ndim != len(b_axes):
@@ -335,7 +335,7 @@ def matrix_power(M, n):
     """
     if M.ndim != 2 or M.shape[0] != M.shape[1]:
         raise ValueError('input must be a square array')
-    if not isinstance(n, six.integer_types):
+    if not isinstance(n, int):
         raise TypeError('exponent must be an integer')
 
     if n == 0:
@@ -394,7 +394,7 @@ def kron(a, b):
 
     axis = ndim - 1
     out = core.tensordot_core(a, b, None, a.size, b.size, 1, a_shape + b_shape)
-    for _ in six.moves.range(ndim):
+    for _ in range(ndim):
         out = core.concatenate_method(out, axis=axis)
 
     return out
@@ -409,4 +409,4 @@ def _move_axes_to_head(a, axes):
         return a
 
     return a.transpose(
-        axes + [i for i in six.moves.range(a.ndim) if i not in axes])
+        axes + [i for i in range(a.ndim) if i not in axes])

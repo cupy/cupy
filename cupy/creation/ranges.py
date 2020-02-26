@@ -58,7 +58,8 @@ def arange(start, stop=None, step=1, dtype=None):
     return ret
 
 
-def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
+def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
+                     dtype=None):
     """Returns an array with evenly-spaced values within a given interval.
 
     Instead of specifying the step width like :func:`cupy.arange`, this
@@ -79,21 +80,17 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
         cupy.ndarray: The 1-D array of ranged values.
 
     """
-    if num < 0:
-        raise ValueError('linspace with num<0 is not supported')
-
     if dtype is None:
         # In actual implementation, only float is used
         dtype = float
 
     ret = cupy.empty((num,), dtype=dtype)
-    if num == 0:
-        step = float('nan')
-    elif num == 1:
-        ret.fill(start)
+    div = (num - 1) if endpoint else num
+    if div <= 0:
+        if num > 0:
+            ret.fill(start)
         step = float('nan')
     else:
-        div = (num - 1) if endpoint else num
         step = float(stop - start) / div
         stop = float(stop)
 
@@ -105,12 +102,103 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
             _linspace_ufunc(start, step, ret, casting='unsafe')
 
         if endpoint:
+            # Here num == div + 1 > 1 is ensured.
             ret[-1] = stop
 
     if retstep:
         return ret, step
     else:
         return ret
+
+
+def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
+             axis=0):
+    """Returns an array with evenly-spaced values within a given interval.
+
+    Instead of specifying the step width like :func:`cupy.arange`, this
+    function requires the total number of elements specified.
+
+    Args:
+        start (scalar or array_like): Starting value(s) of the sequence.
+        stop (scalar or array_like): Ending value(s) of the sequence, unless
+            `endpoint` is set to False. In that case, the sequence consists of
+            all but the last of ``num + 1`` evenly spaced samples, so that
+            `stop` is excluded.  Note that the step size changes when
+            `endpoint` is False.
+        num: Number of elements.
+        endpoint (bool): If ``True``, the stop value is included as the last
+            element. Otherwise, the stop value is omitted.
+        retstep (bool): If ``True``, this function returns (array, step).
+            Otherwise, it returns only the array.
+        dtype: Data type specifier. It is inferred from the start and stop
+            arguments by default.
+        axis (int):  The axis in the result to store the samples.  Relevant
+            only if start or stop are array-like.  By default (0), the samples
+            will be along a new axis inserted at the beginning. Use -1 to get
+            an axis at the end.
+
+    Returns:
+        cupy.ndarray: The 1-D array of ranged values.
+
+    """
+    if num < 0:
+        raise ValueError('linspace with num<0 is not supported')
+    div = (num - 1) if endpoint else num
+
+    scalar_start = cupy.isscalar(start)
+    scalar_stop = cupy.isscalar(stop)
+    if scalar_start and scalar_stop:
+        return _linspace_scalar(start, stop, num, endpoint, retstep, dtype)
+
+    if not scalar_start:
+        if not (isinstance(start, cupy.ndarray) and start.dtype.kind == 'f'):
+            start = cupy.asarray(start) * 1.0
+
+    if not scalar_stop:
+        if not (isinstance(stop, cupy.ndarray) and stop.dtype.kind == 'f'):
+            stop = cupy.asarray(stop) * 1.0
+
+    dt = cupy.result_type(start, stop, float(num))
+    if dtype is None:
+        # In actual implementation, only float is used
+        dtype = dt
+
+    delta = stop - start
+
+    # ret = cupy.arange(0, num, dtype=dt).reshape((-1,) + (1,) * delta.ndim)
+    ret = cupy.empty((num,), dtype=dt)
+    _arange_ufunc(0.0, 1.0, ret, dtype=dt)
+    ret = ret.reshape((-1,) + (1,) * delta.ndim)
+
+    # In-place multiplication y *= delta/div is faster, but prevents the
+    # multiplicant from overriding what class is produced, and thus prevents,
+    # e.g. use of Quantities, see numpy#7142. Hence, we multiply in place only
+    # for standard scalar types.
+    if num > 1:
+        step = delta / div
+        if cupy.any(step == 0):
+            # Special handling for denormal numbers, numpy#5437
+            ret /= div
+            ret = ret * delta
+        else:
+            ret = ret * step
+    else:
+        # 0 and 1 item long sequences have an undefined step
+        step = float('nan')
+        # Multiply with delta to allow possible override of output class.
+        ret = ret * delta
+
+    ret += start
+    if endpoint and num > 1:
+        ret[-1] = stop
+
+    if axis != 0:
+        ret = cupy.moveaxis(ret, 0, axis)
+
+    if retstep:
+        return ret.astype(dtype, copy=False), step
+    else:
+        return ret.astype(dtype, copy=False)
 
 
 def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
@@ -317,7 +405,6 @@ _arange_ufunc = core.create_ufunc(
      ('FF->F', 'out0 = in0 + float(i) * in1'),
      ('DD->D', 'out0 = in0 + double(i) * in1')),
     'out0 = in0 + i * in1')
-
 
 _linspace_ufunc = core.create_ufunc(
     'cupy_linspace',

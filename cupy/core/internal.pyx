@@ -5,10 +5,17 @@ cimport cython  # NOQA
 from libcpp cimport bool as cpp_bool
 from libc.stdint cimport uint32_t
 
+from cupy.core.core cimport ndarray
+
+import sys
+
 
 cdef extern from 'halffloat.h':
     uint16_t npy_floatbits_to_halfbits(uint32_t f)
     uint32_t npy_halfbits_to_floatbits(uint16_t h)
+
+
+cdef Py_ssize_t PY_SSIZE_T_MAX = sys.maxsize
 
 
 @cython.profile(False)
@@ -16,6 +23,14 @@ cpdef inline Py_ssize_t prod(const vector.vector[Py_ssize_t]& args):
     cdef Py_ssize_t n = 1
     for i in range(args.size()):
         n *= args[i]
+    return n
+
+
+@cython.profile(False)
+cpdef inline Py_ssize_t prod_sequence(object args):
+    cdef Py_ssize_t i, n = 1
+    for i in args:
+        n *= i
     return n
 
 
@@ -48,52 +63,38 @@ cdef void get_reduced_dims(
         vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
         Py_ssize_t itemsize, vector.vector[Py_ssize_t]& reduced_shape,
         vector.vector[Py_ssize_t]& reduced_strides):
-    cdef vector.vector[Py_ssize_t] tmp_shape, tmp_strides
     cdef Py_ssize_t i, ndim, sh, st, prev_st, index
     ndim = shape.size()
     reduced_shape.clear()
     reduced_strides.clear()
     if ndim == 0:
         return
+    reduced_shape.reserve(ndim)
+    reduced_strides.reserve(ndim)
 
+    prev_st = 0
+    index = -1
     for i in range(ndim):
         sh = shape[i]
         if sh == 0:
-            reduced_shape.push_back(0)
-            reduced_strides.push_back(itemsize)
+            reduced_shape.assign(1, 0)
+            reduced_strides.assign(1, itemsize)
             return
-        if sh != 1:
-            tmp_shape.push_back(sh)
-            tmp_strides.push_back(strides[i])
-    if tmp_shape.size() == 0:
-        return
-
-    reduced_shape.push_back(tmp_shape[0])
-    reduced_strides.push_back(tmp_strides[0])
-    index = 0
-    for i in range(<Py_ssize_t>tmp_shape.size() - 1):
-        sh = tmp_shape[i + 1]
-        st = tmp_strides[i + 1]
-        if tmp_strides[i] == sh * st:
-            reduced_shape[index] *= sh
-            reduced_strides[index] = st
-        else:
+        if sh == 1:
+            continue
+        st = strides[i]
+        if index == -1 or prev_st != sh * st:
             reduced_shape.push_back(sh)
             reduced_strides.push_back(st)
             index += 1
+        else:
+            reduced_shape[index] *= sh
+            reduced_strides[index] = st
+        prev_st = st
 
 
 @cython.profile(False)
-cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
-        const vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
-        bint is_c_contiguous):
-    cdef vector.vector[Py_ssize_t] strides
-    set_contiguous_strides(shape, strides, itemsize, is_c_contiguous)
-    return strides
-
-
-@cython.profile(False)
-cdef inline Py_ssize_t set_contiguous_strides(
+cdef inline Py_ssize_t get_contiguous_strides_inplace(
         const vector.vector[Py_ssize_t]& shape,
         vector.vector[Py_ssize_t]& strides,
         Py_ssize_t itemsize, bint is_c_contiguous):
@@ -122,14 +123,23 @@ cdef inline Py_ssize_t set_contiguous_strides(
 cpdef inline bint get_c_contiguity(
         vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
         Py_ssize_t itemsize):
-    cdef vector.vector[Py_ssize_t] r_shape, r_strides
-    cpdef Py_ssize_t ndim
+    cdef Py_ssize_t i, prev_i, ndim, sh, st, index
     ndim = strides.size()
     if ndim == 0 or (ndim == 1 and strides[0] == itemsize):
         return True
-    get_reduced_dims(shape, strides, itemsize, r_shape, r_strides)
-    ndim = r_strides.size()
-    return ndim == 0 or (ndim == 1 and r_strides[0] == itemsize)
+    prev_i = -1
+    index = st = 0
+    for i in range(ndim):
+        sh = shape[i]
+        if sh == 0:
+            return True
+        if sh == 1:
+            continue
+        st = strides[i]
+        if prev_i == -1 or strides[prev_i] != sh * st:
+            index += 1
+        prev_i = i
+    return index == 0 or (index == 1 and st == itemsize)
 
 
 @cython.profile(False)
@@ -268,7 +278,9 @@ cpdef float from_float16(uint16_t v):
 cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     cdef int order_char
     order_char = b'C' if len(order) == 0 else ord(order[0])
-    if allow_k and (order_char == b'K' or order_char == b'k'):
+    if order_char == b'K' or order_char == b'k':
+        if not allow_k:
+            raise ValueError('order \'K\' is not permitted')
         order_char = b'K'
     elif order_char == b'A' or order_char == b'a':
         order_char = b'A'
@@ -279,3 +291,75 @@ cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     else:
         raise TypeError('order not understood')
     return order_char
+
+
+cdef _broadcast_core(list arrays, vector.vector[Py_ssize_t]& shape):
+    cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh, nd
+    cdef vector.vector[Py_ssize_t] strides
+    cdef vector.vector[int] index
+    cdef ndarray a
+    cdef list ret
+
+    shape.clear()
+    index.reserve(len(arrays))
+    nd = 0
+    for i, x in enumerate(arrays):
+        if not isinstance(x, ndarray):
+            continue
+        a = x
+        index.push_back(i)
+        nd = max(nd, <Py_ssize_t>a._shape.size())
+
+    if index.size() == 0:
+        return
+
+    shape.reserve(nd)
+    for i in range(nd):
+        smin = PY_SSIZE_T_MAX
+        smax = 0
+        for j in index:
+            a = arrays[j]
+            a_ndim = <Py_ssize_t>a._shape.size()
+            if i >= nd - a_ndim:
+                s = a._shape[i - (nd - a_ndim)]
+                smin = min(smin, s)
+                smax = max(smax, s)
+        if smin == 0 and smax > 1:
+            raise ValueError(
+                'shape mismatch: objects cannot be broadcast to a '
+                'single shape')
+        shape.push_back(0 if smin == 0 else smax)
+
+    for i in index:
+        a = arrays[i]
+        if vector_equal(a._shape, shape):
+            continue
+
+        strides.assign(nd, <Py_ssize_t>0)
+        a_ndim = <Py_ssize_t>a._shape.size()
+        for j in range(a_ndim):
+            a_sh = a._shape[j]
+            if a_sh == shape[j + nd - a_ndim]:
+                strides[j + nd - a_ndim] = a._strides[j]
+            elif a_sh != 1:
+                raise ValueError(
+                    'operands could not be broadcast together with shapes '
+                    '{}'.format(
+                        ', '.join([str(x.shape) if isinstance(x, ndarray)
+                                   else '()' for x in arrays])))
+
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        arrays[i] = a._view(shape, strides, True, True)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef bint _contig_axes(tuple axes):
+    # Indicate if the specified axes are in ascending order without gaps.
+    cdef Py_ssize_t n
+    cdef bint contig = True
+    for n in range(1, len(axes)):
+        contig = (axes[n] - axes[n - 1]) == 1
+        if not contig:
+            break
+    return contig

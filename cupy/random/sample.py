@@ -1,5 +1,3 @@
-import six
-
 from cupy import core
 from cupy.creation import basic
 from cupy.random import distributions
@@ -233,7 +231,7 @@ def multinomial(n, pvals, size=None):
     if size is None:
         m = 1
         size = ()
-    elif isinstance(size, six.integer_types):
+    elif isinstance(size, int):
         m = size
         size = (size,)
     else:

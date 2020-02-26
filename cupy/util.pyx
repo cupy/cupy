@@ -6,21 +6,14 @@ import functools
 import os
 import warnings
 
+import numpy
+
 import cupy
 from cupy.cuda cimport device
-from cupy.core import _errors
 
 
 ENABLE_SLICE_COPY = bool(
     int(os.environ.get('CUPY_EXPERIMENTAL_SLICE_COPY', 0)))
-
-
-# TODO(kmaehashi) remove this when `six.moves.collections_abc` is implemented.
-# See: https://github.com/chainer/chainer/issues/5097
-try:
-    collections_abc = collections.abc
-except AttributeError:  # python <3.3
-    collections_abc = collections
 
 
 cdef list _memos = []
@@ -47,7 +40,7 @@ def _normalize_axis_index(axis, ndim):
     if axis < 0:
         axis += ndim
     if not (0 <= axis < ndim):
-        raise _errors._AxisError('axis out of bounds')
+        raise numpy.AxisError('axis out of bounds')
     return axis
 
 
@@ -198,3 +191,40 @@ The interface can change in the future. ...
 
 class PerformanceWarning(RuntimeWarning):
     """Warning that indicates possible performance issues."""
+
+
+def check_array(obj, *, arg_name):
+    """Checks if the given object is an array.
+
+    This function raises :class:`TypeError` if ``obj`` is not an instance
+    of :type:`cupy.ndarray`\\ .
+    """
+    if not isinstance(obj, cupy.ndarray):
+        raise TypeError(
+            '\'{}\' must be a cupy.ndarray object, not {}.'.format(
+                arg_name, type(obj)))
+
+
+"""
+This code is to signal when the interpreter is in shutdown mode
+to prevent using globals that could be already deleted in
+objects `__del__` method
+
+This solution is taken from the Numba/llvmlite code
+"""
+_shutting_down = [False]
+
+
+@atexit.register
+def _at_shutdown():
+    _shutting_down[0] = True
+
+
+def is_shutting_down(_shutting_down=_shutting_down):
+    """
+    Whether the interpreter is currently shutting down.
+    For use in finalizers, __del__ methods, and similar; it is advised
+    to early bind this function rather than look it up when calling it,
+    since at shutdown module globals may be cleared.
+    """
+    return _shutting_down[0]

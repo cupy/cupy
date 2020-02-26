@@ -45,7 +45,6 @@ struct CUDA_ARRAY_DESCRIPTOR {
 };
 
 
-
 ///////////////////////////////////////////////////////////////////////////////
 // cuda_runtime.h
 ///////////////////////////////////////////////////////////////////////////////
@@ -61,6 +60,7 @@ typedef hipError_t cudaError_t;
 const CUresult cudaSuccess = static_cast<CUresult>(0);
 const CUresult cudaErrorInvalidValue = hipErrorInvalidValue;
 const CUresult cudaErrorMemoryAllocation = hipErrorMemoryAllocation;
+const CUresult cudaErrorPeerAccessAlreadyEnabled = hipErrorPeerAccessAlreadyEnabled;
 typedef enum {} cudaDataType;
 typedef hipDeviceAttribute_t cudaDeviceAttr;
 enum cudaMemoryAdvise {};
@@ -103,6 +103,18 @@ typedef enum {} cublasGemmAlgo_t;
 typedef enum {} cublasMath_t;
 typedef int cudaDataType_t;
 typedef hipblasStatus_t cublasStatus_t;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// library_types.h
+// (needed for supporting cusolver)
+///////////////////////////////////////////////////////////////////////////////
+
+typedef enum libraryPropertyType_t {
+    MAJOR_VERSION,
+    MINOR_VERSION,
+    PATCH_LEVEL
+} libraryPropertyType;
 
 } // extern "C"
 

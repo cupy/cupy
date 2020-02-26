@@ -1,3 +1,4 @@
+import tempfile
 import unittest
 
 import pytest
@@ -45,7 +46,6 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_array_equal()
     def test_array_from_numpy_broad_cast(self, xp, dtype, order):
         a = testing.shaped_arange((2, 1, 4), numpy, dtype)
@@ -377,42 +377,6 @@ class TestFromData(unittest.TestCase):
         a.fill(0)
         return b
 
-    @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface(self, dtype):
-        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
-        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a))
-        testing.assert_array_equal(a, b)
-
-    @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_is_not_copied(self, dtype):
-        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
-        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a))
-        a.fill(0)
-        testing.assert_array_equal(a, b)
-
-    @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_order(self, dtype):
-        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
-        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a), order='F')
-        assert b.flags.f_contiguous
-        testing.assert_array_equal(a, b)
-
-    @testing.for_all_dtypes()
-    def test_asarray_cuda_array_interface_with_strides(self, dtype):
-        a = testing.shaped_arange((2, 3, 4), cupy, dtype).T
-        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a))
-        assert a.strides == b.strides
-        assert a.nbytes == b.data.mem.size
-
-    # TODO(leofang): remove this test when masked array is supported
-    def test_asarray_cuda_array_interface_with_masked_array(self):
-        a = cupy.arange(10)
-        mask = cupy.zeros(10)
-        a = DummyObjectWithCudaArrayInterface(a, mask)
-        with pytest.raises(ValueError) as ex:
-            b = cupy.asarray(a)  # noqa
-        assert 'does not support' in str(ex.value)
-
     def test_ascontiguousarray_on_noncontiguous_array(self):
         a = testing.shaped_arange((2, 3, 4))
         b = a.transpose(2, 0, 1)
@@ -474,23 +438,110 @@ class TestFromData(unittest.TestCase):
         a = xp.ones((), dtype=dtype_a)
         return xp.asfortranarray(a, dtype=dtype_b)
 
+    @testing.numpy_cupy_array_equal()
+    def test_fromfile(self, xp):
+        with tempfile.TemporaryFile() as fh:
+            fh.write(b"\x00\x01\x02\x03\x04")
+            fh.flush()
+            fh.seek(0)
+            return xp.fromfile(fh, dtype="u1")
+
+
+max_cuda_array_interface_version = 2
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'ver': tuple(range(max_cuda_array_interface_version+1)),
+    'strides': (False, None, True),
+}))
+class TestCudaArrayInterface(unittest.TestCase):
+    @testing.for_all_dtypes()
+    def test_base(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.asarray(
+            DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
+        testing.assert_array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    def test_not_copied(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.asarray(
+            DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
+        a.fill(0)
+        testing.assert_array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    def test_order(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = cupy.asarray(
+            DummyObjectWithCudaArrayInterface(a, self.ver, self.strides),
+            order='F')
+        assert b.flags.f_contiguous
+        testing.assert_array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    def test_with_strides(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype).T
+        b = cupy.asarray(
+            DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
+        assert a.strides == b.strides
+        assert a.nbytes == b.data.mem.size
+
+    @testing.for_all_dtypes()
+    def test_with_zero_size_array(self, dtype):
+        a = testing.shaped_arange((0,), cupy, dtype)
+        b = cupy.asarray(
+            DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
+        assert a.strides == b.strides
+        assert a.nbytes == b.data.mem.size
+        assert a.data.ptr == 0
+        assert a.size == 0
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'ver': tuple(range(1, max_cuda_array_interface_version+1)),
+    'strides': (False, None, True),
+}))
+class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
+    # TODO(leofang): update this test when masked array is supported
+    @testing.for_all_dtypes()
+    def test_masked_array(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        mask = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        a = DummyObjectWithCudaArrayInterface(a, self.ver, self.strides, mask)
+        with pytest.raises(ValueError) as ex:
+            b = cupy.asarray(a)  # noqa
+        assert 'does not support' in str(ex.value)
+
 
 class DummyObjectWithCudaArrayInterface(object):
-
-    def __init__(self, a, mask=None):
+    def __init__(self, a, ver, include_strides=False, mask=None):
+        assert ver in tuple(range(max_cuda_array_interface_version+1))
         self.a = a
+        self.ver = ver
+        self.include_strides = include_strides
         self.mask = mask
 
     @property
     def __cuda_array_interface__(self):
         desc = {
             'shape': self.a.shape,
-            'strides': self.a.strides,
             'typestr': self.a.dtype.str,
             'descr': self.a.dtype.descr,
             'data': (self.a.data.ptr, False),
-            'version': 2,
+            'version': self.ver,
         }
+        if self.a.flags.c_contiguous:
+            if self.include_strides is True:
+                desc['strides'] = self.a.strides
+            elif self.include_strides is None:
+                desc['strides'] = None
+            else:  # self.include_strides is False
+                pass
+        else:  # F contiguous or neither
+            desc['strides'] = self.a.strides
         if self.mask is not None:
             desc['mask'] = self.mask
         return desc

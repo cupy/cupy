@@ -21,7 +21,7 @@ class TestRounding(unittest.TestCase):
         return getattr(xp, name)(a)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_raises(TypeError)
+    @testing.numpy_cupy_raises(accept_error=TypeError)
     def check_unary_complex_unsupported(self, name, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         getattr(xp, name)(a)
@@ -64,11 +64,11 @@ class TestRounding(unittest.TestCase):
 
     def test_around(self):
         self.check_unary('around')
-        self.check_unary_complex_unsupported('around')
+        self.check_unary_complex('around')
 
     def test_round_(self):
         self.check_unary('round_')
-        self.check_unary_complex_unsupported('around')
+        self.check_unary_complex('around')
 
 
 @testing.parameterize(*testing.product({

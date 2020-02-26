@@ -41,6 +41,10 @@ cublasStatus_t cublasGetMathMode(...) {
     return CUBLAS_STATUS_NOT_SUPPORTED;
 }
 
+CUresult cuLaunchCooperativeKernel(...) {
+    return CUDA_ERROR_NOT_SUPPORTED;
+}
+
 #endif // #if CUDA_VERSION < 9000
 
 } // extern "C"
@@ -99,6 +103,10 @@ CUresult cuLinkAddData(...) {
     return CUDA_SUCCESS;
 }
 
+CUresult cuLinkAddFile(...) {
+    return CUDA_SUCCESS;
+}
+
 CUresult cuLinkComplete(...) {
     return CUDA_SUCCESS;
 }
@@ -132,6 +140,10 @@ CUresult cuModuleGetTexRef(...) {
 }
 
 CUresult cuLaunchKernel(...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuLaunchCooperativeKernel(...) {
     return CUDA_SUCCESS;
 }
 
@@ -178,10 +190,6 @@ CUresult cuTexRefSetFormat (...) {
 }
 
 CUresult cuTexRefSetMaxAnisotropy (...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuParamSetTexRef (...) {
     return CUDA_SUCCESS;
 }
 

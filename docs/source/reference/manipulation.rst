@@ -67,6 +67,7 @@ Changing kind of array
    cupy.asanyarray
    cupy.asfortranarray
    cupy.ascontiguousarray
+   cupy.require
 
 
 Joining arrays
