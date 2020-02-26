@@ -308,6 +308,7 @@ from cupy.manipulation.join import stack  # NOQA
 from cupy.manipulation.join import vstack  # NOQA
 
 from cupy.manipulation.kind import asfortranarray  # NOQA
+from cupy.manipulation.kind import require  # NOQA
 
 from cupy.manipulation.split import array_split  # NOQA
 from cupy.manipulation.split import dsplit  # NOQA
