@@ -332,6 +332,7 @@ from cupy.manipulation.rearrange import rot90  # NOQA
 from cupy.binary.elementwise import bitwise_and  # NOQA
 from cupy.binary.elementwise import bitwise_or  # NOQA
 from cupy.binary.elementwise import bitwise_xor  # NOQA
+from cupy.binary.elementwise import bitwise_not  # NOQA
 from cupy.binary.elementwise import invert  # NOQA
 from cupy.binary.elementwise import left_shift  # NOQA
 from cupy.binary.elementwise import right_shift  # NOQA
