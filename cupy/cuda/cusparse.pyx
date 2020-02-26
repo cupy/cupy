@@ -1,8 +1,11 @@
 cimport cython  # NOQA
 
+from libc.stdint cimport int64_t, intptr_t
+
 from cupy.cuda cimport driver
 from cupy.cuda cimport stream as stream_module
 from cupy.cuda.runtime cimport DataType
+
 
 cdef extern from 'cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':
@@ -870,6 +873,114 @@ cdef extern from 'cupy_cusparse.h' nogil:
         cuDoubleComplex *dl, cuDoubleComplex *d, cuDoubleComplex *du,
         cuDoubleComplex *dw, cuDoubleComplex *x, int batchCount, void *pBuffer)
 
+    # Sparse Vector APIs
+    Status cusparseCreateSpVec(SpVecDescr* spVecDescr, int64_t size,
+                               int64_t nnz, void* indices, void* values,
+                               IndexType idxType, IndexBase idxBase,
+                               DataType valueType)
+    Status cusparseDestroySpVec(SpVecDescr spVecDescr)
+    Status cusparseSpVecGet(SpVecDescr spVecDescr, int64_t* size, int64_t* nnz,
+                            void** indices, void** values, IndexType* idxType,
+                            IndexBase* idxBase, DataType* valueType)
+    Status cusparseSpVecGetIndexBase(SpVecDescr spVecDescr, IndexBase* idxBae)
+    Status cusparseSpVecGetValues(SpVecDescr spVecDescr, void** values)
+    Status cusparseSpVecSetValues(SpVecDescr spVecDescr, void* values)
+
+    # Sparse Matrix APIs
+    Status cusparseCreateCoo(SpMatDescr* spMatDescr, int64_t rows,
+                             int64_t cols, int64_t nnz, void* cooRowInd,
+                             void* cooColInd, void* cooValues,
+                             IndexType cooIdxType, IndexBase idxBase,
+                             DataType valueType)
+    Status cusparseCreateCooAoS(SpMatDescr* spMatDescr, int64_t rows,
+                                int64_t cols, int64_t nnz, void* cooInd,
+                                void* cooValues, IndexType cooIdxType,
+                                IndexBase idxBase, DataType valueType)
+    Status cusparseCreateCsr(SpMatDescr* spMatDescr, int64_t rows,
+                             int64_t cols, int64_t nnz, void* csrRowOffsets,
+                             void* csrColind, void* csrValues,
+                             IndexType csrRowOffsetsType,
+                             IndexType csrColIndType, IndexBase idxBase,
+                             DataType valueType)
+    Status cusparseDestroySpMat(SpMatDescr spMatDescr)
+    Status cusparseCooGet(SpMatDescr spMatDescr, int64_t* rows, int64_t* cols,
+                          int64_t* nnz, void** cooRowInd, void** cooColInd,
+                          void** cooValues, IndexType* idxType,
+                          IndexBase* idxBase, DataType* valueType)
+    Status cusparseCooAoSGet(SpMatDescr spMatDescr, int64_t* rows,
+                             int64_t* cols, int64_t* nnz, void** cooInd,
+                             void** cooValues, IndexType* idxType,
+                             IndexBase* idxBase, DataType* valueType)
+    Status cusparseCsrGet(SpMatDescr spMatDescr, int64_t* rows, int64_t* cols,
+                          int64_t* nnz, void** csrRowOffsets, void** csrColInd,
+                          void** csrValues, IndexType* csrRowOffsetsType,
+                          IndexType* csrColIndType, IndexBase* idxBase,
+                          DataType* valueType)
+    Status cusparseSpMatGetFormat(SpMatDescr spMatDescr, Format* format)
+    Status cusparseSpMatGetIndexBase(SpMatDescr spMatDescr, IndexBase* idxBase)
+    Status cusparseSpMatGetValues(SpMatDescr spMatDescr, void** values)
+    Status cusparseSpMatSetValues(SpMatDescr spMatDescr, void* values)
+    Status cusparseSpMatGetStridedBatch(SpMatDescr spMatDescr, int* batchCount)
+    Status cusparseSpMatSetStridedBatch(SpMatDescr spMatDescr, int batchCount)
+
+    # Dense Vector APIs
+    Status cusparseCreateDnVec(DnVecDescr *dnVecDescr, int64_t size,
+                               void* values, DataType valueType)
+    Status cusparseDestroyDnVec(DnVecDescr dnVecDescr)
+    Status cusparseDnVecGet(DnVecDescr dnVecDescr, int64_t* size,
+                            void** values, DataType* valueType)
+    Status cusparseDnVecGetValues(DnVecDescr dnVecDescr, void** values)
+    Status cusparseDnVecSetValues(DnVecDescr dnVecDescr, void* values)
+
+    # Dense Matrix APIs
+    Status cusparseCreateDnMat(DnMatDescr* dnMatDescr, int64_t rows,
+                               int64_t cols, int64_t ld, void* values,
+                               DataType valueType, Order order)
+    Status cusparseDestroyDnMat(DnMatDescr dnVecDescr)
+    Status cusparseDnMatGet(DnMatDescr dnMatDescr, int64_t* rows,
+                            int64_t* cols, int64_t* ld, void** values,
+                            DataType* valueType, Order* order)
+    Status cusparseDnMatGetValues(DnMatDescr spMatDescr, void** values)
+    Status cusparseDnMatSetValues(DnMatDescr spMatDescr, void* values)
+    Status cusparseDnMatGetStridedBatch(DnMatDescr dnMatDescr, int* batchCount,
+                                        int64_t *batchStride)
+    Status cusparseDnMatSetStridedBatch(DnMatDescr dnMatDescr, int batchCount,
+                                        int64_t batchStride)
+
+    # Generic API Functions
+    Status cusparseSpVV_bufferSize(Handle handle, Operation opX,
+                                   SpVecDescr vecX, DnVecDescr vecY,
+                                   void* result, DataType computeType,
+                                   size_t* bufferSize)
+    Status cusparseSpVV(Handle handle, Operation opX, SpVecDescr vecX,
+                        DnVecDescr vecY, void* result, DataType computeType,
+                        void* externalBuffer)
+    Status cusparseSpMV_bufferSize(Handle handle, Operation opA, void* alpha,
+                                   SpMatDescr matA, DnVecDescr vecX,
+                                   void* beta, DnVecDescr vecY,
+                                   DataType computeType, SpMVAlg alg,
+                                   size_t* bufferSize)
+    Status cusparseSpMV(Handle handle, Operation opA, void* alpha,
+                        SpMatDescr matA, DnVecDescr vecX, void* beta,
+                        DnVecDescr vecY, DataType computeType, SpMVAlg alg,
+                        void* externalBuffer)
+    Status cusparseSpMM_bufferSize(Handle handle, Operation opA, Operation opB,
+                                   void* alpha, SpMatDescr matA,
+                                   DnMatDescr matB, void* beta,
+                                   DnMatDescr matC, DataType computeType,
+                                   SpMMAlg alg, size_t* bufferSize)
+    Status cusparseSpMM(Handle handle, Operation opA, Operation opB,
+                        void* alpha, SpMatDescr matA, DnMatDescr matB,
+                        void* beta, DnMatDescr matC, DataType computeType,
+                        SpMMAlg alg, void* externalBuffer)
+    Status cusparseConstrainedGeMM_bufferSize(
+        Handle handle, Operation opA, Operation opB, void* alpha,
+        DnMatDescr matA, DnMatDescr matB, void* beta, SpMatDescr matC,
+        DataType computeType, size_t* bufferSize)
+    Status cusparseConstrainedGeMM(
+        Handle handle, Operation opA, Operation opB, void* alpha,
+        DnMatDescr matA, DnMatDescr matB, void* beta, SpMatDescr matC,
+        DataType computeType, void* externalBuffer)
 
 cdef dict STATUS = {
     0: 'CUSPARSE_STATUS_SUCCESS',
@@ -884,6 +995,96 @@ cdef dict STATUS = {
     9: 'CUSPARSE_STATUS_ZERO_PIVOT',
     10: 'CUSPARSE_STATUS_NOT_SUPPORTED',
 }
+
+
+cdef class SpVecAttributes:
+
+    def __init__(self, int64_t size, int64_t nnz,
+                 intptr_t idx, intptr_t values,
+                 IndexType idxType, IndexBase idxBase, DataType valueType):
+        self.size = size
+        self.nnz = nnz
+        self.idx = idx
+        self.values = values
+        self.idxType = idxType
+        self.idxBase = idxBase
+        self.valueType = valueType
+
+
+cdef class CooAttributes:
+
+    def __init__(self, int64_t rows, int64_t cols, int64_t nnz,
+                 intptr_t rowIdx, intptr_t colIdx, intptr_t values,
+                 IndexType idxType, IndexBase idxBase, DataType valueType):
+        self.rows = rows
+        self.cols = cols
+        self.nnz = nnz
+        self.rowIdx = rowIdx
+        self.colIdx = colIdx
+        self.values = values
+        self.idxType = idxType
+        self.idxBase = idxBase
+        self.valueType = valueType
+
+
+cdef class CooAoSAttributes:
+
+    def __init__(self, int64_t rows, int64_t cols, int64_t nnz,
+                 intptr_t ind, intptr_t values,
+                 IndexType idxType, IndexBase idxBase, DataType valueType):
+        self.rows = rows
+        self.cols = cols
+        self.nnz = nnz
+        self.ind = ind
+        self.values = values
+        self.idxType = idxType
+        self.idxBase = idxBase
+        self.valueType = valueType
+
+
+cdef class CsrAttributes:
+
+    def __init__(self, int64_t rows, int64_t cols, int64_t nnz,
+                 intptr_t rowOffsets, intptr_t colIdx, intptr_t values,
+                 IndexType rowOffsetType, IndexType colIdxType,
+                 IndexBase idxBase, DataType valueType):
+        self.rows = rows
+        self.cols = cols
+        self.nnz = nnz
+        self.rowOffsets = rowOffsets
+        self.colIdx = colIdx
+        self.values = values
+        self.rowOffsetType = rowOffsetType
+        self.colIdxType = colIdxType
+        self.idxBase = idxBase
+        self.valueType = valueType
+
+
+cdef class DnVecAttributes:
+
+    def __init__(self, int64_t size, intptr_t values, DataType valueType):
+        self.size = size
+        self.values = values
+        self.valueType = valueType
+
+
+cdef class DnMatAttributes:
+
+    def __init__(self, int64_t rows, int64_t cols, int64_t ld,
+                 intptr_t values, DataType valueType, Order order):
+        self.rows = rows
+        self.cols = cols
+        self.ld = ld
+        self.values = values
+        self.valueType = valueType
+        self.order = order
+
+
+cdef class DnMatBatchAttributes:
+
+    def __init__(self, int count, int64_t stride):
+        self.count = count
+        self.stride = stride
 
 
 class CuSparseError(RuntimeError):
@@ -3136,4 +3337,331 @@ cpdef zgpsvInterleavedBatch(size_t handle, int algo, int m, size_t ds,
             <cuDoubleComplex*>dl, <cuDoubleComplex*>d, <cuDoubleComplex*>du,
             <cuDoubleComplex*>dw, <cuDoubleComplex*>x, batchCount,
             <void*>pBuffer)
+    check_status(status)
+
+############################################################
+# Sparse Vector APIs
+
+cpdef size_t createSpVec(int64_t size, int64_t nnz, intptr_t indices,
+                         intptr_t values, IndexType idxType, IndexBase idxBase,
+                         DataType valueType) except? 0:
+    cdef SpVecDescr desc
+    status = cusparseCreateSpVec(&desc, size, nnz, <void*>indices,
+                                 <void*>values, idxType, idxBase, valueType)
+    check_status(status)
+    return <size_t>desc
+
+cpdef destroySpVec(size_t desc):
+    status = cusparseDestroySpVec(<SpVecDescr>desc)
+    check_status(status)
+
+cpdef SpVecAttributes spVecGet(size_t desc):
+    cdef int64_t size, nnz
+    cdef intptr_t indices, values
+    cdef IndexType idxType
+    cdef IndexBase idxBase
+    cdef DataType valueType
+    status = cusparseSpVecGet(<SpVecDescr>desc, &size, &nnz,
+                              <void**>&indices, <void**>&values,
+                              &idxType, &idxBase, &valueType)
+    check_status(status)
+    return SpVecAttributes(size, nnz, indices, values, idxType, idxBase,
+                           valueType)
+
+cpdef int spVecGetIndexBase(size_t desc):
+    cdef IndexBase idxBase
+    status = cusparseSpVecGetIndexBase(<SpVecDescr>desc, &idxBase)
+    check_status(status)
+    return <int>idxBase
+
+cpdef intptr_t spVecGetValues(size_t desc):
+    cdef intptr_t values
+    status = cusparseSpVecGetValues(<SpVecDescr>desc, <void**>&values)
+    check_status(status)
+    return values
+
+cpdef spVecSetValues(size_t desc, intptr_t values):
+    status = cusparseSpVecSetValues(<SpVecDescr>desc, <void*>values)
+    check_status(status)
+
+############################################################
+# Sparse Matrix APIs
+
+cpdef size_t createCoo(int64_t rows, int64_t cols, int64_t nnz,
+                       intptr_t cooRowInd, intptr_t cooColInd,
+                       intptr_t cooValues, IndexType cooIdxType,
+                       IndexBase idxBase, DataType valueType):
+    cdef SpMatDescr desc
+    status = cusparseCreateCoo(&desc, rows, cols, nnz, <void*>cooRowInd,
+                               <void*>cooColInd, <void*>cooValues,
+                               cooIdxType, idxBase, valueType)
+    check_status(status)
+    return <size_t>desc
+
+cpdef size_t createCooAoS(int64_t rows, int64_t cols, int64_t nnz,
+                          intptr_t cooInd, intptr_t cooValues,
+                          IndexType cooIdxType, IndexBase idxBase,
+                          DataType valueType):
+    cdef SpMatDescr desc
+    status = cusparseCreateCooAoS(&desc, rows, cols, nnz, <void*>cooInd,
+                                  <void*>cooValues, cooIdxType, idxBase,
+                                  valueType)
+    check_status(status)
+    return <size_t>desc
+
+cpdef size_t createCsr(int64_t rows, int64_t cols, int64_t nnz,
+                       intptr_t csrRowOffsets, intptr_t csrColind,
+                       intptr_t csrValues, IndexType csrRowOffsetsType,
+                       IndexType csrColIndType, IndexBase idxBase,
+                       DataType valueType):
+    cdef SpMatDescr desc
+    status = cusparseCreateCsr(&desc, rows, cols, nnz,
+                               <void*>csrRowOffsets, <void*>csrColind,
+                               <void*>csrValues, csrRowOffsetsType,
+                               csrColIndType, idxBase, valueType)
+    check_status(status)
+    return <size_t>desc
+
+cpdef destroySpMat(size_t desc):
+    status = cusparseDestroySpMat(<SpMatDescr>desc)
+    check_status(status)
+
+cpdef cooGet(size_t desc):
+    cdef int64_t rows, cols, nnz
+    cdef intptr_t rowInd, colInd, values,
+    cdef IndexType idxType,
+    cdef IndexBase idxBase,
+    cdef DataType valueType
+    status = cusparseCooGet(<SpMatDescr>desc, &rows, &cols, &nnz,
+                            <void**>&rowInd, <void**>&colInd, <void**>&values,
+                            &idxType, &idxBase, &valueType)
+    check_status(status)
+    return CooAttributes(rows, cols, nnz, rowInd, colInd, values,
+                         idxType, idxBase, valueType)
+
+cpdef cooAoSGet(size_t desc):
+    cdef int64_t rows, cols, nnz
+    cdef intptr_t ind, values,
+    cdef IndexType idxType,
+    cdef IndexBase idxBase,
+    cdef DataType valueType
+    status = cusparseCooAoSGet(<SpMatDescr>desc, &rows, &cols, &nnz,
+                               <void**>&ind, <void**>&values,
+                               &idxType, &idxBase, &valueType)
+    check_status(status)
+    return CooAoSAttributes(rows, cols, nnz, ind, values,
+                            idxType, idxBase, valueType)
+
+cpdef csrGet(size_t desc):
+    cdef int64_t rows, cols, nnz
+    cdef intptr_t rowOffsets, colInd, values,
+    cdef IndexType rowOffsetsType, colIndType
+    cdef IndexBase idxBase
+    cdef DataType valueType
+    status = cusparseCsrGet(<SpMatDescr>desc, &rows, &cols, &nnz,
+                            <void**>&rowOffsets, <void**>&colInd,
+                            <void**>&values, &rowOffsetsType, &colIndType,
+                            &idxBase, &valueType)
+    check_status(status)
+    return CsrAttributes(rows, cols, nnz, rowOffsets, colInd, values,
+                         rowOffsetsType, colIndType, idxBase, valueType)
+
+cpdef int spMatGetFormat(size_t desc):
+    cdef Format format
+    status = cusparseSpMatGetFormat(<SpMatDescr>desc, &format)
+    check_status(status)
+    return <int>format
+
+cpdef int spMatGetIndexBase(size_t desc):
+    cdef IndexBase idxBase
+    status = cusparseSpMatGetIndexBase(<SpMatDescr>desc, &idxBase)
+    check_status(status)
+    return <int>idxBase
+
+cpdef intptr_t spMatGetValues(size_t desc):
+    cdef intptr_t values
+    status = cusparseSpMatGetValues(<SpMatDescr>desc, <void**>&values)
+    check_status(status)
+    return values
+
+cpdef spMatSetValues(size_t desc, intptr_t values):
+    status = cusparseSpMatSetValues(<SpMatDescr>desc, <void*>values)
+    check_status(status)
+
+cpdef int spMatGetStridedBatch(size_t desc):
+    cpdef int batchCount
+    status = cusparseSpMatGetStridedBatch(<SpMatDescr>desc, &batchCount)
+    check_status(status)
+    return batchCount
+
+cpdef spMatSetStridedBatch(size_t desc, int batchCount):
+    status = cusparseSpMatSetStridedBatch(<SpMatDescr>desc, batchCount)
+    check_status(status)
+
+############################################################
+# Dense Vector APIs
+
+cpdef size_t createDnVec(int64_t size, intptr_t values,
+                         DataType valueType) except? 0:
+    cdef DnVecDescr desc
+    status = cusparseCreateDnVec(&desc, size, <void*>values, valueType)
+    check_status(status)
+    return <size_t>desc
+
+cpdef destroyDnVec(size_t desc):
+    status = cusparseDestroyDnVec(<DnVecDescr>desc)
+    check_status(status)
+
+cpdef DnVecAttributes dnVecGet(size_t desc):
+    cdef int64_t size
+    cdef intptr_t indices, values
+    cdef DataType valueType
+    status = cusparseDnVecGet(<DnVecDescr>desc, &size, <void**>&values,
+                              &valueType)
+    check_status(status)
+    return DnVecAttributes(size, values, valueType)
+
+cpdef intptr_t dnVecGetValues(size_t desc):
+    cdef intptr_t values
+    status = cusparseDnVecGetValues(<DnVecDescr>desc, <void**>&values)
+    check_status(status)
+    return values
+
+cpdef dnVecSetValues(size_t desc, intptr_t values):
+    status = cusparseDnVecSetValues(<DnVecDescr>desc, <void*>values)
+    check_status(status)
+
+############################################################
+# Dense Matrix APIs
+
+cpdef size_t createDnMat(int64_t rows, int64_t cols, int64_t ld,
+                         intptr_t values, DataType valueType, Order order):
+    cdef DnMatDescr desc
+    status = cusparseCreateDnMat(&desc, rows, cols, ld, <void*>values,
+                                 valueType, order)
+    check_status(status)
+    return <size_t>desc
+
+cpdef destroyDnMat(size_t desc):
+    status = cusparseDestroyDnMat(<DnMatDescr>desc)
+    check_status(status)
+
+cpdef dnMatGet(size_t desc):
+    cdef int64_t rows, cols, ld
+    cdef intptr_t values,
+    cdef DataType valueType
+    cdef Order order
+    status = cusparseDnMatGet(<DnMatDescr>desc, &rows, &cols, &ld,
+                              <void**>&values, &valueType, &order)
+    check_status(status)
+    return DnMatAttributes(rows, cols, ld, values, valueType, order)
+
+cpdef intptr_t dnMatGetValues(size_t desc):
+    cdef intptr_t values
+    status = cusparseDnMatGetValues(<DnMatDescr>desc, <void**>&values)
+    check_status(status)
+    return values
+
+cpdef dnMatSetValues(size_t desc, intptr_t values):
+    status = cusparseDnMatSetValues(<DnMatDescr>desc, <void*>values)
+    check_status(status)
+
+cpdef DnMatBatchAttributes dnMatGetStridedBatch(size_t desc):
+    cpdef int batchCount
+    cpdef int64_t batchStride
+    status = cusparseDnMatGetStridedBatch(<DnMatDescr>desc, &batchCount,
+                                          &batchStride)
+    check_status(status)
+    return DnMatBatchAttributes(batchCount, batchStride)
+
+cpdef dnMatSetStridedBatch(size_t desc, int batchCount, int64_t batchStride):
+    status = cusparseDnMatSetStridedBatch(<DnMatDescr>desc, batchCount,
+                                          batchStride)
+    check_status(status)
+
+############################################################
+# Generic API Functions
+
+cpdef size_t spVV_bufferSize(size_t handle, Operation opX,
+                             size_t vecX, size_t vecY,
+                             intptr_t result, DataType computeType):
+    cpdef size_t bufferSize
+    status = cusparseSpVV_bufferSize(<Handle>handle, opX,
+                                     <SpVecDescr>vecX, <DnVecDescr>vecY,
+                                     <void*>result, computeType, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef spVV(size_t handle, Operation opX, size_t vecX, size_t vecY,
+           intptr_t result, DataType computeType, intptr_t externalBuffer):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseSpVV(<Handle>handle, opX, <SpVecDescr>vecX,
+                          <DnVecDescr>vecY, <void*>result, computeType,
+                          <void*>externalBuffer)
+    check_status(status)
+
+cpdef size_t spMV_bufferSize(size_t handle, Operation opA, intptr_t alpha,
+                             size_t matA, size_t vecX, intptr_t beta,
+                             size_t vecY, DataType computeType, SpMVAlg alg):
+    cpdef size_t bufferSize
+    status = cusparseSpMV_bufferSize(<Handle>handle, opA, <void*>alpha,
+                                     <SpMatDescr>matA, <DnVecDescr>vecX,
+                                     <void*>beta, <DnVecDescr>vecY,
+                                     computeType, alg, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef spMV(size_t handle, Operation opA, intptr_t alpha, size_t matA,
+           size_t vecX, intptr_t beta, size_t vecY, DataType computeType,
+           SpMVAlg alg, intptr_t externalBuffer):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseSpMV(<Handle>handle, opA, <void*>alpha, <SpMatDescr>matA,
+                          <DnVecDescr>vecX, <void*>beta, <DnVecDescr>vecY,
+                          computeType, alg, <void*>externalBuffer)
+    check_status(status)
+
+cpdef size_t spMM_bufferSize(size_t handle, Operation opA, Operation opB,
+                             intptr_t alpha, size_t matA, size_t matB,
+                             intptr_t beta, size_t matC, DataType computeType,
+                             SpMMAlg alg):
+    cpdef size_t bufferSize
+    status = cusparseSpMM_bufferSize(<Handle>handle, opA, opB, <void*>alpha,
+                                     <SpMatDescr>matA, <DnMatDescr>matB,
+                                     <void*>beta, <DnMatDescr>matC,
+                                     computeType, alg, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef spMM(size_t handle, Operation opA, Operation opB, intptr_t alpha,
+           size_t matA, size_t matB, intptr_t beta, size_t matC,
+           DataType computeType, SpMMAlg alg, intptr_t externalBuffer):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseSpMM(<Handle>handle, opA, opB, <void*>alpha,
+                          <SpMatDescr>matA, <DnMatDescr>matB, <void*>beta,
+                          <DnMatDescr>matC, computeType, alg,
+                          <void*>externalBuffer)
+    check_status(status)
+
+cpdef size_t constrainedGeMM_bufferSize(size_t handle, Operation opA,
+                                        Operation opB, intptr_t alpha,
+                                        size_t matA, size_t matB,
+                                        intptr_t beta, size_t matC,
+                                        DataType computeType):
+    cpdef size_t bufferSize
+    status = cusparseConstrainedGeMM_bufferSize(
+        <Handle>handle, opA, opB, <void*>alpha, <DnMatDescr>matA,
+        <DnMatDescr>matB, <void*>beta, <SpMatDescr>matC, computeType,
+        &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef constrainedGeMM(size_t handle, Operation opA, Operation opB,
+                      intptr_t alpha, size_t matA, size_t matB, intptr_t beta,
+                      size_t matC, DataType computeType,
+                      intptr_t externalBuffer):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseConstrainedGeMM(
+        <Handle>handle, opA, opB, <void*>alpha, <DnMatDescr>matA,
+        <DnMatDescr>matB, <void*>beta, <SpMatDescr>matC, computeType,
+        <void*>externalBuffer)
     check_status(status)
