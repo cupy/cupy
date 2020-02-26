@@ -10,6 +10,7 @@ except ImportError:
 
 from cupy import testing
 from cupyx import fallback_mode
+from cupyx._ufunc_config import geterr, seterr, errstate
 
 
 if sys.version_info < (3, 4):
@@ -38,14 +39,14 @@ class TestNotifications(unittest.TestCase):
 
     def test_seterr_geterr(self):
 
-        default = fallback_mode.geterr()
-        assert default == 'warn'
+        default = geterr()
+        assert default['fallback_mode'] == 'warn'
 
-        old = fallback_mode.seterr('ignore')
-        current = fallback_mode.geterr()
-        assert old == 'warn'
-        assert current == 'ignore'
-        fallback_mode.seterr(old)
+        old = seterr(fallback_mode='ignore')
+        current = geterr()
+        assert old['fallback_mode'] == 'warn'
+        assert current['fallback_mode'] == 'ignore'
+        seterr(**old)
 
     def test_geterrcall(self):
 
@@ -59,16 +60,16 @@ class TestNotifications(unittest.TestCase):
 
     def test_errstate(self):
 
-        old = fallback_mode.seterr('print')
-        before = fallback_mode.geterr()
+        old = seterr(fallback_mode='print')
+        before = geterr()
 
-        with fallback_mode.errstate('log'):
-            inside = fallback_mode.geterr()
-            assert inside == 'log'
+        with errstate(fallback_mode='raise'):
+            inside = geterr()
+            assert inside['fallback_mode'] == 'raise'
 
-        after = fallback_mode.geterr()
-        assert before == after
-        fallback_mode.seterr(old)
+        after = geterr()
+        assert before['fallback_mode'] == after['fallback_mode']
+        seterr(**old)
 
     def test_errstate_func(self):
 
@@ -113,7 +114,7 @@ class TestNotificationModes(unittest.TestCase):
 
     def test_notification_ignore(self):
 
-        old = fallback_mode.seterr('ignore')
+        old = seterr(fallback_mode='ignore')
         saved_stdout = StringIO()
 
         with contextlib.redirect_stdout(saved_stdout):
@@ -121,13 +122,13 @@ class TestNotificationModes(unittest.TestCase):
             b = testing.shaped_random(self.shape, fallback_mode.numpy)
             self.func(a, b)
 
-        fallback_mode.seterr(old)
+        seterr(**old)
         output = saved_stdout.getvalue().strip()
         assert output == ""
 
     def test_notification_print(self):
 
-        old = fallback_mode.seterr('print')
+        old = seterr(fallback_mode='print')
         saved_stdout = StringIO()
 
         with contextlib.redirect_stdout(saved_stdout):
@@ -135,7 +136,7 @@ class TestNotificationModes(unittest.TestCase):
             b = testing.shaped_random(self.shape, fallback_mode.numpy)
             self.func(a, b)
 
-        fallback_mode.seterr(old)
+        seterr(**old)
         nf = self.func._numpy_object
         output = saved_stdout.getvalue().strip()
         msg1 = "'{}' method not in cupy, ".format(nf.__name__)
@@ -144,7 +145,7 @@ class TestNotificationModes(unittest.TestCase):
 
     def test_notification_warn(self):
 
-        fallback_mode.seterr('warn')
+        seterr(fallback_mode='warn')
 
         with pytest.warns(fallback_mode.notification.FallbackWarning):
             a = testing.shaped_random(self.shape, fallback_mode.numpy)
@@ -153,14 +154,14 @@ class TestNotificationModes(unittest.TestCase):
 
     def test_notification_raise(self):
 
-        old = fallback_mode.seterr('raise')
+        old = seterr(fallback_mode='raise')
 
         with pytest.raises(AttributeError):
             a = testing.shaped_random(self.shape, fallback_mode.numpy)
             b = testing.shaped_random(self.shape, fallback_mode.numpy)
             self.func(a, b)
 
-        fallback_mode.seterr(old)
+        seterr(**old)
 
     def test_notification_call(self):
 
