@@ -124,7 +124,7 @@ class TestHistogram(unittest.TestCase):
         a = xp.arange(10, dtype=dtype)
         h, b = xp.histogram(a, weights=xp.ones(10, int))
         assert xp.issubdtype(h.dtype, xp.integer)
-        return h, b
+        return h
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose()
@@ -133,7 +133,7 @@ class TestHistogram(unittest.TestCase):
         a = xp.arange(10, dtype=dtype)
         h, b = xp.histogram(a, weights=xp.ones(10, float))
         assert xp.issubdtype(h.dtype, xp.floating)
-        return h, b
+        return h
 
     def test_histogram_weights_basic(self):
         v = cupy.random.rand(100)
