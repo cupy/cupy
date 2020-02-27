@@ -4,7 +4,30 @@ from numpy import linalg
 import cupy
 from cupy.linalg import decomposition
 from cupy.linalg import util
+from cupy.linalg import svd
 
+def _multi_svd_norm(x, row_axis, col_axis, op):
+    """Compute a function of the singular values of the 2-D matrices in `x`.
+    This is a private utility function used by `cumpy.linalg.norm()`.
+    Parameters
+    ----------
+    x : cupy.ndarray
+    row_axis, col_axis : int
+        The axes of `x` that hold the 2-D matrices.
+    op : callable
+        This should be either `cupy.amin` or `cumpy.amax` or `cumpy.sum`.
+    Returns
+    -------
+    result : float or cupy.ndarray
+        If `x` is 2-D, the return values is a float.
+        Otherwise, it is an array with ``x.ndim - 2`` dimensions.
+        The return values are either the minimum or maximum or sum of the
+        singular values of the matrices, depending on whether `op`
+        is `cupy.amin` or `cupy.amax` or `cupy.sum`.
+    """
+    y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
+    result = op(svd(y, compute_uv=False), axis=-1)
+    return result
 
 def norm(x, ord=None, axis=None, keepdims=False):
     """Returns one of matrix norms specified by ``ord`` parameter.
@@ -97,7 +120,11 @@ def norm(x, ord=None, axis=None, keepdims=False):
                              (axis, x.shape))
         if row_axis == col_axis:
             raise ValueError('Duplicate axes given.')
-        if ord == 1:
+        if ord == 2:
+            ret =  _multi_svd_norm(x, row_axis, col_axis, cupy.amax)
+        elif ord == -2:
+            ret = _multi_svd_norm(x, row_axis, col_axis, cupy.amin)
+        elif ord == 1:
             if col_axis > row_axis:
                 col_axis -= 1
             ret = abs(x).sum(axis=row_axis).max(axis=col_axis)
@@ -120,6 +147,8 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 ret = cupy.sqrt(s.sum(axis=axis))
             else:
                 ret = cupy.sqrt((x * x).sum(axis=axis))
+        elif ord == 'nuc':
+            ret = _multi_svd_norm(x, row_axis, col_axis, cupy.sum)
         else:
             raise ValueError('Invalid norm order for matrices.')
         if keepdims:
