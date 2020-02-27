@@ -4,7 +4,6 @@ from numpy import linalg
 import cupy
 from cupy.linalg import decomposition
 from cupy.linalg import util
-from cupy.linalg import svd
 
 
 def _multi_svd_norm(x, row_axis, col_axis, op):
@@ -27,7 +26,7 @@ def _multi_svd_norm(x, row_axis, col_axis, op):
         is `cupy.amin` or `cupy.amax` or `cupy.sum`.
     """
     y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
-    result = op(svd(y, compute_uv=False), axis=-1)
+    result = op(decomposition.svd(y, compute_uv=False), axis=-1)
     return result
 
 
