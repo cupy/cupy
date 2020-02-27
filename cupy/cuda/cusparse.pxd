@@ -36,7 +36,7 @@ cdef extern from *:
     ctypedef int Order 'cusparseOrder_t'
     ctypedef int SpMVAlg 'cusparseSpMVAlg_t'
     ctypedef int SpMMAlg 'cusparseSpMMAlg_t'
-    ctypedef int DataType 'cudaDataType_t'
+    ctypedef int DataType 'cudaDataType'
 
     ctypedef void* SpVecDescr 'cusparseSpVecDescr_t'
     ctypedef void* DnVecDescr 'cusparseDnVecDescr_t'
