@@ -32,11 +32,13 @@ class TestIndexing(unittest.TestCase):
         return a.take(b)
 
     # see cupy#3017
-    @testing.for_dtypes('bBhH')
+    @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_take_index_range_overflow(self, xp, dtype):
+        if numpy.dtype(dtype) in (numpy.int64, numpy.uint64):
+            return xp.array([])  # skip for too large dimensions
         iinfo = numpy.iinfo(dtype)
-        a = testing.shaped_arange((iinfo.max + 1,), xp)
+        a = xp.broadcast_to(xp.ones(1), (iinfo.max + 1,))
         b = xp.array([0], dtype=dtype)
         return a.take(b)
 
