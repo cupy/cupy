@@ -6,6 +6,7 @@ from cupy.linalg import decomposition
 from cupy.linalg import util
 from cupy.linalg import svd
 
+
 def _multi_svd_norm(x, row_axis, col_axis, op):
     """Compute a function of the singular values of the 2-D matrices in `x`.
     This is a private utility function used by `cumpy.linalg.norm()`.
@@ -28,6 +29,7 @@ def _multi_svd_norm(x, row_axis, col_axis, op):
     y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
     result = op(svd(y, compute_uv=False), axis=-1)
     return result
+
 
 def norm(x, ord=None, axis=None, keepdims=False):
     """Returns one of matrix norms specified by ``ord`` parameter.
@@ -121,7 +123,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
         if row_axis == col_axis:
             raise ValueError('Duplicate axes given.')
         if ord == 2:
-            ret =  _multi_svd_norm(x, row_axis, col_axis, cupy.amax)
+            ret = _multi_svd_norm(x, row_axis, col_axis, cupy.amax)
         elif ord == -2:
             ret = _multi_svd_norm(x, row_axis, col_axis, cupy.amin)
         elif ord == 1:
