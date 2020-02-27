@@ -1,4 +1,5 @@
-from libc.stdint cimport int64_t, intptr_t
+
+from libc.stdint cimport intptr_t, int64_t
 
 cdef extern from *:
     ctypedef int IndexBase 'cusparseIndexBase_t'
@@ -97,10 +98,6 @@ cpdef enum:
     CUSPARSE_INDEX_16U = 1  # 16-bit unsigned integer
     CUSPARSE_INDEX_32I = 2  # 32-bit signed integer
     CUSPARSE_INDEX_64I = 3  # 64-bit signed integer
-
-cpdef size_t create() except? 0
-cpdef destroy(size_t handle)
-
 
 cdef class SpVecAttributes:
     cdef:

@@ -1,11 +1,8 @@
 cimport cython  # NOQA
 
-from libc.stdint cimport int64_t, intptr_t
-
 from cupy.cuda cimport driver
 from cupy.cuda cimport stream as stream_module
 from cupy.cuda.runtime cimport DataType
-
 
 cdef extern from 'cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':
@@ -3590,7 +3587,7 @@ cpdef dnMatSetStridedBatch(size_t desc, int batchCount, int64_t batchStride):
 ############################################################
 # Generic API Functions
 
-cpdef size_t spVV_bufferSize(size_t handle, Operation opX,
+cpdef size_t spVV_bufferSize(intptr_t handle, Operation opX,
                              size_t vecX, size_t vecY,
                              intptr_t result, DataType computeType):
     cpdef size_t bufferSize
@@ -3600,7 +3597,7 @@ cpdef size_t spVV_bufferSize(size_t handle, Operation opX,
     check_status(status)
     return bufferSize
 
-cpdef spVV(size_t handle, Operation opX, size_t vecX, size_t vecY,
+cpdef spVV(intptr_t handle, Operation opX, size_t vecX, size_t vecY,
            intptr_t result, DataType computeType, intptr_t externalBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseSpVV(<Handle>handle, opX, <SpVecDescr>vecX,
@@ -3608,7 +3605,7 @@ cpdef spVV(size_t handle, Operation opX, size_t vecX, size_t vecY,
                           <void*>externalBuffer)
     check_status(status)
 
-cpdef size_t spMV_bufferSize(size_t handle, Operation opA, intptr_t alpha,
+cpdef size_t spMV_bufferSize(intptr_t handle, Operation opA, intptr_t alpha,
                              size_t matA, size_t vecX, intptr_t beta,
                              size_t vecY, DataType computeType, SpMVAlg alg):
     cpdef size_t bufferSize
@@ -3619,7 +3616,7 @@ cpdef size_t spMV_bufferSize(size_t handle, Operation opA, intptr_t alpha,
     check_status(status)
     return bufferSize
 
-cpdef spMV(size_t handle, Operation opA, intptr_t alpha, size_t matA,
+cpdef spMV(intptr_t handle, Operation opA, intptr_t alpha, size_t matA,
            size_t vecX, intptr_t beta, size_t vecY, DataType computeType,
            SpMVAlg alg, intptr_t externalBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -3628,7 +3625,7 @@ cpdef spMV(size_t handle, Operation opA, intptr_t alpha, size_t matA,
                           computeType, alg, <void*>externalBuffer)
     check_status(status)
 
-cpdef size_t spMM_bufferSize(size_t handle, Operation opA, Operation opB,
+cpdef size_t spMM_bufferSize(intptr_t handle, Operation opA, Operation opB,
                              intptr_t alpha, size_t matA, size_t matB,
                              intptr_t beta, size_t matC, DataType computeType,
                              SpMMAlg alg):
@@ -3640,7 +3637,7 @@ cpdef size_t spMM_bufferSize(size_t handle, Operation opA, Operation opB,
     check_status(status)
     return bufferSize
 
-cpdef spMM(size_t handle, Operation opA, Operation opB, intptr_t alpha,
+cpdef spMM(intptr_t handle, Operation opA, Operation opB, intptr_t alpha,
            size_t matA, size_t matB, intptr_t beta, size_t matC,
            DataType computeType, SpMMAlg alg, intptr_t externalBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -3650,7 +3647,7 @@ cpdef spMM(size_t handle, Operation opA, Operation opB, intptr_t alpha,
                           <void*>externalBuffer)
     check_status(status)
 
-cpdef size_t constrainedGeMM_bufferSize(size_t handle, Operation opA,
+cpdef size_t constrainedGeMM_bufferSize(intptr_t handle, Operation opA,
                                         Operation opB, intptr_t alpha,
                                         size_t matA, size_t matB,
                                         intptr_t beta, size_t matC,
@@ -3663,7 +3660,7 @@ cpdef size_t constrainedGeMM_bufferSize(size_t handle, Operation opA,
     check_status(status)
     return bufferSize
 
-cpdef constrainedGeMM(size_t handle, Operation opA, Operation opB,
+cpdef constrainedGeMM(intptr_t handle, Operation opA, Operation opB,
                       intptr_t alpha, size_t matA, size_t matB, intptr_t beta,
                       size_t matC, DataType computeType,
                       intptr_t externalBuffer):
