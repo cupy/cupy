@@ -1439,59 +1439,49 @@ cdef class CFunctionAllocator:
 @cython.no_gc
 cdef class PythonFunctionAllocatorMemory(BaseMemory):
 
-    def __init__(self, size_t size, object param,
-                 malloc_func, free_func,
+    def __init__(self, size_t size, malloc_func, free_func,
                  int device_id):
-        self._param = param
         self._free_func = free_func
         self.device_id = device_id
         self.size = size
         self.ptr = 0
         if size > 0:
-            self.ptr = malloc_func(param, size, device_id)
+            self.ptr = malloc_func(size, device_id)
 
     def __dealloc__(self):
         if self.ptr:
-            self._free_func(self._param, self.ptr, self.device_id)
+            self._free_func(self.ptr, self.device_id)
 
 
 cdef class PythonFunctionAllocator:
 
     """Allocator with python functions to perform memory allocation.
 
-    This allocator keeps a *param* object along with functions
-    corresponding to *malloc* and *free*, delegating the actual allocation to
-    external sources while only handling the timing of the resource allocation
-    and deallocation.
+    This allocator keeps functions corresponding to *malloc* and *free*,
+    delegating the actual allocation to external sources while only
+    handling the timing of the resource allocation and deallocation.
 
-    *malloc* should follow the signature ``malloc(object, int, int) -> int``
+    *malloc* should follow the signature ``malloc(int, int) -> int``
     returning the pointer to the allocated memory given the *param* object,
     the number of bytes to allocate and the device id on which the
     allocation should take place.
 
     Similarly, *free* should follow the signature
-    ``free(object, int, int)`` with no return, taking the *param* object,
-    the pointer to the allocated memory and the device id on which the
-    memory was allocated.
+    ``free(int, int)`` with no return, taking the pointer to the
+    allocated memory and the device id on which the memory was allocated.
 
     Args:
-        param (object): *param* object to be passed on allocation and deletion.
         malloc_func (function): *malloc* function to be called.
         free_func (function): *free* function to be called.
-        owner (object): Reference to the owner object to keep the param and
-            the functions alive.
 
     """
 
-    def __init__(self, object param, malloc_func,
-                 free_func, object owner):
-        self._param = param
+    def __init__(self, malloc_func, free_func):
         self._malloc_func = malloc_func
         self._free_func = free_func
-        self._owner = owner
 
     cpdef MemoryPointer malloc(self, size_t size):
         mem = PythonFunctionAllocatorMemory(
-            size, self._param, self._malloc_func,
+            size, self._malloc_func,
             self._free_func, device.get_device_id())
         return MemoryPointer(mem, 0)

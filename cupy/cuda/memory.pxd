@@ -88,16 +88,13 @@ cdef class CFunctionAllocator:
 cdef class PythonFunctionAllocatorMemory(BaseMemory):
 
     cdef:
-        object _param
         object _free_func
 
 
 cdef class PythonFunctionAllocator:
 
     cdef:
-        object _param
         object _malloc_func
         object _free_func
-        object _owner
 
     cpdef MemoryPointer malloc(self, size_t size)

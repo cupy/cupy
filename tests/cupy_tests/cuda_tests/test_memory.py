@@ -731,6 +731,38 @@ class TestAllocatorDisabled(unittest.TestCase):
         self._check_pool_not_used()
 
 
+class PythonAllocator(object):
+    def __init__(self):
+        self.malloc_called = False
+        self.free_called = False
+
+    def malloc(self, size, device_id):
+        self.malloc_called = True
+        return cupy.cuda.runtime.malloc(size)
+
+    def free(self, size, device_id):
+        self.free_called = True
+        cupy.cuda.runtime.free(size)
+
+
+@testing.gpu
+class TestPythonFunctionAllocator(unittest.TestCase):
+    def setUp(self):
+        self.old_pool = cupy.get_default_memory_pool()
+        self.alloc = PythonAllocator()
+        python_alloc = memory.PythonFunctionAllocator(
+            self.alloc.malloc, self.alloc.free)
+        memory.set_allocator(python_alloc.malloc)
+
+    def tearDown(self):
+        memory.set_allocator(self.old_pool.malloc)
+
+    def test_allocator(self):
+        assert not self.alloc.malloc_called and not self.alloc.free_called
+        cupy.zeros(10)
+        assert self.alloc.malloc_called and self.alloc.free_called
+
+
 @testing.gpu
 class TestMemInfo(unittest.TestCase):
 
