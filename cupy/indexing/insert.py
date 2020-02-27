@@ -76,7 +76,8 @@ def put(a, ind, v, mode='wrap'):
 
 
 _fill_diagonal_template = string.Template(r'''
-#include <cupy/carray.cuh>,
+#include <cupy/complex.cuh>
+#include <cupy/carray.cuh>
 extern "C" __global__
 void cupy_fill_diagonal(CArray<${type}, ${a_ndim}> a,
                         CIndexer<${a_ndim}> a_ind,
