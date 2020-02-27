@@ -94,16 +94,7 @@ cdef void get_reduced_dims(
 
 
 @cython.profile(False)
-cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
-        const vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize,
-        bint is_c_contiguous):
-    cdef vector.vector[Py_ssize_t] strides
-    set_contiguous_strides(shape, strides, itemsize, is_c_contiguous)
-    return strides
-
-
-@cython.profile(False)
-cdef inline Py_ssize_t set_contiguous_strides(
+cdef inline Py_ssize_t get_contiguous_strides_inplace(
         const vector.vector[Py_ssize_t]& shape,
         vector.vector[Py_ssize_t]& strides,
         Py_ssize_t itemsize, bint is_c_contiguous):
@@ -287,7 +278,9 @@ cpdef float from_float16(uint16_t v):
 cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     cdef int order_char
     order_char = b'C' if len(order) == 0 else ord(order[0])
-    if allow_k and (order_char == b'K' or order_char == b'k'):
+    if order_char == b'K' or order_char == b'k':
+        if not allow_k:
+            raise ValueError('order \'K\' is not permitted')
         order_char = b'K'
     elif order_char == b'A' or order_char == b'a':
         order_char = b'A'

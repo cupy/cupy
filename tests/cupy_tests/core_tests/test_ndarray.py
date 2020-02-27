@@ -110,6 +110,29 @@ class TestNdarrayInit(unittest.TestCase):
         assert a.strides == a_cpu.strides
 
 
+@testing.parameterize(
+    *testing.product({
+        'shape': [(), (1,), (1, 2), (1, 2, 3)],
+        'order': ['C', 'F'],
+        'dtype': [
+            numpy.uint8,  # itemsize=1
+            numpy.uint16,  # itemsize=2
+        ],
+    }))
+@testing.gpu
+class TestNdarrayInitStrides(unittest.TestCase):
+
+    # Check the strides given shape, itemsize and order.
+
+    @testing.numpy_cupy_equal()
+    def test_strides(self, xp):
+        arr = xp.ndarray(self.shape, dtype=self.dtype, order=self.order)
+        return (
+            arr.strides,
+            arr.flags.c_contiguous,
+            arr.flags.f_contiguous)
+
+
 @testing.gpu
 class TestNdarrayInitRaise(unittest.TestCase):
 
@@ -337,7 +360,6 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 @testing.gpu
 class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
     def test_axis_overrun1(self, xp):
         a = testing.shaped_arange(self.shape, xp)
@@ -345,7 +367,7 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
     def test_axis_overrun2(self):
         a = testing.shaped_arange(self.shape, cupy)
-        with pytest.raises(core._AxisError):
+        with pytest.raises(numpy.AxisError):
             wrap_take(a, self.indices, axis=self.axis)
 
 

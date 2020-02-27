@@ -1,6 +1,5 @@
 from libc.stdint cimport int64_t, intptr_t
 
-
 cdef extern from *:
     ctypedef int IndexBase 'cusparseIndexBase_t'
     ctypedef int Status 'cusparseStatus_t'
@@ -168,3 +167,6 @@ cdef class DnMatBatchAttributes:
     cdef:
         public int count
         public int64_t stride
+
+cpdef intptr_t create() except? 0
+cpdef destroy(intptr_t handle)

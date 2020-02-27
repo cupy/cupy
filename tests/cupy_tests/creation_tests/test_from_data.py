@@ -46,7 +46,6 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_array_equal()
     def test_array_from_numpy_broad_cast(self, xp, dtype, order):
         a = testing.shaped_arange((2, 1, 4), numpy, dtype)

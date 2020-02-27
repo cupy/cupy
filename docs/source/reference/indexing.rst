@@ -13,12 +13,15 @@ Indexing Routines
    cupy.where
    cupy.indices
    cupy.ix_
+   cupy.ravel_multi_index
    cupy.unravel_index
    cupy.take
    cupy.take_along_axis
    cupy.choose
+   cupy.compress
    cupy.diag
    cupy.diagonal
+   cupy.extract
    cupy.lib.stride_tricks.as_strided
    cupy.place
    cupy.put

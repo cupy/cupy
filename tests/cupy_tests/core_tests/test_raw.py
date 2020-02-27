@@ -256,6 +256,19 @@ __global__ void test_upcast(cuComplex* arr, cuDoubleComplex* out) {
 }
 '''
 
+test_const_mem = r'''
+extern "C"{
+__constant__ float some_array[100];
+
+__global__ void multiply_by_const(float* x, int N) {
+    int id = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (id < N) {
+        x[id] *= some_array[id];
+    }
+}
+}
+'''
 
 if 'CUPY_CACHE_DIR' in os.environ:
     _old_cache_dir = os.environ['CUPY_CACHE_DIR']
@@ -520,6 +533,17 @@ class TestRaw(unittest.TestCase):
         ker((grid,), (block,), (a, out_down))
         assert (out_down == a.astype(cupy.complex64)).all()
 
+    def test_const_memory(self):
+        mod = cupy.RawModule(code=test_const_mem, backend=self.backend)
+        ker = mod.get_function('multiply_by_const')
+        mem_ptr = mod.get_global('some_array')
+        const_arr = cupy.ndarray((100,), cupy.float32, mem_ptr)
+        data = cupy.arange(100, dtype=cupy.float32)
+        const_arr[...] = data
+        output_arr = cupy.ones(100, dtype=cupy.float32)
+        ker((1,), (100,), (output_arr, cupy.int32(100)))
+        assert (data == output_arr).all()
+
 
 _test_grid_sync = r'''
 #include <cooperative_groups.h>
@@ -537,12 +561,15 @@ void test_grid_sync(const float* x1, const float* x2, float* y) {
 '''
 
 
-@unittest.skipUnless(
-    9000 <= cupy.cuda.runtime.runtimeGetVersion(),
-    'Requires CUDA 9.x or later')
 @testing.parameterize(*testing.product({
     'n': [10, 100, 256]
 }))
+@unittest.skipUnless(
+    9000 <= cupy.cuda.runtime.runtimeGetVersion(),
+    'Requires CUDA 9.x or later')
+@unittest.skipUnless(
+    60 <= int(cupy.cuda.device.get_compute_capability()),
+    'Requires compute capability 6.0 or later')
 class TestRawGridSync(unittest.TestCase):
 
     def setUp(self):

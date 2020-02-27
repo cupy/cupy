@@ -11,12 +11,15 @@ from cupy import util
 
 from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
+from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
 
 if cupy.cuda.cub_enabled:
     from cupy.cuda import cub
+else:
+    cub = None
 
 
 # ndarray members
@@ -123,7 +126,118 @@ cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
 
 
 @util.memoize(for_each_device=True)
-def _inclusive_scan_kernel(dtype, block_size):
+def _inclusive_batch_scan_kernel(dtype, block_size, op):
+    """return Prefix Sum(Scan) cuda kernel
+    for a 2d array over axis 1
+    used for scanning over different axes
+
+    e.g
+    if blocksize > len(src[0])
+    src [[1, 2, 3, 4],
+         [5, 6, 7, 8]]
+    dst [[1, 3, 6, 10],
+         [5, 11, 18, 26]]
+
+    if blocksize < len(src[0])
+    block_size: 2
+    # TODO show partialness
+    src [[1, 2, 3, 4],
+         [5, 6, 7, 8]]
+    dst [[1, 3, 3, 7],
+         [5, 11, 7, 15]]
+
+    Args:
+        dtype: src, dst array type
+        block_size: block_size
+
+    Returns:
+         cupy.cuda.Function: cuda function
+    """
+    op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
+    identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
+    name = 'inclusive_batch_scan_kernel'
+    dtype = get_typename(dtype)
+    source = string.Template("""
+    extern "C" __global__ void ${name}(const CArray<${dtype}, 2> src,
+        CArray<${dtype}, 2> dst, int batch_size){
+        long long n = src.size();
+
+        extern __shared__ ${dtype} temp[];
+
+        unsigned int thid = threadIdx.x;
+        unsigned int block = blockIdx.x * blockDim.x;
+
+        unsigned int pad_batch_size = batch_size;
+        bool must_copy = true;
+
+        if (batch_size & (batch_size -1)) {
+            pad_batch_size = 1 << (32 - __clz(batch_size));
+            must_copy = (thid & (pad_batch_size-1)) < batch_size;
+        }
+        if (pad_batch_size > ${block_size}) {
+            int blocks_per_batch = (batch_size - 1) / ${block_size} + 1;
+            pad_batch_size = ${block_size} * blocks_per_batch;
+
+            // Must copy enables for all blocks but the last one in the batch
+            bool last_block = (blockIdx.x + 1) % blocks_per_batch == 0;
+            int remaining_batch = batch_size % ${block_size};
+            if (remaining_batch == 0) {
+                remaining_batch = ${block_size};
+            }
+            must_copy = !last_block || (thid < (remaining_batch));
+        }
+
+        int pad_per_batch = pad_batch_size-batch_size;
+        int n_batches_block = ${block_size} / pad_batch_size;
+
+        unsigned int idx0 = thid + block;
+
+        int batch_id = idx0 / pad_batch_size;
+        idx0 = idx0 - pad_per_batch * batch_id;
+
+        int row = idx0 / batch_size;
+        int col = idx0 % batch_size;
+        const ptrdiff_t idx0_idx[] = {row, col};
+
+        if(idx0 < n){
+            temp[thid] = (must_copy) ? src[idx0_idx] : (${dtype}) ${identity};
+            __syncthreads();
+            if (!n_batches_block) {
+                n_batches_block = 1;
+                pad_batch_size = ${block_size};
+            }
+            for (int j = 0; j < n_batches_block; j++) {
+                int offset = j * pad_batch_size;
+                for (int i = 1; i <= pad_batch_size; i <<= 1) {
+                    int index = ((threadIdx.x + 1) * 2 * i - 1);
+                    int index_block = offset + index;
+                    if (index < (pad_batch_size)){
+                        temp[index_block] ${op}= temp[index_block - i];
+                    }
+                    __syncthreads();
+                }
+                for(int i = pad_batch_size >> 1; i > 0; i >>= 1){
+                    int index = ((threadIdx.x + 1) * 2 * i - 1);
+                    int index_block = offset + index;
+                    if((index + i) < (pad_batch_size)){
+                        temp[index_block + i] ${op}= temp[index_block];
+                    }
+                    __syncthreads();
+                }
+            }
+            if(must_copy){
+                dst[idx0_idx] = temp[thid];
+            }
+        }
+    }
+    """).substitute(name=name, dtype=dtype, block_size=block_size,
+                    op=op_char[op], identity=identity[op])
+    module = compile_with_cache(source)
+    return module.get_function(name)
+
+
+@util.memoize(for_each_device=True)
+def _inclusive_scan_kernel(dtype, block_size, op):
     """return Prefix Sum(Scan) cuda kernel
 
     e.g
@@ -146,6 +260,8 @@ def _inclusive_scan_kernel(dtype, block_size):
 
     name = 'inclusive_scan_kernel'
     dtype = get_typename(dtype)
+    op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
+    identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
     source = string.Template("""
     extern "C" __global__ void ${name}(const CArray<${dtype}, 1> src,
         CArray<${dtype}, 1> dst){
@@ -157,14 +273,18 @@ def _inclusive_scan_kernel(dtype, block_size):
         unsigned int idx0 = thid + block;
         unsigned int idx1 = thid + blockDim.x + block;
 
-        temp[thid] = (idx0 < n) ? src[idx0] : (${dtype})0;
-        temp[thid + blockDim.x] = (idx1 < n) ? src[idx1] : (${dtype})0;
+        temp[thid] = (idx0 < n) ? src[idx0] : (${dtype}) ${identity};
+        if (idx1 < n) {
+            temp[thid + blockDim.x] = src[idx1];
+        } else {
+            temp[thid + blockDim.x] = (${dtype}) ${identity};
+        }
         __syncthreads();
 
         for(int i = 1; i <= ${block_size}; i <<= 1){
             int index = (threadIdx.x + 1) * i * 2 - 1;
             if (index < (${block_size} << 1)){
-                temp[index] = temp[index] + temp[index - i];
+                temp[index] ${op}= temp[index - i];
             }
             __syncthreads();
         }
@@ -172,7 +292,7 @@ def _inclusive_scan_kernel(dtype, block_size):
         for(int i = ${block_size} >> 1; i > 0; i >>= 1){
             int index = (threadIdx.x + 1) * i * 2 - 1;
             if(index + i < (${block_size} << 1)){
-                temp[index + i] = temp[index + i] + temp[index];
+                temp[index + i] ${op}= temp[index];
             }
             __syncthreads();
         }
@@ -184,15 +304,52 @@ def _inclusive_scan_kernel(dtype, block_size):
             dst[idx1] = temp[thid + blockDim.x];
         }
     }
-    """).substitute(name=name, dtype=dtype, block_size=block_size)
+    """).substitute(name=name, dtype=dtype, block_size=block_size,
+                    op=op_char[op], identity=identity[op])
     module = compile_with_cache(source)
     return module.get_function(name)
 
 
 @util.memoize(for_each_device=True)
-def _add_scan_blocked_sum_kernel(dtype):
+def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size):
     name = 'add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
+    ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
+    source = string.Template("""
+    extern "C" __global__ void ${name}(CArray<${dtype}, 2> src_dst,
+        int batch_size){
+        long long n = src_dst.size();
+
+        unsigned int thid = threadIdx.x;
+        unsigned int block = blockIdx.x * ${block_size};
+
+        unsigned int idx0 = thid + block;
+
+        // Respect padding
+        unsigned int row = idx0 / batch_size;
+        unsigned int col = idx0 % batch_size;
+        int my_block = ${block_size} * (col / ${block_size});
+        const ptrdiff_t dst_idx[] = {row, col};
+        const ptrdiff_t src_idx[] = {row, my_block - 1};
+
+        // Avoid for the first block of every row
+        // This can be tweaked with kernel launch settings
+        bool first = col < ${block_size};
+        bool is_block = (col % (${block_size})) == ${block_size} - 1;
+        if(idx0 < n && !first && !is_block){
+            src_dst[dst_idx] ${op}= src_dst[src_idx];
+        }
+    }
+    """).substitute(name=name, dtype=dtype, op=ops[op], block_size=block_size)
+    module = compile_with_cache(source)
+    return module.get_function(name)
+
+
+@util.memoize(for_each_device=True)
+def _add_scan_blocked_sum_kernel(dtype, op):
+    name = 'add_scan_blocked_sum_kernel'
+    dtype = get_typename(dtype)
+    ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
     extern "C" __global__ void ${name}(CArray<${dtype}, 1> src_dst){
         long long n = src_dst.size();
@@ -201,15 +358,15 @@ def _add_scan_blocked_sum_kernel(dtype):
         unsigned int idxAdd = idxBase - 1;
 
         if(idxAdded < n){
-            src_dst[idxAdded] += src_dst[idxAdd];
+            src_dst[idxAdded] ${op}= src_dst[idxAdd];
         }
     }
-    """).substitute(name=name, dtype=dtype)
+    """).substitute(name=name, dtype=dtype, op=ops[op])
     module = compile_with_cache(source)
     return module.get_function(name)
 
 
-cdef ndarray scan(ndarray a, ndarray out=None):
+cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
     """Return the prefix sum(scan) of the elements.
 
     Args:
@@ -225,14 +382,13 @@ cdef ndarray scan(ndarray a, ndarray out=None):
         raise TypeError('Input array should be 1D array.')
 
     cdef Py_ssize_t block_size = 256
-
     if out is None:
-        out = ndarray(a.shape, dtype=a.dtype)
+        out = _ndarray_init(a.shape, a.dtype)
     else:
         if a.size != out.size:
             raise ValueError('Provided out is the wrong size')
 
-    kern_scan = _inclusive_scan_kernel(a.dtype, block_size)
+    kern_scan = _inclusive_scan_kernel(a.dtype, block_size, op)
     kern_scan(grid=((a.size - 1) // (2 * block_size) + 1,),
               block=(block_size,),
               args=(a, out),
@@ -240,17 +396,113 @@ cdef ndarray scan(ndarray a, ndarray out=None):
 
     if (a.size - 1) // (block_size * 2) > 0:
         blocked_sum = out[block_size * 2 - 1:None:block_size * 2]
-        scan(blocked_sum, blocked_sum)
-        kern_add = _add_scan_blocked_sum_kernel(out.dtype)
+        scan(blocked_sum, op, dtype, blocked_sum)
+        kern_add = _add_scan_blocked_sum_kernel(out.dtype, op)
         kern_add(grid=((a.size - 1) // (2 * block_size),),
                  block=(2 * block_size - 1,),
                  args=(out,))
     return out
 
 
+cdef ndarray _batch_scan_op(ndarray a, scan_op op, dtype, ndarray out):
+    batch_size = a.shape[1]
+    # TODO(ecastill) replace this with "_reduction._block_size" once it is
+    # properly exposed
+    block_size = 512
+    # Since we need to pad each batch we spawn more threads as some
+    # of them will be idle
+    # Calc the total number of blocks
+    padded_bs = 1 << ((batch_size - 1).bit_length())
+    if padded_bs > block_size:
+        blocks_per_batch = (batch_size - 1) // block_size + 1
+        padded_bs = block_size * blocks_per_batch
+    padded_size = a.size // batch_size * padded_bs
+
+    kern_scan = _inclusive_batch_scan_kernel(a.dtype, block_size, op)
+    kern_scan(grid=((padded_size - 1) // (block_size) + 1,),
+              block=(block_size,),
+              args=(a, out, batch_size),
+              shared_mem=a.itemsize * block_size)
+    if batch_size > block_size:
+        blocked_sum = out[:, block_size-1::block_size]
+        _batch_scan_op(blocked_sum, op, dtype, blocked_sum)
+        kern_add = _add_scan_batch_blocked_sum_kernel(
+            out.dtype, op, block_size)
+        kern_add(
+            grid=((out.size - 1) // (block_size) + 1,),
+            block=(block_size,),
+            args=(out, batch_size))
+    return out
+
+
+cdef _axis_to_first(ndarray x, int axis):
+    trans = [axis] + [a for a in range(x.ndim) if a != axis]
+    pre = list(range(1, axis + 1))
+    succ = list(range(axis + 1, x.ndim))
+    revert = pre + [0] + succ
+    return trans, revert
+
+
+cdef _proc_as_batch(ndarray x, int axis, dtype, scan_op op):
+    if x.shape[axis] == 0:
+        return cupy.empty_like(x)
+    trans, revert = _axis_to_first(x, axis)
+    t = x.transpose(trans)
+    s = t.shape
+    r = t.reshape(x.shape[axis], -1)
+    # This is to use the current implemented fast scan
+    # TODO(ecastill) merge with above transformations
+    r = r.transpose((1, 0))
+    r = _batch_scan_op(r, op, dtype, r)
+    r = r.transpose((1, 0))
+    return r.reshape(s).transpose(revert)
+
+
+cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
+    if out is None:
+        if dtype is None:
+            kind = a.dtype.kind
+            if kind == 'b':
+                dtype = numpy.dtype('l')
+            elif kind == 'i' and a.dtype.itemsize < numpy.dtype('l').itemsize:
+                dtype = numpy.dtype('l')
+            elif kind == 'u' and a.dtype.itemsize < numpy.dtype('L').itemsize:
+                dtype = numpy.dtype('L')
+            else:
+                dtype = a.dtype
+        result = a.astype(dtype=dtype)
+    else:
+        if (out.flags.c_contiguous or out.flags.f_contiguous):
+            result = out
+        else:
+            result = a.astype(out.dtype)
+        result[...] = a
+
+    if axis is None:
+        result = result.ravel()
+        if cupy.cuda.cub_enabled:
+            # result will be None if the scan is not compatible with CUB
+            if op == scan_op.SCAN_SUM:
+                cub_op = cub.CUPY_CUB_CUMSUM
+            else:
+                cub_op = cub.CUPY_CUB_CUMPROD
+            res = cub.cub_scan(result, cub_op)
+        if not cupy.cuda.cub_enabled or res is None:
+            scan(result, op, dtype, result)
+    else:
+        axis = cupy.util._normalize_axis_index(axis, a.ndim)
+        result = _proc_as_batch(result, axis, dtype, op)
+    # This is for when the original out param was not contiguous
+    if out is not None and out.data != result.data:
+        out[...] = result.reshape(out.shape)
+    else:
+        out = result
+    return out
+
+
 # Only for test
 def _scan_for_test(a, out=None):
-    return scan(a, out)
+    return scan(a, scan_op.SCAN_SUM, dtype=None, out=out)
 
 
 cpdef ndarray _nansum(ndarray a, axis, dtype, out, keepdims):

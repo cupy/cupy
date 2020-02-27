@@ -76,7 +76,6 @@ class TestComparisonOperator(unittest.TestCase):
 
 class TestAllclose(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_allclose_finite(self, xp, dtype):
@@ -84,7 +83,6 @@ class TestAllclose(unittest.TestCase):
         b = xp.array([0, 0, 1000, 1000], dtype=dtype)
         return xp.allclose(a, b)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_allclose_min_int(self, xp, dtype):
@@ -102,7 +100,6 @@ class TestAllclose(unittest.TestCase):
         b = xp.array([0, nan, 0, nan, inf, ninf], dtype=dtype)
         return xp.allclose(a, b)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_float_dtypes()
     @testing.numpy_cupy_equal()
     def test_allclose_infinite_equal_nan(self, xp, dtype):
@@ -123,7 +120,6 @@ class TestAllclose(unittest.TestCase):
 
 class TestIsclose(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_is_close_finite(self, xp, dtype):
@@ -132,7 +128,6 @@ class TestIsclose(unittest.TestCase):
         b = xp.array([0, 0, 1000, 1000], dtype=dtype)
         return xp.isclose(a, b)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_is_close_min_int(self, xp, dtype):

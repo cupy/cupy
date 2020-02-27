@@ -5,6 +5,7 @@ from cupy import testing
 import cupyx.scipy.linalg
 
 import numpy
+import pytest
 
 try:
     import scipy.linalg
@@ -58,20 +59,16 @@ class TestSolveTriangular(unittest.TestCase):
         self.check_x((5, 5), (5, 2))
         self.check_x((5, 5), (5, 5))
 
-    @testing.numpy_cupy_raises()
-    def check_shape(self, a_shape, b_shape, xp):
-        a = xp.random.rand(*a_shape)
-        b = xp.random.rand(*b_shape)
-        if xp is cupy:
-            cupyx.scipy.linalg.solve_triangular(
-                a, b, trans=self.trans, lower=self.lower,
-                unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
-                check_finite=self.check_finite)
-        else:
-            scipy.linalg.solve_triangular(
-                a, b, trans=self.trans, lower=self.lower,
-                unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
-                check_finite=self.check_finite)
+    def check_shape(self, a_shape, b_shape):
+        for xp, sp in ((numpy, scipy), (cupy, cupyx.scipy)):
+            a = xp.random.rand(*a_shape)
+            b = xp.random.rand(*b_shape)
+            with pytest.raises(ValueError):
+                sp.linalg.solve_triangular(
+                    a, b, trans=self.trans, lower=self.lower,
+                    unit_diagonal=self.unit_diagonal,
+                    overwrite_b=self.overwrite_b,
+                    check_finite=self.check_finite)
 
     def test_invalid_shape(self):
         self.check_shape((2, 3), (4,))
@@ -79,22 +76,18 @@ class TestSolveTriangular(unittest.TestCase):
         self.check_shape((3, 3), (2, 2))
         self.check_shape((3, 3, 4), (3,))
 
-    @testing.numpy_cupy_raises()
-    def check_infinite(self, a_shape, b_shape, xp):
-        a = xp.random.rand(*a_shape)
-        b = xp.random.rand(*b_shape)
-        a[(0,) * a.ndim] = numpy.inf
-        b[(0,) * b.ndim] = numpy.inf
-        if xp is cupy:
-            cupyx.scipy.linalg.solve_triangular(
-                a, b, trans=self.trans, lower=self.lower,
-                unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
-                check_finite=self.check_finite)
-        else:
-            scipy.linalg.solve_triangular(
-                a, b, trans=self.trans, lower=self.lower,
-                unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
-                check_finite=self.check_finite)
+    def check_infinite(self, a_shape, b_shape):
+        for xp, sp in ((numpy, scipy), (cupy, cupyx.scipy)):
+            a = xp.random.rand(*a_shape)
+            b = xp.random.rand(*b_shape)
+            a[(0,) * a.ndim] = numpy.inf
+            b[(0,) * b.ndim] = numpy.inf
+            with pytest.raises(ValueError):
+                sp.linalg.solve_triangular(
+                    a, b, trans=self.trans, lower=self.lower,
+                    unit_diagonal=self.unit_diagonal,
+                    overwrite_b=self.overwrite_b,
+                    check_finite=self.check_finite)
 
     def test_infinite(self):
         if self.check_finite:

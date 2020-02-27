@@ -29,19 +29,48 @@ class TestIndexing(unittest.TestCase):
         b = xp.array([[10, 5], [3, 20]])
         return a.take(b)
 
-    @testing.with_requires('numpy>=1.15')
     @testing.numpy_cupy_array_equal()
     def test_take_along_axis(self, xp):
         a = testing.shaped_random((2, 4, 3), xp, dtype='float32')
         b = testing.shaped_random((2, 6, 3), xp, dtype='int64', scale=4)
         return xp.take_along_axis(a, b, axis=-2)
 
-    @testing.with_requires('numpy>=1.15')
     @testing.numpy_cupy_array_equal()
     def test_take_along_axis_none_axis(self, xp):
         a = testing.shaped_random((2, 4, 3), xp, dtype='float32')
         b = testing.shaped_random((30,), xp, dtype='int64', scale=24)
         return xp.take_along_axis(a, b, axis=None)
+
+    @testing.numpy_cupy_array_equal()
+    def test_compress(self, xp):
+        a = testing.shaped_arange((3, 4, 5), xp)
+        b = xp.array([True, False, True])
+        return xp.compress(b, a, axis=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_compress_no_axis(self, xp):
+        a = testing.shaped_arange((3, 4, 5), xp)
+        b = xp.array([True, False, True])
+        return xp.compress(b, a)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_compress_no_bool(self, xp, dtype):
+        a = testing.shaped_arange((3, 4, 5), xp)
+        b = testing.shaped_arange((3,), xp, dtype)
+        return xp.compress(b, a, axis=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_compress_empty_1dim(self, xp):
+        a = testing.shaped_arange((3, 4, 5), xp)
+        b = xp.array([])
+        return xp.compress(b, a, axis=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_compress_empty_1dim_no_axis(self, xp):
+        a = testing.shaped_arange((3, 4, 5), xp)
+        b = xp.array([])
+        return xp.compress(b, a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -85,17 +114,58 @@ class TestIndexing(unittest.TestCase):
         a = testing.shaped_arange((3, 3, 3), xp, dtype)
         return a.diagonal(0, -1, -3)
 
-    @testing.with_requires('numpy>=1.15')
     @testing.numpy_cupy_raises()
     def test_diagonal_invalid1(self, xp):
         a = testing.shaped_arange((3, 3, 3), xp)
         a.diagonal(0, 1, 3)
 
-    @testing.with_requires('numpy>=1.15')
     @testing.numpy_cupy_raises()
     def test_diagonal_invalid2(self, xp):
         a = testing.shaped_arange((3, 3, 3), xp)
         a.diagonal(0, 2, -4)
+
+    @testing.numpy_cupy_array_equal()
+    def test_extract(self, xp):
+        a = testing.shaped_arange((3, 3), xp)
+        b = xp.array([[True, False, True],
+                      [False, True, False],
+                      [True, False, True]])
+        return xp.extract(b, a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_extract_no_bool(self, xp, dtype):
+        a = testing.shaped_arange((3, 3), xp)
+        b = xp.array([[1, 0, 1], [0, 1, 0], [1, 0, 1]], dtype=dtype)
+        return xp.extract(b, a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_extract_shape_mismatch(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        b = xp.array([[True, False],
+                      [True, False],
+                      [True, False]])
+        return xp.extract(b, a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_extract_size_mismatch(self, xp):
+        a = testing.shaped_arange((3, 3), xp)
+        b = xp.array([[True, False, True],
+                      [False, True, False]])
+        return xp.extract(b, a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_extract_size_mismatch2(self, xp):
+        a = testing.shaped_arange((3, 3), xp)
+        b = xp.array([[True, False, True, False],
+                      [False, True, False, True]])
+        return xp.extract(b, a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_extract_empty_1dim(self, xp):
+        a = testing.shaped_arange((3, 3), xp)
+        b = xp.array([])
+        return xp.extract(b, a)
 
 
 @testing.gpu

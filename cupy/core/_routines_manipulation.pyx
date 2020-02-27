@@ -4,7 +4,6 @@ import sys
 
 import numpy
 
-from cupy.core import _errors
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._ufuncs import elementwise_copy
 
@@ -165,7 +164,7 @@ cdef ndarray _ndarray_squeeze(ndarray self, axis):
             if _axis < 0:
                 _axis += ndim
             if _axis < 0 or _axis >= ndim:
-                raise _errors._AxisError(
+                raise numpy.AxisError(
                     '\'axis\' entry %d is out of bounds [-%d, %d)' %
                     (axis_orig, ndim, ndim))
             if axis_flags[_axis] == 1:
@@ -182,7 +181,7 @@ cdef ndarray _ndarray_squeeze(ndarray self, axis):
             pass
         else:
             if _axis < 0 or _axis >= ndim:
-                raise _errors._AxisError(
+                raise numpy.AxisError(
                     '\'axis\' entry %d is out of bounds [-%d, %d)' %
                     (axis_orig, ndim, ndim))
             axis_flags[_axis] = 1
@@ -500,7 +499,7 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
             a = a.ravel()
             axis = 0
     elif not (-a.ndim <= axis < a.ndim):
-        raise _errors._AxisError(
+        raise numpy.AxisError(
             'axis {} is out of bounds for array of dimension {}'.format(
                 axis, a.ndim))
 
@@ -531,7 +530,7 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
     return ret
 
 
-cpdef ndarray concatenate_method(tup, int axis):
+cpdef ndarray concatenate_method(tup, int axis, ndarray out=None):
     cdef int ndim, a_ndim
     cdef int i
     cdef ndarray a
@@ -555,7 +554,7 @@ cpdef ndarray concatenate_method(tup, int axis):
             if axis < 0:
                 axis += ndim
             if axis < 0 or axis >= ndim:
-                raise _errors._AxisError(
+                raise numpy.AxisError(
                     'axis {} out of bounds [0, {})'.format(axis, ndim))
             dtype = a.dtype
             continue
@@ -577,15 +576,32 @@ cpdef ndarray concatenate_method(tup, int axis):
     if not have_same_types:
         dtype = functools.reduce(numpy.promote_types,
                                  set([a.dtype for a in arrays]))
-    return _concatenate(arrays, axis, tuple(shape), dtype)
+
+    shape_t = tuple(shape)
+    if out is None:
+        out = ndarray(shape_t, dtype=dtype)
+    else:
+        if len(out.shape) != len(shape_t):
+            raise ValueError('Output array has wrong dimensionality')
+        if out.shape != shape_t:
+            raise ValueError('Output array is the wrong shape')
+        if out.dtype.kind != dtype.kind:
+            raise TypeError('Cannot cast scalar from dtype(\'{}\')'
+                            ' to dtype(\'{}\') according to the'
+                            ' rule \'same_kind\''.format(dtype, out.dtype))
+
+    return _concatenate(arrays, axis, shape_t, out)
 
 
-cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype):
-    cdef ndarray a, ret
+cpdef ndarray _concatenate(
+        list arrays, Py_ssize_t axis, tuple shape, ndarray out):
+    cdef ndarray a
     cdef Py_ssize_t i, aw, itemsize, axis_size
     cdef bint all_same_type, same_shape_and_contiguous
     # If arrays are large, Issuing each copy method is efficient.
     cdef Py_ssize_t threshold_size = 2 * 1024 * 1024
+
+    dtype = out.dtype
 
     if len(arrays) > 8:
         all_same_type = True
@@ -604,17 +620,16 @@ cpdef ndarray _concatenate(list arrays, Py_ssize_t axis, tuple shape, dtype):
 
         if all_same_type and total_bytes < threshold_size * len(arrays):
             return _concatenate_single_kernel(
-                arrays, axis, shape, dtype, same_shape_and_contiguous)
+                arrays, axis, shape, dtype, same_shape_and_contiguous, out)
 
-    ret = ndarray(shape, dtype=dtype)
     i = 0
     slice_list = [slice(None)] * len(shape)
     for a in arrays:
         aw = a._shape[axis]
         slice_list[axis] = slice(i, i + aw)
-        elementwise_copy(a, _indexing._simple_getitem(ret, slice_list))
+        elementwise_copy(a, _indexing._simple_getitem(out, slice_list))
         i += aw
-    return ret
+    return out
 
 
 cpdef Py_ssize_t size(ndarray a, axis=None) except? -1:
@@ -701,34 +716,35 @@ cdef _normalize_axis_tuple(axis, Py_ssize_t ndim,
 
     for ax in axis:
         if ax >= ndim or ax < -ndim:
-            raise _errors._AxisError(
+            raise numpy.AxisError(
                 'axis {} is out of bounds for array of '
                 'dimension {}'.format(ax, ndim))
         if _has_element(ret, ax):
-            raise _errors._AxisError('repeated axis')
+            raise numpy.AxisError('repeated axis')
         ret.push_back(ax % ndim)
 
 
 cdef ndarray _concatenate_single_kernel(
         list arrays, Py_ssize_t axis, tuple shape, dtype,
-        bint same_shape_and_contiguous):
-    cdef ndarray a, x, ret
+        bint same_shape_and_contiguous, ndarray out):
+    cdef ndarray a, x
     cdef Py_ssize_t base, cum, ndim
     cdef int i, j
     cdef Py_ssize_t[:] ptrs
     cdef Py_ssize_t[:] cum_sizes
     cdef Py_ssize_t[:, :] x_strides
 
+    assert out is not None
+
     ptrs = numpy.ndarray(len(arrays), numpy.int64)
     for i, a in enumerate(arrays):
         ptrs[i] = a.data.ptr
     x = core.array(ptrs)
 
-    ret = core.ndarray(shape, dtype=dtype)
     if same_shape_and_contiguous:
         base = internal.prod_sequence(shape[axis:]) // len(arrays)
-        _concatenate_kernel_same_size(x, base, ret)
-        return ret
+        _concatenate_kernel_same_size(x, base, out)
+        return out
 
     ndim = len(shape)
     x_strides = numpy.ndarray((len(arrays), ndim), numpy.int64)
@@ -741,8 +757,8 @@ cdef ndarray _concatenate_single_kernel(
         cum += <int>a._shape[axis]
 
     _concatenate_kernel(
-        x, axis, core.array(cum_sizes), core.array(x_strides), ret)
-    return ret
+        x, axis, core.array(cum_sizes), core.array(x_strides), out)
+    return out
 
 
 cdef _concatenate_kernel_same_size = ElementwiseKernel(
