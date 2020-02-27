@@ -982,6 +982,10 @@ cdef extern from 'cupy_cusparse.h' nogil:
         DnMatDescr matA, DnMatDescr matB, void* beta, SpMatDescr matC,
         DataType computeType, void* externalBuffer)
 
+    # Build-time version
+    int CUSPARSE_VERSION
+
+
 cdef dict STATUS = {
     0: 'CUSPARSE_STATUS_SUCCESS',
     1: 'CUSPARSE_STATUS_NOT_INITIALIZED',
@@ -1124,6 +1128,10 @@ cpdef int getVersion(size_t handle) except? -1:
     status = cusparseGetVersion(<Handle>handle, &version)
     check_status(status)
     return version
+
+
+def get_build_version():
+    return CUSPARSE_VERSION
 
 
 ########################################

@@ -758,7 +758,7 @@ def csr2csr_compress(x, tol):
 def is_generic_api_available():
     handle = device.get_cusparse_handle()
     version = cusparse.getVersion(handle)
-    if version >= 10200:  # TODO(anaruse): check version
+    if version >= 10300:  # cuSPARSE 10.3.0 == CUDA 10.1
         return True
     else:
         return False
@@ -775,41 +775,80 @@ def _dtype_to_IndexType(dtype):
         raise TypeError
 
 
-def _create_spmat_desc(a):
-    rows, cols = a.shape
-    idx_base = cusparse.CUSPARSE_INDEX_BASE_ZERO
-    cuda_dtype = _dtype_to_DataType(a.dtype)
-    if a.format == 'csr':
-        desc = cusparse.createCsr(
-            rows, cols, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
-            a.data.data.ptr, _dtype_to_IndexType(a.indptr.dtype),
-            _dtype_to_IndexType(a.indices.dtype), idx_base, cuda_dtype)
-    elif a.format == 'coo':
-        desc = cusparse.createCoo(
-            rows, cols, a.nnz, a.row.data.ptr, a.col.data.ptr,
-            a.data.data.ptr, _dtype_to_IndexType(a.row.dtype),
-            idx_base, cuda_dtype)
-    else:
-        raise ValueError('csr and coo format are supported '
-                         '(actual: {}).'.format(a.format))
-    return desc
+class BaseDescriptor(object):
+
+    def __init__(self, descriptor, get=None, destroyer=None):
+        self.desc = descriptor
+        self.get = get
+        self.destroy = destroyer
+
+    def __del__(self, is_shutting_down=util.is_shutting_down):
+        if is_shutting_down():
+            return
+        if self.destroy is None:
+            self.desc = None
+        elif self.desc is not None:
+            self.destroy(self.desc)
+            self.desc = None
+
+    def __getattr__(self, name):
+        if self.get is not None:
+            return getattr(self.get(self.desc), name)
+        raise AttributeError
 
 
-def _create_dnvec_desc(x):
-    cuda_dtype = _dtype_to_DataType(x.dtype)
-    desc = cusparse.createDnVec(x.size, x.data.ptr, cuda_dtype)
-    return desc
+class SpMatDescriptor(BaseDescriptor):
+
+    @classmethod
+    def create(cls, a):
+        assert cupyx.scipy.sparse.issparse(a)
+        rows, cols = a.shape
+        idx_base = cusparse.CUSPARSE_INDEX_BASE_ZERO
+        cuda_dtype = _dtype_to_DataType(a.dtype)
+        if a.format == 'csr':
+            desc = cusparse.createCsr(
+                rows, cols, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
+                a.data.data.ptr, _dtype_to_IndexType(a.indptr.dtype),
+                _dtype_to_IndexType(a.indices.dtype), idx_base, cuda_dtype)
+            get = cusparse.csrGet
+        elif a.format == 'coo':
+            desc = cusparse.createCoo(
+                rows, cols, a.nnz, a.row.data.ptr, a.col.data.ptr,
+                a.data.data.ptr, _dtype_to_IndexType(a.row.dtype),
+                idx_base, cuda_dtype)
+            get = cusparse.cooGet
+        else:
+            raise ValueError('csr and coo format are supported '
+                             '(actual: {}).'.format(a.format))
+        destroy = cusparse.destroySpMat
+        return SpMatDescriptor(desc, get, destroy)
 
 
-def _create_dnmat_desc(a):
-    assert a.ndim == 2
-    assert a.flags.f_contiguous
-    rows, cols = a.shape
-    ld = rows
-    cuda_dtype = _dtype_to_DataType(a.dtype)
-    order = cusparse.CUSPARSE_ORDER_COL
-    desc = cusparse.createDnMat(rows, cols, ld, a.data.ptr, cuda_dtype, order)
-    return desc
+class DnVecDescriptor(BaseDescriptor):
+
+    @classmethod
+    def create(cls, x):
+        cuda_dtype = _dtype_to_DataType(x.dtype)
+        desc = cusparse.createDnVec(x.size, x.data.ptr, cuda_dtype)
+        get = cusparse.dnVecGet
+        destroy = cusparse.destroyDnVec
+        return DnVecDescriptor(desc, get, destroy)
+
+
+class DnMatDescriptor(BaseDescriptor):
+
+    @classmethod
+    def create(cls, a):
+        assert a.ndim == 2
+        assert a.flags.f_contiguous
+        rows, cols = a.shape
+        ld = rows
+        cuda_dtype = _dtype_to_DataType(a.dtype)
+        desc = cusparse.createDnMat(rows, cols, ld, a.data.ptr, cuda_dtype,
+                                    cusparse.CUSPARSE_ORDER_COL)
+        get = cusparse.dnMatGet
+        destroy = cusparse.destroyDnMat
+        return DnMatDescriptor(desc, get, destroy)
 
 
 def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
@@ -841,9 +880,9 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     if y is None:
         y = cupy.zeros(m, a.dtype)
 
-    desc_a = _create_spmat_desc(a)
-    desc_x = _create_dnvec_desc(x)
-    desc_y = _create_dnvec_desc(y)
+    desc_a = SpMatDescriptor.create(a)
+    desc_x = DnVecDescriptor.create(x)
+    desc_y = DnVecDescriptor.create(y)
 
     handle = device.get_cusparse_handle()
     op_a = _transpose_flag(transa)
@@ -851,12 +890,12 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     beta = numpy.array(beta, a.dtype).ctypes
     cuda_dtype = _dtype_to_DataType(a.dtype)
     alg = cusparse.CUSPARSE_MV_ALG_DEFAULT
-    buff_size = cusparse.spMV_bufferSize(handle, op_a, alpha.data, desc_a,
-                                         desc_x, beta.data, desc_y, cuda_dtype,
-                                         alg)
+    buff_size = cusparse.spMV_bufferSize(handle, op_a, alpha.data,
+                                         desc_a.desc, desc_x.desc, beta.data,
+                                         desc_y.desc, cuda_dtype, alg)
     buff = cupy.empty(buff_size, cupy.int8)
-    cusparse.spMV(handle, op_a, alpha.data, desc_a, desc_x, beta.data, desc_y,
-                  cuda_dtype, alg, buff.data.ptr)
+    cusparse.spMV(handle, op_a, alpha.data, desc_a.desc, desc_x.desc,
+                  beta.data, desc_y.desc, cuda_dtype, alg, buff.data.ptr)
 
     return y
 
@@ -897,9 +936,9 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     if c is None:
         c = cupy.zeros((m, n), a.dtype, 'F')
 
-    desc_a = _create_spmat_desc(a)
-    desc_b = _create_dnmat_desc(b)
-    desc_c = _create_dnmat_desc(c)
+    desc_a = SpMatDescriptor.create(a)
+    desc_b = DnMatDescriptor.create(b)
+    desc_c = DnMatDescriptor.create(c)
 
     handle = device.get_cusparse_handle()
     op_a = _transpose_flag(transa)
@@ -909,11 +948,11 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     cuda_dtype = _dtype_to_DataType(a.dtype)
     alg = cusparse.CUSPARSE_MM_ALG_DEFAULT
     buff_size = cusparse.spMM_bufferSize(handle, op_a, op_b, alpha.data,
-                                         desc_a, desc_b, beta.data, desc_c,
-                                         cuda_dtype, alg)
+                                         desc_a.desc, desc_b.desc, beta.data,
+                                         desc_c.desc, cuda_dtype, alg)
     buff = cupy.empty(buff_size, cupy.int8)
-    buff_size = cusparse.spMM(handle, op_a, op_b, alpha.data, desc_a,
-                              desc_b, beta.data, desc_c, cuda_dtype,
-                              alg, buff.data.ptr)
+    buff_size = cusparse.spMM(handle, op_a, op_b, alpha.data, desc_a.desc,
+                              desc_b.desc, beta.data, desc_c.desc,
+                              cuda_dtype, alg, buff.data.ptr)
 
     return c
