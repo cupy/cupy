@@ -1193,9 +1193,9 @@ def seed(seed=None):
 
     Args:
         seed (None or int): Seed for the random number generator. If ``None``,
-            it uses :func:`os.urandom` if available or :func:`time.process_time`
-            otherwise. Note that this function does not support seeding by an
-            integer array.
+            it uses :func:`os.urandom` if available or
+            :func:`time.process_time` otherwise. Note that this function
+            does not support seeding by an integer array.
 
     """
     get_random_state().seed(seed)
