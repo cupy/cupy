@@ -7,7 +7,8 @@ import numpy as np
 import cupy
 from cupy import testing
 from cupy.fft import config
-from cupy.fft.fft import _default_fft_func, _fft, _fftn
+from cupy.fft.fft import (_default_fft_func, _fft, _fftn,
+                          _size_last_transform_axis)
 
 
 def nd_planning_states(states=[True, False], name='enable_nd'):
@@ -81,15 +82,6 @@ def multi_gpu_config(gpu_configs=None):
 
         return test_func
     return decorator
-
-
-def _size_last_transform_axis(shape, s, axes):
-    if s is not None:
-        if s[-1] is not None:
-            return s[-1]
-    elif axes is not None:
-        return shape[axes[-1]]
-    return shape[-1]
 
 
 @testing.parameterize(*testing.product({
@@ -175,7 +167,6 @@ class TestFftOrder(unittest.TestCase):
     'shape': [(64,), (4, 64)],
     'norm': [None, 'ortho', ''],
 }))
-@testing.with_requires('numpy>=1.10.0')
 @testing.multi_gpu(2)
 class TestMultiGpuFft(unittest.TestCase):
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
@@ -218,7 +209,6 @@ class TestMultiGpuFft(unittest.TestCase):
     'data_order': ['F', 'C'],
     'axis': [0, 1, -1],
 }))
-@testing.with_requires('numpy>=1.10.0')
 @testing.multi_gpu(2)
 class TestMultiGpuFftOrder(unittest.TestCase):
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
@@ -619,7 +609,6 @@ class TestPlanCtxManagerFft(unittest.TestCase):
     'shape': [(64,), (128,)],
     'norm': [None, 'ortho'],
 }))
-@testing.with_requires('numpy>=1.10.0')
 @testing.multi_gpu(2)
 class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
