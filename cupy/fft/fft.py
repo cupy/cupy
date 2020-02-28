@@ -1,4 +1,3 @@
-import copy
 import functools
 import math
 import warnings
@@ -300,46 +299,35 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
     input[b * idist + ((x * inembed[1] + y) * inembed[2] + z) * istride]
     output[b * odist + ((x * onembed[1] + y) * onembed[2] + z) * ostride]
     """
+    # At this point, _default_fft_func() guarantees that for F-order arrays
+    # we only need to consider C2C, and not C2R or R2C.
+    # TODO(leofang): figure out if we really have to skip F-order?
+    in_dimensions = [shape[d] for d in fft_axes]
+    if order == 'F':
+        in_dimensions = in_dimensions[::-1]
+    in_dimensions = tuple(in_dimensions)
+    if fft_type in (cufft.CUFFT_C2C, cufft.CUFFT_Z2Z):
+        out_dimensions = in_dimensions
+        plan_dimensions = in_dimensions
+    else:
+        out_dimensions = list(in_dimensions)
+        if out_size is not None:  # for C2R & R2C
+            out_dimensions[-1] = out_size  # only valid for C order!
+        out_dimensions = tuple(out_dimensions)
+        if fft_type in (cufft.CUFFT_R2C, cufft.CUFFT_D2Z):
+            plan_dimensions = in_dimensions
+        else:  # CUFFT_C2R or CUFFT_Z2D
+            plan_dimensions = out_dimensions
+    inembed = in_dimensions
+    onembed = out_dimensions
+
     if fft_axes == tuple(range(ndim)):
         # tranfsorm over all axes
-        plan_dimensions = copy.copy(shape)
-        if order == 'F':
-            plan_dimensions = plan_dimensions[::-1]
-        if fft_type in (cufft.CUFFT_C2R, cufft.CUFFT_Z2D):
-            # Create cuFFT C2R plan is tricky: we need to enter the output
-            # array dimensions
-            dim = list(plan_dimensions)
-            dim[fft_axes[-1]] = out_size
-            plan_dimensions = tuple(dim)
-        # for full-array transform, we can simply use the default strides
-        idist = odist = 0
-        istride = ostride = 1
-        inembed = onembed = None
         nbatch = 1
+        idist = odist = 1  # doesn't matter since nbatch = 1
+        istride = ostride = 1
     else:
-        in_dimensions = [shape[d] for d in fft_axes]
-        if order == 'F':
-            in_dimensions = in_dimensions[::-1]
-        in_dimensions = tuple(in_dimensions)
-
-        if fft_type in (cufft.CUFFT_C2C, cufft.CUFFT_Z2Z):
-            out_dimensions = in_dimensions
-            plan_dimensions = in_dimensions
-        else:
-            out_dimensions = list(in_dimensions)
-            if out_size is not None:  # for C2R & R2C
-                if order == 'C':
-                    out_dimensions[-1] = out_size
-                else:  # order = 'F'
-                    out_dimensions[0] = out_size
-            out_dimensions = tuple(out_dimensions)
-            if fft_type in (cufft.CUFFT_R2C, cufft.CUFFT_D2Z):
-                plan_dimensions = in_dimensions
-            else:  # CUFFT_C2R or CUFFT_Z2D
-                plan_dimensions = out_dimensions
-
-        inembed = in_dimensions
-        onembed = out_dimensions
+        # batch along the first or the last axis
         if 0 not in fft_axes:
             # don't FFT along the first min_axis_fft axes
             min_axis_fft = _reduce(min, fft_axes)
@@ -388,7 +376,7 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
                         fft_type=fft_type,
                         batch=nbatch,
                         order=order,
-                        last_axis=axes[-1],
+                        last_axis=fft_axes[-1],
                         last_size=out_size)
     return plan
 
@@ -523,6 +511,10 @@ def _default_fft_func(a, s=None, axes=None, plan=None, value_type='C2C'):
         return _fftn
     elif (isinstance(plan, cufft.Plan1d) or
           a.ndim == 1 or not config.enable_nd_planning):
+        return _fft
+
+    # cuFFT's N-D C2R/R2C transforms may not agree with NumPy's outcomes
+    if a.flags.f_contiguous and value_type != 'C2C':
         return _fft
 
     _, axes_sorted = _prep_fftn_axes(a.ndim, s, axes, value_type)
