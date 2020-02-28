@@ -3,7 +3,6 @@ import itertools
 import numpy
 
 import cupy
-from cupy import core
 from cupy.core._reduction import _get_axis
 
 
@@ -25,11 +24,11 @@ def flip(a, axis):
     """
     a_ndim = a.ndim
     if a_ndim < 1:
-        raise core._AxisError('Input must be >= 1-d')
+        raise numpy.AxisError('Input must be >= 1-d')
 
     axis = int(axis)
     if not -a_ndim <= axis < a_ndim:
-        raise core._AxisError(
+        raise numpy.AxisError(
             'axis must be >= %d and < %d' % (-a_ndim, a_ndim))
 
     return _flip(a, axis)

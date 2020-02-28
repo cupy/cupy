@@ -25,7 +25,8 @@ from cupy.cuda cimport runtime
 
 import string
 
-from cupy.core import _errors
+import numpy
+
 from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
 from cupy.cuda import compiler
@@ -117,7 +118,7 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
 
     for dim in axis:
         if dim < -ndim or dim >= ndim:
-            raise _errors._AxisError('Axis overrun')
+            raise numpy.AxisError('Axis overrun')
     reduce_axis = tuple(sorted([dim % ndim for dim in axis]))
     out_axis = tuple([dim for dim in range(ndim) if dim not in reduce_axis])
     return reduce_axis, out_axis

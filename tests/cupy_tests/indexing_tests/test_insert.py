@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 from cupy import testing
 
@@ -14,7 +15,6 @@ class TestPlace(unittest.TestCase):
 
     # NumPy 1.9 don't wraps values.
     # https://github.com/numpy/numpy/pull/5821
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_place(self, xp, dtype):
@@ -47,7 +47,6 @@ class TestPlaceRaises(unittest.TestCase):
 
     # Before NumPy 1.12 it was TypeError.
     # https://github.com/numpy/numpy/pull/7003
-    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises(accept_error=ValueError)
     def test_place_shape_unmatch_error(self, xp, dtype):
@@ -112,21 +111,40 @@ class TestPutRaises(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(3, 3), (2, 2, 2), (3, 5), (5, 3)],
-    'val': [1, 0],
+    'val': [1, 0, (2,), (2, 2)],
     'wrap': [True, False],
 }))
 @testing.gpu
 class TestFillDiagonal(unittest.TestCase):
 
+    def _compute_val(self, xp):
+        if type(self.val) is int:
+            return self.val
+        else:
+            return xp.arange(numpy.prod(self.val)).reshape(self.val)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_fill_diagonal(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
-        xp.fill_diagonal(a, val=self.val, wrap=self.wrap)
+        val = self._compute_val(xp)
+        xp.fill_diagonal(a, val=val, wrap=self.wrap)
+        return a
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_columnar_slice(self, xp, dtype):  # see cupy#2970
+        if self.shape == (2, 2, 2):
+            pytest.skip(
+                'The length of each dimension must be the same after slicing')
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        val = self._compute_val(xp)
+        xp.fill_diagonal(a[:, 1:], val=val, wrap=self.wrap)
         return a
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
     def test_1darray(self, xp, dtype):
         a = testing.shaped_arange(5, xp, dtype)
-        xp.fill_diagonal(a, val=self.val, wrap=self.wrap)
+        val = self._compute_val(xp)
+        xp.fill_diagonal(a, val=val, wrap=self.wrap)

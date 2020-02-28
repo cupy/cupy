@@ -101,6 +101,30 @@ from cupy.cuda.stream import Stream  # NOQA
 
 
 @contextlib.contextmanager
+def using_allocator(allocator=None):
+    """Sets a thread-local allocator for GPU memory inside
+       context manager
+
+    Args:
+        allocator (function): CuPy memory allocator. It must have the same
+            interface as the :func:`cupy.cuda.alloc` function, which takes the
+            buffer size as an argument and returns the device buffer of that
+            size. When ``None`` is specified, raw memory allocator will be
+            used (i.e., memory pool is disabled).
+    """
+    # Note: cupy/memory.pyx would be the better place to implement this
+    # function but `contextmanager` decoration doesn't behave well in Cython.
+    if allocator is None:
+        allocator = memory._malloc
+    previous_allocator = memory._get_thread_local_allocator()
+    memory._set_thread_local_allocator(allocator)
+    try:
+        yield
+    finally:
+        memory._set_thread_local_allocator(previous_allocator)
+
+
+@contextlib.contextmanager
 def profile():
     """Enable CUDA profiling during with statement.
 

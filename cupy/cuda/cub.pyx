@@ -6,11 +6,13 @@ from cpython cimport sequence
 
 import numpy
 
-from cupy.core._errors import _AxisError
-from cupy.core.core cimport ndarray, _internal_ascontiguousarray
+from cupy.core.core cimport _internal_ascontiguousarray
 from cupy.core.core cimport _internal_asfortranarray
+from cupy.core.core cimport ndarray
 from cupy.core.internal cimport _contig_axes
+from cupy.cuda cimport device
 from cupy.cuda cimport memory
+from cupy.cuda cimport runtime
 from cupy.cuda cimport stream
 from cupy.cuda.driver cimport Stream as Stream_t
 
@@ -36,12 +38,25 @@ cdef enum:
     CUPY_CUB_COMPLEX64 = 11
     CUPY_CUB_COMPLEX128 = 12
 
-CUB_support_dtype = [numpy.int8, numpy.uint8,
-                     numpy.int16, numpy.uint16,
-                     numpy.int32, numpy.uint32,
-                     numpy.int64, numpy.uint64,
-                     numpy.float32, numpy.float64,
-                     numpy.complex64, numpy.complex128]
+CUB_support_dtype_without_half = [numpy.int8, numpy.uint8,
+                                  numpy.int16, numpy.uint16,
+                                  numpy.int32, numpy.uint32,
+                                  numpy.int64, numpy.uint64,
+                                  numpy.float32, numpy.float64,
+                                  numpy.complex64, numpy.complex128]
+
+CUB_support_dtype_with_half = CUB_support_dtype_without_half + [numpy.float16]
+
+CUB_support_dtype = {}
+
+CUB_sum_support_dtype_without_half = [numpy.int64, numpy.uint64,
+                                      numpy.float32, numpy.float64,
+                                      numpy.complex64, numpy.complex128]
+
+CUB_sum_support_dtype_with_half = \
+    CUB_sum_support_dtype_without_half + [numpy.float16]
+
+CUB_sum_support_dtype = {}
 
 ###############################################################################
 # Extern
@@ -347,22 +362,45 @@ def can_use_device_segmented_reduce(int op, x_dtype, Py_ssize_t ndim,
                                                         order)
 
 
+cdef _cub_support_dtype(bint sum_mode, int dev_id):
+    if sum_mode:
+        support_dtype_dict = CUB_sum_support_dtype
+        with_half = CUB_sum_support_dtype_with_half
+        without_half = CUB_sum_support_dtype_without_half
+    else:
+        support_dtype_dict = CUB_support_dtype
+        with_half = CUB_support_dtype_with_half
+        without_half = CUB_support_dtype_without_half
+
+    if dev_id not in support_dtype_dict:
+        if int(device.get_compute_capability()) >= 53 and \
+                runtime.runtimeGetVersion() >= 9020:
+            support_dtype = with_half
+        else:
+            support_dtype = without_half
+
+        support_dtype_dict[dev_id] = support_dtype
+
+    return support_dtype_dict[dev_id]
+
+
 cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None):
+    dev_id = device.get_device_id()
+
     if dtype is None:
         if op == CUPY_CUB_SUM:
             # auto dtype:
             # CUB reduce_sum does not support dtype promotion.
             # See _sum_auto_dtype in cupy/core/_routines_math.pyx for which
             # dtypes are promoted.
-            support_dtype = [numpy.int64, numpy.uint64,
-                             numpy.float32, numpy.float64,
-                             numpy.complex64, numpy.complex128]
+            support_dtype = _cub_support_dtype(True, dev_id)
         else:
-            support_dtype = CUB_support_dtype
+            support_dtype = _cub_support_dtype(False, dev_id)
     elif dtype == x_dtype:
-        support_dtype = CUB_support_dtype
+        support_dtype = _cub_support_dtype(False, dev_id)
     else:
         return False
+
     if x_dtype not in support_dtype:
         return False
     return True
@@ -433,10 +471,14 @@ def cub_scan(arr, op):
     if op < CUPY_CUB_CUMSUM or op > CUPY_CUB_CUMPROD:
         return None
 
-    # cub_device_scan seems buggy for complex128:
-    # https://github.com/cupy/cupy/pull/2919#issuecomment-574633590
     x_dtype = arr.dtype
-    if (x_dtype in CUB_support_dtype and x_dtype != numpy.complex128):
+    if x_dtype == numpy.complex128:
+        # cub_device_scan seems buggy for complex128:
+        # https://github.com/cupy/cupy/pull/2919#issuecomment-574633590
+        return None
+
+    dev_id = device.get_device_id()
+    if x_dtype in _cub_support_dtype(False, dev_id):
         return device_scan(arr, op)
 
     return None
@@ -459,6 +501,8 @@ def _get_dtype_id(dtype):
         ret = CUPY_CUB_INT64
     elif dtype == numpy.uint64:
         ret = CUPY_CUB_UINT64
+    elif dtype == numpy.float16:
+        ret = CUPY_CUB_FLOAT16
     elif dtype == numpy.float32:
         ret = CUPY_CUB_FLOAT32
     elif dtype == numpy.float64:

@@ -10,7 +10,6 @@ import ctypes
 import numpy
 
 import cupy
-from cupy.core import _errors
 from cupy.core._kernel import create_ufunc
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._kernel import ufunc  # NOQA
@@ -725,7 +724,19 @@ cdef class ndarray:
 
         return _indexing._ndarray_nonzero(self)
 
-    # TODO(okuta): Implement compress
+    cpdef ndarray compress(self, condition, axis=None, out=None):
+        """Returns selected slices of this array along given axis.
+
+        .. warning::
+
+            This function may synchronize the device.
+
+        .. seealso::
+           :func:`cupy.compress` for full documentation,
+           :meth:`numpy.ndarray.compress`
+
+        """
+        return _indexing._ndarray_compress(self, condition, axis, out)
 
     cpdef ndarray diagonal(self, offset=0, axis1=0, axis2=1):
         """Returns a view of the specified diagonals.
@@ -1615,7 +1626,7 @@ cdef class ndarray:
 
     cpdef _set_contiguous_strides(
             self, Py_ssize_t itemsize, bint is_c_contiguous):
-        self.size = internal.set_contiguous_strides(
+        self.size = internal.get_contiguous_strides_inplace(
             self._shape, self._strides, itemsize, is_c_contiguous)
         if is_c_contiguous:
             self._c_contiguous = True
@@ -2322,6 +2333,9 @@ invert = create_ufunc(
     doc='''Computes the bitwise NOT of an array elementwise.
 
     Only integer and boolean arrays are handled.
+
+    .. note::
+        :func:`cupy.bitwise_not` is an alias for :func:`cupy.invert`.
 
     .. seealso:: :data:`numpy.invert`
 

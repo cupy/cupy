@@ -7,7 +7,6 @@ from cupy import testing
 @testing.gpu
 class TestPacking(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()
     def check_packbits(self, data, xp, dtype):
@@ -29,7 +28,6 @@ class TestPacking(unittest.TestCase):
         self.check_packbits([1, 0, 1, 1, 0, 1, 1, 1, 1])
         self.check_packbits(numpy.arange(24).reshape((2, 3, 4)) % 2)
 
-    @testing.with_requires('numpy>=1.12')
     def test_packbits_empty(self):
         # Note packbits of numpy <= 1.11 has a bug against empty arrays.
         # See https://github.com/numpy/numpy/issues/8324
