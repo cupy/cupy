@@ -250,7 +250,7 @@ def bmat(blocks, format=None, dtype=None):
             A = A.astype(dtype)
         return A
 
-    block_mask = cupy.zeros((M, N), dtype=bool)
+    block_mask = numpy.zeros((M, N), dtype=bool)
     brow_lengths = numpy.zeros(M+1, dtype=numpy.int64)
     bcol_lengths = numpy.zeros(N+1, dtype=numpy.int64)
 
@@ -287,8 +287,8 @@ def bmat(blocks, format=None, dtype=None):
         all_dtypes = [blk.dtype for blk in blocks_flat]
         dtype = sputils.upcast(*all_dtypes) if all_dtypes else None
 
-    row_offsets = cupy.cumsum(brow_lengths)
-    col_offsets = cupy.cumsum(bcol_lengths)
+    row_offsets = numpy.cumsum(brow_lengths)
+    col_offsets = numpy.cumsum(bcol_lengths)
 
     shape = (row_offsets[-1], col_offsets[-1])
 
@@ -298,7 +298,7 @@ def bmat(blocks, format=None, dtype=None):
     col = cupy.empty(nnz, dtype=idx_dtype)
 
     nnz = 0
-    ii, jj = cupy.nonzero(block_mask)  # synchronizes current stream
+    ii, jj = numpy.nonzero(block_mask)
     for i, j in zip(ii, jj):
         B = blocks[int(i)][int(j)]
         idx = slice(nnz, nnz + B.nnz)
