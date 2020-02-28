@@ -252,7 +252,7 @@ class TestCscsort(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'transa': [False, True],
     'shape': [(3, 2), (4, 3)],
     'format': ['csr', 'coo'],
@@ -341,7 +341,7 @@ class TestErrorSpmv(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'transa': [False, True],
     'transb': [False, True],
     'dims': [(2, 3, 4), (3, 4, 2)],
