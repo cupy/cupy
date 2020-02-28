@@ -103,8 +103,8 @@ def seterr(*, divide=None, over=None, under=None,
         if linalg not in ('ignore', 'raise'):
             raise NotImplementedError()
     if fallback_mode is not None:
-        if fallback_mode in [
-            'print', 'warn', 'ignore', 'raise', 'log', 'call']:
+        if fallback_mode in ['print', 'warn', 'ignore',
+                             'raise', 'log', 'call']:
             _config.fallback_mode = fallback_mode
         else:
             raise ValueError(

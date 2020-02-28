@@ -88,7 +88,8 @@ class TestNotifications(unittest.TestCase):
 
         log_obj = L()
 
-        with _ufunc_config.errstate(fallback_mode='log', fallback_mode_callback=log_obj):
+        with _ufunc_config.errstate(fallback_mode='log',
+                                    fallback_mode_callback=log_obj):
             inside = _ufunc_config.geterr()
             inside_func = _ufunc_config.geterrcall()
 
