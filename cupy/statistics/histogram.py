@@ -125,9 +125,6 @@ def _get_bin_edges(a, bins, range):
 
     Returns:
         bin_edges (ndarray): Array of bin edges
-        uniform_bins (Number, Number, int): The upper bound, lowerbound, and
-        number of bins, used in the implementation of `histogram` that works on
-        uniform bins.
     """
     # parse the overloaded bins argument
     n_equal_bins = None
@@ -167,9 +164,7 @@ def _get_bin_edges(a, bins, range):
         bin_edges = cupy.linspace(
             first_edge, last_edge, n_equal_bins + 1,
             endpoint=True, dtype=bin_type)
-        return bin_edges, (first_edge, last_edge, n_equal_bins)
-    else:
-        return bin_edges, None
+    return bin_edges
 
 
 def histogram(x, bins=10, range=None, weights=None, density=False):
@@ -213,15 +208,15 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
         raise ValueError("x must be a cupy.ndarray")
 
     x, weights = _ravel_and_check_weights(x, weights)
-    bin_edges, uniform_bins = _get_bin_edges(x, bins, range)
+    bin_edges = _get_bin_edges(x, bins, range)
 
     if weights is None:
         y = cupy.zeros(bin_edges.size - 1, dtype='l')
         _histogram_kernel(x, bin_edges, bin_edges.size, y)
     else:
         simple_weights = (
-            cupy.can_cast(weights.dtype, cupy.double) or
-            cupy.can_cast(weights.dtype, complex)
+            cupy.can_cast(weights.dtype, cupy.float64) or
+            cupy.can_cast(weights.dtype, cupy.complex128)
         )
         if not simple_weights:
             # object dtype such as Decimal are supported in NumPy, but not here
@@ -229,7 +224,7 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                 "only weights with dtype that can be cast to float or complex "
                 "are supported")
         if weights.dtype.kind == 'c':
-            y = cupy.zeros(bin_edges.size - 1, dtype=complex)
+            y = cupy.zeros(bin_edges.size - 1, dtype=cupy.complex128)
             _weighted_histogram_kernel(
                 x, bin_edges, bin_edges.size, weights.real, y.real)
             _weighted_histogram_kernel(
@@ -238,12 +233,12 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
             if weights.dtype.kind in 'bui':
                 y = cupy.zeros(bin_edges.size - 1, dtype=int)
             else:
-                y = cupy.zeros(bin_edges.size - 1, dtype=float)
+                y = cupy.zeros(bin_edges.size - 1, dtype=cupy.float64)
             _weighted_histogram_kernel(
                 x, bin_edges, bin_edges.size, weights, y)
 
     if density:
-        db = cupy.array(cupy.diff(bin_edges), float)
+        db = cupy.array(cupy.diff(bin_edges), cupy.float64)
         return y/db/y.sum(), bin_edges
     return y, bin_edges
 
