@@ -5,6 +5,7 @@ from cupy.core._reduction import create_reduction_func
 from cupy.core._reduction import ReductionKernel
 
 from cupy.core cimport _routines_math as _math
+from cupy.core cimport _routines_sorting as _sorting
 from cupy.core.core cimport ndarray
 
 import cupy
@@ -308,6 +309,57 @@ cdef _nanargmax_func = create_reduction_func(
     ('min_max_st<type_in0_raw>(in0, isnan(in0) ? -1 : _J)',
      'my_argmax(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
+
+
+cpdef ndarray _median(
+        ndarray a, axis, out, overwrite_input, keepdims):
+
+    if not isinstance(a, ndarray):
+        raise TypeError('Array is not cupy.ndarray')
+
+    keep_ndim = a.ndim
+
+    if axis is None:
+        sz = a.size
+    else:
+        sz = a.shape[axis]
+    if sz % 2 == 0:
+        szh = sz // 2
+        kth = [szh - 1, szh]
+    else:
+        kth = [(sz - 1) // 2]
+
+    if overwrite_input:
+        part = a
+    else:
+        part = a.copy()
+
+    if axis is None:
+        part = part.ravel()
+        part.partition(kth)
+    else:
+        part.partition(kth, axis=axis)
+
+    if part.shape == ():
+        return part.item()
+    if axis is None:
+        axis = 0
+
+    indexer = [slice(None)] * part.ndim
+
+    if keepdims:
+        _indexer = [None] * (keep_ndim - part.ndim)
+        indexer.extend(_indexer)
+
+    index = part.shape[axis] // 2
+    if part.shape[axis] % 2 == 1:
+        indexer[axis] = slice(index, index+1)
+    else:
+        indexer[axis] = slice(index-1, index+1)
+    indexer = tuple(indexer)
+
+    return _mean(
+        part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
 
 
 cdef ndarray _mean(
