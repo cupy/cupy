@@ -7,24 +7,6 @@ from cupy.linalg import util
 
 
 def _multi_svd_norm(x, row_axis, col_axis, op):
-    """Compute a function of the singular values of the 2-D matrices in `x`.
-    This is a private utility function used by `cumpy.linalg.norm()`.
-    Parameters
-    ----------
-    x : cupy.ndarray
-    row_axis, col_axis : int
-        The axes of `x` that hold the 2-D matrices.
-    op : callable
-        This should be either `cupy.amin` or `cumpy.amax` or `cumpy.sum`.
-    Returns
-    -------
-    result : float or cupy.ndarray
-        If `x` is 2-D, the return values is a float.
-        Otherwise, it is an array with ``x.ndim - 2`` dimensions.
-        The return values are either the minimum or maximum or sum of the
-        singular values of the matrices, depending on whether `op`
-        is `cupy.amin` or `cupy.amax` or `cupy.sum`.
-    """
     y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
     result = op(decomposition.svd(y, compute_uv=False), axis=-1)
     return result
