@@ -879,6 +879,8 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     a, x, y = _cast_common_type(a, x, y)
     if y is None:
         y = cupy.zeros(m, a.dtype)
+    elif len(y) != m:
+        raise ValueError('dimension mismatch')
     if a.format == 'coo':
         a.sum_duplicates()
 
@@ -937,6 +939,8 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     a, b, c = _cast_common_type(a, b, c)
     if c is None:
         c = cupy.zeros((m, n), a.dtype, 'F')
+    elif c.shape[0] != m or c.shape[1] != n:
+        raise ValueError('dimension mismatch')
     if a.format == 'coo':
         a.sum_duplicates()
 
