@@ -58,7 +58,7 @@ namespace complex {
 
 using thrust::complex;
 
-__device__ inline complex<float> clog_for_large_values(complex<float> z);
+__host__ __device__ inline complex<float> clog_for_large_values(complex<float> z);
 
 /*
  * The algorithm is very close to that in "Implementing the complex arcsine
@@ -74,7 +74,7 @@ __device__ inline complex<float> clog_for_large_values(complex<float> z);
  * a few comments on the right of declarations remain.
  */
 
-__device__ inline float f(float a, float b, float hypot_a_b) {
+__host__ __device__ inline float f(float a, float b, float hypot_a_b) {
   if (b < 0.0f) return ((hypot_a_b - b) / 2.0f);
   if (b == 0.0f) return (a / 2.0f);
   return (a * a / (hypot_a_b + b) / 2.0f);
@@ -90,9 +90,9 @@ __device__ inline float f(float a, float b, float hypot_a_b) {
  * If returning sqrt_A2my2 has potential to result in an underflow, it is
  * rescaled, and new_y is similarly rescaled.
  */
-__device__ inline void do_hard_work(float x, float y, float* rx,
-                                    int* B_is_usable, float* B,
-                                    float* sqrt_A2my2, float* new_y) {
+__host__ __device__ inline void do_hard_work(float x, float y, float* rx,
+                                             int* B_is_usable, float* B,
+                                             float* sqrt_A2my2, float* new_y) {
   float R, S, A;  /* A, B, R, and S are as in Hull et al. */
   float Am1, Amy; /* A-1, A-y. */
   const float A_crossover =
@@ -150,7 +150,7 @@ __device__ inline void do_hard_work(float x, float y, float* rx,
   }
 }
 
-__device__ inline complex<float> casinhf(complex<float> z) {
+__host__ __device__ inline complex<float> casinhf(complex<float> z) {
   float x, y, ax, ay, rx, ry, B, sqrt_A2my2, new_y;
   int B_is_usable;
   complex<float> w;
@@ -191,13 +191,13 @@ __device__ inline complex<float> casinhf(complex<float> z) {
   return (complex<float>(copysignf(rx, x), copysignf(ry, y)));
 }
 
-__device__ inline complex<float> casinf(complex<float> z) {
+__host__ __device__ inline complex<float> casinf(complex<float> z) {
   complex<float> w = casinhf(complex<float>(z.imag(), z.real()));
 
   return (complex<float>(w.imag(), w.real()));
 }
 
-__device__ inline complex<float> cacosf(complex<float> z) {
+__host__ __device__ inline complex<float> cacosf(complex<float> z) {
   float x, y, ax, ay, rx, ry, B, sqrt_A2mx2, new_x;
   int sx, sy;
   int B_is_usable;
@@ -254,7 +254,7 @@ __device__ inline complex<float> cacosf(complex<float> z) {
   return (complex<float>(rx, ry));
 }
 
-__device__ inline complex<float> cacoshf(complex<float> z) {
+__host__ __device__ inline complex<float> cacoshf(complex<float> z) {
   complex<float> w;
   float rx, ry;
 
@@ -274,7 +274,7 @@ __device__ inline complex<float> cacoshf(complex<float> z) {
 /*
  * Optimized version of clog() for |z| finite and larger than ~RECIP_EPSILON.
  */
-__device__ inline complex<float> clog_for_large_values(complex<float> z) {
+__host__ __device__ inline complex<float> clog_for_large_values(complex<float> z) {
   float x, y;
   float ax, ay, t;
   const float m_e = 2.7182818284590452e0f; /*  0x15bf0a8b145769.0p-51 */
@@ -315,7 +315,7 @@ __device__ inline complex<float> clog_for_large_values(complex<float> z) {
  * Assumes y is non-negative.
  * Assumes fabsf(x) >= FLT_EPSILON.
  */
-__device__ inline float sum_squares(float x, float y) {
+__host__ __device__ inline float sum_squares(float x, float y) {
   const float SQRT_MIN =
       1.084202172485504434007453e-19f; /* 0x1p-63; >= sqrt(FLT_MIN) */
   /* Avoid underflow when y is small. */
@@ -324,7 +324,7 @@ __device__ inline float sum_squares(float x, float y) {
   return (x * x + y * y);
 }
 
-__device__ inline float real_part_reciprocal(float x, float y) {
+__host__ __device__ inline float real_part_reciprocal(float x, float y) {
   float scale;
   uint32_t hx, hy;
   int32_t ix, iy;
@@ -348,7 +348,7 @@ __device__ inline float real_part_reciprocal(float x, float y) {
 }
 
 #if __cplusplus >= 201103L || !defined _MSC_VER
-__device__ inline complex<float> catanhf(complex<float> z) {
+__host__ __device__ inline complex<float> catanhf(complex<float> z) {
   float x, y, ax, ay, rx, ry;
   const volatile float pio2_lo =
       6.1232339957367659e-17;                 /*  0x11a62633145c07.0p-106 */
@@ -397,7 +397,7 @@ __device__ inline complex<float> catanhf(complex<float> z) {
   return (complex<float>(copysignf(rx, x), copysignf(ry, y)));
 }
 
-__device__ inline complex<float> catanf(complex<float> z) {
+__host__ __device__ inline complex<float> catanf(complex<float> z) {
   complex<float> w = catanhf(complex<float>(z.imag(), z.real()));
   return (complex<float>(w.imag(), w.real()));
 }
@@ -408,35 +408,35 @@ __device__ inline complex<float> catanf(complex<float> z) {
 }  // namespace detail
 
 template <>
-__device__ inline complex<float> acos(const complex<float>& z) {
+__host__ __device__ inline complex<float> acos(const complex<float>& z) {
   return detail::complex::cacosf(z);
 }
 
 template <>
-__device__ inline complex<float> asin(const complex<float>& z) {
+__host__ __device__ inline complex<float> asin(const complex<float>& z) {
   return detail::complex::casinf(z);
 }
 
 #if __cplusplus >= 201103L || !defined _MSC_VER
 template <>
-__device__ inline complex<float> atan(const complex<float>& z) {
+__host__ __device__ inline complex<float> atan(const complex<float>& z) {
   return detail::complex::catanf(z);
 }
 #endif
 
 template <>
-__device__ inline complex<float> acosh(const complex<float>& z) {
+__host__ __device__ inline complex<float> acosh(const complex<float>& z) {
   return detail::complex::cacoshf(z);
 }
 
 template <>
-__device__ inline complex<float> asinh(const complex<float>& z) {
+__host__ __device__ inline complex<float> asinh(const complex<float>& z) {
   return detail::complex::casinhf(z);
 }
 
 #if __cplusplus >= 201103L || !defined _MSC_VER
 template <>
-__device__ inline complex<float> atanh(const complex<float>& z) {
+__host__ __device__ inline complex<float> atanh(const complex<float>& z) {
   return detail::complex::catanhf(z);
 }
 #endif

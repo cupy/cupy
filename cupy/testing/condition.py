@@ -2,8 +2,6 @@ import functools
 import os
 import unittest
 
-import six
-
 
 class QuietTestRunner(object):
 
@@ -51,7 +49,7 @@ def repeat_with_success_at_least(times, min_success):
                         msg += '\n\nThe first error message:\n' + err_msg
                 instance.fail(msg)
 
-            for _ in six.moves.range(times):
+            for _ in range(times):
                 suite = unittest.TestSuite()
                 # Create new instance to call the setup and the teardown only
                 # once.

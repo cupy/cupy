@@ -1,3 +1,4 @@
+import functools
 import numpy
 
 import cupy
@@ -24,8 +25,13 @@ def average(a, axis=None, weights=None, returned=False):
         cupy.ndarray or tuple of cupy.ndarray: The average of the input array
             along the axis and the sum of weights.
 
+    .. warning::
+
+        This function may synchronize the device if ``weight`` is given.
+
     .. seealso:: :func:`numpy.average`
     """
+    # TODO(niboshi): Avoid synchronization.
     a = cupy.asarray(a)
 
     if weights is None:
@@ -35,9 +41,10 @@ def average(a, axis=None, weights=None, returned=False):
         wgt = cupy.asarray(weights)
 
         if issubclass(a.dtype.type, (numpy.integer, numpy.bool_)):
-            result_dtype = numpy.result_type(a.dtype, wgt.dtype, 'f8')
+            result_dtype = functools.reduce(numpy.promote_types,
+                                            (a.dtype, wgt.dtype, 'f8'))
         else:
-            result_dtype = numpy.result_type(a.dtype, wgt.dtype)
+            result_dtype = numpy.promote_types(a.dtype, wgt.dtype)
 
         # Sanity checks
         if a.shape != wgt.shape:
@@ -57,7 +64,7 @@ def average(a, axis=None, weights=None, returned=False):
             wgt = wgt.swapaxes(-1, axis)
 
         scl = wgt.sum(axis=axis, dtype=result_dtype)
-        if cupy.any(scl == 0.0):
+        if cupy.any(scl == 0.0):  # synchronize!
             raise ZeroDivisionError(
                 'Weights sum to zero, can\'t be normalized')
 

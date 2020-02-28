@@ -65,6 +65,10 @@ CUresult cuLinkAddData(...) {
     return hipErrorUnknown;
 }
 
+CUresult cuLinkAddFile(...) {
+    return hipErrorUnknown;
+}
+
 CUresult cuLinkComplete(...) {
     return hipErrorUnknown;
 }
@@ -107,6 +111,10 @@ CUresult cuLaunchKernel(CUfunction f, uint32_t gridDimX, uint32_t gridDimY,
     return hipModuleLaunchKernel(f, gridDimX, gridDimY, gridDimZ,
                                  blockDimX, blockDimY, blockDimZ,
                                  sharedMemBytes, hStream, kernelParams, extra);
+}
+
+CUresult cuLaunchCooperativeKernel(...) {
+    return hipErrorUnknown;
 }
 
 
@@ -154,10 +162,6 @@ CUresult cuTexRefSetFormat (...) {
 }
 
 CUresult cuTexRefSetMaxAnisotropy (...) {
-    return hipErrorUnknown;
-}
-
-CUresult cuParamSetTexRef (...) {
     return hipErrorUnknown;
 }
 

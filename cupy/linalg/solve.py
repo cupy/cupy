@@ -1,6 +1,5 @@
 import numpy
 from numpy import linalg
-import six
 
 import cupy
 from cupy.core import core
@@ -52,7 +51,7 @@ def solve(a, b):
     if a.dtype.char == 'f' or a.dtype.char == 'd':
         dtype = a.dtype
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ())
+        dtype = numpy.promote_types(a.dtype.char, 'f')
 
     cublas_handle = device.get_cublas_handle()
     cusolver_handle = device.get_cusolver_handle()
@@ -64,7 +63,7 @@ def solve(a, b):
 
     x = cupy.empty_like(b)
     shape = a.shape[:-2]
-    for i in six.moves.range(numpy.prod(shape)):
+    for i in range(numpy.prod(shape)):
         index = numpy.unravel_index(i, shape)
         x[index] = _solve(a[index], b[index], cublas_handle, cusolver_handle)
     return x
@@ -156,14 +155,14 @@ def tensorsolve(a, b, axes=None):
     .. seealso:: :func:`numpy.linalg.tensorsolve`
     """
     if axes is not None:
-        allaxes = list(six.moves.range(a.ndim))
+        allaxes = list(range(a.ndim))
         for k in axes:
             allaxes.remove(k)
             allaxes.insert(a.ndim, k)
         a = a.transpose(allaxes)
 
     oldshape = a.shape[-(a.ndim - b.ndim):]
-    prod = cupy.internal.prod(oldshape)
+    prod = cupy.core.internal.prod(oldshape)
 
     a = a.reshape(-1, prod)
     b = b.ravel()
@@ -280,7 +279,7 @@ def inv(a):
     if a.dtype.char in 'fdFD':
         dtype = a.dtype.char
     else:
-        dtype = numpy.find_common_type((a.dtype.char, 'f'), ()).char
+        dtype = numpy.promote_types(a.dtype.char, 'f')
 
     cusolver_handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
@@ -458,7 +457,7 @@ def tensorinv(a, ind=2):
         raise ValueError('Invalid ind argument')
     oldshape = a.shape
     invshape = oldshape[ind:] + oldshape[:ind]
-    prod = cupy.internal.prod(oldshape[ind:])
+    prod = cupy.core.internal.prod(oldshape[ind:])
     a = a.reshape(prod, -1)
     a_inv = inv(a)
     return a_inv.reshape(*invshape)

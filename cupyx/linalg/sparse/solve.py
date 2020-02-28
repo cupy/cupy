@@ -37,7 +37,7 @@ def lschol(A, b):
     if A.dtype == 'f' or A.dtype == 'd':
         dtype = A.dtype
     else:
-        dtype = numpy.find_common_type((A.dtype, 'f'), ())
+        dtype = numpy.promote_types(A.dtype, 'f')
 
     handle = device.get_cusolver_sp_handle()
     nnz = A.nnz
