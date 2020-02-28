@@ -212,6 +212,32 @@ def where(condition, x=None, y=None):
     return _where_ufunc(condition.astype('?'), x, y)
 
 
+def argwhere(a):
+    """Return the indices of the elements that are non-zero.
+
+    Returns a (N, ndim) dimantional array containing the
+    indices of the non-zero elements. Where `N` is number of
+    non-zero elements and `ndim` is dimention of the given array.
+
+    Args:
+        a (cupy.ndarray): array
+
+    Returns:
+        cupy.array: Indices of elements that are non-zero.
+
+    .. seealso:: :func:`numpy.argwhere`
+
+    """
+    util.check_array(a, arg_name='a')
+    # promote 0d to 1d because argwhere doesn't work well with 0d
+    if a.ndim == 0:
+        a = cupy.shape_base.atleast_1d(a)
+        # then remove the added dimension
+        return argwhere(a)[:,:0]
+    a = cupy.asarray(cupy.nonzero(a), dtype = int)
+    return cupy.transpose(a)
+
+
 # This is to allow using the same kernels for all dtypes, ints & floats
 # as nan is a special case
 _preamble = '''
