@@ -879,6 +879,8 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     a, x, y = _cast_common_type(a, x, y)
     if y is None:
         y = cupy.zeros(m, a.dtype)
+    if a.format == 'coo':
+        a.sum_duplicates()
 
     desc_a = SpMatDescriptor.create(a)
     desc_x = DnVecDescriptor.create(x)
@@ -928,13 +930,15 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
 
     a_shape = a.shape if not transa else a.shape[::-1]
     b_shape = b.shape if not transb else b.shape[::-1]
-    if a_shape[1] != b.shape[0]:
+    if a_shape[1] != b_shape[0]:
         raise ValueError('dimension mismatch')
     m, k = a_shape
     _, n = b_shape
     a, b, c = _cast_common_type(a, b, c)
     if c is None:
         c = cupy.zeros((m, n), a.dtype, 'F')
+    if a.format == 'coo':
+        a.sum_duplicates()
 
     desc_a = SpMatDescriptor.create(a)
     desc_b = DnMatDescriptor.create(b)

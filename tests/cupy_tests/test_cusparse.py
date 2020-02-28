@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 try:
     import scipy.sparse
 except ImportError:
@@ -248,3 +249,109 @@ class TestCscsort(unittest.TestCase):
         testing.assert_array_equal(self.a.indptr, a.indptr)
         testing.assert_array_equal(self.a.indices, a.indices)
         testing.assert_array_almost_equal(self.a.data, a.data)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+    'transa': [False, True],
+    'shape': [(3, 2), (4, 3)],
+    'format': ['csr', 'coo'],
+}))
+@testing.with_requires('scipy')
+class TestSpmv(unittest.TestCase):
+
+    alpha = 0.5
+    beta = 0.25
+
+    def setUp(self):
+        m, n = self.shape
+        self.op_a = scipy.sparse.random(m, n, density=0.5, format=self.format,
+                                        dtype=self.dtype)
+        if self.transa:
+            self.a = self.op_a.T
+        else:
+            self.a = self.op_a
+        self.x = numpy.random.uniform(-1, 1, n).astype(self.dtype)
+        self.y = numpy.random.uniform(-1, 1, m).astype(self.dtype)
+        if self.format == 'csr':
+            self.sparse_matrix = sparse.csr_matrix
+        elif self.format == 'coo':
+            self.sparse_matrix = sparse.coo_matrix
+
+    def test_spmv(self):
+        if not cupy.cusparse.is_generic_api_available():
+            pytest.skip('cuSparse generic API is not available')
+        a = self.sparse_matrix(self.a)
+        x = cupy.array(self.x)
+        y = cupy.cusparse.spmv(
+            a, x, alpha=self.alpha, transa=self.transa)
+        expect = self.alpha * self.op_a.dot(self.x)
+        testing.assert_array_almost_equal(y, expect)
+
+    def test_spmv_with_y(self):
+        if not cupy.cusparse.is_generic_api_available():
+            pytest.skip('cuSparse generic API is not available')
+        a = self.sparse_matrix(self.a)
+        x = cupy.array(self.x)
+        y = cupy.array(self.y)
+        z = cupy.cusparse.spmv(
+            a, x, y=y, alpha=self.alpha, beta=self.beta, transa=self.transa)
+        expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
+        self.assertIs(y, z)
+        testing.assert_array_almost_equal(y, expect)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+    'transa': [False, True],
+    'transb': [False, True],
+    'dims': [(2, 3, 4), (3, 4, 2)],
+    'format': ['csr', 'coo'],
+}))
+@testing.with_requires('scipy')
+class TestSpmm(unittest.TestCase):
+
+    alpha = 0.5
+    beta = 0.25
+
+    def setUp(self):
+        m, n, k = self.dims
+        self.op_a = scipy.sparse.random(m, k, density=0.5, format=self.format,
+                                        dtype=self.dtype)
+        if self.transa:
+            self.a = self.op_a.T
+        else:
+            self.a = self.op_a
+        self.op_b = numpy.random.uniform(-1, 1, (k, n)).astype(self.dtype)
+        if self.transb:
+            self.b = self.op_b.T
+        else:
+            self.b = self.op_b
+        self.c = numpy.random.uniform(-1, 1, (m, n)).astype(self.dtype)
+        if self.format == 'csr':
+            self.sparse_matrix = sparse.csr_matrix
+        elif self.format == 'coo':
+            self.sparse_matrix = sparse.coo_matrix
+
+    def test_spmm(self):
+        if not cupy.cusparse.is_generic_api_available():
+            pytest.skip('cuSparse generic API is not available')
+        a = self.sparse_matrix(self.a)
+        b = cupy.array(self.b, order='f')
+        c = cupy.cusparse.spmm(
+            a, b, alpha=self.alpha, transa=self.transa, transb=self.transb)
+        expect = self.alpha * self.op_a.dot(self.op_b)
+        testing.assert_array_almost_equal(c, expect)
+
+    def test_spmm_with_c(self):
+        if not cupy.cusparse.is_generic_api_available():
+            pytest.skip('cuSparse generic API is not available')
+        a = self.sparse_matrix(self.a)
+        b = cupy.array(self.b, order='f')
+        c = cupy.array(self.c, order='f')
+        y = cupy.cusparse.spmm(
+            a, b, c=c, alpha=self.alpha, beta=self.beta,
+            transa=self.transa, transb=self.transb)
+        expect = self.alpha * self.op_a.dot(self.op_b) + self.beta * self.c
+        self.assertIs(y, c)
+        testing.assert_array_almost_equal(y, expect)
