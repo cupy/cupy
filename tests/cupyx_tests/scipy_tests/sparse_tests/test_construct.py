@@ -223,19 +223,14 @@ class TestBmat(unittest.TestCase):
 
         A, B, C, D = self.data()
 
-        # test failure cases
-        with self.assertRaises(ValueError) as excinfo:
-            construct.bmat([[A], [B]], dtype=self.dtype)
-        print(str(excinfo.__dict__))
-        self.assertRegex(str(excinfo.exception),
-                         r'Got blocks\[1,0\]\.shape\[1\] '
-                         r'== 1, expected 2')
+        match = r'Got blocks\[1,0\]\.shape\[{}\] == 1, expected 2'
 
-        with self.assertRaises(ValueError) as excinfo:
+        # test failure cases
+        with pytest.raises(ValueError, match=match.format("0")):
+            construct.bmat([[A], [B]], dtype=self.dtype)
+
+        with pytest.raises(ValueError, match=match.format("1")):
             construct.bmat([[A, C]], dtype=self.dtype)
-        self.assertRegex(str(excinfo.exception),
-                         r'Got blocks\[0,1\]\.shape\[0\] '
-                         r'== 1, expected 2')
 
 
 @testing.parameterize(*testing.product({

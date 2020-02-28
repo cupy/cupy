@@ -219,7 +219,7 @@ def bmat(blocks, format=None, dtype=None):
 
     # We assume here that blocks will be 2-D so we need to look, at most,
     # 2 layers deep for the shape
-    # TODO: Check this assumption and raise ValueError
+    # TODO(Corey J. Nolet): Check this assumption and raise ValueError
 
     # NOTE: We can't follow scipy exactly here
     # since we don't have an `object` datatype
