@@ -181,7 +181,7 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
             number of bins. If ``bins`` is an :class:`~cupy.ndarray`, it
             represents a bin edges.
         range (2-tuple of float, optional): The lower and upper range of the
-            bins.  If not provided, range is simply ``(a.min(), a.max())``.
+            bins.  If not provided, range is simply ``(x.min(), x.max())``.
             Values outside the range are ignored. The first element of the
             range must be less than or equal to the second. `range` affects the
             automatic bin computation as well. While bin width is computed to
