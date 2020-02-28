@@ -4,6 +4,8 @@ import mock
 import numpy
 import pytest
 
+import re
+
 import cupy
 from cupy import testing
 from cupyx.scipy import sparse
@@ -223,13 +225,15 @@ class TestBmat(unittest.TestCase):
 
         A, B, C, D = self.data()
 
-        match = r'Got blocks\[1,0\]\.shape\[{}\] == 1, expected 2'
+        match = r'.*Got blocks\[{}\]\.shape\[{}\] == 1, expected 2'
 
         # test failure cases
-        with pytest.raises(ValueError, match=match.format("0")):
+        message1 = re.compile(match.format("1,0", "1"))
+        with pytest.raises(ValueError, match=message1):
             construct.bmat([[A], [B]], dtype=self.dtype)
 
-        with pytest.raises(ValueError, match=match.format("1")):
+        message2 = re.compile(match.format("0,1", "0"))
+        with pytest.raises(ValueError, match=message2):
             construct.bmat([[A, C]], dtype=self.dtype)
 
 
