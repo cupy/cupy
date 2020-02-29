@@ -685,7 +685,7 @@ class RandomState(object):
                 seed_str = binascii.hexlify(os.urandom(8))
                 seed = int(seed_str, 16)
             except NotImplementedError:
-                seed = (time.clock() * 1000000) % _UINT64_MAX
+                seed = (time.time() * 1000000) % _UINT64_MAX
         else:
             if isinstance(seed, numpy.ndarray):
                 seed = int(hashlib.md5(seed).hexdigest()[:16], 16)
@@ -1193,9 +1193,9 @@ def seed(seed=None):
 
     Args:
         seed (None or int): Seed for the random number generator. If ``None``,
-            it uses :func:`os.urandom` if available or :func:`time.clock`
-            otherwise. Note that this function does not support seeding by an
-            integer array.
+            it uses :func:`os.urandom` if available or :func:`time.time`
+            otherwise. Note that this function does not support seeding by
+            an integer array.
 
     """
     get_random_state().seed(seed)
