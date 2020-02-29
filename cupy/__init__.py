@@ -306,6 +306,7 @@ from cupy.manipulation.join import dstack  # NOQA
 from cupy.manipulation.join import hstack  # NOQA
 from cupy.manipulation.join import stack  # NOQA
 from cupy.manipulation.join import vstack  # NOQA
+from cupy.manipulation.join import append  # NOQA
 
 from cupy.manipulation.kind import asfortranarray  # NOQA
 from cupy.manipulation.kind import require  # NOQA

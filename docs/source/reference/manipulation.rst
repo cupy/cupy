@@ -83,6 +83,7 @@ Joining arrays
    cupy.dstack
    cupy.hstack
    cupy.vstack
+   cupy.append
 
 
 Splitting arrays

@@ -2,6 +2,8 @@ import numpy
 
 import cupy
 from cupy import core
+from cupy.manipulation.shape import ravel
+from cupy.creation.from_data import asanyarray
 
 
 def column_stack(tup):
@@ -146,3 +148,31 @@ def _get_positive_axis(ndim, axis):
         raise numpy.AxisError(
             'axis {} out of bounds [0, {})'.format(axis, ndim))
     return a
+
+
+def append(tup, values, axis=None):
+    """
+       Append values to the end of an array.
+
+       Args:
+         tup (sequence of arrays): Arrays to which values are appended
+         values :
+          array of values that are going to be appended.
+             It must be of the correct shape (the same shape as `tup`).
+             If `axis` is not specified, `values` are flattened before use.
+         axis : int, optional
+           The axis along which `values` are appended.  If `axis` is not
+           given, both `tup` and `values` are flattened before use.
+
+       Returns:
+          cupy.ndarray : `tup` with `values` appended to `axis`.
+
+       .. seealso:: :func:`numpy.append`
+    """
+    arr = asanyarray(tup)
+    if axis is None:
+        if arr.ndim != 1:
+            arr = arr.ravel()
+        values = ravel(values)
+        axis = arr.ndim - 1
+    return concatenate((arr, values), axis=axis)
