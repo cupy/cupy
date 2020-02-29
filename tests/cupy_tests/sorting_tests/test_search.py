@@ -588,3 +588,18 @@ class TestSearchSortedWithSorter(unittest.TestCase):
         bins = xp.array([10, 4, 2, 1, 8])
         sorter = xp.array([], dtype=xp.float64)
         xp.searchsorted(bins, x, sorter=sorter)
+
+
+@testing.gpu
+class TestExtract(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_extract_basic(self, xp):
+        arr = testing.shaped_arange((3, 3, 3), xp, xp.float64)
+        mask = arr > 0.5
+        return xp.extract(mask, arr)
+
+    def test_extract_known_array(self):
+        arr = cupy.array([2, 3, 1, 2, 0, 2, 4, 9, -5])
+        mask = arr > 2
+        assert bool((cupy.extract(mask, arr) == cupy.array([3, 4, 9])).all())

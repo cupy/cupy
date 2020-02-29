@@ -378,4 +378,19 @@ def _searchsorted(a, v, side, sorter, assume_increasing):
     return y
 
 
-# TODO(okuta): Implement extract
+def extract(condition, arr):
+    """Return the elements of an array that satisfy some condition.
+
+    Args:
+        condition (array_like): An array whose nonzero or True entries indicate
+            the elements of `arr` to extract.
+        arr (array_like): Input array of the same size as `condition`.
+
+    Returns:
+        cupy.ndarray: Rank 1 array of values from `arr` where `condition`
+        is True.
+
+    .. seealso:: :func:`numpy.extract`
+    """
+
+    return cupy.take(cupy.ravel(arr), cupy.nonzero(cupy.ravel(condition))[0])

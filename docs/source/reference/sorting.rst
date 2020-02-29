@@ -34,6 +34,7 @@ Searching
    cupy.nonzero
    cupy.flatnonzero
    cupy.where
+   cupy.extract
 
 Counting
 --------
