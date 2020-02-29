@@ -233,8 +233,8 @@ def argwhere(a):
     if a.ndim == 0:
         a = cupy.shape_base.atleast_1d(a)
         # then remove the added dimension
-        return argwhere(a)[:,:0]
-    a = cupy.asarray(cupy.nonzero(a), dtype = int)
+        return argwhere(a)[:, :0]
+    a = cupy.asarray(cupy.nonzero(a), dtype=int)
     return cupy.transpose(a)
 
 
