@@ -441,6 +441,7 @@ from cupy.indexing.indexing import choose  # NOQA
 from cupy.indexing.indexing import compress  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
 from cupy.indexing.indexing import extract  # NOQA
+from cupy.indexing.indexing import select # NOQA
 from cupy.indexing.indexing import take  # NOQA
 from cupy.indexing.indexing import take_along_axis  # NOQA
 

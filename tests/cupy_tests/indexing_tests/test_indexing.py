@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 import cupy
 from cupy import testing
 
@@ -224,3 +226,57 @@ class TestChoose(unittest.TestCase):
         a = xp.array([0, 1])
         c = testing.shaped_arange((3, 5, 4), xp, dtype)
         return a.choose(c)
+
+
+@testing.gpu
+class TestSelect(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_select(self, xp, dtype):
+        a = xp.arange(10, dtype=dtype)
+        condlist = [a > 3, a < 5]
+        choicelist = [a, a**2]
+        return xp.select(condlist, choicelist)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_almost_equal()
+    def test_select_complex(self, xp, dtype):
+        a = xp.arange(10, dtype=dtype)
+        condlist = [a > 3, a < 5]
+        choicelist = [a, a**2]
+        return xp.select(condlist, choicelist)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_select_default(self, xp, dtype):
+        a = xp.arange(10, dtype=dtype)
+        condlist = [a > 3, a < 5]
+        choicelist = [a, a**2]
+        default = 3
+        return xp.select(condlist, choicelist, default)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_almost_equal()
+    def test_select_default_complex(self, xp, dtype):
+        a = xp.arange(10, dtype=dtype)
+        condlist = [a > 3, a < 5]
+        choicelist = [a, a**2]
+        default = 3
+        return xp.select(condlist, choicelist, default)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_select_length_error(self, dtype):
+        a = cupy.arange(10, dtype=dtype)
+        condlist = [a > 3]
+        choicelist = [a, a**2]
+        with pytest.raises(ValueError):
+            cupy.select(condlist, choicelist)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_select_type_error(self, dtype):
+        a = cupy.arange(10, dtype=dtype)
+        condlist = [3] * 10
+        choicelist = [a, a**2]
+        with pytest.raises(ValueError):
+            cupy.select(condlist, choicelist)

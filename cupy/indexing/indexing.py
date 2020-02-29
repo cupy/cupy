@@ -164,4 +164,60 @@ def extract(condition, a):
     return a.take(condition.nonzero()[0])
 
 
-# TODO(okuta): Implement select
+def select(condlist, choicelist, default=0):
+    """Return an array drawn from elements in choicelist, depending on conditions.
+
+    Args:
+        condlist (list of bool arrays):
+            The list of conditions which determine from which array in
+            `choicelist` the output elements are taken. When multiple
+            conditions are satisfied, the first one encountered in
+            `condlist` is used.
+        choicelist (list of cupy.ndarray):
+            The list of arrays from which the output elements are taken. It has
+            to be of the same length as `condlist`.
+        default : The element inserted in `output` when all conditions
+            evaluate to False.
+
+    Returns:
+        cupy.ndarray: The output at position m is the m-th element of the
+        array in `choicelist` where the m-th element of the corresponding
+        array in `condlist` is True.
+
+    .. seealso:: :func:`numpy.select`
+    """
+
+    if len(condlist) != len(choicelist):
+        raise ValueError(
+            'list of cases must be same length as list of conditions')
+
+    dtype = cupy.result_type(*choicelist)
+
+    choicelist = [cupy.asarray(choice) for choice in choicelist]
+    choicelist.append(cupy.asarray(default))
+
+    condlist = cupy.broadcast_arrays(*condlist)
+    choicelist = cupy.broadcast_arrays(*choicelist)
+
+    for i in range(len(condlist)):
+        cond = condlist[i]
+        if cond.dtype.type is not cupy.bool_:
+            raise ValueError(
+                'invalid entry {} in condlist: should be boolean ndarray'
+                .format(i))
+
+    if choicelist[0].ndim == 0:
+        result_shape = condlist[0].shape
+    else:
+        result_shape = cupy.broadcast_arrays(condlist[0],
+                                             choicelist[0])[0].shape
+
+    result = cupy.empty(result_shape, dtype)
+    cupy.copyto(result, choicelist[-1], casting='unsafe')
+
+    choicelist = choicelist[-2::-1]
+    condlist = condlist[::-1]
+    for choice, cond in zip(choicelist, condlist):
+        cupy.copyto(result, choice, where=cond)
+
+    return result
