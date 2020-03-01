@@ -229,13 +229,7 @@ def argwhere(a):
 
     """
     util.check_array(a, arg_name='a')
-    # promote 0d to 1d because argwhere doesn't work well with 0d
-    if a.ndim == 0:
-        a = cupy.shape_base.atleast_1d(a)
-        # then remove the added dimension
-        return argwhere(a)[:, :0]
-    a = cupy.asarray(cupy.nonzero(a), dtype=int)
-    return cupy.transpose(a)
+    return a.argwhere()
 
 
 # This is to allow using the same kernels for all dtypes, ints & floats
