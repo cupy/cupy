@@ -364,7 +364,7 @@ def svd(a, full_matrices=True, compute_uv=True):
             if full_matrices:
                 return cupy.eye(m, m), cupy.array([]), cupy.empty((0, 0))
             else:
-                return cupy.empty(m, 0), cupy.array([]), cupy.empty((0, 0))
+                return cupy.empty((m, 0)), cupy.array([]), cupy.empty((0, 0))
         else:
             return cupy.array([])
 

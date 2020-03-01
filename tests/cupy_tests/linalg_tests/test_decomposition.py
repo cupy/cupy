@@ -203,3 +203,9 @@ class TestSVD(unittest.TestCase):
     def test_rank2(self):
         self.check_rank2(cupy.random.randn(2, 3, 4).astype(numpy.float32))
         self.check_rank2(cupy.random.randn(1, 2, 3, 4).astype(numpy.float64))
+
+    @testing.with_requires('numpy>=1.16')
+    def test_empty_array(self):
+        self.check_usv((0, 3))
+        self.check_usv((3, 0))
+        self.check_usv((1, 0))
