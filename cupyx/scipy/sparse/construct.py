@@ -156,6 +156,7 @@ def hstack(blocks, format=None, dtype=None):
 
 def vstack(blocks, format=None, dtype=None):
     """Stacks sparse matrices vertically (row wise)
+
     Args:
         blocks (sequence of cupyx.scipy.sparse.spmatrix)
             sparse matrices to stack
