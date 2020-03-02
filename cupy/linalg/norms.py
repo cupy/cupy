@@ -5,7 +5,7 @@ import cupy
 from cupy.linalg import decomposition
 from cupy.linalg import util
 
-from functools import partial
+import functools
 
 
 def _multi_svd_norm(x, row_axis, col_axis, op):
@@ -106,10 +106,10 @@ def norm(x, ord=None, axis=None, keepdims=False):
         if row_axis == col_axis:
             raise ValueError('Duplicate axes given.')
         if ord == 2:
-            op_max = partial(cupy.take, indices=0)
+            op_max = functools.partial(cupy.take, indices=0)
             ret = _multi_svd_norm(x, row_axis, col_axis, op_max)
         elif ord == -2:
-            op_min = partial(cupy.take, indices=-1)
+            op_min = functools.partial(cupy.take, indices=-1)
             ret = _multi_svd_norm(x, row_axis, col_axis, op_min)
         elif ord == 1:
             if col_axis > row_axis:
