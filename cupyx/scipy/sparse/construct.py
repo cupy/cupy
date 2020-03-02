@@ -186,7 +186,7 @@ def vstack(blocks, format=None, dtype=None):
 
 def bmat(blocks, format=None, dtype=None):
     """Builds a sparse matrix from sparse sub-blocks
-    
+
     Args:
         blocks (array_like):
             Grid of sparse matrices with compatible shapes.
@@ -201,7 +201,7 @@ def bmat(blocks, format=None, dtype=None):
     Returns:
         bmat (sparse matrix)
 
-    .. seealso:: :func: `scipy.sparse.bmat`
+    .. seealso:: :func:`scipy.sparse.bmat`
 
     Examples:
         >>> from cupy.sparse import coo_matrix, bmat
