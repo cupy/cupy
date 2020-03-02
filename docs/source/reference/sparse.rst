@@ -53,12 +53,17 @@ Building sparse matrices
    :toctree: generated/
    :nosignatures:
 
+   cupyx.scipy.sparse.bmat
    cupyx.scipy.sparse.diags
    cupyx.scipy.sparse.eye
+   cupyx.scipy.sparse.hstack
    cupyx.scipy.sparse.identity
    cupyx.scipy.sparse.spdiags
    cupyx.scipy.sparse.rand
    cupyx.scipy.sparse.random
+   cupyx.scipy.sparse.stack
+   cupyx.scipy.sparse.vstack
+
 
 
 Identifying sparse matrices
