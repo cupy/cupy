@@ -61,7 +61,6 @@ Building sparse matrices
    cupyx.scipy.sparse.spdiags
    cupyx.scipy.sparse.rand
    cupyx.scipy.sparse.random
-   cupyx.scipy.sparse.stack
    cupyx.scipy.sparse.vstack
 
 
