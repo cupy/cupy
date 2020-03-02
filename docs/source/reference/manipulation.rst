@@ -83,8 +83,6 @@ Joining arrays
    cupy.dstack
    cupy.hstack
    cupy.vstack
-   cupy.append
-
 
 Splitting arrays
 ----------------
@@ -119,6 +117,7 @@ Adding and removing elements
    :nosignatures:
 
    cupy.unique
+   cupy.append
 
 
 Rearranging elements
