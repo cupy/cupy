@@ -193,6 +193,13 @@ class TestArrayCopyAndView(unittest.TestCase):
         b = cupy.empty(100, dtype=a.dtype)
         b[:] = a
 
+    @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    @testing.numpy_cupy_array_equal()
+    def test_isinstance_numpy_copy_not_slice(self, xp):
+        a = xp.arange(5, dtype=numpy.float64)
+        a[a < 3] = 0
+        return a
+
 
 @testing.parameterize(
     {'src_order': 'C'},

@@ -1247,10 +1247,12 @@ cdef class ndarray:
             array([9998., 9999.])
 
         """
-        if (util.ENABLE_SLICE_COPY and slices == slice(None, None, None) and
-                isinstance(value, numpy.ndarray)):
-            if (self.dtype == value.dtype and
-                    self.shape == value.shape):
+        if util.ENABLE_SLICE_COPY and (
+                type(slices) is slice
+                and slices == slice(None, None, None)
+                and isinstance(value, numpy.ndarray)
+        ):
+            if self.dtype == value.dtype and self.shape == value.shape:
                 if self.strides == value.strides:
                     ptr = ctypes.c_void_p(value.__array_interface__['data'][0])
                 else:
