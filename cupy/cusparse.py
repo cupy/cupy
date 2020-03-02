@@ -883,6 +883,9 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
         raise ValueError('dimension mismatch')
     if a.format == 'coo':
         a.sum_duplicates()
+    if a.nnz == 0:
+        y[...] = 0
+        return y
 
     desc_a = SpMatDescriptor.create(a)
     desc_x = DnVecDescriptor.create(x)
@@ -943,6 +946,9 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
         raise ValueError('dimension mismatch')
     if a.format == 'coo':
         a.sum_duplicates()
+    if a.nnz == 0:
+        c[...] = 0
+        return c
 
     desc_a = SpMatDescriptor.create(a)
     desc_b = DnMatDescriptor.create(b)
