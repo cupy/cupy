@@ -1,10 +1,10 @@
+import re
 import unittest
 
 import mock
 import numpy
 import pytest
 
-import re
 
 import cupy
 from cupy import testing
@@ -228,11 +228,11 @@ class TestBmat(unittest.TestCase):
         match = r'.*Got blocks\[{}\]\.shape\[{}\] == 1, expected 2'
 
         # test failure cases
-        message1 = re.compile(match.format("1,0", "1"))
+        message1 = re.compile(match.format('1,0', '1'))
         with pytest.raises(ValueError, match=message1):
             construct.bmat([[A], [B]], dtype=self.dtype)
 
-        message2 = re.compile(match.format("0,1", "0"))
+        message2 = re.compile(match.format('0,1', '0'))
         with pytest.raises(ValueError, match=message2):
             construct.bmat([[A, C]], dtype=self.dtype)
 
