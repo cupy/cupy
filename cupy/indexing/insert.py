@@ -72,9 +72,7 @@ def put(a, ind, v, mode='wrap'):
 
 _fill_diagonal_kernel = core.ElementwiseKernel(
     'int64 start, int64 stop, int64 step, raw T val', 'raw T a',
-    '''_a_ind.set(start + i * step);
-_val_ind.set(i % _val_ind.size());
-a[_a_ind.get()] = val[_val_ind.get()];''',
+    'a[start + i * step] = val[i % val.size()];',
     'cupy_fill_diagonal')
 
 
