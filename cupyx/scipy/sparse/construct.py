@@ -186,6 +186,7 @@ def vstack(blocks, format=None, dtype=None):
 
 def bmat(blocks, format=None, dtype=None):
     """Builds a sparse matrix from sparse sub-blocks
+    
     Args:
         blocks (array_like):
             Grid of sparse matrices with compatible shapes.
