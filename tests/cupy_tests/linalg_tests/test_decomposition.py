@@ -211,7 +211,7 @@ class TestSVD(unittest.TestCase):
         self.check_usv((1, 0))
 
     @testing.with_requires('numpy>=1.16')
-    @testing.numpy_cupy_allclose(atol=1e-4)
+    @testing.numpy_cupy_array_equal()
     def test_empty_array_compute_uv_false(self, xp):
         array = xp.empty((3, 0))
         return xp.linalg.svd(
