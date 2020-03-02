@@ -98,6 +98,7 @@ from cupy.cuda.stream import Event  # NOQA
 from cupy.cuda.stream import get_current_stream  # NOQA
 from cupy.cuda.stream import get_elapsed_time  # NOQA
 from cupy.cuda.stream import Stream  # NOQA
+from cupy.cuda.stream import ExternalStream  # NOQA
 
 
 @contextlib.contextmanager
