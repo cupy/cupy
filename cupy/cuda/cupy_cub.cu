@@ -470,7 +470,7 @@ struct _cub_reduce_prod {
     {
         _multiply product_op;
         DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<T*>(y), num_items, product_op, static_cast<T>(1), s);
+            static_cast<T*>(y), num_items, product_op, 1.0, s);
     }
 };
 
@@ -484,7 +484,7 @@ struct _cub_segmented_reduce_prod {
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
             static_cast<int*>(offset_start),
             static_cast<int*>(offset_end),
-            product_op, static_cast<T>(1), s);
+            product_op, 1.0, s);
     }
 };
 
