@@ -469,8 +469,21 @@ struct _cub_reduce_prod {
         int num_items, cudaStream_t s)
     {
         _multiply product_op;
+        T init;
+
+        #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+            && (!defined(__CUDA_ARCH__))  // support half & on host
+        if (Equals<T, __half>::VALUE) {  //Equals defined in cub/util_type.cuh
+            init = static_cast<T>(1.0f);
+        } else {
+            init = static_cast<T>(1);
+        }
+        #else  // either no support for half or on device
+        init = static_cast<T>(1);
+        #endif
+
         DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<T*>(y), num_items, product_op, 1.0, s);
+            static_cast<T*>(y), num_items, product_op, init, s);
     }
 };
 
@@ -480,11 +493,24 @@ struct _cub_segmented_reduce_prod {
         int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
     {
         _multiply product_op;
+        T init;
+
+        #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+            && (!defined(__CUDA_ARCH__))  // support half & on host
+        if (Equals<T, __half>::VALUE) {  //Equals defined in cub/util_type.cuh
+            init = static_cast<T>(1.0f);
+        } else {
+            init = static_cast<T>(1);
+        }
+        #else  // either no support for half or on device
+        init = static_cast<T>(1);
+        #endif
+
         DeviceSegmentedReduce::Reduce(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
             static_cast<int*>(offset_start),
             static_cast<int*>(offset_end),
-            product_op, 1.0, s);
+            product_op, init, s);
     }
 };
 
