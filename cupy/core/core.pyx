@@ -144,6 +144,9 @@ cdef class ndarray:
         self._set_contiguous_strides(itemsize, c_order)
         self.data = memory.alloc(self.size * itemsize)
 
+    def __bytes__(self):
+        return self.tobytes()
+
     @property
     def __cuda_array_interface__(self):
         desc = {
