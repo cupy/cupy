@@ -64,7 +64,6 @@ Building sparse matrices
    cupyx.scipy.sparse.vstack
 
 
-
 Identifying sparse matrices
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -5,7 +5,6 @@ import mock
 import numpy
 import pytest
 
-
 import cupy
 from cupy import testing
 from cupyx.scipy import sparse
