@@ -51,6 +51,22 @@ template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, t
 
 
 /* ------------------------------------ "Patches" to CUB ------------------------------------
+   This stub is needed because CUB does not have a built-in "prod" operator
+*/
+
+//
+// product functor
+//
+struct _multiply
+{
+    template <typename T>
+    __host__ __device__ __forceinline__ T operator()(const T &a, const T &b) const
+    {
+        return a * b;
+    }
+};
+
+/*
    These stubs are needed because CUB does not handle NaNs properly, while NumPy has certain
    behaviors with which we must comply.
 */
@@ -445,6 +461,34 @@ struct _cub_segmented_reduce_sum {
 };
 
 //
+// **** CUB Prod ****
+//
+struct _cub_reduce_prod {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_items, cudaStream_t s)
+    {
+        _multiply product_op;
+        DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+            static_cast<T*>(y), num_items, product_op, static_cast<T>(1), s);
+    }
+};
+
+struct _cub_segmented_reduce_prod {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
+    {
+        _multiply product_op;
+        DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+            static_cast<T*>(x), static_cast<T*>(y), num_segments,
+            static_cast<int*>(offset_start),
+            static_cast<int*>(offset_end),
+            product_op, static_cast<T>(1), s);
+    }
+};
+
+//
 // **** CUB Min ****
 //
 struct _cub_reduce_min {
@@ -565,16 +609,6 @@ struct _cub_inclusive_product {
         DeviceScan::InclusiveScan(workspace, workspace_size, static_cast<T*>(input),
             static_cast<T*>(output), product_op, num_items, s);
     }
-
-    // product functor
-    struct _multiply
-    {
-        template <typename T>
-        __host__ __device__ __forceinline__
-        T operator()(const T &a, const T &b) const {
-            return a * b;
-        }
-    };
 };
 
 //
@@ -596,6 +630,8 @@ void cub_device_reduce(void* workspace, size_t& workspace_size, void* x, void* y
     case CUPY_CUB_ARGMIN:   return dtype_dispatcher(dtype_id, _cub_reduce_argmin(),
                                 workspace, workspace_size, x, y, num_items, stream);
     case CUPY_CUB_ARGMAX:   return dtype_dispatcher(dtype_id, _cub_reduce_argmax(),
+                                workspace, workspace_size, x, y, num_items, stream);
+    case CUPY_CUB_PROD:     return dtype_dispatcher(dtype_id, _cub_reduce_prod(),
                                 workspace, workspace_size, x, y, num_items, stream);
     default:            throw std::runtime_error("Unsupported operation");
     }
@@ -627,6 +663,10 @@ void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
                    offset_end, stream);
     case CUPY_CUB_MAX:
         return dtype_dispatcher(dtype_id, _cub_segmented_reduce_max(),
+                   workspace, workspace_size, x, y, num_segments, offset_start,
+                   offset_end, stream);
+    case CUPY_CUB_PROD:
+        return dtype_dispatcher(dtype_id, _cub_segmented_reduce_prod(),
                    workspace, workspace_size, x, y, num_segments, offset_start,
                    offset_end, stream);
     default:

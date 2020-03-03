@@ -137,15 +137,17 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
         raise ValueError(
             'output parameter for reduction operation has the wrong number of '
             'dimensions')
-    if op < CUPY_CUB_SUM or op > CUPY_CUB_ARGMAX:
-        raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_MIN, CUPY_CUB_MAX, '
-                         'CUPY_CUB_ARGMIN, and CUPY_CUB_ARGMAX are supported.')
-    if x.size == 0 and op != CUPY_CUB_SUM:
+    if op not in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX,
+                  CUPY_CUB_ARGMIN, CUPY_CUB_ARGMAX):
+        raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, '
+                         'CUPY_CUB_MAX, CUPY_CUB_ARGMIN, and CUPY_CUB_ARGMAX '
+                         'are supported.')
+    if x.size == 0 and op not in (CUPY_CUB_SUM, CUPY_CUB_PROD):
         raise ValueError('zero-size array to reduction operation {} which has '
                          'no identity'.format(op.name))
     x = _internal_ascontiguousarray(x)
 
-    if CUPY_CUB_SUM <= op <= CUPY_CUB_MAX:
+    if op in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX):
         y = ndarray((), x.dtype)
     else:  # argmin and argmax
         # cub::KeyValuePair has 1 int + 1 arbitrary type
@@ -196,10 +198,10 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
     cdef tuple out_shape
     cdef Stream_t s
 
-    if op < CUPY_CUB_SUM or op > CUPY_CUB_MAX:
-        raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_MIN, and CUPY_CUB_MAX '
-                         'are supported.')
-    if x.size == 0 and op != CUPY_CUB_SUM:
+    if op not in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX):
+        raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, '
+                         'and CUPY_CUB_MAX are supported.')
+    if x.size == 0 and op not in (CUPY_CUB_SUM, CUPY_CUB_PROD):
         raise ValueError('zero-size array to reduction operation {} which has '
                          'no identity'.format(op.name))
     if x.flags.c_contiguous:
@@ -218,10 +220,13 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
     if out is not None and out.shape != out_shape:
         raise ValueError(
             'output parameter for reduction operation has the wrong shape')
-    if x.size == 0:  # for CUPY_CUB_SUM
+    if x.size == 0:  # for CUPY_CUB_SUM & CUPY_CUB_PROD
         if out is not None:
             y = out
-        y[...] = 0
+        if op == CUPY_CUB_SUM:
+            y[...] = 0
+        elif op == CUPY_CUB_PROD:
+            y[...] = 1
         return y
     n_segments = x.size//contiguous_size
     # CUB internally use int for offset...
@@ -388,7 +393,7 @@ cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None):
     dev_id = device.get_device_id()
 
     if dtype is None:
-        if op == CUPY_CUB_SUM:
+        if op in (CUPY_CUB_SUM, CUPY_CUB_PROD):
             # auto dtype:
             # CUB reduce_sum does not support dtype promotion.
             # See _sum_auto_dtype in cupy/core/_routines_math.pyx for which
@@ -468,7 +473,7 @@ def cub_scan(arr, op):
 
     If the specified scan is not possible, None is returned.
     """
-    if op < CUPY_CUB_CUMSUM or op > CUPY_CUB_CUMPROD:
+    if op not in (CUPY_CUB_CUMSUM, CUPY_CUB_CUMPROD):
         return None
 
     x_dtype = arr.dtype
