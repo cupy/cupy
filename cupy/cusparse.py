@@ -76,6 +76,31 @@ def _dtype_to_DataType(dtype):
         raise TypeError
 
 
+_available_cuda_version = {
+    'csrmv': (9000, 11000),
+    'csrmvEx': (9000, None),
+    'csrmm': (9000, 11000),
+    'csrmm2': (9000, 11000),
+    'csrgeam': (9000, 11000),
+    'csrgemm': (9000, 11000),
+    'spmv': (10010, None),
+    'spmm': (10010, None),
+    }
+
+
+def check_availability(name):
+    if name in _available_cuda_version:
+        version_added, version_removed = _available_cuda_version[name]
+    else:
+        version_added, version_removed = None, None
+    cuda_version = runtime.runtimeGetVersion()
+    if version_added is not None and cuda_version < version_added:
+        return False
+    if version_removed is not None and cuda_version >= version_removed:
+        return False
+    return True
+
+
 def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     """Matrix-vector product for a CSR-matrix and a dense vector.
 
@@ -755,15 +780,6 @@ def csr2csr_compress(x, tol):
         (data, indices, indptr), shape=x.shape)
 
 
-def is_generic_api_available():
-    handle = device.get_cusparse_handle()
-    version = cusparse.getVersion(handle)
-    if version >= 10300:  # cuSPARSE 10.3.0 == CUDA 10.1
-        return True
-    else:
-        return False
-
-
 def _dtype_to_IndexType(dtype):
     if dtype == 'uint16':
         return cusparse.CUSPARSE_INDEX_16U
@@ -869,8 +885,8 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     Returns:
         cupy.ndarray
     """
-    if not is_generic_api_available():
-        raise RuntimeError('cuSparse generic API is not available.')
+    if not check_availability('spmv'):
+        raise RuntimeError('spmv is not available.')
 
     a_shape = a.shape if not transa else a.shape[::-1]
     if a_shape[1] != len(x):
@@ -930,8 +946,8 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     assert b.flags.f_contiguous
     assert c is None or c.flags.f_contiguous
 
-    if not is_generic_api_available():
-        raise RuntimeError('cuSparse generic API is not available.')
+    if not check_availability('spmm'):
+        raise RuntimeError('spmm is not available.')
 
     a_shape = a.shape if not transa else a.shape[::-1]
     b_shape = b.shape if not transb else b.shape[::-1]

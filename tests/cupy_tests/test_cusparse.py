@@ -279,8 +279,8 @@ class TestSpmv(unittest.TestCase):
             self.sparse_matrix = sparse.coo_matrix
 
     def test_spmv(self):
-        if not cupy.cusparse.is_generic_api_available():
-            pytest.skip('cuSparse generic API is not available')
+        if not cupy.cusparse.check_availability('spmv'):
+            pytest.skip('spmv is not available')
         a = self.sparse_matrix(self.a)
         x = cupy.array(self.x)
         y = cupy.cusparse.spmv(a, x, alpha=self.alpha, transa=self.transa)
@@ -288,8 +288,8 @@ class TestSpmv(unittest.TestCase):
         testing.assert_array_almost_equal(y, expect)
 
     def test_spmv_with_y(self):
-        if not cupy.cusparse.is_generic_api_available():
-            pytest.skip('cuSparse generic API is not available')
+        if not cupy.cusparse.check_availability('spmv'):
+            pytest.skip('spmv is not available')
         a = self.sparse_matrix(self.a)
         x = cupy.array(self.x)
         y = cupy.array(self.y)
@@ -313,8 +313,8 @@ class TestErrorSpmv(unittest.TestCase):
         self.y = numpy.random.uniform(-1, 1, m).astype(self.dtype)
 
     def test_error_shape(self):
-        if not cupy.cusparse.is_generic_api_available():
-            pytest.skip('cuSparse generic API is not available')
+        if not cupy.cusparse.check_availability('spmv'):
+            pytest.skip('spmv is not available')
 
         a = sparse.csr_matrix(self.a.T)
         x = cupy.array(self.x)
@@ -332,8 +332,8 @@ class TestErrorSpmv(unittest.TestCase):
             cupy.cusparse.spmv(a, x)
 
     def test_error_format(self):
-        if not cupy.cusparse.is_generic_api_available():
-            pytest.skip('cuSparse generic API is not available')
+        if not cupy.cusparse.check_availability('spmv'):
+            pytest.skip('spmv is not available')
         a = sparse.csc_matrix(self.a)
         x = cupy.array(self.x)
         with self.assertRaises(ValueError):
@@ -373,8 +373,8 @@ class TestSpmm(unittest.TestCase):
             self.sparse_matrix = sparse.coo_matrix
 
     def test_spmm(self):
-        if not cupy.cusparse.is_generic_api_available():
-            pytest.skip('cuSparse generic API is not available')
+        if not cupy.cusparse.check_availability('spmm'):
+            pytest.skip('spmm is not available')
         a = self.sparse_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.cusparse.spmm(
@@ -383,8 +383,8 @@ class TestSpmm(unittest.TestCase):
         testing.assert_array_almost_equal(c, expect)
 
     def test_spmm_with_c(self):
-        if not cupy.cusparse.is_generic_api_available():
-            pytest.skip('cuSparse generic API is not available')
+        if not cupy.cusparse.check_availability('spmm'):
+            pytest.skip('spmm is not available')
         a = self.sparse_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.c, order='f')
@@ -409,8 +409,8 @@ class TestErrorSpmm(unittest.TestCase):
         self.c = numpy.random.uniform(-1, 1, (m, n)).astype(self.dtype)
 
     def test_error_shape(self):
-        if not cupy.cusparse.is_generic_api_available():
-            pytest.skip('cuSparse generic API is not available')
+        if not cupy.cusparse.check_availability('spmm'):
+            pytest.skip('spmm is not available')
 
         a = sparse.csr_matrix(self.a.T)
         b = cupy.array(self.b, order='f')
@@ -439,8 +439,8 @@ class TestErrorSpmm(unittest.TestCase):
             cupy.cusparse.spmm(a, b, c=c)
 
     def test_error_format(self):
-        if not cupy.cusparse.is_generic_api_available():
-            pytest.skip('cuSparse generic API is not available')
+        if not cupy.cusparse.check_availability('spmm'):
+            pytest.skip('spmm is not available')
 
         a = sparse.csc_matrix(self.a)
         b = cupy.array(self.b, order='f')
