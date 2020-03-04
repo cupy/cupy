@@ -471,6 +471,20 @@ class TestSize(unittest.TestCase):
 @testing.gpu
 class TestPythonInterface(unittest.TestCase):
 
-    def test_bytes_tobytes(self):
-        x = testing.shaped_arange((3, 4, 5))
-        assert x.tobytes() == bytes(x)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_bytes_tobytes(self, xp, dtype):
+        x = testing.shaped_arange((3, 4, 5), xp, dtype)
+        return bytes(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_bytes_tobytes_empty(self, xp, dtype):
+        x = xp.empty((3, 4, 5), dtype)
+        return bytes(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_bytes_tobytes_scalar(self, xp, dtype):
+        x = xp.asscalar(xp.array([3], dtype))
+        return bytes(x)
