@@ -274,9 +274,17 @@ class TestSelect(unittest.TestCase):
             cupy.select(condlist, choicelist)
 
     @testing.for_all_dtypes(no_bool=True)
-    def test_select_type_error(self, dtype):
+    def test_select_type_error_condlist(self, dtype):
         a = cupy.arange(10, dtype=dtype)
         condlist = [3] * 10
         choicelist = [a, a**2]
+        with pytest.raises(ValueError):
+            cupy.select(condlist, choicelist)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_select_type_error_choicelist(self, dtype):
+        a, b = list(range(10)), list(range(-10, 0))
+        condlist = [0] * 10
+        choicelist = [a, b]
         with pytest.raises(ValueError):
             cupy.select(condlist, choicelist)
