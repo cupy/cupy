@@ -107,7 +107,7 @@ cusparseStatus_t cusparseZgtsv2StridedBatch(...) {
 }
 #endif // #if CUDA_VERSION < 9000
 
-#if CUDA_VERSION < 9200
+#if CUDA_VERSION < 9020
 // Functions added in CUDA 9.2
 cusparseStatus_t cusparseSgtsvInterleavedBatch_bufferSizeExt(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -172,7 +172,44 @@ cusparseStatus_t cusparseCgpsvInterleavedBatch(...) {
 cusparseStatus_t cusparseZgpsvInterleavedBatch(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
-#endif // #if CUDA_VERSION < 9200
+
+cusparseStatus_t cusparseScsrgeam2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgeam2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgeam2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgeam2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrgeam2Nnz(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrgeam2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgeam2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgeam2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgeam2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif // #if CUDA_VERSION < 9020
 
 #else  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
