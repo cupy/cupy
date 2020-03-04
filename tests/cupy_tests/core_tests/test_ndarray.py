@@ -466,3 +466,11 @@ class TestSize(unittest.TestCase):
     def test_size_zero_dim_array_with_axis(self, xp):
         x = testing.shaped_arange((), xp, numpy.int32)
         return xp.size(x, 0)
+
+
+@testing.gpu
+class TestPythonInterface(unittest.TestCase):
+
+    def test_bytes_tobytes(self):
+        x = testing.shaped_arange((3, 4, 5))
+        assert x.tobytes() == bytes(x)
