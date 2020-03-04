@@ -168,16 +168,15 @@ def select(condlist, choicelist, default=0):
     """Return an array drawn from elements in choicelist, depending on conditions.
 
     Args:
-        condlist (list of bool arrays):
-            The list of conditions which determine from which array in
-            `choicelist` the output elements are taken. When multiple
-            conditions are satisfied, the first one encountered in
-            `condlist` is used.
-        choicelist (list of cupy.ndarray):
-            The list of arrays from which the output elements are taken. It has
-            to be of the same length as `condlist`.
-        default : The element inserted in `output` when all conditions
-            evaluate to False.
+        condlist (list of bool arrays): The list of conditions which determine
+            from which array in `choicelist` the output elements are taken.
+            When multiple conditions are satisfied, the first one encountered
+            in `condlist` is used.
+        choicelist (list of cupy.ndarray): The list of arrays from which the
+            output elements are taken. It has to be of the same length
+            as `condlist`.
+        default (scalar) : If provided, will fill element inserted in `output`
+            when all conditions evaluate to False. default value is 0.
 
     Returns:
         cupy.ndarray: The output at position m is the m-th element of the
@@ -193,8 +192,11 @@ def select(condlist, choicelist, default=0):
 
     dtype = cupy.result_type(*choicelist)
 
-    choicelist = [cupy.asarray(choice) for choice in choicelist]
-    choicelist.append(cupy.asarray(default))
+    for choice in choicelist:
+        if not isinstance(choice, cupy.ndarray):
+            raise TypeError("choicelist only accepts lists of cupy ndarrays")
+
+    choicelist.append(default)
 
     condlist = cupy.broadcast_arrays(*condlist)
     choicelist = cupy.broadcast_arrays(*choicelist)
