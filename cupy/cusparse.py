@@ -76,6 +76,31 @@ def _dtype_to_DataType(dtype):
         raise TypeError
 
 
+_available_cuda_version = {
+    'csrmv': (9000, 11000),
+    'csrmvEx': (9000, None),
+    'csrmm': (9000, 11000),
+    'csrmm2': (9000, 11000),
+    'csrgeam': (9000, 11000),
+    'csrgeam2': (9020, None),
+    'csrgemm': (9000, 11000),
+    'csrgemm2': (9000, None),
+}
+
+
+def check_availability(name):
+    if name not in _available_cuda_version:
+        msg = 'No available version information specified for {}'.name
+        raise ValueError(msg)
+    version_added, version_removed = _available_cuda_version[name]
+    cuda_version = runtime.runtimeGetVersion()
+    if version_added is not None and cuda_version < version_added:
+        return False
+    if version_removed is not None and cuda_version >= version_removed:
+        return False
+    return True
+
+
 def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     """Matrix-vector product for a CSR-matrix and a dense vector.
 
@@ -404,6 +429,9 @@ def csrgeam2(a, b, alpha=1, beta=1):
         cupyx.scipy.sparse.csr_matrix: Result matrix.
 
     """
+    if not check_availability('csrgeam2'):
+        raise RuntimeError('csrgeam2 is not available.')
+
     assert a.has_canonical_format
     assert b.has_canonical_format
     if a.shape != b.shape:
@@ -532,6 +560,9 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
         cupyx.scipy.sparse.csr_matrix
 
     """
+    if not check_availability('csrgemm2'):
+        raise RuntimeError('csrgemm2 is not available.')
+
     assert a.ndim == b.ndim == 2
     assert a.has_canonical_format
     assert b.has_canonical_format
