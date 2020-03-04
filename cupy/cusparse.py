@@ -85,7 +85,7 @@ _available_cuda_version = {
     'csrgemm': (9000, 11000),
     'spmv': (10010, None),
     'spmm': (10010, None),
-    }
+}
 
 
 def check_availability(name):
