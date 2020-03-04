@@ -1384,7 +1384,7 @@ cdef class ndarray:
         return hex(self.get())
 
     def __bytes__(self):
-        return self.tobytes()
+        return bytes(self.get())
 
     # String representations:
 

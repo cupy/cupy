@@ -485,6 +485,12 @@ class TestPythonInterface(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
+    def test_bytes_tobytes_empty2(self, xp, dtype):
+        x = xp.empty((), dtype)
+        return bytes(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
     def test_bytes_tobytes_scalar(self, xp, dtype):
         x = xp.asscalar(xp.array([3], dtype))
         return bytes(x)
