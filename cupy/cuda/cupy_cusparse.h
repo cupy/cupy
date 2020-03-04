@@ -195,6 +195,7 @@ typedef void* csric02Info_t;
 typedef void* bsric02Info_t;
 typedef void* csrilu02Info_t;
 typedef void* bsrilu02Info_t;
+typedef void* csrgemm2Info_t;
 
 typedef enum {} cusparseMatrixType_t;
 typedef enum {} cusparseOperation_t;
