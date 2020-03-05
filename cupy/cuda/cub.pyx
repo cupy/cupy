@@ -98,6 +98,7 @@ cpdef Py_ssize_t _preprocess_array(ndarray arr, tuple reduce_axis,
 
 def device_reduce(ndarray x, op, tuple out_axis, out=None,
                   bint keepdims=False):
+    cdef ndarray y
     cdef memory.MemoryPointer ws
     cdef int dtype_id, ndim_out, kv_bytes, x_size, _op
     cdef size_t ws_size
