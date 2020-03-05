@@ -309,6 +309,7 @@ class TestArgwhereZeroDimension(unittest.TestCase):
         array = xp.array(self.array, dtype=dtype)
         return xp.nonzero(array)
 
+
 @testing.gpu
 class TestNanArgMin(unittest.TestCase):
 
