@@ -196,10 +196,8 @@ def select(condlist, choicelist, default=0):
         if not isinstance(choice, cupy.ndarray):
             raise TypeError("choicelist only accepts lists of cupy ndarrays")
 
-    choicelist.append(default)
-
     condlist = cupy.broadcast_arrays(*condlist)
-    choicelist = cupy.broadcast_arrays(*choicelist)
+    choicelist = cupy.broadcast_arrays(*choicelist, default)
 
     for i in range(len(condlist)):
         cond = condlist[i]
@@ -215,7 +213,7 @@ def select(condlist, choicelist, default=0):
                                              choicelist[0])[0].shape
 
     result = cupy.empty(result_shape, dtype)
-    cupy.copyto(result, choicelist[-1], casting='unsafe')
+    cupy.copyto(result, default)
 
     choicelist = choicelist[-2::-1]
     condlist = condlist[::-1]
