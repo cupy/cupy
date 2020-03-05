@@ -317,7 +317,7 @@ class RandomState(object):
         return y
 
     def multivariate_normal(self, mean, cov, size=None, check_valid='ignore',
-                            tol=1e-08, dtype=float):
+                            tol=1e-08, method='cholesky', dtype=float):
         """Returns an array of samples drawn from the multivariate normal
         distribution.
 
@@ -361,18 +361,39 @@ class RandomState(object):
                 try:
                     decomp = cupy.linalg.cholesky(cov)
                 except LinAlgError:
-                    (s, u) = cupy.linalg.eigh(cov)
-                    psd = not cupy.any(s < -tol)
-                    decomp = u * cupy.sqrt(cupy.abs(s))
-                    if not psd:
-                        if check_valid == 'warn':
+                    with cupyx.errstate(linalg='ignore'):
+                        if method != 'cholesky':
+                            if method == 'eigh':
+                                (s, u) = cupy.linalg.eigh(cov)
+                                psd = not cupy.any(s < -tol)
+                            if method == 'svd':
+                                (u, s, vh) = cupy.linalg.svd(cov)
+                                psd = cupy.allclose(cupy.dot(vh.T * s, vh),
+                                                    cov, rtol=tol, atol=tol)
+                            decomp = u * cupy.sqrt(cupy.abs(s))
+                            if not psd:
+                                warnings.warn("covariance is not positive-" +
+                                              "semidefinite, output may be " +
+                                              "invalid.", RuntimeWarning)
+
+                        else:
                             warnings.warn("covariance is not positive-" +
-                                          "semidefinite, output may be " +
+                                          "semidefinite, output *is* " +
                                           "invalid.", RuntimeWarning)
+                            decomp = cupy.linalg.cholesky(cov)
+
         else:
             with cupyx.errstate(linalg=check_valid):
                 try:
-                    decomp = cupy.linalg.cholesky(cov)
+                    if method == 'cholesky':
+                        decomp = cupy.linalg.cholesky(cov)
+                    else:
+                        if method == 'eigh':
+                            (s, u) = cupy.linalg.eigh(cov)
+                        if method == 'svd':
+                            (u, s, vh) = cupy.linalg.svd(cov)
+                        decomp = u * cupy.sqrt(cupy.abs(s))
+
                 except LinAlgError:
                     raise LinAlgError("Matrix is not positive definite; if " +
                                       "matrix is positive-semidefinite, set" +

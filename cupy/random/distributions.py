@@ -439,7 +439,7 @@ def negative_binomial(n, p, size=None, dtype=int):
 
 
 def multivariate_normal(mean, cov, size=None, check_valid='ignore',
-                        tol=1e-08, dtype=float):
+                        tol=1e-08, method='cholesky', dtype=float):
     """Multivariate normal distribution.
 
     Returns an array of samples drawn from the multivariate normal
@@ -462,6 +462,13 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore',
             matrix is not positive semidefinite.
         tol (float): Tolerance when checking the singular values in
             covariance matrix.
+        method : { 'cholesky', 'eigh', 'svd'}, optional
+            The cov input is used to compute a factor matrix A such that
+            ``A @ A.T = cov``. This argument is used to select the method
+            used to compute the factor matrix A. The default method 'svd' is
+            the fastest, while 'svd' is the slowest but more robust than
+            the fastest method. The method `eigh` uses eigen decomposition to
+            compute A and is faster than svd but slower than cholesky.
         dtype: Data type specifier. Only :class:`numpy.float32` and
             :class:`numpy.float64` types are allowed.
 
