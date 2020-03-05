@@ -54,7 +54,7 @@ cdef tuple _ndarray_nonzero(ndarray self):
     ndim = len(dst)
     if ndim > 1:
         return tuple([dst[:, i] for i in range(ndim)])
-    elif ndim == 1:
+    else:
         return (dst,)
 
 
