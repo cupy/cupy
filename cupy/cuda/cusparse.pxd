@@ -27,6 +27,7 @@ cdef extern from *:
     ctypedef void* csrilu02Info_t
     ctypedef void* bsrilu02Info_t
 
+    # Declarations for cuSparse generic API
     ctypedef int cusparseStatus_t
     ctypedef int cusparseDirection_t
     ctypedef int cusparseSolvePolicy_t
@@ -76,6 +77,7 @@ cpdef enum:
     CUSPARSE_ALG_NAIVE = 0
     CUSPARSE_ALG_MERGE_PATH = 1
 
+    # Enums for cuSparse generic API
     CUSPARSE_FORMAT_CSR = 1  # Compressed Sparse Row (CSR)
     CUSPARSE_FORMAT_CSC = 2  # Compressed Sparse Column (CSC)
     CUSPARSE_FORMAT_COO = 3  # Coordinate (COO) - Structure of Arrays
