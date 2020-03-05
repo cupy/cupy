@@ -3,8 +3,10 @@ from cupy import core
 from cupy.core import fusion
 from cupy import util
 
-from  cupy.core._routines_indexing import _ndarray_argwhere
+from cupy.core._routines_indexing import _ndarray_argwhere
 from cupy.core import _routines_statistics as _statistics
+
+import warnings
 
 
 def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -230,6 +232,10 @@ def argwhere(a):
 
     """
     util.check_array(a, arg_name='a')
+    if a.ndim == 0:
+        warnings.warn(
+            'calling nonzero on 0d arrays is deprecated',
+            DeprecationWarning)
     return _ndarray_argwhere(a)
 
 

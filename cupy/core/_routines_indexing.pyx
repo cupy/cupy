@@ -53,12 +53,12 @@ cdef tuple _ndarray_nonzero(ndarray self):
     cdef ndarray dst = _ndarray_argwhere(self)
     ndim = len(dst)
     if ndim > 1:
-        return tuple([dst[i] for i in range(ndim)])
+        return tuple([dst[:, i] for i in range(ndim)])
     elif ndim == 1:
         return (dst,)
 
 
-cdef ndarray _ndarray_argwhere(ndarray self):
+cpdef ndarray _ndarray_argwhere(ndarray self):
     cdef Py_ssize_t count_nonzero
     cdef int ndim
     dtype = numpy.int64
