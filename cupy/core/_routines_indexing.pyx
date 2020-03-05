@@ -355,19 +355,13 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
     return v
 
 
-_nonzero_kernel_1d = ElementwiseKernel(
-    'T src, S index', 'raw S dst',
-    'if (src != 0) dst[index - 1][0] = i',
-    'nonzero_kernel_1d')
-
-
 _nonzero_kernel = ElementwiseKernel(
     'T src, S index', 'raw S dst',
     '''
     if (src != 0){
         for(int j = 0; j < _ind.ndim; j++){
-            ptrdiff_t ind[] = {j, index - 1};
-            dst[:, ind] = _ind.get()[:, j];
+            ptrdiff_t ind[] = {index - 1, j};
+            dst[ind] = _ind.get()[j];
         }
     }''',
     'nonzero_kernel',
