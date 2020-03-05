@@ -1470,6 +1470,10 @@ cdef class PythonFunctionAllocator:
     ``free(int, int)`` with no return, taking the pointer to the
     allocated memory and the device id on which the memory was allocated.
 
+    If the external memory management supports asynchronous operations,
+    the current CuPy stream can be retrieved inside ``malloc_func`` and
+    ``free_func`` by calling :func:`cupy.cuda.get_current_stream()`.
+
     Args:
         malloc_func (function): *malloc* function to be called.
         free_func (function): *free* function to be called.
