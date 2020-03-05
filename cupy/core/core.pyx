@@ -724,30 +724,6 @@ cdef class ndarray:
 
         return _indexing._ndarray_nonzero(self)
 
-    cpdef ndarray argwhere(self):
-        """Return the indices of the elements that are non-zero.
-
-        Returned Array is containing the indices of the non-zero elements
-        in that dimension.
-
-        Returns:
-            ndarray: Indices of elements that are non-zero.
-
-        .. warning::
-
-            This function may synchronize the device.
-
-        .. seealso::
-            :func:`numpy.argwhere`
-
-        """
-        if self.ndim == 0:
-            warnings.warn(
-                'calling where on 0d arrays is deprecated',
-                DeprecationWarning)
-
-        return _indexing._ndarray_argwhere(self)
-
     cpdef ndarray compress(self, condition, axis=None, out=None):
         """Returns selected slices of this array along given axis.
 

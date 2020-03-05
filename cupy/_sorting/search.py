@@ -3,6 +3,7 @@ from cupy import core
 from cupy.core import fusion
 from cupy import util
 
+from  cupy.core._routines_indexing import _ndarray_argwhere
 from cupy.core import _routines_statistics as _statistics
 
 
@@ -229,7 +230,7 @@ def argwhere(a):
 
     """
     util.check_array(a, arg_name='a')
-    return a.argwhere()
+    return _ndarray_argwhere(a)
 
 
 # This is to allow using the same kernels for all dtypes, ints & floats
