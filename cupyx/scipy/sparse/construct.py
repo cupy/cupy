@@ -144,12 +144,13 @@ def hstack(blocks, format=None, dtype=None):
     .. seealso:: :func:`scipy.sparse.hstack`
 
     Examples:
-        >>> from cupy.sparse import coo_matrix, hstack
-        >>> A = coo_matrix([[1, 2], [3, 4]])
-        >>> B = coo_matrix([[5], [6]])
+        >>> from cupy import array, float32
+        >>> from cupy.sparse import csr_matrix, hstack
+        >>> A = csr_matrix(array([[1, 2], [3, 4]], float32))
+        >>> B = csr_matrix(array([[5], [6]], float32))
         >>> hstack([A,B]).toarray()
-        array([[1, 2, 5],
-               [3, 4, 6]])
+        array([[1., 2., 5.],
+               [3., 4., 6.]], dtype=float32)
     """
     return bmat([blocks], format=format, dtype=dtype)
 
@@ -174,13 +175,14 @@ def vstack(blocks, format=None, dtype=None):
     .. seealso:: :func:`scipy.sparse.vstack`
 
     Examples:
-        >>> from cupy.sparse import coo_matrix, vstack
-        >>> A = coo_matrix([[1, 2], [3, 4]])
-        >>> B = coo_matrix([[5, 6]])
+        >>> from cupy import array, float32
+        >>> from cupy.sparse import csr_matrix, vstack
+        >>> A = csr_matrix(array([[1, 2], [3, 3]], float32))
+        >>> B = csr_matrix(array([[5, 6]], float32))
         >>> vstack([A, B]).toarray()
-        array([[1, 2],
-               [3, 4],
-               [5, 6]])
+        array([[1., 2.],
+               [3., 4.],
+               [5., 6.]], dtype=float32)
     """
     return bmat([[b] for b in blocks], format=format, dtype=dtype)
 
@@ -205,18 +207,21 @@ def bmat(blocks, format=None, dtype=None):
     .. seealso:: :func:`scipy.sparse.bmat`
 
     Examples:
-        >>> from cupy.sparse import coo_matrix, bmat
-        >>> A = coo_matrix([[1, 2], [3, 4]])
-        >>> B = coo_matrix([[5], [6]])
-        >>> C = coo_matrix([[7]])
+        >>> from cupy import array, float32
+        >>> from cupy.sparse import csr_matrix, bmat
+        >>> A = csr_matrix(array([[1, 2], [3, 4]], float32))
+        >>> B = csr_matrix(array([[5], [6]], float32))
+        >>> C = csr_matrix(array([[7]]))
         >>> bmat([[A, B], [None, C]]).toarray()
-        array([[1, 2, 5],
-               [3, 4, 6],
-               [0, 0, 7]])
+        >>> bmat([[A, B], [None, C]]).toarray()
+        array([[1., 2., 5.],
+               [3., 4., 6.],
+               [0., 0., 7.]], dtype=float32)
         >>> bmat([[A, None], [None, C]]).toarray()
-        array([[1, 2, 0],
-               [3, 4, 0],
-               [0, 0, 7]])
+        array([[1., 2., 0.],
+               [3., 4., 0.],
+               [0., 0., 7.]], dtype=float32)
+
     """
 
     # We assume here that blocks will be 2-D so we need to look, at most,
