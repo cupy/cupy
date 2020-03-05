@@ -20,6 +20,9 @@ class MatDescriptor(object):
         descr = cusparse.createMatDescr()
         return MatDescriptor(descr)
 
+    def __reduce__(self):
+        return self.create, ()
+
     def __del__(self, is_shutting_down=util.is_shutting_down):
         if is_shutting_down():
             return
