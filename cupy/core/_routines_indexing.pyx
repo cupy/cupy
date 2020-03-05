@@ -51,11 +51,11 @@ cdef _ndarray_setitem(ndarray self, slices, value):
 cdef tuple _ndarray_nonzero(ndarray self):
     cdef int ndim
     cdef ndarray dst = _ndarray_argwhere(self)
-    ndim = len(dst)
-    if ndim > 1:
+    ndim = self.ndim
+    if ndim >= 1:
         return tuple([dst[:, i] for i in range(ndim)])
     else:
-        return (dst,)
+        return ndarray((0,), dtype=numpy.int64),
 
 
 cpdef ndarray _ndarray_argwhere(ndarray self):

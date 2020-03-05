@@ -234,7 +234,7 @@ def argwhere(a):
     util.check_array(a, arg_name='a')
     if a.ndim == 0:
         warnings.warn(
-            'calling nonzero on 0d arrays is deprecated',
+            'calling argwhere on 0d arrays is deprecated',
             DeprecationWarning)
     return _ndarray_argwhere(a)
 
