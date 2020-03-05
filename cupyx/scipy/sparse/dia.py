@@ -33,7 +33,13 @@ class dia_matrix(data._data_matrix):
     format = 'dia'
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
-        if isinstance(arg1, tuple):
+        if _scipy_available and scipy.sparse.issparse(arg1):
+            data = arg1.data
+            offsets = arg1.offsets
+            shape = arg1.shape
+            dtype = arg1.dtype
+            copy = False
+        elif isinstance(arg1, tuple):
             data, offsets = arg1
             if shape is None:
                 raise ValueError('expected a shape argument')
