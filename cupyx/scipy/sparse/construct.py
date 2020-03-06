@@ -144,10 +144,10 @@ def hstack(blocks, format=None, dtype=None):
     .. seealso:: :func:`scipy.sparse.hstack`
 
     Examples:
-        >>> from cupy import array, float32
+        >>> from cupy import array
         >>> from cupy.sparse import csr_matrix, hstack
-        >>> A = csr_matrix(array([[1, 2], [3, 4]], float32))
-        >>> B = csr_matrix(array([[5], [6]], float32))
+        >>> A = csr_matrix(array([[1., 2.], [3., 4.]]))
+        >>> B = csr_matrix(array([[5.], [6.]]))
         >>> hstack([A, B]).toarray()
         array([[1., 2., 5.],
                [3., 4., 6.]], dtype=float32)
@@ -175,10 +175,10 @@ def vstack(blocks, format=None, dtype=None):
     .. seealso:: :func:`scipy.sparse.vstack`
 
     Examples:
-        >>> from cupy import array, float32
+        >>> from cupy import array
         >>> from cupy.sparse import csr_matrix, vstack
-        >>> A = csr_matrix(array([[1, 2], [3, 4]], float32))
-        >>> B = csr_matrix(array([[5, 6]], float32))
+        >>> A = csr_matrix(array([[1., 2.], [3., 4.]]))
+        >>> B = csr_matrix(array([[5., 6.]]))
         >>> vstack([A, B]).toarray()
         array([[1., 2.],
                [3., 4.],
@@ -207,11 +207,11 @@ def bmat(blocks, format=None, dtype=None):
     .. seealso:: :func:`scipy.sparse.bmat`
 
     Examples:
-        >>> from cupy import array, float32
+        >>> from cupy import array
         >>> from cupy.sparse import csr_matrix, bmat
-        >>> A = csr_matrix(array([[1, 2], [3, 4]], float32))
-        >>> B = csr_matrix(array([[5], [6]], float32))
-        >>> C = csr_matrix(array([[7]], float32))
+        >>> A = csr_matrix(array([[1., 2.], [3., 4.]]))
+        >>> B = csr_matrix(array([[5.], [6.]]))
+        >>> C = csr_matrix(array([[7.]]))
         >>> bmat([[A, B], [None, C]]).toarray()
         array([[1., 2., 5.],
                [3., 4., 6.],
