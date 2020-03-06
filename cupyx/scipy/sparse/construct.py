@@ -150,7 +150,7 @@ def hstack(blocks, format=None, dtype=None):
         >>> B = csr_matrix(array([[5.], [6.]]))
         >>> hstack([A, B]).toarray()
         array([[1., 2., 5.],
-               [3., 4., 6.]], dtype=float32)
+               [3., 4., 6.]])
     """
     return bmat([blocks], format=format, dtype=dtype)
 
@@ -182,7 +182,7 @@ def vstack(blocks, format=None, dtype=None):
         >>> vstack([A, B]).toarray()
         array([[1., 2.],
                [3., 4.],
-               [5., 6.]], dtype=float32)
+               [5., 6.]])
     """
     return bmat([[b] for b in blocks], format=format, dtype=dtype)
 
@@ -215,11 +215,11 @@ def bmat(blocks, format=None, dtype=None):
         >>> bmat([[A, B], [None, C]]).toarray()
         array([[1., 2., 5.],
                [3., 4., 6.],
-               [0., 0., 7.]], dtype=float32)
+               [0., 0., 7.]])
         >>> bmat([[A, None], [None, C]]).toarray()
         array([[1., 2., 0.],
                [3., 4., 0.],
-               [0., 0., 7.]], dtype=float32)
+               [0., 0., 7.]])
 
     """
 
