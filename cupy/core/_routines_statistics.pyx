@@ -341,7 +341,7 @@ cpdef ndarray _median(
         part.partition(kth, axis=axis)
 
     if part.shape == ():
-        return part.item()
+        return part
     if axis is None:
         axis = 0
 
