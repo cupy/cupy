@@ -74,11 +74,16 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
     if count_nonzero == 0:
         return ndarray((0, ndim), dtype=dtype)
 
-    nonzero.shape = self.shape
-    scan_index.shape = self.shape
-    dst = ndarray((count_nonzero, ndim), dtype=dtype)
-    _nonzero_kernel(nonzero, scan_index, dst)
-    return dst
+    if ndim <= 1:
+        dst = ndarray((count_nonzero, 1), dtype=dtype)
+        _nonzero_kernel_1d(nonzero, scan_index, dst)
+        return dst
+    else:
+        nonzero.shape = self.shape
+        scan_index.shape = self.shape
+        dst = ndarray((count_nonzero, ndim), dtype=dtype)
+        _nonzero_kernel(nonzero, scan_index, dst)
+        return dst
 
 
 cdef _ndarray_scatter_add(ndarray self, slices, value):
@@ -353,6 +358,12 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
     # TODO(niboshi): Confirm update_x_contiguity flags
     v._set_shape_and_strides(shape, strides, True, True)
     return v
+
+
+_nonzero_kernel_1d = ElementwiseKernel(
+    'T src, S index', 'raw S dst',
+    'if (src != 0) dst[index - 1] = i',
+    'nonzero_kernel_1d')
 
 
 _nonzero_kernel = ElementwiseKernel(
