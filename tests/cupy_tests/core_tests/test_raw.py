@@ -278,13 +278,22 @@ else:
     _is_cache_env_var_set = False
 _test_cache_dir = None
 
+_in_memory_cache = os.environ.get('CUPY_CACHE_IN_MEMORY')
+compiler._in_memory_cubin_cache = {}  # reset for later monitoring
+
 
 @testing.parameterize(*testing.product({
     'backend': ('nvrtc', 'nvcc'),
+    'in_memory': ('1', '0'),
 }))
 class TestRaw(unittest.TestCase):
 
     def setUp(self):
+        if self.backend == 'nvcc' and self.in_memory == '1':
+            self.skipTest('NVCC does not support in-memory cache')
+        os.environ['CUPY_CACHE_IN_MEMORY'] = self.in_memory
+        cupy.util.clear_memo()  # because CUPY_CACHE_IN_MEMORY is memoized
+
         global _test_cache_dir
         _test_cache_dir = tempfile.mkdtemp()
         os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
@@ -309,7 +318,17 @@ class TestRaw(unittest.TestCase):
             os.environ['CUPY_CACHE_DIR'] = _old_cache_dir
         else:
             os.environ.pop('CUPY_CACHE_DIR')
+        if _in_memory_cache is not None:
+            os.environ['CUPY_CACHE_IN_MEMORY'] = _in_memory_cache
+        else:
+            os.environ.pop('CUPY_CACHE_IN_MEMORY')
         compiler._empty_file_preprocess_cache = {}
+
+        if self.in_memory == '0':
+            assert len(compiler._in_memory_cubin_cache) == 0
+        else:
+            assert len(compiler._in_memory_cubin_cache) > 0
+        compiler._in_memory_cubin_cache = {}
 
     def _helper(self, kernel, dtype):
         N = 10

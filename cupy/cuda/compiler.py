@@ -324,6 +324,7 @@ def _compile_with_cache_cuda(
     mod = function.Module()
     cache_in_memory = _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
 
+    # Read from cache
     if not cache_in_memory:
         if not os.path.isdir(cache_dir):
             try:
@@ -372,6 +373,7 @@ def _compile_with_cache_cuda(
     else:
         raise ValueError('Invalid backend %s' % backend)
 
+    # Write to cache
     if not cache_in_memory:
         cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
 
