@@ -481,7 +481,8 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore',
     """
     util.experimental('cupy.random.multivariate_normal')
     rs = generator.get_random_state()
-    x = rs.multivariate_normal(mean, cov, size, check_valid, tol, dtype)
+    x = rs.multivariate_normal(mean, cov, size, check_valid, tol, method,
+                               dtype)
     return x
 
 

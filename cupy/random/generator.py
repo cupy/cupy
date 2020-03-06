@@ -387,11 +387,11 @@ class RandomState(object):
                 try:
                     if method == 'cholesky':
                         decomp = cupy.linalg.cholesky(cov)
-                    else:
-                        if method == 'eigh':
-                            (s, u) = cupy.linalg.eigh(cov)
-                        if method == 'svd':
-                            (u, s, vh) = cupy.linalg.svd(cov)
+                    elif method == 'eigh':
+                        (s, u) = cupy.linalg.eigh(cov)
+                        decomp = u * cupy.sqrt(cupy.abs(s))
+                    elif method == 'svd':
+                        (u, s, vh) = cupy.linalg.svd(cov)
                         decomp = u * cupy.sqrt(cupy.abs(s))
 
                 except LinAlgError:
