@@ -104,6 +104,7 @@ def _remove_rdc_option(options):
     return tuple(o for o in options if o not in _rdc_flags)
 
 
+@util.memoize()
 def _get_bool_env_variable(name, default):
     val = os.environ.get(name)
     if val is None or len(val) == 0:
@@ -259,6 +260,7 @@ def get_cache_dir():
 
 
 _empty_file_preprocess_cache = {}
+_in_memory_cubin_cache = {}
 
 
 def compile_with_cache(
@@ -311,34 +313,45 @@ def _compile_with_cache_cuda(
         _empty_file_preprocess_cache[env] = base
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
-
     key_src = key_src.encode('utf-8')
-    name = '%s_2.cubin' % hashlib.md5(key_src).hexdigest()
-
-    if not os.path.isdir(cache_dir):
-        try:
-            os.makedirs(cache_dir)
-        except OSError:
-            if not os.path.isdir(cache_dir):
-                raise
+    key_src = hashlib.md5(key_src).hexdigest()
+    name = '%s_2.cubin' % key_src
 
     mod = function.Module()
-    # To handle conflicts in concurrent situation, we adopt lock-free method
-    # to avoid performance degradation.
-    path = os.path.join(cache_dir, name)
-    if os.path.exists(path):
-        with open(path, 'rb') as file:
-            data = file.read()
-        if len(data) >= 32:
-            hash = data[:32]
-            cubin = data[32:]
-            cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
-            if hash == cubin_hash:
-                mod.load(cubin)
-                return mod
+    cache_in_memory = _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
+
+    if not cache_in_memory:
+        if not os.path.isdir(cache_dir):
+            try:
+                os.makedirs(cache_dir)
+            except OSError:
+                if not os.path.isdir(cache_dir):
+                    raise
+
+        # To handle conflicts in concurrent situation, we adopt lock-free
+        # method to avoid performance degradation.
+        path = os.path.join(cache_dir, name)
+        if os.path.exists(path):
+            with open(path, 'rb') as file:
+                data = file.read()
+            if len(data) >= 32:
+                hash = data[:32]
+                cubin = data[32:]
+                cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
+                if hash == cubin_hash:
+                    mod.load(cubin)
+                    return mod
+    else:
+        cubin = _in_memory_cubin_cache.get(key_src, None)
+        if cubin is not None:
+            mod.load(cubin)
+            return mod
 
     if backend == 'nvrtc':
-        ptx = compile_using_nvrtc(source, options, arch, name + '.cu')
+        # TODO: WHY CAN'T THIS WORK?
+        # cu_name = '' if cache_in_memory else name + '.cu'
+        cu_name = name + '.cu'
+        ptx = compile_using_nvrtc(source, options, arch, cu_name)
         ls = function.LinkState()
         ls.add_ptr_data(ptx, 'cupy.ptx')
         # for separate compilation
@@ -355,21 +368,25 @@ def _compile_with_cache_cuda(
     else:
         raise ValueError('Invalid backend %s' % backend)
 
-    cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
+    if not cache_in_memory:
+        cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
 
-    # shutil.move is not atomic operation, so it could result in a corrupted
-    # file. We detect it by appending md5 hash at the beginning of each cache
-    # file. If the file is corrupted, it will be ignored next time it is read.
-    with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
-        tf.write(cubin_hash)
-        tf.write(cubin)
-        temp_path = tf.name
-    shutil.move(temp_path, path)
+        # shutil.move is not atomic operation, so it could result in a
+        # corrupted file. We detect it by appending md5 hash at the beginning
+        # of each cache file. If the file is corrupted, it will be ignored
+        # next time it is read.
+        with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
+            tf.write(cubin_hash)
+            tf.write(cubin)
+            temp_path = tf.name
+        shutil.move(temp_path, path)
 
-    # Save .cu source file along with .cubin
-    if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
-        with open(path + '.cu', 'w') as f:
-            f.write(source)
+        # Save .cu source file along with .cubin
+        if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
+            with open(path + '.cu', 'w') as f:
+                f.write(source)
+    else:
+        _in_memory_cubin_cache[key_src] = cubin
 
     mod.load(cubin)
     return mod

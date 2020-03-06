@@ -23,6 +23,9 @@ Here are the environment variables CuPy uses.
 |                                    | Note: source file will not be saved if the         |
 |                                    | compiled binary is already stored in the cache.    |
 +------------------------------------+----------------------------------------------------+
+| ``CUPY_CACHE_IN_MEMORY``           | If set to 1, ``CUPY_CACHE_DIR`` (and its default)  |
+|                                    | will be ignored, and the cache is in memory.       |
++------------------------------------+----------------------------------------------------+
 | ``CUPY_DUMP_CUDA_SOURCE_ON_ERROR`` | If set to 1, when CUDA kernel compilation fails,   |
 |                                    | CuPy dumps CUDA kernel code to standard error.     |
 |                                    | It is disabled by default.                         |
