@@ -10,7 +10,7 @@ mount -t tmpfs tmpfs ${TEMP}/
 cp -a . ${TEMP}/
 cd ${TEMP}/
 
-echo -n 2.7 3.6 | xargs -i -d ' ' -P $(nproc) sh -euxc '
+echo -n 3.6 | xargs -i -d ' ' -P $(nproc) sh -euxc '
 PYTHON={}
 
 docker build \
