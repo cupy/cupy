@@ -1,3 +1,4 @@
+import pickle
 import unittest
 
 import numpy
@@ -154,6 +155,13 @@ class TestCooMatrix(unittest.TestCase):
         assert len(n.col) == len(m.col)
         assert n.shape == m.shape
         return n
+
+    def test_pickle_roundtrip(self, xp, sp):
+        s = _make(xp, sp, self.dtype)
+        s2 = pickle.loads(pickle.dumps(s))
+        assert s.shape == s2.shape
+        assert s.dtype == s2.dtype
+        assert (s != s2).count_nonzero()
 
     def test_shape(self):
         self.assertEqual(self.m.shape, (3, 4))

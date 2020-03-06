@@ -1,3 +1,4 @@
+import pickle
 import unittest
 
 import numpy
@@ -269,6 +270,13 @@ class TestCsrMatrix(unittest.TestCase):
         ]
         self.assertTrue(m.flags.c_contiguous)
         cupy.testing.assert_allclose(m, expect)
+
+    def test_pickle_roundtrip(self, xp, sp):
+        s = _make(xp, sp, self.dtype)
+        s2 = pickle.loads(pickle.dumps(s))
+        assert s.shape == s2.shape
+        assert s.dtype == s2.dtype
+        assert (s != s2).count_nonzero()
 
 
 @testing.parameterize(*testing.product({
