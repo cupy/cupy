@@ -121,12 +121,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
 
     options += ('-arch=compute_{}'.format(arch),)
 
-    with tempfile.TemporaryDirectory() as root_dir:
-        cu_path = os.path.join(root_dir, filename)
-
-        with open(cu_path, 'w') as cu_file:
-            cu_file.write(source)
-
+    def _compile(source, options, cu_path):
         prog = _NVRTCProgram(source, cu_path)
         try:
             ptx = prog.compile(options)
@@ -136,8 +131,17 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
             if dump:
                 e.dump(sys.stderr)
             raise
-
         return ptx
+
+    cache_in_memory = _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
+    if not cache_in_memory:
+        with tempfile.TemporaryDirectory() as root_dir:
+            cu_path = os.path.join(root_dir, filename)
+            with open(cu_path, 'w') as cu_file:
+                cu_file.write(source)
+            return _compile(source, options, cu_path)
+    else:
+        return _compile(source, options, '')
 
 
 def compile_using_nvcc(source, options=(), arch=None,
