@@ -343,6 +343,10 @@ class RandomState(object):
         else:
             shape = size,
 
+        if method not in {'eigh', 'svd', 'cholesky'}:
+            raise ValueError(
+                "method must be one of {'eigh', 'svd', 'cholesky'}")
+
         if mean.ndim != 1:
             raise ValueError('mean must be 1 dimensional')
         if (cov.ndim != 2) or (cov.shape[0] != cov.shape[1]):
