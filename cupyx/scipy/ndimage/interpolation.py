@@ -1,4 +1,3 @@
-import itertools
 import math
 import warnings
 
@@ -320,7 +319,6 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
     matrix = cupy.asarray(matrix)
     offset = cupy.asarray(offset)
 
-
     return affine_transform(input, matrix, offset, output_shape, output, order,
                             mode, cval, prefilter)
 
@@ -391,6 +389,7 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
         shift = cupy.asarray(shift, dtype=float)
         kern(input, shift, output)
     return output
+
 
 def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
          prefilter=True):
