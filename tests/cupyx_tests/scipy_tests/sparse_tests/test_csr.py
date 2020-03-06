@@ -274,6 +274,7 @@ class TestCsrMatrix(unittest.TestCase):
     def test_pickle_roundtrip(self, xp, sp):
         s = _make(xp, sp, self.dtype)
         s2 = pickle.loads(pickle.dumps(s))
+        assert s._descr.descriptor != s2._descr.descriptor
         assert s.shape == s2.shape
         assert s.dtype == s2.dtype
         assert (s != s2).count_nonzero()
