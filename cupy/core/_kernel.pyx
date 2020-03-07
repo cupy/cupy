@@ -159,6 +159,15 @@ cdef class _ArgInfo:
             and self.dtype == oth.dtype
             and self.ndim == oth.ndim)
 
+    def __repr__(self):
+        return '<_ArgInfo({})>'.format(
+            ' '.join([
+                'arg_kind={!r}'.format(self.arg_kind),
+                'type={!r}'.format(self.type),
+                'dtype={!r}'.format(self.dtype),
+                'ndim={!r}'.format(self.ndim),
+            ]))
+
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim):
         # Returns an ndarray _ArgInfo with altered ndim.
         # If ndim is the same, self is returned untouched.
