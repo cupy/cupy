@@ -296,18 +296,14 @@ class TestArgwhere(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'array': numpy.array(0)},
-    {'array': numpy.array(1)},
+    {'array': cupy.array(1)},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.17.0')
 class TestArgwhereZeroDimension(unittest.TestCase):
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises(accept_error=DeprecationWarning)
-    def test_argwhere(self, xp, dtype):
-        array = xp.array(self.array, dtype=dtype)
-        return xp.nonzero(array)
+    def test_argwhere(self):
+        with testing.assert_warns(DeprecationWarning):
+            return cupy.nonzero(self.array)
 
 
 @testing.gpu
