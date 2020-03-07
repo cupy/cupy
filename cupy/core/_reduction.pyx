@@ -439,7 +439,20 @@ def _SimpleReductionKernel_get_cached_function(
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, input_expr, output_expr, _preamble,
         options):
-
+    print("map_expr:",      map_expr,      type(map_expr), "\n")          
+    print("reduce_expr:",   reduce_expr,   type(reduce_expr), "\n")  
+    print("post_map_expr:", post_map_expr, type(post_map_expr), "\n") 
+    print("reduce_type:",   reduce_type,   type(reduce_type), "\n")   
+    print("params:",        params,        type(params), "\n")        
+    print("arginfos:",      arginfos,      type(arginfos), "\n")       
+    print("type_map:",      type_map,      type(type_map), "\n")       
+    print("name:",          name,          type(name), "\n")           
+    print("block_size:",    block_size,    type(block_size), "\n")     
+    print("identity:",      identity,      type(identity), "\n")       
+    print("input_expr:",    input_expr,    type(input_expr), "\n")     
+    print("output_expr:",   output_expr,   type(output_expr), "\n")    
+    print("_preamble:",     _preamble,     type(_preamble), "\n")      
+    print("options:",       options,       type(options), "\n")        
     return _create_reduction_function(
         name, block_size, reduce_type, params, arginfos, identity,
         map_expr, reduce_expr, post_map_expr,
