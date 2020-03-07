@@ -35,7 +35,7 @@ class _PerfCaseResult(object):
         ts = self._ts if show_gpu else self._ts[[0]]
         devices = ["CPU", "GPU"]
         return '{:<20s}:{}'.format(
-            self.name, ' '.join([devices[i] + ": "
+            self.name, ' '.join(["    " + devices[i] + ":"
                 + self._to_str_per_item(ts[i]) for i in range(len(ts))]))
 
     def __str__(self):
@@ -52,7 +52,7 @@ def repeat(func, args=(), kwargs={}, n=10000, *, name=None, n_warmup=10):
     if not isinstance(args, tuple):
         raise ValueError('`args` should be of tuple type.')
     if not isinstance(kwargs, dict):
-        raise ValueError('`args` should be of tuple type.')
+        raise ValueError('`kwargs` should be of dict type.')
     if not isinstance(n, int):
         raise ValueError('`n` should be an integer.')
     if not isinstance(name, str):
