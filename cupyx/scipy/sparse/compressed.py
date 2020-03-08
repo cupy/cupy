@@ -1,6 +1,8 @@
 import numpy
+
 try:
     import scipy.sparse
+
     scipy_available = True
 except ImportError:
     scipy_available = False
@@ -16,12 +18,10 @@ from cupyx.scipy.sparse import util
 
 class _compressed_sparse_matrix(sparse_data._data_matrix,
                                 sparse_data._minmax_mixin):
-
     _compress_getitem_kern = core.ElementwiseKernel(
         'T d, S ind, int32 minor', 'raw T answer',
         'if (ind == minor) atomicAdd(&answer[0], d);',
         'compress_getitem')
-
     _compress_getitem_complex_kern = core.ElementwiseKernel(
         'T real, T imag, S ind, int32 minor',
         'raw T answer_real, raw T answer_imag',
@@ -32,6 +32,51 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         ''',
         'compress_getitem_complex')
+
+    _compress_setitem_kern = core.ElementwiseKernel(
+        'T value, S ind, int32 index', 'raw T d',
+        'atomicExch(&d[index], value);',
+        'compress_setitem',
+        preamble='''
+            #if __CUDA_ARCH__ < 600
+            __device__ double atomicExch(double* address, double val)
+            {
+                unsigned long long int* address_as_ull =
+                                          (unsigned long long int*)address;
+                unsigned long long int old = *address_as_ull, compare;
+                do {
+                    compare = old;
+                    old = atomicCAS(address_as_ull, compare,
+                                            __double_as_longlong(val));
+                } while (compare != old);
+                return __longlong_as_double(old);
+            }
+            #endif
+            ''')
+    _compress_setitem_complex_kern = core.ElementwiseKernel(
+        'T value_real, T value_imag, S ind, int32 index',
+        'raw T real, raw T imag',
+        '''
+          atomicExch(&real[index], value_real);
+          atomicExch(&imag[index], value_imag);
+        ''',
+        'compress_setitem_complex',
+        preamble='''
+            #if __CUDA_ARCH__ < 600
+            __device__ double atomicExch(double* address, double val)
+            {
+                unsigned long long int* address_as_ull =
+                                          (unsigned long long int*)address;
+                unsigned long long int old = *address_as_ull, compare;
+                do {
+                    compare = old;
+                    old = atomicCAS(address_as_ull, compare,
+                                                __double_as_longlong(val));
+                } while (compare != old);
+                return __longlong_as_double(old);
+            }
+            #endif
+            ''')
 
     _max_reduction_kern = core.RawKernel(r'''
         extern "C" __global__
@@ -240,7 +285,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         extern "C" __global__
         void min_arg_reduction(double* data, int* indices, int* x, int* y,
                                int length, long long* z) {
-            // Get the index of hte block
+            // Get the index of the block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
             // Calculate the block length
@@ -557,6 +602,70 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         shape = self._swap(len(indptr) - 1, minor_size)
         return self.__class__(
             (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
+
+    def __setitem__(self, slices, value, cs_type):
+        if isinstance(slices, tuple):
+            slices = list(slices)
+        elif isinstance(slices, list):
+            slices = list(slices)
+            if all([isinstance(s, int) for s in slices]):
+                slices = [slices]
+        else:
+            slices = [slices]
+
+        ellipsis = -1
+        n_ellipsis = 0
+        for i, s in enumerate(slices):
+            if s is None:
+                raise IndexError('newaxis is not supported')
+            elif s is Ellipsis:
+                ellipsis = i
+                n_ellipsis += 1
+        if n_ellipsis > 0:
+            ellipsis_size = self.ndim - (len(slices) - 1)
+            slices[ellipsis:ellipsis + 1] = [slice(None)] * ellipsis_size
+
+        if len(slices) == 2:
+            row, col = slices
+        elif len(slices) == 1:
+            row, col = slices[0], slice(None)
+        else:
+            raise IndexError('invalid number of indices')
+
+        major, minor = self._swap(row, col)
+        major_size, minor_size = self._swap(*self._shape)
+        if numpy.isscalar(major):
+            i = int(major)
+            if i < 0:
+                i += major_size
+            if not (0 <= i < major_size):
+                raise IndexError('index out of bounds')
+            if numpy.isscalar(minor):
+                j = int(minor)
+                if j < 0:
+                    j += minor_size
+                if not (0 <= j < minor_size):
+                    raise IndexError('index out of bounds')
+                self._set_single(i, j, value, cs_type)
+        else:
+            raise ValueError('unsupported assignment')
+
+    def _set_single(self, major, minor, value, cs_type):
+        start = self.indptr[major]
+        end = self.indptr[major + 1]
+        data = self.data[start:end]
+        indices = self.indices[start:end]
+        if cs_type == 'csc':
+            index = len(data) - 1 - minor
+        elif cs_type == 'csr':
+            index = minor
+        else:
+            raise ValueError('unsupported class')
+        if self.dtype.kind == 'c':
+            self._compress_setitem_complex_kern(
+                value.real, value.imag, indices, index, data.real, data.imag)
+        else:
+            self._compress_setitem_kern(value, indices, index, data)
 
     @property
     def has_canonical_format(self):

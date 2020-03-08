@@ -1,7 +1,6 @@
 import unittest
-
-import numpy
 import pytest
+import numpy
 try:
     import scipy.sparse
     scipy_available = True

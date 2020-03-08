@@ -277,6 +277,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         # TODO(unno): Implement tolil
         raise NotImplementedError
 
+    def __setitem__(self, slices, value):
+        super(csr_matrix, self).__setitem__(slices, value, 'csr')
+
     def transpose(self, axes=None, copy=False):
         """Returns a transpose matrix.
 
