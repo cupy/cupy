@@ -117,7 +117,6 @@ Adding and removing elements
    :nosignatures:
 
    cupy.unique
-   cupy.append
 
 
 Rearranging elements
