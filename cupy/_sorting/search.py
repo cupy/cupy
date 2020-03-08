@@ -3,7 +3,7 @@ from cupy import core
 from cupy.core import fusion
 from cupy import util
 
-from cupy.core._routines_indexing import _ndarray_argwhere
+from cupy.core import _routines_indexing as _indexing
 from cupy.core import _routines_statistics as _statistics
 
 import warnings
@@ -226,7 +226,7 @@ def argwhere(a):
         a (cupy.ndarray): array
 
     Returns:
-        cupy.array: Indices of elements that are non-zero.
+        cupy.ndarray: Indices of elements that are non-zero.
 
     .. seealso:: :func:`numpy.argwhere`
 
@@ -236,7 +236,7 @@ def argwhere(a):
         warnings.warn(
             'calling argwhere on 0d arrays is deprecated',
             DeprecationWarning)
-    return _ndarray_argwhere(a)
+    return _indexing._ndarray_argwhere(a)
 
 
 # This is to allow using the same kernels for all dtypes, ints & floats
