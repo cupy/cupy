@@ -1499,7 +1499,7 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @testing.with_requires('scipy>=1.0.0')
-class TestCsrMatrixGetitem2(unittest.TestCase):
+class TestCsrMatrixGetitem3(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_start_too_small(self, xp, sp):

@@ -278,7 +278,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def __setitem__(self, slices, value):
-        super(csr_matrix, self).__setitem__(slices, value, 'csr')
+        super(csr_matrix, self).__setitem__(slices, value, self.format)
 
     def transpose(self, axes=None, copy=False):
         """Returns a transpose matrix.

@@ -122,7 +122,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement reshape
 
     def __setitem__(self, slices, value):
-        super(csc_matrix, self).__setitem__(slices, value, 'csc')
+        super(csc_matrix, self).__setitem__(slices, value, self.format)
 
     def sort_indices(self):
         """Sorts the indices of the matrix in place."""
