@@ -265,6 +265,24 @@ class TestSelect(unittest.TestCase):
         default = 3
         return xp.select(condlist, choicelist, default)
 
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_select_odd_shaped_broadcastable(self, xp, dtype):
+        a = xp.arange(10, dtype=dtype)
+        b = xp.arange(30, dtype=dtype).reshape(3, 10)
+        condlist = [a < 3, b > 8]
+        choicelist = [a, b]
+        return xp.select(condlist, choicelist)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_almost_equal()
+    def test_select_odd_shaped_broadcastable_complex(self, xp, dtype):
+        a = cupy.arange(10, dtype=dtype)
+        b = cupy.arange(20, dtype=dtype).reshape(2, 10)
+        condlist = [a < 3, b > 8]
+        choicelist = [a, b**2]
+        return cupy.select(condlist, choicelist)
+
     @testing.for_all_dtypes(no_bool=True)
     def test_select_length_error(self, dtype):
         a = cupy.arange(10, dtype=dtype)
@@ -276,9 +294,9 @@ class TestSelect(unittest.TestCase):
     @testing.for_all_dtypes(no_bool=True)
     def test_select_type_error_condlist(self, dtype):
         a = cupy.arange(10, dtype=dtype)
-        condlist = [3] * 10
+        condlist = [[3] * 10, [2] * 10]
         choicelist = [a, a**2]
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             cupy.select(condlist, choicelist)
 
     @testing.for_all_dtypes(no_bool=True)
@@ -288,3 +306,27 @@ class TestSelect(unittest.TestCase):
         choicelist = [a, b]
         with pytest.raises(ValueError):
             cupy.select(condlist, choicelist)
+
+    def test_select_empty_lists(self):
+        condlist = []
+        choicelist = []
+        with pytest.raises(ValueError):
+            cupy.select(condlist, choicelist)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_select_odd_shaped_non_broadcastable(self, dtype):
+        a = cupy.arange(10, dtype=dtype)
+        b = cupy.arange(20, dtype=dtype)
+        condlist = [a < 3, b > 8]
+        choicelist = [a, b]
+        with pytest.raises(ValueError):
+            cupy.select(condlist, choicelist)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_select_default_scalar(self, dtype):
+        a = cupy.arange(10)
+        b = cupy.arange(20)
+        condlist = [a < 3, b > 8]
+        choicelist = [a, b]
+        with pytest.raises(TypeError):
+            cupy.select(condlist, choicelist, [dtype(2)])

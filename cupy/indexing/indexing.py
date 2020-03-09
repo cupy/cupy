@@ -190,21 +190,35 @@ def select(condlist, choicelist, default=0):
         raise ValueError(
             'list of cases must be same length as list of conditions')
 
-    dtype = cupy.result_type(*choicelist)
+    if len(condlist) == 0:
+        raise ValueError("select with an empty condition list is not possible")
 
-    for choice in choicelist:
-        if not isinstance(choice, cupy.ndarray):
+    if not cupy.isscalar(default):
+        raise TypeError("default only accepts scalar values")
+
+    for i in range(len(choicelist)):
+        if not isinstance(choicelist[i], cupy.ndarray):
             raise TypeError("choicelist only accepts lists of cupy ndarrays")
-
-    condlist = cupy.broadcast_arrays(*condlist)
-    choicelist = cupy.broadcast_arrays(*choicelist, default)
-
-    for i in range(len(condlist)):
         cond = condlist[i]
         if cond.dtype.type is not cupy.bool_:
             raise ValueError(
                 'invalid entry {} in condlist: should be boolean ndarray'
                 .format(i))
+
+    dtype = cupy.result_type(*choicelist)
+
+    condlist = cupy.broadcast_arrays(*condlist)
+    choicelist = cupy.broadcast_arrays(*choicelist)
+
+    choicelist.append(
+        cupy.creation.basic.full(choicelist[0].shape, default, dtype=dtype)
+        )
+    condlist.append(
+        cupy.creation.basic.full(choicelist[0].shape, True, dtype=cupy.bool)
+    )
+
+    choicelist = cupy.array(choicelist)
+    condlist = cupy.array(condlist)
 
     if choicelist[0].ndim == 0:
         result_shape = condlist[0].shape
@@ -213,11 +227,8 @@ def select(condlist, choicelist, default=0):
                                              choicelist[0])[0].shape
 
     result = cupy.empty(result_shape, dtype)
-    cupy.copyto(result, default)
 
-    choicelist = choicelist[-2::-1]
-    condlist = condlist[::-1]
-    for choice, cond in zip(choicelist, condlist):
-        cupy.copyto(result, choice, where=cond)
+    choices = cupy.argmax(condlist, axis=0)
+    cupy.choose(choices, choicelist, out=result)
 
     return result
