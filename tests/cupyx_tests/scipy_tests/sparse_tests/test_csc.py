@@ -1366,3 +1366,52 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_stop_too_large(self, xp, sp):
         return _make(xp, sp, self.dtype)[:, None:5]
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+}))
+@testing.with_requires('scipy')
+class TestCsrMatrixSetitem(unittest.TestCase):
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_setitem_int_int(self, xp, sp):
+        matrix = _make(xp, sp, self.dtype)
+        matrix[0, 0] = 10
+        assert matrix[0, 0] == 10
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_setitem_complex(self, xp, sp):
+        matrix = _make_complex(xp, sp, self.dtype)
+        matrix[1, 2] = 10 + 2j
+        assert matrix[0, 0] == 10 + 2j
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_setitem_negative_index(self, xp, sp):
+        matrix = _make(xp, sp, self.dtype)
+        matrix[-1, -2] = 3
+        assert matrix[-1, -2] == 3
+
+    def test_setitem_int_small_row(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            matrix = _make(xp, sp, self.dtype)
+            with pytest.raises(IndexError):
+                matrix[-5, 0] = 1
+
+    def test_setitem_int_large_row(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            matrix = _make(xp, sp, self.dtype)
+            with pytest.raises(IndexError):
+                matrix[4, 0] = 1
+
+    def test_setitem_int_small_col(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            matrix = _make(xp, sp, self.dtype)
+            with pytest.raises(IndexError):
+                matrix[0, -5] = 1
+
+    def test_setitem_int_large_col(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            matrix = _make(xp, sp, self.dtype)
+            with pytest.raises(IndexError):
+                matrix[0, 4] = 1
