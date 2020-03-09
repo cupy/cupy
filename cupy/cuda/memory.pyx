@@ -1472,7 +1472,8 @@ cdef class PythonFunctionAllocator:
 
     If the external memory management supports asynchronous operations,
     the current CuPy stream can be retrieved inside ``malloc_func`` and
-    ``free_func`` by calling :func:`cupy.cuda.get_current_stream()`.
+    ``free_func`` by calling :func:`cupy.cuda.get_current_stream()`. To
+    use external streams, wrap them with :func:`cupy.cuda.ExternalStream`.
 
     Args:
         malloc_func (function): *malloc* function to be called.
