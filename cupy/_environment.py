@@ -53,19 +53,12 @@ def _get_nvcc_path():
         # command invokable by subprocess
         return nvcc_path
 
-    # Directly lookup PATH
-    nvcc_path = shutil.which('nvcc')
-    if nvcc_path is not None:
-        return nvcc_path
-
     # Lookup <CUDA>/bin
     cuda_path = get_cuda_path()
     if cuda_path is None:
         return None
 
-    return shutil.which(
-        'nvcc',
-        path=os.path.join(cuda_path, 'bin'))
+    return shutil.which('nvcc', path=os.path.join(cuda_path, 'bin'))
 
 
 def _setup_win32_dll_directory():
