@@ -153,7 +153,11 @@ def compile_using_nvcc(source, options=(), arch=None,
         assert not separate_compilation
 
     arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
-    cmd = [get_nvcc_path(), arch_str]
+    _nvcc = get_nvcc_path()
+    if isinstance(_nvcc, str):
+        cmd = [get_nvcc_path(), arch_str]
+    else:  # _nvcc is a list (from the env var NVCC)
+        cmd = _nvcc.append(arch_str)
 
     with tempfile.TemporaryDirectory() as root_dir:
         first_part = filename.split('.')[0]
