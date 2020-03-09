@@ -2,7 +2,6 @@
 This file must not depend on any other CuPy modules.
 """
 
-import distutils
 import os
 import os.path
 import shutil
@@ -50,7 +49,9 @@ def _get_nvcc_path():
     # Honor the "NVCC" env var
     nvcc_path = os.environ.get('NVCC', None)
     if nvcc_path is not None:
-        return distutils.util.split_quoted(nvcc_path)
+        # we don't do any splitting here, because NVCC should simply be a
+        # command invokable by subprocess
+        return nvcc_path
 
     # Directly lookup PATH
     nvcc_path = shutil.which('nvcc')
