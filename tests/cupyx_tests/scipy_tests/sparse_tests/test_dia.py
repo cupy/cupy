@@ -108,7 +108,8 @@ class TestDiaMatrix(unittest.TestCase):
         s2 = pickle.loads(pickle.dumps(s))
         assert s.shape == s2.shape
         assert s.dtype == s2.dtype
-        assert (s != s2).count_nonzero()
+        if scipy_available:
+            assert (s.get() != s2.get()).count_nonzero()
 
     def test_diagonal(self):
         testing.assert_array_equal(
