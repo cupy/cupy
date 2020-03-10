@@ -34,10 +34,11 @@ class dia_matrix(data._data_matrix):
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if _scipy_available and scipy.sparse.issparse(arg1):
-            data = arg1.data
-            offsets = arg1.offsets
-            shape = arg1.shape
-            dtype = arg1.dtype
+            x = arg1.todia()
+            data = x.data
+            offsets = x.offsets
+            shape = x.shape
+            dtype = x.dtype
             copy = False
         elif isinstance(arg1, tuple):
             data, offsets = arg1
