@@ -583,7 +583,7 @@ cdef class TextureReference:
         driver.texRefSetFilterMode(texref, TexDescPtr.filterMode)
 
         cdef int flag = 0x00
-        if TexDescPtr.readMode == runtime.cudaReadModeElementType:
+        if TexDescPtr.readMode == <int>(runtime.cudaReadModeElementType):
             flag = flag | driver.CU_TRSF_READ_AS_INTEGER
         if TexDescPtr.normalizedCoords:
             flag = flag | driver.CU_TRSF_NORMALIZED_COORDINATES
