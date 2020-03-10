@@ -18,12 +18,10 @@ from cupy.cuda cimport driver
 cdef class PointerAttributes:
 
     def __init__(self, int device, intptr_t devicePointer,
-                 intptr_t hostPointer, int isManaged, int memoryType):
+                 intptr_t hostPointer):
         self.device = device
         self.devicePointer = devicePointer
         self.hostPointer = hostPointer
-        self.isManaged = isManaged
-        self.memoryType = memoryType
 
 
 ###############################################################################
@@ -45,8 +43,6 @@ cdef extern from 'cupy_cuda.h' nogil:
         int device
         void* devicePointer
         void* hostPointer
-        int isManaged
-        int memoryType
 
     # Error handling
     const char* cudaGetErrorName(Error error)
@@ -504,8 +500,7 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
     return PointerAttributes(
         attrs.device,
         <intptr_t>attrs.devicePointer,
-        <intptr_t>attrs.hostPointer,
-        attrs.isManaged, attrs.memoryType)
+        <intptr_t>attrs.hostPointer)
 
 
 ###############################################################################
