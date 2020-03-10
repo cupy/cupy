@@ -257,7 +257,7 @@ class TestCscsort(unittest.TestCase):
     'shape': [(3, 2), (4, 3)],
     'format': ['csr', 'coo'],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.2.0')
 class TestSpmv(unittest.TestCase):
 
     alpha = 0.5
@@ -347,7 +347,7 @@ class TestErrorSpmv(unittest.TestCase):
     'dims': [(2, 3, 4), (3, 4, 2)],
     'format': ['csr', 'coo'],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.2.0')
 class TestSpmm(unittest.TestCase):
 
     alpha = 0.5
