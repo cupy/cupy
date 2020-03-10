@@ -212,7 +212,7 @@ def select(condlist, choicelist, default=0):
 
     choicelist.append(
         cupy.creation.basic.full(choicelist[0].shape, default, dtype=dtype)
-        )
+    )
     condlist.append(
         cupy.creation.basic.full(choicelist[0].shape, True, dtype=cupy.bool)
     )
