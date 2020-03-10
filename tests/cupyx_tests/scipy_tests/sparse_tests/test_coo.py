@@ -156,8 +156,8 @@ class TestCooMatrix(unittest.TestCase):
         assert n.shape == m.shape
         return n
 
-    def test_pickle_roundtrip(self, xp, sp):
-        s = _make(xp, sp, self.dtype)
+    def test_pickle_roundtrip(self):
+        s = _make(cupy, sparse, self.dtype)
         s2 = pickle.loads(pickle.dumps(s))
         assert s._descr.descriptor != s2._descr.descriptor
         assert s.shape == s2.shape
