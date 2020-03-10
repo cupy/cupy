@@ -117,15 +117,24 @@ ${type_preamble}
 ${preamble}
 #include <cub/block/block_reduce.cuh>
 
+//TODO(leofang): this should be auto-tuned based on CUDA arch?
 #define ITEMS_PER_THREAD 4
 
-#define REDUCE(a, b) (${reduce_expr})
 #define POST_MAP(a) (${post_map_expr})
 
 typedef ${reduce_type} _type_reduce;
 
+struct _reduction_op
+{
+    template <typename T>
+    __device__ __forceinline__ T operator()(const T &a, const T &b) const
+    {
+        return ${reduce_expr};
+    }
+};
 
-extern "C" __global__ void ${name}(${params}) {
+extern "C" {
+__global__ void ${name}(${params}) {
   unsigned int _tid = threadIdx.x;
 
   // Specialize BlockReduce type for our thread block
@@ -146,7 +155,8 @@ extern "C" __global__ void ${name}(${params}) {
 //    ${output_expr}
 //    POST_MAP(_s);
 //  }
-}''').substitute(
+}
+} // extern C''').substitute(
         name=name,
         block_size=block_size,
         reduce_type=reduce_type,
