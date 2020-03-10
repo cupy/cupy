@@ -60,7 +60,7 @@ cdef _ndarray_sort(ndarray self, int axis):
 
 
 cdef ndarray _ndarray_argsort(ndarray self, axis):
-    cdef int _axis, ndim = self._shape.size()
+    cdef int _axis, ndim
     cdef ndarray data
 
     if not cupy.cuda.thrust_enabled:
@@ -68,8 +68,8 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
                            'install CUDA Toolkit with Thrust then '
                            'reinstall CuPy after uninstalling it.')
 
-    if ndim == 0:
-        return cupy.zeros((1,), dtype=cupy.int64)
+    self = cupy.atleast_1d(self)
+    ndim = self._shape.size()
 
     if axis is None:
         data = self.ravel()
