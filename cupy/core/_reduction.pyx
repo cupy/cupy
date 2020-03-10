@@ -112,10 +112,11 @@ cpdef function.Function _create_cub_reduction_function(
         name, block_size, reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
+    print("**************** I AM HERE ******************")
     module_code = string.Template('''
+#include <cub/block/block_reduce.cuh>
 ${type_preamble}
 ${preamble}
-#include <cub/block/block_reduce.cuh>
 
 //TODO(leofang): this should be auto-tuned based on CUDA arch?
 #define ITEMS_PER_THREAD 4
@@ -126,8 +127,7 @@ typedef ${reduce_type} _type_reduce;
 
 struct _reduction_op
 {
-    template <typename T>
-    __device__ __forceinline__ T operator()(const T &a, const T &b) const
+    __device__ __forceinline__ _type_reduce operator()(const _type_reduce &a, const _type_reduce &b) const
     {
         return ${reduce_expr};
     }
@@ -143,10 +143,14 @@ __global__ void ${name}(${params}) {
   // Shared memory
   __shared__ typename BlockReduceT::TempStorage temp_storage;
 
-//  // Per-thread tile data
-//  _type_reduce _sdata[ITEMS_PER_THREAD];
-//  LoadDirectStriped<BLOCK_THREADS>(threadIdx.x, _raw_in0, _sdata);
-//
+  // Attempt: ignore CIndexer _in_ind and _out_ind?
+  const int in_ndim = _raw_in0.ndim;
+  const int out_ndim = _raw_out0.ndim;
+
+  // Per-thread tile data
+  _type_reduce _sdata[ITEMS_PER_THREAD];
+  LoadDirectStriped<BLOCK_THREADS>(threadIdx.x, (_type_reduce*)&_raw_in0[0], _sdata);
+
 //  // Compute sum
 //  int aggregate = BlockReduceT(temp_storage).Sum(_sdata);
 //
@@ -157,18 +161,18 @@ __global__ void ${name}(${params}) {
 //  }
 }
 } // extern C''').substitute(
-        name=name,
-        block_size=block_size,
-        reduce_type=reduce_type,
-        params=_kernel._get_kernel_params(params, arginfos),
+        name=name,  # used
+        block_size=block_size,  # used
+        reduce_type=reduce_type,  # used
+        params=_kernel._get_kernel_params(params, arginfos),  # used
         identity=identity,
-        reduce_expr=reduce_expr,
+        reduce_expr=reduce_expr,  # used
         pre_map_expr=pre_map_expr,
-        post_map_expr=post_map_expr,
-        type_preamble=type_map.get_typedef_code(),
+        post_map_expr=post_map_expr,  # used
+        type_preamble=type_map.get_typedef_code(),  # used
         input_expr=input_expr,
         output_expr=output_expr,
-        preamble=preamble)
+        preamble=preamble)  # used
     print('\n', module_code, '\n')
     module = compile_with_cache(module_code, options, arch=None, cachd_dir=None,
         prepend_cupy_headers=True, backend='nvcc')
@@ -528,6 +532,7 @@ def _SimpleReductionKernel_get_cached_function(
     temp2 = type_map.get_typedef_code()
     print("final params:",  temp,          type(temp), "\n")
     print("type_preamble:", temp2,         type(temp2), "\n")
+    print(cub_enabled)
     if not cub_enabled:
         return _create_reduction_function(
             name, block_size, reduce_type, params, arginfos, identity,
