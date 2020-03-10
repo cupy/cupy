@@ -475,6 +475,18 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore',
     Returns:
         cupy.ndarray: Samples drawn from the multivariate normal distribution.
 
+    .. note:: Default `method` is set to fastest, 'cholesky'. Cholesky
+        decomposition in CuPy will fail silently if the input covariance matrix
+        is not positive definite and give invalid results, unlike in numpy,
+        where an invalid covariance matrix will raise an exception. Setting
+        `check_valid` to 'raise' will replicate numpy behavior by checking
+        the input, but will also force device synchronization. If validity of
+        input is unknown, setting `method` to 'einh' or 'svd' and
+        `check_valid` to 'warn' will use cholesky decomposition for positive
+        definite matrices, and fallback to the specified `method` for other
+        matrices (i.e., positive semi-definite), and will warn if
+        decomposition is suspect.
+
     .. seealso:: :meth:`numpy.random.multivariate_normal
                  <numpy.random.mtrand.RandomState.multivariate_normal>`
 
