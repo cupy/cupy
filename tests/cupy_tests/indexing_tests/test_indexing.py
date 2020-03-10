@@ -283,6 +283,24 @@ class TestSelect(unittest.TestCase):
         choicelist = [a, b**2]
         return cupy.select(condlist, choicelist)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_select_1D_choicelist(self, xp, dtype):
+        a = cupy.array(1)
+        b = cupy.array(3)
+        condlist = [a < 3, b > 8]
+        choicelist = [a, b]
+        return cupy.select(condlist, choicelist)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_select_choicelist_condlist_broadcast(self, xp, dtype):
+        a = cupy.arange(10, dtype=dtype)
+        b = cupy.arange(20, dtype=dtype).reshape(2, 10)
+        condlist = [a < 4, b > 8]
+        choicelist = [cupy.repeat(a, 2).reshape(2, 10), b]
+        return cupy.select(condlist, choicelist)
+
     @testing.for_all_dtypes(no_bool=True)
     def test_select_length_error(self, dtype):
         a = cupy.arange(10, dtype=dtype)

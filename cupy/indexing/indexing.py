@@ -208,17 +208,7 @@ def select(condlist, choicelist, default=0):
     dtype = cupy.result_type(*choicelist)
 
     condlist = cupy.broadcast_arrays(*condlist)
-    choicelist = cupy.broadcast_arrays(*choicelist)
-
-    choicelist.append(
-        cupy.creation.basic.full(choicelist[0].shape, default, dtype=dtype)
-    )
-    condlist.append(
-        cupy.creation.basic.full(choicelist[0].shape, True, dtype=cupy.bool)
-    )
-
-    choicelist = cupy.array(choicelist)
-    condlist = cupy.array(condlist)
+    choicelist = cupy.broadcast_arrays(*choicelist, default)
 
     if choicelist[0].ndim == 0:
         result_shape = condlist[0].shape
@@ -227,8 +217,11 @@ def select(condlist, choicelist, default=0):
                                              choicelist[0])[0].shape
 
     result = cupy.empty(result_shape, dtype)
+    cupy.copyto(result, default)
 
-    choices = cupy.argmax(condlist, axis=0)
-    cupy.choose(choices, choicelist, out=result)
+    choicelist = choicelist[-2::-1]
+    condlist = condlist[::-1]
+    for choice, cond in zip(choicelist, condlist):
+        cupy.copyto(result, choice, where=cond)
 
     return result
