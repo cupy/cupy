@@ -265,7 +265,7 @@ class TestCscMatrix(unittest.TestCase):
         assert s.shape == s2.shape
         assert s.dtype == s2.dtype
         if scipy_available:
-            assert (s.get() != s2.get()).count_nonzero()
+            assert (s.get() != s2.get()).count_nonzero() == 0
 
 
 @testing.parameterize(*testing.product({
