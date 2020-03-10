@@ -115,6 +115,7 @@ cpdef function.Function _create_cub_reduction_function(
     print("**************** I AM HERE ******************")
     module_code = string.Template('''
 #include <cub/block/block_reduce.cuh>
+#include <cub/block/block_load.cuh>
 ${type_preamble}
 ${preamble}
 
@@ -149,11 +150,14 @@ __global__ void ${name}(${params}) {
 
   // Per-thread tile data
   _type_reduce _sdata[ITEMS_PER_THREAD];
-  LoadDirectStriped<BLOCK_THREADS>(threadIdx.x, (_type_reduce*)&_raw_in0[0], _sdata);
+  cub::LoadDirectStriped<${block_size}>(threadIdx.x, (_type_reduce*)&(_raw_in0[0]), _sdata);
 
-//  // Compute sum
-//  int aggregate = BlockReduceT(temp_storage).Sum(_sdata);
-//
+  // Declare reduction operation
+  _reduction_op op;
+
+  // Compute reduction
+  _type_reduce aggregate = BlockReduceT(temp_storage).Reduce(_sdata, op);
+
 //  if (_tid < _block_stride && _i < _out_ind.size()) {
 //    _out_ind.set(static_cast<ptrdiff_t>(_i));
 //    ${output_expr}
