@@ -30,6 +30,7 @@ import numpy
 from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
 from cupy.cuda import compiler
+from cupy.cuda import cub_enabled
 from cupy import util
 
 
@@ -104,6 +105,63 @@ extern "C" __global__ void ${name}(${params}) {
         output_expr=output_expr,
         preamble=preamble)
     module = compile_with_cache(module_code, options)
+    return module.get_function(name)
+
+
+cpdef function.Function _create_cub_reduction_function(
+        name, block_size, reduce_type, params, arginfos, identity,
+        pre_map_expr, reduce_expr, post_map_expr,
+        _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
+    module_code = string.Template('''
+${type_preamble}
+${preamble}
+#include <cub/block/block_reduce.cuh>
+
+#define ITEMS_PER_THREAD 4
+
+#define REDUCE(a, b) (${reduce_expr})
+#define POST_MAP(a) (${post_map_expr})
+
+typedef ${reduce_type} _type_reduce;
+
+
+extern "C" __global__ void ${name}(${params}) {
+  unsigned int _tid = threadIdx.x;
+
+  // Specialize BlockReduce type for our thread block
+  typedef cub::BlockReduce<_type_reduce, ${block_size}> BlockReduceT;
+
+  // Shared memory
+  __shared__ typename BlockReduceT::TempStorage temp_storage;
+
+//  // Per-thread tile data
+//  _type_reduce _sdata[ITEMS_PER_THREAD];
+//  LoadDirectStriped<BLOCK_THREADS>(threadIdx.x, _raw_in0, _sdata);
+//
+//  // Compute sum
+//  int aggregate = BlockReduceT(temp_storage).Sum(_sdata);
+//
+//  if (_tid < _block_stride && _i < _out_ind.size()) {
+//    _out_ind.set(static_cast<ptrdiff_t>(_i));
+//    ${output_expr}
+//    POST_MAP(_s);
+//  }
+}''').substitute(
+        name=name,
+        block_size=block_size,
+        reduce_type=reduce_type,
+        params=_kernel._get_kernel_params(params, arginfos),
+        identity=identity,
+        reduce_expr=reduce_expr,
+        pre_map_expr=pre_map_expr,
+        post_map_expr=post_map_expr,
+        type_preamble=type_map.get_typedef_code(),
+        input_expr=input_expr,
+        output_expr=output_expr,
+        preamble=preamble)
+    print('\n', module_code, '\n')
+    module = compile_with_cache(module_code, options, arch=None, cachd_dir=None,
+        prepend_cupy_headers=True, backend='nvcc')
     return module.get_function(name)
 
 
@@ -460,10 +518,17 @@ def _SimpleReductionKernel_get_cached_function(
     temp2 = type_map.get_typedef_code()
     print("final params:",  temp,          type(temp), "\n")
     print("type_preamble:", temp2,         type(temp2), "\n")
-    return _create_reduction_function(
-        name, block_size, reduce_type, params, arginfos, identity,
-        map_expr, reduce_expr, post_map_expr,
-        type_map, input_expr, output_expr, _preamble, options)
+    if not cub_enabled:
+        return _create_reduction_function(
+            name, block_size, reduce_type, params, arginfos, identity,
+            map_expr, reduce_expr, post_map_expr,
+            type_map, input_expr, output_expr, _preamble, options)
+    else:
+        options = options + ('-I/home/leofang/sources/cub-1.8.0',)
+        return _create_cub_reduction_function(
+            name, block_size, reduce_type, params, arginfos, identity,
+            map_expr, reduce_expr, post_map_expr,
+            type_map, input_expr, output_expr, _preamble, options)
 
 
 # -----------------------------------------------------------------------------
