@@ -1,3 +1,4 @@
+import pickle
 import unittest
 
 
@@ -101,6 +102,14 @@ class TestDiaMatrix(unittest.TestCase):
         ]
         self.assertTrue(m.flags.c_contiguous)
         cupy.testing.assert_allclose(m, expect)
+
+    def test_pickle_roundtrip(self):
+        s = _make(cupy, sparse, self.dtype)
+        s2 = pickle.loads(pickle.dumps(s))
+        assert s.shape == s2.shape
+        assert s.dtype == s2.dtype
+        if scipy_available:
+            assert (s.get() != s2.get()).count_nonzero() == 0
 
     def test_diagonal(self):
         testing.assert_array_equal(

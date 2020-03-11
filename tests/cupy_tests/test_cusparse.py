@@ -1,3 +1,4 @@
+import pickle
 import unittest
 
 import numpy
@@ -8,7 +9,21 @@ except ImportError:
 
 import cupy
 from cupy import testing
+from cupy import cusparse
 from cupyx.scipy import sparse
+
+
+class TestMatDescriptor(unittest.TestCase):
+
+    def test_create(self):
+        md = cusparse.MatDescriptor.create()
+        assert isinstance(md.descriptor, int)
+
+    def test_pickle(self):
+        md = cusparse.MatDescriptor.create()
+        md2 = pickle.loads(pickle.dumps(md))
+        assert isinstance(md2.descriptor, int)
+        assert md.descriptor != md2.descriptor
 
 
 @testing.parameterize(*testing.product({
