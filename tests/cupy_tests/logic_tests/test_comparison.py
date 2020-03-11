@@ -74,6 +74,27 @@ class TestComparisonOperator(unittest.TestCase):
         return [op(a, b) for op in self.operators]
 
 
+class TestArrayEqual(unittest.TestCase):
+
+    @testing.numpy_cupy_equal()
+    def test_array_equal_not_equal(self, xp):
+        a = xp.array([1, 2, 3, 4])
+        b = xp.array([0, 0, 1000, 1000])
+        return xp.allclose(a, b)
+
+    @testing.numpy_cupy_equal()
+    def test_array_equal_is_equal(self, xp):
+        a = xp.array([1, 2, 3, 4])
+        b = xp.array([1, 2, 3, 4])
+        return xp.allclose(a, b)
+
+    @testing.numpy_cupy_equal()
+    def test_array_equal_diff_length(self, xp):
+        a = xp.array([1, 2, 3, 4])
+        b = xp.array([1, 2, 3])
+        return xp.allclose(a, b)
+
+
 class TestAllclose(unittest.TestCase):
 
     @testing.for_all_dtypes()

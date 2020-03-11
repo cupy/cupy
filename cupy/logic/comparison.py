@@ -38,6 +38,28 @@ _is_close_complex = core.create_ufunc(
 )
 
 
+def array_equal(a, b):
+    """Returns True if two arrays are element-wise exactly equal.
+
+    Args:
+        a (cupy.ndarray): Input array to compare.
+        b (cupy.ndarray): Input array to compare.
+
+    Returns:
+        cupy.ndarray: A boolean 0-dim array.
+            If its value is ``True``, two arrays are element-wise equal.
+
+    .. seealso:: :func:`numpy.array_equal`
+
+    """
+    a = cupy.asanyarray(a)
+    b = cupy.asanyarray(b)
+
+    if a.shape != b.shape:
+        return cupy.array(False)
+    return bool((a==b).all())
+
+
 def allclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
     """Returns True if two arrays are element-wise equal within a tolerance.
 
