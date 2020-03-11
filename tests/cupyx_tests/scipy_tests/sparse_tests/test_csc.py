@@ -1415,3 +1415,22 @@ class TestCsrMatrixSetitem(unittest.TestCase):
             matrix = _make(xp, sp, self.dtype)
             with pytest.raises(IndexError):
                 matrix[0, 4] = 1
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_set_item_list(self, xp, sp):
+        matrix = _make(xp, sp, self.dtype)
+        matrix[[1, 2, 3, 0, 1, 3], [2, 1, 2, 0, 0, 1]] = [5, 0, 12, 5, 2, 9]
+        assert matrix[[1, 2, 3, 0, 1, 3],
+                      [2, 1, 2, 0, 0, 1]] == [5, 0, 12, 5, 2, 9]
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_setitem_list(self, xp, sp):
+        matrix = _make_complex(xp, sp, self.dtype)
+        matrix[[1, 2, 3], [2, 1, 2]] = [- 2j, 11, 4 + 5j]
+        assert matrix[[1, 2, 3], [2, 1, 2]] == [- 2j, 11, 4 + 5j]
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_set_item_zero(self, xp, sp):
+        matrix = _make(xp, sp, self.dtype)
+        matrix[0, 1] = 0
+        assert matrix[0, 1] == 0

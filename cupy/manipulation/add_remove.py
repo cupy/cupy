@@ -1,12 +1,21 @@
 import cupy
+from cupy.creation.from_data import asanyarray
+from cupy import core
 
 # TODO(okuta): Implement delete
 
 
 # TODO(okuta): Implement insert
 
-
-# TODO(okuta): Implement append
+def append(tup, values, axis=None):
+    arr = asanyarray(tup)
+    values = asanyarray(values)
+    if axis is None:
+        if arr.ndim != 1:
+            arr = arr.ravel()
+        values = values.ravel()
+        return core.concatenate_method((arr, values), 0)
+    return core.concatenate_method((arr, values), axis=axis)
 
 
 # TODO(okuta): Implement resize

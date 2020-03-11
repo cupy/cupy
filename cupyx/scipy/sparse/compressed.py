@@ -9,6 +9,7 @@ except ImportError:
 
 import cupy
 from cupy import core
+from cupy.core import raw
 from cupy.creation import basic
 from cupy import cusparse
 from cupyx.scipy.sparse import base
@@ -33,11 +34,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         ''',
         'compress_getitem_complex')
 
-    _compress_setitem_kern = core.ElementwiseKernel(
-        'T value, S ind, int32 index', 'raw T d',
-        'atomicExch(&d[index], value);',
-        'compress_setitem',
-        preamble='''
+    # https: // www.micc.unifi.it / bertini / download
+    # / gpu - programming - basics / 2017 / gpu_cuda_5.pdf
+    setitem_preamble = '''
             #if __CUDA_ARCH__ < 600
             __device__ double atomicExch(double* address, double val)
             {
@@ -52,31 +51,85 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 return __longlong_as_double(old);
             }
             #endif
-            ''')
+            '''
+
+    _compress_setitem_kern = core.ElementwiseKernel(
+        'T values, S offsets', 'raw T data',
+        'atomicExch(&data[offsets], values);',
+        'compress_setitem',
+        preamble=setitem_preamble)
+
     _compress_setitem_complex_kern = core.ElementwiseKernel(
-        'T value_real, T value_imag, S ind, int32 index',
+        'T values_real, T values_imag, S offsets',
         'raw T real, raw T imag',
         '''
-          atomicExch(&real[index], value_real);
-          atomicExch(&imag[index], value_imag);
+          atomicExch(&real[offsets], values_real);
+          atomicExch(&imag[offsets], values_imag);
         ''',
         'compress_setitem_complex',
-        preamble='''
-            #if __CUDA_ARCH__ < 600
-            __device__ double atomicExch(double* address, double val)
+        preamble=setitem_preamble)
+
+    _data_offsets = core.RawKernel(r'''
+     extern "C" __global__
+     void data_offsets (int rows, int cols, int* indptr,
+      int* indices, int* outptr, int* inrows, int* incols, int ret){
+            // Get the index of the block
+            int tid = blockIdx.x * blockDim.x + threadIdx.x;
+            int i = inrows[tid] < 0 ? inrows[tid] + rows : inrows[tid];
+            int j = incols[tid] < 0 ? incols[tid] + cols : incols[tid];
+            int start = indptr [i], stop = indptr [i+1], offset = -1;
+
+            for(int col = start; col < stop; col++)
             {
-                unsigned long long int* address_as_ull =
-                                          (unsigned long long int*)address;
-                unsigned long long int old = *address_as_ull, compare;
-                do {
-                    compare = old;
-                    old = atomicCAS(address_as_ull, compare,
-                                                __double_as_longlong(val));
-                } while (compare != old);
-                return __longlong_as_double(old);
+                if (indices[col] == j) {
+                    offset = col++;
+                    for (; col < stop; col++) {
+                        if (indices[col] == j) {
+                            offset = -2;
+                            ret= 1;
+                            return;
+                        }
+                    }
+                }
             }
-            #endif
-            ''')
+            outptr[tid] = offset;
+            ret = 0;
+     }
+    ''', 'data_offsets')
+
+    loaded_from_source = r'''
+        __device__ __host__
+        int lower_bound(int* A, int start, int stop, int val)
+        {
+            while (start <= stop) {
+                int mid = start + (stop - start)/2;
+                if(A[mid] <= val && A[mid+1] > val) {
+                    return mid;
+                } else if (A[mid] <= val) {
+                    start = mid;
+                } else {
+                    stop = mid;
+                }
+            }
+            return start;
+        }
+         extern "C" __global__
+        void data_offsets_canonical (int rows, int cols, int* indptr,
+        int* indices, int* outptr, int* inrows, int* incols, int samples){
+            // Get the index of the block
+            int tid = blockIdx.x * blockDim.x + threadIdx.x;
+            int i = inrows[tid] < 0 ? inrows[tid] + rows : inrows[tid];
+            int j = incols[tid] < 0 ? incols[tid] + cols : incols[tid];
+            int start = indptr [i], stop = indptr [i+1];
+            outptr[tid] = -1;
+            if (start < stop){
+              int offset = lower_bound (indices,start,stop,j);
+              if (offset < stop && indices[offset] == j)
+                    outptr[tid] = offset;
+              }
+         }'''
+    module = raw.RawModule(code=loaded_from_source)
+    _data_offsets_canonical = module.get_function('data_offsets_canonical')
 
     _max_reduction_kern = core.RawKernel(r'''
         extern "C" __global__
@@ -603,7 +656,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return self.__class__(
             (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
 
-    def __setitem__(self, slices, value, cs_type):
+    def __setitem__(self, slices, value):
         if isinstance(slices, tuple):
             slices = list(slices)
         elif isinstance(slices, list):
@@ -634,38 +687,111 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         major, minor = self._swap(row, col)
         major_size, minor_size = self._swap(*self._shape)
-        if numpy.isscalar(major):
-            i = int(major)
-            if i < 0:
-                i += major_size
-            if not (0 <= i < major_size):
-                raise IndexError('index out of bounds')
-            if numpy.isscalar(minor):
-                j = int(minor)
-                if j < 0:
-                    j += minor_size
-                if not (0 <= j < minor_size):
-                    raise IndexError('index out of bounds')
-                self._set_single(i, j, value, cs_type)
-        else:
-            raise ValueError('unsupported assignment')
+        # flatten rows, cols, values lists
+        major = cupy.array(major, dtype=self.indices.dtype,
+                           copy=False, ndmin=1).ravel()
+        minor = cupy.array(minor, dtype=self.indices.dtype,
+                           copy=False, ndmin=1).ravel()
+        value = cupy.array(value, dtype=self.dtype,
+                           copy=False, ndmin=1).ravel()
+        # check boundaries
+        major_max = cupy.amax(major)
+        major_min = cupy.amin(major)
+        minor_max = cupy.amax(minor)
+        minor_min = cupy.amin(minor)
+        if major_max >= major_size or major_min < - major_size \
+                or minor_max >= minor_size or minor_min < - minor_size:
+            raise IndexError('index out of bounds')
+        self._set_items(major, minor, value, major_size, minor_size)
 
-    def _set_single(self, major, minor, value, cs_type):
-        start = self.indptr[major]
-        end = self.indptr[major + 1]
-        data = self.data[start:end]
-        indices = self.indices[start:end]
-        if cs_type == 'csc':
-            index = len(data) - 1 - minor
-        elif cs_type == 'csr':
-            index = minor
-        else:
-            raise ValueError('unsupported class')
+    def _set_items(self, major, minor, values, major_size, minor_size):
+        offsets = cupy.empty(values.size, dtype=self.indices.dtype)
+        repeat = self.sample_offsets(major_size, minor_size,
+                                     values.size, major, minor, offsets)
+        if repeat == 1:
+            self.sum_duplicates()
+            self.sample_offsets(major_size, minor_size,
+                                values.size, major, minor, offsets)
+        mask = offsets > -1
+        self.update_values(offsets[mask], values[mask])
+        if -1 in offsets:
+            major = major[~mask]
+            minor = minor[~mask]
+            values = values[~mask]
+            major[major < 0] += major_size
+            minor[minor < 0] += minor_size
+            self.insert_values(major, minor, values)
+        self.eliminate_zeros()
+
+    def eliminate_zeros(self):
+        pass
+
+    def update_values(self, offsets, values):
         if self.dtype.kind == 'c':
             self._compress_setitem_complex_kern(
-                value.real, value.imag, indices, index, data.real, data.imag)
+                values.real, values.imag, offsets,
+                self.data.real, self.data.imag)
         else:
-            self._compress_setitem_kern(value, indices, index, data)
+            self._compress_setitem_kern(values, offsets, self.data)
+
+    def insert_values(self, major, minor, values):
+        order = cupy.argsort(major)
+        major = major.take(order)
+        minor = minor.take(order)
+        values = values.take(order)
+        indices = []
+        data = []
+        uniq_major, uniq_major_indptr = cupy.unique(major, return_index=True)
+        uniq_major_indptr = cupy.append(uniq_major_indptr, len(minor))
+        nnz = cupy.diff(uniq_major_indptr)
+        row = 0
+        metadata = zip(uniq_major, uniq_major_indptr, uniq_major_indptr[1:])
+        for col, (next, col_start, col_stop) in enumerate(metadata):
+            start = self.indptr[row]
+            stop = self.indptr[next]
+            row = next
+            indices.append(self.indices[start:stop])
+            data.append(self.data[start:stop])
+
+            uniq_minor, uniq_minor_indptr = cupy.unique(
+                minor[col_start:col_stop][::-1], return_index=True)
+            if len(uniq_minor) == col_stop - col_start:
+                indices.append(minor[col_start:col_stop])
+                data.append(values[col_start:col_stop])
+            else:
+                indices.append(
+                    minor[col_start:col_stop][::-1][uniq_minor_indptr])
+                data.append(
+                    values[col_start:col_stop][::-1][uniq_minor_indptr])
+                nnz[col] = len(uniq_minor)
+        # remaining part
+        start = self.indptr[next]
+        indices.append(self.indices[start:])
+        data.append(self.data[start:])
+
+        self.indices = cupy.concatenate(indices)
+        self.data = cupy.concatenate(data)
+        nnzs = cupy.empty(self.indptr.shape, dtype=self.indices.dtype)
+        nnzs[0] = 0
+        indptr_diff = cupy.diff(self.indptr)
+        indptr_diff[uniq_major] += nnz
+        nnzs[1:] = indptr_diff
+        self.indptr = cupy.cumsum(nnzs, out=nnzs)
+
+        self.sort_indices()
+
+    def sample_offsets(self, rows, cols, samples, major, minor, offsets):
+        repeat = 0
+        if self._has_canonical_format and samples > self.indptr[rows] / 10:
+            self._data_offsets_canonical(
+                (samples,), (1,),
+                (rows, cols, self.indptr, self.indices,
+                 offsets, major, minor, samples))
+        else:
+            self._data_offsets((samples,), (1,),
+                               (rows, cols, self.indptr, self.indices,
+                                offsets, major, minor, repeat))
+        return repeat
 
     @property
     def has_canonical_format(self):
@@ -673,6 +799,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def get_shape(self):
         """Returns the shape of the matrix.
+
 
         Returns:
             tuple: Shape of the matrix.
@@ -696,6 +823,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             raise ValueError
 
     # TODO(unno): Implement sorted_indices
+    def sort_indices(self):
+        pass
 
     def sum_duplicates(self):
         if self._has_canonical_format:
