@@ -408,7 +408,7 @@ cdef class _TypeMap:
     def __str__(self):
         return '<_TypeMap {}>'.format(self._pairs)
 
-    cdef str get_typedef_code(self):
+    cpdef str get_typedef_code(self):
         # Returns a code fragment of typedef statements used as preamble.
         return ''.join([
             'typedef %s %s;\n' % (_get_typename(ctype2), ctype1)
