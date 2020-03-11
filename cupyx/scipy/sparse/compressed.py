@@ -97,7 +97,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
      }
     ''', 'data_offsets')
 
-    loaded_from_source = r'''
+    offsets_cancl_source = r'''
         __device__ __host__
         int lower_bound(int* A, int start, int stop, int val)
         {
@@ -128,7 +128,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     outptr[tid] = offset;
               }
          }'''
-    module = raw.RawModule(code=loaded_from_source)
+    module = raw.RawModule(code=offsets_cancl_source)
     _data_offsets_canonical = module.get_function('data_offsets_canonical')
 
     _max_reduction_kern = core.RawKernel(r'''
