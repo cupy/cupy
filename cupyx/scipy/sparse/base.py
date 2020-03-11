@@ -330,7 +330,47 @@ class spmatrix(object):
     def maximum(self, other):
         return self.tocsr().maximum(other)
 
-    # TODO(unno): Implement mean
+    def mean(self, axis=None, dtype=None, out=None):
+        """Compute the arithmetic mean along the specified axis.
+        Args:
+            axis (int or ``None``): Axis along which the mean is computed.
+                If it is ``None``, it computes the mean of all the elements.
+                Select from ``{None, 0, 1, -2, -1}``.
+            dtype: The type of returned matrix. If it is not specified, type
+                of the array is used.
+            out (cupy.ndarray): Output matrix.
+
+        Returns:
+            cupy.ndarray: mean array of matrix.
+
+        .. seealso::
+           :meth:`scipy.sparse.spmatrix.mean`
+        """
+
+        util.validateaxis(axis)
+
+        m, n = self.shape
+
+        if axis is None:
+            ret = self.sum(dtype=dtype)/cupy.array(m * n)
+        else:
+            if axis < 0:
+                axis += 2
+            if axis == 0:
+                ret = self.sum(axis=0, dtype=dtype)/cupy.array(m)
+            else:
+                ret = self.sum(axis=1, dtype=dtype)/cupy.array(n)
+
+        if dtype is not None:
+            ret = ret.astype(dtype, copy=False)
+
+        if out is not None:
+            if out.shape != ret.shape:
+                raise ValueError('dimensions do not match')
+            out[:] = ret
+            return out
+        else:
+            return ret
 
     def minimum(self, other):
         return self.tocsr().minimum(other)
@@ -357,7 +397,7 @@ class spmatrix(object):
         """Sums the matrix elements over a given axis.
 
         Args:
-            axis (int or ``None``): Axis along which the sum is comuted.
+            axis (int or ``None``): Axis along which the sum is computed.
                 If it is ``None``, it computes the sum of all the elements.
                 Select from ``{None, 0, 1, -2, -1}``.
             dtype: The type of returned matrix. If it is not specified, type
