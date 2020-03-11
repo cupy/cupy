@@ -12,19 +12,17 @@ class TestSort(unittest.TestCase):
 
     # Test ranks
 
-    # TODO(niboshi): Fix xfail
-    @pytest.mark.xfail(reason='Explicit error types required')
-    @testing.numpy_cupy_raises()
-    def test_sort_zero_dim(self, xp):
-        a = testing.shaped_random((), xp)
-        a.sort()
+    def test_sort_zero_dim(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((), xp)
+            with pytest.raises(numpy.AxisError):
+                a.sort()
 
-    # TODO(niboshi): Fix xfail
-    @pytest.mark.xfail(reason='Explicit error types required')
-    @testing.numpy_cupy_raises()
-    def test_external_sort_zero_dim(self, xp):
-        a = testing.shaped_random((), xp)
-        return xp.sort(a)
+    def test_external_sort_zero_dim(self):
+        for xp in (numpy, numpy):
+            a = testing.shaped_random((), xp)
+            with pytest.raises(numpy.AxisError):
+                xp.sort(a)
 
     @testing.numpy_cupy_array_equal()
     def test_sort_two_or_more_dim(self, xp):
@@ -219,10 +217,8 @@ class TestArgsort(unittest.TestCase):
 
     # Test base cases
 
-    # TODO(niboshi): Fix xfail
-    @pytest.mark.xfail(reason='Explicit error types required')
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
-    @testing.numpy_cupy_raises()
+    @testing.numpy_cupy_array_equal()
     def test_argsort_zero_dim(self, xp, dtype):
         a = testing.shaped_random((), xp, dtype)
         return self.argsort(a)
@@ -279,6 +275,17 @@ class TestArgsort(unittest.TestCase):
         a = testing.shaped_random((2, 3, 3), cupy)
         with self.assertRaises(cupy.core._AxisError):
             return self.argsort(a, axis=3)
+
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_zero_dim_axis(self, xp):
+        a = testing.shaped_random((), xp)
+        return self.argsort(a, axis=0)
+
+    def test_argsort_zero_dim_invalid_axis(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((), xp)
+            with pytest.raises(numpy.AxisError):
+                self.argsort(a, axis=1)
 
     @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_raises()
@@ -356,13 +363,12 @@ class TestPartition(unittest.TestCase):
 
     # Test base cases
 
-    # TODO(niboshi): Fix xfail
-    @pytest.mark.xfail(reason='Explicit error types required')
-    @testing.numpy_cupy_raises()
-    def test_partition_zero_dim(self, xp):
-        a = testing.shaped_random((), xp)
-        kth = 2
-        return self.partition(a, kth)
+    def test_partition_zero_dim(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((), xp)
+            kth = 2
+            with pytest.raises(numpy.AxisError):
+                self.partition(a, kth)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_equal()
@@ -523,13 +529,12 @@ class TestArgpartition(unittest.TestCase):
 
     # Test base cases
 
-    # TODO(niboshi): Fix xfail
-    @pytest.mark.xfail(reason='Explicit error types required')
-    @testing.numpy_cupy_raises()
-    def test_argpartition_zero_dim(self, xp):
-        a = testing.shaped_random((), xp)
-        kth = 2
-        return self.argpartition(a, kth)
+    def test_argpartition_zero_dim(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((), xp)
+            kth = 2
+            with pytest.raises(ValueError):
+                self.argpartition(a, kth)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_equal()
