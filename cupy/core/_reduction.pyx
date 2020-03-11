@@ -30,7 +30,7 @@ import numpy
 from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
 from cupy.cuda import compiler
-from cupy.cuda import cub_enabled
+from cupy.cuda import cub_block_reduction_enabled  # TODO: this is a copy, not a reference!
 from cupy import util
 
 
@@ -176,6 +176,9 @@ cdef tuple _set_permuted_args(
 cdef Py_ssize_t _get_contiguous_size(
         list args, tuple params, Py_ssize_t ndim,
         Py_ssize_t out_ndim) except -1:
+    '''
+    get contiguous size in the *output* axis (not *reduce* axis!)
+    '''
     cdef int i, j
     cdef ParameterInfo p
     cdef Py_ssize_t contiguous_size, tmp_contiguous_size, itemsize
@@ -247,11 +250,12 @@ cdef class _AbstractReductionKernel:
             tuple a_shape, axis, dtype,
             bint keepdims, bint reduce_dims,
             stream):
-        cdef tuple reduce_axis, out_axis
+        cdef tuple reduce_axis, out_axis, axis_permutes
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
         cdef ndarray ret
         cdef function.Function kern
+        cdef bint use_cub
 
         if dtype is not None:
             dtype = get_dtype(dtype).type
@@ -287,8 +291,20 @@ cdef class _AbstractReductionKernel:
         in_args = [x if isinstance(x, ndarray) else
                    _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
                    for x, t in zip(in_args, in_types)]
-        in_shape = _set_permuted_args(
-            in_args, reduce_axis + out_axis, a_shape, self.in_params)
+        if cub_block_reduction_enabled:
+            axis_permutes = out_axis + reduce_axis
+            use_cub = True
+
+            # TODO: check axes, if not contiguous then switch back to the old behavior
+            if axis_permutes != tuple(range(in_args[0].ndim)):
+                print("give up CUB block reduction, falling back...")
+                axis_permutes = reduce_axis + out_axis
+                use_cub = False
+        else:
+            axis_permutes = reduce_axis + out_axis
+            use_cub = False
+        in_shape = _set_permuted_args(in_args, axis_permutes,
+                                      a_shape, self.in_params)
 
         if reduce_dims:
             in_shape = _reduce_dims(in_args, self.in_params, in_shape)
@@ -319,7 +335,7 @@ cdef class _AbstractReductionKernel:
             _get_arginfos(inout_args),
             type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
-            block_size)
+            block_size, use_cub)
 
         # Launch the kernel
         func.linear_launch(
@@ -339,7 +355,7 @@ cdef class _AbstractReductionKernel:
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size):
+            Py_ssize_t block_size, bint use_cub=0):
         raise NotImplementedError()
 
 
@@ -443,12 +459,12 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size):
+            Py_ssize_t block_size, bint use_cub=0):
         return _SimpleReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
             self.name, block_size, self.identity,
-            self._input_expr, self._output_expr, self._preamble, ())
+            self._input_expr, self._output_expr, self._preamble, (), use_cub)
 
 
 @util.memoize(for_each_device=True)
@@ -456,7 +472,7 @@ def _SimpleReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, input_expr, output_expr, _preamble,
-        options):
+        options, use_cub):
     print("name:",          name,          type(name), "\n")           
     print("block_size:",    block_size,    type(block_size), "\n")     
     print("reduce_type:",   reduce_type,   type(reduce_type), "\n")   
@@ -478,8 +494,8 @@ def _SimpleReductionKernel_get_cached_function(
     temp2 = type_map.get_typedef_code()
     print("final params:",  temp,          type(temp), "\n")
     print("type_preamble:", temp2,         type(temp2), "\n")
-    print(cub_enabled)
-    if not cub_enabled:
+    print(cub_block_reduction_enabled)
+    if not use_cub:
         return _create_reduction_function(
             name, block_size, reduce_type, params, arginfos, identity,
             map_expr, reduce_expr, post_map_expr,
@@ -634,7 +650,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size):
+            Py_ssize_t block_size, bint use_cub=0):
         return _ReductionKernel_get_cached_function(
             self.nin, self.nout, params, arginfos, type_map,
             self.name, block_size, reduce_type, self.identity,

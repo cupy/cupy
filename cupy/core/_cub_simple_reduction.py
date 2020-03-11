@@ -52,21 +52,26 @@ __global__ void ${name}(${params}) {
   const ptrdiff_t* in_strides = _raw_in0.strides();
   const ptrdiff_t* out_strides = _raw_out0.strides();
   if (_id == 0) {
-    printf("%i %i\\n", in_ndim, out_ndim);
+    printf("%i %i\\n(", in_ndim, out_ndim);
     for(int i = 0; i<in_ndim; i++) {
-       printf("%d\\n", in_shape[i]);
+       printf("%d, ", in_shape[i]);
     }
+    printf("\\b\\b)\\n(");
 
     for(int i = 0; i<in_ndim; i++) {
-       printf("%d\\n", in_strides[i]);
+       printf("%d, ", in_strides[i]);
     }
-    for(int i = 0; i<out_ndim; i++) {
-       printf("%d\\n", out_shape[i]);
-    }
+    printf("\\b\\b)\\n\\n(");
 
     for(int i = 0; i<out_ndim; i++) {
-       printf("%d\\n", out_strides[i]);
+       printf("%d, ", out_shape[i]);
     }
+    printf("\\b\\b)\\n(");
+
+    for(int i = 0; i<out_ndim; i++) {
+       printf("%d, ", out_strides[i]);
+    }
+    printf("\\b\\b)\\n");
   }
 
   // Per-thread tile data

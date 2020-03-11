@@ -45,6 +45,11 @@ if int(os.getenv('CUB_DISABLED', 0)) == 0:
     except ImportError:
         pass
 
+cub_enabled = False  # for testing
+cub_block_reduction_enabled = True  # for testing
+if int(os.getenv('CUB_BLOCK_REDUCTION_DISABLED', 1)) == 0:
+    cub_block_reduction_enabled = True
+
 try:
     from cupy.cuda import nccl  # NOQA
     nccl_enabled = True
