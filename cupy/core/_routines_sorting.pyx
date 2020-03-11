@@ -27,8 +27,8 @@ cdef _ndarray_sort(ndarray self, int axis):
                            'reinstall CuPy after uninstalling it.')
 
     if ndim == 0:
-        raise ValueError('Sorting arrays with the rank of zero is not '
-                         'supported')  # as numpy.sort() raises
+        raise numpy.AxisError('Sorting arrays with the rank of zero is not '
+                              'supported')  # as numpy.sort() raises
 
     # TODO(takagi): Support sorting views
     if not self._c_contiguous:
@@ -60,7 +60,7 @@ cdef _ndarray_sort(ndarray self, int axis):
 
 
 cdef ndarray _ndarray_argsort(ndarray self, axis):
-    cdef int _axis, ndim = self._shape.size()
+    cdef int _axis, ndim
     cdef ndarray data
 
     if not cupy.cuda.thrust_enabled:
@@ -68,9 +68,8 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
                            'install CUDA Toolkit with Thrust then '
                            'reinstall CuPy after uninstalling it.')
 
-    if ndim == 0:
-        raise ValueError('Sorting arrays with the rank of zero is not '
-                         'supported')  # as numpy.argsort() raises
+    self = cupy.atleast_1d(self)
+    ndim = self._shape.size()
 
     if axis is None:
         data = self.ravel()
@@ -132,8 +131,8 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
     cdef ndarray data
 
     if ndim == 0:
-        raise ValueError('Sorting arrays with the rank of zero is not '
-                         'supported')
+        raise numpy.AxisError('Sorting arrays with the rank of zero is not '
+                              'supported')
 
     if not self._c_contiguous:
         raise NotImplementedError('Sorting non-contiguous array is not '
