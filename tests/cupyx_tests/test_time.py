@@ -42,9 +42,9 @@ class TestPerfCaseResult(unittest.TestCase):
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times)
         expected = (
             'test_name_xxx       :'
-            '    CPU:     5.620 us   +/- 0.943 '
+            '    CPU:    5.620 us   +/- 0.943 '
             '(min:    4.200 / max:    7.100) us '
-            '    GPU:     6.600 us   +/- 2.344 '
+            '    GPU:    6.600 us   +/- 2.344 '
             '(min:    3.800 / max:    9.600) us'
         )
         assert str(perf) == expected
@@ -57,7 +57,7 @@ class TestPerfCaseResult(unittest.TestCase):
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times)
         expected = (
             'test_name_xxx       :'
-            '    CPU:     5.620 us   +/- 0.943 '
+            '    CPU:    5.620 us   +/- 0.943 '
             '(min:    4.200 / max:    7.100) us'
         )
         assert perf.to_str() == expected
@@ -65,10 +65,10 @@ class TestPerfCaseResult(unittest.TestCase):
     def test_single_show_gpu(self):
         times = numpy.array([[5.4], [6.4]]) * 1e-6
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times)
-        assert str(perf) == ('test_name_xxx       :    CPU:     5.400 us '
-                             '    GPU:     6.400 us')
+        assert str(perf) == ('test_name_xxx       :    CPU:    5.400 us '
+                             '    GPU:    6.400 us')
 
     def test_single_no_show_gpu(self):
         times = numpy.array([[5.4], [6.4]]) * 1e-6
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times)
-        assert perf.to_str() == 'test_name_xxx       :    CPU:     5.400 us'
+        assert perf.to_str() == 'test_name_xxx       :    CPU:    5.400 us'

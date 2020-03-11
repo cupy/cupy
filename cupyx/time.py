@@ -21,11 +21,11 @@ class _PerfCaseResult(object):
         return self._ts[1]
 
     @staticmethod
-    def _to_str_per_item(t):
+    def _to_str_per_item(t, device_name):
         assert t.size > 0
         t *= 1e6
 
-        s = ' {:9.03f} us'.format(t.mean())
+        s = '    {}:{:9.03f} us'.format(device_name, t.mean())
         if t.size > 1:
             s += '   +/-{:6.03f} (min:{:9.03f} / max:{:9.03f}) us'.format(
                 t.std(), t.min(), t.max())
@@ -33,11 +33,11 @@ class _PerfCaseResult(object):
 
     def to_str(self, show_gpu=False):
         ts = self._ts if show_gpu else self._ts[[0]]
-        devices = ['CPU', 'GPU']
-        return '{:<20s}:{}'.format(
-            self.name, ' '.join(["    " + devices[i] + ':'
-                                 + self._to_str_per_item(ts[i])
-                                 for i in range(len(ts))]))
+        device_name = ['CPU', 'GPU']
+        return '{:<20s}:{}'.format(self.name,
+                                    ' '.join([self._to_str_per_item(ts[i],
+                                    device_name[i])
+                                    for i in range(len(ts))]))
 
     def __str__(self):
         return self.to_str(show_gpu=True)
