@@ -1,5 +1,7 @@
 from cupyx.scipy.ndimage.filters import correlate  # NOQA
 from cupyx.scipy.ndimage.filters import convolve  # NOQA
+from cupyx.scipy.ndimage.filters import correlate1d  # NOQA
+from cupyx.scipy.ndimage.filters import convolve1d  # NOQA
 
 from cupyx.scipy.ndimage.interpolation import affine_transform  # NOQA
 from cupyx.scipy.ndimage.interpolation import map_coordinates  # NOQA
