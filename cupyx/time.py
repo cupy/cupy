@@ -35,9 +35,9 @@ class _PerfCaseResult(object):
         ts = self._ts if show_gpu else self._ts[[0]]
         device_name = ['CPU', 'GPU']
         return '{:<20s}:{}'.format(self.name,
-                                    ' '.join([self._to_str_per_item(ts[i],
-                                    device_name[i])
-                                    for i in range(len(ts))]))
+                                   ' '.join([self._to_str_per_item(ts[i],
+                                                                   device_name[i])
+                                             for i in range(len(ts))]))
 
     def __str__(self):
         return self.to_str(show_gpu=True)
