@@ -1,5 +1,4 @@
 import cupy
-from cupy import util
 
 
 def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
@@ -62,6 +61,33 @@ def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
                                   True)
 
 
+def _correlate_or_convolve(input, weights, output, mode, cval, origin,
+                           convolution):
+    origins, int_type = _check_nd_args(input, weights, mode, origin)
+    if weights.size == 0:
+        return cupy.zeros_like(input)
+    if convolution:
+        weights = weights[tuple([slice(None, None, -1)] * weights.ndim)]
+        for i, wsize in enumerate(weights.shape):
+            origins[i] = -origins[i]
+            if wsize % 2 == 0:
+                origins[i] -= 1
+    kernel = _get_correlate_kernel(mode, weights.shape, int_type,
+                                   tuple(origins), cval)
+    return _call_kernel(kernel, input, weights, output)
+
+
+@cupy.util.memoize()
+def _get_correlate_kernel(mode, wshape, int_type, origins, cval):
+    return _get_nd_kernel('correlate',
+                          'W sum = (W)0;',
+                          'sum += (W){value} * w[iw];',
+                          'y = (Y)sum;',
+                          mode, wshape, int_type, origins, cval)
+
+
+# ######## Utility Functions ##########
+
 def _get_output(output, input, shape=None):
     if shape is None:
         shape = input.shape
@@ -76,39 +102,97 @@ def _get_output(output, input, shape=None):
     return output
 
 
-def _correlate_or_convolve(input, weights, output, mode, cval, origin,
-                           convolution):
-    if input.dtype.kind == 'c':
-        raise TypeError('Complex type not supported.')
-    if not hasattr(origin, '__getitem__'):
-        origin = [origin, ] * input.ndim
+def _fix_sequence_arg(arg, ndim, name, conv=lambda x: x):
+    if hasattr(arg, '__iter__') and not isinstance(arg, str):
+        lst = [conv(x) for x in arg]
+        if len(lst) != ndim:
+            msg = "{} must have length equal to input rank".format(name)
+            raise RuntimeError(msg)
     else:
-        origin = list(origin)
-    wshape = [ii for ii in weights.shape if ii > 0]
-    if len(wshape) != input.ndim:
-        raise RuntimeError('filter weights array has incorrect shape.')
-    if convolution:
-        weights = weights[tuple([slice(None, None, -1)] * weights.ndim)]
-        for ii in range(len(origin)):
-            origin[ii] = -origin[ii]
-            if weights.shape[ii] % 2 == 0:
-                origin[ii] -= 1
-    for _origin, lenw in zip(origin, wshape):
-        if (lenw // 2 + _origin < 0) or (lenw // 2 + _origin >= lenw):
-            raise ValueError('invalid origin')
+        lst = [conv(arg)] * ndim
+    return lst
+
+
+def _check_origin(origin, width):
+    origin = int(origin)
+    if (width // 2 + origin < 0) or (width // 2 + origin >= width):
+        raise ValueError('invalid origin')
+    return origin
+
+
+def _check_origins(origins, shape):
+    origins = _fix_sequence_arg(origins, len(shape), 'origin', int)
+    for origin, width in zip(origins, shape):
+        _check_origin(origin, width)
+    return origins
+
+
+def _check_mode(mode):
     if mode not in ('reflect', 'constant', 'nearest', 'mirror', 'wrap'):
         msg = 'boundary mode not supported (actual: {}).'.format(mode)
         raise RuntimeError(msg)
+    return mode
 
+
+def _get_int_type(size):
+    # The integer type to use for positions in input
+    # We will always assume that wsize is int32 however
+    return 'size_t' if size > 1 << 31 else 'int'
+
+
+def _check_args(input, mode):
+    if input.dtype.kind == 'c':
+        raise TypeError('Complex type not supported.')
+    _check_mode(mode)
+    int_type = _get_int_type(input.size)
+    return int_type
+
+
+def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights'):
+    int_type = _check_args(input, mode)
+    weight_dims = [x for x in weights.shape if x != 0]
+    if len(weight_dims) != input.ndim:
+        raise RuntimeError('{} array has incorrect shape'.format(wghts_name))
+    origins = _check_origins(origin, weight_dims)
+    return origins, int_type
+
+
+def _call_kernel(kernel, input, weights, output,
+                 weight_dtype=cupy.float64):
+    """
+    Calls a constructed ElementwiseKernel. The kernel must take an input image,
+    an array of weights, and an output array.
+
+    The weights are the only optional part and can be passed as None and then
+    one less argument is passed to the kernel. If the output is given as None
+    then it will be allocated in this function.
+
+    This function deals with making sure that the weights are contiguous and
+    float64 or bool*, that the output is allocated and appriopate shaped. This
+    also deals with the situation that the input and output arrays overlap in
+    memory.
+
+    * weights is always casted to float64 or bool in order to get an output
+    compatible with SciPy, though float32 might be sufficient when input dtype
+    is low precision.
+    """
+    if weights is not None:
+        weights = cupy.ascontiguousarray(weights, weight_dtype)
     output = _get_output(output, input)
-    if weights.size == 0:
-        return output
-    input = cupy.ascontiguousarray(input)
-    weights = cupy.ascontiguousarray(weights, cupy.float64)
-    return _get_correlete_kernel(
-        input.ndim, mode, cval, input.shape, tuple(wshape), tuple(origin))(
-        input, weights, output)
+    needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
+    if needs_temp:
+        output, temp = _get_output(output.dtype, input), output
+    if weights is None:
+        kernel(input, output)
+    else:
+        kernel(input, weights, output)
+    if needs_temp:
+        temp[...] = output[...]
+        output = temp
+    return output
 
+
+# ######## Generating Elementwise Kernels ##########
 
 def _generate_boundary_condition_ops(mode, ix, xsize):
     if mode == 'reflect':
@@ -146,66 +230,69 @@ def _generate_boundary_condition_ops(mode, ix, xsize):
     return ops
 
 
-def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
+def _get_nd_kernel(name, pre, found, post, mode, wshape, int_type,
+                   origins, cval, preamble='', options=()):
+    ndim = len(wshape)
     in_params = 'raw X x, raw W w'
     out_params = 'Y y'
 
-    ops = []
-    ops.append('const int sx_{} = 1;'.format(ndim-1))
-    for j in range(ndim-1, 0, -1):
-        ops.append('int sx_{jm} = sx_{j} * {xsize_j};'.
-                   format(jm=j-1, j=j, xsize_j=xshape[j]))
-    ops.append('int _i = i;')
-    for j in range(ndim-1, -1, -1):
-        ops.append('int cx_{j} = _i % {xsize} - ({wsize} / 2) - ({origin});'
-                   .format(j=j, xsize=xshape[j], wsize=wshape[j],
-                           origin=origin[j]))
-        if (j > 0):
-            ops.append('_i /= {xsize};'.format(xsize=xshape[j]))
-    ops.append('W sum = (W)0;')
-    ops.append('int iw = 0;')
+    inds = _generate_indices_ops(
+        ndim, int_type,
+        [' - {}'.format(wshape[j]//2 + origins[j]) for j in range(ndim)])
+    sizes = ['{type} xsize_{j}=x.shape()[{j}], xstride_{j}=x.strides()[{j}];'.
+             format(j=j, type=int_type) for j in range(ndim)]
+    cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
+    expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
 
+    loops = []
     for j in range(ndim):
-        ops.append('''
+        boundary = _generate_boundary_condition_ops(mode, 'ix_{}'.format(j),
+                                                    'xsize_{}'.format(j))
+        loops.append('''
     for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)
     {{
-        int ix_{j} = cx_{j} + iw_{j};'''.format(j=j, wsize=wshape[j]))
-        ixvar = 'ix_{}'.format(j)
-        ops.append(_generate_boundary_condition_ops(mode, ixvar, xshape[j]))
-        ops.append('        ix_{j} *= sx_{j};'.format(j=j))
+        {type} ix_{j} = ind_{j} + iw_{j};
+        {boundary}
+        ix_{j} *= xstride_{j};
+        '''.format(j=j, wsize=wshape[j], boundary=boundary, type=int_type))
 
-    ops.append('''
-        W wval = w[iw];
-        if (wval == (W)0) {{
-            iw += 1;
-            continue;
-        }}''')
-    _cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
-    _expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
-    ops.append('''
-        if ({cond}) {{
-            sum += (W){cval} * wval;
-        }} else {{
-            int ix = {expr};
-            sum += (W)x[ix] * wval;
+    value = '(({cond}) ? (X){cval} : *(X*)&data[{expr}])'.format(
+        cond=cond, cval=cval, expr=expr)
+    found = found.format(value=value)
+
+    operation = '''
+    {sizes}
+    {inds}
+    const unsigned char* data = (const unsigned char*)&x[0];
+    const W* weights = (const W*)&w[0];
+    int iw = 0;
+    {pre}
+    {loops}
+        // inner-most loop
+        if (weights[iw]) {{
+            {found}
         }}
-        iw += 1;'''.format(cond=_cond, expr=_expr, cval=cval))
+        iw += 1;
+    {end_loops}
+    {post}
+    '''.format(sizes='\n'.join(sizes), inds=inds, pre=pre, post=post,
+               loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
-    ops.append('} ' * ndim)
-    ops.append('y = (Y)sum;')
-    operation = '\n'.join(ops)
+    name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
+        name, ndim, mode, '_'.join(['{}'.format(j) for j in wshape]))
+    if int_type == 'size_t':
+        name += '_i64'
+    return cupy.ElementwiseKernel(in_params, out_params, operation, name,
+                                  reduce_dims=False, preamble=preamble,
+                                  options=options)
 
-    name = 'cupy_ndimage_correlate_{}d_{}_x{}_w{}'.format(
-        ndim, mode, '_'.join(['{}'.format(j) for j in xshape]),
-        '_'.join(['{}'.format(j) for j in wshape]))
-    return in_params, out_params, operation, name
 
-
-@util.memoize()
-def _get_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
-    # weights is always casted to float64 in order to get an output compatible
-    # with SciPy, thought float32 might be sufficient when input dtype is low
-    # precision.
-    in_params, out_params, operation, name = _generate_correlete_kernel(
-        ndim, mode, cval, xshape, wshape, origin)
-    return cupy.ElementwiseKernel(in_params, out_params, operation, name)
+def _generate_indices_ops(ndim, int_type, extras=None):
+    if extras is None:
+        extras = ('',)*ndim
+    body = ['{type} ind_{dim} = _i % x.shape()[{dim}]{extra}; '
+            '_i /= x.shape()[{dim}];'.format(
+                type=int_type, dim=dim, extra=extras[dim])
+            for dim in range(ndim-1, 0, -1)]
+    return '{type} _i = i;\n{body}\n{type} ind_0 = _i{extra};'.format(
+        type=int_type, body='\n'.join(body), extra=extras[0])
