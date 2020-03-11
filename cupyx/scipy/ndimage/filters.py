@@ -151,8 +151,8 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
     out_params = 'Y y'
 
     ops = []
-    ops.append('X* _x = (X*)&(x[0]);')
-    ops.append('W* _w = (W*)&(w[0]);')
+    ops.append('X* x_data = (X*)&(x[0]);')
+    ops.append('W* w_data = (W*)&(w[0]);')
     ops.append('const int sx_{} = 1;'.format(ndim-1))
     for j in range(ndim-1, 0, -1):
         ops.append('int sx_{jm} = sx_{j} * {xsize_j};'.
@@ -177,7 +177,7 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
         ops.append('        ix_{j} *= sx_{j};'.format(j=j))
 
     ops.append('''
-        W wval = _w[iw];
+        W wval = w_data[iw];
         if (wval == (W)0) {{
             iw += 1;
             continue;
@@ -189,7 +189,7 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
             sum += (W){cval} * wval;
         }} else {{
             int ix = {expr};
-            sum += (W)_x[ix] * wval;
+            sum += (W)x_data[ix] * wval;
         }}
         iw += 1;'''.format(cond=_cond, expr=_expr, cval=cval))
 
