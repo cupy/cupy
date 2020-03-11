@@ -57,7 +57,7 @@ def array_equal(a, b):
 
     if a.shape != b.shape:
         return cupy.array(False)
-    return bool((a==b).all())
+    return bool((a == b).all())
 
 
 def allclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
