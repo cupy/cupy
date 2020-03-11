@@ -21,7 +21,8 @@ class _PerfCaseResult(object):
         return self._ts[1]
 
     @staticmethod
-    def _to_str_per_item(t, device_name):
+    def _to_str_per_item(device_name, t):
+        assert t.ndim == 1
         assert t.size > 0
         t *= 1e6
 
@@ -32,12 +33,10 @@ class _PerfCaseResult(object):
         return s
 
     def to_str(self, show_gpu=False):
-        ts = self._ts if show_gpu else self._ts[[0]]
-        device_name = ['CPU', 'GPU']
-        return (
-            '{:<20s}:{}'.format(self.name,
-                                ' '.join([self._to_str_per_item(*p)
-                                          for p in zip(ts, device_name)])))
+        results = [self._to_str_per_item('CPU', self._ts[0])]
+        if show_gpu:
+            results.append(self._to_str_per_item('GPU', self._ts[1]))
+        return '{:<20s}:{}'.format(self.name, ' '.join(results))
 
     def __str__(self):
         return self.to_str(show_gpu=True)
