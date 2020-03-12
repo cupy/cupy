@@ -36,5 +36,3 @@ cdef object _floor_divide
 cdef object _remainder
 cdef object _absolute
 cdef object _sqrt
-cdef object _gcd
-cdef object _lcm
