@@ -63,31 +63,6 @@ def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
                                   True)
 
 
-def _correlate_or_convolve(input, weights, output, mode, cval, origin,
-                           convolution):
-    origins, int_type = _check_nd_args(input, weights, mode, origin)
-    if weights.size == 0:
-        return cupy.zeros_like(input)
-    if convolution:
-        weights = weights[tuple([slice(None, None, -1)] * weights.ndim)]
-        for i, wsize in enumerate(weights.shape):
-            origins[i] = -origins[i]
-            if wsize % 2 == 0:
-                origins[i] -= 1
-    kernel = _get_correlate_kernel(mode, weights.shape, int_type,
-                                   tuple(origins), cval)
-    return _call_kernel(kernel, input, weights, output)
-
-
-@cupy.util.memoize()
-def _get_correlate_kernel(mode, wshape, int_type, origins, cval):
-    return _get_nd_kernel('correlate',
-                          'W sum = (W)0;',
-                          'sum += (W){value} * weights[iw];',
-                          'y = (Y)sum;',
-                          mode, wshape, int_type, origins, cval)
-
-
 def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
                 origin=0):
     """One-dimensional correlate.
@@ -110,13 +85,9 @@ def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
         cupy.ndarray: The result of the 1D correlation.
     .. seealso:: :func:`scipy.ndimage.correlate1d`
     """
-    if len([x for x in weights.shape if x != 0]) != 1:
-        raise RuntimeError('filter weights array has incorrect shape')
-    axis, origin, int_type = _check_1d_args(input, len(weights), axis, mode,
-                                            origin)
-    kernel = _get_correlate1d_kernel(input.ndim, axis, mode, weights.size,
-                                     origin, float(cval), int_type)
-    return _call_kernel(kernel, input, weights, output)
+    weights, origins = _convert_1d_args(input.ndim, weights, origin, axis)
+    return _correlate_or_convolve(input, weights, output, mode, cval, origins,
+                                  False)
 
 
 def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
@@ -145,17 +116,36 @@ def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
     origin = -origin
     if not len(weights) & 1:
         origin -= 1
-    return correlate1d(input, weights, axis, output, mode, cval, origin)
+    weights, origins = _convert_1d_args(input.ndim, weights, origin, axis)
+    return _correlate_or_convolve(input, weights, output, mode, cval, origins,
+                                  False)
+
+
+def _correlate_or_convolve(input, weights, output, mode, cval, origin,
+                           convolution):
+    origins, int_type = _check_nd_args(input, weights, mode, origin)
+    if weights.size == 0:
+        return cupy.zeros_like(input)
+    if convolution:
+        weights = weights[tuple([slice(None, None, -1)] * weights.ndim)]
+        origins = list(origins)
+        for i, wsize in enumerate(weights.shape):
+            origins[i] = -origins[i]
+            if wsize % 2 == 0:
+                origins[i] -= 1
+        origins = tuple(origins)
+    kernel = _get_correlate_kernel(mode, weights.shape, int_type,
+                                   origins, cval)
+    return _call_kernel(kernel, input, weights, output)
 
 
 @cupy.util.memoize()
-def _get_correlate1d_kernel(ndim, axis, mode, wsize, origins, cval, int_type):
-    return _get_1d_kernel(
-        'correlate', True,
-        'W sum = (W)0;\nconst W* weights = (const W*)&w[0];',
-        'W wval = weights[iw];\nif (wval == 0) { continue; }',
-        'sum += ((W){value}) * wval;',
-        'y = (Y)sum;', ndim, axis, mode, wsize, origins, cval, int_type)
+def _get_correlate_kernel(mode, wshape, int_type, origins, cval):
+    return _get_nd_kernel('correlate',
+                          'W sum = (W)0;',
+                          'sum += (W){value} * wval;',
+                          'y = (Y)sum;',
+                          mode, wshape, int_type, origins, cval)
 
 
 # ######## Utility Functions ##########
@@ -192,13 +182,6 @@ def _check_origin(origin, width):
     return origin
 
 
-def _check_origins(origins, shape):
-    origins = _fix_sequence_arg(origins, len(shape), 'origin', int)
-    for origin, width in zip(origins, shape):
-        _check_origin(origin, width)
-    return origins
-
-
 def _check_mode(mode):
     if mode not in ('reflect', 'constant', 'nearest', 'mirror', 'wrap'):
         msg = 'boundary mode not supported (actual: {}).'.format(mode)
@@ -215,36 +198,32 @@ def _check_axis(axis, ndim):
     return axis
 
 
-def _get_int_type(size):
-    # The integer type to use for positions in input
-    # We will always assume that wsize is int32 however
-    return 'size_t' if size > 1 << 31 else 'int'
+def _convert_1d_args(ndim, weights, origin, axis):
+    if weights.ndim != 1 or weights.size < 1:
+        raise RuntimeError('incorrect filter size')
+    axis = _check_axis(axis, ndim)
+    wshape = [1]*ndim
+    wshape[axis] = weights.size
+    weights = weights.reshape(wshape)
+    origins = [0]*ndim
+    origins[axis] = _check_origin(origin, weights.size)
+    return weights, tuple(origins)
 
 
-def _check_args(input, mode):
+def _check_nd_args(input, weights, mode, origins, wghts_name='filter weights'):
     if input.dtype.kind == 'c':
         raise TypeError('Complex type not supported.')
     _check_mode(mode)
-    int_type = _get_int_type(input.size)
-    return int_type
-
-
-def _check_1d_args(input, size, axis, mode, origin):
-    int_type = _check_args(input, mode)
-    if size < 1:
-        raise RuntimeError('incorrect filter size')
-    axis = _check_axis(axis, input.ndim)
-    origin = _check_origin(origin, size)
-    return axis, origin, int_type
-
-
-def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights'):
-    int_type = _check_args(input, mode)
+    # The integer type to use for positions in input
+    # We will always assume that wsize is int32 however
+    int_type = 'size_t' if input.size > 1 << 31 else 'int'
     weight_dims = [x for x in weights.shape if x != 0]
     if len(weight_dims) != input.ndim:
         raise RuntimeError('{} array has incorrect shape'.format(wghts_name))
-    origins = _check_origins(origin, weight_dims)
-    return origins, int_type
+    origins = _fix_sequence_arg(origins, len(weight_dims), 'origin', int)
+    for origin, width in zip(origins, weight_dims):
+        _check_origin(origin, width)
+    return tuple(origins), int_type
 
 
 def _call_kernel(kernel, input, weights, output,
@@ -320,47 +299,8 @@ def _generate_boundary_condition_ops(mode, ix, xsize):
     return ops
 
 
-def _get_1d_kernel(name, has_w, pre, start, found, post, ndim, axis, mode,
-                   wsize, origin, cval, int_type, preamble='', options=()):
-    in_params = 'raw X x' + (', raw W w' if has_w else '')
-    out_params = 'Y y'
-    inds = _generate_indices_ops(ndim, int_type)
-    boundary = _generate_boundary_condition_ops(mode, 'ix', 'xsize')
-    off_sum = ' + '.join('x.strides()[{j}] * ind_{j}'.format(j=j)
-                         for j in range(ndim) if j != axis)
-    value = '(*(X*)&data[xstride*ix+ix_off])'
-    if mode == 'constant':
-        value = '(ix < 0 ? (X){cval} : {value})'.format(cval=cval, value=value)
-    found = found.format(value=value)
-    operation = '''
-    {inds}
-    {type} ix_off = {off_sum}, iw_off = ind_{axis} - {off};
-    {type} xstride = x.strides()[{axis}], xsize = x.shape()[{axis}];
-    // don't use a CArray for indexing (faster to deal with indexing ourselves)
-    const unsigned char* data = (const unsigned char*)&x[0];
-    {pre}
-    for (int iw = 0; iw < {wsize}; iw++)
-    {{
-        {start}
-        {type} ix = iw_off + iw;
-        {boundary}
-        {found}
-    }}
-    {post};'''.format(axis=axis, wsize=wsize, off=wsize//2 + origin,
-                      type=int_type, pre=pre, start=start, found=found,
-                      post=post, inds=inds, off_sum=off_sum, boundary=boundary)
-
-    name = 'cupy_ndimage_{}1d_{}_{}d_{}_w{}'.format(
-        name, axis, ndim, mode, wsize)
-    if int_type == 'size_t':
-        name += '_i64'
-    return cupy.ElementwiseKernel(in_params, out_params, operation, name,
-                                  reduce_dims=False, preamble=preamble,
-                                  options=options)
-
-
 def _get_nd_kernel(name, pre, found, post, mode, wshape, int_type,
-                   origins, cval, preamble='', options=()):
+                   origins, cval, preamble='', options=(), has_weights=True):
     ndim = len(wshape)
     in_params = 'raw X x, raw W w'
     out_params = 'Y y'
@@ -373,10 +313,21 @@ def _get_nd_kernel(name, pre, found, post, mode, wshape, int_type,
     cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
     expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
 
+    if has_weights:
+        weights_init = 'const W* weights = (const W*)&w[0];\nint iw = 0;'
+        weights_check = 'W wval = weights[iw++];\nif (wval)'
+    else:
+        in_params = 'raw X x'
+        weights_init = weights_check = ''
+
     loops = []
     for j in range(ndim):
-        boundary = _generate_boundary_condition_ops(mode, 'ix_{}'.format(j),
-                                                    'xsize_{}'.format(j))
+        if wshape[j] == 1:
+            loops.append('{{ {type} ix_{j} = ind_{j} * xstride_{j};'.
+                         format(j=j, type=int_type))
+        else:
+            boundary = _generate_boundary_condition_ops(
+                mode, 'ix_{}'.format(j), 'xsize_{}'.format(j))
         loops.append('''
     for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)
     {{
@@ -396,18 +347,17 @@ def _get_nd_kernel(name, pre, found, post, mode, wshape, int_type,
     {inds}
     // don't use a CArray for indexing (faster to deal with indexing ourselves)
     const unsigned char* data = (const unsigned char*)&x[0];
-    const W* weights = (const W*)&w[0];
-    int iw = 0;
+    {weights_init}
     {pre}
     {loops}
         // inner-most loop
-        if (weights[iw]) {{
+        {weights_check} {{
             {found}
         }}
-        iw += 1;
     {end_loops}
     {post}
     '''.format(sizes='\n'.join(sizes), inds=inds, pre=pre, post=post,
+               weights_init=weights_init, weights_check=weights_check,
                loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
     name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
