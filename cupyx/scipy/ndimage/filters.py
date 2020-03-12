@@ -83,7 +83,7 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
 def _get_correlate_kernel(mode, wshape, int_type, origins, cval):
     return _get_nd_kernel('correlate',
                           'W sum = (W)0;',
-                          'sum += (W){value} * w[iw];',
+                          'sum += (W){value} * weights[iw];',
                           'y = (Y)sum;',
                           mode, wshape, int_type, origins, cval)
 
@@ -328,7 +328,9 @@ def _get_1d_kernel(name, has_w, pre, start, found, post, ndim, axis, mode,
     boundary = _generate_boundary_condition_ops(mode, 'ix', 'xsize')
     off_sum = ' + '.join('x.strides()[{j}] * ind_{j}'.format(j=j)
                          for j in range(ndim) if j != axis)
-    value = '(ix < 0 ? (X){} : *(X*)&data[xstride*ix+ix_off])'.format(cval)
+    value = '(*(X*)&data[xstride*ix+ix_off])'
+    if mode == 'constant':
+        value = '(ix < 0 ? (X){cval} : {value})'.format(cval=cval, value=value)
     found = found.format(value=value)
     operation = '''
     {inds}
@@ -364,7 +366,7 @@ def _get_nd_kernel(name, pre, found, post, mode, wshape, int_type,
     out_params = 'Y y'
 
     inds = _generate_indices_ops(
-        ndim, int_type,
+        ndim, int_type, 'xsize_{j}',
         [' - {}'.format(wshape[j]//2 + origins[j]) for j in range(ndim)])
     sizes = ['{type} xsize_{j}=x.shape()[{j}], xstride_{j}=x.strides()[{j}];'.
              format(j=j, type=int_type) for j in range(ndim)]
@@ -383,8 +385,10 @@ def _get_nd_kernel(name, pre, found, post, mode, wshape, int_type,
         ix_{j} *= xstride_{j};
         '''.format(j=j, wsize=wshape[j], boundary=boundary, type=int_type))
 
-    value = '(({cond}) ? (X){cval} : *(X*)&data[{expr}])'.format(
-        cond=cond, cval=cval, expr=expr)
+    value = '(*(X*)&data[{expr}])'.format(expr=expr)
+    if mode == 'constant':
+        value = '(({cond}) ? (X){cval} : {value})'.format(
+            cond=cond, cval=cval, value=value)
     found = found.format(value=value)
 
     operation = '''
@@ -415,12 +419,11 @@ def _get_nd_kernel(name, pre, found, post, mode, wshape, int_type,
                                   options=options)
 
 
-def _generate_indices_ops(ndim, int_type, extras=None):
+def _generate_indices_ops(ndim, int_type, xsize='x.shape()[{j}]', extras=None):
     if extras is None:
         extras = ('',)*ndim
-    body = ['{type} ind_{dim} = _i % x.shape()[{dim}]{extra}; '
-            '_i /= x.shape()[{dim}];'.format(
-                type=int_type, dim=dim, extra=extras[dim])
-            for dim in range(ndim-1, 0, -1)]
+    code = '{type} ind_{j} = _i % ' + xsize + '{extra}; _i /= ' + xsize + ';'
+    body = [code.format(type=int_type, j=j, extra=extras[j])
+            for j in range(ndim-1, 0, -1)]
     return '{type} _i = i;\n{body}\n{type} ind_0 = _i{extra};'.format(
         type=int_type, body='\n'.join(body), extra=extras[0])
