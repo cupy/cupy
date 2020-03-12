@@ -13,6 +13,7 @@ except ImportError:
 
 # ######### Testing convolve and correlate ##########
 
+
 @testing.parameterize(*(
     testing.product({
         'shape': [(3, 4), (2, 3, 4), (1, 2, 3, 4)],
@@ -123,6 +124,7 @@ class TestConvolveAndCorrelateSpecialCases(unittest.TestCase):
 
 
 # ######### Testing convolve1d and correlate1d ##########
+
 
 @testing.parameterize(*(
     testing.product({
