@@ -16,7 +16,7 @@ inline __device__ T gcd(T in0, T in1) {
     }
 '''
 
-_gcd = core.create_ufunc(
+gcd = core.create_ufunc(
     'cupy_gcd',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q'),
@@ -53,7 +53,7 @@ inline __device__ T lcm(T in0, T in1) {
     }
 '''
 
-_lcm = core.create_ufunc(
+lcm = core.create_ufunc(
     'cupy_lcm',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q'),
