@@ -601,6 +601,8 @@ from cupy.math.arithmetic import modf  # NOQA
 from cupy.math.arithmetic import multiply  # NOQA
 from cupy.math.arithmetic import negative  # NOQA
 from cupy.math.arithmetic import power  # NOQA
+from cupy.math.arithmetic import gcd  # NOQA
+from cupy.math.arithmetic import lcm  # NOQA
 from cupy.math.arithmetic import reciprocal  # NOQA
 from cupy.math.arithmetic import remainder  # NOQA
 from cupy.math.arithmetic import remainder as mod  # NOQA

@@ -30,6 +30,8 @@ from cupy.core._routines_math import remainder  # NOQA
 from cupy.core._routines_math import sqrt  # NOQA
 from cupy.core._routines_math import subtract  # NOQA
 from cupy.core._routines_math import true_divide  # NOQA
+from cupy.core._routines_math import gcd  # NOQA
+from cupy.core._routines_math import lcm  # NOQA
 from cupy.core._routines_statistics import nanmax  # NOQA
 from cupy.core._routines_statistics import nanmin  # NOQA
 from cupy.core.core import _internal_ascontiguousarray  # NOQA
