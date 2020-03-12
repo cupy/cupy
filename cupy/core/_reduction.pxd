@@ -29,7 +29,7 @@ cdef class _AbstractReductionKernel:
         self,
         tuple params, tuple arginfos, _kernel._TypeMap types,
         str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-        Py_ssize_t block_size, bint use_cub=*)
+        Py_ssize_t block_size, tuple cub_params=*)
 
 
 cdef class ReductionKernel(_AbstractReductionKernel):

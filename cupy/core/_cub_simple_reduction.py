@@ -5,14 +5,16 @@ from cupy.core import _kernel
 
 
 def _get_cub_reduction_function_code(
-        name, block_size, reduce_type, params, arginfos, identity,
+        name, block_size, segment_size, reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_map, input_expr, output_expr, preamble, options):
-    print("**************** I AM HERE ******************")
-    module_code = string.Template('''
+    print("\n**************** I AM HERE ******************")
+    #module_code = string.Template('''
+    module_code = '''
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
-#include <inttypes.h>
+//#include <inttypes.h>
+
 ${type_preamble}
 ${preamble}
 
@@ -20,6 +22,8 @@ ${preamble}
 #define ITEMS_PER_THREAD 4
 
 #define POST_MAP(a) (${post_map_expr})
+
+#define SEGMENT_SIZE ${segment_size}
 
 typedef ${reduce_type} _type_reduce;
 
@@ -34,9 +38,8 @@ struct _reduction_op
 extern "C" {
 __global__ void ${name}(${params}) {
   unsigned int _tid = threadIdx.x;
-
-  unsigned int _bid = blockIdx.x;
-  unsigned int _id = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int _bid = blockIdx.x * blockDim.x + _tid;
+  //printf("%d\\n", _bid);
 
   // Specialize BlockReduce type for our thread block
   typedef cub::BlockReduce<_type_reduce, ${block_size}> BlockReduceT;
@@ -51,7 +54,7 @@ __global__ void ${name}(${params}) {
   const ptrdiff_t* out_shape = _raw_out0.shape();
   const ptrdiff_t* in_strides = _raw_in0.strides();
   const ptrdiff_t* out_strides = _raw_out0.strides();
-  if (_id == 0) {
+  if (_bid == 0) {
     printf("%i %i\\n(", in_ndim, out_ndim);
     for(int i = 0; i<in_ndim; i++) {
        printf("%d, ", in_shape[i]);
@@ -74,25 +77,54 @@ __global__ void ${name}(${params}) {
     printf("\\b\\b)\\n");
   }
 
-  // Per-thread tile data
-  _type_reduce _sdata[ITEMS_PER_THREAD];
-  cub::LoadDirectStriped<${block_size}>(threadIdx.x, (_type_reduce*)&(_raw_in0[0]), _sdata);
-
   // Declare reduction operation
   _reduction_op op;
 
-  // Compute reduction
-  _type_reduce aggregate = BlockReduceT(temp_storage).Reduce(_sdata, op);
+  // input & output raw pointers
+  // TODO: relax the type requriments?
+  _type_reduce* _in0 = (_type_reduce*)&(_raw_in0[0]);
+  _type_reduce* _out0 = (_type_reduce*)&(_raw_out0[0]);
+'''
 
-//  if (_tid < _block_stride && _i < _out_ind.size()) {
-//    _out_ind.set(static_cast<ptrdiff_t>(_i));
-//    ${output_expr}
-//    POST_MAP(_s);
-//  }
+    # TODO: if map_expr == 'in0', use CUB load, else use for loop
+    if pre_map_expr == 'in0':
+        module_code += '''
+  // Per-thread tile data
+  _type_reduce _sdata[ITEMS_PER_THREAD] = {${identity}};
+
+  // each block handles the reduction of 1 segment
+  _type_reduce _block_out = ${identity};
+  for (size_t i = 0; i < SEGMENT_SIZE; i += blockDim.x * ITEMS_PER_THREAD) {
+      cub::LoadDirectBlocked(_tid, _in0 + blockIdx.x * SEGMENT_SIZE, _sdata, SEGMENT_SIZE);
+
+      //for (size_t i = 0; i<ITEMS_PER_THREAD; i++)
+      //    printf("_bid: %d, local items: %f\\n", _bid, _sdata[i]); 
+'''
+    else:  # TODO
+        raise NotImplementedError
+        module_code += '''
+'''        
+
+    module_code += '''
+      // Compute block reduction
+      _type_reduce aggregate = BlockReduceT(temp_storage).Reduce(_sdata, op);
+
+      if (_tid == 0)
+          _block_out = op(_block_out, aggregate);
+  }
+
+  if (_tid == 0) {
+      printf("_bid: %d (blockIdx.x: %d), block out: %f\\n", _bid, blockIdx.x, _block_out);
+
+      type_out0_raw& out0 = *(_out0 + blockIdx.x);
+      POST_MAP(_block_out);
+  }
 }
-} // extern C''').substitute(
+} // extern C'''
+    module_code = string.Template(module_code).substitute(
         name=name,  # used
         block_size=block_size,  # used
+        segment_size=segment_size,  # used
         reduce_type=reduce_type,  # used
         params=_kernel._get_kernel_params(params, arginfos),  # used
         identity=identity,

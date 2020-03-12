@@ -109,14 +109,14 @@ extern "C" __global__ void ${name}(${params}) {
 
 
 cpdef function.Function _create_cub_reduction_function(
-        name, block_size, reduce_type, params, arginfos, identity,
+        name, block_size, continuous_size, reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
 
     # move this part to a Python file for faster test cycles
     from ._cub_simple_reduction import _get_cub_reduction_function_code
     module_code = _get_cub_reduction_function_code(
-        name, block_size, reduce_type, params, arginfos, identity,
+        name, block_size, continuous_size, reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_map, input_expr, output_expr, preamble, options)
 
@@ -251,6 +251,7 @@ cdef class _AbstractReductionKernel:
             bint keepdims, bint reduce_dims,
             stream):
         cdef tuple reduce_axis, out_axis, axis_permutes, axis_permutes_cub
+        cdef Py_ssize_t i
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
         cdef ndarray ret
@@ -329,9 +330,16 @@ cdef class _AbstractReductionKernel:
                 internal.prod_sequence(out_shape),
                 contiguous_size)
         else:
+            # Ideally, we want each block to handle one segment, so:
+            # - block size < segment size: the block loops over the segment
+            # - block size >= segment size: the segment can fit in the entire block
+
             contiguous_size = 1
-            for axis in reduce_axis:
-                contiguous_size *= in_shape[axis]
+            for i in reduce_axis:
+                contiguous_size *= in_shape[i]
+            out_block_num = 1  # = number of segments
+            for i in out_axis:
+                out_block_num *= in_shape[i]
 
             item_per_thread = 4  # TODO: send this to string template
             block_size = (contiguous_size + item_per_thread - 1) // item_per_thread
@@ -340,11 +348,10 @@ cdef class _AbstractReductionKernel:
                 block_size = 32  # warp size
             elif block_size > _block_size:
                 block_size = _block_size  # TODO: allow auto tuning/finer setting?
-            out_size = internal.prod_sequence(out_shape)
-            out_block_num = (out_size + block_size - 1) // block_size
 
             block_stride = 1    # not used
         print("contiguous_size:", contiguous_size)
+        print("out_block_num:", out_block_num)
 
         # Kernel arguments passed to the __global__ function.
         inout_args = (
@@ -363,7 +370,7 @@ cdef class _AbstractReductionKernel:
             _get_arginfos(inout_args),
             type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
-            block_size, use_cub)
+            block_size, (use_cub, contiguous_size))
 
         # Launch the kernel
         func.linear_launch(
@@ -383,7 +390,10 @@ cdef class _AbstractReductionKernel:
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size, bint use_cub=0):
+            Py_ssize_t block_size, tuple cub_params=(False, None)):
+        '''
+        cub_params (tuple): (use_cub, contiguous_size)
+        '''
         raise NotImplementedError()
 
 
@@ -487,12 +497,12 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size, bint use_cub=0):
+            Py_ssize_t block_size, tuple cub_params=(False, None)):
         return _SimpleReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
             self.name, block_size, self.identity,
-            self._input_expr, self._output_expr, self._preamble, (), use_cub)
+            self._input_expr, self._output_expr, self._preamble, (), cub_params)
 
 
 @util.memoize(for_each_device=True)
@@ -500,7 +510,7 @@ def _SimpleReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, input_expr, output_expr, _preamble,
-        options, use_cub):
+        options, cub_params):
     print("name:",          name,          type(name), "\n")           
     print("block_size:",    block_size,    type(block_size), "\n")     
     print("reduce_type:",   reduce_type,   type(reduce_type), "\n")   
@@ -523,6 +533,8 @@ def _SimpleReductionKernel_get_cached_function(
     print("final params:",  temp,          type(temp), "\n")
     print("type_preamble:", temp2,         type(temp2), "\n")
     print(cub_block_reduction_enabled)
+
+    use_cub, contiguous_size = cub_params
     if not use_cub:
         return _create_reduction_function(
             name, block_size, reduce_type, params, arginfos, identity,
@@ -531,7 +543,7 @@ def _SimpleReductionKernel_get_cached_function(
     else:
         options = options + ('-I/home/leofang/sources/cub-1.8.0',)
         return _create_cub_reduction_function(
-            name, block_size, reduce_type, params, arginfos, identity,
+            name, block_size, contiguous_size, reduce_type, params, arginfos, identity,
             map_expr, reduce_expr, post_map_expr,
             type_map, input_expr, output_expr, _preamble, options)
 
@@ -678,7 +690,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size, bint use_cub=0):
+            Py_ssize_t block_size, tuple cub_params=(False, None)):
         return _ReductionKernel_get_cached_function(
             self.nin, self.nout, params, arginfos, type_map,
             self.name, block_size, reduce_type, self.identity,
