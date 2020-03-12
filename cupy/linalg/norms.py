@@ -5,6 +5,14 @@ import cupy
 from cupy.linalg import decomposition
 from cupy.linalg import util
 
+import functools
+
+
+def _multi_svd_norm(x, row_axis, col_axis, op):
+    y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
+    result = op(decomposition.svd(y, compute_uv=False), axis=-1)
+    return result
+
 
 def norm(x, ord=None, axis=None, keepdims=False):
     """Returns one of matrix norms specified by ``ord`` parameter.
@@ -97,7 +105,13 @@ def norm(x, ord=None, axis=None, keepdims=False):
                              (axis, x.shape))
         if row_axis == col_axis:
             raise ValueError('Duplicate axes given.')
-        if ord == 1:
+        if ord == 2:
+            op_max = functools.partial(cupy.take, indices=0)
+            ret = _multi_svd_norm(x, row_axis, col_axis, op_max)
+        elif ord == -2:
+            op_min = functools.partial(cupy.take, indices=-1)
+            ret = _multi_svd_norm(x, row_axis, col_axis, op_min)
+        elif ord == 1:
             if col_axis > row_axis:
                 col_axis -= 1
             ret = abs(x).sum(axis=row_axis).max(axis=col_axis)
@@ -120,6 +134,8 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 ret = cupy.sqrt(s.sum(axis=axis))
             else:
                 ret = cupy.sqrt((x * x).sum(axis=axis))
+        elif ord == 'nuc':
+            ret = _multi_svd_norm(x, row_axis, col_axis, cupy.sum)
         else:
             raise ValueError('Invalid norm order for matrices.')
         if keepdims:

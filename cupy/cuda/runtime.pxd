@@ -10,8 +10,6 @@ cdef class PointerAttributes:
         public int device
         public intptr_t devicePointer
         public intptr_t hostPointer
-        public int isManaged
-        public int memoryType
 
 
 cdef extern from *:

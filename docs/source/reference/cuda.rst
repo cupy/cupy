@@ -55,6 +55,7 @@ Streams and events
    :nosignatures:
 
    cupy.cuda.Stream
+   cupy.cuda.ExternalStream
    cupy.cuda.get_current_stream
    cupy.cuda.Event
    cupy.cuda.get_elapsed_time
