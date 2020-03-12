@@ -337,23 +337,27 @@ class RandomState(object):
         mean = cupy.asarray(mean, dtype=dtype)
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
-            shape = ()
-        elif isinstance(size, collections.abc.Sequence):
-            shape = tuple(size)
+            shape = []
+        elif isinstance(size, (int, long, np.integer)):
+            shape = [size]
         else:
-            shape = size,
+            shape = size
+
+        if len(mean.shape) != 1:
+            raise ValueError('mean must be 1 dimensional')
+        if (len(cov.shape) != 2) or (cov.shape[0] != cov.shape[1]):
+            raise ValueError('cov must be 2 dimensional and square')
+        if mean.shape[0] != cov.shape[0]:
+            raise ValueError('mean and cov must have same length')
+        
+        #shape += (len(mean),)
+
+        final_shape = list(shape[:])
+        final_shape.append(mean.shape[0])
 
         if method not in {'eigh', 'svd', 'cholesky'}:
             raise ValueError(
                 "method must be one of {'eigh', 'svd', 'cholesky'}")
-
-        if mean.ndim != 1:
-            raise ValueError('mean must be 1 dimensional')
-        if (cov.ndim != 2) or (cov.shape[0] != cov.shape[1]):
-            raise ValueError('cov must be 2 dimensional and square')
-        if len(mean) != len(cov):
-            raise ValueError('mean and cov must have same length')
-        shape += (len(mean),)
 
         if check_valid != 'ignore':
             if check_valid != 'warn' and check_valid != 'raise':
@@ -403,10 +407,12 @@ class RandomState(object):
                                       "matrix is positive-semidefinite, set" +
                                       "'check_valid' to 'warn'")
 
-        x = self.standard_normal(size=shape, dtype=dtype)
+        x = self.standard_normal(shape=final_shape,
+                                 dtype=dtype).reshape(-1, mean.shape[0])
         x = cupy.dot(decomp, x.T)
         x = x.T
         x += mean
+        x.shape = tuple(final_shape)
         return x
 
     def negative_binomial(self, n, p, size=None, dtype=int):
