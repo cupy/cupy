@@ -9,7 +9,6 @@ except ImportError:
 
 import cupy
 from cupy import core
-from cupy.core import raw
 from cupy.creation import basic
 from cupy import cusparse
 from cupyx.scipy.sparse import base
@@ -69,10 +68,35 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         'compress_setitem_complex',
         preamble=setitem_preamble)
 
+    _data_offsets_canonical = core.RawKernel(r'''
+        extern "C" __global__
+        void data_offsets_canonical (int rows, int cols, int* indptr,
+        int* indices, int* outptr, int* inrows, int* incols){
+            // Get the index of the block
+            int tid = blockIdx.x * blockDim.x + threadIdx.x;
+            int i = inrows[tid] < 0 ? inrows[tid] + rows : inrows[tid];
+            int j = incols[tid] < 0 ? incols[tid] + cols : incols[tid];
+            int start = indptr[i], stop = indptr[i+1] ,offset = -1;
+            atomicExch(&outptr[tid],-1);
+            while (start < stop) {
+                int mid = start + (stop - start)/2;
+                if (indices[mid] == j){
+                    offset = mid ;
+                    stop = mid - 1 ;
+                } else if (indices[mid] < j) {
+                    start = mid + 1;
+                } else {
+                    stop = mid - 1 ;
+                }
+            }
+            if (offset != -1 && indices[offset] == j)
+                    atomicExch(&outptr[tid], offset);
+            }''', 'data_offsets_canonical')
+
     _data_offsets = core.RawKernel(r'''
-     extern "C" __global__
-     void data_offsets (int rows, int cols, int* indptr,
-      int* indices, int* outptr, int* inrows, int* incols, int ret){
+        extern "C" __global__
+        void data_offsets (int rows, int cols, int* indptr,
+        int* indices, int* outptr, int* inrows, int* incols, int ret){
             // Get the index of the block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
             int i = inrows[tid] < 0 ? inrows[tid] + rows : inrows[tid];
@@ -85,51 +109,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     offset = col++;
                     for (; col < stop; col++) {
                         if (indices[col] == j) {
-                            offset = -2;
                             ret= 1;
                             return;
                         }
                     }
                 }
             }
-            outptr[tid] = offset;
+            atomicExch(&outptr[tid], offset);
             ret = 0;
-     }
-    ''', 'data_offsets')
-
-    offsets_cancl_source = r'''
-        __device__ __host__
-        int lower_bound(int* A, int start, int stop, int val)
-        {
-            while (start <= stop) {
-                int mid = start + (stop - start)/2;
-                if(A[mid] <= val && A[mid+1] > val) {
-                    return mid;
-                } else if (A[mid] <= val) {
-                    start = mid;
-                } else {
-                    stop = mid;
-                }
-            }
-            return start;
-        }
-         extern "C" __global__
-        void data_offsets_canonical (int rows, int cols, int* indptr,
-        int* indices, int* outptr, int* inrows, int* incols, int samples){
-            // Get the index of the block
-            int tid = blockIdx.x * blockDim.x + threadIdx.x;
-            int i = inrows[tid] < 0 ? inrows[tid] + rows : inrows[tid];
-            int j = incols[tid] < 0 ? incols[tid] + cols : incols[tid];
-            int start = indptr [i], stop = indptr [i+1];
-            outptr[tid] = -1;
-            if (start < stop){
-              int offset = lower_bound (indices,start,stop,j);
-              if (offset < stop && indices[offset] == j)
-                    outptr[tid] = offset;
-              }
-         }'''
-    module = raw.RawModule(code=offsets_cancl_source)
-    _data_offsets_canonical = module.get_function('data_offsets_canonical')
+         }''', 'data_offsets')
 
     _max_reduction_kern = core.RawKernel(r'''
         extern "C" __global__
@@ -739,45 +727,47 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         major = major.take(order)
         minor = minor.take(order)
         values = values.take(order)
-        indices = []
-        data = []
-        uniq_major, uniq_major_indptr = cupy.unique(major, return_index=True)
-        uniq_major_indptr = cupy.append(uniq_major_indptr, len(minor))
-        nnz = cupy.diff(uniq_major_indptr)
+
+        uniq_rows, rows_indptr = cupy.unique(major, return_index=True)
+        rows_indptr = cupy.append(rows_indptr, len(minor))
+        new_nnz = cupy.diff(rows_indptr)
+        metadata = zip(uniq_rows, rows_indptr, rows_indptr[1:])
+
         row = 0
-        metadata = zip(uniq_major, uniq_major_indptr, uniq_major_indptr[1:])
+        data = []
+        indices = []
         for col, (next, col_start, col_stop) in enumerate(metadata):
             start = self.indptr[row]
             stop = self.indptr[next]
             row = next
-            indices.append(self.indices[start:stop])
             data.append(self.data[start:stop])
+            indices.append(self.indices[start:stop])
 
-            uniq_minor, uniq_minor_indptr = cupy.unique(
+            uniq_cols, cols_indptr = cupy.unique(
                 minor[col_start:col_stop][::-1], return_index=True)
-            if len(uniq_minor) == col_stop - col_start:
-                indices.append(minor[col_start:col_stop])
+            if len(uniq_cols) == col_stop - col_start:
                 data.append(values[col_start:col_stop])
+                indices.append(minor[col_start:col_stop])
             else:
-                indices.append(
-                    minor[col_start:col_stop][::-1][uniq_minor_indptr])
+                new_nnz[col] = len(uniq_cols)
                 data.append(
-                    values[col_start:col_stop][::-1][uniq_minor_indptr])
-                nnz[col] = len(uniq_minor)
+                    values[col_start:col_stop][::-1][cols_indptr])
+                indices.append(
+                    minor[col_start:col_stop][::-1][cols_indptr])
+
         # remaining part
         start = self.indptr[next]
-        indices.append(self.indices[start:])
         data.append(self.data[start:])
+        indices.append(self.indices[start:])
 
-        self.indices = cupy.concatenate(indices)
-        self.data = cupy.concatenate(data)
         nnzs = cupy.empty(self.indptr.shape, dtype=self.indices.dtype)
-        nnzs[0] = 0
         indptr_diff = cupy.diff(self.indptr)
-        indptr_diff[uniq_major] += nnz
+        indptr_diff[uniq_rows] += new_nnz
+        nnzs[0] = 0
         nnzs[1:] = indptr_diff
+        self.data = cupy.concatenate(data)
+        self.indices = cupy.concatenate(indices)
         self.indptr = cupy.cumsum(nnzs, out=nnzs)
-
         self.sort_indices()
 
     def sample_offsets(self, rows, cols, samples, major, minor, offsets):
@@ -786,11 +776,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             self._data_offsets_canonical(
                 (samples,), (1,),
                 (rows, cols, self.indptr, self.indices,
-                 offsets, major, minor, samples))
+                 offsets, major, minor))
         else:
-            self._data_offsets((samples,), (1,),
-                               (rows, cols, self.indptr, self.indices,
-                                offsets, major, minor, repeat))
+            self._data_offsets(
+                (samples,), (1,),
+                (rows, cols, self.indptr, self.indices,
+                 offsets, major, minor, repeat))
         return repeat
 
     @property
