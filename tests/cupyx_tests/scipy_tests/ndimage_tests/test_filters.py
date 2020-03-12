@@ -149,7 +149,9 @@ class TestConvolveAndCorrelateSpecialCases(unittest.TestCase):
         'output': [None],
         'filter': ['convolve1d', 'correlate1d']
     }) + testing.product({
-        'shape': [(3, 4), (2, 3, 4), (1, 2, 3, 4)],
+        # don't use (1, 2, 3, 4) with 'mirror' due to a bug in scipy:
+        # https://github.com/scipy/scipy/issues/11661
+        'shape': [(3, 4), (2, 3, 4), (2, 2, 3, 4)],
         'ksize': [3, 4],
         'axis': [0, 1, -1],
         'mode': ['nearest', 'mirror', 'wrap'],
@@ -163,7 +165,7 @@ class TestConvolveAndCorrelateSpecialCases(unittest.TestCase):
 ))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestConvolveAndCorrelate(unittest.TestCase):
+class TestConvolve1DAndCorrelate1D(unittest.TestCase):
 
     def _filter(self, xp, scp, a, w):
         filter = getattr(scp.ndimage, self.filter)
@@ -171,7 +173,7 @@ class TestConvolveAndCorrelate(unittest.TestCase):
                       cval=self.cval, origin=self.origin)
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    def test_convolve_and_correlate(self, xp, scp):
+    def test_convolve1d_and_correlate1d(self, xp, scp):
         if self.adtype == self.wdtype or self.adtype == self.output:
             return xp.array(True)
         a = testing.shaped_random(self.shape, xp, self.adtype)
@@ -190,7 +192,7 @@ class TestConvolveAndCorrelate(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestConvolveAndCorrelateSpecialCases(unittest.TestCase):
+class TestConvolve1DAndCorrelate1DSpecialCases(unittest.TestCase):
 
     def _filter(self, scp, a, w, mode='reflect', origin=0):
         filter = getattr(scp.ndimage, self.filter)
