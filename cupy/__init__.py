@@ -592,6 +592,9 @@ from cupy.math.floating import ldexp  # NOQA
 from cupy.math.floating import nextafter  # NOQA
 from cupy.math.floating import signbit  # NOQA
 
+from cupy.math.rational import gcd  # NOQA
+from cupy.math.rational import lcm  # NOQA
+
 from cupy.math.arithmetic import add  # NOQA
 from cupy.math.arithmetic import divide  # NOQA
 from cupy.math.arithmetic import divmod  # NOQA
@@ -601,8 +604,6 @@ from cupy.math.arithmetic import modf  # NOQA
 from cupy.math.arithmetic import multiply  # NOQA
 from cupy.math.arithmetic import negative  # NOQA
 from cupy.math.arithmetic import power  # NOQA
-from cupy.math.arithmetic import gcd  # NOQA
-from cupy.math.arithmetic import lcm  # NOQA
 from cupy.math.arithmetic import reciprocal  # NOQA
 from cupy.math.arithmetic import remainder  # NOQA
 from cupy.math.arithmetic import remainder as mod  # NOQA

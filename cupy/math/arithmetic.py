@@ -70,9 +70,6 @@ power = core.power
 
 subtract = core.subtract
 
-gcd = core.gcd
-
-lcm = core.lcm
 
 true_divide = core.true_divide
 
