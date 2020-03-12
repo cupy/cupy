@@ -250,7 +250,7 @@ cdef class _AbstractReductionKernel:
             tuple a_shape, axis, dtype,
             bint keepdims, bint reduce_dims,
             stream):
-        cdef tuple reduce_axis, out_axis, axis_permutes
+        cdef tuple reduce_axis, out_axis, axis_permutes, axis_permutes_cub
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
         cdef ndarray ret
@@ -291,32 +291,60 @@ cdef class _AbstractReductionKernel:
         in_args = [x if isinstance(x, ndarray) else
                    _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
                    for x, t in zip(in_args, in_types)]
-        if cub_block_reduction_enabled:
-            axis_permutes = out_axis + reduce_axis
-            use_cub = True
 
-            # TODO: check axes, if not contiguous then switch back to the old behavior
-            if axis_permutes != tuple(range(in_args[0].ndim)):
+        # TODO: need two code paths for use_cub and the old behavior
+
+        axis_permutes = reduce_axis + out_axis
+        use_cub = False
+        if cub_block_reduction_enabled:
+            if in_args[0].flags.c_contiguous:
+                axis_permutes_cub = out_axis + reduce_axis
+            elif in_args[0].flags.f_contiguous:
+                axis_permutes_cub = axis_permutes
+            else:
+                axis_permutes_cub = None
+
+            # check reduction axes, if not contiguous then switch back to the old behavior
+            if axis_permutes_cub != tuple(range(in_args[0].ndim)):
                 print("give up CUB block reduction, falling back...")
-                axis_permutes = reduce_axis + out_axis
-                use_cub = False
-        else:
-            axis_permutes = reduce_axis + out_axis
-            use_cub = False
+            else:
+                axis_permutes = axis_permutes_cub
+                use_cub = True
         in_shape = _set_permuted_args(in_args, axis_permutes,
                                       a_shape, self.in_params)
+        print("in_shape:", in_shape)
 
-        if reduce_dims:
+        if reduce_dims and not use_cub:
             in_shape = _reduce_dims(in_args, self.in_params, in_shape)
             out_shape = _reduce_dims(out_args, self.out_params, out_shape)
+        print("in_shape:", in_shape)
+        print("out_shape:", out_shape)
 
         # Calculate the reduction block dimensions.
-        contiguous_size = _get_contiguous_size(
-            in_args, self.in_params, len(in_shape), len(out_shape))
-        block_size, block_stride, out_block_num = _get_block_specs(
-            internal.prod_sequence(in_shape),
-            internal.prod_sequence(out_shape),
-            contiguous_size)
+        if not use_cub:
+            contiguous_size = _get_contiguous_size(
+                in_args, self.in_params, len(in_shape), len(out_shape))
+            block_size, block_stride, out_block_num = _get_block_specs(
+                internal.prod_sequence(in_shape),
+                internal.prod_sequence(out_shape),
+                contiguous_size)
+        else:
+            contiguous_size = 1
+            for axis in reduce_axis:
+                contiguous_size *= in_shape[axis]
+
+            item_per_thread = 4  # TODO: send this to string template
+            block_size = (contiguous_size + item_per_thread - 1) // item_per_thread
+            block_size = internal.clp2(block_size)
+            if block_size < 32:
+                block_size = 32  # warp size
+            elif block_size > _block_size:
+                block_size = _block_size  # TODO: allow auto tuning/finer setting?
+            out_size = internal.prod_sequence(out_shape)
+            out_block_num = (out_size + block_size - 1) // block_size
+
+            block_stride = 1    # not used
+        print("contiguous_size:", contiguous_size)
 
         # Kernel arguments passed to the __global__ function.
         inout_args = (
