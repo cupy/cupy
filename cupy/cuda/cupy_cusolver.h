@@ -28,6 +28,7 @@ typedef enum{} cusolverEigMode_t;
 typedef void* cusolverDnHandle_t;
 typedef void* cusolverSpHandle_t;
 typedef void* cusparseMatDescr_t;
+typedef void* gesvdjInfo_t;
 
 cusolverStatus_t cusolverDnCreate(...) {
     return CUSOLVER_STATUS_SUCCESS;
@@ -343,6 +344,67 @@ cusolverStatus_t cusolverDnCgesvd(...) {
 }
 
 cusolverStatus_t cusolverDnZgesvd(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+//
+cusolverStatus_t cusolverDnCreateGesvdjInfo(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDestroyGesvdjInfo(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnXgesvdjSetTolerance(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnXgesvdjSetMaxSweeps(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnXgesvdjSetSortEig(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnXgesvdjGetResidual(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnXgesvdjGetSweeps(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnSgesvdj_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDgesvdj_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCgesvdj_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZgesvdj_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnSgesvdj(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDgesvdj(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCgesvdj(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZgesvdj(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 

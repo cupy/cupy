@@ -308,6 +308,58 @@ cdef extern from 'cupy_cusolver.h' nogil:
                          cuDoubleComplex* Work, int lwork,
                          double* rwork, int* devInfo)
 
+    # gesvdj ... Singular value decomposition using Jacobi mathod
+    int cusolverDnCreateGesvdjInfo(GesvdjInfo *info)
+    int cusolverDnDestroyGesvdjInfo(GesvdjInfo info)
+
+    int cusolverDnXgesvdjSetTolerance(GesvdjInfo info, double tolerance)
+    int cusolverDnXgesvdjSetMaxSweeps(GesvdjInfo info, int max_sweeps)
+    int cusolverDnXgesvdjSetSortEig(GesvdjInfo info, int sort_svd)
+    int cusolverDnXgesvdjGetResidual(Handle handle, GesvdjInfo info,
+                                     double* residual)
+    int cusolverDnXgesvdjGetSweeps(Handle handle, GesvdjInfo info,
+                                   int* executed_sweeps)
+
+    int cusolverDnSgesvdj_bufferSize(Handle handle, EigMode jobz, int econ,
+                                     int m, int n, const float* A, int lda,
+                                     const float* S, const float* U, int ldu,
+                                     const float* V, int ldv, int* lwork,
+                                     GesvdjInfo params)
+    int cusolverDnDgesvdj_bufferSize(Handle handle, EigMode jobz, int econ,
+                                     int m, int n, const double* A, int lda,
+                                     const double* S, const double* U, int ldu,
+                                     const double* V, int ldv, int* lwork,
+                                     GesvdjInfo params)
+    int cusolverDnCgesvdj_bufferSize(Handle handle, EigMode jobz, int econ,
+                                     int m, int n, const cuComplex* A, int lda,
+                                     const float* S, const cuComplex* U,
+                                     int ldu, const cuComplex* V, int ldv,
+                                     int* lwork, GesvdjInfo params)
+    int cusolverDnZgesvdj_bufferSize(Handle handle, EigMode jobz, int econ,
+                                     int m, int n, const cuDoubleComplex* A,
+                                     int lda, const double* S,
+                                     const cuDoubleComplex* U, int ldu,
+                                     const cuDoubleComplex* V, int ldv,
+                                     int* lwork, GesvdjInfo params)
+
+    int cusolverDnSgesvdj(Handle handle, EigMode jobz, int econ, int m, int n,
+                          float *A, int lda, float *S, float *U, int ldu,
+                          float *V, int ldv, float *work, int lwork, int *info,
+                          GesvdjInfo params)
+    int cusolverDnDgesvdj(Handle handle, EigMode jobz, int econ, int m, int n,
+                          double *A, int lda, double *S, double *U, int ldu,
+                          double *V, int ldv, double *work, int lwork,
+                          int *info, GesvdjInfo params)
+    int cusolverDnCgesvdj(Handle handle, EigMode jobz, int econ, int m, int n,
+                          cuComplex *A, int lda, float *S, cuComplex *U,
+                          int ldu, cuComplex *V, int ldv, cuComplex *work,
+                          int lwork, int *info, GesvdjInfo params)
+    int cusolverDnZgesvdj(Handle handle, EigMode jobz, int econ, int m, int n,
+                          cuDoubleComplex *A, int lda, double *S,
+                          cuDoubleComplex *U, int ldu, cuDoubleComplex *V,
+                          int ldv, cuDoubleComplex *work, int lwork, int *info,
+                          GesvdjInfo params)
+
     # Standard symmetric eigenvalue solver
     int cusolverDnSsyevd_bufferSize(Handle handle,
                                     EigMode jobz, FillMode uplo, int n,
@@ -1302,6 +1354,139 @@ cpdef zgesvd(intptr_t handle, char jobu, char jobvt, int m, int n, size_t A,
             <cuDoubleComplex*>Work, lwork, <double*>rwork, <int*>devInfo)
     check_status(status)
 
+# gesvdj ... Singular value decomposition using Jacobi mathod
+cpdef intptr_t createGesvdjInfo() except? 0:
+    cdef GesvdjInfo info
+    status = cusolverDnCreateGesvdjInfo(&info)
+    check_status(status)
+    return <intptr_t>info
+
+cpdef destroyGesvdjInfo(intptr_t info):
+    status = cusolverDnDestroyGesvdjInfo(<GesvdjInfo>info)
+    check_status(status)
+
+cpdef xgesvdjSetTolerance(intptr_t info, double tolerance):
+    status = cusolverDnXgesvdjSetTolerance(<GesvdjInfo>info, tolerance)
+    check_status(status)
+
+cpdef xgesvdjSetMaxSweeps(intptr_t info, int max_sweeps):
+    status = cusolverDnXgesvdjSetMaxSweeps(<GesvdjInfo>info, max_sweeps)
+    check_status(status)
+
+cpdef xgesvdjSetSortEig(intptr_t info, int sort_svd):
+    status = cusolverDnXgesvdjSetSortEig(<GesvdjInfo>info, sort_svd)
+    check_status(status)
+
+cpdef double xgesvdjGetResidual(intptr_t handle, intptr_t info):
+    cdef double residual
+    status = cusolverDnXgesvdjGetResidual(<Handle>handle, <GesvdjInfo>info,
+                                          &residual)
+    check_status(status)
+    return residual
+
+cpdef int xgesvdjGetSweeps(intptr_t handle, intptr_t info):
+    cdef int executed_sweeps
+    status = cusolverDnXgesvdjGetSweeps(<Handle>handle, <GesvdjInfo>info,
+                                        &executed_sweeps)
+    check_status(status)
+    return executed_sweeps
+
+cpdef int sgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params):
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSgesvdj_bufferSize(
+            <Handle>handle, <EigMode>jobz, econ, m, n, <const float*>A, lda,
+            <const float*>S, <const float*>U, ldu, <const float*>V, ldv,
+            &lwork, <GesvdjInfo>params)
+    check_status(status)
+    return lwork
+
+cpdef int dgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params):
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDgesvdj_bufferSize(
+            <Handle>handle, <EigMode>jobz, econ, m, n, <const double*>A, lda,
+            <const double*>S, <const double*>U, ldu, <const double*>V, ldv,
+            &lwork, <GesvdjInfo>params)
+    check_status(status)
+    return lwork
+
+cpdef int cgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params):
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgesvdj_bufferSize(
+            <Handle>handle, <EigMode>jobz, econ, m, n, <const cuComplex*>A,
+            lda, <const float*>S, <const cuComplex*>U, ldu,
+            <const cuComplex*>V, ldv, &lwork, <GesvdjInfo>params)
+    check_status(status)
+    return lwork
+
+cpdef int zgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params):
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgesvdj_bufferSize(
+            <Handle>handle, <EigMode>jobz, econ, m, n,
+            <const cuDoubleComplex*>A, lda, <const double*>S,
+            <const cuDoubleComplex*>U, ldu, <const cuDoubleComplex*>V,
+            ldv, &lwork, <GesvdjInfo>params)
+    check_status(status)
+    return lwork
+
+cpdef sgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSgesvdj(<Handle>handle, <EigMode>jobz, econ, m, n,
+                                   <float*>A, lda, <float*>S, <float*>U, ldu,
+                                   <float*>V, ldv, <float*>work, lwork,
+                                   <int*>info, <GesvdjInfo>params)
+    check_status(status)
+
+cpdef dgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDgesvdj(<Handle>handle, <EigMode>jobz, econ, m, n,
+                                   <double*>A, lda, <double*>S, <double*>U,
+                                   ldu, <double*>V, ldv, <double*>work, lwork,
+                                   <int*>info, <GesvdjInfo>params)
+    check_status(status)
+
+cpdef cgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgesvdj(
+            <Handle>handle, <EigMode>jobz, econ, m, n, <cuComplex*>A, lda,
+            <float*>S, <cuComplex*>U, ldu, <cuComplex*>V, ldv,
+            <cuComplex*>work, lwork, <int*>info, <GesvdjInfo>params)
+    check_status(status)
+
+cpdef zgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgesvdj(
+            <Handle>handle, <EigMode>jobz, econ, m, n, <cuDoubleComplex*>A,
+            lda, <double*>S, <cuDoubleComplex*>U, ldu, <cuDoubleComplex*>V,
+            ldv, <cuDoubleComplex*>work, lwork, <int*>info, <GesvdjInfo>params)
+    check_status(status)
 
 # Standard symmetric eigenvalue solver
 cpdef int ssyevd_bufferSize(intptr_t handle, int jobz, int uplo, int n,

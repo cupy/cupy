@@ -26,6 +26,8 @@ cdef extern from *:
     ctypedef void* cuComplex 'cuComplex'
     ctypedef void* cuDoubleComplex 'cuDoubleComplex'
 
+    ctypedef void* GesvdjInfo 'gesvdjInfo_t'
+
 ###############################################################################
 # Enum
 ###############################################################################
@@ -263,6 +265,42 @@ cpdef cgesvd(intptr_t handle, char jobu, char jobvt, int m, int n, size_t A,
 cpdef zgesvd(intptr_t handle, char jobu, char jobvt, int m, int n, size_t A,
              int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
              size_t Work, int lwork, size_t rwork, size_t devInfo)
+
+# gesvdj ... Singular value decomposition using Jacobi mathod
+cpdef intptr_t createGesvdjInfo() except? 0
+cpdef destroyGesvdjInfo(intptr_t info)
+
+cpdef xgesvdjSetTolerance(intptr_t info, double tolerance)
+cpdef xgesvdjSetMaxSweeps(intptr_t info, int max_sweeps)
+cpdef xgesvdjSetSortEig(intptr_t info, int sort_svd)
+cpdef double xgesvdjGetResidual(intptr_t handle, intptr_t info)
+cpdef int xgesvdjGetSweeps(intptr_t handle, intptr_t info)
+
+cpdef int sgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params)
+cpdef int dgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params)
+cpdef int cgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params)
+cpdef int zgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params)
+
+cpdef sgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params)
+cpdef dgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params)
+cpdef cgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params)
+cpdef zgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params)
 
 # Standard symmetric eigenvalue solver
 cpdef int ssyevd_bufferSize(intptr_t handle, int jobz, int uplo, int n,
