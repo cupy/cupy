@@ -80,14 +80,14 @@ def _dtype_to_DataType(dtype):
 
 
 _available_cuda_version = {
-    'csrmv': (9000, 11000),
-    'csrmvEx': (9000, None),
-    'csrmm': (9000, 11000),
-    'csrmm2': (9000, 11000),
-    'csrgeam': (9000, 11000),
+    'csrmv': (8000, 11000),
+    'csrmvEx': (8000, None),
+    'csrmm': (8000, 11000),
+    'csrmm2': (8000, 11000),
+    'csrgeam': (8000, 11000),
     'csrgeam2': (9020, None),
-    'csrgemm': (9000, 11000),
-    'csrgemm2': (9000, None),
+    'csrgemm': (8000, 11000),
+    'csrgemm2': (8000, None),
     'spmv': (10010, None),
     'spmm': (10010, None),
 }
