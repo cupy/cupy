@@ -1,6 +1,5 @@
 import atexit
 import binascii
-import collections.abc
 import functools
 import hashlib
 import operator
@@ -338,7 +337,7 @@ class RandomState(object):
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
             shape = []
-        elif isinstance(size, (int, long, np.integer)):
+        elif isinstance(size, (int, cupy.integer)):
             shape = [size]
         else:
             shape = size
@@ -349,8 +348,6 @@ class RandomState(object):
             raise ValueError('cov must be 2 dimensional and square')
         if mean.shape[0] != cov.shape[0]:
             raise ValueError('mean and cov must have same length')
-        
-        #shape += (len(mean),)
 
         final_shape = list(shape[:])
         final_shape.append(mean.shape[0])
