@@ -10,7 +10,8 @@ cdef class CArray(function.CPointer):
     cdef void init(
             self, void* data_ptr, Py_ssize_t data_size,
             const vector.vector[Py_ssize_t]& shape,
-            const vector.vector[Py_ssize_t]& strides):
+            const vector.vector[Py_ssize_t]& strides,
+            Py_ssize_t c_contiguous):
         cdef size_t ndim = shape.size()
         cdef Py_ssize_t* shape_and_strides = (
             self.val.shape_and_strides)
@@ -22,6 +23,7 @@ cdef class CArray(function.CPointer):
             shape_and_strides[i] = shape[i]
             shape_and_strides[i + ndim] = strides[i]
         self.ptr = <void*>&self.val
+        self.val.c_contiguous = c_contiguous
 
 
 cdef class CIndexer(function.CPointer):

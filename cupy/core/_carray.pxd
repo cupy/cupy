@@ -10,6 +10,7 @@ DEF MAX_NDIM = 25
 cdef struct _CArray:
     void* data
     Py_ssize_t size
+    Py_ssize_t c_contiguous
     Py_ssize_t shape_and_strides[MAX_NDIM * 2]
 
 
@@ -22,7 +23,8 @@ cdef class CArray(function.CPointer):
     cdef void init(
         self, void* data_ptr, Py_ssize_t data_size,
         const vector.vector[Py_ssize_t]& shape,
-        const vector.vector[Py_ssize_t]& strides)
+        const vector.vector[Py_ssize_t]& strides,
+        Py_ssize_t c_contiguous)
 
 
 cdef struct _CIndexer:

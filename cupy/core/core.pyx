@@ -1666,7 +1666,8 @@ cdef inline _carray.CArray _CArray_from_ndarray(ndarray arr):
     # Note that this function cannot be defined in _carray.pxd because that
     # would cause cyclic cimport dependencies.
     cdef _carray.CArray carr = _carray.CArray.__new__(_carray.CArray)
-    carr.init(<void*>arr.data.ptr, arr.size, arr._shape, arr._strides)
+    carr.init(<void*>arr.data.ptr, arr.size, arr._shape, arr._strides,
+              arr.flags.c_contiguous)
     return carr
 
 

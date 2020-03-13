@@ -180,6 +180,7 @@ public:
 private:
   T* data_;
   ptrdiff_t size_;
+  ptrdiff_t c_contiguous;
   ptrdiff_t shape_[ndim];
   ptrdiff_t strides_[ndim];
 
@@ -215,6 +216,11 @@ public:
   }
 
   __device__ const T& operator[](ptrdiff_t i) const {
+    if (c_contiguous) {
+      // contiguous arrays can be directly addressed by the
+      // numeric value, avoiding expensive 64 bit operations in cuda
+      return data_[i];
+    }
     const char* ptr = reinterpret_cast<const char*>(data_);
     for (int dim = ndim; --dim > 0; ) {
       ptr += static_cast<ptrdiff_t>(strides_[dim]) * (i % shape_[dim]);
