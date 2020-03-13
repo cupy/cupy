@@ -70,11 +70,8 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
 
     handle = device.get_cusolver_handle()
     m, n = a.shape
+    a = cupy.array(a, order='F', copy=not overwrite_a)
     lda = m
-    if not a.flags['F_CONTIGUOUS']:
-        a = cupy.asfortranarray(a)
-    elif not overwrite_a:
-        a = a.copy()
     mn = min(m, n)
     s = cupy.empty(mn, dtype=s_dtype)
     ldu = m
