@@ -107,7 +107,7 @@ cusparseStatus_t cusparseZgtsv2StridedBatch(...) {
 }
 #endif // #if CUDA_VERSION < 9000
 
-#if CUDA_VERSION < 9200
+#if CUDA_VERSION < 9020
 // Functions added in CUDA 9.2
 cusparseStatus_t cusparseSgtsvInterleavedBatch_bufferSizeExt(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -172,7 +172,44 @@ cusparseStatus_t cusparseCgpsvInterleavedBatch(...) {
 cusparseStatus_t cusparseZgpsvInterleavedBatch(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
-#endif // #if CUDA_VERSION < 9200
+
+cusparseStatus_t cusparseScsrgeam2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgeam2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgeam2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgeam2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrgeam2Nnz(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrgeam2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgeam2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgeam2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgeam2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif // #if CUDA_VERSION < 9020
 
 #if CUDA_VERSION < 10010
 // Types, macro and functions added in CUDA 10.1
@@ -370,6 +407,7 @@ typedef void* csric02Info_t;
 typedef void* bsric02Info_t;
 typedef void* csrilu02Info_t;
 typedef void* bsrilu02Info_t;
+typedef void* csrgemm2Info_t;
 
 typedef enum {} cusparseMatrixType_t;
 typedef enum {} cusparseOperation_t;
@@ -519,6 +557,41 @@ cusparseStatus_t cusparseZcsrgeam(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseScsrgeam2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgeam2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgeam2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgeam2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrgeam2Nnz(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrgeam2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgeam2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgeam2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgeam2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
 
 cusparseStatus_t cusparseXcsrgemmNnz(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -537,6 +610,50 @@ cusparseStatus_t cusparseCcsrgemm(...) {
 }
 
 cusparseStatus_t cusparseZcsrgemm(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCreateCsrgemm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDestroyCsrgemm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrgemm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgemm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgemm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgemm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrgemm2Nnz(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrgemm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgemm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgemm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgemm2(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 

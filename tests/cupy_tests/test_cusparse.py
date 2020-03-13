@@ -109,6 +109,42 @@ class TestCsrmm2(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'shape': [(3, 4), (4, 3)]
+}))
+@testing.with_requires('scipy>=1.2.0')
+class TestCsrgeam(unittest.TestCase):
+
+    alpha = 0.5
+    beta = 0.25
+
+    def setUp(self):
+        m, n = self.shape
+        self.a = scipy.sparse.random(m, n, density=0.3, dtype=self.dtype)
+        self.b = scipy.sparse.random(m, n, density=0.3, dtype=self.dtype)
+
+    def test_csrgeam(self):
+        if not cupy.cusparse.check_availability('csrgeam'):
+            pytest.skip('csrgeam is not available')
+
+        a = sparse.csr_matrix(self.a)
+        b = sparse.csr_matrix(self.b)
+        c = cupy.cusparse.csrgeam(a, b, alpha=self.alpha, beta=self.beta)
+        expect = self.alpha * self.a + self.beta * self.b
+        testing.assert_array_almost_equal(c.toarray(), expect.toarray())
+
+    def test_csrgeam2(self):
+        if not cupy.cusparse.check_availability('csrgeam2'):
+            pytest.skip('csrgeam is not available')
+
+        a = sparse.csr_matrix(self.a)
+        b = sparse.csr_matrix(self.b)
+        c = cupy.cusparse.csrgeam2(a, b, alpha=self.alpha, beta=self.beta)
+        expect = self.alpha * self.a + self.beta * self.b
+        testing.assert_array_almost_equal(c.toarray(), expect.toarray())
+
+
+@testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
     'transa': [False, True],
     'transb': [False, True],
@@ -129,11 +165,52 @@ class TestCsrgemm(unittest.TestCase):
             self.b = self.op_b
 
     def test_csrgemm(self):
+        if not cupy.cusparse.check_availability('csrgemm'):
+            pytest.skip('csrgemm is not available.')
+
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
         y = cupy.cusparse.csrgemm(a, b, transa=self.transa, transb=self.transb)
         expect = self.op_a.dot(self.op_b)
         testing.assert_array_almost_equal(y.toarray(), expect.toarray())
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'shape': [(2, 3, 4), (4, 3, 2)]
+}))
+@testing.with_requires('scipy>=1.2.0')
+class TestCsrgemm2(unittest.TestCase):
+
+    alpha = 0.5
+    beta = 0.25
+
+    def setUp(self):
+        m, n, k = self.shape
+        self.a = scipy.sparse.random(m, k, density=0.5, dtype=self.dtype)
+        self.b = scipy.sparse.random(k, n, density=0.5, dtype=self.dtype)
+        self.d = scipy.sparse.random(m, n, density=0.5, dtype=self.dtype)
+
+    def test_csrgemm2_ab(self):
+        if not cupy.cusparse.check_availability('csrgemm2'):
+            pytest.skip('csrgemm2 is not available.')
+
+        a = sparse.csr_matrix(self.a)
+        b = sparse.csr_matrix(self.b)
+        c = cupy.cusparse.csrgemm2(a, b, alpha=self.alpha)
+        expect = self.alpha * self.a.dot(self.b)
+        testing.assert_array_almost_equal(c.toarray(), expect.toarray())
+
+    def test_csrgemm2_abpd(self):
+        if not cupy.cusparse.check_availability('csrgemm2'):
+            pytest.skip('csrgemm2 is not available.')
+
+        a = sparse.csr_matrix(self.a)
+        b = sparse.csr_matrix(self.b)
+        d = sparse.csr_matrix(self.d)
+        c = cupy.cusparse.csrgemm2(a, b, d=d, alpha=self.alpha, beta=self.beta)
+        expect = self.alpha * self.a.dot(self.b) + self.beta * self.d
+        testing.assert_array_almost_equal(c.toarray(), expect.toarray())
 
 
 @testing.parameterize(*testing.product({
