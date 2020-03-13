@@ -16,6 +16,7 @@ from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport _scalar
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport _convert_object_with_cuda_array_interface
+from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
@@ -268,6 +269,7 @@ cdef class _AbstractReductionKernel:
         ) = self._get_expressions_and_types(in_args, out_args, dtype)
 
         reduce_axis, out_axis = _get_axis(axis, len(a_shape))
+        print("reduce_axis", reduce_axis, "out_axis", out_axis)
 
         # When there is only one input array, sort the axes in such a way that
         # contiguous (C or F) axes can be squashed in _reduce_dims() later.
@@ -278,6 +280,7 @@ cdef class _AbstractReductionKernel:
             strides = in_args[0].strides
             reduce_axis = _sort_axis(reduce_axis, strides)
             out_axis = _sort_axis(out_axis, strides)
+            print("reduce_axis", reduce_axis, "out_axis", out_axis)
 
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
         out_args = self._get_out_args(out_args, out_types, out_shape)
@@ -296,30 +299,33 @@ cdef class _AbstractReductionKernel:
         # TODO: need two code paths for use_cub and the old behavior
 
         axis_permutes = reduce_axis + out_axis
+        print("reduce_axis", reduce_axis, "out_axis", out_axis, "axis_permutes", axis_permutes)
         use_cub = False
         if cub_block_reduction_enabled:
-            if in_args[0].flags.c_contiguous:
+            reduce_axis = tuple(sorted(reduce_axis))
+            out_axis = tuple(sorted(out_axis))
+            if in_args[0].flags.f_contiguous:
+                axis_permutes_cub = reduce_axis + out_axis
+            elif in_args[0].flags.c_contiguous:
                 axis_permutes_cub = out_axis + reduce_axis
-            elif in_args[0].flags.f_contiguous:
-                axis_permutes_cub = axis_permutes
             else:
                 axis_permutes_cub = None
 
             # check reduction axes, if not contiguous then switch back to the old behavior
             if axis_permutes_cub != tuple(range(in_args[0].ndim)):
-                print("give up CUB block reduction, falling back...")
+                print("give up CUB block reduction, falling back... (axis_permutes_cub =", axis_permutes_cub, ")")
             else:
                 axis_permutes = axis_permutes_cub
                 use_cub = True
         in_shape = _set_permuted_args(in_args, axis_permutes,
                                       a_shape, self.in_params)
-        print("in_shape:", in_shape)
+        #print("in_shape:", in_shape)
 
         if reduce_dims and not use_cub:
             in_shape = _reduce_dims(in_args, self.in_params, in_shape)
             out_shape = _reduce_dims(out_args, self.out_params, out_shape)
-        print("in_shape:", in_shape)
-        print("out_shape:", out_shape)
+        #print("in_shape:", in_shape)
+        #print("out_shape:", out_shape)
 
         # Calculate the reduction block dimensions.
         if not use_cub:
@@ -350,8 +356,12 @@ cdef class _AbstractReductionKernel:
                 block_size = _block_size  # TODO: allow auto tuning/finer setting?
 
             block_stride = 1    # not used
-        print("contiguous_size:", contiguous_size)
-        print("out_block_num:", out_block_num)
+
+        if use_cub:
+            ret = out_args[0] = _internal_asfortranarray(ret)
+            print(ret.flags)
+        #print("contiguous_size:", contiguous_size)
+        #print("out_block_num:", out_block_num)
 
         # Kernel arguments passed to the __global__ function.
         inout_args = (
