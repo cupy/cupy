@@ -357,7 +357,7 @@ cdef class _AbstractReductionKernel:
 
             block_stride = 1    # not used
 
-        if use_cub:
+        if use_cub and in_args[0].flags.f_contiguous:
             ret = out_args[0] = _internal_asfortranarray(ret)
             print(ret.flags)
         #print("contiguous_size:", contiguous_size)
