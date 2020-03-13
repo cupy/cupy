@@ -18,7 +18,7 @@ inline __device__ T gcd(T in0, T in1) {
 
 gcd = core.create_ufunc(
     'cupy_gcd',
-    ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
+    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q'),
     'out0 = gcd(in0, in1)',
     preamble=_gcd_preamble,
@@ -49,13 +49,13 @@ inline __device__ T lcm(T in0, T in1) {
         if(r == 0)
             return 0;
         else
-            return (in0 * in1)/r;
+            return in0/r * in1;
     }
 '''
 
 lcm = core.create_ufunc(
     'cupy_lcm',
-    ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
+    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q'),
     'out0 = lcm(in0, in1)',
     preamble=_lcm_preamble,
