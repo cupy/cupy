@@ -105,3 +105,88 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
         return u, s, v
     else:
         return s
+
+
+def gesvda(a, compute_uv=True):
+    """Singular value decomposition using cusolverDn<t>gesvdaStridedBatched().
+
+    Factorizes the matrix ``a`` into two unitary matrices ``u`` and ``v`` and
+    a singular values vector ``s`` such that ``a == u @ diag(s) @ v*``.
+
+    Args:
+        a (cupy.ndarray): The input matrix with dimension ``(.., M, N)``.
+        compute_uv (bool): If ``False``, it only returns singular values.
+
+    Returns:
+        tuple of :class:`cupy.ndarray`:
+            A tuple of ``(u, s, v)``.
+    """
+    if not check_availability('gesvda'):
+        raise RuntimeError('gesvda is not available.')
+
+    assert a.ndim >= 2
+    a_ndim = a.ndim
+    a_shape = a.shape
+    m, n = a_shape[-2:]
+    assert m >= n
+
+    if a.dtype == 'f':
+        helper = cusolver.sgesvdaStridedBatched_bufferSize
+        solver = cusolver.sgesvdaStridedBatched
+        s_dtype = 'f'
+    elif a.dtype == 'd':
+        helper = cusolver.dgesvdaStridedBatched_bufferSize
+        solver = cusolver.dgesvdaStridedBatched
+        s_dtype = 'd'
+    elif a.dtype == 'F':
+        helper = cusolver.cgesvdaStridedBatched_bufferSize
+        solver = cusolver.cgesvdaStridedBatched
+        s_dtype = 'f'
+    elif a.dtype == 'D':
+        helper = cusolver.zgesvdaStridedBatched_bufferSize
+        solver = cusolver.zgesvdaStridedBatched
+        s_dtype = 'd'
+    else:
+        raise TypeError
+
+    handle = device.get_cusolver_handle()
+    if compute_uv:
+        jobz = cusolver.CUSOLVER_EIG_MODE_VECTOR
+    else:
+        jobz = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+    rank = min(m, n)
+    if a_ndim == 2:
+        batch_size = 1
+    else:
+        batch_size = numpy.array(a_shape[:-2]).prod().item()
+    a = a.reshape((batch_size, m, n))
+    a = cupy.ascontiguousarray(a.transpose(0, 2, 1))
+    lda = m
+    stride_a = lda * n
+    s = cupy.empty((batch_size, rank), dtype=s_dtype)
+    stride_s = rank
+    ldu = m
+    ldv = n
+    u = cupy.empty((batch_size, rank, ldu), dtype=a.dtype, order='C')
+    v = cupy.empty((batch_size, rank, ldv), dtype=a.dtype, order='C')
+    stride_u = rank * ldu
+    stride_v = rank * ldv
+    lwork = helper(handle, jobz, rank, m, n, a.data.ptr, lda, stride_a,
+                   s.data.ptr, stride_s, u.data.ptr, ldu, stride_u,
+                   v.data.ptr, ldv, stride_v, batch_size)
+    work = cupy.empty((lwork,), dtype=a.dtype)
+    info = cupy.empty((batch_size,), dtype=numpy.int32)
+    r_norm = numpy.empty((batch_size,), dtype=numpy.float64)
+    solver(handle, jobz, rank, m, n, a.data.ptr, lda, stride_a, s.data.ptr,
+           stride_s, u.data.ptr, ldu, stride_u, v.data.ptr, ldv, stride_v,
+           work.data.ptr, lwork, info.data.ptr, r_norm.ctypes.data, batch_size)
+
+    s = s.reshape(a_shape[:-2] + (s.shape[-1],))
+    if not compute_uv:
+        return s
+
+    u = u.transpose(0, 2, 1)
+    v = v.transpose(0, 2, 1)
+    u = u.reshape(a_shape[:-2] + (u.shape[-2:]))
+    v = v.reshape(a_shape[:-2] + (v.shape[-2:]))
+    return u, s, v
