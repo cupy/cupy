@@ -5,6 +5,7 @@
 
 #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
+#include <cuda.h>
 #include <cusolverDn.h>
 #include <cusolverSp.h>
 
@@ -469,6 +470,38 @@ cusolverStatus_t cusolverDnCgesvdj(...) {
 }
 
 cusolverStatus_t cusolverDnZgesvdj(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnSgesvdaStrideBatched_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDgesvdaStrideBatched_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCgesvdaStrideBatched_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZgesvdaStrideBatched_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnSgesvdaStrideBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDgesvdaStrideBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCgesvdaStrideBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZgesvdaStrideBatched(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 

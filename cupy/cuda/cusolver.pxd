@@ -302,6 +302,53 @@ cpdef zgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
               int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
               intptr_t work, int lwork, intptr_t info, intptr_t params)
 
+# gesvda ... Approximate singular value decomposition
+cpdef int sgesvdaStridedBatched_bufferSize(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, int batchSize)
+cpdef int dgesvdaStridedBatched_bufferSize(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, int batchSize)
+cpdef int cgesvdaStridedBatched_bufferSize(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, int batchSize)
+cpdef int zgesvdaStridedBatched_bufferSize(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, int batchSize)
+
+cpdef sgesvdaStridedBatched(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, intptr_t d_work, int lwork, intptr_t d_info,
+    intptr_t h_R_nrmF, int batchSize)
+cpdef dgesvdaStridedBatched(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, intptr_t d_work, int lwork, intptr_t d_info,
+    intptr_t h_R_nrmF, int batchSize)
+cpdef cgesvdaStridedBatched(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, intptr_t d_work, int lwork, intptr_t d_info,
+    intptr_t h_R_nrmF, int batchSize)
+cpdef zgesvdaStridedBatched(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, intptr_t d_work, int lwork, intptr_t d_info,
+    intptr_t h_R_nrmF, int batchSize)
+
 # Standard symmetric eigenvalue solver
 cpdef int ssyevd_bufferSize(intptr_t handle, int jobz, int uplo, int n,
                             size_t A, int lda, size_t W) except? -1
