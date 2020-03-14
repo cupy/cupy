@@ -1,19 +1,17 @@
 from cupy import core
 
 _gcd_preamble = '''
-template <typename T>
-inline __device__ T gcd(T in0, T in1) {
-    T r;
-    while(in1!=0){
-      r = in0 % in1;
-      in0 = in1;
-      in1 = r;
-    }
-    if(in0 < 0)
-        return - in0;
-    else
-        return in0;
-    }
+template <typename T> inline __device__ T gcd(T in0, T in1) {
+  T r;
+  while (in1 != 0) {
+    r = in0 % in1;
+    in0 = in1;
+    in1 = r;
+  }
+  if (in0 < 0)
+    return -in0;
+  return in0;
+}
 '''
 
 gcd = core.create_ufunc(
@@ -29,29 +27,16 @@ gcd = core.create_ufunc(
     ''')
 
 _lcm_preamble = '''
-template <typename T>
-inline __device__ T gcd(T in0, T in1) {
-    T r;
-    while(in1!=0){
-      r = in0 % in1;
-      in0 = in1;
-      in1 = r;
-    }
-    if(in0 < 0)
-        return - in0;
-    else
-        return in0;
-    }
-
-template <typename T>
-inline __device__ T lcm(T in0, T in1) {
-        T r = gcd(in0, in1);
-        if(r == 0)
-            return 0;
-        else
-            return in0/r * in1;
-    }
-'''
+template <typename T> inline __device__ T lcm(T in0, T in1) {
+  T r = gcd(in0, in1);
+  if (r == 0)
+    return 0;
+  r = in0 / r * in1;
+  if (r < 0)
+    return -r;
+  return r;
+}
+''' + _gcd_preamble
 
 lcm = core.create_ufunc(
     'cupy_lcm',
