@@ -644,7 +644,20 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return self.__class__(
             (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
 
-    def __setitem__(self, slices, value):
+    def __setitem__(self, slices, values):
+        """
+         Assigns a value or a list of values to particular indices
+
+        Args:
+            slices: tuple or list of rows and columns indices
+            values: single or list of values
+
+        Returns: void
+
+        .. warning::
+             Currently doesn't support slice assignment
+
+        """
         if isinstance(slices, tuple):
             slices = list(slices)
         elif isinstance(slices, list):
@@ -675,34 +688,65 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         major, minor = self._swap(row, col)
         major_size, minor_size = self._swap(*self._shape)
-        # flatten rows, cols, values lists
-        major = cupy.array(major, dtype=self.indices.dtype,
-                           copy=False, ndmin=1).ravel()
-        minor = cupy.array(minor, dtype=self.indices.dtype,
-                           copy=False, ndmin=1).ravel()
-        value = cupy.array(value, dtype=self.dtype,
-                           copy=False, ndmin=1).ravel()
-        # check boundaries
-        major_max = cupy.amax(major)
-        major_min = cupy.amin(major)
-        minor_max = cupy.amax(minor)
-        minor_min = cupy.amin(minor)
-        if major_max >= major_size or major_min < - major_size \
-                or minor_max >= minor_size or minor_min < - minor_size:
-            raise IndexError('index out of bounds')
-        self._set_items(major, minor, value, major_size, minor_size)
+
+        if type(major) is slice or type(minor) is slice:
+            raise ValueError("Unsupported assignment")
+        else:
+            if type(major) is int:
+                major = [major]
+            if type(minor) is int:
+                minor = [minor]
+            # validate boundaries
+            if max(major) >= major_size or min(major) < - major_size \
+                    or max(minor) >= minor_size or min(minor) < - minor_size:
+                raise IndexError('index out of bounds')
+            # flatten rows, cols, values lists
+            major = cupy.array(major, dtype=self.indices.dtype,
+                               copy=False, ndmin=1).ravel()
+            minor = cupy.array(minor, dtype=self.indices.dtype,
+                               copy=False, ndmin=1).ravel()
+            values = cupy.array(values, dtype=self.dtype,
+                                copy=False, ndmin=1).ravel()
+            self._set_items(major, minor, values, major_size, minor_size)
 
     def _set_items(self, major, minor, values, major_size, minor_size):
+        """
+         Assigns multiple values to the required positions.
+         If the position is found, the value is updated (whether 0 or not)
+         else the value is inserted
+         (only if a non zero value is found in the value list)
+         The zeros are eliminated at the end to keep
+         the sparse matrix structure
+
+        Args:
+            major: flattened cupy array of rows indices
+            minor: flattened cupy array of columns indices
+            values: flattened cupy array of values
+            major_size: number of rows
+            minor_size: number of columns
+
+        Returns: void
+
+        """
+        # offsets contain the index of the entry to be updated
+        # if found, else -1
         offsets = cupy.empty(values.size, dtype=self.indices.dtype)
         repeat = self.sample_offsets(major_size, minor_size,
                                      values.size, major, minor, offsets)
+        # In case of duplicates entries, eliminate entries by summation
+        # and repeat the operation
         if repeat == 1:
             self.sum_duplicates()
             self.sample_offsets(major_size, minor_size,
                                 values.size, major, minor, offsets)
         mask = offsets > -1
+        # Update (unmasked elements are to be updated)
         self.update_values(offsets[mask], values[mask])
-        if -1 in offsets:
+        # eliminate the insertion of zero values
+        mask |= (values == 0)
+        # Insert iff entry is not found (-1 in offsets)
+        #            or lists of values has at least one non zero item
+        if -1 in offsets and not all(mask):
             major = major[~mask]
             minor = minor[~mask]
             values = values[~mask]
@@ -715,6 +759,18 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         pass
 
     def update_values(self, offsets, values):
+        """
+         Update the positions found in offsets by the suitable values
+         for both float and complex types
+
+        Args:
+            offsets: positions to be updated
+            values: list of values used in the update,
+                    values to be inserted are masked
+
+        Returns: void
+
+        """
         if self.dtype.kind == 'c':
             self._compress_setitem_complex_kern(
                 values.real, values.imag, offsets,
@@ -723,20 +779,40 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             self._compress_setitem_kern(values, offsets, self.data)
 
     def insert_values(self, major, minor, values):
+        """
+        Insert values in the required positions
+        of the sparse matrix and update metadata
+
+        Args:
+            major: list of rows indices
+            minor: list of columns indices
+            values: list of values to be inserted
+
+        Returns: void
+
+        ... warning:
+              Currently doesn't support checks for the data, indices, indptr
+              data types if the number of values exceeds the allowed
+              limit of the current data type of each
+
+        """
+        # order the insertions by the rows indices
         order = cupy.argsort(major)
         major = major.take(order)
         minor = minor.take(order)
         values = values.take(order)
 
+        # get the unique rows, rows indices pointers and the
+        # of non zeros for the new values and stack in new metadata
         uniq_rows, rows_indptr = cupy.unique(major, return_index=True)
         rows_indptr = cupy.append(rows_indptr, len(minor))
         new_nnz = cupy.diff(rows_indptr)
-        metadata = zip(uniq_rows, rows_indptr, rows_indptr[1:])
+        new_metadata = zip(uniq_rows, rows_indptr, rows_indptr[1:])
 
         row = 0
         data = []
         indices = []
-        for col, (next, col_start, col_stop) in enumerate(metadata):
+        for col, (next, col_start, col_stop) in enumerate(new_metadata):
             start = self.indptr[row]
             stop = self.indptr[next]
             row = next
@@ -755,7 +831,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 indices.append(
                     minor[col_start:col_stop][::-1][cols_indptr])
 
-        # remaining part
+        # remaining part (old values)
         start = self.indptr[next]
         data.append(self.data[start:])
         indices.append(self.indices[start:])
@@ -765,22 +841,45 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         indptr_diff[uniq_rows] += new_nnz
         nnzs[0] = 0
         nnzs[1:] = indptr_diff
+        # update the original metadata by the new ones and sort indices
         self.data = cupy.concatenate(data)
         self.indices = cupy.concatenate(indices)
         self.indptr = cupy.cumsum(nnzs, out=nnzs)
         self.sort_indices()
 
-    def sample_offsets(self, rows, cols, samples, major, minor, offsets):
+    def sample_offsets(self, major_size, minor_size, samples,
+                       major, minor, offsets):
+        """
+         - Computes the offset for each required position if found in
+           the sparse matrix else puts -1 in the offsets array.
+         - Indicates whether duplicate entries exist or not
+         - If number of samples to be assigned exceeds an arbitrary threshold,
+           binary search's lower bound is applied in offsets computation else
+           linear search is used
+
+        Args:
+            major_size: number of rows
+            minor_size: number of columns
+            samples: number of sample values
+            major: flattened cupy array of rows indices
+            minor: flattened cupy array of columns indices
+            offsets: empty array of the same size of values
+
+        Returns:
+               repeat : int marking duplicates entries needed to be
+               resolved before repeating the operation
+        """
         repeat = 0
-        if self._has_canonical_format and samples > self.indptr[rows] / 10:
+        if self._has_canonical_format and \
+                samples > self.indptr[major_size] / 10:
             self._data_offsets_canonical(
-                (samples,), (1,),
-                (rows, cols, self.indptr, self.indices,
+                (samples,), (samples,),
+                (major_size, minor_size, self.indptr, self.indices,
                  offsets, major, minor))
         else:
             self._data_offsets(
-                (samples,), (1,),
-                (rows, cols, self.indptr, self.indices,
+                (samples,), (samples,),
+                (major_size, minor_size, self.indptr, self.indices,
                  offsets, major, minor, repeat))
         return repeat
 
