@@ -31,7 +31,6 @@ import numpy
 from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
 from cupy.cuda import compiler
-from cupy.cuda import cub_block_reduction_enabled  # TODO: this is a copy, not a reference!
 from cupy import util
 
 
@@ -109,6 +108,19 @@ extern "C" __global__ void ${name}(${params}) {
     return module.get_function(name)
 
 
+cpdef bint _can_use_cub_block_reduction():
+    from cupy.cuda import _environment
+    from cupy import core
+
+    if not core.cub_block_reduction_enabled:
+        return 0
+    if _environment.get_nvcc_path() is None:
+        # rare event (mainly for conda-forge users): nvcc is not found!
+        return 0
+    # TODO(leofang): do I miss other conditions here?
+    return 1
+
+
 cpdef function.Function _create_cub_reduction_function(
         name, block_size, continuous_size, items_per_thread,
         reduce_type, params, arginfos, identity,
@@ -116,6 +128,7 @@ cpdef function.Function _create_cub_reduction_function(
         _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
 
     # move this part to a Python file for faster test cycles
+    # TODO: move it back to here!
     from ._cub_simple_reduction import _get_cub_reduction_function_code
     module_code = _get_cub_reduction_function_code(
         name, block_size, continuous_size, items_per_thread,
@@ -123,6 +136,10 @@ cpdef function.Function _create_cub_reduction_function(
         pre_map_expr, reduce_expr, post_map_expr,
         type_map, input_expr, output_expr, preamble, options)
 
+    # CUB is not natively supported by NVRTC (NVlabs/cub#131), so use nvcc
+    # instead. For this, we have to explicitly spell out the default values for
+    # arch, cachd, and prepend_cupy_headers to bypass cdef/cpdef limitation...
+    # TODO(leofang): investigate Jitify for using NVRTC (also NVlabs/cub#171)
     module = compile_with_cache(module_code, options, arch=None, cachd_dir=None,
         prepend_cupy_headers=True, backend='nvcc')
     return module.get_function(name)
@@ -255,6 +272,7 @@ cdef class _AbstractReductionKernel:
             stream):
         cdef tuple reduce_axis, out_axis, axis_permutes
         cdef tuple axis_permutes_cub, cub_params
+        cdef tuple params
         cdef Py_ssize_t i
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
@@ -301,10 +319,12 @@ cdef class _AbstractReductionKernel:
 
         # TODO: need two code paths for use_cub and the old behavior
 
+        # decide to use CUB or not
         axis_permutes = reduce_axis + out_axis
         print("reduce_axis", reduce_axis, "out_axis", out_axis, "axis_permutes", axis_permutes)
         use_cub = False
-        if cub_block_reduction_enabled:
+        if _can_use_cub_block_reduction():
+            assert len(in_args) == 1  # TODO(leofang): remove or relax this
             reduce_axis = tuple(sorted(reduce_axis))
             out_axis = tuple(sorted(out_axis))
             if in_args[0].flags.f_contiguous:
@@ -320,25 +340,40 @@ cdef class _AbstractReductionKernel:
             else:
                 axis_permutes = axis_permutes_cub
                 use_cub = True
+
         in_shape = _set_permuted_args(in_args, axis_permutes,
                                       a_shape, self.in_params)
-        #print("in_shape:", in_shape)
 
-        if reduce_dims and not use_cub:
-            in_shape = _reduce_dims(in_args, self.in_params, in_shape)
-            out_shape = _reduce_dims(out_args, self.out_params, out_shape)
-        #print("in_shape:", in_shape)
-        #print("out_shape:", out_shape)
-
-        # Calculate the reduction block dimensions.
         if not use_cub:
+            if reduce_dims:
+                in_shape = _reduce_dims(in_args, self.in_params, in_shape)
+                out_shape = _reduce_dims(out_args, self.out_params, out_shape)
+            #print("in_shape:", in_shape)
+            #print("out_shape:", out_shape)
+
+            # Calculate the reduction block dimensions.
             contiguous_size = _get_contiguous_size(
                 in_args, self.in_params, len(in_shape), len(out_shape))
             block_size, block_stride, out_block_num = _get_block_specs(
                 internal.prod_sequence(in_shape),
                 internal.prod_sequence(out_shape),
                 contiguous_size)
+
+            # Kernel arguments passed to the __global__ function.
+            inout_args = (
+                in_args
+                + out_args
+                + [
+                    _carray.Indexer(in_shape),
+                    _carray.Indexer(out_shape),
+                    # block_stride is passed as the last argument.
+                    _scalar.CScalar.from_int32(block_stride),
+                ])
+
+            params = self._params
+            cub_params = (False, None, None)
         else:
+            # Calculate the reduction block dimensions.
             # Ideally, we want each block to handle one segment, so:
             # - block size < segment size: the block loops over the segment
             # - block size >= segment size: the segment can fit in the entire block
@@ -350,38 +385,32 @@ cdef class _AbstractReductionKernel:
             for i in out_axis:
                 out_block_num *= in_shape[i]
 
+            # This should be an even number
+            # TODO(leofang): this is recommended in the CUB internal, but
+            # perhaps we could do some auto-tuning to determine this?
             items_per_thread = 4
+
+            # TODO(leofang): also auto-tune the block size?
             block_size = (contiguous_size + items_per_thread - 1) // items_per_thread
             block_size = internal.clp2(block_size)
             if block_size < 32:
                 block_size = 32  # warp size
             elif block_size > _block_size:
-                block_size = _block_size  # TODO: allow auto tuning/finer setting?
+                block_size = _block_size
 
-            block_stride = 1    # not used
+            if in_args[0].flags.f_contiguous:
+                ret = out_args[0] = _internal_asfortranarray(ret)
+                print(ret.flags)
 
-        if use_cub and in_args[0].flags.f_contiguous:
-            ret = out_args[0] = _internal_asfortranarray(ret)
-            print(ret.flags)
-        #print("contiguous_size:", contiguous_size)
-        #print("out_block_num:", out_block_num)
+            # Kernel arguments passed to the __global__ function.
+            inout_args = (in_args + out_args)
 
-        # Kernel arguments passed to the __global__ function.
-        inout_args = (
-            in_args
-            + out_args
-            + [
-                _carray.Indexer(in_shape),
-                _carray.Indexer(out_shape),
-                # block_stride is passed as the last argument.
-                _scalar.CScalar.from_int32(block_stride),
-            ])
-
-        cub_params = (use_cub, contiguous_size, items_per_thread)
+            params = self._params[0:2]
+            cub_params = (True, contiguous_size, items_per_thread)
 
         # Retrieve the kernel function
         func = self._get_function(
-            self._params,
+            params,
             _get_arginfos(inout_args),
             type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
@@ -547,7 +576,6 @@ def _SimpleReductionKernel_get_cached_function(
     temp2 = type_map.get_typedef_code()
     print("final params:",  temp,          type(temp), "\n")
     print("type_preamble:", temp2,         type(temp2), "\n")
-    print(cub_block_reduction_enabled)
 
     use_cub, contiguous_size, items_per_thread = cub_params
     if not use_cub:

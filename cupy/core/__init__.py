@@ -62,3 +62,8 @@ from cupy.core.internal import complete_slice  # NOQA
 from cupy.core.internal import get_size  # NOQA
 from cupy.core.raw import RawKernel  # NOQA
 from cupy.core.raw import RawModule  # NOQA
+
+
+# Whether to use reduction kernels based on cub::BlockReduce
+# TODO(leofang): do we want an env var to control this?
+cub_block_reduction_enabled = False

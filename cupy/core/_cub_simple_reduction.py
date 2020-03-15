@@ -9,9 +9,6 @@ def _get_cub_reduction_function_code(
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_map, input_expr, output_expr, preamble, options):
-    print("\n**************** I AM HERE ******************")
-
-    # TODO: remove CIndexer and block stride inputs
     # TODO: implement for-loop load
     # TODO: see if we can do, say, 4 segments per block? (to increase write throughput)
     # TODO: clean up
@@ -22,11 +19,8 @@ def _get_cub_reduction_function_code(
 ${type_preamble}
 ${preamble}
 
-//TODO(leofang): this should be auto-tuned based on CUDA arch?
 #define ITEMS_PER_THREAD ${items_per_thread}
-
 #define POST_MAP(a) (${post_map_expr})
-
 #define SEGMENT_SIZE ${segment_size}
 
 typedef ${reduce_type} _type_reduce;
@@ -51,7 +45,6 @@ __global__ void ${name}(${params}) {
   // Shared memory
   __shared__ typename BlockReduceT::TempStorage temp_storage;
 
-  // Attempt: ignore CIndexer _in_ind and _out_ind?
 //  const int in_ndim = _raw_in0.ndim;
 //  const int out_ndim = _raw_out0.ndim;
 //  const ptrdiff_t* in_shape = _raw_in0.shape();
