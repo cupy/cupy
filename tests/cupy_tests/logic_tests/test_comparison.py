@@ -109,6 +109,12 @@ class TestArrayEqual(unittest.TestCase):
         b = xp.array([0, 1, 100, 10])
         return xp.array_equal(a, b)
 
+    @testing.numpy_cupy_equal()
+    def test_array_equal_broadcast_not_allowed(self, xp):
+        a = xp.array([1, 1, 1, 1])
+        b = xp.array([1])
+        return xp.array_equal(a, b)
+
 
 class TestAllclose(unittest.TestCase):
 
