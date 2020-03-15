@@ -84,6 +84,32 @@ class flatiter():
 
         raise IndexError('unsupported iterator index')
 
+    # TODO(Takagi): Implement __iter__ just raising NotImplementedError
+
+    # TODO(Takagi): Implement __next__ just raising NotImplementedError
+
+    # TODO(Takagi): Implement copy
+
+    # TODO(Takagi): Implement base
+
+    # TODO(Takagi): Implement coords
+
+    # TODO(Takagi): Implement index
+
+    # TODO(Takagi): Implement __lt__
+
+    # TODO(Takagi): Implement __le__
+
+    # TODO(Takagi): Implement __eq__
+
+    # TODO(Takagi): Implement __ne__
+
+    # TODO(Takagi): Implement __ge__
+
+    # TODO(Takagi): Implement __gt__
+
+    # TODO(Takagi): Implement __len__
+
 
 _flatiter_setitem_slice = core.ElementwiseKernel(
     'raw T val, int64 start, int64 step', 'raw T a',
