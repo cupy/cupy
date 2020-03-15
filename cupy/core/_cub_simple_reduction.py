@@ -9,8 +9,7 @@ def _get_cub_reduction_function_code(
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_map, input_expr, output_expr, preamble, options):
-    # TODO: implement for-loop load
-    # TODO: see if we can do, say, 4 segments per block? (to increase write throughput)
+    # TODO: use void* instead of CArray for generalization
     # TODO: clean up
     module_code = '''
 #include <cub/block/block_reduce.cuh>
@@ -86,75 +85,60 @@ __global__ void ${name}(${params}) {
   _type_reduce _sdata[ITEMS_PER_THREAD] = {${identity}};
 
   // each block handles the reduction of 1 segment
-  _type_reduce _block_out = ${identity};
+  _type_reduce aggregate = ${identity};
   size_t i = 0;  // tile head within the segment
   int tile_size = (blockDim.x * ITEMS_PER_THREAD < SEGMENT_SIZE ? blockDim.x * ITEMS_PER_THREAD : SEGMENT_SIZE); 
   for (i = 0; i < SEGMENT_SIZE; i += blockDim.x * ITEMS_PER_THREAD) {
-'''
-
-    # TODO: if map_expr == 'in0', use CUB load, else use for loop
-    if pre_map_expr == 'in0':
-        module_code += '''
-
       // TODO: try splitting the for loop into full tiles and partil tiles to utilize
       // LoadDirectBlockedVectorized? See, for example,
       // https://github.com/NVlabs/cub/blob/c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/agent/agent_reduce.cuh#L311-L346
 
       if (SEGMENT_SIZE - i < tile_size)  // for the last tile
           tile_size = SEGMENT_SIZE - i;
+'''
+
+    if pre_map_expr == 'in0':
+        module_code += '''
+
       //if (_bid == 0) {
       //    printf("i: %d\\n", i);
       //    printf("SEGMENT_SIZE: %d\\n", SEGMENT_SIZE);
       //    printf("tile_size: %d\\n\\n", tile_size);
       //}
+
+      // This is equivalent to cub::BlockLoad<_type_reduce, ${block_size}, ITEMS_PER_THREAD, BLOCK_LOAD_DIRECT>::Load
       cub::LoadDirectBlocked(_tid, _in0 + blockIdx.x * SEGMENT_SIZE + i, _sdata, tile_size, ${identity});
 
       //for (size_t i = 0; i<ITEMS_PER_THREAD; i++)
       //    printf("_bid: %d, local items: %f\\n", _bid, _sdata[i]); 
 '''
-    else:  # TODO
-        raise NotImplementedError
+    else:  # pre_map_expr could be something like "in0 != type_in0_raw(0)"
         module_code += '''
+      #pragma unroll
+      for (int j = 0; j < ITEMS_PER_THREAD; j++) {
+          _sdata[j] = ${identity};
+
+          if ((_tid * ITEMS_PER_THREAD) + j < tile_size)
+          {
+              const type_in0_raw in0 = *((type_in0_raw*)&(_raw_in0[0]) + blockIdx.x * SEGMENT_SIZE + i + _tid * ITEMS_PER_THREAD + j);
+              _sdata[j] = static_cast<_type_reduce>(${pre_map_expr});
+          }
+      }
 '''        
 
     module_code += '''
       // Compute block reduction
-      _type_reduce aggregate = BlockReduceT(temp_storage).Reduce(_sdata, op);
-
-      if (_tid == 0)
-          _block_out = op(_block_out, aggregate);
+      // Note that the output is only meaningful for thread 0
+      aggregate += BlockReduceT(temp_storage).Reduce(_sdata, op);
 
       __syncthreads();  // for reusing temp_storage
   }
-'''
-
-#    # TODO: if map_expr == 'in0', use CUB load, else use for loop
-#    if pre_map_expr == 'in0':
-#        module_code += '''
-#//  if (i  // last tile
-#//  cub::LoadDirectBlocked(_tid, _in0 + blockIdx.x * SEGMENT_SIZE + i, _sdata, SEGMENT_SIZE - i);
-#//
-#//  //for (size_t i = 0; i<ITEMS_PER_THREAD; i++)
-#//  //    printf("_bid: %d, local items: %f\\n", _bid, _sdata[i]); 
-#'''
-#    else:  # TODO
-#        raise NotImplementedError
-#        module_code += '''
-#'''        
-
-    module_code += '''
-//      // Compute block reduction
-//      _type_reduce aggregate = BlockReduceT(temp_storage).Reduce(_sdata, op);
-//
-//      if (_tid == 0)
-//          _block_out = op(_block_out, aggregate);
-//  }
 
   if (_tid == 0) {
-      //printf("_bid: %d (blockIdx.x: %d), block out: %f\\n", _bid, blockIdx.x, _block_out);
+      //printf("_bid: %d (blockIdx.x: %d), block out: %f\\n", _bid, blockIdx.x, aggregate);
 
       type_out0_raw& out0 = *(_out0 + blockIdx.x);
-      POST_MAP(_block_out);
+      POST_MAP(aggregate);
   }
 } // kernel end
 } // extern C
@@ -168,7 +152,7 @@ __global__ void ${name}(${params}) {
         params=_kernel._get_kernel_params(params, arginfos),  # used
         identity=identity,  # used
         reduce_expr=reduce_expr,  # used
-        pre_map_expr=pre_map_expr,
+        pre_map_expr=pre_map_expr,  # used
         post_map_expr=post_map_expr,  # used
         type_preamble=type_map.get_typedef_code(),  # used
         input_expr=input_expr,
