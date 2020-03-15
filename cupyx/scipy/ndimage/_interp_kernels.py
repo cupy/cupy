@@ -311,7 +311,7 @@ def _generate_interp_custom(coord_func, xshape, yshape, mode, cval, order,
     return operation, name
 
 
-@cupy.util.memoize()
+@cupy.util.memoize(for_each_device=True)
 def _get_map_kernel(xshape, mode, cval=0.0, order=1, integer_output=False):
     in_params = 'raw X x, raw W coords'
     out_params = 'Y y'
@@ -328,7 +328,7 @@ def _get_map_kernel(xshape, mode, cval=0.0, order=1, integer_output=False):
     return cupy.ElementwiseKernel(in_params, out_params, operation, name)
 
 
-@cupy.util.memoize()
+@cupy.util.memoize(for_each_device=True)
 def _get_shift_kernel(xshape, yshape, mode, cval=0.0, order=1,
                       integer_output=False):
     in_params = 'raw X x, raw W shift'
@@ -346,7 +346,7 @@ def _get_shift_kernel(xshape, yshape, mode, cval=0.0, order=1,
     return cupy.ElementwiseKernel(in_params, out_params, operation, name)
 
 
-@cupy.util.memoize()
+@cupy.util.memoize(for_each_device=True)
 def _get_zoom_shift_kernel(xshape, yshape, mode, cval=0.0, order=1,
                            integer_output=False):
     in_params = 'raw X x, raw W shift, raw W zoom'
@@ -364,7 +364,7 @@ def _get_zoom_shift_kernel(xshape, yshape, mode, cval=0.0, order=1,
     return cupy.ElementwiseKernel(in_params, out_params, operation, name)
 
 
-@cupy.util.memoize()
+@cupy.util.memoize(for_each_device=True)
 def _get_zoom_kernel(xshape, yshape, mode, cval=0.0, order=1,
                      integer_output=False):
     in_params = 'raw X x, raw W zoom'
