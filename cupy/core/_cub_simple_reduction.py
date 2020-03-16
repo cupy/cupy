@@ -16,8 +16,8 @@ def _get_cub_reduction_function_code(
 #include <cub/block/block_load.cuh>
 
 ${type_preamble}
-typedef ${reduce_type} _type_reduce;
 ${preamble}
+typedef ${reduce_type} _type_reduce;
 
 // Compile-time constants for CUB template specializations
 #define ITEMS_PER_THREAD ${items_per_thread}
@@ -54,11 +54,11 @@ __global__ void ${name}(${params}) {
   type_out0_raw* _out0 = static_cast<type_out0_raw*>(_raw_out0);
 
   // Per-thread tile data
-  _type_reduce _sdata[ITEMS_PER_THREAD] = {${identity}};
+  _type_reduce _sdata[ITEMS_PER_THREAD] = {_type_reduce(${identity})};
 
   // each block handles the reduction of 1 segment
   const type_in0_raw* segment_head = _in0 + blockIdx.x * _segment_size;  // TODO(leofang): auto-gen this
-  _type_reduce aggregate = ${identity};
+  _type_reduce aggregate = _type_reduce(${identity});
   size_t i = 0;  // tile head within the segment
   int tile_size = (BLOCK_SIZE * ITEMS_PER_THREAD < _segment_size ? BLOCK_SIZE * ITEMS_PER_THREAD : _segment_size);
 
@@ -83,7 +83,7 @@ __global__ void ${name}(${params}) {
 
       // load a tile
       // This is equivalent to cub::BlockLoad<_type_reduce, BLOCK_SIZE, ITEMS_PER_THREAD, BLOCK_LOAD_DIRECT>::Load
-      cub::LoadDirectBlocked(_tid, segment_head + i, _sdata, tile_size, ${identity});
+      cub::LoadDirectBlocked(_tid, segment_head + i, _sdata, tile_size, _type_reduce(${identity}));
 
       //for (size_t i = 0; i<ITEMS_PER_THREAD; i++)
       //    printf("_bid: %d, local items: %f\\n", _bid, _sdata[i]); 
@@ -93,7 +93,7 @@ __global__ void ${name}(${params}) {
       // load a tile
       #pragma unroll
       for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-          _sdata[j] = ${identity};
+          _sdata[j] = _type_reduce(${identity});
 
           if ((_tid * ITEMS_PER_THREAD) + j < tile_size)
           {
