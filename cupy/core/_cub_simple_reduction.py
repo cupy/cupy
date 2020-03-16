@@ -106,7 +106,7 @@ __global__ void ${name}(${params}) {
     module_code += '''
       // Compute block reduction
       // Note that the output is only meaningful for thread 0
-      aggregate += BlockReduceT(temp_storage).Reduce(_sdata, op);
+      aggregate = op(aggregate, BlockReduceT(temp_storage).Reduce(_sdata, op));
 
       __syncthreads();  // for reusing temp_storage
   }

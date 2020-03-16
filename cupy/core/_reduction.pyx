@@ -142,6 +142,7 @@ cdef tuple _can_use_cub_block_reduction(
     from cupy import core
 
     cdef tuple axis_permutes_cub
+    cdef ndarray in_arr, out_arr
 
     # first check the flag settable at runtime from outside
     if not core.cub_block_reduction_enabled:
@@ -155,16 +156,31 @@ cdef tuple _can_use_cub_block_reduction(
     if len(in_args) != 1 or len(out_args) != 1:
         return None
 
+    in_arr = in_args[0]
+    out_arr = out_args[0]
+
+    # To support generic reductions, note that some NumPy casting rules
+    # are not applicable in the C++ space (unless we tweak the type
+    # definitions). To circumvent this, we fall back to the old kernel.
+    # TODO(leofang): can we relax this?
+    if in_arr.dtype.kind != out_arr.dtype.kind:
+        # cannot cast complex to anything else
+        if in_arr.dtype.kind == 'c':
+            return None
+        # cannot cast float16 to complex
+        if in_arr.dtype.char == 'e' and out_arr.dtype.kind == 'c':
+            return None
+
     # check reduction axes, if not contiguous then fall back to old kernel
     reduce_axis = tuple(sorted(reduce_axis))
     out_axis = tuple(sorted(out_axis))
-    if in_args[0].flags.f_contiguous:
+    if in_arr.flags.f_contiguous:
         axis_permutes_cub = reduce_axis + out_axis
-    elif in_args[0].flags.c_contiguous:
+    elif in_arr.flags.c_contiguous:
         axis_permutes_cub = out_axis + reduce_axis
     else:
         axis_permutes_cub = None
-    if axis_permutes_cub == tuple(range(in_args[0].ndim)):
+    if axis_permutes_cub == tuple(range(in_arr.ndim)):
         return axis_permutes_cub
     else:
         return None
