@@ -6,7 +6,7 @@ from cupy.core import _reduction
 
 
 def _get_cub_reduction_function_code(
-        name, block_size, segment_size, items_per_thread,
+        name, block_size, items_per_thread,
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_map, input_expr, output_expr, preamble, options):
@@ -16,13 +16,14 @@ def _get_cub_reduction_function_code(
 #include <cub/block/block_load.cuh>
 
 ${type_preamble}
+typedef ${reduce_type} _type_reduce;
 ${preamble}
 
+// Compile-time constants for CUB template specializations
 #define ITEMS_PER_THREAD ${items_per_thread}
-#define POST_MAP(a) (${post_map_expr})
-#define SEGMENT_SIZE ${segment_size}
+#define BLOCK_SIZE ${block_size}
 
-typedef ${reduce_type} _type_reduce;
+#define POST_MAP(a) (${post_map_expr})
 
 struct _reduction_op
 {
@@ -35,11 +36,11 @@ struct _reduction_op
 extern "C" {
 __global__ void ${name}(${params}) {
   unsigned int _tid = threadIdx.x;
-  unsigned int _bid = blockIdx.x * blockDim.x + _tid;
+  unsigned int _bid = blockIdx.x * BLOCK_SIZE + _tid;
   //printf("%d\\n", _bid);
 
   // Specialize BlockReduce type for our thread block
-  typedef cub::BlockReduce<_type_reduce, ${block_size}> BlockReduceT;
+  typedef cub::BlockReduce<_type_reduce, BLOCK_SIZE> BlockReduceT;
 
   // Shared memory
   __shared__ typename BlockReduceT::TempStorage temp_storage;
@@ -56,19 +57,19 @@ __global__ void ${name}(${params}) {
   _type_reduce _sdata[ITEMS_PER_THREAD] = {${identity}};
 
   // each block handles the reduction of 1 segment
-  const type_in0_raw* segment_head = _in0 + blockIdx.x * SEGMENT_SIZE;  // TODO(leofang): auto-gen this
+  const type_in0_raw* segment_head = _in0 + blockIdx.x * _segment_size;  // TODO(leofang): auto-gen this
   _type_reduce aggregate = ${identity};
   size_t i = 0;  // tile head within the segment
-  int tile_size = (blockDim.x * ITEMS_PER_THREAD < SEGMENT_SIZE ? blockDim.x * ITEMS_PER_THREAD : SEGMENT_SIZE); 
+  int tile_size = (BLOCK_SIZE * ITEMS_PER_THREAD < _segment_size ? BLOCK_SIZE * ITEMS_PER_THREAD : _segment_size);
 
   // loop over tiles within 1 segment
-  for (i = 0; i < SEGMENT_SIZE; i += blockDim.x * ITEMS_PER_THREAD) {
+  for (i = 0; i < _segment_size; i += BLOCK_SIZE * ITEMS_PER_THREAD) {
       // TODO: try splitting the for loop into full tiles and partil tiles to utilize
       // LoadDirectBlockedVectorized? See, for example,
       // https://github.com/NVlabs/cub/blob/c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/agent/agent_reduce.cuh#L311-L346
 
-      if (SEGMENT_SIZE - i < tile_size)  // for the last tile
-          tile_size = SEGMENT_SIZE - i;
+      if (_segment_size - i < tile_size)  // for the last tile
+          tile_size = _segment_size - i;
 '''
 
     if pre_map_expr == 'in0':
@@ -76,12 +77,12 @@ __global__ void ${name}(${params}) {
 
       //if (_bid == 0) {
       //    printf("i: %d\\n", i);
-      //    printf("SEGMENT_SIZE: %d\\n", SEGMENT_SIZE);
+      //    printf("_segment_size: %d\\n", _segment_size);
       //    printf("tile_size: %d\\n\\n", tile_size);
       //}
 
       // load a tile
-      // This is equivalent to cub::BlockLoad<_type_reduce, ${block_size}, ITEMS_PER_THREAD, BLOCK_LOAD_DIRECT>::Load
+      // This is equivalent to cub::BlockLoad<_type_reduce, BLOCK_SIZE, ITEMS_PER_THREAD, BLOCK_LOAD_DIRECT>::Load
       cub::LoadDirectBlocked(_tid, segment_head + i, _sdata, tile_size, ${identity});
 
       //for (size_t i = 0; i<ITEMS_PER_THREAD; i++)
@@ -122,7 +123,6 @@ __global__ void ${name}(${params}) {
     module_code = string.Template(module_code).substitute(
         name=name,  # used
         block_size=block_size,  # used
-        segment_size=segment_size,  # used
         items_per_thread=items_per_thread,  # used
         reduce_type=reduce_type,  # used
         #params=_kernel._get_kernel_params(params, arginfos),  # used

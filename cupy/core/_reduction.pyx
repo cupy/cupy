@@ -122,7 +122,7 @@ cpdef bint _can_use_cub_block_reduction():
 
 
 cpdef function.Function _create_cub_reduction_function(
-        name, block_size, continuous_size, items_per_thread,
+        name, block_size, items_per_thread,
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
@@ -131,7 +131,7 @@ cpdef function.Function _create_cub_reduction_function(
     # TODO: move it back to here!
     from ._cub_simple_reduction import _get_cub_reduction_function_code
     module_code = _get_cub_reduction_function_code(
-        name, block_size, continuous_size, items_per_thread,
+        name, block_size, items_per_thread,
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_map, input_expr, output_expr, preamble, options)
@@ -145,14 +145,23 @@ cpdef function.Function _create_cub_reduction_function(
     return module.get_function(name)
 
 
+# similar to cupy.core._kernel._get_kernel_params()
 cpdef str _get_cub_kernel_params(tuple params, tuple arginfos):
     cdef ParameterInfo p
     cdef _ArgInfo arginfo
     cdef lst = []
+    cdef str c_type
+    cdef int i
     assert len(params) == len(arginfos)
-    for p, arginfo in zip(params, arginfos):
+
+    for i, (p, arginfo) in enumerate(zip(params, arginfos)):
+        if i != len(params) - 1:
+            c_type = 'const void*' if p.is_const else 'void*'
+        else:
+            # for segment size
+            c_type = arginfo.get_param_c_type(p)
         lst.append('{} {}'.format(
-            'const void*' if p.is_const else 'void*',
+            c_type,
             arginfo.get_c_var_name(p)))
     return ', '.join(lst)
 
@@ -383,7 +392,7 @@ cdef class _AbstractReductionKernel:
                 ])
 
             params = self._params
-            cub_params = (False, None, None)
+            cub_params = (False, None)
         else:
             # Calculate the reduction block dimensions.
             # Ideally, we want each block to handle one segment, so:
@@ -415,10 +424,11 @@ cdef class _AbstractReductionKernel:
                 print(ret.flags)
 
             # Kernel arguments passed to the __global__ function.
-            inout_args = (in_args + out_args)
+            inout_args = (in_args + out_args
+                          + [_scalar.CScalar.from_int32(contiguous_size)])
 
-            params = self._params[0:2]
-            cub_params = (True, contiguous_size, items_per_thread)
+            params = (self._params[0:2] + _get_param_info('int32 _segment_size', True))
+            cub_params = (True, items_per_thread)
 
         # Retrieve the kernel function
         func = self._get_function(
@@ -446,9 +456,9 @@ cdef class _AbstractReductionKernel:
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size, tuple cub_params=(False, None, None)):
+            Py_ssize_t block_size, tuple cub_params=(False, None)):
         '''
-        cub_params (tuple): (use_cub, contiguous_size, items_per_thread)
+        cub_params (tuple): (use_cub, items_per_thread)
         '''
         raise NotImplementedError()
 
@@ -553,7 +563,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size, tuple cub_params=(False, None, None)):
+            Py_ssize_t block_size, tuple cub_params=(False, None)):
         return _SimpleReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
@@ -593,7 +603,7 @@ def _SimpleReductionKernel_get_cached_function(
         print("modified params:", _get_cub_kernel_params(params, arginfos))
         print("type_preamble:", temp2,         type(temp2), "\n")
 
-    use_cub, contiguous_size, items_per_thread = cub_params
+    use_cub, items_per_thread = cub_params
     if not use_cub:
         return _create_reduction_function(
             name, block_size, reduce_type, params, arginfos, identity,
@@ -604,7 +614,7 @@ def _SimpleReductionKernel_get_cached_function(
         # TODO(leofang): test bundled CUB headers
         options = options + ('-I/home/leofang/sources/cub-1.8.0',)
         return _create_cub_reduction_function(
-            name, block_size, contiguous_size, items_per_thread,
+            name, block_size, items_per_thread,
             reduce_type, params, arginfos, identity,
             map_expr, reduce_expr, post_map_expr,
             type_map, input_expr, output_expr, _preamble, options)
@@ -752,7 +762,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size, tuple cub_params=(False, None, None)):
+            Py_ssize_t block_size, tuple cub_params=(False, None)):
         return _ReductionKernel_get_cached_function(
             self.nin, self.nout, params, arginfos, type_map,
             self.name, block_size, reduce_type, self.identity,
