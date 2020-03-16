@@ -404,7 +404,7 @@ class RandomState(object):
                                       "matrix is positive-semidefinite, set" +
                                       "'check_valid' to 'warn'")
 
-        x = self.standard_normal(shape=final_shape,
+        x = self.standard_normal(final_shape,
                                  dtype=dtype).reshape(-1, mean.shape[0])
         x = cupy.dot(decomp, x.T)
         x = x.T
