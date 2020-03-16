@@ -41,7 +41,7 @@ class SimpleReductionFunctionTestBase(AbstractReductionTestBase):
 
     def get_sum_func(self):
         return core.create_reduction_func(
-            'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None))
+            'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None), 0)
 
 
 @testing.gpu
