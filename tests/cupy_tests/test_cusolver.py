@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -30,6 +31,8 @@ class TestGesvdj(unittest.TestCase):
             self.a = numpy.random.random((m, n)).astype(self.dtype)
 
     def test_gesvdj(self):
+        if not cusolver.check_availability('gesvdj'):
+            pytest.skip('gesvdj is not available')
         a = cupy.array(self.a, order=self.order)
         u, s, v = cusolver.gesvdj(a, full_matrices=self.full_matrices,
                                   overwrite_a=self.overwrite_a)
@@ -54,6 +57,8 @@ class TestGesvdj(unittest.TestCase):
         testing.assert_array_almost_equal(aa, self.a, decimal=decimal)
 
     def test_gesvdj_no_uv(self):
+        if not cusolver.check_availability('gesvdj'):
+            pytest.skip('gesvdj is not available')
         a = cupy.array(self.a, order=self.order)
         s = cusolver.gesvdj(a, full_matrices=self.full_matrices,
                             compute_uv=False, overwrite_a=self.overwrite_a)
@@ -85,6 +90,8 @@ class TestGesvda(unittest.TestCase):
             self.a = numpy.random.random(self.shape).astype(self.dtype)
 
     def test_gesvda(self):
+        if not cusolver.check_availability('gesvda'):
+            pytest.skip('gesvda is not available')
         a = cupy.array(self.a)
         u, s, v = cusolver.gesvda(a)
         if a.ndim == 2:
@@ -109,6 +116,8 @@ class TestGesvda(unittest.TestCase):
             testing.assert_array_almost_equal(aa, a[i], decimal=decimal)
 
     def test_gesvda_no_uv(self):
+        if not cusolver.check_availability('gesvda'):
+            pytest.skip('gesvda is not available')
         a = cupy.array(self.a)
         s = cusolver.gesvda(a, compute_uv=False)
         expect = numpy.linalg.svd(self.a, compute_uv=False)
