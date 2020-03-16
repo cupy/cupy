@@ -94,6 +94,8 @@ __global__ void ${name}(${params}) {
       #pragma unroll
       for (int j = 0; j < ITEMS_PER_THREAD; j++) {
           _sdata[j] = _type_reduce(${identity});
+          // some pre_map_expr uses _J internally...
+          int _J = (blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j) % _segment_size;
 
           if ((_tid * ITEMS_PER_THREAD) + j < tile_size)
           {
