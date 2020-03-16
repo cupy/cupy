@@ -38,6 +38,10 @@ erfinv = core.create_ufunc(
 
     .. seealso:: :meth:`scipy.special.erfinv`
 
+    .. note::
+        The behavior close to (and outside) the domain follows that of
+        SciPy v1.4.0+.
+
     ''')
 
 
@@ -47,5 +51,9 @@ erfcinv = core.create_ufunc(
     doc='''Inverse function of complementary error function.
 
     .. seealso:: :meth:`scipy.special.erfcinv`
+
+    .. note::
+        The behavior close to (and outside) the domain follows that of
+        SciPy v1.4.0+.
 
     ''')
