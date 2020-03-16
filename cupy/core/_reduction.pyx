@@ -311,7 +311,7 @@ cdef class _AbstractReductionKernel:
         ) = self._get_expressions_and_types(in_args, out_args, dtype)
 
         reduce_axis, out_axis = _get_axis(axis, len(a_shape))
-        print("reduce_axis", reduce_axis, "out_axis", out_axis)
+        #print("reduce_axis", reduce_axis, "out_axis", out_axis)
 
         # When there is only one input array, sort the axes in such a way that
         # contiguous (C or F) axes can be squashed in _reduce_dims() later.
@@ -322,7 +322,7 @@ cdef class _AbstractReductionKernel:
             strides = in_args[0].strides
             reduce_axis = _sort_axis(reduce_axis, strides)
             out_axis = _sort_axis(out_axis, strides)
-            print("reduce_axis", reduce_axis, "out_axis", out_axis)
+            #print("reduce_axis", reduce_axis, "out_axis", out_axis)
 
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
         out_args = self._get_out_args(out_args, out_types, out_shape)
@@ -342,7 +342,7 @@ cdef class _AbstractReductionKernel:
 
         # decide to use CUB or not
         axis_permutes = reduce_axis + out_axis
-        print("reduce_axis", reduce_axis, "out_axis", out_axis, "axis_permutes", axis_permutes)
+        #print("reduce_axis", reduce_axis, "out_axis", out_axis, "axis_permutes", axis_permutes)
         use_cub = False
         if _can_use_cub_block_reduction():
             assert len(in_args) == 1  # TODO(leofang): remove or relax this
@@ -357,7 +357,8 @@ cdef class _AbstractReductionKernel:
 
             # check reduction axes, if not contiguous then switch back to the old behavior
             if axis_permutes_cub != tuple(range(in_args[0].ndim)):
-                print("give up CUB block reduction, falling back... (axis_permutes_cub =", axis_permutes_cub, ")")
+                #print("give up CUB block reduction, falling back... (axis_permutes_cub =", axis_permutes_cub, ")")
+                pass
             else:
                 axis_permutes = axis_permutes_cub
                 use_cub = True
@@ -421,7 +422,7 @@ cdef class _AbstractReductionKernel:
 
             if in_args[0].flags.f_contiguous:
                 ret = out_args[0] = _internal_asfortranarray(ret)
-                print(ret.flags)
+                #print(ret.flags)
 
             # Kernel arguments passed to the __global__ function.
             inout_args = (in_args + out_args

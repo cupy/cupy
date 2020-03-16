@@ -135,5 +135,5 @@ __global__ void ${name}(${params}) {
         input_expr=input_expr,
         output_expr=output_expr,
         preamble=preamble)  # used
-    print('\n', module_code, '\n')
+    #print('\n', module_code, '\n')
     return module_code
