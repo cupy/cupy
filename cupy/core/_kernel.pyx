@@ -115,11 +115,18 @@ cdef class _ArgInfo:
     # Holds metadata of an argument.
     # This class is immutable and used as a part of hash keys.
 
-    def __init__(self, _ArgKind arg_kind, type typ, object dtype, int ndim):
+    def __init__(
+            self,
+            _ArgKind arg_kind,
+            type typ,
+            object dtype,
+            int ndim,
+            bint c_contiguous):
         self.arg_kind = arg_kind
         self.type = typ
         self.dtype = dtype
         self.ndim = ndim
+        self.c_contiguous = c_contiguous
 
     @staticmethod
     cdef _ArgInfo from_arg(object arg):
@@ -134,16 +141,22 @@ cdef class _ArgInfo:
 
     @staticmethod
     cdef _ArgInfo from_ndarray(ndarray arg):
-        return _ArgInfo(ARG_KIND_NDARRAY, ndarray, arg.dtype.type, arg.ndim)
+        return _ArgInfo(
+            ARG_KIND_NDARRAY,
+            ndarray,
+            arg.dtype.type,
+            arg.ndim,
+            arg.flags.c_contiguous)
 
     @staticmethod
     cdef _ArgInfo from_scalar(_scalar.CScalar arg):
         dtype = arg.get_numpy_type()
-        return _ArgInfo(ARG_KIND_SCALAR, _scalar.CScalar, dtype, 0)
+        return _ArgInfo(ARG_KIND_SCALAR, _scalar.CScalar, dtype, 0, True)
 
     @staticmethod
     cdef _ArgInfo from_indexer(_carray.Indexer arg):
-        return _ArgInfo(ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim)
+        return _ArgInfo(
+            ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True)
 
     def __hash__(self):
         return hash((self.arg_kind, self.type, self.dtype, self.ndim))
@@ -176,7 +189,8 @@ cdef class _ArgInfo:
     cdef str get_c_type(self):
         # Returns the C type representation.
         if self.arg_kind == ARG_KIND_NDARRAY:
-            return 'CArray<%s, %d>' % (_get_typename(self.dtype), self.ndim)
+            return 'CArray<%s, %d, %d>' % (
+                _get_typename(self.dtype), self.ndim, self.c_contiguous)
         if self.arg_kind == ARG_KIND_SCALAR:
             return _get_typename(self.dtype)
         if self.arg_kind == ARG_KIND_INDEXER:

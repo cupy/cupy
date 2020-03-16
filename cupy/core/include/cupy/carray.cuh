@@ -173,14 +173,14 @@ __device__ int signbit(float16 x) {return x.signbit();}
          i < (n); \
          i += static_cast<ptrdiff_t>(blockDim.x) * gridDim.x)
 
-template <typename T, int _ndim>
+template <typename T, int _ndim, bool _c_contiguous>
 class CArray {
 public:
   static const int ndim = _ndim;
+  static const bool c_contiguous = _c_contiguous;
 private:
   T* data_;
   ptrdiff_t size_;
-  ptrdiff_t c_contiguous;
   ptrdiff_t shape_[ndim];
   ptrdiff_t strides_[ndim];
 
@@ -235,7 +235,7 @@ public:
 };
 
 template <typename T>
-class CArray<T, 0> {
+class CArray<T, 0, true> {
 private:
   T* data_;
   ptrdiff_t size_;
