@@ -2,6 +2,7 @@
 import string
 
 from cupy.core import _kernel
+from cupy.core import _reduction
 
 
 def _get_cub_reduction_function_code(
@@ -9,7 +10,6 @@ def _get_cub_reduction_function_code(
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_map, input_expr, output_expr, preamble, options):
-    # TODO: use void* instead of CArray for generalization
     # TODO: clean up
     module_code = '''
 #include <cub/block/block_reduce.cuh>
@@ -44,50 +44,24 @@ __global__ void ${name}(${params}) {
   // Shared memory
   __shared__ typename BlockReduceT::TempStorage temp_storage;
 
-//  const int in_ndim = _raw_in0.ndim;
-//  const int out_ndim = _raw_out0.ndim;
-//  const ptrdiff_t* in_shape = _raw_in0.shape();
-//  const ptrdiff_t* out_shape = _raw_out0.shape();
-//  const ptrdiff_t* in_strides = _raw_in0.strides();
-//  const ptrdiff_t* out_strides = _raw_out0.strides();
-//  if (_bid == 0) {
-//    printf("%i %i\\n(", in_ndim, out_ndim);
-//    for(int i = 0; i<in_ndim; i++) {
-//       printf("%d, ", in_shape[i]);
-//    }
-//    printf("\\b\\b)\\n(");
-//
-//    for(int i = 0; i<in_ndim; i++) {
-//       printf("%d, ", in_strides[i]);
-//    }
-//    printf("\\b\\b)\\n\\n(");
-//
-//    for(int i = 0; i<out_ndim; i++) {
-//       printf("%d, ", out_shape[i]);
-//    }
-//    printf("\\b\\b)\\n(");
-//
-//    for(int i = 0; i<out_ndim; i++) {
-//       printf("%d, ", out_strides[i]);
-//    }
-//    printf("\\b\\b)\\n");
-//  }
-
   // Declare reduction operation
   _reduction_op op;
 
   // input & output raw pointers
-  // TODO: relax the type requriments?
-  _type_reduce* _in0 = (_type_reduce*)&(_raw_in0[0]);
-  _type_reduce* _out0 = (_type_reduce*)&(_raw_out0[0]);
+  // TODO(leofang): auto-gen these
+  const type_in0_raw* _in0 = static_cast<const type_in0_raw*>(_raw_in0);
+  type_out0_raw* _out0 = static_cast<type_out0_raw*>(_raw_out0);
 
   // Per-thread tile data
   _type_reduce _sdata[ITEMS_PER_THREAD] = {${identity}};
 
   // each block handles the reduction of 1 segment
+  const type_in0_raw* segment_head = _in0 + blockIdx.x * SEGMENT_SIZE;  // TODO(leofang): auto-gen this
   _type_reduce aggregate = ${identity};
   size_t i = 0;  // tile head within the segment
   int tile_size = (blockDim.x * ITEMS_PER_THREAD < SEGMENT_SIZE ? blockDim.x * ITEMS_PER_THREAD : SEGMENT_SIZE); 
+
+  // loop over tiles within 1 segment
   for (i = 0; i < SEGMENT_SIZE; i += blockDim.x * ITEMS_PER_THREAD) {
       // TODO: try splitting the for loop into full tiles and partil tiles to utilize
       // LoadDirectBlockedVectorized? See, for example,
@@ -106,21 +80,23 @@ __global__ void ${name}(${params}) {
       //    printf("tile_size: %d\\n\\n", tile_size);
       //}
 
+      // load a tile
       // This is equivalent to cub::BlockLoad<_type_reduce, ${block_size}, ITEMS_PER_THREAD, BLOCK_LOAD_DIRECT>::Load
-      cub::LoadDirectBlocked(_tid, _in0 + blockIdx.x * SEGMENT_SIZE + i, _sdata, tile_size, ${identity});
+      cub::LoadDirectBlocked(_tid, segment_head + i, _sdata, tile_size, ${identity});
 
       //for (size_t i = 0; i<ITEMS_PER_THREAD; i++)
       //    printf("_bid: %d, local items: %f\\n", _bid, _sdata[i]); 
 '''
     else:  # pre_map_expr could be something like "in0 != type_in0_raw(0)"
         module_code += '''
+      // load a tile
       #pragma unroll
       for (int j = 0; j < ITEMS_PER_THREAD; j++) {
           _sdata[j] = ${identity};
 
           if ((_tid * ITEMS_PER_THREAD) + j < tile_size)
           {
-              const type_in0_raw in0 = *((type_in0_raw*)&(_raw_in0[0]) + blockIdx.x * SEGMENT_SIZE + i + _tid * ITEMS_PER_THREAD + j);
+              const type_in0_raw in0 = *(segment_head + i + _tid * ITEMS_PER_THREAD + j);
               _sdata[j] = static_cast<_type_reduce>(${pre_map_expr});
           }
       }
@@ -149,7 +125,8 @@ __global__ void ${name}(${params}) {
         segment_size=segment_size,  # used
         items_per_thread=items_per_thread,  # used
         reduce_type=reduce_type,  # used
-        params=_kernel._get_kernel_params(params, arginfos),  # used
+        #params=_kernel._get_kernel_params(params, arginfos),  # used
+        params=_reduction._get_cub_kernel_params(params, arginfos),  # used
         identity=identity,  # used
         reduce_expr=reduce_expr,  # used
         pre_map_expr=pre_map_expr,  # used

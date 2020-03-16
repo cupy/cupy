@@ -11,7 +11,7 @@ from cupy.core._kernel cimport _get_out_args
 from cupy.core._kernel cimport _get_out_args_with_params
 from cupy.core._kernel cimport _preprocess_args
 from cupy.core._kernel cimport _reduce_dims
-from cupy.core._kernel cimport ParameterInfo
+from cupy.core._kernel cimport ParameterInfo, _ArgInfo
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport _scalar
 from cupy.core._scalar import get_typename as _get_typename
@@ -143,6 +143,18 @@ cpdef function.Function _create_cub_reduction_function(
     module = compile_with_cache(module_code, options, arch=None, cachd_dir=None,
         prepend_cupy_headers=True, backend='nvcc')
     return module.get_function(name)
+
+
+cpdef str _get_cub_kernel_params(tuple params, tuple arginfos):
+    cdef ParameterInfo p
+    cdef _ArgInfo arginfo
+    cdef lst = []
+    assert len(params) == len(arginfos)
+    for p, arginfo in zip(params, arginfos):
+        lst.append('{} {}'.format(
+            'const void*' if p.is_const else 'void*',
+            arginfo.get_c_var_name(p)))
+    return ', '.join(lst)
 
 
 cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
@@ -555,27 +567,31 @@ def _SimpleReductionKernel_get_cached_function(
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, input_expr, output_expr, _preamble,
         options, cub_params):
-    print("name:",          name,          type(name), "\n")           
-    print("block_size:",    block_size,    type(block_size), "\n")     
-    print("reduce_type:",   reduce_type,   type(reduce_type), "\n")   
-    print("params:",        params,        type(params), "\n")        
-    print("arginfos:",      arginfos,      type(arginfos), "\n")       
-    print("identity:",      identity,      type(identity), "\n")       
 
-    print("map_expr:",      map_expr,      type(map_expr), "\n")          
-    print("reduce_expr:",   reduce_expr,   type(reduce_expr), "\n")  
-    print("post_map_expr:", post_map_expr, type(post_map_expr), "\n") 
+    DEBUG = False
+    if DEBUG:
+        print("name:",          name,          type(name), "\n")           
+        print("block_size:",    block_size,    type(block_size), "\n")     
+        print("reduce_type:",   reduce_type,   type(reduce_type), "\n")   
+        print("params:",        params,        type(params), "\n")        
+        print("arginfos:",      arginfos,      type(arginfos), "\n")       
+        print("identity:",      identity,      type(identity), "\n")       
 
-    print("type_map:",      type_map,      type(type_map), "\n")       
-    print("input_expr:",    input_expr,    type(input_expr), "\n")     
-    print("output_expr:",   output_expr,   type(output_expr), "\n")    
-    print("_preamble:",     _preamble,     type(_preamble), "\n")      
-    print("options:",       options,       type(options), "\n")        
+        print("map_expr:",      map_expr,      type(map_expr), "\n")          
+        print("reduce_expr:",   reduce_expr,   type(reduce_expr), "\n")  
+        print("post_map_expr:", post_map_expr, type(post_map_expr), "\n") 
 
-    temp =  _kernel._get_kernel_params(params, arginfos)
-    temp2 = type_map.get_typedef_code()
-    print("final params:",  temp,          type(temp), "\n")
-    print("type_preamble:", temp2,         type(temp2), "\n")
+        print("type_map:",      type_map,      type(type_map), "\n")       
+        print("input_expr:",    input_expr,    type(input_expr), "\n")     
+        print("output_expr:",   output_expr,   type(output_expr), "\n")    
+        print("_preamble:",     _preamble,     type(_preamble), "\n")      
+        print("options:",       options,       type(options), "\n")        
+
+        temp =  _kernel._get_kernel_params(params, arginfos)
+        temp2 = type_map.get_typedef_code()
+        print("final params:",  temp,          type(temp), "\n")
+        print("modified params:", _get_cub_kernel_params(params, arginfos))
+        print("type_preamble:", temp2,         type(temp2), "\n")
 
     use_cub, contiguous_size, items_per_thread = cub_params
     if not use_cub:
@@ -584,6 +600,8 @@ def _SimpleReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr,
             type_map, input_expr, output_expr, _preamble, options)
     else:
+        # TODO(leofang): modify input_expr & output_expr to make them useful
+        # TODO(leofang): test bundled CUB headers
         options = options + ('-I/home/leofang/sources/cub-1.8.0',)
         return _create_cub_reduction_function(
             name, block_size, contiguous_size, items_per_thread,
@@ -747,8 +765,8 @@ def _ReductionKernel_get_cached_function(
         nin, nout, params, arginfos, _kernel._TypeMap type_map,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
         post_map_expr, preamble, options):
-    cdef _kernel.ParameterInfo p
-    cdef _kernel._ArgInfo arginfo
+    cdef ParameterInfo p
+    cdef _ArgInfo arginfo
     in_arrays = [
         p for p, arginfo in zip(params[:nin], arginfos[:nin])
         if not p.raw and arginfo.is_ndarray()]
