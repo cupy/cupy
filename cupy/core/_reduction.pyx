@@ -108,19 +108,6 @@ extern "C" __global__ void ${name}(${params}) {
     return module.get_function(name)
 
 
-cpdef bint _can_use_cub_block_reduction():
-    from cupy.cuda import _environment
-    from cupy import core
-
-    if not core.cub_block_reduction_enabled:
-        return 0
-    if _environment.get_nvcc_path() is None:
-        # rare event (mainly for conda-forge users): nvcc is not found!
-        return 0
-    # TODO(leofang): do I miss other conditions here?
-    return 1
-
-
 cpdef function.Function _create_cub_reduction_function(
         name, block_size, items_per_thread,
         reduce_type, params, arginfos, identity,
@@ -143,6 +130,44 @@ cpdef function.Function _create_cub_reduction_function(
     module = compile_with_cache(module_code, options, arch=None, cachd_dir=None,
         prepend_cupy_headers=True, backend='nvcc')
     return module.get_function(name)
+
+
+cdef tuple _can_use_cub_block_reduction(
+        list in_args, list out_args, tuple reduce_axis, tuple out_axis):
+    '''
+    If CUB BlockReduce can be used, this function returns the axes,
+    otherwise returns None.
+    '''
+    from cupy.cuda import _environment
+    from cupy import core
+
+    cdef tuple axis_permutes_cub
+
+    # first check the flag settable at runtime from outside
+    if not core.cub_block_reduction_enabled:
+        return None
+
+    # rare event (mainly for conda-forge users): nvcc is not found!
+    if _environment.get_nvcc_path() is None:
+        return None
+
+    # we currently support only _SimpleReductionKernel
+    if len(in_args) != 1 or len(out_args) != 1:
+        return None
+
+    # check reduction axes, if not contiguous then fall back to old kernel
+    reduce_axis = tuple(sorted(reduce_axis))
+    out_axis = tuple(sorted(out_axis))
+    if in_args[0].flags.f_contiguous:
+        axis_permutes_cub = reduce_axis + out_axis
+    elif in_args[0].flags.c_contiguous:
+        axis_permutes_cub = out_axis + reduce_axis
+    else:
+        axis_permutes_cub = None
+    if axis_permutes_cub == tuple(range(in_args[0].ndim)):
+        return axis_permutes_cub
+    else:
+        return None
 
 
 # similar to cupy.core._kernel._get_kernel_params()
@@ -290,7 +315,7 @@ cdef class _AbstractReductionKernel:
             list in_args, list out_args,
             tuple a_shape, axis, dtype,
             bint keepdims, bint reduce_dims,
-            stream):
+            stream, bint try_use_cub=False):
         cdef tuple reduce_axis, out_axis, axis_permutes
         cdef tuple axis_permutes_cub, cub_params
         cdef tuple params
@@ -341,27 +366,15 @@ cdef class _AbstractReductionKernel:
         # TODO: need two code paths for use_cub and the old behavior
 
         # decide to use CUB or not
+        use_cub = False
         axis_permutes = reduce_axis + out_axis
         #print("reduce_axis", reduce_axis, "out_axis", out_axis, "axis_permutes", axis_permutes)
-        use_cub = False
-        if _can_use_cub_block_reduction():
-            assert len(in_args) == 1  # TODO(leofang): remove or relax this
-            reduce_axis = tuple(sorted(reduce_axis))
-            out_axis = tuple(sorted(out_axis))
-            if in_args[0].flags.f_contiguous:
-                axis_permutes_cub = reduce_axis + out_axis
-            elif in_args[0].flags.c_contiguous:
-                axis_permutes_cub = out_axis + reduce_axis
-            else:
-                axis_permutes_cub = None
-
-            # check reduction axes, if not contiguous then switch back to the old behavior
-            if axis_permutes_cub != tuple(range(in_args[0].ndim)):
-                #print("give up CUB block reduction, falling back... (axis_permutes_cub =", axis_permutes_cub, ")")
-                pass
-            else:
-                axis_permutes = axis_permutes_cub
+        if try_use_cub:
+            axis_permutes_cub = _can_use_cub_block_reduction(
+                in_args, out_args, reduce_axis, out_axis)
+            if axis_permutes_cub is not None:
                 use_cub = True
+                axis_permutes = axis_permutes_cub
 
         in_shape = _set_permuted_args(in_args, axis_permutes,
                                       a_shape, self.in_params)
@@ -527,7 +540,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         reduce_dims = True
         return self._call(
             in_args, out_args,
-            arr.shape, axis, dtype, keepdims, reduce_dims, None)
+            arr.shape, axis, dtype, keepdims, reduce_dims, None, True)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
@@ -735,7 +748,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         return self._call(
             in_args, out_args,
             broad_shape, axis, None,
-            keepdims, self.reduce_dims, stream)
+            keepdims, self.reduce_dims, stream, False)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):

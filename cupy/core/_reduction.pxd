@@ -17,7 +17,7 @@ cdef class _AbstractReductionKernel:
         list in_args, list out_args,
         tuple a_shape, axis, dtype,
         bint keepdims, bint reduce_dims,
-        stream)
+        stream, bint try_use_cub=*)
 
     cdef tuple _get_expressions_and_types(
         self, list in_args, list out_args, dtype)
