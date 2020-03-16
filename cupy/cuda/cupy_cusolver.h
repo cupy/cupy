@@ -508,35 +508,35 @@ cusolverStatus_t cusolverDnZgesvdj(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnSgesvdaStrideBatched_bufferSize(...) {
+cusolverStatus_t cusolverDnSgesvdaStridedBatched_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnDgesvdaStrideBatched_bufferSize(...) {
+cusolverStatus_t cusolverDnDgesvdaStridedBatched_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnCgesvdaStrideBatched_bufferSize(...) {
+cusolverStatus_t cusolverDnCgesvdaStridedBatched_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnZgesvdaStrideBatched_bufferSize(...) {
+cusolverStatus_t cusolverDnZgesvdaStridedBatched_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnSgesvdaStrideBatched(...) {
+cusolverStatus_t cusolverDnSgesvdaStridedBatched(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnDgesvdaStrideBatched(...) {
+cusolverStatus_t cusolverDnDgesvdaStridedBatched(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnCgesvdaStrideBatched(...) {
+cusolverStatus_t cusolverDnCgesvdaStridedBatched(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnZgesvdaStrideBatched(...) {
+cusolverStatus_t cusolverDnZgesvdaStridedBatched(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
