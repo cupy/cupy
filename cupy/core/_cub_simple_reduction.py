@@ -17,8 +17,8 @@ def _get_cub_reduction_function_code(
     post_map_expr = post_map_expr.replace('_out_ind.size()', '1.0')
 
     module_code = '''
-#include <cub/block/block_reduce.cuh>
-#include <cub/block/block_load.cuh>
+#include <cupy/cub/cub/block/block_reduce.cuh>
+#include <cupy/cub/cub/block/block_load.cuh>
 
 ${type_preamble}
 ${preamble}

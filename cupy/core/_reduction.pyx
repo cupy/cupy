@@ -641,8 +641,6 @@ def _SimpleReductionKernel_get_cached_function(
             type_map, input_expr, output_expr, _preamble, options)
     else:
         # TODO(leofang): modify input_expr & output_expr to make them useful
-        # TODO(leofang): test bundled CUB headers
-        options = options + ('-I/home/leofang/sources/cub-1.8.0',)
         return _create_cub_reduction_function(
             name, block_size, items_per_thread,
             reduce_type, params, arginfos, identity,
