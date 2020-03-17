@@ -10,7 +10,7 @@
 #include <cusolverSp.h>
 
 #if CUDA_VERSION < 9000
-// Data types and functions addes in CUDA 9.0
+// Data types and functions added in CUDA 9.0
 typedef void* gesvdjInfo_t;
 
 cusolverStatus_t cusolverDnCreateGesvdjInfo(...) {
@@ -75,7 +75,7 @@ cusolverStatus_t cusolverDnZgesvdj(...) {
 #endif // #if CUDA_VERSION < 9000
 
 #if CUDA_VERSION < 10010
-// Functions addes in CUDA 10.1
+// Functions added in CUDA 10.1
 cusolverStatus_t cusolverDnSgesvdaStridedBatched_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
