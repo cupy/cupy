@@ -11,6 +11,11 @@ def _get_cub_reduction_function_code(
         pre_map_expr, reduce_expr, post_map_expr,
         type_map, input_expr, output_expr, preamble, options):
     # TODO: clean up
+
+    # For mean()
+    post_map_expr = post_map_expr.replace('_in_ind.size()', '_segment_size')
+    post_map_expr = post_map_expr.replace('_out_ind.size()', '1.0')
+
     module_code = '''
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
