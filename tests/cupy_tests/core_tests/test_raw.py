@@ -582,6 +582,7 @@ class TestRaw(unittest.TestCase):
         x1, x2, y = self._helper(ker_sum, cupy.float32)
         assert cupy.allclose(y, x1 + x2)
 
+
 _test_grid_sync = r'''
 #include <cooperative_groups.h>
 
