@@ -691,23 +691,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         if type(major) is slice or type(minor) is slice:
             raise ValueError("Unsupported assignment")
-        else:
-            if type(major) is int:
-                major = [major]
-            if type(minor) is int:
-                minor = [minor]
-            # validate boundaries
-            if max(major) >= major_size or min(major) < - major_size \
-                    or max(minor) >= minor_size or min(minor) < - minor_size:
-                raise IndexError('index out of bounds')
-            # flatten rows, cols, values lists
-            major = cupy.array(major, dtype=self.indices.dtype,
-                               copy=False, ndmin=1).ravel()
-            minor = cupy.array(minor, dtype=self.indices.dtype,
-                               copy=False, ndmin=1).ravel()
-            values = cupy.array(values, dtype=self.dtype,
-                                copy=False, ndmin=1).ravel()
-            self._set_items(major, minor, values, major_size, minor_size)
+        if type(major) is int:
+            major = [major]
+        if type(minor) is int:
+            minor = [minor]
+        # validate boundaries
+        if max(major) >= major_size or min(major) < - major_size \
+                or max(minor) >= minor_size or min(minor) < - minor_size:
+            raise IndexError('index out of bounds')
+        # flatten rows, cols, values lists
+        major = cupy.array(major, dtype=self.indices.dtype,
+                           copy=False, ndmin=1).ravel()
+        minor = cupy.array(minor, dtype=self.indices.dtype,
+                           copy=False, ndmin=1).ravel()
+        values = cupy.array(values, dtype=self.dtype,
+                            copy=False, ndmin=1).ravel()
+        self._set_items(major, minor, values, major_size, minor_size)
 
     def _set_items(self, major, minor, values, major_size, minor_size):
         """
@@ -870,15 +869,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                resolved before repeating the operation
         """
         repeat = 0
+        threads = 1024 if samples > 1024 else samples
         if self._has_canonical_format and \
                 samples > self.indptr[major_size] / 10:
             self._data_offsets_canonical(
-                (samples,), (samples,),
+                (int(cupy.ceil(samples / threads)),), (threads,),
                 (major_size, minor_size, self.indptr, self.indices,
                  offsets, major, minor))
         else:
             self._data_offsets(
-                (samples,), (samples,),
+                (int(cupy.ceil(samples/threads)),), (threads,),
                 (major_size, minor_size, self.indptr, self.indices,
                  offsets, major, minor, repeat))
         return repeat
