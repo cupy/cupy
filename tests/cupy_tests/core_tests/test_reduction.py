@@ -12,7 +12,7 @@ class SimpleReductionFunction(unittest.TestCase):
 
     def setUp(self):
         self.my_int8_sum = core.create_reduction_func(
-            'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None))
+            'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None), 0)
 
     @testing.numpy_cupy_allclose()
     def check_int8_sum(self, shape, xp, axis=None, keepdims=False):
