@@ -4,10 +4,10 @@ cdef class RawKernel:
         readonly str code
         readonly str name
         readonly tuple options
-        object _kernel
         readonly str backend
-        bint translate_cucomplex
         readonly bint enable_cooperative_groups
+        bint translate_cucomplex
+        dict kernels
 
 
 cdef class RawModule:
@@ -16,8 +16,11 @@ cdef class RawModule:
         readonly str code
         readonly str cubin_path
         readonly tuple options
-        dict kernels
         readonly str backend
-        object module
-        bint translate_cucomplex
         readonly bint enable_cooperative_groups
+        bint translate_cucomplex
+        dict kernels
+        dict modules
+
+        _load_from_path(self, str)
+        _compile_from_source(self, str, tuple, str, bint, bint)
