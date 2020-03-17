@@ -21,6 +21,7 @@ Memory management
    cupy.get_default_memory_pool
    cupy.get_default_pinned_memory_pool
    cupy.cuda.Memory
+   cupy.cuda.UnownedMemory
    cupy.cuda.PinnedMemory
    cupy.cuda.MemoryPointer
    cupy.cuda.PinnedMemoryPointer
