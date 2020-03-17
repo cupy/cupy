@@ -27,6 +27,7 @@ cdef class _ArgInfo:
         readonly type type
         readonly object dtype
         readonly int ndim
+        readonly bint c_contiguous
 
     @staticmethod
     cdef _ArgInfo from_arg(object arg)
