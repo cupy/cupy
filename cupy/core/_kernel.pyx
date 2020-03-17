@@ -159,7 +159,8 @@ cdef class _ArgInfo:
             ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True)
 
     def __hash__(self):
-        return hash((self.arg_kind, self.type, self.dtype, self.ndim))
+        return hash((self.arg_kind, self.type, self.dtype, self.ndim,
+                     self.c_contiguous))
 
     def __eq__(self, other):
         cdef _ArgInfo oth
@@ -170,7 +171,8 @@ cdef class _ArgInfo:
             self.arg_kind == oth.arg_kind
             and self.type is oth.type
             and self.dtype == oth.dtype
-            and self.ndim == oth.ndim)
+            and self.ndim == oth.ndim
+            and self.c_contiguous == oth.c_contiguous)
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim):
         # Returns an ndarray _ArgInfo with altered ndim.
@@ -178,7 +180,7 @@ cdef class _ArgInfo:
         assert self.arg_kind == ARG_KIND_NDARRAY
         if self.ndim == ndim:
             return self
-        return _ArgInfo(ARG_KIND_NDARRAY, ndarray, self.dtype, ndim)
+        return _ArgInfo(ARG_KIND_NDARRAY, ndarray, self.dtype, ndim, False)
 
     cdef bint is_ndarray(self):
         return self.arg_kind == ARG_KIND_NDARRAY

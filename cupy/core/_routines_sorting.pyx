@@ -266,7 +266,7 @@ def _partition_kernel(dtype):
     dtype = _get_typename(dtype)
     source = string.Template('''
     template<typename T>
-    __device__ void bitonic_sort_step(CArray<T, 1> a,
+    __device__ void bitonic_sort_step(CArray<T, 1, true> a,
             ptrdiff_t x, ptrdiff_t y, int i, ptrdiff_t s, ptrdiff_t w) {
         for (ptrdiff_t j = i; j < (y - x) / 2; j += 32) {
             ptrdiff_t n = j + (j & -w);
@@ -281,7 +281,7 @@ def _partition_kernel(dtype):
     // Sort a[x:y].
     template<typename T>
     __device__ void bitonic_sort(
-            CArray<T, 1> a, ptrdiff_t x, ptrdiff_t y, int i) {
+            CArray<T, 1, true> a, ptrdiff_t x, ptrdiff_t y, int i) {
         for (ptrdiff_t s = 2; s <= y - x; s *= 2) {
             for (ptrdiff_t w = s / 2; w >= 1; w /= 2) {
                 bitonic_sort_step<T>(a, x, y, i, s, w);
@@ -292,7 +292,8 @@ def _partition_kernel(dtype):
     // Merge first k elements and the next 32 times t elements.
     template<typename T>
     __device__ void merge(
-            CArray<T, 1> a, int k, int i, ptrdiff_t x, ptrdiff_t z, int u) {
+            CArray<T, 1, true> a,
+            int k, int i, ptrdiff_t x, ptrdiff_t z, int u) {
         for (int s = i; s < u; s += 32) {
             if (a[x + k - s - 1] > a[z + s]) {
                 T tmp = a[x + k - s - 1];
@@ -313,7 +314,8 @@ def _partition_kernel(dtype):
     // the warp size. The first k elements are always sorted and the next 32
     // times t elements stored values that have possibilities to be selected.
     __global__ void ${name}(
-            CArray<${dtype}, 1> a, int k, ptrdiff_t n, int t, ptrdiff_t sz) {
+            CArray<${dtype}, 1, true> a,
+            int k, ptrdiff_t n, int t, ptrdiff_t sz) {
 
         // This thread handles a[z:m].
         ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
@@ -358,7 +360,7 @@ def _partition_kernel(dtype):
     }
 
     __global__ void ${merge_kernel}(
-            CArray<${dtype}, 1> a, int k, ptrdiff_t n, int sz, int s) {
+            CArray<${dtype}, 1, true> a, int k, ptrdiff_t n, int sz, int s) {
         ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
             + threadIdx.x;
         ptrdiff_t z = i / 32 * 2 * s * n / sz;
