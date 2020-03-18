@@ -28,6 +28,10 @@ class TestRepeat(unittest.TestCase):
                 assert (perf.cpu_times == 1.4).all()
                 assert (perf.gpu_times == 2.5).all()
 
+    def test_repeat_kwargs(self):
+        x = cupy.random.rand(5)
+        cupyx.time.repeat(cupy.nonzero, kwargs={'a': x}, n=1, n_warmup=1)
+
 
 class TestPerfCaseResult(unittest.TestCase):
     def test_show_gpu(self):
@@ -38,8 +42,10 @@ class TestPerfCaseResult(unittest.TestCase):
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times)
         expected = (
             'test_name_xxx       :'
-            '     5.620 us   +/- 0.943 (min:    4.200 / max:    7.100) us '
-            '     6.600 us   +/- 2.344 (min:    3.800 / max:    9.600) us'
+            '    CPU:    5.620 us   +/- 0.943 '
+            '(min:    4.200 / max:    7.100) us '
+            '    GPU:    6.600 us   +/- 2.344 '
+            '(min:    3.800 / max:    9.600) us'
         )
         assert str(perf) == expected
 
@@ -51,16 +57,18 @@ class TestPerfCaseResult(unittest.TestCase):
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times)
         expected = (
             'test_name_xxx       :'
-            '     5.620 us   +/- 0.943 (min:    4.200 / max:    7.100) us'
+            '    CPU:    5.620 us   +/- 0.943 '
+            '(min:    4.200 / max:    7.100) us'
         )
         assert perf.to_str() == expected
 
     def test_single_show_gpu(self):
         times = numpy.array([[5.4], [6.4]]) * 1e-6
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times)
-        assert str(perf) == 'test_name_xxx       :     5.400 us      6.400 us'
+        assert str(perf) == ('test_name_xxx       :    CPU:    5.400 us '
+                             '    GPU:    6.400 us')
 
     def test_single_no_show_gpu(self):
         times = numpy.array([[5.4], [6.4]]) * 1e-6
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times)
-        assert perf.to_str() == 'test_name_xxx       :     5.400 us'
+        assert perf.to_str() == 'test_name_xxx       :    CPU:    5.400 us'

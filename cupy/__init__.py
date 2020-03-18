@@ -441,6 +441,7 @@ from cupy.indexing.indexing import choose  # NOQA
 from cupy.indexing.indexing import compress  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
 from cupy.indexing.indexing import extract  # NOQA
+from cupy.indexing.indexing import select  # NOQA
 from cupy.indexing.indexing import take  # NOQA
 from cupy.indexing.indexing import take_along_axis  # NOQA
 
@@ -487,6 +488,7 @@ from cupy.linalg.norms import trace  # NOQA
 # Logic functions
 # -----------------------------------------------------------------------------
 from cupy.logic.comparison import allclose  # NOQA
+from cupy.logic.comparison import array_equal  # NOQA
 from cupy.logic.comparison import isclose  # NOQA
 
 from cupy.logic.content import isfinite  # NOQA
@@ -645,6 +647,7 @@ from cupy._sorting.count import count_nonzero  # NOQA
 
 from cupy._sorting.search import argmax  # NOQA
 from cupy._sorting.search import argmin  # NOQA
+from cupy._sorting.search import argwhere  # NOQA
 from cupy._sorting.search import flatnonzero  # NOQA
 from cupy._sorting.search import nanargmax  # NOQA
 from cupy._sorting.search import nanargmin  # NOQA

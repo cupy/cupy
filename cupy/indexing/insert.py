@@ -71,8 +71,8 @@ def put(a, ind, v, mode='wrap'):
 
 
 _fill_diagonal_kernel = core.ElementwiseKernel(
-    'int64 start, int64 stop, int64 step, raw T val', 'raw T a',
-    'a[start + i * step] = val[i % val.size()];',
+    'int64 start, int64 step, raw T val', 'raw T a',
+    'a[start + i * step] = val[i % val.size()]',
     'cupy_fill_diagonal')
 
 
@@ -117,4 +117,4 @@ def fill_diagonal(a, val, wrap=False):
     val = cupy.asarray(val, dtype=a.dtype)
 
     size = end // step + 1
-    _fill_diagonal_kernel(0, end, step, val, a, size=size)
+    _fill_diagonal_kernel(0, step, val, a, size=size)

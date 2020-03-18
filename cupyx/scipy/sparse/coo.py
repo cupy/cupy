@@ -103,8 +103,7 @@ class coo_matrix(sparse_data._data_matrix):
             has_canonical_format = False
 
         else:
-            raise ValueError(
-                'Only (data, (row, col)) format is supported')
+            raise TypeError('invalid input format')
 
         if dtype is None:
             dtype = data.dtype
@@ -216,7 +215,7 @@ class coo_matrix(sparse_data._data_matrix):
         if self.data.size == 0:
             self._has_canonical_format = True
             return
-        keys = cupy.stack([self.row, self.col])
+        keys = cupy.stack([self.col, self.row])
         order = cupy.lexsort(keys)
         src_data = self.data[order]
         src_row = self.row[order]

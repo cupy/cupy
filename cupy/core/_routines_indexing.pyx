@@ -49,6 +49,16 @@ cdef _ndarray_setitem(ndarray self, slices, value):
 
 
 cdef tuple _ndarray_nonzero(ndarray self):
+    cdef int ndim
+    cdef ndarray dst = _ndarray_argwhere(self)
+    ndim = self.ndim
+    if ndim >= 1:
+        return tuple([dst[:, i] for i in range(ndim)])
+    else:
+        return ndarray((0,), dtype=numpy.int64),
+
+
+cpdef ndarray _ndarray_argwhere(ndarray self):
     cdef Py_ssize_t count_nonzero
     cdef int ndim
     dtype = numpy.int64
@@ -62,18 +72,18 @@ cdef tuple _ndarray_nonzero(ndarray self):
         count_nonzero = int(scan_index[-1])  # synchronize!
     ndim = max(<int>self._shape.size(), 1)
     if count_nonzero == 0:
-        return (ndarray((0,), dtype=dtype),) * ndim
+        return ndarray((0, ndim), dtype=dtype)
 
     if ndim <= 1:
-        dst = ndarray((count_nonzero,), dtype=dtype)
+        dst = ndarray((count_nonzero, 1), dtype=dtype)
         _nonzero_kernel_1d(nonzero, scan_index, dst)
-        return dst,
+        return dst
     else:
         nonzero.shape = self.shape
         scan_index.shape = self.shape
-        dst = ndarray((ndim, count_nonzero), dtype=dtype)
+        dst = ndarray((count_nonzero, ndim), dtype=dtype)
         _nonzero_kernel(nonzero, scan_index, dst)
-        return tuple([dst[i] for i in range(ndim)])
+        return dst
 
 
 cdef _ndarray_scatter_add(ndarray self, slices, value):
@@ -361,7 +371,7 @@ _nonzero_kernel = ElementwiseKernel(
     '''
     if (src != 0){
         for(int j = 0; j < _ind.ndim; j++){
-            ptrdiff_t ind[] = {j, index - 1};
+            ptrdiff_t ind[] = {index - 1, j};
             dst[ind] = _ind.get()[j];
         }
     }''',

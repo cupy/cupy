@@ -469,8 +469,10 @@ struct _cub_reduce_prod {
         int num_items, cudaStream_t s)
     {
         _multiply product_op;
+        // the init value is cast from 1.0f because on host __half can only be
+        // initialized by float or double; static_cast<__half>(1) = 0 on host.
         DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<T*>(y), num_items, product_op, static_cast<T>(1), s);
+            static_cast<T*>(y), num_items, product_op, static_cast<T>(1.0f), s);
     }
 };
 
@@ -480,11 +482,13 @@ struct _cub_segmented_reduce_prod {
         int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
     {
         _multiply product_op;
+        // the init value is cast from 1.0f because on host __half can only be
+        // initialized by float or double; static_cast<__half>(1) = 0 on host.
         DeviceSegmentedReduce::Reduce(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
             static_cast<int*>(offset_start),
             static_cast<int*>(offset_end),
-            product_op, static_cast<T>(1), s);
+            product_op, static_cast<T>(1.0f), s);
     }
 };
 

@@ -1,3 +1,4 @@
+import pickle
 import unittest
 
 
@@ -102,6 +103,14 @@ class TestDiaMatrix(unittest.TestCase):
         self.assertTrue(m.flags.c_contiguous)
         cupy.testing.assert_allclose(m, expect)
 
+    def test_pickle_roundtrip(self):
+        s = _make(cupy, sparse, self.dtype)
+        s2 = pickle.loads(pickle.dumps(s))
+        assert s.shape == s2.shape
+        assert s.dtype == s2.dtype
+        if scipy_available:
+            assert (s.get() != s2.get()).count_nonzero() == 0
+
     def test_diagonal(self):
         testing.assert_array_equal(
             self.m.diagonal(-2), cupy.array([0], self.dtype))
@@ -137,6 +146,18 @@ class TestDiaMatrixInit(unittest.TestCase):
             with pytest.raises(ValueError):
                 sp.dia_matrix(
                     (self.data(xp), self.offsets(xp)), shape=None)
+
+    def test_scipy_sparse(self):
+        s_h = scipy.sparse.dia_matrix((self.data(numpy), self.offsets(numpy)),
+                                      shape=self.shape)
+        s_d = sparse.dia_matrix(s_h)
+        s_h2 = s_d.get()
+        assert s_h.shape == s_d.shape
+        assert s_h.dtype == s_d.dtype
+        assert s_h.shape == s_h2.shape
+        assert s_h.dtype == s_h2.dtype
+        assert (s_h.data == s_h2.data).all()
+        assert (s_h.offsets == s_h2.offsets).all()
 
     @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
     def test_intlike_shape(self, xp, sp):
