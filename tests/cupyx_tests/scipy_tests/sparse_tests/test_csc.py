@@ -1,6 +1,6 @@
 import unittest
-import pytest
 import numpy
+import pytest
 try:
     import scipy.sparse
     scipy_available = True
@@ -1374,23 +1374,35 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestCsrMatrixSetitem(unittest.TestCase):
 
-    @testing.numpy_cupy_equal(sp_name='sp')
-    def test_setitem_int_int(self, xp, sp):
-        matrix = _make(xp, sp, self.dtype)
-        matrix[0, 0] = 10
-        assert matrix[0, 0] == 10
+    def test_setitem_int_int(self):
+        m1 = _make(numpy, scipy.sparse, self.dtype)
+        m2 = _make(cupy, sparse, self.dtype)
+        m1[0, 0] = 10
+        m2[0, 0] = 10
+        cupy.testing.assert_array_equal(m1.data, m2.data)
+        cupy.testing.assert_array_equal(m1.indices, m2.indices)
+        cupy.testing.assert_array_equal(m1.indptr, m2.indptr)
+        assert m1.shape == m2.shape
 
-    @testing.numpy_cupy_equal(sp_name='sp')
-    def test_setitem_complex(self, xp, sp):
-        matrix = _make_complex(xp, sp, self.dtype)
-        matrix[1, 2] = 10 + 2j
-        assert matrix[0, 0] == 10 + 2j
+    def test_setitem_complex(self):
+        m1 = _make_complex(numpy, scipy.sparse, numpy.complex64)
+        m2 = _make_complex(cupy, sparse, numpy.complex64)
+        m1[1, 2] = 10 + 2j
+        m2[1, 2] = 10 + 2j
+        cupy.testing.assert_array_equal(m1.data, m2.data)
+        cupy.testing.assert_array_equal(m1.indices, m2.indices)
+        cupy.testing.assert_array_equal(m1.indptr, m2.indptr)
+        assert m1.shape == m2.shape
 
-    @testing.numpy_cupy_equal(sp_name='sp')
-    def test_setitem_negative_index(self, xp, sp):
-        matrix = _make(xp, sp, self.dtype)
-        matrix[-1, -2] = 3
-        assert matrix[-1, -2] == 3
+    def test_setitem_negative_index(self):
+        m1 = _make(numpy, scipy.sparse, self.dtype)
+        m2 = _make(cupy, sparse, self.dtype)
+        m1[[0, -1], [0, -2]] = [9, 3]
+        m2[[0, -1], [0, -2]] = [9, 3]
+        cupy.testing.assert_array_equal(m1.data, m2.data)
+        cupy.testing.assert_array_equal(m1.indices, m2.indices)
+        cupy.testing.assert_array_equal(m1.indptr, m2.indptr)
+        assert m1.shape == m2.shape
 
     def test_setitem_int_small_row(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
@@ -1416,21 +1428,27 @@ class TestCsrMatrixSetitem(unittest.TestCase):
             with pytest.raises(IndexError):
                 matrix[0, 4] = 1
 
-    @testing.numpy_cupy_equal(sp_name='sp')
-    def test_set_item_list(self, xp, sp):
-        matrix = _make(xp, sp, self.dtype)
-        matrix[[1, 2, 3, 0, 1, 3], [2, 1, 2, 0, 0, 1]] = [5, 0, 12, 5, 2, 9]
-        assert matrix[[1, 2, 3, 0, 1, 3],
-                      [2, 1, 2, 0, 0, 1]] == [5, 0, 12, 5, 2, 9]
+    def test_set_item_list(self):
+        m1 = _make(numpy, scipy.sparse, self.dtype)
+        m2 = _make(cupy, sparse, self.dtype)
+        m1[[2, 1, 2, 0, 0, 1], [1, 2, 3, 0, 1, 3]] = [5, 1, 12, 5, 2, 9]
+        m2[[2, 1, 2, 0, 0, 1], [1, 2, 3, 0, 1, 3]] = [5, 1, 12, 5, 2, 9]
+        cupy.testing.assert_array_equal(m1.data, m2.data)
+        cupy.testing.assert_array_equal(m1.indices, m2.indices)
+        cupy.testing.assert_array_equal(m1.indptr, m2.indptr)
+        assert m1.shape == m2.shape
 
-    @testing.numpy_cupy_equal(sp_name='sp')
-    def test_setitem_list(self, xp, sp):
-        matrix = _make_complex(xp, sp, self.dtype)
-        matrix[[1, 2, 3], [2, 1, 2]] = [- 2j, 11, 4 + 5j]
-        assert matrix[[1, 2, 3], [2, 1, 2]] == [- 2j, 11, 4 + 5j]
+    def test_set_item_list_complex(self):
+        m1 = _make_complex(numpy, scipy.sparse, numpy.complex64)
+        m2 = _make_complex(cupy, sparse, numpy.complex64)
+        m1[[1, 2, 0], [2, 1, 2]] = [- 2j, 11, 4 + 5j]
+        m2[[1, 2, 0], [2, 1, 2]] = [- 2j, 11, 4 + 5j]
+        cupy.testing.assert_array_equal(m1.data, m2.data)
+        cupy.testing.assert_array_equal(m1.indices, m2.indices)
+        cupy.testing.assert_array_equal(m1.indptr, m2.indptr)
+        assert m1.shape == m2.shape
 
-    @testing.numpy_cupy_equal(sp_name='sp')
-    def test_set_item_zero(self, xp, sp):
-        matrix = _make(xp, sp, self.dtype)
+    def test_set_item_zero(self):
+        matrix = _make(cupy, sparse, self.dtype)
         matrix[0, 1] = 0
         assert matrix[0, 1] == 0
