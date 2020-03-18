@@ -11,9 +11,10 @@ from cupy.cuda import compiler
 
 _test_source1 = r'''
 extern "C" __global__
-void test_sum(const float* x1, const float* x2, float* y) {
+void test_sum(const float* x1, const float* x2, float* y, unsigned int N) {
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
-    y[tid] = x1[tid] + x2[tid];
+    if (tid < N)
+        y[tid] = x1[tid] + x2[tid];
 }
 '''
 
@@ -103,6 +104,16 @@ __global__ void test_kernel(float *arr, int N, int inner_blk)
         test_kernel_inner<<<1, inner_blk>>>(arr+tid*inner_blk, inner_blk);
 }
 
+}
+'''
+
+# to generate cubin/ptx
+_test_source5 = r'''
+extern "C" __global__
+void test_div(const float* x1, const float* x2, float* y, unsigned int N) {
+    int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N)
+        y[tid] = x1[tid] / (x2[tid] + 1.0);
 }
 '''
 
@@ -375,6 +386,50 @@ class TestRaw(unittest.TestCase):
                 backend=self.backend)
         assert 'precision not supported' in str(ex.value)
 
+    def _generate_file(self, ext: str):
+        # generate cubin/ptx by calling nvcc
+        global _test_cache_dir
+
+        nvcc = cupy.cuda._environment.get_nvcc_path()
+        arch = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(
+            cc=compiler._get_arch())
+        source = '{}/test_load_cubin.cu'.format(_test_cache_dir)
+        file_path = _test_cache_dir + 'test_load_cubin'
+        with open(source, 'w') as f:
+            f.write(_test_source5)
+        if ext == 'cubin':
+            file_path += '.cubin'
+            flag = '-cubin'
+        elif ext == 'ptx':
+            file_path += '.ptx'
+            flag = '-ptx'
+        else:
+            raise ValueError
+        cmd = [nvcc, arch, flag, source, '-o', file_path]
+        compiler._run_nvcc(cmd, _test_cache_dir)
+
+        return file_path
+
+    def test_load_cubin(self):
+        # generate cubin in the temp dir
+        file_path = self._generate_file('cubin')
+
+        # load cubin and test the kernel
+        mod = cupy.RawModule(path=file_path, backend=self.backend)
+        ker = mod.get_function('test_div')
+        x1, x2, y = self._helper(ker, cupy.float32)
+        assert cupy.allclose(y, x1 / (x2 + 1.0))
+
+    def test_load_ptx(self):
+        # generate ptx in the temp dir
+        file_path = self._generate_file('ptx')
+
+        # load ptx and test the kernel
+        mod = cupy.RawModule(path=file_path, backend=self.backend)
+        ker = mod.get_function('test_div')
+        x1, x2, y = self._helper(ker, cupy.float32)
+        assert cupy.allclose(y, x1 / (x2 + 1.0))
+
     def test_module_load_failure(self):
         # in principle this test is better done in test_driver.py, but
         # this error is more likely to appear when using RawModule, so
@@ -581,6 +636,32 @@ class TestRaw(unittest.TestCase):
 
         x1, x2, y = self._helper(ker_sum, cupy.float32)
         assert cupy.allclose(y, x1 + x2)
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawModule3(self):
+        # run test_load_cubin() on another device
+        # generate cubin in the temp dir and load it on device 0
+        file_path = self._generate_file('cubin')
+        mod = cupy.RawModule(path=file_path, backend=self.backend)
+        # in this test, reloading happens at get_function()
+        cupy.cuda.runtime.setDevice(1)
+
+        ker = mod.get_function('test_div')
+        x1, x2, y = self._helper(ker, cupy.float32)
+        assert cupy.allclose(y, x1 / (x2 + 1.0))
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawModule4(self):
+        # run test_load_cubin() on another device
+        # generate cubin in the temp dir and load it on device 0
+        file_path = self._generate_file('cubin')
+        mod = cupy.RawModule(path=file_path, backend=self.backend)
+        ker = mod.get_function('test_div')
+        # in this test, reloading happens at kernel launch
+        cupy.cuda.runtime.setDevice(1)
+
+        x1, x2, y = self._helper(ker, cupy.float32)
+        assert cupy.allclose(y, x1 / (x2 + 1.0))
 
 
 _test_grid_sync = r'''

@@ -48,6 +48,9 @@ cdef class RawKernel:
         self.translate_cucomplex = translate_cucomplex
         self.enable_cooperative_groups = enable_cooperative_groups
 
+        # only used when RawKernels are produced by a cubin/ptx RawModule
+        self.file_path = None
+
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
 
@@ -75,7 +78,7 @@ cdef class RawKernel:
         # switching to a different device
         cdef Function ker
         ker = _get_raw_kernel(
-            self.code, self.name, self.options, self.backend,
+            self.code, self.file_path, self.name, self.options, self.backend,
             self.translate_cucomplex, self.enable_cooperative_groups)
         return ker
 
@@ -199,12 +202,14 @@ cdef class RawKernel:
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_raw_kernel(str code, str name, tuple options=(), str backend='nvrtc',
+def _get_raw_kernel(str code, str path, str name, tuple options=(),
+                    str backend='nvrtc',
                     bint translate_cucomplex=False,
                     bint enable_cooperative_groups=False):
     cdef Module mod
     cdef Function ker
-    mod = _get_raw_module(code, None, options, backend,
+    assert (code is None) != (path is None)
+    mod = _get_raw_module(code, path, options, backend,
                           translate_cucomplex, enable_cooperative_groups)
     ker = mod.get_function(name)
     return ker
@@ -257,14 +262,14 @@ cdef class RawModule:
                 'given.')
 
         self.code = code
-        self.cubin_path = path
+        self.file_path = path
         self.enable_cooperative_groups = enable_cooperative_groups
 
         if self.code is not None:
             self.options = options
             self.backend = backend
             self.translate_cucomplex = translate_cucomplex
-        elif self.cubin_path is not None:
+        elif self.file_path is not None:
             self.options = ()
             self.backend = 'nvcc'
             self.translate_cucomplex = False
@@ -279,7 +284,7 @@ cdef class RawModule:
         # switching to a different device
         cdef Module mod
         mod = _get_raw_module(
-            self.code, self.cubin_path, self.options, self.backend,
+            self.code, self.file_path, self.options, self.backend,
             self.translate_cucomplex, self.enable_cooperative_groups)
         return mod
 
@@ -292,15 +297,16 @@ cdef class RawModule:
         Returns:
             RawKernel: An ``RawKernel`` instance.
         """
-        # When RawKernel is called, it would look up the module from
-        # cache, do get_function, and then launch
         cdef RawKernel ker
         cdef Function func
         ker = RawKernel(
             self.code, name, self.options, self.backend,
             translate_cucomplex=self.translate_cucomplex,
             enable_cooperative_groups=self.enable_cooperative_groups)
-        func = ker.kernel  # just register the cache  # noqa
+        # for lookup in case we loaded from cubin/ptx
+        ker.file_path = self.file_path
+        # register the kernel in the cache.
+        func = ker.kernel  # noqa
         return ker
 
     def get_texref(self, name):
