@@ -285,6 +285,9 @@ _test_cache_dir = None
 class TestRaw(unittest.TestCase):
 
     def setUp(self):
+        self.dev = cupy.cuda.runtime.getDevice()
+        assert self.dev != 1
+
         global _test_cache_dir
         _test_cache_dir = tempfile.mkdtemp()
         os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
@@ -310,6 +313,8 @@ class TestRaw(unittest.TestCase):
         else:
             os.environ.pop('CUPY_CACHE_DIR')
         compiler._empty_file_preprocess_cache = {}
+
+        cupy.cuda.runtime.setDevice(self.dev)
 
     def _helper(self, kernel, dtype):
         N = 10
@@ -543,6 +548,39 @@ class TestRaw(unittest.TestCase):
         output_arr = cupy.ones(100, dtype=cupy.float32)
         ker((1,), (100,), (output_arr, cupy.int32(100)))
         assert (data == output_arr).all()
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawKernel(self):
+        # run test_basic() on another device
+
+        # For RawKernel, we need to launch it once to force compiling
+        x1, x2, y = self._helper(self.kern, cupy.float32)
+        cupy.cuda.runtime.setDevice(1)
+
+        x1, x2, y = self._helper(self.kern, cupy.float32)
+        assert cupy.allclose(y, x1 + x2)
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawModule1(self):
+        # run test_module() on another device
+        # in this test, re-compiling happens at get_function()
+        cupy.cuda.runtime.setDevice(1)
+
+        module = self.mod2
+        ker_sum = module.get_function('test_sum')
+        x1, x2, y = self._helper(ker_sum, cupy.float32)
+        assert cupy.allclose(y, x1 + x2)
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawModule2(self):
+        # run test_module() on another device
+        # in this test, re-compiling happens at kernel launch
+        module = self.mod2
+        ker_sum = module.get_function('test_sum')
+        cupy.cuda.runtime.setDevice(1)
+
+        x1, x2, y = self._helper(ker_sum, cupy.float32)
+        assert cupy.allclose(y, x1 + x2)
 
 
 _test_grid_sync = r'''
