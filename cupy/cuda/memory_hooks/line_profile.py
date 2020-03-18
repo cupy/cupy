@@ -25,8 +25,7 @@ class LineProfileHook(memory_hook.MemoryHook):
 
             _root (4.00KB, 4.00KB)
               lib/python3.6/unittest/__main__.py:18:<module> (4.00KB, 4.00KB)
-                lib/python3.6/unittest/__init__.py:255:
-                runTests (4.00KB, 4.00KB)
+                lib/python3.6/unittest/main.py:255:runTests (4.00KB, 4.00KB)
                   tests/cupy_tests/test.py:37:test (1.00KB, 1.00KB)
                   tests/cupy_tests/test.py:38:test (1.00KB, 1.00KB)
                   tests/cupy_tests/test.py:39:test (2.00KB, 2.00KB)
