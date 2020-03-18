@@ -96,27 +96,20 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     _data_offsets = core.RawKernel(r'''
         extern "C" __global__
         void data_offsets (int rows, int cols, int* indptr,
-        int* indices, int* outptr, int* inrows, int* incols, int ret){
+        int* indices, int* outptr, int* inrows, int* incols){
             // Get the index of the block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
             int i = inrows[tid] < 0 ? inrows[tid] + rows : inrows[tid];
             int j = incols[tid] < 0 ? incols[tid] + cols : incols[tid];
             int start = indptr [i], stop = indptr [i+1], offset = -1;
-
             for(int col = start; col < stop; col++)
             {
                 if (indices[col] == j) {
-                    offset = col++;
-                    for (; col < stop; col++) {
-                        if (indices[col] == j) {
-                            ret= 1;
-                            return;
-                        }
-                    }
+                    offset = col;
+                    break;
                 }
             }
             atomicExch(&outptr[tid], offset);
-            ret = 0;
          }''', 'data_offsets')
 
     _max_reduction_kern = core.RawKernel(r'''
@@ -730,16 +723,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # offsets contain the index of the entry to be updated
         # if found, else -1
         offsets = cupy.empty(values.size, dtype=self.indices.dtype)
-        repeat = self.sample_offsets(major_size, minor_size,
-                                     values.size, major, minor, offsets)
-        # In case of duplicates entries, eliminate entries by summation
-        # and repeat the operation
-        if repeat == 1:
-            self.sum_duplicates()
-            self.sample_offsets(major_size, minor_size,
-                                values.size, major, minor, offsets)
+        self.sample_offsets(major_size, minor_size,
+                            values.size, major, minor, offsets)
         mask = offsets > -1
-        # Update (unmasked elements are to be updated)
         self.update_values(offsets[mask], values[mask])
         # eliminate the insertion of zero values
         mask |= (values == 0)
@@ -868,7 +854,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                repeat : int marking duplicates entries needed to be
                resolved before repeating the operation
         """
-        repeat = 0
         threads = 1024 if samples > 1024 else samples
         if self._has_canonical_format and \
                 samples > self.indptr[major_size] / 10:
@@ -880,8 +865,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             self._data_offsets(
                 (int(cupy.ceil(samples/threads)),), (threads,),
                 (major_size, minor_size, self.indptr, self.indices,
-                 offsets, major, minor, repeat))
-        return repeat
+                 offsets, major, minor))
 
     @property
     def has_canonical_format(self):
