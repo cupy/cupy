@@ -1,5 +1,14 @@
 from cupy import core
 
+
+def _negative_gcd_error():
+    raise TypeError("gcd cannot be computed with boolean arrays")
+
+
+def _negative_lcm_error():
+    raise TypeError("lcm cannot be computed with boolean arrays")
+
+
 _gcd_preamble = '''
 template <typename T> inline __device__ T gcd(T in0, T in1) {
   T r;
@@ -16,7 +25,8 @@ template <typename T> inline __device__ T gcd(T in0, T in1) {
 
 gcd = core.create_ufunc(
     'cupy_gcd',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
+    (('??->?', _negative_gcd_error),
+     'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q'),
     'out0 = gcd(in0, in1)',
     preamble=_gcd_preamble,
@@ -40,7 +50,8 @@ template <typename T> inline __device__ T lcm(T in0, T in1) {
 
 lcm = core.create_ufunc(
     'cupy_lcm',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
+    (('??->?', _negative_lcm_error),
+     'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q'),
     'out0 = lcm(in0, in1)',
     preamble=_lcm_preamble,
