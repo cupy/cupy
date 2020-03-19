@@ -26,7 +26,6 @@ cdef extern from *:
     ctypedef void* bsric02Info_t
     ctypedef void* csrilu02Info_t
     ctypedef void* bsrilu02Info_t
-    ctypedef void* csrgemm2Info_t
 
     # Declarations for cuSparse generic API
     ctypedef int cusparseStatus_t
