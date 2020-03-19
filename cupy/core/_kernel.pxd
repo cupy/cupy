@@ -3,6 +3,56 @@ from cupy.core cimport _scalar
 from cupy.core.core cimport ndarray
 
 
+cdef class _Args:
+    # This class encapsulates kernel arguments and provides various operations
+    # on them that are necessary in preparation for a kernel launch.
+    # Not immutable.
+
+    cdef:
+        readonly object in_params
+        readonly object in_args
+        readonly object out_params
+        readonly list out_args  # can be None
+
+    # Returns whether the specified input argument is an ndarray.
+    cdef bint is_in_ndarray(self, int index)
+
+    cdef list all_args(self)
+
+    cdef tuple all_params(self)
+
+    # Preprocesses arguments for kernel invocation.
+    # - Converts arguments to _Arg.
+    # - Checks device compatibility for ndarrays
+    @staticmethod
+    cdef list _preprocess(list objs, int device_id)
+
+    # Copies in_args if their memory ranges are overlapping with out_args.
+    # Items in in_args are updated in-place.
+    @staticmethod
+    cdef _copy_in_args_if_needed(list in_args, list out_args)
+
+    # Broadcasts the arguments.
+    # self.in_args and self.out_args will be updated with the resulted arrays.
+    cdef broadcast(self)
+
+    cdef set_scalar_dtypes(self, in_types)
+
+    # Assigns new out_args.
+    # Existing out_args, if any, will be overwritten.
+    cdef set_out_args(self, out_args)
+
+    cdef tuple get_out_arrays(self)
+
+    # Squashes dimensions of arrays and returns the resulted shape.
+    # in_args, out_args are updated in-place.
+    cdef tuple reduce_dims(self, shape)
+
+    # Returns a list of arguments that are directly passed to the kernel
+    # function. The indexer argument is returned separately.
+    cdef tuple get_kernel_args(self, shape)
+
+
 cdef class ParameterInfo:
     cdef:
         readonly str name

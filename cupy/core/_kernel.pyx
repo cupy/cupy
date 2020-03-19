@@ -148,15 +148,6 @@ cpdef str _get_kernel_params(tuple params, tuple args):
 
 
 cdef class _Args:
-    # This class encapsulates kernel arguments and provides various operations
-    # on them that are necessary in preparation for a kernel launch.
-    # Not immutable.
-
-    cdef:
-        readonly object in_params
-        readonly object in_args
-        readonly object out_params
-        readonly list out_args  # can be None
 
     def __init__(
             self, in_params, in_args, out_params, out_args, int device_id):
@@ -176,7 +167,6 @@ cdef class _Args:
         self.out_args = out_args
 
     cdef bint is_in_ndarray(self, int index):
-        # Returns whether the specified input argument is an ndarray.
         cdef Arg arg = self.in_args[index]
         return arg.is_ndarray()
 
@@ -192,11 +182,6 @@ cdef class _Args:
 
     @staticmethod
     cdef list _preprocess(list objs, int device_id):
-        """Preprocesses arguments for kernel invocation.
-
-        - Converts arguments to _Arg.
-        - Checks device compatibility for ndarrays
-        """
         cdef Arg arg
         args = []
         for obj in objs:
@@ -209,8 +194,6 @@ cdef class _Args:
 
     @staticmethod
     cdef _copy_in_args_if_needed(list in_args, list out_args):
-        # Copies in_args if their memory ranges are overlapping with out_args.
-        # Items in in_args are updated in-place.
         cdef Arg arg
         cdef NdarrayArg arr_arg
         cdef int i
@@ -221,9 +204,6 @@ cdef class _Args:
                 arr_arg.copy_in_arg_if_needed(out_args)
 
     cdef broadcast(self):
-        # Broadcasts the arguments.
-        # self.in_args and self.out_args will be updated with the resulted
-        # arrays.
         cdef int nin = len(self.in_params)
         cdef int nout
         cdef int i
@@ -286,8 +266,6 @@ cdef class _Args:
                 (<ScalarArg>arg).apply_dtype(in_types[i])
 
     cdef set_out_args(self, out_args):
-        # Assigns new out_args.
-        # Existing out_args, if any, will be overwritten.
         self.out_args = out_args
 
     cdef tuple get_out_arrays(self):
@@ -295,8 +273,6 @@ cdef class _Args:
         return tuple([arg.obj for arg in self.out_args])
 
     cdef tuple reduce_dims(self, shape):
-        # Squashes dimensions of arrays and returns the resulted shape.
-        # in_args, out_args are updated in-place.
         assert self.out_args is not None
         cdef Arg arg
         cdef int nin = len(self.in_params)
@@ -323,8 +299,6 @@ cdef class _Args:
         return new_shape
 
     cdef tuple get_kernel_args(self, shape):
-        # Returns a list of arguments that are directly passed to the kernel
-        # function. The indexer argument is returned separately.
         assert self.out_args is not None
         args = tuple(self.in_args + self.out_args)
         indexer_args = (Arg.from_indexer(shape),)
