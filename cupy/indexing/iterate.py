@@ -84,9 +84,9 @@ class flatiter():
 
         raise IndexError('unsupported iterator index')
 
-    # TODO(Takagi): Implement __iter__ just raising NotImplementedError
+    # TODO(Takagi): Implement __iter__
 
-    # TODO(Takagi): Implement __next__ just raising NotImplementedError
+    # TODO(Takagi): Implement __next__
 
     # TODO(Takagi): Implement copy
 
