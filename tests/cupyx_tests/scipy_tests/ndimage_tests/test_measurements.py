@@ -40,7 +40,6 @@ class TestLabel(unittest.TestCase):
         size = int(pow(self.size, 1 / self.ndim))
         x_shape = range(size, size + self.ndim)
         x = xp.zeros(x_shape, dtype=self.x_dtype)
-        # x[numpy.where(testing.shaped_random(x_shape, xp) < self.density)] = 1
         x[testing.shaped_random(x_shape, xp) < self.density] = 1
         if self.connectivity is None:
             structure = None
