@@ -6,6 +6,22 @@ from cupy.core import internal
 
 
 class flatiter():
+    """Flat iterator object to iterate over arrays.
+
+    A flatiter iterator is returned by ``x.flat`` for any array ``x``. It
+    allows iterating over the array as if it were a 1-D array, either in a
+    for-loop or by calling its ``next`` method.
+
+    Iteration is done in row-major, C-style order (the last index varying the
+    fastest).
+
+    .. note::
+       Restricted support of basic slicing is currently supplied. Advanced
+       indexing is not supported yet.
+
+    .. seealso:: :func:`numpy.flatiter`
+
+    """
 
     def __init__(self, a):
         self._base = a
