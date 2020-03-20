@@ -13,34 +13,6 @@ from cupy.cuda cimport stream
 
 
 ###############################################################################
-# Memory Management
-###############################################################################
-
-cdef class _MemoryManager:
-    cdef:
-        dict memory
-
-    def __init__(self):
-        self.memory = dict()
-
-
-cdef public char* cupy_malloc(void *m, ptrdiff_t size) with gil:
-    if size == 0:
-        return <char *>0
-    cdef _MemoryManager mm = <_MemoryManager>m
-    mem = memory.alloc(size)
-    mm.memory[mem.ptr] = mem
-    return <char *>mem.ptr
-
-
-cdef public void cupy_free(void *m, char* ptr) with gil:
-    if ptr == <char *>0:
-        return
-    cdef _MemoryManager mm = <_MemoryManager>m
-    del mm.memory[<size_t>ptr]
-
-
-###############################################################################
 # Extern
 ###############################################################################
 
@@ -69,12 +41,12 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
     cdef void *_data_start
     cdef size_t *_keys_start
     cdef size_t _strm
+    cdef memory._CMemoryManager mem_obj = memory._CMemoryManager()
+    cdef void* mem = <void *>mem_obj
 
     _data_start = <void *>data_start
     _keys_start = <size_t *>keys_start
     _strm = <size_t>(stream.get_current_stream_ptr())
-    mem_obj = _MemoryManager()
-    cdef void* mem = <void *>mem_obj
 
     # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:
@@ -110,12 +82,12 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
               size_t k, size_t n) except +:
 
     cdef size_t _strm
+    cdef memory._CMemoryManager mem_obj = memory._CMemoryManager()
+    cdef void* mem = <void *>mem_obj
 
     idx_ptr = <size_t *>idx_start
     keys_ptr = <void *>keys_start
     _strm = <size_t>(stream.get_current_stream_ptr())
-    mem_obj = _MemoryManager()
-    cdef void* mem = <void *>mem_obj
 
     # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:
@@ -153,13 +125,13 @@ cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
     cdef size_t *_keys_start
     cdef void *_data_start
     cdef size_t _strm
+    cdef memory._CMemoryManager mem_obj = memory._CMemoryManager()
+    cdef void* mem = <void *>mem_obj
 
     _idx_start = <size_t *>idx_start
     _data_start = <void *>data_start
     _keys_start = <size_t *>keys_start
     _strm = <size_t>(stream.get_current_stream_ptr())
-    mem_obj = _MemoryManager()
-    cdef void* mem = <void *>mem_obj
 
     # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:

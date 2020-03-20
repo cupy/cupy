@@ -1429,3 +1429,23 @@ cdef class CFunctionAllocator:
         mem = CFunctionAllocatorMemory(size, self._param, self._malloc_func,
                                        self._free_func, device.get_device_id())
         return MemoryPointer(mem, 0)
+
+
+###############################################################################
+# Expose CuPy memory pool to C/C++ (migrated from cupy/cuda/thrust.pyx)       #
+###############################################################################
+
+cdef api char* cupy_malloc(void *m, size_t size) with gil:
+    if size == 0:
+        return <char *>0
+    cdef _CMemoryManager mm = <_CMemoryManager>m
+    mem = alloc(size)
+    mm.memory[mem.ptr] = mem
+    return <char *>mem.ptr
+
+
+cdef api void cupy_free(void *m, char* ptr) with gil:
+    if ptr == <char *>0:
+        return
+    cdef _CMemoryManager mm = <_CMemoryManager>m
+    del mm.memory[<size_t>ptr]

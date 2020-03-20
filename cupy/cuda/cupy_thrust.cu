@@ -8,6 +8,7 @@
 #include "cupy_common.h"
 #include "cupy_thrust.h"
 #include "cupy_cuComplex.h"
+#include "memory_api.h"  // generated from cupy.cuda.memory
 
 using namespace thrust;
 
@@ -21,8 +22,9 @@ namespace cuda {
 #endif // #if CUPY_USE_HIP
 
 
-extern "C" char *cupy_malloc(void *, ptrdiff_t);
-extern "C" void cupy_free(void *, char *);
+int out = import_cupy__cuda__memory();
+//extern "C" char *cupy_malloc(void *, ptrdiff_t);
+//extern "C" void cupy_free(void *, char *);
 
 
 class cupy_allocator {
