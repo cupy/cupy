@@ -5,6 +5,7 @@
 import numpy
 
 cimport cython  # NOQA
+from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
 from cupy.cuda cimport common
@@ -16,10 +17,10 @@ from cupy.cuda cimport stream
 ###############################################################################
 
 cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
-    void _sort[T](void *, size_t *, const vector.vector[ptrdiff_t]&, size_t)
-    void _lexsort[T](size_t *, void *, size_t, size_t, size_t)
+    void _sort[T](void *, size_t *, const vector.vector[ptrdiff_t]&, intptr_t)
+    void _lexsort[T](size_t *, void *, size_t, size_t, intptr_t)
     void _argsort[T](size_t *, void *, void *, const vector.vector[ptrdiff_t]&,
-                     size_t)
+                     intptr_t)
 
 cdef extern from 'cupy_cuComplex.h':
     ctypedef struct cpy_complex64 'cuComplex':
@@ -38,11 +39,11 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
 
     cdef void *_data_start
     cdef size_t *_keys_start
-    cdef size_t _strm
+    cdef intptr_t _strm
 
     _data_start = <void *>data_start
     _keys_start = <size_t *>keys_start
-    _strm = <size_t>(stream.get_current_stream_ptr())
+    _strm = stream.get_current_stream_ptr()
 
     # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:
@@ -77,11 +78,11 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
 cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
               size_t k, size_t n) except +:
 
-    cdef size_t _strm
+    cdef intptr_t _strm
 
     idx_ptr = <size_t *>idx_start
     keys_ptr = <void *>keys_start
-    _strm = <size_t>(stream.get_current_stream_ptr())
+    _strm = stream.get_current_stream_ptr()
 
     # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:
@@ -118,12 +119,12 @@ cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
     cdef size_t *_idx_start
     cdef size_t *_keys_start
     cdef void *_data_start
-    cdef size_t _strm
+    cdef intptr_t _strm
 
     _idx_start = <size_t *>idx_start
     _data_start = <void *>data_start
     _keys_start = <size_t *>keys_start
-    _strm = <size_t>(stream.get_current_stream_ptr())
+    _strm = stream.get_current_stream_ptr()
 
     # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:
