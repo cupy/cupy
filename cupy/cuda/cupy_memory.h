@@ -45,6 +45,35 @@ public:
     void free(void* ptr) {
         _free(ptr);
     }
-}; 
+};
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct cupy_allocator_handle_t;
+typedef struct cupy_allocator_handle_t cupy_allocator_handle;
+
+cupy_allocator_handle* get_cupy_allocator_handle() {
+    cupy_allocator_handle* alloc = (cupy_allocator_handle*)(new cupy_device_allocator());
+    return alloc;
+}
+
+void destroy_cupy_allocator_handle(cupy_allocator_handle* ptr) {
+    cupy_device_allocator* alloc = (cupy_device_allocator*)ptr;
+    delete alloc;
+}
+
+void* cupy_malloc(cupy_allocator_handle* handle, size_t size) {
+    return ((cupy_device_allocator*)handle)->malloc(size);
+}
+
+void cupy_free(cupy_allocator_handle* handle, void* ptr) {
+    ((cupy_device_allocator*)handle)->free(ptr);
+}
+
+#ifdef __cplusplus
+}
+#endif
     
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_MEMORY_H

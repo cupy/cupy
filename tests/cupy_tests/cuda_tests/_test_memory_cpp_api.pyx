@@ -1,7 +1,7 @@
 # distutils: language = c++
 
-from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.stdint cimport intptr_t
+from libcpp cimport vector
 
 import sys
 
@@ -9,27 +9,27 @@ import cupy
 
 
 cdef extern from '../../../cupy/cuda/cupy_memory.h':
-    cdef struct cupy_allocator_handle_t
-    ctypedef cupy_allocator_handle_t cp_pool 'cupy_allocator_handle'
-    cp_pool* get_cupy_allocator_handle()
-    void destroy_cupy_allocator_handle(cp_pool*)
-    void* cupy_malloc(cp_pool*, size_t)
-    void cupy_free(cp_pool*, void*)
+    cdef cppclass cupy_device_allocator:
+        cupy_device_allocator() except +
+        void* malloc(size_t)
+        void free(void*)
 
 
 cdef _test_externel_access_to_cupy_pool() except +:
-    cdef cp_pool* handle = get_cupy_allocator_handle()
+    cdef cupy_device_allocator alloc
     cdef size_t size = 100*sizeof(int)
-    cdef int* h_ptr = <int*>PyMem_Malloc(size)
+    cdef vector.vector[int] h_arr
     cdef int i
 
     # initialize an array on host
+    h_arr.resize(100)
     for i in range(100):
-        h_ptr[i] = i + 3
+        h_arr[i] = 2 * i
+    cdef int* h_ptr = h_arr.data()
 
     # allocate an array on device
     mod = sys.modules[__name__]
-    cdef void* d_ptr = cupy_malloc(handle, size)
+    cdef void* d_ptr = alloc.malloc(size)
     mem = cupy.cuda.memory.UnownedMemory(<intptr_t>d_ptr, size, mod)
     memptr = cupy.cuda.memory.MemoryPointer(mem, 0)
 
@@ -39,13 +39,11 @@ cdef _test_externel_access_to_cupy_pool() except +:
     d_arr = cupy.ndarray((100,), dtype=cupy.int32, memptr=memptr)
 
     # check the integrity of the device data
-    assert (d_arr == 3 + cupy.arange(100, dtype=cupy.int32)).all()
+    assert (d_arr == 2 * cupy.arange(100, dtype=cupy.int32)).all()
 
     # deallocation
     del d_arr
-    cupy_free(handle, d_ptr)
-    destroy_cupy_allocator_handle(handle)
-    PyMem_Free(<void*>h_ptr)
+    alloc.free(d_ptr)
 
 
 def test_externel_access_to_cupy_pool():
