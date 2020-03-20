@@ -2,7 +2,6 @@
 
 from libc.stdint cimport intptr_t
 from libcpp cimport vector
-from cupy.core.core cimport ndarray
 
 import sys
 
@@ -31,12 +30,12 @@ cdef _test_externel_access_to_cupy_pool() except +:
     # allocate an array on device
     mod = sys.modules[__name__]
     cdef void* d_ptr = alloc.malloc(size)
-    mem = cupy.cuda.memory.UnownedMemory(<intptr_t>d_ptr, 0, None)
+    mem = cupy.cuda.memory.UnownedMemory(<intptr_t>d_ptr, size, mod)
     memptr = cupy.cuda.memory.MemoryPointer(mem, 0)
 
     # transfer host data to device, and wrap it with cupy.ndarray
-    cupy.cuda.runtime.memcpy(<intptr_t>d_ptr, <intptr_t>h_ptr, size, cupy.cuda.runtime.memcpyHostToDevice)
-
+    cupy.cuda.runtime.memcpy(<intptr_t>d_ptr, <intptr_t>h_ptr, size,
+                             cupy.cuda.runtime.memcpyHostToDevice)
     d_arr = cupy.ndarray((100,), dtype=cupy.int32, memptr=memptr)
 
     # check the integrity of the device data
