@@ -10,7 +10,7 @@ def label(input, structure=None, output=None):
         input (cupy.ndarray): The input array.
         structure (array_like or None): A structuring element that defines
             feature connections. ```structure``` must be centersymmetric. If
-            None, structure is automatically generated with a squad
+            None, structure is automatically generated with a squared
             connectivity equal to one.
         output (cupy.ndarray, dtype or None): The array in which to place the
             output.
@@ -31,6 +31,8 @@ def label(input, structure=None, output=None):
         raise TypeError('Complex type not supported')
     if structure is None:
         structure = _generate_binary_structure(input.ndim, 1)
+    elif isinstance(structure, cupy.ndarray):
+        structure = cupy.asnumpy(structure)
     structure = numpy.array(structure, dtype=bool)
     if structure.ndim != input.ndim:
         raise RuntimeError('structure and input must have equal rank')
