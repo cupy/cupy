@@ -54,3 +54,45 @@ class TestLabel(unittest.TestCase):
         labels, num_features = scp.ndimage.label(x, structure=structure,
                                                  output=self.output)
         return labels
+
+
+@testing.gpu
+@testing.with_requires('scipy')
+class TestLabelSpecialCases(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_label_empty(self, xp, scp):
+        x = xp.empty(0)
+        labels, num_features = scp.ndimage.label(x)
+        return labels
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_label_0d_zero(self, xp, scp):
+        x = xp.zeros([])
+        labels, num_features = scp.ndimage.label(x)
+        return labels
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_label_0d_one(self, xp, scp):
+        x = xp.ones([])
+        labels, num_features = scp.ndimage.label(x)
+        return labels
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_label_swirl(self, xp, scp):
+        x = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+             [1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+             [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+             [1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1],
+             [1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1],
+             [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1],
+             [1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1],
+             [1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1],
+             [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+             [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+        x = xp.array(x)
+        labels, num_features = scp.ndimage.label(x)
+        return labels

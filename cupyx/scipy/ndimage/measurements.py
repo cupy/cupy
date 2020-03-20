@@ -20,6 +20,10 @@ def label(input, structure=None, output=None):
             ```input``` has a unique label in the array.
         num_features (int): Number of features found.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`scipy.ndimage.label`
     """
     assert isinstance(input, cupy.ndarray)
@@ -46,8 +50,12 @@ def label(input, structure=None, output=None):
             output = cupy.empty(input.shape, output)
 
     if input.size == 0:
-        # 0-dim array
+        # empty
         maxlabel = 0
+    elif input.ndim == 0:
+        # 0-dim array
+        maxlabel = 0 if (input.item() == 0) else 1
+        output[...] = maxlabel
     else:
         if output.dtype is not numpy.int32:
             y = cupy.empty(input.shape, numpy.int32)
