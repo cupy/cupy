@@ -16,16 +16,6 @@ void _lexsort(size_t *, void *, size_t, size_t, size_t);
 template <typename T>
 void _argsort(size_t *, void *, void *, const std::vector<ptrdiff_t>&, size_t);
 
-//class cupy_allocator {
-//private:
-//    void* ptr;
-//
-//public:
-//    typedef char value_type;
-//    char* allocate(size_t num_bytes);
-//    void deallocate(void* unused_ptr, size_t unused_bytes);
-//};
-
 } // namespace thrust
 
 } // namespace cupy

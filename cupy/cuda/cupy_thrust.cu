@@ -9,8 +9,6 @@
 #include "cupy_thrust.h"
 #include "cupy_cuComplex.h"
 #include "cupy_memory.h"
-//#include "memory_api.h"  // generated from cupy.cuda.memory
-//#include "memory.h"  // generated from cupy.cuda.memory
 
 using namespace thrust;
 
@@ -24,29 +22,25 @@ namespace cuda {
 #endif // #if CUPY_USE_HIP
 
 
-//int out = import_cupy__cuda__memory();
+// This is necessary for keeping the lifetime of Python intepreter
+// to be as long as this module.
 cupy_device_allocator pool;
 
 
+// The signatures of allocate and deallocate are needed for Thrust
+// to be able to do specialization, but for deallocation the arguments
+// aren't really used as we do our own bookkeeping internally.
 class cupy_allocator {
 private:
     void* ptr;
-//    void* (*_malloc)(size_t);
-//    void (*_free)(void*);
 
 public:
     typedef char value_type;
 
-    cupy_allocator() {
-//        Py_Initialize();
-//        import_cupy__cuda__memory();
-//        _malloc = cupy_malloc;
-//        _free = cupy_free;
-    }
+    cupy_allocator() {}
 
     ~cupy_allocator() {
         deallocate(nullptr, 0);
-//        Py_Finalize();
     }
 
     char* allocate(size_t num_bytes) {
@@ -328,38 +322,26 @@ void cupy::thrust::_argsort(size_t *idx_start, void *data_start,
 }
 
 template void cupy::thrust::_argsort<cpy_byte>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t
-    );
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t);
 template void cupy::thrust::_argsort<cpy_ubyte>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t
-    );
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t);
 template void cupy::thrust::_argsort<cpy_short>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t
-    );
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t);
 template void cupy::thrust::_argsort<cpy_ushort>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t
-    );
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t);
 template void cupy::thrust::_argsort<cpy_int>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t
-    );
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t);
 template void cupy::thrust::_argsort<cpy_uint>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t
-    );
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t);
 template void cupy::thrust::_argsort<cpy_long>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t
-    );
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t);
 template void cupy::thrust::_argsort<cpy_ulong>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t
-    );
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t);
 template void cupy::thrust::_argsort<cpy_float>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t
-    );
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t);
 template void cupy::thrust::_argsort<cpy_double>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t
-    );
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t);
 template void cupy::thrust::_argsort<cuComplex>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t
-    );
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t);
 template void cupy::thrust::_argsort<cuDoubleComplex>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t
-    );
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t);

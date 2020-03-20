@@ -9,7 +9,6 @@ from libcpp cimport vector
 
 from cupy.cuda cimport common
 from cupy.cuda cimport stream
-#from cupy.cuda.memory cimport cupy_malloc, cupy_free
 
 
 ###############################################################################
@@ -21,11 +20,6 @@ cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
     void _lexsort[T](size_t *, void *, size_t, size_t, size_t)
     void _argsort[T](size_t *, void *, void *, const vector.vector[ptrdiff_t]&,
                      size_t)
-#    cdef cppclass cupy_allocator:
-#        #cupy_allocator() except +
-#        void* ptr
-#        char* allocate(size_t num_bytes)
-#        void deallocate(void* unused_ptr, size_t unused_bytes)
 
 cdef extern from 'cupy_cuComplex.h':
     ctypedef struct cpy_complex64 'cuComplex':

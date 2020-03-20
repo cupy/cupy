@@ -1435,24 +1435,19 @@ cdef class CFunctionAllocator:
 # Expose CuPy memory pool to C/C++ (migrated from cupy/cuda/thrust.pyx)       #
 ###############################################################################
 
-# This is to keep track of memory exposed to C/C++.
-# Key: ptr (int); Value: MemoryPointer
-# Items are removed when the C/C++ function calls cupy_free
+# This is for keeping track of memory exposed to C/C++.
+# (Key, Value): (ptr (of type intptr_t), MemoryPointer)
+# Items are removed when the C/C++ function calls cupy_c_free
 cdef dict _ext_mem_ptrs = {}
 
 cdef api void* cupy_c_malloc(size_t size) with gil:
     if size == 0:
         return NULL
-    print("before alloc")
     cdef MemoryPointer mem = alloc(size)
-    print("before dict; ptr=", <intptr_t>mem.ptr)
     _ext_mem_ptrs[<intptr_t>mem.ptr] = mem
-    print("before return")
     return <void*>mem.ptr
-
 
 cdef api void cupy_c_free(void* ptr) with gil:
     if ptr == <void*>0:
         return
-    print("before del; ptr=", <intptr_t>ptr)
     del _ext_mem_ptrs[<intptr_t>ptr]

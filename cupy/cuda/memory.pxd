@@ -86,6 +86,9 @@ cdef class CFunctionAllocator:
 
 ###############################################################################
 # Expose CuPy memory pool to C/C++ (migrated from cupy/cuda/thrust.pyx)       #
+#                                                                             #
+# We recommend using "cupy_device_allocator" from cupy/cuda/cupy_memory.h     #
+# instead of using the two below functions directly.                          #
 ###############################################################################
 
 cdef api void* cupy_c_malloc(size_t size) with gil
