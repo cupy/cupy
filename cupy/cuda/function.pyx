@@ -16,6 +16,7 @@ from cupy.core cimport core
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
+from cupy.cuda.memory cimport MemoryPointer
 from cupy.cuda.texture cimport TextureObject
 
 
@@ -84,13 +85,19 @@ cdef set _pointer_numpy_types = {numpy.dtype(i).type
 
 cdef inline CPointer _pointer(x):
     cdef Py_ssize_t itemsize
+    cdef CPointer c_ptr
     if x is None:
         return CPointer()
     if isinstance(x, core.ndarray):
         return (<core.ndarray>x).get_pointer()
     if isinstance(x, _carray.Indexer):
         return (<_carray.Indexer>x).get_pointer()
-
+    if isinstance(x, MemoryPointer):
+        # cannot directly pass ptr to CPointer constructor, as it
+        # is a Python constructor!
+        c_ptr = CPointer()
+        c_ptr.ptr = <void*>x.ptr
+        return c_ptr
     if isinstance(x, CPointer):
         return x
 
@@ -179,6 +186,7 @@ cdef class Function:
             0x7fffffffUL, (size + block_max_size - 1) // block_max_size)
         cdef size_t blockx = min(block_max_size, size)
         s = _get_stream(stream)
+        #print("actual gridx:", gridx, "blockx:" , blockx)
         _launch(self.ptr,
                 gridx, 1, 1, blockx, 1, 1, args, shared_mem, s)
 
