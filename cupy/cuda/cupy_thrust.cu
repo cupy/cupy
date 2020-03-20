@@ -8,7 +8,9 @@
 #include "cupy_common.h"
 #include "cupy_thrust.h"
 #include "cupy_cuComplex.h"
-#include "memory_api.h"  // generated from cupy.cuda.memory
+#include "cupy_memory.h"
+//#include "memory_api.h"  // generated from cupy.cuda.memory
+//#include "memory.h"  // generated from cupy.cuda.memory
 
 using namespace thrust;
 
@@ -23,26 +25,37 @@ namespace cuda {
 
 
 //int out = import_cupy__cuda__memory();
-//void* (cupy_malloc)(size_t);
-//void (cupy_free)(void*);
+cupy_device_allocator pool;
 
 
 class cupy_allocator {
 private:
     void* ptr;
+//    void* (*_malloc)(size_t);
+//    void (*_free)(void*);
 
 public:
     typedef char value_type;
 
-    //cupy_allocator() {}
+    cupy_allocator() {
+//        Py_Initialize();
+//        import_cupy__cuda__memory();
+//        _malloc = cupy_malloc;
+//        _free = cupy_free;
+    }
+
+    ~cupy_allocator() {
+        deallocate(nullptr, 0);
+//        Py_Finalize();
+    }
 
     char* allocate(size_t num_bytes) {
-        ptr = (*cupy_malloc)(num_bytes);
+        ptr = pool.malloc(num_bytes);
         return (char*)(ptr);
     }
 
     void deallocate(void* unused_ptr, size_t unused_bytes) {
-        (*cupy_free)(ptr);
+        pool.free(ptr);
         ptr = nullptr;
     }
 };

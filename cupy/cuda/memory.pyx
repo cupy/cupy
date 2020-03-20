@@ -1440,15 +1440,19 @@ cdef class CFunctionAllocator:
 # Items are removed when the C/C++ function calls cupy_free
 cdef dict _ext_mem_ptrs = {}
 
-cdef api void* cupy_malloc(size_t size) with gil:
+cdef api void* cupy_c_malloc(size_t size) with gil:
     if size == 0:
         return NULL
+    print("before alloc")
     cdef MemoryPointer mem = alloc(size)
-    _ext_mem_ptrs[mem.ptr] = mem
+    print("before dict; ptr=", <intptr_t>mem.ptr)
+    _ext_mem_ptrs[<intptr_t>mem.ptr] = mem
+    print("before return")
     return <void*>mem.ptr
 
 
-cdef api void cupy_free(void* ptr) with gil:
+cdef api void cupy_c_free(void* ptr) with gil:
     if ptr == <void*>0:
         return
+    print("before del; ptr=", <intptr_t>ptr)
     del _ext_mem_ptrs[<intptr_t>ptr]
