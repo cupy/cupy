@@ -1,6 +1,8 @@
 import ctypes
 import gc
+import os
 import pickle
+import subprocess
 import threading
 import unittest
 
@@ -770,3 +772,14 @@ class TestExceptionPicklable(unittest.TestCase):
         e2 = pickle.loads(pickle.dumps(e1))
         assert e1.args == e2.args
         assert str(e1) == str(e2)
+
+
+@testing.gpu
+class TestMempoolCApi(unittest.TestCase):
+
+    def test(self):
+        curr_dir = os.path.dirname(os.path.realpath(__file__))
+        cmd = ['cythonize', '-i', '-3', '_test_memory_c_api.pyx']
+        out = subprocess.check_output(cmd, cwd=curr_dir, stderr=subprocess.STDOUT)
+        from . import _test_memory_c_api as ext_lib
+        ext_lib.test_externel_access_to_cupy_pool()
