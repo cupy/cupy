@@ -775,17 +775,6 @@ class TestExceptionPicklable(unittest.TestCase):
 
 
 @testing.gpu
-class TestMempoolCppApi(unittest.TestCase):
-
-    def test(self):
-        curr_dir = os.path.dirname(os.path.realpath(__file__))
-        cmd = ['cythonize', '-i', '-3', '_test_memory_cpp_api.pyx']
-        subprocess.check_output(cmd, cwd=curr_dir, stderr=subprocess.STDOUT)
-        from . import _test_memory_cpp_api as ext_lib
-        ext_lib.test_externel_access_to_cupy_pool()
-
-
-@testing.gpu
 class TestMempoolCApi(unittest.TestCase):
 
     def test(self):

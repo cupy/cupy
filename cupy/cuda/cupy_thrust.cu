@@ -18,39 +18,31 @@ typedef hipStream_t cudaStream_t;
 namespace cuda {
     using thrust::hip::par;
 }
-
 #endif // #if CUPY_USE_HIP
 
 
-// This is necessary for keeping the lifetime of Python intepreter
-// to be as long as this module.
-cupy_device_allocator pool;
-
-
-// The signatures of allocate and deallocate are needed for Thrust
-// to be able to do specialization, but for deallocation the arguments
-// aren't really used as we do our own bookkeeping internally.
 class cupy_allocator {
 private:
-    void* ptr;
+    cupy_allocator_handle* pool = nullptr;
 
 public:
     typedef char value_type;
 
-    cupy_allocator() {}
+    cupy_allocator() {
+        pool = get_cupy_allocator_handle();
+    }
 
     ~cupy_allocator() {
-        deallocate(nullptr, 0);
+        destroy_cupy_allocator_handle(pool);
     }
 
     char* allocate(size_t num_bytes) {
-        ptr = pool.malloc(num_bytes);
-        return (char*)(ptr);
+        return (char*)cupy_malloc(pool, num_bytes);
     }
 
-    void deallocate(void* unused_ptr, size_t unused_bytes) {
-        pool.free(ptr);
-        ptr = nullptr;
+    void deallocate(void* ptr, size_t unused_bytes) {
+        // The second argument is only needed for Thrust specialization
+        cupy_free(pool, ptr);
     }
 };
 
