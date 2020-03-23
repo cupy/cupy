@@ -148,3 +148,37 @@ class TestFillDiagonal(unittest.TestCase):
         a = testing.shaped_arange(5, xp, dtype)
         val = self._compute_val(xp)
         xp.fill_diagonal(a, val=val, wrap=self.wrap)
+
+
+@testing.parameterize(*testing.product({
+    'n': [2, 4],
+    'ndim': [2, 3],
+}))
+@testing.gpu
+class TestDiagIndices(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_diag_indices(self, xp):
+        return xp.diag_indices(self.n, self.ndim)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(3, 3), (2, 2, 2)],
+}))
+@testing.gpu
+class TestDiagIndicesFrom(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_diag_indices_from(self, xp):
+        arr = testing.shaped_arange(self.shape, xp)
+        return xp.diag_indices_from(arr)
+
+    @testing.numpy_cupy_raises()
+    def test_non_equal_dims(self, xp):
+        arr = testing.shaped_arange((3, 5), xp)
+        xp.diag_indices_from(arr)
+
+    @testing.numpy_cupy_raises()
+    def test_1darray(self, xp):
+        arr = testing.shaped_arange(5, xp)
+        xp.diag_indices_from(arr)

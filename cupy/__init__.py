@@ -448,6 +448,8 @@ from cupy.indexing.indexing import take_along_axis  # NOQA
 from cupy.indexing.insert import place  # NOQA
 from cupy.indexing.insert import put  # NOQA
 from cupy.indexing.insert import fill_diagonal  # NOQA
+from cupy.indexing.insert import diag_indices  # NOQA
+from cupy.indexing.insert import diag_indices_from  # NOQA
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------

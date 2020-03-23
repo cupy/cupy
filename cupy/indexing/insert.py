@@ -176,6 +176,7 @@ def diag_indices_from(arr):
 
     Args:
         arr (cupy.ndarray): At least 2-D.
+     .. seealso:: :func:`numpy.diag_indices_from`
     """
 
     if not arr.ndim >= 2:
