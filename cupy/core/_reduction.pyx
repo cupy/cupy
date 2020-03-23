@@ -299,7 +299,7 @@ cdef class _AbstractReductionKernel:
                 IndexerArg(in_shape),
                 IndexerArg(out_shape),
                 # block_stride is passed as the last argument.
-                #_scalar.CScalar.from_int32(block_stride),
+                # _scalar.CScalar.from_int32(block_stride),
                 Arg.from_obj(numpy.int32(block_stride)),
             ])
 
@@ -445,6 +445,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
 
 _simple_reduction_kernel_func_cache = {}
+
 
 def _SimpleReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
@@ -623,6 +624,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
 
 
 _reduction_kernel_func_cache = {}
+
 
 def _ReductionKernel_get_cached_function(
         nin, nout, params, args, _kernel._TypeMap type_map,

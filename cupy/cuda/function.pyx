@@ -313,7 +313,7 @@ cdef class Arg:
         data = []
         if self.type is not None:
             data.append('type={}'.format(self.type.__name__),)
-        data.append('dtype={}'.format('None' if self.dtype is None else self.dtype.name))
+        data.append('dtype={}'.format(str(self.dtype)))
         data.append('ndim={}'.format(self.ndim))
         data += self.get_repr_data()
         return '<{} {}>'.format(
