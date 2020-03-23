@@ -292,7 +292,7 @@ cdef class Arg:
         if hasattr(obj, '__cuda_array_interface__'):
             # __cuda_array_interface__
             obj = core._convert_object_with_cuda_array_interface(obj)
-            arg = NdarrayArg(obj)
+            arg = NdarrayArg(obj, c_contiguous=obj.flags.c_contiguous)
             return arg
         if _scalar.is_scalar(obj):
             # scalar
@@ -395,7 +395,7 @@ cdef class NdarrayArg(Arg):
         # If ndim is the same, self is returned untouched.
         if self.ndim == ndim:
             return self
-        return NdarrayArg(self.obj, ndim=ndim)
+        return NdarrayArg(self.obj, ndim=ndim, c_contiguous=self.c_contiguous)
 
 
 cdef class ScalarArg(Arg):
