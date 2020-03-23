@@ -676,9 +676,12 @@ cdef class PooledMemory(BaseMemory):
 cdef size_t _index_compaction_threshold = 512
 
 
-# cudaMalloc() is aligned to at least 512 bytes
-# cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
-DEF ALLOCATION_UNIT_SIZE = 512
+# cudaMalloc() is aligned to at least 256 bytes:
+# "Any address of a variable residing in global memory or returned by one of
+# the memory allocation routines from the driver or runtime API is always
+# aligned to at least 256 bytes", see
+# https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#device-memory-accesses  # noqa
+DEF ALLOCATION_UNIT_SIZE = 256
 # for test
 _allocation_unit_size = ALLOCATION_UNIT_SIZE
 
