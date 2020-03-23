@@ -19,7 +19,6 @@ def _dispatch_notification(func):
     """
 
     dispatch_type = _ufunc_config.get_config_fallback_mode()
-    callback_func = _ufunc_config.get_fallback_mode_callback()
 
     _module = hasattr(func, '__module__')
     _name = hasattr(func, '__name__')
@@ -49,24 +48,8 @@ def _dispatch_notification(func):
     elif dispatch_type == 'ignore':
         pass
 
-    elif dispatch_type == 'log':
-        if hasattr(callback_func, 'write') and callable(callback_func.write):
-            callback_func.write(msg)
-        else:
-            raise ValueError(
-                "Callback object must have a callable 'write' method, " +
-                "if it is to be used for 'log'")
-
     elif dispatch_type == 'raise':
         raise AttributeError(raise_msg)
-
-    elif dispatch_type == 'call':
-        if callable(callback_func):
-            callback_func(func)
-        else:
-            raise ValueError(
-                "Callback method must be callable, " +
-                "if it is to be used for 'call'")
 
     else:
         assert False

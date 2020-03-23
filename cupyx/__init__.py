@@ -12,8 +12,6 @@ from cupyx import scipy  # NOQA
 from cupyx._ufunc_config import errstate  # NOQA
 from cupyx._ufunc_config import geterr  # NOQA
 from cupyx._ufunc_config import seterr  # NOQA
-from cupyx._ufunc_config import geterrcall  # NOQA
-from cupyx._ufunc_config import seterrcall  # NOQA
 
 
 from cupy.core.syncdetect import allow_synchronize  # NOQA

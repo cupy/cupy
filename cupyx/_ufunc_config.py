@@ -57,31 +57,19 @@ def get_config_fallback_mode():
     return value
 
 
-def get_fallback_mode_callback():
-    try:
-        method = _config.fallback_mode_callback
-    except AttributeError:
-        method = _config.fallback_mode_callback = None
-    return method
-
-
 @contextlib.contextmanager
 def errstate(*, divide=None, over=None, under=None,
-             invalid=None, linalg=None, fallback_mode=None,
-             fallback_mode_callback=None):
+             invalid=None, linalg=None, fallback_mode=None):
     """
     TODO(hvy): Write docs.
     """
     old_state = seterr(
         divide=divide, over=over, under=under,
         invalid=invalid, linalg=linalg, fallback_mode=fallback_mode)
-
-    old_callback = seterrcall(fallback_mode=fallback_mode_callback)
     try:
         yield  # Return `None` similar to `numpy.errstate`.
     finally:
         seterr(**old_state)
-        seterrcall(**old_callback)
 
 
 def seterr(*, divide=None, over=None, under=None,
@@ -103,8 +91,7 @@ def seterr(*, divide=None, over=None, under=None,
         if linalg not in ('ignore', 'raise'):
             raise NotImplementedError()
     if fallback_mode is not None:
-        if fallback_mode in ['print', 'warn', 'ignore',
-                             'raise', 'log', 'call']:
+        if fallback_mode in ['print', 'warn', 'ignore', 'raise']:
             _config.fallback_mode = fallback_mode
         else:
             raise ValueError(
@@ -115,23 +102,6 @@ def seterr(*, divide=None, over=None, under=None,
     _config.over = over
     _config.invalid = invalid
     _config.linalg = linalg
-
-    return old_state
-
-
-def seterrcall(fallback_mode=None):
-    """
-    TODO: Write docs.
-    """
-    old_state = geterrcall()
-
-    if fallback_mode is not None:
-        if not callable(fallback_mode):
-            if not hasattr(fallback_mode, 'write') or \
-               not callable(fallback_mode.write):
-                raise ValueError('Only callable can be used as Callback')
-
-    _config.fallback_mode_callback = fallback_mode
 
     return old_state
 
@@ -147,13 +117,4 @@ def geterr():
         invalid=get_config_invalid(),
         linalg=get_config_linalg(),
         fallback_mode=get_config_fallback_mode(),
-    )
-
-
-def geterrcall():
-    """
-    TODO: Write docs.
-    """
-    return dict(
-        fallback_mode=get_fallback_mode_callback(),
     )
