@@ -799,7 +799,6 @@ cublasStatus_t cublasCgemmStridedBatched(
         const cuComplex *B, int ldb, long long bsb,
         const cuComplex *beta,
         cuComplex *C, int ldc, long long bsc, int batchCount) {
-    hipblasComplex aaa;
     return hipblasCgemmStridedBatched(
         handle,
         convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
