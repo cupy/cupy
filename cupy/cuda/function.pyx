@@ -325,7 +325,13 @@ cdef class Arg:
         return []
 
     cdef tuple get_immutable_key(self):
-        return (self.arg_kind, self.type, self.dtype, self.ndim)
+        return (
+            self.arg_kind,
+            self.type,
+            self.dtype,
+            self.ndim,
+            self.c_contiguous
+        )
 
     cdef bint is_ndarray(self):
         return self.arg_kind == ARG_KIND_NDARRAY
