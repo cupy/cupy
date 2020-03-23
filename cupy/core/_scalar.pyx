@@ -155,7 +155,7 @@ cdef class CScalar(CPointer):
 
     @staticmethod
     cdef CScalar from_numpy_scalar_with_dtype(object x, object dtype):
-        cdef CScalar ret = CScalar._from_numpy_scalar(x)
+        cdef CScalar ret = CScalar.from_numpy_scalar(x)
         ret.apply_dtype(dtype)
         return ret
 
@@ -187,7 +187,7 @@ cdef class CScalar(CPointer):
         return ret
 
     @staticmethod
-    cdef CScalar _from_numpy_scalar(object x):
+    cdef CScalar from_numpy_scalar(object x):
         cdef CScalar ret = CScalar.__new__(CScalar)
         cdef Scalar* s = <Scalar*>ret.ptr
         ret.kind = ord(x.dtype.kind)
@@ -348,7 +348,7 @@ cdef CScalar scalar_to_c_scalar(object x):
     if typ in _python_scalar_type_set:
         return CScalar._from_python_scalar(x)
     elif typ in _numpy_scalar_type_set:
-        return CScalar._from_numpy_scalar(x)
+        return CScalar.from_numpy_scalar(x)
     return None
 
 

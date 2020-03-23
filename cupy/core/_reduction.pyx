@@ -238,9 +238,6 @@ cdef class _AbstractReductionKernel:
         cdef function.Function kern
         cdef Arg arg
 
-        # TODO(niboshi): Replace in_args with this
-        in_args_ = [Arg.from_obj(a) for a in in_args]
-
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -272,10 +269,6 @@ cdef class _AbstractReductionKernel:
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
-        for i in range(self.nin):
-            arg = in_args_[0]
-            if arg.is_scalar():
-                (<ScalarArg>arg).apply_dtype(in_types[i])
         in_shape = _set_permuted_args(
             in_args, reduce_axis + out_axis, a_shape, self.in_params)
 
@@ -290,6 +283,13 @@ cdef class _AbstractReductionKernel:
             internal.prod_sequence(in_shape),
             internal.prod_sequence(out_shape),
             contiguous_size)
+
+        in_args_ = [Arg.from_obj(a) for a in in_args]
+
+        for i in range(self.nin):
+            arg = in_args_[i]
+            if arg.is_scalar():
+                (<ScalarArg>arg).apply_dtype(in_types[i])
 
         # Kernel arguments passed to the __global__ function.
         inout_args = tuple(

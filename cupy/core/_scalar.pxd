@@ -23,7 +23,7 @@ cdef class CScalar(CPointer):
     cdef CScalar _from_python_scalar(object x)
 
     @staticmethod
-    cdef CScalar _from_numpy_scalar(object x)
+    cdef CScalar from_numpy_scalar(object x)
 
     cpdef apply_dtype(self, dtype)
     cpdef get_numpy_type(self)
