@@ -35,44 +35,7 @@ Memory management
    cupy.cuda.PinnedMemoryPool
 
 
-CuPy provides C API to access its current device memory allocator. To use this,
-please include ``cupy/cuda/cupy_memory.h`` in your C/C++ code.
-
-.. c:function:: cupy_allocator_handle* get_cupy_allocator_handle()
-
-    This function creates an opaque handle to CuPy's device memory allocator.
-
-    Internally, it inspects if the Python interpreter is already initialized
-    in the current thread, calls ``Py_Initialize()`` if not, and import the
-    necessary functions from :mod:`cupy.cuda.memory` for use.
-
-.. c:function:: void destroy_cupy_allocator_handle(cupy_allocator_handle* ptr)
-
-    This function destroys the handle ``ptr`` to CuPy's device memory allocator.
-    Any device memory allocated from the handle should be freed before destroying
-    it.
-
-    Internally, it checks whether ``Py_Initialize()`` was called when the handle
-    was created, and calls ``Py_Finalize()`` if so.
-
-.. c:function:: void* cupy_malloc(cupy_allocator_handle* handle, size_t size)
-
-    This function returns a device pointer to the memory of ``size`` bytes
-    allocated from CuPy's memory pool.
-
-    The device on which the memory is allocated depends on the current CUDA
-    context, so callers should ensure ``cudaSetDevice()`` is called prior to
-    allocating memory.
-
-    This function can only be called on the host, as the Python GIL is hold
-    during the call.
-
-.. c:function:: void cupy_free(cupy_allocator_handle* handle, void* ptr)
-
-    This function frees the allocated CuPy memory pointed by ``ptr``.
-
-    This function can only be called on the host, as the Python GIL is hold
-    during the call.
+See also :doc:`memory_C` for C/C++ API.
 
 
 Memory hook
@@ -155,7 +118,6 @@ Runtime API
 CuPy wraps CUDA Runtime APIs to provide the native CUDA operations.
 Please check the `Original CUDA Runtime API document <https://docs.nvidia.com/cuda/cuda-runtime-api/index.html>`_
 to use these functions.
-
 
 
 .. autosummary::
