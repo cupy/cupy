@@ -53,7 +53,7 @@ def get_config_fallback_mode():
     try:
         value = _config.fallback_mode
     except AttributeError:
-        value = _config.fallback_mode = 'warn'
+        value = _config.fallback_mode = 'ignore'
     return value
 
 
@@ -93,6 +93,8 @@ def seterr(*, divide=None, over=None, under=None,
     if fallback_mode is not None:
         if fallback_mode in ['print', 'warn', 'ignore', 'raise']:
             _config.fallback_mode = fallback_mode
+        elif fallback_mode in ['log', 'call']:
+            raise NotImplementedError
         else:
             raise ValueError(
                 '{} is not a valid dispatch type'.format(fallback_mode))

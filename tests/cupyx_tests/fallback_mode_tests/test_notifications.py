@@ -1,7 +1,7 @@
+import contextlib
+import io
 import pytest
 import unittest
-import contextlib
-from io import StringIO
 
 from cupy import testing
 from cupyx import fallback_mode
@@ -48,7 +48,7 @@ class TestNotificationModes(unittest.TestCase):
     def test_notification_ignore(self):
 
         old = _ufunc_config.seterr(fallback_mode='ignore')
-        saved_stdout = StringIO()
+        saved_stdout = io.StringIO()
 
         with contextlib.redirect_stdout(saved_stdout):
             a = testing.shaped_random(self.shape, fallback_mode.numpy)
@@ -62,7 +62,7 @@ class TestNotificationModes(unittest.TestCase):
     def test_notification_print(self):
 
         old = _ufunc_config.seterr(fallback_mode='print')
-        saved_stdout = StringIO()
+        saved_stdout = io.StringIO()
 
         with contextlib.redirect_stdout(saved_stdout):
             a = testing.shaped_random(self.shape, fallback_mode.numpy)
