@@ -260,10 +260,6 @@ cdef class _AbstractReductionKernel:
             out_axis = _sort_axis(out_axis, strides)
 
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
-        out_args = self._get_out_args(out_args, out_types, out_shape)
-        ret = (<Arg>out_args[0]).obj
-        if ret.size == 0:
-            return ret
 
         if self.identity == '' and 0 in a_shape:
             raise ValueError(('zero-size array to reduction operation'
@@ -276,6 +272,14 @@ cdef class _AbstractReductionKernel:
             in_shape = _reduce_dims(in_args, self.in_params, in_shape)
             out_shape = _reduce_dims(out_args, self.out_params, out_shape)
 
+        in_args_ = [Arg.from_obj(a) for a in in_args]
+        out_args_ = [Arg.from_obj(a) for a in out_args]
+        out_args_ = self._get_out_args(out_args_, out_types, out_shape)
+
+        ret = (<Arg>out_args_[0]).obj
+        if ret.size == 0:
+            return ret
+
         # Calculate the reduction block dimensions.
         contiguous_size = _get_contiguous_size(
             in_args, self.in_params, len(in_shape), len(out_shape))
@@ -283,8 +287,6 @@ cdef class _AbstractReductionKernel:
             internal.prod_sequence(in_shape),
             internal.prod_sequence(out_shape),
             contiguous_size)
-
-        in_args_ = [Arg.from_obj(a) for a in in_args]
 
         for i in range(self.nin):
             arg = in_args_[i]
@@ -294,7 +296,7 @@ cdef class _AbstractReductionKernel:
         # Kernel arguments passed to the __global__ function.
         inout_args = tuple(
             in_args_
-            + out_args
+            + out_args_
             + [
                 IndexerArg(in_shape),
                 IndexerArg(out_shape),
