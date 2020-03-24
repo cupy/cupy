@@ -163,7 +163,9 @@ def diag_indices(n, ndim=2):
             [0, 0]],
            [[0, 0],
             [0, 1]]])
+
      .. seealso:: :func:`numpy.diag_indices`
+
     """
     idx = cupy.arange(n)
     return (idx,) * ndim
@@ -176,9 +178,10 @@ def diag_indices_from(arr):
 
     Args:
         arr (cupy.ndarray): At least 2-D.
-     .. seealso:: :func:`numpy.diag_indices_from`
-    """
 
+     .. seealso:: :func:`numpy.diag_indices_from`
+
+    """
     if not arr.ndim >= 2:
         raise ValueError("input array must be at least 2-d")
     # For more than d=2, the strided formula is only valid for arrays with
