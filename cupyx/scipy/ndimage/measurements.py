@@ -4,7 +4,7 @@ import cupy
 
 
 def label(input, structure=None, output=None):
-    """Label features in an array
+    """Labels features in an array
 
     Args:
         input (cupy.ndarray): The input array.
@@ -26,7 +26,8 @@ def label(input, structure=None, output=None):
 
     .. seealso:: :func:`scipy.ndimage.label`
     """
-    assert isinstance(input, cupy.ndarray)
+    if not isinstance(input, cupy.ndarray):
+        raise TypeError('input must be cupy.ndarray')
     if input.dtype.char in 'FD':
         raise TypeError('Complex type not supported')
     if structure is None:
@@ -56,15 +57,15 @@ def label(input, structure=None, output=None):
         maxlabel = 0
     elif input.ndim == 0:
         # 0-dim array
-        maxlabel = 0 if (input.item() == 0) else 1
+        maxlabel = 0 if input.item() == 0 else 1
         output[...] = maxlabel
     else:
-        if output.dtype is not numpy.int32:
+        if output.dtype != numpy.int32:
             y = cupy.empty(input.shape, numpy.int32)
         else:
             y = output
         maxlabel = _label(input, structure, y)
-        if output.dtype is not numpy.int32:
+        if output.dtype != numpy.int32:
             output[...] = y[...]
 
     if caller_provided_output:
