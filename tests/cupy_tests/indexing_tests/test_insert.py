@@ -151,8 +151,8 @@ class TestFillDiagonal(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'n': [2, 4],
-    'ndim': [2, 3],
+    'n': [2, 4, -3, 0],
+    'ndim': [2, 3, 1, 0, -2],
 }))
 @testing.gpu
 class TestDiagIndices(unittest.TestCase):
