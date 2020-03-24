@@ -183,8 +183,8 @@ cdef class _Args:
         for obj in objs:
             arg = Arg.from_obj(obj)
             # Check device of an ndarray
-            if isinstance(obj, ndarray):
-                _check_array_device_id(obj, device_id)
+            if arg.is_ndarray():
+                _check_array_device_id(arg.obj, device_id)
             args.append(arg)
         return args
 

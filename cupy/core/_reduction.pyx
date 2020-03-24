@@ -301,7 +301,9 @@ cdef class _AbstractReductionKernel:
                 IndexerArg(in_shape),
                 IndexerArg(out_shape),
                 # block_stride is passed as the last argument.
-                # _scalar.CScalar.from_int32(block_stride),
+
+                # TODO(imanishi): Make a fast shortcut `CScalar.from_int32`
+                # constructor of Arg that does not require `numpy.int32`.
                 Arg.from_obj(numpy.int32(block_stride)),
             ])
 
