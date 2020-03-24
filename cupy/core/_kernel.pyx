@@ -82,6 +82,7 @@ cdef inline _check_array_device_id(ndarray arr, int device_id):
             % (arr.data.device_id, device_id))
 
 
+# TODO(imanishi): Move to `_reduction.pyx`
 cdef list _preprocess_args(int dev_id, args):
     """Preprocesses arguments for kernel invocation
 
@@ -92,15 +93,10 @@ cdef list _preprocess_args(int dev_id, args):
 
     for arg in args:
         if type(arg) is not ndarray:
-            s = _scalar.scalar_to_c_scalar(arg)
-            if s is not None:
-                ret.append(s)
-                continue
-            if not hasattr(arg, '__cuda_array_interface__'):
-                raise TypeError('Unsupported type %s' % type(arg))
-            arg = _convert_object_with_cuda_array_interface(arg)
-
-        _check_array_device_id(<ndarray>arg, dev_id)
+            if isinstance(arg, ndarray):
+                _check_array_device_id(arg, dev_id)
+            elif hasattr(arg, '__cuda_array_interface__'):
+                arg = _convert_object_with_cuda_array_interface(arg)
         ret.append(arg)
 
     return ret
