@@ -172,7 +172,7 @@ cdef Py_ssize_t _get_contiguous_size(
             continue
         tmp_contiguous_size = 1
         itemsize = a.dtype.itemsize
-        for j in range(out_ndim):
+        for j in range(min(ndim, out_ndim)):
             if a._strides[ndim-j-1] != tmp_contiguous_size * itemsize:
                 break
             tmp_contiguous_size *= a._shape[ndim-j-1]
