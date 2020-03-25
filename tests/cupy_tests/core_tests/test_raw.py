@@ -390,7 +390,7 @@ class TestRaw(unittest.TestCase):
         # generate cubin/ptx by calling nvcc
         global _test_cache_dir
 
-        nvcc = cupy.cuda._environment.get_nvcc_path()
+        nvcc = cupy.cuda.get_nvcc_path()
         arch = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(
             cc=compiler._get_arch())
         source = '{}/test_load_cubin.cu'.format(_test_cache_dir)

@@ -49,7 +49,7 @@ def _get_nvcc_path():
     # Honor the "NVCC" env var
     nvcc_path = os.environ.get('NVCC', None)
     if nvcc_path is not None:
-        return nvcc_path.split()  # returning a list, not str!
+        return nvcc_path
 
     # Lookup <CUDA>/bin
     cuda_path = get_cuda_path()
