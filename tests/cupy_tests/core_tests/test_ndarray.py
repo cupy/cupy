@@ -475,3 +475,31 @@ class TestSize(unittest.TestCase):
             x = testing.shaped_arange((), xp, numpy.int32)
             with pytest.raises(IndexError):
                 xp.size(x, 0)
+
+
+@testing.gpu
+class TestPythonInterface(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_bytes_tobytes(self, xp, dtype):
+        x = testing.shaped_arange((3, 4, 5), xp, dtype)
+        return bytes(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_bytes_tobytes_empty(self, xp, dtype):
+        x = xp.empty((3, 4, 5), dtype)
+        return bytes(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_bytes_tobytes_empty2(self, xp, dtype):
+        x = xp.empty((), dtype)
+        return bytes(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_bytes_tobytes_scalar(self, xp, dtype):
+        x = xp.array([3], dtype).item()
+        return bytes(x)

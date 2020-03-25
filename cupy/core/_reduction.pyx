@@ -1,5 +1,7 @@
 from cpython cimport sequence
 
+from libcpp cimport vector
+
 from cupy.core cimport _carray
 from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
@@ -531,6 +533,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             ``__init__`` method.
 
         """
+        cdef vector.vector[Py_ssize_t] broad_shape
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
@@ -555,11 +558,11 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         dev_id = device.get_device_id()
         in_args = _preprocess_args(dev_id, args[:self.nin], False)
         out_args = _preprocess_args(dev_id, out_args, False)
-        in_args, broad_shape = _broadcast(in_args, self.in_params, False)
+        in_args = _broadcast(in_args, self.in_params, False, broad_shape)
 
         return self._call(
             in_args, out_args,
-            broad_shape, axis, None,
+            tuple(broad_shape), axis, None,
             keepdims, self.reduce_dims, stream)
 
     cdef tuple _get_expressions_and_types(
