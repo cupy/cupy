@@ -238,6 +238,8 @@ cdef class _AbstractReductionKernel:
         cdef function.Function kern
         cdef Arg arg
 
+        dev_id = device.get_device_id()
+
         if dtype is not None:
             dtype = get_dtype(dtype).type
 
@@ -320,7 +322,8 @@ cdef class _AbstractReductionKernel:
             inout_args,
             type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
-            block_size)
+            block_size,
+            dev_id)
 
         # Launch the kernel
         func.linear_launch(
@@ -340,7 +343,7 @@ cdef class _AbstractReductionKernel:
             self,
             tuple params, tuple args, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size):
+            Py_ssize_t block_size, int device_id):
         raise NotImplementedError()
 
 
@@ -447,12 +450,12 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple args, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size):
+            Py_ssize_t block_size, int device_id):
         return _SimpleReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, args, type_map,
             self.name, block_size, self.identity,
-            self._input_expr, self._output_expr, self._preamble, ())
+            self._input_expr, self._output_expr, self._preamble, (), device_id)
 
 
 _simple_reduction_kernel_func_cache = {}
@@ -462,14 +465,14 @@ def _SimpleReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, args, _kernel._TypeMap type_map,
         name, block_size, identity, input_expr, output_expr, _preamble,
-        options):
+        options, device_id):
     key = (
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params,
         tuple([(<Arg>arg).get_immutable_key() for arg in args]),
         type_map,
         name, block_size, identity, input_expr, output_expr, _preamble,
-        options
+        options, device_id
     )
     func = _simple_reduction_kernel_func_cache.get(key)
     if func is not None:
@@ -590,6 +593,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
                                  "a positional and keyword argument")
             out_args = [out]
 
+        # TODO(imanishi): Reduce redundant get_device_id
         dev_id = device.get_device_id()
         in_args = _preprocess_args(dev_id, args[:self.nin])
         out_args = _preprocess_args(dev_id, out_args)
@@ -626,7 +630,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple args, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size):
+            Py_ssize_t block_size, int device_id):
         return _ReductionKernel_get_cached_function(
             self.nin, self.nout, params, args, type_map,
             self.name, block_size, reduce_type, self.identity,
