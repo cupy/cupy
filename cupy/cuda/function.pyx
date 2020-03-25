@@ -298,6 +298,8 @@ cdef class Arg:
             # scalar
             arg = ScalarArg(obj)
             return arg
+        if isinstance(obj, TextureObject):
+            return PointerArg(obj.ptr)
 
         raise TypeError('Unsupported type %s' % type(obj))
 
@@ -438,3 +440,17 @@ cdef class ScalarArg(Arg):
             return _scalar.CScalar.from_numpy_scalar_with_dtype(
                 numpy_scalar, self.dtype.type)
         return _scalar.CScalar.from_numpy_scalar(numpy_scalar)
+
+
+cdef class PointerArg(Arg):
+
+    def __init__(self, intptr_t ptr):
+        super().__init__(CUIntMax(ptr), ARG_KIND_POINTER, None, None, 0, True)
+
+    # override
+    def get_repr_data(self):
+        return ['ptr={!r}'.format(self.obj)]
+
+    # override
+    cdef CPointer get_pointer(self):
+        return self.obj

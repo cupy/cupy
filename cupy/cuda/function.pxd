@@ -45,6 +45,7 @@ cdef enum _ArgKind:
     ARG_KIND_NDARRAY = 1
     ARG_KIND_INDEXER
     ARG_KIND_SCALAR
+    ARG_KIND_POINTER
 
 
 cdef class Arg:
@@ -103,5 +104,10 @@ cdef class ScalarArg(Arg):
     cdef object get_min_scalar_type(self)
 
     cdef apply_dtype(self, object dtype)
+
+    cdef CPointer get_pointer(self)
+
+
+cdef class PointerArg(Arg):
 
     cdef CPointer get_pointer(self)
