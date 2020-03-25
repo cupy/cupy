@@ -482,6 +482,7 @@ cdef tuple _decide_params_type_core(
 
 cdef list _broadcast(list args, tuple params, bint use_size,
                      vector.vector[Py_ssize_t]& shape):
+    # `shape` is an output argument
     cdef Py_ssize_t i
     cdef ParameterInfo p
     cdef bint any_nonraw_array = False
@@ -553,7 +554,7 @@ cdef list _get_out_args(list out_args, tuple out_types,
 
 
 cdef _copy_in_args_if_needed(list in_args, list out_args):
-    # This function updates `in_args`
+    # `in_args` is an input and output argument
     cdef ndarray inp, out
     for i in range(len(in_args)):
         a = in_args[i]
@@ -744,6 +745,7 @@ cdef class ElementwiseKernel:
         arg_list = _preprocess_args(dev_id, args, True)
 
         out_args = arg_list[self.nin:]
+        # _broadcast updates vec_shape
         in_args = _broadcast(
             arg_list, self.params, size != -1, vec_shape)[:self.nin]
 
@@ -1020,8 +1022,10 @@ cdef class ufunc:
             in_args = arg_list
             out_args = _preprocess_args(dev_id, (out,), False)
 
+        # _copy_in_args_if_needed updates in_args
         _copy_in_args_if_needed(in_args, out_args)
         broad_values = in_args + out_args
+        # _broadcast updates vec_shape
         internal._broadcast_core(broad_values, vec_shape)
 
         op = self._ops.guess_routine(
