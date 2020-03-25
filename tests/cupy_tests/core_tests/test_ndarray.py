@@ -382,7 +382,7 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
 
     def test_shape_mismatch(self):
-        for xp in (numpy, numpy):
+        for xp in (numpy, cupy):
             a = testing.shaped_arange(self.shape, xp)
             i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
             o = testing.shaped_arange(self.out_shape, xp)

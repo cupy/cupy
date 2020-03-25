@@ -19,7 +19,7 @@ class TestSort(unittest.TestCase):
                 a.sort()
 
     def test_external_sort_zero_dim(self):
-        for xp in (numpy, numpy):
+        for xp in (numpy, cupy):
             a = testing.shaped_random((), xp)
             with pytest.raises(numpy.AxisError):
                 xp.sort(a)
