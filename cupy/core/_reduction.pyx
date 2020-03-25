@@ -261,9 +261,16 @@ cdef class _AbstractReductionKernel:
 
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
 
-        if self.identity == '' and 0 in a_shape:
-            raise ValueError(('zero-size array to reduction operation'
-                              ' %s which has no identity') % self.name)
+        if self.identity == '':
+            for axis in reduce_axis:
+                if a_shape[axis] == 0:
+                    raise ValueError(('zero-size array to reduction operation'
+                                      ' %s which has no identity') % self.name)
+
+        if len(out_args) == 1:
+            # Check the shape of out_args.
+            if out_args[0].shape[-len(out_shape):] != out_shape:
+                raise ValueError('Shape mismatch')
 
         in_shape = _set_permuted_args(
             in_args, reduce_axis + out_axis, a_shape, self.in_params)
