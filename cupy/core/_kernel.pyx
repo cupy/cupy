@@ -771,7 +771,7 @@ cdef class ElementwiseKernel:
         else:
             ret = tuple(out_args)
 
-        if _contain_zero(vec_shape):
+        if _contains_zero(vec_shape):
             return ret
 
         for i, x in enumerate(in_args):
@@ -1036,7 +1036,7 @@ cdef class ufunc:
         else:
             ret = tuple(out_args)
 
-        if _contain_zero(vec_shape):
+        if _contains_zero(vec_shape):
             return ret
 
         inout_args = []
