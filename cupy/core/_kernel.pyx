@@ -36,7 +36,7 @@ cpdef inline bint _is_fusing() except? -1:
     return False
 
 
-cdef inline bint _contain_zero(const vector.vector[Py_ssize_t]& v) except? -1:
+cdef inline bint _contains_zero(const vector.vector[Py_ssize_t]& v) except? -1:
     for i in range(v.size()):
         if v[i] == 0:
             return True
