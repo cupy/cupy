@@ -436,10 +436,8 @@ cdef class ScalarArg(Arg):
     # override
     cdef CPointer get_pointer(self):
         numpy_scalar = self._numpy_scalar
-        if self._dtype_applied:
-            return _scalar.CScalar.from_numpy_scalar_with_dtype(
-                numpy_scalar, self.dtype.type)
-        return _scalar.CScalar.from_numpy_scalar(numpy_scalar)
+        return _scalar.CScalar.from_numpy_scalar_with_dtype(
+            numpy_scalar, self.dtype.type)
 
 
 cdef class PointerArg(Arg):
