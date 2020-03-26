@@ -7,7 +7,7 @@ from . import filters
 
 def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
                  mode='reflect', cval=0.0, origin=0):
-    """Calculate a greyscale erosion
+    """Calculates a greyscale erosion.
 
     Args:
         input (cupy.ndarray): The input array.
@@ -47,7 +47,7 @@ def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
 
 def grey_dilation(input, size=None, footprint=None, structure=None,
                   output=None, mode='reflect', cval=0.0, origin=0):
-    """Calculate a greyscale dilation
+    """Calculates a greyscale dilation.
 
     Args:
         input (cupy.ndarray): The input array.

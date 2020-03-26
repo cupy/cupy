@@ -217,7 +217,7 @@ def _get_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
 
 def _normalize_sequence(x, ndim):
     if not hasattr(x, '__getitem__') or isinstance(x, str):
-        return [x, ] * ndim
+        return [x] * ndim
     else:
         return list(x)
 
