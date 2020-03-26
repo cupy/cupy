@@ -1248,9 +1248,9 @@ cdef class ndarray:
 
         """
         if util.ENABLE_SLICE_COPY and (
-                type(slices) is slice
-                and slices == slice(None, None, None)
-                and isinstance(value, numpy.ndarray)
+                type(slices) is slice and
+                slices == slice(None, None, None) and
+                isinstance(value, numpy.ndarray)
         ):
             if self.dtype == value.dtype and self.shape == value.shape:
                 if self.strides == value.strides:
@@ -1304,7 +1304,6 @@ cdef class ndarray:
 
     # numpy/ufunc compat
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-
         """Apply unary or binary ufunc to this array
 
         If binary, only allow if second argument is another cupy ndarray or
@@ -2048,7 +2047,7 @@ cdef tuple _get_concat_shape_impl(object obj):
     cdef obj_type = type(obj)
     if issubclass(obj_type, (numpy.ndarray, ndarray)):
         # obj.shape is () when obj.ndim == 0
-        return (obj.shape, obj_type, obj.dtype)
+        return obj.shape, obj_type, obj.dtype
     if isinstance(obj, (list, tuple)):
         shape = None
         typ = None
@@ -2065,10 +2064,10 @@ cdef tuple _get_concat_shape_impl(object obj):
 
             # `elem` is not concatable or the shape and dtype does not match
             # with siblings.
-            if (elem_shape is None
-                    or shape != elem_shape
-                    or dtype != elem_dtype):
-                return (None, obj_type, None)
+            if (elem_shape is None or
+                    shape != elem_shape or
+                    dtype != elem_dtype):
+                return None, obj_type, None
 
         if shape is None:
             shape = ()
@@ -2077,7 +2076,7 @@ cdef tuple _get_concat_shape_impl(object obj):
             typ,
             dtype)
     # scalar or object
-    return (None, obj_type, None)
+    return None, obj_type, None
 
 
 cdef list _flatten_list(object obj):
@@ -2173,8 +2172,8 @@ cdef bint _numpy_concatenate_has_out_argument = (
 cdef inline _concatenate_numpy_array(arrays, axis, src_dtype, dst_dtype, out):
     # type(*_dtype) must be numpy.dtype
 
-    if (_numpy_concatenate_has_out_argument
-            and src_dtype.kind == dst_dtype.kind):
+    if (_numpy_concatenate_has_out_argument and
+            src_dtype.kind == dst_dtype.kind):
         # concatenate only accepts same_kind casting
         numpy.concatenate(arrays, axis, out)
     else:

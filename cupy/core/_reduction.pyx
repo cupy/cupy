@@ -180,7 +180,7 @@ cdef Py_ssize_t _get_contiguous_size(
     return contiguous_size
 
 
-cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
+cpdef(Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
         Py_ssize_t in_size, Py_ssize_t out_size,
         Py_ssize_t contiguous_size) except*:
     cdef Py_ssize_t reduce_block_size, block_stride, out_block_num
@@ -214,10 +214,10 @@ cdef class _AbstractReductionKernel:
         in_params_ = _get_param_info(in_params, True)
         out_params_ = _get_param_info(out_params, False)
         params = (
-            in_params_
-            + out_params_
-            + _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False)
-            + _get_param_info('int32 _block_stride', True))
+            in_params_ +
+            out_params_ +
+            _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False) +
+            _get_param_info('int32 _block_stride', True))
 
         self.name = name
         self.identity = identity
@@ -251,9 +251,9 @@ cdef class _AbstractReductionKernel:
         # When there is only one input array, sort the axes in such a way that
         # contiguous (C or F) axes can be squashed in _reduce_dims() later.
         # TODO(niboshi): Support (out_axis) > 1
-        if (len(in_args) == 1
-                and len(out_axis) <= 1
-                and not in_args[0]._c_contiguous):
+        if (len(in_args) == 1 and
+                len(out_axis) <= 1 and
+                not in_args[0]._c_contiguous):
             strides = in_args[0].strides
             reduce_axis = _sort_axis(reduce_axis, strides)
             out_axis = _sort_axis(out_axis, strides)
@@ -288,9 +288,9 @@ cdef class _AbstractReductionKernel:
 
         # Kernel arguments passed to the __global__ function.
         inout_args = (
-            in_args
-            + out_args
-            + [
+            in_args +
+            out_args +
+            [
                 _carray.Indexer(in_shape),
                 _carray.Indexer(out_shape),
                 # block_stride is passed as the last argument.

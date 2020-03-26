@@ -1,9 +1,7 @@
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
 
-from libc.stdint cimport intptr_t
 from libcpp.pair cimport pair
-from libcpp.vector cimport vector
 
 
 cdef pair[Py_ssize_t, Py_ssize_t] _get_bound(ndarray array):
@@ -28,9 +26,9 @@ cpdef bint may_share_bounds(ndarray a, ndarray b):
     cdef memory.MemoryPointer b_data = b.data
     cdef pair[Py_ssize_t, Py_ssize_t] a_range, b_range
 
-    if (a_data.device_id != b_data.device_id
-            or a_data.mem.ptr != b_data.mem.ptr
-            or a.size == 0 or b.size == 0):
+    if (a_data.device_id != b_data.device_id or
+            a_data.mem.ptr != b_data.mem.ptr or
+            a.size == 0 or b.size == 0):
         return False
 
     a_range = _get_bound(a)

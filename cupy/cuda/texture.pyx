@@ -30,6 +30,7 @@ cdef class ChannelFormatDescriptor:
     .. _cudaCreateChannelDesc():
         https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TEXTURE__OBJECT.html#group__CUDART__TEXTURE__OBJECT_1g39df9e3b6edc41cd6f189d2109672ca5
     '''  # noqa
+
     def __init__(self, int x, int y, int z, int w, int f):
         # We don't call cudaCreateChannelDesc() here for two reasons: 1. to
         # avoid out of scope; 2. it doesn't do input verification for us.
@@ -102,6 +103,7 @@ cdef class ResourceDescriptor:
     .. _cudaCreateTextureObject():
         https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TEXTURE__OBJECT.html#group__CUDART__TEXTURE__OBJECT_1g16ac75814780c3a16e4c63869feb9ad3
     '''  # noqa
+
     def __init__(self, int restype, CUDAarray cuArr=None, ndarray arr=None,
                  ChannelFormatDescriptor chDesc=None, size_t sizeInBytes=0,
                  size_t width=0, size_t height=0, size_t pitchInBytes=0):
@@ -194,6 +196,7 @@ cdef class TextureDescriptor:
     .. _cudaCreateTextureObject():
         https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TEXTURE__OBJECT.html#group__CUDART__TEXTURE__OBJECT_1g16ac75814780c3a16e4c63869feb9ad3
     '''  # noqa
+
     def __init__(self, addressModes=None, int filterMode=0, int readMode=0,
                  sRGB=None, borderColors=None, normalizedCoords=None,
                  maxAnisotropy=None):
@@ -274,6 +277,7 @@ cdef class CUDAarray:
     '''  # noqa
     # TODO(leofang): perhaps this wrapper is not needed when cupy.ndarray
     # can be backed by texture memory/CUDA arrays?
+
     def __init__(self, ChannelFormatDescriptor desc, size_t width,
                  size_t height=0, size_t depth=0, unsigned int flags=0):
         if width == 0:
@@ -493,6 +497,7 @@ cdef class TextureObject:
     .. _cudaCreateTextureObject():
         https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TEXTURE__OBJECT.html#group__CUDART__TEXTURE__OBJECT_1g16ac75814780c3a16e4c63869feb9ad3
     '''  # noqa
+
     def __init__(self, ResourceDescriptor ResDesc, TextureDescriptor TexDesc):
         self.ptr = runtime.createTextureObject(ResDesc.ptr, TexDesc.ptr)
         self.ResDesc = ResDesc
@@ -532,6 +537,7 @@ cdef class TextureReference:
     '''  # noqa
     # Basically, this class translates from the Runtime API's descriptors
     # to the driver API calls.
+
     def __init__(self, intptr_t texref, ResourceDescriptor ResDesc,
                  TextureDescriptor TexDesc):
         cdef ResourceDesc* ResDescPtr = <ResourceDesc*>(ResDesc.ptr)

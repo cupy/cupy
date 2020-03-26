@@ -246,8 +246,8 @@ nanmax = create_reduction_func(
 
 cdef _argmin = create_reduction_func(
     'cupy_argmin',
-    tuple(['{}->{}'.format(d, r) for r in 'qlihb' for d in '?BhHiIlLqQ'])
-    + (
+    tuple(['{}->{}'.format(d, r) for r in 'qlihb' for d in '?BhHiIlLqQ']) +
+    (
         ('e->q', (None, 'my_argmin_float(a, b)', None, None)),
         ('f->q', (None, 'my_argmin_float(a, b)', None, None)),
         ('d->q', (None, 'my_argmin_float(a, b)', None, None)),
@@ -260,8 +260,8 @@ cdef _argmin = create_reduction_func(
 
 cdef _argmax = create_reduction_func(
     'cupy_argmax',
-    tuple(['{}->{}'.format(d, r) for r in 'qlihb' for d in '?BhHiIlLqQ'])
-    + (
+    tuple(['{}->{}'.format(d, r) for r in 'qlihb' for d in '?BhHiIlLqQ']) +
+    (
         ('e->q', (None, 'my_argmax_float(a, b)', None, None)),
         ('f->q', (None, 'my_argmax_float(a, b)', None, None)),
         ('d->q', (None, 'my_argmax_float(a, b)', None, None)),

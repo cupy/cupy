@@ -176,11 +176,11 @@ cdef class _ArgInfo:
             return False
         oth = other
         return (
-            self.arg_kind == oth.arg_kind
-            and self.type is oth.type
-            and self.dtype == oth.dtype
-            and self.ndim == oth.ndim
-            and self.c_contiguous == oth.c_contiguous)
+            self.arg_kind == oth.arg_kind and
+            self.type is oth.type and
+            self.dtype == oth.dtype and
+            self.ndim == oth.ndim and
+            self.c_contiguous == oth.c_contiguous)
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim):
         # Returns an ndarray _ArgInfo with altered ndim.
@@ -377,11 +377,11 @@ cdef class ParameterInfo:
             return False
         oth = other
         return (
-            self.name == oth.name
-            and self.dtype == oth.dtype
-            and self.ctype == oth.ctype
-            and self.raw == oth.raw
-            and self.is_const == oth.is_const)
+            self.name == oth.name and
+            self.dtype == oth.dtype and
+            self.ctype == oth.ctype and
+            self.raw == oth.raw and
+            self.is_const == oth.is_const)
 
     def __repr__(self):
         return '<ParameterInfo({})>'.format(

@@ -1144,8 +1144,9 @@ cdef class SingleDeviceMemoryPool:
         cdef size_t bin_index = _bin_index_from_size(size)
         cdef _Arena a = self._arena(stream_ptr)
         index = <size_t>(
-            algorithm.lower_bound(a._index.begin(), a._index.end(), bin_index)
-            - a._index.begin())
+            algorithm.lower_bound(
+                a._index.begin(), a._index.end(), bin_index) -
+            a._index.begin())
         length = a._index.size()
         for i in range(index, length):
             if a._flag.at(i) == 0:

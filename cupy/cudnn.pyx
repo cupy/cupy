@@ -2173,10 +2173,10 @@ cdef _batch_normalization_forward_training(
             bn_ops = cudnn.CUDNN_BATCHNORM_OPS_BN
 
             if (
-                    cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT
-                    and x.dtype == numpy.float16
-                    and d_layout == cudnn.CUDNN_TENSOR_NHWC
-                    and x.shape[3] % 4 == 0  # C mod 4 == 0
+                    cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT and
+                    x.dtype == numpy.float16 and
+                    d_layout == cudnn.CUDNN_TENSOR_NHWC and
+                    x.shape[3] % 4 == 0  # C mod 4 == 0
             ):
 
                 # Faster NHWC kernel can be triggered by allocating extra

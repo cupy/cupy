@@ -253,6 +253,7 @@ cdef class RawModule:
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
     """
+
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
                  bint enable_cooperative_groups=False):

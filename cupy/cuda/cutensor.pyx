@@ -195,9 +195,9 @@ cpdef enum:
     C_MIN_32F = 8    # NOQA, complex as a float
     R_MIN_64F = 16   # NOQA, real as a double
     C_MIN_64F = 32   # NOQA, complex as a double
-    R_MIN_8U  = 64   # NOQA, real as a uint8
+    R_MIN_8U = 64   # NOQA, real as a uint8
     R_MIN_32U = 128  # NOQA, real as a uint32
-    R_MIN_8I  = 256  # NOQA, real as a int8
+    R_MIN_8I = 256  # NOQA, real as a int8
     R_MIN_32I = 512  # NOQA, real as a int32
 
 
