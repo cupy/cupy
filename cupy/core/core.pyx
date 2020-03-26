@@ -1,5 +1,6 @@
 # distutils: language = c++
 
+import functools
 import os
 import pickle
 import re
@@ -1349,15 +1350,12 @@ cdef class ndarray:
             return NotImplemented
 
     def __array_function__(self, func, types, args, kwargs):
-        module = cupy
-        for submodule in func.__module__.split('.')[1:]:
-            try:
-                module = getattr(module, submodule)
-            except AttributeError:
-                return NotImplemented
-        if not hasattr(module, func.__name__):
+        try:
+            module = functools.reduce(
+                getattr, func.__module__.split('.')[1:], cupy)
+            cupy_func = getattr(module, func.__name__)
+        except AttributeError:
             return NotImplemented
-        cupy_func = getattr(module, func.__name__)
         if cupy_func is func:
             # avoid NumPy func
             return NotImplemented
