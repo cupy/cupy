@@ -1,7 +1,7 @@
 import contextlib
 import os
 
-from cupy._environment import get_cuda_path  # NOQA
+from cupy._environment import get_cuda_path, get_nvcc_path  # NOQA
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
 from cupy.cuda import driver  # NOQA
