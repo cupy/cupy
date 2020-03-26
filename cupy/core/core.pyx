@@ -724,7 +724,19 @@ cdef class ndarray:
 
         return _indexing._ndarray_nonzero(self)
 
-    # TODO(okuta): Implement compress
+    cpdef ndarray compress(self, condition, axis=None, out=None):
+        """Returns selected slices of this array along given axis.
+
+        .. warning::
+
+            This function may synchronize the device.
+
+        .. seealso::
+           :func:`cupy.compress` for full documentation,
+           :meth:`numpy.ndarray.compress`
+
+        """
+        return _indexing._ndarray_compress(self, condition, axis, out)
 
     cpdef ndarray diagonal(self, offset=0, axis1=0, axis2=1):
         """Returns a view of the specified diagonals.
@@ -1235,10 +1247,12 @@ cdef class ndarray:
             array([9998., 9999.])
 
         """
-        if (util.ENABLE_SLICE_COPY and slices == slice(None, None, None) and
-                isinstance(value, numpy.ndarray)):
-            if (self.dtype == value.dtype and
-                    self.shape == value.shape):
+        if util.ENABLE_SLICE_COPY and (
+                type(slices) is slice
+                and slices == slice(None, None, None)
+                and isinstance(value, numpy.ndarray)
+        ):
+            if self.dtype == value.dtype and self.shape == value.shape:
                 if self.strides == value.strides:
                     ptr = ctypes.c_void_p(value.__array_interface__['data'][0])
                 else:
@@ -1368,6 +1382,9 @@ cdef class ndarray:
 
     def __hex__(self):
         return hex(self.get())
+
+    def __bytes__(self):
+        return bytes(self.get())
 
     # String representations:
 
@@ -2321,6 +2338,9 @@ invert = create_ufunc(
     doc='''Computes the bitwise NOT of an array elementwise.
 
     Only integer and boolean arrays are handled.
+
+    .. note::
+        :func:`cupy.bitwise_not` is an alias for :func:`cupy.invert`.
 
     .. seealso:: :data:`numpy.invert`
 

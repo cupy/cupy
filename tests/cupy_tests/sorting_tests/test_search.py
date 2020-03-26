@@ -278,6 +278,34 @@ class TestFlatNonzero(unittest.TestCase):
         return xp.flatnonzero(array)
 
 
+@testing.parameterize(
+    {'array': numpy.random.randint(0, 2, (20,))},
+    {'array': numpy.random.randn(3, 2, 4)},
+    {'array': numpy.empty((0,))},
+    {'array': numpy.empty((0, 2))},
+    {'array': numpy.empty((0, 2, 0))},
+)
+@testing.gpu
+class TestArgwhere(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_argwhere(self, xp, dtype):
+        array = xp.array(self.array, dtype=dtype)
+        return xp.argwhere(array)
+
+
+@testing.parameterize(
+    {'array': cupy.array(1)},
+)
+@testing.gpu
+class TestArgwhereZeroDimension(unittest.TestCase):
+
+    def test_argwhere(self):
+        with testing.assert_warns(DeprecationWarning):
+            return cupy.nonzero(self.array)
+
+
 @testing.gpu
 class TestNanArgMin(unittest.TestCase):
 

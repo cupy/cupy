@@ -30,7 +30,7 @@ class TestTrace(unittest.TestCase):
     'keepdims': [True, False],
 }) + testing.product({
     'shape': [(1, 2), (2, 2)],
-    'ord': [-numpy.Inf, -1, 1, numpy.Inf, 'fro'],
+    'ord': [-numpy.Inf, -2, -1, 1, 2, numpy.Inf, 'fro', 'nuc'],
     'axis': [(0, 1), None],
     'keepdims': [True, False],
 }) + testing.product({
@@ -51,12 +51,11 @@ class TestNorm(unittest.TestCase):
     # TODO(kmaehashi) Currently dtypes returned from CuPy is not compatible
     # with NumPy. We should remove `type_check=False` once NumPy is fixed.
     # See https://github.com/cupy/cupy/pull/875 for details.
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, type_check=False)
     def test_norm(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
-        with testing.NumpyError(divide='ignore'):
-            return xp.linalg.norm(a, self.ord, self.axis, self.keepdims)
+        return xp.linalg.norm(a, self.ord, self.axis, self.keepdims)
 
 
 @testing.parameterize(*testing.product({
