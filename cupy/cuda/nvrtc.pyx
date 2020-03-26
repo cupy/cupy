@@ -123,31 +123,37 @@ cpdef compileProgram(intptr_t prog, options):
 cpdef unicode getPTX(intptr_t prog):
     cdef size_t ptxSizeRet
     cdef vector.vector[char] ptx
+    cdef char* ptx_ptr = NULL
     with nogil:
         status = nvrtcGetPTXSize(<Program>prog, &ptxSizeRet)
     check_status(status)
     ptx.resize(ptxSizeRet)
+    if ptxSizeRet > 0:
+        ptx_ptr = ptx.data()
     with nogil:
-        status = nvrtcGetPTX(<Program>prog, &ptx[0])
+        status = nvrtcGetPTX(<Program>prog, ptx_ptr)
     check_status(status)
 
     # Strip the trailing NULL.
-    return (&ptx[0])[:ptxSizeRet-1].decode('UTF-8')
+    return ptx_ptr[:ptxSizeRet-1].decode('UTF-8')
 
 
 cpdef unicode getProgramLog(intptr_t prog):
     cdef size_t logSizeRet
     cdef vector.vector[char] log
+    cdef char* log_ptr = NULL
     with nogil:
         status = nvrtcGetProgramLogSize(<Program>prog, &logSizeRet)
     check_status(status)
     log.resize(logSizeRet)
+    if logSizeRet > 0:
+        log_ptr = log.data()
     with nogil:
-        status = nvrtcGetProgramLog(<Program>prog, &log[0])
+        status = nvrtcGetProgramLog(<Program>prog, log_ptr)
     check_status(status)
 
     # Strip the trailing NULL.
-    return (&log[0])[:logSizeRet-1].decode('UTF-8')
+    return log_ptr[:logSizeRet-1].decode('UTF-8')
 
 
 cpdef addAddNameExpression(intptr_t prog, str name):
