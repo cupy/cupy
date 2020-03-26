@@ -180,7 +180,7 @@ cdef Py_ssize_t _get_contiguous_size(
     return contiguous_size
 
 
-cpdef(Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
+cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
         Py_ssize_t in_size, Py_ssize_t out_size,
         Py_ssize_t contiguous_size) except*:
     cdef Py_ssize_t reduce_block_size, block_stride, out_block_num
