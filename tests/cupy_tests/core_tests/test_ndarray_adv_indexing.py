@@ -325,19 +325,6 @@ class TestArrayInvalidValueAdvGetitem(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (2, 3, 4), 'indexes': [1, [1, [1]]]},
-)
-@testing.gpu
-class TestArrayInvalidValueAdvGetitemForOldVersion(unittest.TestCase):
-
-    def test_invalid_adv_getitem(self):
-        for xp in (numpy, cupy):
-            a = testing.shaped_arange(self.shape, xp)
-            with pytest.raises(IndexError):
-                a[self.indexes]
-
-
-@testing.parameterize(
     # array only
     {'shape': (2, 3, 4), 'indexes': numpy.array(-1), 'value': 1},
     {'shape': (2, 3, 4), 'indexes': numpy.array([1, 0]), 'value': 1},
