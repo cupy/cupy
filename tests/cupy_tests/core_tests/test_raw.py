@@ -391,6 +391,8 @@ class TestRaw(unittest.TestCase):
         global _test_cache_dir
 
         nvcc = cupy.cuda.get_nvcc_path()
+        # split() is needed because nvcc could come from the env var NVCC
+        cmd = nvcc.split()
         arch = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(
             cc=compiler._get_arch())
         source = '{}/test_load_cubin.cu'.format(_test_cache_dir)
@@ -405,7 +407,7 @@ class TestRaw(unittest.TestCase):
             flag = '-ptx'
         else:
             raise ValueError
-        cmd = [nvcc, arch, flag, source, '-o', file_path]
+        cmd += [arch, flag, source, '-o', file_path]
         compiler._run_nvcc(cmd, _test_cache_dir)
 
         return file_path
