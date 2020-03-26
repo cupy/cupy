@@ -375,6 +375,13 @@ def csrgeam(a, b, alpha=1, beta=1):
         cupyx.scipy.sparse.csr_matrix: Result matrix.
 
     """
+    if not check_availability('csrgeam'):
+        raise RuntimeError('csrgeam is not available.')
+
+    if not isinstance(a, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(a)))
+    if not isinstance(b, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(b)))
     assert a.has_canonical_format
     assert b.has_canonical_format
     if a.shape != b.shape:
@@ -435,6 +442,10 @@ def csrgeam2(a, b, alpha=1, beta=1):
     if not check_availability('csrgeam2'):
         raise RuntimeError('csrgeam2 is not available.')
 
+    if not isinstance(a, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(a)))
+    if not isinstance(b, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(b)))
     assert a.has_canonical_format
     assert b.has_canonical_format
     if a.shape != b.shape:
@@ -568,14 +579,21 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
         raise RuntimeError('csrgemm2 is not available.')
 
     assert a.ndim == b.ndim == 2
+    if not isinstance(a, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(a)))
+    if not isinstance(b, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(b)))
     assert a.has_canonical_format
     assert b.has_canonical_format
-    assert a.shape[1] == b.shape[0]
+    if a.shape[1] != b.shape[0]:
+        raise ValueError('mismatched shape')
     if d is not None:
         assert d.ndim == 2
+        if not isinstance(d, cupyx.scipy.sparse.csr_matrix):
+            raise TypeError('unsupported type (actual: {})'.format(type(d)))
         assert d.has_canonical_format
-        assert a.shape[0] == d.shape[0]
-        assert b.shape[1] == d.shape[1]
+        if a.shape[0] != d.shape[0] or b.shape[1] != d.shape[1]:
+            raise ValueError('mismatched shape')
 
     handle = device.get_cusparse_handle()
     m, k = a.shape
