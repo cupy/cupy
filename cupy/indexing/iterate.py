@@ -53,12 +53,12 @@ class flatiter():
             base = self._base
             s = internal.complete_slice(ind, base.size)
             s_start = s.start
-            s_stop = s.stop
             s_step = s.step
+            size = s.stop - s.start
             if s_step > 0:
-                size = (s_stop - s_start - 1) // s_step + 1
+                size = (size - 1) // s_step + 1
             else:
-                size = (s_stop - s_start + 1) // s_step + 1
+                size = (size + 1) // s_step + 1
             value = cupy.asarray(value, dtype=base.dtype)
             _flatiter_setitem_slice(value, s_start, s_step, base, size=size)
             return
@@ -90,12 +90,12 @@ class flatiter():
             base = self._base
             s = internal.complete_slice(ind, base.size)
             s_start = s.start
-            s_stop = s.stop
             s_step = s.step
+            size = s.stop = s.start
             if s_step > 0:
-                size = (s_stop - s_start - 1) // s_step + 1
+                size = (size - 1) // s_step + 1
             else:
-                size = (s_stop - s_start + 1) // s_step + 1
+                size = (size + 1) // s_step + 1
             return _flatiter_getitem_slice(base, s_start, s_step, size=size)
 
         raise IndexError('unsupported iterator index')
