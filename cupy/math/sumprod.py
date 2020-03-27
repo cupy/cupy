@@ -3,7 +3,6 @@ import numpy
 import cupy
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
-from cupy.core import _normalize_axis_tuple
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the sum of an array along given axes.
@@ -265,7 +264,7 @@ def gradient(f, *varargs, **kwargs):
     if axes is None:
         axes = tuple(range(N))
     else:
-        axes = _nx.normalize_axis_tuple(axes, N)
+        axes = numpy.core.numeric.normalize_axis_tuple(axes, N)
         
     len_axes = len(axes)
     n = len(varargs)
