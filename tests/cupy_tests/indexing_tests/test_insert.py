@@ -188,6 +188,6 @@ class TestDiagIndicesFrom(unittest.TestCase):
 
     def test_1darray(self):
         for xp in (numpy, cupy):
-            arr = testing.shaped_arange(5, xp)
+            arr = testing.shaped_arange((5,), xp)
             with pytest.raises(ValueError):
                 xp.diag_indices_from(arr)
