@@ -588,8 +588,8 @@ class TestRfft(unittest.TestCase):
 class TestFftnView(unittest.TestCase):
 
     @testing.for_complex_dtypes()
-    def test_fortran_ordered_view(self, dtype):
-        # test case for: https://github.com/cupy/cupy/issues/3033
+    def test_contiguous_view(self, dtype):
+        # Fortran-ordered case tests: https://github.com/cupy/cupy/issues/3079
         a = testing.shaped_random(self.shape, cupy, dtype)
         if self.data_order == 'F':
             a = cupy.asfortranarray(a)
@@ -603,6 +603,25 @@ class TestFftnView(unittest.TestCase):
 
         # create plan and then apply it to a contiguous view
         plan = cupyx.scipy.fftpack.get_fft_plan(view)
+        with plan:
+            out = cupyx.scipy.fftpack.fftn(view)
+        testing.assert_allclose(expected, out)
+
+    @testing.for_complex_dtypes()
+    def test_noncontiguous_view(self, dtype):
+        a = testing.shaped_random(self.shape, cupy, dtype)
+        if self.data_order == 'F':
+            a = cupy.asfortranarray(a)
+            sl = [Ellipsis, slice(None, None, 2)]
+        else:
+            sl = [slice(None, None, 2), Ellipsis]
+
+        # transform a non-contiguous view without pre-planning
+        view = a[sl]
+        expected = cupyx.scipy.fftpack.fftn(view)
+
+        # create plan and then apply it to a non-contiguous view
+        plan = cupyx.scipy.fftpack.get_fft_plan(view.copy())
         with plan:
             out = cupyx.scipy.fftpack.fftn(view)
         testing.assert_allclose(expected, out)
