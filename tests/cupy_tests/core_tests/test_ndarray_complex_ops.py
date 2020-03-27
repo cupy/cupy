@@ -1,5 +1,7 @@
-import numpy
 import unittest
+
+import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -129,11 +131,11 @@ class TestRealImag(unittest.TestCase):
         return x
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=TypeError)
-    def test_imag_setter_raise(self, xp, dtype):
-        x = testing.shaped_arange((2, 3), xp, dtype)
-        x.imag = testing.shaped_reverse_arange((2, 3), xp, dtype)
-        return x
+    def test_imag_setter_raise(self, dtype):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((2, 3), xp, dtype)
+            with pytest.raises(TypeError):
+                x.imag = testing.shaped_reverse_arange((2, 3), xp, dtype)
 
     @testing.for_all_dtypes()
     def test_real_inplace(self, dtype):
