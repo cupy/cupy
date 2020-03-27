@@ -3,6 +3,7 @@ import unittest
 import numpy
 import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -38,22 +39,24 @@ class TestPlaceRaises(unittest.TestCase):
     # https://github.com/numpy/numpy/pull/5821
     @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_place_empty_value_error(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        mask = testing.shaped_arange(self.shape, xp, numpy.int) % 2 == 0
-        vals = testing.shaped_random((0,), xp, dtype)
-        xp.place(a, mask, vals)
+    def test_place_empty_value_error(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp, dtype)
+            mask = testing.shaped_arange(self.shape, xp, numpy.int) % 2 == 0
+            vals = testing.shaped_random((0,), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.place(a, mask, vals)
 
     # Before NumPy 1.12 it was TypeError.
     # https://github.com/numpy/numpy/pull/7003
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_place_shape_unmatch_error(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        mask = testing.shaped_random((3, 4), xp, numpy.bool_)
-        vals = testing.shaped_random((1,), xp, dtype)
-        xp.place(a, mask, vals)
+    def test_place_shape_unmatch_error(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp, dtype)
+            mask = testing.shaped_random((3, 4), xp, numpy.bool_)
+            vals = testing.shaped_random((1,), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.place(a, mask, vals)
 
 
 @testing.parameterize(*testing.product({
@@ -85,28 +88,31 @@ class TestPut(unittest.TestCase):
 class TestPutRaises(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises(accept_error=IndexError)
-    def test_put_inds_underflow_error(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        inds = xp.array([2, -8, 3, 0])
-        vals = testing.shaped_random((4,), xp, dtype)
-        xp.put(a, inds, vals, mode='raise')
+    def test_put_inds_underflow_error(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp, dtype)
+            inds = xp.array([2, -8, 3, 0])
+            vals = testing.shaped_random((4,), xp, dtype)
+            with pytest.raises(IndexError):
+                xp.put(a, inds, vals, mode='raise')
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises(accept_error=IndexError)
-    def test_put_inds_overflow_error(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        inds = xp.array([2, -1, 3, 7])
-        vals = testing.shaped_random((4,), xp, dtype)
-        xp.put(a, inds, vals, mode='raise')
+    def test_put_inds_overflow_error(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp, dtype)
+            inds = xp.array([2, -1, 3, 7])
+            vals = testing.shaped_random((4,), xp, dtype)
+            with pytest.raises(IndexError):
+                xp.put(a, inds, vals, mode='raise')
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises(accept_error=TypeError)
-    def test_put_mode_error(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        inds = xp.array([2, -1, 3, 0])
-        vals = testing.shaped_random((4,), xp, dtype)
-        xp.put(a, inds, vals, mode='unknown')
+    def test_put_mode_error(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp, dtype)
+            inds = xp.array([2, -1, 3, 0])
+            vals = testing.shaped_random((4,), xp, dtype)
+            with pytest.raises(TypeError):
+                xp.put(a, inds, vals, mode='unknown')
 
 
 @testing.parameterize(*testing.product({
@@ -143,8 +149,9 @@ class TestFillDiagonal(unittest.TestCase):
         return a
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_1darray(self, xp, dtype):
-        a = testing.shaped_arange(5, xp, dtype)
-        val = self._compute_val(xp)
-        xp.fill_diagonal(a, val=val, wrap=self.wrap)
+    def test_1darray(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((5,), xp, dtype)
+            val = self._compute_val(xp)
+            with pytest.raises(ValueError):
+                xp.fill_diagonal(a, val=val, wrap=self.wrap)

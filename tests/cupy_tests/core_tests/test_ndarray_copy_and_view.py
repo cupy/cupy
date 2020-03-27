@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -39,17 +40,19 @@ class TestArrayCopyAndView(unittest.TestCase):
         return a.view(dtype=numpy.int32)
 
     @testing.for_dtypes([numpy.int16, numpy.int64])
-    @testing.numpy_cupy_raises()
-    def test_view_0d_raise(self, xp, dtype):
-        a = xp.array(3, dtype=numpy.int32)
-        a.view(dtype=dtype)
+    def test_view_0d_raise(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array(3, dtype=numpy.int32)
+            with pytest.raises(ValueError):
+                a.view(dtype=dtype)
 
     @testing.for_dtypes([numpy.int16, numpy.int64])
-    @testing.numpy_cupy_raises()
-    def test_view_non_contiguous_raise(self, xp, dtype):
-        a = testing.shaped_arange((2, 2, 2), xp, dtype=numpy.int32).transpose(
-            0, 2, 1)
-        a.view(dtype=dtype)
+    def test_view_non_contiguous_raise(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 2, 2), xp, dtype=numpy.int32)
+            a = a.transpose(0, 2, 1)
+            with pytest.raises(ValueError):
+                a.view(dtype=dtype)
 
     @testing.numpy_cupy_array_equal()
     def test_flatten(self, xp):
@@ -180,18 +183,20 @@ class TestArrayCopyAndView(unittest.TestCase):
         return b
 
     @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_isinstance_numpy_copy_wrong_dtype(self, xp):
-        a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
-        b = cupy.empty(a.shape, dtype=numpy.int32)
-        b[:] = a
+    def test_isinstance_numpy_copy_wrong_dtype(self):
+        for xp in (numpy, cupy):
+            a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
+            b = cupy.empty(a.shape, dtype=numpy.int32)
+            with pytest.raises(ValueError):
+                b[:] = a
 
     @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_isinstance_numpy_copy_wrong_shape(self, xp):
-        a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
-        b = cupy.empty(100, dtype=a.dtype)
-        b[:] = a
+    def test_isinstance_numpy_copy_wrong_shape(self):
+        for xp in (numpy, cupy):
+            a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
+            b = cupy.empty(100, dtype=a.dtype)
+            with pytest.raises(ValueError):
+                b[:] = a
 
     @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
     @testing.numpy_cupy_array_equal()
