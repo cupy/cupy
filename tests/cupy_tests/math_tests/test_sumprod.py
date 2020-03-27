@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -570,3 +571,13 @@ class TestDiff(unittest.TestCase):
     def test_diff_2dim_with_scalar_append(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.diff(a, prepend=1, append=0)
+
+    @testing.with_requires('numpy>=1.16')
+    def test_diff_invalid_axis(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp)
+            with pytest.raises(numpy.AxisError):
+                xp.diff(a, axis=3)
+            with pytest.raises(numpy.AxisError):
+                xp.diff(a, axis=-4)
+        return
