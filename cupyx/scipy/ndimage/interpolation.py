@@ -484,4 +484,3 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
         zoom = cupy.asarray(zoom, dtype=float)
         kern(input, zoom, output)
     return output
-

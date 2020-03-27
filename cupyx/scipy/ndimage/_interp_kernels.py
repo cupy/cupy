@@ -202,7 +202,8 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     # determine strides for x along each axis
     for j in range(ndim):
         ops.append(
-            'const {int_t} xsize_{j} = x.shape()[{j}];'.format(int_t=int_t, j=j)
+            'const {int_t} xsize_{j} = x.shape()[{j}];'.format(
+                int_t=int_t, j=j)
         )
     ops.append('const {uint_t} sx_{j} = 1;'.format(uint_t=uint_t, j=ndim - 1))
     for j in range(ndim - 1, 0, -1):
