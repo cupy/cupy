@@ -91,7 +91,7 @@ class flatiter():
             s = internal.complete_slice(ind, base.size)
             s_start = s.start
             s_step = s.step
-            size = s.stop = s.start
+            size = s.stop - s.start
             if s_step > 0:
                 size = (size - 1) // s_step + 1
             else:
