@@ -70,7 +70,7 @@ Sums, products, differences
    cupy.nansum
    cupy.nanprod
    cupy.diff
-
+   cupy.gradient
 
 Exponents and logarithms
 ------------------------

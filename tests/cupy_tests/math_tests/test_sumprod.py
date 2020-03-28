@@ -570,3 +570,175 @@ class TestDiff(unittest.TestCase):
     def test_diff_2dim_with_scalar_append(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.diff(a, prepend=1, append=0)
+
+@testing.parameterize(
+    *testing.product({
+        'shape': [(2, 3, 4), (20, 30, 40)],
+        'axis': [None, 0, 1, -1, (1, 0),(0, 1)],
+        'transpose_axes': [True, False],
+        'keepdims': [True, False],
+        'func': ['nansum', 'nanprod']
+    })
+)
+@testing.gpu
+class TestGradient(unittest.TestCase):
+
+    # basic test
+    @testing.numpy_cupy_allclose()
+    def test_basic(self, xp):
+        v = [[1, 1], [3, 4]]
+        x = xp.array([[1, 1], [3, 4]])
+        dx =    [xp.array([[2., 3.], [2., 3.]]),
+                 xp.array([[0., 0.], [1., 1.]])]
+        testing.assert_array_equal(xp.gradient(x), dx)
+        testing.assert_array_equal(xp.gradient(v), dx)
+
+    # good arguments
+    @testing.numpy_cupy_allclose()
+    def test_args(self, xp):
+        dx = cupy.cumsum(cupy.ones(5))
+        dx_uneven = [1., 2., 5., 9., 11.]
+        f_2d = testing.shaped_arange((5, 5), xp)
+        
+        xp.gradient(xp.arrange(5), 3.)
+        xp.gradient(xp.arrange(5), xp.array(3.))
+        xp.gradient(xp.arrange(5), dx)
+
+        xp.gradient(f_2d, 1.5)
+        xp.gradient(f_2d, xp.array(1.5))
+
+        xp.gradient(f_2d, dx_uneven, dx_uneven)
+
+        xp.gradient(f_2d, dx, 2)
+
+        xp.gradient(f_2d, dx, axis=1)
+
+        with pytest.assertRaisesRegex(ValueError, '*scalars or 1d'):
+            xp.gradient(f_2d, xp.stack([dx]*2, axis=-1), 1)
+
+    # bad arguments
+    @testing.numpy_cupy_raises()
+    def test_badargs_wrong_size1(self, xp):
+        f_2d = cupy.arrange((5,5))
+        x = cupy.cumsum(cupy.ones(5))
+        xp.gradient(f_2d, x, cupy.ones(2))
+        xp.gradient(f_2d, 1, cupy.ones(2))
+
+        # wrong sizes
+        with pytest.assertRaises(ValueError):
+            xp.gradient(f_2d, x, xp.ones(2))
+
+        with pytest.assertRaises(ValueError):
+            xp.gradient(f_2d, 1, xp.ones(2))
+
+        with pytest.assertRaises(ValueError):
+            xp.gradient(f_2d, xp.ones(2), xp.ones(2))
+        
+        with pytest.assertRaises(ValueError):
+            xp.gradient(f_2d, x, xp.ones(2))
+
+        # wrong number of arguments
+        with pytest.assertRaises(TypeError):
+            xp.gradient(f_2d, x)
+
+        with pytest.assertRaises(TypeError):
+            xp.gradient(f_2d, x, axis=(0,1))
+
+        with pytest.assertRaises(TypeError):
+            xp.gradient(f_2d, x, x, x)
+
+        with pytest.assertRaises(TypeError):
+            xp.gradient(f_2d, 1, 1, 1)
+
+        with pytest.assertRaises(TypeError):
+            xp.gradient(f_2d, x, x, axis=1)
+
+        with pytest.assertRaises(TypeError):
+            xp.gradient(f_2d, 1, 1, axis=1)
+    
+
+    # TODO: datetime test
+
+    # TODO: test_masked
+
+    # TODO: test_second_order_accurate
+
+    # TODO: test_spacing
+    # testing.numpy_cupy_allclose(rtol=1e-6)
+    # def test_spacing(self, xp):
+    #     f = np.array([0, 2., 3., 4., 5., 5.])
+    #     f = np.tile(f, (6,1)) + f.reshape(-1, 1)
+    #     x_uneven = np.array([0., 0.5, 1., 3., 5., 7.])
+    #     x_even = np.arange(6.)
+
+    #     fdx_even_ord1 = np.tile([2., 1.5, 1., 1., 0.5, 0.], (6,1))
+    #     fdx_even_ord2 = np.tile([2.5, 1.5, 1., 1., 0.5, -0.5], (6,1))
+    #     fdx_uneven_ord1 = np.tile([4., 3., 1.7, 0.5, 0.25, 0.], (6,1))
+    #     fdx_uneven_ord2 = np.tile([5., 3., 1.7, 0.5, 0.25, -0.25], (6,1))
+
+    #     # evenly spaced
+    #     for edge_order, exp_res in [(1, fdx_even_ord1), (2, fdx_even_ord2)]:
+    #         res1 = gradient(f, 1., axis=(0,1), edge_order=edge_order)
+    #         res2 = gradient(f, x_even, x_even,
+    #                         axis=(0,1), edge_order=edge_order)
+    #         res3 = gradient(f, x_even, x_even,
+    #                         axis=None, edge_order=edge_order)
+    #         testing.assert_array_equal(res1, res2)
+    #         testing.assert_array_equal(res2, res3)
+    #         testing.assert_array_almost_equal(res1[0], exp_res.T)
+    #         testing.assert_array_almost_equal(res1[1], exp_res)
+
+    #         res1 = gradient(f, 1., axis=0, edge_order=edge_order)
+    #         res2 = gradient(f, x_even, axis=0, edge_order=edge_order)
+    #         assert_(res1.shape == res2.shape)
+    #         testing.assert_array_almost_equal(res2, exp_res.T)
+
+    #         res1 = gradient(f, 1., axis=1, edge_order=edge_order)
+    #         res2 = gradient(f, x_even, axis=1, edge_order=edge_order)
+    #         assert_(res1.shape == res2.shape)
+    #         testing.assert_array_equal(res2, exp_res)
+
+    #     # unevenly spaced
+    #     for edge_order, exp_res in [(1, fdx_uneven_ord1), (2, fdx_uneven_ord2)]:
+    #         res1 = gradient(f, x_uneven, x_uneven,
+    #                         axis=(0,1), edge_order=edge_order)
+    #         res2 = gradient(f, x_uneven, x_uneven,
+    #                         axis=None, edge_order=edge_order)
+    #         testing.assert_array_equal(res1, res2)
+    #         testing.assert_array_almost_equal(res1[0], exp_res.T)
+    #         testing.assert_array_almost_equal(res1[1], exp_res)
+
+    #         res1 = gradient(f, x_uneven, axis=0, edge_order=edge_order)
+    #         testing.assert_array_almost_equal(res1, exp_res.T)
+
+    #         res1 = gradient(f, x_uneven, axis=1, edge_order=edge_order)
+    #         testing.assert_array_almost_equal(res1, exp_res)
+
+    #     # mixed
+    #     res1 = gradient(f, x_even, x_uneven, axis=(0,1), edge_order=1)
+    #     res2 = gradient(f, x_uneven, x_even, axis=(1,0), edge_order=1)
+    #     testing.assert_array_equal(res1[0], res2[1])
+    #     testing.assert_array_equal(res1[1], res2[0])
+    #     testing.assert_array_almost_equal(res1[0], fdx_even_ord1.T)
+    #     testing.assert_array_almost_equal(res1[1], fdx_uneven_ord1)
+
+    #     res1 = gradient(f, x_even, x_uneven, axis=(0,1), edge_order=2)
+    #     res2 = gradient(f, x_uneven, x_even, axis=(1,0), edge_order=2)
+    #     testing.assert_array_equal(res1[0], res2[1])
+    #     testing.assert_array_equal(res1[1], res2[0])
+    #     testing.assert_array_almost_equal(res1[0], fdx_even_ord2.T)
+    #     testing.assert_array_almost_equal(res1[1], fdx_uneven_ord2)
+    # TODO: test_specific_axes
+
+    # TODO: test_timedelta64
+
+    # TODO: test_values
+
+    # TODO: test_f_decreasing_unsigned_int
+
+    # TODO: test_f_signed_int_big_jump
+
+    # TODO: test_x_decreasing_unsigned
+
+    # TODO: test_x_signed_int_big_jump
+    pass

@@ -18,6 +18,7 @@ cupy.egg-info/
 dist/
 htmlcov/
 .idea/
+.vscode
 .cache/
 .pytest_cache/
 cupy/.data/
