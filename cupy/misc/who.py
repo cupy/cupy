@@ -1,5 +1,5 @@
 import sys
-import cupy as cp
+import cupy
 
 
 def who(vardict=None):
@@ -23,17 +23,17 @@ def who(vardict=None):
     present in `vardict`.
     Examples
     --------
-    >>> a = cp.arange(10)
-    >>> b = cp.ones(20)
-    >>> cp.who()
+    >>> a = cupy.arange(10)
+    >>> b = cupy.ones(20)
+    >>> cupy.who()
     Name            Shape            Bytes            Type
     ===========================================================
     a               10               80               int64
     b               20               160              float64
     Upper bound on total bytes  =       240
-    >>> d = {'x': cp.arange(2.0), 'y': cp.arange(3.0), 'txt': 'Some str',
+    >>> d = {'x': cupy.arange(2.0), 'y': cupy.arange(3.0), 'txt': 'Some str',
     ... 'idx':5}
-    >>> cp.who(d)
+    >>> cupy.who(d)
     Name            Shape            Bytes            Type
     ===========================================================
     x               2                16               float64
@@ -47,7 +47,7 @@ def who(vardict=None):
         sta = []
         cache = {}
         for name in vardict.keys():
-            if isinstance(vardict[name], cp.ndarray):
+            if isinstance(vardict[name], cupy.ndarray):
                 var = vardict[name]
                 idv = id(var)
                 if idv in cache.keys():
@@ -91,4 +91,4 @@ def who(vardict=None):
                                             val[2], ' '*(sp3-len(val[2])+5),
                                             val[3]))
         print("\nUpper bound on total bytes  =       %d" % totalbytes)
-    return
+        #Implementation is largely copied from numpy.who()
