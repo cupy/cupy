@@ -318,7 +318,7 @@ def compile_with_cache(
 
     if runtime.is_hip:
         return _compile_with_cache_hipcc(
-            source, options, arch, cache_dir, extra_source)
+            source, options, arch, cache_dir, extra_source, backend)
     else:
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
@@ -609,7 +609,7 @@ def _convert_to_hip_source(source):
 
 
 def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
-                              use_converter=True):
+                              backend='nvrtc', use_converter=True):
     global _empty_file_preprocess_cache
     if cache_dir is None:
         cache_dir = get_cache_dir()
@@ -653,9 +653,12 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
                 mod.load(binary)
                 return mod
 
-    # TODO(leofang): catch HIPCCException and convert it to CompileException
-    # with backend='hipcc'
-    binary = _hipcc(source, options, arch)
+    if backend == 'nvrtc':
+        binary = compile_using_nvrtc(source, options, arch, name + '.cu')
+    else:
+        # TODO(leofang): catch HIPCCException and convert it to
+        # CompileException with backend='hipcc'
+        binary = _hipcc(source, options, arch)
     binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
 
     # shutil.move is not atomic operation, so it could result in a corrupted
