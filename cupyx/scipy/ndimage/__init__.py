@@ -13,3 +13,5 @@ from cupyx.scipy.ndimage.measurements import label  # NOQA
 
 from cupyx.scipy.ndimage.morphology import grey_erosion  # NOQA
 from cupyx.scipy.ndimage.morphology import grey_dilation  # NOQA
+from cupyx.scipy.ndimage.morphology import grey_closing  # NOQA
+from cupyx.scipy.ndimage.morphology import grey_opening  # NOQA
