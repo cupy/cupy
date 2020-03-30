@@ -111,6 +111,10 @@ class TestNotificationVectorize(unittest.TestCase):
                 return -x
 
             a = testing.shaped_random((3, 4), fallback_mode.numpy)
+            vec_abs = fallback_mode.numpy.vectorize(custom_abs)
+            vec_abs(a)
+
+            # built-in
             vec_abs = fallback_mode.numpy.vectorize(abs)
             vec_abs(a)
 
@@ -118,7 +122,7 @@ class TestNotificationVectorize(unittest.TestCase):
         output = saved_stdout.getvalue().strip()
         msg = "'vectorize' method not in cupy, "
         msg += "falling back to 'numpy.vectorize'"
-        assert output == ("Warning: " + msg)
+        assert output == ("Warning: " + msg + "\nWarning: " + msg)
 
     def test_cupy_supported_pyfunc(self):
 
