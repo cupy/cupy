@@ -111,7 +111,6 @@ cdef str _get_c_type(Arg arg):
         return _get_typename(arg.dtype)
     else:  # indexer
         return 'CIndexer<%d>' % arg.ndim
-    assert False
 
 
 cdef str _get_param_c_type(Arg arg, ParameterInfo p):
