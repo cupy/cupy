@@ -142,6 +142,7 @@ class TestCsrgeam(unittest.TestCase):
         testing.assert_array_almost_equal(c.toarray(), expect.toarray())
 
 
+@testing.with_requires('scipy')
 class TestCsrgeamInvalidCases(unittest.TestCase):
 
     dtype = numpy.float32
@@ -272,6 +273,7 @@ class TestCsrgemm2(unittest.TestCase):
         testing.assert_array_almost_equal(c.toarray(), expect.toarray())
 
 
+@testing.with_requires('scipy')
 class TestCsrgemm2InvalidCases(unittest.TestCase):
 
     dtype = numpy.float32
