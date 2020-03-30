@@ -165,7 +165,7 @@ class TestCsrgeamInvalidCases(unittest.TestCase):
     def test_csrgeam_invalid_shape(self):
         if not cupy.cusparse.check_availability('csrgeam'):
             pytest.skip('csrgeam is not available')
-        a = sparse.csc_matrix(self.a).T
+        a = sparse.csr_matrix(self.a.T)
         b = sparse.csr_matrix(self.b)
         with self.assertRaises(ValueError):
             cupy.cusparse.csrgeam(a, b)
@@ -190,7 +190,7 @@ class TestCsrgeamInvalidCases(unittest.TestCase):
     def test_csrgeam2_invalid_shape(self):
         if not cupy.cusparse.check_availability('csrgeam2'):
             pytest.skip('csrgeam2 is not available')
-        a = sparse.csc_matrix(self.a).T
+        a = sparse.csr_matrix(self.a.T)
         b = sparse.csr_matrix(self.b)
         with self.assertRaises(ValueError):
             cupy.cusparse.csrgeam2(a, b)
