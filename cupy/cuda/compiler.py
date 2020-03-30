@@ -247,7 +247,7 @@ def _preprocess(source, options, arch, backend):
     else:
         raise ValueError('Invalid backend %s' % backend)
 
-    assert isinstance(result, str)
+    assert isinstance(result, bytes)
     return result
 
 

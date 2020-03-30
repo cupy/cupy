@@ -118,7 +118,7 @@ cpdef compileProgram(intptr_t prog, options):
     check_status(status)
 
 
-cpdef unicode getPTX(intptr_t prog):
+cpdef bytes getPTX(intptr_t prog):
     cdef size_t ptxSizeRet
     cdef vector.vector[char] ptx
     with nogil:
@@ -130,7 +130,7 @@ cpdef unicode getPTX(intptr_t prog):
     check_status(status)
 
     # Strip the trailing NULL.
-    return (&ptx[0])[:ptxSizeRet-1].decode('UTF-8')
+    return (&ptx[0])[:ptxSizeRet-1]
 
 
 cpdef unicode getProgramLog(intptr_t prog):

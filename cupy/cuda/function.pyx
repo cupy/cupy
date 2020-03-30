@@ -234,9 +234,8 @@ cdef class LinkState:
             driver.linkDestroy(self.ptr)
             self.ptr = 0
 
-    cpdef add_ptr_data(self, unicode data, unicode name):
-        cdef bytes data_byte = data.encode()
-        driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data_byte, name)
+    cpdef add_ptr_data(self, bytes data, unicode name):
+        driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data, name)
 
     cpdef add_ptr_file(self, unicode path):
         driver.linkAddFile(self.ptr, driver.CU_JIT_INPUT_LIBRARY, path)
