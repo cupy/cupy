@@ -5,6 +5,7 @@
 
 #include <hiprand/hiprand.h>
 #include "cupy_hip_common.h"
+#include "cupy_cuComplex.h"
 
 extern "C" {
 
@@ -790,12 +791,44 @@ cublasStatus_t cublasDgemmStridedBatched(
         batchCount);
 }
 
-cublasStatus_t cublasCgemmStridedBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCgemmStridedBatched(
+        cublasHandle_t handle,
+        cublasOperation_t transa, cublasOperation_t transb,
+        int m, int n, int k, const cuComplex *alpha,
+        const cuComplex *A, int lda, long long bsa,
+        const cuComplex *B, int ldb, long long bsb,
+        const cuComplex *beta,
+        cuComplex *C, int ldc, long long bsc, int batchCount) {
+    return hipblasCgemmStridedBatched(
+        handle,
+        convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
+        m, n, k,
+        reinterpret_cast<const hipblasComplex *>(alpha),
+        reinterpret_cast<const hipblasComplex *>(A), lda, bsa,
+        reinterpret_cast<const hipblasComplex *>(B), ldb, bsb,
+        reinterpret_cast<const hipblasComplex *>(beta),
+        reinterpret_cast<hipblasComplex *>(C), ldc, bsc,
+        batchCount);
 }
 
-cublasStatus_t cublasZgemmStridedBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZgemmStridedBatched(
+        cublasHandle_t handle,
+        cublasOperation_t transa, cublasOperation_t transb,
+        int m, int n, int k, const cuDoubleComplex *alpha,
+        const cuDoubleComplex *A, int lda, long long bsa,
+        const cuDoubleComplex *B, int ldb, long long bsb,
+        const cuDoubleComplex *beta,
+        cuDoubleComplex *C, int ldc, long long bsc, int batchCount) {
+    return hipblasZgemmStridedBatched(
+        handle,
+        convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
+        m, n, k,
+        reinterpret_cast<const hipblasDoubleComplex *>(alpha),
+        reinterpret_cast<const hipblasDoubleComplex *>(A), lda, bsa,
+        reinterpret_cast<const hipblasDoubleComplex *>(B), ldb, bsb,
+        reinterpret_cast<const hipblasDoubleComplex *>(beta),
+        reinterpret_cast<hipblasDoubleComplex *>(C), ldc, bsc,
+        batchCount);
 }
 
 cublasStatus_t cublasStrttp(...) {
