@@ -256,6 +256,10 @@ cdef class ndarray:
         else:
             return _manipulation._T(self)
 
+    @property
+    def flat(self):
+        return cupy.flatiter(self)
+
     __array_priority__ = 100
 
     # -------------------------------------------------------------------------
