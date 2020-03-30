@@ -37,7 +37,6 @@ class TestNotifications(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'func': fallback_mode.numpy.array_equal, 'shape': (3, 4)},
     {'func': fallback_mode.numpy.array_equiv, 'shape': (3, 4)},
     {'func': fallback_mode.numpy.polyadd, 'shape': (2, 3)},
     {'func': fallback_mode.numpy.convolve, 'shape': (5,)}
@@ -95,3 +94,64 @@ class TestNotificationModes(unittest.TestCase):
             self.func(a, b)
 
         _ufunc_config.seterr(**old)
+
+
+@testing.gpu
+class TestNotificationVectorize(unittest.TestCase):
+
+    def test_custom_or_builtin_pyfunc(self):
+
+        old = _ufunc_config.seterr(fallback_mode='print')
+        saved_stdout = io.StringIO()
+
+        with contextlib.redirect_stdout(saved_stdout):
+            def custom_abs(x):
+                if x >= 0:
+                    return x
+                return -x
+
+            a = testing.shaped_random((3, 4), fallback_mode.numpy)
+            vec_abs = fallback_mode.numpy.vectorize(abs)
+            vec_abs(a)
+
+        _ufunc_config.seterr(**old)
+        output = saved_stdout.getvalue().strip()
+        msg = "'vectorize' method not in cupy, "
+        msg += "falling back to 'numpy.vectorize'"
+        assert output == ("Warning: " + msg)
+
+    def test_cupy_supported_pyfunc(self):
+
+        old = _ufunc_config.seterr(fallback_mode='print')
+        saved_stdout = io.StringIO()
+
+        with contextlib.redirect_stdout(saved_stdout):
+            a = testing.shaped_random((3, 4), fallback_mode.numpy)
+            vec_abs = fallback_mode.numpy.vectorize(fallback_mode.numpy.abs)
+            vec_abs(a)
+
+        _ufunc_config.seterr(**old)
+        output = saved_stdout.getvalue().strip()
+        msg1 = "'vectorize' method not in cupy, "
+        msg1 += "falling back to 'numpy.vectorize'"
+        msg2 = "'absolute' method is available in cupy but cannot be used, "
+        msg2 += "falling back to its numpy implementation"
+        assert output == ("Warning: " + msg1 + "\nWarning: " + msg2)
+
+    def test_numpy_only_pyfunc(self):
+
+        old = _ufunc_config.seterr(fallback_mode='print')
+        saved_stdout = io.StringIO()
+
+        with contextlib.redirect_stdout(saved_stdout):
+            a = testing.shaped_random((3, 4), fallback_mode.numpy)
+            vec_abs = fallback_mode.numpy.vectorize(fallback_mode.numpy.fabs)
+            vec_abs(a)
+
+        _ufunc_config.seterr(**old)
+        output = saved_stdout.getvalue().strip()
+        msg1 = "'vectorize' method not in cupy, "
+        msg1 += "falling back to 'numpy.vectorize'"
+        msg2 = "'fabs' method not in cupy, "
+        msg2 += "falling back to its numpy implementation"
+        assert output == ("Warning: " + msg1 + "\nWarning: " + msg2)

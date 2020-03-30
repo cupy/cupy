@@ -408,8 +408,14 @@ class vectorize(object):
 
     def __init__(self, *args, **kwargs):
         # NumPy will raise error if pyfunc is a cupy method
+        self.__dict__['_is_numpy_pyfunc'] = False
+        self.__dict__['_cupy_support'] = False
         if isinstance(args[0], _RecursiveAttr):
+            self.__dict__['_is_numpy_pyfunc'] = True
+            if args[0]._cupy_object:
+                self.__dict__['_cupy_support'] = True
             args = (args[0]._numpy_object,) + args[1:]
+        notification._dispatch_notification(np.vectorize)
         self.__dict__['vec_obj'] = np.vectorize(*args, **kwargs)
 
     def __getattr__(self, attr):
@@ -423,6 +429,9 @@ class vectorize(object):
         return self.vec_obj.__doc__
 
     def __call__(self, *args, **kwargs):
+        if self._is_numpy_pyfunc:
+            notification._dispatch_notification(
+                self.vec_obj.pyfunc, self._cupy_support)
         return _call_numpy(self.vec_obj, args, kwargs)
 
 
