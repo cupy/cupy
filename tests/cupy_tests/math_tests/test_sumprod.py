@@ -571,54 +571,45 @@ class TestDiff(unittest.TestCase):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.diff(a, prepend=1, append=0)
 
-@testing.parameterize(
-    *testing.product({
-        'shape': [(2, 3, 4), (20, 30, 40)],
-        'axis': [None, 0, 1, -1, (1, 0),(0, 1)],
-        'transpose_axes': [True, False],
-        'keepdims': [True, False],
-        'func': ['nansum', 'nanprod']
-    })
-)
 
 @testing.gpu
 class TestGradient(unittest.TestCase):
-
-    
+        
     # basic test
     @testing.numpy_cupy_allclose()
     def test_basic(self, xp):
-        a = testing.shaped_arange((4,5), xp)
+        a = testing.shaped_arange((4, 5), xp)
         return xp.gradient(a)
 
     # test axis
     @testing.numpy_cupy_allclose()
     def test_with_axis_None(self, xp):
-        a = testing.shaped_arange((4,5), xp)
+        a = testing.shaped_arange((4, 5), xp)
         return xp.gradient(a, axis=None)
 
     @testing.numpy_cupy_allclose()
     def test_with_axis_positive(self, xp):
-        a = testing.shaped_arange((4,5), xp)
-        return xp.gradient(a, axis=1)    
-        
+        a = testing.shaped_arange((4, 5), xp)
+        return xp.gradient(a, axis=1)   
+
     @testing.numpy_cupy_allclose()
     def test_with_axis_negative(self, xp):
-        a = testing.shaped_arange((4,5), xp)
+        a = testing.shaped_arange((4, 5), xp)
         return xp.gradient(a, axis=-1)
-        
+
     @testing.numpy_cupy_allclose()
     def test_with_axis_tuple(self, xp):
         a = testing.shaped_arange((4,5), xp)
-        return xp.gradient(a, axis=(1, 0))   
+        return xp.gradient(a, axis=(1, 0))
 
     # test arguments
     @testing.numpy_cupy_allclose()
     def test_with_argument_number(self, xp):
         f_2d = testing.shaped_arange((5,), xp)
-        return xp.gradient(f_2d, 3.0)  
+        return xp.gradient(f_2d, 3.0)
     
-    # TypeError: no implementation found for 'numpy.ndim' on types that implement __array_function__: [<class 'cupy.core.core.ndarray'>]
+    # TypeError: no implementation found for 'numpy.ndim' on types
+    #  that implement __array_function__: [<class 'cupy.core.core.ndarray'>]
 
     # def test_with_argument_array(self):
     #     # cp_dx = cupy.cumsum(cupy.ones(5))
@@ -647,7 +638,8 @@ class TestGradient(unittest.TestCase):
     #     )
     #     return xp.gradient(x)
 
-    # TypeError: no implementation found for 'numpy.ndim' on types that implement __array_function__: [<class 'cupy.core.core.ndarray'>]
+    # TypeError: no implementation found for 'numpy.ndim' on types that
+    #  implement __array_function__: [<class 'cupy.core.core.ndarray'>]
     # def test_with_argument_2d_and_array(self):
     #     # cp_dx = cupy.cumsum(cupy.ones(5))
     #     np_dx = cupy.array(1.15)

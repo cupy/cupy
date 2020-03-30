@@ -6,6 +6,7 @@ from cupy.core import fusion
 import numpy.core.numeric as _nx
 from cupy import numpy as cnp
 
+
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the sum of an array along given axes.
 
@@ -233,26 +234,28 @@ def gradient(f, *varargs, **kwargs):
         f (cupy.ndarray): Input array.
 
         varargs: list of scalar or array, optional
-            Spacing between f values. Default unitary spacing for all dimensions.
-            Spacing can be specified using:
+            Spacing between f values. Default unitary spacing
+            for all dimensions.Spacing can be specified using:
             1. single scalar to specify a sample distance for all dimensions.
-            2. N scalars to specify a constant sample distance for each dimension.
-            i.e. `dx`, `dy`, `dz`, ...
+            2. N scalars to specify a constant sample distance for each
+            dimension.i.e. `dx`, `dy`, `dz`, ...
             3. N arrays to specify the coordinates of the values along each
             dimension of F. The length of the array must match the size of
             the corresponding dimension
             4. Any combination of N scalars/arrays with the meaning of 2. and 3.
-            If `axis` is given, the number of varargs must equal the number of axes.
+            If `axis` is given, the number of varargs must equal
+            the number of axes.
             Default: 1.
-            
+
         edge_order : {1, 2}, optional
         Gradient is calculated using N-th order accurate differences
         at the boundaries. Default: 1.
-        
+
         axis : None or int or tuple of ints, optional
             Gradient is calculated only along the given axis or axes
-            The default (axis = None) is to calculate the gradient for all the axes
-            of the input array. axis may be negative, in which case it counts from
+            The default (axis = None) is to calculate
+            the gradient for all the axes of the input array. axis may
+            be negative, in which case it counts from
             the last to the first axis.
 
     Returns:
@@ -261,14 +264,14 @@ def gradient(f, *varargs, **kwargs):
     .. seealso:: :func:`numpy.gradient`
     """
     f = cupy.asanyarray(f)
-    N = f.ndim # number of dimensions
-    
+    N = f.ndim  # number of dimensions
+
     axes = kwargs.pop('axis', None)
     if axes is None:
         axes = tuple(range(N))
     else:
         axes = _nx.normalize_axis_tuple(axes, N)
-        
+
     len_axes = len(axes)
     n = len(varargs)
     if n == 0:
@@ -296,21 +299,21 @@ def gradient(f, *varargs, **kwargs):
             dx[i] = diffx
     else:
         raise TypeError("invalid number of arguments")
-    
+
     edge_order = kwargs.pop('edge_order', 1)
     if kwargs:
         raise TypeError('"{}" are not valid keyword arguments.'.format(
                                                   '", "'.join(kwargs.keys())))
     if edge_order > 2:
         raise ValueError("'edge_order' greater than 2 not supported")
-    
+
     outvals = []
-    
+
     slice1 = [slice(None)]*N
     slice2 = [slice(None)]*N
     slice3 = [slice(None)]*N
     slice4 = [slice(None)]*N
-    
+
     otype = f.dtype
     if otype.type is numpy.datetime64:
         # the timedelta dtype with the same unit information
@@ -324,7 +327,7 @@ def gradient(f, *varargs, **kwargs):
     else:
         # all other types convert to floating point
         otype = numpy.double
-    
+
     for axis, ax_dx in zip(axes, dx):
         if f.shape[axis] < edge_order + 1:
             raise ValueError(
@@ -433,8 +436,7 @@ def gradient(f, *varargs, **kwargs):
         return outvals[0]
     else:
         return outvals
-        
-        
+
 
 # TODO(okuta): Implement cross
 
