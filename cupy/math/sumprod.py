@@ -242,7 +242,7 @@ def gradient(f, *varargs, **kwargs):
             3. N arrays to specify the coordinates of the values along each
             dimension of F. The length of the array must match the size of
             the corresponding dimension
-            4. Any combination of N scalars/arrays with the meaning of 2. and 3.
+            4. Any combination of N scalars/arrays with the meaning of 2 and 3
             If `axis` is given, the number of varargs must equal
             the number of axes.
             Default: 1.

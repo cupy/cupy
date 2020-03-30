@@ -599,7 +599,7 @@ class TestGradient(unittest.TestCase):
 
     @testing.numpy_cupy_allclose()
     def test_with_axis_tuple(self, xp):
-        a = testing.shaped_arange((4,5), xp)
+        a = testing.shaped_arange((4, 5), xp)
         return xp.gradient(a, axis=(1, 0))
 
     # test arguments
