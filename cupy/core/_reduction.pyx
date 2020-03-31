@@ -223,6 +223,7 @@ cdef _cub_two_pass_launch(
     cdef Py_ssize_t out_block_num = (segment_size + contiguous_size - 1) // contiguous_size # fair share
     cdef function.Function func
     cdef memory.MemoryPointer ptr
+    cdef str post_map_expr1, post_map_expr2
 
     # Because we can't know sizeof(reduce_type) in advance, here we
     # conservatively assume it's 32 bytes and allocate a work area
@@ -243,13 +244,20 @@ cdef _cub_two_pass_launch(
     cdef tuple params1 = (params + _get_param_info('int32 _segment_size', True))
     cub_params = (True, items_per_thread )#, False)
 
+    # For mean()
+    if 'mean' in name:
+        post_map_expr1 = post_map_expr.replace('_in_ind.size()', '1')
+        post_map_expr1 = post_map_expr1.replace('_out_ind.size()', '1')
+    else:
+        post_map_expr1 = post_map_expr
+
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num*block_size)
     blockx = <size_t>block_size
 
     # Retrieve the kernel function
     func = _SimpleReductionKernel_get_cached_function(
-            pre_map_expr, reduce_expr, post_map_expr, reduce_type,
+            pre_map_expr, reduce_expr, post_map_expr1, reduce_type,
             #pre_map_expr, reduce_expr, 'out0 = _type_reduce(a)', reduce_type,
             params1,
             _get_arginfos(inout_args), 
@@ -268,6 +276,13 @@ cdef _cub_two_pass_launch(
     in_args = out_args
     out_args = out_args_2nd_pass
 
+    # For mean()
+    if 'mean' in name:
+        post_map_expr2 = post_map_expr.replace('_in_ind.size()', str(segment_size))
+        post_map_expr2 = post_map_expr2.replace('_out_ind.size()', '1.0')
+    else:
+        post_map_expr2 = post_map_expr
+
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num*block_size)
     blockx = <size_t>block_size
@@ -279,7 +294,7 @@ cdef _cub_two_pass_launch(
 
     # Retrieve the kernel function
     func = _SimpleReductionKernel_get_cached_function(
-            '', reduce_expr, post_map_expr, reduce_type,
+            '', reduce_expr, post_map_expr2, reduce_type,
             params2,
             _get_arginfos(inout_args), 
             type_map,  # TODO: update this
@@ -554,6 +569,9 @@ cdef class _AbstractReductionKernel:
                 out_block_num = 1  # = number of segments
                 for i in out_axis:
                     out_block_num *= in_shape[i]
+                if 'mean' in self.name:
+                    post_map_expr = post_map_expr.replace('_in_ind.size()', '_segment_size')
+                    post_map_expr = post_map_expr.replace('_out_ind.size()', '1')
 
             #print("out_block_num:", out_block_num, "contiguous_size:", contiguous_size)
 
