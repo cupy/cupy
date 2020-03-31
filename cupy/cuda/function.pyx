@@ -104,8 +104,6 @@ cdef inline CPointer _pointer(x):
     if isinstance(x, _carray.Indexer):
         return (<_carray.Indexer>x).get_pointer()
     if isinstance(x, MemoryPointer):
-        a = CIntptr(x.ptr)
-        print("got address:", a.val, <intptr_t>a.ptr)
         return CIntptr(x.ptr)
     if isinstance(x, CPointer):
         return x

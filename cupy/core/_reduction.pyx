@@ -226,11 +226,11 @@ cdef _cub_two_pass_launch(
 
     # Because we can't know sizeof(reduce_type) in advance, here we
     # conservatively assume it's 32 bytes and allocate a work area
-    print("\n************************ allocating", out_block_num * 32, " bytes ************************\n")
-    print("in size", in_args[0].size, block_size, segment_size, out_block_num, contiguous_size)
+    #print("\n************************ allocating", out_block_num * 32, " bytes ************************\n")
+    #print("in size", in_args[0].size, block_size, segment_size, out_block_num, contiguous_size)
     ptr = memory.alloc(out_block_num * 32)
     out_args[0] = ptr
-    print(in_args[0].data.ptr, ptr.ptr, contiguous_size)
+    #print(in_args[0].data.ptr, ptr.ptr, contiguous_size)
 
     #print("out_block_num:", out_block_num, "contiguous_size:", contiguous_size)
 
@@ -719,10 +719,10 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             ('type_out0_raw', out_type),
         ))
 
-        print (
-            map_expr, reduce_expr, post_map_expr,
-            op.in_types, op.out_types, reduce_type,
-            type_map)
+        #print (
+        #    map_expr, reduce_expr, post_map_expr,
+        #    op.in_types, op.out_types, reduce_type,
+        #    type_map)
         return (
             map_expr, reduce_expr, post_map_expr,
             op.in_types, op.out_types, reduce_type,
@@ -752,7 +752,7 @@ def _SimpleReductionKernel_get_cached_function(
         name, block_size, identity, input_expr, output_expr, _preamble,
         options, cub_params):
 
-    DEBUG = True
+    DEBUG = False
     if DEBUG:
         print("name:",          name,          type(name), "\n")           
         print("block_size:",    block_size,    type(block_size), "\n")     
