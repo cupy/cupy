@@ -13,6 +13,7 @@ from libcpp cimport vector
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
+from cupy.cuda cimport memory
 from cupy.core cimport _carray
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
@@ -130,6 +131,8 @@ cdef class _ArgInfo:
             return _ArgInfo.from_scalar(arg)
         if typ is _carray.Indexer:
             return _ArgInfo.from_indexer(arg)
+        if typ is memory.MemoryPointer:
+            return _ArgInfo.from_memptr(arg)
         assert False, typ
 
     @staticmethod
@@ -144,6 +147,10 @@ cdef class _ArgInfo:
     @staticmethod
     cdef _ArgInfo from_indexer(_carray.Indexer arg):
         return _ArgInfo(ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim)
+
+    @staticmethod
+    cdef _ArgInfo from_memptr(memory.MemoryPointer arg):
+        return _ArgInfo(ARG_KIND_POINTER, memory.MemoryPointer, None, 0)
 
     def __hash__(self):
         return hash((self.arg_kind, self.type, self.dtype, self.ndim))
@@ -201,7 +208,7 @@ cdef class _ArgInfo:
         return ctyp
 
     cdef str get_c_var_name(self, ParameterInfo p):
-        if self.arg_kind == ARG_KIND_NDARRAY and not p.raw:
+        if self.arg_kind in (ARG_KIND_NDARRAY, ARG_KIND_POINTER) and not p.raw:
             return '_raw_' + p.name
         return p.name
 

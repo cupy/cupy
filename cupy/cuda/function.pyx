@@ -79,6 +79,15 @@ cdef class CUIntMax(CPointer):
         self.ptr = <void*>&self.val
 
 
+cdef class CIntptr(CPointer):
+    cdef:
+        intptr_t val
+
+    def __init__(self, intptr_t v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
+
 cdef set _pointer_numpy_types = {numpy.dtype(i).type
                                  for i in '?bhilqBHILQefdFD'}
 
@@ -86,6 +95,8 @@ cdef set _pointer_numpy_types = {numpy.dtype(i).type
 cdef inline CPointer _pointer(x):
     cdef Py_ssize_t itemsize
     cdef CPointer c_ptr
+    cdef CIntptr a
+
     if x is None:
         return CPointer()
     if isinstance(x, core.ndarray):
@@ -93,14 +104,11 @@ cdef inline CPointer _pointer(x):
     if isinstance(x, _carray.Indexer):
         return (<_carray.Indexer>x).get_pointer()
     if isinstance(x, MemoryPointer):
-        # cannot directly pass ptr to CPointer constructor, as it
-        # is a Python constructor!
-        c_ptr = CPointer()
-        c_ptr.ptr = <void*>x.ptr
-        return c_ptr
+        a = CIntptr(x.ptr)
+        print("got address:", a.val, <intptr_t>a.ptr)
+        return CIntptr(x.ptr)
     if isinstance(x, CPointer):
         return x
-
     if isinstance(x, TextureObject):
         return CUIntMax(x.ptr)
 

@@ -22,6 +22,7 @@ from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.cuda cimport device
 from cupy.cuda cimport function
+from cupy.cuda cimport memory
 from cupy.cuda cimport runtime
 from cupy.cuda cimport driver
 
@@ -214,33 +215,84 @@ cdef _cub_two_pass_launch(
         list in_args, list out_args,
         str identity, str pre_map_expr, str reduce_expr, str post_map_expr,
         _kernel._TypeMap type_map, str input_expr, str output_expr, str preamble, tuple options, stream):
-    cdef list out_args_2nd_pass = [out_args[0]]
-    cdef Py_ssize_t out_block_num = (in_args[0].size + block_size - 1) // block_size
-    out_args[0] = ????? # HOW TO KNOW sizeof(reduce_type) ????
+    # TODO: CANNOT use type_map here, because the intermediate type might not be a legit NumPy dtype
 
-#    #print("out_block_num:", out_block_num, "contiguous_size:", contiguous_size)
-#
-#    # Kernel arguments passed to the __global__ function.
-#    gridx = <size_t>(out_block_num*block_size)
-#    blockx = <size_t>block_size
-#    inout_args = (in_args + out_args
-#                  + [_scalar.CScalar.from_int32(contiguous_size)])
-#
-#    params = (self._params[0:2] + _get_param_info('int32 _segment_size', True))
-#    cub_params = (True, items_per_thread)
-#
-#
-#    # Retrieve the kernel function
-#    func = self._get_function(
-#        params,
-#        _get_arginfos(inout_args),
-#        type_map,
-#        map_expr, reduce_expr, post_map_expr, reduce_type,
-#        block_size, cub_params)
-#
-#    # Launch the kernel
-#    func.linear_launch(
-#        gridx, inout_args, 0, blockx, stream)
+
+    cdef list out_args_2nd_pass = [out_args[0]]
+    cdef Py_ssize_t contiguous_size = block_size * items_per_thread
+    cdef Py_ssize_t out_block_num = (segment_size + contiguous_size - 1) // contiguous_size # fair share
+    cdef function.Function func
+    cdef memory.MemoryPointer ptr
+
+    # Because we can't know sizeof(reduce_type) in advance, here we
+    # conservatively assume it's 32 bytes and allocate a work area
+    print("\n************************ allocating", out_block_num * 32, " bytes ************************\n")
+    print("in size", in_args[0].size, block_size, segment_size, out_block_num, contiguous_size)
+    ptr = memory.alloc(out_block_num * 32)
+    out_args[0] = ptr
+    print(in_args[0].data.ptr, ptr.ptr, contiguous_size)
+
+    #print("out_block_num:", out_block_num, "contiguous_size:", contiguous_size)
+
+    # ****** First pass ******
+    name += '_pass1'
+    inout_args = (in_args + out_args
+                  + [_scalar.CScalar.from_int32(contiguous_size)])
+
+
+    cdef tuple params1 = (params + _get_param_info('int32 _segment_size', True))
+    cub_params = (True, items_per_thread )#, False)
+    cdef str input_expr1 = input_expr
+    cdef str output_expr1 = '_type_reduce* _out0 = static_cast<_type_reduce*>(_raw_out0);'
+
+    # Kernel arguments passed to the __global__ function.
+    gridx = <size_t>(out_block_num*block_size)
+    blockx = <size_t>block_size
+
+    # Retrieve the kernel function
+    func = _SimpleReductionKernel_get_cached_function(
+            pre_map_expr, reduce_expr, post_map_expr, reduce_type,
+            #pre_map_expr, reduce_expr, 'out0 = _type_reduce(a)', reduce_type,
+            params1,
+            _get_arginfos(inout_args), 
+            type_map,  # TODO: update this
+            name, block_size, identity,
+            input_expr1, output_expr1, preamble, ('-DFIRST_PASS=1',), cub_params)
+
+    # Launch the kernel
+    func.linear_launch(
+        gridx, inout_args, 0, blockx, stream)
+
+    # ****** Second pass ******
+    name = name[:-1] + '2'
+    contiguous_size = out_block_num
+    out_block_num = 1 # (out_block_num + block_size - 1) // block_size
+    in_args = out_args
+    out_args = out_args_2nd_pass
+    cdef str input_expr2 = 'const _type_reduce* _in0 = static_cast<const _type_reduce*>(_raw_in0);'
+    cdef str output_expr2 = output_expr
+
+    # Kernel arguments passed to the __global__ function.
+    gridx = <size_t>(out_block_num*block_size)
+    blockx = <size_t>block_size
+    inout_args = (in_args + out_args
+                  + [_scalar.CScalar.from_int32(contiguous_size)])
+
+    cdef tuple params2 = (params + _get_param_info('int32 _segment_size', True))
+    cub_params = (True, items_per_thread )#, True)
+
+    # Retrieve the kernel function
+    func = _SimpleReductionKernel_get_cached_function(
+            '', reduce_expr, post_map_expr, reduce_type,
+            params2,
+            _get_arginfos(inout_args), 
+            type_map,  # TODO: update this
+            name, block_size, identity,
+            input_expr2, output_expr2, preamble, ('-DSECOND_PASS=1',), cub_params)
+
+    # Launch the kernel
+    func.linear_launch(
+        gridx, inout_args, 0, blockx, stream)
 
 
 cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
@@ -375,7 +427,7 @@ cdef class _AbstractReductionKernel:
         cdef Py_ssize_t contiguous_size, items_per_thread
         cdef Py_ssize_t block_size, block_stride, out_block_num
         cdef ndarray ret
-        cdef function.Function kern
+        cdef function.Function func
         cdef bint use_cub, full_reduction
         cdef size_t gridx, blockx
         cdef list out_args_2nd_pass = []
@@ -464,6 +516,9 @@ cdef class _AbstractReductionKernel:
         else:
             # TODO(leofang): fix reduce_dims
 
+            self._input_expr = 'const type_in0_raw* _in0 = static_cast<const type_in0_raw*>(_raw_in0);'
+            self._output_expr = 'type_out0_raw* _out0 = static_cast<type_out0_raw*>(_raw_out0);'
+
             contiguous_size = 1
             for i in reduce_axis:
                 contiguous_size *= in_shape[i]
@@ -540,12 +595,12 @@ cdef class _AbstractReductionKernel:
             _cub_two_pass_launch(
                 self.name, block_size, contiguous_size, items_per_thread,
                 reduce_type, self._params[0:2], in_args, out_args, self.identity,
-                pre_map_expr, reduce_expr, post_map_expr,
+                map_expr, reduce_expr, post_map_expr,
                 type_map, self._input_expr, self._output_expr, self._preamble,
                 (), stream)
         else:
             # Retrieve the kernel function
-            kern = self._get_function(
+            func = self._get_function(
                 params,
                 _get_arginfos(inout_args),
                 type_map,
@@ -595,8 +650,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         readonly _preamble
         readonly int nin
         readonly int nout
-        readonly str _input_expr
-        readonly str _output_expr
+        public str _input_expr
+        public str _output_expr
         readonly dict _routine_cache
 
     def __init__(self, name, _kernel._Ops ops, identity, preamble):
@@ -664,6 +719,10 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             ('type_out0_raw', out_type),
         ))
 
+        print (
+            map_expr, reduce_expr, post_map_expr,
+            op.in_types, op.out_types, reduce_type,
+            type_map)
         return (
             map_expr, reduce_expr, post_map_expr,
             op.in_types, op.out_types, reduce_type,
@@ -693,7 +752,7 @@ def _SimpleReductionKernel_get_cached_function(
         name, block_size, identity, input_expr, output_expr, _preamble,
         options, cub_params):
 
-    DEBUG = False
+    DEBUG = True
     if DEBUG:
         print("name:",          name,          type(name), "\n")           
         print("block_size:",    block_size,    type(block_size), "\n")     
@@ -712,27 +771,28 @@ def _SimpleReductionKernel_get_cached_function(
         print("_preamble:",     _preamble,     type(_preamble), "\n")      
         print("options:",       options,       type(options), "\n")        
 
-        temp =  _kernel._get_kernel_params(params, arginfos)
+        #temp =  _kernel._get_cub_kernel_params(params, arginfos)
         temp2 = type_map.get_typedef_code()
-        print("final params:",  temp,          type(temp), "\n")
+        #print("final params:",  temp,          type(temp), "\n")
         print("modified params:", _get_cub_kernel_params(params, arginfos))
         print("type_preamble:", temp2,         type(temp2), "\n")
 
     use_cub, items_per_thread = cub_params
+    #use_cub, items_per_thread, is_1st_pass = cub_params
     if not use_cub:
         return _create_reduction_function(
             name, block_size, reduce_type, params, arginfos, identity,
             map_expr, reduce_expr, post_map_expr,
             type_map, input_expr, output_expr, _preamble, options)
     else:
-        # TODO(leofang): modify input_expr & output_expr to make them useful
         name = name.replace('cupy_', 'cupy_cub_')
         name = name.replace('cupyx_', 'cupyx_cub_')
         return _create_cub_reduction_function(
             name, block_size, items_per_thread,
             reduce_type, params, arginfos, identity,
             map_expr, reduce_expr, post_map_expr,
-            type_map, input_expr, output_expr, _preamble, options)
+            type_map, input_expr, output_expr, #is_1st_pass,
+            _preamble, options)
 
 
 # -----------------------------------------------------------------------------
