@@ -242,8 +242,6 @@ cdef _cub_two_pass_launch(
 
     cdef tuple params1 = (params + _get_param_info('int32 _segment_size', True))
     cub_params = (True, items_per_thread )#, False)
-    cdef str input_expr1 = input_expr
-    cdef str output_expr1 = '_type_reduce* _out0 = static_cast<_type_reduce*>(_raw_out0);'
 
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num*block_size)
@@ -257,7 +255,7 @@ cdef _cub_two_pass_launch(
             _get_arginfos(inout_args), 
             type_map,  # TODO: update this
             name, block_size, identity,
-            input_expr1, output_expr1, preamble, ('-DFIRST_PASS=1',), cub_params)
+            input_expr, output_expr, preamble, ('-DFIRST_PASS=1',), cub_params)
 
     # Launch the kernel
     func.linear_launch(
@@ -269,8 +267,6 @@ cdef _cub_two_pass_launch(
     out_block_num = 1 # (out_block_num + block_size - 1) // block_size
     in_args = out_args
     out_args = out_args_2nd_pass
-    cdef str input_expr2 = 'const _type_reduce* _in0 = static_cast<const _type_reduce*>(_raw_in0);'
-    cdef str output_expr2 = output_expr
 
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num*block_size)
@@ -288,7 +284,7 @@ cdef _cub_two_pass_launch(
             _get_arginfos(inout_args), 
             type_map,  # TODO: update this
             name, block_size, identity,
-            input_expr2, output_expr2, preamble, ('-DSECOND_PASS=1',), cub_params)
+            input_expr, output_expr, preamble, ('-DSECOND_PASS=1',), cub_params)
 
     # Launch the kernel
     func.linear_launch(
@@ -516,9 +512,6 @@ cdef class _AbstractReductionKernel:
         else:
             # TODO(leofang): fix reduce_dims
 
-            self._input_expr = 'const type_in0_raw* _in0 = static_cast<const type_in0_raw*>(_raw_in0);'
-            self._output_expr = 'type_out0_raw* _out0 = static_cast<type_out0_raw*>(_raw_out0);'
-
             contiguous_size = 1
             for i in reduce_axis:
                 contiguous_size *= in_shape[i]
@@ -650,8 +643,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         readonly _preamble
         readonly int nin
         readonly int nout
-        public str _input_expr
-        public str _output_expr
+        readonly str _input_expr
+        readonly str _output_expr
         readonly dict _routine_cache
 
     def __init__(self, name, _kernel._Ops ops, identity, preamble):

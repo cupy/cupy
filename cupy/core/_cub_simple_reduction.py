@@ -10,6 +10,7 @@ def _get_cub_reduction_function_code(
         pre_map_expr, reduce_expr, post_map_expr,
         type_map, input_expr, output_expr, preamble, options):
     # TODO: clean up
+    # TODO: remove input_expr & output_expr
 
     # For mean()
     post_map_expr = post_map_expr.replace('_in_ind.size()', '_segment_size')
@@ -24,8 +25,6 @@ ${preamble}
 ${type_preamble}
 typedef ${reduce_type} _type_reduce;
 
-#define POST_MAP(a) (${post_map_expr})
-
 #if defined FIRST_PASS
     typedef type_in0_raw  type_mid_in; 
     typedef _type_reduce  type_mid_out;
@@ -33,16 +32,16 @@ typedef ${reduce_type} _type_reduce;
 #elif defined SECOND_PASS
     typedef _type_reduce  type_mid_in;
     typedef type_out0_raw type_mid_out;
+    #define POST_MAP(a) (${post_map_expr})
 #else  // one-pass reduction
     typedef type_in0_raw  type_mid_in;
     typedef type_out0_raw type_mid_out; 
+    #define POST_MAP(a) (${post_map_expr})
 #endif
-
 
 // Compile-time constants for CUB template specializations
 #define ITEMS_PER_THREAD ${items_per_thread}
 #define BLOCK_SIZE ${block_size}
-
 
 struct _reduction_op
 {
@@ -77,8 +76,8 @@ __global__ void ${name}(${params}) {
   _reduction_op op;
 
   // input & output raw pointers
-  ${input_expr}
-  ${output_expr}
+  const type_mid_in* _in0 = static_cast<const type_mid_in*>(_raw_in0);
+  type_mid_out* _out0 = static_cast<type_mid_out*>(_raw_out0);
 
   // Per-thread tile data
   _type_reduce _sdata[ITEMS_PER_THREAD] = {_type_reduce(${identity})};
