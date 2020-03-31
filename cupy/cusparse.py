@@ -1059,7 +1059,8 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
         y = \\alpha * op(A) x + \\beta * y
 
     Args:
-        a (cupyx.scipy.sparse.csr_matrix or coo_matrix): Sparse matrix A
+        a (cupyx.scipy.sparse.csr_matrix, csc_matrix or coo_matrix):
+            Sparse matrix A
         x (cupy.ndarray): Dense vector x
         y (cupy.ndarray or None): Dense vector y
         alpha (scalar): Coefficent
@@ -1072,6 +1073,16 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     if not check_availability('spmv'):
         raise RuntimeError('spmv is not available.')
 
+    if isinstance(a, cupyx.scipy.sparse.csc_matrix):
+        aT = a.T
+        if not isinstance(aT, cupyx.scipy.sparse.csr_matrix):
+            msg = 'aT must be csr_matrix (actual: {})'.format(type(aT))
+            raise TypeError(msg)
+        a = aT
+        transa = not transa
+    if not (isinstance(a, cupyx.scipy.sparse.csr_matrix) or
+            isinstance(a, cupyx.scipy.sparse.coo_matrix)):
+        raise TypeError('unsupported type (actual: {})'.format(type(a)))
     a_shape = a.shape if not transa else a.shape[::-1]
     if a_shape[1] != len(x):
         raise ValueError('dimension mismatch')
@@ -1115,24 +1126,35 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
         C = \\alpha * op(A) op(B) + \\beta * C
 
     Args:
-        a (cupyx.scipy.sparse.csr_matrix or coo_matrix): Sparse matrix A
+        a (cupyx.scipy.sparse.csr_matrix, csc_matrix or coo_matrix):
+            Sparse matrix A
         b (cupy.ndarray): Dense matrix B
         c (cupy.ndarray or None): Dense matrix C
         alpha (scalar): Coefficent
         beta (scalar): Coefficent
         transa (bool): If ``True``, op(A) = transpose of A.
-        transa (bool): If ``True``, op(B) = transpose of B.
+        transb (bool): If ``True``, op(B) = transpose of B.
 
     Returns:
         cupy.ndarray
     """
+    if not check_availability('spmm'):
+        raise RuntimeError('spmm is not available.')
+
     assert a.ndim == b.ndim == 2
     assert b.flags.f_contiguous
     assert c is None or c.flags.f_contiguous
 
-    if not check_availability('spmm'):
-        raise RuntimeError('spmm is not available.')
-
+    if isinstance(a, cupyx.scipy.sparse.csc_matrix):
+        aT = a.T
+        if not isinstance(aT, cupyx.scipy.sparse.csr_matrix):
+            msg = 'aT must be csr_matrix (actual: {})'.format(type(aT))
+            raise TypeError(msg)
+        a = aT
+        transa = not transa
+    if not (isinstance(a, cupyx.scipy.sparse.csr_matrix) or
+            isinstance(a, cupyx.scipy.sparse.coo_matrix)):
+        raise TypeError('unsupported type (actual: {})'.format(type(a)))
     a_shape = a.shape if not transa else a.shape[::-1]
     b_shape = b.shape if not transb else b.shape[::-1]
     if a_shape[1] != b_shape[0]:
