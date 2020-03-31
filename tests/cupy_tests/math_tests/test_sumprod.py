@@ -580,4 +580,3 @@ class TestDiff(unittest.TestCase):
                 xp.diff(a, axis=3)
             with pytest.raises(numpy.AxisError):
                 xp.diff(a, axis=-4)
-        return
