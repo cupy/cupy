@@ -8,9 +8,10 @@ def _get_cub_reduction_function_code(
         name, block_size, items_per_thread,
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
-        type_map, input_expr, output_expr, preamble, options):
-    # TODO: clean up
-    # TODO: remove input_expr & output_expr
+        type_map, preamble, options):
+    #  TODO: try splitting the for loop into full tiles and partil tiles to utilize
+    #  LoadDirectBlockedVectorized? See, for example,
+    #  https://github.com/NVlabs/cub/blob/c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/agent/agent_reduce.cuh#L311-L346
 
     module_code = '''
 #include <cupy/cub/cub/block/block_reduce.cuh>
@@ -28,11 +29,11 @@ typedef ${reduce_type} _type_reduce;
 #elif defined SECOND_PASS
     typedef _type_reduce  type_mid_in;
     typedef type_out0_raw type_mid_out;
-    #define POST_MAP(a) (${post_map_expr})
+    #define POST_MAP(a)   (${post_map_expr})
 #else  // one-pass reduction
     typedef type_in0_raw  type_mid_in;
     typedef type_out0_raw type_mid_out; 
-    #define POST_MAP(a) (${post_map_expr})
+    #define POST_MAP(a)   (${post_map_expr})
 #endif
 
 // Compile-time constants for CUB template specializations
@@ -51,22 +52,12 @@ extern "C"
 __global__ void ${name}(${params}) {
   unsigned int _tid = threadIdx.x;
   unsigned int _bid = blockIdx.x * BLOCK_SIZE + _tid;
-  //printf("%d\\n", _bid);
-
-  //if (_bid == 0)
-  //  printf("%p, %p, %i\\n", _raw_in0, _raw_out0, _segment_size);
-
-
 
   // Specialize BlockReduce type for our thread block
   typedef cub::BlockReduce<_type_reduce, BLOCK_SIZE> BlockReduceT;
 
   // Shared memory
   __shared__ typename BlockReduceT::TempStorage temp_storage;
-
-  typedef cub::BlockLoad<_type_reduce, BLOCK_SIZE, ITEMS_PER_THREAD, cub::BLOCK_LOAD_DIRECT> BlockLoadT;
-
-  __shared__ typename BlockLoadT::TempStorage temp_storage_load;
 
   // Declare reduction operation
   _reduction_op op;
@@ -79,37 +70,28 @@ __global__ void ${name}(${params}) {
   _type_reduce _sdata[ITEMS_PER_THREAD] = {_type_reduce(${identity})};
 
   // each block handles the reduction of 1 segment
-  const type_mid_in* segment_head = _in0 + blockIdx.x * _segment_size;  // TODO(leofang): auto-gen this
+  const type_mid_in* segment_head = _in0 + blockIdx.x * _segment_size;
   _type_reduce aggregate = _type_reduce(${identity});
   size_t i = 0;  // tile head within the segment
   int tile_size = (BLOCK_SIZE * ITEMS_PER_THREAD < _segment_size ? BLOCK_SIZE * ITEMS_PER_THREAD : _segment_size);
 
   // loop over tiles within 1 segment
   for (i = 0; i < _segment_size; i += BLOCK_SIZE * ITEMS_PER_THREAD) {
-      // TODO: try splitting the for loop into full tiles and partil tiles to utilize
-      // LoadDirectBlockedVectorized? See, for example,
-      // https://github.com/NVlabs/cub/blob/c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/agent/agent_reduce.cuh#L311-L346
-
       if (_segment_size - i < tile_size)  // for the last tile
           tile_size = _segment_size - i;
+
 '''
 
     if pre_map_expr == 'in0':
         module_code += '''
 
-      //if (_bid == 0) {
-      //    printf("i: %d\\n", i);
-      //    printf("_segment_size: %d\\n", _segment_size);
-      //    printf("tile_size: %d\\n\\n", tile_size);
-      //}
+      typedef cub::BlockLoad<_type_reduce, BLOCK_SIZE, ITEMS_PER_THREAD, cub::BLOCK_LOAD_DIRECT> BlockLoadT;
+
+      __shared__ typename BlockLoadT::TempStorage temp_storage_load;
 
       // load a tile
-      // This is equivalent to cub::BlockLoad<_type_reduce, BLOCK_SIZE, ITEMS_PER_THREAD, BLOCK_LOAD_DIRECT>::Load
-      //cub::LoadDirectBlocked(_tid, segment_head + i, _sdata, tile_size, _type_reduce(${identity}));
       BlockLoadT(temp_storage_load).Load(segment_head + i, _sdata, tile_size, _type_reduce(${identity}));
 
-      //for (size_t i = 0; i<ITEMS_PER_THREAD; i++)
-      //    printf("_bid: %d, local items: %f\\n", _bid, _sdata[i]); 
 '''
     else:  # pre_map_expr could be something like "in0 != type_in0_raw(0)"
         module_code += '''
@@ -147,8 +129,6 @@ __global__ void ${name}(${params}) {
   }
 
   if (_tid == 0) {
-      //printf("_bid: %d (blockIdx.x: %d), block out: %f\\n", _bid, blockIdx.x, aggregate);
-
       type_mid_out& out0 = *(_out0 + blockIdx.x);
       POST_MAP(aggregate);
   }
@@ -160,16 +140,12 @@ __global__ void ${name}(${params}) {
         block_size=block_size,  # used
         items_per_thread=items_per_thread,  # used
         reduce_type=reduce_type,  # used
-        #params=_kernel._get_kernel_params(params, arginfos),  # used
         params=_reduction._get_cub_kernel_params(params, arginfos),  # used
         identity=identity,  # used
         reduce_expr=reduce_expr,  # used
         pre_map_expr=pre_map_expr,  # used
         post_map_expr=post_map_expr,  # used
         type_preamble=type_map.get_typedef_code(),  # used
-        input_expr=input_expr,  # used
-        output_expr=output_expr,  # used
         preamble=preamble)  # used
-    #print('\n', module_code, '\n')
 
     return module_code

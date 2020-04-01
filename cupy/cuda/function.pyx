@@ -94,8 +94,6 @@ cdef set _pointer_numpy_types = {numpy.dtype(i).type
 
 cdef inline CPointer _pointer(x):
     cdef Py_ssize_t itemsize
-    cdef CPointer c_ptr
-    cdef CIntptr a
 
     if x is None:
         return CPointer()
@@ -192,7 +190,6 @@ cdef class Function:
             0x7fffffffUL, (size + block_max_size - 1) // block_max_size)
         cdef size_t blockx = min(block_max_size, size)
         s = _get_stream(stream)
-        #print("actual gridx:", gridx, "blockx:" , blockx)
         _launch(self.ptr,
                 gridx, 1, 1, blockx, 1, 1, args, shared_mem, s)
 

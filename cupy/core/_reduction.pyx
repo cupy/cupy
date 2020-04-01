@@ -114,7 +114,7 @@ cpdef function.Function _create_cub_reduction_function(
         name, block_size, items_per_thread,
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
-        _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
+        _kernel._TypeMap type_map, preamble, options):
 
     # move this part to a Python file for faster test cycles
     # TODO: move it back to here!
@@ -123,7 +123,7 @@ cpdef function.Function _create_cub_reduction_function(
         name, block_size, items_per_thread,
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
-        type_map, input_expr, output_expr, preamble, options)
+        type_map, preamble, options)
 
     # CUB is not natively supported by NVRTC (NVlabs/cub#131), so use nvcc
     # instead. For this, we have to explicitly spell out the default values for
@@ -214,35 +214,40 @@ cdef _cub_two_pass_launch(
         Py_ssize_t items_per_thread, str reduce_type, tuple params,
         list in_args, list out_args,
         str identity, str pre_map_expr, str reduce_expr, str post_map_expr,
-        _kernel._TypeMap type_map, str input_expr, str output_expr, str preamble, tuple options, stream):
-    # TODO: CANNOT use type_map here, because the intermediate type might not be a legit NumPy dtype
-
+        _kernel._TypeMap type_map, str input_expr, str output_expr,
+        str preamble, tuple options, stream):
+    '''
+    Notes:
+    1. Two-pass reduction: the first pass distributes an even share over
+       a number of blocks (with block_size threads), and the second pass
+       does reduction over 1 block of threads
+    2. input_expr & output_expr are used only as part of the cache key;
+       the actual kernel does not use them
+    '''
 
     cdef list out_args_2nd_pass = [out_args[0]]
-    cdef Py_ssize_t contiguous_size = block_size * items_per_thread
-    cdef Py_ssize_t out_block_num = (segment_size + contiguous_size - 1) // contiguous_size # fair share
+    cdef Py_ssize_t contiguous_size, out_block_num
     cdef function.Function func
-    cdef memory.MemoryPointer ptr
+    cdef memory.MemoryPointer memptr
     cdef str post_map_expr1, post_map_expr2
+    cdef list inout_args
+    cdef tuple cub_params
+    cdef size_t gridx, blockx
+
+    # fair share
+    contiguous_size = block_size * items_per_thread
+    out_block_num = (segment_size + contiguous_size - 1) // contiguous_size
 
     # Because we can't know sizeof(reduce_type) in advance, here we
     # conservatively assume it's 32 bytes and allocate a work area
-    #print("\n************************ allocating", out_block_num * 32, " bytes ************************\n")
-    #print("in size", in_args[0].size, block_size, segment_size, out_block_num, contiguous_size)
-    ptr = memory.alloc(out_block_num * 32)
-    out_args[0] = ptr
-    #print(in_args[0].data.ptr, ptr.ptr, contiguous_size)
+    memptr = memory.alloc(out_block_num * 32)
+    out_args[0] = memptr
 
-    #print("out_block_num:", out_block_num, "contiguous_size:", contiguous_size)
-
-    # ****** First pass ******
+    # ************************ 1st pass ************************
     name += '_pass1'
-    inout_args = (in_args + out_args
-                  + [_scalar.CScalar.from_int32(contiguous_size)])
-
-
-    cdef tuple params1 = (params + _get_param_info('int32 _segment_size', True))
-    cub_params = (True, items_per_thread )#, False)
+    inout_args = [in_args[0], out_args[0],
+                  _scalar.CScalar.from_int32(contiguous_size)]
+    cub_params = (True, items_per_thread)
 
     # For mean()
     if 'mean' in name:
@@ -251,30 +256,31 @@ cdef _cub_two_pass_launch(
     else:
         post_map_expr1 = post_map_expr
 
-    # Kernel arguments passed to the __global__ function.
-    gridx = <size_t>(out_block_num*block_size)
-    blockx = <size_t>block_size
-
     # Retrieve the kernel function
     func = _SimpleReductionKernel_get_cached_function(
             pre_map_expr, reduce_expr, post_map_expr1, reduce_type,
-            #pre_map_expr, reduce_expr, 'out0 = _type_reduce(a)', reduce_type,
-            params1,
+            params,
             _get_arginfos(inout_args), 
-            type_map,  # TODO: update this
+            type_map,
             name, block_size, identity,
-            input_expr, output_expr, preamble, ('-DFIRST_PASS=1',), cub_params)
+            input_expr, output_expr, preamble,
+            ('-DFIRST_PASS=1',), cub_params)
+
+    # Kernel arguments passed to the __global__ function.
+    gridx = <size_t>(out_block_num * block_size)
+    blockx = <size_t>block_size
 
     # Launch the kernel
-    func.linear_launch(
-        gridx, inout_args, 0, blockx, stream)
+    func.linear_launch(gridx, inout_args, 0, blockx, stream)
 
-    # ****** Second pass ******
+    # ************************ 2nd pass ************************
     name = name[:-1] + '2'
     contiguous_size = out_block_num
-    out_block_num = 1 # (out_block_num + block_size - 1) // block_size
+    out_block_num = 1
     in_args = out_args
     out_args = out_args_2nd_pass
+    inout_args = [in_args[0], out_args[0],
+                  _scalar.CScalar.from_int32(contiguous_size)]
 
     # For mean()
     if 'mean' in name:
@@ -283,27 +289,22 @@ cdef _cub_two_pass_launch(
     else:
         post_map_expr2 = post_map_expr
 
-    # Kernel arguments passed to the __global__ function.
-    gridx = <size_t>(out_block_num*block_size)
-    blockx = <size_t>block_size
-    inout_args = (in_args + out_args
-                  + [_scalar.CScalar.from_int32(contiguous_size)])
-
-    cdef tuple params2 = (params + _get_param_info('int32 _segment_size', True))
-    cub_params = (True, items_per_thread )#, True)
-
     # Retrieve the kernel function
     func = _SimpleReductionKernel_get_cached_function(
             '', reduce_expr, post_map_expr2, reduce_type,
-            params2,
+            params,
             _get_arginfos(inout_args), 
-            type_map,  # TODO: update this
+            type_map,
             name, block_size, identity,
-            input_expr, output_expr, preamble, ('-DSECOND_PASS=1',), cub_params)
+            input_expr, output_expr, preamble,
+            ('-DSECOND_PASS=1',), cub_params)
+
+    # Kernel arguments passed to the __global__ function.
+    gridx = <size_t>(out_block_num * block_size)
+    blockx = <size_t>block_size
 
     # Launch the kernel
-    func.linear_launch(
-        gridx, inout_args, 0, blockx, stream)
+    func.linear_launch(gridx, inout_args, 0, blockx, stream)
 
 
 cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
@@ -453,7 +454,6 @@ cdef class _AbstractReductionKernel:
         ) = self._get_expressions_and_types(in_args, out_args, dtype)
 
         reduce_axis, out_axis = _get_axis(axis, len(a_shape))
-        #print("reduce_axis", reduce_axis, "out_axis", out_axis)
 
         # When there is only one input array, sort the axes in such a way that
         # contiguous (C or F) axes can be squashed in _reduce_dims() later.
@@ -464,7 +464,6 @@ cdef class _AbstractReductionKernel:
             strides = in_args[0].strides
             reduce_axis = _sort_axis(reduce_axis, strides)
             out_axis = _sort_axis(out_axis, strides)
-            #print("reduce_axis", reduce_axis, "out_axis", out_axis)
 
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
         out_args = self._get_out_args(out_args, out_types, out_shape)
@@ -480,12 +479,9 @@ cdef class _AbstractReductionKernel:
                    _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
                    for x, t in zip(in_args, in_types)]
 
-        # TODO: need two code paths for use_cub and the old behavior
-
         # decide to use CUB or not
         use_cub = False
         axis_permutes = reduce_axis + out_axis
-        #print("reduce_axis", reduce_axis, "out_axis", out_axis, "axis_permutes", axis_permutes)
         if try_use_cub:
             axis_permutes_cub = _can_use_cub_block_reduction(
                 in_args, out_args, reduce_axis, out_axis)
@@ -500,8 +496,6 @@ cdef class _AbstractReductionKernel:
             if reduce_dims:
                 in_shape = _reduce_dims(in_args, self.in_params, in_shape)
                 out_shape = _reduce_dims(out_args, self.out_params, out_shape)
-            #print("in_shape:", in_shape)
-            #print("out_shape:", out_shape)
 
             # Calculate the reduction block dimensions.
             contiguous_size = _get_contiguous_size(
@@ -538,42 +532,33 @@ cdef class _AbstractReductionKernel:
 
             # Calculate the reduction block dimensions.
             # Ideally, we want each block to handle one segment, so:
-            # - block size < segment size: the block loops over the segment
-            # - block size >= segment size: the segment can fit in the entire block
+            # 1. block size < segment size: the block loops over the segment
+            # 2. block size >= segment size: the segment fits in the entire block
             # TODO(leofang): also auto-tune the block size?
             block_size = (contiguous_size + items_per_thread - 1) // items_per_thread
             block_size = internal.clp2(block_size)
             if block_size < 32:
                 block_size = 32  # warp size
             elif block_size > _block_size:
-                block_size = _block_size
-
-            ## fine tuning
-            #block_size = 1024
-            #items_per_thread = 4
+                block_size = _block_size  # TODO(leofang): try 1024 as maximum?
 
             if in_args[0].flags.f_contiguous:
                 ret = out_args[0] = _internal_asfortranarray(ret)
-                #print(ret.flags)
 
             if len(reduce_axis) > 1 and len(out_axis) == 0:
-                # full-reduction of N-D array: need to invoke the kernel twice,
-                # the first pass to do an even share distributed over block_size threads,
-                # and the second pass to do reduction over the threads
+                # full-reduction of N-D array: need to invoke the kernel twice
                 full_reduction = True
-                out_block_num = (in_args[0].size + block_size - 1) \
-                    // block_size
+                out_block_num = 0  # to suppress compiler warning
             else:
                 # just need one pass
                 full_reduction = False
                 out_block_num = 1  # = number of segments
                 for i in out_axis:
                     out_block_num *= in_shape[i]
+
                 if 'mean' in self.name:
                     post_map_expr = post_map_expr.replace('_in_ind.size()', '_segment_size')
                     post_map_expr = post_map_expr.replace('_out_ind.size()', '1')
-
-            #print("out_block_num:", out_block_num, "contiguous_size:", contiguous_size)
 
             # Kernel arguments passed to the __global__ function.
             inout_args = (in_args + out_args
@@ -582,30 +567,10 @@ cdef class _AbstractReductionKernel:
             params = (self._params[0:2] + _get_param_info('int32 _segment_size', True))
             cub_params = (True, items_per_thread)
 
-        #cdef Py_ssize_t _old_block_size = block_size
-        #cdef Py_ssize_t _old_items_per_thread = items_per_thread
-        #for block_size in (32, 64, 128, 256, 512, 1024):
-        #    for items_per_thread in (4, 8, 16, 32):
-        #        cub_params = (True, items_per_thread)
-        #        func = self._get_function(
-        #            params,
-        #            _get_arginfos(inout_args),
-        #            type_map,
-        #            map_expr, reduce_expr, post_map_expr, reduce_type,
-        #            block_size, cub_params)
-        #        #print("kernel pointer:", func.ptr)
-        #        print("max active blocks for block size", block_size, " and items per thread", items_per_thread, ":",
-        #               driver.occupancyMaxActiveBlocksPerMultiprocessor(func.ptr, block_size, 0))
-        #        print("max potential block size for items per thread", items_per_thread, ":",
-        #               driver.occupancyMaxPotentialBlockSize(func.ptr, 0, 0))
-        #block_size = _old_block_size
-        #items_per_thread =  _old_items_per_thread
-        #cub_params = (True, items_per_thread)
-
         if use_cub and full_reduction:
             _cub_two_pass_launch(
                 self.name, block_size, contiguous_size, items_per_thread,
-                reduce_type, self._params[0:2], in_args, out_args, self.identity,
+                reduce_type, params, in_args, out_args, self.identity,
                 map_expr, reduce_expr, post_map_expr,
                 type_map, self._input_expr, self._output_expr, self._preamble,
                 (), stream)
@@ -619,7 +584,7 @@ cdef class _AbstractReductionKernel:
                 block_size, cub_params)
 
             # Launch the kernel
-            gridx = <size_t>(out_block_num*block_size)
+            gridx = <size_t>(out_block_num * block_size)
             blockx = <size_t>block_size
             func.linear_launch(gridx, inout_args, 0, blockx, stream)
 
@@ -730,10 +695,6 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             ('type_out0_raw', out_type),
         ))
 
-        #print (
-        #    map_expr, reduce_expr, post_map_expr,
-        #    op.in_types, op.out_types, reduce_type,
-        #    type_map)
         return (
             map_expr, reduce_expr, post_map_expr,
             op.in_types, op.out_types, reduce_type,
@@ -762,34 +723,7 @@ def _SimpleReductionKernel_get_cached_function(
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, input_expr, output_expr, _preamble,
         options, cub_params):
-
-    DEBUG = False
-    if DEBUG:
-        print("name:",          name,          type(name), "\n")           
-        print("block_size:",    block_size,    type(block_size), "\n")     
-        print("reduce_type:",   reduce_type,   type(reduce_type), "\n")   
-        print("params:",        params,        type(params), "\n")        
-        print("arginfos:",      arginfos,      type(arginfos), "\n")       
-        print("identity:",      identity,      type(identity), "\n")       
-
-        print("map_expr:",      map_expr,      type(map_expr), "\n")          
-        print("reduce_expr:",   reduce_expr,   type(reduce_expr), "\n")  
-        print("post_map_expr:", post_map_expr, type(post_map_expr), "\n") 
-
-        print("type_map:",      type_map,      type(type_map), "\n")       
-        print("input_expr:",    input_expr,    type(input_expr), "\n")     
-        print("output_expr:",   output_expr,   type(output_expr), "\n")    
-        print("_preamble:",     _preamble,     type(_preamble), "\n")      
-        print("options:",       options,       type(options), "\n")        
-
-        #temp =  _kernel._get_cub_kernel_params(params, arginfos)
-        temp2 = type_map.get_typedef_code()
-        #print("final params:",  temp,          type(temp), "\n")
-        print("modified params:", _get_cub_kernel_params(params, arginfos))
-        print("type_preamble:", temp2,         type(temp2), "\n")
-
     use_cub, items_per_thread = cub_params
-    #use_cub, items_per_thread, is_1st_pass = cub_params
     if not use_cub:
         return _create_reduction_function(
             name, block_size, reduce_type, params, arginfos, identity,
@@ -802,8 +736,7 @@ def _SimpleReductionKernel_get_cached_function(
             name, block_size, items_per_thread,
             reduce_type, params, arginfos, identity,
             map_expr, reduce_expr, post_map_expr,
-            type_map, input_expr, output_expr, #is_1st_pass,
-            _preamble, options)
+            type_map, _preamble, options)
 
 
 # -----------------------------------------------------------------------------
