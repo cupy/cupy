@@ -574,7 +574,7 @@ class TestDiff(unittest.TestCase):
 
 @testing.gpu
 class TestGradient(unittest.TestCase):
-        
+
     # basic test
     @testing.numpy_cupy_allclose()
     def test_basic(self, xp):
@@ -590,7 +590,7 @@ class TestGradient(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_with_axis_positive(self, xp):
         a = testing.shaped_arange((4, 5), xp)
-        return xp.gradient(a, axis=1)   
+        return xp.gradient(a, axis=1)
 
     @testing.numpy_cupy_allclose()
     def test_with_axis_negative(self, xp):
@@ -607,7 +607,7 @@ class TestGradient(unittest.TestCase):
     def test_with_argument_number(self, xp):
         f_2d = testing.shaped_arange((5,), xp)
         return xp.gradient(f_2d, 3.0)
-    
+
     # TypeError: no implementation found for 'numpy.ndim' on types
     #  that implement __array_function__: [<class 'cupy.core.core.ndarray'>]
 
