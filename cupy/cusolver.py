@@ -143,12 +143,9 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     else:
         jobz = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
         # if not batched, `full_matrices = False` could speedup.
-    if full_matrices:
-        u = cupy.empty((batch_size, m, ldu), dtype=a.dtype).swapaxes(-2, -1)
-        v = cupy.empty((batch_size, n, ldv), dtype=a.dtype).swapaxes(-2, -1)
-    else:
-        raise ValueError(
-            '`gesvdjBatched` does not support `econ` (full_matrices=False)')
+
+    u = cupy.empty((batch_size, m, ldu), dtype=a.dtype).swapaxes(-2, -1)
+    v = cupy.empty((batch_size, n, ldv), dtype=a.dtype).swapaxes(-2, -1)
     params = cusolver.createGesvdjInfo()
     lwork = helper(handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
                    u.data.ptr, ldu, v.data.ptr, ldv, params, batch_size)
@@ -161,6 +158,9 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
         gesvdj, info)
 
     cusolver.destroyGesvdjInfo(params)
+    if not full_matrices:
+        u = u[..., :mn]
+        v = v[..., :mn]
     if compute_uv:
         return u, s, v
     else:

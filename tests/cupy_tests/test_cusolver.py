@@ -24,8 +24,6 @@ class TestGesvdj(unittest.TestCase):
 
     def setUp(self):
         shape = self.shape
-        if len(shape) == 3 and not self.full_matrices:
-            pytest.skip('not supported')
         if self.dtype == numpy.complex64:
             a_real = numpy.random.random(shape).astype(numpy.float32)
             a_imag = numpy.random.random(shape).astype(numpy.float32)
