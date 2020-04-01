@@ -304,7 +304,7 @@ def gradient(f, *varargs, **kwargs):
     edge_order = kwargs.pop('edge_order', 1)
     if kwargs:
         raise TypeError('"{}" are not valid keyword arguments.'.format(
-                                                  '", "'.join(kwargs.keys())))
+            '", "'.join(kwargs.keys())))
     if edge_order > 2:
         raise ValueError("'edge_order' greater than 2 not supported")
 
