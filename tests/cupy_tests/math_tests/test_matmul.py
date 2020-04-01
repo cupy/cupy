@@ -110,8 +110,8 @@ class TestMatmulLarge(unittest.TestCase):
         if ((dtype1, dtype2) in self.skip_dtypes or
                 (dtype2, dtype1) in self.skip_dtypes):
             return xp.array([])
-        x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
-        x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
+        x1 = testing.shaped_random(self.shape_pair[0], xp, dtype1)
+        x2 = testing.shaped_random(self.shape_pair[1], xp, dtype2)
         return operator.matmul(x1, x2)
 
     @testing.for_all_dtypes(name='dtype1')
@@ -122,8 +122,8 @@ class TestMatmulLarge(unittest.TestCase):
                 (dtype2, dtype1) in self.skip_dtypes):
             return xp.array([])
         shape1, shape2 = self.shape_pair
-        x1 = testing.shaped_arange(shape1, xp, dtype1)
-        x2 = testing.shaped_arange(shape2, xp, dtype2)
+        x1 = testing.shaped_random(shape1, xp, dtype1)
+        x2 = testing.shaped_random(shape2, xp, dtype2)
         return xp.matmul(x1, x2)
 
 
