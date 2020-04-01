@@ -170,7 +170,7 @@ class TestDiagIndices(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(3, 3), (2, 2, 2)],
+    'shape': [(3, 3), (0, 0), (2, 2, 2)],
 }))
 @testing.gpu
 class TestDiagIndicesFrom(unittest.TestCase):
@@ -180,14 +180,15 @@ class TestDiagIndicesFrom(unittest.TestCase):
         arr = testing.shaped_arange(self.shape, xp)
         return xp.diag_indices_from(arr)
 
+
+@testing.parameterize(*testing.product({
+    'shape': [(3, 5), (3, 3, 4), (5,), (0,), (-1,)],
+}))
+@testing.gpu
+class TestDiagIndicesFromRaises(unittest.TestCase):
+
     def test_non_equal_dims(self):
         for xp in (numpy, cupy):
-            arr = testing.shaped_arange((3, 5), xp)
-            with pytest.raises(ValueError):
-                xp.diag_indices_from(arr)
-
-    def test_1darray(self):
-        for xp in (numpy, cupy):
-            arr = testing.shaped_arange((5,), xp)
+            arr = testing.shaped_arange(self.shape, xp)
             with pytest.raises(ValueError):
                 xp.diag_indices_from(arr)
