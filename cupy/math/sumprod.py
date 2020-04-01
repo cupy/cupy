@@ -3,10 +3,7 @@ import numpy
 import cupy
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
-<<<<<<< HEAD
 from cupy import numpy as cnp
-=======
->>>>>>> upstream/master
 from cupy.util import _normalize_axis_index
 
 

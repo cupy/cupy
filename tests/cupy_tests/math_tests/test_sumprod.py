@@ -572,7 +572,6 @@ class TestDiff(unittest.TestCase):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.diff(a, prepend=1, append=0)
 
-<<<<<<< HEAD
 
 @testing.gpu
 class TestGradient(unittest.TestCase):
@@ -651,7 +650,6 @@ class TestGradient(unittest.TestCase):
     #         cupy.gradient(cp_f, np_dx),
     #         numpy.gradient(np_f, np_dx)
     #     )
-=======
     @testing.with_requires('numpy>=1.16')
     def test_diff_invalid_axis(self):
         for xp in (numpy, cupy):
@@ -660,4 +658,3 @@ class TestGradient(unittest.TestCase):
                 xp.diff(a, axis=3)
             with pytest.raises(numpy.AxisError):
                 xp.diff(a, axis=-4)
->>>>>>> upstream/master
