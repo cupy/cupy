@@ -19,7 +19,7 @@ class TestSort(unittest.TestCase):
                 a.sort()
 
     def test_external_sort_zero_dim(self):
-        for xp in (numpy, numpy):
+        for xp in (numpy, cupy):
             a = testing.shaped_random((), xp)
             with pytest.raises(numpy.AxisError):
                 xp.sort(a)
@@ -114,40 +114,44 @@ class TestSort(unittest.TestCase):
         a = testing.shaped_random((2, 3, 3), xp)
         return xp.sort(a, axis=None)
 
-    @testing.numpy_cupy_raises()
-    def test_sort_invalid_axis1(self, xp):
-        a = testing.shaped_random((2, 3, 3), xp)
-        a.sort(axis=3)
+    def test_sort_invalid_axis1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((2, 3, 3), xp)
+            with pytest.raises(numpy.AxisError):
+                a.sort(axis=3)
 
     def test_sort_invalid_axis2(self):
         a = testing.shaped_random((2, 3, 3), cupy)
         with self.assertRaises(numpy.AxisError):
             a.sort(axis=3)
 
-    @testing.numpy_cupy_raises()
-    def test_external_sort_invalid_axis1(self, xp):
-        a = testing.shaped_random((2, 3, 3), xp)
-        xp.sort(a, axis=3)
+    def test_external_sort_invalid_axis1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((2, 3, 3), xp)
+            with pytest.raises(numpy.AxisError):
+                xp.sort(a, axis=3)
 
     def test_external_sort_invalid_axis2(self):
         a = testing.shaped_random((2, 3, 3), cupy)
         with self.assertRaises(numpy.AxisError):
             cupy.sort(a, axis=3)
 
-    @testing.numpy_cupy_raises()
-    def test_sort_invalid_negative_axis1(self, xp):
-        a = testing.shaped_random((2, 3, 3), xp)
-        a.sort(axis=-4)
+    def test_sort_invalid_negative_axis1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((2, 3, 3), xp)
+            with pytest.raises(numpy.AxisError):
+                a.sort(axis=-4)
 
     def test_sort_invalid_negative_axis2(self):
         a = testing.shaped_random((2, 3, 3), cupy)
         with self.assertRaises(numpy.AxisError):
             a.sort(axis=-4)
 
-    @testing.numpy_cupy_raises()
-    def test_external_sort_invalid_negative_axis1(self, xp):
-        a = testing.shaped_random((2, 3, 3), xp)
-        xp.sort(a, axis=-4)
+    def test_external_sort_invalid_negative_axis1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((2, 3, 3), xp)
+            with pytest.raises(numpy.AxisError):
+                xp.sort(a, axis=-4)
 
     def test_external_sort_invalid_negative_axis2(self):
         a = testing.shaped_random((2, 3, 3), cupy)
@@ -162,10 +166,11 @@ class TestLexsort(unittest.TestCase):
 
     # TODO(niboshi): Fix xfail
     @pytest.mark.xfail(reason='Explicit error types required')
-    @testing.numpy_cupy_raises()
-    def test_lexsort_zero_dim(self, xp):
-        a = testing.shaped_random((), xp)
-        return xp.lexsort(a)
+    def test_lexsort_zero_dim(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((), xp)
+            with pytest.raises(numpy.AxisError):
+                return xp.lexsort(a)
 
     @testing.numpy_cupy_array_equal
     def test_lexsort_one_dim(self, xp):
@@ -261,10 +266,11 @@ class TestArgsort(unittest.TestCase):
         a = testing.shaped_random((2, 3, 3), xp)
         return self.argsort(a, axis=None)
 
-    @testing.numpy_cupy_raises()
-    def test_argsort_invalid_axis1(self, xp):
-        a = testing.shaped_random((2, 3, 3), xp)
-        return self.argsort(a, axis=3)
+    def test_argsort_invalid_axis1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((2, 3, 3), xp)
+            with pytest.raises(numpy.AxisError):
+                self.argsort(a, axis=3)
 
     def test_argsort_invalid_axis2(self):
         a = testing.shaped_random((2, 3, 3), cupy)
@@ -314,10 +320,11 @@ class TestMsort(unittest.TestCase):
 
     # TODO(niboshi): Fix xfail
     @pytest.mark.xfail(reason='Explicit error types required')
-    @testing.numpy_cupy_raises()
-    def test_msort_zero_dim(self, xp):
-        a = testing.shaped_random((), xp)
-        return xp.msort(a)
+    def test_msort_zero_dim(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((), xp)
+            with pytest.raises(numpy.AxisError):
+                xp.msort(a)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_array_equal()
@@ -436,17 +443,19 @@ class TestPartition(unittest.TestCase):
         x = self.partition(a, kth)
         return x[kth]
 
-    @testing.numpy_cupy_raises()
-    def test_partition_invalid_kth(self, xp):
-        a = testing.shaped_random((self.length,), xp)
-        kth = self.length
-        return self.partition(a, kth)
+    def test_partition_invalid_kth(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((self.length,), xp)
+            kth = self.length
+            with pytest.raises(ValueError):
+                self.partition(a, kth)
 
-    @testing.numpy_cupy_raises()
-    def test_partition_invalid_negative_kth(self, xp):
-        a = testing.shaped_random((self.length,), xp)
-        kth = -self.length - 1
-        return self.partition(a, kth)
+    def test_partition_invalid_negative_kth(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((self.length,), xp)
+            kth = -self.length - 1
+            with pytest.raises(ValueError):
+                self.partition(a, kth)
 
     # Test axis
 
@@ -477,12 +486,13 @@ class TestPartition(unittest.TestCase):
         else:
             return None
 
-    @testing.numpy_cupy_raises()
-    def test_partition_invalid_axis1(self, xp):
-        a = testing.shaped_random((2, 2, self.length), xp)
-        kth = 2
-        axis = 3
-        return self.partition(a, kth, axis=axis)
+    def test_partition_invalid_axis1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((2, 2, self.length), xp)
+            kth = 2
+            axis = 3
+            with pytest.raises(numpy.AxisError):
+                self.partition(a, kth, axis=axis)
 
     def test_partition_invalid_axis2(self):
         a = testing.shaped_random((2, 2, self.length), cupy)
@@ -491,12 +501,13 @@ class TestPartition(unittest.TestCase):
             axis = 3
             return self.partition(a, kth, axis=axis)
 
-    @testing.numpy_cupy_raises()
-    def test_partition_invalid_negative_axis1(self, xp):
-        a = testing.shaped_random((2, 2, self.length), xp)
-        kth = 2
-        axis = -4
-        return self.partition(a, kth, axis=axis)
+    def test_partition_invalid_negative_axis1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((2, 2, self.length), xp)
+            kth = 2
+            axis = -4
+            with pytest.raises(numpy.AxisError):
+                self.partition(a, kth, axis=axis)
 
     def test_partition_invalid_negative_axis2(self):
         a = testing.shaped_random((2, 2, self.length), cupy)
@@ -593,17 +604,19 @@ class TestArgpartition(unittest.TestCase):
         self.assertTrue((a[idx[kth]] < a[idx[kth + 1:]]).all())
         return idx[kth]
 
-    @testing.numpy_cupy_raises()
-    def test_argpartition_invalid_kth(self, xp):
-        a = testing.shaped_random((10,), xp, scale=100)
-        kth = 10
-        return self.argpartition(a, kth)
+    def test_argpartition_invalid_kth(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((10,), xp, scale=100)
+            kth = 10
+            with pytest.raises(ValueError):
+                self.argpartition(a, kth)
 
-    @testing.numpy_cupy_raises()
-    def test_argpartition_invalid_negative_kth(self, xp):
-        a = testing.shaped_random((10,), xp, scale=100)
-        kth = -11
-        return self.argpartition(a, kth)
+    def test_argpartition_invalid_negative_kth(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((10,), xp, scale=100)
+            kth = -11
+            with pytest.raises(ValueError):
+                self.argpartition(a, kth)
 
     # Test axis
 
@@ -646,12 +659,13 @@ class TestArgpartition(unittest.TestCase):
         self.assertTrue((a1[idx[kth]] < a1[idx[kth + 1:]]).all())
         return idx[kth]
 
-    @testing.numpy_cupy_raises()
-    def test_argpartition_invalid_axis1(self, xp):
-        a = testing.shaped_random((2, 2, 2), xp, scale=100)
-        kth = 1
-        axis = 3
-        return self.argpartition(a, kth, axis=axis)
+    def test_argpartition_invalid_axis1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((2, 2, 2), xp, scale=100)
+            kth = 1
+            axis = 3
+            with pytest.raises(numpy.AxisError):
+                self.argpartition(a, kth, axis=axis)
 
     def test_argpartition_invalid_axis2(self):
         a = testing.shaped_random((2, 2, 2), cupy, scale=100)
@@ -660,12 +674,13 @@ class TestArgpartition(unittest.TestCase):
         with self.assertRaises(numpy.AxisError):
             self.argpartition(a, kth, axis=axis)
 
-    @testing.numpy_cupy_raises()
-    def test_argpartition_invalid_negative_axis1(self, xp):
-        a = testing.shaped_random((2, 2, 2), xp, scale=100)
-        kth = 1
-        axis = -4
-        return self.argpartition(a, kth, axis=axis)
+    def test_argpartition_invalid_negative_axis1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((2, 2, 2), xp, scale=100)
+            kth = 1
+            axis = -4
+            with pytest.raises(numpy.AxisError):
+                self.argpartition(a, kth, axis=axis)
 
     def test_argpartition_invalid_negative_axis2(self):
         a = testing.shaped_random((2, 2, 2), cupy, scale=100)

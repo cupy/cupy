@@ -1,5 +1,9 @@
 import unittest
 
+import numpy
+import pytest
+
+import cupy
 from cupy import testing
 
 
@@ -24,10 +28,11 @@ class TestNdarrayItem(unittest.TestCase):
 )
 class TestNdarrayItemRaise(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_item(self, xp):
-        a = testing.shaped_arange(self.shape, xp, xp.float32)
-        a.item()
+    def test_item(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp, xp.float32)
+            with pytest.raises(ValueError):
+                a.item()
 
 
 @testing.parameterize(

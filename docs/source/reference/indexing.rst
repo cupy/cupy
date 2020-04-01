@@ -27,3 +27,4 @@ Indexing Routines
    cupy.place
    cupy.put
    cupy.fill_diagonal
+   cupy.flatiter

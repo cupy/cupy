@@ -4,6 +4,7 @@ import threading
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import core
@@ -1303,10 +1304,11 @@ class TestZipf(RandomGeneratorTestCase):
 @testing.gpu
 class TestChoiceReplaceFalseFailure(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_choice_invalid_value(self, xp):
-        rs = xp.random.RandomState(seed=testing.generate_seed())
-        rs.choice(a=self.a, size=self.size, replace=False)
+    def test_choice_invalid_value(self):
+        for xp in (numpy, cupy):
+            rs = xp.random.RandomState(seed=testing.generate_seed())
+            with pytest.raises(ValueError):
+                rs.choice(a=self.a, size=self.size, replace=False)
 
 
 class TestResetStates(unittest.TestCase):

@@ -26,6 +26,8 @@ cdef extern from *:
     ctypedef void* cuComplex 'cuComplex'
     ctypedef void* cuDoubleComplex 'cuDoubleComplex'
 
+    ctypedef void* GesvdjInfo 'gesvdjInfo_t'
+
 ###############################################################################
 # Enum
 ###############################################################################
@@ -263,6 +265,89 @@ cpdef cgesvd(intptr_t handle, char jobu, char jobvt, int m, int n, size_t A,
 cpdef zgesvd(intptr_t handle, char jobu, char jobvt, int m, int n, size_t A,
              int lda, size_t S, size_t U, int ldu, size_t VT, int ldvt,
              size_t Work, int lwork, size_t rwork, size_t devInfo)
+
+# gesvdj ... Singular value decomposition using Jacobi mathod
+cpdef intptr_t createGesvdjInfo() except? 0
+cpdef destroyGesvdjInfo(intptr_t info)
+
+cpdef xgesvdjSetTolerance(intptr_t info, double tolerance)
+cpdef xgesvdjSetMaxSweeps(intptr_t info, int max_sweeps)
+cpdef xgesvdjSetSortEig(intptr_t info, int sort_svd)
+cpdef double xgesvdjGetResidual(intptr_t handle, intptr_t info)
+cpdef int xgesvdjGetSweeps(intptr_t handle, intptr_t info)
+
+cpdef int sgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params)
+cpdef int dgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params)
+cpdef int cgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params)
+cpdef int zgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params)
+
+cpdef sgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params)
+cpdef dgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params)
+cpdef cgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params)
+cpdef zgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params)
+
+# gesvda ... Approximate singular value decomposition
+cpdef int sgesvdaStridedBatched_bufferSize(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, int batchSize)
+cpdef int dgesvdaStridedBatched_bufferSize(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, int batchSize)
+cpdef int cgesvdaStridedBatched_bufferSize(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, int batchSize)
+cpdef int zgesvdaStridedBatched_bufferSize(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, int batchSize)
+
+cpdef sgesvdaStridedBatched(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, intptr_t d_work, int lwork, intptr_t d_info,
+    intptr_t h_R_nrmF, int batchSize)
+cpdef dgesvdaStridedBatched(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, intptr_t d_work, int lwork, intptr_t d_info,
+    intptr_t h_R_nrmF, int batchSize)
+cpdef cgesvdaStridedBatched(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, intptr_t d_work, int lwork, intptr_t d_info,
+    intptr_t h_R_nrmF, int batchSize)
+cpdef zgesvdaStridedBatched(
+    intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+    int lda, long long int strideA, intptr_t d_S, long long int strideS,
+    intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+    long long int strideV, intptr_t d_work, int lwork, intptr_t d_info,
+    intptr_t h_R_nrmF, int batchSize)
 
 # Standard symmetric eigenvalue solver
 cpdef int ssyevd_bufferSize(intptr_t handle, int jobz, int uplo, int n,

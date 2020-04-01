@@ -1,5 +1,6 @@
 import unittest
 
+import numpy
 import pytest
 
 import cupy
@@ -116,15 +117,17 @@ class TestIndexing(unittest.TestCase):
         a = testing.shaped_arange((3, 3, 3), xp, dtype)
         return a.diagonal(0, -1, -3)
 
-    @testing.numpy_cupy_raises()
-    def test_diagonal_invalid1(self, xp):
-        a = testing.shaped_arange((3, 3, 3), xp)
-        a.diagonal(0, 1, 3)
+    def test_diagonal_invalid1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 3, 3), xp)
+            with pytest.raises(IndexError):
+                a.diagonal(0, 1, 3)
 
-    @testing.numpy_cupy_raises()
-    def test_diagonal_invalid2(self, xp):
-        a = testing.shaped_arange((3, 3, 3), xp)
-        a.diagonal(0, 2, -4)
+    def test_diagonal_invalid2(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 3, 3), xp)
+            with pytest.raises(IndexError):
+                a.diagonal(0, 2, -4)
 
     @testing.numpy_cupy_array_equal()
     def test_extract(self, xp):
@@ -221,11 +224,12 @@ class TestChoose(unittest.TestCase):
             a.choose(c)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_choose_broadcast_fail(self, xp, dtype):
-        a = xp.array([0, 1])
-        c = testing.shaped_arange((3, 5, 4), xp, dtype)
-        return a.choose(c)
+    def test_choose_broadcast_fail(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array([0, 1])
+            c = testing.shaped_arange((3, 5, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                return a.choose(c)
 
 
 @testing.gpu

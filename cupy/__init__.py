@@ -448,6 +448,9 @@ from cupy.indexing.indexing import take_along_axis  # NOQA
 from cupy.indexing.insert import place  # NOQA
 from cupy.indexing.insert import put  # NOQA
 from cupy.indexing.insert import fill_diagonal  # NOQA
+
+from cupy.indexing.iterate import flatiter  # NOQA
+
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
@@ -593,6 +596,9 @@ from cupy.math.floating import frexp  # NOQA
 from cupy.math.floating import ldexp  # NOQA
 from cupy.math.floating import nextafter  # NOQA
 from cupy.math.floating import signbit  # NOQA
+
+from cupy.math.rational import gcd  # NOQA
+from cupy.math.rational import lcm  # NOQA
 
 from cupy.math.arithmetic import add  # NOQA
 from cupy.math.arithmetic import divide  # NOQA
