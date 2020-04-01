@@ -36,8 +36,13 @@ class TestIndexing(unittest.TestCase):
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_take_index_range_overflow(self, xp, dtype):
-        if numpy.dtype(dtype) in (numpy.int64, numpy.uint64):
-            return xp.array([])  # skip for too large dimensions
+        # Skip for too large dimensions
+        if dtype in (numpy.int64, numpy.uint64):
+            return xp.array([])
+        # Skip because NumPy actually allocates a contiguous array in the
+        # `take` below to require much time.
+        if dtype in (numpy.int32, numpy.uint32):
+            return xp.array([])
         iinfo = numpy.iinfo(dtype)
         a = xp.broadcast_to(xp.ones(1), (iinfo.max + 1,))
         b = xp.array([0], dtype=dtype)
