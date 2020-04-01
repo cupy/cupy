@@ -3,8 +3,8 @@ import numpy
 import cupy
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
-import numpy.core.numeric as _nx
 from cupy import numpy as cnp
+from cupy.util import _normalize_axis_index
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -270,7 +270,7 @@ def gradient(f, *varargs, **kwargs):
     if axes is None:
         axes = tuple(range(N))
     else:
-        axes = _nx.normalize_axis_tuple(axes, N)
+        axes = _normalize_axis_index(axes, N)
 
     len_axes = len(axes)
     n = len(varargs)
