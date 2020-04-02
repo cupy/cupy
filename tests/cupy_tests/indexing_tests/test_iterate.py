@@ -15,6 +15,11 @@ class TestFlatiter(unittest.TestCase):
         a = cupy.zeros((2, 3, 4))
         assert(a.flat.base is a)
 
+    def test_len(self):
+        a = cupy.zeros((2, 3, 4))
+        assert(len(a.flat) == 24)
+        assert(len(a[::2].flat) == 12)
+
 
 @testing.parameterize(
     {'shape': (2, 3, 4), 'index': Ellipsis},
