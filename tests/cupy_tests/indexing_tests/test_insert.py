@@ -170,6 +170,18 @@ class TestDiagIndices(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'n': [-3, 0],
+    'ndim': [1, 0, -2],
+}))
+@testing.gpu
+class TestDiagIndicesInvalidValues(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_diag_indices(self, xp):
+        return xp.diag_indices(self.n, self.ndim)
+
+
+@testing.parameterize(*testing.product({
     'shape': [(3, 3), (0, 0), (2, 2, 2)],
 }))
 @testing.gpu
