@@ -106,7 +106,10 @@ class flatiter:
 
     # TODO(Takagi): Implement copy
 
-    # TODO(Takagi): Implement base
+    @property
+    def base(self):
+        """A reference to the array that is iterate over."""
+        return self._base
 
     # TODO(Takagi): Implement coords
 
