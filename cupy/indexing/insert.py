@@ -182,6 +182,9 @@ def diag_indices_from(arr):
      .. seealso:: :func:`numpy.diag_indices_from`
 
     """
+    if not isinstance(arr, cupy.ndarray):
+        raise TypeError("Argument must be cupy.ndarray")
+
     if not arr.ndim >= 2:
         raise ValueError("input array must be at least 2-d")
     # For more than d=2, the strided formula is only valid for arrays with
