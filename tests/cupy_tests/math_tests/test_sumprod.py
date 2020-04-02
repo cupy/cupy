@@ -391,10 +391,11 @@ class TestCumsum(unittest.TestCase):
         return xp.cumsum(a, axis=self.axis)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_invalid_axis_lower1(self, xp, dtype):
-        a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.cumsum(a, axis=-a.ndim - 1)
+    def test_invalid_axis_lower1(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((4, 5), xp, dtype)
+            with pytest.raises(numpy.AxisError):
+                xp.cumsum(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_lower2(self, dtype):
@@ -403,10 +404,11 @@ class TestCumsum(unittest.TestCase):
             return cupy.cumsum(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_invalid_axis_upper1(self, xp, dtype):
-        a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.cumsum(a, axis=a.ndim + 1)
+    def test_invalid_axis_upper1(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((4, 5), xp, dtype)
+            with pytest.raises(numpy.AxisError):
+                xp.cumsum(a, axis=a.ndim + 1)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_upper2(self, dtype):
@@ -482,22 +484,25 @@ class TestCumprod(unittest.TestCase):
         cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_invalid_axis_lower1(self, xp, dtype):
-        a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.cumprod(a, axis=-a.ndim - 1)
+    def test_invalid_axis_lower1(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((4, 5), xp, dtype)
+            with pytest.raises(numpy.AxisError):
+                xp.cumprod(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_lower2(self, dtype):
-        a = testing.shaped_arange((4, 5), cupy, dtype)
-        with self.assertRaises(numpy.AxisError):
-            return cupy.cumprod(a, axis=-a.ndim - 1)
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((4, 5), xp, dtype)
+            with pytest.raises(numpy.AxisError):
+                xp.cumprod(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_invalid_axis_upper1(self, xp, dtype):
-        a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.cumprod(a, axis=a.ndim)
+    def test_invalid_axis_upper1(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((4, 5), xp, dtype)
+            with pytest.raises(numpy.AxisError):
+                return xp.cumprod(a, axis=a.ndim)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_upper2(self, dtype):

@@ -2,7 +2,9 @@ import operator
 import unittest
 
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -143,9 +145,10 @@ class TestMatmulLarge(unittest.TestCase):
 @testing.gpu
 class TestMatmulInvalidShape(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_invalid_shape(self, xp):
-        shape1, shape2 = self.shape_pair
-        x1 = testing.shaped_arange(shape1, xp, numpy.float32)
-        x2 = testing.shaped_arange(shape2, xp, numpy.float32)
-        xp.matmul(x1, x2)
+    def test_invalid_shape(self):
+        for xp in (numpy, cupy):
+            shape1, shape2 = self.shape_pair
+            x1 = testing.shaped_arange(shape1, xp, numpy.float32)
+            x2 = testing.shaped_arange(shape2, xp, numpy.float32)
+            with pytest.raises(ValueError):
+                xp.matmul(x1, x2)

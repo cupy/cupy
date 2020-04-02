@@ -288,10 +288,11 @@ class TestArgsort(unittest.TestCase):
             with pytest.raises(numpy.AxisError):
                 self.argsort(a, axis=1)
 
-    @testing.numpy_cupy_raises()
-    def test_argsort_invalid_negative_axis1(self, xp):
-        a = testing.shaped_random((2, 3, 3), xp)
-        return self.argsort(a, axis=-4)
+    def test_argsort_invalid_negative_axis1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((2, 3, 3), xp)
+            with pytest.raises(numpy.AxisError):
+                self.argsort(a, axis=-4)
 
     def test_argsort_invalid_negative_axis2(self):
         a = testing.shaped_random((2, 3, 3), cupy)
