@@ -13,7 +13,7 @@ class TestFlatiter(unittest.TestCase):
 
     def test_base(self):
         a = cupy.zeros((2, 3, 4))
-        assert(a.flat.base is a)
+        assert a.flat.base is a
 
 
 @testing.parameterize(
