@@ -1,5 +1,9 @@
 import unittest
 
+import numpy
+import pytest
+
+import cupy
 from cupy import testing
 
 
@@ -56,9 +60,10 @@ class TestCov(unittest.TestCase):
             return self._check(*args, **kw)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
     def check_raises(self, *args, **kw):
-        self._check(*args, **kw)
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                self._check(xp=xp, *args, **kw)
 
     def test_cov(self):
         self.check((2, 3))
