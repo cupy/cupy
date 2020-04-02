@@ -5,7 +5,7 @@ from cupy import core
 from cupy.core import internal
 
 
-class flatiter():
+class flatiter:
     """Flat iterator object to iterate over arrays.
 
     A flatiter iterator is returned by ``x.flat`` for any array ``x``. It
