@@ -1,7 +1,6 @@
 import numpy
 
 import cupy
-from cupy import core
 
 
 def place(arr, mask, vals):
@@ -70,12 +69,6 @@ def put(a, ind, v, mode='wrap'):
 # TODO(okuta): Implement putmask
 
 
-_fill_diagonal_kernel = core.ElementwiseKernel(
-    'int64 start, int64 step, raw T val', 'raw T a',
-    'a[start + i * step] = val[i % val.size()]',
-    'cupy_fill_diagonal')
-
-
 def fill_diagonal(a, val, wrap=False):
     """Fills the main diagonal of the given array of any dimensionality.
 
@@ -104,7 +97,7 @@ def fill_diagonal(a, val, wrap=False):
     # The followings are imported from the original numpy
     if a.ndim < 2:
         raise ValueError('array must be at least 2-d')
-    end = a.size
+    end = None
     if a.ndim == 2:
         step = a.shape[1] + 1
         if not wrap:
@@ -114,10 +107,7 @@ def fill_diagonal(a, val, wrap=False):
             raise ValueError('All dimensions of input must be of equal length')
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
-    val = cupy.asarray(val, dtype=a.dtype)
-
-    size = end // step + 1
-    _fill_diagonal_kernel(0, step, val, a, size=size)
+    a.flat[:end:step] = val
 
 
 def diag_indices(n, ndim=2):

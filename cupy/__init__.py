@@ -450,6 +450,9 @@ from cupy.indexing.insert import put  # NOQA
 from cupy.indexing.insert import fill_diagonal  # NOQA
 from cupy.indexing.insert import diag_indices  # NOQA
 from cupy.indexing.insert import diag_indices_from  # NOQA
+
+from cupy.indexing.iterate import flatiter  # NOQA
+
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
