@@ -420,7 +420,6 @@ class TestDigitizeInvalid(unittest.TestCase):
             with pytest.raises(TypeError):
                 xp.digitize(x, bins)
 
-
     def test_digitize_nd_bins(self):
         for xp in (numpy, cupy):
             x = testing.shaped_arange((14,), xp, xp.float64)
