@@ -10,15 +10,15 @@ def label(input, structure=None, output=None):
 
     Args:
         input (cupy.ndarray): The input array.
-        structure (array_like or None): A structuring element that defines
-            feature connections. ```structure``` must be centersymmetric. If
-            None, structure is automatically generated with a squared
+        structure (array_like or None): A structuring element that defines \
+            feature connections. ```structure``` must be centersymmetric. If \
+            None, structure is automatically generated with a squared \
             connectivity equal to one.
-        output (cupy.ndarray, dtype or None): The array in which to place the
+        output (cupy.ndarray, dtype or None): The array in which to place the \
             output.
 
     Returns:
-        label (cupy.ndarray): An integer array where each unique feature in
+        label (cupy.ndarray): An integer array where each unique feature in \
             ```input``` has a unique label in the array.
         num_features (int): Number of features found.
 
@@ -252,8 +252,8 @@ def _stats(input, labels=None, index=None, mean=False):
 
 
 def variance(input, labels=None, index=None):
-    """Calculate the variance of the values of an n-D image array, optionally
-       at specified sub-regions.
+    """Calculate the variance of the values of an n-D image array, optionally \
+    at specified sub-regions.
 
     Args:
         input (cupy.ndarray) :Nd-image data to process.
@@ -263,7 +263,7 @@ def variance(input, labels=None, index=None):
             (default), all values where `labels` is non-zero are used.
 
     Returns:
-       variance (cupy.ndarray): Values of variance, for each sub-region if
+       variance (cupy.ndarray): Values of variance, for each sub-region if \
             `labels` and `index` are specified.
 
 
@@ -275,7 +275,7 @@ def variance(input, labels=None, index=None):
         raise TypeError('Complex type not supported')
 
     if labels is None:
-        return input.sum()
+        return input.var()
 
     if not isinstance(labels, cupy.ndarray):
         raise TypeError('label must be cupy.ndarray')
@@ -291,11 +291,12 @@ def variance(input, labels=None, index=None):
     sum, count = _stats(input, labels, index, mean=True)
     mean = sum/count
     ret = cupy.zeros_like(index).astype(mean.dtype)
-    return _variance_kernel()(input, labels, index, index.size, mean, ret)
+    return _variance_kernel()(input, labels, index,
+                              index.size, mean, ret)/count
 
 
 def sum(input, labels=None, index=None):
-    """Calculate the sum of the values of an n-D image array, optionally
+    """Calculate the sum of the values of an n-D image array, optionally \
        at specified sub-regions.
 
     Args:
@@ -306,7 +307,7 @@ def sum(input, labels=None, index=None):
             (default), all values where `labels` is non-zero are used.
 
     Returns:
-       sum (cupy.ndarray): sum of values, for each sub-region if
+       sum (cupy.ndarray): sum of values, for each sub-region if \
             `labels` and `index` are specified.
 
 
@@ -335,7 +336,7 @@ def sum(input, labels=None, index=None):
 
 
 def mean(input, labels=None, index=None):
-    """Calculate the mean of the values of an n-D image array, optionally
+    """Calculate the mean of the values of an n-D image array, optionally \
        at specified sub-regions.
 
     Args:
@@ -346,7 +347,7 @@ def mean(input, labels=None, index=None):
             (default), all values where `labels` is non-zero are used.
 
     Returns:
-        mean (cupy.ndarray): mean of values, for each sub-region if
+        mean (cupy.ndarray): mean of values, for each sub-region if \
             `labels` and `index` are specified.
 
 
@@ -358,7 +359,7 @@ def mean(input, labels=None, index=None):
         raise TypeError('Complex type not supported')
 
     if labels is None:
-        return input.sum()
+        return input.sum()/input.size
 
     if not isinstance(labels, cupy.ndarray):
         raise TypeError('label must be cupy.ndarray')
