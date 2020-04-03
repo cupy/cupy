@@ -301,8 +301,10 @@ class Plan1d(object):
         self.plan = plan
         self.work_area = work_area  # this is for cuFFT plan
         self.gpus = None
-        self.streams = None
-        self.events = None
+        self.scatter_streams = None
+        self.scatter_events = None
+        self.gather_streams = None
+        self.gather_events = None
 
     def _multi_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch,
                             devices, out):
@@ -310,8 +312,8 @@ class Plan1d(object):
         cdef vector.vector[int] gpus
         cdef vector.vector[size_t] work_size
         cdef list work_area = []
-        cdef list streams = []
-        cdef list events = []
+        cdef list gather_streams = []
+        cdef list gather_events = []
         cdef vector.vector[void*] work_area_ptr
 
         # some sanity checks
@@ -368,9 +370,9 @@ class Plan1d(object):
                 stream = Stream()
                 event = Event()
             work_area.append(buf)
-            streams.append(stream)
-            events.append(event)
             work_area_ptr.push_back(<void*>buf.ptr)
+            gather_streams.append(stream)
+            gather_events.append(event)
         with nogil:
             result = cufftXtSetWorkArea(plan, work_area_ptr.data())
         check_result(result)
@@ -378,8 +380,30 @@ class Plan1d(object):
         self.plan = plan
         self.work_area = work_area  # this is for cuFFT plan
         self.gpus = list(gpus)
-        self.streams = streams      # for async, overlapped copies
-        self.events = events        # for async, overlapped copies
+
+        # For async, overlapped copies.
+        # Note that for async memcpy, the stream is on the source device
+        self.gather_streams = gather_streams
+        self.gather_events = gather_events
+        self.scatter_streams = {}
+        self.scatter_events = {}
+        self._multi_gpu_get_scatter_streams_events(runtime.getDevice(), nGPUs)
+
+    def _multi_gpu_get_scatter_streams_events(
+            self, int curr_device, int nGPUs):
+        '''
+        create a list of streams and events on the current device
+        '''
+        cdef int i
+        cdef list scatter_streams = []
+        cdef list scatter_events = []
+
+        for i in range(nGPUs):
+            scatter_streams.append(Stream())
+            scatter_events.append(Event())
+
+        self.scatter_streams[curr_device] = scatter_streams
+        self.scatter_events[curr_device] = scatter_events
 
     def __del__(self):
         cdef Handle plan = self.plan
@@ -408,7 +432,6 @@ class Plan1d(object):
 
     def fft(self, a, out, direction):
         if self._use_multi_gpus:
-            # Note: mult-GPU plans cannot set stream
             self._multi_gpu_fft(a, out, direction)
         else:
             self._single_gpu_fft(a, out, direction)
@@ -505,7 +528,7 @@ class Plan1d(object):
     def _multi_gpu_memcpy(self, a, str action):
         cdef Handle plan = self.plan
         cdef list xtArr_buffer, share
-        cdef int start, nGPUs, i, count, result
+        cdef int start, nGPUs, i, count, result, curr_device
         cdef XtArray* arr
         cdef intptr_t ptr, ptr2
         cdef size_t size
@@ -524,24 +547,29 @@ class Plan1d(object):
             share = self.batch_share
 
             if action == 'scatter':
-                if isinstance(a, cupy.ndarray):
+                # if isinstance(b, cupy.ndarray):
                     # When we come here, another stream could still be
                     # copying data for us, so we wait patiently...
                     outer_stream = stream_module.get_current_stream()
                     outer_stream.synchronize()
 
+                    curr_device = b.data.device_id
+                    if curr_device not in self.scatter_streams:
+                        self._multi_gpu_get_scatter_streams_events(
+                            curr_device, nGPUs)
+
                     for i in range(nGPUs):
                         count = int(share[i] * self.nx)
                         size = count * b.dtype.itemsize
-                        curr_stream = self.streams[i]
+                        curr_stream = self.scatter_streams[curr_device][i]
                         xtArr_buffer[i].copy_from_device_async(
                             b[start:start+count].data, size, curr_stream)
-                        curr_event = self.events[i]
+                        curr_event = self.scatter_events[curr_device][i]
                         curr_event.record(curr_stream)
                         start += count
                     assert start == b.size
                     for i in range(nGPUs):
-                        self.events[i].synchronize()
+                        self.scatter_events[curr_device][i].synchronize()
                 # TODO(leofang): revisit this when NumPy support is added
                 # else:  # numpy
                 #     ptr2 = b.ctypes.data
@@ -551,7 +579,7 @@ class Plan1d(object):
                 #             CUFFT_COPY_HOST_TO_DEVICE)
                 #     check_result(result)
             elif action == 'gather':
-                if isinstance(a, cupy.ndarray):
+                # if isinstance(b, cupy.ndarray):
                     if self.batch == 1:
                         _reorder_buffers(plan, self.xtArr, xtArr_buffer)
 
@@ -563,15 +591,15 @@ class Plan1d(object):
                     for i in range(nGPUs):
                         count = int(share[i] * self.nx)
                         size = count * b.dtype.itemsize
-                        curr_stream = self.streams[i]
+                        curr_stream = self.gather_streams[i]
                         b[start:start+count].data.copy_from_device_async(
                             xtArr_buffer[i], size, curr_stream)
-                        curr_event = self.events[i]
+                        curr_event = self.gather_events[i]
                         curr_event.record(curr_stream)
                         start += count
                     assert start == b.size
                     for i in range(nGPUs):
-                        self.events[i].synchronize()
+                        self.gather_events[i].synchronize()
                 # TODO(leofang): revisit this when NumPy support is added
                 # else:  # numpy
                 #     ptr2 = b.ctypes.data
@@ -592,6 +620,7 @@ class Plan1d(object):
         self._multi_gpu_memcpy(a, 'scatter')
 
         # Actual workhorses
+        # Note: mult-GPU plans cannot set stream
         if self.fft_type == CUFFT_C2C:
             multi_gpu_execC2C(self.plan, self.xtArr, self.xtArr, direction)
         elif self.fft_type == CUFFT_Z2Z:
