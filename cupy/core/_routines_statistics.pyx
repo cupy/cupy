@@ -444,9 +444,6 @@ cdef _median_partition_core(ndarray data, max_k, ndarray out, int axis):
         raise NotImplementedError('Sorting non-contiguous array is not '
                                   'supported.')
 
-    # if out.size != self.size // self.shape[axis]:
-    #     raise ValueError('Out size is mismatched')
-
     if axis < 0:
         axis += ndim
     if not (0 <= axis < ndim):
@@ -551,53 +548,6 @@ cpdef ndarray _median(
     out = out.reshape(out_shape)
 
     return out
-
-    # if not isinstance(a, ndarray):
-    #     raise TypeError('Array is not cupy.ndarray')
-
-    # keep_ndim = a.ndim
-
-    # if axis is None:
-    #     sz = a.size
-    # else:
-    #     sz = a.shape[axis]
-    # if sz % 2 == 0:
-    #     szh = sz // 2
-    #     kth = [szh - 1, szh]
-    # else:
-    #     kth = [(sz - 1) // 2]
-
-    # if overwrite_input:
-    #     part = a
-    # else:
-    #     part = a.copy()
-
-    # if axis is None:
-    #     part = part.ravel()
-    #     part.partition(kth)
-    # else:
-    #     part.partition(kth, axis=axis)
-
-    # if part.shape == ():
-    #     return part
-    # if axis is None:
-    #     axis = 0
-
-    # indexer = [slice(None)] * part.ndim
-
-    # if keepdims:
-    #     _indexer = [None] * (keep_ndim - part.ndim)
-    #     indexer.extend(_indexer)
-
-    # index = part.shape[axis] // 2
-    # if part.shape[axis] % 2 == 1:
-    #     indexer[axis] = slice(index, index+1)
-    # else:
-    #     indexer[axis] = slice(index-1, index+1)
-    # indexer = tuple(indexer)
-
-    # return _mean(
-    #     part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
 
 
 cdef ndarray _mean(
