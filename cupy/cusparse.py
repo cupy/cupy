@@ -1,6 +1,7 @@
 import functools
 
 import numpy
+import platform
 
 import cupy
 from cupy.cuda import cusparse
@@ -88,9 +89,20 @@ _available_cuda_version = {
     'csrgeam2': (9020, None),
     'csrgemm': (8000, 11000),
     'csrgemm2': (8000, None),
-    'spmv': (10010, None),
-    'spmm': (10010, None),
+    # TODO(anaruse): check availability on Windows when CUDA 11 is relased
+    'spmv': ({'Linux': 10010, 'Windows': 11000}, None),
+    'spmm': ({'Linux': 10010, 'Windows': 11000}, None),
 }
+
+
+def _get_version(x):
+    if isinstance(x, dict):
+        os_name = platform.system()
+        if os_name not in x:
+            msg = 'No version information specified for the OS {}'.os_name
+            raise ValueError(msg)
+        return x[os_name]
+    return x
 
 
 def check_availability(name):
@@ -98,6 +110,8 @@ def check_availability(name):
         msg = 'No available version information specified for {}'.name
         raise ValueError(msg)
     version_added, version_removed = _available_cuda_version[name]
+    version_added = _get_version(version_added)
+    version_removed = _get_version(version_removed)
     cuda_version = runtime.runtimeGetVersion()
     if version_added is not None and cuda_version < version_added:
         return False
