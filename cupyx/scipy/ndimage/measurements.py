@@ -2,6 +2,8 @@ import numpy
 
 import cupy
 
+import string
+
 
 def label(input, structure=None, output=None):
     """Labels features in an array
@@ -200,3 +202,174 @@ def _kernel_finalize():
         y[i] = j + 1;
         ''',
         'cupyx_nd_label_finalize')
+
+
+def _variance_kernel():
+    input_arguments = 'T image, R label, raw X index, int32 size, raw Z mean'
+    output_arguments = 'raw Z ret'
+    _kernel_template = """
+    for (ptrdiff_t j = 0; j < size; j++) {
+      if (label == index[j]) {
+        atomicAdd(&ret[j], (image - mean[j]) * (image - mean[j]));
+        break;
+      }
+    }
+    """
+    return cupy.ElementwiseKernel(input_arguments, output_arguments,
+                                  _kernel_template)
+
+
+def _stats(input, labels=None, index=None, mean=False):
+
+    input_arguments = 'T image, R label, raw X index, int32 size'
+    _kernel_template = string.Template("""
+    for (ptrdiff_t j = 0; j < size; j++) {
+      if (label == index[j]) {
+        atomicAdd(&ret[j], image);
+        $mean
+        break;
+      }
+    }
+    """)
+    if not mean:
+        output_arguments = 'raw Y ret'
+        _kernel_template = _kernel_template.substitute(mean="")
+        ret = cupy.zeros_like(index).astype(input.dtype)
+    else:
+        output_arguments = 'raw Y ret, raw int32 count'
+        _kernel_template = _kernel_template.substitute(
+            mean="atomicAdd(&count[j], 1);")
+        ret = cupy.zeros_like(index).astype(input.dtype)
+        count = cupy.zeros_like(index).astype(cupy.int32)
+
+    _kernel = cupy.ElementwiseKernel(input_arguments, output_arguments,
+                                     _kernel_template, "smvkernel")
+
+    if not mean:
+        return _kernel(input, labels, index, index.size, ret)
+    else:
+        return _kernel(input, labels, index, index.size, ret, count)
+
+
+def variance(input, labels=None, index=None):
+    """Calculate the variance of the values of an n-D image array, optionally
+       at specified sub-regions.
+
+    Args:
+        input (cupy.ndarray) :Nd-image data to process.
+        labels (cupy.ndarray or None): Labels defining sub-regions in `input`.
+            If not None, must be same shape as `input`.
+        index (cupy.ndarray or None): `labels` to include in output.  If None
+            (default), all values where `labels` is non-zero are used.
+
+    Returns:
+       variance (cupy.ndarray): Values of variance, for each sub-region if
+            `labels` and `index` are specified.
+
+
+    .. seealso:: :func:`scipy.ndimage.variance`
+    """
+    if not isinstance(input, cupy.ndarray):
+        raise TypeError('input must be cupy.ndarray')
+    if input.dtype.char in 'FD':
+        raise TypeError('Complex type not supported')
+
+    if labels is None:
+        return input.sum()
+
+    if not isinstance(labels, cupy.ndarray):
+        raise TypeError('label must be cupy.ndarray')
+
+    if index is None:
+        index = cupy.unique(labels)
+
+    input, labels = cupy.broadcast_arrays(input, labels)
+
+    if not isinstance(index, cupy.ndarray):
+        raise TypeError('index must be cupy.ndarray')
+
+    sum, count = _stats(input, labels, index, mean=True)
+    mean = sum/count
+    ret = cupy.zeros_like(index).astype(mean.dtype)
+    return _variance_kernel()(input, labels, index, index.size, mean, ret)
+
+
+def sum(input, labels=None, index=None):
+    """Calculate the sum of the values of an n-D image array, optionally
+       at specified sub-regions.
+
+    Args:
+        input (cupy.ndarray) :Nd-image data to process.
+        labels (cupy.ndarray or None): Labels defining sub-regions in `input`.
+            If not None, must be same shape as `input`.
+        index (cupy.ndarray or None): `labels` to include in output.  If None
+            (default), all values where `labels` is non-zero are used.
+
+    Returns:
+       sum (cupy.ndarray): sum of values, for each sub-region if
+            `labels` and `index` are specified.
+
+
+    .. seealso:: :func:`scipy.ndimage.sum`
+    """
+    if not isinstance(input, cupy.ndarray):
+        raise TypeError('input must be cupy.ndarray')
+    if input.dtype.char in 'FD':
+        raise TypeError('Complex type not supported')
+
+    if labels is None:
+        return input.sum()
+
+    if not isinstance(labels, cupy.ndarray):
+        raise TypeError('label must be cupy.ndarray')
+
+    if index is None:
+        index = cupy.unique(labels)
+
+    input, labels = cupy.broadcast_arrays(input, labels)
+
+    if not isinstance(index, cupy.ndarray):
+        raise TypeError('index must be cupy.ndarray')
+
+    return _stats(input, labels, index, False)
+
+
+def mean(input, labels=None, index=None):
+    """Calculate the mean of the values of an n-D image array, optionally
+       at specified sub-regions.
+
+    Args:
+        input (cupy.ndarray) :Nd-image data to process.
+        labels (cupy.ndarray or None): Labels defining sub-regions in `input`.
+            If not None, must be same shape as `input`.
+        index (cupy.ndarray or None): `labels` to include in output.  If None
+            (default), all values where `labels` is non-zero are used.
+
+    Returns:
+        mean (cupy.ndarray): mean of values, for each sub-region if
+            `labels` and `index` are specified.
+
+
+    .. seealso:: :func:`scipy.ndimage.mean`
+    """
+    if not isinstance(input, cupy.ndarray):
+        raise TypeError('input must be cupy.ndarray')
+    if input.dtype.char in 'FD':
+        raise TypeError('Complex type not supported')
+
+    if labels is None:
+        return input.sum()
+
+    if not isinstance(labels, cupy.ndarray):
+        raise TypeError('label must be cupy.ndarray')
+
+    if index is None:
+        index = cupy.unique(labels)
+
+    input, labels = cupy.broadcast_arrays(input, labels)
+
+    if not isinstance(index, cupy.ndarray):
+        raise TypeError('index must be cupy.ndarray')
+
+    sum, count = _stats(input, labels, index, True)
+    return sum/count

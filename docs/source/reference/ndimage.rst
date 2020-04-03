@@ -25,6 +25,19 @@ Interpolation
    cupyx.scipy.ndimage.zoom
 
 
+Measurements
+-------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.ndimage.label
+   cupyx.scipy.ndimage.mean
+   cupyx.scipy.ndimage.sum
+   cupyx.scipy.ndimage.variance
+
+
 OpenCV mode
 -----------
 :mod:`cupyx.scipy.ndimage` supports additional mode, ``opencv``.
