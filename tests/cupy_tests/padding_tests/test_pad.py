@@ -290,6 +290,7 @@ class TestPadSpecial(unittest.TestCase):
      'kwargs': {'notallowedkeyword': 3}},
 )
 @testing.gpu
+@testing.with_requires('numpy>=1.17')
 class TestPadValueError(unittest.TestCase):
 
     def test_pad_failure(self):
