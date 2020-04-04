@@ -1,5 +1,9 @@
 import unittest
 
+import numpy
+import pytest
+
+import cupy
 from cupy import testing
 
 
@@ -36,29 +40,35 @@ class TestCorrcoef(unittest.TestCase):
 @testing.gpu
 class TestCov(unittest.TestCase):
 
-    def _check(self, a_shape, y_shape=None, rowvar=True, bias=False, ddof=None,
-               xp=None, dtype=None):
+    def generate_input(self, a_shape, y_shape, xp, dtype):
         a = testing.shaped_arange(a_shape, xp, dtype)
         y = None
         if y_shape is not None:
             y = testing.shaped_arange(y_shape, xp, dtype)
+        return a, y
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def check(self, a_shape, y_shape=None, rowvar=True, bias=False,
+              ddof=None, xp=None, dtype=None):
+        a, y = self.generate_input(a_shape, y_shape, xp, dtype)
         return xp.cov(a, y, rowvar, bias, ddof)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def check(self, *args, **kw):
-        return self._check(*args, **kw)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
-    def check_warns(self, *args, **kw):
+    def check_warns(self, a_shape, y_shape=None, rowvar=True, bias=False,
+                    ddof=None, xp=None, dtype=None):
         with testing.assert_warns(RuntimeWarning):
-            return self._check(*args, **kw)
+            a, y = self.generate_input(a_shape, y_shape, xp, dtype)
+            return xp.cov(a, y, rowvar, bias, ddof)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def check_raises(self, *args, **kw):
-        self._check(*args, **kw)
+    def check_raises(self, a_shape, y_shape=None, rowvar=True, bias=False,
+                     ddof=None, dtype=None):
+        for xp in (numpy, cupy):
+            a, y = self.generate_input(a_shape, y_shape, xp, dtype)
+            with pytest.raises(ValueError):
+                xp.cov(a, y, rowvar, bias, ddof)
 
     def test_cov(self):
         self.check((2, 3))

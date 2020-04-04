@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -65,11 +66,12 @@ class TestCholeskyDecomposition(unittest.TestCase):
 @testing.gpu
 class TestCholeskyInvalid(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
-    def check_L(self, array, xp):
-        a = xp.asarray(array)
-        with cupyx.errstate(linalg='raise'):
-            xp.linalg.cholesky(a)
+    def check_L(self, array):
+        for xp in (numpy, cupy):
+            a = xp.asarray(array)
+            with cupyx.errstate(linalg='raise'):
+                with pytest.raises(numpy.linalg.LinAlgError):
+                    xp.linalg.cholesky(a)
 
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
