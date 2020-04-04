@@ -203,9 +203,9 @@ cdef _reorder_buffers(Handle plan, intptr_t xtArr, list xtArr_buffer):
     _XtFree(temp_xtArr)
 
 
+# This is meant to replace cufftXtMalloc().
 # We need to manage the buffers ourselves in order to 1. avoid excessive,
 # uncessary memory usage, and 2. use CuPy's memory pool.
-# This is meant to replace cufftXtMalloc().
 cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
     cdef XtArrayDesc* xtArr_desc
     cdef XtArray* xtArr
@@ -213,8 +213,8 @@ cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
     cdef int i, nGPUs
     cdef size_t size
 
-    assert len(gpus) == len(sizes)
     nGPUs = len(gpus)
+    assert nGPUs == len(sizes)
     xtArr_desc = <XtArrayDesc*>PyMem_Malloc(sizeof(XtArrayDesc))
     xtArr = <XtArray*>PyMem_Malloc(sizeof(XtArray))
     c_memset(xtArr_desc, 0, sizeof(XtArrayDesc))
@@ -290,8 +290,8 @@ class Plan1d(object):
             with nogil:
                 result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
                                          &work_size)
-
         check_result(result)
+
         work_area = memory.alloc(work_size)
         ptr = work_area.ptr
         with nogil:
@@ -412,6 +412,7 @@ class Plan1d(object):
     def __del__(self):
         cdef Handle plan = self.plan
         cdef int dev = runtime.getDevice()
+        cdef int result
 
         with nogil:
             result = cufftDestroy(plan)
@@ -443,6 +444,7 @@ class Plan1d(object):
     def _single_gpu_fft(self, a, out, direction):
         cdef Handle plan = self.plan
         cdef intptr_t stream = stream_module.get_current_stream_ptr()
+        cdef int result
 
         with nogil:
             result = cufftSetStream(plan, <driver.Stream>stream)
@@ -552,15 +554,15 @@ class Plan1d(object):
 
             if action == 'scatter':
                 # if isinstance(b, cupy.ndarray):
-                    # When we come here, another stream could still be
-                    # copying data for us, so we wait patiently...
-                    outer_stream = stream_module.get_current_stream()
-                    outer_stream.synchronize()
-
                     s_device = b.data.device_id
                     if s_device not in self.scatter_streams:
                         self._multi_gpu_get_scatter_streams_events(
                             s_device, nGPUs)
+
+                    # When we come here, another stream could still be
+                    # copying data for us, so we wait patiently...
+                    outer_stream = stream_module.get_current_stream()
+                    outer_stream.synchronize()
 
                     for dev in range(nGPUs):
                         count = int(share[dev] * self.nx)
