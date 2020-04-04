@@ -15,6 +15,9 @@ class flatiter:
     Iteration is done in row-major, C-style order (the last index varying the
     fastest).
 
+    Attributes:
+        base (cupy.ndarray): A reference to the array that is iterated over.
+
     .. note::
        Restricted support of basic slicing is currently supplied. Advanced
        indexing is not supported yet.
