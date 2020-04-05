@@ -69,3 +69,70 @@ def _can_memcpy(dst, src):
     f_contiguous = dst.flags.f_contiguous and src.flags.f_contiguous
     return (c_contiguous or f_contiguous) and dst.dtype == src.dtype and \
         dst.size == src.size
+
+
+putmask_kernel = core._kernel.ElementwiseKernel(
+    'T mask, T values', 'T out',
+    '''
+    if (mask) out = values;
+    ''',
+    'putmask_kernel'
+)
+
+
+def putmask(a, mask, values):
+    """
+    Changes elements of an array inplace, based on conditional mask and
+    input values.
+
+    Sets ``a.flat[n] = values[n]`` for each n where ``mask.flat[n]==True``.
+    If `values` is not the same size as `a` and `mask` then it will repeat.
+
+    Args
+        a (cupy.ndarray): Target array.
+        mask (cupy.ndarray): Boolean mask array. It has to be
+            the same shape as `a`.
+        values (cupy.ndarray): Values to put into `a` where `mask` is True.
+            If `values` is smaller than `a`, then it will be repeated.
+
+    Examples
+    --------
+    >>> x = cupy.arange(6).reshape(2, 3)
+    >>> cupy.putmask(x, x>2, x**2)
+    >>> x
+    array([[ 0,  1,  2],
+           [ 9, 16, 25]])
+
+    If `values` is smaller than `a` it is repeated:
+
+    >>> x = cupy.arange(5)
+    >>> cupy.putmask(x, x>1, [-33, -44])
+    >>> x
+    array([  0,   1, -33, -44, -33])
+
+    .. seealso:: :func:`numpy.putmask`
+
+    """
+    if not a.shape == mask.shape:
+        raise ValueError('mask and data must be the same size')
+
+    if a.shape == values.shape:
+        putmask_kernel(mask.astype(a.dtype), values, a)
+
+    else:
+        shape_a = a.shape
+        if a.ndim > 1:
+            a = a.flatten()
+            mask = mask.flatten()
+        if values.ndim > 1:
+            values = values.flatten()
+
+        len_vals = len(values)
+        n = 0
+
+        for i in range(len(a)):
+            if mask[i]:
+                a[i] = values[n % len_vals]
+                n += 1
+
+        a = a.reshape(shape_a)

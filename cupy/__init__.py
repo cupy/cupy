@@ -282,6 +282,7 @@ from cupy.creation.matrix import triu  # NOQA
 # Array manipulation routines
 # -----------------------------------------------------------------------------
 from cupy.manipulation.basic import copyto  # NOQA
+from cupy.manipulation.basic import putmask  # NOQA
 
 from cupy.manipulation.shape import ravel  # NOQA
 from cupy.manipulation.shape import reshape  # NOQA

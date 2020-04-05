@@ -2,6 +2,7 @@ import itertools
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import cuda
@@ -125,3 +126,44 @@ class TestCopytoFromScalar(unittest.TestCase):
             self.dst_shape, xp, dtype) % 2).astype(xp.bool_)
         xp.copyto(dst, self.src, where=mask)
         return dst
+
+
+@testing.parameterize(
+    *testing.product(
+        {'shape': [(0,), (1,), (2, 3), (2, 3, 4)]}))
+@testing.gpu
+class TestPutmask(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_complex=True, no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_putmask(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype=dtype)
+        xp.putmask(a, a % 2 == 0, a**2)
+        return a
+
+
+@testing.parameterize(
+    *testing.product(
+        {'shape': [(0,), (1,), (2, 3), (2, 3, 4)],
+         'values_shape': [(2,), (3, 1), (5,)]}))
+@testing.gpu
+class TestPutmaskNonEqual(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_complex=True, no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_putmask(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype=dtype)
+        values = testing.shaped_random(self.values_shape, dtype=dtype)
+        xp.putmask(a, a > 2, values)
+        return a
+
+
+@testing.gpu
+class TestPutmaskRaises(unittest.TestCase):
+
+    def test_putmask(self):
+        for xp in (numpy, cupy):
+            a = cupy.array([1, 2, 3])
+            mask = cupy.array([True, False])
+            with pytest.raises(ValueError):
+                xp.putmask(a, mask, a**2)
