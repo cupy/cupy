@@ -264,7 +264,8 @@ cdef class _AbstractReductionKernel:
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
         # Needs to create the empty arrays first and access them for the
         # _reduce_dims to work.
-        out_args_ = self._get_out_args(out_args, out_types, out_shape)
+        out_args_ = [Arg.from_obj(a) for a in out_args]
+        out_args_ = self._get_out_args(out_args_, out_types, out_shape)
         out_arrays_ = [(<Arg>a).obj for a in out_args_]
 
         if self.identity == '':
