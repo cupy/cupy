@@ -317,7 +317,8 @@ def compile_with_cache(
         and backend == 'nvrtc')
 
     if runtime.is_hip:
-        return _compile_with_cache_hipcc(
+        backend = 'hiprtc' if backend == 'nvrtc' else 'hipcc'
+        return _compile_with_cache_hip(
             source, options, arch, cache_dir, extra_source, backend)
     else:
         return _compile_with_cache_cuda(
@@ -608,8 +609,8 @@ def _convert_to_hip_source(source):
     return "#include <hip/hip_runtime.h>\n" + source
 
 
-def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
-                              backend='nvrtc', use_converter=True):
+def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
+                              backend='hiprtc', use_converter=True):
     global _empty_file_preprocess_cache
     if cache_dir is None:
         cache_dir = get_cache_dir()
@@ -653,7 +654,8 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
                 mod.load(binary)
                 return mod
 
-    if backend == 'nvrtc':
+    if backend == 'hiprtc':
+        # compile_using_nvrtc calls hiprtc for hip builds
         binary = compile_using_nvrtc(source, options, arch, name + '.cu')
     else:
         # TODO(leofang): catch HIPCCException and convert it to
