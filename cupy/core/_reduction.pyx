@@ -278,6 +278,10 @@ cdef class _AbstractReductionKernel:
             if out_arrays_[0].shape[-len(out_shape):] != out_shape:
                 raise ValueError('Shape mismatch')
 
+        ret = (<Arg>out_args_[0]).obj
+        if ret.size == 0:
+            return ret
+
         in_shape = _set_permuted_args(
             in_args, reduce_axis + out_axis, a_shape, self.in_params)
         if reduce_dims:
@@ -286,12 +290,7 @@ cdef class _AbstractReductionKernel:
         in_args_ = [Arg.from_obj(a) for a in in_args]
         # out_args_ needs to be recreated as the number of dimensions
         # might have changed
-        out_args_ = [Arg.from_obj(a) for a in out_args]
-        out_args_ = self._get_out_args(out_args_, out_types, out_shape)
-
-        ret = (<Arg>out_args_[0]).obj
-        if ret.size == 0:
-            return ret
+        out_args_ = [Arg.from_obj(a) for a in out_arrays_]
 
         # Calculate the reduction block dimensions.
         contiguous_size = _get_contiguous_size(
