@@ -84,18 +84,13 @@ cdef set _pointer_numpy_types = {numpy.dtype(i).type
                                  for i in '?bhilqBHILQefdFD'}
 
 
+# A shortcut of Arg.from_obj(x).get_pointer() for the performance.
 cdef inline CPointer _pointer(x):
     cdef Py_ssize_t itemsize
     if x is None:
         return CPointer()
     if isinstance(x, core.ndarray):
         return (<core.ndarray>x).get_pointer()
-    if isinstance(x, _carray.Indexer):
-        return (<_carray.Indexer>x).get_pointer()
-
-    if isinstance(x, CPointer):
-        return x
-
     if isinstance(x, TextureObject):
         return CUIntMax(x.ptr)
 
@@ -137,10 +132,12 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
     cdef list pargs = []
     cdef vector.vector[void*] kargs
     cdef CPointer cp
-    cdef Arg a
     kargs.reserve(len(args))
     for a in args:
-        cp = a.get_pointer()
+        if isinstance(a, Arg):
+            cp = (<Arg>a).get_pointer()
+        else:
+            cp = _pointer(a)
         pargs.append(cp)
         kargs.push_back(cp.ptr)
 
@@ -174,7 +171,7 @@ cdef class Function:
             self.ptr,
             max(1, grid[0]), max(1, grid[1]), max(1, grid[2]),
             max(1, block[0]), max(1, block[1]), max(1, block[2]),
-            self._wrap_args(args),
+            args,
             shared_mem, s, enable_cooperative_groups)
 
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
@@ -187,17 +184,8 @@ cdef class Function:
         _launch(
             self.ptr,
             gridx, 1, 1, blockx, 1, 1,
-            self._wrap_args(args),
+            args,
             shared_mem, s)
-
-    cdef list _wrap_args(self, args):
-        args = list(args)
-        cdef int i
-        for i in range(len(args)):
-            arg = args[i]
-            if not isinstance(arg, Arg):
-                args[i] = Arg.from_obj(arg)
-        return args
 
 
 cdef class Module:

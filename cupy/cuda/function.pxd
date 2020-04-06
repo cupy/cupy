@@ -16,8 +16,6 @@ cdef class Function:
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=*,
                         size_t block_max_size=*, stream=*)
 
-    cdef list _wrap_args(self, args)
-
 
 cdef class Module:
 
