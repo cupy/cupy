@@ -166,8 +166,11 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
         axes = [i for i in range(-dim, 0)]
     else:
         axes = tuple(axes)
-    if not axes:
-        return a
+    if len(axes) == 0:
+        if value_type == 'C2C':
+            return a
+        else:
+            raise IndexError('list index out of range')
     a = _convert_dtype(a, value_type)
     a = _cook_shape(a, s, axes, value_type)
 
@@ -419,8 +422,11 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
                          % norm)
 
     axes, axes_sorted = _prep_fftn_axes(a.ndim, s, axes)
-    if not axes_sorted:
-        return a
+    if len(axes_sorted) == 0:
+        if value_type == 'C2C':
+            return a
+        else:
+            raise IndexError('list index out of range')
     a = _convert_dtype(a, value_type)
 
     if order == 'A':
