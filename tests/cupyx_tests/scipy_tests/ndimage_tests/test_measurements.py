@@ -137,7 +137,7 @@ class TestNdimageSum(unittest.TestCase):
         return scp.ndimage.sum(image, label, 1).astype(dtype)
 
     @testing.for_dtypes([cupy.int8, cupy.int16, cupy.int64, cupy.uint8,
-                        cupy.uint16, cupy.complex64, cupy.complex128])
+                         cupy.uint16, cupy.complex64, cupy.complex128])
     def test_ndimage_sum_wrong_dtype(self, dtype):
         image = cupy.arange(100, dtype=dtype)
         label = cupy.random.randint(1, 3, dtype=cupy.int32)
@@ -218,7 +218,7 @@ class TestNdimageVariance(unittest.TestCase):
         return scp.ndimage.variance(image, label, 1).astype(dtype)
 
     @testing.for_dtypes([cupy.int8, cupy.int16, cupy.int64, cupy.uint8,
-                        cupy.uint16, cupy.complex64, cupy.complex128])
+                         cupy.uint16, cupy.complex64, cupy.complex128])
     def test_ndimage_variance_wrong_dtype(self, dtype):
         image = cupy.arange(100, dtype=dtype)
         label = cupy.random.randint(1, 3, dtype=cupy.int32)
@@ -299,7 +299,7 @@ class TestNdimageMean(unittest.TestCase):
         return scp.ndimage.mean(image, label, 1).astype(dtype)
 
     @testing.for_dtypes([cupy.int8, cupy.int16, cupy.int64, cupy.uint8,
-                        cupy.uint16, cupy.complex64, cupy.complex128])
+                         cupy.uint16, cupy.complex64, cupy.complex128])
     def test_ndimage_mean_wrong_dtype(self, dtype):
         image = cupy.arange(100, dtype=dtype)
         label = cupy.random.randint(1, 3, dtype=cupy.int32)
@@ -381,7 +381,7 @@ class TestNdimageStandardDeviation(unittest.TestCase):
         return scp.ndimage.standard_deviation(image, label, 1).astype(dtype)
 
     @testing.for_dtypes([cupy.int8, cupy.int16, cupy.int64, cupy.uint8,
-                        cupy.uint16, cupy.complex64, cupy.complex128])
+                         cupy.uint16, cupy.complex64, cupy.complex128])
     def test_ndimage_standard_deviation_wrong_dtype(self, dtype):
         image = cupy.arange(100, dtype=dtype)
         label = cupy.random.randint(1, 3, dtype=cupy.int32)
