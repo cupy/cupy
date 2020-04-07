@@ -349,7 +349,7 @@ class TestFft2(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.fft2(a, s=self.s, norm=self.norm)
+        out = xp.fft.fft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
@@ -366,7 +366,7 @@ class TestFft2(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.ifft2(a, s=self.s, norm=self.norm)
+        out = xp.fft.ifft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
@@ -796,7 +796,7 @@ class TestRfft2(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.rfft2(a, s=self.s, norm=self.norm)
+        out = xp.fft.rfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
@@ -812,7 +812,7 @@ class TestRfft2(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
-        out = xp.fft.irfft2(a, s=self.s, norm=self.norm)
+        out = xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
