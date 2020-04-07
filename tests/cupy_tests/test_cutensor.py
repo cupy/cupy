@@ -3,12 +3,13 @@ import unittest
 import numpy
 
 import cupy
-from cupy import cutensor
-from cupy.cuda import cutensor as ct
 from cupy import testing
 
+if cupy.cuda.cutensor_enabled:
+    from cupy import cutensor
+    from cupy.cuda import cutensor as ct
 
-@unittest.skipUnless(cupy.cuda.cutensor_enabled, 'cuTensor is unavailable')
+
 @testing.parameterize(
     {'dtype': numpy.float16, 'tol': 3e-3},
     {'dtype': numpy.float32, 'tol': 1e-6},
@@ -16,6 +17,7 @@ from cupy import testing
     {'dtype': numpy.complex64, 'tol': 1e-6},
     {'dtype': numpy.complex128, 'tol': 1e-12},
 )
+@unittest.skipUnless(cupy.cuda.cutensor_enabled, 'cuTensor is unavailable')
 class TestCuTensor(unittest.TestCase):
 
     def setUp(self):
