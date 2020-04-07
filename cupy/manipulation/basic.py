@@ -106,10 +106,10 @@ def putmask(a, mask, values):
 
     If `values` is smaller than `a` it is repeated:
 
-    >>> x = cupy.arange(5)
-    >>> cupy.putmask(x, x>1, [-33, -44])
+    >>> x = cupy.arange(6)
+    >>> cupy.putmask(x, x>2, [-33, -44])
     >>> x
-    array([  0,   1, -33, -44, -33])
+    array([  0,  1,  2, -44, -33, -44])
 
     .. seealso:: :func:`numpy.putmask`
 
