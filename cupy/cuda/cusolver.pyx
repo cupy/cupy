@@ -1580,9 +1580,9 @@ cpdef zgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
     check_status(status)
 
 cpdef int sgesvdjBatched_bufferSize(
-        size_t handle, int jobz, int m, int n, size_t A,
-        int lda, size_t S, size_t U, int ldu, size_t V, int ldv,
-        size_t params, int batchSize) except? -1:
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t params, int batchSize) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1594,9 +1594,9 @@ cpdef int sgesvdjBatched_bufferSize(
     return lwork
 
 cpdef int dgesvdjBatched_bufferSize(
-        size_t handle, int jobz, int m, int n, size_t A,
-        int lda, size_t S, size_t U, int ldu, size_t V, int ldv,
-        size_t params, int batchSize) except? -1:
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t params, int batchSize) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1608,9 +1608,9 @@ cpdef int dgesvdjBatched_bufferSize(
     return lwork
 
 cpdef int cgesvdjBatched_bufferSize(
-        size_t handle, int jobz, int m, int n, size_t A,
-        int lda, size_t S, size_t U, int ldu, size_t V, int ldv,
-        size_t params, int batchSize) except? -1:
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t params, int batchSize) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1622,9 +1622,9 @@ cpdef int cgesvdjBatched_bufferSize(
     return lwork
 
 cpdef int zgesvdjBatched_bufferSize(
-        size_t handle, int jobz, int m, int n, size_t A,
-        int lda, size_t S, size_t U, int ldu, size_t V, int ldv,
-        size_t params, int batchSize) except? -1:
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t params, int batchSize) except? -1:
     cdef int lwork
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1636,9 +1636,9 @@ cpdef int zgesvdjBatched_bufferSize(
     return lwork
 
 cpdef sgesvdjBatched(
-        size_t handle, int jobz, int m, int n, size_t A,
-        int lda, size_t S, size_t U, int ldu, size_t V, int ldv,
-        size_t work, int lwork, size_t info, size_t params, int batchSize):
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t work, int lwork, intptr_t info, intptr_t params, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnSgesvdjBatched(
@@ -1649,9 +1649,9 @@ cpdef sgesvdjBatched(
     check_status(status)
 
 cpdef dgesvdjBatched(
-        size_t handle, int jobz, int m, int n, size_t A,
-        int lda, size_t S, size_t U, int ldu, size_t V, int ldv,
-        size_t work, int lwork, size_t info, size_t params, int batchSize):
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t work, int lwork, intptr_t info, intptr_t params, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnDgesvdjBatched(
@@ -1662,9 +1662,9 @@ cpdef dgesvdjBatched(
     check_status(status)
 
 cpdef cgesvdjBatched(
-        size_t handle, int jobz, int m, int n, size_t A,
-        int lda, size_t S, size_t U, int ldu, size_t V, int ldv,
-        size_t work, int lwork, size_t info, size_t params, int batchSize):
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t work, int lwork, intptr_t info, intptr_t params, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnCgesvdjBatched(
@@ -1675,9 +1675,9 @@ cpdef cgesvdjBatched(
     check_status(status)
 
 cpdef zgesvdjBatched(
-        size_t handle, int jobz, int m, int n, size_t A,
-        int lda, size_t S, size_t U, int ldu, size_t V, int ldv,
-        size_t work, int lwork, size_t info, size_t params, int batchSize):
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t work, int lwork, intptr_t info, intptr_t params, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnZgesvdjBatched(
