@@ -144,11 +144,11 @@ class TestBasic(unittest.TestCase):
         return
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises(accept_error=TypeError)
-    def test_empty_like_invalid_order(self, xp, dtype):
-        a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        b = xp.empty_like(a, order='Q')
-        return b
+    def test_empty_like_invalid_order(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp, dtype)
+            with pytest.raises(TypeError):
+                xp.empty_like(a, order='Q')
 
     def test_empty_like_subok(self):
         a = testing.shaped_arange((2, 3, 4), cupy)

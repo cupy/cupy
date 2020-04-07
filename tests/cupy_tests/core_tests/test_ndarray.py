@@ -79,9 +79,10 @@ class TestNdarrayInit(unittest.TestCase):
         a[0, 2] = 4
         assert float(a[1, 0]) == 4
 
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_strides_without_memptr(self, xp):
-        xp.ndarray((2, 3), numpy.float32, strides=(20, 4))
+    def test_strides_without_memptr(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.ndarray((2, 3), numpy.float32, strides=(20, 4))
 
     def test_strides_is_given_and_order_is_ignored(self):
         buf = cupy.ndarray(20, numpy.uint8)
@@ -89,9 +90,10 @@ class TestNdarrayInit(unittest.TestCase):
             (2, 3), numpy.float32, buf.data, strides=(8, 4), order='C')
         assert a.strides == (8, 4)
 
-    @testing.numpy_cupy_raises(accept_error=TypeError)
-    def test_strides_is_given_but_order_is_invalid(self, xp):
-        xp.ndarray((2, 3), numpy.float32, strides=(8, 4), order='!')
+    def test_strides_is_given_but_order_is_invalid(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(TypeError):
+                xp.ndarray((2, 3), numpy.float32, strides=(8, 4), order='!')
 
     def test_order(self):
         shape = (2, 3, 4)
@@ -360,10 +362,11 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 @testing.gpu
 class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_axis_overrun1(self, xp):
-        a = testing.shaped_arange(self.shape, xp)
-        wrap_take(a, self.indices, axis=self.axis)
+    def test_axis_overrun1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp)
+            with pytest.raises(numpy.AxisError):
+                wrap_take(a, self.indices, axis=self.axis)
 
     def test_axis_overrun2(self):
         a = testing.shaped_arange(self.shape, cupy)
@@ -373,32 +376,34 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
 @testing.parameterize(
     {'shape': (3, 4, 5), 'indices': (2, 3), 'out_shape': (2, 4)},
-    {'shape': (), 'indices': 0, 'out_shape': (1,)}
+    {'shape': (), 'indices': (), 'out_shape': (1,)}
 )
 @testing.gpu
 class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_shape_mismatch(self, xp):
-        a = testing.shaped_arange(self.shape, xp)
-        i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
-        o = testing.shaped_arange(self.out_shape, xp)
-        wrap_take(a, i, out=o)
+    def test_shape_mismatch(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp)
+            i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
+            o = testing.shaped_arange(self.out_shape, xp)
+            with pytest.raises(ValueError):
+                wrap_take(a, i, out=o)
 
 
 @testing.parameterize(
     {'shape': (3, 4, 5), 'indices': (2, 3), 'out_shape': (2, 3)},
-    {'shape': (), 'indices': 0, 'out_shape': ()}
+    {'shape': (), 'indices': (), 'out_shape': ()}
 )
 @testing.gpu
 class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_output_type_mismatch(self, xp):
-        a = testing.shaped_arange(self.shape, xp, numpy.int32)
-        i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
-        o = testing.shaped_arange(self.out_shape, xp, numpy.float32)
-        wrap_take(a, i, out=o)
+    def test_output_type_mismatch(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp, numpy.int32)
+            i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
+            o = testing.shaped_arange(self.out_shape, xp, numpy.float32)
+            with pytest.raises(TypeError):
+                wrap_take(a, i, out=o)
 
 
 @testing.parameterize(
@@ -422,11 +427,12 @@ class TestZeroSizedNdarrayTake(unittest.TestCase):
 @testing.gpu
 class TestZeroSizedNdarrayTakeIndexError(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=IndexError)
-    def test_output_type_mismatch(self, xp):
-        a = testing.shaped_arange(self.shape, xp, numpy.int32)
-        i = testing.shaped_arange(self.indices, xp, numpy.int32)
-        wrap_take(a, i)
+    def test_output_type_mismatch(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp, numpy.int32)
+            i = testing.shaped_arange(self.indices, xp, numpy.int32)
+            with pytest.raises(IndexError):
+                wrap_take(a, i)
 
 
 @testing.gpu
@@ -452,17 +458,48 @@ class TestSize(unittest.TestCase):
         x = testing.shaped_arange((), xp, numpy.int32)
         return xp.size(x)
 
-    @testing.numpy_cupy_raises(accept_error=IndexError)
-    def test_size_axis_too_large(self, xp):
-        x = testing.shaped_arange((3, 4, 5), xp, numpy.int32)
-        return xp.size(x, 3)
+    def test_size_axis_too_large(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((3, 4, 5), xp, numpy.int32)
+            with pytest.raises(IndexError):
+                xp.size(x, 3)
 
-    @testing.numpy_cupy_raises(accept_error=IndexError)
-    def test_size_axis_too_small(self, xp):
-        x = testing.shaped_arange((3, 4, 5), xp, numpy.int32)
-        return xp.size(x, -4)
+    def test_size_axis_too_small(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((3, 4, 5), xp, numpy.int32)
+            with pytest.raises(IndexError):
+                xp.size(x, -4)
 
-    @testing.numpy_cupy_raises(accept_error=IndexError)
-    def test_size_zero_dim_array_with_axis(self, xp):
-        x = testing.shaped_arange((), xp, numpy.int32)
-        return xp.size(x, 0)
+    def test_size_zero_dim_array_with_axis(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((), xp, numpy.int32)
+            with pytest.raises(IndexError):
+                xp.size(x, 0)
+
+
+@testing.gpu
+class TestPythonInterface(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_bytes_tobytes(self, xp, dtype):
+        x = testing.shaped_arange((3, 4, 5), xp, dtype)
+        return bytes(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_bytes_tobytes_empty(self, xp, dtype):
+        x = xp.empty((3, 4, 5), dtype)
+        return bytes(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_bytes_tobytes_empty2(self, xp, dtype):
+        x = xp.empty((), dtype)
+        return bytes(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_bytes_tobytes_scalar(self, xp, dtype):
+        x = xp.array([3], dtype).item()
+        return bytes(x)

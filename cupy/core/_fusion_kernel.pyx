@@ -5,8 +5,6 @@ from libcpp cimport vector
 import numpy
 
 from cupy.core import _dtype
-from cupy.core._carray cimport Indexer
-from cupy.core._scalar cimport scalar_to_numpy_scalar
 from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
@@ -20,6 +18,7 @@ from cupy.core._fusion_variable import _TraceVariable
 from cupy.core._fusion_variable import _TraceScalar
 from cupy.core._fusion_variable import _TraceArray
 from cupy.cuda cimport driver
+from cupy.cuda cimport function
 from cupy.cuda cimport runtime
 from cupy.core cimport _reduction
 
@@ -291,11 +290,11 @@ cdef class FusedKernel:
         for i in range(len(self._params)):
             array = ndarray_list[i]
             if isinstance(array, ndarray):
-                params.append(array)
-                indexers.append(Indexer(array.shape))
+                indexers.append(function.IndexerArg(array.shape))
+                params.append(function.Arg.from_obj(array))
             elif self._input_index[i] >= 0:
-                scalar = args[<Py_ssize_t>self._input_index[i]]
-                params.append(scalar_to_numpy_scalar(scalar))
+                obj = args[<Py_ssize_t>self._input_index[i]]
+                params.append(function.Arg.from_obj(obj))
 
         return params + indexers
 
@@ -313,9 +312,12 @@ cdef class FusedKernel:
         for i in range(len(self._params)):
             a = self._params[i]
             if isinstance(a, _TraceArray):
-                ndim = ndarray_list[i].ndim
+                array = ndarray_list[i]
+                ndim = array.ndim
+                c_contiguous = 'true' if array.flags.c_contiguous else 'false'
                 cuda_params.append(a.format(
-                    'CArray<${type}, ${ndim}> ${var}', ndim=ndim))
+                    'CArray<${type}, ${ndim}, ${c_contiguous}> ${var}',
+                    ndim=ndim, c_contiguous=c_contiguous))
                 indexers.append(
                     a.format('CIndexer<${ndim}> ${indexer}', ndim=ndim))
             elif isinstance(a, _TraceScalar):

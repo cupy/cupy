@@ -74,6 +74,48 @@ class TestComparisonOperator(unittest.TestCase):
         return [op(a, b) for op in self.operators]
 
 
+class TestArrayEqual(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equal_not_equal(self, xp, dtype):
+        a = xp.array([1, 2, 3, 4], dtype=dtype)
+        b = xp.array([1, 2, 4, 5], dtype=dtype)
+        return xp.array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equal_is_equal(self, xp, dtype):
+        a = xp.array([1, 2, 3, 4], dtype=dtype)
+        b = xp.array([1, 2, 3, 4], dtype=dtype)
+        return xp.array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equal_diff_length(self, xp, dtype):
+        a = xp.array([1, 2, 3, 4], dtype=dtype)
+        b = xp.array([1, 2, 3], dtype=dtype)
+        return xp.array_equal(a, b)
+
+    @testing.numpy_cupy_equal()
+    def test_array_equal_diff_dtypes_not_equal(self, xp):
+        a = xp.array([0.9e-5, 1.1e-5, 100.5, 10.5])
+        b = xp.array([0, 0, 1000, 1000])
+        return xp.array_equal(a, b)
+
+    @testing.numpy_cupy_equal()
+    def test_array_equal_diff_dtypes_is_equal(self, xp):
+        a = xp.array([0.0, 1.0, 100.0, 10.0])
+        b = xp.array([0, 1, 100, 10])
+        return xp.array_equal(a, b)
+
+    @testing.numpy_cupy_equal()
+    def test_array_equal_broadcast_not_allowed(self, xp):
+        a = xp.array([1, 1, 1, 1])
+        b = xp.array([1])
+        return xp.array_equal(a, b)
+
+
 class TestAllclose(unittest.TestCase):
 
     @testing.for_all_dtypes()

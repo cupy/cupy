@@ -15,6 +15,8 @@ from cupy.core import _fusion_op
 from cupy.core import _fusion_optimization
 from cupy import util
 
+from cupy.cuda.function cimport Arg
+
 
 _thread_local = _fusion_thread_local.thread_local
 _accepted_types = (int, float, bool, complex, numpy.generic)
@@ -106,10 +108,11 @@ def _guess_routine(func, args, dtype):
     dummy_args = []
     for x in args:
         if isinstance(x, _TraceScalar):
-            dummy_args.append(x.dtype.type(0))
+            obj = x.dtype.type(0)
         else:
             assert isinstance(x, _TraceArray)
-            dummy_args.append(core.ndarray((0,), x.dtype))
+            obj = core.ndarray((0,), x.dtype)
+        dummy_args.append(Arg.from_obj(obj))
 
     op = func._ops.guess_routine(
         func.name, func._routine_cache, dummy_args, dtype, None)

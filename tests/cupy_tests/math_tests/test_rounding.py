@@ -1,7 +1,9 @@
 import unittest
 
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -21,10 +23,11 @@ class TestRounding(unittest.TestCase):
         return getattr(xp, name)(a)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_raises(accept_error=TypeError)
-    def check_unary_complex_unsupported(self, name, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        getattr(xp, name)(a)
+    def check_unary_complex_unsupported(self, name, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3), xp, dtype)
+            with pytest.raises(TypeError):
+                getattr(xp, name)(a)
 
     @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5)

@@ -18,9 +18,13 @@ Indexing Routines
    cupy.take
    cupy.take_along_axis
    cupy.choose
+   cupy.compress
    cupy.diag
    cupy.diagonal
+   cupy.extract
+   cupy.select
    cupy.lib.stride_tricks.as_strided
    cupy.place
    cupy.put
    cupy.fill_diagonal
+   cupy.flatiter

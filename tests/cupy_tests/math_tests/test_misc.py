@@ -2,7 +2,9 @@ import sys
 import unittest
 
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -112,10 +114,11 @@ class TestMisc(unittest.TestCase):
         return a.clip(3, None)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_clip_min_max_none(self, xp, dtype):
-        a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        return a.clip(None, None)
+    def test_clip_min_max_none(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                a.clip(None, None)
 
     @unittest.skipIf(
         sys.platform == 'win32', 'dtype problem on Windows')

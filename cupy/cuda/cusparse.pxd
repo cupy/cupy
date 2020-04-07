@@ -26,6 +26,7 @@ cdef extern from *:
     ctypedef void* bsric02Info_t
     ctypedef void* csrilu02Info_t
     ctypedef void* bsrilu02Info_t
+    ctypedef void* csrgemm2Info_t
 
     ctypedef int cusparseStatus_t
     ctypedef int cusparseDirection_t

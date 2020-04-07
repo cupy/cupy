@@ -5,6 +5,7 @@
 
 #include <hiprand/hiprand.h>
 #include "cupy_hip_common.h"
+#include "cupy_cuComplex.h"
 
 extern "C" {
 
@@ -629,12 +630,38 @@ cublasStatus_t cublasDgemm(cublasHandle_t handle, cublasOperation_t transa, cubl
 }
 
 
-cublasStatus_t cublasCgemm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCgemm(
+        cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+        int m, int n, int k, const cuComplex *alpha,
+        const cuComplex *A, int lda,
+        const cuComplex *B, int ldb,
+        const cuComplex *beta, cuComplex *C, int ldc)
+{
+    return hipblasCgemm(
+        handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
+        m, n, k,
+        reinterpret_cast<const hipblasComplex *>(alpha),
+        reinterpret_cast<const hipblasComplex *>(A), lda,
+        reinterpret_cast<const hipblasComplex *>(B), ldb,
+        reinterpret_cast<const hipblasComplex *>(beta),
+        reinterpret_cast<hipblasComplex *>(C), ldc);
 }
 
-cublasStatus_t cublasZgemm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZgemm(
+        cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+        int m, int n, int k, const cuDoubleComplex *alpha,
+        const cuDoubleComplex *A, int lda,
+        const cuDoubleComplex *B, int ldb,
+        const cuDoubleComplex *beta, cuDoubleComplex *C, int ldc)
+{
+    return hipblasZgemm(
+        handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
+        m, n, k,
+        reinterpret_cast<const hipblasDoubleComplex *>(alpha),
+        reinterpret_cast<const hipblasDoubleComplex *>(A), lda,
+        reinterpret_cast<const hipblasDoubleComplex *>(B), ldb,
+        reinterpret_cast<const hipblasDoubleComplex *>(beta),
+        reinterpret_cast<hipblasDoubleComplex *>(C), ldc);
 }
 
 cublasStatus_t cublasSgemmBatched(
@@ -659,12 +686,40 @@ cublasStatus_t cublasDgemmBatched(
     return hipblasDgemmBatched(handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb), m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, batchCount);
 }
 
-cublasStatus_t cublasCgemmBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCgemmBatched(
+        cublasHandle_t handle,
+        cublasOperation_t transa, cublasOperation_t transb,
+        int m, int n, int k,  const cuComplex *alpha,
+        const cuComplex *A[], int lda,
+        const cuComplex *B[], int ldb,
+        const cuComplex *beta,
+        cuComplex *C[], int ldc, int batchCount) {
+    return hipblasCgemmBatched(
+        handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
+        m, n, k,
+        reinterpret_cast<const hipblasComplex*>(alpha),
+        reinterpret_cast<const hipblasComplex**>(A), lda,
+        reinterpret_cast<const hipblasComplex**>(B), ldb,
+        reinterpret_cast<const hipblasComplex*>(beta),
+        reinterpret_cast<hipblasComplex**>(C), ldc, batchCount);
 }
 
-cublasStatus_t cublasZgemmBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZgemmBatched(
+        cublasHandle_t handle,
+        cublasOperation_t transa, cublasOperation_t transb,
+        int m, int n, int k,  const cuDoubleComplex *alpha,
+        const cuDoubleComplex *A[], int lda,
+        const cuDoubleComplex *B[], int ldb,
+        const cuDoubleComplex *beta,
+        cuDoubleComplex *C[], int ldc, int batchCount) {
+    return hipblasZgemmBatched(
+        handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
+        m, n, k,
+        reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+        reinterpret_cast<const hipblasDoubleComplex**>(A), lda,
+        reinterpret_cast<const hipblasDoubleComplex**>(B), ldb,
+        reinterpret_cast<const hipblasDoubleComplex*>(beta),
+        reinterpret_cast<hipblasDoubleComplex**>(C), ldc, batchCount);
 }
 
 cublasStatus_t cublasSgemmEx(
@@ -790,12 +845,44 @@ cublasStatus_t cublasDgemmStridedBatched(
         batchCount);
 }
 
-cublasStatus_t cublasCgemmStridedBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCgemmStridedBatched(
+        cublasHandle_t handle,
+        cublasOperation_t transa, cublasOperation_t transb,
+        int m, int n, int k, const cuComplex *alpha,
+        const cuComplex *A, int lda, long long bsa,
+        const cuComplex *B, int ldb, long long bsb,
+        const cuComplex *beta,
+        cuComplex *C, int ldc, long long bsc, int batchCount) {
+    return hipblasCgemmStridedBatched(
+        handle,
+        convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
+        m, n, k,
+        reinterpret_cast<const hipblasComplex *>(alpha),
+        reinterpret_cast<const hipblasComplex *>(A), lda, bsa,
+        reinterpret_cast<const hipblasComplex *>(B), ldb, bsb,
+        reinterpret_cast<const hipblasComplex *>(beta),
+        reinterpret_cast<hipblasComplex *>(C), ldc, bsc,
+        batchCount);
 }
 
-cublasStatus_t cublasZgemmStridedBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZgemmStridedBatched(
+        cublasHandle_t handle,
+        cublasOperation_t transa, cublasOperation_t transb,
+        int m, int n, int k, const cuDoubleComplex *alpha,
+        const cuDoubleComplex *A, int lda, long long bsa,
+        const cuDoubleComplex *B, int ldb, long long bsb,
+        const cuDoubleComplex *beta,
+        cuDoubleComplex *C, int ldc, long long bsc, int batchCount) {
+    return hipblasZgemmStridedBatched(
+        handle,
+        convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
+        m, n, k,
+        reinterpret_cast<const hipblasDoubleComplex *>(alpha),
+        reinterpret_cast<const hipblasDoubleComplex *>(A), lda, bsa,
+        reinterpret_cast<const hipblasDoubleComplex *>(B), ldb, bsb,
+        reinterpret_cast<const hipblasDoubleComplex *>(beta),
+        reinterpret_cast<hipblasDoubleComplex *>(C), ldc, bsc,
+        batchCount);
 }
 
 cublasStatus_t cublasStrttp(...) {

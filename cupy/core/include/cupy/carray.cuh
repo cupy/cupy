@@ -173,10 +173,11 @@ __device__ int signbit(float16 x) {return x.signbit();}
          i < (n); \
          i += static_cast<ptrdiff_t>(blockDim.x) * gridDim.x)
 
-template <typename T, int _ndim>
+template <typename T, int _ndim, bool _c_contiguous=false>
 class CArray {
 public:
   static const int ndim = _ndim;
+  static const bool c_contiguous = _c_contiguous;
 private:
   T* data_;
   ptrdiff_t size_;
@@ -215,6 +216,11 @@ public:
   }
 
   __device__ const T& operator[](ptrdiff_t i) const {
+    if (c_contiguous) {
+      // contiguous arrays can be directly addressed by the
+      // numeric value, avoiding expensive 64 bit operations in cuda
+      return data_[i];
+    }
     const char* ptr = reinterpret_cast<const char*>(data_);
     for (int dim = ndim; --dim > 0; ) {
       ptr += static_cast<ptrdiff_t>(strides_[dim]) * (i % shape_[dim]);
@@ -229,7 +235,7 @@ public:
 };
 
 template <typename T>
-class CArray<T, 0> {
+class CArray<T, 0, true> {
 private:
   T* data_;
   ptrdiff_t size_;
