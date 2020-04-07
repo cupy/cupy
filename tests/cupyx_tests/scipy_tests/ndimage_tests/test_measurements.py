@@ -174,7 +174,7 @@ class TestNdimageSum(unittest.TestCase):
             cupyx.scipy.ndimage.sum(image, label, index)
 
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
-    def test_ndimage_zero_values(self, xp, scp):
+    def test_ndimage_sum_zero_values(self, xp, scp):
         image = cupy.array([])
         label = cupy.array([])
         index = cupy.array([])
@@ -255,7 +255,7 @@ class TestNdimageVariance(unittest.TestCase):
             cupyx.scipy.ndimage.variance(image, label, index)
 
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
-    def test_ndimage_zero_values(self, xp, scp):
+    def test_ndimage_variance_zero_values(self, xp, scp):
         image = cupy.array([])
         label = cupy.array([])
         index = cupy.array([])
@@ -336,7 +336,7 @@ class TestNdimageMean(unittest.TestCase):
             cupyx.scipy.ndimage.mean(image, label, index)
 
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
-    def test_ndimage_zero_values(self, xp, scp):
+    def test_ndimage_mean_zero_values(self, xp, scp):
         image = cupy.array([])
         label = cupy.array([])
         index = cupy.array([])
@@ -418,7 +418,7 @@ class TestNdimageStandardDeviation(unittest.TestCase):
             cupyx.scipy.ndimage.standard_deviation(image, label, index)
 
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
-    def test_ndimage_zero_values(self, xp, scp):
+    def test_ndimage_stadard_deviation_zero_values(self, xp, scp):
         image = cupy.array([])
         label = cupy.array([])
         index = cupy.array([])
