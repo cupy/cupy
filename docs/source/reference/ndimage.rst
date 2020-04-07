@@ -36,6 +36,7 @@ Measurements
    cupyx.scipy.ndimage.mean
    cupyx.scipy.ndimage.sum
    cupyx.scipy.ndimage.variance
+   cupyx.scipy.ndimage.standard_deviation
 
 
 OpenCV mode
