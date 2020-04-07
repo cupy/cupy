@@ -32,6 +32,22 @@ class TestIndexing(unittest.TestCase):
         b = xp.array([[10, 5], [3, 20]])
         return a.take(b)
 
+    # see cupy#3017
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_take_index_range_overflow(self, xp, dtype):
+        # Skip for too large dimensions
+        if numpy.dtype(dtype) in (numpy.int64, numpy.uint64):
+            return xp.array([])
+        # Skip because NumPy actually allocates a contiguous array in the
+        # `take` below to require much time.
+        if dtype in (numpy.int32, numpy.uint32):
+            return xp.array([])
+        iinfo = numpy.iinfo(dtype)
+        a = xp.broadcast_to(xp.ones(1), (iinfo.max + 1,))
+        b = xp.array([0], dtype=dtype)
+        return a.take(b)
+
     @testing.numpy_cupy_array_equal()
     def test_take_along_axis(self, xp):
         a = testing.shaped_random((2, 4, 3), xp, dtype='float32')

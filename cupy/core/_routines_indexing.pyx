@@ -389,7 +389,8 @@ out = a[out_i];
 
 
 _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, S index_range',
+    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, '
+    'int64 index_range',
     'T out', _take_kernel_core, 'cupy_take')
 
 
