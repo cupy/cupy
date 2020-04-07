@@ -2,6 +2,7 @@ from numpy import prod
 
 import cupy
 from cupy.cuda import cufft
+from cupy.fft import config
 from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
                           _get_cufft_plan_nd)
 
@@ -60,32 +61,31 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
     else:
         raise ValueError('Input array a must be contiguous')
 
+    if isinstance(shape, int):
+        shape = (shape,)
+    if isinstance(axes, int):
+        axes = (axes,)
+    if (shape is not None) and (axes is not None) and len(shape) != len(axes):
+        raise ValueError('Shape and axes have different lengths.')
+
     # check axes
     # n=1: 1d (need axis1D); n>1: Nd
     if axes is None:
-        n = a.ndim
-        axes = tuple(i for i in range(n))
+        n = a.ndim if shape is None else len(shape)
+        axes = tuple(i for i in range(-n, 0))
         if n == 1:
             axis1D = 0
-    elif isinstance(axes, int):
-        n = 1
-        axis1D = axes
-        axes = (axes,)
-        if axis1D >= a.ndim or axis1D < -a.ndim:
-            raise ValueError('The chosen axis ({0}) exceeds the number of '
-                             'dimensions of a ({1})'.format(axis1D, a.ndim))
     else:  # axes is a tuple
         n = len(axes)
         if n == 1:
             axis1D = axes[0]
+            if axis1D >= a.ndim or axis1D < -a.ndim:
+                err = 'The chosen axis ({0}) exceeds the number of '\
+                      'dimensions of a ({1})'.format(axis1D, a.ndim)
+                raise ValueError(err)
         elif n > 3:
             raise ValueError('Only up to three axes is supported')
 
-    # check shape
-    if isinstance(shape, int):
-        shape = (shape,)
-    if (shape is not None) and len(shape) != n:
-        raise ValueError('Shape and axes have different lengths.')
     # Note that "shape" here refers to the shape along trasformed axes, not
     # the shape of the output array, and we need to convert it to the latter.
     # The result is as if "a=_cook_shape(a); return a.shape" is called.
@@ -108,7 +108,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
     else:  # 1D transform
         out_size = shape[axis1D]
         batch = prod(shape) // out_size
-        plan = cufft.Plan1d(out_size, fft_type, batch)
+        devices = None if not config.use_multi_gpus else config._devices
+        plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
 
     return plan
 

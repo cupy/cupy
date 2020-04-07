@@ -34,7 +34,6 @@ class TestFusionOutArg(unittest.TestCase):
     @testing.for_all_dtypes_combination(
         names=('dtype1', 'dtype2'), full=True, no_complex=True)
     @fusion_utils.check_fusion(accept_error=TypeError)
-    @testing.with_requires('numpy>=1.13')
     def test_outarg_add(self, xp, dtype1, dtype2):
         def func(x, y, z):
             xp.add(x, y, out=z)

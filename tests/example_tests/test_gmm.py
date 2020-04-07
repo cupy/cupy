@@ -12,6 +12,7 @@ os.environ['MPLBACKEND'] = 'Agg'
 
 
 @testing.with_requires('matplotlib')
+@testing.with_requires('scipy')
 class TestGMM(unittest.TestCase):
 
     def test_gmm(self):

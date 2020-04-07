@@ -3,7 +3,6 @@ import string
 import numpy
 
 import cupy
-from cupy.core import _errors
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core._ufuncs import elementwise_copy
 from cupy import util
@@ -28,8 +27,8 @@ cdef _ndarray_sort(ndarray self, int axis):
                            'reinstall CuPy after uninstalling it.')
 
     if ndim == 0:
-        raise ValueError('Sorting arrays with the rank of zero is not '
-                         'supported')  # as numpy.sort() raises
+        raise numpy.AxisError('Sorting arrays with the rank of zero is not '
+                              'supported')  # as numpy.sort() raises
 
     # TODO(takagi): Support sorting views
     if not self._c_contiguous:
@@ -39,7 +38,7 @@ cdef _ndarray_sort(ndarray self, int axis):
     if axis < 0:
         axis += ndim
     if not (0 <= axis < ndim):
-        raise _errors._AxisError('Axis out of range')
+        raise numpy.AxisError('Axis out of range')
 
     if axis == ndim - 1:
         data = self
@@ -61,7 +60,7 @@ cdef _ndarray_sort(ndarray self, int axis):
 
 
 cdef ndarray _ndarray_argsort(ndarray self, axis):
-    cdef int _axis, ndim = self._shape.size()
+    cdef int _axis, ndim
     cdef ndarray data
 
     if not cupy.cuda.thrust_enabled:
@@ -69,9 +68,8 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
                            'install CUDA Toolkit with Thrust then '
                            'reinstall CuPy after uninstalling it.')
 
-    if ndim == 0:
-        raise ValueError('Sorting arrays with the rank of zero is not '
-                         'supported')  # as numpy.argsort() raises
+    self = cupy.atleast_1d(self)
+    ndim = self._shape.size()
 
     if axis is None:
         data = self.ravel()
@@ -83,7 +81,7 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
     if _axis < 0:
         _axis += ndim
     if not (0 <= _axis < ndim):
-        raise _errors._AxisError('Axis out of range')
+        raise numpy.AxisError('Axis out of range')
 
     if _axis == ndim - 1:
         data = data.copy()
@@ -133,8 +131,8 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
     cdef ndarray data
 
     if ndim == 0:
-        raise ValueError('Sorting arrays with the rank of zero is not '
-                         'supported')
+        raise numpy.AxisError('Sorting arrays with the rank of zero is not '
+                              'supported')
 
     if not self._c_contiguous:
         raise NotImplementedError('Sorting non-contiguous array is not '
@@ -143,7 +141,7 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
     if axis < 0:
         axis += ndim
     if not (0 <= axis < ndim):
-        raise _errors._AxisError('Axis out of range')
+        raise numpy.AxisError('Axis out of range')
 
     if axis == ndim - 1:
         data = self
@@ -240,7 +238,7 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
     if _axis < 0:
         _axis += ndim
     if not (0 <= _axis < ndim):
-        raise _errors._AxisError('Axis out of range')
+        raise numpy.AxisError('Axis out of range')
 
     length = data._shape[_axis]
     if isinstance(kth, int):
@@ -266,7 +264,7 @@ def _partition_kernel(dtype):
     dtype = _get_typename(dtype)
     source = string.Template('''
     template<typename T>
-    __device__ void bitonic_sort_step(CArray<T, 1> a,
+    __device__ void bitonic_sort_step(CArray<T, 1, true> a,
             ptrdiff_t x, ptrdiff_t y, int i, ptrdiff_t s, ptrdiff_t w) {
         for (ptrdiff_t j = i; j < (y - x) / 2; j += 32) {
             ptrdiff_t n = j + (j & -w);
@@ -281,7 +279,7 @@ def _partition_kernel(dtype):
     // Sort a[x:y].
     template<typename T>
     __device__ void bitonic_sort(
-            CArray<T, 1> a, ptrdiff_t x, ptrdiff_t y, int i) {
+            CArray<T, 1, true> a, ptrdiff_t x, ptrdiff_t y, int i) {
         for (ptrdiff_t s = 2; s <= y - x; s *= 2) {
             for (ptrdiff_t w = s / 2; w >= 1; w /= 2) {
                 bitonic_sort_step<T>(a, x, y, i, s, w);
@@ -292,7 +290,8 @@ def _partition_kernel(dtype):
     // Merge first k elements and the next 32 times t elements.
     template<typename T>
     __device__ void merge(
-            CArray<T, 1> a, int k, int i, ptrdiff_t x, ptrdiff_t z, int u) {
+            CArray<T, 1, true> a,
+            int k, int i, ptrdiff_t x, ptrdiff_t z, int u) {
         for (int s = i; s < u; s += 32) {
             if (a[x + k - s - 1] > a[z + s]) {
                 T tmp = a[x + k - s - 1];
@@ -313,7 +312,8 @@ def _partition_kernel(dtype):
     // the warp size. The first k elements are always sorted and the next 32
     // times t elements stored values that have possibilities to be selected.
     __global__ void ${name}(
-            CArray<${dtype}, 1> a, int k, ptrdiff_t n, int t, ptrdiff_t sz) {
+            CArray<${dtype}, 1, true> a,
+            int k, ptrdiff_t n, int t, ptrdiff_t sz) {
 
         // This thread handles a[z:m].
         ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
@@ -358,7 +358,7 @@ def _partition_kernel(dtype):
     }
 
     __global__ void ${merge_kernel}(
-            CArray<${dtype}, 1> a, int k, ptrdiff_t n, int sz, int s) {
+            CArray<${dtype}, 1, true> a, int k, ptrdiff_t n, int sz, int s) {
         ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
             + threadIdx.x;
         ptrdiff_t z = i / 32 * 2 * s * n / sz;

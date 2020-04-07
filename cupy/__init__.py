@@ -308,6 +308,7 @@ from cupy.manipulation.join import stack  # NOQA
 from cupy.manipulation.join import vstack  # NOQA
 
 from cupy.manipulation.kind import asfortranarray  # NOQA
+from cupy.manipulation.kind import require  # NOQA
 
 from cupy.manipulation.split import array_split  # NOQA
 from cupy.manipulation.split import dsplit  # NOQA
@@ -332,6 +333,7 @@ from cupy.manipulation.rearrange import rot90  # NOQA
 from cupy.binary.elementwise import bitwise_and  # NOQA
 from cupy.binary.elementwise import bitwise_or  # NOQA
 from cupy.binary.elementwise import bitwise_xor  # NOQA
+from cupy.binary.elementwise import bitwise_not  # NOQA
 from cupy.binary.elementwise import invert  # NOQA
 from cupy.binary.elementwise import left_shift  # NOQA
 from cupy.binary.elementwise import right_shift  # NOQA
@@ -432,16 +434,25 @@ from cupy.indexing.generate import c_  # NOQA
 from cupy.indexing.generate import indices  # NOQA
 from cupy.indexing.generate import ix_  # NOQA
 from cupy.indexing.generate import r_  # NOQA
+from cupy.indexing.generate import ravel_multi_index  # NOQA
 from cupy.indexing.generate import unravel_index  # NOQA
 
 from cupy.indexing.indexing import choose  # NOQA
+from cupy.indexing.indexing import compress  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
+from cupy.indexing.indexing import extract  # NOQA
+from cupy.indexing.indexing import select  # NOQA
 from cupy.indexing.indexing import take  # NOQA
 from cupy.indexing.indexing import take_along_axis  # NOQA
 
 from cupy.indexing.insert import place  # NOQA
 from cupy.indexing.insert import put  # NOQA
 from cupy.indexing.insert import fill_diagonal  # NOQA
+from cupy.indexing.insert import diag_indices  # NOQA
+from cupy.indexing.insert import diag_indices_from  # NOQA
+
+from cupy.indexing.iterate import flatiter  # NOQA
+
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
@@ -482,6 +493,7 @@ from cupy.linalg.norms import trace  # NOQA
 # Logic functions
 # -----------------------------------------------------------------------------
 from cupy.logic.comparison import allclose  # NOQA
+from cupy.logic.comparison import array_equal  # NOQA
 from cupy.logic.comparison import isclose  # NOQA
 
 from cupy.logic.content import isfinite  # NOQA
@@ -586,6 +598,9 @@ from cupy.math.floating import ldexp  # NOQA
 from cupy.math.floating import nextafter  # NOQA
 from cupy.math.floating import signbit  # NOQA
 
+from cupy.math.rational import gcd  # NOQA
+from cupy.math.rational import lcm  # NOQA
+
 from cupy.math.arithmetic import add  # NOQA
 from cupy.math.arithmetic import divide  # NOQA
 from cupy.math.arithmetic import divmod  # NOQA
@@ -602,7 +617,8 @@ from cupy.math.arithmetic import subtract  # NOQA
 from cupy.math.arithmetic import true_divide  # NOQA
 
 from cupy.math.arithmetic import angle  # NOQA
-from cupy.math.arithmetic import conj  # NOQA
+from cupy.math.arithmetic import conjugate as conj  # NOQA
+from cupy.math.arithmetic import conjugate  # NOQA
 from cupy.math.arithmetic import imag  # NOQA
 from cupy.math.arithmetic import real  # NOQA
 
@@ -639,6 +655,7 @@ from cupy._sorting.count import count_nonzero  # NOQA
 
 from cupy._sorting.search import argmax  # NOQA
 from cupy._sorting.search import argmin  # NOQA
+from cupy._sorting.search import argwhere  # NOQA
 from cupy._sorting.search import flatnonzero  # NOQA
 from cupy._sorting.search import nanargmax  # NOQA
 from cupy._sorting.search import nanargmin  # NOQA
@@ -702,10 +719,6 @@ from cupy.core._reduction import ReductionKernel  # NOQA
 # -----------------------------------------------------------------------------
 
 from cupy.core import fromDlpack  # NOQA
-
-# The following function is left for backward compatibility.
-# New CuPy specific routines should reside in cupyx package.
-from cupy.ext.scatter import scatter_add  # NOQA
 
 
 def asnumpy(a, stream=None, order='C'):

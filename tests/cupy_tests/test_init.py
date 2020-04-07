@@ -6,6 +6,7 @@ import tempfile
 import unittest
 
 import mock
+import numpy
 
 import cupy
 from cupy import testing
@@ -100,6 +101,21 @@ class TestShowConfig(unittest.TestCase):
         with mock.patch('sys.stdout.write') as write_func:
             cupy.show_config()
         write_func.assert_called_once_with(str(cupyx.get_runtime_info()))
+
+
+class TestAliases(unittest.TestCase):
+
+    def test_abs_is_absolute(self):
+        for xp in (numpy, cupy):
+            assert xp.abs is xp.absolute
+
+    def test_conj_is_conjugate(self):
+        for xp in (numpy, cupy):
+            assert xp.conj is xp.conjugate
+
+    def test_bitwise_not_is_invert(self):
+        for xp in (numpy, cupy):
+            assert xp.bitwise_not is xp.invert
 
 
 # This is copied from chainer/testing/__init__.py, so should be replaced in

@@ -43,6 +43,7 @@ cdef class ndarray:
     cpdef partition(self, kth, int axis=*)
     cpdef ndarray argpartition(self, kth, axis=*)
     cpdef tuple nonzero(self)
+    cpdef ndarray compress(self, condition, axis=*, out=*)
     cpdef ndarray diagonal(self, offset=*, axis1=*, axis2=*)
     cpdef ndarray max(self, axis=*, out=*, keepdims=*)
     cpdef ndarray argmax(self, axis=*, out=*, dtype=*,
@@ -68,6 +69,7 @@ cdef class ndarray:
     cpdef ndarray all(self, axis=*, out=*, keepdims=*)
     cpdef ndarray any(self, axis=*, out=*, keepdims=*)
     cpdef ndarray conj(self)
+    cpdef ndarray conjugate(self)
     cpdef get(self, stream=*, order=*, out=*)
     cpdef set(self, arr, stream=*)
     cpdef ndarray reduced_view(self, dtype=*)

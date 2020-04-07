@@ -1,7 +1,9 @@
 import unittest
 
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -90,7 +92,6 @@ class TestDot(unittest.TestCase):
 @testing.gpu
 class TestCrossProduct(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
     def test_cross(self, xp, dtype_a, dtype_b):
@@ -171,13 +172,14 @@ class TestProduct(unittest.TestCase):
         return c
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_transposed_dot_with_out_f_contiguous(self, xp, dtype):
-        a = testing.shaped_arange((2, 3, 4), xp, dtype).transpose(1, 0, 2)
-        b = testing.shaped_arange((4, 2, 3), xp, dtype).transpose(2, 0, 1)
-        c = xp.ndarray((3, 2, 3, 2), dtype=dtype, order='F')
-        # Only C-contiguous array is acceptable
-        xp.dot(a, b, out=c)
+    def test_transposed_dot_with_out_f_contiguous(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp, dtype).transpose(1, 0, 2)
+            b = testing.shaped_arange((4, 2, 3), xp, dtype).transpose(2, 0, 1)
+            c = xp.ndarray((3, 2, 3, 2), dtype=dtype, order='F')
+            with pytest.raises(ValueError):
+                # Only C-contiguous array is acceptable
+                xp.dot(a, b, out=c)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -230,7 +232,6 @@ class TestProduct(unittest.TestCase):
         return xp.inner(a, b)
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.10.2')
     @testing.numpy_cupy_allclose()
     def test_reversed_inner(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)[::-1]
@@ -392,7 +393,6 @@ class TestProduct(unittest.TestCase):
     ],
 }))
 @testing.gpu
-@testing.with_requires('numpy>=1.14.0')
 class TestProductZeroLength(unittest.TestCase):
 
     @testing.for_all_dtypes()
