@@ -1,5 +1,6 @@
 import numpy
 
+import cupy
 from cupy import core
 from cupy.core import fusion
 from cupy._sorting import search
@@ -72,9 +73,9 @@ def _can_memcpy(dst, src):
 
 
 putmask_kernel = core._kernel.ElementwiseKernel(
-    'T mask, T values', 'T out',
+    'Q mask, raw T values, uint64 len_vals', 'T out',
     '''
-    if (mask) out = values;
+    if (mask) out = values[(i % len_vals)];
     ''',
     'putmask_kernel'
 )
@@ -116,23 +117,14 @@ def putmask(a, mask, values):
     if not a.shape == mask.shape:
         raise ValueError('mask and data must be the same size')
 
+    if not a.dtype == values.dtype:
+        values = values.astype(a.dtype, casting='safe')
+
     if a.shape == values.shape:
-        putmask_kernel(mask.astype(a.dtype), values, a)
+        a[mask] = values[mask]
 
     else:
-        shape_a = a.shape
-        if a.ndim > 1:
-            a = a.flatten()
-            mask = mask.flatten()
         if values.ndim > 1:
             values = values.flatten()
 
-        len_vals = len(values)
-        n = 0
-
-        for i in range(len(a)):
-            if mask[i]:
-                a[i] = values[n % len_vals]
-                n += 1
-
-        a = a.reshape(shape_a)
+        putmask_kernel(mask.astype(int), values, len(values), a)

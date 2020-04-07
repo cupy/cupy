@@ -134,11 +134,13 @@ class TestCopytoFromScalar(unittest.TestCase):
 @testing.gpu
 class TestPutmask(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_complex=True, no_bool=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_putmask(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype=dtype)
-        xp.putmask(a, a % 2 == 0, a**2)
+        mask = testing.shaped_random(self.shape, xp, dtype=bool)
+        values = testing.shaped_random(self.shape, xp, dtype=dtype)
+        xp.putmask(a, mask, values)
         return a
 
 
@@ -149,12 +151,13 @@ class TestPutmask(unittest.TestCase):
 @testing.gpu
 class TestPutmaskNonEqual(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_complex=True, no_bool=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_putmask(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype=dtype)
-        values = testing.shaped_random(self.values_shape, dtype=dtype)
-        xp.putmask(a, a > 2, values)
+        mask = testing.shaped_random(self.shape, xp, dtype=bool)
+        values = testing.shaped_random(self.values_shape, xp, dtype=dtype)
+        xp.putmask(a, mask, values)
         return a
 
 
@@ -163,7 +166,7 @@ class TestPutmaskRaises(unittest.TestCase):
 
     def test_putmask(self):
         for xp in (numpy, cupy):
-            a = cupy.array([1, 2, 3])
-            mask = cupy.array([True, False])
+            a = xp.array([1, 2, 3])
+            mask = xp.array([True, False])
             with pytest.raises(ValueError):
                 xp.putmask(a, mask, a**2)
