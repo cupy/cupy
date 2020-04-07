@@ -1,22 +1,10 @@
-import string
-
 import numpy
 from numpy import nan
 
 from cupy.core._reduction import create_reduction_func
 from cupy.core._reduction import ReductionKernel
-from cupy.core._scalar import get_typename as _get_typename
-from cupy import util
-
-try:
-    from cupy.cuda import thrust
-except ImportError:
-    pass
 
 from cupy.core cimport _routines_math as _math
-from cupy.core cimport _routines_manipulation as _manipulation
-from cupy.core cimport _routines_sorting as _sorting
-from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 
 import cupy
@@ -322,232 +310,52 @@ cdef _nanargmax_func = create_reduction_func(
     None, _min_max_preamble)
 
 
-@util.memoize(for_each_device=True)
-def _median_partition_kernel(dtype):
-    name = 'median_partition_kernel'
-    dtype = _get_typename(dtype)
-    source = string.Template('''
-    template<typename T>
-    __device__ void bitonic_sort_step(CArray<T, 1> a,
-            ptrdiff_t x, ptrdiff_t y, int i, ptrdiff_t s, ptrdiff_t w) {
-        for (ptrdiff_t j = i; j < (y - x) / 2; j += 32) {
-            ptrdiff_t n = j + (j & -w);
-            T v = a[n + x], u = a[n + w + x];
-            if (n & s ? v < u : v > u) {
-                a[n + x] = u;
-                a[n + w + x] = v;
-            }
-        }
-    }
-
-    // Sort a[x:y].
-    template<typename T>
-    __device__ void bitonic_sort(
-            CArray<T, 1> a, ptrdiff_t x, ptrdiff_t y, int i) {
-        for (ptrdiff_t s = 2; s <= y - x; s *= 2) {
-            for (ptrdiff_t w = s / 2; w >= 1; w /= 2) {
-                bitonic_sort_step<T>(a, x, y, i, s, w);
-            }
-        }
-    }
-
-    // Merge first k elements and the next 32 times t elements.
-    template<typename T>
-    __device__ void merge(
-            CArray<T, 1> a, int k, int i, ptrdiff_t x, ptrdiff_t z, int u) {
-        for (int s = i; s < u; s += 32) {
-            if (a[x + k - s - 1] > a[z + s]) {
-                T tmp = a[x + k - s - 1];
-                a[x + k - s - 1] = a[z + s];
-                a[z + s] = tmp;
-            }
-        }
-
-        // After merge step, the first k elements are already bitonic.
-        // Therefore, we do not need to fully sort.
-        for (int w = k / 2; w >= 1; w /= 2) {
-            bitonic_sort_step<T>(a, x, k + x, i, k, w);
-        }
-    }
-
-    extern "C" {
-    // In this function, 32 threads handle one subarray. This number equals to
-    // the warp size. The first k elements are always sorted and the next 32
-    // times t elements stored values that have possibilities to be selected.
-    __global__ void ${name}(
-            CArray<${dtype}, 1> a, CArray<${dtype}, 1> out,
-            int k, ptrdiff_t n, int t, ptrdiff_t sz, ptrdiff_t len) {
-
-        // This thread handles a[z:m].
-        ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
-            + threadIdx.x;
-        ptrdiff_t z = i / 32 * len;
-        ptrdiff_t m = (i / 32 + 1) * len;
-        int id = i % 32;
-        int x = 0;
-
-        bitonic_sort<${dtype}>(a, z, k + z, id);
-        ptrdiff_t j;
-        for (j = k + id + z; j < m - (m - z) % 32; j += 32) {
-            if (a[j] < a[k - 1 + z]) {
-                ${dtype} tmp = a[k + 32 * x + id + z];
-                a[k + 32 * x + id + z] = a[j];
-                a[j] = tmp;
-                ++x;
-            }
-
-            // If at least one thread in the warp has found t values that
-            // can be selected, we update the first k elements.
-    #if __CUDACC_VER_MAJOR__ >= 9
-            if (__any_sync(0xffffffff, x >= t)) {
-    #else
-            if (__any(x >= t)) {
-    #endif
-                bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
-                merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
-                x = 0;
-            }
-        }
-        if (j < m && a[j] < a[k - 1 + z]) {
-            ${dtype} tmp = a[k + 32 * x + id + z];
-            a[k + 32 * x + id + z] = a[j];
-            a[j] = tmp;
-        }
-
-        // Finally, we merge the first k elements and the remainders to be
-        // stored.
-        bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
-        merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
-
-        int kth = len / 2;
-        if (len % 2)
-            out[i / 32] = a[z + kth];
-        else
-            out[i / 32] = (a[z + kth - 1] + a[z + kth]) / 2;
-    }
-    }
-    ''').substitute(name=name, dtype=dtype)
-    module = compile_with_cache(source)
-    return module.get_function(name)
-
-
-cdef _median_partition_core(ndarray data, max_k, ndarray out, int axis):
-
-    if data.dtype.kind == 'c':
-        raise NotImplementedError('Sorting arrays with dtype \'{}\' is '
-                                  'not supported'.format(data.dtype))
-
-    cdef int ndim = data._shape.size()
-    cdef Py_ssize_t length, s, sz, t
-
-    if not data._c_contiguous:
-        raise NotImplementedError('Sorting non-contiguous array is not '
-                                  'supported.')
-
-    if axis < 0:
-        axis += ndim
-    if not (0 <= axis < ndim):
-        raise numpy.AxisError('Axis out of range')
-
-    if axis != ndim - 1:
-        data = _manipulation.rollaxis(data, axis, ndim).copy()
-
-    length = data._shape[ndim-1]
-
-    # For simplicity, max_k is round up to the power of 2. If max_k is
-    # already the power of 2, it is round up to the next power of 2 because
-    # we need to collect the first max(kth)+1 elements.
-    max_k = max(32, 1 << max_k.bit_length())
-
-    # The parameter t is the length of the list that stores elements to be
-    # selected for each thread. We divide the array into sz subarrays.
-    # These parameters are determined from the measurement on TITAN X.
-    t = 4
-    sz = 1
-    while sz > 0 and length // sz < max_k + 32 * t:
-        sz //= 2
-    sz *= data.size // length
-
-    # If the array size is small or k is large, we simply sort the array.
-    if length < 32 or sz < 1 or max_k >= 1024:
-        # kth is ignored.
-        data.sort(axis=-1)
-
-        indexer = [slice(None)] * ndim
-
-        index = length // 2
-        if length % 2 == 1:
-            indexer[ndim-1] = slice(index, index+1)
-        else:
-            indexer[ndim-1] = slice(index-1, index+1)
-        indexer = tuple(indexer)
-
-        out = _mean(
-            data[indexer], axis=-1, dtype=None, out=None, keepdims=False)
-
-    else:
-        shape = data.shape
-        data = data.ravel()
-
-        # For each subarray, we collect first k elements to the head.
-        kern = _median_partition_kernel(data.dtype)
-        block_size = 32
-        grid_size = sz
-        kern(grid=(grid_size,), block=(block_size,), args=(
-            data, out, max_k, data.size, t, sz, length))
-
-    return out
-
-
 cpdef ndarray _median(
         ndarray a, axis, out, overwrite_input, keepdims):
 
-    if not isinstance(a, ndarray):
-        raise TypeError('Array is not cupy.ndarray')
-
-    keep_shape = a.shape
-
-    if a.ndim == 0:
-        return a
-
-    if overwrite_input:
-        data = a
-    else:
-        data = a.copy()
+    keep_ndim = a.ndim
 
     if axis is None:
-        sz = data.size
-        data = data.ravel()
-        axis = -1
-        if keepdims:
-            out_shape = tuple([1, ] * len(keep_shape))
-        else:
-            out_shape = ()
+        sz = a.size
     else:
-        sz = data.shape[axis]
-        out_shape = data.shape
-        if keepdims:
-            out_shape = out_shape[:axis] + (1,) + out_shape[axis+1:]
-        else:
-            out_shape = out_shape[:axis] + () + out_shape[axis+1:]
-
-    if out is None:
-        out = cupy.empty(out_shape, dtype=data.dtype)
-    elif out.shape != out_shape:
-        raise ValueError('Out shape is mismatched')
-
+        sz = a.shape[axis]
     if sz % 2 == 0:
         szh = sz // 2
-        max_k = szh
+        kth = [szh - 1, szh]
     else:
-        max_k = (sz - 1) // 2
+        kth = [(sz - 1) // 2]
 
-    out = out.ravel()
-    out = _median_partition_core(data, max_k, out, axis=axis)
+    if overwrite_input:
+        part = a
+    else:
+        part = a.copy()
 
-    out = out.reshape(out_shape)
+    if axis is None:
+        part = part.ravel()
+        part.partition(kth)
+    else:
+        part.partition(kth, axis=axis)
 
-    return out
+    if part.shape == ():
+        return part
+    if axis is None:
+        axis = 0
+
+    indexer = [slice(None)] * part.ndim
+
+    if keepdims:
+        _indexer = [None] * (keep_ndim - part.ndim)
+        indexer.extend(_indexer)
+
+    index = part.shape[axis] // 2
+    if part.shape[axis] % 2 == 1:
+        indexer[axis] = slice(index, index+1)
+    else:
+        indexer[axis] = slice(index-1, index+1)
+    indexer = tuple(indexer)
+
+    return _mean(
+        part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
 
 
 cdef ndarray _mean(
