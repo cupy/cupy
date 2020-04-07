@@ -262,6 +262,11 @@ cdef class _AbstractReductionKernel:
             out_axis = _sort_axis(out_axis, strides)
 
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
+        # Needs to create the empty arrays first and access them for the
+        # _reduce_dims to work.
+        out_args_ = [Arg.from_obj(a) for a in out_args]
+        out_args_ = self._get_out_args(out_args_, out_types, out_shape)
+        out_arrays_ = [(<Arg>a).obj for a in out_args_]
 
         if self.identity == '':
             for axis in reduce_axis:
@@ -269,25 +274,24 @@ cdef class _AbstractReductionKernel:
                     raise ValueError(('zero-size array to reduction operation'
                                       ' %s which has no identity') % self.name)
 
-        if len(out_args) == 1:
+        if len(out_arrays_) == 1:
             # Check the shape of out_args.
-            if out_args[0].shape[-len(out_shape):] != out_shape:
+            if out_arrays_[0].shape[-len(out_shape):] != out_shape:
                 raise ValueError('Shape mismatch')
-
-        in_shape = _set_permuted_args(
-            in_args, reduce_axis + out_axis, a_shape, self.in_params)
-
-        if reduce_dims:
-            in_shape = _reduce_dims(in_args, self.in_params, in_shape)
-            out_shape = _reduce_dims(out_args, self.out_params, out_shape)
-
-        in_args_ = [Arg.from_obj(a) for a in in_args]
-        out_args_ = [Arg.from_obj(a) for a in out_args]
-        out_args_ = self._get_out_args(out_args_, out_types, out_shape)
 
         ret = (<Arg>out_args_[0]).obj
         if ret.size == 0:
             return ret
+
+        in_shape = _set_permuted_args(
+            in_args, reduce_axis + out_axis, a_shape, self.in_params)
+        if reduce_dims:
+            in_shape = _reduce_dims(in_args, self.in_params, in_shape)
+            out_shape = _reduce_dims(out_arrays_, self.out_params, out_shape)
+        in_args_ = [Arg.from_obj(a) for a in in_args]
+        # out_args_ needs to be recreated as the number of dimensions
+        # might have changed
+        out_args_ = [Arg.from_obj(a) for a in out_arrays_]
 
         # Calculate the reduction block dimensions.
         contiguous_size = _get_contiguous_size(
