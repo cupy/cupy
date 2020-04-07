@@ -155,3 +155,52 @@ class TestFillDiagonal(unittest.TestCase):
             val = self._compute_val(xp)
             with pytest.raises(ValueError):
                 xp.fill_diagonal(a, val=val, wrap=self.wrap)
+
+
+@testing.parameterize(*testing.product({
+    'n': [2, 4, -3, 0],
+    'ndim': [2, 3, 1, 0, -2],
+}))
+@testing.gpu
+class TestDiagIndices(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_diag_indices(self, xp):
+        return xp.diag_indices(self.n, self.ndim)
+
+
+@testing.parameterize(*testing.product({
+    'n': [-3, 0],
+    'ndim': [1, 0, -2],
+}))
+@testing.gpu
+class TestDiagIndicesInvalidValues(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_diag_indices(self, xp):
+        return xp.diag_indices(self.n, self.ndim)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(3, 3), (0, 0), (2, 2, 2)],
+}))
+@testing.gpu
+class TestDiagIndicesFrom(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_diag_indices_from(self, xp):
+        arr = testing.shaped_arange(self.shape, xp)
+        return xp.diag_indices_from(arr)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(3, 5), (3, 3, 4), (5,), (0,), (-1,)],
+}))
+@testing.gpu
+class TestDiagIndicesFromRaises(unittest.TestCase):
+
+    def test_non_equal_dims(self):
+        for xp in (numpy, cupy):
+            arr = testing.shaped_arange(self.shape, xp)
+            with pytest.raises(ValueError):
+                xp.diag_indices_from(arr)
