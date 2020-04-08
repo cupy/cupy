@@ -163,7 +163,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     if not hasattr(offset, '__iter__') and type(offset) is not cupy.ndarray:
         offset = [offset] * input.ndim
 
-    if matrix.ndim not in [1, 2]:
+    if matrix.ndim not in [1, 2] or matrix.shape[0] < 1:
         raise RuntimeError('no proper affine matrix provided')
     if matrix.ndim == 2:
         if matrix.shape[0] == matrix.shape[1] - 1:
@@ -172,6 +172,8 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
         elif matrix.shape[0] == input.ndim + 1:
             offset = matrix[:-1, -1]
             matrix = matrix[:-1, :-1]
+        if matrix.shape != (input.ndim, input.ndim):
+            raise RuntimeError("improper affine shape")
 
     if mode == 'opencv':
         m = cupy.zeros((input.ndim + 1, input.ndim + 1))

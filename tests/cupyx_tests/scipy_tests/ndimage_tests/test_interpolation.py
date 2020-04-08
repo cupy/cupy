@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -142,6 +143,35 @@ class TestAffineTransform(unittest.TestCase):
 
 
 @testing.gpu
+@testing.with_requires('scipy')
+class TestAffineExceptions(unittest.TestCase):
+
+    def test_invalid_affine_ndim(self):
+        ndimage_modules = (scipy.ndimage, cupyx.scipy.ndimage)
+        for (xp, ndi) in zip((numpy, cupy), ndimage_modules):
+            x = xp.ones((8, 8, 8))
+            angle = 15
+            with pytest.raises(RuntimeError):
+                ndi.affine_transform(x, xp.ones((3, 3, 3)))
+            with pytest.raises(RuntimeError):
+                ndi.affine_transform(x, xp.ones(()))
+
+    def test_invalid_affine_shape(self):
+        ndimage_modules = (scipy.ndimage, cupyx.scipy.ndimage)
+        for (xp, ndi) in zip((numpy, cupy), ndimage_modules):
+            x = xp.ones((8, 8, 8))
+            angle = 15
+            with pytest.raises(RuntimeError):
+                ndi.affine_transform(x, xp.ones((0, 3)))
+            with pytest.raises(RuntimeError):
+                ndi.affine_transform(x, xp.eye(x.ndim - 1))
+            with pytest.raises(RuntimeError):
+                ndi.affine_transform(x, xp.eye(x.ndim + 2))
+            with pytest.raises(RuntimeError):
+                ndi.affine_transform(x, xp.eye(x.ndim)[:, :-1])
+
+
+@testing.gpu
 @testing.with_requires('opencv-python')
 class TestAffineTransformOpenCV(unittest.TestCase):
 
@@ -214,6 +244,21 @@ class TestRotate(unittest.TestCase):
         half = xp.full_like(float_out, 0.5)
         out[xp.isclose(float_out, half, atol=1e-5)] = 0
         return out
+
+
+@testing.gpu
+@testing.with_requires('scipy')
+class TestRotateExceptions(unittest.TestCase):
+
+    def test_rotate_invalid_plane(self):
+        ndimage_modules = (scipy.ndimage, cupyx.scipy.ndimage)
+        for (xp, ndi) in zip((numpy, cupy), ndimage_modules):
+            x = xp.ones((8, 8, 8))
+            angle = 15
+            with pytest.raises(ValueError):
+                ndi.rotate(x, angle, [0, x.ndim])
+            with pytest.raises(ValueError):
+                ndi.rotate(x, angle, [-(x.ndim + 1), 1])
 
 
 @testing.parameterize(
