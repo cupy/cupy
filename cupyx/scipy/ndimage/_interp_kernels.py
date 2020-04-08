@@ -29,8 +29,7 @@ def _get_coord_map(ndim):
     for j in range(ndim):
         ops.append(
             """
-    W c_{j} = coords[i + {j} * ncoords];
-            """.format(j=j))
+    W c_{j} = coords[i + {j} * ncoords];""".format(j=j))
     return ops
 
 
@@ -54,8 +53,7 @@ def _get_coord_zoom_and_shift(ndim):
     for j in range(ndim):
         ops.append(
             """
-    W c_{j} = zoom[{j}] * ((W)in_coord[{j}] - shift[{j}]);
-            """.format(j=j))
+    W c_{j} = zoom[{j}] * ((W)in_coord[{j}] - shift[{j}]);""".format(j=j))
     return ops
 
 
@@ -78,8 +76,7 @@ def _get_coord_zoom(ndim):
     for j in range(ndim):
         ops.append(
             """
-    W c_{j} = zoom[{j}] * (W)in_coord[{j}];
-            """.format(j=j))
+    W c_{j} = zoom[{j}] * (W)in_coord[{j}];""".format(j=j))
     return ops
 
 
@@ -102,8 +99,7 @@ def _get_coord_shift(ndim):
     for j in range(ndim):
         ops.append(
             """
-    W c_{j} = (W)in_coord[{j}] - shift[{j}];
-            """.format(j=j))
+    W c_{j} = (W)in_coord[{j}] - shift[{j}];""".format(j=j))
     return ops
 
 
@@ -137,12 +133,12 @@ def _get_coord_affine(ndim):
             m_index = ncol * j + k
             ops.append(
                 """
-            c_{j} += mat[{m_index}] * (W)in_coord[{k}];
-                """.format(j=j, k=k, m_index=m_index))
+            c_{j} += mat[{m_index}] * (W)in_coord[{k}];""".format(
+                j=j, k=k, m_index=m_index))
         ops.append(
             """
-            c_{j} += mat[{m_index}];
-            """.format(j=j, m_index=ncol * j + ndim))
+            c_{j} += mat[{m_index}];""".format(
+                j=j, m_index=ncol * j + ndim))
     return ops
 
 
@@ -155,15 +151,13 @@ def _unravel_loop_index(shape, uint_t='unsigned int'):
     code = [
         """
         {uint_t} in_coord[{ndim}];
-        {uint_t} s, t, idx = i;
-        """.format(uint_t=uint_t, ndim=ndim)]
+        {uint_t} s, t, idx = i;""".format(uint_t=uint_t, ndim=ndim)]
     for j in range(ndim - 1, 0, -1):
         code.append("""
         s = {size};
         t = idx / s;
         in_coord[{j}] = idx - t * s;
-        idx = t;
-        """.format(j=j, size=shape[j]))
+        idx = t;""".format(j=j, size=shape[j]))
     code.append("""
         in_coord[0] = idx;""")
     return '\n'.join(code)
@@ -252,8 +246,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
             """.format(int_t=int_t, j=j))
         _coord_idx = ' + '.join(['ic_{}'.format(j) for j in range(ndim)])
         ops.append("""
-            out = x[{coord_idx}];
-            """.format(coord_idx=_coord_idx))
+            out = x[{coord_idx}];""".format(coord_idx=_coord_idx))
 
     elif order == 1:
         for j in range(ndim):
@@ -298,8 +291,8 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
         _coord_idx = ' + '.join(['ic_{j}'.format(j=j) for j in range(ndim)])
         ops.append("""
         X val = x[{coord_idx}];
-        out += val * ({weight});
-        """.format(coord_idx=_coord_idx, weight=_weight))
+        out += val * ({weight});""".format(
+            coord_idx=_coord_idx, weight=_weight))
         ops.append('}' * ndim)
 
     if mode == 'constant':
