@@ -196,6 +196,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     output = _get_output(output, input, shape=output_shape)
     if input.dtype.kind in 'iu':
         input = input.astype(cupy.float32)
+
     integer_output = output.dtype.kind in 'iu'
     large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
     if matrix.ndim == 1:
