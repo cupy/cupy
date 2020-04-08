@@ -172,3 +172,4 @@ Miscellaneous
    cupy.blackman
    cupy.hamming
    cupy.hanning
+   cupy.kaiser

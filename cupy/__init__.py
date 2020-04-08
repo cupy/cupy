@@ -578,6 +578,7 @@ from cupy.math.sumprod import diff  # NOQA
 from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA
 from cupy.math.window import hanning  # NOQA
+from cupy.math.window import kaiser  # NOQA
 
 from cupy.math.explog import exp  # NOQA
 from cupy.math.explog import exp2  # NOQA
