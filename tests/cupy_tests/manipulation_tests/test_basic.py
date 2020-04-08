@@ -137,10 +137,11 @@ class TestPutmask(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_putmask(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype=dtype)
-        mask = testing.shaped_random(self.shape, xp, dtype=bool)
-        values = testing.shaped_random(self.shape, xp, dtype=dtype)
-        xp.putmask(a, mask, values)
+        a = testing.shaped_random(self.shape, xp, dtype=dtype, seed=0)
+        mask = testing.shaped_random(self.shape, xp, dtype=bool, seed=1)
+        values = testing.shaped_random(self.shape, xp, dtype=dtype, seed=2)
+        ret = xp.putmask(a, mask, values)
+        assert ret is None
         return a
 
 
@@ -154,10 +155,12 @@ class TestPutmaskNonEqual(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_putmask(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype=dtype)
-        mask = testing.shaped_random(self.shape, xp, dtype=bool)
-        values = testing.shaped_random(self.values_shape, xp, dtype=dtype)
-        xp.putmask(a, mask, values)
+        a = testing.shaped_random(self.shape, xp, dtype=dtype, seed=3)
+        mask = testing.shaped_random(self.shape, xp, dtype=bool, seed=4)
+        values = testing.shaped_random(self.values_shape,
+                                            xp, dtype=dtype, seed=5)
+        ret = xp.putmask(a, mask, values)
+        assert ret is None
         return a
 
 
@@ -170,3 +173,27 @@ class TestPutmaskRaises(unittest.TestCase):
             mask = xp.array([True, False])
             with pytest.raises(ValueError):
                 xp.putmask(a, mask, a**2)
+
+
+@testing.parameterize(
+    *testing.product(
+        {'a_shape': [(2, 3), (2, 5)],
+         'val_shape': [(2, 3), (3,)]}))
+@testing.gpu
+class TestPutmaskDifferentDtypes(unittest.TestCase):
+
+    @testing.for_all_dtypes_combination(names=['a_dtype', 'val_dtype'])
+    @testing.numpy_cupy_allclose()
+    def test_putmask_differnt_dtypes(self, xp, a_dtype, val_dtype):
+        a = testing.shaped_random(self.a_shape, xp, dtype=a_dtype, seed=6)
+        mask = testing.shaped_random(self.a_shape, xp, dtype=bool, seed=7)
+        values = testing.shaped_random(self.val_shape, xp, dtype=val_dtype, seed=8)
+
+        if numpy.can_cast(val_dtype, a_dtype):
+            ret = xp.putmask(a, mask, values)
+            assert ret is None
+        else:
+            with pytest.raises(TypeError):
+                xp.putmask(a, mask, values)
+
+        return a

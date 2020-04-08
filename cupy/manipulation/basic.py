@@ -71,10 +71,10 @@ def _can_memcpy(dst, src):
         dst.size == src.size
 
 
-putmask_kernel = core._kernel.ElementwiseKernel(
+_putmask_kernel = core._kernel.ElementwiseKernel(
     'Q mask, raw T values, uint64 len_vals', 'T out',
     '''
-    if (mask) out = values[(i % len_vals)];
+    if (mask) out = values[i % len_vals];
     ''',
     'putmask_kernel'
 )
@@ -126,4 +126,4 @@ def putmask(a, mask, values):
         if values.ndim > 1:
             values = values.flatten()
 
-        putmask_kernel(mask.astype(int), values, len(values), a)
+        _putmask_kernel(mask.astype(numpy.int64), values, len(values), a)
