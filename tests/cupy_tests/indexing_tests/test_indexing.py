@@ -31,6 +31,7 @@ class TestIndexing(unittest.TestCase):
         return a.take(b)
 
     # see cupy#3017
+    @testing.with_requires('numpy>=1.15')
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_take_index_range_overflow(self, xp, dtype):
