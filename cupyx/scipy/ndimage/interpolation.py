@@ -187,7 +187,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     if output_shape is None:
         output_shape = input.shape
 
-    matrix = matrix.astype(float, copy=False)
+    matrix = matrix.astype(cupy.float64, copy=False)
     if order is None:
         order = 1
     ndim = input.ndim
@@ -197,7 +197,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     integer_output = output.dtype.kind in 'iu'
     large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
     if matrix.ndim == 1:
-        offset = cupy.asarray(offset, dtype=float)
+        offset = cupy.asarray(offset, dtype=cupy.float64)
         offset = -offset / matrix
         kern = _interp_kernels._get_zoom_shift_kernel(
             ndim, large_int, output_shape, mode, cval=cval, order=order,
@@ -207,9 +207,9 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
         kern = _interp_kernels._get_affine_kernel(
             ndim, large_int, output_shape, mode, cval=cval, order=order,
             integer_output=integer_output)
-        m = cupy.zeros((ndim, ndim + 1), dtype=float)
+        m = cupy.zeros((ndim, ndim + 1), dtype=cupy.float64)
         m[:, :-1] = matrix
-        m[:, -1] = cupy.asarray(offset, dtype=float)
+        m[:, -1] = cupy.asarray(offset, dtype=cupy.float64)
         kern(input, m, output)
     return output
 
@@ -295,7 +295,7 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
         out_bounds = rot_matrix @ [[0, 0, iy, iy],
                                    [0, ix, 0, ix]]
         # Compute the shape of the transformed input plane
-        out_plane_shape = (out_bounds.ptp(axis=1) + 0.5).astype(int)
+        out_plane_shape = (out_bounds.ptp(axis=1) + 0.5).astype(cupy.int64)
     else:
         out_plane_shape = img_shape[axes]
 
@@ -313,7 +313,7 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
     matrix[axes[1], axes[1]] = cos
 
     iy = input.shape[axes[0]]
-    offset = numpy.zeros(ndim, dtype=float)
+    offset = numpy.zeros(ndim, dtype=cupy.float64)
     offset[axes] = in_center - out_center
 
     matrix = cupy.asarray(matrix)
@@ -380,14 +380,14 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
         if order is None:
             order = 1
         output = _get_output(output, input)
-        if input.dtype.kind in "iu":
+        if input.dtype.kind in 'iu':
             input = input.astype(cupy.float32)
-        integer_output = output.dtype.kind in "iu"
+        integer_output = output.dtype.kind in 'iu'
         large_int = _prod(input.shape) > 1 << 31
         kern = _interp_kernels._get_shift_kernel(
             input.ndim, large_int, input.shape, mode, cval=cval, order=order,
             integer_output=integer_output)
-        shift = cupy.asarray(shift, dtype=float)
+        shift = cupy.asarray(shift, dtype=cupy.float64)
         kern(input, shift, output)
     return output
 
@@ -468,13 +468,13 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
                 zoom.append(0)
 
         output = _get_output(output, input, shape=output_shape)
-        if input.dtype.kind in "iu":
+        if input.dtype.kind in 'iu':
             input = input.astype(cupy.float32)
-        integer_output = output.dtype.kind in "iu"
+        integer_output = output.dtype.kind in 'iu'
         large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
         kern = _interp_kernels._get_zoom_kernel(
             input.ndim, large_int, output_shape, mode, order=order,
             integer_output=integer_output)
-        zoom = cupy.asarray(zoom, dtype=float)
+        zoom = cupy.asarray(zoom, dtype=cupy.float64)
         kern(input, zoom, output)
     return output
