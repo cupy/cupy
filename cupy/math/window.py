@@ -1,13 +1,14 @@
 import numpy
 
-from cupy import arange
 from cupy import array
+from cupy import empty
+from cupy import float64
+from cupy import util
 from cupy.creation import basic
 from cupy.creation import from_data
 from cupy.creation import ranges
 from cupy.math import trigonometric
-from cupy.math.special import i0
-from cupy.math.misc import sqrt
+from cupy.core import ElementwiseKernel
 
 
 def blackman(M):
@@ -93,6 +94,19 @@ def hanning(M):
     return 0.5 - 0.5 * trigonometric.cos(2.0 * numpy.pi * n / (M - 1))
 
 
+@util.memoize()
+def _kaiser_kernel():
+    input_arguments = "float32 beta, float32 alpha"
+    output_arguments = "T arr"
+    return ElementwiseKernel(input_arguments,
+                             output_arguments,
+                             """
+                             float temp = (i - alpha)/alpha;
+                             arr = cyl_bessel_i0(beta * sqrt(1-(temp * temp)));
+                             arr /= cyl_bessel_i0(beta);
+                             """)
+
+
 def kaiser(M, beta):
     """Return the Kaiser window.
     The Kaiser window is a taper formed by using a Bessel function.
@@ -121,7 +135,8 @@ def kaiser(M, beta):
     """
     if M == 1:
         return array([1.])
-    n = arange(0, M)
+    if M < 0:
+        return array([])
     alpha = (M-1)/2.0
-    temp = (n-alpha)/alpha
-    return i0(beta * sqrt(1 - (temp * temp)))/i0(float(beta))
+    out = empty(M, dtype=float64)
+    return _kaiser_kernel()(beta, alpha, out)
