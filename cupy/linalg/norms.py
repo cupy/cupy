@@ -2,6 +2,8 @@ import numpy
 from numpy import linalg
 
 import cupy
+from cupy import util as cupy_util
+from cupy.core import fusion
 from cupy.linalg import decomposition
 from cupy.linalg import util
 
@@ -12,6 +14,22 @@ def _multi_svd_norm(x, row_axis, col_axis, op):
     y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
     result = op(decomposition.svd(y, compute_uv=False), axis=-1)
     return result
+
+
+@cupy_util.memoize()
+def _norm_ord2(axis, keepdims):
+    @fusion.fuse(kernel_name='_norm_ord2')
+    def f(x):
+        return cupy.sqrt(cupy.sum((x * x), axis=axis, keepdims=keepdims))
+    return f
+
+
+@cupy_util.memoize()
+def _norm_ord2_complex(axis, keepdims):
+    @fusion.fuse(kernel_name='_norm_ord2_complex')
+    def f(x):
+        return cupy.sqrt(cupy.sum((abs(x) * abs(x)), axis=axis, keepdims=keepdims))
+    return f
 
 
 def norm(x, ord=None, axis=None, keepdims=False):
@@ -78,11 +96,9 @@ def norm(x, ord=None, axis=None, keepdims=False):
         elif ord is None or ord == 2:
             # special case for speedup
             if x.dtype.kind == 'c':
-                s = abs(x)
-                s *= s
+                return _norm_ord2_complex(axis, keepdims)(x)
             else:
-                s = x * x
-            return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
+                return _norm_ord2(axis, keepdims)(x)
         else:
             try:
                 float(ord)
@@ -92,7 +108,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
             absx = abs(x)
             absx **= ord
             ret = absx.sum(axis=axis, keepdims=keepdims)
-            ret **= cupy.reciprocal(ord, dtype=ret.dtype)
+            ret **= numpy.reciprocal(ord, dtype=ret.dtype)
             return ret
     elif len(axis) == 2:
         row_axis, col_axis = axis
@@ -129,11 +145,9 @@ def norm(x, ord=None, axis=None, keepdims=False):
             ret = abs(x).sum(axis=col_axis).min(axis=row_axis)
         elif ord in [None, 'fro', 'f']:
             if x.dtype.kind == 'c':
-                s = abs(x)
-                s *= s
-                ret = cupy.sqrt(s.sum(axis=axis))
+                ret = _norm_ord2_complex(axis, False)(x)
             else:
-                ret = cupy.sqrt((x * x).sum(axis=axis))
+                ret = _norm_ord2(axis, False)(x)
         elif ord == 'nuc':
             ret = _multi_svd_norm(x, row_axis, col_axis, cupy.sum)
         else:
