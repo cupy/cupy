@@ -1,5 +1,6 @@
 import unittest
 
+import numpy
 import cupy
 from cupy import testing
 
@@ -27,6 +28,23 @@ class TestIndexing(unittest.TestCase):
     def test_take_no_axis(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         b = xp.array([[10, 5], [3, 20]])
+        return a.take(b)
+
+    # see cupy#3017
+    @testing.with_requires('numpy>=1.15')
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_take_index_range_overflow(self, xp, dtype):
+        # Skip for too large dimensions
+        if numpy.dtype(dtype) in (numpy.int64, numpy.uint64):
+            return xp.array([])
+        # Skip because NumPy actually allocates a contiguous array in the
+        # `take` below to require much time.
+        if dtype in (numpy.int32, numpy.uint32):
+            return xp.array([])
+        iinfo = numpy.iinfo(dtype)
+        a = xp.broadcast_to(xp.ones(1), (iinfo.max + 1,))
+        b = xp.array([0], dtype=dtype)
         return a.take(b)
 
     @testing.with_requires('numpy>=1.15')
