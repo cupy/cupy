@@ -58,6 +58,9 @@ cdef class Arg:
         readonly int ndim
         readonly bint c_contiguous
 
+    cdef _init_fast_base(self, object obj, _ArgKind arg_kind, object typ,
+                         object dtype, int ndim, bint c_contiguous)
+
     @staticmethod
     cdef Arg from_obj(object obj)
 
@@ -81,10 +84,14 @@ cdef class IndexerArg(Arg):
     cdef:
         readonly tuple shape
 
+    cdef _init_fast(self, tuple shape)
+
     cdef CPointer get_pointer(self)
 
 
 cdef class NdarrayArg(Arg):
+
+    cdef _init_fast(self, core.ndarray obj, int ndim, bint c_contiguous)
 
     cdef CPointer get_pointer(self)
 
@@ -99,6 +106,8 @@ cdef class ScalarArg(Arg):
         readonly object _dtype
         bint _dtype_applied
 
+    cdef _init_fast(self, object obj)
+
     cdef object get_min_scalar_type(self)
 
     cdef apply_dtype(self, object dtype)
@@ -107,5 +116,7 @@ cdef class ScalarArg(Arg):
 
 
 cdef class PointerArg(Arg):
+
+    cdef _init_fast(self, intptr_t ptr)
 
     cdef CPointer get_pointer(self)

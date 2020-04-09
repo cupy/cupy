@@ -270,21 +270,41 @@ cdef class Arg:
         self.ndim = ndim
         self.c_contiguous = c_contiguous
 
+    cdef _init_fast_base(
+            self,
+            object obj,
+            _ArgKind arg_kind,
+            object typ,
+            object dtype,
+            int ndim,
+            bint c_contiguous):
+        self.obj = obj
+        self.arg_kind = arg_kind
+        self.type = typ
+        self.dtype = dtype
+        self.ndim = ndim
+        self.c_contiguous = c_contiguous
+
     @staticmethod
     cdef Arg from_obj(object obj):
         cdef Arg arg
         # Determine the kind of the argument
         if isinstance(obj, core.ndarray):
-            arg = NdarrayArg(obj, c_contiguous=obj.flags.c_contiguous)
+            arg = NdarrayArg.__new__(NdarrayArg)
+            (<NdarrayArg>arg)._init_fast(
+                obj, obj.ndim, obj.flags.c_contiguous)
             return arg
         if hasattr(obj, '__cuda_array_interface__'):
             # __cuda_array_interface__
             obj = core._convert_object_with_cuda_array_interface(obj)
-            arg = NdarrayArg(obj, c_contiguous=obj.flags.c_contiguous)
+            arg = NdarrayArg.__new__(NdarrayArg)
+            (<NdarrayArg>arg)._init_fast(
+                obj, obj.ndim, obj.flags.c_contiguous)
             return arg
         if _scalar.is_scalar(obj):
             # scalar
-            arg = ScalarArg(obj)
+            arg = ScalarArg.__new__(ScalarArg)
+            (<ScalarArg>arg)._init_fast(obj)
             return arg
         if isinstance(obj, TextureObject):
             return PointerArg(obj.ptr)
@@ -340,6 +360,11 @@ cdef class IndexerArg(Arg):
         super().__init__(None, ARG_KIND_INDEXER, None, None, ndim, True)
         self.shape = shape
 
+    cdef _init_fast(self, tuple shape):
+        ndim = len(shape)
+        self._init_fast_base(None, ARG_KIND_INDEXER, None, None, ndim, True)
+        self.shape = shape
+
     # override
     def get_repr_data(self):
         return ['shape={}'.format(self.shape)]
@@ -359,6 +384,15 @@ cdef class NdarrayArg(Arg):
         if ndim == -1:
             ndim = obj.ndim
         super().__init__(
+            obj,
+            ARG_KIND_NDARRAY,
+            core.ndarray,
+            obj.dtype,
+            obj.ndim,
+            obj.flags.c_contiguous)
+
+    cdef _init_fast(self, core.ndarray obj, int ndim, bint c_contiguous):
+        self._init_fast_base(
             obj,
             ARG_KIND_NDARRAY,
             core.ndarray,
@@ -407,6 +441,17 @@ cdef class ScalarArg(Arg):
         self._numpy_scalar = numpy_scalar
         self._dtype_applied = False
 
+    cdef _init_fast(self, object obj):
+        if _scalar.is_numpy_scalar(obj):
+            numpy_scalar = obj
+            dtype = obj.dtype
+        else:
+            numpy_scalar = _scalar.python_scalar_to_numpy_scalar(obj)
+            dtype = numpy_scalar.dtype
+        self._init_fast_base(obj, ARG_KIND_SCALAR, None, dtype, 0, True)
+        self._numpy_scalar = numpy_scalar
+        self._dtype_applied = False
+
     cdef object get_min_scalar_type(self):
         return _scalar.get_min_scalar_type(self._numpy_scalar)
 
@@ -432,6 +477,10 @@ cdef class PointerArg(Arg):
 
     def __init__(self, intptr_t ptr):
         super().__init__(CUIntMax(ptr), ARG_KIND_POINTER, None, None, 0, True)
+
+    cdef _init_fast(self, intptr_t ptr):
+        self._init_fast_base(
+            CUIntMax(ptr), ARG_KIND_POINTER, None, None, 0, True)
 
     # override
     def get_repr_data(self):
