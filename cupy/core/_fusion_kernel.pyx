@@ -23,7 +23,7 @@ from cupy.cuda cimport runtime
 from cupy.core cimport _reduction
 
 
-@util.memoize()
+@util.memoize(for_each_device=True)
 def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
     template = (
         '${preamble}\n\n'

@@ -373,3 +373,27 @@ class TestFusionThread(unittest.TestCase):
             threads[tid].join()
 
         return xp.concatenate(out)
+
+
+@testing.gpu
+class TestFusionMultiDevice(unittest.TestCase):
+
+    @testing.multi_gpu(2)
+    @testing.numpy_cupy_array_equal()
+    def test_multi_device(self, xp):
+
+        @cupy.fuse()
+        def f(x, y):
+            return x + y * 2
+
+        with cupy.cuda.Device(0):
+            x1 = testing.shaped_random((3, 3), xp, xp.int64, seed=0)
+            y1 = testing.shaped_random((3, 3), xp, xp.int64, seed=1)
+            out1 = f(x1, y1)
+
+        with cupy.cuda.Device(1):
+            x2 = testing.shaped_random((3, 3), xp, xp.int64, seed=2)
+            y2 = testing.shaped_random((3, 3), xp, xp.int64, seed=3)
+            out2 = f(x2, y2)
+
+        return out1, out2
