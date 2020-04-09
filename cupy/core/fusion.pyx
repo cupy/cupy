@@ -963,8 +963,9 @@ def _call_reduction(fusion_op, *args, **kwargs):
         raise TypeError(mes.format(fusion_op._ops.name, len(args)))
 
     arg = args[0]
-    kwargs = dict([(key, value) for key, value in kwargs.items()
-                   if (key in ('axis', 'out') and value is not None)])
+    keys = ('axis', 'keepdims' 'out')
+    kwargs = {key: value for key, value in kwargs.items()
+                   if (key in keys and value is not None)}
 
     if arg._is_postmap:
         # Multiple reduction
@@ -974,7 +975,9 @@ def _call_reduction(fusion_op, *args, **kwargs):
     var = _thread_local.history.set_reduce_op(fusion_op, arg, kwargs)
 
     src_ndim = max(0, arg.ndim)
-    if 'axis' in kwargs:
+    if 'keepdims' in kwargs and kwargs['keepdims']:
+        ndim = src_ndim
+    elif 'axis' in kwargs:
         axis = kwargs['axis']
         if isinstance(axis, (tuple, list)):
             ndim = src_ndim - len(axis)
