@@ -1,12 +1,6 @@
-import string
-
 import numpy
 
 import cupy
-from cupy import util
-from cupy.core import _carray
-from cupy.core import _scalar
-from cupy.cuda import device
 
 
 def place(arr, mask, vals):
@@ -75,33 +69,6 @@ def put(a, ind, v, mode='wrap'):
 # TODO(okuta): Implement putmask
 
 
-_fill_diagonal_template = string.Template(r'''
-#include <cupy/complex.cuh>
-#include <cupy/carray.cuh>
-extern "C" __global__
-void cupy_fill_diagonal(CArray<${type}, ${a_ndim}> a,
-                        CIndexer<${a_ndim}> a_ind,
-                        int start,
-                        int stop,
-                        int step,
-                        CArray<${type}, ${val_ndim}> val,
-                        CIndexer<${val_ndim}> val_ind) {
-    int n = (stop - start) / step + 1;
-    CUPY_FOR(i, n) {
-        a_ind.set(start + i * step);
-        val_ind.set(i % val_ind.size());
-        a[a_ind.get()] = val[val_ind.get()];
-    }
-}''')
-
-
-@util.memoize(for_each_device=True)
-def _fill_diagonal_kernel(type, a_ndim, val_ndim):
-    code = _fill_diagonal_template.substitute(
-        type=type, a_ndim=a_ndim, val_ndim=val_ndim)
-    return cupy.RawKernel(code, 'cupy_fill_diagonal')
-
-
 def fill_diagonal(a, val, wrap=False):
     """Fills the main diagonal of the given array of any dimensionality.
 
@@ -130,7 +97,7 @@ def fill_diagonal(a, val, wrap=False):
     # The followings are imported from the original numpy
     if a.ndim < 2:
         raise ValueError('array must be at least 2-d')
-    end = a.size
+    end = None
     if a.ndim == 2:
         step = a.shape[1] + 1
         if not wrap:
@@ -140,21 +107,79 @@ def fill_diagonal(a, val, wrap=False):
             raise ValueError('All dimensions of input must be of equal length')
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
-    val = cupy.asarray(val, dtype=a.dtype)
+    a.flat[:end:step] = val
 
-    dev_id = device.get_device_id()
-    for arr in [a, val]:
-        if arr.data.device_id != dev_id:
-            raise ValueError(
-                'Array device must be same as the current '
-                'device: array device = %d while current = %d'
-                % (arr.data.device_id, dev_id))
 
-    typename = _scalar.get_typename(a.dtype)
-    fill_diagonal_kernel = _fill_diagonal_kernel(typename, a.ndim, val.ndim)
+def diag_indices(n, ndim=2):
+    """ Return the indices to access the main diagonal of an array.
 
-    size = end // step + 1
-    a_ind = _carray.Indexer(a.shape)
-    val_ind = _carray.Indexer(val.shape)
-    fill_diagonal_kernel.kernel.linear_launch(
-        size, (a, a_ind, 0, end, step, val, val_ind))
+    Returns a tuple of indices that can be used to access the main
+    diagonal of an array with ``ndim >= 2`` dimensions and shape
+    (n, n, ..., n).
+
+    Args:
+        n (int): The size, along each dimension of the arrays for which
+            the indices are to be returned.
+        ndim (int): The number of dimensions. default `2`.
+
+    Examples
+    --------
+    Create a set of indices to access the diagonal of a (4, 4) array:
+    >>> dig = cupy.diag_indices(4)
+    >>> dig
+    (array([0, 1, 2, 3]), array([0, 1, 2, 3]))
+    >>> a = cupy.arange(16).reshape(4, 4)
+    >>> a
+    array([[ 0,  1,  2,  3],
+           [ 4,  5,  6,  7],
+           [ 8,  9, 10, 11],
+           [12, 13, 14, 15]])
+    >>> a[di] = 100
+    >>> a
+    array([[100,   1,   2,   3],
+           [  4, 100,   6,   7],
+           [  8,   9, 100,  11],
+           [ 12,  13,  14, 100]])
+
+    Create indices to manipulate a 3-D array:
+    >>> d3 = cupy.diag_indices(2, 3)
+    >>> d3
+    (array([0, 1]), array([0, 1]), array([0, 1]))
+    And use it to set the diagonal of an array of zeros to 1:
+    >>> a = cupy.zeros((2, 2, 2), dtype=int)
+    >>> a[d3] = 1
+    >>> a
+    array([[[1, 0],
+            [0, 0]],
+           [[0, 0],
+            [0, 1]]])
+
+     .. seealso:: :func:`numpy.diag_indices`
+
+    """
+    idx = cupy.arange(n)
+    return (idx,) * ndim
+
+
+def diag_indices_from(arr):
+    """
+    Return the indices to access the main diagonal of an n-dimensional array.
+    See `diag_indices` for full details.
+
+    Args:
+        arr (cupy.ndarray): At least 2-D.
+
+     .. seealso:: :func:`numpy.diag_indices_from`
+
+    """
+    if not isinstance(arr, cupy.ndarray):
+        raise TypeError("Argument must be cupy.ndarray")
+
+    if not arr.ndim >= 2:
+        raise ValueError("input array must be at least 2-d")
+    # For more than d=2, the strided formula is only valid for arrays with
+    # all dimensions equal, so we check first.
+    if not cupy.all(cupy.diff(arr.shape) == 0):
+        raise ValueError("All dimensions of input must be of equal length")
+
+    return diag_indices(arr.shape[0], arr.ndim)

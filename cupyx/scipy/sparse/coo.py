@@ -103,8 +103,7 @@ class coo_matrix(sparse_data._data_matrix):
             has_canonical_format = False
 
         else:
-            raise ValueError(
-                'Only (data, (row, col)) format is supported')
+            raise TypeError('invalid input format')
 
         if dtype is None:
             dtype = data.dtype

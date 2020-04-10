@@ -2,7 +2,9 @@ import unittest
 import warnings
 
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -106,12 +108,13 @@ class TestArrayIndexingParameterized(unittest.TestCase):
 class TestArrayInvalidIndex(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_invalid_getitem(self, xp, dtype):
-        a = testing.shaped_arange(self.shape, xp, dtype)
-        if self.transpose:
-            a = a.transpose(self.transpose)
-        a[self.indexes]
+    def test_invalid_getitem(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp, dtype)
+            if self.transpose:
+                a = a.transpose(self.transpose)
+            with pytest.raises((ValueError, IndexError, TypeError)):
+                a[self.indexes]
 
 
 @testing.gpu

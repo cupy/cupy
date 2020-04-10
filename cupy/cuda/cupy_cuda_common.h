@@ -77,8 +77,6 @@ struct cudaPointerAttributes{
     int device;
     void* devicePointer;
     void* hostPointer;
-    int isManaged;
-    int memoryType;
 };
 
 
