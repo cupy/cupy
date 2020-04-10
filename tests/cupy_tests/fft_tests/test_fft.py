@@ -353,6 +353,10 @@ class TestFft2(unittest.TestCase):
             a = xp.asfortranarray(a)
         out = xp.fft.fft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
+        if self.axes is not None and not self.axes:
+            assert out is a
+            return out
+
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
@@ -369,6 +373,10 @@ class TestFft2(unittest.TestCase):
         if order == 'F':
             a = xp.asfortranarray(a)
         out = xp.fft.ifft2(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        if self.axes is not None and not self.axes:
+            assert out is a
+            return out
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
