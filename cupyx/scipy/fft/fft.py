@@ -452,14 +452,13 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
     # TODO(leofang): support R2C & C2R plans
     if plan is not None:
         raise NotImplementedError('irfftn plan is currently not yet supported')
+    s = _assequence(s)
+    axes = _assequence(axes)
     if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
             and int(cupy.cuda.device.get_compute_capability()) < 70
             and _size_last_transform_axis(x.shape, s, axes) == 2):
         warnings.warn('Output of irfftn might not be correct due to issue '
                       'of cuFFT in CUDA 10.1/10.2 on Pascal or older GPUs.')
-
-    s = _assequence(s)
-    axes = _assequence(axes)
     func = _default_fft_func(x, s, axes, value_type='C2R')
     return func(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R',
                 overwrite_x=overwrite_x)
