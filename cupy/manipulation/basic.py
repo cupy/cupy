@@ -1,5 +1,6 @@
 import numpy
 
+import cupy
 from cupy import core
 from cupy.core import fusion
 from cupy._sorting import search
@@ -92,8 +93,9 @@ def putmask(a, mask, values):
         a (cupy.ndarray): Target array.
         mask (cupy.ndarray): Boolean mask array. It has to be
             the same shape as `a`.
-        values (cupy.ndarray): Values to put into `a` where `mask` is True.
-            If `values` is smaller than `a`, then it will be repeated.
+        values (cupy.ndarray or scalar): Values to put into `a` where `mask`
+            is True. If `values` is smaller than `a`, then it will be
+            repeated.
 
     Examples
     --------
@@ -113,17 +115,25 @@ def putmask(a, mask, values):
     .. seealso:: :func:`numpy.putmask`
 
     """
+    # TODO: support different dtypes for a and values without typecasting
+
     if not a.shape == mask.shape:
         raise ValueError('mask and data must be the same size')
 
-    if not a.dtype == values.dtype:
-        values = values.astype(a.dtype, casting='safe')
-
-    if a.shape == values.shape:
-        a[mask] = values[mask]
+    if cupy.isscalar(values):
+        a[mask] = values
 
     else:
-        if values.ndim > 1:
-            values = values.flatten()
+        if not values.dtype == a.dtype:
+            raise TypeError('Different dtypes for `values` and '
+                            '`a` are not supported yet')
 
-        _putmask_kernel(mask.astype(numpy.int64), values, len(values), a)
+        if a.shape == values.shape:
+            a[mask] = values[mask]
+
+        else:
+            if values.ndim > 1:
+                values = values.flatten()
+
+            _putmask_kernel(mask.astype(numpy.int64),
+                            values, len(values), a)
