@@ -3,8 +3,9 @@ from numpy import prod
 import cupy
 from cupy.cuda import cufft
 from cupy.fft import config
-from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
-                          _get_cufft_plan_nd)
+from cupy.fft.fft import (_convert_fft_type, _default_fft_func, _fft,
+                          _get_cufft_plan_nd, _get_fftn_out_size,
+                          _output_dtype)
 
 
 def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
@@ -22,8 +23,12 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             Currently, for performing N-D transform these must be a set of up
             to three adjacent axes, and must include either the first or the
             last axis of the array.
-        value_type ('C2C'): The FFT type to perform.
-            Currently only complex-to-complex transforms are supported.
+
+            If a tuple is provided, it should already be sorted.
+        value_type (str): The FFT type to perform. Acceptable values are:
+            'C2C': complex-to-complex transform
+            'R2C': real-to-complex transform
+            'C2R': complex-to-real transform
 
     Returns:
         a cuFFT plan for either 1D transform (``cupy.cuda.cufft.Plan1d``) or
@@ -92,23 +97,34 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
     transformed_shape = shape
     shape = list(a.shape)
     if transformed_shape is not None:
+        #if value_type == 'C2R' and transformed_shape[axes[-1]] is not None:
+        #    transformed_shape[axes[-1]] = transformed_shape[axes[-1]] // 2 + 1
         for s, axis in zip(transformed_shape, axes):
+            if axis == axes[-1] and value_type == 'C2R' and s is not None:
+                s = s // 2 + 1
             shape[axis] = s
     shape = tuple(shape)
 
-    # TODO(leofang): support R2C/C2R transforms
     # check value_type
-    fft_type = _convert_fft_type(a, value_type)
-    if n > 1 and fft_type not in [cufft.CUFFT_C2C, cufft.CUFFT_Z2Z]:
-        raise NotImplementedError('Only C2C and Z2Z are supported for N-dim'
-                                  ' transform.')
+    out_dtype = _output_dtype(a.dtype, value_type)
+    fft_type = _convert_fft_type(out_dtype, value_type)
+    # TODO(leofang): perhaps we could relax this (even though we didn't do so
+    # in cupy.fft.rfftn and friends)?
+    if n > 1 and value_type != 'C2C' and a.flags.f_contiguous:
+        raise ValueError('C2R/R2C PlanNd for F-order arrays is not supported')
 
     # generate plan
     if n > 1:  # ND transform
-        plan = _get_cufft_plan_nd(shape, fft_type, axes=axes, order=order)
+        out_size = _get_fftn_out_size(shape, transformed_shape, axes[-1], value_type)
+        plan = _get_cufft_plan_nd(
+            shape, fft_type, axes=axes, order=order, out_size=out_size)
     else:  # 1D transform
-        out_size = shape[axis1D]
-        batch = prod(shape) // out_size
+        if value_type != 'C2R':
+            out_size = shape[axis1D]
+            batch = prod(shape) // out_size
+        else:
+            out_size = _get_fftn_out_size(shape, transformed_shape, axis1D, value_type)
+            batch = prod(shape) // shape[axis1D]
         devices = None if not config.use_multi_gpus else config._devices
         plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
 

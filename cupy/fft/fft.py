@@ -60,18 +60,19 @@ def _cook_shape(a, s, axes, value_type, order='C'):
     return a
 
 
-def _convert_fft_type(a, value_type):
-    if value_type == 'C2C' and a.dtype == np.complex64:
+# TODO(leofang): memoize this?
+def _convert_fft_type(dtype, value_type):
+    if value_type == 'C2C' and dtype == np.complex64:
         return cufft.CUFFT_C2C
-    elif value_type == 'R2C' and a.dtype == np.float32:
+    elif value_type == 'R2C' and dtype == np.float32:
         return cufft.CUFFT_R2C
-    elif value_type == 'C2R' and a.dtype == np.complex64:
+    elif value_type == 'C2R' and dtype == np.complex64:
         return cufft.CUFFT_C2R
-    elif value_type == 'C2C' and a.dtype == np.complex128:
+    elif value_type == 'C2C' and dtype == np.complex128:
         return cufft.CUFFT_Z2Z
-    elif value_type == 'R2C' and a.dtype == np.float64:
+    elif value_type == 'R2C' and dtype == np.float64:
         return cufft.CUFFT_D2Z
-    elif value_type == 'C2R' and a.dtype == np.complex128:
+    elif value_type == 'C2R' and dtype == np.complex128:
         return cufft.CUFFT_Z2D
     else:
         raise ValueError
@@ -79,7 +80,7 @@ def _convert_fft_type(a, value_type):
 
 def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
               out_size=None, out=None, plan=None):
-    fft_type = _convert_fft_type(a, value_type)
+    fft_type = _convert_fft_type(a.dtype, value_type)
 
     if axis % a.ndim != a.ndim - 1:
         a = a.swapaxes(axis, -1)
@@ -108,7 +109,8 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         if fft_type != plan.fft_type:
             raise ValueError('cuFFT plan dtype mismatch.')
         if out_size != plan.nx:
-            raise ValueError('Target array size does not match the plan.')
+            raise ValueError('Target array size does not match the plan.',
+                             out_size, plan.nx)
         if batch != plan.batch:
             raise ValueError('Batch size does not match the plan.')
         if config.use_multi_gpus != plan._use_multi_gpus:
@@ -181,10 +183,7 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
     else:  # C2R
         a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
         # _cook_shape tells us input shape only, and no output shape
-        if (s is None) or (s[-1] is None):
-            out_size = a.shape[axes[-1]] * 2 - 2
-        else:
-            out_size = s[-1]
+        out_size = _get_fftn_out_size(a.shape, s, axes[-1], value_type)
         a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x,
                       out_size)
 
@@ -381,10 +380,23 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
     return plan
 
 
+def _get_fftn_out_size(in_shape, s, last_axis, value_type):
+    if value_type == 'C2R':
+        if (s is None) or (s[-1] is None):
+            out_size = 2 * (in_shape[last_axis] - 1)
+        else:
+            out_size = s[-1]
+    elif value_type == 'R2C':
+        out_size = in_shape[last_axis] // 2 + 1
+    else:  # C2C
+        out_size = None
+    return out_size
+
+
 def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
                plan=None, out=None, out_size=None):
 
-    fft_type = _convert_fft_type(a, value_type)
+    fft_type = _convert_fft_type(a.dtype, value_type)
 
     if a.base is not None:
         a = a.copy()
@@ -481,16 +493,8 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
     elif order == 'F' and not a.flags.f_contiguous:
         a = cupy.asfortranarray(a)
 
-    # _cook_shape tells us input shape only, and no output shape
-    if value_type == 'C2R':
-        if (s is None) or (s[-1] is None):
-            out_size = 2 * (a.shape[axes_sorted[-1]] - 1)
-        else:
-            out_size = s[-1]
-    elif value_type == 'R2C':
-        out_size = a.shape[axes_sorted[-1]] // 2 + 1
-    else:  # C2C
-        out_size = None
+    # _cook_shape tells us input shape only, and not output shape
+    out_size = _get_fftn_out_size(a.shape, s, axes_sorted[-1], value_type)
 
     a = _exec_fftn(a, direction, value_type, norm=norm, axes=axes_sorted,
                    overwrite_x=overwrite_x, plan=plan, out=out,
