@@ -421,15 +421,3 @@ def irfft(x, n=None, axis=-1, overwrite_x=False):
 
     return _fft(z, (n,), (axis,), None, cufft.CUFFT_INVERSE, 'C2R',
                 overwrite_x=overwrite_x)
-
-
-# TODO(leofang): support rfft2
-
-
-# TODO(leofang): support irfft2
-
-
-# TODO(leofang): support rfftn
-
-
-# TODO(leofang): support irfftn
