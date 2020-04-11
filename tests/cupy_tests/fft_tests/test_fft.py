@@ -982,7 +982,69 @@ class TestRfftn(unittest.TestCase):
         return out
 
 
-# TODO(leofang): write a TestPlanCtxManagerRfftn class
+@testing.parameterize(
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
+    #{'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
+    #{'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
+    #{'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
+)
+@testing.gpu
+class TestPlanCtxManagerRfftn(unittest.TestCase):
+
+    @nd_planning_states()
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_rfftn(self, xp, dtype, enable_nd):
+        assert config.enable_nd_planning == enable_nd
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp is cupy:
+            from cupyx.scipy.fftpack import get_fft_plan
+            plan = get_fft_plan(a, self.s, self.axes, value_type='R2C')
+            with plan:
+                out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
+        else:
+            out = xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
+            out = out.astype(np.complex64)
+
+        return out
+
+    @nd_planning_states()
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_irfftn(self, xp, dtype, enable_nd):
+        assert config.enable_nd_planning == enable_nd
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp is cupy:
+            from cupyx.scipy.fftpack import get_fft_plan
+            plan = get_fft_plan(a, self.s, self.axes, value_type='C2R')
+            with plan:
+                out = xp.fft.irfftn(
+                    a, s=self.s, axes=self.axes, norm=self.norm)
+        else:
+            out = xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        if xp is np and dtype in [np.float16, np.float32, np.complex64]:
+            out = out.astype(np.float32)
+
+        return out
+
+    # TODO(leofang): write test_rfftn_error_on_wrong_plan()?
 
 
 @testing.parameterize(

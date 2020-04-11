@@ -5,7 +5,7 @@ from cupy.cuda import cufft
 from cupy.fft import config
 from cupy.fft.fft import (_convert_fft_type, _default_fft_func, _fft,
                           _get_cufft_plan_nd, _get_fftn_out_size,
-                          _output_dtype)
+                          _output_dtype, _prep_fftn_axes)
 
 
 def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
@@ -23,8 +23,6 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             Currently, for performing N-D transform these must be a set of up
             to three adjacent axes, and must include either the first or the
             last axis of the array.
-
-            If a tuple is provided, it should already be sorted.
         value_type (str): The FFT type to perform. Acceptable values are:
             'C2C': complex-to-complex transform
             'R2C': real-to-complex transform
@@ -81,6 +79,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         if n == 1:
             axis1D = 0
     else:  # axes is a tuple
+        #axes, axes_sorted = _prep_fftn_axes(a.ndim, shape, axes, value_type)
         n = len(axes)
         if n == 1:
             axis1D = axes[0]
@@ -94,22 +93,21 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
     # Note that "shape" here refers to the shape along trasformed axes, not
     # the shape of the output array, and we need to convert it to the latter.
     # The result is as if "a=_cook_shape(a); return a.shape" is called.
+    # Because of this, we need to use (possibly unsorted) axes.
     transformed_shape = shape
     shape = list(a.shape)
     if transformed_shape is not None:
-        #if value_type == 'C2R' and transformed_shape[axes[-1]] is not None:
-        #    transformed_shape[axes[-1]] = transformed_shape[axes[-1]] // 2 + 1
         for s, axis in zip(transformed_shape, axes):
-            if axis == axes[-1] and value_type == 'C2R' and s is not None:
-                s = s // 2 + 1
-            shape[axis] = s
+            if s is not None:
+                if axis == axes[-1] and value_type == 'C2R':
+                    s = s // 2 + 1
+                shape[axis] = s
     shape = tuple(shape)
 
     # check value_type
     out_dtype = _output_dtype(a.dtype, value_type)
     fft_type = _convert_fft_type(out_dtype, value_type)
-    # TODO(leofang): perhaps we could relax this (even though we didn't do so
-    # in cupy.fft.rfftn and friends)?
+    # TODO(leofang): figure out if we really have to skip F-order?
     if n > 1 and value_type != 'C2C' and a.flags.f_contiguous:
         raise ValueError('C2R/R2C PlanNd for F-order arrays is not supported')
 
