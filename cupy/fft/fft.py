@@ -422,12 +422,15 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
         if order != plan.order:
             raise ValueError('array orders mismatch (plan: {}, input: {})'
                              .format(plan.order, order))
-        # TODO(leofang): this shape check needs to be modified for C2R
         if a.flags.c_contiguous:
-            expected_shape = tuple(a.shape[ax] for ax in axes)
+            expected_shape = [a.shape[ax] for ax in axes]
+            if value_type == 'C2R':
+                expected_shape[-1] = out_size
         else:
             # plan.shape will be reversed for Fortran-ordered inputs
-            expected_shape = tuple(a.shape[ax] for ax in axes[::-1])
+            expected_shape = [a.shape[ax] for ax in axes[::-1]]
+            # TODO(leofang): modify the shape for C2R
+        expected_shape = tuple(expected_shape)
         if expected_shape != plan.shape:
             raise ValueError(
                 'The cuFFT plan and a.shape do not match: '
