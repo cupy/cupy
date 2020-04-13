@@ -27,7 +27,10 @@ cdef class _ShapeConstraints:
     """
 
     cdef:
+        # A list of tuple of _AbstractDim and _AbstractDim which represents
+        # the equality between dimensions.
         readonly list eq_constraints
+        # A list of tuple of _AbstractDim and int which is an associative list
         readonly list const_constraints
 
     def __init__(self):
@@ -35,6 +38,8 @@ cdef class _ShapeConstraints:
         self.const_constraints = []
 
     def add_eq_constraint(self, x, y):
+        """Add a constraint: x == y.
+        """
         _fusion_thread_local.check_not_runtime()
         assert isinstance(x, (_AbstractDim, int))
         assert isinstance(y, (_AbstractDim, int))
@@ -52,6 +57,8 @@ cdef class _ShapeConstraints:
             assert False
 
     def add_const_constraint(self, x, value):
+        """Add a constraint: x == value.
+        """
         _fusion_thread_local.check_not_runtime()
         assert isinstance(x, (_AbstractDim, int))
         assert isinstance(value, int)
@@ -62,6 +69,8 @@ cdef class _ShapeConstraints:
             assert x == value
 
     def evaluate(self, x):
+        """Substitute repeatedly from the equalities.
+        """
         _fusion_thread_local.check_not_runtime()
         assert isinstance(x, (_AbstractDim, int))
         for src, dest in self.eq_constraints + self.const_constraints:
@@ -73,6 +82,13 @@ cdef class _ShapeConstraints:
 
     # Used in runtime.
     def satisfy(self, dict dim_map):
+        """Check if the given dicionary satisfies the constraints.
+
+        Args:
+            dim_map (dict):
+                A dictionary with keys of _AbstractDim type and
+                values of int type.
+        """
         for a, b in self.eq_constraints:
             if dim_map[a] != dim_map[b]:
                 return False

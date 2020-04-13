@@ -8,6 +8,13 @@ from cupy.core import _fusion_interface
 
 cdef class _AbstractDim:
     """An abstrated data structure for a length of dimensions.
+
+    Attributes:
+        input_index (int):
+            The position of the element in the arguments passed to the
+            fused function
+        axis (int):
+            The index of dimensions
     """
 
     def __init__(self, int input_index, int axis):
