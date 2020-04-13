@@ -366,6 +366,10 @@ def _as_pairs(x, ndim, as_index=False):
         # Pass through None as a special case, otherwise cupy.round(x) fails
         # with an AttributeError
         return ((None, None),) * ndim
+    elif isinstance(x, numbers.Number):
+        if as_index:
+            x = round(x)
+        return ((x, x),) * ndim
 
     x = numpy.array(x)
     if as_index:
