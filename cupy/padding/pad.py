@@ -602,6 +602,11 @@ def pad(array, pad_width, mode='constant', **kwargs):
         # Broadcast to shape (array.ndim, 2)
         pad_width = _as_pairs(pad_width, array.ndim, as_index=True)
 
+    if mode == 'constant':
+        values = kwargs.get('constant_values', 0)
+        if isinstance(values, numbers.Number) and values == 0:
+            return _pad_simple(array, pad_width, 0)[0]
+
     if callable(mode):
         # Old behavior: Use user-supplied function with numpy.apply_along_axis
         function = mode
