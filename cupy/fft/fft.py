@@ -60,7 +60,6 @@ def _cook_shape(a, s, axes, value_type, order='C'):
     return a
 
 
-# TODO(leofang): memoize this?
 def _convert_fft_type(dtype, value_type):
     if value_type == 'C2C' and dtype == np.complex64:
         return cufft.CUFFT_C2C

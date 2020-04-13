@@ -339,7 +339,7 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
                 overwrite_x=overwrite_x, plan=plan)
 
 
-def rfft(x, n=None, axis=-1, overwrite_x=False):
+def rfft(x, n=None, axis=-1, overwrite_x=False, plan=None):
     """Compute the one-dimensional FFT for real input.
 
     The returned real array contains
@@ -356,12 +356,26 @@ def rfft(x, n=None, axis=-1, overwrite_x=False):
             ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (cupy.cuda.cufft.Plan1d): a cuFFT plan for transforming ``x``
+            over ``axes``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(
+                    x, axes, value_type='R2C')
+
+            Note that `plan` is defaulted to None, meaning CuPy will either
+            use an auto-generated plan behind the scene if cupy.fft.config.
+            enable_nd_planning = True, or use no cuFFT plan if it is set to
+            False.
 
     Returns:
         cupy.ndarray:
             The transformed array.
 
     .. seealso:: :func:`scipy.fftpack.rfft`
+
+    .. note::
+       The argument `plan` is currently experimental and the interface may be
+       changed in the future version.
     """
     if n is None:
         n = x.shape[axis]
@@ -369,7 +383,7 @@ def rfft(x, n=None, axis=-1, overwrite_x=False):
     shape = list(x.shape)
     shape[axis] = n
     f = _fft(x, (n,), (axis,), None, cufft.CUFFT_FORWARD, 'R2C',
-             overwrite_x=overwrite_x)
+             overwrite_x=overwrite_x, plan=plan)
     z = cupy.empty(shape, f.real.dtype)
 
     slice_z = [slice(None)] * x.ndim
@@ -406,6 +420,11 @@ def irfft(x, n=None, axis=-1, overwrite_x=False):
             The transformed array.
 
     .. seealso:: :func:`scipy.fftpack.irfft`
+
+    .. note::
+       This function does not support a precomputed `plan`. If you need this
+       capability, please consider using :func:`cupy.fft.irfft` or :func:`
+       cupyx.scipy.fft.irfft`.
     """
     if n is None:
         n = x.shape[axis]
