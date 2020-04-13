@@ -1,3 +1,5 @@
+import numbers
+
 import numpy
 
 import cupy
@@ -585,13 +587,16 @@ def pad(array, pad_width, mode='constant', **kwargs):
            [100, 100, 100, 100, 100, 100, 100],
            [100, 100, 100, 100, 100, 100, 100]])
     """
-    pad_width = numpy.asarray(pad_width)
+    if isinstance(pad_width, numbers.Integral):
+        pad_width = ((pad_width, pad_width),) * array.ndim
+    else:
+        pad_width = numpy.asarray(pad_width)
 
-    if not pad_width.dtype.kind == 'i':
-        raise TypeError('`pad_width` must be of integral type.')
+        if not pad_width.dtype.kind == 'i':
+            raise TypeError('`pad_width` must be of integral type.')
 
-    # Broadcast to shape (array.ndim, 2)
-    pad_width = _as_pairs(pad_width, array.ndim, as_index=True)
+        # Broadcast to shape (array.ndim, 2)
+        pad_width = _as_pairs(pad_width, array.ndim, as_index=True)
 
     if callable(mode):
         # Old behavior: Use user-supplied function with numpy.apply_along_axis
