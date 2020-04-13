@@ -73,9 +73,9 @@ def _can_memcpy(dst, src):
 
 
 _putmask_kernel = core._kernel.ElementwiseKernel(
-    'Q mask, raw T values, uint64 len_vals', 'T out',
+    'Q mask, raw S values, uint64 len_vals', 'T out',
     '''
-    if (mask) out = values[i % len_vals];
+    if (mask) out = (T) values[i % len_vals];
     ''',
     'putmask_kernel'
 )
@@ -124,9 +124,9 @@ def putmask(a, mask, values):
         a[mask] = values
 
     else:
-        if not values.dtype == a.dtype:
-            raise TypeError('Different dtypes for `values` and '
-                            '`a` are not supported yet')
+        if not numpy.can_cast(values.dtype, a.dtype):
+            raise TypeError("Cannot cast array data from dtype('float64') to "
+                            "dtype('int64') according to the rule 'safe'")
 
         if a.shape == values.shape:
             a[mask] = values[mask]
@@ -134,6 +134,5 @@ def putmask(a, mask, values):
         else:
             if values.ndim > 1:
                 values = values.flatten()
-
             _putmask_kernel(mask.astype(numpy.int64),
                             values, len(values), a)

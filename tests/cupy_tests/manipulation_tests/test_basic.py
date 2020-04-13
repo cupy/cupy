@@ -188,9 +188,10 @@ class TestPutmaskDifferentDtypes(unittest.TestCase):
     def test_putmask_differnt_dtypes_raises_cupy(self, a_dtype, val_dtype):
         # different dtypes for `a` and `values` are not supported yet
         shape = (2, 3)
-        a = testing.shaped_random(shape, cupy, dtype=a_dtype)
-        mask = testing.shaped_random(shape, cupy, dtype=bool)
-        values = testing.shaped_random((3,), cupy, dtype=val_dtype)
-        if a_dtype != val_dtype:
-            with pytest.raises(TypeError):
-                cupy.putmask(a, mask, values)
+        for xp in (numpy, cupy):
+            a = testing.shaped_random(shape, xp, dtype=a_dtype)
+            mask = testing.shaped_random(shape, xp, dtype=bool)
+            values = testing.shaped_random((3,), xp, dtype=val_dtype)
+            if not numpy.can_cast(val_dtype, a_dtype):
+                with pytest.raises(TypeError):
+                    xp.putmask(a, mask, values)
