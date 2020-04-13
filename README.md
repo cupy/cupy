@@ -19,6 +19,8 @@
 CuPy consists of the core multi-dimensional array class, `cupy.ndarray`, and many functions on it.
 It supports a subset of `numpy.ndarray` interface.
 
+CuPy is being developed by [Preferred Networks Inc.](https://preferred.jp/en/)
+
 ## Installation
 
 For detailed instructions on installing CuPy, see [the installation guide](https://docs-cupy.chainer.org/en/stable/install.html).
