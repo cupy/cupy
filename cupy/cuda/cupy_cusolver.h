@@ -72,6 +72,38 @@ cusolverStatus_t cusolverDnCgesvdj(...) {
 cusolverStatus_t cusolverDnZgesvdj(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
+
+cusolverStatus_t cusolverDnSgesvdjBatched_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDgesvdjBatched_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCgesvdjBatched_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZgesvdjBatched_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnSgesvdjBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDgesvdjBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCgesvdjBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZgesvdjBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
 #endif // #if CUDA_VERSION < 9000
 
 #if CUDA_VERSION < 10010
@@ -505,6 +537,38 @@ cusolverStatus_t cusolverDnCgesvdj(...) {
 }
 
 cusolverStatus_t cusolverDnZgesvdj(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnSgesvdjBatched_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDgesvdjBatched_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCgesvdjBatched_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZgesvdjBatched_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnSgesvdjBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDgesvdjBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCgesvdjBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZgesvdjBatched(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
