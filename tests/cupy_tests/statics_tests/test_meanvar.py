@@ -11,6 +11,46 @@ ignore_runtime_warnings = pytest.mark.filterwarnings(
 
 
 @testing.gpu
+class TestMedian(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_median_noaxis(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        return xp.median(a)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_median_axis1(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        return xp.median(a, axis=1)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_median_axis2(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        return xp.median(a, axis=2)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_median_overwrite_input(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        return xp.median(a, overwrite_input=True)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_median_keepdims_axis1(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        return xp.median(a, axis=1, keepdims=True)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_median_keepdims_noaxis(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        return xp.median(a, keepdims=True)
+
+
+@testing.gpu
 class TestAverage(unittest.TestCase):
 
     _multiprocess_can_split_ = True
