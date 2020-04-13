@@ -38,6 +38,7 @@ class _VariableProxy:
     """
 
     def __init__(self, content):
+        assert isinstance(content, cupy.core._fusion_variable._TraceVariable)
         self.content = content
 
     def __neg__(self):

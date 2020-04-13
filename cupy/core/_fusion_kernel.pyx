@@ -114,6 +114,8 @@ cdef class FusedKernel:
             self._return_size = -2
             self._out_params.resize(1)
         else:
+            assert isinstance(return_size, int)
+            assert return_size >= 0
             self._return_size = return_size
             self._out_params.resize(return_size)
 
