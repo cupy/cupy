@@ -762,7 +762,7 @@ class TestRfft(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
-    'shape': [(10,),],
+    'shape': [(10,)],
     'norm': [None, 'ortho'],
 }))
 @testing.gpu
@@ -943,23 +943,21 @@ class TestRfftn(unittest.TestCase):
         return out
 
 
+# Only those tests in which a legit plan can be obtained are kept
 @testing.parameterize(
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
     {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
     {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    #{'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    #{'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    #{'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
 )
 @testing.gpu
 class TestPlanCtxManagerRfftn(unittest.TestCase):

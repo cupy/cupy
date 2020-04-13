@@ -5,7 +5,7 @@ from cupy.cuda import cufft
 from cupy.fft import config
 from cupy.fft.fft import (_convert_fft_type, _default_fft_func, _fft,
                           _get_cufft_plan_nd, _get_fftn_out_size,
-                          _output_dtype, _prep_fftn_axes)
+                          _output_dtype)
 
 
 def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
@@ -24,9 +24,10 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             to three adjacent axes, and must include either the first or the
             last axis of the array.
         value_type (str): The FFT type to perform. Acceptable values are:
-            'C2C': complex-to-complex transform
-            'R2C': real-to-complex transform
-            'C2R': complex-to-real transform
+
+            * 'C2C': complex-to-complex transform (default)
+            * 'R2C': real-to-complex transform
+            * 'C2R': complex-to-real transform
 
     Returns:
         a cuFFT plan for either 1D transform (``cupy.cuda.cufft.Plan1d``) or
@@ -79,7 +80,6 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         if n == 1:
             axis1D = 0
     else:  # axes is a tuple
-        #axes, axes_sorted = _prep_fftn_axes(a.ndim, shape, axes, value_type)
         n = len(axes)
         if n == 1:
             axis1D = axes[0]
@@ -113,7 +113,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
 
     # generate plan
     if n > 1:  # ND transform
-        out_size = _get_fftn_out_size(shape, transformed_shape, axes[-1], value_type)
+        out_size = _get_fftn_out_size(
+            shape, transformed_shape, axes[-1], value_type)
         plan = _get_cufft_plan_nd(
             shape, fft_type, axes=axes, order=order, out_size=out_size)
     else:  # 1D transform
@@ -121,7 +122,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             out_size = shape[axis1D]
             batch = prod(shape) // out_size
         else:
-            out_size = _get_fftn_out_size(shape, transformed_shape, axis1D, value_type)
+            out_size = _get_fftn_out_size(
+                shape, transformed_shape, axis1D, value_type)
             batch = prod(shape) // shape[axis1D]
         devices = None if not config.use_multi_gpus else config._devices
         plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)

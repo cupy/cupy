@@ -611,7 +611,7 @@ class TestRfft(unittest.TestCase):
         else:
             kw = {}
         out = _fft_module(xp).rfft(x, n=self.n, axis=self.axis, norm=self.norm,
-                                  **kw)
+                                   **kw)
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes(no_complex=True)
