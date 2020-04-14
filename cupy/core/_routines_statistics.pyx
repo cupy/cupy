@@ -313,6 +313,9 @@ cdef _nanargmax_func = create_reduction_func(
 cpdef ndarray _median(
         ndarray a, axis, out, overwrite_input, keepdims):
 
+    if a.dtype.char == '?':
+        a = a.astype(cupy.float64)
+
     keep_ndim = a.ndim
 
     if axis is None:
@@ -325,19 +328,30 @@ cpdef ndarray _median(
     else:
         kth = [(sz - 1) // 2]
 
-    if overwrite_input:
+    if a.dtype.char == 'e':
+        # partition doesn't support float16, so temporarily convert to float32
+        part = a.astype(cupy.float32)
+    elif overwrite_input:
         part = a
     else:
         part = a.copy()
 
     if axis is None:
         part = part.ravel()
-        part.partition(kth)
+        if part.dtype.kind == 'c':
+            part.sort()
+        else:
+            part.partition(kth)
     else:
-        part.partition(kth, axis=axis)
+        if part.dtype.kind == 'c':
+            part.sort(axis=axis)
+        else:
+            part.partition(kth, axis=axis)
 
     if part.shape == ():
         return part
+    if a.dtype.char == 'e':
+        part = part.astype(cupy.float16)
     if axis is None:
         axis = 0
 
