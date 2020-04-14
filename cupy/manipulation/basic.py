@@ -115,7 +115,13 @@ def putmask(a, mask, values):
     .. seealso:: :func:`numpy.putmask`
 
     """
-    # TODO: support different dtypes for a and values without typecasting
+
+    if not isinstance(a, cupy.ndarray):
+        raise ValueError('`a` should be of type cupy.ndarray')
+    if not isinstance(mask, cupy.ndarray):
+        raise ValueError('`mask` should be of type cupy.ndarray')
+    if not (cupy.isscalar(values) or isinstance(values, cupy.ndarray)):
+        raise ValueError('`values` should be of type cupy.ndarray')
 
     if not a.shape == mask.shape:
         raise ValueError('mask and data must be the same size')
@@ -123,16 +129,15 @@ def putmask(a, mask, values):
     if cupy.isscalar(values):
         a[mask] = values
 
+    elif not numpy.can_cast(values.dtype, a.dtype):
+        raise TypeError('Cannot cast array data from'
+                        ' {} to {} according to the rule \'safe\''
+                        .format(values.dtype, a.dtype))
+
+    elif a.shape == values.shape:
+        a[mask] = values[mask]
+
     else:
-        if not numpy.can_cast(values.dtype, a.dtype):
-            raise TypeError("Cannot cast array data from dtype('float64') to "
-                            "dtype('int64') according to the rule 'safe'")
-
-        if a.shape == values.shape:
-            a[mask] = values[mask]
-
-        else:
-            if values.ndim > 1:
-                values = values.flatten()
-            _putmask_kernel(mask.astype(numpy.int64),
-                            values, len(values), a)
+        if values.ndim > 1:
+            values = values.ravel()
+        _putmask_kernel(mask, values, len(values), a)

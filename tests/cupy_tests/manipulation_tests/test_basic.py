@@ -186,7 +186,6 @@ class TestPutmaskDifferentDtypes(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['a_dtype', 'val_dtype'])
     def test_putmask_differnt_dtypes_raises_cupy(self, a_dtype, val_dtype):
-        # different dtypes for `a` and `values` are not supported yet
         shape = (2, 3)
         for xp in (numpy, cupy):
             a = testing.shaped_random(shape, xp, dtype=a_dtype)
