@@ -326,19 +326,21 @@ cpdef ndarray _median(
         # cupy.sort and cupy.partition only support integer axis, so move
         # all reduced dimensions to the end and reshape them into a single
         # reduction axis.
-        reduce_axis, out_axis = _reduction._get_axis(axis, ndim)
+        reduce_axis, out_axis = _reduction._get_axis(axis, keep_ndim)
         out_shape = _reduction._get_out_shape(a.shape, reduce_axis, out_axis,
                                               keepdims)
         a = a.transpose(out_axis + reduce_axis)
         sort_shape = tuple([a.shape[n] for n in range(len(out_axis))]) + (-1,)
         a = a.reshape(sort_shape)
         if not a.flags.c_contiguous:
-            a = cp.ascontiguousarray(a)
+            a = cupy.ascontiguousarray(a)
         axis = -1
 
     if axis is None:
         sz = a.size
     else:
+        if axis < -keep_ndim or axis >= keep_ndim:
+            raise numpy.AxisError('Axis overrun')
         sz = a.shape[axis]
     if sz % 2 == 0:
         szh = sz // 2
@@ -370,7 +372,7 @@ cpdef ndarray _median(
 
     indexer = [slice(None)] * part.ndim
 
-    if keepdims:
+    if keepdims and out_shape is None:
         _indexer = [None] * (keep_ndim - part.ndim)
         indexer.extend(_indexer)
 
