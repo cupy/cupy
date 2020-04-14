@@ -1,6 +1,9 @@
+from cpython cimport sequence
+
 import numpy
 from numpy import nan
 
+from cupy.core import _reduction
 from cupy.core._reduction import create_reduction_func
 from cupy.core._reduction import ReductionKernel
 
@@ -318,6 +321,21 @@ cpdef ndarray _median(
 
     keep_ndim = a.ndim
 
+    out_shape = None
+    if sequence.PySequence_Check(axis):
+        # cupy.sort and cupy.partition only support integer axis, so move
+        # all reduced dimensions to the end and reshape them into a single
+        # reduction axis.
+        reduce_axis, out_axis = _reduction._get_axis(axis, ndim)
+        out_shape = _reduction._get_out_shape(a.shape, reduce_axis, out_axis,
+                                              keepdims)
+        a = a.transpose(out_axis + reduce_axis)
+        sort_shape = tuple([a.shape[n] for n in range(len(out_axis))]) + (-1,)
+        a = a.reshape(sort_shape)
+        if not a.flags.c_contiguous:
+            a = cp.ascontiguousarray(a)
+        axis = -1
+
     if axis is None:
         sz = a.size
     else:
@@ -363,8 +381,11 @@ cpdef ndarray _median(
         indexer[axis] = slice(index-1, index+1)
     indexer = tuple(indexer)
 
-    return _mean(
+    out = _mean(
         part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
+    if out_shape is not None:
+        out = out.reshape(out_shape)
+    return out
 
 
 cdef ndarray _mean(
