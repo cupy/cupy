@@ -55,6 +55,7 @@ class RandomState(object):
 
     def __init__(self, seed=None, method=curand.CURAND_RNG_PSEUDO_DEFAULT):
         self._generator = curand.createGenerator(method)
+        self.method = method
         self.seed(seed)
 
     def __del__(self, is_shutting_down=util.is_shutting_down):
@@ -739,7 +740,9 @@ class RandomState(object):
                     numpy.asarray(seed).astype(numpy.uint64, casting='safe'))
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
-        curand.setGeneratorOffset(self._generator, 0)
+        if(self.method != curand.CURAND_RNG_PSEUDO_MT19937 and
+           self.method != curand.CURAND_RNG_PSEUDO_MTGP32):
+            curand.setGeneratorOffset(self._generator, 0)
 
         self._rk_seed = seed
 
