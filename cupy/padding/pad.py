@@ -604,7 +604,9 @@ def pad(array, pad_width, mode='constant', **kwargs):
 
     if mode == 'constant':
         values = kwargs.get('constant_values', 0)
-        if isinstance(values, numbers.Number) and values == 0:
+        if isinstance(values, numbers.Number) and values == 0 and (
+                array.ndim == 1 or array.size < 4e6):
+            # faster path for 1d arrays or small n-dimensional arrays
             return _pad_simple(array, pad_width, 0)[0]
 
     if callable(mode):
