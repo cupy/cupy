@@ -126,6 +126,9 @@ def putmask(a, mask, values):
     if not a.shape == mask.shape:
         raise ValueError('mask and data must be the same size')
 
+    if mask.dtype.kind == 'c':
+        mask = mask.astype(bool)
+
     if cupy.isscalar(values):
         a[mask] = values
 

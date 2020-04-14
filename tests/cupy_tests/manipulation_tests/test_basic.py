@@ -185,7 +185,7 @@ class TestPutmask(unittest.TestCase):
 class TestPutmaskDifferentDtypes(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['a_dtype', 'val_dtype'])
-    def test_putmask_differnt_dtypes_raises_cupy(self, a_dtype, val_dtype):
+    def test_putmask_differnt_dtypes_raises(self, a_dtype, val_dtype):
         shape = (2, 3)
         for xp in (numpy, cupy):
             a = testing.shaped_random(shape, xp, dtype=a_dtype)
@@ -194,3 +194,13 @@ class TestPutmaskDifferentDtypes(unittest.TestCase):
             if not numpy.can_cast(val_dtype, a_dtype):
                 with pytest.raises(TypeError):
                     xp.putmask(a, mask, values)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_putmask_differnt_dtypes_mask(self, xp, dtype):
+        shape = (2, 3)
+        a = testing.shaped_random(shape, xp, dtype=numpy.int64)
+        mask = testing.shaped_random(shape, xp, dtype=dtype)
+        values = testing.shaped_random((3,), xp, dtype=numpy.int64)
+        xp.putmask(a, mask, values)
+        return a
