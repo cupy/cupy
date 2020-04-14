@@ -138,6 +138,5 @@ def putmask(a, mask, values):
         a[mask] = values[mask]
 
     else:
-        if values.ndim > 1:
-            values = values.ravel()
+        values = values.ravel()
         _putmask_kernel(mask, values, len(values), a)
