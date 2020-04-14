@@ -328,10 +328,7 @@ cpdef ndarray _median(
     else:
         kth = [(sz - 1) // 2]
 
-    if a.dtype.char == 'e':
-        # partition doesn't support float16, so temporarily convert to float32
-        part = a.astype(cupy.float32)
-    elif overwrite_input:
+    if overwrite_input:
         part = a
     else:
         part = a.copy()
@@ -350,8 +347,6 @@ cpdef ndarray _median(
 
     if part.shape == ():
         return part
-    if a.dtype.char == 'e':
-        part = part.astype(cupy.float16)
     if axis is None:
         axis = 0
 
