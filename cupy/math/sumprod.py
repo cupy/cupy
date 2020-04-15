@@ -329,7 +329,7 @@ def gradient(f, *varargs, **kwargs):
         # all other types convert to floating point
         otype = numpy.double
 
-    # TODO: use Elementwisekernel
+    # TODO: use Elementwisekerne
     for axis, ax_dx in zip(axes, dx):
         if f.shape[axis] < edge_order + 1:
             raise ValueError(
