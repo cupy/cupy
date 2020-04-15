@@ -108,28 +108,12 @@ __host__ __device__ __forceinline__ bool operator<(const cuDoubleComplex& lhs, c
     return _cmp_less(lhs, rhs);
 }
 
-//// specialize thrust::less for cuComplex
-//template <>
-//struct less<cuComplex> {
-//    __host__ __device__ __forceinline__ bool operator() (const cuComplex& lhs, const cuComplex& rhs) {
-//        return _cmp_less(lhs, rhs);
-//    }
-//};
-
-//
-//// specialize thrust::less for cuDoubleComplex
-//template <>
-//struct less<cuDoubleComplex> {
-//    __host__ __device__ __forceinline__ bool operator() (const cuDoubleComplex& lhs, const cuDoubleComplex& rhs) {
-//        return _cmp_less(lhs, rhs);
-//    }
-//};
 /* ------------------------------------ end of boilerplate ------------------------------------ */
 
 /*
  * --------------------------------- Minimum boilerplate to support half precision floats ----------------------------------
- * half_isnan is copied from cupy/cuda/cupy_cub.cu, and half_less is also modified from there.
- * TODO(leofang): refactor the code to avoid repetition!
+ * half_isnan is copied from cupy/cuda/cupy_cub.cu, and the specialization of less<__half> is also borrowed from there.
+ * TODO(leofang): is it possible to refactor the code and avoid repetition?
  */
 
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
@@ -138,7 +122,7 @@ __host__ __device__ __forceinline__ bool half_isnan(const cpy_half& x) {
 #ifdef __CUDA_ARCH__
     return __hisnan(x);
 #else
-    // TODO: avoid cast to float
+    // TODO(leofang): do we really need this branch?
     return isnan(__half2float(x));
 #endif
 }
@@ -162,41 +146,7 @@ struct less<cpy_half> {
     }
 };
 
-//typedef tuple<size_t, cpy_half> cpy_kv_half;
-//
-//// specialize thrust::less for tuple of __half
-//template <>
-//struct less<cpy_kv_half> {
-//    __host__ __device__ __forceinline__ bool operator() (const cpy_kv_half& lhs, const cpy_kv_half& rhs) {
-//        const cpy_half& lhs_v = lhs.get<1>();
-//        const cpy_half& rhs_v = rhs.get<1>();
-//
-//        if (half_isnan(lhs_v)) {
-//            return false;
-//        } else if (half_isnan(rhs_v)) {
-//            return true;
-//        } else {
-//        #ifdef __CUDA_ARCH__
-//            return lhs_v < rhs_v;
-//        #else
-//            // TODO(leofang): do we really need this branch?
-//            return __half2float(lhs_v) < __half2float(rhs_v);
-//        #endif
-//        }
-//    }
-//};
 #endif  // include cupy_fp16.h
-
-//// specialize thrust::less for thrust::tuple
-//template <typename T>
-//struct less< tuple<size_t, T> > {
-//    __host__ __device__ __forceinline__ bool operator() (const tuple<size_t, T>& lhs, const tuple<size_t, T>& rhs) const {
-//        const T& lhs_v = lhs.get<1>();
-//        const T& rhs_v = rhs.get<1>();
-//        less<T> comp;
-//        return comp(lhs_v, rhs_v);
-//    }
-//};
 
 /* ------------------------------------ end of boilerplate ------------------------------------ */
 

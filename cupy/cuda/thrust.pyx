@@ -73,7 +73,7 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
 
     if dtype == numpy.float16:
         if int(device.get_compute_capability()) < 53 or \
-            runtime.runtimeGetVersion() < 9020:
+                runtime.runtimeGetVersion() < 9020:
             raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                                'support fp16')
 
@@ -100,9 +100,11 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
     elif dtype == numpy.float64:
         _sort[common.cpy_double](_data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.complex64:
-        _sort[common.cpy_complex64](_data_start, _keys_start, shape, _strm, mem)
+        _sort[common.cpy_complex64](
+            _data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.complex128:
-        _sort[common.cpy_complex128](_data_start, _keys_start, shape, _strm, mem)
+        _sort[common.cpy_complex128](
+            _data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.bool:
         _sort[common.cpy_bool](_data_start, _keys_start, shape, _strm, mem)
     else:
@@ -123,7 +125,7 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
 
     if dtype == numpy.float16:
         if int(device.get_compute_capability()) < 53 or \
-            runtime.runtimeGetVersion() < 9020:
+                runtime.runtimeGetVersion() < 9020:
             raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                                'support fp16')
 
@@ -176,7 +178,7 @@ cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
 
     if dtype == numpy.float16:
         if int(device.get_compute_capability()) < 53 or \
-            runtime.runtimeGetVersion() < 9020:
+                runtime.runtimeGetVersion() < 9020:
             raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                                'support fp16')
 
