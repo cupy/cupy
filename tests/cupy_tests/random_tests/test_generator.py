@@ -233,7 +233,7 @@ class TestRandomState(unittest.TestCase):
 
         for method in methods:
             rs = cupy.random.RandomState(method=method)
-            _ = rs.normal()
+            rs.normal()
 
 
 @testing.parameterize(
