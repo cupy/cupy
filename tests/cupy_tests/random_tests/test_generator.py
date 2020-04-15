@@ -221,6 +221,20 @@ class TestRandomState(unittest.TestCase):
     def test_array_seed(self):
         self.check_seed(numpy.random.randint(0, 2**31, size=40))
 
+    def test_methods(self):
+        methods = [
+            cuda.curand.CURAND_RNG_PSEUDO_DEFAULT,
+            cuda.curand.CURAND_RNG_PSEUDO_MRG32K3A,
+            cupy.cuda.curand.CURAND_RNG_PSEUDO_MT19937,
+            cupy.cuda.curand.CURAND_RNG_PSEUDO_PHILOX4_32_10,
+            cupy.cuda.curand.CURAND_RNG_PSEUDO_MTGP32,
+            cupy.cuda.curand.CURAND_RNG_PSEUDO_XORWOW
+        ]
+
+        for method in methods:
+            rs = cupy.random.RandomState(method=method)
+            _ = rs.normal()
+
 
 @testing.parameterize(
     {'a': 1.0, 'b': 3.0},

@@ -740,8 +740,8 @@ class RandomState(object):
                     numpy.asarray(seed).astype(numpy.uint64, casting='safe'))
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
-        if(self.method != curand.CURAND_RNG_PSEUDO_MT19937 and
-           self.method != curand.CURAND_RNG_PSEUDO_MTGP32):
+        if (self.method not in (curand.CURAND_RNG_PSEUDO_MT19937,
+                                curand.CURAND_RNG_PSEUDO_MTGP32)):
             curand.setGeneratorOffset(self._generator, 0)
 
         self._rk_seed = seed
