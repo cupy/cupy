@@ -108,46 +108,97 @@ __host__ __device__ __forceinline__ bool operator<(const cuDoubleComplex& lhs, c
     return _cmp_less(lhs, rhs);
 }
 
+//// specialize thrust::less for cuComplex
+//template <>
+//struct less<cuComplex> {
+//    __host__ __device__ __forceinline__ bool operator() (const cuComplex& lhs, const cuComplex& rhs) {
+//        return _cmp_less(lhs, rhs);
+//    }
+//};
+
+//
+//// specialize thrust::less for cuDoubleComplex
+//template <>
+//struct less<cuDoubleComplex> {
+//    __host__ __device__ __forceinline__ bool operator() (const cuDoubleComplex& lhs, const cuDoubleComplex& rhs) {
+//        return _cmp_less(lhs, rhs);
+//    }
+//};
 /* ------------------------------------ end of boilerplate ------------------------------------ */
 
-///*
-// * --------------------------------- Minimum boilerplate to support half precision floats ----------------------------------
-// * These stubs are copied from cupy/cuda/cupy_cub.cu.
-// * TODO(leofang): refactor the code to avoid repetition!
-// */
+/*
+ * --------------------------------- Minimum boilerplate to support half precision floats ----------------------------------
+ * half_isnan is copied from cupy/cuda/cupy_cub.cu, and half_less is also modified from there.
+ * TODO(leofang): refactor the code to avoid repetition!
+ */
+
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+__host__ __device__ __forceinline__ bool half_isnan(const cpy_half& x) {
+#ifdef __CUDA_ARCH__
+    return __hisnan(x);
+#else
+    // TODO: avoid cast to float
+    return isnan(__half2float(x));
+#endif
+}
+
+// specialize thrust::less for __half
+template <>
+struct less<cpy_half> {
+    __host__ __device__ __forceinline__ bool operator() (const cpy_half& lhs, const cpy_half& rhs) const {
+        if (half_isnan(lhs)) {
+            return false;
+        } else if (half_isnan(rhs)) {
+            return true;
+        } else {
+        #ifdef __CUDA_ARCH__
+            return lhs < rhs;
+        #else
+            // TODO(leofang): do we really need this branch?
+            return __half2float(lhs) < __half2float(rhs);
+        #endif
+        }
+    }
+};
+
+//typedef tuple<size_t, cpy_half> cpy_kv_half;
 //
-//#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-//    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
-//__host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
-//#ifdef __CUDA_ARCH__
-//    return __hisnan(x);
-//#else
-//    // TODO: avoid cast to float
-//    return isnan(__half2float(x));
-//#endif
-//}
+//// specialize thrust::less for tuple of __half
+//template <>
+//struct less<cpy_kv_half> {
+//    __host__ __device__ __forceinline__ bool operator() (const cpy_kv_half& lhs, const cpy_kv_half& rhs) {
+//        const cpy_half& lhs_v = lhs.get<1>();
+//        const cpy_half& rhs_v = rhs.get<1>();
 //
-//__host__ __device__ __forceinline__ bool half_less(const __half& l, const __half& r) {
-//#ifdef __CUDA_ARCH__
-//    return l < r;
-//#else
-//    // TODO: avoid cast to float
-//    return __half2float(l) < __half2float(r);
-//#endif
-//}
-//
-//__host__ __device__ __forceinline__ bool operator<(const __half& lhs, const __half& rhs) {
-//    if (half_isnan(lhs)) {
-//        return false;
-//    } else if (half_isnan(rhs)) {
-//        return true;
-//    } else {
-//        return half_less(lhs, rhs);
+//        if (half_isnan(lhs_v)) {
+//            return false;
+//        } else if (half_isnan(rhs_v)) {
+//            return true;
+//        } else {
+//        #ifdef __CUDA_ARCH__
+//            return lhs_v < rhs_v;
+//        #else
+//            // TODO(leofang): do we really need this branch?
+//            return __half2float(lhs_v) < __half2float(rhs_v);
+//        #endif
+//        }
 //    }
-//}
-//#endif  // include cupy_fp16.h
-//
-///* ------------------------------------ end of boilerplate ------------------------------------ */
+//};
+#endif  // include cupy_fp16.h
+
+//// specialize thrust::less for thrust::tuple
+//template <typename T>
+//struct less< tuple<size_t, T> > {
+//    __host__ __device__ __forceinline__ bool operator() (const tuple<size_t, T>& lhs, const tuple<size_t, T>& rhs) const {
+//        const T& lhs_v = lhs.get<1>();
+//        const T& rhs_v = rhs.get<1>();
+//        less<T> comp;
+//        return comp(lhs_v, rhs_v);
+//    }
+//};
+
+/* ------------------------------------ end of boilerplate ------------------------------------ */
 
 
 /*
@@ -175,7 +226,7 @@ void cupy::thrust::_sort(void *data_start, size_t *keys_start,
     dp_data_last  = device_pointer_cast(static_cast<T*>(data_start) + size);
 
     if (ndim == 1) {
-        stable_sort(cuda::par(alloc).on(stream_), dp_data_first, dp_data_last);
+        stable_sort(cuda::par(alloc).on(stream_), dp_data_first, dp_data_last, less<T>());
     } else {
         // Generate key indices.
         dp_keys_first = device_pointer_cast(keys_start);
@@ -190,7 +241,8 @@ void cupy::thrust::_sort(void *data_start, size_t *keys_start,
         stable_sort(
             cuda::par(alloc).on(stream_),
             make_zip_iterator(make_tuple(dp_keys_first, dp_data_first)),
-            make_zip_iterator(make_tuple(dp_keys_last, dp_data_last)));
+            make_zip_iterator(make_tuple(dp_keys_last, dp_data_last)),
+            less< tuple<size_t, T> >());
     }
 }
 
@@ -222,6 +274,8 @@ template void cupy::thrust::_sort<cpy_double>(
 template void cupy::thrust::_sort<cpy_complex64>(
     void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
 template void cupy::thrust::_sort<cpy_complex128>(
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+template void cupy::thrust::_sort<cpy_bool>(
     void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
 
 

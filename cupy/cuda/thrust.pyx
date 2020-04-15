@@ -98,6 +98,8 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
         _sort[common.cpy_complex64](_data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.complex128:
         _sort[common.cpy_complex128](_data_start, _keys_start, shape, _strm, mem)
+    elif dtype == numpy.bool:
+        _sort[common.cpy_bool](_data_start, _keys_start, shape, _strm, mem)
     else:
         raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '
                                   'supported'.format(dtype))

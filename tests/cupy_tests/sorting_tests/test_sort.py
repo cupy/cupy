@@ -37,30 +37,18 @@ class TestSort(unittest.TestCase):
 
     # Test dtypes
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a.sort()
         return a
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_external_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return xp.sort(a)
-
-    @testing.for_dtypes([numpy.float16, numpy.bool_])
-    def test_sort_unsupported_dtype(self, dtype):
-        a = testing.shaped_random((10,), cupy, dtype)
-        with self.assertRaises(NotImplementedError):
-            a.sort()
-
-    @testing.for_dtypes([numpy.float16, numpy.bool_])
-    def test_external_sort_unsupported_dtype(self, dtype):
-        a = testing.shaped_random((10,), cupy, dtype)
-        with self.assertRaises(NotImplementedError):
-            return cupy.sort(a)
 
     # Test contiguous arrays
 
