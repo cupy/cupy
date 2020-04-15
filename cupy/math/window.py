@@ -1,12 +1,11 @@
 import numpy
 
 import cupy
-from cupy import util
+from cupy import core
 from cupy.creation import basic
 from cupy.creation import from_data
 from cupy.creation import ranges
 from cupy.math import trigonometric
-from cupy.core import ElementwiseKernel
 
 
 def blackman(M):
@@ -92,16 +91,14 @@ def hanning(M):
     return 0.5 - 0.5 * trigonometric.cos(2.0 * numpy.pi * n / (M - 1))
 
 
-@util.memoize()
-def _kaiser_kernel():
-    return ElementwiseKernel("float32 beta, float32 alpha",
-                             "T arr",
-                             """
-                             float temp = (i - alpha) / alpha;
-                             arr = cyl_bessel_i0(beta *
-                                                 sqrt(1 - (temp * temp)));
-                             arr /= cyl_bessel_i0(beta);
-                             """)
+_kaiser_kernel = core.ElementwiseKernel(
+    "float32 beta, float32 alpha",
+    "T arr",
+    """
+    float temp = (i - alpha) / alpha;
+    arr = cyl_bessel_i0(beta * sqrt(1 - (temp * temp)));
+    arr /= cyl_bessel_i0(beta);
+    """)
 
 
 def kaiser(M, beta):
@@ -136,4 +133,4 @@ def kaiser(M, beta):
         return cupy.array([])
     alpha = (M - 1) / 2.0
     out = cupy.empty(M, dtype=cupy.float64)
-    return _kaiser_kernel()(beta, alpha, out)
+    return _kaiser_kernel(beta, alpha, out)
