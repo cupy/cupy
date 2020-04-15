@@ -741,7 +741,11 @@ cdef ndarray _concatenate_single_kernel(
     ptrs = numpy.ndarray(len(arrays), numpy.int64)
     for i, a in enumerate(arrays):
         ptrs[i] = a.data.ptr
-        assert a.data.device_id == device_id
+        if a.data.device_id != device_id:
+            raise ValueError(
+                'Array device must be same as the current '
+                'device: array device = %d while current = %d'
+                % (a.data.device_id, device_id))
     x = core.array(ptrs)
 
     if same_shape_and_contiguous:
