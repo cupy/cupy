@@ -15,6 +15,7 @@ from cupy.core cimport _routines_indexing as _indexing
 from cupy.core cimport core
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
+from cupy.cuda import device
 
 
 @cython.final
@@ -733,12 +734,14 @@ cdef ndarray _concatenate_single_kernel(
     cdef Py_ssize_t[:] ptrs
     cdef Py_ssize_t[:] cum_sizes
     cdef Py_ssize_t[:, :] x_strides
+    cdef int device_id = device.get_device_id()
 
     assert out is not None
 
     ptrs = numpy.ndarray(len(arrays), numpy.int64)
     for i, a in enumerate(arrays):
         ptrs[i] = a.data.ptr
+        assert a.data.device_id == device_id
     x = core.array(ptrs)
 
     if same_shape_and_contiguous:
