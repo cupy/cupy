@@ -178,17 +178,11 @@ class TestLexsort(unittest.TestCase):
 
     # Test dtypes
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_lexsort_dtype(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
         return xp.lexsort(a)
-
-    @testing.for_dtypes([numpy.float16, numpy.bool_])
-    def test_lexsort_unsupported_dtype(self, dtype):
-        a = testing.shaped_random((2, 10), cupy, dtype)
-        with self.assertRaises(TypeError):
-            return cupy.lexsort(a)
 
 
 @testing.parameterize(*testing.product({
@@ -206,19 +200,19 @@ class TestArgsort(unittest.TestCase):
 
     # Test base cases
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_argsort_zero_dim(self, xp, dtype):
         a = testing.shaped_random((), xp, dtype)
         return self.argsort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_argsort_one_dim(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return self.argsort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_argsort_multi_dim(self, xp, dtype):
         a = testing.shaped_random((2, 3, 3), xp, dtype)
@@ -228,14 +222,6 @@ class TestArgsort(unittest.TestCase):
     def test_argsort_non_contiguous(self, xp):
         a = xp.array([1, 0, 2, 3])[::2]
         return self.argsort(a)
-
-    # Test unsupported dtype
-
-    @testing.for_dtypes([numpy.float16, numpy.bool_])
-    def test_argsort_unsupported_dtype(self, dtype):
-        a = testing.shaped_random((10,), cupy, dtype)
-        with self.assertRaises(NotImplementedError):
-            return self.argsort(a)
 
     # Test axis
 
@@ -315,25 +301,17 @@ class TestMsort(unittest.TestCase):
             with pytest.raises(numpy.AxisError):
                 xp.msort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_msort_one_dim(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return xp.msort(a)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_msort_multi_dim(self, xp, dtype):
         a = testing.shaped_random((2, 3), xp, dtype)
         return xp.msort(a)
-
-    # Test unsupported dtype
-
-    @testing.for_dtypes([numpy.float16, numpy.bool_])
-    def test_msort_unsupported_dtype(self, dtype):
-        a = testing.shaped_random((10,), cupy, dtype)
-        with self.assertRaises(NotImplementedError):
-            return cupy.msort(a)
 
 
 @testing.parameterize(*testing.product({
@@ -360,12 +338,9 @@ class TestPartition(unittest.TestCase):
             with pytest.raises(numpy.AxisError):
                 self.partition(a, kth)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_partition_one_dim(self, xp, dtype):
-        if self.length == 10 and dtype in [xp.float16, xp.bool_]:
-            return cupy.zeros(1)  # dummy
-
         a = testing.shaped_random((self.length,), xp, dtype)
         kth = 2
         x = self.partition(a, kth)
@@ -373,31 +348,15 @@ class TestPartition(unittest.TestCase):
         self.assertTrue(xp.all(x[kth:kth + 1] <= x[kth + 1:]))
         return x[kth]
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_partition_multi_dim(self, xp, dtype):
-        if self.length == 10 and dtype in [xp.float16, xp.bool_]:
-            return cupy.zeros(1)  # dummy
-
         a = testing.shaped_random((10, 10, self.length), xp, dtype)
         kth = 2
         x = self.partition(a, kth)
         self.assertTrue(xp.all(x[:, :, 0:kth] <= x[:, :, kth:kth + 1]))
         self.assertTrue(xp.all(x[:, :, kth:kth + 1] <= x[:, :, kth + 1:]))
         return x[:, :, kth:kth + 1]
-
-    # Test unsupported dtype
-
-    @testing.for_dtypes([numpy.float16, numpy.bool_, numpy.complex64,
-                         numpy.complex128])
-    def test_partition_unsupported_dtype(self, dtype):
-        if self.length != 10 and not cupy.issubdtype(dtype, complex):
-            return
-
-        a = testing.shaped_random((self.length,), cupy, dtype)
-        kth = 2
-        with self.assertRaises(NotImplementedError):
-            return self.partition(a, kth)
 
     # Test non-contiguous array
 
@@ -528,7 +487,7 @@ class TestArgpartition(unittest.TestCase):
             with pytest.raises(ValueError):
                 self.argpartition(a, kth)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_argpartition_one_dim(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype, 100)
@@ -538,7 +497,9 @@ class TestArgpartition(unittest.TestCase):
         self.assertTrue((a[idx[kth]] < a[idx[kth + 1:]]).all())
         return idx[kth]
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    # TODO(leofang): test all dtypes -- this workaround needs to be kept,
+    # likely due to #3287? Need investigation.
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_argpartition_multi_dim(self, xp, dtype):
         a = testing.shaped_random((3, 3, 10), xp, dtype, 100)
@@ -551,15 +512,6 @@ class TestArgpartition(unittest.TestCase):
         self.assertTrue((a[rows, cols, idx[:, :, kth:kth + 1]] <
                          a[rows, cols, idx[:, :, kth + 1:]]).all())
         return idx[:, :, kth:kth + 1]
-
-    # Test unsupported dtype
-
-    @testing.for_dtypes([numpy.float16, numpy.bool_])
-    def test_argpartition_unsupported_dtype(self, dtype):
-        a = testing.shaped_random((10,), cupy, dtype, 100)
-        kth = 2
-        with self.assertRaises(NotImplementedError):
-            return self.argpartition(a, kth)
 
     # Test non-contiguous array
 

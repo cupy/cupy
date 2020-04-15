@@ -287,8 +287,9 @@ template <typename T>
 class elem_less {
 public:
     elem_less(const T *data):_data(data) {}
-    __device__ bool operator()(size_t i, size_t j) {
-        return _data[i] < _data[j];
+    __device__ __forceinline__ bool operator()(size_t i, size_t j) const {
+        less<T> comp;
+        return comp(_data[i], _data[j]);
     }
 private:
     const T *_data;
@@ -344,6 +345,8 @@ template void cupy::thrust::_lexsort<cpy_double>(
 template void cupy::thrust::_lexsort<cpy_complex64>(
     size_t *, void *, size_t, size_t, size_t, void *);
 template void cupy::thrust::_lexsort<cpy_complex128>(
+    size_t *, void *, size_t, size_t, size_t, void *);
+template void cupy::thrust::_lexsort<cpy_bool>(
     size_t *, void *, size_t, size_t, size_t, void *);
 
 
@@ -454,5 +457,8 @@ template void cupy::thrust::_argsort<cpy_complex64>(
     size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
     void *);
 template void cupy::thrust::_argsort<cpy_complex128>(
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    void *);
+template void cupy::thrust::_argsort<cpy_bool>(
     size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
     void *);
