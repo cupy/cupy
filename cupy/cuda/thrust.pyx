@@ -60,7 +60,7 @@ cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
                     void *)
     void _lexsort_fp16(size_t *, void *, size_t, size_t, size_t, void *)
     void _argsort_fp16(size_t *, void *, void *,
-                       const vector.vector[ptrdiff_t]&,  size_t, void *)
+                       const vector.vector[ptrdiff_t]&, size_t, void *)
 
 
 ###############################################################################
