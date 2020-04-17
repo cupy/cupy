@@ -24,7 +24,7 @@ namespace cuda {
 #endif // #if CUPY_USE_HIP
 
 
-extern "C" char *cupy_malloc(void *, ptrdiff_t);
+extern "C" char *cupy_malloc(void *, size_t);
 extern "C" void cupy_free(void *, char *);
 
 
@@ -37,7 +37,7 @@ public:
 
     cupy_allocator(void* memory) : memory(memory) {}
 
-    char *allocate(std::ptrdiff_t num_bytes) {
+    char *allocate(size_t num_bytes) {
         return cupy_malloc(memory, num_bytes);
     }
 
@@ -161,7 +161,7 @@ struct less<__half> {
 
 template <typename T>
 void cupy::thrust::_sort(void *data_start, size_t *keys_start,
-                         const std::vector<ptrdiff_t>& shape, size_t stream,
+                         const std::vector<ptrdiff_t>& shape, intptr_t stream,
                          void* memory) {
     size_t ndim = shape.size();
     ptrdiff_t size;
@@ -201,33 +201,33 @@ void cupy::thrust::_sort(void *data_start, size_t *keys_start,
 }
 
 template void cupy::thrust::_sort<cpy_byte>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_ubyte>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_short>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_ushort>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_int>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_uint>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_long>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_ulong>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_float>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_double>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_complex64>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_complex128>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_bool>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 void cupy::thrust::_sort_fp16(void *data_start, size_t *keys_start,
-                              const std::vector<ptrdiff_t>& shape, size_t stream,
+                              const std::vector<ptrdiff_t>& shape, intptr_t stream,
                               void* memory) {
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
@@ -254,7 +254,7 @@ private:
 
 template <typename T>
 void cupy::thrust::_lexsort(size_t *idx_start, void *keys_start, size_t k,
-                            size_t n, size_t stream, void *memory) {
+                            size_t n, intptr_t stream, void *memory) {
     /* idx_start is the beginning of the output array where the indexes that
        would sort the data will be placed. The original contents of idx_start
        will be destroyed. */
@@ -275,33 +275,33 @@ void cupy::thrust::_lexsort(size_t *idx_start, void *keys_start, size_t k,
 }
 
 template void cupy::thrust::_lexsort<cpy_byte>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_ubyte>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_short>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_ushort>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_int>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_uint>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_long>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_ulong>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_float>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_double>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_complex64>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_complex128>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_bool>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 void cupy::thrust::_lexsort_fp16(size_t *idx_start, void *keys_start, size_t k,
-                                 size_t n, size_t stream, void *memory) {
+                                 size_t n, intptr_t stream, void *memory) {
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
     cupy::thrust::_lexsort<__half>(idx_start, keys_start, k, n, stream, memory);
@@ -317,7 +317,7 @@ template <typename T>
 void cupy::thrust::_argsort(size_t *idx_start, void *data_start,
                             void *keys_start,
                             const std::vector<ptrdiff_t>& shape,
-                            size_t stream, void *memory) {
+                            intptr_t stream, void *memory) {
     /* idx_start is the beginning of the output array where the indexes that
        would sort the data will be placed. The original contents of idx_start
        will be destroyed. */
@@ -377,48 +377,48 @@ void cupy::thrust::_argsort(size_t *idx_start, void *data_start,
 }
 
 template void cupy::thrust::_argsort<cpy_byte>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_ubyte>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_short>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_ushort>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_int>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_uint>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_long>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_ulong>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_float>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_double>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_complex64>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_complex128>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_bool>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 void cupy::thrust::_argsort_fp16(size_t *idx_start, void *data_start,
                                  void *keys_start,
                                  const std::vector<ptrdiff_t>& shape,
-                                 size_t stream, void *memory) {
+                                 intptr_t stream, void *memory) {
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
     cupy::thrust::_argsort<__half>(idx_start, data_start, keys_start, shape, stream, memory);
