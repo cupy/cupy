@@ -172,14 +172,8 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
 
     # If the array size is small or k is large, we simply sort the array.
     if length < 32 or sz <= 32 or max_k >= 1024:
-        if data.dtype.char == 'e':
-            # thrust.sort does not support float16
-            data = data.astype(cupy.float32)
-            data.sort(axis=-1)
-            data = data.astype(cupy.float16)
-        else:
-            # kth is ignored.
-            data.sort(axis=-1)
+        # kth is ignored.
+        data.sort(axis=-1)
     else:
         shape = data.shape
         data = data.ravel()
@@ -204,8 +198,6 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
 
     if axis != ndim - 1:
         data = _manipulation.rollaxis(data, -1, axis)
-        elementwise_copy(data, self)
-    elif data.dtype.char == 'e':
         elementwise_copy(data, self)
 
 
