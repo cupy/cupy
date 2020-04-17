@@ -146,6 +146,16 @@ class TestSort(unittest.TestCase):
         with self.assertRaises(numpy.AxisError):
             cupy.sort(a, axis=-4)
 
+    # Test NaN ordering
+
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_allclose()
+    def test_nan(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        a[2] = a[6] = xp.nan
+        a.sort()
+        return a
+
 
 @testing.gpu
 class TestLexsort(unittest.TestCase):
@@ -182,6 +192,18 @@ class TestLexsort(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_lexsort_dtype(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
+        return xp.lexsort(a)
+
+    # Test NaN ordering
+    # TODO(leofang): test two more cases after #3232 is fixed
+    # 1. a[1, 2] = a[1, 6] = xp.nan
+    # 2. a[0, 2] = a[1, 6] = xp.nan
+
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_allclose()
+    def test_nan(self, xp, dtype):
+        a = testing.shaped_random((2, 10), xp, dtype)
+        a[0, 2] = a[0, 6] = xp.nan
         return xp.lexsort(a)
 
 
@@ -286,6 +308,15 @@ class TestArgsort(unittest.TestCase):
         b = cupy.array(a)
         self.argsort(a)
         testing.assert_allclose(a, b)
+
+    # Test NaN ordering
+
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_allclose()
+    def test_nan(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        a[2] = a[6] = xp.nan
+        return xp.argsort(a)
 
 
 @testing.gpu
