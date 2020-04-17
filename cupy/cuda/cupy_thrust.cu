@@ -7,6 +7,10 @@
 #include <thrust/execution_policy.h>
 #include "cupy_common.h"
 #include "cupy_thrust.h"
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#include <cuda_fp16.h>
+#endif
 
 using namespace thrust;
 
@@ -118,7 +122,7 @@ __host__ __device__ __forceinline__ bool operator<(const cuDoubleComplex& lhs, c
 
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
-__host__ __device__ __forceinline__ bool half_isnan(const cpy_half& x) {
+__host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
 #ifdef __CUDA_ARCH__
     return __hisnan(x);
 #else
@@ -129,8 +133,8 @@ __host__ __device__ __forceinline__ bool half_isnan(const cpy_half& x) {
 
 // specialize thrust::less for __half
 template <>
-struct less<cpy_half> {
-    __host__ __device__ __forceinline__ bool operator() (const cpy_half& lhs, const cpy_half& rhs) const {
+struct less<__half> {
+    __host__ __device__ __forceinline__ bool operator() (const __half& lhs, const __half& rhs) const {
         if (half_isnan(lhs)) {
             return false;
         } else if (half_isnan(rhs)) {
@@ -212,11 +216,6 @@ template void cupy::thrust::_sort<cpy_long>(
     void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
 template void cupy::thrust::_sort<cpy_ulong>(
     void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
-template void cupy::thrust::_sort<cpy_half>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
-#endif
 template void cupy::thrust::_sort<cpy_float>(
     void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
 template void cupy::thrust::_sort<cpy_double>(
@@ -227,6 +226,14 @@ template void cupy::thrust::_sort<cpy_complex128>(
     void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
 template void cupy::thrust::_sort<cpy_bool>(
     void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+void cupy::thrust::_sort_fp16(void *data_start, size_t *keys_start,
+                              const std::vector<ptrdiff_t>& shape, size_t stream,
+                              void* memory) {
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+    cupy::thrust::_sort<__half>(data_start, keys_start, shape, stream, memory);
+#endif
+}
 
 
 /*
@@ -283,11 +290,6 @@ template void cupy::thrust::_lexsort<cpy_long>(
     size_t *, void *, size_t, size_t, size_t, void *);
 template void cupy::thrust::_lexsort<cpy_ulong>(
     size_t *, void *, size_t, size_t, size_t, void *);
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
-template void cupy::thrust::_lexsort<cpy_half>(
-    size_t *, void *, size_t, size_t, size_t, void *);
-#endif
 template void cupy::thrust::_lexsort<cpy_float>(
     size_t *, void *, size_t, size_t, size_t, void *);
 template void cupy::thrust::_lexsort<cpy_double>(
@@ -298,6 +300,13 @@ template void cupy::thrust::_lexsort<cpy_complex128>(
     size_t *, void *, size_t, size_t, size_t, void *);
 template void cupy::thrust::_lexsort<cpy_bool>(
     size_t *, void *, size_t, size_t, size_t, void *);
+void cupy::thrust::_lexsort_fp16(size_t *idx_start, void *keys_start, size_t k,
+                                 size_t n, size_t stream, void *memory) {
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+    cupy::thrust::_lexsort<__half>(idx_start, keys_start, k, n, stream, memory);
+#endif
+}
 
 
 /*
@@ -391,12 +400,6 @@ template void cupy::thrust::_argsort<cpy_long>(
 template void cupy::thrust::_argsort<cpy_ulong>(
     size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
     void *);
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
-template void cupy::thrust::_argsort<cpy_half>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
-    void *);
-#endif
 template void cupy::thrust::_argsort<cpy_float>(
     size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
     void *);
@@ -412,3 +415,12 @@ template void cupy::thrust::_argsort<cpy_complex128>(
 template void cupy::thrust::_argsort<cpy_bool>(
     size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
     void *);
+void cupy::thrust::_argsort_fp16(size_t *idx_start, void *data_start,
+                                 void *keys_start,
+                                 const std::vector<ptrdiff_t>& shape,
+                                 size_t stream, void *memory) {
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+    cupy::thrust::_argsort<__half>(idx_start, data_start, keys_start, shape, stream, memory);
+#endif
+}

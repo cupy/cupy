@@ -53,6 +53,15 @@ cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
     void _argsort[T](size_t *, void *, void *, const vector.vector[ptrdiff_t]&,
                      size_t, void *)
 
+    # for half precision
+    # TODO(leofang): eliminate the extra delegation call when we have a dtype
+    # dispatcher in C++
+    void _sort_fp16(void *, size_t *, const vector.vector[ptrdiff_t]&, size_t,
+                    void *)
+    void _lexsort_fp16(size_t *, void *, size_t, size_t, size_t, void *)
+    void _argsort_fp16(size_t *, void *, void *,
+                       const vector.vector[ptrdiff_t]&,  size_t, void *)
+
 
 ###############################################################################
 # Python interface
@@ -94,7 +103,7 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
     elif dtype == numpy.uint64:
         _sort[common.cpy_ulong](_data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.float16:
-        _sort[common.cpy_half](_data_start, _keys_start, shape, _strm, mem)
+        _sort_fp16(_data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.float32:
         _sort[common.cpy_float](_data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.float64:
@@ -146,7 +155,7 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
     elif dtype == numpy.uint64:
         _lexsort[common.cpy_ulong](idx_ptr, keys_ptr, k, n, _strm, mem)
     elif dtype == numpy.float16:
-        _lexsort[common.cpy_half](idx_ptr, keys_ptr, k, n, _strm, mem)
+        _lexsort_fp16(idx_ptr, keys_ptr, k, n, _strm, mem)
     elif dtype == numpy.float32:
         _lexsort[common.cpy_float](idx_ptr, keys_ptr, k, n, _strm, mem)
     elif dtype == numpy.float64:
@@ -207,7 +216,7 @@ cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
         _argsort[common.cpy_ulong](
             _idx_start, _data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.float16:
-        _argsort[common.cpy_half](
+        _argsort_fp16(
             _idx_start, _data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.float32:
         _argsort[common.cpy_float](

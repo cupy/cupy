@@ -16,4 +16,3 @@ cdef extern from '../cuda/cupy_common.h':  # thru parent to import in core
     ctypedef struct cpy_complex64 'cuComplex'
     ctypedef struct cpy_complex128 'cuDoubleComplex'
     ctypedef bool_t cpy_bool 'bool'
-    ctypedef struct cpy_half '__half'
