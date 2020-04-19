@@ -90,7 +90,7 @@ class TestSort(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_sort_axis3(self, xp):
         a = testing.shaped_random((2, 3, 4), xp)
-        a.sort(axis=1)
+        a.sort(axis=2)
         return a
 
     @testing.numpy_cupy_array_equal()
@@ -251,6 +251,23 @@ class TestLexsort(unittest.TestCase):
     def test_nan3(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
         a[1, 2] = a[1, 6] = xp.nan
+        return xp.lexsort(a)
+
+    # Test non C-contiguous input
+
+    @testing.numpy_cupy_allclose()
+    def test_view(self, xp):
+        # from #3232
+        a = testing.shaped_random((4, 8), xp, dtype=xp.float64)
+        a = a.T[::-1]
+        return xp.lexsort(a)
+
+    @testing.numpy_cupy_allclose()
+    def test_F_order(self, xp):
+        a = testing.shaped_random((4, 8), xp, dtype=xp.float64)
+        a = xp.asfortranarray(a)
+        assert a.flags.f_contiguous
+        assert not a.flags.c_contiguous
         return xp.lexsort(a)
 
 

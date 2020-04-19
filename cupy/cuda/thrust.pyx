@@ -19,7 +19,7 @@ from cupy.cuda cimport stream
 # Memory Management
 ###############################################################################
 
-# Before attempting refactoring this part, please read the discussion in #3212.
+# Before attempting to refactor this part, read the discussion in #3212 first.
 
 cdef class _MemoryManager:
     cdef:

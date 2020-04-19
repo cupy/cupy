@@ -185,7 +185,7 @@ __host__ __device__ __forceinline__ bool less< tuple<size_t, double> >::operator
 }
 
 /*
- * ********** real numbers (half precision) **********
+ * ********** real numbers (specializations for half precision) **********
  */
 
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
