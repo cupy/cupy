@@ -76,9 +76,21 @@ class TestSort(unittest.TestCase):
     # Test axis
 
     @testing.numpy_cupy_array_equal()
-    def test_sort_axis(self, xp):
-        a = testing.shaped_random((2, 3, 3), xp)
+    def test_sort_axis1(self, xp):
+        a = testing.shaped_random((2, 3, 4), xp)
         a.sort(axis=0)
+        return a
+
+    @testing.numpy_cupy_array_equal()
+    def test_sort_axis2(self, xp):
+        a = testing.shaped_random((2, 3, 4), xp)
+        a.sort(axis=1)
+        return a
+
+    @testing.numpy_cupy_array_equal()
+    def test_sort_axis3(self, xp):
+        a = testing.shaped_random((2, 3, 4), xp)
+        a.sort(axis=1)
         return a
 
     @testing.numpy_cupy_array_equal()
@@ -150,11 +162,35 @@ class TestSort(unittest.TestCase):
 
     @testing.for_dtypes('efdFD')
     @testing.numpy_cupy_allclose()
-    def test_nan(self, xp, dtype):
+    def test_nan1(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a[2] = a[6] = xp.nan
-        a.sort()
-        return a
+        out = xp.sort(a)
+        return out
+
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_nan2(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        a[0, 2, 1] = a[1, 0, 3] = xp.nan
+        out = xp.sort(a, axis=0)
+        return out
+
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_nan3(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        a[0, 2, 1] = a[1, 0, 3] = xp.nan
+        out = xp.sort(a, axis=1)
+        return out
+
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_nan4(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        a[0, 2, 1] = a[1, 0, 3] = xp.nan
+        out = xp.sort(a, axis=2)
+        return out
 
 
 @testing.gpu
@@ -195,15 +231,26 @@ class TestLexsort(unittest.TestCase):
         return xp.lexsort(a)
 
     # Test NaN ordering
-    # TODO(leofang): test two more cases after #3232 is fixed
-    # 1. a[1, 2] = a[1, 6] = xp.nan
-    # 2. a[0, 2] = a[1, 6] = xp.nan
 
     @testing.for_dtypes('efdFD')
     @testing.numpy_cupy_allclose()
-    def test_nan(self, xp, dtype):
+    def test_nan1(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
         a[0, 2] = a[0, 6] = xp.nan
+        return xp.lexsort(a)
+
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_allclose()
+    def test_nan2(self, xp, dtype):
+        a = testing.shaped_random((2, 10), xp, dtype)
+        a[1, 2] = a[0, 6] = xp.nan
+        return xp.lexsort(a)
+
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_allclose()
+    def test_nan3(self, xp, dtype):
+        a = testing.shaped_random((2, 10), xp, dtype)
+        a[1, 2] = a[1, 6] = xp.nan
         return xp.lexsort(a)
 
 

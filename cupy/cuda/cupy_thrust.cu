@@ -48,7 +48,7 @@ public:
 
 
 /*
- * ------------------------------------ Minimum boilerplate to support complex numbers -------------------------------------
+ * ------------------------------------- Minimum boilerplate for NumPy compatibility --------------------------------------
  * We need a specialized operator< here in order to match the NumPy behavior:
  * "The sort order for complex numbers is lexicographic. If both the real and imaginary parts are non-nan then the order is
  * determined by the real parts except when they are equal, in which case the order is determined by the imaginary parts.
@@ -59,6 +59,10 @@ public:
  * where R is a non-nan real value. Complex values with the same nan placements are sorted according to the non-nan part if
  * it exists. Non-nan values are sorted as before."
  * Ref: https://docs.scipy.org/doc/numpy/reference/generated/numpy.sort.html
+ */
+
+/*
+ * ********** complex numbers **********
  */
 
 template <typename T>
@@ -112,16 +116,78 @@ __host__ __device__ __forceinline__ bool operator<(const cuDoubleComplex& lhs, c
     return _cmp_less(lhs, rhs);
 }
 
-/* ------------------------------------ end of boilerplate ------------------------------------ */
+/*
+ * ********** real numbers (single & double precisions) **********
+ */
+
+// specialize thrust::less for float
+template <>
+__host__ __device__ __forceinline__ bool less<float>::operator() (const float& lhs,
+                                                                  const float& rhs) const {
+    if (isnan(lhs)) {
+        return false;
+    } else if (isnan(rhs)) {
+        return true;
+    } else {
+        return lhs < rhs;
+    }
+}
+
+// specialize thrust::less for double
+template <>
+__host__ __device__ __forceinline__ bool less<double>::operator() (const double& lhs, const double& rhs) const {
+    if (isnan(lhs)) {
+        return false;
+    } else if (isnan(rhs)) {
+        return true;
+    } else {
+        return lhs < rhs;
+    }
+}
+
+// specialize thrust::less for tuple<size_t, T> [with T=__half, float, double]
+template <typename T>
+__host__ __device__ __forceinline__ bool _tuple_real_less(const tuple<size_t, T>& lhs,
+                                                          const tuple<size_t, T>& rhs) {
+    const size_t& lhs_k = lhs.get<0>();
+    const size_t& rhs_k = rhs.get<0>();
+    const T& lhs_v = lhs.get<1>();
+    const T& rhs_v = rhs.get<1>();
+
+    // tuple's comparison rules: compare the 1st member, then 2nd, then 3rd, ...
+    if (lhs_k < rhs_k) {
+        return true;
+    } else if (lhs_k == rhs_k) {
+        // same key, compare values; note that we can't rely on operator< ...
+        return less<T>()(lhs_v, rhs_v);
+    } else {
+        return false;
+    }
+}
+
+template <>
+__host__ __device__ __forceinline__ bool less< tuple<size_t, float> >::operator() (const tuple<size_t, float>& lhs,
+                                                                                   const tuple<size_t, float>& rhs) const {
+    return _tuple_real_less<float>(lhs, rhs);
+}
+
+template <>
+__host__ __device__ __forceinline__ bool less< tuple<size_t, double> >::operator() (const tuple<size_t, double>& lhs,
+                                                                                    const tuple<size_t, double>& rhs) const {
+    return _tuple_real_less<double>(lhs, rhs);
+}
+
 
 /*
- * --------------------------------- Minimum boilerplate to support half precision floats ----------------------------------
+ * ********** real numbers (half precision) **********
+ *
  * half_isnan is copied from cupy/cuda/cupy_cub.cu, and the specialization of less<__half> is also borrowed from there.
  * TODO(leofang): is it possible to refactor the code and avoid repetition?
  */
 
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+
 __host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
 #ifdef __CUDA_ARCH__
     return __hisnan(x);
@@ -150,9 +216,17 @@ struct less<__half> {
     }
 };
 
+template <>
+__host__ __device__ __forceinline__ bool less< tuple<size_t, __half> >::operator() (const tuple<size_t, __half>& lhs,
+                                                                                    const tuple<size_t, __half>& rhs) const {
+    return _tuple_real_less<__half>(lhs, rhs);
+}
+
 #endif  // include cupy_fp16.h
 
-/* ------------------------------------ end of boilerplate ------------------------------------ */
+/*
+ * -------------------------------------------------- end of boilerplate --------------------------------------------------
+ */
 
 
 /*
@@ -245,8 +319,7 @@ class elem_less {
 public:
     elem_less(const T *data):_data(data) {}
     __device__ __forceinline__ bool operator()(size_t i, size_t j) const {
-        less<T> comp;
-        return comp(_data[i], _data[j]);
+        return less<T>()(_data[i], _data[j]);
     }
 private:
     const T *_data;

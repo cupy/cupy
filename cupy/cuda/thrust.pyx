@@ -70,7 +70,7 @@ cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
 # Python interface
 ###############################################################################
 
-cpdef sort(dtype, size_t data_start, size_t keys_start,
+cpdef sort(dtype, intptr_t data_start, intptr_t keys_start,
            const vector.vector[ptrdiff_t]& shape) except +:
 
     cdef void* _data_start = <void*>data_start
@@ -120,7 +120,7 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
                                   'supported'.format(dtype))
 
 
-cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
+cpdef lexsort(dtype, intptr_t idx_start, intptr_t keys_start,
               size_t k, size_t n) except +:
 
     cdef size_t* idx_ptr = <size_t*>idx_start
@@ -168,11 +168,13 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
                         'supported'.format(dtype))
 
 
-cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
+cpdef argsort(dtype, intptr_t idx_start, intptr_t data_start,
+              intptr_t keys_start,
               const vector.vector[ptrdiff_t]& shape) except +:
+
     cdef size_t*_idx_start = <size_t*>idx_start
     cdef void* _data_start = <void*>data_start
-    cdef size_t*_keys_start = <size_t*>keys_start
+    cdef size_t* _keys_start = <size_t*>keys_start
     cdef intptr_t _strm = stream.get_current_stream_ptr()
     cdef _MemoryManager mem_obj = _MemoryManager()
     cdef void* mem = <void *>mem_obj

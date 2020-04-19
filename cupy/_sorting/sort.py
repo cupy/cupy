@@ -73,6 +73,10 @@ def lexsort(keys):
         raise NotImplementedError('Keys with the rank of three or more is not '
                                   'supported in lexsort')
 
+    # thrust.lexsort() assumes a C-contiguous array
+    if not keys.flags.c_contiguous:
+        keys = keys.copy('C')
+
     idx_array = cupy.ndarray(keys._shape[1:], dtype=numpy.intp)
     k = keys._shape[0]
     n = keys._shape[1]
@@ -120,7 +124,6 @@ def msort(a):
 
     """
 
-    # TODO(takagi): Support float16 and bool.
     return sort(a, axis=0)
 
 
