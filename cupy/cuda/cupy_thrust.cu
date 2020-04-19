@@ -117,13 +117,12 @@ __host__ __device__ __forceinline__ bool operator<(const cuDoubleComplex& lhs, c
 }
 
 /*
- * ********** real numbers (single & double precisions) **********
+ * ********** real numbers (templates) **********
+ * We need to specialize thrust::less because obviously we can't overload operator< for floating point numbers...
  */
 
-// specialize thrust::less for float
-template <>
-__host__ __device__ __forceinline__ bool less<float>::operator() (const float& lhs,
-                                                                  const float& rhs) const {
+template <typename T>
+__host__ __device__ __forceinline__ bool _real_less(const T& lhs, const T& rhs) {
     if (isnan(lhs)) {
         return false;
     } else if (isnan(rhs)) {
@@ -133,19 +132,6 @@ __host__ __device__ __forceinline__ bool less<float>::operator() (const float& l
     }
 }
 
-// specialize thrust::less for double
-template <>
-__host__ __device__ __forceinline__ bool less<double>::operator() (const double& lhs, const double& rhs) const {
-    if (isnan(lhs)) {
-        return false;
-    } else if (isnan(rhs)) {
-        return true;
-    } else {
-        return lhs < rhs;
-    }
-}
-
-// specialize thrust::less for tuple<size_t, T> [with T=__half, float, double]
 template <typename T>
 __host__ __device__ __forceinline__ bool _tuple_real_less(const tuple<size_t, T>& lhs,
                                                           const tuple<size_t, T>& rhs) {
@@ -154,68 +140,69 @@ __host__ __device__ __forceinline__ bool _tuple_real_less(const tuple<size_t, T>
     const T& lhs_v = lhs.get<1>();
     const T& rhs_v = rhs.get<1>();
 
-    // tuple's comparison rules: compare the 1st member, then 2nd, then 3rd, ...
+    // tuple's comparison rule: compare the 1st member, then 2nd, then 3rd, ...,
+    // which should be respected
     if (lhs_k < rhs_k) {
         return true;
     } else if (lhs_k == rhs_k) {
-        // same key, compare values; note that we can't rely on operator< ...
-        return less<T>()(lhs_v, rhs_v);
+        // same key, compare values
+        // note that we can't rely on native operator< due to NaN
+        return _real_less<T>(lhs_v, rhs_v);
     } else {
         return false;
     }
 }
 
+/*
+ * ********** real numbers (specializations for single & double precisions) **********
+ */
+
+// specialize thrust::less for float
+template <>
+__host__ __device__ __forceinline__ bool less<float>::operator() (const float& lhs,
+                                                                  const float& rhs) const {
+    return _real_less<float>(lhs, rhs);
+}
+
+// specialize thrust::less for double
+template <>
+__host__ __device__ __forceinline__ bool less<double>::operator() (const double& lhs, const double& rhs) const {
+    return _real_less<double>(lhs, rhs);
+}
+
+// specialize thrust::less for tuple<size_t, float>
 template <>
 __host__ __device__ __forceinline__ bool less< tuple<size_t, float> >::operator() (const tuple<size_t, float>& lhs,
                                                                                    const tuple<size_t, float>& rhs) const {
     return _tuple_real_less<float>(lhs, rhs);
 }
 
+// specialize thrust::less for tuple<size_t, double>
 template <>
 __host__ __device__ __forceinline__ bool less< tuple<size_t, double> >::operator() (const tuple<size_t, double>& lhs,
                                                                                     const tuple<size_t, double>& rhs) const {
     return _tuple_real_less<double>(lhs, rhs);
 }
 
-
 /*
  * ********** real numbers (half precision) **********
- *
- * half_isnan is copied from cupy/cuda/cupy_cub.cu, and the specialization of less<__half> is also borrowed from there.
- * TODO(leofang): is it possible to refactor the code and avoid repetition?
  */
 
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 
-__host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
-#ifdef __CUDA_ARCH__
+// it seems Thrust doesn't care the code path on host, so we just need a wrapper for device
+__device__ __forceinline__ bool isnan(const __half& x) {
     return __hisnan(x);
-#else
-    // TODO(leofang): do we really need this branch?
-    return isnan(__half2float(x));
-#endif
 }
 
 // specialize thrust::less for __half
 template <>
-struct less<__half> {
-    __host__ __device__ __forceinline__ bool operator() (const __half& lhs, const __half& rhs) const {
-        if (half_isnan(lhs)) {
-            return false;
-        } else if (half_isnan(rhs)) {
-            return true;
-        } else {
-        #ifdef __CUDA_ARCH__
-            return lhs < rhs;
-        #else
-            // TODO(leofang): do we really need this branch?
-            return __half2float(lhs) < __half2float(rhs);
-        #endif
-        }
-    }
-};
+__host__ __device__ __forceinline__ bool less<__half>::operator() (const __half& lhs, const __half& rhs) const {
+    return _real_less<__half>(lhs, rhs);
+}
 
+// specialize thrust::less for tuple<size_t, __half>
 template <>
 __host__ __device__ __forceinline__ bool less< tuple<size_t, __half> >::operator() (const tuple<size_t, __half>& lhs,
                                                                                     const tuple<size_t, __half>& rhs) const {
