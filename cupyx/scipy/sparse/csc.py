@@ -107,7 +107,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement diagonal
 
     def eliminate_zeros(self):
-        """Removes zero entories in place."""
+        """Removes zero entries in place."""
         t = self.T
         t.eliminate_zeros()
         compress = t.T
@@ -232,6 +232,9 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
         trans._has_canonical_format = self._has_canonical_format
         return trans
+
+    def __setitem__(self, slices, values, **kwargs):
+        super(csc_matrix, self).__setitem__(slices, values, self.format)
 
 
 def isspmatrix_csc(x):

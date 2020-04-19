@@ -298,6 +298,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         return csc.csc_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
 
+    def __setitem__(self, slices, values, **kwargs):
+        super(csr_matrix, self).__setitem__(slices, values, self.format)
+
 
 def isspmatrix_csr(x):
     """Checks if a given matrix is of CSR format.

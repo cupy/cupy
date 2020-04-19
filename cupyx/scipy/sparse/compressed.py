@@ -1,4 +1,5 @@
 import numpy
+from cupy.core.raw import RawModule
 
 try:
     import scipy.sparse
@@ -11,7 +12,7 @@ import cupy
 from cupy import core
 from cupy.creation import basic
 from cupy import cusparse
-from cupyx.scipy.sparse import base
+from cupyx.scipy.sparse import base, coo
 from cupyx.scipy.sparse import data as sparse_data
 from cupyx.scipy.sparse import util
 
@@ -22,6 +23,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         'T d, S ind, int32 minor', 'raw T answer',
         'if (ind == minor) atomicAdd(&answer[0], d);',
         'compress_getitem')
+
     _compress_getitem_complex_kern = core.ElementwiseKernel(
         'T real, T imag, S ind, int32 minor',
         'raw T answer_real, raw T answer_imag',
@@ -35,82 +37,76 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     # https: // www.micc.unifi.it / bertini / download
     # / gpu - programming - basics / 2017 / gpu_cuda_5.pdf
-    setitem_preamble = '''
-            #if __CUDA_ARCH__ < 600
-            __device__ double atomicExch(double* address, double val)
-            {
-                unsigned long long int* address_as_ull =
-                                          (unsigned long long int*)address;
-                unsigned long long int old = *address_as_ull, compare;
-                do {
-                    compare = old;
-                    old = atomicCAS(address_as_ull, compare,
-                                            __double_as_longlong(val));
-                } while (compare != old);
-                return __longlong_as_double(old);
-            }
-            #endif
-            '''
-
-    _compress_setitem_kern = core.ElementwiseKernel(
-        'T values, S offsets', 'raw T data',
-        'atomicExch(&data[offsets], values);',
-        'compress_setitem',
-        preamble=setitem_preamble)
-
-    _compress_setitem_complex_kern = core.ElementwiseKernel(
-        'T values_real, T values_imag, S offsets',
-        'raw T real, raw T imag',
-        '''
-          atomicExch(&real[offsets], values_real);
-          atomicExch(&imag[offsets], values_imag);
-        ''',
-        'compress_setitem_complex',
-        preamble=setitem_preamble)
-
-    _data_offsets_canonical = core.RawKernel(r'''
-        extern "C" __global__
-        void data_offsets_canonical (int rows, int cols, int* indptr,
-        int* indices, int* outptr, int* inrows, int* incols){
-            // Get the index of the block
-            int tid = blockIdx.x * blockDim.x + threadIdx.x;
-            int i = inrows[tid] < 0 ? inrows[tid] + rows : inrows[tid];
-            int j = incols[tid] < 0 ? incols[tid] + cols : incols[tid];
-            int start = indptr[i], stop = indptr[i+1] ,offset = -1;
-            atomicExch(&outptr[tid],-1);
-            while (start < stop) {
-                int mid = start + (stop - start)/2;
-                if (indices[mid] == j){
+    mask_module = r'''
+       #if __CUDA_ARCH__ < 600
+        __device__
+        double atomicExch(double* address, double val)
+        {
+            unsigned long long int* address_as_ull =
+                                      (unsigned long long int*)address;
+            unsigned long long int old = *address_as_ull, compare;
+            do {
+                compare = old;
+                old = atomicCAS(address_as_ull, compare,
+                                        __double_as_longlong(val));
+            } while (compare != old);
+            return __longlong_as_double(old);
+        }
+        #endif
+       extern "C" __global__
+       void data_offsets_canonical (int rows, int cols, int* indptr,
+       int* indices, double* real, double* imag, int* major, int* minor,
+       int cplx, int csc){
+           // Get the index of the block
+           int tid = blockIdx.x * blockDim.x + threadIdx.x;
+           int i = major[tid] < 0 ? major[tid] + rows : major[tid];
+           int j = minor[tid] < 0 ? minor[tid] + cols : minor[tid];
+           int start = indptr[i], stop = indptr[i+1], offset = -1;
+           while (start < stop) {
+              int mid = start + (stop - start)/2;
+              if (indices[mid] == j){
                     offset = mid ;
-                    stop = mid - 1 ;
-                } else if (indices[mid] < j) {
-                    start = mid + 1;
-                } else {
-                    stop = mid - 1 ;
-                }
-            }
-            if (offset != -1 && indices[offset] == j)
-                    atomicExch(&outptr[tid], offset);
-            }''', 'data_offsets_canonical')
-
-    _data_offsets = core.RawKernel(r'''
-        extern "C" __global__
-        void data_offsets (int rows, int cols, int* indptr,
-        int* indices, int* outptr, int* inrows, int* incols){
-            // Get the index of the block
-            int tid = blockIdx.x * blockDim.x + threadIdx.x;
-            int i = inrows[tid] < 0 ? inrows[tid] + rows : inrows[tid];
-            int j = incols[tid] < 0 ? incols[tid] + cols : incols[tid];
-            int start = indptr [i], stop = indptr [i+1], offset = -1;
-            for(int col = start; col < stop; col++)
-            {
-                if (indices[col] == j) {
-                    offset = col;
-                    break;
-                }
-            }
-            atomicExch(&outptr[tid], offset);
-         }''', 'data_offsets')
+                    stop = mid;
+              } else if (indices[mid] < j) {
+                   if (csc) stop = mid;
+                   else start = mid + 1;
+               } else {
+                   if (csc) start = mid + 1;
+                   else stop = mid;
+               }
+           }
+           if (offset != -1){
+                if (cplx)
+                  atomicExch(&imag[offset], (double) 0);
+                atomicExch(&real[offset], (double) 0);
+           }
+        }
+       extern "C" __global__
+       void data_offsets (int rows, int cols, int* indptr,
+       int* indices, double* real, double* imag, int* major, int* minor,
+       int cplx){
+           // Get the index of the block
+           int tid = blockIdx.x * blockDim.x + threadIdx.x;
+           int i = major[tid] < 0 ? major[tid] + rows : major[tid];
+           int j = minor[tid] < 0 ? minor[tid] + cols : minor[tid];
+           int start = indptr [i], stop = indptr [i+1], offset = -1;
+           for(int col = start; col < stop; col++)
+           {
+               if (indices[col] == j) {
+                   offset = col;
+                   break;
+               }
+           }
+           if (offset!=-1){
+              if (cplx)
+                atomicExch(&imag[offset], (double) 0);
+             atomicExch(&real[offset], (double) 0);
+           }
+        }
+        '''
+    module = RawModule(code=mask_module)
+    _data_offsets_canonical = module.get_function('data_offsets_canonical')
+    _data_offsets = module.get_function('data_offsets')
 
     _max_reduction_kern = core.RawKernel(r'''
         extern "C" __global__
@@ -118,10 +114,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                            double* z) {
             // Get the index of the block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
             // Calculate the block length
             int block_length = y[tid] - x[tid];
-
             // Select initial value based on the block density
             double running_value = 0;
             if (block_length == length){
@@ -129,7 +123,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             } else {
                 running_value = 0;
             }
-
             // Iterate over the block and update
             for (int entry = x[tid]; entry < y[tid]; entry++){
                 if (data[entry] != data[entry]){
@@ -143,7 +136,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     }
                 }
             }
-
             // Store in the return function
             z[tid] = running_value;
         }
@@ -155,10 +147,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                                    double* z) {
             // Get the index of the block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
             // Calculate the block length
             int block_length = y[tid] - x[tid];
-
             // Select initial value based on the block density
             double running_value = 0;
             if (block_length > 0){
@@ -166,7 +156,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             } else {
                 running_value = 0;
             }
-
             // Iterate over the section of the sparse matrix
             for (int entry = x[tid]; entry < y[tid]; entry++){
                 if (data[entry] != data[entry]){
@@ -180,7 +169,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     }
                 }
             }
-
             // Store in the return function
             z[tid] = running_value;
         }
@@ -192,10 +180,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                            double* z) {
             // Get the index of the block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
             // Calculate the block length
             int block_length = y[tid] - x[tid];
-
             // Select initial value based on the block density
             double running_value = 0;
             if (block_length == length){
@@ -203,7 +189,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             } else {
                 running_value = 0;
             }
-
             // Iterate over the block to update the initial value
             for (int entry = x[tid]; entry < y[tid]; entry++){
                 if (data[entry] != data[entry]){
@@ -217,7 +202,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     }
                 }
             }
-
             // Store in the return function
             z[tid] = running_value;
         }
@@ -229,10 +213,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                                    double* z) {
             // Get the index of hte block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
             // Calculate the block length
             int block_length = y[tid] - x[tid];
-
             // Select initial value based on the block density
             double running_value = 0;
             if (block_length > 0){
@@ -240,7 +222,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             } else {
                 running_value = 0;
             }
-
             // Iterate over the section of the sparse matrix
             for (int entry = x[tid]; entry < y[tid]; entry++){
                 if (data[entry] != data[entry]){
@@ -254,7 +235,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     }
                 }
             }
-
             // Store in the return function
             z[tid] = running_value;
         }
@@ -266,14 +246,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                                int length, long long* z) {
             // Get the index of the block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
             // Calculate the block length
             int block_length = y[tid] - x[tid];
-
             // Select initial value based on the block density
             int data_index = 0;
             double data_value = 0;
-
             if (block_length == length){
                 // Block is dense. Fill the first value
                 data_value = data[x[tid]];
@@ -293,7 +270,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 data_value = 0;
                 data_index = 0;
             }
-
             // Iterate over the section of the sparse matrix
             for (int entry = x[tid]; entry < y[tid]; entry++){
                 if (data[entry] != data[entry]){
@@ -309,7 +285,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     }
                 }
             }
-
             // Store in the return function
             z[tid] = data_index;
         }
@@ -319,16 +294,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         extern "C" __global__
         void min_arg_reduction(double* data, int* indices, int* x, int* y,
                                int length, long long* z) {
-            // Get the index of the block
+            // Get the index of hte block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
             // Calculate the block length
             int block_length = y[tid] - x[tid];
-
             // Select initial value based on the block density
             int data_index = 0;
             double data_value = 0;
-
             if (block_length == length){
                 // Block is dense. Fill the first value
                 data_value = data[x[tid]];
@@ -348,7 +320,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 data_value = 0;
                 data_index = 0;
             }
-
             // Iterate over the section of the sparse matrix
             for (int entry = x[tid]; entry < y[tid]; entry++){
                 if (data[entry] != data[entry]){
@@ -364,10 +335,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     }
                 }
             }
-
             // Store in the return function
             z[tid] = data_index;
-
         }
         ''', 'min_arg_reduction')
 
@@ -637,20 +606,20 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return self.__class__(
             (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
 
-    def __setitem__(self, slices, values):
+    def __setitem__(self, slices, values, format):
         """
-         Assigns a value or a list of values to particular indices
+                 Assigns a value or a list of values to particular indices
 
-        Args:
-            slices: tuple or list of rows and columns indices
-            values: single or list of values
+                Args:
+                    slices: tuple or list of rows and columns indices
+                    values: single or list of values
 
-        Returns: void
+                Returns: void
 
-        .. warning::
-             Currently doesn't support slice assignment
+                .. warning::
+                     Currently doesn't support slice assignment
 
-        """
+                """
         if isinstance(slices, tuple):
             slices = list(slices)
         elif isinstance(slices, list):
@@ -699,173 +668,127 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                            copy=False, ndmin=1).ravel()
         values = cupy.array(values, dtype=self.dtype,
                             copy=False, ndmin=1).ravel()
-        self._set_items(major, minor, values, major_size, minor_size)
-
-    def _set_items(self, major, minor, values, major_size, minor_size):
-        """
-         Assigns multiple values to the required positions.
-         If the position is found, the value is updated (whether 0 or not)
-         else the value is inserted
-         (only if a non zero value is found in the value list)
-         The zeros are eliminated at the end to keep
-         the sparse matrix structure
-
-        Args:
-            major: flattened cupy array of rows indices
-            minor: flattened cupy array of columns indices
-            values: flattened cupy array of values
-            major_size: number of rows
-            minor_size: number of columns
-
-        Returns: void
-
-        """
-        # offsets contain the index of the entry to be updated
-        # if found, else -1
-        offsets = cupy.empty(values.size, dtype=self.indices.dtype)
-        self.sample_offsets(major_size, minor_size,
-                            values.size, major, minor, offsets)
-        mask = offsets > -1
-        self.update_values(offsets[mask], values[mask])
-        # eliminate the insertion of zero values
-        mask |= (values == 0)
-        # Insert iff entry is not found (-1 in offsets)
-        #            or lists of values has at least one non zero item
-        if -1 in offsets and not all(mask):
-            major = major[~mask]
-            minor = minor[~mask]
-            values = values[~mask]
-            major[major < 0] += major_size
-            minor[minor < 0] += minor_size
-            self.insert_values(major, minor, values)
-        self.eliminate_zeros()
+        major, minor, values = self.remove_duplicates(major, minor, values)
+        self.mask_existing_entries(major_size, minor_size,
+                                   values.size, major, minor, format)
+        if format == 'csc':
+            compress_new = coo.coo_matrix((values, (minor, major)),
+                                          shape=self.shape).tocsc()
+        elif format == 'csr':
+            compress_new = coo.coo_matrix((values, (major, minor)),
+                                          shape=self.shape).tocsr()
+        else:
+            raise ValueError("Unsupported format")
+        compress_new += self
+        compress_new.eliminate_zeros()
+        self.data = compress_new.data
+        self.indptr = compress_new.indptr
+        self.indices = compress_new.indices
 
     def eliminate_zeros(self):
         pass
 
-    def update_values(self, offsets, values):
+    def remove_duplicates(self, major, minor, values):
         """
-         Update the positions found in offsets by the suitable values
-         for both float and complex types
-
+        Eliminate duplicate matrix entries by keeping the last value.
         Args:
-            offsets: positions to be updated
-            values: list of values used in the update,
-                    values to be inserted are masked
+            major: rows array
+            minor: columns array
+            values: array
 
-        Returns: void
-
+        Returns:
+            major: array of unique rows indices
+            minor: array of unique columns indices
+            values: array of latest values
         """
-        if self.dtype.kind == 'c':
-            self._compress_setitem_complex_kern(
-                values.real, values.imag, offsets,
-                self.data.real, self.data.imag)
-        else:
-            self._compress_setitem_kern(values, offsets, self.data)
+        keys = cupy.stack([major, minor])
+        order = cupy.lexsort(keys)
+        values = values[order]
+        major = major[order]
+        minor = minor[order]
+        diff = cupy.ElementwiseKernel(
+            'raw int32 row, raw int32 col',
+            'int32 diff',
+            '''
+            int index;
+            if (i == 0 || row[i - 1] == row[i] && col[i - 1] == col[i]) {
+              diff = 0;
+            } else {
+              diff = 1;
+            }
+            ''',
+            'remove_duplicates_diff'
+        )(major, minor, size=major.size)
 
-    def insert_values(self, major, minor, values):
+        if not diff[1:].all():
+            index = cupy.cumsum(diff, dtype='i')
+            size = int(index[-1]) + 1
+            data = cupy.zeros(size, dtype=values.dtype)
+            row = cupy.empty(size, dtype='i')
+            col = cupy.empty(size, dtype='i')
+            if values.dtype.kind == 'f':
+                cupy.ElementwiseKernel(
+                    'T src_data, int32 src_row, int32 src_col, int32 index',
+                    'raw T data, raw int32 row, raw int32 col',
+                    '''
+                    data[index] = src_data;
+                    row[index] = src_row;
+                    col[index] = src_col;
+                    ''',
+                    'remove_duplicates_assign'
+                )(values, major, minor, index, data, row, col)
+            elif values.dtype.kind == 'c':
+                cupy.ElementwiseKernel(
+                    'T src_real, T src_imag, int32 src_row, int32 src_col, '
+                    'int32 index',
+                    'raw T real, raw T imag, raw int32 row, raw int32 col',
+                    '''
+                    real[index] = src_real;
+                    imag[index] = src_imag;
+                    row[index] = src_row;
+                    col[index] = src_col;
+                    ''',
+                    'remove_duplicates_assign_complex'
+                )(values.real, values.imag, major, minor, index,
+                  data.real, data.imag, row, col)
+            values = data
+            major = row
+            minor = col
+        return major, minor, values
+
+    def mask_existing_entries(self, major_size, minor_size,
+                              samples, major, minor, format):
         """
-        Insert values in the required positions
-        of the sparse matrix and update metadata
-
-        Args:
-            major: list of rows indices
-            minor: list of columns indices
-            values: list of values to be inserted
-
-        Returns: void
-
-        ... warning:
-              Currently doesn't support checks for the data, indices, indptr
-              data types if the number of values exceeds the allowed
-              limit of the current data type of each
-
-        """
-        # order the insertions by the rows indices
-        order = cupy.argsort(major)
-        major = major.take(order)
-        minor = minor.take(order)
-        values = values.take(order)
-
-        # get the unique rows, rows indices pointers and the
-        # of non zeros for the new values and stack in new metadata
-        uniq_rows, rows_indptr = cupy.unique(major, return_index=True)
-        rows_indptr = cupy.append(rows_indptr, len(minor))
-        new_nnz = cupy.diff(rows_indptr)
-        new_metadata = zip(uniq_rows, rows_indptr, rows_indptr[1:])
-
-        row = 0
-        data = []
-        indices = []
-        for col, (next, col_start, col_stop) in enumerate(new_metadata):
-            start = self.indptr[row]
-            stop = self.indptr[next]
-            row = next
-            data.append(self.data[start:stop])
-            indices.append(self.indices[start:stop])
-
-            uniq_cols, cols_indptr = cupy.unique(
-                minor[col_start:col_stop][::-1], return_index=True)
-            if len(uniq_cols) == col_stop - col_start:
-                data.append(values[col_start:col_stop])
-                indices.append(minor[col_start:col_stop])
-            else:
-                new_nnz[col] = len(uniq_cols)
-                data.append(
-                    values[col_start:col_stop][::-1][cols_indptr])
-                indices.append(
-                    minor[col_start:col_stop][::-1][cols_indptr])
-
-        # remaining part (old values)
-        start = self.indptr[next]
-        data.append(self.data[start:])
-        indices.append(self.indices[start:])
-
-        nnzs = cupy.empty(self.indptr.shape, dtype=self.indices.dtype)
-        indptr_diff = cupy.diff(self.indptr)
-        indptr_diff[uniq_rows] += new_nnz
-        nnzs[0] = 0
-        nnzs[1:] = indptr_diff
-        # update the original metadata by the new ones and sort indices
-        self.data = cupy.concatenate(data)
-        self.indices = cupy.concatenate(indices)
-        self.indptr = cupy.cumsum(nnzs, out=nnzs)
-        self.sort_indices()
-
-    def sample_offsets(self, major_size, minor_size, samples,
-                       major, minor, offsets):
-        """
-         - Computes the offset for each required position if found in
-           the sparse matrix else puts -1 in the offsets array.
-         - Indicates whether duplicate entries exist or not
+         - set entries of values to be updated to zero
          - If number of samples to be assigned exceeds an arbitrary threshold,
-           binary search's lower bound is applied in offsets computation else
-           linear search is used
-
+           binary search's lower bound is applied else linear search is used
         Args:
             major_size: number of rows
             minor_size: number of columns
             samples: number of sample values
             major: flattened cupy array of rows indices
             minor: flattened cupy array of columns indices
-            offsets: empty array of the same size of values
-
-        Returns:
-               repeat : int marking duplicates entries needed to be
-               resolved before repeating the operation
         """
         threads = 1024 if samples > 1024 else samples
+        if self.dtype.kind == 'c':
+            imag = self.data.imag
+            real = self.data.real
+            cplx = 1
+        else:
+            imag = None
+            real = self.data
+            cplx = 0
         if self._has_canonical_format and \
                 samples > self.indptr[major_size] / 10:
             self._data_offsets_canonical(
                 (int(cupy.ceil(samples / threads)),), (threads,),
                 (major_size, minor_size, self.indptr, self.indices,
-                 offsets, major, minor))
+                 real, imag, major, minor, cplx, format == "csc"))
         else:
             self._data_offsets(
-                (int(cupy.ceil(samples/threads)),), (threads,),
+                (int(cupy.ceil(samples / threads)),), (threads,),
                 (major_size, minor_size, self.indptr, self.indices,
-                 offsets, major, minor))
+                 real, imag, major, minor, cplx))
 
     @property
     def has_canonical_format(self):
@@ -873,23 +796,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def get_shape(self):
         """Returns the shape of the matrix.
-
-
         Returns:
             tuple: Shape of the matrix.
-
         """
         return self._shape
 
     def getnnz(self, axis=None):
         """Returns the number of stored values, including explicit zeros.
-
         Args:
             axis: Not supported yet.
-
         Returns:
             int: The number of stored values.
-
         """
         if axis is None:
             return self.data.size
@@ -897,8 +814,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             raise ValueError
 
     # TODO(unno): Implement sorted_indices
-    def sort_indices(self):
-        pass
 
     def sum_duplicates(self):
         if self._has_canonical_format:
@@ -917,20 +832,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _minor_reduce(self, ufunc, axis, nonzero):
         """Reduce nonzeros with a ufunc over the minor axis when non-empty
-
         Can be applied to a function of self.data by supplying data parameter.
         Warning: this does not call sum_duplicates()
-
         Args:
             ufunc (object): Function handle giving the operation to be
                 conducted.
             axis (int): Matrix over which the reduction should be
                 conducted.
-
         Returns:
             (cupy.ndarray): Reduce result for nonzeros in each
                 major_index.
-
         """
 
         # Call to the appropriate kernel function
@@ -1013,19 +924,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _arg_minor_reduce(self, ufunc, axis):
         """Reduce nonzeros with a ufunc over the minor axis when non-empty
-
         Can be applied to a function of self.data by supplying data parameter.
         Warning: this does not call sum_duplicates()
-
         Args:
             ufunc (object): Function handle giving the operation to be
                 conducted.
             axis (int): Maxtrix over which the reduction should be conducted
-
         Returns:
             (cupy.ndarray): Reduce result for nonzeros in each
                 major_index
-
         """
 
         # Call to the appropriate kernel function
