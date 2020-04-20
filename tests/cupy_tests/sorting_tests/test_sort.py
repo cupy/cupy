@@ -38,21 +38,21 @@ class TestSort(unittest.TestCase):
     # Test dtypes
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a.sort()
         return a
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_external_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return xp.sort(a)
 
     # Test contiguous arrays
 
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_sort_contiguous(self, xp):
         a = testing.shaped_random((10,), xp)  # C contiguous view
         a.sort()
@@ -63,12 +63,12 @@ class TestSort(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             a.sort()
 
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_external_sort_contiguous(self, xp):
         a = testing.shaped_random((10,), xp)  # C contiguous view
         return xp.sort(a)
 
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_external_sort_non_contiguous(self, xp):
         a = testing.shaped_random((10,), xp)[::2]  # Non contiguous view
         return xp.sort(a)
@@ -161,7 +161,7 @@ class TestSort(unittest.TestCase):
     # Test NaN ordering
 
     @testing.for_dtypes('efdFD')
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_nan1(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a[2] = a[6] = xp.nan
@@ -225,7 +225,7 @@ class TestLexsort(unittest.TestCase):
     # Test dtypes
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_lexsort_dtype(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
         return xp.lexsort(a)
@@ -233,21 +233,21 @@ class TestLexsort(unittest.TestCase):
     # Test NaN ordering
 
     @testing.for_dtypes('efdFD')
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_nan1(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
         a[0, 2] = a[0, 6] = xp.nan
         return xp.lexsort(a)
 
     @testing.for_dtypes('efdFD')
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_nan2(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
         a[1, 2] = a[0, 6] = xp.nan
         return xp.lexsort(a)
 
     @testing.for_dtypes('efdFD')
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_nan3(self, xp, dtype):
         a = testing.shaped_random((2, 10), xp, dtype)
         a[1, 2] = a[1, 6] = xp.nan
@@ -255,14 +255,14 @@ class TestLexsort(unittest.TestCase):
 
     # Test non C-contiguous input
 
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_view(self, xp):
         # from #3232
         a = testing.shaped_random((4, 8), xp, dtype=xp.float64)
         a = a.T[::-1]
         return xp.lexsort(a)
 
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_F_order(self, xp):
         a = testing.shaped_random((4, 8), xp, dtype=xp.float64)
         a = xp.asfortranarray(a)
@@ -376,11 +376,18 @@ class TestArgsort(unittest.TestCase):
     # Test NaN ordering
 
     @testing.for_dtypes('efdFD')
-    @testing.numpy_cupy_allclose()
-    def test_nan(self, xp, dtype):
+    @testing.numpy_cupy_array_equal()
+    def test_nan1(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a[2] = a[6] = xp.nan
-        return xp.argsort(a)
+        return self.argsort(a)
+
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_nan2(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        a[0, 2, 1] = a[1, 1, 3] = xp.nan
+        return self.argsort(a)
 
 
 @testing.gpu
