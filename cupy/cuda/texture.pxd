@@ -39,6 +39,7 @@ cdef class TextureObject:
         readonly ResourceDescriptor ResDesc
         readonly TextureDescriptor TexDesc
 
+
 cdef class SurfaceObject:
     cdef:
         readonly uintmax_t ptr
