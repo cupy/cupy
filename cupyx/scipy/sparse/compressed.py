@@ -37,30 +37,53 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     # https: // www.micc.unifi.it / bertini / download
     # / gpu - programming - basics / 2017 / gpu_cuda_5.pdf
+    setitem_preamble = '''
+      #if __CUDA_ARCH__ < 600
+      __device__
+      double atomicExch(double* address, double val)
+      {
+          unsigned long long int* address_as_ull =
+                                    (unsigned long long int*)address;
+          unsigned long long int old = *address_as_ull, compare;
+          do {
+              compare = old;
+              old = atomicCAS(address_as_ull, compare,
+                                      __double_as_longlong(val));
+          } while (compare != old);
+          return __longlong_as_double(old);
+      }
+      #endif
+      '''
+    _compress_setitem_kern = core.ElementwiseKernel(
+        'S offsets', 'raw T data',
+        '''
+        if (offsets != -1)
+          atomicExch(&data[offsets], T(0));
+        ''',
+        'compress_setitem',
+        preamble=setitem_preamble)
+
+    _compress_setitem_complex_kern = core.ElementwiseKernel(
+        'S offsets',
+        'raw T real, raw T imag',
+        '''
+          if (offsets != -1){
+              atomicExch(&real[offsets], T(0));
+              atomicExch(&imag[offsets], T(0));
+          }
+        ''',
+        'compress_setitem_complex',
+        preamble=setitem_preamble)
+
     mask_module = r'''
-       #if __CUDA_ARCH__ < 600
-        __device__
-        double atomicExch(double* address, double val)
-        {
-            unsigned long long int* address_as_ull =
-                                      (unsigned long long int*)address;
-            unsigned long long int old = *address_as_ull, compare;
-            do {
-                compare = old;
-                old = atomicCAS(address_as_ull, compare,
-                                        __double_as_longlong(val));
-            } while (compare != old);
-            return __longlong_as_double(old);
-        }
-        #endif
        extern "C" __global__
        void data_offsets_canonical (int rows, int cols, int* indptr,
-       int* indices, double* real, double* imag, int* major, int* minor,
-       int cplx, int csc){
+       int* indices, int* major, int* minor, int csc, int * optr){
            // Get the index of the block
            int tid = blockIdx.x * blockDim.x + threadIdx.x;
            int i = major[tid] < 0 ? major[tid] + rows : major[tid];
            int j = minor[tid] < 0 ? minor[tid] + cols : minor[tid];
+           major[tid] = i, minor[tid] = j;
            int start = indptr[i], stop = indptr[i+1], offset = -1;
            while (start < stop) {
               int mid = start + (stop - start)/2;
@@ -75,33 +98,25 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                    else stop = mid;
                }
            }
-           if (offset != -1){
-                if (cplx)
-                  atomicExch(&imag[offset], (double) 0);
-                atomicExch(&real[offset], (double) 0);
-           }
+           optr[tid] = offset;
         }
        extern "C" __global__
        void data_offsets (int rows, int cols, int* indptr,
-       int* indices, double* real, double* imag, int* major, int* minor,
-       int cplx){
+       int* indices, int* major, int* minor, int* optr){
            // Get the index of the block
            int tid = blockIdx.x * blockDim.x + threadIdx.x;
            int i = major[tid] < 0 ? major[tid] + rows : major[tid];
            int j = minor[tid] < 0 ? minor[tid] + cols : minor[tid];
-           int start = indptr [i], stop = indptr [i+1], offset = -1;
+           major[tid] = i, minor[tid] = j;
+           int start = indptr [i], stop = indptr [i+1], offset=-1;
            for(int col = start; col < stop; col++)
            {
                if (indices[col] == j) {
-                   offset = col;
-                   break;
+                    offset = col;
+                    break;
                }
            }
-           if (offset!=-1){
-              if (cplx)
-                atomicExch(&imag[offset], (double) 0);
-             atomicExch(&real[offset], (double) 0);
-           }
+            optr[tid] = offset;
         }
         '''
     module = RawModule(code=mask_module)
@@ -673,10 +688,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                                    values.size, major, minor, format)
         if format == 'csc':
             compress_new = coo.coo_matrix((values, (minor, major)),
-                                          shape=self.shape).tocsc()
+                                          shape=self.shape,
+                                          dtype=self.dtype).tocsc()
+
         elif format == 'csr':
             compress_new = coo.coo_matrix((values, (major, minor)),
-                                          shape=self.shape).tocsr()
+                                          shape=self.shape,
+                                          dtype=self.dtype).tocsr()
         else:
             raise ValueError("Unsupported format")
         compress_new += self
@@ -770,25 +788,23 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             minor: flattened cupy array of columns indices
         """
         threads = 1024 if samples > 1024 else samples
-        if self.dtype.kind == 'c':
-            imag = self.data.imag
-            real = self.data.real
-            cplx = 1
-        else:
-            imag = None
-            real = self.data
-            cplx = 0
+        offsets = cupy.zeros(samples, dtype='i')
         if self._has_canonical_format and \
                 samples > self.indptr[major_size] / 10:
             self._data_offsets_canonical(
                 (int(cupy.ceil(samples / threads)),), (threads,),
                 (major_size, minor_size, self.indptr, self.indices,
-                 real, imag, major, minor, cplx, format == "csc"))
+                 major, minor, format == "csc", offsets))
         else:
             self._data_offsets(
                 (int(cupy.ceil(samples / threads)),), (threads,),
                 (major_size, minor_size, self.indptr, self.indices,
-                 real, imag, major, minor, cplx))
+                 major, minor, offsets))
+        if self.dtype.kind == 'c':
+            self._compress_setitem_complex_kern(offsets,
+                                                self.data.real, self.data.imag)
+        else:
+            self._compress_setitem_kern(offsets, self.data)
 
     @property
     def has_canonical_format(self):
