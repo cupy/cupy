@@ -250,6 +250,13 @@ cpdef enum:
     cudaChannelFormatKindFloat = 2
     cudaChannelFormatKindNone = 3
 
+    # CUDA array flags
+    cudaArrayDefault = 0
+    # cudaArrayLayered = 1
+    cudaArraySurfaceLoadStore = 2
+    # cudaArrayCubemap = 4
+    # cudaArrayTextureGather = 8
+
     # cudaResourceType
     cudaResourceTypeArray = 0
     cudaResourceTypeMipmappedArray = 1
