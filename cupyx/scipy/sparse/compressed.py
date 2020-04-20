@@ -1,5 +1,4 @@
 import numpy
-from cupy.core.raw import RawModule
 
 try:
     import scipy.sparse
@@ -75,7 +74,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         'compress_setitem_complex',
         preamble=setitem_preamble)
 
-    mask_module = r'''
+    _data_offsets_canonical = core.RawKernel(r'''
        extern "C" __global__
        void data_offsets_canonical (int rows, int cols, int* indptr,
        int* indices, int* major, int* minor, int csc, int * optr){
@@ -99,7 +98,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                }
            }
            optr[tid] = offset;
-        }
+        }''', 'data_offsets_canonical')
+
+    _data_offsets = core.RawKernel(r'''
        extern "C" __global__
        void data_offsets (int rows, int cols, int* indptr,
        int* indices, int* major, int* minor, int* optr){
@@ -118,10 +119,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
            }
             optr[tid] = offset;
         }
-        '''
-    module = RawModule(code=mask_module)
-    _data_offsets_canonical = module.get_function('data_offsets_canonical')
-    _data_offsets = module.get_function('data_offsets')
+        ''', 'data_offsets')
 
     _max_reduction_kern = core.RawKernel(r'''
         extern "C" __global__
