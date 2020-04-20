@@ -135,10 +135,10 @@ __host__ __device__ __forceinline__ bool _real_less(const T& lhs, const T& rhs) 
 template <typename T>
 __host__ __device__ __forceinline__ bool _tuple_real_less(const tuple<size_t, T>& lhs,
                                                           const tuple<size_t, T>& rhs) {
-    const size_t& lhs_k = lhs.get<0>();
-    const size_t& rhs_k = rhs.get<0>();
-    const T& lhs_v = lhs.get<1>();
-    const T& rhs_v = rhs.get<1>();
+    const size_t& lhs_k = lhs.template get<0>();
+    const size_t& rhs_k = rhs.template get<0>();
+    const T& lhs_v = lhs.template get<1>();
+    const T& rhs_v = rhs.template get<1>();
 
     // tuple's comparison rule: compare the 1st member, then 2nd, then 3rd, ...,
     // which should be respected
