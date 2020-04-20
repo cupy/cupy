@@ -55,10 +55,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
       '''
     _compress_setitem_kern = core.ElementwiseKernel(
         'S offsets', 'raw T data',
-        '''
-        if (offsets != -1)
-          atomicExch(&data[offsets], T(0));
-        ''',
+        'if (offsets != -1) atomicExch(&data[offsets], T(0));',
         'compress_setitem',
         preamble=setitem_preamble)
 
@@ -118,8 +115,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                }
            }
             optr[tid] = offset;
-        }
-        ''', 'data_offsets')
+        } ''', 'data_offsets')
 
     _max_reduction_kern = core.RawKernel(r'''
         extern "C" __global__
@@ -621,18 +617,19 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def __setitem__(self, slices, values, format):
         """
-                 Assigns a value or a list of values to particular indices
+         Assigns a value or a list of values to particular indices
 
-                Args:
-                    slices: tuple or list of rows and columns indices
-                    values: single or list of values
+        Args:
+            slices: tuple or list of rows and columns indices
+            values: single or list of values
 
-                Returns: void
+        Returns: void
 
-                .. warning::
-                     Currently doesn't support slice assignment
+        .. warning::
+             Currently doesn't support slice assignment
 
-                """
+        """
+
         if isinstance(slices, tuple):
             slices = list(slices)
         elif isinstance(slices, list):
@@ -717,6 +714,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             minor: array of unique columns indices
             values: array of latest values
         """
+
         keys = cupy.stack([major, minor])
         order = cupy.lexsort(keys)
         values = values[order]
@@ -778,13 +776,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
          - set entries of values to be updated to zero
          - If number of samples to be assigned exceeds an arbitrary threshold,
            binary search's lower bound is applied else linear search is used
+
         Args:
             major_size: number of rows
             minor_size: number of columns
             samples: number of sample values
             major: flattened cupy array of rows indices
             minor: flattened cupy array of columns indices
+
+        Returns:
         """
+
         threads = 1024 if samples > 1024 else samples
         offsets = cupy.zeros(samples, dtype='i')
         if self._has_canonical_format and \
