@@ -27,9 +27,9 @@ cdef class _AbstractReductionKernel:
 
     cdef function.Function _get_function(
         self,
-        tuple params, tuple args_info, _kernel._TypeMap type_map,
+        tuple params, tuple arginfos, _kernel._TypeMap types,
         str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-        Py_ssize_t block_size, int device_id)
+        Py_ssize_t block_size)
 
 
 cdef class ReductionKernel(_AbstractReductionKernel):
