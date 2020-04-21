@@ -3,9 +3,12 @@ import io
 import pytest
 import unittest
 
+import numpy
+
 from cupy import testing
 from cupyx import fallback_mode
 from cupyx import _ufunc_config
+from tests.cupyx_tests.fallback_mode_tests import test_fallback as test_utils
 
 
 @testing.gpu
@@ -99,6 +102,7 @@ class TestNotificationModes(unittest.TestCase):
 @testing.gpu
 class TestNotificationVectorize(unittest.TestCase):
 
+    @test_utils.enable_slice_copy
     def test_custom_or_builtin_pyfunc(self):
 
         old = _ufunc_config.seterr(fallback_mode='print')
@@ -121,9 +125,11 @@ class TestNotificationVectorize(unittest.TestCase):
         _ufunc_config.seterr(**old)
         output = saved_stdout.getvalue().strip()
         msg = "'vectorize' method not in cupy, "
-        msg += "falling back to 'numpy.vectorize'"
+        msg += "falling back to '"
+        msg += numpy.vectorize.__module__ + ".vectorize'"
         assert output == ("Warning: " + msg + "\nWarning: " + msg)
 
+    @test_utils.enable_slice_copy
     def test_cupy_supported_pyfunc(self):
 
         old = _ufunc_config.seterr(fallback_mode='print')
@@ -137,11 +143,13 @@ class TestNotificationVectorize(unittest.TestCase):
         _ufunc_config.seterr(**old)
         output = saved_stdout.getvalue().strip()
         msg1 = "'vectorize' method not in cupy, "
-        msg1 += "falling back to 'numpy.vectorize'"
+        msg1 += "falling back to '"
+        msg1 += numpy.vectorize.__module__ + ".vectorize'"
         msg2 = "'absolute' method is available in cupy but cannot be used, "
         msg2 += "falling back to its numpy implementation"
         assert output == ("Warning: " + msg1 + "\nWarning: " + msg2)
 
+    @test_utils.enable_slice_copy
     def test_numpy_only_pyfunc(self):
 
         old = _ufunc_config.seterr(fallback_mode='print')
@@ -155,7 +163,8 @@ class TestNotificationVectorize(unittest.TestCase):
         _ufunc_config.seterr(**old)
         output = saved_stdout.getvalue().strip()
         msg1 = "'vectorize' method not in cupy, "
-        msg1 += "falling back to 'numpy.vectorize'"
+        msg1 += "falling back to '"
+        msg1 += numpy.vectorize.__module__ + ".vectorize'"
         msg2 = "'fabs' method not in cupy, "
         msg2 += "falling back to its numpy implementation"
         assert output == ("Warning: " + msg1 + "\nWarning: " + msg2)
