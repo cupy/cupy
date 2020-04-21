@@ -1,56 +1,8 @@
+from libcpp cimport vector
+
 from cupy.core cimport _carray
 from cupy.core cimport _scalar
 from cupy.core.core cimport ndarray
-
-
-cdef class _Args:
-    # This class encapsulates kernel arguments and provides various operations
-    # on them that are necessary in preparation for a kernel launch.
-    # Not immutable.
-
-    cdef:
-        readonly object in_params
-        readonly object in_args
-        readonly object out_params
-        readonly list out_args  # can be None
-
-    # Returns whether the specified input argument is an ndarray.
-    cdef bint is_in_ndarray(self, int index)
-
-    cdef list all_args(self)
-
-    cdef tuple all_params(self)
-
-    # Preprocesses arguments for kernel invocation.
-    # - Converts arguments to _Arg.
-    # - Checks device compatibility for ndarrays
-    @staticmethod
-    cdef list _preprocess(list objs, int device_id)
-
-    # Copies in_args if their memory ranges are overlapping with out_args.
-    # Items in in_args are updated in-place.
-    @staticmethod
-    cdef _copy_in_args_if_needed(list in_args, list out_args)
-
-    # Broadcasts the arguments.
-    # self.in_args and self.out_args will be updated with the resulted arrays.
-    cdef broadcast(self)
-
-    cdef set_scalar_dtypes(self, in_types)
-
-    # Assigns new out_args.
-    # Existing out_args, if any, will be overwritten.
-    cdef set_out_args(self, out_args)
-
-    cdef tuple get_out_arrays(self)
-
-    # Squashes dimensions of arrays and returns the resulted shape.
-    # in_args, out_args are updated in-place.
-    cdef tuple reduce_dims(self, shape)
-
-    # Returns a list of arguments that are directly passed to the kernel
-    # function. The indexer argument is returned separately.
-    cdef tuple get_kernel_args(self, shape)
 
 
 cdef class ParameterInfo:
@@ -60,6 +12,48 @@ cdef class ParameterInfo:
         readonly str ctype
         readonly bint raw
         readonly bint is_const
+
+
+cdef enum _ArgKind:
+    ARG_KIND_NDARRAY = 1
+    ARG_KIND_INDEXER
+    ARG_KIND_SCALAR
+
+
+cdef class _ArgInfo:
+    # Holds metadata of an argument.
+    # This class is immutable and used as a part of hash keys.
+
+    cdef:
+        readonly _ArgKind arg_kind
+        readonly type type
+        readonly object dtype
+        readonly int ndim
+        readonly bint c_contiguous
+
+    @staticmethod
+    cdef _ArgInfo from_arg(object arg)
+
+    @staticmethod
+    cdef _ArgInfo from_ndarray(ndarray arg)
+
+    @staticmethod
+    cdef _ArgInfo from_scalar(_scalar.CScalar arg)
+
+    @staticmethod
+    cdef _ArgInfo from_indexer(_carray.Indexer arg)
+
+    cdef _ArgInfo as_ndarray_with_ndim(self, int ndim)
+
+    cdef bint is_ndarray(self)
+
+    cdef bint is_scalar(self)
+
+    cdef str get_c_type(self)
+
+    cdef str get_param_c_type(self, ParameterInfo p)
+
+    cdef str get_c_var_name(self, ParameterInfo p)
 
 
 cdef class _TypeMap:
@@ -128,20 +122,24 @@ cdef class _Ops:
 cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
                    default_casting=*, loop_prep=*, out_ops=*)
 
+cpdef tuple _get_arginfos(list args)
+
 cpdef str _get_kernel_params(tuple params, tuple arginfos)
 
-cdef tuple _broadcast(list args, tuple params, bint use_size)
+cdef list _broadcast(list args, tuple params, bint use_size,
+                     vector.vector[Py_ssize_t]& shape)
 
-cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
+cdef list _get_out_args(list out_args, tuple out_types,
+                        const vector.vector[Py_ssize_t]& out_shape,
                         casting)
 
 cdef list _get_out_args_with_params(
-    list out_args, tuple out_types, tuple out_shape, tuple out_params,
-    bint is_size_specified)
-
+    list out_args, tuple out_types,
+    const vector.vector[Py_ssize_t]& out_shape,
+    tuple out_params, bint is_size_specified)
 
 cdef _check_array_device_id(ndarray arr, int device_id)
 
-cdef list _preprocess_args(int dev_id, args)
+cdef list _preprocess_args(int dev_id, args, bint use_c_scalar)
 
 cdef tuple _reduce_dims(list args, tuple params, tuple shape)

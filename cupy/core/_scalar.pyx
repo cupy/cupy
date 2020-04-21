@@ -102,7 +102,7 @@ cdef bint _use_int32 = _int_type != _numpy_int64
 del _int_iinfo
 
 
-cpdef python_scalar_to_numpy_scalar(x):
+cpdef _python_scalar_to_numpy_scalar(x):
     # Note that isinstance(x, int) matches with bool.
     typ = type(x)
     if typ is bool:
@@ -121,14 +121,6 @@ cpdef python_scalar_to_numpy_scalar(x):
             # On Windows, it is `numpy.int32`.
             numpy_type = _int_type
     return numpy_type(x)
-
-
-cdef dict _mst_unsigned_to_signed = {
-    i: (numpy.iinfo(j).max, (i, j))
-    for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
-                 for i in "BHILQ"]}
-
-cdef _numpy_min_scalar_type = numpy.min_scalar_type
 
 
 cdef class CScalar(CPointer):
@@ -207,7 +199,7 @@ cdef class CScalar(CPointer):
             (<double complex*>ret.ptr)[0] = x
             ret.size = 16
         else:
-            assert False, ret.kind
+            assert False
         return ret
 
     cpdef apply_dtype(self, dtype):
@@ -325,22 +317,6 @@ cdef class CScalar(CPointer):
         assert False
 
 
-cdef object get_min_scalar_type(object numpy_scalar):
-    # Returns the minimum type to hold the scalar value.
-    #
-    # A non-negative integer may have two locally minimum scalar
-    # types: signed/unsigned integer.
-    # Return both for can_cast, while numpy.min_scalar_type only returns
-    # the unsigned type.
-    t = _numpy_min_scalar_type(numpy_scalar)
-    dt = t.type
-    if t.kind == 'u':
-        m, dt2 = <tuple>_mst_unsigned_to_signed[dt]
-        if numpy_scalar <= m:
-            return dt2
-    return dt
-
-
 cdef CScalar scalar_to_c_scalar(object x):
     # Converts a Python or NumPy scalar to a CScalar.
     # Returns None if the argument is not a scalar.
@@ -348,7 +324,7 @@ cdef CScalar scalar_to_c_scalar(object x):
     if typ in _python_scalar_type_set:
         return CScalar._from_python_scalar(x)
     elif typ in _numpy_scalar_type_set:
-        return CScalar.from_numpy_scalar(x)
+        return CScalar._from_numpy_scalar(x)
     return None
 
 
@@ -357,19 +333,7 @@ cdef object scalar_to_numpy_scalar(object x):
     # Returns None if the argument is not a scalar.
     typ = type(x)
     if typ in _python_scalar_type_set:
-        return python_scalar_to_numpy_scalar(x)
+        return _python_scalar_to_numpy_scalar(x)
     elif typ in _numpy_scalar_type_set:
         return x
     return None
-
-
-cdef bint is_scalar(object x):
-    return is_python_scalar(x) or is_numpy_scalar(x)
-
-
-cdef bint is_python_scalar(object x):
-    return type(x) in _python_scalar_type_set
-
-
-cdef bint is_numpy_scalar(object x):
-    return type(x) in _numpy_scalar_type_set
