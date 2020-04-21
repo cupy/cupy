@@ -282,7 +282,6 @@ from cupy.creation.matrix import triu  # NOQA
 # Array manipulation routines
 # -----------------------------------------------------------------------------
 from cupy.manipulation.basic import copyto  # NOQA
-from cupy.manipulation.basic import putmask  # NOQA
 
 from cupy.manipulation.shape import ravel  # NOQA
 from cupy.manipulation.shape import reshape  # NOQA
@@ -448,6 +447,7 @@ from cupy.indexing.indexing import take_along_axis  # NOQA
 
 from cupy.indexing.insert import place  # NOQA
 from cupy.indexing.insert import put  # NOQA
+from cupy.indexing.insert import putmask  # NOQA
 from cupy.indexing.insert import fill_diagonal  # NOQA
 
 from cupy.indexing.iterate import flatiter  # NOQA
