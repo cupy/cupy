@@ -516,6 +516,24 @@ class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
         assert 'does not support' in str(ex.value)
 
 
+@testing.slow
+@testing.gpu
+class TestCudaArrayInterfaceBigArray(unittest.TestCase):
+    def test_with_over_size_array(self):
+        # real example from #3009
+        size = 5 * 10**8
+        try:
+            a = testing.shaped_random((size,), cupy, cupy.float64)
+            b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, 2, None))
+            testing.assert_array_equal(a, b)
+        except cupy.cuda.memory.OutOfMemoryError:
+            pass
+        else:
+            del b, a
+        finally:
+            cupy.get_default_memory_pool().free_all_blocks()
+
+
 class DummyObjectWithCudaArrayInterface(object):
     def __init__(self, a, ver, include_strides=False, mask=None):
         assert ver in tuple(range(max_cuda_array_interface_version+1))
