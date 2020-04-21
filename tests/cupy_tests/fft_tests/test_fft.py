@@ -820,6 +820,12 @@ class TestRfft2(unittest.TestCase):
                                  contiguous_check=False)
     def test_irfft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
+        if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
+                and int(cupy.cuda.device.get_compute_capability()) < 70
+                and _size_last_transform_axis(
+                    self.shape, self.s, self.axes) == 2):
+            raise unittest.SkipTest('work-around for cuFFT issue')
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
