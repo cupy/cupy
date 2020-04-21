@@ -1,6 +1,5 @@
 import numpy
 
-import cupy
 from cupy import core
 from cupy.core import fusion
 from cupy._sorting import search

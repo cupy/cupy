@@ -2,7 +2,6 @@ import itertools
 import unittest
 
 import numpy
-import pytest
 
 import cupy
 from cupy import cuda
