@@ -5,16 +5,21 @@
 import numpy
 
 cimport cython  # NOQA
+from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
 from cupy.cuda cimport common
+from cupy.cuda cimport device
 from cupy.cuda cimport memory
+from cupy.cuda cimport runtime
 from cupy.cuda cimport stream
 
 
 ###############################################################################
 # Memory Management
 ###############################################################################
+
+# Before attempting to refactor this part, read the discussion in #3212 first.
 
 cdef class _MemoryManager:
     cdef:
@@ -24,7 +29,7 @@ cdef class _MemoryManager:
         self.memory = dict()
 
 
-cdef public char* cupy_malloc(void *m, ptrdiff_t size) with gil:
+cdef public char* cupy_malloc(void *m, size_t size) with gil:
     if size == 0:
         return <char *>0
     cdef _MemoryManager mm = <_MemoryManager>m
@@ -45,38 +50,41 @@ cdef public void cupy_free(void *m, char* ptr) with gil:
 ###############################################################################
 
 cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
-    void _sort[T](void *, size_t *, const vector.vector[ptrdiff_t]&, size_t,
+    void _sort[T](void *, size_t *, const vector.vector[ptrdiff_t]&, intptr_t,
                   void *)
-    void _lexsort[T](size_t *, void *, size_t, size_t, size_t, void *)
+    void _lexsort[T](size_t *, void *, size_t, size_t, intptr_t, void *)
     void _argsort[T](size_t *, void *, void *, const vector.vector[ptrdiff_t]&,
-                     size_t, void *)
+                     intptr_t, void *)
 
-cdef extern from 'cupy_cuComplex.h':
-    ctypedef struct cpy_complex64 'cuComplex':
-        float x, y
-
-    ctypedef struct cpy_complex128 'cuDoubleComplex':
-        double x, y
+    # for half precision
+    # TODO(leofang): eliminate the extra delegation call when we have a dtype
+    # dispatcher in C++
+    void _sort_fp16(void *, size_t *, const vector.vector[ptrdiff_t]&,
+                    intptr_t, void *)
+    void _lexsort_fp16(size_t *, void *, size_t, size_t, intptr_t, void *)
+    void _argsort_fp16(size_t *, void *, void *,
+                       const vector.vector[ptrdiff_t]&, intptr_t, void *)
 
 
 ###############################################################################
 # Python interface
 ###############################################################################
 
-cpdef sort(dtype, size_t data_start, size_t keys_start,
+cpdef sort(dtype, intptr_t data_start, intptr_t keys_start,
            const vector.vector[ptrdiff_t]& shape) except +:
 
-    cdef void *_data_start
-    cdef size_t *_keys_start
-    cdef size_t _strm
+    cdef void* _data_start = <void*>data_start
+    cdef size_t* _keys_start = <size_t*>keys_start
+    cdef intptr_t _strm = stream.get_current_stream_ptr()
+    cdef _MemoryManager mem_obj = _MemoryManager()
+    cdef void* mem = <void*>mem_obj
 
-    _data_start = <void *>data_start
-    _keys_start = <size_t *>keys_start
-    _strm = <size_t>(stream.get_current_stream_ptr())
-    mem_obj = _MemoryManager()
-    cdef void* mem = <void *>mem_obj
+    if dtype == numpy.float16:
+        if int(device.get_compute_capability()) < 53 or \
+                runtime.runtimeGetVersion() < 9020:
+            raise RuntimeError('either the GPU or the CUDA Toolkit does not '
+                               'support fp16')
 
-    # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:
         _sort[common.cpy_byte](_data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.uint8:
@@ -93,31 +101,40 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
         _sort[common.cpy_long](_data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.uint64:
         _sort[common.cpy_ulong](_data_start, _keys_start, shape, _strm, mem)
+    elif dtype == numpy.float16:
+        _sort_fp16(_data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.float32:
         _sort[common.cpy_float](_data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.float64:
         _sort[common.cpy_double](_data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.complex64:
-        _sort[cpy_complex64](_data_start, _keys_start, shape, _strm, mem)
+        _sort[common.cpy_complex64](
+            _data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.complex128:
-        _sort[cpy_complex128](_data_start, _keys_start, shape, _strm, mem)
+        _sort[common.cpy_complex128](
+            _data_start, _keys_start, shape, _strm, mem)
+    elif dtype == numpy.bool:
+        _sort[common.cpy_bool](_data_start, _keys_start, shape, _strm, mem)
     else:
         raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '
                                   'supported'.format(dtype))
 
 
-cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
+cpdef lexsort(dtype, intptr_t idx_start, intptr_t keys_start,
               size_t k, size_t n) except +:
 
-    cdef size_t _strm
+    cdef size_t* idx_ptr = <size_t*>idx_start
+    cdef void* keys_ptr = <void*>keys_start
+    cdef intptr_t _strm = stream.get_current_stream_ptr()
+    cdef _MemoryManager mem_obj = _MemoryManager()
+    cdef void* mem = <void*>mem_obj
 
-    idx_ptr = <size_t *>idx_start
-    keys_ptr = <void *>keys_start
-    _strm = <size_t>(stream.get_current_stream_ptr())
-    mem_obj = _MemoryManager()
-    cdef void* mem = <void *>mem_obj
+    if dtype == numpy.float16:
+        if int(device.get_compute_capability()) < 53 or \
+                runtime.runtimeGetVersion() < 9020:
+            raise RuntimeError('either the GPU or the CUDA Toolkit does not '
+                               'support fp16')
 
-    # TODO(takagi): Support float16 and bool
     if dtype == numpy.int8:
         _lexsort[common.cpy_byte](idx_ptr, keys_ptr, k, n, _strm, mem)
     elif dtype == numpy.uint8:
@@ -134,34 +151,40 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
         _lexsort[common.cpy_long](idx_ptr, keys_ptr, k, n, _strm, mem)
     elif dtype == numpy.uint64:
         _lexsort[common.cpy_ulong](idx_ptr, keys_ptr, k, n, _strm, mem)
+    elif dtype == numpy.float16:
+        _lexsort_fp16(idx_ptr, keys_ptr, k, n, _strm, mem)
     elif dtype == numpy.float32:
         _lexsort[common.cpy_float](idx_ptr, keys_ptr, k, n, _strm, mem)
     elif dtype == numpy.float64:
         _lexsort[common.cpy_double](idx_ptr, keys_ptr, k, n, _strm, mem)
     elif dtype == numpy.complex64:
-        _lexsort[cpy_complex64](idx_ptr, keys_ptr, k, n, _strm, mem)
+        _lexsort[common.cpy_complex64](idx_ptr, keys_ptr, k, n, _strm, mem)
     elif dtype == numpy.complex128:
-        _lexsort[cpy_complex128](idx_ptr, keys_ptr, k, n, _strm, mem)
+        _lexsort[common.cpy_complex128](idx_ptr, keys_ptr, k, n, _strm, mem)
+    elif dtype == numpy.bool:
+        _lexsort[common.cpy_bool](idx_ptr, keys_ptr, k, n, _strm, mem)
     else:
         raise TypeError('Sorting keys with dtype \'{}\' is not '
                         'supported'.format(dtype))
 
 
-cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
+cpdef argsort(dtype, intptr_t idx_start, intptr_t data_start,
+              intptr_t keys_start,
               const vector.vector[ptrdiff_t]& shape) except +:
-    cdef size_t *_idx_start
-    cdef size_t *_keys_start
-    cdef void *_data_start
-    cdef size_t _strm
 
-    _idx_start = <size_t *>idx_start
-    _data_start = <void *>data_start
-    _keys_start = <size_t *>keys_start
-    _strm = <size_t>(stream.get_current_stream_ptr())
-    mem_obj = _MemoryManager()
+    cdef size_t*_idx_start = <size_t*>idx_start
+    cdef void* _data_start = <void*>data_start
+    cdef size_t* _keys_start = <size_t*>keys_start
+    cdef intptr_t _strm = stream.get_current_stream_ptr()
+    cdef _MemoryManager mem_obj = _MemoryManager()
     cdef void* mem = <void *>mem_obj
 
-    # TODO(takagi): Support float16 and bool
+    if dtype == numpy.float16:
+        if int(device.get_compute_capability()) < 53 or \
+                runtime.runtimeGetVersion() < 9020:
+            raise RuntimeError('either the GPU or the CUDA Toolkit does not '
+                               'support fp16')
+
     if dtype == numpy.int8:
         _argsort[common.cpy_byte](
             _idx_start, _data_start, _keys_start, shape, _strm, mem)
@@ -186,6 +209,9 @@ cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
     elif dtype == numpy.uint64:
         _argsort[common.cpy_ulong](
             _idx_start, _data_start, _keys_start, shape, _strm, mem)
+    elif dtype == numpy.float16:
+        _argsort_fp16(
+            _idx_start, _data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.float32:
         _argsort[common.cpy_float](
             _idx_start, _data_start, _keys_start, shape, _strm, mem)
@@ -193,10 +219,13 @@ cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
         _argsort[common.cpy_double](
             _idx_start, _data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.complex64:
-        _argsort[cpy_complex64](
+        _argsort[common.cpy_complex64](
             _idx_start, _data_start, _keys_start, shape, _strm, mem)
     elif dtype == numpy.complex128:
-        _argsort[cpy_complex128](
+        _argsort[common.cpy_complex128](
+            _idx_start, _data_start, _keys_start, shape, _strm, mem)
+    elif dtype == numpy.bool:
+        _argsort[common.cpy_bool](
             _idx_start, _data_start, _keys_start, shape, _strm, mem)
     else:
         raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '

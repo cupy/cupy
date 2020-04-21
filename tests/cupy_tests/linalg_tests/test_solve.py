@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -33,21 +34,19 @@ class TestSolve(unittest.TestCase):
         self.check_x((2, 3, 2, 2), (2, 3, 2,))
         self.check_x((2, 3, 3, 3), (2, 3, 3, 2))
 
-    @testing.numpy_cupy_raises()
-    def check_shape(self, a_shape, b_shape, xp):
-        a = xp.random.rand(*a_shape)
-        b = xp.random.rand(*b_shape)
-        xp.linalg.solve(a, b)
+    def check_shape(self, a_shape, b_shape, error_type):
+        for xp in (numpy, cupy):
+            a = xp.random.rand(*a_shape)
+            b = xp.random.rand(*b_shape)
+            with pytest.raises(error_type):
+                xp.linalg.solve(a, b)
 
     def test_invalid_shape(self):
-        self.check_shape((2, 3), (4,))
-        self.check_shape((3, 3), (2,))
-        self.check_shape((3, 3), (2, 2))
-        self.check_shape((3, 3, 4), (3,))
-
-    def test_invalid_shape2(self):
-        # numpy 1.9 does not raise an error for this type of inputs
-        self.check_shape((2, 3, 3), (3,))
+        self.check_shape((2, 3), (4,), numpy.linalg.LinAlgError)
+        self.check_shape((3, 3), (2,), ValueError)
+        self.check_shape((3, 3), (2, 2), ValueError)
+        self.check_shape((3, 3, 4), (3,), numpy.linalg.LinAlgError)
+        self.check_shape((2, 3, 3), (3,), ValueError)
 
 
 @testing.parameterize(*testing.product({
@@ -110,20 +109,22 @@ class TestInv(unittest.TestCase):
 @testing.gpu
 class TestInvInvalid(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
     @testing.for_float_dtypes(no_float16=True)
-    def test_inv(self, dtype, xp):
-        a = xp.array([[1, 2], [2, 4]]).astype(dtype)
-        with cupyx.errstate(linalg='raise'):
-            xp.linalg.inv(a)
+    def test_inv(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array([[1, 2], [2, 4]]).astype(dtype)
+            with cupyx.errstate(linalg='raise'):
+                with pytest.raises(numpy.linalg.LinAlgError):
+                    xp.linalg.inv(a)
 
-    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
     @testing.for_float_dtypes(no_float16=True)
-    def test_batched_inv(self, dtype, xp):
-        a = xp.array([[[1, 2], [2, 4]]]).astype(dtype)
-        assert a.ndim >= 3  # CuPy internally uses a batched function.
-        with cupyx.errstate(linalg='raise'):
-            xp.linalg.inv(a)
+    def test_batched_inv(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array([[[1, 2], [2, 4]]]).astype(dtype)
+            assert a.ndim >= 3  # CuPy internally uses a batched function.
+            with cupyx.errstate(linalg='raise'):
+                with pytest.raises(numpy.linalg.LinAlgError):
+                    xp.linalg.inv(a)
 
 
 @testing.gpu

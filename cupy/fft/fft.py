@@ -97,7 +97,8 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             raise RuntimeError('Use the cuFFT plan either as a context manager'
                                ' or as an argument.')
     if plan is None:
-        plan = cufft.Plan1d(out_size, fft_type, batch)
+        devices = None if not config.use_multi_gpus else config._devices
+        plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
     else:
         # check plan validity
         if not isinstance(plan, cufft.Plan1d):
@@ -108,6 +109,8 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             raise ValueError('Target array size does not match the plan.')
         if batch != plan.batch:
             raise ValueError('Batch size does not match the plan.')
+        if config.use_multi_gpus != plan._use_multi_gpus:
+            raise ValueError('Unclear if multiple GPUs are to be used or not.')
 
     if overwrite_x and value_type == 'C2C':
         out = a
@@ -164,7 +167,10 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
     else:
         axes = tuple(axes)
     if not axes:
-        return a
+        if value_type == 'C2C':
+            return a
+        else:
+            raise IndexError('list index out of range')
     a = _convert_dtype(a, value_type)
     a = _cook_shape(a, s, axes, value_type)
 
@@ -356,9 +362,6 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     if fft_type not in [cufft.CUFFT_C2C, cufft.CUFFT_Z2Z]:
         raise NotImplementedError('Only C2C and Z2Z are supported.')
 
-    if a.base is not None:
-        a = a.copy()
-
     if a.flags.c_contiguous:
         order = 'C'
     elif a.flags.f_contiguous:
@@ -417,7 +420,10 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
 
     axes, axes_sorted = _prep_fftn_axes(a.ndim, s, axes)
     if not axes_sorted:
-        return a
+        if value_type == 'C2C':
+            return a
+        else:
+            raise IndexError('list index out of range')
     a = _convert_dtype(a, value_type)
 
     if order == 'A':
@@ -438,6 +444,7 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
         a = cupy.ascontiguousarray(a)
     elif order == 'F' and not a.flags.f_contiguous:
         a = cupy.asfortranarray(a)
+
     a = _exec_fftn(a, direction, value_type, norm=norm, axes=axes_sorted,
                    overwrite_x=overwrite_x, plan=plan, out=out)
     return a

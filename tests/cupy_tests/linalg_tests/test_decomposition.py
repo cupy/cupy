@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -65,11 +66,12 @@ class TestCholeskyDecomposition(unittest.TestCase):
 @testing.gpu
 class TestCholeskyInvalid(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
-    def check_L(self, array, xp):
-        a = xp.asarray(array)
-        with cupyx.errstate(linalg='raise'):
-            xp.linalg.cholesky(a)
+    def check_L(self, array):
+        for xp in (numpy, cupy):
+            a = xp.asarray(array)
+            with cupyx.errstate(linalg='raise'):
+                with pytest.raises(numpy.linalg.LinAlgError):
+                    xp.linalg.cholesky(a)
 
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
@@ -203,3 +205,16 @@ class TestSVD(unittest.TestCase):
     def test_rank2(self):
         self.check_rank2(cupy.random.randn(2, 3, 4).astype(numpy.float32))
         self.check_rank2(cupy.random.randn(1, 2, 3, 4).astype(numpy.float64))
+
+    @testing.with_requires('numpy>=1.16')
+    def test_empty_array(self):
+        self.check_usv((0, 3))
+        self.check_usv((3, 0))
+        self.check_usv((1, 0))
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.numpy_cupy_array_equal()
+    def test_empty_array_compute_uv_false(self, xp):
+        array = xp.empty((3, 0))
+        return xp.linalg.svd(
+            array, full_matrices=self.full_matrices, compute_uv=False)

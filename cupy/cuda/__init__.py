@@ -1,7 +1,7 @@
 import contextlib
 import os
 
-from cupy._environment import get_cuda_path  # NOQA
+from cupy._environment import get_cuda_path, get_nvcc_path  # NOQA
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
 from cupy.cuda import driver  # NOQA
@@ -98,6 +98,7 @@ from cupy.cuda.stream import Event  # NOQA
 from cupy.cuda.stream import get_current_stream  # NOQA
 from cupy.cuda.stream import get_elapsed_time  # NOQA
 from cupy.cuda.stream import Stream  # NOQA
+from cupy.cuda.stream import ExternalStream  # NOQA
 
 
 @contextlib.contextmanager
