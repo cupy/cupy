@@ -326,6 +326,7 @@ class TestFftAllocate(unittest.TestCase):
     {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
@@ -333,6 +334,7 @@ class TestFftAllocate(unittest.TestCase):
     {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
 )
@@ -351,6 +353,10 @@ class TestFft2(unittest.TestCase):
             a = xp.asfortranarray(a)
         out = xp.fft.fft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
+        if self.axes is not None and not self.axes:
+            assert out is a
+            return out
+
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
@@ -367,6 +373,10 @@ class TestFft2(unittest.TestCase):
         if order == 'F':
             a = xp.asfortranarray(a)
         out = xp.fft.ifft2(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        if self.axes is not None and not self.axes:
+            assert out is a
+            return out
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
@@ -392,6 +402,7 @@ class TestFft2(unittest.TestCase):
     {'shape': (2, 3, 4), 's': None, 'axes': (-1, -3), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': (4, 3, 2), 'axes': (2, 0, 1), 'norm': 'ortho'},
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
@@ -871,6 +882,12 @@ class TestRfft2(unittest.TestCase):
                                  contiguous_check=False)
     def test_irfft2(self, xp, dtype, order, enable_nd):
         assert config.enable_nd_planning == enable_nd
+        if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
+                and int(cupy.cuda.device.get_compute_capability()) < 70
+                and _size_last_transform_axis(
+                    self.shape, self.s, self.axes) == 2):
+            raise unittest.SkipTest('work-around for cuFFT issue')
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
             a = xp.asfortranarray(a)
@@ -879,6 +896,28 @@ class TestRfft2(unittest.TestCase):
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
         return out
+
+
+@testing.parameterize(
+    {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
+)
+@testing.gpu
+class TestRfft2EmptyAxes(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_complex=True)
+    def test_rfft2(self, dtype):
+        for xp in (np, cupy):
+            a = testing.shaped_random(self.shape, xp, dtype)
+            with pytest.raises(IndexError):
+                xp.fft.rfft2(a, s=self.s, axes=self.axes, norm=self.norm)
+
+    @testing.for_all_dtypes()
+    def test_irfft2(self, dtype):
+        for xp in (np, cupy):
+            a = testing.shaped_random(self.shape, xp, dtype)
+            with pytest.raises(IndexError):
+                xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
 @testing.parameterize(
@@ -1062,6 +1101,28 @@ class TestRfftnContiguity(unittest.TestCase):
             else:
                 # 1d planning case doesn't guarantee preserved contiguity
                 pass
+
+
+@testing.parameterize(
+    {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
+)
+@testing.gpu
+class TestRfftnEmptyAxes(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_complex=True)
+    def test_rfftn(self, dtype):
+        for xp in (np, cupy):
+            a = testing.shaped_random(self.shape, xp, dtype)
+            with pytest.raises(IndexError):
+                xp.fft.rfftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+    @testing.for_all_dtypes()
+    def test_irfftn(self, dtype):
+        for xp in (np, cupy):
+            a = testing.shaped_random(self.shape, xp, dtype)
+            with pytest.raises(IndexError):
+                xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
 @testing.parameterize(*testing.product({

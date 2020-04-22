@@ -6,3 +6,4 @@ cpdef enum cupy_cub_op:
     CUPY_CUB_ARGMAX = 4
     CUPY_CUB_CUMSUM = 5
     CUPY_CUB_CUMPROD = 6
+    CUPY_CUB_PROD = 7
