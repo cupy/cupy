@@ -1,3 +1,5 @@
+import warnings
+
 import numpy
 
 import cupy
@@ -203,65 +205,85 @@ def _kernel_finalize():
         'cupyx_nd_label_finalize')
 
 
-@util.memoize()
-def _ndimage_variance_kernel():
-    input_arguments = 'T image, R label, raw X index, int32 size, raw Z mean'
-    output_arguments = 'raw Z ret'
-    _kernel_template = """
+_ndimage_variance_kernel = cupy.ElementwiseKernel(
+    'T input, R labels, raw X index, int32 size, raw Z mean',
+    'raw Z out',
+    """
     for (ptrdiff_t j = 0; j < size; j++) {
-      if (label == index[j]) {
-        atomicAdd(&ret[j], (image - mean[j]) * (image - mean[j]));
+      if (labels == index[j]) {
+        atomicAdd(&out[j], (input - mean[j]) * (input - mean[j]));
         break;
       }
     }
+    """)
+
+
+_ndimage_sum_kernel = cupy.ElementwiseKernel(
+    'T input, R labels, raw X index, int32 size',
+    'raw Y out',
     """
-    return cupy.ElementwiseKernel(input_arguments, output_arguments,
-                                  _kernel_template)
-
-
-@util.memoize()
-def _ndimage_sum_kernel():
-    input_arguments = 'T image, R label, raw X index, int32 size'
-    output_arguments = 'raw Y ret'
-    _kernel_template = """
     for (ptrdiff_t j = 0; j < size; j++) {
-      if (label == index[j]) {
-        atomicAdd(&ret[j], image);
+      if (labels == index[j]) {
+        atomicAdd(&out[j], input);
         break;
       }
     }
+    """)
+
+
+def _ndimage_sum_kernel_2(input, labels, index, out, batch_size=4):
+    for i in range(0, index.size, batch_size):
+        matched = labels == index[i:i + batch_size].reshape(
+            (-1,) + (1,) * input.ndim)
+        sum_axes = tuple(range(1, 1 + input.ndim))
+        out[i:i + batch_size] = cupy.where(matched, input, 0).sum(
+            axis=sum_axes)
+    return out
+
+
+_ndimage_mean_kernel = cupy.ElementwiseKernel(
+    'T input, R labels, raw X index, int32 size',
+    'raw Y out, raw int32 count',
     """
-    return cupy.ElementwiseKernel(input_arguments, output_arguments,
-                                  _kernel_template)
-
-
-@util.memoize()
-def _ndimage_mean_kernel():
-    input_arguments = 'T image, R label, raw X index, int32 size'
-    output_arguments = 'raw Y ret, raw int32 count'
-    _kernel_template = """
     for (ptrdiff_t j = 0; j < size; j++) {
-      if (label == index[j]) {
-        atomicAdd(&ret[j], image);
+      if (labels == index[j]) {
+        atomicAdd(&out[j], input);
         atomicAdd(&count[j], 1);
         break;
       }
     }
-    """
-    return cupy.ElementwiseKernel(input_arguments, output_arguments,
-                                  _kernel_template)
+    """)
 
 
-def _stats(input, labels=None, index=None, mean=False):
-    if not mean:
-        _kernel = _ndimage_sum_kernel()
-        ret = cupy.zeros_like(index, dtype=input.dtype)
-        return _kernel(input, labels, index, index.size, ret)
-    else:
-        _kernel = _ndimage_mean_kernel()
-        ret = cupy.zeros_like(index, input.dtype)
-        count = cupy.zeros_like(index, dtype=cupy.int32)
-        return _kernel(input, labels, index, index.size, ret, count)
+def _ndimage_mean_kernel_2(input, labels, index, batch_size=4,
+                           return_count=False):
+    out = cupy.empty_like(index, dtype=input.dtype)
+    count = cupy.empty_like(index, dtype=cupy.int32)
+    for i in range(0, index.size, batch_size):
+        matched = labels == index[i:i + batch_size].reshape(
+            (-1,) + (1,) * input.ndim)
+        count[i:i + batch_size] = matched.sum(axis=1)
+        mean_axes = tuple(range(1, 1 + input.ndim))
+        out[i:i + batch_size] = cupy.where(matched, input, 0).sum(
+            axis=mean_axes)
+    if return_count:
+        return out/count, count
+    return out/count
+
+
+def _mean_driver(input, labels, index, return_count=False, use_kern=False):
+    # The following parameters for sum where determined using a Tesla P100.
+    if (input.size >= 262144 and index.size <= 4) or use_kern:
+        return _ndimage_mean_kernel_2(input, labels, index,
+                                      return_count=return_count)
+
+    out = cupy.zeros_like(index, input.dtype)
+    count = cupy.zeros_like(index, dtype=cupy.int32)
+    sum, count = _ndimage_mean_kernel(input,
+                                      labels, index, index.size, out, count)
+    if return_count:
+        return sum/count, count
+    return sum/count
 
 
 def variance(input, labels=None, index=None):
@@ -284,15 +306,16 @@ def variance(input, labels=None, index=None):
     """
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
+
     # There is constraints on types because atomicAdd() in CUDA 7.5
     # only supports int32, uint32, uint64, and float32.
     if not issubclass(input.dtype.type,
-                      (cupy.int32, cupy.float16, cupy.float32,
-                       cupy.float64, cupy.uint32, cupy.uint64,
-                       cupy.ulonglong)):
+                      (cupy.int32, cupy.float16, cupy.float32, cupy.float64,
+                       cupy.uint32, cupy.uint64, cupy.ulonglong)):
         raise TypeError(
             'cupyx.scipy.ndimage.variance only supports int32, float16, '
             'float32, float64, uint32, uint64, as data type')
+
     if labels is None:
         return input.var()
 
@@ -308,13 +331,12 @@ def variance(input, labels=None, index=None):
         if not isinstance(index, int):
             raise TypeError('index must be cupy.ndarray or a scalar int')
         else:
-            index = cupy.asarray(index)
+            return (input[labels == index]).var()
 
-    sum, count = _stats(input, labels, index, mean=True)
-    mean = sum/count
-    ret = cupy.zeros_like(index, dtype=mean.dtype)
-    return _ndimage_variance_kernel()(input, labels, index,
-                                      index.size, mean, ret)/count
+    mean_val, count = _mean_driver(input, labels, index, True)
+    out = cupy.zeros_like(index, dtype=mean_val.dtype)
+    return _ndimage_variance_kernel(input, labels, index, index.size, mean_val,
+                                    out)/count
 
 
 def sum(input, labels=None, index=None):
@@ -337,15 +359,25 @@ def sum(input, labels=None, index=None):
     """
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
+
+    if issubclass(input.dtype.type, (cupy.bool, cupy.complex64,
+                                     cupy.complex128)):
+        raise TypeError("cupyx.scipy.ndimage.sum doesnt support %{}".format(
+            input.dtype.type))
+
+    use_kern = False
     # There is constraints on types because atomicAdd() in CUDA 7.5
     # only supports int32, uint32, uint64, and float32.
     if not issubclass(input.dtype.type,
                       (cupy.int32, cupy.float16, cupy.float32,
                        cupy.float64, cupy.uint32, cupy.uint64,
                        cupy.ulonglong)):
-        raise TypeError(
-            'cupyx.scipy.ndimage.sum only supports int32, float16, '
-            'float32, float64, uint32, uint64, as data type')
+        warnings.warn(
+            'Using the slower implmentation as '
+            'cupyx.scipy.ndimage.sum supports int32, float16, '
+            'float32, float64, uint32, uint64 as data types'
+            'for the fast implmentation', util.PerformanceWarning)
+        use_kern = True
 
     if labels is None:
         return input.sum()
@@ -362,9 +394,14 @@ def sum(input, labels=None, index=None):
         if not isinstance(index, int):
             raise TypeError('index must be cupy.ndarray or a scalar int')
         else:
-            index = cupy.asarray(index)
+            return (input[labels == index]).sum()
 
-    return _stats(input, labels, index, False)
+    out = cupy.zeros_like(index, dtype=input.dtype)
+
+    # The following parameters for sum where determined using a Tesla P100.
+    if (input.size >= 262144 and index.size <= 4) or use_kern:
+        return _ndimage_sum_kernel_2(input, labels, index, out)
+    return _ndimage_sum_kernel(input, labels, index, index.size, out)
 
 
 def mean(input, labels=None, index=None):
@@ -387,15 +424,25 @@ def mean(input, labels=None, index=None):
     """
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
+
+    if issubclass(input.dtype.type, (cupy.bool, cupy.complex64,
+                                     cupy.complex128)):
+        raise TypeError("cupyx.scipy.ndimage.mean doesnt support %{}".format(
+            input.dtype.type))
+
+    use_kern = False
     # There is constraints on types because atomicAdd() in CUDA 7.5
     # only supports int32, uint32, uint64, and float32.
     if not issubclass(input.dtype.type,
                       (cupy.int32, cupy.float16, cupy.float32,
                        cupy.float64, cupy.uint32, cupy.uint64,
                        cupy.ulonglong)):
-        raise TypeError(
-            'cupyx.scipy.ndimage.mean only supports int32, float16, '
-            'float32, float64, uint32, uint64, as data type')
+        warnings.warn(
+            'Using the slower implmentation as '
+            'cupyx.scipy.ndimage.mean supports int32, float16, '
+            'float32, float64, uint32, uint64 as data types '
+            'for the fast implmentation', util.PerformanceWarning)
+        use_kern = True
 
     if labels is None:
         return input.sum()/input.size
@@ -412,10 +459,9 @@ def mean(input, labels=None, index=None):
         if not isinstance(index, int):
             raise TypeError('index must be cupy.ndarray or a scalar int')
         else:
-            index = cupy.asarray(index)
+            return (input[labels == index]).mean()
 
-    sum, count = _stats(input, labels, index, True)
-    return sum/count
+    return _mean_driver(input, labels, index, use_kern=use_kern)
 
 
 def standard_deviation(input, labels=None, index=None):

@@ -105,7 +105,8 @@ class TestLabelSpecialCases(unittest.TestCase):
 class TestNdimageSum(unittest.TestCase):
 
     @testing.for_dtypes([cupy.int32, cupy.float32, cupy.float64, cupy.uint32,
-                         cupy.uint64, cupy.ulonglong])
+                         cupy.uint64, cupy.ulonglong, cupy.int64, cupy.uint8,
+                         cupy.uint16])
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
     def test_ndimage_sum(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
@@ -114,14 +115,16 @@ class TestNdimageSum(unittest.TestCase):
         return scp.ndimage.sum(image, label, index).astype(dtype)
 
     @testing.for_dtypes([cupy.int32, cupy.float32, cupy.float64, cupy.uint32,
-                         cupy.uint64, cupy.ulonglong])
+                         cupy.uint64, cupy.ulonglong, cupy.int64, cupy.uint8,
+                         cupy.uint16])
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
     def test_ndimage_sum_only_input(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
         return scp.ndimage.sum(image).astype(dtype)
 
     @testing.for_dtypes([cupy.int32, cupy.float32, cupy.float64, cupy.uint32,
-                         cupy.uint64, cupy.ulonglong])
+                         cupy.uint64, cupy.ulonglong, cupy.int64, cupy.uint8,
+                         cupy.uint16])
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
     def test_ndimage_sum_no_index(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
@@ -129,15 +132,15 @@ class TestNdimageSum(unittest.TestCase):
         return scp.ndimage.sum(image, label).astype(dtype)
 
     @testing.for_dtypes([cupy.int32, cupy.float32, cupy.float64, cupy.uint32,
-                         cupy.uint64, cupy.ulonglong])
+                         cupy.uint64, cupy.ulonglong, cupy.int64, cupy.uint8,
+                         cupy.uint16])
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
     def test_ndimage_sum_scalar_index(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
         label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3) + 1
         return scp.ndimage.sum(image, label, 1).astype(dtype)
 
-    @testing.for_dtypes([cupy.int8, cupy.int16, cupy.int64, cupy.uint8,
-                         cupy.uint16, cupy.complex64, cupy.complex128])
+    @testing.for_dtypes([cupy.complex64, cupy.complex128])
     def test_ndimage_sum_wrong_dtype(self, dtype):
         image = cupy.arange(100, dtype=dtype)
         label = cupy.random.randint(1, 3, dtype=cupy.int32)
@@ -267,7 +270,8 @@ class TestNdimageVariance(unittest.TestCase):
 class TestNdimageMean(unittest.TestCase):
 
     @testing.for_dtypes([cupy.int32, cupy.float32, cupy.float64, cupy.uint32,
-                         cupy.uint64, cupy.ulonglong])
+                         cupy.uint64, cupy.ulonglong, cupy.int64, cupy.int16,
+                         cupy.uint16])
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
     def test_ndimage_mean(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
@@ -276,14 +280,16 @@ class TestNdimageMean(unittest.TestCase):
         return scp.ndimage.mean(image, label, index).astype(dtype)
 
     @testing.for_dtypes([cupy.int32, cupy.float32, cupy.float64, cupy.uint32,
-                         cupy.uint64, cupy.ulonglong])
+                         cupy.uint64, cupy.ulonglong, cupy.int64, cupy.uint8,
+                         cupy.uint16])
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
     def test_ndimage_mean_only_input(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
         return scp.ndimage.mean(image).astype(dtype)
 
     @testing.for_dtypes([cupy.int32, cupy.float32, cupy.float64, cupy.uint32,
-                         cupy.uint64, cupy.ulonglong])
+                         cupy.uint64, cupy.ulonglong, cupy.int64, cupy.uint8,
+                         cupy.uint16])
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
     def test_ndimage_mean_no_index(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
@@ -291,15 +297,15 @@ class TestNdimageMean(unittest.TestCase):
         return scp.ndimage.mean(image, label).astype(dtype)
 
     @testing.for_dtypes([cupy.int32, cupy.float32, cupy.float64, cupy.uint32,
-                         cupy.uint64, cupy.ulonglong])
+                         cupy.uint64, cupy.ulonglong, cupy.int64, cupy.uint8,
+                         cupy.uint16])
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
     def test_ndimage_mean_scalar_index(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
         label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3) + 1
         return scp.ndimage.mean(image, label, 1).astype(dtype)
 
-    @testing.for_dtypes([cupy.int8, cupy.int16, cupy.int64, cupy.uint8,
-                         cupy.uint16, cupy.complex64, cupy.complex128])
+    @testing.for_dtypes([cupy.complex64, cupy.complex128])
     def test_ndimage_mean_wrong_dtype(self, dtype):
         image = cupy.arange(100, dtype=dtype)
         label = cupy.random.randint(1, 3, dtype=cupy.int32)
