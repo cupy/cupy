@@ -153,8 +153,8 @@ cdef class _ArgInfo:
             ARG_KIND_NDARRAY,
             ndarray,
             arg.dtype.type,
-            arg.ndim,
-            arg.flags.c_contiguous)
+            arg._shape.size(),
+            arg._c_contiguous)
 
     @staticmethod
     cdef _ArgInfo from_scalar(_scalar.CScalar arg):
