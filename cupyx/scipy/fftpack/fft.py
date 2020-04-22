@@ -96,6 +96,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             shape[axis] = s
     shape = tuple(shape)
 
+    # TODO(leofang): support R2C/C2R transforms
     # check value_type
     fft_type = _convert_fft_type(a, value_type)
     if n > 1 and fft_type not in [cufft.CUFFT_C2C, cufft.CUFFT_Z2Z]:

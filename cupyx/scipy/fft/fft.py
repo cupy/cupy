@@ -6,7 +6,7 @@ import numpy as np
 import cupy
 from cupy.cuda import cufft
 from cupy.fft.fft import (_fft, _default_fft_func, hfft as _hfft,
-                          ihfft as _ihfft)
+                          ihfft as _ihfft, _size_last_transform_axis)
 from cupy.fft.fft import fftshift, ifftshift, fftfreq, rfftfreq
 
 from cupyx.scipy.fftpack import get_fft_plan
@@ -420,7 +420,9 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         raise NotImplementedError('rfftn plan is currently not yet supported')
     s = _assequence(s)
     axes = _assequence(axes)
-    return _fft(x, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C', overwrite_x)
+    func = _default_fft_func(x, s, axes, value_type='R2C')
+    return func(x, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C',
+                overwrite_x=overwrite_x)
 
 
 @_implements(_scipy_fft.irfftn)
@@ -452,7 +454,14 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         raise NotImplementedError('irfftn plan is currently not yet supported')
     s = _assequence(s)
     axes = _assequence(axes)
-    return _fft(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R', overwrite_x)
+    if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
+            and int(cupy.cuda.device.get_compute_capability()) < 70
+            and _size_last_transform_axis(x.shape, s, axes) == 2):
+        warnings.warn('Output of irfftn might not be correct due to issue '
+                      'of cuFFT in CUDA 10.1/10.2 on Pascal or older GPUs.')
+    func = _default_fft_func(x, s, axes, value_type='C2R')
+    return func(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R',
+                overwrite_x=overwrite_x)
 
 
 @_implements(_scipy_fft.hfft)
