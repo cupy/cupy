@@ -134,7 +134,7 @@ def _get_coord_affine(ndim):
             ops.append(
                 """
             c_{j} += mat[{m_index}] * (W)in_coord[{k}];""".format(
-                j=j, k=k, m_index=m_index))
+                    j=j, k=k, m_index=m_index))
         ops.append(
             """
             c_{j} += mat[{m_index}];""".format(
