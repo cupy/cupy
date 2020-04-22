@@ -273,7 +273,7 @@ def _ndimage_mean_kernel_2(input, labels, index, batch_size=4,
 
 def _mean_driver(input, labels, index, return_count=False, use_kern=False):
     # The following parameters for sum where determined using a Tesla P100.
-    if (input.size >= 262144 and index.size <= 4) or use_kern:
+    if use_kern:
         return _ndimage_mean_kernel_2(input, labels, index,
                                       return_count=return_count)
 
