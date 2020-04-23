@@ -168,6 +168,13 @@ class TestPutmask(unittest.TestCase):
             with pytest.raises(ValueError):
                 xp.putmask(a, mask, a**2)
 
+    @testing.numpy_cupy_array_equal()
+    def test_putmask_int_mask_scalar_values(self, xp):
+        a = xp.array([1, 2, 3, 3])
+        mask = xp.array([0, 1, 0, 2])
+        xp.putmask(a, mask, 0)
+        return a
+
 
 class TestPutmaskDifferentDtypes(unittest.TestCase):
 
