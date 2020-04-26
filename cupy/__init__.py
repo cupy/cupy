@@ -575,6 +575,7 @@ from cupy.math.sumprod import cumsum  # NOQA
 from cupy.math.sumprod import nansum  # NOQA
 from cupy.math.sumprod import nanprod  # NOQA
 from cupy.math.sumprod import diff  # NOQA
+from cupy.math.window import bartlett  # NOQA
 from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA
 from cupy.math.window import hanning  # NOQA

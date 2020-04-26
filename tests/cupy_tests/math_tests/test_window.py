@@ -6,7 +6,7 @@ from cupy import testing
 @testing.parameterize(
     *testing.product({
         'm': [0, 1, -1, 1024],
-        'name': ['blackman', 'hamming', 'hanning'],
+        'name': ['bartlett', 'blackman', 'hamming', 'hanning'],
     })
 )
 class TestWindow(unittest.TestCase):
