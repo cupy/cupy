@@ -8,6 +8,14 @@ from cupy.creation import ranges
 from cupy.math import trigonometric
 
 
+_blackman_kernel = core.ElementwiseKernel(
+    "float64 alpha",
+    "float64 arr",
+    """
+    arr = 0.42 - (0.5 * cos(i * alpha)) + (0.08 * cos(2 * alpha * i));
+    """)
+
+
 def blackman(M):
     """Returns the Blackman window.
 
@@ -28,13 +36,13 @@ def blackman(M):
 
     .. seealso:: :func:`numpy.blackman`
     """
-    if M < 1:
-        return from_data.array([])
     if M == 1:
-        return basic.ones(1, float)
-    n = ranges.arange(0, M)
-    return 0.42 - 0.5 * trigonometric.cos(2.0 * numpy.pi * n / (M - 1))\
-        + 0.08 * trigonometric.cos(4.0 * numpy.pi * n / (M - 1))
+        return cupy.array([1.])
+    if M <= 0:
+        return cupy.array([])
+    alpha = (numpy.pi * 2)/(M - 1)
+    out = cupy.empty(M, dtype=cupy.float64)
+    return _blackman_kernel(alpha, out)
 
 
 def hamming(M):
