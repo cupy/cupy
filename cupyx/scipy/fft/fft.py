@@ -17,7 +17,9 @@ __all__ = ['fft', 'ifft', 'fft2', 'ifft2', 'fftn', 'ifftn',
            'fftshift', 'ifftshift', 'fftfreq', 'rfftfreq',
            'get_fft_plan']
 
+_scipy_150 = False
 try:
+    import scipy
     import scipy.fft as _scipy_fft
 except ImportError:
     class _DummyModule:
@@ -25,15 +27,11 @@ except ImportError:
             return None
 
     _scipy_fft = _DummyModule()
-
-try:
-    from _scipy_fft._lib._pep440 import Version
-except ImportError:
-    # either _scipy_fft is _DummyModule, or scipy < 1.4.0
-    _scipy_150 = False
 else:
-    _scipy_150 = Version(_scipy_fft.version.version) >= Version('1.5.0')
+    from numpy.lib import NumpyVersion as Version
+    _scipy_150 = Version(scipy.__version__) >= Version('1.5.0')
     del Version
+    del scipy
 
 # Backend support for scipy.fft
 
