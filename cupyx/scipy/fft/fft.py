@@ -96,8 +96,8 @@ def fft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.Plan1d`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axis``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis)
 
@@ -127,8 +127,8 @@ def ifft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.Plan1d`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axis``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis)
 
@@ -158,8 +158,8 @@ def fft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
 
@@ -189,8 +189,8 @@ def ifft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
 
@@ -219,8 +219,8 @@ def fftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
 
@@ -253,8 +253,8 @@ def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
 
@@ -290,8 +290,8 @@ def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.Plan1d`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axis``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis,
                                                         value_type='R2C')
@@ -322,8 +322,8 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.Plan1d` or None) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axis``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis,
                                                         value_type='C2R')
@@ -354,8 +354,8 @@ def rfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes,
                                                         value_type='R2C')
@@ -387,8 +387,8 @@ def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes,
                                                         value_type='C2R')
@@ -421,8 +421,8 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes,
                                                         value_type='R2C')
@@ -457,8 +457,8 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes,
                                                         value_type='C2R')
