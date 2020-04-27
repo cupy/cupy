@@ -553,31 +553,30 @@ class Plan1d(object):
             share = self.batch_share
 
             if action == 'scatter':
-                # if isinstance(b, cupy.ndarray):
-                    s_device = b.data.device_id
-                    if s_device not in self.scatter_streams:
-                        self._multi_gpu_get_scatter_streams_events(
-                            s_device, nGPUs)
+                s_device = b.data.device_id
+                if s_device not in self.scatter_streams:
+                    self._multi_gpu_get_scatter_streams_events(
+                        s_device, nGPUs)
 
-                    # When we come here, another stream could still be
-                    # copying data for us, so we wait patiently...
-                    outer_stream = stream_module.get_current_stream()
-                    outer_stream.synchronize()
+                # When we come here, another stream could still be
+                # copying data for us, so we wait patiently...
+                outer_stream = stream_module.get_current_stream()
+                outer_stream.synchronize()
 
-                    for dev in range(nGPUs):
-                        count = int(share[dev] * self.nx)
-                        size = count * b.dtype.itemsize
-                        curr_stream = self.scatter_streams[s_device][dev]
-                        curr_event = self.scatter_events[s_device][dev]
-                        xtArr_buffer[dev].copy_from_device_async(
-                            b[start:start+count].data, size, curr_stream)
-                        curr_event.record(curr_stream)
-                        if dev != 0:
-                            prev_event = self.scatter_events[s_device][dev-1]
-                            curr_stream.wait_event(prev_event)
-                        start += count
-                    assert start == b.size
-                    self.scatter_events[s_device][-1].synchronize()
+                for dev in range(nGPUs):
+                    count = int(share[dev] * self.nx)
+                    size = count * b.dtype.itemsize
+                    curr_stream = self.scatter_streams[s_device][dev]
+                    curr_event = self.scatter_events[s_device][dev]
+                    xtArr_buffer[dev].copy_from_device_async(
+                        b[start:start+count].data, size, curr_stream)
+                    curr_event.record(curr_stream)
+                    if dev != 0:
+                        prev_event = self.scatter_events[s_device][dev-1]
+                        curr_stream.wait_event(prev_event)
+                    start += count
+                assert start == b.size
+                self.scatter_events[s_device][-1].synchronize()
                 # TODO(leofang): revisit this when NumPy support is added
                 # else:  # numpy
                 #     ptr2 = b.ctypes.data
@@ -587,29 +586,28 @@ class Plan1d(object):
                 #             CUFFT_COPY_HOST_TO_DEVICE)
                 #     check_result(result)
             elif action == 'gather':
-                # if isinstance(b, cupy.ndarray):
-                    if self.batch == 1:
-                        _reorder_buffers(plan, self.xtArr, xtArr_buffer)
+                if self.batch == 1:
+                    _reorder_buffers(plan, self.xtArr, xtArr_buffer)
 
-                    # When we come here, another stream could still be
-                    # copying data for us, so we wait patiently...
-                    outer_stream = stream_module.get_current_stream()
-                    outer_stream.synchronize()
+                # When we come here, another stream could still be
+                # copying data for us, so we wait patiently...
+                outer_stream = stream_module.get_current_stream()
+                outer_stream.synchronize()
 
-                    for i in range(nGPUs):
-                        count = int(share[i] * self.nx)
-                        size = count * b.dtype.itemsize
-                        curr_stream = self.gather_streams[i]
-                        curr_event = self.gather_events[i]
-                        b[start:start+count].data.copy_from_device_async(
-                            xtArr_buffer[i], size, curr_stream)
-                        curr_event.record(curr_stream)
-                        if i != 0:
-                            prev_event = self.gather_events[i-1]
-                            curr_stream.wait_event(prev_event)
-                        start += count
-                    assert start == b.size
-                    self.gather_events[-1].synchronize()
+                for i in range(nGPUs):
+                    count = int(share[i] * self.nx)
+                    size = count * b.dtype.itemsize
+                    curr_stream = self.gather_streams[i]
+                    curr_event = self.gather_events[i]
+                    b[start:start+count].data.copy_from_device_async(
+                        xtArr_buffer[i], size, curr_stream)
+                    curr_event.record(curr_stream)
+                    if i != 0:
+                        prev_event = self.gather_events[i-1]
+                        curr_stream.wait_event(prev_event)
+                    start += count
+                assert start == b.size
+                self.gather_events[-1].synchronize()
                 # TODO(leofang): revisit this when NumPy support is added
                 # else:  # numpy
                 #     ptr2 = b.ctypes.data
