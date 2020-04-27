@@ -105,7 +105,7 @@ def putmask(a, mask, values):
     >>> x = cupy.arange(6)
     >>> cupy.putmask(x, x>2, cupy.array([-33, -44]))
     >>> x
-    array([  0,  1,  2, -44, -33, -44])
+    array([  0,   1,   2, -44, -33, -44])
 
     .. seealso:: :func:`numpy.putmask`
 
