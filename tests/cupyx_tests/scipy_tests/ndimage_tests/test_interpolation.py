@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -48,6 +49,15 @@ class TestMapCoordinates(unittest.TestCase):
     def test_map_coordinates_float(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         coordinates = testing.shaped_random((a.ndim, 100), xp, dtype)
+        return self._map_coordinates(xp, scp, a, coordinates)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    def test_map_coordinates_fortran_order(self, xp, scp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        coordinates = testing.shaped_random((a.ndim, 100), xp, dtype)
+        a = xp.asfortranarray(a)
+        coordinates = xp.asfortranarray(coordinates)
         return self._map_coordinates(xp, scp, a, coordinates)
 
     @testing.for_float_dtypes(no_float16=True)
@@ -122,6 +132,15 @@ class TestAffineTransform(unittest.TestCase):
         matrix = testing.shaped_random(self.matrix_shape, xp, dtype)
         return self._affine_transform(xp, scp, a, matrix)
 
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    def test_affine_transform_fortran_order(self, xp, scp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        a = xp.asfortranarray(a)
+        matrix = testing.shaped_random(self.matrix_shape, xp, dtype)
+        matrix = xp.asfortranarray(matrix)
+        return self._affine_transform(xp, scp, a, matrix)
+
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_affine_transform_int(self, xp, scp, dtype):
@@ -139,6 +158,33 @@ class TestAffineTransform(unittest.TestCase):
         half = xp.full_like(float_out, 0.5)
         out[xp.isclose(float_out, half, atol=1e-5)] = 0
         return out
+
+
+@testing.gpu
+@testing.with_requires('scipy')
+class TestAffineExceptions(unittest.TestCase):
+
+    def test_invalid_affine_ndim(self):
+        ndimage_modules = (scipy.ndimage, cupyx.scipy.ndimage)
+        for (xp, ndi) in zip((numpy, cupy), ndimage_modules):
+            x = xp.ones((8, 8, 8))
+            with pytest.raises(RuntimeError):
+                ndi.affine_transform(x, xp.ones((3, 3, 3)))
+            with pytest.raises(RuntimeError):
+                ndi.affine_transform(x, xp.ones(()))
+
+    def test_invalid_affine_shape(self):
+        ndimage_modules = (scipy.ndimage, cupyx.scipy.ndimage)
+        for (xp, ndi) in zip((numpy, cupy), ndimage_modules):
+            x = xp.ones((8, 8, 8))
+            with pytest.raises(RuntimeError):
+                ndi.affine_transform(x, xp.ones((0, 3)))
+            with pytest.raises(RuntimeError):
+                ndi.affine_transform(x, xp.eye(x.ndim - 1))
+            with pytest.raises(RuntimeError):
+                ndi.affine_transform(x, xp.eye(x.ndim + 2))
+            with pytest.raises(RuntimeError):
+                ndi.affine_transform(x, xp.eye(x.ndim)[:, :-1])
 
 
 @testing.gpu
@@ -199,6 +245,13 @@ class TestRotate(unittest.TestCase):
         a = testing.shaped_random((10, 10), xp, dtype)
         return self._rotate(xp, scp, a)
 
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    def test_rotate_fortran_order(self, xp, scp, dtype):
+        a = testing.shaped_random((10, 10), xp, dtype)
+        a = xp.asfortranarray(a)
+        return self._rotate(xp, scp, a)
+
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_rotate_int(self, xp, scp, dtype):
@@ -214,6 +267,22 @@ class TestRotate(unittest.TestCase):
         half = xp.full_like(float_out, 0.5)
         out[xp.isclose(float_out, half, atol=1e-5)] = 0
         return out
+
+
+@testing.gpu
+# Scipy older than 1.3.0 raises IndexError instead of ValueError
+@testing.with_requires('scipy>=1.3.0')
+class TestRotateExceptions(unittest.TestCase):
+
+    def test_rotate_invalid_plane(self):
+        ndimage_modules = (scipy.ndimage, cupyx.scipy.ndimage)
+        for (xp, ndi) in zip((numpy, cupy), ndimage_modules):
+            x = xp.ones((8, 8, 8))
+            angle = 15
+            with pytest.raises(ValueError):
+                ndi.rotate(x, angle, [0, x.ndim])
+            with pytest.raises(ValueError):
+                ndi.rotate(x, angle, [-(x.ndim + 1), 1])
 
 
 @testing.parameterize(
@@ -286,6 +355,13 @@ class TestShift(unittest.TestCase):
         a = testing.shaped_random((100, 100), xp, dtype)
         return self._shift(xp, scp, a)
 
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    def test_shift_fortran_order(self, xp, scp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        a = xp.asfortranarray(a)
+        return self._shift(xp, scp, a)
+
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_shift_int(self, xp, scp, dtype):
@@ -353,6 +429,13 @@ class TestZoom(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_zoom_float(self, xp, scp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
+        return self._zoom(xp, scp, a)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    def test_zoom_fortran_order(self, xp, scp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        a = xp.asfortranarray(a)
         return self._zoom(xp, scp, a)
 
     @testing.for_int_dtypes(no_bool=True)
