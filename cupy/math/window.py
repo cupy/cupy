@@ -9,7 +9,7 @@ from cupy.math import trigonometric
 
 
 _blackman_kernel = core.ElementwiseKernel(
-    "float64 alpha",
+    "float32 alpha",
     "float64 arr",
     """
     arr = 0.42 - (0.5 * cos(i * alpha)) + (0.08 * cos(2 * alpha * i));
