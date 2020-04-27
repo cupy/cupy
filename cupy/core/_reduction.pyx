@@ -3,6 +3,7 @@ from cpython cimport sequence
 from libcpp cimport vector
 
 from cupy.core cimport _carray
+from cupy.core._carray cimport shape_t
 from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
 from cupy.core._kernel cimport _broadcast
@@ -532,7 +533,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             ``__init__`` method.
 
         """
-        cdef vector.vector[Py_ssize_t] broad_shape
+        cdef shape_t broad_shape
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)

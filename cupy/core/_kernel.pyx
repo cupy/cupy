@@ -36,7 +36,7 @@ cpdef inline bint _is_fusing() except? -1:
     return False
 
 
-cdef inline bint _contains_zero(const vector.vector[Py_ssize_t]& v) except? -1:
+cdef inline bint _contains_zero(const shape_t& v) except? -1:
     for i in range(v.size()):
         if v[i] == 0:
             return True
@@ -263,7 +263,7 @@ cdef tuple _reduce_dims(list args, tuple params, tuple shape):
 cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
     cdef int i, ax, last_ax, ndim
     cdef Py_ssize_t x, total_size
-    cdef vector.vector[Py_ssize_t] vecshape, newshape, newstrides
+    cdef shape_t vecshape, newshape, newstrides
     cdef vector.vector[int] array_indexes, axes
     cdef vector.vector[int] strides_indexes
     cdef ParameterInfo p
@@ -480,8 +480,7 @@ cdef tuple _decide_params_type_core(
     return in_types, out_types, type_map
 
 
-cdef list _broadcast(list args, tuple params, bint use_size,
-                     vector.vector[Py_ssize_t]& shape):
+cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
     # `shape` is an output argument
     cdef Py_ssize_t i
     cdef ParameterInfo p
@@ -528,8 +527,7 @@ cdef bint _can_cast(d1, d2, casting):
 
 
 cdef list _get_out_args(list out_args, tuple out_types,
-                        const vector.vector[Py_ssize_t]& out_shape,
-                        casting):
+                        const shape_t& out_shape, casting):
     cdef ndarray arr
     if not out_args:
         return [_ndarray_init(out_shape, t) for t in out_types]
@@ -567,12 +565,11 @@ cdef _copy_in_args_if_needed(list in_args, list out_args):
 
 
 cdef list _get_out_args_with_params(
-        list out_args, tuple out_types,
-        const vector.vector[Py_ssize_t]& out_shape,
+        list out_args, tuple out_types, const shape_t& out_shape,
         tuple out_params, bint is_size_specified):
     cdef ParameterInfo p
     cdef ndarray arr
-    cdef vector.vector[Py_ssize_t] shape
+    cdef shape_t shape
     cdef Py_ssize_t x
     if not out_args:
         for p in out_params:
@@ -724,7 +721,7 @@ cdef class ElementwiseKernel:
         cdef Py_ssize_t size, i
         cdef list in_args, out_args
         cdef tuple in_types, out_types, types, shape
-        cdef vector.vector[Py_ssize_t] vec_shape
+        cdef shape_t vec_shape
 
         size = -1
         size = kwargs.pop('size', -1)
@@ -986,7 +983,7 @@ cdef class ufunc:
 
         cdef function.Function kern
         cdef list broad_values
-        cdef vector.vector[Py_ssize_t] vec_shape
+        cdef shape_t vec_shape
         cdef tuple shape
         cdef Py_ssize_t s
 

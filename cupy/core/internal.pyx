@@ -60,9 +60,8 @@ cpdef inline bint vector_equal(
 
 @cython.profile(False)
 cdef void get_reduced_dims(
-        vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
-        Py_ssize_t itemsize, vector.vector[Py_ssize_t]& reduced_shape,
-        vector.vector[Py_ssize_t]& reduced_strides):
+        shape_t& shape, strides_t& strides, Py_ssize_t itemsize,
+        shape_t& reduced_shape, strides_t& reduced_strides):
     cdef Py_ssize_t i, ndim, sh, st, prev_st, index
     ndim = shape.size()
     reduced_shape.clear()
@@ -95,8 +94,7 @@ cdef void get_reduced_dims(
 
 @cython.profile(False)
 cdef inline Py_ssize_t get_contiguous_strides_inplace(
-        const vector.vector[Py_ssize_t]& shape,
-        vector.vector[Py_ssize_t]& strides,
+        const shape_t& shape, strides_t& strides,
         Py_ssize_t itemsize, bint is_c_contiguous):
     cdef Py_ssize_t st, sh
     cdef Py_ssize_t is_nonzero_size = 1
@@ -121,8 +119,7 @@ cdef inline Py_ssize_t get_contiguous_strides_inplace(
 
 @cython.profile(False)
 cpdef inline bint get_c_contiguity(
-        vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
-        Py_ssize_t itemsize):
+        shape_t& shape, strides_t& strides, Py_ssize_t itemsize):
     cdef Py_ssize_t i, prev_i, ndim, sh, st, index
     ndim = strides.size()
     if ndim == 0 or (ndim == 1 and strides[0] == itemsize):
@@ -143,9 +140,9 @@ cpdef inline bint get_c_contiguity(
 
 
 @cython.profile(False)
-cpdef vector.vector[Py_ssize_t] infer_unknown_dimension(
-        const vector.vector[Py_ssize_t]& shape, Py_ssize_t size) except *:
-    cdef vector.vector[Py_ssize_t] ret = shape
+cpdef shape_t infer_unknown_dimension(
+        const shape_t& shape, Py_ssize_t size) except *:
+    cdef shape_t ret = shape
     cdef Py_ssize_t cnt=0, index=-1, new_size=1
     for i in range(shape.size()):
         if shape[i] < 0:
@@ -293,9 +290,9 @@ cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     return order_char
 
 
-cdef _broadcast_core(list arrays, vector.vector[Py_ssize_t]& shape):
+cdef _broadcast_core(list arrays, shape_t& shape):
     cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh, nd
-    cdef vector.vector[Py_ssize_t] strides
+    cdef strides_t strides
     cdef vector.vector[int] index
     cdef ndarray a
     cdef list ret
