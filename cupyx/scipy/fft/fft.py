@@ -322,7 +322,7 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.Plan1d`) a cuFFT plan for transforming
+        plan (:class:`~cupy.cuda.cufft.Plan1d` or None) a cuFFT plan for transforming
             ``x`` over ``axis``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis,
@@ -476,6 +476,8 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.irfftn`
     """
+    s = _assequence(s)
+    axes = _assequence(axes)
     if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
             and int(cupy.cuda.device.get_compute_capability()) < 70
             and _size_last_transform_axis(x.shape, s, axes) == 2):
