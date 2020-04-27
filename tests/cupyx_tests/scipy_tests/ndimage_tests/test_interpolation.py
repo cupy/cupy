@@ -270,7 +270,8 @@ class TestRotate(unittest.TestCase):
 
 
 @testing.gpu
-@testing.with_requires('scipy')
+# Scipy older than 1.3.0 raises IndexError instead of ValueError
+@testing.with_requires('scipy>=1.3.0')
 class TestRotateExceptions(unittest.TestCase):
 
     def test_rotate_invalid_plane(self):
