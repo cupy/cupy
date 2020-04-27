@@ -16,7 +16,7 @@ from cupy.core cimport core
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
-from cupy.cuda.texture cimport TextureObject
+from cupy.cuda.texture cimport TextureObject, SurfaceObject
 
 
 cdef class CPointer:
@@ -95,6 +95,9 @@ cdef inline CPointer _pointer(x):
         return x
 
     if isinstance(x, TextureObject):
+        return CUIntMax(x.ptr)
+
+    if isinstance(x, SurfaceObject):
         return CUIntMax(x.ptr)
 
     if type(x) not in _pointer_numpy_types:

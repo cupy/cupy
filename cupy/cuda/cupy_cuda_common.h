@@ -82,6 +82,7 @@ struct cudaPointerAttributes{
 
 enum cudaChannelFormatKind {};
 typedef unsigned long long cudaTextureObject_t;
+typedef unsigned long long cudaSurfaceObject_t;
 enum cudaResourceType {};
 enum cudaTextureAddressMode {};
 enum cudaTextureFilterMode {};
