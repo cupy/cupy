@@ -119,13 +119,13 @@ class TestPutRaises(unittest.TestCase):
     *testing.product(
         {'shape': [(0,), (1,), (2, 3), (2, 3, 4)]}))
 @testing.gpu
-class TestPutmaskEqual(unittest.TestCase):
+class TestPutmaskSameShape(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_putmask(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype=dtype, seed=0)
-        mask = testing.shaped_random(self.shape, xp, dtype=bool, seed=1)
+        mask = testing.shaped_random(self.shape, xp, dtype=numpy.bool_, seed=1)
         values = testing.shaped_random(self.shape, xp, dtype=dtype, seed=2)
         ret = xp.putmask(a, mask, values)
         assert ret is None
@@ -137,13 +137,13 @@ class TestPutmaskEqual(unittest.TestCase):
         {'shape': [(0,), (1,), (2, 3), (2, 3, 4)],
          'values_shape': [(2,), (3, 1), (5,)]}))
 @testing.gpu
-class TestPutmaskNonEqual(unittest.TestCase):
+class TestPutmaskDifferentShapes(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_array_equal()
     def test_putmask(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype=dtype, seed=3)
-        mask = testing.shaped_random(self.shape, xp, dtype=bool, seed=4)
+        mask = testing.shaped_random(self.shape, xp, dtype=numpy.bool_, seed=4)
         values = testing.shaped_random(self.values_shape,
                                        xp, dtype=dtype, seed=5)
         ret = xp.putmask(a, mask, values)
@@ -183,7 +183,7 @@ class TestPutmaskDifferentDtypes(unittest.TestCase):
         shape = (2, 3)
         for xp in (numpy, cupy):
             a = testing.shaped_random(shape, xp, dtype=a_dtype)
-            mask = testing.shaped_random(shape, xp, dtype=bool)
+            mask = testing.shaped_random(shape, xp, dtype=numpy.bool_)
             values = testing.shaped_random((3,), xp, dtype=val_dtype)
             if not numpy.can_cast(val_dtype, a_dtype):
                 with pytest.raises(TypeError):
