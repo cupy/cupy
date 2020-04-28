@@ -1,6 +1,7 @@
 import numpy
 
 import cupy
+from cupy import core
 
 
 def place(arr, mask, vals):
@@ -66,7 +67,76 @@ def put(a, ind, v, mode='wrap'):
     a.put(ind, v, mode=mode)
 
 
-# TODO(okuta): Implement putmask
+_putmask_kernel = core.ElementwiseKernel(
+    'Q mask, raw S values, uint64 len_vals', 'T out',
+    '''
+    if (mask) out = (T) values[i % len_vals];
+    ''',
+    'putmask_kernel'
+)
+
+
+def putmask(a, mask, values):
+    """
+    Changes elements of an array inplace, based on a conditional mask and
+    input values.
+
+    Sets ``a.flat[n] = values[n]`` for each n where ``mask.flat[n]==True``.
+    If `values` is not the same size as `a` and `mask` then it will repeat.
+
+    Args:
+        a (cupy.ndarray): Target array.
+        mask (cupy.ndarray): Boolean mask array. It has to be
+            the same shape as `a`.
+        values (cupy.ndarray or scalar): Values to put into `a` where `mask`
+            is True. If `values` is smaller than `a`, then it will be
+            repeated.
+
+    Examples
+    --------
+    >>> x = cupy.arange(6).reshape(2, 3)
+    >>> cupy.putmask(x, x>2, x**2)
+    >>> x
+    array([[ 0,  1,  2],
+           [ 9, 16, 25]])
+
+    If `values` is smaller than `a` it is repeated:
+
+    >>> x = cupy.arange(6)
+    >>> cupy.putmask(x, x>2, cupy.array([-33, -44]))
+    >>> x
+    array([  0,   1,   2, -44, -33, -44])
+
+    .. seealso:: :func:`numpy.putmask`
+
+    """
+
+    if not isinstance(a, cupy.ndarray):
+        raise TypeError('`a` should be of type cupy.ndarray')
+    if not isinstance(mask, cupy.ndarray):
+        raise TypeError('`mask` should be of type cupy.ndarray')
+    if not (cupy.isscalar(values) or isinstance(values, cupy.ndarray)):
+        raise TypeError('`values` should be of type cupy.ndarray')
+
+    if not a.shape == mask.shape:
+        raise ValueError('mask and data must be the same size')
+
+    mask = mask.astype(numpy.bool_)
+
+    if cupy.isscalar(values):
+        a[mask] = values
+
+    elif not numpy.can_cast(values.dtype, a.dtype):
+        raise TypeError('Cannot cast array data from'
+                        ' {} to {} according to the rule \'safe\''
+                        .format(values.dtype, a.dtype))
+
+    elif a.shape == values.shape:
+        a[mask] = values[mask]
+
+    else:
+        values = values.ravel()
+        _putmask_kernel(mask, values, len(values), a)
 
 
 def fill_diagonal(a, val, wrap=False):
