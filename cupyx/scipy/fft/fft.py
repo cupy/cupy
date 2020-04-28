@@ -96,8 +96,8 @@ def fft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.Plan1d`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axis``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis)
 
@@ -127,8 +127,8 @@ def ifft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.Plan1d`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axis``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis)
 
@@ -158,8 +158,8 @@ def fft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
 
@@ -189,8 +189,8 @@ def ifft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
 
@@ -219,8 +219,8 @@ def fftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
 
@@ -253,8 +253,8 @@ def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (:class:`~cupy.cuda.cufft.PlanNd`) a cuFFT plan for transforming
-            ``x`` over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes)
 
@@ -290,7 +290,14 @@ def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (None): This argument is currently not supported.
+        plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axis``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis,
+                                                        value_type='R2C')
+
+            Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
+            an auto-generated plan behind the scene.
 
     Returns:
         cupy.ndarray:
@@ -299,11 +306,8 @@ def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     .. seealso:: :func:`scipy.fft.rfft`
 
     """
-    # TODO(leofang): support R2C & C2R plans
-    if plan is not None:
-        raise NotImplementedError('rfft plan is currently not yet supported')
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_FORWARD, 'R2C',
-                overwrite_x=overwrite_x)
+                overwrite_x=overwrite_x, plan=plan)
 
 
 @_implements(_scipy_fft.irfft)
@@ -318,7 +322,14 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
         axis (int): Axis over which to compute the FFT.
         norm (None or ``'ortho'``): Normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (None): This argument is currently not supported.
+        plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axis``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, n, axis,
+                                                        value_type='C2R')
+
+            Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
+            an auto-generated plan behind the scene.
 
     Returns:
         cupy.ndarray:
@@ -326,11 +337,8 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.irfft`
     """
-    # TODO(leofang): support R2C & C2R plans
-    if plan is not None:
-        raise NotImplementedError('irfft plan is currently not yet supported')
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R',
-                overwrite_x=overwrite_x)
+                overwrite_x=overwrite_x, plan=plan)
 
 
 @_implements(_scipy_fft.rfft2)
@@ -346,7 +354,14 @@ def rfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (None): This argument is currently not supported.
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes,
+                                                        value_type='R2C')
+
+            Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
+            an auto-generated plan behind the scene.
 
     Returns:
         cupy.ndarray:
@@ -356,10 +371,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
 
     .. seealso:: :func:`scipy.fft.rfft2`
     """
-    # TODO(leofang): support R2C & C2R plans
-    if plan is not None:
-        raise NotImplementedError('rfft2 plan is currently not yet supported')
-    return rfftn(x, s, axes, norm, overwrite_x)
+    return rfftn(x, s, axes, norm, overwrite_x, plan=plan)
 
 
 @_implements(_scipy_fft.irfft2)
@@ -375,7 +387,14 @@ def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (None): This argument is currently not supported.
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes,
+                                                        value_type='C2R')
+
+            Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
+            an auto-generated plan behind the scene.
 
     Returns:
         cupy.ndarray:
@@ -387,10 +406,7 @@ def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
 
     .. seealso:: :func:`scipy.fft.irfft2`
     """
-    # TODO(leofang): support R2C & C2R plans
-    if plan is not None:
-        raise NotImplementedError('irfft2 plan is currently not yet supported')
-    return irfftn(x, s, axes, norm, overwrite_x)
+    return irfftn(x, s, axes, norm, overwrite_x, plan=plan)
 
 
 @_implements(_scipy_fft.rfftn)
@@ -405,7 +421,14 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (None): This argument is currently not supported.
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes,
+                                                        value_type='R2C')
+
+            Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
+            an auto-generated plan behind the scene.
 
     Returns:
         cupy.ndarray:
@@ -415,14 +438,11 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.rfftn`
     """
-    # TODO(leofang): support R2C & C2R plans
-    if plan is not None:
-        raise NotImplementedError('rfftn plan is currently not yet supported')
     s = _assequence(s)
     axes = _assequence(axes)
     func = _default_fft_func(x, s, axes, value_type='R2C')
     return func(x, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C',
-                overwrite_x=overwrite_x)
+                overwrite_x=overwrite_x, plan=plan)
 
 
 @_implements(_scipy_fft.irfftn)
@@ -437,7 +457,14 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (None or ``"ortho"``): Keyword to specify the normalization mode.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (None): This argument is currently not supported.
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(x, s, axes,
+                                                        value_type='C2R')
+
+            Note that ``plan`` is defaulted to ``None``, meaning CuPy will use
+            an auto-generated plan behind the scene.
 
     Returns:
         cupy.ndarray:
@@ -449,9 +476,6 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.irfftn`
     """
-    # TODO(leofang): support R2C & C2R plans
-    if plan is not None:
-        raise NotImplementedError('irfftn plan is currently not yet supported')
     s = _assequence(s)
     axes = _assequence(axes)
     if (10020 >= cupy.cuda.runtime.runtimeGetVersion() >= 10010
@@ -461,7 +485,7 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
                       'of cuFFT in CUDA 10.1/10.2 on Pascal or older GPUs.')
     func = _default_fft_func(x, s, axes, value_type='C2R')
     return func(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R',
-                overwrite_x=overwrite_x)
+                overwrite_x=overwrite_x, plan=plan)
 
 
 @_implements(_scipy_fft.hfft)
