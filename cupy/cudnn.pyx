@@ -7,11 +7,12 @@ import warnings
 
 import numpy
 
+from cupy.core._carray cimport shape_t
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport core
+from cupy.core cimport internal
 from cupy.cuda cimport cudnn
 from cupy.cuda cimport device
-from cupy.core cimport internal
 from cupy.cuda cimport memory
 
 from cupy.core._ufuncs import elementwise_copy
@@ -1685,7 +1686,7 @@ def convolution_forward(
     cdef size_t conv_desc = cudnn.createConvolutionDescriptor()
 
     cdef size_t max_workspace_size = get_max_workspace_size()
-    cdef vector.vector[Py_ssize_t] b_shape
+    cdef shape_t b_shape
     cdef _Algorithm perf
     try:
         _create_tensor_descriptor(x_desc, x, format=d_layout)
@@ -1889,7 +1890,7 @@ def convolution_backward_data(
     cdef int algo
     cdef size_t max_workspace_size = get_max_workspace_size()
     cdef size_t workspace_size = 0
-    cdef vector.vector[Py_ssize_t] b_shape
+    cdef shape_t b_shape
     try:
         _create_tensor_descriptor(x_desc, x, format=d_layout)
         _create_tensor_descriptor(y_desc, y, format=d_layout)

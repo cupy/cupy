@@ -4,6 +4,9 @@ from libcpp cimport vector
 from cupy.cuda cimport function
 
 
+ctypedef vector.vector[Py_ssize_t] shape_t
+ctypedef vector.vector[Py_ssize_t] strides_t
+
 DEF MAX_NDIM = 25
 
 
@@ -21,8 +24,7 @@ cdef class CArray(function.CPointer):
 
     cdef void init(
         self, void* data_ptr, Py_ssize_t data_size,
-        const vector.vector[Py_ssize_t]& shape,
-        const vector.vector[Py_ssize_t]& strides)
+        const shape_t& shape, const strides_t& strides)
 
 
 cdef struct _CIndexer:

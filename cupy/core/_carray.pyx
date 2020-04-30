@@ -9,8 +9,7 @@ cdef class CArray(function.CPointer):
 
     cdef void init(
             self, void* data_ptr, Py_ssize_t data_size,
-            const vector.vector[Py_ssize_t]& shape,
-            const vector.vector[Py_ssize_t]& strides):
+            const shape_t& shape, const strides_t& strides):
         cdef size_t ndim = shape.size()
         cdef Py_ssize_t* shape_and_strides = (
             self.val.shape_and_strides)

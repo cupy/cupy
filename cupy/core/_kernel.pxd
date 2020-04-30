@@ -2,6 +2,7 @@ from libcpp cimport vector
 
 from cupy.core cimport _carray
 from cupy.core cimport _scalar
+from cupy.core._carray cimport shape_t
 from cupy.core.core cimport ndarray
 
 
@@ -126,17 +127,14 @@ cpdef tuple _get_arginfos(list args)
 
 cpdef str _get_kernel_params(tuple params, tuple arginfos)
 
-cdef list _broadcast(list args, tuple params, bint use_size,
-                     vector.vector[Py_ssize_t]& shape)
+cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape)
 
 cdef list _get_out_args(list out_args, tuple out_types,
-                        const vector.vector[Py_ssize_t]& out_shape,
-                        casting)
+                        const shape_t& out_shape, casting)
 
 cdef list _get_out_args_with_params(
     list out_args, tuple out_types,
-    const vector.vector[Py_ssize_t]& out_shape,
-    tuple out_params, bint is_size_specified)
+    const shape_t& out_shape, tuple out_params, bint is_size_specified)
 
 cdef _check_array_device_id(ndarray arr, int device_id)
 

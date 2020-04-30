@@ -9,6 +9,8 @@ from cupy.core._ufuncs import elementwise_copy
 
 from libcpp cimport vector
 
+from cupy.core._carray cimport shape_t
+from cupy.core._carray cimport strides_t
 from cupy.core cimport core
 from cupy.core cimport _routines_math as _math
 from cupy.core cimport _routines_manipulation as _manipulation
@@ -299,7 +301,8 @@ cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
     return a, adv_slices, adv_mask
 
 cdef ndarray _simple_getitem(ndarray a, list slice_list):
-    cdef vector.vector[Py_ssize_t] shape, strides
+    cdef shape_t shape
+    cdef strides_t strides
     cdef ndarray v
     cdef Py_ssize_t i, j, offset, ndim
     cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
