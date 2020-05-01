@@ -1170,7 +1170,8 @@ class TestRfftnEmptyAxes(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    'norm': [None, 'ortho', 'unnormalize'],
+    #'norm': [None, 'ortho', 'unnormalize'],
+    'norm': [None, 'ortho'],
 }))
 @testing.gpu
 class TestHfft(unittest.TestCase):
@@ -1179,36 +1180,34 @@ class TestHfft(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_hfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        running_unnormalize = False
         if xp is np and self.norm == 'unnormalize':
             self.norm = None
-            running_unnormalize = True
         out = xp.fft.hfft(a, n=self.n, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
 
-        if xp is np and running_unnormalize:
-            sz = out.shape[-1]
-            out /= sz
         return out
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_ihfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        running_unnormalize = False
-        if xp is np and self.norm == 'unnormalize':
-            self.norm = None
-            running_unnormalize = True
+        # running_unnormalize = False
+        # if xp is np and self.norm == 'unnormalize':
+        #     self.norm = None
+        #     running_unnormalize = True
         out = xp.fft.ihfft(a, n=self.n, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
         # if xp is np and running_unnormalize:
+        #     # if self.n is None:
         #     sz = out.shape[-1]
-        #     out *= sz
+        #     # else:
+        #     #     sz = out.shape[self.n]
+        #     out *= (sz-1)*2
 
         return out
 

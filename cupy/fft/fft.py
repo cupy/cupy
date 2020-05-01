@@ -850,9 +850,8 @@ def hfft(a, n=None, axis=-1, norm=None):
     elif norm == 'ortho':
         return a * cupy.sqrt(a.shape[axis], dtype=a.dtype)
     elif norm == 'unnormalize':
-        return a
-    # return a * (a.shape[axis] if norm is None else
-    #             cupy.sqrt(a.shape[axis], dtype=a.dtype))
+        return a * a.shape[axis]
+
 
 
 def ihfft(a, n=None, axis=-1, norm=None):
@@ -876,11 +875,16 @@ def ihfft(a, n=None, axis=-1, norm=None):
     """
     if n is None:
         n = a.shape[axis]
-    elif n == 'ortho':
-        n = 1
-    elif n == 'unnormalize':
-        n = a.shape[axis]
-    return rfft(a, n, axis, norm).conj() / n
+
+    if norm is None:
+        div = n
+    elif norm == 'ortho':
+        div = 1
+    elif norm == 'unnormalize':
+        div = 1
+    else:
+        raise ValueError
+    return rfft(a, n, axis, norm).conj() / div
 
 
 def fftfreq(n, d=1.0):
