@@ -779,7 +779,7 @@ cdef class ElementwiseKernel:
 
         if self.reduce_dims:
             shape = _reduce_dims(inout_args, self.params, shape)
-        indexer = _carray.Indexer(tuple(shape))
+        indexer = _carray._indexer_init(shape)
         inout_args.append(indexer)
 
         arginfos = _get_arginfos(inout_args)
@@ -1042,7 +1042,7 @@ cdef class ufunc:
                 _scalar.CScalar.from_numpy_scalar_with_dtype(x, t))
         inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
-        indexer = _carray.Indexer(tuple(shape))
+        indexer = _carray._indexer_init(shape)
         inout_args.append(indexer)
         arginfos = _get_arginfos(inout_args)
 

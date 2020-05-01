@@ -302,8 +302,8 @@ cdef class _AbstractReductionKernel:
             in_args
             + out_args
             + [
-                _carray.Indexer(tuple(in_shape)),
-                _carray.Indexer(tuple(out_shape)),
+                _carray._indexer_init(in_shape),
+                _carray._indexer_init(out_shape),
                 # block_stride is passed as the last argument.
                 _scalar.CScalar.from_int32(block_stride),
             ])
