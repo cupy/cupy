@@ -525,6 +525,10 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
+        # for NVRTC
+        if module['name'] == 'cuda':
+            s['define_macros'].append(('NVRTC_GET_TYPE_NAME', '1'))
+
         original_s = s
         for f in module['file']:
             s = copy.deepcopy(original_s)
