@@ -40,7 +40,7 @@ cdef extern from 'cupy_nvrtc.h' nogil:
 
     int nvrtcAddNameExpression(Program, const char*)
     int nvrtcGetLoweredName(Program, const char*, const char**)
-    int nvrtcGetTypeName[T](cpp_str*)
+#    int nvrtcGetTypeName[T](cpp_str*)
 
 
 ###############################################################################
