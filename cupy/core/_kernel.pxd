@@ -140,4 +140,4 @@ cdef _check_array_device_id(ndarray arr, int device_id)
 
 cdef list _preprocess_args(int dev_id, args, bint use_c_scalar)
 
-cdef tuple _reduce_dims(list args, tuple params, tuple shape)
+cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape)
