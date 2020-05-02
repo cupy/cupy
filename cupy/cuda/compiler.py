@@ -75,6 +75,10 @@ def _is_cudadevrt_needed(options):
 
 
 def _get_cudadevrt_path():
+    global _cudadevrt
+    if _cudadevrt is not None:
+        return _cudadevrt
+
     # defer import to here to avoid circular dependency
     from cupy.cuda import get_cuda_path
     global _win32
@@ -280,6 +284,10 @@ def compile_with_cache(
             raise ValueError(
                 'Cooperative groups is not supported in HIP.')
 
+    if specializations is not None:
+        if runtime.is_hip or backend != 'nvrtc':
+            raise NotImplementedError
+
     if runtime.is_hip:
         return _compile_with_cache_hipcc(
             source, options, arch, cache_dir, extra_source)
@@ -352,9 +360,7 @@ def _compile_with_cache_cuda(
         ls.add_ptr_data(ptx, 'cupy.ptx')
         # for separate compilation
         if _is_cudadevrt_needed(options):
-            global _cudadevrt
-            if _cudadevrt is None:
-                _cudadevrt = _get_cudadevrt_path()
+            _cudadevrt = _get_cudadevrt_path()
             ls.add_ptr_file(_cudadevrt)
         cubin = ls.complete()
         mod.mapping = mapping

@@ -18,5 +18,5 @@ cdef class RawModule:
         readonly tuple options
         readonly str backend
         readonly bint enable_cooperative_groups
-        readonly object specializations
+        readonly tuple specializations
         bint translate_cucomplex
