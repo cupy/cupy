@@ -19,12 +19,14 @@ cdef class Module:
 
     cdef:
         public intptr_t ptr
+        public dict mapping
 
     cpdef load_file(self, filename)
     cpdef load(self, bytes cubin)
     cpdef get_global_var(self, name)
     cpdef get_function(self, name)
     cpdef get_texref(self, name)
+    #cpdef get_mangled_name(
 
 
 cdef class LinkState:

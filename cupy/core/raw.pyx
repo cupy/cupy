@@ -255,15 +255,26 @@ cdef class RawModule:
     """
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
-                 bint enable_cooperative_groups=False):
+                 bint enable_cooperative_groups=False, specializations=None):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
                 'given.')
+        if specializations:
+            if code is None:
+                raise ValueError
+            if backend != 'nvrtc':
+                raise ValueError
+            for option in options:
+                if option.startswith('--std=c++'):
+                    break
+            else:
+                raise ValueError
 
         self.code = code
         self.file_path = path
         self.enable_cooperative_groups = enable_cooperative_groups
+        self.specializations = specializations
 
         if self.code is not None:
             self.options = options
@@ -285,7 +296,8 @@ cdef class RawModule:
         cdef Module mod
         mod = _get_raw_module(
             self.code, self.file_path, self.options, self.backend,
-            self.translate_cucomplex, self.enable_cooperative_groups)
+            self.translate_cucomplex, self.enable_cooperative_groups,
+            self.specializations)
         return mod
 
     def get_function(self, str name):
@@ -352,17 +364,24 @@ cdef class RawModule:
         memptr = MemoryPointer(mem, 0)
         return memptr
 
+    def get_mangled_name(self, str kernel):
+        if not self.specializations:
+            raise RuntimeError
+        return self.module.mapping[kernel]
+
 
 @cupy.util.memoize(for_each_device=True)
 def _get_raw_module(str code, str path, tuple options=(), str backend='nvrtc',
                     bint translate_cucomplex=False,
-                    bint enable_cooperative_groups=False):
+                    bint enable_cooperative_groups=False,
+                    specializations=None):
     cdef Module mod
     if code is not None:
         mod = cupy.core.core.compile_with_cache(
             code, options, prepend_cupy_headers=False, backend=backend,
             translate_cucomplex=translate_cucomplex,
-            enable_cooperative_groups=enable_cooperative_groups)
+            enable_cooperative_groups=enable_cooperative_groups,
+            specializations=specializations)
     elif path is not None:
         mod = Module()
         mod.load_file(path)

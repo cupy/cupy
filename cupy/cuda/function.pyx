@@ -192,6 +192,7 @@ cdef class Module:
 
     def __init__(self):
         self.ptr = 0
+        self.mapping = {}
 
     def __dealloc__(self):
         if self.ptr:
@@ -222,6 +223,9 @@ cdef class Module:
         if isinstance(name, bytes):
             name = name.decode()
         return driver.moduleGetTexRef(self.ptr, name)
+
+    #cpdef get_mangled_name(self, str ker):
+    #    return self.mapping[ker]
 
 
 cdef class LinkState:
