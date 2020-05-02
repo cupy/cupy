@@ -255,21 +255,25 @@ cdef class RawModule:
     """
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
-                 bint enable_cooperative_groups=False, specializations=None):
+                 bint enable_cooperative_groups=False,
+                 tuple specializations=None):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
                 'given.')
         if specializations:
             if code is None:
-                raise ValueError
+                raise ValueError('need template code for the requested '
+                                 'specializations')
             if backend != 'nvrtc':
-                raise ValueError
+                raise ValueError('only nvrtc supports retrieving the mangled '
+                                 'names for template specializations')
             for option in options:
                 if option.startswith('--std=c++'):
                     break
             else:
-                raise ValueError
+                raise ValueError('need to specify C++ standard for compiling '
+                                 'template code')
 
         self.code = code
         self.file_path = path
@@ -308,6 +312,11 @@ cdef class RawModule:
 
         Returns:
             RawKernel: An ``RawKernel`` instance.
+
+        .. note::
+            For C++ template kernels, the argument ``name`` can be retrieved
+            by calling :meth:`get_mangled_name`.
+
         """
         cdef RawKernel ker
         cdef Function func
@@ -365,8 +374,19 @@ cdef class RawModule:
         return memptr
 
     def get_mangled_name(self, str kernel):
+        '''Get the mangled name for C++ template kernel
+
+        Args:
+            kernel (str): the template specialization used when initializing
+                the present RawModule instance.
+
+        Returns:
+            str: the corresponding mangled name that can be passed to
+                :meth:`get_function` for retrieving the kernel
+        '''
         if not self.specializations:
-            raise RuntimeError
+            raise RuntimeError('The module was not compiled with any template '
+                               'specialization specified.')
         return self.module.mapping[kernel]
 
 
