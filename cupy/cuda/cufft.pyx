@@ -388,10 +388,9 @@ class Plan1d(object):
         self.gather_events = gather_events
         self.scatter_streams = {}
         self.scatter_events = {}
-        self._multi_gpu_get_scatter_streams_events(runtime.getDevice(), nGPUs)
+        self._multi_gpu_get_scatter_streams_events(runtime.getDevice())
 
-    def _multi_gpu_get_scatter_streams_events(
-            self, int curr_device, int nGPUs):
+    def _multi_gpu_get_scatter_streams_events(self, int curr_device):
         '''
         create a list of streams and events on the current device
         '''
@@ -402,7 +401,7 @@ class Plan1d(object):
         assert curr_device in self.gpus
 
         with Device(curr_device):
-            for i in range(nGPUs):
+            for i in self.gpus:
                 scatter_streams.append(Stream())
                 scatter_events.append(Event())
 
@@ -543,6 +542,7 @@ class Plan1d(object):
         # if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
         if isinstance(a, cupy.ndarray):
             start = 0
+            assert a._c_contiguous
             b = a.ravel()
             assert b.flags['OWNDATA'] is False
             assert self.xtArr_buffer is not None
@@ -555,8 +555,7 @@ class Plan1d(object):
             if action == 'scatter':
                 s_device = b.data.device_id
                 if s_device not in self.scatter_streams:
-                    self._multi_gpu_get_scatter_streams_events(
-                        s_device, nGPUs)
+                    self._multi_gpu_get_scatter_streams_events(s_device)
 
                 # When we come here, another stream could still be
                 # copying data for us, so we wait patiently...
