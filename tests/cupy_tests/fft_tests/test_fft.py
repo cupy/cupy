@@ -150,7 +150,7 @@ class TestFftOrder(unittest.TestCase):
             a = xp.asfortranarray(a)
         out = xp.fft.fft(a, axis=self.axis)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
@@ -1170,7 +1170,6 @@ class TestRfftnEmptyAxes(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    #'norm': [None, 'ortho', 'unnormalize'],
     'norm': [None, 'ortho'],
 }))
 @testing.gpu

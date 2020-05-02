@@ -151,8 +151,8 @@ def _fft_c2c(a, direction, norm, axes, overwrite_x, plan=None):
 def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
          plan=None):
     if norm not in (None, 'ortho', 'unnormalize'):
-        raise ValueError('Invalid norm value %s, should be None or "ortho" or "unnormalize".'
-                         % norm)
+        raise ValueError('Invalid norm value %s, should be None or "ortho" or '
+                         '"unnormalize".' % norm)
 
     if s is not None:
         for n in s:
@@ -566,7 +566,8 @@ def ifft(a, n=None, axis=-1, norm=None):
             is not given, the length of the input along the axis specified by
             ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+                normalization mode.
 
     Returns:
         cupy.ndarray:
@@ -587,7 +588,8 @@ def fft2(a, s=None, axes=(-2, -1), norm=None):
             output. If ``s`` is not given, the lengths of the input along the
             axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+            normalization mode.
 
     Returns:
         cupy.ndarray:
@@ -609,7 +611,8 @@ def ifft2(a, s=None, axes=(-2, -1), norm=None):
             output. If ``s`` is not given, the lengths of the input along the
             axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+            normalization mode.
 
     Returns:
         cupy.ndarray:
@@ -631,7 +634,8 @@ def fftn(a, s=None, axes=None, norm=None):
             output. If ``s`` is not given, the lengths of the input along the
             axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+            normalization mode.
 
     Returns:
         cupy.ndarray:
@@ -653,7 +657,8 @@ def ifftn(a, s=None, axes=None, norm=None):
             output. If ``s`` is not given, the lengths of the input along the
             axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+            normalization mode.
 
     Returns:
         cupy.ndarray:
@@ -675,7 +680,8 @@ def rfft(a, n=None, axis=-1, norm=None):
             input to use. If ``n`` is not given, the length of the input along
             the axis specified by ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+            normalization mode.
 
     Returns:
         cupy.ndarray:
@@ -698,7 +704,8 @@ def irfft(a, n=None, axis=-1, norm=None):
             ``n`` is not given, it is determined from the length of the input
             along the axis specified by ``axis``.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+            normalization mode.
 
     Returns:
         cupy.ndarray:
@@ -721,7 +728,8 @@ def rfft2(a, s=None, axes=(-2, -1), norm=None):
             given, the lengths of the input along the axes specified by
             ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+            normalization mode.
 
     Returns:
         cupy.ndarray:
@@ -744,7 +752,8 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None):
             they are determined from the lengths of the input along the axes
             specified by ``axes``.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+            normalization mode.
 
     Returns:
         cupy.ndarray:
@@ -769,7 +778,8 @@ def rfftn(a, s=None, axes=None, norm=None):
             given, the lengths of the input along the axes specified by
             ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+            normalization mode.
 
     Returns:
         cupy.ndarray:
@@ -801,7 +811,8 @@ def irfftn(a, s=None, axes=None, norm=None):
             they are determined from the lengths of the input along the axes
             specified by ``axes``.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+            normalization mode.
 
     Returns:
         cupy.ndarray:
@@ -833,7 +844,8 @@ def hfft(a, n=None, axis=-1, norm=None):
             ``n`` is not given, it is determined from the length of the input
             along the axis specified by ``axis``.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+            normalization mode.
 
     Returns:
         cupy.ndarray:
@@ -853,7 +865,6 @@ def hfft(a, n=None, axis=-1, norm=None):
         return a * a.shape[axis]
 
 
-
 def ihfft(a, n=None, axis=-1, norm=None):
     """Compute the FFT of a signal that has Hermitian symmetry.
 
@@ -863,7 +874,8 @@ def ihfft(a, n=None, axis=-1, norm=None):
             input to use. If ``n`` is not given, the length of the input along
             the axis specified by ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the normalization mode.
+        norm (None or ``"ortho"`` or ``"unnormalize"``): Keyword to specify the
+            normalization mode.
 
     Returns:
         cupy.ndarray:
