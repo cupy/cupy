@@ -644,7 +644,7 @@ class TestRaw(unittest.TestCase):
         assert (in_int == out_int).all()
         assert cupy.allclose(in_float, out_float)
 
-    def test_template_failure1(self):
+    def test_template_failure(self):
         specializations = ('my_sqrt<int>',)
 
         # 1. nvcc is disabled for this feature

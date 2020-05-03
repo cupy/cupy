@@ -32,7 +32,6 @@ cdef extern from 'cupy_nvrtc.h' nogil:
     int nvrtcGetPTX(Program prog, char *ptx)
     int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
     int nvrtcGetProgramLog(Program prog, char* log)
-
     int nvrtcAddNameExpression(Program, const char*)
     int nvrtcGetLoweredName(Program, const char*, const char**)
 
