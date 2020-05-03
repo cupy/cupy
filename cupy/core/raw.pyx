@@ -253,6 +253,11 @@ cdef class RawModule:
             ``cuLaunchCooperativeKernel`` so that cooperative groups can be
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
+        specializations (tuple of str): A tuple of strings for specializing
+            C++ template kernels. For example, ``specializations=('func<int>',
+            'func<double>')`` for the template kernel ``func<T>``. Strings in
+            this tuple must then be passed, one at a time, to
+            :meth:`get_mangled_name` to retrieve the corresponding kernel name.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
