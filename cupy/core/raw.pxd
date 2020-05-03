@@ -7,6 +7,7 @@ cdef class RawKernel:
         readonly tuple options
         readonly str backend
         readonly bint enable_cooperative_groups
+        tuple specializations
         bint translate_cucomplex
 
 
