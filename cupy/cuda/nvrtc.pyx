@@ -13,11 +13,6 @@ There are four differences compared to the original C API.
 """
 cimport cython  # NOQA
 from libcpp cimport vector
-#from libcpp.string cimport string as cpp_str
-#
-#from cupy.cuda cimport common
-#
-#import numpy
 
 
 ###############################################################################
@@ -40,7 +35,6 @@ cdef extern from 'cupy_nvrtc.h' nogil:
 
     int nvrtcAddNameExpression(Program, const char*)
     int nvrtcGetLoweredName(Program, const char*, const char**)
-#    int nvrtcGetTypeName[T](cpp_str*)
 
 
 ###############################################################################
@@ -172,42 +166,5 @@ cpdef str getLoweredName(intptr_t prog, str name):
     with nogil:
         status = nvrtcGetLoweredName(<Program>prog, c_name, &mangled_name)
     check_status(status)
-    cdef bytes b_mangled_name = mangled_name
-    return b_mangled_name.decode('UTF-8')
-#
-#
-#cpdef str getTypeName(dtype):
-#    '''Convert NumPy dtype to NVRTC type name'''
-#    cdef cpp_str cpp_name
-#
-#    if dtype == numpy.int8:
-#        status = nvrtcGetTypeName[char](&cpp_name)
-#    #elif dtype == numpy.uint8:
-#    #    status = nvrtcGetTypeName[unsigned char](&cpp_name)
-#    elif dtype == numpy.int16:
-#        status = nvrtcGetTypeName[short](&cpp_name)
-#    #elif dtype == numpy.uint16:
-#    #    status = nvrtcGetTypeName[unsigned short](&cpp_name)
-#    elif dtype == numpy.int32:
-#        status = nvrtcGetTypeName[int](&cpp_name)
-#    #elif dtype == numpy.uint32:
-#    #    status = nvrtcGetTypeName[unsigned int](&cpp_name)
-#    #elif dtype == numpy.int64:
-#    #    status = nvrtcGetTypeName[long long](&cpp_name)
-#    #elif dtype == numpy.uint64:
-#    #    status = nvrtcGetTypeName[unsigned long long](&cpp_name)
-#    elif dtype == numpy.float32:
-#        status = nvrtcGetTypeName[float](&cpp_name)
-#    elif dtype == numpy.float64:
-#        status = nvrtcGetTypeName[double](&cpp_name)
-#    #elif dtype == numpy.complex64:
-#    #    #status = nvrtcGetTypeName[common.cpy_complex64](&cpp_name)
-#    #elif dtype == numpy.complex128:
-#    #    #status = nvrtcGetTypeName[common.cpy_complex128](&cpp_name)
-#    #elif dtype == numpy.bool:
-#    #    status = nvrtcGetTypeName[common.cpy_bool](&cpp_name)
-#    else:
-#        raise NotImplementedError('dtype is not supported')
-#    check_status(status)
-#
-#    return cpp_name.decode('UTF-8')
+    b_name = mangled_name
+    return b_name.decode('UTF-8')

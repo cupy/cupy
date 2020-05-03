@@ -26,7 +26,6 @@ cdef class Module:
     cpdef get_global_var(self, name)
     cpdef get_function(self, name)
     cpdef get_texref(self, name)
-    #cpdef get_mangled_name(
 
 
 cdef class LinkState:

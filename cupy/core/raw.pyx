@@ -394,7 +394,7 @@ cdef class RawModule:
 def _get_raw_module(str code, str path, tuple options=(), str backend='nvrtc',
                     bint translate_cucomplex=False,
                     bint enable_cooperative_groups=False,
-                    specializations=None):
+                    tuple specializations=None):
     cdef Module mod
     if code is not None:
         mod = cupy.core.core.compile_with_cache(

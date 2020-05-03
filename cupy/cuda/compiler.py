@@ -13,6 +13,7 @@ from cupy.cuda import nvrtc
 from cupy.cuda import runtime
 from cupy import util
 
+
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
 _win32 = sys.platform.startswith('win32')
@@ -458,12 +459,12 @@ class _NVRTCProgram(object):
                 for ker in self.specializations:
                     nvrtc.addAddNameExpression(self.ptr, ker)
             nvrtc.compileProgram(self.ptr, options)
+            mapping = None
             if self.specializations:
                 mapping = {}
                 for ker in self.specializations:
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
-                return nvrtc.getPTX(self.ptr), mapping
-            return nvrtc.getPTX(self.ptr), None
+            return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
             raise CompileException(log, self.src, self.name, options, 'nvrtc')
