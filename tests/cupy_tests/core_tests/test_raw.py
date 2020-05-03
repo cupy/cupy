@@ -281,6 +281,16 @@ __global__ void multiply_by_const(float* x, int N) {
 }
 '''
 
+test_cxx_template = r'''
+template<typename T>
+__global__ void my_sqrt(T* input, int N) {
+  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+  if (x < N) {
+    input[x] *= input[x];
+  }
+}
+'''
+
 if 'CUPY_CACHE_DIR' in os.environ:
     _old_cache_dir = os.environ['CUPY_CACHE_DIR']
     _is_cache_env_var_set = True
@@ -605,6 +615,63 @@ class TestRaw(unittest.TestCase):
         output_arr = cupy.ones(100, dtype=cupy.float32)
         ker((1,), (100,), (output_arr, cupy.int32(100)))
         assert (data == output_arr).all()
+
+    def test_template_specialization(self):
+        if self.backend == 'nvcc':
+            self.skipTest('nvcc does not support template specialization')
+
+        # compile code
+        specializations = ('my_sqrt<int>', 'my_sqrt<float>')
+        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
+                             specializations=specializations)
+
+        # get specialized kernels
+        names = [mod.get_mangled_name(ker) for ker in specializations]
+        ker_int = mod.get_function(names[0])
+        ker_float = mod.get_function(names[1])
+
+        # prepare inputs & expected outputs
+        in_int = cupy.arange(10, dtype=cupy.int32)
+        out_int = in_int**2
+        in_float = cupy.random.random(10, dtype=cupy.float32)
+        out_float = in_float**2
+
+        # run
+        ker_int((1,), (10,), (in_int, 10))
+        ker_float((1,), (10,), (in_float, 10))
+
+        # check results
+        assert (in_int == out_int).all()
+        assert cupy.allclose(in_float, out_float)
+
+    def test_template_failure1(self):
+        specializations = ('my_sqrt<int>',)
+
+        # 1. nvcc is disabled for this feature
+        if self.backend == 'nvcc':
+            with pytest.raises(ValueError) as e:
+                cupy.RawModule(code=test_cxx_template, backend=self.backend,
+                               options=('--std=c++11',),
+                               specializations=specializations)
+            assert 'nvrtc' in str(e.value)
+            return  # the rest of tests do not apply to nvcc
+
+        # 2. compile code without specializations
+        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',))
+        # ...try to get a specialized kernel
+        with pytest.raises(RuntimeError):
+            mod.get_mangled_name('my_sqrt<int>')
+
+        # 3. compile code without specifying C++ standard
+        with pytest.raises(ValueError):
+            cupy.RawModule(code=test_cxx_template,
+                           specializations=specializations)
+
+        # 4. try to fetch something we didn't specialize for
+        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
+                             specializations=specializations)
+        with pytest.raises(ValueError):
+            mod.get_mangled_name('my_sqrt<double>')
 
     @testing.multi_gpu(2)
     def test_context_switch_RawKernel(self):

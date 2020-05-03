@@ -393,6 +393,8 @@ cdef class RawModule:
         if not self.specializations:
             raise RuntimeError('The module was not compiled with any template '
                                'specialization specified.')
+        if kernel not in self.specializations:
+            raise ValueError('The kernel ' + kernel + ' was not specialized.')
         return self.module.mapping[kernel]
 
 
