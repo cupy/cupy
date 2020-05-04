@@ -35,10 +35,11 @@ cdef object _thread_local = threading.local()
 
 cdef class _ThreadLocal:
 
-    cdef bint context_initialized
+    cdef list context_initialized
 
     def __init__(self):
-        self.context_initialized = False
+        cdef int i
+        self.context_initialized = [False for i in range(getDeviceCount())]
 
     @staticmethod
     cdef _ThreadLocal get():
@@ -642,10 +643,11 @@ cdef _ensure_context():
     See discussion on https://github.com/cupy/cupy/issues/72 for details.
     """
     tls = _ThreadLocal.get()
-    if not tls.context_initialized:
+    cdef int dev = getDevice()
+    if not tls.context_initialized[dev]:
         # Call Runtime API to establish context on this host thread.
         memGetInfo()
-        tls.context_initialized = True
+        tls.context_initialized[dev] = True
 
 
 ##############################################################################
