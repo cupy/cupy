@@ -364,7 +364,7 @@ def _compile_with_cache_cuda(
             _cudadevrt = _get_cudadevrt_path()
             ls.add_ptr_file(_cudadevrt)
         cubin = ls.complete()
-        mod.mapping = mapping
+        mod._set_mapping(mapping)
     elif backend == 'nvcc':
         rdc = _is_cudadevrt_needed(options)
         cubin = compile_using_nvcc(source, options, arch, name + '.cu',

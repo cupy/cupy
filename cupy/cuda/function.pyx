@@ -224,6 +224,9 @@ cdef class Module:
             name = name.decode()
         return driver.moduleGetTexRef(self.ptr, name)
 
+    cpdef _set_mapping(self, dict mapping):
+        self.mapping = mapping
+
 
 cdef class LinkState:
 
