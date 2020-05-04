@@ -282,6 +282,8 @@ __global__ void multiply_by_const(float* x, int N) {
 '''
 
 test_cxx_template = r'''
+#include <cupy/complex.cuh>
+
 template<typename T>
 __global__ void my_sqrt(T* input, int N) {
   unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -621,28 +623,26 @@ class TestRaw(unittest.TestCase):
             self.skipTest('nvcc does not support template specialization')
 
         # compile code
-        specializations = ('my_sqrt<int>', 'my_sqrt<float>')
+        specializations = ('my_sqrt<int>', 'my_sqrt<float>',
+                           'my_sqrt<complex<double>>')
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
                              specializations=specializations)
 
-        # get specialized kernels
-        names = [mod.get_mangled_name(ker) for ker in specializations]
-        ker_int = mod.get_function(names[0])
-        ker_float = mod.get_function(names[1])
+        dtypes = (cupy.int32, cupy.float32, cupy.complex128)
+        for ker_T, dtype in zip(specializations, dtypes):
+            # get specialized kernels
+            name = mod.get_mangled_name(ker_T)
+            ker = mod.get_function(name)
 
-        # prepare inputs & expected outputs
-        in_int = cupy.arange(10, dtype=cupy.int32)
-        out_int = in_int**2
-        in_float = cupy.random.random(10, dtype=cupy.float32)
-        out_float = in_float**2
+            # prepare inputs & expected outputs
+            in_arr = cupy.testing.shaped_random((10,), dtype=dtype)
+            out_arr = in_arr**2
 
-        # run
-        ker_int((1,), (10,), (in_int, 10))
-        ker_float((1,), (10,), (in_float, 10))
+            # run
+            ker((1,), (10,), (in_arr, 10))
 
-        # check results
-        assert (in_int == out_int).all()
-        assert cupy.allclose(in_float, out_float)
+            # check results
+            assert cupy.allclose(in_arr, out_arr)
 
     def test_template_failure(self):
         specializations = ('my_sqrt<int>',)
