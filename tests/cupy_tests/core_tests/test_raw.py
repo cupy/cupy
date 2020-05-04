@@ -732,6 +732,64 @@ class TestRaw(unittest.TestCase):
         x1, x2, y = self._helper(ker, cupy.float32)
         assert cupy.allclose(y, x1 / (x2 + 1.0))
 
+    @testing.multi_gpu(2)
+    def test_context_switch_RawModule5(self):
+        # run test_template_specialization() on another device
+        # in this test, re-compiling happens at get_function()
+        if self.backend == 'nvcc':
+            self.skipTest('nvcc does not support template specialization')
+
+        # compile code
+        specializations = ('my_sqrt<unsigned int>',)
+        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
+                             specializations=specializations)
+
+        # switch device
+        cupy.cuda.runtime.setDevice(1)
+
+        # get specialized kernels
+        name = mod.get_mangled_name(specializations[0])
+        ker = mod.get_function(name)
+
+        # prepare inputs & expected outputs
+        in_arr = cupy.testing.shaped_random((10,), dtype=cupy.uint32)
+        out_arr = in_arr**2
+
+        # run
+        ker((1,), (10,), (in_arr, 10))
+
+        # check results
+        assert cupy.allclose(in_arr, out_arr)
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawModule6(self):
+        # run test_template_specialization() on another device
+        # in this test, re-compiling happens at kernel launch
+        if self.backend == 'nvcc':
+            self.skipTest('nvcc does not support template specialization')
+
+        # compile code
+        specializations = ('my_sqrt<unsigned int>',)
+        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
+                             specializations=specializations)
+
+        # get specialized kernels
+        name = mod.get_mangled_name(specializations[0])
+        ker = mod.get_function(name)
+
+        # switch device
+        cupy.cuda.runtime.setDevice(1)
+
+        # prepare inputs & expected outputs
+        in_arr = cupy.testing.shaped_random((10,), dtype=cupy.uint32)
+        out_arr = in_arr**2
+
+        # run
+        ker((1,), (10,), (in_arr, 10))
+
+        # check results
+        assert cupy.allclose(in_arr, out_arr)
+
 
 _test_grid_sync = r'''
 #include <cooperative_groups.h>
