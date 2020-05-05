@@ -278,7 +278,7 @@ cdef class RawModule:
                 raise ValueError('only nvrtc supports retrieving the mangled '
                                  'names for template specializations')
             for option in options:
-                if option.startswith('--std=c++'):
+                if '-std=c++' in option:  # both -std and --std are valid
                     break
             else:
                 raise ValueError('need to specify C++ standard for compiling '
