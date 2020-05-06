@@ -385,7 +385,7 @@ cdef class RawModule:
         return memptr
 
     def get_mangled_name(self, str kernel):
-        '''Get the mangled name for C++ template kernel
+        """Get the mangled name for C++ template kernel
 
         Args:
             kernel (str): the template specialization used when initializing
@@ -394,7 +394,33 @@ cdef class RawModule:
         Returns:
             str: the corresponding mangled name that can be passed to
                 :meth:`get_function` for retrieving the kernel
-        '''
+
+        .. note::
+            The following example shows how to retrieve one of the specialized
+            C++ template kernels:
+
+            .. code-block:: python
+
+                code = r'''
+                template<typename T>
+                __global__ void func(T* in_arr) { /* do something */ }
+                '''
+
+                kers = ('func<int>', 'func<float>', 'func<double>')
+                mod = cupy.RawModule(code=code, options=('--std=c++11',),
+                                     specializations=kers)
+                // retrieve func<int>
+                ker = kers[0]
+                ker_name_int = mod.get_mangled_name(ker)
+                ker_int = mod.get_function(ker_name_int)
+
+        .. seealso::
+            ``nvrtcAddNameExpression`` and ``nvrtcGetLoweredName`` from
+            `Accessing Lowered Names`_ of the NVRTC documentation.
+
+        .. _Accessing Lowered Names:
+            https://docs.nvidia.com/cuda/nvrtc/index.html#accessing-lowered-names
+        """
         if not self.specializations:
             raise RuntimeError('The module was not compiled with any template '
                                'specialization specified.')
