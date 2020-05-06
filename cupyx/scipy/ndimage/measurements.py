@@ -307,14 +307,24 @@ def variance(input, labels=None, index=None):
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
 
+    if issubclass(input.dtype.type, (cupy.bool, cupy.complex64,
+                                     cupy.complex128)):
+        raise TypeError("cupyx.scipy.ndimage.variance doesn't support %{}"
+                        "".format(input.dtype.type))
+
+    use_kern = False
     # There is constraints on types because atomicAdd() in CUDA 7.5
     # only supports int32, uint32, uint64, and float32.
     if not issubclass(input.dtype.type,
-                      (cupy.int32, cupy.float16, cupy.float32, cupy.float64,
-                       cupy.uint32, cupy.uint64, cupy.ulonglong)):
-        raise TypeError(
-            'cupyx.scipy.ndimage.variance only supports int32, float16, '
-            'float32, float64, uint32, uint64, as data type')
+                      (cupy.int32, cupy.float16, cupy.float32,
+                       cupy.float64, cupy.uint32, cupy.uint64,
+                       cupy.ulonglong)):
+        warnings.warn(
+            'Using the slower implmentation as '
+            'cupyx.scipy.ndimage.sum supports int32, float16, '
+            'float32, float64, uint32, uint64 as data types'
+            'for the fast implmentation', util.PerformanceWarning)
+        use_kern = True
 
     if labels is None:
         return input.var()
@@ -333,7 +343,11 @@ def variance(input, labels=None, index=None):
         else:
             return (input[labels == index]).var()
 
-    mean_val, count = _mean_driver(input, labels, index, True)
+    mean_val, count = _mean_driver(input, labels, index, True, use_kern)
+    if use_kern:
+        return cupy.where(labels == index[..., None],
+                          cupy.square(input - mean_val[..., None]),
+                          0).sum(axis=(1,)) / count
     out = cupy.zeros_like(index, dtype=mean_val.dtype)
     return _ndimage_variance_kernel(input, labels, index, index.size, mean_val,
                                     out)/count

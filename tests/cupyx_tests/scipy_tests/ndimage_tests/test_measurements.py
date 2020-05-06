@@ -189,7 +189,7 @@ class TestNdimageSum(unittest.TestCase):
 class TestNdimageVariance(unittest.TestCase):
 
     @testing.for_dtypes([cupy.int32, cupy.float32, cupy.float64, cupy.uint32,
-                         cupy.uint64, cupy.ulonglong])
+                         cupy.uint64, cupy.ulonglong, cupy.int64, cupy.uint16])
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
     def test_ndimage_variance(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
@@ -220,8 +220,7 @@ class TestNdimageVariance(unittest.TestCase):
         label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3) + 1
         return scp.ndimage.variance(image, label, 1).astype(dtype)
 
-    @testing.for_dtypes([cupy.int8, cupy.int16, cupy.int64, cupy.uint8,
-                         cupy.uint16, cupy.complex64, cupy.complex128])
+    @testing.for_dtypes([cupy.complex64, cupy.complex128])
     def test_ndimage_variance_wrong_dtype(self, dtype):
         image = cupy.arange(100, dtype=dtype)
         label = cupy.random.randint(1, 3, dtype=cupy.int32)
@@ -354,7 +353,7 @@ class TestNdimageMean(unittest.TestCase):
 class TestNdimageStandardDeviation(unittest.TestCase):
 
     @testing.for_dtypes([cupy.int32, cupy.float32, cupy.float64, cupy.uint32,
-                         cupy.uint64, cupy.ulonglong])
+                         cupy.uint64, cupy.ulonglong, cupy.int64, cupy.uint16])
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
     def test_ndimage_standard_deviation(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
@@ -386,8 +385,7 @@ class TestNdimageStandardDeviation(unittest.TestCase):
         label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3) + 1
         return scp.ndimage.standard_deviation(image, label, 1).astype(dtype)
 
-    @testing.for_dtypes([cupy.int8, cupy.int16, cupy.int64, cupy.uint8,
-                         cupy.uint16, cupy.complex64, cupy.complex128])
+    @testing.for_dtypes([cupy.complex64, cupy.complex128])
     def test_ndimage_standard_deviation_wrong_dtype(self, dtype):
         image = cupy.arange(100, dtype=dtype)
         label = cupy.random.randint(1, 3, dtype=cupy.int32)
