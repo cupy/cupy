@@ -345,9 +345,10 @@ def variance(input, labels=None, index=None):
 
     mean_val, count = _mean_driver(input, labels, index, True, use_kern)
     if use_kern:
-        return cupy.where(labels == index[..., None],
-                          cupy.square(input - mean_val[..., None]),
-                          0).sum(axis=(1,)) / count
+        new_axis = (..., *(cupy.newaxis for _ in range(input.ndim)))
+        return cupy.where(labels[None, ...] == index[new_axis],
+                          cupy.square(input - mean_val[new_axis]),
+                          0).sum(tuple(range(1, input.ndim + 1))) / count
     out = cupy.zeros_like(index, dtype=mean_val.dtype)
     return _ndimage_variance_kernel(input, labels, index, index.size, mean_val,
                                     out)/count
