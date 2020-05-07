@@ -2,13 +2,10 @@ import unittest
 import warnings
 
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
-
-
-_bool_ok = testing.numpy_satisfies('>=1.10')  # after numpy PR #5946
-_float16_ok = testing.numpy_satisfies('>=1.15')  # after numpy PR #10911
-# require numpy!=1.14.0 because of numpy issue #10343
 
 
 def _dec_shape(shape, dec):
@@ -61,183 +58,226 @@ def augument_einsum_testcases(*params):
                 yield param_new
 
 
-@testing.with_requires('numpy!=1.14.0')
 class TestEinSumError(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_irregular_ellipsis1(self, xp):
-        xp.einsum('..', xp.zeros((2, 2, 2)))
+    def test_irregular_ellipsis1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('..', xp.zeros((2, 2, 2)))
 
-    @testing.numpy_cupy_raises()
-    def test_irregular_ellipsis2(self, xp):
-        xp.einsum('...i...', xp.zeros((2, 2, 2)))
+    def test_irregular_ellipsis2(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('...i...', xp.zeros((2, 2, 2)))
 
-    @testing.numpy_cupy_raises()
-    def test_irregular_ellipsis3(self, xp):
-        xp.einsum('i...->...i...', xp.zeros((2, 2, 2)))
+    def test_irregular_ellipsis3(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('i...->...i...', xp.zeros((2, 2, 2)))
 
-    @testing.numpy_cupy_raises()
-    def test_irregular_ellipsis4(self, xp):
-        xp.einsum('...->', xp.zeros((2, 2, 2)))
+    def test_irregular_ellipsis4(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('...->', xp.zeros((2, 2, 2)))
 
-    @testing.numpy_cupy_raises()
-    def test_no_arguments(self, xp):
-        xp.einsum()
+    def test_no_arguments(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum()
 
-    @testing.numpy_cupy_raises()
-    def test_one_argument(self, xp):
-        xp.einsum('')
+    def test_one_argument(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('')
 
-    @testing.numpy_cupy_raises()
-    def test_not_string_subject(self, xp):
-        xp.einsum(0, 0)
+    def test_not_string_subject(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(TypeError):
+                xp.einsum(0, 0)
 
-    @testing.numpy_cupy_raises()
-    def test_bad_argument(self, xp):
-        xp.einsum('', 0, bad_arg=0)
+    def test_bad_argument(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(TypeError):
+                xp.einsum('', 0, bad_arg=0)
 
-    @testing.numpy_cupy_raises()
-    def test_too_many_operands1(self, xp):
-        xp.einsum('', 0, 0)
+    def test_too_many_operands1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('', 0, 0)
 
-    @testing.numpy_cupy_raises()
-    def test_too_many_operands2(self, xp):
-        xp.einsum('i,j', xp.array([0, 0]), xp.array([0, 0]), xp.array([0, 0]))
+    def test_too_many_operands2(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum(
+                    'i,j',
+                    xp.array([0, 0]),
+                    xp.array([0, 0]),
+                    xp.array([0, 0]))
 
-    @testing.numpy_cupy_raises()
-    def test_too_few_operands1(self, xp):
-        xp.einsum(',', 0)
+    def test_too_few_operands1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum(',', 0)
 
-    @testing.numpy_cupy_raises()
-    def test_too_many_dimension1(self, xp):
-        xp.einsum('i', 0)
+    def test_too_many_dimension1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('i', 0)
 
-    @testing.numpy_cupy_raises()
-    def test_too_many_dimension2(self, xp):
-        xp.einsum('ij', xp.array([0, 0]))
+    def test_too_many_dimension2(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('ij', xp.array([0, 0]))
 
-    @testing.numpy_cupy_raises()
-    def test_too_many_dimension3(self, xp):
-        xp.einsum('ijk...->...', xp.arange(6).reshape(2, 3))
+    def test_too_many_dimension3(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('ijk...->...', xp.arange(6).reshape(2, 3))
 
-    @testing.numpy_cupy_raises()
-    def test_too_few_dimension(self, xp):
-        xp.einsum('i->i', xp.arange(6).reshape(2, 3))
+    def test_too_few_dimension(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('i->i', xp.arange(6).reshape(2, 3))
 
-    @testing.numpy_cupy_raises()
-    def test_invalid_char1(self, xp):
-        xp.einsum('i%', xp.array([0, 0]))
+    def test_invalid_char1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('i%', xp.array([0, 0]))
 
-    @testing.numpy_cupy_raises()
-    def test_invalid_char2(self, xp):
-        xp.einsum('j$', xp.array([0, 0]))
+    def test_invalid_char2(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('j$', xp.array([0, 0]))
 
-    @testing.numpy_cupy_raises()
-    def test_invalid_char3(self, xp):
-        xp.einsum('i->&', xp.array([0, 0]))
+    def test_invalid_char3(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('i->&', xp.array([0, 0]))
 
     # output subscripts must appear in inumpy.t
-    @testing.numpy_cupy_raises()
-    def test_invalid_output_subscripts1(self, xp):
-        xp.einsum('i->ij', xp.array([0, 0]))
+    def test_invalid_output_subscripts1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('i->ij', xp.array([0, 0]))
 
     # output subscripts may only be specified once
-    @testing.numpy_cupy_raises()
-    def test_invalid_output_subscripts2(self, xp):
-        xp.einsum('ij->jij', xp.array([[0, 0], [0, 0]]))
+    def test_invalid_output_subscripts2(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('ij->jij', xp.array([[0, 0], [0, 0]]))
 
     # output subscripts must not incrudes comma
-    @testing.numpy_cupy_raises()
-    def test_invalid_output_subscripts3(self, xp):
-        xp.einsum('ij->i,j', xp.array([[0, 0], [0, 0]]))
+    def test_invalid_output_subscripts3(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('ij->i,j', xp.array([[0, 0], [0, 0]]))
 
     # dimensions much match when being collapsed
-    @testing.numpy_cupy_raises()
-    def test_invalid_diagonal1(self, xp):
-        xp.einsum('ii', xp.arange(6).reshape(2, 3))
+    def test_invalid_diagonal1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('ii', xp.arange(6).reshape(2, 3))
 
-    @testing.numpy_cupy_raises()
-    def test_invalid_diagonal2(self, xp):
-        xp.einsum('ii->', xp.arange(6).reshape(2, 3))
+    def test_invalid_diagonal2(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('ii->', xp.arange(6).reshape(2, 3))
 
-    @testing.numpy_cupy_raises()
-    def test_invalid_diagonal3(self, xp):
-        xp.einsum('ii', xp.arange(3).reshape(1, 3))
+    def test_invalid_diagonal3(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('ii', xp.arange(3).reshape(1, 3))
 
-    @testing.numpy_cupy_raises()
-    def test_dim_mismatch_char1(self, xp):
-        xp.einsum('i,i', xp.arange(2), xp.arange(3))
+    def test_dim_mismatch_char1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('i,i', xp.arange(2), xp.arange(3))
 
-    @testing.numpy_cupy_raises()
-    def test_dim_mismatch_ellipsis1(self, xp):
-        xp.einsum('...,...', xp.arange(2), xp.arange(3))
+    def test_dim_mismatch_ellipsis1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('...,...', xp.arange(2), xp.arange(3))
 
-    @testing.numpy_cupy_raises()
-    def test_dim_mismatch_ellipsis2(self, xp):
-        a = xp.arange(12).reshape(2, 3, 2)
-        xp.einsum('i...,...i', a, a)
+    def test_dim_mismatch_ellipsis2(self):
+        for xp in (numpy, cupy):
+            a = xp.arange(12).reshape(2, 3, 2)
+            with pytest.raises(ValueError):
+                xp.einsum('i...,...i', a, a)
 
-    @testing.numpy_cupy_raises()
-    def test_dim_mismatch_ellipsis3(self, xp):
-        a = xp.arange(12).reshape(2, 3, 2)
-        xp.einsum('...,...', a, a[:, :2])
+    def test_dim_mismatch_ellipsis3(self):
+        for xp in (numpy, cupy):
+            a = xp.arange(12).reshape(2, 3, 2)
+            with pytest.raises(ValueError):
+                xp.einsum('...,...', a, a[:, :2])
 
     # invalid -> operator
-    @testing.numpy_cupy_raises()
-    def test_invalid_arrow1(self, xp):
-        xp.einsum('i-i', xp.array([0, 0]))
+    def test_invalid_arrow1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('i-i', xp.array([0, 0]))
 
-    @testing.numpy_cupy_raises()
-    def test_invalid_arrow2(self, xp):
-        xp.einsum('i>i', xp.array([0, 0]))
+    def test_invalid_arrow2(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('i>i', xp.array([0, 0]))
 
-    @testing.numpy_cupy_raises()
-    def test_invalid_arrow3(self, xp):
-        xp.einsum('i->->i', xp.array([0, 0]))
+    def test_invalid_arrow3(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('i->->i', xp.array([0, 0]))
 
-    @testing.numpy_cupy_raises()
-    def test_invalid_arrow4(self, xp):
-        xp.einsum('i-', xp.array([0, 0]))
+    def test_invalid_arrow4(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum('i-', xp.array([0, 0]))
 
 
-@testing.with_requires('numpy!=1.14.0')
 class TestListArgEinSumError(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_invalid_sub1(self, xp):
-        xp.einsum(xp.arange(2), [None])
+    def test_invalid_sub1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum(xp.arange(2), [None])
 
-    @testing.numpy_cupy_raises()
-    def test_invalid_sub2(self, xp):
-        xp.einsum(xp.arange(2), [0], [1])
+    def test_invalid_sub2(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum(xp.arange(2), [0], [1])
 
-    @testing.numpy_cupy_raises()
-    def test_invalid_sub3(self, xp):
-        xp.einsum(xp.arange(2), [Ellipsis, 0, Ellipsis])
+    def test_invalid_sub3(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum(xp.arange(2), [Ellipsis, 0, Ellipsis])
 
-    @testing.numpy_cupy_raises()
-    def test_dim_mismatch1(self, xp):
-        xp.einsum(xp.arange(2), [0], xp.arange(3), [0])
+    def test_dim_mismatch1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum(xp.arange(2), [0], xp.arange(3), [0])
 
-    @testing.numpy_cupy_raises()
-    def test_dim_mismatch2(self, xp):
-        xp.einsum(xp.arange(2), [0], xp.arange(3), [0], [0])
+    def test_dim_mismatch2(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum(xp.arange(2), [0], xp.arange(3), [0], [0])
 
-    @testing.numpy_cupy_raises()
-    def test_dim_mismatch3(self, xp):
-        xp.einsum(xp.arange(6).reshape(2, 3), [0, 0])
+    def test_dim_mismatch3(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum(xp.arange(6).reshape(2, 3), [0, 0])
 
-    @testing.numpy_cupy_raises()
-    def test_too_many_dims1(self, xp):
-        xp.einsum(3, [0])
+    def test_too_many_dims1(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum(3, [0])
 
-    @testing.numpy_cupy_raises()
-    def test_too_many_dims2(self, xp):
-        xp.einsum(xp.arange(2), [0, 1])
+    def test_too_many_dims2(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum(xp.arange(2), [0, 1])
 
-    @testing.numpy_cupy_raises()
-    def test_too_many_dims3(self, xp):
-        xp.einsum(xp.arange(6).reshape(2, 3), [Ellipsis, 0, 1, 2])
+    def test_too_many_dims3(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.einsum(xp.arange(6).reshape(2, 3), [Ellipsis, 0, 1, 2])
 
 
 @testing.parameterize(*augument_einsum_testcases(
@@ -273,10 +313,9 @@ class TestListArgEinSumError(unittest.TestCase):
     {'shape_a': (), 'subscripts': ''},  # do nothing
     {'shape_a': (), 'subscripts': '->'},  # do nothing
 ))
-@testing.with_requires('numpy!=1.14.0')
 class TestEinSumUnaryOperation(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_bool=not _bool_ok)
+    @testing.for_all_dtypes(no_bool=False)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary(self, xp, dtype):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
@@ -286,7 +325,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
             testing.assert_allclose(optimized_out, out)
         return out
 
-    @testing.for_all_dtypes(no_bool=not _bool_ok)
+    @testing.for_all_dtypes(no_bool=False)
     @testing.numpy_cupy_equal()
     def test_einsum_unary_views(self, xp, dtype):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
@@ -296,7 +335,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_out'],
-        no_bool=not _bool_ok,
+        no_bool=False,
         no_complex=True)  # avoid ComplexWarning
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary_dtype(self, xp, dtype_a, dtype_out):
@@ -371,12 +410,11 @@ class TestEinSumUnaryOperationWithScalar(unittest.TestCase):
     {'shape_a': (1, 1, 1, 2, 3, 2), 'shape_b': (2, 3, 2, 2),
      'subscripts': '...lmn,lmno->...o'},
 ))
-@testing.with_requires('numpy!=1.14.0')
 class TestEinSumBinaryOperation(unittest.TestCase):
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_b'],
-        no_bool=not _bool_ok,
-        no_float16=not _float16_ok)
+        no_bool=False,
+        no_float16=False)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_binary(self, xp, dtype_a, dtype_b):
         a = testing.shaped_arange(self.shape_a, xp, dtype_a)
@@ -418,12 +456,11 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
     {'shape_a': (3, 3, 4), 'shape_b': (3, 4), 'shape_c': (2, 3, 4),
      'subscripts': 'a...,...,c...->ac...'},
 ))
-@testing.with_requires('numpy!=1.14.0')
 class TestEinSumTernaryOperation(unittest.TestCase):
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_b', 'dtype_c'],
-        no_bool=not _bool_ok,
-        no_float16=not _float16_ok)
+        no_bool=False,
+        no_float16=False)
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_ternary(self, xp, dtype_a, dtype_b, dtype_c):
         a = testing.shaped_arange(self.shape_a, xp, dtype_a)
@@ -466,7 +503,6 @@ class TestEinSumTernaryOperation(unittest.TestCase):
     'a,ac,ab,ad,cd,bd,bc->',
 ], 'opt': ['greedy', 'optimal'],
 })))
-@testing.with_requires('numpy>=1.12,!=1.14.0')
 class TestEinSumLarge(unittest.TestCase):
 
     def setUp(self):

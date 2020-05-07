@@ -10,7 +10,7 @@ cdef pair[Py_ssize_t, Py_ssize_t] _get_bound(ndarray array):
     cdef Py_ssize_t left = array.data.ptr
     cdef Py_ssize_t right = left
     cdef pair[Py_ssize_t, Py_ssize_t] ret
-    cdef int i
+    cdef size_t i
 
     for i in range(array._shape.size()):
         right += (array._shape[i] - 1) * array._strides[i]

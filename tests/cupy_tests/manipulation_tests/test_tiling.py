@@ -1,5 +1,6 @@
 import unittest
 
+import numpy
 import pytest
 
 import cupy
@@ -44,7 +45,6 @@ class TestRepeatRepeatsNdarray(unittest.TestCase):
     {'repeats': [2], 'axis': 1},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.10')
 class TestRepeatListBroadcast(unittest.TestCase):
 
     """Test for `repeats` argument using single element list.
@@ -79,7 +79,6 @@ class TestRepeat1D(unittest.TestCase):
     {'repeats': [2], 'axis': 0},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.10')
 class TestRepeat1DListBroadcast(unittest.TestCase):
 
     """See comment in TestRepeatListBroadcast class."""
@@ -101,10 +100,11 @@ class TestRepeat1DListBroadcast(unittest.TestCase):
 @testing.gpu
 class TestRepeatFailure(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_repeat_failure(self, xp):
-        x = testing.shaped_arange((2, 3, 4), xp)
-        xp.repeat(x, self.repeats, self.axis)
+    def test_repeat_failure(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((2, 3, 4), xp)
+            with pytest.raises(ValueError):
+                xp.repeat(x, self.repeats, self.axis)
 
 
 @testing.parameterize(
@@ -131,7 +131,8 @@ class TestTile(unittest.TestCase):
 @testing.gpu
 class TestTileFailure(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_tile_failure(self, xp):
-        x = testing.shaped_arange((2, 3, 4), xp)
-        xp.tile(x, -3)
+    def test_tile_failure(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((2, 3, 4), xp)
+            with pytest.raises(ValueError):
+                xp.tile(x, -3)

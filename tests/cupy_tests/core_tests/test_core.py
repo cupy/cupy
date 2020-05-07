@@ -1,5 +1,8 @@
 import unittest
 
+import numpy
+import pytest
+
 import cupy
 from cupy.core import core
 from cupy import testing
@@ -24,10 +27,11 @@ class TestSize(unittest.TestCase):
         return xp.size(a, axis=1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_size_axis_error(self, xp, dtype):
-        a = xp.ndarray((2, 3), dtype=dtype)
-        return xp.size(a, axis=3)
+    def test_size_axis_error(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.ndarray((2, 3), dtype=dtype)
+            with pytest.raises(IndexError):
+                return xp.size(a, axis=3)
 
     @testing.numpy_cupy_equal()
     @testing.slow

@@ -99,7 +99,7 @@ def eigh(a, UPLO='L'):
 
     .. note::
 
-       Currenlty only 2-D matrix is supported.
+       Currently only 2-D matrix is supported.
 
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix.

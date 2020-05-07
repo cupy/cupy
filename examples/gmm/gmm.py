@@ -2,9 +2,9 @@ import argparse
 import contextlib
 import time
 
-from matplotlib import mlab
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import stats
 
 import cupy
 
@@ -97,7 +97,7 @@ def draw(X, pred, means, covariances, output):
         labels = X[pred == i]
         if xp is cupy:
             labels = labels.get()
-        plt.scatter(labels[:, 0], labels[:, 1], c=np.random.rand(3))
+        plt.scatter(labels[:, 0], labels[:, 1], c=np.random.rand(1, 3))
     if xp is cupy:
         means = means.get()
         covariances = covariances.get()
@@ -107,9 +107,8 @@ def draw(X, pred, means, covariances, output):
     y = np.linspace(-5, 5, 1000)
     X, Y = np.meshgrid(x, y)
     for i in range(2):
-        Z = mlab.bivariate_normal(X, Y, np.sqrt(covariances[i][0]),
-                                  np.sqrt(covariances[i][1]),
-                                  means[i][0], means[i][1])
+        dist = stats.multivariate_normal(means[i], covariances[i])
+        Z = dist.pdf(np.stack([X, Y], axis=-1))
         plt.contour(X, Y, Z)
     plt.savefig(output)
 

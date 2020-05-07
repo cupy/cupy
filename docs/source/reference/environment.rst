@@ -74,6 +74,6 @@ These environment variables are used during installation (building CuPy from sou
 |                             | further detail.                                                |
 +-----------------------------+----------------------------------------------------------------+
 | ``CUPY_NVCC_GENERATE_CODE`` | To build CuPy for a particular CUDA architecture. For example, |
-|                             | ``CUPY_NVCC_GENERATE_CODE=compute_60,sm_60``. When this is not |
-|                             | set, the default is to support all architectures.              |
+|                             | ``CUPY_NVCC_GENERATE_CODE=arch=compute_60,code=sm_60``. When   |
+|                             | this is not set, the default is to support all architectures.  |
 +-----------------------------+----------------------------------------------------------------+

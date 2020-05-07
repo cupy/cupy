@@ -11,6 +11,78 @@ ignore_runtime_warnings = pytest.mark.filterwarnings(
 
 
 @testing.gpu
+class TestMedian(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_median_noaxis(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        return xp.median(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_median_axis1(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        return xp.median(a, axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_median_axis2(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        return xp.median(a, axis=2)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_median_overwrite_input(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        return xp.median(a, overwrite_input=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_median_keepdims_axis1(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        return xp.median(a, axis=1, keepdims=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_median_keepdims_noaxis(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        return xp.median(a, keepdims=True)
+
+    def test_median_invalid_axis(self):
+        for xp in [numpy, cupy]:
+            a = testing.shaped_random((3, 4, 5), xp)
+            with pytest.raises(numpy.AxisError):
+                return xp.median(a, -a.ndim - 1, keepdims=False)
+
+            with pytest.raises(numpy.AxisError):
+                return xp.median(a, a.ndim, keepdims=False)
+
+            with pytest.raises(numpy.AxisError):
+                return xp.median(a, (-a.ndim - 1, 1), keepdims=False)
+
+            with pytest.raises(numpy.AxisError):
+                return xp.median(a, (0, a.ndim,), keepdims=False)
+
+
+@testing.parameterize(
+    *testing.product({
+        'shape': [(3, 4, 5)],
+        'axis': [(0, 1), (0, -1), (1, 2), (1,)],
+        'keepdims': [True, False]
+    })
+)
+@testing.gpu
+class TestMedianAxis(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_median_axis_sequence(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        return xp.median(a, self.axis, keepdims=self.keepdims)
+
+
+@testing.gpu
 class TestAverage(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -88,10 +160,23 @@ class TestMeanVar(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.mean(a, axis=1)
 
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
-    def test_mean_all_dtype(self, xp):
-        a = xp.full((2, 3, 4), 123456789, dtype=numpy.int64)
+    def test_mean_all_float64_dtype(self, xp, dtype):
+        a = xp.full((2, 3, 4), 123456789, dtype=dtype)
         return xp.mean(a, dtype=numpy.float64)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_mean_all_int64_dtype(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.mean(a, dtype=numpy.int64)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_mean_all_complex_dtype(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.mean(a, dtype=numpy.complex64)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()

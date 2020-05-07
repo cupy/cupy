@@ -1,6 +1,8 @@
+import pickle
 import unittest
 
 import numpy
+import pytest
 try:
     import scipy.sparse
     scipy_available = True
@@ -154,6 +156,14 @@ class TestCooMatrix(unittest.TestCase):
         assert n.shape == m.shape
         return n
 
+    def test_pickle_roundtrip(self):
+        s = _make(cupy, sparse, self.dtype)
+        s2 = pickle.loads(pickle.dumps(s))
+        assert s.shape == s2.shape
+        assert s.dtype == s2.dtype
+        if scipy_available:
+            assert (s.get() != s2.get()).count_nonzero() == 0
+
     def test_shape(self):
         self.assertEqual(self.m.shape, (3, 4))
 
@@ -247,10 +257,11 @@ class TestCooMatrixInit(unittest.TestCase):
         self.assertIsNot(row, x.row)
         self.assertIsNot(col, x.col)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_invalid_format(self, xp, sp):
-        sp.coo_matrix(
-            (self.data(xp), self.row(xp)), shape=self.shape)
+    def test_invalid_format(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            with pytest.raises(TypeError):
+                sp.coo_matrix(
+                    (self.data(xp), self.row(xp)), shape=self.shape)
 
     @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
     def test_intlike_shape(self, xp, sp):
@@ -261,10 +272,12 @@ class TestCooMatrixInit(unittest.TestCase):
         assert isinstance(s.shape[1], int)
         return s
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_shape_invalid(self, xp, sp):
-        sp.coo_matrix(
-            (self.data(xp), (self.row(xp), self.col(xp))), shape=(2,))
+    def test_shape_invalid(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            with pytest.raises(ValueError):
+                sp.coo_matrix(
+                    (self.data(xp), (self.row(xp), self.col(xp))),
+                    shape=(2,))
 
     def test_data_invalid(self):
         with self.assertRaises(ValueError):
@@ -272,11 +285,12 @@ class TestCooMatrixInit(unittest.TestCase):
                 ('invalid', (self.row(cupy), self.col(cupy))),
                 shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_data_invalid_ndim(self, xp, sp):
-        sp.coo_matrix(
-            (self.data(xp)[None], (self.row(xp), self.col(xp))),
-            shape=self.shape)
+    def test_data_invalid_ndim(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            with pytest.raises(ValueError):
+                sp.coo_matrix(
+                    (self.data(xp)[None], (self.row(xp), self.col(xp))),
+                    shape=self.shape)
 
     def test_row_invalid(self):
         with self.assertRaises(ValueError):
@@ -284,11 +298,12 @@ class TestCooMatrixInit(unittest.TestCase):
                 (self.data(cupy), ('invalid', self.col(cupy))),
                 shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_row_invalid_ndim(self, xp, sp):
-        sp.coo_matrix(
-            (self.data(xp), (self.row(xp)[None], self.col(xp))),
-            shape=self.shape)
+    def test_row_invalid_ndim(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            with pytest.raises(ValueError):
+                sp.coo_matrix(
+                    (self.data(xp), (self.row(xp)[None], self.col(xp))),
+                    shape=self.shape)
 
     def test_col_invalid(self):
         with self.assertRaises(ValueError):
@@ -296,60 +311,76 @@ class TestCooMatrixInit(unittest.TestCase):
                 (self.data(cupy), (self.row(cupy), 'invalid')),
                 shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_col_invalid_ndim(self, xp, sp):
-        sp.coo_matrix(
-            (self.data(xp), (self.row(xp), self.col(xp)[None])),
-            shape=self.shape)
+    def test_col_invalid_ndim(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            with pytest.raises(ValueError):
+                sp.coo_matrix(
+                    (self.data(xp), (self.row(xp), self.col(xp)[None])),
+                    shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_data_different_length(self, xp, sp):
-        data = xp.arange(5, dtype=self.dtype)
-        sp.coo_matrix(
-            (data(xp), (self.row(xp), self.col(xp))), shape=self.shape)
+    def test_data_different_length(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            data = xp.arange(5, dtype=self.dtype)
+            with pytest.raises(TypeError):
+                sp.coo_matrix(
+                    (data(xp), (self.row(xp), self.col(xp))),
+                    shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_row_different_length(self, xp, sp):
-        row = xp.arange(5, dtype=self.dtype)
-        sp.coo_matrix(
-            (self.data(xp), (row(xp), self.col(xp))), shape=self.shape)
+    def test_row_different_length(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            row = xp.arange(5, dtype=self.dtype)
+            with pytest.raises(TypeError):
+                sp.coo_matrix(
+                    (self.data(xp), (row(xp), self.col(xp))),
+                    shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_col_different_length(self, xp, sp):
-        col = xp.arange(5, dtype=self.dtype)
-        sp.coo_matrix(
-            (self.data(xp), (self.row(xp), col(xp))), shape=self.shape)
+    def test_col_different_length(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            col = xp.arange(5, dtype=self.dtype)
+            with pytest.raises(TypeError):
+                sp.coo_matrix(
+                    (self.data(xp), (self.row(xp), col(xp))),
+                    shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_fail_to_infer_shape(self, xp, sp):
-        data = xp.array([], dtype=self.dtype)
-        row = xp.array([], dtype='i')
-        col = xp.array([], dtype='i')
-        sp.coo_matrix((data, (row, col)), shape=None)
+    def test_fail_to_infer_shape(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            data = xp.array([], dtype=self.dtype)
+            row = xp.array([], dtype='i')
+            col = xp.array([], dtype='i')
+            with pytest.raises(ValueError):
+                sp.coo_matrix((data, (row, col)), shape=None)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_row_too_large(self, xp, sp):
-        row = xp.array([0, 0, 1, 3], 'i')
-        sp.coo_matrix(
-            (self.data(xp), (row, self.col(xp))), shape=self.shape)
+    def test_row_too_large(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            row = xp.array([0, 0, 1, 3], 'i')
+            with pytest.raises(ValueError):
+                sp.coo_matrix(
+                    (self.data(xp), (row, self.col(xp))),
+                    shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_row_too_small(self, xp, sp):
-        row = xp.array([0, -1, 1, 2], 'i')
-        sp.coo_matrix(
-            (self.data(xp), (row, self.col(xp))), shape=self.shape)
+    def test_row_too_small(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            row = xp.array([0, -1, 1, 2], 'i')
+            with pytest.raises(ValueError):
+                sp.coo_matrix(
+                    (self.data(xp), (row, self.col(xp))),
+                    shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_col_too_large(self, xp, sp):
-        col = xp.array([0, 1, 4, 2], 'i')
-        sp.coo_matrix(
-            (self.data(xp), (self.row(xp), col)), shape=self.shape)
+    def test_col_too_large(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            col = xp.array([0, 1, 4, 2], 'i')
+            with pytest.raises(ValueError):
+                sp.coo_matrix(
+                    (self.data(xp), (self.row(xp), col)),
+                    shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_col_too_small(self, xp, sp):
-        col = xp.array([0, -1, 3, 2], 'i')
-        sp.coo_matrix(
-            (self.data(xp), (self.row(xp), col)), shape=self.shape)
+    def test_col_too_small(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            col = xp.array([0, -1, 3, 2], 'i')
+            with pytest.raises(ValueError):
+                sp.coo_matrix(
+                    (self.data(xp), (self.row(xp), col)),
+                    shape=self.shape)
 
     def test_unsupported_dtype(self):
         with self.assertRaises(ValueError):
@@ -456,11 +487,12 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return m.dot(x)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_dot_csr_invalid_shape(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        x = sp.csr_matrix((5, 3), dtype=self.dtype)
-        m.dot(x)
+    def test_dot_csr_invalid_shape(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            x = sp.csr_matrix((5, 3), dtype=self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(x)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_csc(self, xp, sp):
@@ -486,11 +518,12 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(4).astype(self.dtype)
         return m.dot(x)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_dot_dense_vector_invalid_shape(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        x = xp.arange(5).astype(self.dtype)
-        m.dot(x)
+    def test_dot_dense_vector_invalid_shape(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            x = xp.arange(5).astype(self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(x)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_dense_matrix(self, xp, sp):
@@ -498,22 +531,25 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
         return m.dot(x)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_dot_dense_matrix_invalid_shape(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        x = xp.arange(10).reshape(5, 2).astype(self.dtype)
-        m.dot(x)
+    def test_dot_dense_matrix_invalid_shape(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            x = xp.arange(10).reshape(5, 2).astype(self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(x)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_dot_dense_ndim3(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
-        m.dot(x)
+    def test_dot_dense_ndim3(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(x)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_dot_unsupported(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m.dot(None)
+    def test_dot_unsupported(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(TypeError):
+                m.dot(None)
 
     # __add__
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -521,10 +557,11 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         return m + 0
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_add_scalar(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m + 1
+    def test_add_scalar(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(NotImplementedError):
+                m + 1
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_add_csr(self, xp, sp):
@@ -550,10 +587,11 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         return 0 + m
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_radd_scalar(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        1 + m
+    def test_radd_scalar(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(NotImplementedError):
+                1 + m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_radd_dense(self, xp, sp):
@@ -567,10 +605,11 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         return m - 0
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_sub_scalar(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m - 1
+    def test_sub_scalar(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(NotImplementedError):
+                m - 1
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sub_csr(self, xp, sp):
@@ -596,10 +635,11 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         m = _make(xp, sp, self.dtype)
         return 0 - m
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_rsub_scalar(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        1 - m
+    def test_rsub_scalar(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(NotImplementedError):
+                1 - m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_rsub_dense(self, xp, sp):
@@ -624,11 +664,12 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return m * x
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_mul_csr_invalid_shape(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        x = sp.csr_matrix((5, 3), dtype=self.dtype)
-        m * x
+    def test_mul_csr_invalid_shape(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            x = sp.csr_matrix((5, 3), dtype=self.dtype)
+            with pytest.raises(ValueError):
+                m * x
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_csc(self, xp, sp):
@@ -654,11 +695,12 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(4).astype(self.dtype)
         return m * x
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_mul_dense_vector_invalid_shape(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        x = xp.arange(5).astype(self.dtype)
-        m * x
+    def test_mul_dense_vector_invalid_shape(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            x = xp.arange(5).astype(self.dtype)
+            with pytest.raises(ValueError):
+                m * x
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_dense_matrix(self, xp, sp):
@@ -666,22 +708,25 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
         return m * x
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_mul_dense_matrix_invalid_shape(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        x = xp.arange(10).reshape(5, 2).astype(self.dtype)
-        m * x
+    def test_mul_dense_matrix_invalid_shape(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            x = xp.arange(10).reshape(5, 2).astype(self.dtype)
+            with pytest.raises(ValueError):
+                m * x
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_mul_dense_ndim3(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
-        m * x
+    def test_mul_dense_ndim3(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
+            with pytest.raises(ValueError):
+                m * x
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_mul_unsupported(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m * None
+    def test_mul_unsupported(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(TypeError):
+                m * None
 
     # __rmul__
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -724,16 +769,18 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(12).reshape(4, 3).astype(self.dtype)
         return x * m
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_rmul_dense_ndim3(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
-        x * m
+    def test_rmul_dense_ndim3(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            x = xp.arange(24).reshape(4, 2, 3).astype(self.dtype)
+            with pytest.raises(ValueError):
+                x * m
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_rmul_unsupported(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        None * m
+    def test_rmul_unsupported(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(TypeError):
+                None * m
 
     # __pow__
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -756,35 +803,40 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         m = _make_square(xp, sp, self.dtype)
         return m ** 3
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_pow_neg(self, xp, sp):
-        m = _make_square(xp, sp, self.dtype)
-        m ** -1
+    def test_pow_neg(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make_square(xp, sp, self.dtype)
+            with pytest.raises(ValueError):
+                m ** -1
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_sum_tuple_axis(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m.sum(axis=(0, 1))
+    def test_sum_tuple_axis(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(TypeError):
+                m.sum(axis=(0, 1))
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_sum_float_axis(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m.sum(axis=0.0)
+    def test_sum_float_axis(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(TypeError):
+                m.sum(axis=0.0)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_sum_too_large_axis(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m.sum(axis=3)
+    def test_sum_too_large_axis(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(ValueError):
+                m.sum(axis=3)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_transpose(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.transpose()
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_transpose_axes_int(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m.transpose(axes=0)
+    def test_transpose_axes_int(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(ValueError):
+                m.transpose(axes=0)
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_eliminate_zeros(self, xp, sp):

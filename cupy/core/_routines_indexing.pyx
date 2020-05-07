@@ -4,12 +4,13 @@ import sys
 import numpy
 
 import cupy
-from cupy.core import _errors
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._ufuncs import elementwise_copy
 
 from libcpp cimport vector
 
+from cupy.core._carray cimport shape_t
+from cupy.core._carray cimport strides_t
 from cupy.core cimport core
 from cupy.core cimport _routines_math as _math
 from cupy.core cimport _routines_manipulation as _manipulation
@@ -50,6 +51,16 @@ cdef _ndarray_setitem(ndarray self, slices, value):
 
 
 cdef tuple _ndarray_nonzero(ndarray self):
+    cdef int ndim
+    cdef ndarray dst = _ndarray_argwhere(self)
+    ndim = self.ndim
+    if ndim >= 1:
+        return tuple([dst[:, i] for i in range(ndim)])
+    else:
+        return ndarray((0,), dtype=numpy.int64),
+
+
+cpdef ndarray _ndarray_argwhere(ndarray self):
     cdef Py_ssize_t count_nonzero
     cdef int ndim
     dtype = numpy.int64
@@ -59,22 +70,22 @@ cdef tuple _ndarray_nonzero(ndarray self):
         r = self.ravel()
         nonzero = cupy.core.not_equal(r, 0, ndarray(r.shape, dtype))
         del r
-        scan_index = _math.scan(nonzero)
+        scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM)
         count_nonzero = int(scan_index[-1])  # synchronize!
     ndim = max(<int>self._shape.size(), 1)
     if count_nonzero == 0:
-        return (ndarray((0,), dtype=dtype),) * ndim
+        return ndarray((0, ndim), dtype=dtype)
 
     if ndim <= 1:
-        dst = ndarray((count_nonzero,), dtype=dtype)
+        dst = ndarray((count_nonzero, 1), dtype=dtype)
         _nonzero_kernel_1d(nonzero, scan_index, dst)
-        return dst,
+        return dst
     else:
         nonzero.shape = self.shape
         scan_index.shape = self.shape
-        dst = ndarray((ndim, count_nonzero), dtype=dtype)
+        dst = ndarray((count_nonzero, ndim), dtype=dtype)
         _nonzero_kernel(nonzero, scan_index, dst)
-        return tuple([dst[i] for i in range(ndim)])
+        return dst
 
 
 cdef _ndarray_scatter_add(ndarray self, slices, value):
@@ -151,6 +162,22 @@ cdef ndarray _ndarray_choose(ndarray self, choices, out, mode):
         raise TypeError('clipmode not understood')
 
     return out
+
+
+cdef ndarray _ndarray_compress(ndarray self, condition, axis, out):
+    a = self
+
+    if numpy.isscalar(condition):
+        raise ValueError('condition must be a 1-d array')
+
+    if not isinstance(condition, ndarray):
+        condition = core.array(condition, dtype=int)
+        if condition.ndim != 1:
+            raise ValueError('condition must be a 1-d array')
+
+    res = _ndarray_nonzero(condition)  # synchronize
+
+    return _ndarray_take(a, res[0], axis, out)
 
 
 cdef ndarray _ndarray_diagonal(ndarray self, offset, axis1, axis2):
@@ -274,7 +301,8 @@ cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
     return a, adv_slices, adv_mask
 
 cdef ndarray _simple_getitem(ndarray a, list slice_list):
-    cdef vector.vector[Py_ssize_t] shape, strides
+    cdef shape_t shape
+    cdef strides_t strides
     cdef ndarray v
     cdef Py_ssize_t i, j, offset, ndim
     cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
@@ -346,7 +374,7 @@ _nonzero_kernel = ElementwiseKernel(
     '''
     if (src != 0){
         for(int j = 0; j < _ind.ndim; j++){
-            ptrdiff_t ind[] = {j, index - 1};
+            ptrdiff_t ind[] = {index - 1, j};
             dst[ind] = _ind.get()[j];
         }
     }''',
@@ -364,7 +392,8 @@ out = a[out_i];
 
 
 _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, S index_range',
+    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, '
+    'int64 index_range',
     'T out', _take_kernel_core, 'cupy_take')
 
 
@@ -548,7 +577,9 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
         mask_type = numpy.int32
     else:
         mask_type = numpy.int64
-    mask_scanned = _math.scan(mask.astype(mask_type).ravel())  # starts with 1
+    op = _math.scan_op.SCAN_SUM
+    # starts with 1
+    mask_scanned = _math.scan(mask.astype(mask_type).ravel(), op=op)
     n_true = int(mask_scanned[-1])
     masked_shape = lshape + (n_true,) + rshape
 
@@ -573,7 +604,7 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     else:
         mask_type = numpy.int64
     mask_scanned = _manipulation._reshape(
-        _math.scan(mask.astype(mask_type).ravel()),
+        _math.scan(mask.astype(mask_type).ravel(), op=_math.scan_op.SCAN_SUM),
         mask._shape)
     return mask, mask_scanned, masked_shape
 
@@ -600,7 +631,7 @@ cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
         ndim = 1
 
     if not (-ndim <= li < ndim and -ndim <= ri < ndim):
-        raise _errors._AxisError('Axis overrun')
+        raise numpy.AxisError('Axis overrun')
 
     if ndim == 1:
         li = ri = 0
@@ -826,7 +857,7 @@ cdef ndarray _diagonal(
         Py_ssize_t axis2=1):
     cdef Py_ssize_t ndim = a.ndim
     if not (-ndim <= axis1 < ndim and -ndim <= axis2 < ndim):
-        raise _errors._AxisError(
+        raise numpy.AxisError(
             'axis1(={0}) and axis2(={1}) must be within range '
             '(ndim={2})'.format(axis1, axis2, ndim))
 

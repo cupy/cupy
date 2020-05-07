@@ -78,15 +78,20 @@ cpdef intptr_t createProgram(unicode src, unicode name, headers,
     cdef int num_headers = len(headers)
     cdef vector.vector[const char*] header_vec
     cdef vector.vector[const char*] include_name_vec
+    cdef const char** header_vec_ptr = NULL
+    cdef const char** include_name_vec_ptr = NULL
+    assert num_headers == len(include_names)
     for i in headers:
         header_vec.push_back(<const char*>i)
     for i in include_names:
         include_name_vec.push_back(<const char*>i)
-
+    if num_headers > 0:
+        header_vec_ptr = header_vec.data()
+        include_name_vec_ptr = include_name_vec.data()
     with nogil:
         status = nvrtcCreateProgram(
-            &prog, src_ptr, name_ptr, num_headers, &(header_vec[0]),
-            &(include_name_vec[0]))
+            &prog, src_ptr, name_ptr, num_headers, header_vec_ptr,
+            include_name_vec_ptr)
     check_status(status)
     return <intptr_t>prog
 
@@ -102,48 +107,42 @@ cpdef compileProgram(intptr_t prog, options):
     cdef int option_num = len(options)
     cdef vector.vector[const char*] option_vec
     cdef option_list = [opt.encode() for opt in options]
+    cdef const char** option_vec_ptr = NULL
     for i in option_list:
         option_vec.push_back(<const char*>i)
-
+    if option_num > 0:
+        option_vec_ptr = option_vec.data()
     with nogil:
         status = nvrtcCompileProgram(<Program>prog, option_num,
-                                     &(option_vec[0]))
+                                     option_vec_ptr)
     check_status(status)
 
 
 cpdef unicode getPTX(intptr_t prog):
     cdef size_t ptxSizeRet
-    cdef bytes ptx
-    cdef char* ptx_ptr
+    cdef vector.vector[char] ptx
     with nogil:
         status = nvrtcGetPTXSize(<Program>prog, &ptxSizeRet)
     check_status(status)
-    ptx = b' ' * ptxSizeRet
-    ptx_ptr = ptx
+    ptx.resize(ptxSizeRet)
     with nogil:
-        status = nvrtcGetPTX(<Program>prog, ptx_ptr)
+        status = nvrtcGetPTX(<Program>prog, &ptx[0])
     check_status(status)
 
     # Strip the trailing NULL.
-    assert ptx.endswith(b'\x00')
-    ptx = ptx[:-1]
-    return ptx.decode('UTF-8')
+    return (&ptx[0])[:ptxSizeRet-1].decode('UTF-8')
 
 
 cpdef unicode getProgramLog(intptr_t prog):
     cdef size_t logSizeRet
-    cdef bytes log
-    cdef char* log_ptr
+    cdef vector.vector[char] log
     with nogil:
         status = nvrtcGetProgramLogSize(<Program>prog, &logSizeRet)
     check_status(status)
-    log = b' ' * logSizeRet
-    log_ptr = log
+    log.resize(logSizeRet)
     with nogil:
-        status = nvrtcGetProgramLog(<Program>prog, log_ptr)
+        status = nvrtcGetProgramLog(<Program>prog, &log[0])
     check_status(status)
 
     # Strip the trailing NULL.
-    assert log.endswith(b'\x00')
-    log = log[:-1]
-    return log.decode('UTF-8')
+    return (&log[0])[:logSizeRet-1].decode('UTF-8')

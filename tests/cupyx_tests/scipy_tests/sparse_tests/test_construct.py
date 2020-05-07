@@ -1,12 +1,19 @@
+import re
 import unittest
 
 import mock
 import numpy
 import pytest
+try:
+    import scipy.sparse
+    scipy_available = True
+except ImportError:
+    scipy_available = False
 
 import cupy
 from cupy import testing
 from cupyx.scipy import sparse
+from cupyx.scipy.sparse import construct
 
 
 @testing.parameterize(*testing.product({
@@ -55,6 +62,183 @@ class TestSpdiags(unittest.TestCase):
         diags = xp.array([0, -1, 2], dtype='i')
         x = sp.spdiags(data, diags, 3, 4)
         return x
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64]
+}))
+class TestVstack(unittest.TestCase):
+
+    def data(self):
+
+        A = sparse.coo_matrix((cupy.asarray([1.0, 2.0, 3.0, 4.0]),
+                               (cupy.asarray([0, 0, 1, 1]),
+                                cupy.asarray([0, 1, 0, 1]))))
+        B = sparse.coo_matrix((cupy.asarray([5.0, 6.0]),
+                               (cupy.asarray([0, 0]),
+                                cupy.asarray([0, 1]))))
+
+        return A, B
+
+    def expected(self):
+
+        return cupy.asarray([[1, 2],
+                             [3, 4],
+                             [5, 6]], self.dtype)
+
+    def test_basic_vstack(self):
+
+        A, B = self.data()
+
+        actual = construct.vstack([A, B]).todense()
+        testing.assert_array_equal(actual, self.expected())
+
+    def test_dtype(self):
+
+        A, B = self.data()
+
+        actual = construct.vstack([A, B], dtype=self.dtype)
+        self.assertEqual(actual.dtype, self.dtype)
+
+    def test_csr(self):
+
+        A, B = self.data()
+
+        actual = construct.vstack([A.tocsr(), B.tocsr()]).todense()
+        testing.assert_array_equal(actual, self.expected())
+
+    def test_csr_with_dtype(self):
+
+        A, B = self.data()
+
+        actual = construct.vstack([A.tocsr(), B.tocsr()],
+                                  dtype=self.dtype)
+        self.assertEqual(actual.dtype, self.dtype)
+        self.assertEqual(actual.indices.dtype, cupy.int32)
+        self.assertEqual(actual.indptr.dtype, cupy.int32)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64]
+}))
+class TestHstack(unittest.TestCase):
+
+    def data(self):
+
+        A = sparse.coo_matrix((cupy.asarray([1.0, 2.0, 3.0, 4.0]),
+                               (cupy.asarray([0, 0, 1, 1]),
+                                cupy.asarray([0, 1, 0, 1]))))
+        B = sparse.coo_matrix((cupy.asarray([5.0, 6.0]),
+                               (cupy.asarray([0, 1]),
+                                cupy.asarray([0, 0]))))
+
+        return A, B
+
+    def expected(self):
+
+        return cupy.asarray([[1, 2, 5],
+                             [3, 4, 6]])
+
+    def test_basic_hstack(self):
+
+        A, B = self.data()
+        actual = construct.hstack([A, B], dtype=self.dtype).todense()
+        testing.assert_array_equal(actual, self.expected())
+        self.assertEqual(actual.dtype, self.dtype)
+
+    def test_csc(self):
+        A, B = self.data()
+        actual = construct.hstack([A.tocsc(), B.tocsc()],
+                                  dtype=self.dtype).todense()
+        testing.assert_array_equal(actual, self.expected())
+        self.assertEqual(actual.dtype, self.dtype)
+
+    def test_csc_with_dtype(self):
+
+        A, B = self.data()
+
+        actual = construct.hstack([A.tocsc(), B.tocsc()],
+                                  dtype=self.dtype)
+        self.assertEqual(actual.indices.dtype, cupy.int32)
+        self.assertEqual(actual.indptr.dtype, cupy.int32)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64]
+}))
+class TestBmat(unittest.TestCase):
+
+    def data(self):
+        A = sparse.csr_matrix(cupy.asarray([[1, 2], [3, 4]],
+                                           self.dtype)).tocoo()
+        B = sparse.csr_matrix(cupy.asarray([[5], [6]],
+                                           self.dtype)).tocoo()
+        C = sparse.csr_matrix(cupy.asarray([[7]],
+                                           self.dtype)).tocoo()
+        D = sparse.coo_matrix((0, 0), dtype=self.dtype)
+
+        return A, B, C, D
+
+    def test_basic_inputs(self):
+
+        A, B, C, D = self.data()
+
+        expected = cupy.asarray([[1, 2, 5],
+                                 [3, 4, 6],
+                                 [0, 0, 7]], dtype=self.dtype)
+
+        testing.assert_array_equal(
+            construct.bmat([[A, B], [None, C]]).todense(), expected
+        )
+
+        expected = cupy.asarray([[1, 2, 0],
+                                 [3, 4, 0],
+                                 [0, 0, 7]])
+        testing.assert_array_equal(
+            construct.bmat([[A, None], [None, C]]).todense(), expected
+        )
+
+        expected = cupy.asarray([[0, 5],
+                                 [0, 6],
+                                 [7, 0]])
+
+        testing.assert_array_equal(
+            construct.bmat([[None, B], [C, None]]).todense(), expected
+        )
+
+    def test_empty(self):
+
+        A, B, C, D = self.data()
+
+        expected = cupy.empty((0, 0), dtype=self.dtype)
+        testing.assert_array_equal(construct.bmat([[None, None]]).todense(),
+                                   expected)
+        testing.assert_array_equal(construct.bmat([[None, D], [D, None]])
+                                   .todense(), expected)
+
+    def test_edge_cases(self):
+        """Catch-all for small edge cases"""
+
+        A, B, C, D = self.data()
+
+        expected = cupy.asarray([[7]], dtype=self.dtype)
+        testing.assert_array_equal(construct.bmat([[None, D], [C, None]])
+                                   .todense(), expected)
+
+    def test_failure_cases(self):
+
+        A, B, C, D = self.data()
+
+        match = r'.*Got blocks\[{}\]\.shape\[{}\] == 1, expected 2'
+
+        # test failure cases
+        message1 = re.compile(match.format('1,0', '1'))
+        with pytest.raises(ValueError, match=message1):
+            construct.bmat([[A], [B]], dtype=self.dtype)
+
+        message2 = re.compile(match.format('0,1', '0'))
+        with pytest.raises(ValueError, match=message2):
+            construct.bmat([[A, C]], dtype=self.dtype)
 
 
 @testing.parameterize(*testing.product({
@@ -125,13 +309,15 @@ class TestRandom(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestRandomInvalidArgument(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_too_small_density(self, xp, sp):
-        sp.random(3, 4, density=-0.1)
+    def test_too_small_density(self):
+        for sp in (scipy.sparse, sparse):
+            with pytest.raises(ValueError):
+                sp.random(3, 4, density=-0.1)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_too_large_density(self, xp, sp):
-        sp.random(3, 4, density=1.1)
+    def test_too_large_density(self):
+        for sp in (scipy.sparse, sparse):
+            with pytest.raises(ValueError):
+                sp.random(3, 4, density=1.1)
 
     def test_invalid_dtype(self):
         # Note: SciPy 1.12+ accepts integer.

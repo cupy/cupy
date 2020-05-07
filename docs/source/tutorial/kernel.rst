@@ -249,7 +249,7 @@ Dynamical parallelism is supported by :class:`~cupy.RawKernel`. You just need to
 
 .. _CUDA Toolkit's documentation: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compiling-and-linking
 
-Accessing texture memory in :class:`~cupy.RawKernel` is supported via CUDA Runtime's Texture Object API, see :class:`~cupy.cuda.texture.TextureObject`'s documentation as well as CUDA C Programming Guide. For using the Texture Reference API, which is marked as deprecated as of CUDA Toolkit 10.1, see the introduction to :class:`~cupy.RawModule` below.
+Accessing texture (surface) memory in :class:`~cupy.RawKernel` is supported via CUDA Runtime's Texture (Surface) Object API, see the documentation for :class:`~cupy.cuda.texture.TextureObject` (:class:`~cupy.cuda.texture.SurfaceObject`) as well as CUDA C Programming Guide. For using the Texture Reference API, which is marked as deprecated as of CUDA Toolkit 10.1, see the introduction to :class:`~cupy.RawModule` below.
 
 .. note::
     The kernel does not have return values.
@@ -310,6 +310,8 @@ For dealing a large raw CUDA source or loading an existing CUDA binary, the :cla
     >>> assert cp.allclose(y, x1 * x2)
 
 The instruction above for using complex numbers in :class:`~cupy.RawKernel` also applies to :class:`~cupy.RawModule`.
+
+For CUDA kernels that need to access global symbols, such as constant memory, the :meth:`~cupy.RawModule.get_global` method can be used, see its documentation for further detail.
 
 CuPy also supports the Texture Reference API. A handle to the texture reference in a module can be retrieved by name via :meth:`~cupy.RawModule.get_texref`. Then, you need to pass it to :class:`~cupy.cuda.texture.TextureReference`, along with a resource descriptor and texture descriptor, for binding the reference to the array. (The interface of :class:`~cupy.cuda.texture.TextureReference` is meant to mimic that of :class:`~cupy.cuda.texture.TextureObject` to help users make transition to the latter, since as of CUDA Toolkit 10.1 the former is marked as deprecated.)
 

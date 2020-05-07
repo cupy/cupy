@@ -1,6 +1,9 @@
+from cpython cimport sequence
+
 import numpy
 from numpy import nan
 
+from cupy.core import _reduction
 from cupy.core._reduction import create_reduction_func
 from cupy.core._reduction import ReductionKernel
 
@@ -70,18 +73,32 @@ cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
 
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
-    if (cupy.cuda.cub_enabled and self.size != 0):
-        dtype_sum = dtype
-        if dtype is None and self.dtype.kind in 'iub':
-            # cast integer types to float (like the _mean ufunc)
+    dtype_sum = dtype_out = dtype
+    if dtype is None:
+        if self.dtype.kind in 'iub':
+            dtype_out = numpy.float64
             dtype_sum = numpy.float64
+        elif self.dtype.char == 'e':
+            dtype_sum = numpy.float32
+            dtype_out = numpy.float16
+    elif numpy.dtype(dtype).kind in 'iub':
+        # output will be the requested type, but compute the mean using float
+        dtype_out = dtype
+        dtype_sum = numpy.float64
+
+    result = None
+    if (cupy.cuda.cub_enabled and self.size != 0):
         result = cub.cub_reduction(self, cub.CUPY_CUB_SUM, axis, dtype_sum,
                                    out, keepdims)
-        if result is not None:
-            n = self.size // result.size
-            cupy.true_divide(result, n, out=result, casting='unsafe')
-            return result
-    return _mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    if result is not None:
+        n = self.size // result.size
+        cupy.true_divide(result, n, out=result, casting='unsafe')
+    else:
+        result = _mean(self, axis=axis, dtype=dtype_sum, out=out,
+                       keepdims=keepdims)
+    if dtype_out is not None and out is None:
+        result = result.astype(dtype_out)
+    return result
 
 
 cdef ndarray _ndarray_var(ndarray self, axis, dtype, out, ddof, keepdims):
@@ -294,6 +311,74 @@ cdef _nanargmax_func = create_reduction_func(
     ('min_max_st<type_in0_raw>(in0, isnan(in0) ? -1 : _J)',
      'my_argmax(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
+
+
+cpdef ndarray _median(
+        ndarray a, axis, out, overwrite_input, keepdims):
+
+    keep_ndim = a.ndim
+
+    out_shape = None
+    if sequence.PySequence_Check(axis):
+        # cupy.sort and cupy.partition only support integer axis, so move
+        # all reduced dimensions to the end and reshape them into a single
+        # reduction axis.
+        reduce_axis, out_axis = _reduction._get_axis(axis, keep_ndim)
+        out_shape = _reduction._get_out_shape(a.shape, reduce_axis, out_axis,
+                                              keepdims)
+        a = a.transpose(out_axis + reduce_axis)
+        sort_shape = tuple([a.shape[n] for n in range(len(out_axis))]) + (-1,)
+        a = a.reshape(sort_shape)
+        if not a.flags.c_contiguous:
+            a = cupy.ascontiguousarray(a)
+        axis = -1
+
+    if axis is None:
+        sz = a.size
+    else:
+        if axis < -keep_ndim or axis >= keep_ndim:
+            raise numpy.AxisError('Axis overrun')
+        sz = a.shape[axis]
+    if sz % 2 == 0:
+        szh = sz // 2
+        kth = [szh - 1, szh]
+    else:
+        kth = [(sz - 1) // 2]
+
+    if overwrite_input:
+        part = a
+    else:
+        part = a.copy()
+
+    if axis is None:
+        part = part.ravel()
+        part.partition(kth)
+    else:
+        part.partition(kth, axis=axis)
+
+    if part.shape == ():
+        return part
+    if axis is None:
+        axis = 0
+
+    indexer = [slice(None)] * part.ndim
+
+    if keepdims and out_shape is None:
+        _indexer = [None] * (keep_ndim - part.ndim)
+        indexer.extend(_indexer)
+
+    index = part.shape[axis] // 2
+    if part.shape[axis] % 2 == 1:
+        indexer[axis] = slice(index, index+1)
+    else:
+        indexer[axis] = slice(index-1, index+1)
+    indexer = tuple(indexer)
+
+    out = _mean(
+        part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
+    if out_shape is not None:
+        out = out.reshape(out_shape)
+    return out
 
 
 cdef ndarray _mean(
