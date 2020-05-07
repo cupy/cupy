@@ -239,11 +239,11 @@ cpdef str _get_kernel_params(tuple params, tuple arginfos):
     return ', '.join(lst)
 
 
-cdef tuple _reduce_dims(list args, tuple params, tuple shape):
+cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape):
     """ Remove contiguous stride to optimize CUDA kernel."""
     cdef ndarray arr
 
-    if len(shape) <= 1 or len(args) == 0:
+    if shape.size() <= 1 or len(args) == 0:
         return shape
 
     if len(args) == 1:  # fast path for reduction
@@ -256,11 +256,11 @@ cdef tuple _reduce_dims(list args, tuple params, tuple shape):
             return shape
         else:
             args[0] = arr
-            return arr.shape
+            return arr._shape
     return _reduced_view_core(args, params, shape)
 
 
-cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
+cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
     cdef int i, ax, last_ax, ndim
     cdef Py_ssize_t x, total_size
     cdef shape_t vecshape, newshape, newstrides
@@ -269,7 +269,7 @@ cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
     cdef ParameterInfo p
     cdef ndarray arr
 
-    ndim = len(shape)
+    ndim = shape.size()
     array_indexes.reserve(len(args))
     strides_indexes.reserve(len(args))
     for i in range(len(args)):
@@ -295,12 +295,12 @@ cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
             newstrides[0] = arr.dtype.itemsize
             # TODO(niboshi): Confirm update_x_contiguity flags
             args[i] = arr._view(newshape, newstrides, False, True)
-        return total_size,
+        return shape_t(1, total_size)
 
     axes.reserve(ndim)
     vecshape.reserve(ndim)
-    for x in shape:
-        vecshape.push_back(x)
+    for ax in range(ndim):
+        vecshape.push_back(shape[ax])
     last_ax = -1
     for ax in range(ndim):
         if vecshape[ax] == 1:
@@ -332,7 +332,7 @@ cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
             newstrides.push_back(arr._strides[ax])
         # TODO(niboshi): Confirm update_x_contiguity flags
         args[i] = arr._view(newshape, newstrides, False, True)
-    return tuple(newshape)
+    return newshape
 
 
 cdef class ParameterInfo:
@@ -720,8 +720,8 @@ cdef class ElementwiseKernel:
         cdef function.Function kern
         cdef Py_ssize_t size, i
         cdef list in_args, out_args
-        cdef tuple in_types, out_types, types, shape
-        cdef shape_t vec_shape
+        cdef tuple in_types, out_types, types
+        cdef shape_t shape
 
         size = -1
         size = kwargs.pop('size', -1)
@@ -742,9 +742,9 @@ cdef class ElementwiseKernel:
         arg_list = _preprocess_args(dev_id, args, True)
 
         out_args = arg_list[self.nin:]
-        # _broadcast updates vec_shape
+        # _broadcast updates shape
         in_args = _broadcast(
-            arg_list, self.params, size != -1, vec_shape)[:self.nin]
+            arg_list, self.params, size != -1, shape)[:self.nin]
 
         in_ndarray_types = tuple(
             [a.dtype.type if isinstance(a, ndarray) else None
@@ -756,11 +756,11 @@ cdef class ElementwiseKernel:
 
         is_size_specified = False
         if size != -1:
-            vec_shape.assign(1, size)
+            shape.assign(1, size)
             is_size_specified = True
 
         out_args = _get_out_args_with_params(
-            out_args, out_types, vec_shape, self.out_params, is_size_specified)
+            out_args, out_types, shape, self.out_params, is_size_specified)
         if self.no_return:
             ret = None
         elif not self.return_tuple and self.nout == 1:
@@ -768,7 +768,7 @@ cdef class ElementwiseKernel:
         else:
             ret = tuple(out_args)
 
-        if _contains_zero(vec_shape):
+        if _contains_zero(shape):
             return ret
 
         for i, x in enumerate(in_args):
@@ -777,10 +777,9 @@ cdef class ElementwiseKernel:
 
         inout_args = in_args + out_args
 
-        shape = tuple(vec_shape)
         if self.reduce_dims:
             shape = _reduce_dims(inout_args, self.params, shape)
-        indexer = _carray.Indexer(shape)
+        indexer = _carray._indexer_init(shape)
         inout_args.append(indexer)
 
         arginfos = _get_arginfos(inout_args)
@@ -983,8 +982,7 @@ cdef class ufunc:
 
         cdef function.Function kern
         cdef list broad_values
-        cdef shape_t vec_shape
-        cdef tuple shape
+        cdef shape_t shape
         cdef Py_ssize_t s
 
         out = kwargs.pop('out', None)
@@ -1022,18 +1020,18 @@ cdef class ufunc:
         # _copy_in_args_if_needed updates in_args
         _copy_in_args_if_needed(in_args, out_args)
         broad_values = in_args + out_args
-        # _broadcast updates vec_shape
-        internal._broadcast_core(broad_values, vec_shape)
+        # _broadcast updates shape
+        internal._broadcast_core(broad_values, shape)
 
         op = self._ops.guess_routine(
             self.name, self._routine_cache, in_args, dtype, self._out_ops)
-        out_args = _get_out_args(out_args, op.out_types, vec_shape, casting)
+        out_args = _get_out_args(out_args, op.out_types, shape, casting)
         if self.nout == 1:
             ret = out_args[0]
         else:
             ret = tuple(out_args)
 
-        if _contains_zero(vec_shape):
+        if _contains_zero(shape):
             return ret
 
         inout_args = []
@@ -1043,8 +1041,8 @@ cdef class ufunc:
                 x if isinstance(x, ndarray) else
                 _scalar.CScalar.from_numpy_scalar_with_dtype(x, t))
         inout_args.extend(out_args)
-        shape = _reduce_dims(inout_args, self._params, tuple(vec_shape))
-        indexer = _carray.Indexer(shape)
+        shape = _reduce_dims(inout_args, self._params, shape)
+        indexer = _carray._indexer_init(shape)
         inout_args.append(indexer)
         arginfos = _get_arginfos(inout_args)
 
