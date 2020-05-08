@@ -21,15 +21,6 @@ class _OptimizationContext:
         self.params_map[key] = params
 
 
-def _get_context(key, config_dict):
-    c = _contexts.get(key)
-    if c is None:
-        config = _OptimizationConfig(**config_dict)
-        c = _OptimizationContext(key, config)
-        _contexts[key] = c
-    return c
-
-
 class _OptimizationConfig:
 
     def __init__(
@@ -45,22 +36,17 @@ class _OptimizationConfig:
         self.min_total_time_per_trial = min_total_time_per_trial
 
 
-def _get_current_context():
+def get_current_context():
     try:
         return _thread_local.current_context
     except AttributeError:
         return None
 
 
-@contextlib.contextmanager
-def optimize(*, key=None, **config_dict):
-    assert key is not None
-
-    old_context = _get_current_context()
-    context = _get_context(key, config_dict)
-    _thread_local.current_context = context
-
-    try:
-        yield context
-    finally:
-        _thread_local.current_context = old_context
+def get_new_context(key, config_dict):
+    c = _contexts.get(key)
+    if c is None:
+        config = _OptimizationConfig(**config_dict)
+        c = _OptimizationContext(key, config)
+        _contexts[key] = c
+    return c

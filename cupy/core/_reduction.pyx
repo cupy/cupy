@@ -33,7 +33,7 @@ import numpy
 
 from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
-from cupy.core import _optimize
+from cupy.core import _optimize_config
 from cupy.cuda import compiler
 from cupy.cuda import stream as stream_module
 from cupy import util
@@ -298,7 +298,7 @@ cdef class _AbstractReductionKernel:
             out_shape = _reduce_dims(out_args, self.out_params, out_shape)
 
         # Calculate the reduction block dimensions.
-        optimize_context = _optimize._get_current_context()
+        optimize_context = _optimize_config.get_current_context()
         if optimize_context is None:
             # Calculate manually
             contiguous_size = _get_contiguous_size(
