@@ -219,50 +219,6 @@ def _sort_axis(tuple axis, tuple strides):
     return tuple(sorted(axis, key=lambda i: -abs(strides[i])))
 
 
-cdef tuple _get_contiguous_axes(
-        tuple shape, tuple strides, Py_ssize_t itemsize):
-    # Returns the indices of contiguous axes sorted by the contiguous order.
-    # Axes with negative strides are indicated by axis + ndim.
-    # Axes with zero strides are indicated by axis + 2 * ndim.
-    #
-    # Examples (all itemsize=1):
-    #
-    # Shape     Strides    Returns
-    # (4, 3)    (3, 1)     (1, 0)   # C-contiguous
-    # (4, 3)    (1, 3)     (0, 1)   # F-contiguous
-    # (4, 3)    (6, 1)     (1,)     # Only axis 1 is contiguous
-    # (4, 3)    (3, -1)    (3, 0)   # Contiguous but axis 1 has negative stride
-    cdef Py_ssize_t ndim = len(shape)
-    cdef Py_ssize_t m = itemsize
-    cdef Py_ssize_t d
-    cdef Py_ssize_t s
-    cdef Py_ssize_t i
-    if ndim == 0:
-        return ()
-
-    # Axes are iterated in the increasing order of absolute values of strides
-    indices = [
-        xi[1] for xi in sorted([(abs(x), i) for i, x in enumerate(strides)])]
-
-    result = []
-    for i in indices:
-        s = strides[i]
-        d = shape[i]
-        if s == 0:  # zero stride
-            result.append(i + 2 * ndim)
-        elif s > 0:  # positive stride
-            if s != m:
-                break
-            m = s * d
-            result.append(i)
-        else:  # negative stride
-            if s != -m:
-                break
-            m = -s * d
-            result.append(i + ndim)
-    return tuple(result)
-
-
 cdef class _AbstractReductionKernel:
 
     def __init__(
@@ -299,6 +255,7 @@ cdef class _AbstractReductionKernel:
         cdef ndarray arr
         cdef ndarray ret
         cdef function.Function kern
+        cdef list shape_and_strides = []
 
         if dtype is not None:
             dtype = get_dtype(dtype).type
@@ -354,20 +311,16 @@ cdef class _AbstractReductionKernel:
             # Optimize dynamically
 
             # Calculate a key unique to the reduction setting.
-            contiguous_axes = []
             for x in in_args + out_args:
                 if isinstance(x, ndarray):
-                    arr = x
-                    contiguous_axes.append(
-                        _get_contiguous_axes(
-                            arr.shape, arr.strides, arr.itemsize))
+                    shape_and_strides.append(x.shape)
+                    shape_and_strides.append(x.strides)
                 else:
-                    contiguous_axes.append(None)
+                    shape_and_strides.append(None)
+                    shape_and_strides.append(None)
             key = (
-                self.name,
-                tuple(contiguous_axes),
+                id(self), tuple(shape_and_strides),
                 in_types, out_types, reduce_type,
-                map_expr, reduce_expr, post_map_expr,
             )
 
             params = optimize_context.get_params(key)
