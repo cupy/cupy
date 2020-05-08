@@ -26,7 +26,6 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport runtime
 
-import math
 import string
 
 import numpy
@@ -35,7 +34,6 @@ from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
 from cupy.core import _optimize_config
 from cupy.cuda import compiler
-from cupy.cuda import stream as stream_module
 from cupy import util
 
 
@@ -194,7 +192,8 @@ cdef Py_ssize_t _get_contiguous_size(
     return contiguous_size
 
 
-cdef Py_ssize_t _default_block_size = 256 if runtime._is_hip_environment else 512
+cdef Py_ssize_t _default_block_size = (
+    256 if runtime._is_hip_environment else 512)
 
 
 cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
@@ -325,11 +324,10 @@ cdef class _AbstractReductionKernel:
 
             params = optimize_context.get_params(key)
             if params is None:
-                params = self._optimize_params(
-                    optimize_context,
-                    in_args, out_args, in_shape, out_shape, type_map,
-                    map_expr, reduce_expr, post_map_expr, reduce_type,
-                    stream)
+                params = self._get_optimized_params(
+                    optimize_context.config, in_args, out_args,
+                    in_shape, out_shape, type_map, map_expr, reduce_expr,
+                    post_map_expr, reduce_type, stream)
                 optimize_context.set_params(key, params)
             block_size, block_stride, out_block_num = params
 
@@ -345,80 +343,38 @@ cdef class _AbstractReductionKernel:
             stream)
         return ret
 
-    def _optimize_params(
-            self,
-            optimize_context,
-            in_args, out_args, in_shape, out_shape, type_map,
-            map_expr, reduce_expr, post_map_expr, reduce_type,
+    def _get_optimized_params(
+            self, optimize_config, in_args, out_args, in_shape, out_shape,
+            type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
             stream):
-        import optuna
+        out_dims = internal.prod_sequence(out_shape)
 
-        def objective(trial):
-            out_dims = internal.prod_sequence(out_shape)
+        def target_func(block_size, block_stride, out_block_num):
+            self._launch(
+                out_block_num, block_size, block_stride, in_args, out_args,
+                in_shape, out_shape, type_map, map_expr, reduce_expr,
+                post_map_expr, reduce_type, stream)
 
-            block_size_exp = trial.suggest_int('block_size_exp', 5, 9)
-            block_size = 2 ** block_size_exp
-
-            block_stride_exp = trial.suggest_int('block_stride_exp', 0, block_size_exp)
-            block_stride = 2 ** block_stride_exp
+        def suggest_func(trial):
+            block_size_log = trial.suggest_int('block_size_log', 5, 9)
+            block_size = 2 ** block_size_log
+            block_stride_log = trial.suggest_int(
+                'block_stride_log', 0, block_size_log)
+            block_stride = 2 ** block_stride_log
             out_block_num = trial.suggest_int('out_block_num', 1, out_dims)
 
             trial.set_user_attr('block_size', block_size)
             trial.set_user_attr('block_stride', block_stride)
+            return block_size, block_stride, out_block_num
 
-            def _measure(n):
-                # Returns total GPU time (in seconds)
-                stream = stream_module.get_current_stream()
-                stream.synchronize()
-                ev1 = stream_module.Event()
-                ev2 = stream_module.Event()
-                ev1.synchronize()
-                ev1.record()
-
-                for _ in range(n):
-                    self._launch(
-                        out_block_num,
-                        block_size,
-                        block_stride,
-                        in_args, out_args,
-                        in_shape, out_shape,
-                        type_map,
-                        map_expr, reduce_expr, post_map_expr, reduce_type,
-                        stream)
-
-                ev2.record()
-                ev2.synchronize()
-                time = stream_module.get_elapsed_time(ev1, ev2) * 1e-3
-                return time
-
-            min_total_time = optimize_context.config.min_total_time_per_trial
-            expected_total_time = optimize_context.config.expected_total_time_per_trial
-
-            _measure(1)  # warmup
-
-            n = 1
-            while True:
-                total_time = _measure(n)
-                if total_time > min_total_time:
-                    break
-                n = max(
-                    n+1,
-                    int(math.ceil(expected_total_time * n / total_time)))
-
-            return total_time / n
-
-        study = optuna.create_study()
-        study.optimize(
-            objective,
-            n_trials=optimize_context.config.max_trials,
-            timeout=optimize_context.config.timeout)
-        best = study.best_trial
+        optimize_impl = optimize_config.optimize_impl
+        best = optimize_impl(optimize_config, target_func, suggest_func)
         return (
             best.user_attrs['block_size'],
             best.user_attrs['block_stride'],
             best.params['out_block_num'])
 
-    cpdef _launch(
+    cdef inline void _launch(
             self, out_block_num, block_size, block_stride,
             in_args, out_args, in_shape, out_shape, type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
