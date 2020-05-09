@@ -7,8 +7,8 @@ _blackman_kernel = core.ElementwiseKernel(
     "float32 alpha",
     "float64 out",
     """
-    out = 0.42 - (0.5 * cos(i * alpha)) + (0.08 * cos(2 * alpha * i));
-    """)
+    out = 0.42 - 0.5 * cos(i * alpha) + 0.08 * cos(2 * alpha * i);
+    """, name="cupy_blackman")
 
 
 def blackman(M):
@@ -32,10 +32,10 @@ def blackman(M):
     .. seealso:: :func:`numpy.blackman`
     """
     if M == 1:
-        return cupy.creation.basic.ones(1, float)
+        return cupy.ones(1, dtype=cupy.float64)
     if M <= 0:
-        return cupy.creation.from_data.array([])
-    alpha = (numpy.pi * 2)/(M - 1)
+        return cupy.array([])
+    alpha = numpy.pi * 2 / (M - 1)
     out = cupy.empty(M, dtype=cupy.float64)
     return _blackman_kernel(alpha, out)
 
@@ -45,7 +45,7 @@ _hamming_kernel = core.ElementwiseKernel(
     "float64 out",
     """
     out = 0.54 - 0.46 * cos(i * alpha);
-    """)
+    """, name="cupy_hamming")
 
 
 def hamming(M):
@@ -68,10 +68,10 @@ def hamming(M):
     .. seealso:: :func:`numpy.hamming`
     """
     if M == 1:
-        return cupy.creation.basic.ones(1, float)
+        return cupy.ones(1, dtype=cupy.float64)
     if M <= 0:
-        return cupy.creation.from_data.array([])
-    alpha = (numpy.pi * 2)/(M - 1)
+        return cupy.array([])
+    alpha = numpy.pi * 2 / (M - 1)
     out = cupy.empty(M, dtype=cupy.float64)
     return _hamming_kernel(alpha, out)
 
@@ -81,7 +81,7 @@ _hanning_kernel = core.ElementwiseKernel(
     "float64 out",
     """
     out = 0.5 - 0.5 * cos(i * alpha);
-    """)
+    """, name="cupy_hanning")
 
 
 def hanning(M):
@@ -104,10 +104,10 @@ def hanning(M):
     .. seealso:: :func:`numpy.hanning`
     """
     if M == 1:
-        return cupy.creation.basic.ones(1, float)
+        return cupy.ones(1, dtype=cupy.float64)
     if M <= 0:
-        return cupy.creation.from_data.array([])
-    alpha = (numpy.pi * 2)/(M - 1)
+        return cupy.array([])
+    alpha = numpy.pi * 2 / (M - 1)
     out = cupy.empty(M, dtype=cupy.float64)
     return _hanning_kernel(alpha, out)
 
@@ -119,7 +119,7 @@ _kaiser_kernel = core.ElementwiseKernel(
     float temp = (i - alpha) / alpha;
     arr = cyl_bessel_i0(beta * sqrt(1 - (temp * temp)));
     arr /= cyl_bessel_i0(beta);
-    """)
+    """, name="cupy_kaiser")
 
 
 def kaiser(M, beta):
