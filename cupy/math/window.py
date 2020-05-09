@@ -16,7 +16,7 @@ _bartlett_kernel = core.ElementwiseKernel(
         arr = i / alpha;
     else
         arr = 2.0 - i / alpha;
-    """, name="bartlett_kernel")
+    """, name="cupy_bartlett")
 
 
 def bartlett(M):
