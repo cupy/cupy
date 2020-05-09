@@ -32,9 +32,9 @@ def blackman(M):
     .. seealso:: :func:`numpy.blackman`
     """
     if M == 1:
-        return cupy.array([1.])
+        return cupy.creation.basic.ones(1, float)
     if M <= 0:
-        return cupy.array([])
+        return cupy.creation.from_data.array([])
     alpha = (numpy.pi * 2)/(M - 1)
     out = cupy.empty(M, dtype=cupy.float64)
     return _blackman_kernel(alpha, out)
@@ -68,9 +68,9 @@ def hamming(M):
     .. seealso:: :func:`numpy.hamming`
     """
     if M == 1:
-        return cupy.array([1.])
+        return cupy.creation.basic.ones(1, float)
     if M <= 0:
-        return cupy.array([])
+        return cupy.creation.from_data.array([])
     alpha = (numpy.pi * 2)/(M - 1)
     out = cupy.empty(M, dtype=cupy.float64)
     return _hamming_kernel(alpha, out)
@@ -104,9 +104,9 @@ def hanning(M):
     .. seealso:: :func:`numpy.hanning`
     """
     if M == 1:
-        return cupy.array([1.])
+        return cupy.creation.basic.ones(1, float)
     if M <= 0:
-        return cupy.array([])
+        return cupy.creation.from_data.array([])
     alpha = (numpy.pi * 2)/(M - 1)
     out = cupy.empty(M, dtype=cupy.float64)
     return _hanning_kernel(alpha, out)
