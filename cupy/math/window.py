@@ -40,7 +40,7 @@ def bartlett(M):
     .. seealso:: :func:`numpy.bartlett`
     """
     if M == 1:
-        return cupy.array([1.])
+        return cupy.ones(1, dtype=cupy.float64)
     if M <= 0:
         return cupy.array([])
     alpha = (M - 1) / 2.0
