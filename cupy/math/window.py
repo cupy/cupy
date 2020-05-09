@@ -12,11 +12,11 @@ _bartlett_kernel = core.ElementwiseKernel(
     "float32 alpha",
     "T arr",
     """
-    if(i < alpha)
-        arr = i/alpha;
+    if (i < alpha)
+        arr = i / alpha;
     else
-        arr = 2.0 - i/alpha;
-    """)
+        arr = 2.0 - i / alpha;
+    """, name="bartlett_kernel")
 
 
 def bartlett(M):
