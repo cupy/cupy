@@ -8,6 +8,46 @@ from cupy.creation import ranges
 from cupy.math import trigonometric
 
 
+_bartlett_kernel = core.ElementwiseKernel(
+    "float32 alpha",
+    "T arr",
+    """
+    if (i < alpha)
+        arr = i / alpha;
+    else
+        arr = 2.0 - i / alpha;
+    """, name="cupy_bartlett")
+
+
+def bartlett(M):
+    """Returns the Bartlett window.
+
+    The Bartlett window is defined as
+
+    .. math::
+            w(n) = \\frac{2}{M-1} \\left(
+            \\frac{M-1}{2} - \\left|n - \\frac{M-1}{2}\\right|
+            \\right)
+
+    Args:
+        M (int):
+            Number of points in the output window. If zero or less, an empty
+            array is returned.
+
+    Returns:
+        ~cupy.ndarray: Output ndarray.
+
+    .. seealso:: :func:`numpy.bartlett`
+    """
+    if M == 1:
+        return cupy.ones(1, dtype=cupy.float64)
+    if M <= 0:
+        return cupy.array([])
+    alpha = (M - 1) / 2.0
+    out = cupy.empty(M, dtype=cupy.float64)
+    return _bartlett_kernel(alpha, out)
+
+
 def blackman(M):
     """Returns the Blackman window.
 
