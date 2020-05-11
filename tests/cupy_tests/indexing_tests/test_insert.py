@@ -82,6 +82,32 @@ class TestPut(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'shape': [(7,), (2, 3), (4, 3, 2)],
+}))
+@testing.gpu
+class TestPutScalars(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_put_index_scalar(self, xp):
+        dtype = cupy.float32
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        inds = 4
+        vals = testing.shaped_random((4,), xp, dtype)
+        xp.put(a, inds, vals)
+        return a
+
+    @testing.numpy_cupy_array_equal()
+    def test_put_values_scalar(self, xp):
+        dtype = cupy.float32
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        # Take care so that actual indices don't overlap.
+        inds = xp.array([2, 3, 5])
+        vals = 3.0
+        xp.put(a, inds, vals)
+        return a
+
+
+@testing.parameterize(*testing.product({
     'shape': [(7,), (2, 3)],
 }))
 @testing.gpu
