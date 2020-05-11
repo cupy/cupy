@@ -7,10 +7,8 @@ import numpy
 from cupy import _environment
 from cupy import _version
 
-
 if sys.platform.startswith('win32') and (3, 8) <= sys.version_info:  # NOQA
     _environment._setup_win32_dll_directory()  # NOQA
-
 
 try:
     with warnings.catch_warnings():
@@ -39,7 +37,6 @@ original error: {}'''.format(exc_info[1]))  # NOQA
 
     raise ImportError(msg) from e
 
-
 from cupy import cuda
 # Do not make `cupy.cupyx` available because it is confusing.
 import cupyx as _cupyx
@@ -51,11 +48,11 @@ def is_available():
 
 __version__ = _version.__version__
 
-
 from cupy import binary  # NOQA
 import cupy.core.fusion  # NOQA
 from cupy import creation  # NOQA
 from cupy import fft  # NOQA
+from cupy import functional  # NOQA
 from cupy import indexing  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
@@ -69,11 +66,9 @@ from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
 from cupy import lib  # NOQA
 
-
 # import class and function
 from cupy.core import ndarray  # NOQA
 from cupy.core import ufunc  # NOQA
-
 
 # =============================================================================
 # Constants (borrowed from NumPy)
@@ -93,7 +88,6 @@ from numpy import NZERO  # NOQA
 from numpy import pi  # NOQA
 from numpy import PINF  # NOQA
 from numpy import PZERO  # NOQA
-
 
 # =============================================================================
 # Data types (borrowed from NumPy)
@@ -643,12 +637,15 @@ from cupy.math.misc import square  # NOQA
 from cupy.misc import may_share_memory  # NOQA
 from cupy.misc import shares_memory  # NOQA
 
+# -----------------------------------------------------------------------------
+# Functional routines
+# -----------------------------------------------------------------------------
+from cupy.functional.piecewise import piecewise  # NOQA
 
 # -----------------------------------------------------------------------------
 # Padding
 # -----------------------------------------------------------------------------
 pad = padding.pad.pad
-
 
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting
@@ -783,7 +780,6 @@ def get_array_module(*args):
 fuse = cupy.core.fusion.fuse
 
 disable_experimental_feature_warning = False
-
 
 # set default allocator
 _default_memory_pool = cuda.MemoryPool()
