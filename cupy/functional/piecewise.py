@@ -4,11 +4,6 @@ from cupy import core
 from cupy.core.core import ndarray
 from cupy.core._reduction import ReductionKernel
 
-try:
-    from collections.abc import Callable
-except ImportError:
-    from collections import Callable
-
 _piecewise_krnl = ReductionKernel(
     'S x1, T x2',
     'U y',
@@ -45,8 +40,9 @@ def piecewise(x, condlist, funclist):
     .. seealso:: :func:`numpy.piecewise`
     """
 
-    if any(isinstance(item, Callable) for item in funclist):
-        raise ValueError('Callable functions are not supported')
+    if any(callable(item) for item in funclist):
+        raise NotImplementedError(
+            'Callable functions are not supported currently')
     if cupy.isscalar(x):
         x = cupy.asarray(x)
     scalar = 0

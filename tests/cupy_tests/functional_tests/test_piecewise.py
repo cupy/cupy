@@ -61,7 +61,7 @@ class TestPiecewise(unittest.TestCase):
         x = cupy.linspace(-2, 4, 6, dtype=dtype)
         condlist = [x < 0, x > 0]
         funclist = [lambda x: -x, lambda x: x]
-        with pytest.raises(ValueError):
+        with pytest.raises(NotImplementedError):
             cupy.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -69,5 +69,5 @@ class TestPiecewise(unittest.TestCase):
         x = cupy.linspace(-2, 2, 6, dtype=dtype)
         condlist = [x < 0, x == 0, x > 0]
         funclist = [-10, lambda x: -x, 10, lambda x: x]
-        with pytest.raises(ValueError):
+        with pytest.raises(NotImplementedError):
             cupy.piecewise(x, condlist, funclist)
