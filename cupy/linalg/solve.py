@@ -80,24 +80,28 @@ def _solve(a, b, cublas_handle, cusolver_handle):
         geqrf = cusolver.sgeqrf
         geqrf_bufferSize = cusolver.sgeqrf_bufferSize
         ormqr = cusolver.sormqr
+        ormqr_bufferSize = cusolver.sormqr_bufferSize
         trans = cublas.CUBLAS_OP_T
         trsm = cublas.strsm
     elif dtype == 'd':
         geqrf = cusolver.dgeqrf
         geqrf_bufferSize = cusolver.dgeqrf_bufferSize
         ormqr = cusolver.dormqr
+        ormqr_bufferSize = cusolver.dormqr_bufferSize
         trans = cublas.CUBLAS_OP_T
         trsm = cublas.dtrsm
     elif dtype == 'F':
         geqrf = cusolver.cgeqrf
         geqrf_bufferSize = cusolver.cgeqrf_bufferSize
         ormqr = cusolver.cormqr
+        ormqr_bufferSize = cusolver.cunmqr_bufferSize
         trans = cublas.CUBLAS_OP_C
         trsm = cublas.ctrsm
     elif dtype == 'D':
         geqrf = cusolver.zgeqrf
         geqrf_bufferSize = cusolver.zgeqrf_bufferSize
         ormqr = cusolver.zormqr
+        ormqr_bufferSize = cusolver.zunmqr_bufferSize
         trans = cublas.CUBLAS_OP_C
         trsm = cublas.ztrsm
     else:
@@ -114,6 +118,10 @@ def _solve(a, b, cublas_handle, cusolver_handle):
         geqrf, dev_info)
 
     # 2. ormqr (Q^T * B)
+    buffersize = ormqr_bufferSize(
+        cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans, m, k, m, a.data.ptr,
+        m, tau.data.ptr, b.data.ptr, m)
+    workspace = cupy.empty(buffersize, dtype=dtype)
     ormqr(
         cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans, m, k, m, a.data.ptr,
         m, tau.data.ptr, b.data.ptr, m, workspace.data.ptr, buffersize,
