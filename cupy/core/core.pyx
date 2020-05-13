@@ -1913,6 +1913,8 @@ cdef _round_complex = '''
 double x, inv_x;
 if (in1 == 0) {
     x = inv_x = 1;
+    out0 = in0_type(rint(in0.real() * x),
+                    rint(in0.imag() * x));
 } else {
     x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
     inv_x = 1.0 / x;
@@ -1921,9 +1923,9 @@ if (in1 == 0) {
         x = inv_x;
         inv_x = y;
     }
-}
-out0 = in0_type(rint(in0.real() * x) * inv_x,
-                rint(in0.imag() * x) * inv_x);'''
+    out0 = in0_type(rint(in0.real() * x) * inv_x,
+                    rint(in0.imag() * x) * inv_x);
+}'''
 
 
 # There is a known incompatibility with NumPy (as of 1.16.4) such as
