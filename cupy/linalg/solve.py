@@ -116,7 +116,8 @@ def _solve(a, b, cublas_handle, cusolver_handle):
         buffersize, dev_info.data.ptr)
     cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         geqrf, dev_info)
-
+    # Explicitly free the space allocated by geqrf
+    del workspace
     # 2. ormqr (Q^T * B)
     buffersize = ormqr_bufferSize(
         cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans, m, k, m, a.data.ptr,
@@ -129,6 +130,8 @@ def _solve(a, b, cublas_handle, cusolver_handle):
     cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         ormqr, dev_info)
 
+    # Explicitly free the space allocated by ormqr
+    del workspace
     # 3. trsm (X = R^{-1} * (Q^T * B))
     trsm(
         cublas_handle, cublas.CUBLAS_SIDE_LEFT, cublas.CUBLAS_FILL_MODE_UPPER,
