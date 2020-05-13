@@ -58,7 +58,6 @@ class TestRoundHalfway(unittest.TestCase):
             a /= scale
         a /= 2
 
-        print(xp, dtype, self.decimals, a, a.round(self.decimals))
         return a.round(self.decimals)
 
     @testing.for_signed_dtypes()
