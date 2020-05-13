@@ -26,7 +26,7 @@ Interpolation
 
 
 Measurements
--------------
+------------
 
 .. autosummary::
    :toctree: generated/
@@ -34,9 +34,9 @@ Measurements
 
    cupyx.scipy.ndimage.label
    cupyx.scipy.ndimage.mean
+   cupyx.scipy.ndimage.standard_deviation
    cupyx.scipy.ndimage.sum
    cupyx.scipy.ndimage.variance
-   cupyx.scipy.ndimage.standard_deviation
 
 
 OpenCV mode
