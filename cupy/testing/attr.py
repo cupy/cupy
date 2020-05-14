@@ -1,6 +1,8 @@
 import os
 import unittest
 
+import cupy
+
 
 try:
     import pytest
@@ -55,7 +57,8 @@ def multi_gpu(gpu_num):
 
     check_available()
     return unittest.skipIf(
-        0 <= _gpu_limit < gpu_num,
+        0 <= _gpu_limit < gpu_num or
+        gpu_num > cupy.cuda.runtime.getDeviceCount(),
         reason='{} GPUs required'.format(gpu_num))
 
 
