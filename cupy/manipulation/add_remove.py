@@ -14,6 +14,16 @@ from cupy.core._reduction import ReductionKernel
 
 
 _first_non_zero_krnl = ReductionKernel(
+    'raw S data, T indices, T len, int64 mode',
+    'T y',
+    '''mode? data[indices] ? indices : len
+           : data[len - 1 - indices] ? len - 1 - indices : T(-1)''',
+    'mode? min(a,b): max(a, b) ',
+    'y = a',
+    'mode ? len : -1',
+    'first_non_zero'
+)
+_first_non_zero_cplx_krnl = ReductionKernel(
     'raw S real, raw S imag, T indices, T len, int64 mode',
     'T y',
     '''mode? (real[indices] || imag[indices] ? indices : len)
@@ -22,7 +32,7 @@ _first_non_zero_krnl = ReductionKernel(
     'mode? min(a,b): max(a, b) ',
     'y = a',
     'mode ? len : -1',
-    'first_non_zero'
+    'first_non_zero_cplx'
 )
 
 
@@ -47,17 +57,19 @@ def trim_zeros(filt, trim='fb'):
     start, end = cupy.asarray([0, filt.size - 1], dtype=int)
     indices = cupy.arange(filt.size)
     trim = trim.upper()
-    if filt.dtype.kind == 'c':
-        real = filt.real
-        imag = filt.imag
-    else:
-        real = filt
-        imag = cupy.zeros(shape=filt.size, dtype=filt.dtype)
     if 'F' in trim:
-        _first_non_zero_krnl(real, imag, indices, filt.size, 1, start)
+        if filt.dtype.kind == 'c':
+            _first_non_zero_cplx_krnl(
+                filt.real, filt.imag, indices, filt.size, 1, start)
+        else:
+            _first_non_zero_krnl(filt, indices, filt.size, 1, start)
     if 'B' in trim:
-        _first_non_zero_krnl(real, imag, indices, filt.size, 0, end)
-    return filt[start:end+1]
+        if filt.dtype.kind == 'c':
+            _first_non_zero_cplx_krnl(
+                filt.real, filt.imag, indices, filt.size, 0, end)
+        else:
+            _first_non_zero_krnl(filt, indices, filt.size, 0, end)
+    return filt[start:end + 1]
 
 
 def unique(ar, return_index=False, return_inverse=False,
