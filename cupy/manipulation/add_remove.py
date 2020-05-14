@@ -1,5 +1,5 @@
 import cupy
-
+from cupy.core._reduction import ReductionKernel
 
 # TODO(okuta): Implement delete
 
@@ -13,7 +13,51 @@ import cupy
 # TODO(okuta): Implement resize
 
 
-# TODO(okuta): Implement trim_zeros
+_first_non_zero_krnl = ReductionKernel(
+    'raw S real, raw S imag, T indices, T len, int64 mode',
+    'T y',
+    '''mode? (real[indices] || imag[indices] ? indices : len)
+           : (real[len - 1 - indices] || imag[len - 1 - indices] ?
+              len - 1 - indices : T(-1))''',
+    'mode? min(a,b): max(a, b) ',
+    'y = a',
+    'mode ? len : -1',
+    'first_non_zero'
+)
+
+
+def trim_zeros(filt, trim='fb'):
+    """Trim the leading and/or trailing zeros from a 1-D array or sequence.
+
+    Returns the trimmed array
+
+    Args:
+        filt(1D array or sequence): Input array
+        trim(str, optional):
+            'fb' default option trims the array from both sides.
+            'f' option trim zeros from front.
+            'b' option trim zeros from front
+
+    Returns:
+        cupy.ndarray: trimmed input
+
+    .. seealso:: :func:`numpy.trim_zeros`
+    """
+    filt = cupy.asarray(filt)
+    start, end = cupy.asarray([0, filt.size - 1], dtype=int)
+    indices = cupy.arange(filt.size)
+    trim = trim.upper()
+    if filt.dtype.kind == 'c':
+        real = filt.real
+        imag = filt.imag
+    else:
+        real = filt
+        imag = cupy.zeros(shape=filt.size, dtype=filt.dtype)
+    if 'F' in trim:
+        _first_non_zero_krnl(real, imag, indices, filt.size, 1, start)
+    if 'B' in trim:
+        _first_non_zero_krnl(real, imag, indices, filt.size, 0, end)
+    return filt[start:end+1]
 
 
 def unique(ar, return_index=False, return_inverse=False,
