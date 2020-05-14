@@ -51,6 +51,9 @@ cdef class RawKernel:
         # only used when RawKernels are produced by a cubin/ptx RawModule
         self.file_path = None
 
+        # per-device, per-instance cache
+        self._kernel_cache = [None] * runtime.getDeviceCount()
+
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
 
@@ -76,10 +79,18 @@ cdef class RawKernel:
         # The kernel is cached, so on the device where this has been called,
         # we would just look up from the cache, and do recompiling only when
         # switching to a different device
+        cdef int dev = runtime.getDevice()
         cdef Function ker
-        ker = _get_raw_kernel(
-            self.code, self.file_path, self.name, self.options, self.backend,
-            self.translate_cucomplex, self.enable_cooperative_groups)
+        cdef Module mod
+
+        ker = self._kernel_cache[dev]
+        if ker is None:
+            assert (self.code is None) != (self.file_path is None)
+            mod = _get_raw_module(
+                self.code, self.file_path, self.options, self.backend,
+                self.translate_cucomplex, self.enable_cooperative_groups)
+            ker = mod.get_function(self.name)
+            self._kernel_cache[dev] = ker
         return ker
 
     @property
@@ -201,20 +212,6 @@ cdef class RawKernel:
         driver.funcSetAttribute(self.kernel.ptr, attr, fraction)
 
 
-@cupy.util.memoize(for_each_device=True)
-def _get_raw_kernel(str code, str path, str name, tuple options=(),
-                    str backend='nvrtc',
-                    bint translate_cucomplex=False,
-                    bint enable_cooperative_groups=False):
-    cdef Module mod
-    cdef Function ker
-    assert (code is None) != (path is None)
-    mod = _get_raw_module(code, path, options, backend,
-                          translate_cucomplex, enable_cooperative_groups)
-    ker = mod.get_function(name)
-    return ker
-
-
 cdef class RawModule:
     """User-defined custom module.
 
@@ -305,7 +302,7 @@ cdef class RawModule:
             enable_cooperative_groups=self.enable_cooperative_groups)
         # for lookup in case we loaded from cubin/ptx
         ker.file_path = self.file_path
-        # register the kernel in the cache.
+        # register the kernel in the cache
         func = ker.kernel  # noqa
         return ker
 
