@@ -1,5 +1,4 @@
 import cupy
-from cupy.core._reduction import ReductionKernel
 
 # TODO(okuta): Implement delete
 
@@ -13,26 +12,23 @@ from cupy.core._reduction import ReductionKernel
 # TODO(okuta): Implement resize
 
 
-_first_non_zero_krnl = ReductionKernel(
-    'raw S data, T indices, T len, int64 mode',
+_first_nonzero_krnl = cupy.ReductionKernel(
+    'raw S data, T indices, T len',
     'T y',
-    '''mode? data[indices] ? indices : len
-           : data[len - 1 - indices] ? len - 1 - indices : T(-1)''',
-    'mode? min(a,b): max(a, b) ',
+    'data[_j] ? _j : len',
+    'min(a, b)',
     'y = a',
-    'mode ? len : -1',
-    'first_non_zero'
+    'len',
+    'first_nonzero'
 )
-_first_non_zero_cplx_krnl = ReductionKernel(
-    'raw S real, raw S imag, T indices, T len, int64 mode',
+_first_nonzero_cplx_krnl = cupy.ReductionKernel(
+    'raw S real, raw S imag, T indices, T len',
     'T y',
-    '''mode? (real[indices] || imag[indices] ? indices : len)
-           : (real[len - 1 - indices] || imag[len - 1 - indices] ?
-              len - 1 - indices : T(-1))''',
-    'mode? min(a,b): max(a, b) ',
+    'real[_j] || imag[_j] ? _j : len',
+    'min(a,b)',
     'y = a',
-    'mode ? len : -1',
-    'first_non_zero_cplx'
+    'len',
+    'first_nonzero_cplx'
 )
 
 
@@ -53,22 +49,22 @@ def trim_zeros(filt, trim='fb'):
 
     .. seealso:: :func:`numpy.trim_zeros`
     """
-    filt = cupy.asarray(filt)
     start, end = cupy.asarray([0, filt.size - 1], dtype=int)
     indices = cupy.arange(filt.size)
     trim = trim.upper()
     if 'F' in trim:
         if filt.dtype.kind == 'c':
-            _first_non_zero_cplx_krnl(
-                filt.real, filt.imag, indices, filt.size, 1, start)
+            start = _first_nonzero_cplx_krnl(
+                filt.real, filt.imag, indices, filt.size)
         else:
-            _first_non_zero_krnl(filt, indices, filt.size, 1, start)
+            start = _first_nonzero_krnl(filt, indices, filt.size)
     if 'B' in trim:
         if filt.dtype.kind == 'c':
-            _first_non_zero_cplx_krnl(
-                filt.real, filt.imag, indices, filt.size, 0, end)
+            end = filt.size - _first_nonzero_cplx_krnl(
+                filt[::-1].real, filt[::-1].imag, indices, filt.size) - 1
         else:
-            _first_non_zero_krnl(filt, indices, filt.size, 0, end)
+            end = filt.size - _first_nonzero_krnl(
+                filt[::-1], indices, filt.size) - 1
     return filt[start:end + 1]
 
 
