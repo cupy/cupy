@@ -1,5 +1,8 @@
 import unittest
 
+import pytest
+
+import cupy
 from cupy import testing
 
 
@@ -31,95 +34,50 @@ class TestUnique(unittest.TestCase):
         return xp.unique(a, return_counts=True)[1]
 
 
+@testing.parameterize(*testing.product({
+    'trim': ['fb', 'f', 'b']
+}))
 @testing.gpu
 class TestTrim_zeros(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_trim_fb_non_zeros(self, xp, dtype):
+    def test_trim_non_zeros(self, xp, dtype):
         a = xp.array([-1, 2, -3, 7], dtype=dtype)
-        return xp.trim_zeros(a)
+        return xp.trim_zeros(a, trim=self.trim)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_trim_f_non_zeros(self, xp, dtype):
-        a = xp.array([-1, 2, -3, 7], dtype=dtype)
-        return xp.trim_zeros(a, trim='f')
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_trim_b_non_zeros(self, xp, dtype):
-        a = xp.array([-1, 2, -3, 7], dtype=dtype)
-        return xp.trim_zeros(a, trim='b')
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_trim_fb_trimmed(self, xp, dtype):
+    def test_trim_trimmed(self, xp, dtype):
         a = xp.array([1, 0, 2, 3, 0, 5], dtype=dtype)
-        return xp.trim_zeros(a)
+        return xp.trim_zeros(a, trim=self.trim)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_trim_f_trimmed(self, xp, dtype):
-        a = xp.array([1, 0, 2, 3, 0, 5], dtype=dtype)
-        return xp.trim_zeros(a, trim='f')
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_trim_b_trimmed(self, xp, dtype):
-        a = xp.array([1, 0, 2, 3, 0, 5], dtype=dtype)
-        return xp.trim_zeros(a, trim='b')
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_trim_fb_all_zeros(self, xp, dtype):
+    def test_trim_all_zeros(self, xp, dtype):
         a = xp.zeros(shape=(1000,), dtype=dtype)
-        return xp.trim_zeros(a)
+        return xp.trim_zeros(a, trim=self.trim)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_trim_f_all_zeros(self, xp, dtype):
-        a = xp.zeros(shape=(1000,), dtype=dtype)
-        return xp.trim_zeros(a, trim='f')
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_trim_b_all_zeros(self, xp, dtype):
-        a = xp.zeros(shape=(1000,), dtype=dtype)
-        return xp.trim_zeros(a, trim='b')
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_trim_fb_front_zeros(self, xp, dtype):
+    def test_trim_front_zeros(self, xp, dtype):
         a = xp.array([0, 0, 4, 1, 0, 2, 3, 0, 5], dtype=dtype)
-        return xp.trim_zeros(a)
+        return xp.trim_zeros(a, trim=self.trim)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_trim_f_front_zeros(self, xp, dtype):
-        a = xp.array([0, 0, 4, 1, 0, 2, 3, 0, 5], dtype=dtype)
-        return xp.trim_zeros(a, trim='f')
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_trim_b_front_zeros(self, xp, dtype):
-        a = xp.array([0, 0, 4, 1, 0, 2, 3, 0, 5], dtype=dtype)
-        return xp.trim_zeros(a, trim='b')
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_trim_fb_back_zeros(self, xp, dtype):
+    def test_trim_back_zeros(self, xp, dtype):
         a = xp.array([1, 0, 2, 3, 0, 5, 0, 0, 0], dtype=dtype)
-        return xp.trim_zeros(a)
+        return xp.trim_zeros(a, trim=self.trim)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_trim_f_back_zeros(self, xp, dtype):
-        a = xp.array([1, 0, 2, 3, 0, 5, 0, 0, 0], dtype=dtype)
-        return xp.trim_zeros(a, trim='f')
+    def test_trim_empty(self, xp, dtype):
+        a = testing.empty(xp, dtype)
+        return xp.trim_zeros(a, trim=self.trim)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_trim_b_back_zeros(self, xp, dtype):
-        a = xp.array([1, 0, 2, 3, 0, 5, 0, 0, 0], dtype=dtype)
-        return xp.trim_zeros(a, trim='b')
+    def test_trim_ndim(self, dtype):
+        a = testing.shaped_arange((2, 3), cupy, dtype=dtype)
+        with pytest.raises(ValueError):
+            cupy.trim_zeros(a, trim=self.trim)

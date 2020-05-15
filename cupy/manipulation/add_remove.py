@@ -50,6 +50,8 @@ def trim_zeros(filt, trim='fb'):
 
     .. seealso:: :func:`numpy.trim_zeros`
     """
+    if filt.ndim > 1:
+        raise ValueError("Multi-dimensional trim is not supported")
     start, end = cupy.asarray([0, filt.size - 1], dtype=int)
     indices = cupy.arange(filt.size)
     trim = trim.upper()
