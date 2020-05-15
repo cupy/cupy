@@ -1,5 +1,7 @@
 import cupy
 
+from cupy import core
+
 # TODO(okuta): Implement delete
 
 
@@ -11,8 +13,7 @@ import cupy
 
 # TODO(okuta): Implement resize
 
-
-_first_nonzero_krnl = cupy.ReductionKernel(
+_first_nonzero_krnl = core.ReductionKernel(
     'raw S data, T indices, T len',
     'T y',
     'data[_j] ? _j : len',
@@ -21,7 +22,7 @@ _first_nonzero_krnl = cupy.ReductionKernel(
     'len',
     'first_nonzero'
 )
-_first_nonzero_cplx_krnl = cupy.ReductionKernel(
+_first_nonzero_cplx_krnl = core.ReductionKernel(
     'raw S real, raw S imag, T indices, T len',
     'T y',
     'real[_j] || imag[_j] ? _j : len',
