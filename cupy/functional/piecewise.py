@@ -2,43 +2,38 @@ import cupy
 
 from cupy import core
 from cupy.core.core import ndarray
-from cupy.core._reduction import ReductionKernel
 
-_piecewise_krnl = ReductionKernel(
-    'S x1, T x2',
-    'U y',
-    'x1 ? x2 : NULL',
-    'b == NULL? a : b',
-    'y = a',
-    'NULL',
-    'piecewise'
+_piecewise_krnl = core.ElementwiseKernel(
+    'U condlist, S funclist',
+    'raw T y',
+    ' if (condlist) y[0] = funclist',
+    'piecewise_kernel'
 )
 
 
 def piecewise(x, condlist, funclist):
-    """
-    Evaluate a piecewise-defined function.
+    """Evaluate a piecewise-defined function.
 
-    Args:
-    :param x: input domain
-    :param condlist: conditions list ( boolean arrays or boolean scalars)
-                     Each boolean array/ scalar corresponds to a function
-                     in funclist. Length of functionlist is equal to that
-                     of condlist. If one extra function is given, it is used
-                     as otherwise condition
-    :param funclist: list of scalar functions.
+        Args:
+            x: input domain
+            condlist: conditions list ( boolean arrays or boolean scalars).
+                Each boolean array/ scalar corresponds to a function
+                in funclist. Length of functionlist is equal to that
+                of condlist. If one extra function is given, it is used
+                as otherwise condition
+            funclist: list of scalar functions.
 
-    Returns:
-        cupy.ndarray: the result of calling the functions in funclist
-        on portions of x defined by condlist.
+        Returns:
+            cupy.ndarray: the result of calling the functions in funclist
+                on portions of x defined by condlist.
 
-    .. warning::
+        .. warning::
 
-        This function currently doesn't support callable functions
-        args and kw parameters are not supported
+            This function currently doesn't support callable functions
+            args and kw parameters are not supported
 
-    .. seealso:: :func:`numpy.piecewise`
-    """
+        .. seealso:: :func:`numpy.piecewise`
+        """
 
     if any(callable(item) for item in funclist):
         raise NotImplementedError(
@@ -55,22 +50,21 @@ def piecewise(x, condlist, funclist):
     condlen = len(condlist)
     funclen = len(funclist)
     if condlen + 1 == funclen:  # o.w
-        condelse = ~ cupy.any(condlist, axis=0, keepdims=True)
-        condlist = core.concatenate_method([condlist, condelse], 0)
-        condlen += 1
+        y = cupy.full(shape=x.size, fill_value=funclist[-1], dtype=x.dtype)
+        funclist = funclist[:-1]
+        funclen -= 1
     elif condlen != funclen:
         raise ValueError('with {} condition(s), either {} or {} functions'
                          ' are expected'.format(condlen, condlen, condlen + 1))
-
+    else:
+        y = cupy.zeros(shape=x.shape, dtype=x.dtype)
     funclist = cupy.asarray(funclist)
     if scalar:
         funclist = funclist[condlist]
         condlist = cupy.ones(shape=(1, x.size), dtype=bool)
-
-    y = cupy.zeros(x.shape, x.dtype)
     if not x.ndim:
         _piecewise_krnl(condlist, funclist, y)
     else:
         for i in range(x.size):
-            _piecewise_krnl(condlist[:, i], funclist, y[i])
+            _piecewise_krnl(condlist.T[i], funclist, y[i])
     return y
