@@ -670,6 +670,7 @@ from cupy._sorting.sort import argpartition  # NOQA
 from cupy._sorting.sort import argsort  # NOQA
 from cupy._sorting.sort import lexsort  # NOQA
 from cupy._sorting.sort import msort  # NOQA
+from cupy._sorting.sort import sort_complex  # NOQA
 from cupy._sorting.sort import partition  # NOQA
 from cupy._sorting.sort import sort  # NOQA
 
