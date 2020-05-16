@@ -68,7 +68,6 @@ def piecewise(x, condlist, funclist):
     if scalar:
         funclist = funclist[condlist]
         condlist = cupy.ones(shape=x.size, dtype=bool)
-    condlist = cupy.ascontiguousarray(condlist)
     prev = cupy.full(shape=x.size, fill_value=-1, dtype=int)
     _piecewise_krnl(condlist, funclist, x.size, prev, y)
     return y
