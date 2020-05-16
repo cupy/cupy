@@ -8,15 +8,15 @@ from cupy import testing
 
 class TestPiecewise(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_linespace(self, xp, dtype):
-        x = xp.linspace(-2.5, 2.5, 6, dtype=dtype)
-        condlist = [x < 0, x >= 0]
-        funclist = [-1, 1]
+        x = xp.linspace(2.5, 12.5, 6, dtype=dtype)
+        condlist = [x < 0, x >= 0, x < 5, x >= 1.5]
+        funclist = [-1, 1, 2, 5]
         return xp.piecewise(x, condlist, funclist)
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_scalar_value(self, xp, dtype):
         x = dtype(2)
@@ -24,7 +24,7 @@ class TestPiecewise(unittest.TestCase):
         funclist = [-10, 10]
         return xp.piecewise(x, condlist, funclist)
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_scalar_condition(self, xp, dtype):
         x = xp.linspace(-2.5, 2.5, 4, dtype=dtype)
@@ -32,15 +32,15 @@ class TestPiecewise(unittest.TestCase):
         funclist = [-10, 10]
         return xp.piecewise(x, condlist, funclist)
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_otherwise_condition1(self, xp, dtype):
-        x = xp.linspace(-2, 4, 4, dtype=dtype)
-        condlist = [x < 0, x >= 0]
-        funclist = [-1, 0, 2]
+        x = xp.linspace(-2, 4, 12, dtype=dtype)
+        condlist = [x < 0, x >= 0, x != 3, x == 10]
+        funclist = [-1, 0, 2, 3, -5]
         return xp.piecewise(x, condlist, funclist)
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_otherwise_condition2(self, xp, dtype):
         x = cupy.array([-10, 20, 30, 40], dtype=dtype)
@@ -48,7 +48,7 @@ class TestPiecewise(unittest.TestCase):
         funclist = [-1, 1, 2]
         return xp.piecewise(x, condlist, funclist)
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.for_all_dtypes()
     def test_mismatched_lengths(self, dtype):
         x = cupy.linspace(-2, 4, 6, dtype=dtype)
         condlist = [x < 0, x >= 0]
@@ -56,7 +56,7 @@ class TestPiecewise(unittest.TestCase):
         with pytest.raises(ValueError):
             cupy.piecewise(x, condlist, funclist)
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.for_all_dtypes()
     def test_callable_funclist(self, dtype):
         x = cupy.linspace(-2, 4, 6, dtype=dtype)
         condlist = [x < 0, x > 0]
@@ -64,7 +64,7 @@ class TestPiecewise(unittest.TestCase):
         with pytest.raises(NotImplementedError):
             cupy.piecewise(x, condlist, funclist)
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.for_all_dtypes()
     def test_mixed_funclist(self, dtype):
         x = cupy.linspace(-2, 2, 6, dtype=dtype)
         condlist = [x < 0, x == 0, x > 0]
