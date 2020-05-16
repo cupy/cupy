@@ -1,12 +1,17 @@
 import cupy
 
 from cupy import core
-from cupy.core.core import ndarray
 
 _piecewise_krnl = core.ElementwiseKernel(
-    'U condlist, S funclist',
-    'raw T y',
-    ' if (condlist) y[0] = funclist',
+    'U condlist, raw S funclist, int64 xsiz',
+    'raw I prev, raw T y',
+    '''
+        if (condlist && prev[i % xsiz] < i)
+            prev[i % xsiz] = i;
+        __syncthreads();
+        if (prev[i % xsiz] == i)
+            y[i % xsiz] = funclist[i / xsiz];
+        ''',
     'piecewise_kernel'
 )
 
@@ -44,7 +49,8 @@ def piecewise(x, condlist, funclist):
     if cupy.isscalar(condlist):
         scalar = 1
     if cupy.isscalar(condlist) or (
-            (not isinstance(condlist[0], (list, ndarray))) and x.ndim != 0):
+            (not isinstance(condlist[0], (list, cupy.ndarray)))
+            and x.ndim != 0):
         condlist = [condlist]
     condlist = cupy.array(condlist, dtype=bool)
     condlen = len(condlist)
@@ -61,10 +67,8 @@ def piecewise(x, condlist, funclist):
     funclist = cupy.asarray(funclist)
     if scalar:
         funclist = funclist[condlist]
-        condlist = cupy.ones(shape=(1, x.size), dtype=bool)
-    if not x.ndim:
-        _piecewise_krnl(condlist, funclist, y)
-    else:
-        for i in range(x.size):
-            _piecewise_krnl(condlist.T[i], funclist, y[i])
+        condlist = cupy.ones(shape=x.size, dtype=bool)
+    condlist = cupy.ascontiguousarray(condlist)
+    prev = cupy.full(shape=x.size, fill_value=-1, dtype=int)
+    _piecewise_krnl(condlist, funclist, x.size, prev, y)
     return y
