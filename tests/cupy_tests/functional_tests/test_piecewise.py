@@ -32,11 +32,11 @@ class TestPiecewise(unittest.TestCase):
         funclist = [-10, 10]
         return xp.piecewise(x, condlist, funclist)
 
-    @testing.for_all_dtypes()
+    @testing.for_signed_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_otherwise_condition1(self, xp, dtype):
-        x = xp.linspace(-2, 4, 12, dtype=dtype)
-        condlist = [x < 0, x >= 0, x != 3, x == 10]
+        x = xp.linspace(-2, 20, 12, dtype=dtype)
+        condlist = [x > 15, x <= 5, x == 0, x == 10]
         funclist = [-1, 0, 2, 3, -5]
         return xp.piecewise(x, condlist, funclist)
 
