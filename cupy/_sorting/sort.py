@@ -127,7 +127,28 @@ def msort(a):
     return sort(a, axis=0)
 
 
-# TODO(okuta): Implement sort_complex
+def sort_complex(a):
+    """ Sort a complex array using the real part first,
+     then the imaginary part.
+
+    Args:
+        a(cupy.ndarray): Array to be sorted.
+
+    Returns:
+        cupy.ndarray: sorted complex array.
+
+    .. seealso:: :func:`numpy.sort_complex`
+
+    """
+    if a.dtype.char in 'gG':
+        raise NotImplementedError(
+            'float128 and complex256 types are not currently supported')
+    if a.dtype.char == 'e':
+        a = a.astype('D')
+    a.sort()
+    if a.dtype.char in 'bhBHF':
+        return a.astype('F')
+    return a.astype('D')
 
 
 def partition(a, kth, axis=-1):

@@ -416,6 +416,35 @@ class TestMsort(unittest.TestCase):
         return xp.msort(a)
 
 
+@testing.gpu
+class TestSort_complex(unittest.TestCase):
+
+    def test_sort_complex_zero_dim(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((), xp)
+            with pytest.raises(numpy.AxisError):
+                xp.sort_complex(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_sort_complex_1dim(self, xp, dtype):
+        a = testing.shaped_random((100,), xp, dtype)
+        return xp.sort_complex(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_sort_complex_ndim(self, xp, dtype):
+        a = testing.shaped_random((2, 5, 3), xp, dtype)
+        return xp.sort_complex(a)
+
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_sort_complex_nan(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 5), xp, dtype)
+        a[0, 2, 1] = a[1, 0, 3] = xp.nan
+        return xp.sort_complex(a)
+
+
 @testing.parameterize(*testing.product({
     'external': [False, True],
     'length': [10, 20000],
