@@ -10,15 +10,15 @@ class TestPiecewise(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_linespace(self, xp, dtype):
+    def test_piecewise(self, xp, dtype):
         x = xp.linspace(2.5, 12.5, 6, dtype=dtype)
         condlist = [x < 0, x >= 0, x < 5, x >= 1.5]
-        funclist = [-1, 1, 2, 5]
+        funclist = xp.array([-1, 1, 2, 5])
         return xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_scalar_value(self, xp, dtype):
+    def test_scalar_input(self, xp, dtype):
         x = dtype(2)
         condlist = [x < 0, x >= 0]
         funclist = [-10, 10]
@@ -27,7 +27,7 @@ class TestPiecewise(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_scalar_condition(self, xp, dtype):
-        x = xp.linspace(-2.5, 2.5, 4, dtype=dtype)
+        x = testing.shaped_random(shape=(2, 3, 5), xp=xp, dtype=dtype)
         condlist = True
         funclist = [-10, 10]
         return xp.piecewise(x, condlist, funclist)
@@ -45,6 +45,14 @@ class TestPiecewise(unittest.TestCase):
     def test_otherwise_condition2(self, xp, dtype):
         x = cupy.array([-10, 20, 30, 40], dtype=dtype)
         condlist = [[True, False, False, True], [True, False, False, True]]
+        funclist = [-1, 1, 2]
+        return xp.piecewise(x, condlist, funclist)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_piecewise_ndim(self, xp, dtype):
+        x = testing.shaped_random(shape=(2, 3, 5), xp=xp, dtype=dtype)
+        condlist = [x < 0, x > 0]
         funclist = [-1, 1, 2]
         return xp.piecewise(x, condlist, funclist)
 
