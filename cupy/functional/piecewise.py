@@ -47,13 +47,9 @@ def piecewise(x, condlist, funclist):
     if any(callable(item) for item in funclist):
         raise NotImplementedError(
             'Callable functions are not supported currently')
-    if cupy.isscalar(x):
-        x = cupy.asarray(x)
     if cupy.isscalar(condlist):
         condlist = cupy.full(shape=x.shape, fill_value=condlist)
-    if cupy.isscalar(condlist) or (
-            (not isinstance(condlist[0], (list, cupy.ndarray)))
-            and x.ndim != 0):
+    if not isinstance(condlist[0], (list, cupy.ndarray)) and x.ndim != 0:
         condlist = [condlist]
     condlist = cupy.array(condlist, dtype=bool)
     condlen = len(condlist)

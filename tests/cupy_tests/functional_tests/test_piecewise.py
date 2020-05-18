@@ -13,7 +13,7 @@ class TestPiecewise(unittest.TestCase):
     def test_piecewise(self, xp, dtype):
         x = xp.linspace(2.5, 12.5, 6, dtype=dtype)
         condlist = [x < 0, x >= 0, x < 5, x >= 1.5]
-        funclist = xp.array([-1, 1, 2, 5])
+        funclist = [-1, 1, 2, 5]
         return xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
