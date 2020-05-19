@@ -14,7 +14,7 @@ all_type_chars = '?bhilqBHILQefdFD'
 # B ... uint8
 # H ... uint16
 # I ... uint32
-# L ... uint64  (uint32 in windows0
+# L ... uint64  (uint32 in windows)
 # Q ... uint64
 # e ... float16
 # f ... float32
