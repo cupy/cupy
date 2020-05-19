@@ -349,6 +349,20 @@ def svd(a, full_matrices=True, compute_uv=True):
     # Remark 4: Remark 2 is removed since cuda 8.0 (new!)
     n, m = a.shape
 
+    mn = min(m, n)
+    if mn == 0:
+        s = cupy.empty((0,), s_dtype)
+        if compute_uv:
+            if full_matrices:
+                u = cupy.eye(n, dtype=a_dtype)
+                vt = cupy.eye(m, dtype=a_dtype)
+            else:
+                u = cupy.empty((n, 0), dtype=a_dtype)
+                vt = cupy.empty((0, m), dtype=a_dtype)
+            return u, s, vt
+        else:
+            return s
+
     # `a` must be copied because xgesvd destroys the matrix
     if m >= n:
         x = a.astype(a_dtype, order='C', copy=True)
@@ -357,16 +371,6 @@ def svd(a, full_matrices=True, compute_uv=True):
         m, n = a.shape
         x = a.transpose().astype(a_dtype, order='C', copy=True)
         trans_flag = True
-
-    mn = min(m, n)
-    if mn == 0:
-        if compute_uv:
-            if full_matrices:
-                return cupy.eye(m, m), cupy.empty((0,)), cupy.empty((0, 0))
-            else:
-                return cupy.empty((m, 0)), cupy.empty((0,)), cupy.empty((0, 0))
-        else:
-            return cupy.empty((0,))
 
     if compute_uv:
         if full_matrices:
