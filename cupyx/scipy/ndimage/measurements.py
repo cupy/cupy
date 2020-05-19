@@ -322,13 +322,13 @@ def variance(input, labels=None, index=None):
         use_kern = True
 
     if labels is None:
-        return input.var().astype(cupy.float64)
+        return input.var().astype(cupy.float64, copy=False)
 
     if not isinstance(labels, cupy.ndarray):
         raise TypeError('label must be cupy.ndarray')
 
     if index is None:
-        return (input[labels != 0]).var().astype(cupy.float64)
+        return (input[labels != 0]).var().astype(cupy.float64, copy=False)
 
     input, labels = cupy.broadcast_arrays(input, labels)
 
@@ -336,7 +336,8 @@ def variance(input, labels=None, index=None):
         if not isinstance(index, int):
             raise TypeError('index must be cupy.ndarray or a scalar int')
         else:
-            return (input[labels == index]).var().astype(cupy.float64)
+            return (input[labels == index]).var().astype(cupy.float64,
+                                                         copy=False)
 
     mean_val, count = _mean_driver(input, labels, index, True, use_kern)
     if use_kern:
