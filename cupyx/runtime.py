@@ -14,6 +14,16 @@ try:
 except ImportError:
     nccl = None
 
+try:
+    import cupy.cuda.cub as cub
+except ImportError:
+    cub = None
+
+try:
+    import cupy.cuda.cutensor as cutensor
+except ImportError:
+    cutensor = None
+
 
 def _eval_or_error(func, errors):
     # Evaluates `func` and return the result.
@@ -134,6 +144,14 @@ class _RuntimeInfo(object):
                 nccl_runtime_version = '(unknown)'
             self.nccl_runtime_version = nccl_runtime_version
 
+        if cub is not None:
+            # There is no API in CUB to retrieve the current version
+            # We show if its enabled or disabled
+            self.cub_version = 'Enabled'
+
+        if cutensor is not None:
+            self.cutensor_version = cutensor.get_version()
+
     def __str__(self):
         records = [
             ('CuPy Version', self.cupy_version),
@@ -159,6 +177,8 @@ class _RuntimeInfo(object):
             ('cuDNN Version', self.cudnn_version),
             ('NCCL Build Version', self.nccl_build_version),
             ('NCCL Runtime Version', self.nccl_runtime_version),
+            ('CUB Version', self.cub_version),
+            ('cuTENSOR Version', self.cutensor_version),
         ]
 
         width = max([len(r[0]) for r in records]) + 2
