@@ -52,7 +52,13 @@ cdef class RawKernel:
         self.file_path = None
 
         # per-device, per-instance cache
-        self._kernel_cache = [None] * runtime.getDeviceCount()
+        try:
+            self._kernel_cache = [None] * runtime.getDeviceCount()
+        except cupy.cuda.runtime.CUDARuntimeError as e:
+            if 'cudaErrorNoDevice' in str(e):
+                self._kernel_cache = []
+            else:
+                raise e
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
