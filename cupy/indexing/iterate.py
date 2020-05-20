@@ -130,7 +130,8 @@ class flatiter:
 
     # TODO(Takagi): Implement __gt__
 
-    # TODO(Takagi): Implement __len__
+    def __len__(self):
+        return self.base.size
 
 
 _flatiter_setitem_slice = core.ElementwiseKernel(
