@@ -631,8 +631,7 @@ class TestRaw(unittest.TestCase):
         dtypes = (cupy.int32, cupy.float32, cupy.complex128)
         for ker_T, dtype in zip(specializations, dtypes):
             # get specialized kernels
-            name = mod.get_mangled_name(ker_T)
-            ker = mod.get_function(name)
+            ker = mod.get_function(ker_T)
 
             # prepare inputs & expected outputs
             in_arr = cupy.testing.shaped_random((10,), dtype=dtype)
@@ -660,7 +659,7 @@ class TestRaw(unittest.TestCase):
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',))
         # ...try to get a specialized kernel
         with pytest.raises(RuntimeError):
-            mod.get_mangled_name('my_sqrt<int>')
+            mod.get_function('my_sqrt<int>')
 
         # 3. compile code without specifying C++ standard
         with pytest.raises(ValueError):
@@ -671,7 +670,7 @@ class TestRaw(unittest.TestCase):
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
                              specializations=specializations)
         with pytest.raises(ValueError):
-            mod.get_mangled_name('my_sqrt<double>')
+            mod.get_function('my_sqrt<double>')
 
     @testing.multi_gpu(2)
     def test_context_switch_RawKernel(self):
@@ -748,7 +747,7 @@ class TestRaw(unittest.TestCase):
         cupy.cuda.runtime.setDevice(1)
 
         # get specialized kernels
-        name = mod.get_mangled_name(specializations[0])
+        name = specializations[0]
         ker = mod.get_function(name)
 
         # prepare inputs & expected outputs
@@ -774,7 +773,7 @@ class TestRaw(unittest.TestCase):
                              specializations=specializations)
 
         # get specialized kernels
-        name = mod.get_mangled_name(specializations[0])
+        name = specializations[0]
         ker = mod.get_function(name)
 
         # switch device
