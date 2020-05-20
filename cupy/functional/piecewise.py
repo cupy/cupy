@@ -3,18 +3,9 @@ import cupy
 from cupy import core
 
 _piecewise_krnl = core.ElementwiseKernel(
-    'U condlist, raw S funclist, int64 xsiz',
-    'raw I prev, raw T y',
-    '''
-        if (condlist){
-          __syncthreads();
-          if (prev[i % xsiz] < i)
-            prev[i % xsiz] = i;
-          __syncthreads();
-          if (prev[i % xsiz] == i)
-            y[i % xsiz] = funclist[i / xsiz];
-        }
-        ''',
+    'U condlist, S funclist',
+    'T y',
+    ' if(condlist) y = funclist',
     'piecewise_kernel'
 )
 
@@ -47,9 +38,8 @@ def piecewise(x, condlist, funclist):
     if any(callable(item) for item in funclist):
         raise NotImplementedError(
             'Callable functions are not supported currently')
-    if cupy.isscalar(condlist):
-        condlist = cupy.full(shape=x.shape, fill_value=condlist)
-    if not isinstance(condlist[0], (list, cupy.ndarray)) and x.ndim != 0:
+    if cupy.isscalar(condlist) or (not isinstance(
+            condlist[0], (list, cupy.ndarray)) and x.ndim != 0):
         condlist = [condlist]
     condlist = cupy.array(condlist, dtype=bool)
     condlen = len(condlist)
@@ -59,10 +49,11 @@ def piecewise(x, condlist, funclist):
     elif condlen + 1 == funclen:  # o.w
         y = cupy.full(shape=x.shape, fill_value=funclist[-1], dtype=x.dtype)
         funclist = funclist[:-1]
+        funclen -= 1
     else:
         raise ValueError('with {} condition(s), either {} or {} functions'
                          ' are expected'.format(condlen, condlen, condlen + 1))
     funclist = cupy.asarray(funclist)
-    prev = cupy.full(shape=x.shape, fill_value=-1, dtype=int)
-    _piecewise_krnl(condlist, funclist, x.size, prev, y)
+    for i in range(funclen):
+        _piecewise_krnl(condlist[i], funclist[i], y)
     return y
