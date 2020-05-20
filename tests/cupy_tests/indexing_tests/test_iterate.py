@@ -8,6 +8,14 @@ import cupy
 from cupy import testing
 
 
+@testing.gpu
+class TestFlatiter(unittest.TestCase):
+
+    def test_base(self):
+        a = cupy.zeros((2, 3, 4))
+        assert a.flat.base is a
+
+
 @testing.parameterize(
     {'shape': (2, 3, 4), 'index': Ellipsis},
     {'shape': (2, 3, 4), 'index': 0},

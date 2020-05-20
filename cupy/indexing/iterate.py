@@ -5,7 +5,7 @@ from cupy import core
 from cupy.core import internal
 
 
-class flatiter():
+class flatiter:
     """Flat iterator object to iterate over arrays.
 
     A flatiter iterator is returned by ``x.flat`` for any array ``x``. It
@@ -14,6 +14,9 @@ class flatiter():
 
     Iteration is done in row-major, C-style order (the last index varying the
     fastest).
+
+    Attributes:
+        base (cupy.ndarray): A reference to the array that is iterated over.
 
     .. note::
        Restricted support of basic slicing is currently supplied. Advanced
@@ -106,7 +109,10 @@ class flatiter():
 
     # TODO(Takagi): Implement copy
 
-    # TODO(Takagi): Implement base
+    @property
+    def base(self):
+        """A reference to the array that is iterate over."""
+        return self._base
 
     # TODO(Takagi): Implement coords
 
