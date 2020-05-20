@@ -1,5 +1,3 @@
-import re
-
 import cupy
 from cupy import util
 from cupy.cuda cimport driver
@@ -221,9 +219,6 @@ def _get_raw_kernel(str code, str path, str name, tuple options=(),
     return ker
 
 
-cdef object _cpp_template_ker_name = re.compile(r'\s*'.join(['<', '.+', '>']))
-
-
 cdef class RawModule:
     """User-defined custom module.
 
@@ -358,15 +353,13 @@ cdef class RawModule:
         """
         cdef RawKernel ker
         cdef Function func
+        cdef str mangled_name
 
         # check if the name is a C++ template specialization
-        if _cpp_template_ker_name.search(name):
-            if not self.specializations:
-                raise RuntimeError('The module was not compiled with any '
-                                   'template specialization specified')
-            if name not in self.specializations:
-                raise ValueError('The kernel ' + name + ' was not specialized')
-            name = self.module.mapping[name]
+        if self.specializations:
+            mangled_name = self.module.mapping.get(name)
+            if mangled_name is not None:
+                name = mangled_name
 
         ker = RawKernel(
             self.code, name, self.options, self.backend,

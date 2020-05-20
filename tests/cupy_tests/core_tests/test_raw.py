@@ -658,7 +658,8 @@ class TestRaw(unittest.TestCase):
         # 2. compile code without specializations
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',))
         # ...try to get a specialized kernel
-        with pytest.raises(RuntimeError):
+        with pytest.raises(cupy.cuda.driver.CUDADriverError,
+                           match='named symbol not found'):
             mod.get_function('my_sqrt<int>')
 
         # 3. compile code without specifying C++ standard
@@ -669,7 +670,8 @@ class TestRaw(unittest.TestCase):
         # 4. try to fetch something we didn't specialize for
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
                              specializations=specializations)
-        with pytest.raises(ValueError):
+        with pytest.raises(cupy.cuda.driver.CUDADriverError,
+                           match='named symbol not found'):
             mod.get_function('my_sqrt<double>')
 
     @testing.multi_gpu(2)
