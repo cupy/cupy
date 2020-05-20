@@ -15,8 +15,7 @@ def piecewise(x, condlist, funclist):
 
         Args:
             x (cupy.ndarray): input domain
-            condlist (cupy.ndarray or list):
-                conditions list ( boolean arrays or boolean scalars).
+            condlist (list of cupy.ndarray or bool scalars):
                 Each boolean array/ scalar corresponds to a function
                 in funclist. Length of funclist is equal to that
                 of condlist. If one extra function is given, it is used
@@ -24,8 +23,8 @@ def piecewise(x, condlist, funclist):
             funclist (cupy.ndarray or list): list of scalar functions.
 
         Returns:
-            cupy.ndarray: the result of calling the functions in funclist
-                on portions of x defined by condlist.
+            cupy.ndarray: the scalar values in funclist on portions of x
+                defined by condlist.
 
         .. warning::
 

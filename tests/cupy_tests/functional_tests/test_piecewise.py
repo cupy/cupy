@@ -50,10 +50,26 @@ class TestPiecewise(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_piecewise_zero_dim(self, xp, dtype):
+        x = testing.empty(xp=xp, dtype=dtype)
+        condlist = [x < 0, x > 0]
+        funclist = [-1, 1, 2]
+        return xp.piecewise(x, condlist, funclist)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_piecewise_ndim(self, xp, dtype):
         x = testing.shaped_random(shape=(2, 3, 5), xp=xp, dtype=dtype)
         condlist = [x < 0, x > 0]
         funclist = [-1, 1, 2]
+        return xp.piecewise(x, condlist, funclist)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_piecewise_ndarray(self, xp, dtype):
+        x = xp.linspace(1, 20, 12, dtype=dtype)
+        condlist = xp.array([x > 15, x <= 5, x == 0, x == 10])
+        funclist = xp.array([-1, 0, 2, 3, -5], dtype=dtype)
         return xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
