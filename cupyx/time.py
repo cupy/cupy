@@ -42,7 +42,7 @@ class _PerfCaseResult(object):
         return self.to_str(show_gpu=True)
 
 
-def repeat(func, args=(), kwargs={}, n=10000, *, name=None, n_warmup=10):
+def repeat(func, args=(), kwargs={}, n_times=10000, *, name=None, n_warmup=10):
     util.experimental('cupyx.time.repeat')
     if name is None:
         name = func.__name__
@@ -53,14 +53,14 @@ def repeat(func, args=(), kwargs={}, n=10000, *, name=None, n_warmup=10):
         raise ValueError('`args` should be of tuple type.')
     if not isinstance(kwargs, dict):
         raise ValueError('`kwargs` should be of dict type.')
-    if not isinstance(n, int):
-        raise ValueError('`n` should be an integer.')
+    if not isinstance(n_times, int):
+        raise ValueError('`n_times` should be an integer.')
     if not isinstance(name, str):
         raise ValueError('`str` should be a string.')
     if not isinstance(n_warmup, int):
         raise ValueError('`n_warmup` should be an integer.')
 
-    ts = numpy.empty((2, n,), dtype=numpy.float64)
+    ts = numpy.empty((2, n_times,), dtype=numpy.float64)
     ev1 = cupy.cuda.stream.Event()
     ev2 = cupy.cuda.stream.Event()
 
@@ -70,7 +70,7 @@ def repeat(func, args=(), kwargs={}, n=10000, *, name=None, n_warmup=10):
     ev1.record()
     ev1.synchronize()
 
-    for i in range(n):
+    for i in range(n_times):
         ev1.record()
         t1 = time.perf_counter()
 

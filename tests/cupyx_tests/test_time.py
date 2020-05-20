@@ -21,7 +21,7 @@ class TestRepeat(unittest.TestCase):
                 assert mock_func.call_count == 0
 
                 perf = cupyx.time.repeat(
-                    mock_func, (x, y), n=10, n_warmup=3)
+                    mock_func, (x, y), n_repeat=10, n_warmup=3)
 
                 assert perf.name == 'test_name_xxx'
                 assert mock_func.call_count == 13
@@ -30,7 +30,8 @@ class TestRepeat(unittest.TestCase):
 
     def test_repeat_kwargs(self):
         x = cupy.random.rand(5)
-        cupyx.time.repeat(cupy.nonzero, kwargs={'a': x}, n=1, n_warmup=1)
+        cupyx.time.repeat(
+            cupy.nonzero, kwargs={'a': x}, n_repeat=1, n_warmup=1)
 
 
 class TestPerfCaseResult(unittest.TestCase):
