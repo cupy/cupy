@@ -79,11 +79,11 @@ cdef class RawKernel:
         # The kernel is cached, so on the device where this has been called,
         # we would just look up from the cache, and do recompiling only when
         # switching to a different device
-        cdef int dev = runtime.getDevice()
         cdef Function ker
         cdef Module mod
 
         # We delay establishing the CUDA context until it's really needed
+        cdef int dev = runtime.getDevice()
         if not self._kernel_cache:
             self._kernel_cache = [None] * runtime.getDeviceCount()
 
