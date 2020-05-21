@@ -26,12 +26,12 @@ class _OptimizationConfig:
             max_trials=100,
             timeout=1,
             expected_total_time_per_trial=100 * 1e-6,
-            min_total_time_per_trial=90 * 1e-6):
+            max_total_time_per_trial=90 * 1e-6):
         self.optimize_impl = optimize_impl
         self.max_trials = max_trials
         self.timeout = timeout
         self.expected_total_time_per_trial = expected_total_time_per_trial
-        self.min_total_time_per_trial = min_total_time_per_trial
+        self.max_total_time_per_trial = max_total_time_per_trial
 
 
 def get_current_context():

@@ -1,10 +1,9 @@
 import contextlib
-import math
 
 import optuna
 
 from cupy.core import _optimize_config
-from cupy.cuda import stream as stream_module
+from cupyx import time
 
 
 def _optimize(optimize_config, target_func, suggest_func):
@@ -13,41 +12,10 @@ def _optimize(optimize_config, target_func, suggest_func):
     assert callable(suggest_func)
 
     def objective(trial):
-
         args = suggest_func(trial)
-
-        def _measure(n):
-            # Returns total GPU time (in seconds)
-            stream = stream_module.get_current_stream()
-            stream.synchronize()
-            ev1 = stream_module.Event()
-            ev2 = stream_module.Event()
-            ev1.synchronize()
-            ev1.record()
-
-            for _ in range(n):
-                target_func(*args)
-
-            ev2.record()
-            ev2.synchronize()
-            time = stream_module.get_elapsed_time(ev1, ev2) * 1e-3
-            return time
-
-        min_total_time = optimize_config.min_total_time_per_trial
-        expected_total_time = optimize_config.expected_total_time_per_trial
-
-        _measure(1)  # warmup
-
-        n = 1
-        while True:
-            total_time = _measure(n)
-            if total_time > min_total_time:
-                break
-            n = max(
-                n+1,
-                int(math.ceil(expected_total_time * n / total_time)))
-
-        return total_time / n
+        max_total_time = optimize_config.max_total_time_per_trial
+        perf = time.repeat(target_func, args, max_duration=max_total_time)
+        return perf.gpu_times.mean()
 
     study = optuna.create_study()
     study.optimize(
