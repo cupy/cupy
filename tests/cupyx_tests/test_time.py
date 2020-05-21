@@ -21,16 +21,40 @@ class TestRepeat(unittest.TestCase):
                 assert mock_func.call_count == 0
 
                 perf = cupyx.time.repeat(
-                    mock_func, (x, y), n=10, n_warmup=3)
+                    mock_func, (x, y), n_repeat=10, n_warmup=3)
 
                 assert perf.name == 'test_name_xxx'
                 assert mock_func.call_count == 13
+                assert perf.cpu_times.shape == (10,)
+                assert perf.gpu_times.shape == (10,)
                 assert (perf.cpu_times == 1.4).all()
+                assert (perf.gpu_times == 2.5).all()
+
+    def test_repeat_max_duration(self):
+        with mock.patch('time.perf_counter',
+                        mock.Mock(side_effect=[1., 2., 3., 4., 5., 6.])):
+            with mock.patch('cupy.cuda.get_elapsed_time',
+                            mock.Mock(return_value=2500)):
+                mock_func = mock.Mock()
+                mock_func.__name__ = 'test_name_xxx'
+                x = cupy.testing.shaped_random((2, 3), cupy, 'int32')
+                y = cupy.testing.shaped_random((2, 3), cupy, 'int32')
+                assert mock_func.call_count == 0
+
+                perf = cupyx.time.repeat(
+                    mock_func, (x, y), n_warmup=3, max_duration=2.5)
+
+                assert perf.name == 'test_name_xxx'
+                assert mock_func.call_count == 6
+                assert perf.cpu_times.shape == (3,)
+                assert perf.gpu_times.shape == (3,)
+                assert (perf.cpu_times == 1.).all()
                 assert (perf.gpu_times == 2.5).all()
 
     def test_repeat_kwargs(self):
         x = cupy.random.rand(5)
-        cupyx.time.repeat(cupy.nonzero, kwargs={'a': x}, n=1, n_warmup=1)
+        cupyx.time.repeat(
+            cupy.nonzero, kwargs={'a': x}, n_repeat=1, n_warmup=1)
 
 
 class TestPerfCaseResult(unittest.TestCase):
