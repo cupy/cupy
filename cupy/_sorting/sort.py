@@ -140,9 +140,6 @@ def sort_complex(a):
     .. seealso:: :func:`numpy.sort_complex`
 
     """
-    if a.dtype.char in 'gG':
-        raise NotImplementedError(
-            'float128 and complex256 types are not currently supported')
     if a.dtype.char == 'e':
         a = a.astype('D')
     a.sort()
