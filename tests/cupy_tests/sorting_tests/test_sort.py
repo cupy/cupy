@@ -12,12 +12,14 @@ class TestSort(unittest.TestCase):
 
     # Test ranks
 
+    @testing.with_requires('numpy>=1.13')
     def test_sort_zero_dim(self):
         for xp in (numpy, cupy):
             a = testing.shaped_random((), xp)
             with pytest.raises(numpy.AxisError):
                 a.sort()
 
+    @testing.with_requires('numpy>=1.13')
     def test_external_sort_zero_dim(self):
         for xp in (numpy, numpy):
             a = testing.shaped_random((), xp)
@@ -217,6 +219,7 @@ class TestArgsort(unittest.TestCase):
 
     # Test base cases
 
+    @testing.with_requires('numpy>=1.13')
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=False)
     @testing.numpy_cupy_array_equal()
     def test_argsort_zero_dim(self, xp, dtype):
@@ -276,11 +279,13 @@ class TestArgsort(unittest.TestCase):
         with self.assertRaises(cupy.core._AxisError):
             return self.argsort(a, axis=3)
 
+    @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_array_equal()
     def test_argsort_zero_dim_axis(self, xp):
         a = testing.shaped_random((), xp)
         return self.argsort(a, axis=0)
 
+    @testing.with_requires('numpy>=1.13')
     def test_argsort_zero_dim_invalid_axis(self):
         for xp in (numpy, cupy):
             a = testing.shaped_random((), xp)
@@ -363,6 +368,7 @@ class TestPartition(unittest.TestCase):
 
     # Test base cases
 
+    @testing.with_requires('numpy>=1.13')
     def test_partition_zero_dim(self):
         for xp in (numpy, cupy):
             a = testing.shaped_random((), xp)
@@ -529,6 +535,7 @@ class TestArgpartition(unittest.TestCase):
 
     # Test base cases
 
+    @testing.with_requires('numpy>=1.13')
     def test_argpartition_zero_dim(self):
         for xp in (numpy, cupy):
             a = testing.shaped_random((), xp)
