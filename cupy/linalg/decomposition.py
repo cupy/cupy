@@ -375,7 +375,7 @@ def svd(a, full_matrices=True, compute_uv=True):
     if compute_uv:
         if full_matrices:
             u = cupy.empty((m, m), dtype=a_dtype)
-            vt = x
+            vt = x[:, :n]
             job_u = ord('A')
             job_vt = ord('O')
         else:
@@ -417,8 +417,8 @@ def svd(a, full_matrices=True, compute_uv=True):
     # depending on the structure of an input
     if compute_uv:
         if trans_flag:
-            return u.transpose(), s, vt[:, :n].transpose()
+            return u.transpose(), s, vt.transpose()
         else:
-            return vt[:, :n], s, u
+            return vt, s, u
     else:
         return s
