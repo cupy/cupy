@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 import six
 
 import cupy
