@@ -20,7 +20,8 @@ cdef extern from 'cupy_cutensor.h' nogil:
         int64_t fields[512]
     ctypedef struct cutensorTensorDescriptor_t 'cutensorTensorDescriptor_t':
         int64_t fields[64]
-    ctypedef struct cutensorContractionDescriptor_t 'cutensorContractionDescriptor_t':
+    ctypedef struct cutensorContractionDescriptor_t \
+        'cutensorContractionDescriptor_t':  # NOQA: E125
         int64_t fields[256]
     ctypedef struct cutensorContractionPlan_t 'cutensorContractionPlan_t':
         int64_t fields[640]
@@ -67,10 +68,18 @@ cdef extern from 'cupy_cutensor.h' nogil:
     int cutensorInitContractionDescriptor(
         cutensorHandle_t* handle,
         cutensorContractionDescriptor_t* desc,
-        cutensorTensorDescriptor_t* descA, int32_t* modeA, uint32_t alignmentReqA,
-        cutensorTensorDescriptor_t* descB, int32_t* modeB, uint32_t alignmentReqB,
-        cutensorTensorDescriptor_t* descC, int32_t* modeC, uint32_t alignmentReqC,
-        cutensorTensorDescriptor_t* descD, int32_t* modeD, uint32_t alignmentReqD,
+        cutensorTensorDescriptor_t* descA,
+        int32_t* modeA,
+        uint32_t alignmentReqA,
+        cutensorTensorDescriptor_t* descB,
+        int32_t* modeB,
+        uint32_t alignmentReqB,
+        cutensorTensorDescriptor_t* descC,
+        int32_t* modeC,
+        uint32_t alignmentReqC,
+        cutensorTensorDescriptor_t* descD,
+        int32_t* modeD,
+        uint32_t alignmentReqD,
         ComputeType typeCompute)
 
     int cutensorInitContractionFind(
@@ -237,7 +246,8 @@ cdef class TensorDescriptor:
     cdef cutensorTensorDescriptor_t* _ptr
 
     def __init__(self):
-        self._ptr = <cutensorTensorDescriptor_t*>PyMem_Malloc(sizeof(cutensorTensorDescriptor_t))
+        self._ptr = <cutensorTensorDescriptor_t*>PyMem_Malloc(
+            sizeof(cutensorTensorDescriptor_t))
 
     def __del__(self):
         PyMem_Free(self._ptr)
@@ -866,8 +876,9 @@ cpdef reduction(
             descC for now).
         opReduce (cutensorOperator_t): Binary operator used to reduce elements
             of A.
-        minTypeCompute (cutensorComputeType_t): All arithmetic is performed using
-            this data type (i.e., it affects the accuracy and performance).
+        minTypeCompute (cutensorComputeType_t): All arithmetic is performed
+            usingthis data type (i.e., it affects the accuracy and
+            performance).
         workspace (void*): Scratchpad (device) memory.
         workspaceSize (uint64_t): Please use cutensorReductionGetWorkspace() to
             query the required workspace. While lower values, including zero,
