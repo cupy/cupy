@@ -51,14 +51,8 @@ cdef class RawKernel:
         # only used when RawKernels are produced by a cubin/ptx RawModule
         self.file_path = None
 
-        # per-device, per-instance cache
-        try:
-            self._kernel_cache = [None] * runtime.getDeviceCount()
-        except cupy.cuda.runtime.CUDARuntimeError as e:
-            if 'cudaErrorNoDevice' in str(e):
-                self._kernel_cache = []
-            else:
-                raise e
+        # per-device, per-instance cache, to be initialized on first call
+        self._kernel_cache = []
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -88,6 +82,10 @@ cdef class RawKernel:
         cdef int dev = runtime.getDevice()
         cdef Function ker
         cdef Module mod
+
+        # We delay establishing the CUDA context until it's really needed
+        if not self._kernel_cache:
+            self._kernel_cache = [None] * runtime.getDeviceCount()
 
         ker = self._kernel_cache[dev]
         if ker is None:
