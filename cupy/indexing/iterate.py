@@ -28,6 +28,7 @@ class flatiter:
 
     def __init__(self, a):
         self._base = a
+        self._index = 0
 
     def __setitem__(self, ind, value):
         if ind is Ellipsis:
@@ -105,7 +106,12 @@ class flatiter:
 
     # TODO(Takagi): Implement __iter__
 
-    # TODO(Takagi): Implement __next__
+    def __next__(self):
+        index = self._index
+        if index == len(self):
+            raise StopIteration()
+        self._index += 1
+        return self[index]
 
     # TODO(Takagi): Implement copy
 
