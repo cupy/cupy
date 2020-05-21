@@ -108,16 +108,16 @@ class TestNdimageSum(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_ndimage_sum(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
-        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3) + 1
-        index = xp.array([1, 2, 3])
+        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=4)
+        index = xp.array([0, 1, 2, 3])
         return scp.ndimage.sum(image, label, index)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_ndimage_sum_multi_dim(self, xp, scp, dtype):
         image = xp.arange(512, dtype=dtype).reshape(8, 8, 8)
-        label = testing.shaped_random((8, 8, 8), xp, dtype=xp.int32, scale=3)
-        index = xp.array([0, 1, 2])
+        label = testing.shaped_random((8, 8, 8), xp, dtype=xp.int32, scale=4)
+        index = xp.array([1, 2, 3])
         return scp.ndimage.sum(image, label, index)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -130,20 +130,20 @@ class TestNdimageSum(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_ndimage_sum_no_index(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
-        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3) + 1
+        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=4)
         return scp.ndimage.sum(image, label)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_ndimage_sum_scalar_index(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
-        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3) + 1
+        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=4)
         return scp.ndimage.sum(image, label, 1)
 
     @testing.for_dtypes([cupy.bool_, cupy.complex64, cupy.complex128])
-    def test_ndimage_sum_wrong_dtype(self, dtype):
+    def test_ndimage_sum_wrong_image_dtype(self, dtype):
         image = cupy.arange(100).astype(dtype)
-        label = cupy.random.randint(1, 4, dtype=cupy.int32)
+        label = cupy.random.randint(1, 4, dtype=cupy.int32, size=100)
         index = cupy.array([1, 2, 3])
         with pytest.raises(TypeError):
             cupyx.scipy.ndimage.sum(image, label, index)
@@ -221,7 +221,7 @@ class TestNdimageVariance(unittest.TestCase):
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=4)
     def test_ndimage_variance_scalar_index(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
-        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3) + 1
+        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=4)
         return scp.ndimage.variance(image, label, 1)
 
     @testing.for_dtypes([cupy.bool_, cupy.complex64, cupy.complex128])
@@ -305,7 +305,7 @@ class TestNdimageMean(unittest.TestCase):
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
     def test_ndimage_mean_scalar_index(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
-        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3) + 1
+        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=4)
         return scp.ndimage.mean(image, label, 1)
 
     @testing.for_dtypes([cupy.bool_, cupy.complex64, cupy.complex128])
@@ -389,7 +389,7 @@ class TestNdimageStandardDeviation(unittest.TestCase):
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
     def test_ndimage_standard_deviation_scalar_index(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
-        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3) + 1
+        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=4)
         return scp.ndimage.standard_deviation(image, label, 1)
 
     @testing.for_dtypes([cupy.bool_, cupy.complex64, cupy.complex128])
