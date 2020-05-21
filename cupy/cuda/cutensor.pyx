@@ -546,7 +546,7 @@ cpdef elementwiseBinary(
         <int32_t*> modeA,
         <void*> gamma,
         <void*> C,
-        descC.ptr_,
+        descC._ptr,
         <int32_t*> modeC,
         <void*> D,
         descD._ptr,
@@ -666,7 +666,7 @@ cpdef initContractionFind(
     Return:
         find (cutensorContractionFind_t*):
     """
-    status = cutensorInitContractionFind(handle._ptr, find, <Algo>algo)
+    status = cutensorInitContractionFind(handle._ptr, find._ptr, <Algo>algo)
     check_status(status)
 
 
@@ -770,7 +770,7 @@ cpdef uint64_t contractionGetWorkspace(
     cdef uint64_t workspaceSize = 0
     status = cutensorContractionGetWorkspace(
         handle._ptr,
-        desc._ptr
+        desc._ptr,
         find._ptr,
         <WorksizePreference> pref,
         &workspaceSize)
