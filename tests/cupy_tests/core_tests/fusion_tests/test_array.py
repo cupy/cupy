@@ -1,7 +1,6 @@
 import unittest
 
 import numpy
-import six
 
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
@@ -83,10 +82,10 @@ class TestFusionArrayOperator(FusionArrayTestBase):
 class TestFusionArrayBitwiseOperator(FusionArrayTestBase):
 
     def _is_uint64(self, x):
-        return not isinstance(x, six.integer_types) and x.dtype == 'uint64'
+        return not isinstance(x, int) and x.dtype == 'uint64'
 
     def _is_signed_int(self, x):
-        return isinstance(x, six.integer_types) or x.dtype.kind == 'i'
+        return isinstance(x, int) or x.dtype.kind == 'i'
 
     @testing.for_int_dtypes_combination(
         names=('dtype1', 'dtype2'), no_bool=True)
@@ -167,21 +166,9 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
         return func
 
-    @testing.with_requires('numpy>=1.10')
-    @unittest.skipUnless(six.PY3, 'Only for py3')
     @testing.for_int_dtypes(no_bool=True)
     @fusion_utils.check_fusion(accept_error=(TypeError,))
     def test_int_itruediv_py3_raises(self, xp, dtype):
-        def func(x, y):
-            x /= y
-
-        return func
-
-    @testing.with_requires('numpy>=1.10')
-    @unittest.skipUnless(six.PY2, 'Only for py2')
-    @testing.for_int_dtypes(no_bool=True)
-    @fusion_utils.check_fusion()
-    def test_int_itruediv_py2(self, xp, dtype):
         def func(x, y):
             x /= y
 

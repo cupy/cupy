@@ -41,6 +41,10 @@ cublasStatus_t cublasGetMathMode(...) {
     return CUBLAS_STATUS_NOT_SUPPORTED;
 }
 
+CUresult cuLaunchCooperativeKernel(...) {
+    return CUDA_ERROR_NOT_SUPPORTED;
+}
+
 #endif // #if CUDA_VERSION < 9000
 
 } // extern "C"
@@ -136,6 +140,10 @@ CUresult cuModuleGetTexRef(...) {
 }
 
 CUresult cuLaunchKernel(...) {
+    return CUDA_SUCCESS;
+}
+
+CUresult cuLaunchCooperativeKernel(...) {
     return CUDA_SUCCESS;
 }
 
@@ -469,6 +477,15 @@ cudaPitchedPtr make_cudaPitchedPtr(...) {
 cudaPos make_cudaPos(...) {
     struct cudaPos pos = {0};
     return pos;
+}
+
+// Surface
+cudaError_t cudaCreateSurfaceObject(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDestroySurfaceObject(...) {
+    return cudaSuccess;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

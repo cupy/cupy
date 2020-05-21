@@ -1,7 +1,6 @@
 import unittest
 
 import numpy
-import six
 
 import cupy
 from cupy import testing
@@ -39,21 +38,19 @@ class TestCount(unittest.TestCase):
             return int(c)
         self.assertEqual(func(numpy), func(cupy))
 
-    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes()
     def test_count_nonzero_int_axis(self, dtype):
-        for ax in six.moves.range(3):
+        for ax in range(3):
             def func(xp):
                 m = testing.shaped_random((2, 3, 4), xp, xp.bool_)
                 a = testing.shaped_random((2, 3, 4), xp, dtype) * m
                 return xp.count_nonzero(a, axis=ax)
             testing.assert_allclose(func(numpy), func(cupy))
 
-    @testing.with_requires('numpy>=1.12')
     @testing.for_all_dtypes()
     def test_count_nonzero_tuple_axis(self, dtype):
-        for ax in six.moves.range(3):
-            for ay in six.moves.range(3):
+        for ax in range(3):
+            for ay in range(3):
                 if ax == ay:
                     continue
 

@@ -1,9 +1,10 @@
 import operator
-import sys
 import unittest
 
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -56,9 +57,6 @@ from cupy import testing
 @testing.gpu
 class TestMatmul(unittest.TestCase):
 
-    @unittest.skipUnless(sys.version_info >= (3, 5),
-                         'Only for Python3.5 or higher')
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -67,7 +65,6 @@ class TestMatmul(unittest.TestCase):
         x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
         return operator.matmul(x1, x2)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -108,9 +105,6 @@ class TestMatmulLarge(unittest.TestCase):
         (numpy.uint16, numpy.uint16),
     }
 
-    @unittest.skipUnless(sys.version_info >= (3, 5),
-                         'Only for Python3.5 or higher')
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -118,11 +112,10 @@ class TestMatmulLarge(unittest.TestCase):
         if ((dtype1, dtype2) in self.skip_dtypes or
                 (dtype2, dtype1) in self.skip_dtypes):
             return xp.array([])
-        x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
-        x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
+        x1 = testing.shaped_random(self.shape_pair[0], xp, dtype1)
+        x2 = testing.shaped_random(self.shape_pair[1], xp, dtype2)
         return operator.matmul(x1, x2)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -131,8 +124,8 @@ class TestMatmulLarge(unittest.TestCase):
                 (dtype2, dtype1) in self.skip_dtypes):
             return xp.array([])
         shape1, shape2 = self.shape_pair
-        x1 = testing.shaped_arange(shape1, xp, dtype1)
-        x2 = testing.shaped_arange(shape2, xp, dtype2)
+        x1 = testing.shaped_random(shape1, xp, dtype1)
+        x2 = testing.shaped_random(shape2, xp, dtype2)
         return xp.matmul(x1, x2)
 
 
@@ -152,10 +145,10 @@ class TestMatmulLarge(unittest.TestCase):
 @testing.gpu
 class TestMatmulInvalidShape(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.10')
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_invalid_shape(self, xp):
-        shape1, shape2 = self.shape_pair
-        x1 = testing.shaped_arange(shape1, xp, numpy.float32)
-        x2 = testing.shaped_arange(shape2, xp, numpy.float32)
-        xp.matmul(x1, x2)
+    def test_invalid_shape(self):
+        for xp in (numpy, cupy):
+            shape1, shape2 = self.shape_pair
+            x1 = testing.shaped_arange(shape1, xp, numpy.float32)
+            x2 = testing.shaped_arange(shape2, xp, numpy.float32)
+            with pytest.raises(ValueError):
+                xp.matmul(x1, x2)

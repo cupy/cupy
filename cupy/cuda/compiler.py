@@ -7,12 +7,11 @@ import subprocess
 import sys
 import tempfile
 
-import six
-
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import nvrtc
 from cupy.cuda import runtime
+from cupy import util
 
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
@@ -104,20 +103,6 @@ def _remove_rdc_option(options):
     return tuple(o for o in options if o not in _rdc_flags)
 
 
-class TemporaryDirectory(object):
-    def __enter__(self):
-        self.path = tempfile.mkdtemp()
-        return self.path
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_value is not None:
-            return
-
-        for name in os.listdir(self.path):
-            os.unlink(os.path.join(self.path, name))
-        os.rmdir(self.path)
-
-
 def _get_bool_env_variable(name, default):
     val = os.environ.get(name)
     if val is None or len(val) == 0:
@@ -134,7 +119,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
 
     options += ('-arch=compute_{}'.format(arch),)
 
-    with TemporaryDirectory() as root_dir:
+    with tempfile.TemporaryDirectory() as root_dir:
         cu_path = os.path.join(root_dir, filename)
 
         with open(cu_path, 'w') as cu_file:
@@ -156,6 +141,9 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
 def compile_using_nvcc(source, options=(), arch=None,
                        filename='kern.cu', code_type='cubin',
                        separate_compilation=False):
+    # defer import to here to avoid circular dependency
+    from cupy.cuda import get_nvcc_path
+
     if not arch:
         arch = _get_arch()
 
@@ -165,9 +153,12 @@ def compile_using_nvcc(source, options=(), arch=None,
         assert not separate_compilation
 
     arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
-    cmd = ['nvcc', arch_str]
+    _nvcc = get_nvcc_path()
+    # split() is needed because _nvcc could come from the env var NVCC
+    cmd = _nvcc.split()
+    cmd.append(arch_str)
 
-    with TemporaryDirectory() as root_dir:
+    with tempfile.TemporaryDirectory() as root_dir:
         first_part = filename.split('.')[0]
 
         path = os.path.join(root_dir, first_part)
@@ -261,7 +252,7 @@ def _preprocess(source, options, arch, backend):
     else:
         raise ValueError('Invalid backend %s' % backend)
 
-    assert isinstance(result, six.text_type)
+    assert isinstance(result, str)
     return result
 
 
@@ -275,18 +266,30 @@ def get_cache_dir():
 _empty_file_preprocess_cache = {}
 
 
-def compile_with_cache(source, options=(), arch=None, cache_dir=None,
-                       extra_source=None, backend='nvrtc'):
+def compile_with_cache(
+        source, options=(), arch=None, cache_dir=None, extra_source=None,
+        backend='nvrtc', *, enable_cooperative_groups=False):
+
+    if enable_cooperative_groups:
+        if backend != 'nvcc':
+            raise ValueError(
+                'Cooperative groups is supported only in NVCC backend.')
+        if runtime.is_hip:
+            raise ValueError(
+                'Cooperative groups is not supported in HIP.')
+
     if runtime.is_hip:
-        return _compile_with_cache_hipcc(source, options, arch, cache_dir,
-                                         extra_source)
+        return _compile_with_cache_hipcc(
+            source, options, arch, cache_dir, extra_source)
     else:
-        return _compile_with_cache_cuda(source, options, arch, cache_dir,
-                                        extra_source, backend)
+        return _compile_with_cache_cuda(
+            source, options, arch, cache_dir, extra_source, backend,
+            enable_cooperative_groups)
 
 
-def _compile_with_cache_cuda(source, options, arch, cache_dir,
-                             extra_source=None, backend='nvrtc'):
+def _compile_with_cache_cuda(
+        source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
+        enable_cooperative_groups=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -295,6 +298,12 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
         arch = _get_arch()
 
     options += ('-ftz=true',)
+
+    if enable_cooperative_groups:
+        # `cooperative_groups` requires `-rdc=true`.
+        # The three latter flags are to resolve linker error.
+        # (https://devtalk.nvidia.com/default/topic/1023604/linker-error/)
+        options += ('-rdc=true', '-Xcompiler', '-fPIC', '-shared')
 
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
@@ -328,7 +337,7 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
         if len(data) >= 32:
             hash = data[:32]
             cubin = data[32:]
-            cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
+            cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
             if hash == cubin_hash:
                 mod.load(cubin)
                 return mod
@@ -351,7 +360,7 @@ def _compile_with_cache_cuda(source, options, arch, cache_dir,
     else:
         raise ValueError('Invalid backend %s' % backend)
 
-    cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
+    cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
 
     # shutil.move is not atomic operation, so it could result in a corrupted
     # file. We detect it by appending md5 hash at the beginning of each cache
@@ -416,16 +425,18 @@ class _NVRTCProgram(object):
                  include_names=()):
         self.ptr = None
 
-        if isinstance(src, six.binary_type):
+        if isinstance(src, bytes):
             src = src.decode('UTF-8')
-        if isinstance(name, six.binary_type):
+        if isinstance(name, bytes):
             name = name.decode('UTF-8')
 
         self.src = src
         self.name = name
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=util.is_shutting_down):
+        if is_shutting_down():
+            return
         if self.ptr:
             nvrtc.destroyProgram(self.ptr)
 
@@ -475,7 +486,7 @@ def _hipcc(source, options, arch):
     cmd = ['hipcc', '--genco', '--targets=' + arch,
            '--flags="%s"' % ' '.join(options)]
 
-    with TemporaryDirectory() as root_dir:
+    with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         in_path = path + '.cpp'
         out_path = path + '.hsaco'
@@ -500,7 +511,7 @@ def _hipcc(source, options, arch):
 
 def _preprocess_hipcc(source, options):
     cmd = ['hipcc', '--preprocess'] + list(options)
-    with TemporaryDirectory() as root_dir:
+    with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         cu_path = '%s.cpp' % path
 
@@ -509,7 +520,7 @@ def _preprocess_hipcc(source, options):
 
         cmd.append(cu_path)
         pp_src = _run_hipcc(cmd, root_dir)
-        assert isinstance(pp_src, six.binary_type)
+        assert isinstance(pp_src, bytes)
         return re.sub(b'(?m)^#.*$', b'', pp_src)
 
 
@@ -566,7 +577,7 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
         if len(data) >= 32:
             hash_value = data[:32]
             binary = data[32:]
-            binary_hash = six.b(hashlib.md5(binary).hexdigest())
+            binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
             if hash_value == binary_hash:
                 mod.load(binary)
                 return mod
@@ -574,7 +585,7 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
     # TODO(leofang): catch HIPCCException and convert it to CompileException
     # with backend='hipcc'
     binary = _hipcc(source, options, arch)
-    binary_hash = six.b(hashlib.md5(binary).hexdigest())
+    binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
 
     # shutil.move is not atomic operation, so it could result in a corrupted
     # file. We detect it by appending md5 hash at the beginning of each cache

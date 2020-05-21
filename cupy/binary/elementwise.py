@@ -10,6 +10,9 @@ bitwise_or = core.bitwise_or
 bitwise_xor = core.bitwise_xor
 
 
+bitwise_not = core.invert
+
+
 invert = core.invert
 
 

@@ -61,6 +61,7 @@ typedef enum {
     cudaSuccess = 0,
     cudaErrorInvalidValue = 1,
     cudaErrorMemoryAllocation = 2,
+    cudaErrorPeerAccessAlreadyEnabled = 704,
 } cudaError_t;
 typedef enum {} cudaDataType;
 enum cudaDeviceAttr {};
@@ -76,13 +77,12 @@ struct cudaPointerAttributes{
     int device;
     void* devicePointer;
     void* hostPointer;
-    int isManaged;
-    int memoryType;
 };
 
 
 enum cudaChannelFormatKind {};
 typedef unsigned long long cudaTextureObject_t;
+typedef unsigned long long cudaSurfaceObject_t;
 enum cudaResourceType {};
 enum cudaTextureAddressMode {};
 enum cudaTextureFilterMode {};

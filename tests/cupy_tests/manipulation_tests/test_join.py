@@ -1,7 +1,9 @@
 import unittest
 
-import cupy
+import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -138,6 +140,52 @@ class TestJoin(unittest.TestCase):
         with self.assertRaises(ValueError):
             cupy.concatenate((a, b, c))
 
+    @testing.for_all_dtypes(name='dtype')
+    @testing.numpy_cupy_array_equal()
+    def test_concatenate_out(self, xp, dtype):
+        a = testing.shaped_arange((3, 4), xp, dtype)
+        b = testing.shaped_reverse_arange((3, 4), xp, dtype)
+        c = testing.shaped_arange((3, 4), xp, dtype)
+        out = xp.zeros((3, 12), dtype=dtype)
+        xp.concatenate((a, b, c), axis=1, out=out)
+        return out
+
+    @testing.numpy_cupy_array_equal()
+    def test_concatenate_out_same_kind(self, xp):
+        a = testing.shaped_arange((3, 4), xp, xp.float64)
+        b = testing.shaped_reverse_arange((3, 4), xp, xp.float64)
+        c = testing.shaped_arange((3, 4), xp, xp.float64)
+        out = xp.zeros((3, 12), dtype=xp.float32)
+        xp.concatenate((a, b, c), axis=1, out=out)
+        return out
+
+    def test_concatenate_out_invalid_shape(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 4), xp, xp.float64)
+            b = testing.shaped_reverse_arange((3, 4), xp, xp.float64)
+            c = testing.shaped_arange((3, 4), xp, xp.float64)
+            out = xp.zeros((4, 10), dtype=xp.float64)
+            with pytest.raises(ValueError):
+                xp.concatenate((a, b, c), axis=1, out=out)
+
+    def test_concatenate_out_invalid_shape_2(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 4), xp, xp.float64)
+            b = testing.shaped_reverse_arange((3, 4), xp, xp.float64)
+            c = testing.shaped_arange((3, 4), xp, xp.float64)
+            out = xp.zeros((2, 2, 10), dtype=xp.float64)
+            with pytest.raises(ValueError):
+                xp.concatenate((a, b, c), axis=1, out=out)
+
+    def test_concatenate_out_invalid_dtype(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 4), xp, xp.float64)
+            b = testing.shaped_reverse_arange((3, 4), xp, xp.float64)
+            c = testing.shaped_arange((3, 4), xp, xp.float64)
+            out = xp.zeros((3, 12), dtype=xp.int64)
+            with pytest.raises(TypeError):
+                xp.concatenate((a, b, c), axis=1, out=out)
+
     @testing.numpy_cupy_array_equal()
     def test_dstack(self, xp):
         a = testing.shaped_arange((1, 3, 2), xp)
@@ -197,7 +245,6 @@ class TestJoin(unittest.TestCase):
         with self.assertRaises(ValueError):
             cupy.vstack((a, b))
 
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_array_equal()
     def test_stack(self, xp):
         a = testing.shaped_arange((2, 3), xp)
@@ -215,23 +262,21 @@ class TestJoin(unittest.TestCase):
         cupy.testing.assert_array_equal(s[1], b)
         cupy.testing.assert_array_equal(s[2], c)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_array_equal()
     def test_stack_with_axis1(self, xp):
         a = testing.shaped_arange((2, 3), xp)
         return xp.stack((a, a), axis=1)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_array_equal()
     def test_stack_with_axis2(self, xp):
         a = testing.shaped_arange((2, 3), xp)
         return xp.stack((a, a), axis=2)
 
-    @testing.with_requires('numpy>=1.10')
-    @testing.numpy_cupy_raises()
-    def test_stack_with_axis_over(self, xp):
-        a = testing.shaped_arange((2, 3), xp)
-        return xp.stack((a, a), axis=3)
+    def test_stack_with_axis_over(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3), xp)
+            with pytest.raises(ValueError):
+                xp.stack((a, a), axis=3)
 
     def test_stack_with_axis_value(self):
         a = testing.shaped_arange((2, 3), cupy)
@@ -241,7 +286,6 @@ class TestJoin(unittest.TestCase):
         cupy.testing.assert_array_equal(s[:, 0, :], a)
         cupy.testing.assert_array_equal(s[:, 1, :], a)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_array_equal()
     def test_stack_with_negative_axis(self, xp):
         a = testing.shaped_arange((2, 3), xp)
@@ -255,20 +299,66 @@ class TestJoin(unittest.TestCase):
         cupy.testing.assert_array_equal(s[:, :, 0], a)
         cupy.testing.assert_array_equal(s[:, :, 1], a)
 
-    @testing.with_requires('numpy>=1.10')
-    @testing.numpy_cupy_raises()
-    def test_stack_different_shape(self, xp):
-        a = testing.shaped_arange((2, 3), xp)
-        b = testing.shaped_arange((2, 4), xp)
-        return xp.stack([a, b])
+    def test_stack_different_shape(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3), xp)
+            b = testing.shaped_arange((2, 4), xp)
+            with pytest.raises(ValueError):
+                xp.stack([a, b])
 
-    @testing.with_requires('numpy>=1.13')
-    @testing.numpy_cupy_raises()
-    def test_stack_out_of_bounds1(self, xp):
-        a = testing.shaped_arange((2, 3), xp)
-        return xp.stack([a, a], axis=3)
+    def test_stack_out_of_bounds1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3), xp)
+            with pytest.raises(ValueError):
+                xp.stack([a, a], axis=3)
 
     def test_stack_out_of_bounds2(self):
         a = testing.shaped_arange((2, 3), cupy)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             return cupy.stack([a, a], axis=3)
+
+    @testing.for_all_dtypes(name='dtype')
+    @testing.numpy_cupy_array_equal()
+    def test_stack_out(self, xp, dtype):
+        a = testing.shaped_arange((3, 4), xp, dtype)
+        b = testing.shaped_reverse_arange((3, 4), xp, dtype)
+        c = testing.shaped_arange((3, 4), xp, dtype)
+        out = xp.zeros((3, 3, 4), dtype=dtype)
+        xp.stack((a, b, c), axis=1, out=out)
+        return out
+
+    @testing.numpy_cupy_array_equal()
+    def test_stack_out_same_kind(self, xp):
+        a = testing.shaped_arange((3, 4), xp, xp.float64)
+        b = testing.shaped_reverse_arange((3, 4), xp, xp.float64)
+        c = testing.shaped_arange((3, 4), xp, xp.float64)
+        out = xp.zeros((3, 3, 4), dtype=xp.float32)
+        xp.stack((a, b, c), axis=1, out=out)
+        return out
+
+    def test_stack_out_invalid_shape(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 4), xp, xp.float64)
+            b = testing.shaped_reverse_arange((3, 4), xp, xp.float64)
+            c = testing.shaped_arange((3, 4), xp, xp.float64)
+            out = xp.zeros((3, 3, 10), dtype=xp.float64)
+            with pytest.raises(ValueError):
+                xp.stack((a, b, c), axis=1, out=out)
+
+    def test_stack_out_invalid_shape_2(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 4), xp, xp.float64)
+            b = testing.shaped_reverse_arange((3, 4), xp, xp.float64)
+            c = testing.shaped_arange((3, 4), xp, xp.float64)
+            out = xp.zeros((3, 3, 3, 10), dtype=xp.float64)
+            with pytest.raises(ValueError):
+                xp.stack((a, b, c), axis=1, out=out)
+
+    def test_stack_out_invalid_dtype(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 4), xp, xp.float64)
+            b = testing.shaped_reverse_arange((3, 4), xp, xp.float64)
+            c = testing.shaped_arange((3, 4), xp, xp.float64)
+            out = xp.zeros((3, 3, 4), dtype=xp.int64)
+            with pytest.raises(TypeError):
+                xp.stack((a, b, c), axis=1, out=out)

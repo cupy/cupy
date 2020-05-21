@@ -1,8 +1,12 @@
 import cupy
 from cupy import core
 from cupy.core import fusion
+from cupy import util
 
+from cupy.core import _routines_indexing as _indexing
 from cupy.core import _routines_statistics as _statistics
+
+import warnings
 
 
 def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -19,6 +23,14 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
 
     Returns:
         cupy.ndarray: The indices of the maximum of ``a`` along an axis.
+
+    .. note::
+       ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
+       not in NumPy.
+
+    .. note::
+       ``axis`` argument accepts a tuple of ints, but this is specific to
+       CuPy. NumPy does not support it.
 
     .. seealso:: :func:`numpy.argmax`
 
@@ -67,6 +79,14 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
     Returns:
         cupy.ndarray: The indices of the minimum of ``a`` along an axis.
 
+    .. note::
+       ``dtype`` and ``keepdim`` arguments are specific to CuPy. They are
+       not in NumPy.
+
+    .. note::
+       ``axis`` argument accepts a tuple of ints, but this is specific to
+       CuPy. NumPy does not support it.
+
     .. seealso:: :func:`numpy.argmin`
 
     """
@@ -113,10 +133,14 @@ def nonzero(a):
     Returns:
         tuple of arrays: Indices of elements that are non-zero.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`numpy.nonzero`
 
     """
-    assert isinstance(a, core.ndarray)
+    util.check_array(a, arg_name='a')
     return a.nonzero()
 
 
@@ -132,9 +156,13 @@ def flatnonzero(a):
         cupy.ndarray: Output array,
         containing the indices of the elements of a.ravel() that are non-zero.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`numpy.flatnonzero`
     """
-    assert isinstance(a, core.ndarray)
+    util.check_array(a, arg_name='a')
     return a.ravel().nonzero()[0]
 
 
@@ -166,6 +194,11 @@ def where(condition, x=None, y=None):
             ``condition`` is given, return the tuple ``condition.nonzero()``,
             the indices where ``condition`` is True.
 
+    .. warning::
+
+        This function may synchronize the device if both ``x`` and ``y`` are
+        omitted.
+
     .. seealso:: :func:`numpy.where`
 
     """
@@ -175,11 +208,35 @@ def where(condition, x=None, y=None):
     if missing == 1:
         raise ValueError('Must provide both \'x\' and \'y\' or neither.')
     if missing == 2:
-        return nonzero(condition)
+        return nonzero(condition)  # may synchronize
 
     if fusion._is_fusing():
         return fusion._call_ufunc(_where_ufunc, condition, x, y)
     return _where_ufunc(condition.astype('?'), x, y)
+
+
+def argwhere(a):
+    """Return the indices of the elements that are non-zero.
+
+    Returns a (N, ndim) dimantional array containing the
+    indices of the non-zero elements. Where `N` is number of
+    non-zero elements and `ndim` is dimention of the given array.
+
+    Args:
+        a (cupy.ndarray): array
+
+    Returns:
+        cupy.ndarray: Indices of elements that are non-zero.
+
+    .. seealso:: :func:`numpy.argwhere`
+
+    """
+    util.check_array(a, arg_name='a')
+    if a.ndim == 0:
+        warnings.warn(
+            'calling argwhere on 0d arrays is deprecated',
+            DeprecationWarning)
+    return _indexing._ndarray_argwhere(a)
 
 
 # This is to allow using the same kernels for all dtypes, ints & floats
@@ -187,55 +244,85 @@ def where(condition, x=None, y=None):
 _preamble = '''
 template<typename T>
 __device__ bool _isnan(T val) {
-    return false;
-}
-template<>
-__device__ bool _isnan(float16 val) {
-    return isnan(val);
-}
-template<>
-__device__ bool _isnan(float val) {
-    return isnan(val);
-}
-template<>
-__device__ bool _isnan(double val) {
-    return isnan(val);
-}
-template<>
-__device__ bool _isnan(const complex<double>& val) {
-    return isnan(val);
-}
-template<>
-__device__ bool _isnan(const complex<float>& val) {
-    return isnan(val);
+    return val != val;
 }
 '''
 
 
 _searchsorted_kernel = core.ElementwiseKernel(
-    'S x, raw T bins, int64 n_bins, bool side_is_right',
+    'S x, raw T bins, int64 n_bins, bool side_is_right, '
+    'bool assume_increassing',
     'int64 y',
     '''
+    // Array is assumed to be monotonically
+    // increasing unless a check is requested with the
+    // `assume_increassing = False` parameter.
+    // `digitize` allows increasing and decreasing arrays.
+    bool inc = true;
+    if (!assume_increassing && n_bins >= 2) {
+        // In the case all the bins are nan the array is considered
+        // to be decreasing in numpy
+        inc = (bins[0] <= bins[n_bins-1])
+              || (!_isnan<T>(bins[0]) && _isnan<T>(bins[n_bins-1]));
+    }
+
     if (_isnan<S>(x)) {
-        long long pos = n_bins;
+        long long pos = (inc ? n_bins : 0);
         if (!side_is_right) {
-            while (pos > 0 && _isnan<T>(bins[pos-1])) {
-                --pos;
+            if (inc) {
+                while (pos > 0 && _isnan<T>(bins[pos-1])) {
+                    --pos;
+                }
+            } else {
+                while (pos < n_bins && _isnan<T>(bins[pos])) {
+                    ++pos;
+                }
             }
         }
         y = pos;
         return;
     }
-    bool greater = (side_is_right ? x >= bins[n_bins-1] : x > bins[n_bins-1]);
+
+    bool greater = false;
+    if (side_is_right) {
+        greater = inc && x >= bins[n_bins-1];
+    } else {
+        greater = (inc ? x > bins[n_bins-1] : x <= bins[n_bins-1]);
+    }
     if (greater) {
         y = n_bins;
         return;
     }
+
     long long left = 0;
+    // In the case the bins is all NaNs, digitize
+    // needs to place all the valid values to the right
+    if (!inc) {
+        while (_isnan<T>(bins[left]) && left < n_bins) {
+            ++left;
+        }
+        if (left == n_bins) {
+            y = n_bins;
+            return;
+        }
+        if (side_is_right
+                && !_isnan<T>(bins[n_bins-1]) && !_isnan<S>(x)
+                && bins[n_bins-1] > x) {
+            y = n_bins;
+            return;
+        }
+    }
+
     long long right = n_bins-1;
     while (left < right) {
         long long m = left + (right - left) / 2;
-        if (side_is_right ? bins[m] <= x : bins[m] < x) {
+        bool look_right = true;
+        if (side_is_right) {
+            look_right = (inc ? bins[m] <= x : bins[m] > x);
+        } else {
+            look_right = (inc ? bins[m] < x : bins[m] >= x);
+        }
+        if (look_right) {
             left = m + 1;
         } else {
             right = m;
@@ -274,7 +361,14 @@ def searchsorted(a, v, side='left', sorter=None):
     .. seealso:: :func:`numpy.searchsorted`
 
     """
+    return _searchsorted(a, v, side, sorter, True)
 
+
+def _searchsorted(a, v, side, sorter, assume_increasing):
+    """`assume_increasing` is used in the kernel to
+    skip monotonically increasing or decreasing verification
+    inside the cuda kernel.
+    """
     if not isinstance(a, cupy.ndarray):
         raise NotImplementedError('Only int or ndarray are supported for a')
 
@@ -306,7 +400,8 @@ def searchsorted(a, v, side='left', sorter=None):
         a = a.take(sorter)
 
     y = cupy.zeros(v.shape, dtype=cupy.int64)
-    _searchsorted_kernel(v, a, a.size, side == 'right', y)
+
+    _searchsorted_kernel(v, a, a.size, side == 'right', assume_increasing, y)
     return y
 
 

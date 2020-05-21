@@ -1,6 +1,10 @@
 import unittest
 import warnings
 
+import numpy
+import pytest
+
+import cupy
 from cupy import testing
 
 
@@ -45,7 +49,6 @@ class TestOrder(unittest.TestCase):
 
     @for_all_interpolations()
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
-    @testing.with_requires('numpy>=1.10.0')
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_percentile_tuple_axis(self, xp, dtype, interpolation):
         a = testing.shaped_random((1, 6, 3, 2), xp, dtype)
@@ -81,18 +84,20 @@ class TestOrder(unittest.TestCase):
 
     @for_all_interpolations()
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_percentile_bad_q(self, xp, dtype, interpolation):
-        a = testing.shaped_random((4, 2, 3, 2), xp, dtype)
-        q = testing.shaped_random((1, 2, 3), xp, dtype=dtype, scale=100)
-        return xp.percentile(a, q, axis=-1, interpolation=interpolation)
+    def test_percentile_bad_q(self, dtype, interpolation):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((4, 2, 3, 2), xp, dtype)
+            q = testing.shaped_random((1, 2, 3), xp, dtype=dtype, scale=100)
+            with pytest.raises(ValueError):
+                xp.percentile(a, q, axis=-1, interpolation=interpolation)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_percentile_unexpected_interpolation(self, xp, dtype):
-        a = testing.shaped_random((4, 2, 3, 2), xp, dtype)
-        q = testing.shaped_random((5,), xp, dtype=dtype, scale=100)
-        return xp.percentile(a, q, axis=-1, interpolation='deadbeef')
+    def test_percentile_uxpected_interpolation(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((4, 2, 3, 2), xp, dtype)
+            q = testing.shaped_random((5,), xp, dtype=dtype, scale=100)
+            with pytest.raises(ValueError):
+                xp.percentile(a, q, axis=-1, interpolation='deadbeef')
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
@@ -189,3 +194,45 @@ class TestOrder(unittest.TestCase):
         self.assertEqual(len(w), 1)
         self.assertIs(w[0].category, RuntimeWarning)
         return m
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ptp_all(self, xp, dtype):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        return xp.ptp(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ptp_axis_large(self, xp, dtype):
+        a = testing.shaped_random((3, 1000), xp, dtype)
+        return xp.ptp(a, axis=0)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ptp_axis0(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        return xp.ptp(a, axis=0)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ptp_axis1(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        return xp.ptp(a, axis=1)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ptp_axis2(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        return xp.ptp(a, axis=2)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_ptp_nan(self, xp, dtype):
+        a = xp.array([float('nan'), 1, -1], dtype)
+        return xp.ptp(a)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_ptp_all_nan(self, xp, dtype):
+        a = xp.array([float('nan'), float('nan')], dtype)
+        return xp.ptp(a)

@@ -15,7 +15,6 @@
 import inspect
 import os
 import pkg_resources
-import six
 import sys
 
 
@@ -138,6 +137,10 @@ pygments_style = 'sphinx'
 
 # If true, keep warnings as "system message" paragraphs in the built documents.
 #keep_warnings = False
+
+# Suppress a warning that multiple targets are found for a cross-reference.
+# See #3250
+suppress_warnings = ['ref.python']
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
@@ -430,7 +433,7 @@ def linkcode_resolve(domain, info):
 
     # Get the source line number
     _, linenum = inspect.getsourcelines(obj)
-    assert isinstance(linenum, six.integer_types)
+    assert isinstance(linenum, int)
 
     filename = os.path.realpath(filename)
     relpath = _get_source_relative_path(filename)

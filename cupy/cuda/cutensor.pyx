@@ -125,6 +125,8 @@ cdef extern from 'cupy_cutensor.h' nogil:
         cutensorTensorDescriptor_t* desc,
         uint32_t* alignmentReq)
 
+    size_t cutensorGetVersion()
+
 
 ###############################################################################
 # Enum
@@ -201,6 +203,13 @@ cpdef enum:
     R_MIN_32U = 128  # NOQA, real as a uint32
     R_MIN_8I  = 256  # NOQA, real as a int8
     R_MIN_32I = 512  # NOQA, real as a int32
+
+
+###############################################################################
+# Version information
+###############################################################################
+cpdef size_t get_version():
+    return cutensorGetVersion()
 
 
 ###############################################################################

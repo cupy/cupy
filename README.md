@@ -44,6 +44,9 @@ $ pip install cupy-cuda100
 (Binary Package for CUDA 10.1)
 $ pip install cupy-cuda101
 
+(Binary Package for CUDA 10.2)
+$ pip install cupy-cuda102
+
 (Source Package)
 $ pip install cupy
 ```
@@ -75,6 +78,8 @@ Please see [the contribution guide](https://docs-cupy.chainer.org/en/stable/cont
 MIT License (see `LICENSE` file).
 
 CuPy is designed based on NumPy's API and SciPy's API (see `docs/LICENSE_THIRD_PARTY` file).
+
+CuPy is being maintained and developed by [Preferred Networks Inc.](https://preferred.jp/en/) and [community contributors](https://github.com/cupy/cupy/graphs/contributors).
 
 ## Reference
 

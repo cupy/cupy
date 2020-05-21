@@ -107,13 +107,55 @@ class TestConvolveAndCorrelateSpecialCases(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self._filter(cupyx.scipy, a, w, mode='unknown')
 
+    # SciPy behavior fixed in 1.2.0: https://github.com/scipy/scipy/issues/822
+    @testing.with_requires('scipy>=1.2.0')
     def test_invalid_origin(self):
         a = testing.shaped_random((3, ) * self.ndim, cupy, self.dtype)
-        w = testing.shaped_random((3, ) * self.ndim, cupy, self.dtype)
-        for origin in (-3, -2, 2, 3):
-            if self.filter == 'correlate' and origin == 2:
-                continue
-            if self.filter == 'convolve' and origin == -2:
-                continue
-            with self.assertRaises(ValueError):
-                self._filter(cupyx.scipy, a, w, origin=origin)
+        for lenw in [3, 4]:
+            w = testing.shaped_random((lenw, ) * self.ndim, cupy, self.dtype)
+            for origin in range(-3, 4):
+                if (lenw // 2 + origin < 0) or (lenw // 2 + origin >= lenw):
+                    with self.assertRaises(ValueError):
+                        self._filter(cupyx.scipy, a, w, origin=origin)
+                else:
+                    self._filter(cupyx.scipy, a, w, origin=origin)
+
+
+@testing.parameterize(*testing.product({
+    'size': [3, 4],
+    'footprint': [None, 'random'],
+    'mode': ['reflect', 'constant', 'nearest', 'mirror', 'wrap'],
+    'origin': [0, None],
+    'x_dtype': [numpy.int32, numpy.float32],
+    'output': [None, numpy.float64],
+    'filter': ['minimum_filter', 'maximum_filter']
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestMinimumMaximumFilter(unittest.TestCase):
+
+    shape = (4, 5)
+    cval = 0.0
+
+    def _filter(self, xp, scp, x):
+        filter = getattr(scp.ndimage, self.filter)
+        if self.origin is None:
+            origin = (-1, 1, -1, 1)[:x.ndim]
+        else:
+            origin = self.origin
+        if self.footprint is None:
+            footprint = None
+        else:
+            shape = (self.size, ) * x.ndim
+            r = testing.shaped_random(shape, xp, scale=1)
+            footprint = xp.where(r < .5, 1, 0)
+            if not footprint.any():
+                footprint = xp.ones(shape)
+        return filter(x, size=self.size, footprint=footprint,
+                      output=self.output, mode=self.mode, cval=self.cval,
+                      origin=origin)
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_minimum_and_maximum_filter(self, xp, scp):
+        x = testing.shaped_random(self.shape, xp, self.x_dtype)
+        return self._filter(xp, scp, x)

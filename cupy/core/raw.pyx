@@ -1,9 +1,8 @@
 import cupy
 from cupy import util
 from cupy.cuda cimport driver
-from cupy.cuda.function cimport Module
-
-import six
+from cupy.cuda cimport runtime
+from cupy.cuda.function cimport Function, Module
 
 
 cdef class RawKernel:
@@ -30,23 +29,27 @@ cdef class RawKernel:
             `cuComplex.h` or not. If set to ``True``, any code that uses the
             functions from `cuComplex.h` will be translated to its Thrust
             counterpart. Defaults to ``False``.
+        enable_cooperative_groups (bool): Whether to enable cooperative groups
+            in the CUDA source. If set to ``True``, compile options are
+            configured properly and the kernel is launched with
+            ``cuLaunchCooperativeKernel`` so that cooperative groups can be
+            used from the CUDA source.
+            This feature is only supported in CUDA 9 or later.
     """
 
-    def __init__(self, code, name, options=(), backend='nvrtc', *,
-                 translate_cucomplex=False):
-        if isinstance(code, six.binary_type):
-            code = code.decode('UTF-8')
-        if isinstance(name, six.binary_type):
-            name = name.decode('UTF-8')
-        if isinstance(backend, six.binary_type):
-            backend = backend.decode('UTF-8')
+    def __init__(self, str code, str name, tuple options=(),
+                 str backend='nvrtc', *, bint translate_cucomplex=False,
+                 bint enable_cooperative_groups=False):
 
         self.code = code
         self.name = name
         self.options = options
         self.backend = backend
         self.translate_cucomplex = translate_cucomplex
-        self._kernel = None
+        self.enable_cooperative_groups = enable_cooperative_groups
+
+        # only used when RawKernels are produced by a cubin/ptx RawModule
+        self.file_path = None
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -63,15 +66,21 @@ cdef class RawKernel:
                 bytes.
 
         """
-        self.kernel(grid, block, args, **kwargs)
+        self.kernel(
+            grid, block, args,
+            enable_cooperative_groups=self.enable_cooperative_groups,
+            **kwargs)
 
     @property
     def kernel(self):
-        if self._kernel is None:
-            self._kernel = _get_raw_kernel(
-                self.code, self.name, self.options, self.backend,
-                self.translate_cucomplex)
-        return self._kernel
+        # The kernel is cached, so on the device where this has been called,
+        # we would just look up from the cache, and do recompiling only when
+        # switching to a different device
+        cdef Function ker
+        ker = _get_raw_kernel(
+            self.code, self.file_path, self.name, self.options, self.backend,
+            self.translate_cucomplex, self.enable_cooperative_groups)
+        return ker
 
     @property
     def attributes(self):
@@ -193,12 +202,17 @@ cdef class RawKernel:
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_raw_kernel(code, name, options=(), backend='nvrtc',
-                    translate_cucomplex=False):
-    module = cupy.core.core.compile_with_cache(
-        code, options, prepend_cupy_headers=False, backend=backend,
-        translate_cucomplex=translate_cucomplex)
-    return module.get_function(name)
+def _get_raw_kernel(str code, str path, str name, tuple options=(),
+                    str backend='nvrtc',
+                    bint translate_cucomplex=False,
+                    bint enable_cooperative_groups=False):
+    cdef Module mod
+    cdef Function ker
+    assert (code is None) != (path is None)
+    mod = _get_raw_module(code, path, options, backend,
+                          translate_cucomplex, enable_cooperative_groups)
+    ker = mod.get_function(name)
+    return ker
 
 
 cdef class RawModule:
@@ -229,43 +243,52 @@ cdef class RawModule:
             `cuComplex.h` or not. If set to ``True``, any code that uses the
             functions from `cuComplex.h` will be translated to its Thrust
             counterpart. Defaults to ``False``.
+        enable_cooperative_groups (bool): Whether to enable cooperative groups
+            in the CUDA source. If set to ``True``, compile options are
+            configured properly and the kernel is launched with
+            ``cuLaunchCooperativeKernel`` so that cooperative groups can be
+            used from the CUDA source.
+            This feature is only supported in CUDA 9 or later.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
     """
-    def __init__(self, *, code=None, path=None, options=(), backend='nvrtc',
-                 translate_cucomplex=False):
+    def __init__(self, *, str code=None, str path=None, tuple options=(),
+                 str backend='nvrtc', bint translate_cucomplex=False,
+                 bint enable_cooperative_groups=False):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
                 'given.')
-        if path is not None and isinstance(path, six.binary_type):
-            path = path.decode('UTF-8')
-        if code is not None and isinstance(code, six.binary_type):
-            code = code.decode('UTF-8')
-        if isinstance(backend, six.binary_type):
-            backend = backend.decode('UTF-8')
 
         self.code = code
-        self.cubin_path = path
+        self.file_path = path
+        self.enable_cooperative_groups = enable_cooperative_groups
 
         if self.code is not None:
-            self.module = cupy.core.core.compile_with_cache(
-                code, options, prepend_cupy_headers=False, backend=backend,
-                translate_cucomplex=translate_cucomplex)
             self.options = options
             self.backend = backend
             self.translate_cucomplex = translate_cucomplex
-        elif self.cubin_path is not None:
-            self.module = Module()
-            self.module.load_file(self.cubin_path)
+        elif self.file_path is not None:
             self.options = ()
             self.backend = 'nvcc'
             self.translate_cucomplex = False
 
-        self.kernels = {}
+        # trigger compiling or loading
+        cdef Module mod = self.module  # noqa
 
-    def get_function(self, name):
+    @property
+    def module(self):
+        # The module is cached, so on the device where this has been called,
+        # we would just look up from the cache, and do recompiling only when
+        # switching to a different device
+        cdef Module mod
+        mod = _get_raw_module(
+            self.code, self.file_path, self.options, self.backend,
+            self.translate_cucomplex, self.enable_cooperative_groups)
+        return mod
+
+    def get_function(self, str name):
         """Retrieve a CUDA kernel by its name from the module.
 
         Args:
@@ -274,14 +297,17 @@ cdef class RawModule:
         Returns:
             RawKernel: An ``RawKernel`` instance.
         """
-        if name in self.kernels:
-            return self.kernels[name]
-        else:
-            ker = RawKernel(None, name, self.options, self.backend,
-                            translate_cucomplex=self.translate_cucomplex)
-            ker._kernel = self.module.get_function(name)
-            self.kernels[name] = ker
-            return ker
+        cdef RawKernel ker
+        cdef Function func
+        ker = RawKernel(
+            self.code, name, self.options, self.backend,
+            translate_cucomplex=self.translate_cucomplex,
+            enable_cooperative_groups=self.enable_cooperative_groups)
+        # for lookup in case we loaded from cubin/ptx
+        ker.file_path = self.file_path
+        # register the kernel in the cache.
+        func = ker.kernel  # noqa
+        return ker
 
     def get_texref(self, name):
         '''Retrieve a texture reference by its name from the module.
@@ -293,3 +319,51 @@ cdef class RawModule:
             intptr_t: A ``CUtexref`` handle, to be passed to :class:`~cupy.cuda.texture.TextureReference`.
         '''  # noqa
         return self.module.get_texref(name)
+
+    def get_global(self, name):
+        '''Retrieve a pointer to a global symbol by its name from the module.
+
+        Args:
+            name (str): Name of the global symbol.
+
+        Returns:
+            ~cupy.cuda.MemoryPointer: A handle to the global symbol.
+
+        .. note::
+            This method can be used to access, for example, constant memory:
+
+            .. code-block:: python
+
+                # to get a pointer to "arr" declared in the source like this:
+                # __constant__ float arr[10];
+                memptr = mod.get_global("arr")
+                # ...wrap it using cupy.ndarray with a known shape
+                arr_ndarray = cp.ndarray((10,), cp.float32, memptr)
+                # ...perform data transfer to initialize it
+                arr_ndarray[...] = cp.random.random((10,), dtype=cp.float32)
+                # ...and arr is ready to be accessed by RawKernels
+
+        '''
+        from cupy.cuda.memory import MemoryPointer, UnownedMemory
+        cdef Module mod = self.module
+        ptr = mod.get_global_var(name)
+        # unable to retrieve size, plus it's not used anywhere, so just put 0
+        mem = UnownedMemory(ptr, 0, mod)
+        memptr = MemoryPointer(mem, 0)
+        return memptr
+
+
+@cupy.util.memoize(for_each_device=True)
+def _get_raw_module(str code, str path, tuple options=(), str backend='nvrtc',
+                    bint translate_cucomplex=False,
+                    bint enable_cooperative_groups=False):
+    cdef Module mod
+    if code is not None:
+        mod = cupy.core.core.compile_with_cache(
+            code, options, prepend_cupy_headers=False, backend=backend,
+            translate_cucomplex=translate_cucomplex,
+            enable_cooperative_groups=enable_cooperative_groups)
+    elif path is not None:
+        mod = Module()
+        mod.load_file(path)
+    return mod

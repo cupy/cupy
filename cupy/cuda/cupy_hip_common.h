@@ -60,6 +60,7 @@ typedef hipError_t cudaError_t;
 const CUresult cudaSuccess = static_cast<CUresult>(0);
 const CUresult cudaErrorInvalidValue = hipErrorInvalidValue;
 const CUresult cudaErrorMemoryAllocation = hipErrorMemoryAllocation;
+const CUresult cudaErrorPeerAccessAlreadyEnabled = hipErrorPeerAccessAlreadyEnabled;
 typedef enum {} cudaDataType;
 typedef hipDeviceAttribute_t cudaDeviceAttr;
 enum cudaMemoryAdvise {};
@@ -71,6 +72,7 @@ typedef hipPointerAttribute_t cudaPointerAttributes;
 
 typedef hipChannelFormatKind cudaChannelFormatKind;
 typedef hipTextureObject_t cudaTextureObject_t;
+typedef hipSurfaceObject_t cudaSurfaceObject_t;
 typedef hipResourceType cudaResourceType;
 typedef hipTextureAddressMode cudaTextureAddressMode;
 typedef hipTextureFilterMode cudaTextureFilterMode;

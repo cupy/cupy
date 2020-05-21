@@ -1,4 +1,4 @@
-from cupy.core._kernel import create_reduction_func
+from cupy.core._reduction import create_reduction_func
 
 from cupy.core.core cimport ndarray
 

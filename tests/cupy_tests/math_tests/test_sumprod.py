@@ -1,7 +1,7 @@
 import unittest
 
 import numpy
-import six
+import pytest
 
 import cupy
 from cupy import testing
@@ -20,6 +20,12 @@ class TestSumprod(unittest.TestCase):
     def test_sum_all(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.sum()
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_sum_all_keepdims(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return a.sum(keepdims=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -52,7 +58,6 @@ class TestSumprod(unittest.TestCase):
         return a.sum(axis=1)
 
     @testing.slow
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_allclose()
     def test_sum_axis_huge(self, xp):
         a = testing.shaped_random((2048, 1, 1024), xp, 'b')
@@ -126,10 +131,19 @@ class TestSumprod(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
         return a.sum(dtype=dst_dtype)
 
+    @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
     @testing.numpy_cupy_allclose()
-    def test_sum_keepdims(self, xp):
-        a = testing.shaped_arange((2, 3, 4), xp)
-        return a.sum(axis=1, keepdims=True)
+    def test_sum_keepdims_and_dtype(self, xp, src_dtype, dst_dtype):
+        if not xp.can_cast(src_dtype, dst_dtype):
+            return xp.array([])  # skip
+        a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
+        return a.sum(axis=2, dtype=dst_dtype, keepdims=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_sum_keepdims_multiple_axes(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return a.sum(axis=(1, 2), keepdims=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -288,14 +302,12 @@ class TestNansumNanprodHuge(unittest.TestCase):
         return xp.nansum(a, axis=2)
 
     @testing.slow
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_allclose(atol=1e-1)
     def test_nansum_axis_huge(self, xp):
         return self._test(
             xp, (slice(None, None), slice(None, None), slice(1, 2)))
 
     @testing.slow
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_allclose(atol=1e-2)
     def test_nansum_axis_huge_halfnan(self, xp):
         return self._test(
@@ -317,6 +329,22 @@ class TestCumsum(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_cumsum_out(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        out = xp.zeros((5,), dtype=dtype)
+        xp.cumsum(a, out=out)
+        return out
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumsum_out_noncontiguous(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        out = xp.zeros((10,), dtype=dtype)[::2]  # Non contiguous view
+        xp.cumsum(a, out=out)
+        return out
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_cumsum_2dim(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.cumsum(a)
@@ -325,58 +353,78 @@ class TestCumsum(unittest.TestCase):
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_cumsum_axis(self, xp, dtype):
         n = len(axes)
-        a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)
+        a = testing.shaped_arange(tuple(range(4, 4 + n)), xp, dtype)
         return xp.cumsum(a, axis=self.axis)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumsum_axis_out(self, xp, dtype):
+        n = len(axes)
+        shape = tuple(range(4, 4 + n))
+        a = testing.shaped_arange(shape, xp, dtype)
+        out = xp.zeros(shape, dtype=dtype)
+        xp.cumsum(a, axis=self.axis, out=out)
+        return out
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumsum_axis_out_noncontiguous(self, xp, dtype):
+        n = len(axes)
+        shape = tuple(range(4, 4 + n))
+        a = testing.shaped_arange(shape, xp, dtype)
+        out = xp.zeros((8,)+shape[1:], dtype=dtype)[::2]  # Non contiguous view
+        xp.cumsum(a, axis=self.axis, out=out)
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_ndarray_cumsum_axis(self, xp, dtype):
         n = len(axes)
-        a = testing.shaped_arange(tuple(six.moves.range(4, 4 + n)), xp, dtype)
+        a = testing.shaped_arange(tuple(range(4, 4 + n)), xp, dtype)
         return a.cumsum(axis=self.axis)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cumsum_axis_empty(self, xp, dtype):
         n = len(axes)
-        a = testing.shaped_arange(tuple(six.moves.range(0, n)), xp, dtype)
+        a = testing.shaped_arange(tuple(range(0, n)), xp, dtype)
         return xp.cumsum(a, axis=self.axis)
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.13')
-    @testing.numpy_cupy_raises()
-    def test_invalid_axis_lower1(self, xp, dtype):
-        a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.cumsum(a, axis=-a.ndim - 1)
+    def test_invalid_axis_lower1(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((4, 5), xp, dtype)
+            with pytest.raises(numpy.AxisError):
+                xp.cumsum(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_lower2(self, dtype):
         a = testing.shaped_arange((4, 5), cupy, dtype)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             return cupy.cumsum(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.13')
-    @testing.numpy_cupy_raises()
-    def test_invalid_axis_upper1(self, xp, dtype):
-        a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.cumsum(a, axis=a.ndim + 1)
+    def test_invalid_axis_upper1(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((4, 5), xp, dtype)
+            with pytest.raises(numpy.AxisError):
+                xp.cumsum(a, axis=a.ndim + 1)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_upper2(self, dtype):
         a = testing.shaped_arange((4, 5), cupy, dtype)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             return cupy.cumsum(a, axis=a.ndim + 1)
 
-    @testing.numpy_cupy_allclose()
-    def test_cumsum_arraylike(self, xp):
-        return xp.cumsum((1, 2, 3))
+    def test_cumsum_arraylike(self):
+        with self.assertRaises(TypeError):
+            return cupy.cumsum((1, 2, 3))
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_cumsum_numpy_array(self, xp, dtype):
+    def test_cumsum_numpy_array(self, dtype):
         a_numpy = numpy.arange(8, dtype=dtype)
-        return xp.cumsum(a_numpy)
+        with self.assertRaises(TypeError):
+            return cupy.cumsum(a_numpy)
 
 
 @testing.gpu
@@ -387,6 +435,22 @@ class TestCumprod(unittest.TestCase):
     def test_cumprod_1dim(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         return xp.cumprod(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumprod_out(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        out = xp.zeros((5,), dtype=dtype)
+        xp.cumprod(a, out=out)
+        return out
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_cumprod_out_noncontiguous(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        out = xp.zeros((10,), dtype=dtype)[::2]  # Non contiguous view
+        xp.cumprod(a, out=out)
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
@@ -420,44 +484,44 @@ class TestCumprod(unittest.TestCase):
         cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.13')
-    @testing.numpy_cupy_raises()
-    def test_invalid_axis_lower1(self, xp, dtype):
-        a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.cumprod(a, axis=-a.ndim - 1)
+    def test_invalid_axis_lower1(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((4, 5), xp, dtype)
+            with pytest.raises(numpy.AxisError):
+                xp.cumprod(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_lower2(self, dtype):
-        a = testing.shaped_arange((4, 5), cupy, dtype)
-        with self.assertRaises(cupy.core._AxisError):
-            return cupy.cumprod(a, axis=-a.ndim - 1)
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((4, 5), xp, dtype)
+            with pytest.raises(numpy.AxisError):
+                xp.cumprod(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.13')
-    @testing.numpy_cupy_raises()
-    def test_invalid_axis_upper1(self, xp, dtype):
-        a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.cumprod(a, axis=a.ndim)
+    def test_invalid_axis_upper1(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((4, 5), xp, dtype)
+            with pytest.raises(numpy.AxisError):
+                return xp.cumprod(a, axis=a.ndim)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_upper2(self, dtype):
         a = testing.shaped_arange((4, 5), cupy, dtype)
-        with self.assertRaises(cupy.core._AxisError):
+        with self.assertRaises(numpy.AxisError):
             return cupy.cumprod(a, axis=a.ndim)
 
-    @testing.numpy_cupy_allclose()
-    def test_cumprod_arraylike(self, xp):
-        return xp.cumprod((1, 2, 3))
+    def test_cumprod_arraylike(self):
+        with self.assertRaises(TypeError):
+            return cupy.cumprod((1, 2, 3))
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_cumprod_numpy_array(self, xp, dtype):
+    def test_cumprod_numpy_array(self, dtype):
         a_numpy = numpy.arange(1, 6, dtype=dtype)
-        return xp.cumprod(a_numpy)
+        with self.assertRaises(TypeError):
+            return cupy.cumprod(a_numpy)
 
 
 @testing.gpu
-@testing.with_requires('numpy>=1.14')  # NumPy issue #9251
 class TestDiff(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -512,3 +576,12 @@ class TestDiff(unittest.TestCase):
     def test_diff_2dim_with_scalar_append(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.diff(a, prepend=1, append=0)
+
+    @testing.with_requires('numpy>=1.16')
+    def test_diff_invalid_axis(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp)
+            with pytest.raises(numpy.AxisError):
+                xp.diff(a, axis=3)
+            with pytest.raises(numpy.AxisError):
+                xp.diff(a, axis=-4)

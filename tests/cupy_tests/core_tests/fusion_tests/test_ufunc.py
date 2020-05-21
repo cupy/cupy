@@ -311,7 +311,6 @@ class TestDivmod(unittest.TestCase):
         y[y == 0] = 1
         return (x, y), {}
 
-    @testing.with_requires('numpy>=1.13')
     @testing.for_all_dtypes_combination(
         names=('dtype1', 'dtype2'), no_complex=True)
     @fusion_utils.check_fusion()
@@ -322,13 +321,11 @@ class TestDivmod(unittest.TestCase):
 @testing.gpu
 class TestFusionMisc(FusionUnaryUfuncTestBase):
 
-    @testing.with_requires('numpy>=1.11.2')
     @testing.for_all_dtypes(no_complex=True)
     @fusion_utils.check_fusion()
     def test_sqrt(self, xp, dtype):
         return lambda x: xp.sqrt(x)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(no_complex=True)
     @fusion_utils.check_fusion()
     def test_cbrt(self, xp, dtype):

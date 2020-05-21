@@ -46,7 +46,6 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    @testing.with_requires('numpy>=1.10')
     @testing.numpy_cupy_array_equal()
     def test_array_from_numpy_broad_cast(self, xp, dtype, order):
         a = testing.shaped_arange((2, 1, 4), numpy, dtype)
@@ -488,6 +487,16 @@ class TestCudaArrayInterface(unittest.TestCase):
             DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
         assert a.strides == b.strides
         assert a.nbytes == b.data.mem.size
+
+    @testing.for_all_dtypes()
+    def test_with_zero_size_array(self, dtype):
+        a = testing.shaped_arange((0,), cupy, dtype)
+        b = cupy.asarray(
+            DummyObjectWithCudaArrayInterface(a, self.ver, self.strides))
+        assert a.strides == b.strides
+        assert a.nbytes == b.data.mem.size
+        assert a.data.ptr == 0
+        assert a.size == 0
 
 
 @testing.gpu

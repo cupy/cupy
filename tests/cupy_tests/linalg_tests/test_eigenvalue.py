@@ -20,13 +20,10 @@ class TestEigenvalue(unittest.TestCase):
 
         # Order of eigen values is not defined.
         # They must be sorted to compare them.
-        if xp is numpy:
-            inds = numpy.argsort(w)
-        else:
-            inds = cupy.array(numpy.argsort(w.get()))
+        inds = xp.argsort(w)
         w = w[inds]
         v = v[inds]
-        return xp.concatenate([w[None], v])
+        return w, v
 
     def test_eigh_float16(self):
         # NumPy's eigh deos not support float16
@@ -50,13 +47,10 @@ class TestEigenvalue(unittest.TestCase):
 
         # Order of eigen values is not defined.
         # They must be sorted to compare them.
-        if xp is numpy:
-            inds = numpy.argsort(w)
-        else:
-            inds = cupy.array(numpy.argsort(w.get()))
+        inds = xp.argsort(w)
         w = w[inds]
         v = v[inds]
-        return xp.concatenate([w[None], v])
+        return w, v
 
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
@@ -66,9 +60,6 @@ class TestEigenvalue(unittest.TestCase):
 
         # Order of eigen values is not defined.
         # They must be sorted to compare them.
-        if xp is numpy:
-            inds = numpy.argsort(w)
-        else:
-            inds = cupy.array(numpy.argsort(w.get()))
+        inds = xp.argsort(w)
         w = w[inds]
         return w

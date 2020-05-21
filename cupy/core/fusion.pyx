@@ -1,14 +1,13 @@
 import functools
-import six
 import string
 
 import numpy
 
 import cupy
 from cupy.core._dtype import get_dtype
-from cupy.core import _errors
 from cupy.core import _kernel
 from cupy.core._kernel import _is_fusing
+from cupy.core import _reduction
 from cupy.core import core
 
 
@@ -41,9 +40,9 @@ cdef dict _dtype_to_ctype = {
 
 cdef list _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
 
-cdef tuple _acceptable_types = six.integer_types + (
+cdef tuple _acceptable_types = (
     core.ndarray, numpy.ndarray, numpy.generic,
-    float, complex, bool, type(None))
+    int, float, complex, bool, type(None))
 
 
 class _Submodule(object):
@@ -129,7 +128,7 @@ class _FusionVarCUDA(object):
             init = '= {}'.format(str(c).lower())
         elif isinstance(val, complex):
             init = '({}, {})'.format(c.real, c.imag)
-        elif isinstance(val, six.integer_types + (float,)):
+        elif isinstance(val, (int, float)):
             init = '= {}'.format(c)
         else:
             raise TypeError('Invalid constant type: {}'.format(type(c)))
@@ -170,7 +169,7 @@ class _FusionOp(object):
 
     def code(self):
         args_sub = ['v{}_{}'.format(self.index, i)
-                    for i in six.moves.range(len(self.args))]
+                    for i in range(len(self.args))]
         ctypes = [_dtype_to_ctype[t] for t in self.dtypes]
         args_list = list(zip(self.args, args_sub, ctypes))
         code = '// op  # {}\n'.format(self.index)
@@ -498,8 +497,9 @@ class _FusionHistory(object):
 
     def set_reduce_op(self, raw, arg, kwargs):
         assert self.reduce_op is None
-        for op in raw._ops:
-            (input_type,), (output_type,), _ = op
+        for op in raw._ops.ops:
+            input_type, = op.in_types
+            output_type, = op.out_types
             if numpy.can_cast(arg.dtype.type, input_type):
                 return_dtype = numpy.dtype(output_type)
                 self.premap_ret = self._get_fusion_var(arg)._var
@@ -529,8 +529,7 @@ class _FusionHistory(object):
             else:
                 # Map operation between pre-map variable and post-map variable
                 raise Exception('Shape mismatch')
-        if isinstance(arg, six.integer_types +
-                      (float, bool, complex, numpy.generic)):
+        if isinstance(arg, (int, float, bool, complex, numpy.generic)):
             var = self._fresh_local(numpy.dtype(type(arg)), const_value=arg)
             return _FusionVarScalar(var, -1, self._has_reduction())
         raise TypeError('Unsupported type {}'.format(type(arg)))
@@ -556,7 +555,7 @@ class _FusionHistory(object):
                     max_array_kind >= max_scalar_kind)
 
         def can_cast1(args, in_dtypes):
-            for i in six.moves.range(nin):
+            for i in range(nin):
                 arg = args[i]
                 if isinstance(arg, _FusionVarArray):
                     if not numpy.can_cast(arg.dtype, in_dtypes[i]):
@@ -577,7 +576,7 @@ class _FusionHistory(object):
             return True
 
         def can_cast2(args, in_dtypes):
-            for i in six.moves.range(nin):
+            for i in range(nin):
                 if not numpy.can_cast(args[i].dtype, in_dtypes[i]):
                     return False
             return True
@@ -617,12 +616,13 @@ class _FusionHistory(object):
 
         # Typecast and add an operation
         can_cast = can_cast1 if _should_use_min_scalar(var_list) else can_cast2
-        for in_dtypes, out_dtypes, op in ufunc._ops:
-            in_dtypes = [numpy.dtype(t) for t in in_dtypes]
-            out_dtypes = [numpy.dtype(t) for t in out_dtypes]
+        # TODO(asi1024): Fix to use ``guess_routine``.
+        for op in ufunc._ops.ops:
+            in_dtypes = [numpy.dtype(t) for t in op.in_types]
+            out_dtypes = [numpy.dtype(t) for t in op.out_types]
             if can_cast(var_list, in_dtypes):
                 ret = []
-                for i in six.moves.range(nout):
+                for i in range(nout):
                     if i >= len(out_vars):
                         out_var = self._fresh_local(out_dtypes[i])
                         out_var = make_fusion_var(out_var, ndim)
@@ -644,7 +644,7 @@ class _FusionHistory(object):
                              for i, _ in enumerate(in_vars)]
                 out_params = [(out_dtypes[i], 'out{}'.format(i))
                               for i, _ in enumerate(out_vars)]
-                subm = _Submodule(ufunc, in_params, out_params, op)
+                subm = _Submodule(ufunc, in_params, out_params, op.routine)
                 self.add_op(subm, [v._var for v in in_vars + out_vars])
                 return ret[0] if len(ret) == 1 else tuple(ret)
         in_dtypes = [v.dtype for v in in_vars]
@@ -794,11 +794,11 @@ class _FusionHistory(object):
                 name=name)
             return kernel, {}
         else:
-            _, (postmap_type,), (_, reduce_code, postmap_cast_code,
-                                 reduce_ctype) = self.reduce_op
+            _, reduce_expr, postmap_expr, reduce_ctype = self.reduce_op.routine
             if reduce_ctype is None:
                 reduce_ctype = 'type_in0_raw'
 
+            postmap_type, = self.reduce_op.out_types
             postmap_dtype = numpy.dtype(postmap_type)
             postmap_ctype = _dtype_to_ctype[postmap_dtype]
 
@@ -818,14 +818,14 @@ class _FusionHistory(object):
             submodule_code += 'typedef {} type_out0_raw;\n'.format(
                 postmap_ctype)
             submodule_code += self._emit_postmap_cast_code(
-                reduce_ctype, postmap_dtype, postmap_cast_code)
+                reduce_ctype, postmap_dtype, postmap_expr)
             submodule_code += self._emit_postmap_code(out_params, postmap_code)
 
-            kernel = _kernel.ReductionKernel(
+            kernel = _reduction.ReductionKernel(
                 in_params_code,
                 out_params_code,
                 '_pre_map({})'.format(', '.join([repr(p) for p in in_params])),
-                reduce_code,
+                reduce_expr,
                 '_post_map(_postmap_cast(a), {})'.format(
                     ', '.join([repr(p) for p in out_params])),
                 self.reduce_identity,
@@ -888,7 +888,7 @@ class Fusion(object):
                 params_info.append(None)
             elif isinstance(arg, float):
                 params_info.append('d')
-            elif isinstance(arg, six.integer_types):
+            elif isinstance(arg, int):
                 params_info.append('l')
             elif isinstance(arg, bool):
                 params_info.append('?')
@@ -984,7 +984,7 @@ def _call_reduction(fusion_op, *args, **kwargs):
         ndim = 0
     if ndim < 0:
         mes = 'axis {} is out of bounds for array of dimension {}'
-        raise _errors._AxisError(mes.format(axis, src_ndim))
+        raise numpy.AxisError(mes.format(axis, src_ndim))
 
     _thread_local.history.ndim = ndim
     if ndim >= 1:

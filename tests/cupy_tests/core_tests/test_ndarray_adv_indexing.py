@@ -2,6 +2,7 @@ import unittest
 
 import itertools
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -128,7 +129,6 @@ class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
     {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.13')
 class TestArrayAdvancedIndexingGetitemParametrized2(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -286,10 +286,11 @@ class TestArrayAdvancedIndexingOverflow(unittest.TestCase):
 @testing.gpu
 class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=IndexError)
-    def test_invalid_adv_getitem(self, xp):
-        a = testing.shaped_arange(self.shape, xp)
-        a[self.indexes]
+    def test_invalid_adv_getitem(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp)
+            with pytest.raises(IndexError):
+                a[self.indexes]
 
 
 @testing.parameterize(
@@ -300,13 +301,13 @@ class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
      'indexes': numpy.random.choice([False, True], (1, 3))},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.13')
 class TestArrayInvalidIndexAdvGetitem2(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=IndexError)
-    def test_invalid_adv_getitem(self, xp):
-        a = testing.shaped_arange(self.shape, xp)
-        a[self.indexes]
+    def test_invalid_adv_getitem(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp)
+            with pytest.raises(IndexError):
+                a[self.indexes]
 
 
 @testing.parameterize(
@@ -316,22 +317,11 @@ class TestArrayInvalidIndexAdvGetitem2(unittest.TestCase):
 @testing.with_requires('numpy>=1.16')
 class TestArrayInvalidValueAdvGetitem(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=IndexError)
-    def test_invalid_adv_getitem(self, xp):
-        a = testing.shaped_arange(self.shape, xp)
-        a[self.indexes]
-
-
-@testing.parameterize(
-    {'shape': (2, 3, 4), 'indexes': [1, [1, [1]]]},
-)
-@testing.gpu
-class TestArrayInvalidValueAdvGetitemForOldVersion(unittest.TestCase):
-
-    @testing.numpy_cupy_raises()
-    def test_invalid_adv_getitem(self, xp):
-        a = testing.shaped_arange(self.shape, xp)
-        a[self.indexes]
+    def test_invalid_adv_getitem(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp)
+            with pytest.raises(IndexError):
+                a[self.indexes]
 
 
 @testing.parameterize(
@@ -473,7 +463,6 @@ class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
     {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_), 'value': 1},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.13')
 class TestArrayAdvancedIndexingSetitemScalarValue2(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -494,10 +483,11 @@ class TestArrayAdvancedIndexingSetitemScalarValue2(unittest.TestCase):
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemScalarValueIndexError(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_adv_setitem(self, xp):
-        a = xp.zeros(self.shape)
-        a[self.indexes] = self.value
+    def test_adv_setitem(self):
+        for xp in (numpy, cupy):
+            a = xp.zeros(self.shape)
+            with pytest.raises(IndexError):
+                a[self.indexes] = self.value
 
 
 @testing.parameterize(

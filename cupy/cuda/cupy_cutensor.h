@@ -83,6 +83,10 @@ extern "C" {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
+    size_t cutensorGetVersion(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
     const char* cutensorGetErrorString(...) {
 	return NULL;
     }
