@@ -375,21 +375,22 @@ def svd(a, full_matrices=True, compute_uv=True):
     if compute_uv:
         if full_matrices:
             u = cupy.empty((m, m), dtype=a_dtype)
-            vt = cupy.empty((n, n), dtype=a_dtype)
+            vt = x[:, :n]
+            job_u = ord('A')
+            job_vt = ord('O')
         else:
-            u = cupy.empty((mn, m), dtype=a_dtype)
+            u = x
             vt = cupy.empty((mn, n), dtype=a_dtype)
+            job_u = ord('O')
+            job_vt = ord('S')
         u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
     else:
         u_ptr, vt_ptr = 0, 0  # Use nullptr
+        job_u = ord('N')
+        job_vt = ord('N')
     s = cupy.empty(mn, dtype=s_dtype)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
-
-    if compute_uv:
-        job = ord('A') if full_matrices else ord('S')
-    else:
-        job = ord('N')
 
     if a_dtype == 'f':
         gesvd = cusolver.sgesvd
@@ -407,12 +408,12 @@ def svd(a, full_matrices=True, compute_uv=True):
     buffersize = gesvd_bufferSize(handle, m, n)
     workspace = cupy.empty(buffersize, dtype=a_dtype)
     gesvd(
-        handle, job, job, m, n, x.data.ptr, m, s.data.ptr, u_ptr, m, vt_ptr, n,
-        workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
+        handle, job_u, job_vt, m, n, x.data.ptr, m, s.data.ptr, u_ptr, m,
+        vt_ptr, n, workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
     cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvd, dev_info)
 
-    # Note that the returned array may need to be transporsed
+    # Note that the returned array may need to be transposed
     # depending on the structure of an input
     if compute_uv:
         if trans_flag:
