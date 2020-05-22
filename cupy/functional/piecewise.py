@@ -1,14 +1,5 @@
 import cupy
 
-from cupy import core
-
-_piecewise_krnl = core.ElementwiseKernel(
-    'U condlist, S funclist',
-    'T y',
-    ' if(condlist) y = funclist',
-    'piecewise_kernel'
-)
-
 
 def piecewise(x, condlist, funclist):
     """Evaluate a piecewise-defined function.
@@ -17,9 +8,9 @@ def piecewise(x, condlist, funclist):
             x (cupy.ndarray): input domain
             condlist (list of cupy.ndarray or bool scalars):
                 Each boolean array/ scalar corresponds to a function
-                in funclist. Length of funclist is equal to that
-                of condlist. If one extra function is given, it is used
-                as otherwise condition
+                in funclist. Length of funclist is equal to that of
+                condlist. If one extra function is given, it is used
+                as the default value when the otherwise condition is met
             funclist (cupy.ndarray or list): list of scalar functions.
 
         Returns:
@@ -48,11 +39,10 @@ def piecewise(x, condlist, funclist):
     elif condlen + 1 == funclen:  # o.w
         y = cupy.full(shape=x.shape, fill_value=funclist[-1], dtype=x.dtype)
         funclist = funclist[:-1]
-        funclen -= 1
     else:
         raise ValueError('with {} condition(s), either {} or {} functions'
                          ' are expected'.format(condlen, condlen, condlen + 1))
-    funclist = cupy.asarray(funclist)
-    for i in range(funclen):
-        _piecewise_krnl(condlist[i], funclist[i], y)
+    funclist = cupy.asarray(funclist, dtype=x.dtype)
+    for condition, func in zip(condlist, funclist):
+        y = cupy.where(condition, func, y)
     return y
