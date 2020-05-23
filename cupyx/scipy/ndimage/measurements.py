@@ -388,6 +388,8 @@ def sum(input, labels=None, index=None):
 
     if labels is None:
         return input.sum()
+    if len(labels) == 0:
+        return cupy.array([], dtype=cupy.int64)
 
     if not isinstance(labels, cupy.ndarray):
         raise TypeError('label must be cupy.ndarray')
