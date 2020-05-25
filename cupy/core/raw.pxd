@@ -8,6 +8,7 @@ cdef class RawKernel:
         readonly str backend
         readonly bint enable_cooperative_groups
         bint translate_cucomplex
+        list _kernel_cache
 
 
 cdef class RawModule:
