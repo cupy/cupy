@@ -643,6 +643,7 @@ from cupy.math.misc import square  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.misc import may_share_memory  # NOQA
 from cupy.misc import shares_memory  # NOQA
+from cupy.misc import who  # NOQA
 
 
 # -----------------------------------------------------------------------------
