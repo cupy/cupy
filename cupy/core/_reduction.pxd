@@ -17,7 +17,13 @@ cdef class _AbstractReductionKernel:
         self,
         list in_args, list out_args,
         const shape_t& a_shape, axis, dtype,
-        bint keepdims, bint reduce_dims,
+        bint keepdims, bint reduce_dims, int device_id,
+        stream)
+
+    cdef void _launch(
+        self, out_block_num, block_size, block_stride,
+        in_args, out_args, in_shape, out_shape, types,
+        map_expr, reduce_expr, post_map_expr, reduce_type,
         stream)
 
     cdef tuple _get_expressions_and_types(
