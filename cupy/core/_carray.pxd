@@ -36,10 +36,17 @@ cdef class CIndexer(function.CPointer):
     cdef:
         _CIndexer val
 
+    cdef void init(self, Py_ssize_t size, const shape_t &shape)
+
 
 cdef class Indexer:
     cdef:
         readonly Py_ssize_t size
-        readonly tuple shape
+        readonly shape_t shape
+
+    cdef void init(self, const shape_t& shape)
 
     cdef function.CPointer get_pointer(self)
+
+
+cdef Indexer _indexer_init(const shape_t& shape)

@@ -35,6 +35,15 @@ cpdef inline Py_ssize_t prod_sequence(object args):
 
 
 @cython.profile(False)
+cpdef inline bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x):
+    cdef int i
+    for i in range(args.size()):
+        if args[i] == x:
+            return True
+    return False
+
+
+@cython.profile(False)
 cpdef inline tuple get_size(object size):
     if size is None:
         return ()

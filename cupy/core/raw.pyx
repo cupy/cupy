@@ -52,6 +52,9 @@ cdef class RawKernel:
         self.file_path = None  # for cubin/ptx
         self.specializations = None  # for C++ template
 
+        # per-device, per-instance cache, to be initialized on first call
+        self._kernel_cache = []
+
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
 
@@ -78,10 +81,22 @@ cdef class RawKernel:
         # we would just look up from the cache, and do recompiling only when
         # switching to a different device
         cdef Function ker
-        ker = _get_raw_kernel(
-            self.code, self.file_path, self.name, self.options, self.backend,
-            self.translate_cucomplex, self.enable_cooperative_groups,
-            self.specializations)
+        cdef Module mod
+
+        # We delay establishing the CUDA context until it's really needed
+        cdef int dev = runtime.getDevice()
+        if not self._kernel_cache:
+            self._kernel_cache = [None] * runtime.getDeviceCount()
+
+        ker = self._kernel_cache[dev]
+        if ker is None:
+            assert (self.code is None) != (self.file_path is None)
+            mod = _get_raw_module(
+                self.code, self.file_path, self.options, self.backend,
+                self.translate_cucomplex, self.enable_cooperative_groups,
+                self.specializations)
+            ker = mod.get_function(self.name)
+            self._kernel_cache[dev] = ker
         return ker
 
     @property
@@ -201,22 +216,6 @@ cdef class RawKernel:
     def preferred_shared_memory_carveout(self, fraction):
         attr = driver.CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT
         driver.funcSetAttribute(self.kernel.ptr, attr, fraction)
-
-
-@cupy.util.memoize(for_each_device=True)
-def _get_raw_kernel(str code, str path, str name, tuple options=(),
-                    str backend='nvrtc',
-                    bint translate_cucomplex=False,
-                    bint enable_cooperative_groups=False,
-                    tuple specializations=None):
-    cdef Module mod
-    cdef Function ker
-    assert (code is None) != (path is None)
-    mod = _get_raw_module(code, path, options, backend,
-                          translate_cucomplex, enable_cooperative_groups,
-                          specializations)
-    ker = mod.get_function(name)
-    return ker
 
 
 cdef class RawModule:
@@ -369,7 +368,7 @@ cdef class RawModule:
         ker.file_path = self.file_path
         # for lookup in case we specialize a template
         ker.specializations = self.specializations
-        # register the kernel in the cache.
+        # register the kernel in the cache
         func = ker.kernel  # noqa
         return ker
 

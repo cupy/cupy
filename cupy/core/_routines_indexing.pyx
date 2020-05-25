@@ -113,11 +113,11 @@ cdef ndarray _ndarray_put(ndarray self, indices, values, mode):
 
     n = self.size
     if not isinstance(indices, ndarray):
-        indices = ndarray(indices)
+        indices = core.array(indices)
     indices = indices.ravel()
 
     if not isinstance(values, ndarray):
-        values = ndarray(values, dtype=self.dtype)
+        values = core.array(values, dtype=self.dtype)
     if values.size == 0:
         return
 

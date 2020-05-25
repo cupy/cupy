@@ -9,6 +9,7 @@ cdef class RawKernel:
         readonly bint enable_cooperative_groups
         tuple specializations
         bint translate_cucomplex
+        list _kernel_cache
 
 
 cdef class RawModule:

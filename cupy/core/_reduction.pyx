@@ -127,22 +127,28 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
     return reduce_axis, out_axis
 
 
-cpdef tuple _get_out_shape(
-        tuple shape, tuple reduce_axis, tuple out_axis, bint keepdims):
+cpdef shape_t _get_out_shape(
+        const shape_t& shape, tuple reduce_axis, tuple out_axis,
+        bint keepdims):
+    cdef shape_t out_shape
     if keepdims:
-        out_shape = list(shape)
+        out_shape = shape
         for i in reduce_axis:
             out_shape[i] = 1
-        return tuple(out_shape)
-    return tuple([shape[i] for i in out_axis])
+    else:
+        out_shape.reserve(len(out_axis))
+        for i in out_axis:
+            out_shape.push_back(shape[i])
+    return out_shape
 
 
-cdef tuple _set_permuted_args(
-        list args, tuple axis_permutes, tuple shape, tuple params):
+cdef shape_t _set_permuted_args(
+        list args, tuple axis_permutes, const shape_t& shape, tuple params):
     # This function updates `args`
     cdef ParameterInfo p
     cdef Py_ssize_t i, s
     cdef bint need_permutation = False
+    cdef shape_t out_shape
     for i, s in enumerate(axis_permutes):
         if i != s:
             need_permutation = True
@@ -154,8 +160,12 @@ cdef tuple _set_permuted_args(
         for i, a in enumerate(args):
             if isinstance(a, ndarray):
                 args[i] = _manipulation._transpose(a, axis_permutes)
-        shape = tuple([shape[i] for i in axis_permutes])
-    return shape
+        out_shape.reserve(len(axis_permutes))
+        for i in axis_permutes:
+            out_shape.push_back(shape[i])
+        return out_shape
+    else:
+        return shape
 
 
 cdef Py_ssize_t _get_contiguous_size(
@@ -229,12 +239,13 @@ cdef class _AbstractReductionKernel:
     cpdef ndarray _call(
             self,
             list in_args, list out_args,
-            tuple a_shape, axis, dtype,
+            const shape_t& a_shape, axis, dtype,
             bint keepdims, bint reduce_dims,
             stream):
         cdef tuple reduce_axis, out_axis
         cdef Py_ssize_t contiguous_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
+        cdef shape_t in_shape, out_shape
         cdef ndarray ret
         cdef function.Function kern
 
@@ -247,7 +258,7 @@ cdef class _AbstractReductionKernel:
             type_map,
         ) = self._get_expressions_and_types(in_args, out_args, dtype)
 
-        reduce_axis, out_axis = _get_axis(axis, len(a_shape))
+        reduce_axis, out_axis = _get_axis(axis, a_shape.size())
 
         # When there is only one input array, sort the axes in such a way that
         # contiguous (C or F) axes can be squashed in _reduce_dims() later.
@@ -265,7 +276,7 @@ cdef class _AbstractReductionKernel:
         if ret.size == 0:
             return ret
 
-        if self.identity == '' and 0 in a_shape:
+        if self.identity == '' and internal.is_in(a_shape, 0):
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
@@ -280,10 +291,10 @@ cdef class _AbstractReductionKernel:
 
         # Calculate the reduction block dimensions.
         contiguous_size = _get_contiguous_size(
-            in_args, self.in_params, len(in_shape), len(out_shape))
+            in_args, self.in_params, in_shape.size(), out_shape.size())
         block_size, block_stride, out_block_num = _get_block_specs(
-            internal.prod_sequence(in_shape),
-            internal.prod_sequence(out_shape),
+            internal.prod(in_shape),
+            internal.prod(out_shape),
             contiguous_size)
 
         # Kernel arguments passed to the __global__ function.
@@ -291,8 +302,8 @@ cdef class _AbstractReductionKernel:
             in_args
             + out_args
             + [
-                _carray.Indexer(in_shape),
-                _carray.Indexer(out_shape),
+                _carray._indexer_init(in_shape),
+                _carray._indexer_init(out_shape),
                 # block_stride is passed as the last argument.
                 _scalar.CScalar.from_int32(block_stride),
             ])
@@ -316,7 +327,7 @@ cdef class _AbstractReductionKernel:
         raise NotImplementedError()
 
     cdef list _get_out_args(
-            self, list out_args, tuple out_types, tuple out_shape):
+            self, list out_args, tuple out_types, const shape_t& out_shape):
         raise NotImplementedError()
 
     cdef function.Function _get_function(
@@ -390,7 +401,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         reduce_dims = True
         return self._call(
             in_args, out_args,
-            arr.shape, axis, dtype, keepdims, reduce_dims, None)
+            arr._shape, axis, dtype, keepdims, reduce_dims, None)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
@@ -419,7 +430,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             type_map)
 
     cdef list _get_out_args(
-            self, list out_args, tuple out_types, tuple out_shape):
+            self, list out_args, tuple out_types, const shape_t& out_shape):
         return _get_out_args(
             out_args, out_types, out_shape, 'unsafe')
 
@@ -562,7 +573,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
 
         return self._call(
             in_args, out_args,
-            tuple(broad_shape), axis, None,
+            broad_shape, axis, None,
             keepdims, self.reduce_dims, stream)
 
     cdef tuple _get_expressions_and_types(
@@ -583,7 +594,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             type_map)
 
     cdef list _get_out_args(
-            self, list out_args, tuple out_types, tuple out_shape):
+            self, list out_args, tuple out_types, const shape_t& out_shape):
         return _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params, False)
 

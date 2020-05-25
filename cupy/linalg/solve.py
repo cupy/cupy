@@ -80,24 +80,28 @@ def _solve(a, b, cublas_handle, cusolver_handle):
         geqrf = cusolver.sgeqrf
         geqrf_bufferSize = cusolver.sgeqrf_bufferSize
         ormqr = cusolver.sormqr
+        ormqr_bufferSize = cusolver.sormqr_bufferSize
         trans = cublas.CUBLAS_OP_T
         trsm = cublas.strsm
     elif dtype == 'd':
         geqrf = cusolver.dgeqrf
         geqrf_bufferSize = cusolver.dgeqrf_bufferSize
         ormqr = cusolver.dormqr
+        ormqr_bufferSize = cusolver.dormqr_bufferSize
         trans = cublas.CUBLAS_OP_T
         trsm = cublas.dtrsm
     elif dtype == 'F':
         geqrf = cusolver.cgeqrf
         geqrf_bufferSize = cusolver.cgeqrf_bufferSize
         ormqr = cusolver.cormqr
+        ormqr_bufferSize = cusolver.cunmqr_bufferSize
         trans = cublas.CUBLAS_OP_C
         trsm = cublas.ctrsm
     elif dtype == 'D':
         geqrf = cusolver.zgeqrf
         geqrf_bufferSize = cusolver.zgeqrf_bufferSize
         ormqr = cusolver.zormqr
+        ormqr_bufferSize = cusolver.zunmqr_bufferSize
         trans = cublas.CUBLAS_OP_C
         trsm = cublas.ztrsm
     else:
@@ -112,8 +116,13 @@ def _solve(a, b, cublas_handle, cusolver_handle):
         buffersize, dev_info.data.ptr)
     cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         geqrf, dev_info)
-
+    # Explicitly free the space allocated by geqrf
+    del workspace
     # 2. ormqr (Q^T * B)
+    buffersize = ormqr_bufferSize(
+        cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans, m, k, m, a.data.ptr,
+        m, tau.data.ptr, b.data.ptr, m)
+    workspace = cupy.empty(buffersize, dtype=dtype)
     ormqr(
         cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans, m, k, m, a.data.ptr,
         m, tau.data.ptr, b.data.ptr, m, workspace.data.ptr, buffersize,
@@ -121,6 +130,8 @@ def _solve(a, b, cublas_handle, cusolver_handle):
     cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         ormqr, dev_info)
 
+    # Explicitly free the space allocated by ormqr
+    del workspace
     # 3. trsm (X = R^{-1} * (Q^T * B))
     trsm(
         cublas_handle, cublas.CUBLAS_SIDE_LEFT, cublas.CUBLAS_FILL_MODE_UPPER,
