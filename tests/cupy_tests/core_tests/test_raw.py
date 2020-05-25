@@ -291,6 +291,13 @@ __global__ void my_sqrt(T* input, int N) {
     input[x] *= input[x];
   }
 }
+
+__global__ void my_func(double* input, int N) {
+  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+  if (x < N) {
+    input[x] *= input[x];
+  }
+}
 '''
 
 if 'CUPY_CACHE_DIR' in os.environ:
@@ -624,11 +631,11 @@ class TestRaw(unittest.TestCase):
 
         # compile code
         specializations = ['my_sqrt<int>', 'my_sqrt<float>',
-                           'my_sqrt<complex<double>>']
+                           'my_sqrt<complex<double>>', 'my_func']
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
                              specializations=specializations)
 
-        dtypes = (cupy.int32, cupy.float32, cupy.complex128)
+        dtypes = (cupy.int32, cupy.float32, cupy.complex128, cupy.float64)
         for ker_T, dtype in zip(specializations, dtypes):
             # get specialized kernels
             ker = mod.get_function(ker_T)
@@ -644,7 +651,7 @@ class TestRaw(unittest.TestCase):
             assert cupy.allclose(in_arr, out_arr)
 
     def test_template_failure(self):
-        specializations = ['my_sqrt<int>',]
+        specializations = ['my_sqrt<int>']
 
         # 1. nvcc is disabled for this feature
         if self.backend == 'nvcc':
@@ -741,7 +748,7 @@ class TestRaw(unittest.TestCase):
             self.skipTest('nvcc does not support template specialization')
 
         # compile code
-        specializations = ['my_sqrt<unsigned int>',]
+        specializations = ['my_sqrt<unsigned int>']
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
                              specializations=specializations)
 
@@ -770,7 +777,7 @@ class TestRaw(unittest.TestCase):
             self.skipTest('nvcc does not support template specialization')
 
         # compile code
-        specializations = ['my_sqrt<unsigned int>',]
+        specializations = ['my_sqrt<unsigned int>']
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
                              specializations=specializations)
 
