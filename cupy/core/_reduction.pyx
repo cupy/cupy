@@ -347,7 +347,7 @@ cdef class _AbstractReductionKernel:
             self, optimize_config, in_args, out_args, in_shape, out_shape,
             type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
             stream):
-        out_dims = internal.prod_sequence(out_shape)
+        out_size = internal.prod_sequence(out_shape)
 
         def target_func(block_size, block_stride, out_block_num):
             self._launch(
@@ -361,7 +361,9 @@ cdef class _AbstractReductionKernel:
             block_stride_log = trial.suggest_int(
                 'block_stride_log', 0, block_size_log)
             block_stride = 2 ** block_stride_log
-            out_block_num = trial.suggest_int('out_block_num', 1, out_dims)
+            max_out_block_num = (out_size + block_stride - 1) // block_stride
+            out_block_num = trial.suggest_int(
+                'out_block_num', 1, max_out_block_num)
 
             trial.set_user_attr('block_size', block_size)
             trial.set_user_attr('block_stride', block_stride)
