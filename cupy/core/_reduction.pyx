@@ -27,6 +27,7 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport runtime
 
+import math
 import string
 
 import numpy
@@ -362,6 +363,15 @@ cdef class _AbstractReductionKernel:
         in_args = [copy_arg(a) for a in in_args]
         out_args = [copy_arg(a) for a in out_args]
 
+        contiguous_size = _get_contiguous_size(
+            in_args, self.in_params, len(in_shape), len(out_shape))
+        block_size, block_stride, default_out_block_num = _get_block_specs(
+            internal.prod(in_shape),
+            internal.prod(out_shape),
+            contiguous_size, -1)
+        default_block_size_log = math.floor(math.log2(block_size))
+        default_block_stride_log = math.floor(math.log2(block_size))
+
         def target_func(block_size, block_stride, out_block_num):
             self._launch(
                 out_block_num, block_size, block_stride, in_args, out_args,
@@ -383,7 +393,14 @@ cdef class _AbstractReductionKernel:
             return block_size, block_stride, out_block_num
 
         optimize_impl = optimize_config.optimize_impl
-        best = optimize_impl(optimize_config, target_func, suggest_func)
+        best = optimize_impl(
+            optimize_config, target_func, suggest_func,
+            default_best={
+                'block_size_log': default_block_size_log,
+                'block_strides_log': default_block_stride_log,
+                'out_block_num': default_out_block_num,
+            }
+        )
         return (
             best.user_attrs['block_size'],
             best.user_attrs['block_stride'],

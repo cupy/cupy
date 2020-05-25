@@ -6,7 +6,7 @@ from cupy.core import _optimize_config
 from cupyx import time
 
 
-def _optimize(optimize_config, target_func, suggest_func):
+def _optimize(optimize_config, target_func, suggest_func, default_best):
     assert isinstance(optimize_config, _optimize_config._OptimizationConfig)
     assert callable(target_func)
     assert callable(suggest_func)
@@ -18,6 +18,7 @@ def _optimize(optimize_config, target_func, suggest_func):
         return perf.gpu_times.mean()
 
     study = optuna.create_study()
+    study.enqueue_trial(default_best)
     study.optimize(
         objective,
         n_trials=optimize_config.max_trials,
