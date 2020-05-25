@@ -19,6 +19,7 @@ from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport _scalar
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport _convert_object_with_cuda_array_interface
+from cupy.core.core cimport _create_ndarray_from_shape_strides
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
@@ -348,6 +349,18 @@ cdef class _AbstractReductionKernel:
             type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
             stream):
         out_size = internal.prod_sequence(out_shape)
+
+        def copy_arg(a):
+            if isinstance(a, ndarray):
+                x = _create_ndarray_from_shape_strides(
+                    a._shape, a._strides, a.dtype)
+                assert a.data.device_id == x.data.device_id
+                x[:] = a
+                return x
+            return a
+
+        in_args = [copy_arg(a) for a in in_args]
+        out_args = [copy_arg(a) for a in out_args]
 
         def target_func(block_size, block_stride, out_block_num):
             self._launch(

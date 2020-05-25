@@ -30,6 +30,7 @@ from cupy import util
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
+from libc.stdint cimport int64_t
 
 from cupy.core cimport _carray
 from cupy.core cimport _dtype
@@ -3010,3 +3011,17 @@ cdef ndarray _ndarray_init(const shape_t& shape, dtype):
     cdef ndarray ret = ndarray.__new__(ndarray)
     ret._init_fast(shape, dtype, True)
     return ret
+
+
+cdef ndarray _create_ndarray_from_shape_strides(
+        const shape_t& shape, const strides_t& strides, dtype):
+    cdef int ndim = shape.size()
+    cdef int64_t begin = 0, end = dtype.itemsize
+    cdef memory.MemoryPointer ptr
+    for i in range(ndim):
+        if strides[i] > 0:
+            end += strides[i] * (shape[i] - 1)
+        elif strides[i] < 0:
+            begin += strides[i] * (shape[i] - 1)
+    ptr = memory.alloc(end - begin) + begin
+    return ndarray(shape, dtype, memptr=ptr, strides=strides)
