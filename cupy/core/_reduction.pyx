@@ -15,6 +15,7 @@ from cupy.core._kernel cimport _get_out_args_with_params
 from cupy.core._kernel cimport _preprocess_args
 from cupy.core._kernel cimport _reduce_dims
 from cupy.core._kernel cimport ParameterInfo
+from cupy.core cimport _optimize_config
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport _scalar
 from cupy.core._scalar import get_typename as _get_typename
@@ -34,7 +35,6 @@ import numpy
 
 from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
-from cupy.core import _optimize_config
 from cupy.cuda import compiler
 from cupy import util
 

@@ -44,6 +44,7 @@ cuda_files = [
     'cupy.core._dtype',
     'cupy.core._kernel',
     'cupy.core._memory_range',
+    'cupy.core._optimize_config',
     'cupy.core._reduction',
     'cupy.core._routines_indexing',
     'cupy.core._routines_logic',

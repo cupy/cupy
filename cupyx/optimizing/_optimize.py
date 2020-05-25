@@ -30,10 +30,9 @@ def _optimize(optimize_config, target_func, suggest_func, default_best):
 def optimize(*, key=None, **config_dict):
     old_context = _optimize_config.get_current_context()
     context = _optimize_config.get_new_context(key, _optimize, config_dict)
-    thread_local = _optimize_config._thread_local
-    thread_local.current_context = context
+    _optimize_config.set_current_context(context)
 
     try:
         yield context
     finally:
-        thread_local.current_context = old_context
+        _optimize_config.set_current_context(old_context)
