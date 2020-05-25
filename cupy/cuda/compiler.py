@@ -610,7 +610,7 @@ def _convert_to_hip_source(source):
 
 
 def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
-                              backend='hiprtc', use_converter=True):
+                            backend='hiprtc', use_converter=True):
     global _empty_file_preprocess_cache
     if cache_dir is None:
         cache_dir = get_cache_dir()
