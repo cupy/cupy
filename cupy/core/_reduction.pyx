@@ -246,7 +246,7 @@ cdef class _AbstractReductionKernel:
             self,
             list in_args, list out_args,
             const shape_t& a_shape, axis, dtype,
-            bint keepdims, bint reduce_dims,
+            bint keepdims, bint reduce_dims, int device_id,
             stream):
         cdef tuple reduce_axis, out_axis
         cdef Py_ssize_t contiguous_size
@@ -320,7 +320,7 @@ cdef class _AbstractReductionKernel:
                     shape_and_strides.append(None)
             key = (
                 id(self), tuple(shape_and_strides),
-                in_types, out_types, reduce_type,
+                in_types, out_types, reduce_type, device_id,
             )
 
             params = optimize_context.get_params(key)
@@ -496,7 +496,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         reduce_dims = True
         return self._call(
             in_args, out_args,
-            arr._shape, axis, dtype, keepdims, reduce_dims, None)
+            arr._shape, axis, dtype, keepdims, reduce_dims, dev_id, None)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
@@ -669,7 +669,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         return self._call(
             in_args, out_args,
             broad_shape, axis, None,
-            keepdims, self.reduce_dims, stream)
+            keepdims, self.reduce_dims, dev_id, stream)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):

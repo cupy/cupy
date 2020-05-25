@@ -17,7 +17,7 @@ cdef class _AbstractReductionKernel:
         self,
         list in_args, list out_args,
         const shape_t& a_shape, axis, dtype,
-        bint keepdims, bint reduce_dims,
+        bint keepdims, bint reduce_dims, int device_id,
         stream)
 
     cdef void _launch(
