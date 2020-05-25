@@ -623,8 +623,8 @@ class TestRaw(unittest.TestCase):
             self.skipTest('nvcc does not support template specialization')
 
         # compile code
-        specializations = ('my_sqrt<int>', 'my_sqrt<float>',
-                           'my_sqrt<complex<double>>')
+        specializations = ['my_sqrt<int>', 'my_sqrt<float>',
+                           'my_sqrt<complex<double>>']
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
                              specializations=specializations)
 
@@ -644,7 +644,7 @@ class TestRaw(unittest.TestCase):
             assert cupy.allclose(in_arr, out_arr)
 
     def test_template_failure(self):
-        specializations = ('my_sqrt<int>',)
+        specializations = ['my_sqrt<int>',]
 
         # 1. nvcc is disabled for this feature
         if self.backend == 'nvcc':
@@ -741,7 +741,7 @@ class TestRaw(unittest.TestCase):
             self.skipTest('nvcc does not support template specialization')
 
         # compile code
-        specializations = ('my_sqrt<unsigned int>',)
+        specializations = ['my_sqrt<unsigned int>',]
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
                              specializations=specializations)
 
@@ -770,7 +770,7 @@ class TestRaw(unittest.TestCase):
             self.skipTest('nvcc does not support template specialization')
 
         # compile code
-        specializations = ('my_sqrt<unsigned int>',)
+        specializations = ['my_sqrt<unsigned int>',]
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
                              specializations=specializations)
 

@@ -252,11 +252,12 @@ cdef class RawModule:
             ``cuLaunchCooperativeKernel`` so that cooperative groups can be
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
-        specializations (tuple of str): A tuple of strings for specializing
-            C++ template kernels. For example, ``specializations=('func<int>',
-            'func<double>')`` for the template kernel ``func<T>``. Strings in
-            this tuple must then be passed, one at a time, to
-            :meth:`get_function` to retrieve the corresponding kernel name.
+        specializations (sequence of str): A sequence (e.g. list) of strings
+            for specializing C++ template kernels. For example,
+            ``specializations=['func<int>', 'func<double>']`` for the template
+            kernel ``func<T>``. Strings in this tuple must then be passed, one
+            at a time, to :meth:`get_function` to retrieve the corresponding
+            kernel name.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
@@ -264,7 +265,7 @@ cdef class RawModule:
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
                  bint enable_cooperative_groups=False,
-                 tuple specializations=None):
+                 specializations=None):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
@@ -282,11 +283,13 @@ cdef class RawModule:
             else:
                 raise ValueError('need to specify C++ standard for compiling '
                                  'template code')
+            self.specializations = tuple(specializations)  # make it hashable
+        else:
+            self.specializations = None
 
         self.code = code
         self.file_path = path
         self.enable_cooperative_groups = enable_cooperative_groups
-        self.specializations = specializations
 
         if self.code is not None:
             self.options = options
