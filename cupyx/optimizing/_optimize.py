@@ -27,8 +27,6 @@ def _optimize(optimize_config, target_func, suggest_func):
 
 @contextlib.contextmanager
 def optimize(*, key=None, **config_dict):
-    assert key is not None
-
     old_context = _optimize_config.get_current_context()
     context = _optimize_config.get_new_context(key, _optimize, config_dict)
     thread_local = _optimize_config._thread_local
