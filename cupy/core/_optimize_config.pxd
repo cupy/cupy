@@ -15,7 +15,7 @@ cdef class _OptimizationContext:
 
     cdef readonly str key
     cdef readonly _OptimizationConfig config
-    cdef readonly dict params_map
+    cdef readonly dict _params_map
 
 
 cpdef _OptimizationContext get_current_context()
