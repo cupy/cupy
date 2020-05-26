@@ -35,6 +35,7 @@ import numpy
 
 from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
+from cupy.core._ufuncs import elementwise_copy
 from cupy.cuda import compiler
 from cupy import util
 
@@ -356,7 +357,7 @@ cdef class _AbstractReductionKernel:
                 x = _create_ndarray_from_shape_strides(
                     a._shape, a._strides, a.dtype)
                 assert a.data.device_id == x.data.device_id
-                x[:] = a
+                elementwise_copy(a, x)
                 return x
             return a
 
