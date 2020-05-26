@@ -1,4 +1,6 @@
 import mock
+import pytest
+import tempfile
 import unittest
 
 import cupy
@@ -93,3 +95,27 @@ class TestOptimize(unittest.TestCase):
                     x = testing.shaped_arange((3, 4), cupy)
                     my_sum(x, axis=1)
                     assert optimize_impl.call_count == 2
+
+    def test_optimize_pickle(self):
+        my_sum = cupy.ReductionKernel(
+            'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
+        x = testing.shaped_arange((3, 4), cupy)
+
+        with tempfile.TemporaryDirectory() as directory:
+            filepath = directory + '/optimize_params'
+
+            with cupyx.optimizing.optimize() as context:
+                my_sum(x, axis=1)
+                params_map = context._params_map
+                context.save(filepath)
+
+            cupy.core._optimize_config._clear_all_contexts_cache()
+
+            with cupyx.optimizing.optimize() as context:
+                assert params_map.keys() != context._params_map.keys()
+                context.load(filepath)
+                assert params_map.keys() == context._params_map.keys()
+
+            with cupyx.optimizing.optimize(key='other_key') as context:
+                with pytest.raises(ValueError):
+                    context.load(filepath)
