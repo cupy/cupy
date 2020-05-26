@@ -57,6 +57,7 @@ Helper routines
    cupy.fft.rfftfreq
    cupy.fft.fftshift
    cupy.fft.ifftshift
+   cupy.fft.config.set_cufft_gpus
 
 
 Normalization
@@ -73,5 +74,11 @@ CuPy functions do not follow the behavior, they will return ``numpy.complex64`` 
 Internally, ``cupy.fft`` always generates a *cuFFT plan* (see the `cuFFT documentation`_ for detail) corresponding to the desired transform. When possible, an n-dimensional plan will be used, as opposed to applying separate 1D plans for each axis to be transformed. Using n-dimensional planning can provide better performance for multidimensional transforms, but requires more GPU memory than separable 1D planning. The user can disable n-dimensional planning by setting ``cupy.fft.config.enable_nd_planning = False``. This ability to adjust the planning type is a deviation from the NumPy API, which does not use precomputed FFT plans.
 
 Moreover, the automatic plan generation can be suppressed by using an existing plan returned by :func:`cupyx.scipy.fftpack.get_fft_plan` as a context manager. This is again a deviation from NumPy.
+
+
+Multi-GPU FFT
+-------------
+:mod:`cupy.fft` can use multiple GPUs. To enable (disable) this feature, set :data:`cupy.fft.config.use_multi_gpus` to ``True`` (``False``). Next, to set the number of GPUs or the participating GPU IDs, use the function :func:`cupy.fft.config.set_cufft_gpus`. All of the limitations listed in the `cuFFT documentation`_ apply here. In particular, using more than one GPU does not guarantee better performance.
+
 
 .. _cuFFT documentation: https://docs.nvidia.com/cuda/cufft/index.html

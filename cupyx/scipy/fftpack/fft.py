@@ -2,8 +2,10 @@ from numpy import prod
 
 import cupy
 from cupy.cuda import cufft
-from cupy.fft.fft import (_fft, _default_fft_func, _convert_fft_type,
-                          _get_cufft_plan_nd)
+from cupy.fft import config
+from cupy.fft.fft import (_convert_fft_type, _default_fft_func, _fft,
+                          _get_cufft_plan_nd, _get_fftn_out_size,
+                          _output_dtype)
 
 
 def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
@@ -21,8 +23,11 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             Currently, for performing N-D transform these must be a set of up
             to three adjacent axes, and must include either the first or the
             last axis of the array.
-        value_type ('C2C'): The FFT type to perform.
-            Currently only complex-to-complex transforms are supported.
+        value_type (str): The FFT type to perform. Acceptable values are:
+
+            * 'C2C': complex-to-complex transform (default)
+            * 'R2C': real-to-complex transform
+            * 'C2R': complex-to-real transform
 
     Returns:
         a cuFFT plan for either 1D transform (``cupy.cuda.cufft.Plan1d``) or
@@ -88,26 +93,39 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
     # Note that "shape" here refers to the shape along trasformed axes, not
     # the shape of the output array, and we need to convert it to the latter.
     # The result is as if "a=_cook_shape(a); return a.shape" is called.
+    # Because of this, we need to use (possibly unsorted) axes.
     transformed_shape = shape
     shape = list(a.shape)
     if transformed_shape is not None:
         for s, axis in zip(transformed_shape, axes):
-            shape[axis] = s
+            if s is not None:
+                if axis == axes[-1] and value_type == 'C2R':
+                    s = s // 2 + 1
+                shape[axis] = s
     shape = tuple(shape)
 
     # check value_type
-    fft_type = _convert_fft_type(a, value_type)
-    if n > 1 and fft_type not in [cufft.CUFFT_C2C, cufft.CUFFT_Z2Z]:
-        raise NotImplementedError('Only C2C and Z2Z are supported for N-dim'
-                                  ' transform.')
+    out_dtype = _output_dtype(a.dtype, value_type)
+    fft_type = _convert_fft_type(out_dtype, value_type)
+    # TODO(leofang): figure out if we really have to skip F-order?
+    if n > 1 and value_type != 'C2C' and a.flags.f_contiguous:
+        raise ValueError('C2R/R2C PlanNd for F-order arrays is not supported')
 
     # generate plan
     if n > 1:  # ND transform
-        plan = _get_cufft_plan_nd(shape, fft_type, axes=axes, order=order)
+        out_size = _get_fftn_out_size(
+            shape, transformed_shape, axes[-1], value_type)
+        plan = _get_cufft_plan_nd(
+            shape, fft_type, axes=axes, order=order, out_size=out_size)
     else:  # 1D transform
-        out_size = shape[axis1D]
-        batch = prod(shape) // out_size
-        plan = cufft.Plan1d(out_size, fft_type, batch)
+        if value_type != 'C2R':
+            out_size = shape[axis1D]
+        else:
+            out_size = _get_fftn_out_size(
+                shape, transformed_shape, axis1D, value_type)
+        batch = prod(shape) // shape[axis1D]
+        devices = None if not config.use_multi_gpus else config._devices
+        plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
 
     return plan
 
@@ -122,8 +140,8 @@ def fft(x, n=None, axis=-1, overwrite_x=False, plan=None):
             ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (cupy.cuda.cufft.Plan1d): a cuFFT plan for transforming ``x``
-            over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axis``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axis)
 
@@ -155,8 +173,8 @@ def ifft(x, n=None, axis=-1, overwrite_x=False, plan=None):
             ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (cupy.cuda.cufft.Plan1d): a cuFFT plan for transforming ``x``
-            over ``axis``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axis``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axis)
 
@@ -188,8 +206,8 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
             the axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (cupy.cuda.cufft.PlanNd): a cuFFT plan for transforming ``x``
-            over ``axes``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
 
@@ -224,8 +242,8 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
             the axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (cupy.cuda.cufft.PlanNd): a cuFFT plan for transforming ``x``
-            over ``axes``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
 
@@ -260,8 +278,8 @@ def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
             the axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (cupy.cuda.cufft.PlanNd): a cuFFT plan for transforming ``x``
-            over ``axes``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
 
@@ -296,8 +314,8 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
             the axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
-        plan (cupy.cuda.cufft.PlanNd): a cuFFT plan for transforming ``x``
-            over ``axes``, which can be obtained using::
+        plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axes``, which can be obtained using::
 
                 plan = cupyx.scipy.fftpack.get_fft_plan(x, axes)
 
@@ -322,7 +340,7 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
                 overwrite_x=overwrite_x, plan=plan)
 
 
-def rfft(x, n=None, axis=-1, overwrite_x=False):
+def rfft(x, n=None, axis=-1, overwrite_x=False, plan=None):
     """Compute the one-dimensional FFT for real input.
 
     The returned real array contains
@@ -339,12 +357,26 @@ def rfft(x, n=None, axis=-1, overwrite_x=False):
             ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
+            transforming ``x`` over ``axis``, which can be obtained using::
+
+                plan = cupyx.scipy.fftpack.get_fft_plan(
+                    x, axes, value_type='R2C')
+
+            Note that `plan` is defaulted to None, meaning CuPy will either
+            use an auto-generated plan behind the scene if cupy.fft.config.
+            enable_nd_planning = True, or use no cuFFT plan if it is set to
+            False.
 
     Returns:
         cupy.ndarray:
             The transformed array.
 
     .. seealso:: :func:`scipy.fftpack.rfft`
+
+    .. note::
+       The argument `plan` is currently experimental and the interface may be
+       changed in the future version.
     """
     if n is None:
         n = x.shape[axis]
@@ -352,7 +384,7 @@ def rfft(x, n=None, axis=-1, overwrite_x=False):
     shape = list(x.shape)
     shape[axis] = n
     f = _fft(x, (n,), (axis,), None, cufft.CUFFT_FORWARD, 'R2C',
-             overwrite_x=overwrite_x)
+             overwrite_x=overwrite_x, plan=plan)
     z = cupy.empty(shape, f.real.dtype)
 
     slice_z = [slice(None)] * x.ndim
@@ -389,6 +421,11 @@ def irfft(x, n=None, axis=-1, overwrite_x=False):
             The transformed array.
 
     .. seealso:: :func:`scipy.fftpack.irfft`
+
+    .. note::
+       This function does not support a precomputed `plan`. If you need this
+       capability, please consider using :func:`cupy.fft.irfft` or :func:`
+       cupyx.scipy.fft.irfft`.
     """
     if n is None:
         n = x.shape[axis]

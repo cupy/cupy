@@ -21,6 +21,7 @@ Memory management
    cupy.get_default_memory_pool
    cupy.get_default_pinned_memory_pool
    cupy.cuda.Memory
+   cupy.cuda.UnownedMemory
    cupy.cuda.PinnedMemory
    cupy.cuda.MemoryPointer
    cupy.cuda.PinnedMemoryPointer
@@ -28,6 +29,7 @@ Memory management
    cupy.cuda.alloc_pinned_memory
    cupy.cuda.get_allocator
    cupy.cuda.set_allocator
+   cupy.cuda.using_allocator
    cupy.cuda.set_pinned_memory_allocator
    cupy.cuda.MemoryPool
    cupy.cuda.PinnedMemoryPool
@@ -53,13 +55,14 @@ Streams and events
    :nosignatures:
 
    cupy.cuda.Stream
+   cupy.cuda.ExternalStream
    cupy.cuda.get_current_stream
    cupy.cuda.Event
    cupy.cuda.get_elapsed_time
 
 
-Texture memory
---------------
+Texture and surface memory
+--------------------------
 
 .. autosummary::
    :toctree: generated/
@@ -70,6 +73,7 @@ Texture memory
    cupy.cuda.texture.ResourceDescriptor
    cupy.cuda.texture.TextureDescriptor
    cupy.cuda.texture.TextureObject
+   cupy.cuda.texture.SurfaceObject
    cupy.cuda.texture.TextureReference
 
 

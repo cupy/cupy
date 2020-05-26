@@ -3,13 +3,16 @@ from cupy.cuda cimport memory
 
 from cupy.cuda.function cimport CPointer
 from cupy.cuda.function cimport Module
+from cupy.core._carray cimport shape_t
+from cupy.core._carray cimport strides_t
+
 
 cdef class ndarray:
     cdef:
         object __weakref__
         readonly Py_ssize_t size
-        public vector.vector[Py_ssize_t] _shape
-        public vector.vector[Py_ssize_t] _strides
+        public shape_t _shape
+        public strides_t _strides
         readonly bint _c_contiguous
         readonly bint _f_contiguous
         readonly object dtype
@@ -18,8 +21,7 @@ cdef class ndarray:
         # underlying memory is UnownedMemory.
         readonly ndarray base
 
-    cdef _init_fast(self, const vector.vector[Py_ssize_t]& shape, dtype,
-                    bint c_order)
+    cdef _init_fast(self, const shape_t& shape, dtype, bint c_order)
     cpdef item(self)
     cpdef tolist(self)
     cpdef bytes tobytes(self, order=*)
@@ -43,6 +45,7 @@ cdef class ndarray:
     cpdef partition(self, kth, int axis=*)
     cpdef ndarray argpartition(self, kth, axis=*)
     cpdef tuple nonzero(self)
+    cpdef ndarray compress(self, condition, axis=*, out=*)
     cpdef ndarray diagonal(self, offset=*, axis1=*, axis2=*)
     cpdef ndarray max(self, axis=*, out=*, keepdims=*)
     cpdef ndarray argmax(self, axis=*, out=*, dtype=*,
@@ -75,12 +78,12 @@ cdef class ndarray:
     cpdef _update_c_contiguity(self)
     cpdef _update_f_contiguity(self)
     cpdef _update_contiguity(self)
-    cpdef _set_shape_and_strides(self, const vector.vector[Py_ssize_t]& shape,
-                                 const vector.vector[Py_ssize_t]& strides,
+    cpdef _set_shape_and_strides(self, const shape_t& shape,
+                                 const strides_t& strides,
                                  bint update_c_contiguity,
                                  bint update_f_contiguity)
-    cdef ndarray _view(self, const vector.vector[Py_ssize_t]& shape,
-                       const vector.vector[Py_ssize_t]& strides,
+    cdef ndarray _view(self, const shape_t& shape,
+                       const strides_t& strides,
                        bint update_c_contiguity,
                        bint update_f_contiguity)
     cpdef _set_contiguous_strides(
@@ -105,4 +108,7 @@ cpdef ndarray array(obj, dtype=*, bint copy=*, order=*, bint subok=*,
                     Py_ssize_t ndmin=*)
 cpdef ndarray _convert_object_with_cuda_array_interface(a)
 
-cdef ndarray _ndarray_init(const vector.vector[Py_ssize_t]& shape, dtype)
+cdef ndarray _ndarray_init(const shape_t& shape, dtype)
+
+cdef ndarray _create_ndarray_from_shape_strides(
+    const shape_t& shape, const strides_t& strides, dtype)

@@ -56,7 +56,7 @@ Some features in CuPy will only be enabled if the corresponding libraries are in
     * Supported Versions: v5, v5.1, v6, v7, v7.1, v7.2, v7.3, v7.4 and v7.5.
 * `NCCL <https://developer.nvidia.com/nccl>`_  (library to perform collective multi-GPU / multi-node computations)
     * Supported Versions: v1.3.4, v2, v2.1, v2.2, v2.3 and v2.4.
-* `cuTENSOR <https://developer.nvidia.com/cuda-math-library-early-access-program-page>`_ (library for high-performance tensor operations)
+* `cuTENSOR <https://developer.nvidia.com/cutensor>`_ (library for high-performance tensor operations)
     * Supported Versions: v1.0.0 (experimental)
 
 
@@ -100,6 +100,36 @@ Please make sure that only one CuPy package (``cupy`` or ``cupy-cudaXX`` where X
 
   $ pip freeze | grep cupy
 
+
+Install CuPy from conda-forge
+-----------------------------
+
+Conda/Anaconda is a cross-platform package management solution widely used in scientific computing and other fields.
+The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for Linux 64 systems
+once the CUDA driver is correctly set up, you can install CuPy from the ``conda-forge`` channel::
+
+    $ conda install -c conda-forge cupy
+
+and ``conda`` will install pre-built CuPy and most of the optional dependencies for you, including CUDA runtime libraries
+(``cudatoolkit``), NCCL, and cuDNN. It is not necessary to install CUDA Toolkit in advance. If you need to enforce
+the installation of a particular CUDA version (say 10.0) for driver compatibility, you can do::
+
+    $ conda install -c conda-forge cupy cudatoolkit=10.0
+
+.. note::
+
+    Currently cuTENSOR is not yet available on ``conda-forge``.
+
+.. note::
+
+    If you encounter any problem with CuPy from ``conda-forge``, please feel free to report to `cupy-feedstock 
+    <https://github.com/conda-forge/cupy-feedstock/issues>`_, and we will help investigate if it is just a packaging
+    issue in ``conda-forge``'s recipe or a real issue in CuPy.
+
+.. note::
+
+    If you did not install CUDA Toolkit yourselves, the ``nvcc`` compiler might not be available. 
+    The ``cudatoolkit`` package from Anaconda does not have ``nvcc`` included.
 
 Install CuPy from Source
 ------------------------
@@ -168,6 +198,10 @@ Use pip to uninstall CuPy::
 .. note::
 
    If you are using a wheel, ``cupy`` shall be replaced with ``cupy-cudaXX`` (where XX is a CUDA version number).
+
+.. note::
+
+   If CuPy is installed via ``conda``, please do ``conda uninstall cupy`` instead.
 
 
 Upgrade CuPy
@@ -245,7 +279,7 @@ If you need to pass environment variable (e.g., ``CUDA_PATH``), you need to spec
 
 If you are using certain versions of conda, it may fail to build CuPy with error ``g++: error: unrecognized command line option ‘-R’``.
 This is due to a bug in conda (see `conda/conda#6030 <https://github.com/conda/conda/issues/6030>`_ for details).
-If you encounter this problem, please downgrade or upgrade it.
+If you encounter this problem, please upgrade your conda.
 
 .. _install_cudnn:
 
@@ -334,11 +368,3 @@ For example, if you have CUDA installed at ``/usr/local/cuda-9.0``::
   export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
 
 Also see :ref:`install_cuda`.
-
-If you are installing CuPy on Anaconda environment, also make sure that the following packages are not installed.
-
-* `cudatoolkit <https://anaconda.org/anaconda/cudatoolkit>`__
-* `cudnn <https://anaconda.org/anaconda/cudnn>`__
-* `nccl <https://anaconda.org/anaconda/nccl>`__
-
-Use ``conda uninstall cudatoolkit cudnn nccl`` to remove these package.

@@ -315,21 +315,21 @@ cpdef inline check_status(int status):
 # Context
 ###############################################################################
 
-cpdef size_t create() except? 0:
+cpdef intptr_t create() except? 0:
     cdef Handle handle
     with nogil:
         status = cublasCreate(&handle)
     check_status(status)
-    return <size_t>handle
+    return <intptr_t>handle
 
 
-cpdef destroy(size_t handle):
+cpdef destroy(intptr_t handle):
     with nogil:
         status = cublasDestroy(<Handle>handle)
     check_status(status)
 
 
-cpdef int getVersion(size_t handle) except? -1:
+cpdef int getVersion(intptr_t handle) except? -1:
     cdef int version
     with nogil:
         status = cublasGetVersion(<Handle>handle, &version)
@@ -337,7 +337,7 @@ cpdef int getVersion(size_t handle) except? -1:
     return version
 
 
-cpdef int getPointerMode(size_t handle) except? -1:
+cpdef int getPointerMode(intptr_t handle) except? -1:
     cdef PointerMode mode
     with nogil:
         status = cublasGetPointerMode(<Handle>handle, &mode)
@@ -345,7 +345,7 @@ cpdef int getPointerMode(size_t handle) except? -1:
     return mode
 
 
-cpdef setPointerMode(size_t handle, int mode):
+cpdef setPointerMode(intptr_t handle, int mode):
     with nogil:
         status = cublasSetPointerMode(<Handle>handle, <PointerMode>mode)
     check_status(status)
@@ -355,13 +355,13 @@ cpdef setPointerMode(size_t handle, int mode):
 # Stream
 ###############################################################################
 
-cpdef setStream(size_t handle, size_t stream):
+cpdef setStream(intptr_t handle, size_t stream):
     with nogil:
         status = cublasSetStream(<Handle>handle, <driver.Stream>stream)
     check_status(status)
 
 
-cpdef size_t getStream(size_t handle) except? 0:
+cpdef size_t getStream(intptr_t handle) except? 0:
     cdef driver.Stream stream
     with nogil:
         status = cublasGetStream(<Handle>handle, &stream)
@@ -373,13 +373,13 @@ cpdef size_t getStream(size_t handle) except? 0:
 # Math Mode
 ###############################################################################
 
-cpdef setMathMode(size_t handle, int mode):
+cpdef setMathMode(intptr_t handle, int mode):
     with nogil:
         status = cublasSetMathMode(<Handle>handle, <Math>mode)
     check_status(status)
 
 
-cpdef int getMathMode(size_t handle) except? -1:
+cpdef int getMathMode(intptr_t handle) except? -1:
     cdef Math mode
     with nogil:
         status = cublasGetMathMode(<Handle>handle, &mode)
@@ -391,7 +391,7 @@ cpdef int getMathMode(size_t handle) except? -1:
 # BLAS Level 1
 ###############################################################################
 
-cpdef int isamax(size_t handle, int n, size_t x, int incx) except? 0:
+cpdef int isamax(intptr_t handle, int n, size_t x, int incx) except? 0:
     cdef int result
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -401,7 +401,7 @@ cpdef int isamax(size_t handle, int n, size_t x, int incx) except? 0:
     return result
 
 
-cpdef int isamin(size_t handle, int n, size_t x, int incx) except? 0:
+cpdef int isamin(intptr_t handle, int n, size_t x, int incx) except? 0:
     cdef int result
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -411,7 +411,7 @@ cpdef int isamin(size_t handle, int n, size_t x, int incx) except? 0:
     return result
 
 
-cpdef float sasum(size_t handle, int n, size_t x, int incx) except? 0:
+cpdef float sasum(intptr_t handle, int n, size_t x, int incx) except? 0:
     cdef float result
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -421,7 +421,7 @@ cpdef float sasum(size_t handle, int n, size_t x, int incx) except? 0:
     return result
 
 
-cpdef saxpy(size_t handle, int n, float alpha, size_t x, int incx, size_t y,
+cpdef saxpy(intptr_t handle, int n, float alpha, size_t x, int incx, size_t y,
             int incy):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -430,7 +430,7 @@ cpdef saxpy(size_t handle, int n, float alpha, size_t x, int incx, size_t y,
     check_status(status)
 
 
-cpdef daxpy(size_t handle, int n, double alpha, size_t x, int incx, size_t y,
+cpdef daxpy(intptr_t handle, int n, double alpha, size_t x, int incx, size_t y,
             int incy):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -439,7 +439,7 @@ cpdef daxpy(size_t handle, int n, double alpha, size_t x, int incx, size_t y,
     check_status(status)
 
 
-cpdef sdot(size_t handle, int n, size_t x, int incx, size_t y, int incy,
+cpdef sdot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -449,7 +449,7 @@ cpdef sdot(size_t handle, int n, size_t x, int incx, size_t y, int incy,
     check_status(status)
 
 
-cpdef ddot(size_t handle, int n, size_t x, int incx, size_t y, int incy,
+cpdef ddot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -459,7 +459,7 @@ cpdef ddot(size_t handle, int n, size_t x, int incx, size_t y, int incy,
     check_status(status)
 
 
-cpdef cdotu(size_t handle, int n, size_t x, int incx, size_t y, int incy,
+cpdef cdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -469,7 +469,7 @@ cpdef cdotu(size_t handle, int n, size_t x, int incx, size_t y, int incy,
     check_status(status)
 
 
-cpdef cdotc(size_t handle, int n, size_t x, int incx, size_t y, int incy,
+cpdef cdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -479,7 +479,7 @@ cpdef cdotc(size_t handle, int n, size_t x, int incx, size_t y, int incy,
     check_status(status)
 
 
-cpdef zdotu(size_t handle, int n, size_t x, int incx, size_t y, int incy,
+cpdef zdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -489,7 +489,7 @@ cpdef zdotu(size_t handle, int n, size_t x, int incx, size_t y, int incy,
     check_status(status)
 
 
-cpdef zdotc(size_t handle, int n, size_t x, int incx, size_t y, int incy,
+cpdef zdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
     with nogil:
         status = cublasZdotc(
@@ -498,7 +498,7 @@ cpdef zdotc(size_t handle, int n, size_t x, int incx, size_t y, int incy,
     check_status(status)
 
 
-cpdef float snrm2(size_t handle, int n, size_t x, int incx) except? 0:
+cpdef float snrm2(intptr_t handle, int n, size_t x, int incx) except? 0:
     cdef float result
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -507,7 +507,7 @@ cpdef float snrm2(size_t handle, int n, size_t x, int incx) except? 0:
     return result
 
 
-cpdef sscal(size_t handle, int n, float alpha, size_t x, int incx):
+cpdef sscal(intptr_t handle, int n, float alpha, size_t x, int incx):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cublasSscal(<Handle>handle, n, &alpha, <float*>x, incx)
@@ -518,7 +518,7 @@ cpdef sscal(size_t handle, int n, float alpha, size_t x, int incx):
 # BLAS Level 2
 ###############################################################################
 
-cpdef sgemv(size_t handle, int trans, int m, int n, float alpha, size_t A,
+cpdef sgemv(intptr_t handle, int trans, int m, int n, float alpha, size_t A,
             int lda, size_t x, int incx, float beta, size_t y, int incy):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -528,7 +528,7 @@ cpdef sgemv(size_t handle, int trans, int m, int n, float alpha, size_t A,
     check_status(status)
 
 
-cpdef dgemv(size_t handle, int trans, int m, int n, double alpha, size_t A,
+cpdef dgemv(intptr_t handle, int trans, int m, int n, double alpha, size_t A,
             int lda, size_t x, int incx, double beta, size_t y, int incy):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -538,7 +538,7 @@ cpdef dgemv(size_t handle, int trans, int m, int n, double alpha, size_t A,
     check_status(status)
 
 
-cpdef cgemv(size_t handle, int trans, int m, int n, float complex alpha,
+cpdef cgemv(intptr_t handle, int trans, int m, int n, float complex alpha,
             size_t A, int lda, size_t x, int incx, float complex beta,
             size_t y, int incy):
     cdef cuComplex a = get_cu_complex(alpha)
@@ -551,7 +551,7 @@ cpdef cgemv(size_t handle, int trans, int m, int n, float complex alpha,
     check_status(status)
 
 
-cpdef zgemv(size_t handle, int trans, int m, int n, double complex alpha,
+cpdef zgemv(intptr_t handle, int trans, int m, int n, double complex alpha,
             size_t A, int lda, size_t x, int incx, double complex beta,
             size_t y, int incy):
     cdef cuDoubleComplex a = get_cu_double_complex(alpha)
@@ -564,7 +564,7 @@ cpdef zgemv(size_t handle, int trans, int m, int n, double complex alpha,
     check_status(status)
 
 
-cpdef sger(size_t handle, int m, int n, float alpha, size_t x, int incx,
+cpdef sger(intptr_t handle, int m, int n, float alpha, size_t x, int incx,
            size_t y, int incy, size_t A, int lda):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -574,7 +574,7 @@ cpdef sger(size_t handle, int m, int n, float alpha, size_t x, int incx,
     check_status(status)
 
 
-cpdef dger(size_t handle, int m, int n, double alpha, size_t x, int incx,
+cpdef dger(intptr_t handle, int m, int n, double alpha, size_t x, int incx,
            size_t y, int incy, size_t A, int lda):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -584,7 +584,7 @@ cpdef dger(size_t handle, int m, int n, double alpha, size_t x, int incx,
     check_status(status)
 
 
-cpdef cgeru(size_t handle, int m, int n, float complex alpha, size_t x,
+cpdef cgeru(intptr_t handle, int m, int n, float complex alpha, size_t x,
             int incx, size_t y, int incy, size_t A, int lda):
     cdef cuComplex a = get_cu_complex(alpha)
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -595,7 +595,7 @@ cpdef cgeru(size_t handle, int m, int n, float complex alpha, size_t x,
     check_status(status)
 
 
-cpdef cgerc(size_t handle, int m, int n, float complex alpha, size_t x,
+cpdef cgerc(intptr_t handle, int m, int n, float complex alpha, size_t x,
             int incx, size_t y, int incy, size_t A, int lda):
     cdef cuComplex a = get_cu_complex(alpha)
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -606,7 +606,7 @@ cpdef cgerc(size_t handle, int m, int n, float complex alpha, size_t x,
     check_status(status)
 
 
-cpdef zgeru(size_t handle, int m, int n, double complex alpha, size_t x,
+cpdef zgeru(intptr_t handle, int m, int n, double complex alpha, size_t x,
             int incx, size_t y, int incy, size_t A, int lda):
     cdef cuDoubleComplex a = get_cu_double_complex(alpha)
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -618,7 +618,7 @@ cpdef zgeru(size_t handle, int m, int n, double complex alpha, size_t x,
     check_status(status)
 
 
-cpdef zgerc(size_t handle, int m, int n, double complex alpha, size_t x,
+cpdef zgerc(intptr_t handle, int m, int n, double complex alpha, size_t x,
             int incx, size_t y, int incy, size_t A, int lda):
     cdef cuDoubleComplex a = get_cu_double_complex(alpha)
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -634,7 +634,7 @@ cpdef zgerc(size_t handle, int m, int n, double complex alpha, size_t x,
 # BLAS Level 3
 ###############################################################################
 
-cpdef sgemm(size_t handle, int transa, int transb,
+cpdef sgemm(intptr_t handle, int transa, int transb,
             int m, int n, int k, float alpha, size_t A, int lda,
             size_t B, int ldb, float beta, size_t C, int ldc):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -645,7 +645,7 @@ cpdef sgemm(size_t handle, int transa, int transb,
     check_status(status)
 
 
-cpdef dgemm(size_t handle, int transa, int transb,
+cpdef dgemm(intptr_t handle, int transa, int transb,
             int m, int n, int k, double alpha, size_t A, int lda,
             size_t B, int ldb, double beta, size_t C, int ldc):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -656,7 +656,7 @@ cpdef dgemm(size_t handle, int transa, int transb,
     check_status(status)
 
 
-cpdef cgemm(size_t handle, int transa, int transb,
+cpdef cgemm(intptr_t handle, int transa, int transb,
             int m, int n, int k, float complex alpha, size_t A, int lda,
             size_t B, int ldb, float complex beta, size_t C, int ldc):
     cdef cuComplex a = get_cu_complex(alpha)
@@ -670,7 +670,7 @@ cpdef cgemm(size_t handle, int transa, int transb,
     check_status(status)
 
 
-cpdef zgemm(size_t handle, int transa, int transb,
+cpdef zgemm(intptr_t handle, int transa, int transb,
             int m, int n, int k, double complex alpha, size_t A, int lda,
             size_t B, int ldb, double complex beta, size_t C, int ldc):
     cdef cuDoubleComplex a = get_cu_double_complex(alpha)
@@ -686,7 +686,7 @@ cpdef zgemm(size_t handle, int transa, int transb,
 
 
 cpdef sgemmBatched(
-        size_t handle, int transa, int transb, int m, int n, int k,
+        intptr_t handle, int transa, int transb, int m, int n, int k,
         float alpha, size_t Aarray, int lda, size_t Barray, int ldb,
         float beta, size_t Carray, int ldc, int batchCount):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -699,7 +699,7 @@ cpdef sgemmBatched(
 
 
 cpdef dgemmBatched(
-        size_t handle, int transa, int transb, int m, int n, int k,
+        intptr_t handle, int transa, int transb, int m, int n, int k,
         double alpha, size_t Aarray, int lda, size_t Barray, int ldb,
         double beta, size_t Carray, int ldc, int batchCount):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -712,7 +712,7 @@ cpdef dgemmBatched(
 
 
 cpdef cgemmBatched(
-        size_t handle, int transa, int transb, int m, int n, int k,
+        intptr_t handle, int transa, int transb, int m, int n, int k,
         float complex alpha, size_t Aarray, int lda, size_t Barray, int ldb,
         float complex beta, size_t Carray, int ldc, int batchCount):
     cdef cuComplex a = get_cu_complex(alpha)
@@ -727,7 +727,7 @@ cpdef cgemmBatched(
 
 
 cpdef zgemmBatched(
-        size_t handle, int transa, int transb, int m, int n, int k,
+        intptr_t handle, int transa, int transb, int m, int n, int k,
         double complex alpha, size_t Aarray, int lda, size_t Barray, int ldb,
         double complex beta, size_t Carray, int ldc, int batchCount):
     cdef cuDoubleComplex a = get_cu_double_complex(alpha)
@@ -742,7 +742,7 @@ cpdef zgemmBatched(
 
 
 cpdef sgemmStridedBatched(
-        size_t handle, int transa, int transb, int m, int n, int k,
+        intptr_t handle, int transa, int transb, int m, int n, int k,
         float alpha,
         size_t A, int lda, long long strideA,
         size_t B, int ldb, long long strideB,
@@ -763,7 +763,7 @@ cpdef sgemmStridedBatched(
 
 
 cpdef dgemmStridedBatched(
-        size_t handle, int transa, int transb, int m, int n, int k,
+        intptr_t handle, int transa, int transb, int m, int n, int k,
         double alpha,
         size_t A, int lda, long long strideA,
         size_t B, int ldb, long long strideB,
@@ -784,7 +784,7 @@ cpdef dgemmStridedBatched(
 
 
 cpdef cgemmStridedBatched(
-        size_t handle, int transa, int transb, int m, int n, int k,
+        intptr_t handle, int transa, int transb, int m, int n, int k,
         float complex alpha,
         size_t A, int lda, long long strideA,
         size_t B, int ldb, long long strideB,
@@ -805,7 +805,7 @@ cpdef cgemmStridedBatched(
 
 
 cpdef zgemmStridedBatched(
-        size_t handle, int transa, int transb, int m, int n, int k,
+        intptr_t handle, int transa, int transb, int m, int n, int k,
         double complex alpha,
         size_t A, int lda, long long strideA,
         size_t B, int ldb, long long strideB,
@@ -826,7 +826,7 @@ cpdef zgemmStridedBatched(
 
 
 cpdef strsm(
-        size_t handle, int side, int uplo, int trans, int diag,
+        intptr_t handle, int side, int uplo, int trans, int diag,
         int m, int n, float alpha, size_t Aarray, int lda,
         size_t Barray, int ldb):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -839,7 +839,7 @@ cpdef strsm(
 
 
 cpdef dtrsm(
-        size_t handle, int side, int uplo, int trans, int diag,
+        intptr_t handle, int side, int uplo, int trans, int diag,
         int m, int n, double alpha, size_t Aarray, int lda,
         size_t Barray, int ldb):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -851,7 +851,7 @@ cpdef dtrsm(
     check_status(status)
 
 cpdef ctrsm(
-        size_t handle, int side, int uplo, int trans, int diag,
+        intptr_t handle, int side, int uplo, int trans, int diag,
         int m, int n, float complex alpha, size_t Aarray, int lda,
         size_t Barray, int ldb):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -865,7 +865,7 @@ cpdef ctrsm(
 
 
 cpdef ztrsm(
-        size_t handle, int side, int uplo, int trans, int diag,
+        intptr_t handle, int side, int uplo, int trans, int diag,
         int m, int n, double complex alpha, size_t Aarray, int lda,
         size_t Barray, int ldb):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -881,7 +881,7 @@ cpdef ztrsm(
 # BLAS extension
 ###############################################################################
 
-cpdef sgeam(size_t handle, int transa, int transb, int m, int n,
+cpdef sgeam(intptr_t handle, int transa, int transb, int m, int n,
             float alpha, size_t A, int lda, float beta, size_t B, int ldb,
             size_t C, int ldc):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -893,7 +893,7 @@ cpdef sgeam(size_t handle, int transa, int transb, int m, int n,
     check_status(status)
 
 
-cpdef dgeam(size_t handle, int transa, int transb, int m, int n,
+cpdef dgeam(intptr_t handle, int transa, int transb, int m, int n,
             double alpha, size_t A, int lda, double beta, size_t B, int ldb,
             size_t C, int ldc):
     setStream(handle, stream_module.get_current_stream_ptr())
@@ -905,7 +905,7 @@ cpdef dgeam(size_t handle, int transa, int transb, int m, int n,
     check_status(status)
 
 
-cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
+cpdef sdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
             size_t x, int incx, size_t C, int ldc):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -916,7 +916,7 @@ cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
 
 
 cpdef sgemmEx(
-        size_t handle, int transa, int transb, int m, int n, int k,
+        intptr_t handle, int transa, int transb, int m, int n, int k,
         float alpha, size_t A, int Atype, int lda, size_t B,
         int Btype, int ldb, float beta, size_t C, int Ctype,
         int ldc):
@@ -930,7 +930,7 @@ cpdef sgemmEx(
     check_status(status)
 
 
-cpdef sgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+cpdef sgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -940,7 +940,7 @@ cpdef sgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
     check_status(status)
 
 
-cpdef dgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+cpdef dgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -950,7 +950,7 @@ cpdef dgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
     check_status(status)
 
 
-cpdef cgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+cpdef cgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -960,7 +960,7 @@ cpdef cgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
     check_status(status)
 
 
-cpdef zgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+cpdef zgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -971,7 +971,7 @@ cpdef zgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
 
 
 cpdef sgetriBatched(
-        size_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
+        intptr_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
         size_t Carray, int ldc, size_t infoArray, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -982,7 +982,7 @@ cpdef sgetriBatched(
 
 
 cpdef dgetriBatched(
-        size_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
+        intptr_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
         size_t Carray, int ldc, size_t infoArray, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -993,7 +993,7 @@ cpdef dgetriBatched(
 
 
 cpdef cgetriBatched(
-        size_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
+        intptr_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
         size_t Carray, int ldc, size_t infoArray, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1005,7 +1005,7 @@ cpdef cgetriBatched(
 
 
 cpdef zgetriBatched(
-        size_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
+        intptr_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
         size_t Carray, int ldc, size_t infoArray, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
@@ -1017,7 +1017,7 @@ cpdef zgetriBatched(
 
 
 cpdef gemmEx(
-        size_t handle, int transa, int transb, int m, int n, int k,
+        intptr_t handle, int transa, int transb, int m, int n, int k,
         size_t alpha, size_t A, int Atype, int lda, size_t B,
         int Btype, int ldb, size_t beta, size_t C, int Ctype,
         int ldc, int computeType, int algo):
@@ -1034,7 +1034,7 @@ cpdef gemmEx(
     check_status(status)
 
 
-cpdef stpttr(size_t handle, int uplo, int n, size_t AP, size_t A, int lda):
+cpdef stpttr(intptr_t handle, int uplo, int n, size_t AP, size_t A, int lda):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cublasStpttr(<Handle>handle, <FillMode>uplo, n,
@@ -1042,7 +1042,7 @@ cpdef stpttr(size_t handle, int uplo, int n, size_t AP, size_t A, int lda):
     check_status(status)
 
 
-cpdef dtpttr(size_t handle, int uplo, int n, size_t AP, size_t A, int lda):
+cpdef dtpttr(intptr_t handle, int uplo, int n, size_t AP, size_t A, int lda):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cublasDtpttr(<Handle>handle, <FillMode>uplo, n,
@@ -1050,7 +1050,7 @@ cpdef dtpttr(size_t handle, int uplo, int n, size_t AP, size_t A, int lda):
     check_status(status)
 
 
-cpdef strttp(size_t handle, int uplo, int n, size_t A, int lda, size_t AP):
+cpdef strttp(intptr_t handle, int uplo, int n, size_t A, int lda, size_t AP):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cublasStrttp(<Handle>handle, <FillMode>uplo, n,
@@ -1058,7 +1058,7 @@ cpdef strttp(size_t handle, int uplo, int n, size_t A, int lda, size_t AP):
     check_status(status)
 
 
-cpdef dtrttp(size_t handle, int uplo, int n, size_t A, int lda, size_t AP):
+cpdef dtrttp(intptr_t handle, int uplo, int n, size_t A, int lda, size_t AP):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cublasDtrttp(<Handle>handle, <FillMode>uplo, n,

@@ -79,6 +79,12 @@ cdef ndarray _ndarray_imag_setter(ndarray self, value):
 
 
 cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
+    if cupy.cuda.cub_enabled:
+        # result will be None if the reduction is not compatible with CUB
+        result = cub.cub_reduction(self, cub.CUPY_CUB_PROD, axis, dtype, out,
+                                   keepdims)
+        if result is not None:
+            return result
     if dtype is None:
         return _prod_auto_dtype(self, axis, dtype, out, keepdims)
     else:
@@ -127,7 +133,8 @@ cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
 
 
 @util.memoize(for_each_device=True)
-def _inclusive_batch_scan_kernel(dtype, block_size, op):
+def _inclusive_batch_scan_kernel(
+        dtype, block_size, op, src_c_cont, out_c_cont):
     """return Prefix Sum(Scan) cuda kernel
     for a 2d array over axis 1
     used for scanning over different axes
@@ -159,8 +166,9 @@ def _inclusive_batch_scan_kernel(dtype, block_size, op):
     name = 'inclusive_batch_scan_kernel'
     dtype = get_typename(dtype)
     source = string.Template("""
-    extern "C" __global__ void ${name}(const CArray<${dtype}, 2> src,
-        CArray<${dtype}, 2> dst, int batch_size){
+    extern "C" __global__ void ${name}(
+        const CArray<${dtype}, 2, ${src_c_cont}> src,
+        CArray<${dtype}, 2, ${out_c_cont}> dst, int batch_size){
         long long n = src.size();
 
         extern __shared__ ${dtype} temp[];
@@ -232,13 +240,14 @@ def _inclusive_batch_scan_kernel(dtype, block_size, op):
         }
     }
     """).substitute(name=name, dtype=dtype, block_size=block_size,
-                    op=op_char[op], identity=identity[op])
+                    op=op_char[op], identity=identity[op],
+                    src_c_cont=src_c_cont, out_c_cont=out_c_cont)
     module = compile_with_cache(source)
     return module.get_function(name)
 
 
 @util.memoize(for_each_device=True)
-def _inclusive_scan_kernel(dtype, block_size, op):
+def _inclusive_scan_kernel(dtype, block_size, op, src_c_cont, out_c_cont):
     """return Prefix Sum(Scan) cuda kernel
 
     e.g
@@ -264,8 +273,9 @@ def _inclusive_scan_kernel(dtype, block_size, op):
     op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
     source = string.Template("""
-    extern "C" __global__ void ${name}(const CArray<${dtype}, 1> src,
-        CArray<${dtype}, 1> dst){
+    extern "C" __global__ void ${name}(
+        const CArray<${dtype}, 1, ${src_c_cont}> src,
+        CArray<${dtype}, 1, ${out_c_cont}> dst){
         long long n = src.size();
         extern __shared__ ${dtype} temp[];
         unsigned int thid = threadIdx.x;
@@ -306,18 +316,19 @@ def _inclusive_scan_kernel(dtype, block_size, op):
         }
     }
     """).substitute(name=name, dtype=dtype, block_size=block_size,
-                    op=op_char[op], identity=identity[op])
+                    op=op_char[op], identity=identity[op],
+                    src_c_cont=src_c_cont, out_c_cont=out_c_cont)
     module = compile_with_cache(source)
     return module.get_function(name)
 
 
 @util.memoize(for_each_device=True)
-def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size):
+def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     name = 'add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
     ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
-    extern "C" __global__ void ${name}(CArray<${dtype}, 2> src_dst,
+    extern "C" __global__ void ${name}(CArray<${dtype}, 2, ${c_cont}> src_dst,
         int batch_size){
         long long n = src_dst.size();
 
@@ -341,18 +352,19 @@ def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size):
             src_dst[dst_idx] ${op}= src_dst[src_idx];
         }
     }
-    """).substitute(name=name, dtype=dtype, op=ops[op], block_size=block_size)
+    """).substitute(name=name, dtype=dtype, op=ops[op], block_size=block_size,
+                    c_cont=c_cont)
     module = compile_with_cache(source)
     return module.get_function(name)
 
 
 @util.memoize(for_each_device=True)
-def _add_scan_blocked_sum_kernel(dtype, op):
+def _add_scan_blocked_sum_kernel(dtype, op, c_cont):
     name = 'add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
     ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
-    extern "C" __global__ void ${name}(CArray<${dtype}, 1> src_dst){
+    extern "C" __global__ void ${name}(CArray<${dtype}, 1, ${c_cont}> src_dst){
         long long n = src_dst.size();
         unsigned int idxBase = (blockDim.x + 1) * (blockIdx.x + 1);
         unsigned int idxAdded = idxBase + threadIdx.x;
@@ -362,7 +374,7 @@ def _add_scan_blocked_sum_kernel(dtype, op):
             src_dst[idxAdded] ${op}= src_dst[idxAdd];
         }
     }
-    """).substitute(name=name, dtype=dtype, op=ops[op])
+    """).substitute(name=name, dtype=dtype, op=ops[op], c_cont=c_cont)
     module = compile_with_cache(source)
     return module.get_function(name)
 
@@ -389,7 +401,10 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
         if a.size != out.size:
             raise ValueError('Provided out is the wrong size')
 
-    kern_scan = _inclusive_scan_kernel(a.dtype, block_size, op)
+    cdef int src_cont = int(a.flags.c_contiguous)
+    cdef int out_cont = int(out.flags.c_contiguous)
+    kern_scan = _inclusive_scan_kernel(a.dtype, block_size, op,
+                                       src_cont, out_cont)
     kern_scan(grid=((a.size - 1) // (2 * block_size) + 1,),
               block=(block_size,),
               args=(a, out),
@@ -398,7 +413,8 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
     if (a.size - 1) // (block_size * 2) > 0:
         blocked_sum = out[block_size * 2 - 1:None:block_size * 2]
         scan(blocked_sum, op, dtype, blocked_sum)
-        kern_add = _add_scan_blocked_sum_kernel(out.dtype, op)
+        kern_add = _add_scan_blocked_sum_kernel(
+            out.dtype, op, out_cont)
         kern_add(grid=((a.size - 1) // (2 * block_size),),
                  block=(2 * block_size - 1,),
                  args=(out,))
@@ -419,7 +435,10 @@ cdef ndarray _batch_scan_op(ndarray a, scan_op op, dtype, ndarray out):
         padded_bs = block_size * blocks_per_batch
     padded_size = a.size // batch_size * padded_bs
 
-    kern_scan = _inclusive_batch_scan_kernel(a.dtype, block_size, op)
+    cdef int src_cont = int(a.flags.c_contiguous)
+    cdef int out_cont = int(out.flags.c_contiguous)
+    kern_scan = _inclusive_batch_scan_kernel(a.dtype, block_size, op,
+                                             src_cont, out_cont)
     kern_scan(grid=((padded_size - 1) // (block_size) + 1,),
               block=(block_size,),
               args=(a, out, batch_size),
@@ -428,7 +447,7 @@ cdef ndarray _batch_scan_op(ndarray a, scan_op op, dtype, ndarray out):
         blocked_sum = out[:, block_size-1::block_size]
         _batch_scan_op(blocked_sum, op, dtype, blocked_sum)
         kern_add = _add_scan_batch_blocked_sum_kernel(
-            out.dtype, op, block_size)
+            out.dtype, op, block_size, out_cont)
         kern_add(
             grid=((out.size - 1) // (block_size) + 1,),
             block=(block_size,),

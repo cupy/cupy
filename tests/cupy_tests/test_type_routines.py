@@ -1,7 +1,9 @@
 import unittest
 
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -63,11 +65,12 @@ class TestCommonType(unittest.TestCase):
         return ret
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises(accept_error=TypeError)
-    def test_common_type_bool(self, xp, dtype):
-        array1 = _generate_type_routines_input(xp, dtype, 'array')
-        array2 = _generate_type_routines_input(xp, 'bool_', 'array')
-        xp.common_type(array1, array2)
+    def test_common_type_bool(self, dtype):
+        for xp in (numpy, cupy):
+            array1 = _generate_type_routines_input(xp, dtype, 'array')
+            array2 = _generate_type_routines_input(xp, 'bool_', 'array')
+            with pytest.raises(TypeError):
+                xp.common_type(array1, array2)
 
 
 @testing.parameterize(

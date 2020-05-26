@@ -1,5 +1,6 @@
 import unittest
 
+import pytest
 try:
     import scipy.sparse
     scipy_available = True
@@ -45,14 +46,16 @@ class TestSpmatrix(unittest.TestCase):
         else:
             return DummySparseCPU
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_instantiation(self, xp, sp):
-        sp.spmatrix()
+    def test_instantiation(self):
+        for sp in (scipy.sparse, sparse):
+            with pytest.raises(ValueError):
+                sp.spmatrix()
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
-    def test_len(self, xp, sp):
-        s = self.dummy_class(sp)()
-        len(s)
+    def test_len(self):
+        for sp in (scipy.sparse, sparse):
+            s = self.dummy_class(sp)()
+            with pytest.raises(TypeError):
+                len(s)
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_bool_true(self, xp, sp):
@@ -64,10 +67,11 @@ class TestSpmatrix(unittest.TestCase):
         s = self.dummy_class(sp)(shape=(1, 1), nnz=0)
         return bool(s)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_bool_invalid(self, xp, sp):
-        s = self.dummy_class(sp)(shape=(2, 1))
-        bool(s)
+    def test_bool_invalid(self):
+        for sp in (scipy.sparse, sparse):
+            s = self.dummy_class(sp)(shape=(2, 1))
+            with pytest.raises(ValueError):
+                bool(s)
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_asformat_none(self, xp, sp):

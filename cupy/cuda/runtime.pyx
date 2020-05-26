@@ -20,12 +20,10 @@ from cupy.cuda cimport driver
 cdef class PointerAttributes:
 
     def __init__(self, int device, intptr_t devicePointer,
-                 intptr_t hostPointer, int isManaged, int memoryType):
+                 intptr_t hostPointer):
         self.device = device
         self.devicePointer = devicePointer
         self.hostPointer = hostPointer
-        self.isManaged = isManaged
-        self.memoryType = memoryType
 
 
 ###############################################################################
@@ -37,10 +35,11 @@ cdef object _thread_local = threading.local()
 
 cdef class _ThreadLocal:
 
-    cdef bint context_initialized
+    cdef list context_initialized
 
     def __init__(self):
-        self.context_initialized = False
+        cdef int i
+        self.context_initialized = [False for i in range(getDeviceCount())]
 
     @staticmethod
     cdef _ThreadLocal get():
@@ -70,8 +69,6 @@ cdef extern from 'cupy_cuda.h' nogil:
         int device
         void* devicePointer
         void* hostPointer
-        int isManaged
-        int memoryType
 
     # Error handling
     const char* cudaGetErrorName(Error error)
@@ -182,6 +179,11 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaGetChannelDesc(ChannelFormatDesc* desc, Array array)
     int cudaGetTextureObjectResourceDesc(ResourceDesc* desc, TextureObject obj)
     int cudaGetTextureObjectTextureDesc(TextureDesc* desc, TextureObject obj)
+
+    # Surface
+    int cudaCreateSurfaceObject(SurfaceObject* pSurObject,
+                                const ResourceDesc* pResDesc)
+    int cudaDestroySurfaceObject(SurfaceObject surObject)
 
     bint hip_environment
     int cudaDevAttrComputeCapabilityMajor
@@ -529,8 +531,7 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
     return PointerAttributes(
         attrs.device,
         <intptr_t>attrs.devicePointer,
-        <intptr_t>attrs.hostPointer,
-        attrs.isManaged, attrs.memoryType)
+        <intptr_t>attrs.hostPointer)
 
 
 ###############################################################################
@@ -642,10 +643,11 @@ cdef _ensure_context():
     See discussion on https://github.com/cupy/cupy/issues/72 for details.
     """
     tls = _ThreadLocal.get()
-    if not tls.context_initialized:
+    cdef int dev = getDevice()
+    if not tls.context_initialized[dev]:
         # Call Runtime API to establish context on this host thread.
         memGetInfo()
-        tls.context_initialized = True
+        tls.context_initialized[dev] = True
 
 
 ##############################################################################
@@ -665,6 +667,19 @@ cpdef uintmax_t createTextureObject(intptr_t ResDescPtr, intptr_t TexDescPtr):
 cpdef destroyTextureObject(uintmax_t texObject):
     with nogil:
         status = cudaDestroyTextureObject(<TextureObject>texObject)
+    check_status(status)
+
+cpdef uintmax_t createSurfaceObject(intptr_t ResDescPtr):
+    cdef uintmax_t surfobj = 0
+    with nogil:
+        status = cudaCreateSurfaceObject(<SurfaceObject*>(&surfobj),
+                                         <ResourceDesc*>ResDescPtr)
+    check_status(status)
+    return surfobj
+
+cpdef destroySurfaceObject(uintmax_t surfObject):
+    with nogil:
+        status = cudaDestroySurfaceObject(<SurfaceObject>surfObject)
     check_status(status)
 
 cdef ChannelFormatDesc getChannelDesc(intptr_t array):

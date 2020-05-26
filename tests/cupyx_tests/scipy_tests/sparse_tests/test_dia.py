@@ -1,7 +1,9 @@
+import pickle
 import unittest
 
 
 import numpy
+import pytest
 try:
     import scipy.sparse  # NOQA
     scipy_available = True
@@ -101,6 +103,14 @@ class TestDiaMatrix(unittest.TestCase):
         self.assertTrue(m.flags.c_contiguous)
         cupy.testing.assert_allclose(m, expect)
 
+    def test_pickle_roundtrip(self):
+        s = _make(cupy, sparse, self.dtype)
+        s2 = pickle.loads(pickle.dumps(s))
+        assert s.shape == s2.shape
+        assert s.dtype == s2.dtype
+        if scipy_available:
+            assert (s.get() != s2.get()).count_nonzero() == 0
+
     def test_diagonal(self):
         testing.assert_array_equal(
             self.m.diagonal(-2), cupy.array([0], self.dtype))
@@ -131,10 +141,23 @@ class TestDiaMatrixInit(unittest.TestCase):
     def offsets(self, xp):
         return xp.array([0, -1], 'i')
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_shape_none(self, xp, sp):
-        sp.dia_matrix(
-            (self.data(xp), self.offsets(xp)), shape=None)
+    def test_shape_none(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            with pytest.raises(ValueError):
+                sp.dia_matrix(
+                    (self.data(xp), self.offsets(xp)), shape=None)
+
+    def test_scipy_sparse(self):
+        s_h = scipy.sparse.dia_matrix((self.data(numpy), self.offsets(numpy)),
+                                      shape=self.shape)
+        s_d = sparse.dia_matrix(s_h)
+        s_h2 = s_d.get()
+        assert s_h.shape == s_d.shape
+        assert s_h.dtype == s_d.dtype
+        assert s_h.shape == s_h2.shape
+        assert s_h.dtype == s_h2.dtype
+        assert (s_h.data == s_h2.data).all()
+        assert (s_h.offsets == s_h2.offsets).all()
 
     @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
     def test_intlike_shape(self, xp, sp):
@@ -145,27 +168,31 @@ class TestDiaMatrixInit(unittest.TestCase):
         assert isinstance(s.shape[1], int)
         return s
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_large_rank_offset(self, xp, sp):
-        sp.dia_matrix(
-            (self.data(xp), self.offsets(xp)[None]), shape=self.shape)
+    def test_large_rank_offset(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            with pytest.raises(ValueError):
+                sp.dia_matrix(
+                    (self.data(xp), self.offsets(xp)[None]), shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_large_rank_data(self, xp, sp):
-        sp.dia_matrix(
-            (self.data(xp)[None], self.offsets(xp)), shape=self.shape)
+    def test_large_rank_data(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            with pytest.raises(ValueError):
+                sp.dia_matrix(
+                    (self.data(xp)[None], self.offsets(xp)), shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_data_offsets_different_size(self, xp, sp):
-        offsets = xp.array([0, -1, 1], 'i')
-        sp.dia_matrix(
-            (self.data(xp), offsets), shape=self.shape)
+    def test_data_offsets_different_size(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            offsets = xp.array([0, -1, 1], 'i')
+            with pytest.raises(ValueError):
+                sp.dia_matrix(
+                    (self.data(xp), offsets), shape=self.shape)
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=ValueError)
-    def test_duplicated_offsets(self, xp, sp):
-        offsets = xp.array([1, 1], 'i')
-        sp.dia_matrix(
-            (self.data(xp), offsets), shape=self.shape)
+    def test_duplicated_offsets(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            offsets = xp.array([1, 1], 'i')
+            with pytest.raises(ValueError):
+                sp.dia_matrix(
+                    (self.data(xp), offsets), shape=self.shape)
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_conj(self, xp, sp):
@@ -189,10 +216,11 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.nnz
 
-    @testing.numpy_cupy_raises(sp_name='sp', accept_error=NotImplementedError)
-    def test_nnz_axis_not_none(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        m.getnnz(axis=0)
+    def test_nnz_axis_not_none(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = self.make(xp, sp, self.dtype)
+            with pytest.raises(NotImplementedError):
+                m.getnnz(axis=0)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray(self, xp, sp):
@@ -204,20 +232,23 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.A
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_sum_tuple_axis(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m.sum(axis=(0, 1))
+    def test_sum_tuple_axis(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(TypeError):
+                m.sum(axis=(0, 1))
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_sum_float_axis(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m.sum(axis=0.0)
+    def test_sum_float_axis(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(TypeError):
+                m.sum(axis=0.0)
 
-    @testing.numpy_cupy_raises(sp_name='sp')
-    def test_sum_too_large_axis(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m.sum(axis=3)
+    def test_sum_too_large_axis(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(ValueError):
+                m.sum(axis=3)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
@@ -260,11 +291,12 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.transpose()
 
-    @testing.numpy_cupy_raises(sp_name='sp')
     @testing.with_requires('scipy>=1.0')
-    def test_diagonal_error(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        m.diagonal(k=10)  # out of range
+    def test_diagonal_error(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(ValueError):
+                m.diagonal(k=10)  # out of range
 
 
 @testing.parameterize(*testing.product({

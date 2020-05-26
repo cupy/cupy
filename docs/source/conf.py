@@ -138,6 +138,10 @@ pygments_style = 'sphinx'
 # If true, keep warnings as "system message" paragraphs in the built documents.
 #keep_warnings = False
 
+# Suppress a warning that multiple targets are found for a cross-reference.
+# See #3250
+suppress_warnings = ['ref.python']
+
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 

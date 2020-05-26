@@ -5,7 +5,6 @@ import numpy
 
 import cupy
 from cupy.core._dtype import get_dtype
-from cupy.core import _errors
 from cupy.core import _kernel
 from cupy.core._kernel import _is_fusing
 from cupy.core import _reduction
@@ -985,7 +984,7 @@ def _call_reduction(fusion_op, *args, **kwargs):
         ndim = 0
     if ndim < 0:
         mes = 'axis {} is out of bounds for array of dimension {}'
-        raise _errors._AxisError(mes.format(axis, src_ndim))
+        raise numpy.AxisError(mes.format(axis, src_ndim))
 
     _thread_local.history.ndim = ndim
     if ndim >= 1:

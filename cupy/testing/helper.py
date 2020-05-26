@@ -81,41 +81,19 @@ def _call_func_numpy_cupy(self, impl, args, kw, name, sp_name, scipy_name):
         numpy_result, numpy_error, numpy_tb)
 
 
-def _get_numpy_errors():
-    numpy_version = numpy.lib.NumpyVersion(numpy.__version__)
-
-    errors = [
-        AttributeError, Exception, IndexError, TypeError, ValueError,
-        NotImplementedError, DeprecationWarning,
-    ]
-    if numpy_version >= '1.13.0':
-        errors.append(numpy.AxisError)
-    if numpy_version >= '1.15.0':
-        errors.append(numpy.linalg.LinAlgError)
-
-    return errors
-
-
-_numpy_errors = _get_numpy_errors()
+_numpy_errors = [
+    AttributeError, Exception, IndexError, TypeError, ValueError,
+    NotImplementedError, DeprecationWarning,
+    numpy.AxisError, numpy.linalg.LinAlgError,
+]
 
 
 def _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
     """Checks if try/except blocks are equivalent up to public error classes
     """
 
-    errors = _numpy_errors
-
-    # Prior to NumPy version 1.13.0, NumPy raises either `ValueError` or
-    # `IndexError` instead of `numpy.AxisError`.
-    numpy_axis_error = getattr(numpy, 'AxisError', None)
-    cupy_axis_error = cupy.core._errors._AxisError
-    if isinstance(cupy_error, cupy_axis_error) and numpy_axis_error is None:
-        if not isinstance(numpy_error, (ValueError, IndexError)):
-            return False
-        errors = list(set(errors) - set([IndexError, ValueError]))
-
     return all([isinstance(cupy_error, err) == isinstance(numpy_error, err)
-                for err in errors])
+                for err in _numpy_errors])
 
 
 def _fail_test_with_unexpected_errors(
