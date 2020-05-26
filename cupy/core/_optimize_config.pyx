@@ -53,3 +53,9 @@ def get_new_context(
         c = _OptimizationContext(key, config)
         _contexts[key] = c
     return c
+
+
+def _clear_all_contexts_cache():
+    global _contexts
+    assert get_current_context() is None
+    _contexts = {}
