@@ -370,7 +370,7 @@ cdef class _AbstractReductionKernel:
             internal.prod(out_shape),
             contiguous_size, -1)
         default_block_size_log = math.floor(math.log2(block_size))
-        default_block_stride_log = math.floor(math.log2(block_size))
+        default_block_stride_log = math.floor(math.log2(block_stride))
 
         def target_func(block_size, block_stride, out_block_num):
             self._launch(
@@ -397,7 +397,7 @@ cdef class _AbstractReductionKernel:
             optimize_config, target_func, suggest_func,
             default_best={
                 'block_size_log': default_block_size_log,
-                'block_strides_log': default_block_stride_log,
+                'block_stride_log': default_block_stride_log,
                 'out_block_num': default_out_block_num,
             }
         )
