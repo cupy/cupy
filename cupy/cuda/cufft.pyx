@@ -569,10 +569,10 @@ class Plan1d(object):
                     curr_event = self.scatter_events[s_device][dev]
                     xtArr_buffer[dev].copy_from_device_async(
                         b[start:start+count].data, size, curr_stream)
-                    curr_event.record(curr_stream)
                     if dev != 0:
                         prev_event = self.scatter_events[s_device][dev-1]
                         curr_stream.wait_event(prev_event)
+                    curr_event.record(curr_stream)
                     start += count
                 assert start == b.size
                 self.scatter_events[s_device][-1].synchronize()
@@ -600,10 +600,10 @@ class Plan1d(object):
                     curr_event = self.gather_events[i]
                     b[start:start+count].data.copy_from_device_async(
                         xtArr_buffer[i], size, curr_stream)
-                    curr_event.record(curr_stream)
                     if i != 0:
                         prev_event = self.gather_events[i-1]
                         curr_stream.wait_event(prev_event)
+                    curr_event.record(curr_stream)
                     start += count
                 assert start == b.size
                 self.gather_events[-1].synchronize()
