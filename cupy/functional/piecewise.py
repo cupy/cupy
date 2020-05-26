@@ -24,15 +24,25 @@ def piecewise(x, condlist, funclist):
 
         .. seealso:: :func:`numpy.piecewise`
         """
-
     if any(callable(item) for item in funclist):
         raise NotImplementedError(
             'Callable functions are not supported currently')
-    if cupy.isscalar(condlist) or (not isinstance(
-            condlist[0], (list, cupy.ndarray)) and x.ndim != 0):
+    diffshape = 0
+    if cupy.isscalar(condlist):
         condlist = [condlist]
+    elif not isinstance(condlist[0], (list, cupy.ndarray)) and x.ndim != 0:
+        diffshape = 1
     condlist = cupy.array(condlist, dtype=bool)
     condlen = len(condlist)
+    if diffshape:
+        if condlen == x.shape[0]:
+            condlen = 1
+        else:
+            raise ValueError('boolean index did not match indexed array along'
+                             'dimension 0; dimension is {} but corresponding '
+                             'boolean dimension is {}'
+                             .format(x.shape[0], condlen))
+    funclist = cupy.asarray(funclist, dtype=x.dtype)
     funclen = len(funclist)
     if condlen == funclen:
         y = cupy.zeros(shape=x.shape, dtype=x.dtype)
@@ -42,7 +52,10 @@ def piecewise(x, condlist, funclist):
     else:
         raise ValueError('with {} condition(s), either {} or {} functions'
                          ' are expected'.format(condlen, condlen, condlen + 1))
-    funclist = cupy.asarray(funclist, dtype=x.dtype)
-    for condition, func in zip(condlist, funclist):
-        y = cupy.where(condition, func, y)
+    if diffshape:
+        y = cupy.where(condlist, funclist[0], y.T)
+        y = y.T
+    else:
+        for condition, func in zip(condlist, funclist):
+            y = cupy.where(condition, func, y)
     return y
