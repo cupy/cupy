@@ -193,6 +193,14 @@ __global__ void test_downcast(cuDoubleComplex* arr, cuComplex* out) {
     }
 }
 
+__global__ void test_add_scalar(cuDoubleComplex* arr, cuDoubleComplex scalar,
+                                cuDoubleComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCadd(arr[tid], scalar);
+    }
+}
+
 /* ------------------- single complex ------------------- */
 
 __global__ void test_addf(cuComplex* arr1, cuComplex* arr2,
@@ -261,6 +269,14 @@ __global__ void test_upcast(cuComplex* arr, cuDoubleComplex* out) {
     unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
     if (tid < N) {
         out[tid] = cuComplexFloatToDouble(arr[tid]);
+    }
+}
+
+__global__ void test_addf_scalar(cuComplex* arr, cuComplex scalar,
+                                 cuComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCadd(arr[tid], scalar);
     }
 }
 
@@ -540,6 +556,12 @@ class TestRaw(unittest.TestCase):
         ker((grid,), (block,), (a, out_up))
         assert (out_up == a.astype(cupy.complex128)).all()
 
+        # NumPy scalars.
+        b = cupy.complex64(2 + 3j)
+        ker = mod.get_function('test_addf_scalar')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a + b).all()
+
     def test_cuDoubleComplex(self):
         N = 100
         block = 32
@@ -594,6 +616,18 @@ class TestRaw(unittest.TestCase):
         ker = mod.get_function('test_downcast')
         ker((grid,), (block,), (a, out_down))
         assert (out_down == a.astype(cupy.complex64)).all()
+
+        # NumPy scalars.
+        b = cupy.complex128(2 + 3j)
+        ker = mod.get_function('test_add_scalar')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a + b).all()
+
+        # Python scalars.
+        b = 2 + 3j
+        ker = mod.get_function('test_add_scalar')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a + b).all()
 
     def test_const_memory(self):
         mod = cupy.RawModule(code=test_const_mem, backend=self.backend)

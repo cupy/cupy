@@ -107,6 +107,8 @@ cdef inline CPointer _pointer(x):
             x = numpy.float64(x)
         elif isinstance(x, bool):
             x = numpy.bool_(x)
+        elif isinstance(x, complex):
+            x = numpy.complex128(x)
         else:
             raise TypeError('Unsupported type %s' % type(x))
 
