@@ -71,6 +71,8 @@ class TestOptimize(unittest.TestCase):
             with cupyx.optimizing.optimize(key=None):
                 my_sum(x, axis=1)
                 assert optimize_impl.call_count == 6
+                my_sum(x)
+                assert optimize_impl.call_count == 7
 
     @testing.multi_gpu(2)
     def test_optimize_cache_multi_gpus(self):
