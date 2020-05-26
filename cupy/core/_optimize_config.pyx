@@ -12,7 +12,7 @@ cdef class _OptimizationConfig:
             int max_trials=100,
             float timeout=1,
             float expected_total_time_per_trial=100 * 1e-6,
-            float max_total_time_per_trial=90 * 1e-6):
+            float max_total_time_per_trial=0.1):
         self.optimize_impl = optimize_impl
         self.max_trials = max_trials
         self.timeout = timeout
