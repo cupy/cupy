@@ -321,7 +321,7 @@ cdef class _AbstractReductionKernel:
                     shape_and_strides.append(None)
                     shape_and_strides.append(None)
             key = (
-                id(self), tuple(shape_and_strides),
+                self.name, tuple(shape_and_strides),
                 in_types, out_types, reduce_type, device_id,
             )
 

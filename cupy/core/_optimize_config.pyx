@@ -1,3 +1,4 @@
+import pickle
 import threading
 
 
@@ -25,13 +26,25 @@ cdef class _OptimizationContext:
     def __init__(self, str key, _OptimizationConfig config):
         self.key = key
         self.config = config
-        self.params_map = {}
+        self._params_map = {}
 
     def get_params(self, key):
-        return self.params_map.get(key)
+        return self._params_map.get(key)
 
     def set_params(self, key, params):
-        self.params_map[key] = params
+        self._params_map[key] = params
+
+    def save(self, filepath):
+        with open(filepath, mode='wb') as f:
+            pickle.dump((self.key, self._params_map), f)
+
+    def load(self, filepath):
+        with open(filepath, mode='rb') as f:
+            key, params_map = pickle.load(f)
+        if key != self.key:
+            raise ValueError(
+                'Optimization key mismatch {} != {}'.format(key, self.key))
+        self._params_map = params_map
 
 
 cpdef _OptimizationContext get_current_context():
