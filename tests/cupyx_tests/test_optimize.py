@@ -40,7 +40,7 @@ class TestOptimize(unittest.TestCase):
             my_sum = cupy.ReductionKernel(
                 'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
             my_sum_ = cupy.ReductionKernel(
-                'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
+                'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum_')
             x = testing.shaped_arange((3, 4), cupy)
             x_ = testing.shaped_arange((3, 4), cupy)
             y = testing.shaped_arange((4, 4), cupy)
