@@ -29,8 +29,10 @@ def convolve(a, v, mode='full'):
 
 def clip(a, a_min=None, a_max=None, out=None):
     """Clips the values of an array to a given interval.
+
     This is equivalent to ``maximum(minimum(a, a_max), a_min)``, while this
     function is more efficient.
+
     Args:
         a (cupy.ndarray): The source array.
         a_min (scalar, cupy.ndarray or None): The left side of the interval.
@@ -38,9 +40,12 @@ def clip(a, a_min=None, a_max=None, out=None):
         a_max (scalar, cupy.ndarray or None): The right side of the interval.
             When it is ``None``, it is ignored.
         out (cupy.ndarray): Output array.
+
     Returns:
         cupy.ndarray: Clipped array.
+
     .. seealso:: :func:`numpy.clip`
+
     """
     if fusion._is_fusing():
         return fusion._call_ufunc(_math.clip,
@@ -59,7 +64,9 @@ cbrt = core.create_ufunc(
     ('e->e', 'f->f', 'd->d'),
     'out0 = cbrt(in0)',
     doc='''Elementwise cube root function.
+
     .. seealso:: :data:`numpy.cbrt`
+
     ''')
 
 square = core.create_ufunc(
@@ -68,7 +75,9 @@ square = core.create_ufunc(
      'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = in0 * in0',
     doc='''Elementwise square function.
+
     .. seealso:: :data:`numpy.square`
+
     ''')
 
 absolute = core.absolute
@@ -93,8 +102,11 @@ sign = core.create_ufunc(
      ('F->F', _complex_sign), ('D->D', _complex_sign)),
     'out0 = (in0 > 0) - (in0 < 0)',
     doc='''Elementwise sign function.
+
     It returns -1, 0, or 1 depending on the sign of the input.
+
     .. seealso:: :data:`numpy.sign`
+
     ''')
 
 _float_preamble = '''
@@ -116,8 +128,11 @@ maximum = core.create_ufunc(
     'out0 = max(in0, in1)',
     preamble=_float_preamble,
     doc='''Takes the maximum of two arrays elementwise.
+
     If NaN appears, it returns the NaN.
+
     .. seealso:: :data:`numpy.maximum`
+
     ''')
 
 _float_minimum = ('out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : '
@@ -134,8 +149,11 @@ minimum = core.create_ufunc(
     'out0 = min(in0, in1)',
     preamble=_float_preamble,
     doc='''Takes the minimum of two arrays elementwise.
+
     If NaN appears, it returns the NaN.
+
     .. seealso:: :data:`numpy.minimum`
+
     ''')
 
 fmax = core.create_ufunc(
@@ -148,8 +166,11 @@ fmax = core.create_ufunc(
      'FF->F', 'DD->D'),
     'out0 = max(in0, in1)',
     doc='''Takes the maximum of two arrays elementwise.
+
     If NaN appears, it returns the other operand.
+
     .. seealso:: :data:`numpy.fmax`
+
     ''')
 
 fmin = core.create_ufunc(
@@ -162,8 +183,11 @@ fmin = core.create_ufunc(
      'FF->F', 'DD->D'),
     'out0 = min(in0, in1)',
     doc='''Takes the minimum of two arrays elementwise.
+
     If NaN appears, it returns the other operand.
+
     .. seealso:: :data:`numpy.fmin`
+
     ''')
 
 _nan_to_num_preamble = '''
@@ -175,6 +199,7 @@ __device__ T nan_to_num(T x, T large) {
         return copysign(large, x);
     return x;
 }
+
 template <class T>
 __device__ complex<T> nan_to_num(complex<T> x, T large) {
     T re = nan_to_num(x.real(), large);
@@ -200,7 +225,9 @@ nan_to_num = core.create_ufunc(
     'out0 = in0',
     preamble=_nan_to_num_preamble,
     doc='''Elementwise nan_to_num function.
+
     .. seealso:: :data:`numpy.nan_to_num`
+
     ''')
 
 # TODO(okuta): Implement real_if_close
