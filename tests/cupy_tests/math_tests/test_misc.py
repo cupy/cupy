@@ -210,3 +210,26 @@ class TestMisc(unittest.TestCase):
 
     def test_nan_to_num_inf_nan(self):
         self.check_unary_inf_nan('nan_to_num')
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'mode': ['valid', 'same', 'full']
+}))
+class TestConvolve(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_equal()
+    def test_convolve_empty(self, xp, dtype):
+        a = testing.empty(xp, dtype)
+        b = testing.empty(xp, dtype)
+        with pytest.raises(ValueError):
+            xp.convolve(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_list_equal()
+    def test_convolve_large(self, xp, dtype):
+        a = testing.shaped_arange((1000,), xp, dtype)
+        b = testing.shaped_arange((10000,), xp, dtype)
+        return xp.convolve(a, b, mode=self.mode)

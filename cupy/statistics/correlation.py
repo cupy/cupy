@@ -6,6 +6,59 @@ import numpy
 import cupy
 from cupy import core
 
+_correlate_kernel = core.RawKernel(r'''
+  #define MAX_TPB 256
+  extern "C"{
+  __device__ double atomicAdd(double* address, double val){
+    unsigned long long int* address_as_ull =
+                                          (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
+                        __double_as_longlong(val +
+                        __longlong_as_double(assumed)));
+    } while (assumed != old);
+    return __longlong_as_double(old);
+}
+
+  __global__ void dot_kernel(const double* x1, const double* x2,
+  double* y, int j, int j1, int j2, int n){
+    __shared__ double temp[MAX_TPB];
+    unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    temp[threadIdx.x] = x1[j1 + tid] * x2[j2 + tid];
+    __syncthreads();
+
+    if (threadIdx.x == 0)
+    {
+        double sum = 0;
+        for (int i = 0; i < n; i++)
+        {
+            sum += temp[i];
+        }
+        atomicAdd(&y[j], sum);
+     }
+  }
+     __global__ void correlate_kernel(const double* x1, const double* x2,
+     double* y, int j, int j1, int j2, int n, int mode){
+        unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+        int nTPB = MAX_TPB;
+        if (mode == 0){ // left
+            nTPB = min (n + tid, nTPB);
+            dot_kernel<<<(n + tid)/nTPB + 1, nTPB>>>
+            (x1, x2, y, j + tid, j1, j2 - tid, nTPB);
+        }else if (mode == 1){ //right
+            nTPB = min (n - tid, nTPB);
+            dot_kernel<<<(n - tid)/nTPB + 1, nTPB>>>
+            (x1, x2, y, j + tid,  j1 + tid, j2, nTPB);
+        }else{ // valid
+            nTPB = min (n, nTPB);
+            dot_kernel<<<n/nTPB + 1, nTPB>>>
+            (x1, x2, y, j + tid,  j1 + tid, j2, nTPB);
+        }
+     }
+}''', 'correlate_kernel', ('-rdc=true',))
+
 
 def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None):
     """Returns the Pearson product-moment correlation coefficients of an array.
@@ -48,7 +101,74 @@ def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None):
     return out
 
 
-# TODO(okuta): Implement correlate
+def correlate(a, v, mode='valid'):
+    """Returns the cross-correlation of two 1-dimensional sequences.
+
+    Args:
+        a (cupy.ndarray): first 1-dimensional input.
+        v (cupy.ndarray): second 1-dimensional input.
+        mode (optional): `valid`, `same`, `full`
+
+    Returns:
+        cupy.ndarray: Discrete cross-correlation of a and v.
+
+    .. seealso:: :func:`numpy.correlate`
+
+    """
+    if a.ndim != 1 or v.ndim != 1:
+        raise ValueError("object too deep for desired array")
+    if cupy.iscomplexobj(v):
+        raise NotImplementedError(
+            "Complex 1D correlation is not supported currently")
+    inverted, output = correlate_util(a, v, mode)
+    if inverted:
+        output = output[::-1]
+    return output
+
+
+def correlate_util(a1, a2, mode):
+    inverted = 0
+    max_threads = 1024
+    dtype = a1.dtype
+    if not a1.size or not a2.size:
+        raise ValueError("Array arguments cannot be empty")
+    if a1.size < a2.size:
+        a1, a2 = a2, a1
+        inverted = 1
+    length = n1 = a1.size
+    n = n2 = a2.size
+    left, right, length = _generate_boundaries(mode, length, n)
+    output = cupy.zeros(shape=length, dtype=float)
+    a1 = a1.astype(dtype=float, copy=False)
+    a2 = a2.astype(dtype=float, copy=False)
+    if left:
+        nTPB = min(left, max_threads)
+        _correlate_kernel((int((left + nTPB - 1) / nTPB),), (nTPB,),
+                          (a1, a2, output, 0, 0, left, n - left, 0))
+    nTPB = min(n1 - n2 + 1, max_threads)
+    _correlate_kernel((int((n1 - n2 + nTPB) / nTPB),), (nTPB,),
+                      (a1, a2, output, left, 0, 0, n, 2))
+    if right:
+        nTPB = min(right, max_threads)
+        _correlate_kernel((int((right + nTPB - 1) / nTPB),), (nTPB,),
+                          (a1, a2, output, left + n1 - n2 + 1,
+                           n1 - n2 + 1, 0, n, 1))
+    return inverted, output.astype(dtype=dtype, copy=False)
+
+
+def _generate_boundaries(mode, length, n):
+    if mode == 'valid':
+        length += 1 - n
+        left = right = 0
+    elif mode == 'same':
+        left = int(n / 2)
+        right = n - left - 1
+    elif mode == 'full':
+        left = right = n - 1
+        length += n - 1
+    else:
+        raise ValueError("Invalid mode")
+    return left, right, length
 
 
 def cov(a, y=None, rowvar=True, bias=False, ddof=None):

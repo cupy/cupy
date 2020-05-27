@@ -1,8 +1,30 @@
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
+from cupy.statistics.correlation import correlate_util
 
-# TODO(okuta): Implement convolve
+
+def convolve(a, v, mode='full'):
+    """Returns the discrete, linear convolution of two one-dimensional sequences.
+
+    Args:
+        a (cupy.ndarray): first 1-dimensional input.
+        v (cupy.ndarray): second 1-dimensional input.
+        mode (optional): `valid`, `same`, `full`
+
+    Returns:
+        cupy.ndarray: Discrete, linear convolution of a and v.
+
+    .. seealso:: :func:`numpy.convolve`
+
+    """
+    if len(v) > len(a):
+        a, v = v, a
+    if not len(a):
+        raise ValueError('a cannot be empty')
+    if not len(v):
+        raise ValueError('v cannot be empty')
+    return correlate_util(a, v[::-1], mode)
 
 
 def clip(a, a_min=None, a_max=None, out=None):
@@ -37,7 +59,6 @@ def clip(a, a_min=None, a_max=None, out=None):
 # numpy.sqrt is fixed in numpy 1.11.2.
 sqrt = sqrt_fixed = core.sqrt
 
-
 cbrt = core.create_ufunc(
     'cupy_cbrt',
     ('e->e', 'f->f', 'd->d'),
@@ -47,7 +68,6 @@ cbrt = core.create_ufunc(
     .. seealso:: :data:`numpy.cbrt`
 
     ''')
-
 
 square = core.create_ufunc(
     'cupy_square',
@@ -60,9 +80,7 @@ square = core.create_ufunc(
 
     ''')
 
-
 absolute = core.absolute
-
 
 # TODO(beam2d): Implement it
 # fabs
@@ -91,7 +109,6 @@ sign = core.create_ufunc(
 
     ''')
 
-
 _float_preamble = '''
 #ifndef NAN
 #define NAN __int_as_float(0x7fffffff)
@@ -118,7 +135,6 @@ maximum = core.create_ufunc(
 
     ''')
 
-
 _float_minimum = ('out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : '
                   'out0_type(min(in0, in1))')
 minimum = core.create_ufunc(
@@ -140,7 +156,6 @@ minimum = core.create_ufunc(
 
     ''')
 
-
 fmax = core.create_ufunc(
     'cupy_fmax',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
@@ -157,7 +172,6 @@ fmax = core.create_ufunc(
     .. seealso:: :data:`numpy.fmax`
 
     ''')
-
 
 fmin = core.create_ufunc(
     'cupy_fmin',
@@ -176,7 +190,6 @@ fmin = core.create_ufunc(
 
     ''')
 
-
 _nan_to_num_preamble = '''
 template <class T>
 __device__ T nan_to_num(T x, T large) {
@@ -194,7 +207,6 @@ __device__ complex<T> nan_to_num(complex<T> x, T large) {
     return complex<T>(re, im);
 }
 '''
-
 
 nan_to_num = core.create_ufunc(
     'cupy_nan_to_num',
@@ -217,7 +229,6 @@ nan_to_num = core.create_ufunc(
     .. seealso:: :data:`numpy.nan_to_num`
 
     ''')
-
 
 # TODO(okuta): Implement real_if_close
 

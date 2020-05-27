@@ -89,3 +89,32 @@ class TestCov(unittest.TestCase):
 
     def test_cov_empty(self):
         self.check((0, 1))
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'mode': ['valid', 'same', 'full']
+}))
+class TestCorrelate(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_equal()
+    def test_correlate_empty(self, xp, dtype):
+        a = testing.empty(xp, dtype)
+        b = testing.empty(xp, dtype)
+        return xp.correlate(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_list_equal()
+    def test_correlate_large(self, xp, dtype):
+        a = testing.shaped_arange((1000,), xp, dtype)
+        b = testing.shaped_arange((10000,), xp, dtype)
+        return xp.correlate(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes(no_complex=True)
+    def test_correlate_ndim(self, dtype):
+        a = testing.shaped_arange((5, 10, 2), cupy, dtype)
+        b = testing.shaped_arange((3, 4, 4), cupy, dtype)
+        with pytest.raises(ValueError):
+            cupy.correlate(a, b, mode=self.mode)

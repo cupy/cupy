@@ -637,6 +637,7 @@ from cupy.math.misc import nan_to_num  # NOQA
 from cupy.math.misc import sign  # NOQA
 from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
+from cupy.math.misc import convolve  # NOQA
 
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
@@ -678,6 +679,7 @@ from cupy._sorting.sort import sort  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.statistics.correlation import corrcoef  # NOQA
 from cupy.statistics.correlation import cov  # NOQA
+from cupy.statistics.correlation import correlate  # NOQA
 
 from cupy.statistics.order import amax  # NOQA
 from cupy.statistics.order import amax as max  # NOQA
