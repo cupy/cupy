@@ -52,13 +52,14 @@ def _get_nvrtc_version():
     return _nvrtc_version
 
 
+# Known archs for Tegra/Jetson/Xavier/etc
+_tegra_archs = ('53', '62', '72')
+
+
 @util.memoize(for_each_device=True)
 def _get_arch():
     # See Supported Compile Options section of NVRTC User Guide for
     # the maximum value allowed for `--gpu-architecture`.
-    # Note that the second-to-max values are used, as the max usually
-    # corresponds to Tegra/Jetson devices
-    # TODO(leofang): figure out a way to support Tegra/Jetson?
     major, minor = _get_nvrtc_version()
     if major < 9:
         # CUDA 8.0
@@ -70,8 +71,11 @@ def _get_arch():
         # CUDA 10.1 / 10.2
         _nvrtc_max_compute_capability = '75'
 
-    return min(device.Device().compute_capability,
-               _nvrtc_max_compute_capability)
+    arch = device.Device().compute_capability
+    if arch in _tegra_archs:
+        return arch
+    else:
+        return min(arch, _nvrtc_max_compute_capability)
 
 
 def _is_cudadevrt_needed(options):
