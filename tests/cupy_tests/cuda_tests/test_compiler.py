@@ -14,6 +14,8 @@ def cuda_version():
 
 @testing.gpu
 class TestNvrtcArch(unittest.TestCase):
+    def setUp(self):
+        cupy.util.clear_memo()  # _get_arch result is cached
 
     def _check_get_arch(self, device_cc, expected_arch):
         with mock.patch('cupy.cuda.device.Device') as device_class:
