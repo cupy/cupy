@@ -147,7 +147,7 @@ cdef tuple _can_use_cub_block_reduction(
     If CUB BlockReduce can be used, this function returns the axes,
     otherwise returns None.
     '''
-    from cupy.cuda import _environment
+    from cupy import _environment
     from cupy import core
 
     cdef tuple axis_permutes_cub
@@ -604,12 +604,8 @@ cdef class _AbstractReductionKernel:
                     post_map_expr = post_map_expr.replace('_in_ind.size()', '_segment_size')
                     post_map_expr = post_map_expr.replace('_out_ind.size()', '1')
 
-            # Kernel arguments passed to the __global__ function.
-            inout_args = (in_args + out_args
-                          + [_scalar.CScalar.from_int32(contiguous_size)])
-
             params = (self._params[0:2] + _get_param_info('int32 _segment_size', True))
-            cub_params = (True, items_per_thread)
+            cub_params = (True, items_per_thread, contiguous_size)
 
         # Launch the kernel
         if use_cub and full_reduction:
@@ -698,16 +694,25 @@ cdef class _AbstractReductionKernel:
             in_args, out_args, in_shape, out_shape, type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
             stream, params, cub_params):
+        # TODO(leofang): rewrite this part
+        cdef bint use_cub = cub_params[0]
+        cdef Py_ssize_t contiguous_size
+
         # Kernel arguments passed to the __global__ function.
-        inout_args = (
-            in_args
-            + out_args
-            + [
-                _carray._indexer_init(in_shape),
-                _carray._indexer_init(out_shape),
-                # block_stride is passed as the last argument.
-                _scalar.CScalar.from_int32(block_stride),
-            ])
+        if use_cub:
+            contiguous_size = cub_params[2]
+            inout_args = (in_args + out_args
+                          + [_scalar.CScalar.from_int32(contiguous_size)])
+        else:
+            inout_args = (
+                in_args
+                + out_args
+                + [
+                    _carray._indexer_init(in_shape),
+                    _carray._indexer_init(out_shape),
+                    # block_stride is passed as the last argument.
+                    _scalar.CScalar.from_int32(block_stride),
+                ])
 
         # Retrieve the kernel function
         func = self._get_function(
@@ -854,7 +859,8 @@ def _SimpleReductionKernel_get_cached_function(
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, input_expr, output_expr, _preamble,
         options, cub_params):
-    use_cub, items_per_thread = cub_params
+    use_cub = cub_params[0]
+    items_per_thread = cub_params[1]
     if not use_cub:
         return _create_reduction_function(
             name, block_size, reduce_type, params, arginfos, identity,

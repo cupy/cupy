@@ -171,7 +171,7 @@ cdef class _ArgInfo:
 
     @staticmethod
     cdef _ArgInfo from_memptr(memory.MemoryPointer arg):
-        return _ArgInfo(ARG_KIND_POINTER, memory.MemoryPointer, None, 0)
+        return _ArgInfo(ARG_KIND_POINTER, memory.MemoryPointer, None, 0, True)
 
     def __hash__(self):
         return hash((self.arg_kind, self.type, self.dtype, self.ndim,
