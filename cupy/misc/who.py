@@ -22,10 +22,24 @@ def who(vardict=None):
         >>> a = cupy.arange(10)
         >>> b = cupy.ones(20)
         >>> cupy.who()
+        Name            Shape            Bytes            Type
+        ===========================================================
+        <BLANKLINE>
+        a               10               80               int64
+        b               20               160              float64
+        <BLANKLINE>
+        Upper bound on total bytes  =       240
         >>> d = {'x': cupy.arange(2.0),
         ... 'y': cupy.arange(3.0), 'txt': 'Some str',
         ... 'idx':5}
         >>> cupy.who(d)
+        Name            Shape            Bytes            Type
+        ===========================================================
+        <BLANKLINE>
+        x               2                16               float64
+        y               3                24               float64
+        <BLANKLINE>
+        Upper bound on total bytes  =       40
 
     """
 
