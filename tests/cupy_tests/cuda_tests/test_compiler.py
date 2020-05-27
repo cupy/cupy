@@ -34,7 +34,8 @@ class TestNvrtcArch(unittest.TestCase):
         self._check_get_arch('70', '70')
         self._check_get_arch('72', '72')  # Tegra
 
-    @unittest.skipUnless(10010 <= cuda_version(), 'Requires CUDA 10.1 or later')
+    @unittest.skipUnless(10010 <= cuda_version(),
+                         'Requires CUDA 10.1 or later')
     def test_get_arch_cuda101(self):
         self._check_get_arch('75', '75')
 
@@ -69,7 +70,8 @@ class TestNvrtcArch(unittest.TestCase):
         self.assertRaises(
             compiler.CompileException, self._compile, '73')
 
-    @unittest.skipUnless(10010 <= cuda_version(), 'Requires CUDA 10.1 or later')
+    @unittest.skipUnless(10010 <= cuda_version(),
+                         'Requires CUDA 10.1 or later')
     def test_compile_cuda101(self):
         # This test is intended to detect specification change in NVRTC API.
 
