@@ -1,14 +1,14 @@
 import atexit
 import binascii
-import collections.abc
 import functools
 import hashlib
 import operator
 import os
 import time
-import warnings
 
 import numpy
+import warnings
+from numpy.linalg import LinAlgError
 
 import cupy
 from cupy import core
@@ -17,6 +17,8 @@ from cupy.cuda import curand
 from cupy.cuda import device
 from cupy.random import _kernels
 from cupy import util
+
+import cupyx
 
 
 _UINT32_MAX = 0xffffffff
@@ -321,9 +323,16 @@ class RandomState(object):
         return y
 
     def multivariate_normal(self, mean, cov, size=None, check_valid='ignore',
-                            tol=1e-8, dtype=float):
-        """(experimental) Returns an array of samples drawn from the
-        multivariate normal distribution.
+                            tol=1e-08, method='cholesky', dtype=float):
+        """Returns an array of samples drawn from the multivariate normal
+        distribution.
+
+        .. warning::
+            This function calls one or more cuSOLVER routine(s) which may yield
+            invalid results if input conditions are not met.
+            To detect these invalid results, you can set the `linalg`
+            configuration to a value that is not `ignore` in
+            :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
         .. seealso::
             :func:`cupy.random.multivariate_normal` for full documentation,
@@ -334,44 +343,80 @@ class RandomState(object):
         mean = cupy.asarray(mean, dtype=dtype)
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
-            shape = ()
-        elif isinstance(size, collections.abc.Sequence):
-            shape = tuple(size)
+            shape = []
+        elif isinstance(size, (int, cupy.integer)):
+            shape = [size]
         else:
-            shape = size,
+            shape = size
 
-        if mean.ndim != 1:
+        if len(mean.shape) != 1:
             raise ValueError('mean must be 1 dimensional')
-        if (cov.ndim != 2) or (cov.shape[0] != cov.shape[1]):
+        if (len(cov.shape) != 2) or (cov.shape[0] != cov.shape[1]):
             raise ValueError('cov must be 2 dimensional and square')
-        if len(mean) != len(cov):
+        if mean.shape[0] != cov.shape[0]:
             raise ValueError('mean and cov must have same length')
-        shape += (len(mean),)
 
-        x = self.standard_normal(size=shape, dtype=dtype)
+        final_shape = list(shape[:])
+        final_shape.append(mean.shape[0])
 
-        u, s, v = cupy.linalg.svd(cov)
+        if method not in {'eigh', 'svd', 'cholesky'}:
+            raise ValueError(
+                "method must be one of {'eigh', 'svd', 'cholesky'}")
 
         if check_valid != 'ignore':
             if check_valid != 'warn' and check_valid != 'raise':
                 raise ValueError(
-                    'check_valid must equal \'warn\', \'raise\', or '
-                    '\'ignore\'')
+                    "check_valid must equal 'warn', 'raise', or 'ignore'")
 
-            a = cupy.dot(v.T * s, v)
-            b = cov
-            psd = cupy.all(cupy.abs(a-b) <= tol*(1+cupy.abs(b)))
-            if not psd:
-                if check_valid == 'warn':
-                    warnings.warn(
-                        'covariance is not symmetric positive-semidefinite.',
-                        RuntimeWarning)
-                else:
-                    raise ValueError(
-                        'covariance is not symmetric positive-semidefinite.')
+        if check_valid == 'warn':
+            with cupyx.errstate(linalg='raise'):
+                try:
+                    decomp = cupy.linalg.cholesky(cov)
+                except LinAlgError:
+                    with cupyx.errstate(linalg='ignore'):
+                        if method != 'cholesky':
+                            if method == 'eigh':
+                                (s, u) = cupy.linalg.eigh(cov)
+                                psd = not cupy.any(s < -tol)
+                            if method == 'svd':
+                                (u, s, vh) = cupy.linalg.svd(cov)
+                                psd = cupy.allclose(cupy.dot(vh.T * s, vh),
+                                                    cov, rtol=tol, atol=tol)
+                            decomp = u * cupy.sqrt(cupy.abs(s))
+                            if not psd:
+                                warnings.warn("covariance is not positive-" +
+                                              "semidefinite, output may be " +
+                                              "invalid.", RuntimeWarning)
 
-        x = cupy.dot(x, cupy.sqrt(s)[:, None] * v)
+                        else:
+                            warnings.warn("covariance is not positive-" +
+                                          "semidefinite, output *is* " +
+                                          "invalid.", RuntimeWarning)
+                            decomp = cupy.linalg.cholesky(cov)
+
+        else:
+            with cupyx.errstate(linalg=check_valid):
+                try:
+                    if method == 'cholesky':
+                        decomp = cupy.linalg.cholesky(cov)
+                    elif method == 'eigh':
+                        (s, u) = cupy.linalg.eigh(cov)
+                        decomp = u * cupy.sqrt(cupy.abs(s))
+                    elif method == 'svd':
+                        (u, s, vh) = cupy.linalg.svd(cov)
+                        decomp = u * cupy.sqrt(cupy.abs(s))
+
+                except LinAlgError:
+                    raise LinAlgError("Matrix is not positive definite; if " +
+                                      "matrix is positive-semidefinite, set" +
+                                      "'check_valid' to 'warn'")
+
+        x = self.standard_normal(final_shape,
+                                 dtype=dtype).reshape(-1, mean.shape[0])
+        x = cupy.dot(decomp, x.T)
+        x = x.T
         x += mean
+        x.shape = tuple(final_shape)
         return x
 
     def negative_binomial(self, n, p, size=None, dtype=int):

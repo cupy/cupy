@@ -25,11 +25,12 @@ class TestPermutations(unittest.TestCase):
 
     # TODO(niboshi): Fix xfail
     @pytest.mark.xfail(reason='Explicit error types required')
-    @testing.numpy_cupy_raises()
-    def test_permutation_zero_dim(self, xp):
-        xp_random = self._xp_random(xp)
-        a = testing.shaped_random((), xp)
-        xp_random.permutation(a)
+    def test_permutation_zero_dim(self):
+        for xp in (numpy, cupy):
+            xp_random = self._xp_random(xp)
+            a = testing.shaped_random((), xp)
+            with pytest.raises(IndexError):
+                xp_random.permutation(a)
 
     # Test same values
 
@@ -75,10 +76,11 @@ class TestShuffle(unittest.TestCase):
 
     # Test ranks
 
-    @testing.numpy_cupy_raises()
-    def test_shuffle_zero_dim(self, xp):
-        a = testing.shaped_random((), xp)
-        xp.random.shuffle(a)
+    def test_shuffle_zero_dim(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((), xp)
+            with pytest.raises(TypeError):
+                xp.random.shuffle(a)
 
     # Test same values
 

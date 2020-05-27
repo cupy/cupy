@@ -17,7 +17,7 @@ from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
 from cupy.cuda.memory cimport MemoryPointer
-from cupy.cuda.texture cimport TextureObject
+from cupy.cuda.texture cimport TextureObject, SurfaceObject
 
 
 cdef class CPointer:
@@ -108,6 +108,9 @@ cdef inline CPointer _pointer(x):
     if isinstance(x, TextureObject):
         return CUIntMax(x.ptr)
 
+    if isinstance(x, SurfaceObject):
+        return CUIntMax(x.ptr)
+
     if type(x) not in _pointer_numpy_types:
         if isinstance(x, int):
             x = numpy.int64(x)
@@ -115,6 +118,8 @@ cdef inline CPointer _pointer(x):
             x = numpy.float64(x)
         elif isinstance(x, bool):
             x = numpy.bool_(x)
+        elif isinstance(x, complex):
+            x = numpy.complex128(x)
         else:
             raise TypeError('Unsupported type %s' % type(x))
 

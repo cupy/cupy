@@ -8,7 +8,7 @@ def around(a, decimals=0, out=None):
 
     Args:
         a (cupy.ndarray): The source array.
-        decimals (int): umber of decimal places to round to (default: 0).
+        decimals (int): Number of decimal places to round to (default: 0).
             If decimals is negative, it specifies the number of positions to
             the left of the decimal point.
         out (cupy.ndarray): Output array.

@@ -1,3 +1,4 @@
+from cupy.core._carray cimport shape_t
 from cupy.core cimport _kernel
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport function
@@ -15,15 +16,21 @@ cdef class _AbstractReductionKernel:
     cpdef ndarray _call(
         self,
         list in_args, list out_args,
-        tuple a_shape, axis, dtype,
-        bint keepdims, bint reduce_dims,
+        const shape_t& a_shape, axis, dtype,
+        bint keepdims, bint reduce_dims, int device_id,
         stream, bint try_use_cub=*)
+
+    cdef void _launch(
+        self, out_block_num, block_size, block_stride,
+        in_args, out_args, in_shape, out_shape, types,
+        map_expr, reduce_expr, post_map_expr, reduce_type,
+        stream, params, cub_params)
 
     cdef tuple _get_expressions_and_types(
         self, list in_args, list out_args, dtype)
 
     cdef list _get_out_args(
-        self, list out_args, tuple out_types, tuple out_shape)
+        self, list out_args, tuple out_types, const shape_t& out_shape)
 
     cdef function.Function _get_function(
         self,

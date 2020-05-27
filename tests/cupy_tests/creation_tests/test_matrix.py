@@ -1,5 +1,9 @@
 import unittest
 
+import numpy
+import pytest
+
+import cupy
 from cupy import testing
 
 
@@ -56,17 +60,20 @@ class TestMatrix(unittest.TestCase):
         self.assertIsInstance(r, xp.ndarray)
         return r
 
-    @testing.numpy_cupy_raises()
-    def test_diag_scaler(self, xp):
-        return xp.diag(1)
+    def test_diag_scaler(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.diag(1)
 
-    @testing.numpy_cupy_raises()
-    def test_diag_0dim(self, xp):
-        return xp.diag(xp.zeros(()))
+    def test_diag_0dim(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.diag(xp.zeros(()))
 
-    @testing.numpy_cupy_raises()
-    def test_diag_3dim(self, xp):
-        return xp.diag(xp.zeros((2, 2, 2)))
+    def test_diag_3dim(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.diag(xp.zeros((2, 2, 2)))
 
     @testing.numpy_cupy_array_equal()
     def test_diagflat1(self, xp):

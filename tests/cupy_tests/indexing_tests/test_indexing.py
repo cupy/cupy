@@ -1,5 +1,6 @@
 import unittest
 
+import numpy
 import pytest
 
 import cupy
@@ -29,6 +30,22 @@ class TestIndexing(unittest.TestCase):
     def test_take_no_axis(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         b = xp.array([[10, 5], [3, 20]])
+        return a.take(b)
+
+    # see cupy#3017
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_take_index_range_overflow(self, xp, dtype):
+        # Skip for too large dimensions
+        if numpy.dtype(dtype) in (numpy.int64, numpy.uint64):
+            return xp.array([])
+        # Skip because NumPy actually allocates a contiguous array in the
+        # `take` below to require much time.
+        if dtype in (numpy.int32, numpy.uint32):
+            return xp.array([])
+        iinfo = numpy.iinfo(dtype)
+        a = xp.broadcast_to(xp.ones(1), (iinfo.max + 1,))
+        b = xp.array([0], dtype=dtype)
         return a.take(b)
 
     @testing.numpy_cupy_array_equal()
@@ -116,15 +133,17 @@ class TestIndexing(unittest.TestCase):
         a = testing.shaped_arange((3, 3, 3), xp, dtype)
         return a.diagonal(0, -1, -3)
 
-    @testing.numpy_cupy_raises()
-    def test_diagonal_invalid1(self, xp):
-        a = testing.shaped_arange((3, 3, 3), xp)
-        a.diagonal(0, 1, 3)
+    def test_diagonal_invalid1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 3, 3), xp)
+            with pytest.raises(IndexError):
+                a.diagonal(0, 1, 3)
 
-    @testing.numpy_cupy_raises()
-    def test_diagonal_invalid2(self, xp):
-        a = testing.shaped_arange((3, 3, 3), xp)
-        a.diagonal(0, 2, -4)
+    def test_diagonal_invalid2(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 3, 3), xp)
+            with pytest.raises(IndexError):
+                a.diagonal(0, 2, -4)
 
     @testing.numpy_cupy_array_equal()
     def test_extract(self, xp):
@@ -221,11 +240,12 @@ class TestChoose(unittest.TestCase):
             a.choose(c)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_choose_broadcast_fail(self, xp, dtype):
-        a = xp.array([0, 1])
-        c = testing.shaped_arange((3, 5, 4), xp, dtype)
-        return a.choose(c)
+    def test_choose_broadcast_fail(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array([0, 1])
+            c = testing.shaped_arange((3, 5, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                return a.choose(c)
 
 
 @testing.gpu

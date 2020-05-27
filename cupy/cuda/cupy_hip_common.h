@@ -72,6 +72,7 @@ typedef hipPointerAttribute_t cudaPointerAttributes;
 
 typedef hipChannelFormatKind cudaChannelFormatKind;
 typedef hipTextureObject_t cudaTextureObject_t;
+typedef hipSurfaceObject_t cudaSurfaceObject_t;
 typedef hipResourceType cudaResourceType;
 typedef hipTextureAddressMode cudaTextureAddressMode;
 typedef hipTextureFilterMode cudaTextureFilterMode;
