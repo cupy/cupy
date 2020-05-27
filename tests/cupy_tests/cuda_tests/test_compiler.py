@@ -70,8 +70,8 @@ class TestNvrtcArch(unittest.TestCase):
         self.assertRaises(
             compiler.CompileException, self._compile, '73')
 
-    @unittest.skipUnless(10010 <= cuda_version(),
-                         'Requires CUDA 10.1 or later')
+    @unittest.skipUnless(10010 <= cuda_version() < 11000,
+                         'Requires CUDA 10.1 or 10.2')
     def test_compile_cuda101(self):
         # This test is intended to detect specification change in NVRTC API.
 
@@ -79,9 +79,9 @@ class TestNvrtcArch(unittest.TestCase):
         # (Do not test `compute_72` as it is for Tegra.)
         self._compile('75')
 
-        # It should fail.
+        # It should fail. (compute_80 is not supported until CUDA 11)
         self.assertRaises(
-            compiler.CompileException, self._compile, '76')
+            compiler.CompileException, self._compile, '80')
 
 
 @testing.gpu
@@ -98,7 +98,7 @@ class TestIsValidKernelName(unittest.TestCase):
     def test_valid(self):
         self.assertTrue(compiler.is_valid_kernel_name('valid_name_1'))
 
-    def test_empyt(self):
+    def test_empty(self):
         self.assertFalse(compiler.is_valid_kernel_name(''))
 
     def test_start_with_digit(self):
