@@ -77,6 +77,12 @@ class TestTrim_zeros(unittest.TestCase):
         return xp.trim_zeros(a, trim=self.trim)
 
     @testing.for_all_dtypes()
+    def test_trim_zero_dim(self, dtype):
+        a = testing.shaped_arange((), cupy, dtype)
+        with pytest.raises(TypeError):
+            cupy.trim_zeros(a, trim=self.trim)
+
+    @testing.for_all_dtypes()
     def test_trim_ndim(self, dtype):
         a = testing.shaped_arange((2, 3), cupy, dtype=dtype)
         with pytest.raises(ValueError):

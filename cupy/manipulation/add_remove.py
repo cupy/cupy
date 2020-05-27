@@ -14,22 +14,13 @@ from cupy import core
 # TODO(okuta): Implement resize
 
 _first_nonzero_krnl = core.ReductionKernel(
-    'raw S data, T indices, T len',
-    'T y',
-    'data[_j] ? _j : len',
+    'T data, int64 len',
+    'int64 y',
+    'data == T(0) ? len : _j',
     'min(a, b)',
     'y = a',
     'len',
     'first_nonzero'
-)
-_first_nonzero_cplx_krnl = core.ReductionKernel(
-    'raw S real, raw S imag, T indices, T len',
-    'T y',
-    'real[_j] || imag[_j] ? _j : len',
-    'min(a,b)',
-    'y = a',
-    'len',
-    'first_nonzero_cplx'
 )
 
 
@@ -39,36 +30,30 @@ def trim_zeros(filt, trim='fb'):
     Returns the trimmed array
 
     Args:
-        filt(1D array or sequence): Input array
+        filt(cupy.ndarray): Input array
         trim(str, optional):
             'fb' default option trims the array from both sides.
             'f' option trim zeros from front.
-            'b' option trim zeros from front
+            'b' option trim zeros from back.
 
     Returns:
         cupy.ndarray: trimmed input
 
     .. seealso:: :func:`numpy.trim_zeros`
+
     """
     if filt.ndim > 1:
         raise ValueError("Multi-dimensional trim is not supported")
-    start, end = cupy.asarray([0, filt.size - 1], dtype=int)
-    indices = cupy.arange(filt.size)
+    if not filt.ndim:
+        raise TypeError("0-d array can't be trimmed")
+    start = 0
+    end = filt.size
     trim = trim.upper()
     if 'F' in trim:
-        if filt.dtype.kind == 'c':
-            start = _first_nonzero_cplx_krnl(
-                filt.real, filt.imag, indices, filt.size)
-        else:
-            start = _first_nonzero_krnl(filt, indices, filt.size)
+        start = _first_nonzero_krnl(filt, filt.size)
     if 'B' in trim:
-        if filt.dtype.kind == 'c':
-            end = filt.size - _first_nonzero_cplx_krnl(
-                filt[::-1].real, filt[::-1].imag, indices, filt.size) - 1
-        else:
-            end = filt.size - _first_nonzero_krnl(
-                filt[::-1], indices, filt.size) - 1
-    return filt[start:end + 1]
+        end = filt.size - _first_nonzero_krnl(filt[::-1], filt.size)
+    return filt[start:end]
 
 
 def unique(ar, return_index=False, return_inverse=False,
