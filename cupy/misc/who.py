@@ -49,7 +49,7 @@ def who(vardict=None):
         vardict = frame.f_globals
     sta = []
     cache = {}
-    for name in vardict.keys():
+    for name in sorted(vardict.keys()):
         if isinstance(vardict[name], cupy.ndarray):
             var = vardict[name]
             idv = id(var)
