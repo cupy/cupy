@@ -13,7 +13,7 @@ def who(vardict=None):
     namespace).
 
     Args:
-        vardict : (None o dict)  dictionary possibly containing ndarrays.
+        vardict : (None or dict)  A dictionary possibly containing ndarrays.
                   Default is globals() if `None` specified
 
 
