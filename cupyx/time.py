@@ -91,7 +91,7 @@ def repeat(
         cpu_times.append(cpu_time)
         gpu_times.append(gpu_time)
 
-        duration += cpu_time
+        duration += time.perf_counter() - t1
         if duration > max_duration:
             break
 
