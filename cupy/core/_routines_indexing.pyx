@@ -9,6 +9,8 @@ from cupy.core._ufuncs import elementwise_copy
 
 from libcpp cimport vector
 
+from cupy.core._carray cimport shape_t
+from cupy.core._carray cimport strides_t
 from cupy.core cimport core
 from cupy.core cimport _routines_math as _math
 from cupy.core cimport _routines_manipulation as _manipulation
@@ -111,11 +113,11 @@ cdef ndarray _ndarray_put(ndarray self, indices, values, mode):
 
     n = self.size
     if not isinstance(indices, ndarray):
-        indices = ndarray(indices)
+        indices = core.array(indices)
     indices = indices.ravel()
 
     if not isinstance(values, ndarray):
-        values = ndarray(values, dtype=self.dtype)
+        values = core.array(values, dtype=self.dtype)
     if values.size == 0:
         return
 
@@ -299,7 +301,8 @@ cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
     return a, adv_slices, adv_mask
 
 cdef ndarray _simple_getitem(ndarray a, list slice_list):
-    cdef vector.vector[Py_ssize_t] shape, strides
+    cdef shape_t shape
+    cdef strides_t strides
     cdef ndarray v
     cdef Py_ssize_t i, j, offset, ndim
     cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
@@ -389,7 +392,8 @@ out = a[out_i];
 
 
 _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, S index_range',
+    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, '
+    'int64 index_range',
     'T out', _take_kernel_core, 'cupy_take')
 
 

@@ -85,3 +85,41 @@ class TestGreyErosionAndDilation(unittest.TestCase):
             pytest.skip()
         x = testing.shaped_random(self.shape, xp, self.x_dtype)
         return self._filter(xp, scp, x)
+
+
+@testing.parameterize(*testing.product({
+    'size': [3, 4],
+    'structure': [None, 'random'],
+    'mode': ['reflect', 'constant', 'nearest', 'mirror', 'wrap'],
+    'origin': [0, None],
+    'x_dtype': [numpy.int32, numpy.float32],
+    'output': [None, numpy.float64],
+    'filter': ['grey_closing', 'grey_opening']
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestGreyClosingAndOpening(unittest.TestCase):
+
+    shape = (4, 5)
+    footprint = None
+    cval = 0.0
+
+    def _filter(self, xp, scp, x):
+        filter = getattr(scp.ndimage, self.filter)
+        if self.origin is None:
+            origin = (-1, 1, -1, 1)[:x.ndim]
+        else:
+            origin = self.origin
+        if self.structure is None:
+            structure = None
+        else:
+            shape = (self.size, ) * x.ndim
+            structure = testing.shaped_random(shape, xp, dtype=xp.int32)
+        return filter(x, size=self.size, footprint=self.footprint,
+                      structure=structure, output=self.output,
+                      mode=self.mode, cval=self.cval, origin=origin)
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_grey_closing_and_opening(self, xp, scp):
+        x = testing.shaped_random(self.shape, xp, self.x_dtype)
+        return self._filter(xp, scp, x)

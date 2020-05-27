@@ -8,6 +8,25 @@ import cupy
 from cupy import testing
 
 
+@testing.gpu
+class TestFlatiter(unittest.TestCase):
+
+    def test_base(self):
+        a = cupy.zeros((2, 3, 4))
+        assert a.flat.base is a
+
+    def test_next(self):
+        a = testing.shaped_arange((2, 3, 4), cupy)
+        e = a.flatten()
+        for ai, ei in zip(a.flat, e):
+            assert(ai == ei)
+
+    def test_len(self):
+        a = cupy.zeros((2, 3, 4))
+        assert(len(a.flat) == 24)
+        assert(len(a[::2].flat) == 12)
+
+
 @testing.parameterize(
     {'shape': (2, 3, 4), 'index': Ellipsis},
     {'shape': (2, 3, 4), 'index': 0},

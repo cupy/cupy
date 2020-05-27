@@ -61,8 +61,8 @@ Streams and events
    cupy.cuda.get_elapsed_time
 
 
-Texture memory
---------------
+Texture and surface memory
+--------------------------
 
 .. autosummary::
    :toctree: generated/
@@ -73,6 +73,7 @@ Texture memory
    cupy.cuda.texture.ResourceDescriptor
    cupy.cuda.texture.TextureDescriptor
    cupy.cuda.texture.TextureObject
+   cupy.cuda.texture.SurfaceObject
    cupy.cuda.texture.TextureReference
 
 
