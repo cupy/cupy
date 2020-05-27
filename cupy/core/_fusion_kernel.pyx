@@ -4,23 +4,29 @@ import string
 from libcpp cimport vector
 import numpy
 
-from cupy.core import _dtype
+from cupy.core cimport _carray
 from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
-from cupy.core import _fusion_op
 from cupy.core cimport _routines_manipulation as _manipulation
-from cupy import util
-from cupy.core import _fusion_emit_code
-from cupy.core._fusion_variable import _AbstractDim
-from cupy.core._fusion_variable import _TraceVariable
-from cupy.core._fusion_variable import _TraceScalar
-from cupy.core._fusion_variable import _TraceArray
 from cupy.cuda cimport driver
 from cupy.cuda cimport function
 from cupy.cuda cimport runtime
 from cupy.core cimport _reduction
+
+from cupy.core import _dtype
+from cupy import util
+from cupy.core import _fusion_emit_code
+from cupy.core import _fusion_op
+from cupy.core._fusion_variable import _AbstractDim
+from cupy.core._fusion_variable import _TraceVariable
+from cupy.core._fusion_variable import _TraceScalar
+from cupy.core._fusion_variable import _TraceArray
+
+
+cdef Py_ssize_t _default_block_size = (
+    256 if runtime._is_hip_environment else 512)
 
 
 @util.memoize(for_each_device=True)
@@ -240,7 +246,7 @@ cdef class FusedKernel:
         if len(self._reduction_in_array) == 0:
             return [], 256, 0
 
-        block_size = _reduction._block_size
+        block_size = _default_block_size
         for i in range(len(self._reduction_in_array)):
             in_array = ndarray_list[self._reduction_in_array[i]]
             out_array = ndarray_list[self._reduction_out_array[i]]
@@ -288,15 +294,18 @@ cdef class FusedKernel:
         cdef list params = []
         cdef list indexers = []
         cdef list block_strides = []
+        cdef _carray.Indexer indexer
 
         for i in range(len(self._params)):
             array = ndarray_list[i]
             if isinstance(array, ndarray):
-                indexers.append(function.IndexerArg(array.shape))
-                params.append(function.Arg.from_obj(array))
+                indexer = _carray.Indexer.__new__(_carray.Indexer)
+                indexer.init(array._shape)
+                indexers.append(indexer)
+                params.append(array)
             elif self._input_index[i] >= 0:
                 obj = args[<Py_ssize_t>self._input_index[i]]
-                params.append(function.Arg.from_obj(obj))
+                params.append(obj)
 
         return params + indexers
 
