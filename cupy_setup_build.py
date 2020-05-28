@@ -904,6 +904,7 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
         cuda_version = build.get_cuda_version()
         postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
         postargs += ['-Xcompiler', '/MD']
+        postargs += ['-Xcompiler', '/bigobj']
         print('NVCC options:', postargs)
 
         for obj in objects:
