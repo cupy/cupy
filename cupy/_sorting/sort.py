@@ -128,11 +128,11 @@ def msort(a):
 
 
 def sort_complex(a):
-    """ Sort a complex array using the real part first,
-     then the imaginary part.
+    """Sort a complex array using the real part first,
+    then the imaginary part.
 
     Args:
-        a(cupy.ndarray): Array to be sorted.
+        a (cupy.ndarray): Array to be sorted.
 
     Returns:
         cupy.ndarray: sorted complex array.
