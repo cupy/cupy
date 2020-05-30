@@ -142,6 +142,23 @@ class TestNdimage(unittest.TestCase):
         label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3)
         return getattr(scp.ndimage, self.op)(image, label, 1)
 
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=1)
+    def test_ndimage_only_input_float16(self, xp, scp):
+        image = xp.arange(100, dtype=xp.float16)
+        return getattr(scp.ndimage, self.op)(image)
+
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=1)
+    def test_ndimage_no_index_float16(self, xp, scp):
+        image = xp.arange(50, dtype=xp.float16)
+        label = testing.shaped_random((50,), xp, dtype=xp.int32, scale=3)
+        return getattr(scp.ndimage, self.op)(image, label)
+
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=1)
+    def test_ndimage_scalar_index_float16(self, xp, scp):
+        image = xp.arange(100, dtype=xp.float16)
+        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3)
+        return getattr(scp.ndimage, self.op)(image, label, 1)
+
     @testing.for_dtypes([cupy.bool_, cupy.complex64, cupy.complex128])
     def test_ndimage_wrong_dtype(self, dtype):
         image = cupy.arange(100).astype(dtype)
