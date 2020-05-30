@@ -101,8 +101,9 @@ class TestLabelSpecialCases(unittest.TestCase):
 
 
 @testing.gpu
-@testing.parameterize({'op': 'sum'}, {'op': 'mean'}, {'op': 'variance'},
-                      {'op': 'standard_deviation'})
+@testing.parameterize(*testing.product({
+    'op': ['sum', 'mean', 'variance', 'standard_deviation'],
+}))
 @testing.with_requires('scipy')
 class TestNdimage(unittest.TestCase):
 
