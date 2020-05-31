@@ -12,6 +12,10 @@ from cupy_cuda.runtime cimport Array, ChannelFormatDesc, ChannelFormatKind,\
 from cupy_cuda.runtime import CUDARuntimeError
 
 
+cdef extern from '../../cupy_cuda/cupy_cuda.h':
+    pass
+
+
 cdef class ChannelFormatDescriptor:
     '''A class that holds the channel format description. Equivalent to
     ``cudaChannelFormatDesc``.
