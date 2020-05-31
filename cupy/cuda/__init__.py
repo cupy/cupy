@@ -4,23 +4,27 @@ import os
 from cupy._environment import get_cuda_path, get_nvcc_path  # NOQA
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
-from cupy.cuda import driver  # NOQA
 from cupy.cuda import function  # NOQA
 from cupy.cuda import memory  # NOQA
 from cupy.cuda import memory_hook  # NOQA
 from cupy.cuda import memory_hooks  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
-from cupy.cuda import profiler  # NOQA
-from cupy.cuda import runtime  # NOQA
 from cupy.cuda import stream  # NOQA
 from cupy.cuda import texture  # NOQA
+from cupy_cuda import cublas  # NOQA
+from cupy_cuda import curand  # NOQA
+from cupy_cuda import cusparse  # NOQA
+from cupy_cuda import driver  # NOQA
+from cupy_cuda import nvrtc  # NOQA
+from cupy_cuda import profiler  # NOQA
+from cupy_cuda import runtime  # NOQA
 
 
 _available = None
 _cub_disabled = None
 
 
-from cupy.cuda import cusolver  # NOQA
+from cupy_cuda import cusolver  # NOQA
 # This flag is kept for backward compatibility.
 # It is always True as cuSOLVER library is always available in CUDA 8.0+.
 cusolver_enabled = True
@@ -52,7 +56,7 @@ except ImportError:
     nccl_enabled = False
 
 try:
-    from cupy.cuda import cutensor  # NOQA
+    from cupy_cuda import cutensor  # NOQA
     cutensor_enabled = True
 except ImportError:
     cutensor_enabled = False

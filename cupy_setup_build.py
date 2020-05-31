@@ -40,6 +40,13 @@ use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 MODULES = []
 
 cuda_files = [
+    'cupy_cuda.cublas',
+    'cupy_cuda.curand',
+    'cupy_cuda.cusparse',
+    'cupy_cuda.driver',
+    'cupy_cuda.nvrtc',
+    'cupy_cuda.profiler',
+    'cupy_cuda.runtime',
     'cupy.core._carray',
     'cupy.core._dtype',
     'cupy.core._kernel',
@@ -59,20 +66,13 @@ cuda_files = [
     'cupy.core.internal',
     'cupy.core.fusion',
     'cupy.core.raw',
-    'cupy.cuda.cublas',
     'cupy.cuda.cufft',
-    'cupy.cuda.curand',
-    'cupy.cuda.cusparse',
     'cupy.cuda.device',
-    'cupy.cuda.driver',
     'cupy.cuda.memory',
     'cupy.cuda.memory_hook',
-    'cupy.cuda.nvrtc',
     'cupy.cuda.pinned_memory',
-    'cupy.cuda.profiler',
     'cupy.cuda.function',
     'cupy.cuda.stream',
-    'cupy.cuda.runtime',
     'cupy.cuda.texture',
     'cupy.util',
 ]
@@ -125,7 +125,7 @@ if use_hip:
     MODULES.append({
         'name': 'cusolver',
         'file': [
-            'cupy.cuda.cusolver',
+            'cupy_cuda.cusolver',
         ],
         'include': [],
         'libraries': [],
@@ -134,7 +134,7 @@ else:
     MODULES.append({
         'name': 'cusolver',
         'file': [
-            'cupy.cuda.cusolver',
+            'cupy_cuda.cusolver',
         ],
         'include': [
             'cusolverDn.h',
@@ -149,7 +149,7 @@ if not use_hip:
     MODULES.append({
         'name': 'cudnn',
         'file': [
-            'cupy.cuda.cudnn',
+            'cupy_cuda.cudnn',
             'cupy.cudnn',
         ],
         'include': [
@@ -194,7 +194,7 @@ if not use_hip:
     MODULES.append({
         'name': 'cutensor',
         'file': [
-            'cupy.cuda.cutensor',
+            'cupy_cuda.cutensor',
         ],
         'include': [
             'cutensor.h',

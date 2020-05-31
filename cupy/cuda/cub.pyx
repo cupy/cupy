@@ -12,7 +12,7 @@ from cupy.core.core cimport ndarray
 from cupy.core.internal cimport _contig_axes
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
-from cupy.cuda cimport runtime
+from cupy_cuda cimport runtime
 from cupy.cuda cimport stream
 from cupy.cuda.driver cimport Stream as Stream_t
 

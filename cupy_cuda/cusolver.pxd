@@ -5,9 +5,6 @@ from libc.stdint cimport intptr_t
 ###############################################################################
 # Types
 ###############################################################################
-
-from cupy.cuda.driver cimport Stream
-
 cdef extern from *:
     ctypedef void* LibraryPropertyType 'libraryPropertyType_t'
 

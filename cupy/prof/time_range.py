@@ -2,7 +2,7 @@ import contextlib
 import functools
 
 from cupy import cuda
-from cupy.cuda import runtime
+from cupy_cuda import runtime
 
 
 @contextlib.contextmanager

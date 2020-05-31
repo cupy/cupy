@@ -3,12 +3,13 @@
 import threading
 
 from cupy.core import syncdetect
-from cupy.cuda import cublas
-from cupy.cuda import cusolver
-from cupy.cuda import cusparse
-from cupy.cuda cimport runtime
-from cupy.cuda import runtime as runtime_module
+from cupy_cuda import cublas
+from cupy_cuda import cusolver
+from cupy_cuda import cusparse
+from cupy_cuda cimport runtime
+from cupy_cuda import runtime as runtime_module
 from cupy import util
+
 
 # This flag is kept for backward compatibility.
 # It is always True as cuSOLVER library is always available in CUDA 8.0+.
@@ -76,7 +77,7 @@ def _get_attributes(device_id):
                 name = k.replace('cudaDevAttr', '', 1)
                 d[name] = runtime.deviceGetAttribute(v, device_id)
             except runtime_module.CUDARuntimeError as e:
-                if e.status != runtime.cudaErrorInvalidValue:
+                if e.status != runtime.errorInvalidValue:
                     raise
     return d
 

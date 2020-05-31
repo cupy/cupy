@@ -28,7 +28,7 @@ from cupy.core cimport internal
 from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
-from cupy.cuda cimport runtime
+from cupy_cuda cimport runtime
 
 import math
 import string

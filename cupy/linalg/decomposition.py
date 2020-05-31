@@ -1,8 +1,8 @@
 import numpy
 
 import cupy
-from cupy.cuda import cublas
-from cupy.cuda import cusolver
+from cupy_cuda import cublas
+from cupy_cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import util
 
