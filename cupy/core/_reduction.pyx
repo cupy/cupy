@@ -188,7 +188,7 @@ cdef tuple _can_use_cub_block_reduction(
     elif in_arr.flags.c_contiguous:
         axis_permutes_cub = out_axis + reduce_axis
     else:
-        axis_permutes_cub = None
+        return None
     if axis_permutes_cub == tuple(range(in_arr.ndim)):
         return axis_permutes_cub
     else:
@@ -242,7 +242,7 @@ cdef _cub_two_pass_launch(
     cdef size_t gridx, blockx
 
     # fair share
-    contiguous_size = block_size * items_per_thread
+    contiguous_size = min(segment_size, block_size * items_per_thread)
     out_block_num = (segment_size + contiguous_size - 1) // contiguous_size
 
     # Because we can't know sizeof(reduce_type) in advance, here we
