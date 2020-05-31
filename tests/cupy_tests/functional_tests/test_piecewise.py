@@ -114,6 +114,46 @@ class TestPiecewise(unittest.TestCase):
             cupy.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_piecewise_tuple(self, xp, dtype):
+        x = testing.shaped_arange((4, 3), xp, dtype)
+        condlist = [(True, False, False), (False, True, True),
+                    (False, False, False), (False, True, True)]
+        funclist = [1, 2]
+        return xp.piecewise(x, condlist, funclist)
+
+    @testing.for_all_dtypes()
+    def test_piecewise_tuple_size_mismatched(self, dtype):
+        x = testing.shaped_arange((4, 3), cupy, dtype)
+        condlist = [(True, False), (False, True),
+                    (False, False), (False, True)]
+        funclist = [1, 2]
+        with pytest.raises(ValueError):
+            cupy.piecewise(x, condlist, funclist)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_piecewise_nested_tuples(self, xp, dtype):
+        x = testing.shaped_arange((2, 4, 3), xp, dtype)
+        condlist = (((True, False, False), (False, True, True),
+                     (False, False, True), (True, False, False)),
+                    ((True, False, False), (False, True, True),
+                     (False, False, False), (True, False, False)))
+        funclist = [1, 2]
+        return xp.piecewise(x, condlist, funclist)
+
+    @testing.for_all_dtypes()
+    def test_piecewise_nested_tuples_size_mismatched(self, dtype):
+        x = testing.shaped_arange((2, 4, 3), cupy, dtype)
+        condlist = (((True, False), (False, True),
+                     (False, False), (True, False)),
+                    ((True, False), (False, True),
+                     (False, False), (True, False)))
+        funclist = [1, 2]
+        with pytest.raises(ValueError):
+            cupy.piecewise(x, condlist, funclist)
+
+    @testing.for_all_dtypes()
     def test_mismatched_lengths(self, dtype):
         x = cupy.linspace(-2, 4, 6, dtype=dtype)
         condlist = [x < 0, x >= 0]

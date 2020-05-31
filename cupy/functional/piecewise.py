@@ -30,15 +30,25 @@ def piecewise(x, condlist, funclist):
     diffshape = 0
     if cupy.isscalar(condlist):
         condlist = [condlist]
-    elif not isinstance(condlist[0], (list, cupy.ndarray)) and x.ndim != 0:
+    elif isinstance(condlist[0], tuple) and x.ndim != 0:
+        diffshape = 2
+    elif cupy.isscalar(condlist[0]) and x.ndim != 0:
         diffshape = 1
     condlist = cupy.array(condlist, dtype=bool)
     condlen = len(condlist)
     if diffshape:
+        if x.ndim == condlist.ndim:
+            for i in range(x.ndim - 1, -1, -1):
+                if condlist.shape[i] != x.shape[i]:
+                    raise ValueError('boolean index did not match indexed '
+                                     'array along dimension {}; dimension is '
+                                     '{} but corresponding boolean dimension '
+                                     'is {}'.format(i, x.shape[i],
+                                                    condlist.shape[i]))
         if condlen == x.shape[0]:
             condlen = 1
         else:
-            raise ValueError('boolean index did not match indexed array along'
+            raise ValueError('boolean index did not match indexed array along '
                              'dimension 0; dimension is {} but corresponding '
                              'boolean dimension is {}'
                              .format(x.shape[0], condlen))
@@ -52,10 +62,11 @@ def piecewise(x, condlist, funclist):
     else:
         raise ValueError('with {} condition(s), either {} or {} functions'
                          ' are expected'.format(condlen, condlen, condlen + 1))
-    if diffshape:
-        y = cupy.where(condlist, funclist[0], y.T)
-        y = y.T
+    if diffshape == 1:
+        cupy._sorting.search._where_ufunc(condlist, funclist[0], y.T, y.T)
+    elif diffshape == 2:
+        cupy._sorting.search._where_ufunc(condlist, funclist[0], y, y)
     else:
         for condition, func in zip(condlist, funclist):
-            y = cupy.where(condition, func, y)
+            cupy._sorting.search._where_ufunc(condition, func, y, y)
     return y
