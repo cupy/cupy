@@ -1,8 +1,9 @@
 cimport cython  # NOQA
 
-from cupy.cuda cimport driver
+from cupy_cuda cimport driver
+from cupy_cuda.runtime cimport DataType
 from cupy.cuda cimport stream as stream_module
-from cupy.cuda.runtime cimport DataType
+
 
 cdef extern from 'cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':

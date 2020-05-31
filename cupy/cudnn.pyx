@@ -11,13 +11,13 @@ from cupy.core._carray cimport shape_t
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport core
 from cupy.core cimport internal
-from cupy.cuda cimport cudnn
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
+from cupy_cuda cimport cudnn
 
 from cupy.core._ufuncs import elementwise_copy
-from cupy.cuda import cudnn as py_cudnn
 from cupy import util
+from cupy_cuda import cudnn as py_cudnn
 
 cdef int _cudnn_version = cudnn.getVersion()
 cdef _thread_local = threading.local()

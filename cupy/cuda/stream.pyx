@@ -1,4 +1,5 @@
-from cupy.cuda import runtime
+from cupy_cuda cimport runtime
+
 import threading
 import weakref
 

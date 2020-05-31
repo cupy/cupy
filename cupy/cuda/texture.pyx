@@ -4,13 +4,12 @@ from libc.string cimport memset as c_memset
 import numpy
 
 from cupy.core.core cimport ndarray
-from cupy.cuda cimport device
-from cupy.cuda cimport driver
-from cupy.cuda cimport runtime
-from cupy.cuda.runtime cimport Array, ChannelFormatDesc, ChannelFormatKind,\
+from cupy_cuda cimport driver
+from cupy_cuda cimport runtime
+from cupy_cuda.runtime cimport Array, ChannelFormatDesc, ChannelFormatKind,\
     Memcpy3DParms, MemoryKind, PitchedPtr, ResourceDesc, ResourceType, \
     TextureAddressMode, TextureDesc, TextureFilterMode, TextureReadMode
-from cupy.cuda.runtime import CUDARuntimeError
+from cupy_cuda.runtime import CUDARuntimeError
 
 
 cdef class ChannelFormatDescriptor:

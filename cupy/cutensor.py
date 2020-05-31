@@ -2,9 +2,9 @@ import numpy
 import warnings
 
 import cupy
+from cupy_cuda import runtime
 from cupy.cuda import cutensor
 from cupy.cuda import device
-from cupy.cuda import runtime
 from cupy import util
 
 _handles = {}

@@ -1,7 +1,7 @@
 # distutils: language = c++
 
 """Thin wrapper of cuda profiler."""
-from cupy.cuda cimport runtime
+from cupy_cuda cimport runtime
 
 
 cdef extern from 'cupy_cuda.h' nogil:
