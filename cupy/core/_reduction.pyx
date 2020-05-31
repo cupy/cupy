@@ -152,6 +152,7 @@ cdef tuple _can_use_cub_block_reduction(
 
     cdef tuple axis_permutes_cub
     cdef ndarray in_arr, out_arr
+    cdef Py_ssize_t contiguous_size = 1
 
     # first check the flag settable at runtime from outside
     if not core.cub_block_reduction_enabled:
@@ -189,10 +190,16 @@ cdef tuple _can_use_cub_block_reduction(
         axis_permutes_cub = out_axis + reduce_axis
     else:
         return None
-    if axis_permutes_cub == tuple(range(in_arr.ndim)):
-        return axis_permutes_cub
-    else:
+    if axis_permutes_cub != tuple(range(in_arr.ndim)):
         return None
+
+    # check if number of elements exceeds INT_MAX (CUB limit, see #3309)
+    for i in reduce_axis:
+        contiguous_size *= in_arr.shape[i]
+    if contiguous_size > 2**31-1:
+        return None
+
+    return (axis_permutes_cub, contiguous_size)
 
 
 # similar to cupy.core._kernel._get_kernel_params()
@@ -251,6 +258,7 @@ cdef _cub_two_pass_launch(
     out_args[0] = memptr
 
     # ************************ 1st pass ************************
+    print("************* 1st PASS *************")
     name += '_pass1'
     inout_args = [in_args[0], out_args[0],
                   _scalar.CScalar.from_int32(contiguous_size)]
@@ -281,6 +289,7 @@ cdef _cub_two_pass_launch(
     func.linear_launch(gridx, inout_args, 0, blockx, stream)
 
     # ************************ 2nd pass ************************
+    print("************* 2nd PASS *************")
     name = name[:-1] + '2'
     contiguous_size = out_block_num
     out_block_num = 1
@@ -454,10 +463,10 @@ cdef class _AbstractReductionKernel:
             bint keepdims, bint reduce_dims, int device_id,
             stream, bint try_use_cub=False):
         cdef tuple reduce_axis, out_axis, axis_permutes
-        cdef tuple axis_permutes_cub, cub_params
+        cdef tuple can_use_cub, cub_params
         cdef tuple params
         cdef Py_ssize_t i
-        cdef Py_ssize_t contiguous_size, items_per_thread
+        cdef Py_ssize_t contiguous_size = -1, items_per_thread
         cdef Py_ssize_t block_size, block_stride, out_block_num
         cdef shape_t in_shape, out_shape
         cdef ndarray arr
@@ -507,11 +516,11 @@ cdef class _AbstractReductionKernel:
         use_cub = False
         axis_permutes = reduce_axis + out_axis
         if try_use_cub:
-            axis_permutes_cub = _can_use_cub_block_reduction(
+            can_use_cub = _can_use_cub_block_reduction(
                 in_args, out_args, reduce_axis, out_axis)
-            if axis_permutes_cub is not None:
+            if can_use_cub is not None:
                 use_cub = True
-                axis_permutes = axis_permutes_cub
+                axis_permutes, contiguous_size = can_use_cub
 
         in_shape = _set_permuted_args(in_args, axis_permutes,
                                       a_shape, self.in_params)
@@ -562,10 +571,6 @@ cdef class _AbstractReductionKernel:
             params = self._params
         else:
             # TODO(leofang): fix reduce_dims
-
-            contiguous_size = 1
-            for i in reduce_axis:
-                contiguous_size *= in_shape[i]
 
             # This should be an even number
             # TODO(leofang): this is recommended in the CUB internal, but
