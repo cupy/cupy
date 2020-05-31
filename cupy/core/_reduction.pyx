@@ -307,7 +307,7 @@ cdef _cub_two_pass_launch(
 
     # Retrieve the kernel function
     func = _SimpleReductionKernel_get_cached_function(
-            '', reduce_expr, post_map_expr2, reduce_type,
+            'in0', reduce_expr, post_map_expr2, reduce_type,
             params,
             _get_arginfos(inout_args), 
             type_map,

@@ -99,24 +99,20 @@ __global__ void ${name}(${params}) {
       #pragma unroll
       for (int j = 0; j < ITEMS_PER_THREAD; j++) {
           _sdata[j] = _type_reduce(${identity});
+          //printf("before: %i, %i\\n", _bid, _sdata[j]);
           // some pre_map_expr uses _J internally...
           #if defined FIRST_PASS
           int _J = (blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j);
-          #elif defined SECOND_PASS
-          //do nothing
-          #else
+          #else  // only one pass
           int _J = (blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j) % _segment_size;
           #endif
 
           if ((_tid * ITEMS_PER_THREAD) + j < tile_size)
           {
               const type_mid_in in0 = *(segment_head + i + _tid * ITEMS_PER_THREAD + j);
-              #ifndef SECOND_PASS
               _sdata[j] = static_cast<_type_reduce>(${pre_map_expr});
-              #else
-              _sdata[j] = in0;
-              #endif
           }
+          //printf("after: %i, %i\\n", _bid, _sdata[j]);
       }
 '''        
 
