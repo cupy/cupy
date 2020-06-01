@@ -68,6 +68,7 @@ __global__ void ${name}(${params}) {
 
   // Per-thread tile data
   _type_reduce _sdata[ITEMS_PER_THREAD] = {_type_reduce(${identity})};
+  for (int j = 0; j < ITEMS_PER_THREAD; j++) { printf("%s, before: %i, %i\\n", __func__, _bid, _sdata[j]); }
 
   // each block handles the reduction of 1 segment
   const type_mid_in* segment_head = _in0 + blockIdx.x * _segment_size;
@@ -79,27 +80,25 @@ __global__ void ${name}(${params}) {
   for (i = 0; i < _segment_size; i += BLOCK_SIZE * ITEMS_PER_THREAD) {
       if (_segment_size - i < tile_size)  // for the last tile
           tile_size = _segment_size - i;
-
 '''
 
-    if pre_map_expr == 'in0':
-        module_code += '''
-
-      typedef cub::BlockLoad<_type_reduce, BLOCK_SIZE, ITEMS_PER_THREAD, cub::BLOCK_LOAD_DIRECT> BlockLoadT;
-
-      __shared__ typename BlockLoadT::TempStorage temp_storage_load;
-
-      // load a tile
-      BlockLoadT(temp_storage_load).Load(segment_head + i, _sdata, tile_size, _type_reduce(${identity}));
-
-'''
-    else:  # pre_map_expr could be something like "in0 != type_in0_raw(0)"
-        module_code += '''
+#    if pre_map_expr == 'in0':
+#        module_code += '''
+#      typedef cub::BlockLoad<_type_reduce, BLOCK_SIZE, ITEMS_PER_THREAD, cub::BLOCK_LOAD_DIRECT> BlockLoadT;
+#
+#      __shared__ typename BlockLoadT::TempStorage temp_storage_load;
+#
+#      // load a tile
+#      for (int j = 0; j < ITEMS_PER_THREAD; j++) { printf("%s, before: %i, %i\\n", __func__, _bid, _sdata[j]); }
+#      BlockLoadT(temp_storage_load).Load(segment_head + i, _sdata, tile_size, _type_reduce(${identity}));
+#      for (int j = 0; j < ITEMS_PER_THREAD; j++) { printf("after: %i, %i\\n", _bid, _sdata[j]); }
+#'''
+#    else:  # pre_map_expr could be something like "in0 != type_in0_raw(0)"
+#        module_code += '''
+    module_code += '''
       // load a tile
       #pragma unroll
       for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-          _sdata[j] = _type_reduce(${identity});
-          //printf("before: %i, %i\\n", _bid, _sdata[j]);
           // some pre_map_expr uses _J internally...
           #if defined FIRST_PASS
           int _J = (blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j);
@@ -107,12 +106,13 @@ __global__ void ${name}(${params}) {
           int _J = (blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j) % _segment_size;
           #endif
 
-          if ((_tid * ITEMS_PER_THREAD) + j < tile_size)
-          {
+          if ((_tid * ITEMS_PER_THREAD) + j < tile_size) {
               const type_mid_in in0 = *(segment_head + i + _tid * ITEMS_PER_THREAD + j);
               _sdata[j] = static_cast<_type_reduce>(${pre_map_expr});
+          } else { 
+              _sdata[j] = _type_reduce(${identity});
           }
-          //printf("after: %i, %i\\n", _bid, _sdata[j]);
+          printf("after: %i, %i\\n", _bid, _sdata[j]);
       }
 '''        
 

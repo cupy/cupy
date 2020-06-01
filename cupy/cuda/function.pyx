@@ -105,10 +105,7 @@ cdef inline CPointer _pointer(x):
         return CIntptr(x.ptr)
     if isinstance(x, CPointer):
         return x
-    if isinstance(x, TextureObject):
-        return CUIntMax(x.ptr)
-
-    if isinstance(x, SurfaceObject):
+    if isinstance(x, (TextureObject, SurfaceObject)):
         return CUIntMax(x.ptr)
 
     if type(x) not in _pointer_numpy_types:

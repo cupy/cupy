@@ -258,7 +258,7 @@ cdef _cub_two_pass_launch(
     out_args[0] = memptr
 
     # ************************ 1st pass ************************
-    print("************* 1st PASS *************")
+    print("************* 1st PASS *************", flush=True)
     name += '_pass1'
     inout_args = [in_args[0], out_args[0],
                   _scalar.CScalar.from_int32(contiguous_size)]
@@ -289,7 +289,7 @@ cdef _cub_two_pass_launch(
     func.linear_launch(gridx, inout_args, 0, blockx, stream)
 
     # ************************ 2nd pass ************************
-    print("************* 2nd PASS *************")
+    print("************* 2nd PASS *************", flush=True)
     name = name[:-1] + '2'
     contiguous_size = out_block_num
     out_block_num = 1
