@@ -50,7 +50,7 @@ cdef class RawKernel:
 
         # only used when RawKernels are produced from RawModule
         self.file_path = None  # for cubin/ptx
-        self.specializations = None  # for C++ template
+        self.name_expressions = None  # for C++ template
 
         # per-device, per-instance cache, to be initialized on first call
         self._kernel_cache = []
@@ -94,7 +94,7 @@ cdef class RawKernel:
             mod = _get_raw_module(
                 self.code, self.file_path, self.options, self.backend,
                 self.translate_cucomplex, self.enable_cooperative_groups,
-                self.specializations)
+                self.name_expressions)
             ker = mod.get_function(self.name)
             self._kernel_cache[dev] = ker
         return ker
@@ -252,12 +252,12 @@ cdef class RawModule:
             ``cuLaunchCooperativeKernel`` so that cooperative groups can be
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
-        specializations (sequence of str): A sequence (e.g. list) of strings
-            for specializing C++ template kernels. For example,
-            ``specializations=['func<int>', 'func<double>']`` for the template
-            kernel ``func<T>``. Strings in this tuple must then be passed, one
-            at a time, to :meth:`get_function` to retrieve the corresponding
-            kernel name.
+        name_expressions (sequence of str): A sequence (e.g. list) of strings
+            referring to the names of C++ global/template kernels. For example,
+            ``name_expressions=['func1<int>', 'func1<double>', 'func2']`` for
+            the template kernel ``func1<T>`` and non-template kernel ``func2``.
+            Strings in this tuple must then be passed, one at a time, to
+            :meth:`get_function` to retrieve the corresponding kernel.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
@@ -265,27 +265,27 @@ cdef class RawModule:
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
                  bint enable_cooperative_groups=False,
-                 specializations=None):
+                 name_expressions=None):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
                 'given.')
-        if specializations:
+        if name_expressions is not None:
             if code is None:
-                raise ValueError('need template code for the requested '
-                                 'specializations')
+                raise ValueError('need CUDA C++ code for the requested '
+                                 'kernels')
             if backend != 'nvrtc':
                 raise ValueError('only nvrtc supports retrieving the mangled '
-                                 'names for template specializations')
+                                 'names for the given name expressions')
             for option in options:
                 if '-std=c++' in option:  # both -std and --std are valid
                     break
             else:
                 raise ValueError('need to specify C++ standard for compiling '
                                  'template code')
-            self.specializations = tuple(specializations)  # make it hashable
+            self.name_expressions = tuple(name_expressions)  # make it hashable
         else:
-            self.specializations = None
+            self.name_expressions = None
 
         self.code = code
         self.file_path = path
@@ -312,15 +312,15 @@ cdef class RawModule:
         mod = _get_raw_module(
             self.code, self.file_path, self.options, self.backend,
             self.translate_cucomplex, self.enable_cooperative_groups,
-            self.specializations)
+            self.name_expressions)
         return mod
 
     def get_function(self, str name):
         """Retrieve a CUDA kernel by its name from the module.
 
         Args:
-            name (str): Name of the kernel function. For C++ template kernels,
-                ``name`` refers to one of the template specializations
+            name (str): Name of the kernel function. For C++ global/template
+                kernels, ``name`` refers to one of the name expressions
                 specified when initializing the present :class:`RawModule`
                 instance.
 
@@ -340,7 +340,7 @@ cdef class RawModule:
 
                 kers = ('func<int>', 'func<float>', 'func<double>')
                 mod = cupy.RawModule(code=code, options=('--std=c++11',),
-                                     specializations=kers)
+                                     name_expressions=kers)
 
                 // retrieve func<int>
                 ker_int = mod.get_function(kers[0])
@@ -357,8 +357,8 @@ cdef class RawModule:
         cdef Function func
         cdef str mangled_name
 
-        # check if the name is a C++ template specialization
-        if self.specializations:
+        # check if the name is a valid C++ name expression
+        if self.name_expressions:
             mangled_name = self.module.mapping.get(name)
             if mangled_name is not None:
                 name = mangled_name
@@ -370,7 +370,7 @@ cdef class RawModule:
         # for lookup in case we loaded from cubin/ptx
         ker.file_path = self.file_path
         # for lookup in case we specialize a template
-        ker.specializations = self.specializations
+        ker.name_expressions = self.name_expressions
         # register the kernel in the cache
         func = ker.kernel  # noqa
         return ker
@@ -423,14 +423,14 @@ cdef class RawModule:
 def _get_raw_module(str code, str path, tuple options=(), str backend='nvrtc',
                     bint translate_cucomplex=False,
                     bint enable_cooperative_groups=False,
-                    tuple specializations=None):
+                    tuple name_expressions=None):
     cdef Module mod
     if code is not None:
         mod = cupy.core.core.compile_with_cache(
             code, options, prepend_cupy_headers=False, backend=backend,
             translate_cucomplex=translate_cucomplex,
             enable_cooperative_groups=enable_cooperative_groups,
-            specializations=specializations)
+            name_expressions=name_expressions)
     elif path is not None:
         mod = Module()
         mod.load_file(path)

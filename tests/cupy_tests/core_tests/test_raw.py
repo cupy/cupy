@@ -630,13 +630,13 @@ class TestRaw(unittest.TestCase):
             self.skipTest('nvcc does not support template specialization')
 
         # compile code
-        specializations = ['my_sqrt<int>', 'my_sqrt<float>',
-                           'my_sqrt<complex<double>>', 'my_func']
+        name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
+                            'my_sqrt<complex<double>>', 'my_func']
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
-                             specializations=specializations)
+                             name_expressions=name_expressions)
 
         dtypes = (cupy.int32, cupy.float32, cupy.complex128, cupy.float64)
-        for ker_T, dtype in zip(specializations, dtypes):
+        for ker_T, dtype in zip(name_expressions, dtypes):
             # get specialized kernels
             ker = mod.get_function(ker_T)
 
@@ -651,14 +651,14 @@ class TestRaw(unittest.TestCase):
             assert cupy.allclose(in_arr, out_arr)
 
     def test_template_failure(self):
-        specializations = ['my_sqrt<int>']
+        name_expressions = ['my_sqrt<int>']
 
         # 1. nvcc is disabled for this feature
         if self.backend == 'nvcc':
             with pytest.raises(ValueError) as e:
                 cupy.RawModule(code=test_cxx_template, backend=self.backend,
                                options=('--std=c++11',),
-                               specializations=specializations)
+                               name_expressions=name_expressions)
             assert 'nvrtc' in str(e.value)
             return  # the rest of tests do not apply to nvcc
 
@@ -672,11 +672,11 @@ class TestRaw(unittest.TestCase):
         # 3. compile code without specifying C++ standard
         with pytest.raises(ValueError):
             cupy.RawModule(code=test_cxx_template,
-                           specializations=specializations)
+                           name_expressions=name_expressions)
 
         # 4. try to fetch something we didn't specialize for
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
-                             specializations=specializations)
+                             name_expressions=name_expressions)
         with pytest.raises(cupy.cuda.driver.CUDADriverError,
                            match='named symbol not found'):
             mod.get_function('my_sqrt<double>')
@@ -748,15 +748,15 @@ class TestRaw(unittest.TestCase):
             self.skipTest('nvcc does not support template specialization')
 
         # compile code
-        specializations = ['my_sqrt<unsigned int>']
+        name_expressions = ['my_sqrt<unsigned int>']
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
-                             specializations=specializations)
+                             name_expressions=name_expressions)
 
         # switch device
         cupy.cuda.runtime.setDevice(1)
 
         # get specialized kernels
-        name = specializations[0]
+        name = name_expressions[0]
         ker = mod.get_function(name)
 
         # prepare inputs & expected outputs
@@ -777,12 +777,12 @@ class TestRaw(unittest.TestCase):
             self.skipTest('nvcc does not support template specialization')
 
         # compile code
-        specializations = ['my_sqrt<unsigned int>']
+        name_expressions = ['my_sqrt<unsigned int>']
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
-                             specializations=specializations)
+                             name_expressions=name_expressions)
 
         # get specialized kernels
-        name = specializations[0]
+        name = name_expressions[0]
         ker = mod.get_function(name)
 
         # switch device

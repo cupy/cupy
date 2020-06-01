@@ -119,7 +119,7 @@ def _get_bool_env_variable(name, default):
 
 
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
-                        specializations=None):
+                        name_expressions=None):
     if not arch:
         arch = _get_arch()
 
@@ -131,7 +131,8 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
         with open(cu_path, 'w') as cu_file:
             cu_file.write(source)
 
-        prog = _NVRTCProgram(source, cu_path, specializations=specializations)
+        prog = _NVRTCProgram(source, cu_path,
+                             name_expressions=name_expressions)
         try:
             ptx, mapping = prog.compile(options)
         except CompileException as e:
@@ -275,7 +276,7 @@ _empty_file_preprocess_cache = {}
 def compile_with_cache(
         source, options=(), arch=None, cache_dir=None, extra_source=None,
         backend='nvrtc', *, enable_cooperative_groups=False,
-        specializations=None):
+        name_expressions=None):
 
     if enable_cooperative_groups:
         if backend != 'nvcc':
@@ -285,7 +286,7 @@ def compile_with_cache(
             raise ValueError(
                 'Cooperative groups is not supported in HIP.')
 
-    if specializations is not None:
+    if name_expressions is not None:
         if runtime.is_hip or backend != 'nvrtc':
             raise NotImplementedError
 
@@ -295,12 +296,12 @@ def compile_with_cache(
     else:
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
-            enable_cooperative_groups, specializations)
+            enable_cooperative_groups, name_expressions)
 
 
 def _compile_with_cache_cuda(
         source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
-        enable_cooperative_groups=False, specializations=None):
+        enable_cooperative_groups=False, name_expressions=None):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -343,7 +344,7 @@ def _compile_with_cache_cuda(
     # to avoid performance degradation.
     # We force recompiling to retrieve C++ mangled names if so desired.
     path = os.path.join(cache_dir, name)
-    if os.path.exists(path) and not specializations:
+    if os.path.exists(path) and not name_expressions:
         with open(path, 'rb') as file:
             data = file.read()
         if len(data) >= 32:
@@ -356,7 +357,7 @@ def _compile_with_cache_cuda(
 
     if backend == 'nvrtc':
         ptx, mapping = compile_using_nvrtc(
-            source, options, arch, name + '.cu', specializations)
+            source, options, arch, name + '.cu', name_expressions)
         ls = function.LinkState()
         ls.add_ptr_data(ptx, 'cupy.ptx')
         # for separate compilation
@@ -434,7 +435,7 @@ class CompileException(Exception):
 class _NVRTCProgram(object):
 
     def __init__(self, src, name='default_program', headers=(),
-                 include_names=(), specializations=None):
+                 include_names=(), name_expressions=None):
         self.ptr = None
 
         if isinstance(src, bytes):
@@ -445,7 +446,7 @@ class _NVRTCProgram(object):
         self.src = src
         self.name = name
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
-        self.specializations = specializations
+        self.name_expressions = name_expressions
 
     def __del__(self, is_shutting_down=util.is_shutting_down):
         if is_shutting_down():
@@ -455,14 +456,14 @@ class _NVRTCProgram(object):
 
     def compile(self, options=()):
         try:
-            if self.specializations:
-                for ker in self.specializations:
+            if self.name_expressions:
+                for ker in self.name_expressions:
                     nvrtc.addAddNameExpression(self.ptr, ker)
             nvrtc.compileProgram(self.ptr, options)
             mapping = None
-            if self.specializations:
+            if self.name_expressions:
                 mapping = {}
-                for ker in self.specializations:
+                for ker in self.name_expressions:
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
             return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
