@@ -11,7 +11,7 @@ class TestRepeat(unittest.TestCase):
 
     def test_cpu_routine(self):
         with mock.patch('time.perf_counter',
-                        mock.Mock(side_effect=[2.4, 3.8] * 10)):
+                        mock.Mock(side_effect=[2.4, 3.8, 3.8] * 10)):
             with mock.patch('cupy.cuda.get_elapsed_time',
                             mock.Mock(return_value=2500)):
                 mock_func = mock.Mock()
@@ -32,7 +32,7 @@ class TestRepeat(unittest.TestCase):
 
     def test_repeat_max_duration(self):
         with mock.patch('time.perf_counter',
-                        mock.Mock(side_effect=[1., 2., 3., 4., 5., 6.])):
+                        mock.Mock(side_effect=[1., 2., 2.] * 6)):
             with mock.patch('cupy.cuda.get_elapsed_time',
                             mock.Mock(return_value=2500)):
                 mock_func = mock.Mock()
