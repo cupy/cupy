@@ -99,19 +99,21 @@ class TestPiecewise(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_piecewise_diff_shapes3(self, dtype):
-        x = testing.shaped_arange((3, 5), cupy, dtype)
         condlist = [True, False, True]
         funclist = cupy.array([1, 2, 3])
-        with pytest.raises(ValueError):
-            cupy.piecewise(x, condlist, funclist)
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((3, 5), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
     def test_piecewise_diff_shapes4(self, dtype):
-        x = testing.shaped_arange((3, 5), cupy, dtype)
         condlist = [True, False, True, False]
         funclist = cupy.array([1, 2])
-        with pytest.raises(ValueError):
-            cupy.piecewise(x, condlist, funclist)
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((3, 5), xp, dtype)
+            with pytest.raises(IndexError):
+                xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -124,12 +126,13 @@ class TestPiecewise(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_piecewise_tuple_size_mismatched(self, dtype):
-        x = testing.shaped_arange((4, 3), cupy, dtype)
         condlist = [(True, False), (False, True),
                     (False, False), (False, True)]
         funclist = [1, 2]
-        with pytest.raises(ValueError):
-            cupy.piecewise(x, condlist, funclist)
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((4, 3), xp, dtype)
+            with pytest.raises(IndexError):
+                xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -144,35 +147,39 @@ class TestPiecewise(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_piecewise_nested_tuples_size_mismatched(self, dtype):
-        x = testing.shaped_arange((2, 4, 3), cupy, dtype)
         condlist = (((True, False), (False, True),
                      (False, False), (True, False)),
                     ((True, False), (False, True),
                      (False, False), (True, False)))
         funclist = [1, 2]
-        with pytest.raises(ValueError):
-            cupy.piecewise(x, condlist, funclist)
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((2, 4, 3), xp, dtype)
+            with pytest.raises(IndexError):
+                xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
     def test_mismatched_lengths(self, dtype):
         x = cupy.linspace(-2, 4, 6, dtype=dtype)
         condlist = [x < 0, x >= 0]
         funclist = cupy.array([-1, 0, 2, 4, 5])
-        with pytest.raises(ValueError):
-            cupy.piecewise(x, condlist, funclist)
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
     def test_callable_funclist(self, dtype):
         x = cupy.linspace(-2, 4, 6, dtype=dtype)
         condlist = [x < 0, x > 0]
         funclist = [lambda x: -x, lambda x: x]
-        with pytest.raises(NotImplementedError):
-            cupy.piecewise(x, condlist, funclist)
+        for xp in (numpy, cupy):
+            with pytest.raises(NotImplementedError):
+                xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
     def test_mixed_funclist(self, dtype):
         x = cupy.linspace(-2, 2, 6, dtype=dtype)
         condlist = [x < 0, x == 0, x > 0]
         funclist = [-10, lambda x: -x, 10, lambda x: x]
-        with pytest.raises(NotImplementedError):
-            cupy.piecewise(x, condlist, funclist)
+        for xp in (numpy, cupy):
+            with pytest.raises(NotImplementedError):
+                xp.piecewise(x, condlist, funclist)

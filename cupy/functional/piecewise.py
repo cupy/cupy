@@ -32,6 +32,7 @@ def piecewise(x, condlist, funclist):
         condlist = [condlist]
     elif isinstance(condlist[0], tuple) and x.ndim != 0:
         diffshape = 2
+        funclist = cupy.asarray(funclist)
     elif cupy.isscalar(condlist[0]) and x.ndim != 0:
         diffshape = 1
     condlist = cupy.array(condlist, dtype=bool)
@@ -40,7 +41,7 @@ def piecewise(x, condlist, funclist):
         if x.ndim == condlist.ndim:
             for i in range(x.ndim - 1, -1, -1):
                 if condlist.shape[i] != x.shape[i]:
-                    raise ValueError('boolean index did not match indexed '
+                    raise IndexError('boolean index did not match indexed '
                                      'array along dimension {}; dimension is '
                                      '{} but corresponding boolean dimension '
                                      'is {}'.format(i, x.shape[i],
@@ -48,11 +49,11 @@ def piecewise(x, condlist, funclist):
         if condlen == x.shape[0]:
             condlen = 1
         else:
-            raise ValueError('boolean index did not match indexed array along '
+            raise IndexError('boolean index did not match indexed array along '
                              'dimension 0; dimension is {} but corresponding '
                              'boolean dimension is {}'
                              .format(x.shape[0], condlen))
-    funclist = cupy.asarray(funclist, dtype=x.dtype)
+    funclist = funclist.astype(dtype=x.dtype, copy=False)
     funclen = len(funclist)
     if condlen == funclen:
         y = cupy.zeros(shape=x.shape, dtype=x.dtype)
