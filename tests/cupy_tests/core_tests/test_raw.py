@@ -344,8 +344,6 @@ class TestRaw(unittest.TestCase):
             os.environ.pop('CUPY_CACHE_DIR')
         compiler._empty_file_preprocess_cache = {}
 
-        cupy.cuda.runtime.setDevice(self.dev)
-
     def _helper(self, kernel, dtype):
         N = 10
         x1 = cupy.arange(N**2, dtype=dtype).reshape(N, N)
@@ -687,21 +685,20 @@ class TestRaw(unittest.TestCase):
 
         # For RawKernel, we need to launch it once to force compiling
         x1, x2, y = self._helper(self.kern, cupy.float32)
-        cupy.cuda.runtime.setDevice(1)
 
-        x1, x2, y = self._helper(self.kern, cupy.float32)
-        assert cupy.allclose(y, x1 + x2)
+        with cupy.cuda.Device(1):
+            x1, x2, y = self._helper(self.kern, cupy.float32)
+            assert cupy.allclose(y, x1 + x2)
 
     @testing.multi_gpu(2)
     def test_context_switch_RawModule1(self):
         # run test_module() on another device
         # in this test, re-compiling happens at get_function()
-        cupy.cuda.runtime.setDevice(1)
-
-        module = self.mod2
-        ker_sum = module.get_function('test_sum')
-        x1, x2, y = self._helper(ker_sum, cupy.float32)
-        assert cupy.allclose(y, x1 + x2)
+        with cupy.cuda.Device(1):
+            module = self.mod2
+            ker_sum = module.get_function('test_sum')
+            x1, x2, y = self._helper(ker_sum, cupy.float32)
+            assert cupy.allclose(y, x1 + x2)
 
     @testing.multi_gpu(2)
     def test_context_switch_RawModule2(self):
@@ -709,10 +706,10 @@ class TestRaw(unittest.TestCase):
         # in this test, re-compiling happens at kernel launch
         module = self.mod2
         ker_sum = module.get_function('test_sum')
-        cupy.cuda.runtime.setDevice(1)
 
-        x1, x2, y = self._helper(ker_sum, cupy.float32)
-        assert cupy.allclose(y, x1 + x2)
+        with cupy.cuda.Device(1):
+            x1, x2, y = self._helper(ker_sum, cupy.float32)
+            assert cupy.allclose(y, x1 + x2)
 
     @testing.multi_gpu(2)
     def test_context_switch_RawModule3(self):
@@ -720,12 +717,12 @@ class TestRaw(unittest.TestCase):
         # generate cubin in the temp dir and load it on device 0
         file_path = self._generate_file('cubin')
         mod = cupy.RawModule(path=file_path, backend=self.backend)
-        # in this test, reloading happens at get_function()
-        cupy.cuda.runtime.setDevice(1)
 
-        ker = mod.get_function('test_div')
-        x1, x2, y = self._helper(ker, cupy.float32)
-        assert cupy.allclose(y, x1 / (x2 + 1.0))
+        # in this test, reloading happens at get_function()
+        with cupy.cuda.Device(1):
+            ker = mod.get_function('test_div')
+            x1, x2, y = self._helper(ker, cupy.float32)
+            assert cupy.allclose(y, x1 / (x2 + 1.0))
 
     @testing.multi_gpu(2)
     def test_context_switch_RawModule4(self):
@@ -734,11 +731,11 @@ class TestRaw(unittest.TestCase):
         file_path = self._generate_file('cubin')
         mod = cupy.RawModule(path=file_path, backend=self.backend)
         ker = mod.get_function('test_div')
-        # in this test, reloading happens at kernel launch
-        cupy.cuda.runtime.setDevice(1)
 
-        x1, x2, y = self._helper(ker, cupy.float32)
-        assert cupy.allclose(y, x1 / (x2 + 1.0))
+        # in this test, reloading happens at kernel launch
+        with cupy.cuda.Device(1):
+            x1, x2, y = self._helper(ker, cupy.float32)
+            assert cupy.allclose(y, x1 / (x2 + 1.0))
 
     @testing.multi_gpu(2)
     def test_context_switch_RawModule5(self):
@@ -753,21 +750,20 @@ class TestRaw(unittest.TestCase):
                              name_expressions=name_expressions)
 
         # switch device
-        cupy.cuda.runtime.setDevice(1)
+        with cupy.cuda.Device(1):
+            # get specialized kernels
+            name = name_expressions[0]
+            ker = mod.get_function(name)
 
-        # get specialized kernels
-        name = name_expressions[0]
-        ker = mod.get_function(name)
+            # prepare inputs & expected outputs
+            in_arr = cupy.testing.shaped_random((10,), dtype=cupy.uint32)
+            out_arr = in_arr**2
 
-        # prepare inputs & expected outputs
-        in_arr = cupy.testing.shaped_random((10,), dtype=cupy.uint32)
-        out_arr = in_arr**2
+            # run
+            ker((1,), (10,), (in_arr, 10))
 
-        # run
-        ker((1,), (10,), (in_arr, 10))
-
-        # check results
-        assert cupy.allclose(in_arr, out_arr)
+            # check results
+            assert cupy.allclose(in_arr, out_arr)
 
     @testing.multi_gpu(2)
     def test_context_switch_RawModule6(self):
@@ -786,17 +782,16 @@ class TestRaw(unittest.TestCase):
         ker = mod.get_function(name)
 
         # switch device
-        cupy.cuda.runtime.setDevice(1)
+        with cupy.cuda.Device(1):
+            # prepare inputs & expected outputs
+            in_arr = cupy.testing.shaped_random((10,), dtype=cupy.uint32)
+            out_arr = in_arr**2
 
-        # prepare inputs & expected outputs
-        in_arr = cupy.testing.shaped_random((10,), dtype=cupy.uint32)
-        out_arr = in_arr**2
+            # run
+            ker((1,), (10,), (in_arr, 10))
 
-        # run
-        ker((1,), (10,), (in_arr, 10))
-
-        # check results
-        assert cupy.allclose(in_arr, out_arr)
+            # check results
+            assert cupy.allclose(in_arr, out_arr)
 
 
 _test_grid_sync = r'''
