@@ -67,7 +67,9 @@ __global__ void ${name}(${params}) {
   type_mid_out* _out0 = static_cast<type_mid_out*>(_raw_out0);
 
   // Per-thread tile data
-  _type_reduce _sdata[ITEMS_PER_THREAD] = {_type_reduce(${identity})};
+  //_type_reduce _sdata[ITEMS_PER_THREAD] = {_type_reduce(${identity})};
+  _type_reduce _sdata[ITEMS_PER_THREAD];
+  for (int j = 0; j < ITEMS_PER_THREAD; j++) { _sdata[j] = _type_reduce(${identity}); }
   for (int j = 0; j < ITEMS_PER_THREAD; j++) { printf("%s, before: %i, %i\\n", __func__, _bid, _sdata[j]); }
 
   // each block handles the reduction of 1 segment
