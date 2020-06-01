@@ -70,7 +70,9 @@ __global__ void ${name}(${params}) {
   //_type_reduce _sdata[ITEMS_PER_THREAD] = {_type_reduce(${identity})};
   _type_reduce _sdata[ITEMS_PER_THREAD];
   for (int j = 0; j < ITEMS_PER_THREAD; j++) { _sdata[j] = _type_reduce(${identity}); }
-  for (int j = 0; j < ITEMS_PER_THREAD; j++) { printf("%s, before: %i, %i\\n", __func__, _bid, _sdata[j]); }
+  //__syncthreads();
+  //for (int j = 0; j < ITEMS_PER_THREAD; j++) { printf("%s, before: %i, %lld\\n", __func__, _bid, _sdata[j]); }
+  //__syncthreads();
 
   // each block handles the reduction of 1 segment
   const type_mid_in* segment_head = _in0 + blockIdx.x * _segment_size;
@@ -78,10 +80,22 @@ __global__ void ${name}(${params}) {
   size_t i = 0;  // tile head within the segment
   int tile_size = (BLOCK_SIZE * ITEMS_PER_THREAD < _segment_size ? BLOCK_SIZE * ITEMS_PER_THREAD : _segment_size);
 
+  #if defined FIRST_PASS
+  // for two-pass reduction only: "last segment" is special
+  if (_array_size > 0) {
+      _segment_size = (_array_size - blockIdx.x * _segment_size <= _segment_size ?
+                       _array_size - blockIdx.x * _segment_size :
+                       _segment_size);
+  }
+  #endif
+
   // loop over tiles within 1 segment
   for (i = 0; i < _segment_size; i += BLOCK_SIZE * ITEMS_PER_THREAD) {
-      if (_segment_size - i < tile_size)  // for the last tile
+      if (_tid == 0) printf("At tile: %i, i=%llu\\n", blockIdx.x, i);
+      if (_segment_size - i <= tile_size) { // for the last tile
           tile_size = _segment_size - i;
+          //if (_tid == 0) printf("last tile: i=%llu\\n", i);
+      }
 '''
 
 #    if pre_map_expr == 'in0':
@@ -110,11 +124,15 @@ __global__ void ${name}(${params}) {
 
           if ((_tid * ITEMS_PER_THREAD) + j < tile_size) {
               const type_mid_in in0 = *(segment_head + i + _tid * ITEMS_PER_THREAD + j);
+              //const type_mid_in in0 = segment_head[i + _tid * ITEMS_PER_THREAD + j];
               _sdata[j] = static_cast<_type_reduce>(${pre_map_expr});
+              printf("%s, element %lld loads %lld\\n", __func__, blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j, _sdata[j]);
           } else { 
               _sdata[j] = _type_reduce(${identity});
+              printf("%s, element %lld resets %lld\\n", __func__, blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j, _sdata[j]);
           }
-          printf("after: %i, %i\\n", _bid, _sdata[j]);
+          //printf("%s, after: %i, %lld\\n", __func__, _bid, _sdata[j]);
+          //printf("%s, element %lld: %lld\\n", __func__, blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j, _sdata[j]);
       }
 '''        
 

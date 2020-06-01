@@ -212,10 +212,10 @@ cpdef str _get_cub_kernel_params(tuple params, tuple arginfos):
     assert len(params) == len(arginfos)
 
     for i, (p, arginfo) in enumerate(zip(params, arginfos)):
-        if i != len(params) - 1:
+        if i < len(params) - 2:
             c_type = 'const void*' if p.is_const else 'void*'
         else:
-            # for segment size
+            # for segment size and array size
             c_type = arginfo.get_param_c_type(p)
         lst.append('{} {}'.format(
             c_type,
@@ -259,9 +259,11 @@ cdef _cub_two_pass_launch(
 
     # ************************ 1st pass ************************
     print("************* 1st PASS *************", flush=True)
+    import sys
     name += '_pass1'
     inout_args = [in_args[0], out_args[0],
-                  _scalar.CScalar.from_int32(contiguous_size)]
+                  _scalar.CScalar.from_int32(contiguous_size),
+                  _scalar.CScalar.from_int32(segment_size)]
     cub_params = (True, items_per_thread)
 
     # For mean()
@@ -284,11 +286,16 @@ cdef _cub_two_pass_launch(
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num * block_size)
     blockx = <size_t>block_size
+    print("gridx:", min(0x7fffffffUL, (gridx+blockx-1)//blockx),
+          "blockx:", min(blockx, gridx),
+          "contiguous_size:", contiguous_size,
+          file=sys.stderr, flush=True)
 
     # Launch the kernel
     func.linear_launch(gridx, inout_args, 0, blockx, stream)
 
     # ************************ 2nd pass ************************
+    # TODO(leofang): just copy if out_block_num is already 1
     print("************* 2nd PASS *************", flush=True)
     name = name[:-1] + '2'
     contiguous_size = out_block_num
@@ -296,6 +303,7 @@ cdef _cub_two_pass_launch(
     in_args = out_args
     out_args = out_args_2nd_pass
     inout_args = [in_args[0], out_args[0],
+                  _scalar.CScalar.from_int32(contiguous_size),
                   _scalar.CScalar.from_int32(contiguous_size)]
 
     # For mean()
@@ -318,6 +326,10 @@ cdef _cub_two_pass_launch(
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num * block_size)
     blockx = <size_t>block_size
+    print("gridx:", min(0x7fffffffUL, (gridx+blockx-1)//blockx),
+          "blockx:", min(blockx, gridx),
+          "segment_size:", contiguous_size,
+          file=sys.stderr, flush=True)
 
     # Launch the kernel
     func.linear_launch(gridx, inout_args, 0, blockx, stream)
@@ -609,7 +621,8 @@ cdef class _AbstractReductionKernel:
                     post_map_expr = post_map_expr.replace('_in_ind.size()', '_segment_size')
                     post_map_expr = post_map_expr.replace('_out_ind.size()', '1')
 
-            params = (self._params[0:2] + _get_param_info('int32 _segment_size', True))
+            params = (self._params[0:2] + _get_param_info('int32 _segment_size', False)
+                      + _get_param_info('int32 _array_size', True))
             cub_params = (True, items_per_thread, contiguous_size)
 
         # Launch the kernel
@@ -707,7 +720,8 @@ cdef class _AbstractReductionKernel:
         if use_cub:
             contiguous_size = cub_params[2]
             inout_args = (in_args + out_args
-                          + [_scalar.CScalar.from_int32(contiguous_size)])
+                          + [_scalar.CScalar.from_int32(contiguous_size),
+                             _scalar.CScalar.from_int32(0)])
         else:
             inout_args = (
                 in_args
