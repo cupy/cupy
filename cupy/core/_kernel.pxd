@@ -1,5 +1,8 @@
+from libcpp cimport vector
+
 from cupy.core cimport _carray
 from cupy.core cimport _scalar
+from cupy.core._carray cimport shape_t
 from cupy.core.core cimport ndarray
 
 
@@ -27,6 +30,7 @@ cdef class _ArgInfo:
         readonly type type
         readonly object dtype
         readonly int ndim
+        readonly bint c_contiguous
 
     @staticmethod
     cdef _ArgInfo from_arg(object arg)
@@ -123,18 +127,17 @@ cpdef tuple _get_arginfos(list args)
 
 cpdef str _get_kernel_params(tuple params, tuple arginfos)
 
-cdef tuple _broadcast(list args, tuple params, bint use_size)
+cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape)
 
-cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
-                        casting)
+cdef list _get_out_args(list out_args, tuple out_types,
+                        const shape_t& out_shape, casting)
 
 cdef list _get_out_args_with_params(
-    list out_args, tuple out_types, tuple out_shape, tuple out_params,
-    bint is_size_specified)
-
+    list out_args, tuple out_types,
+    const shape_t& out_shape, tuple out_params, bint is_size_specified)
 
 cdef _check_array_device_id(ndarray arr, int device_id)
 
 cdef list _preprocess_args(int dev_id, args, bint use_c_scalar)
 
-cdef tuple _reduce_dims(list args, tuple params, tuple shape)
+cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape)

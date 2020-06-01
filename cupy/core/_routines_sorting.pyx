@@ -122,10 +122,6 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
 
     """
 
-    if self.dtype.kind == 'c':
-        raise NotImplementedError('Sorting arrays with dtype \'{}\' is '
-                                  'not supported'.format(self.dtype))
-
     cdef int ndim = self._shape.size()
     cdef Py_ssize_t k, max_k, length, s, sz, t
     cdef ndarray data
@@ -264,7 +260,7 @@ def _partition_kernel(dtype):
     dtype = _get_typename(dtype)
     source = string.Template('''
     template<typename T>
-    __device__ void bitonic_sort_step(CArray<T, 1> a,
+    __device__ void bitonic_sort_step(CArray<T, 1, true> a,
             ptrdiff_t x, ptrdiff_t y, int i, ptrdiff_t s, ptrdiff_t w) {
         for (ptrdiff_t j = i; j < (y - x) / 2; j += 32) {
             ptrdiff_t n = j + (j & -w);
@@ -279,10 +275,10 @@ def _partition_kernel(dtype):
     // Sort a[x:y].
     template<typename T>
     __device__ void bitonic_sort(
-            CArray<T, 1> a, ptrdiff_t x, ptrdiff_t y, int i) {
+            CArray<T, 1, true> a, ptrdiff_t x, ptrdiff_t y, int i) {
         for (ptrdiff_t s = 2; s <= y - x; s *= 2) {
             for (ptrdiff_t w = s / 2; w >= 1; w /= 2) {
-                bitonic_sort_step<T>(a, x, y, i, s, w);
+                bitonic_sort_step< T >(a, x, y, i, s, w);
             }
         }
     }
@@ -290,7 +286,8 @@ def _partition_kernel(dtype):
     // Merge first k elements and the next 32 times t elements.
     template<typename T>
     __device__ void merge(
-            CArray<T, 1> a, int k, int i, ptrdiff_t x, ptrdiff_t z, int u) {
+            CArray<T, 1, true> a,
+            int k, int i, ptrdiff_t x, ptrdiff_t z, int u) {
         for (int s = i; s < u; s += 32) {
             if (a[x + k - s - 1] > a[z + s]) {
                 T tmp = a[x + k - s - 1];
@@ -302,7 +299,7 @@ def _partition_kernel(dtype):
         // After merge step, the first k elements are already bitonic.
         // Therefore, we do not need to fully sort.
         for (int w = k / 2; w >= 1; w /= 2) {
-            bitonic_sort_step<T>(a, x, k + x, i, k, w);
+            bitonic_sort_step< T >(a, x, k + x, i, k, w);
         }
     }
 
@@ -311,7 +308,8 @@ def _partition_kernel(dtype):
     // the warp size. The first k elements are always sorted and the next 32
     // times t elements stored values that have possibilities to be selected.
     __global__ void ${name}(
-            CArray<${dtype}, 1> a, int k, ptrdiff_t n, int t, ptrdiff_t sz) {
+            CArray<${dtype}, 1, true> a,
+            int k, ptrdiff_t n, int t, ptrdiff_t sz) {
 
         // This thread handles a[z:m].
         ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
@@ -321,7 +319,7 @@ def _partition_kernel(dtype):
         int id = i % 32;
         int x = 0;
 
-        bitonic_sort<${dtype}>(a, z, k + z, id);
+        bitonic_sort< ${dtype} >(a, z, k + z, id);
         ptrdiff_t j;
         for (j = k + id + z; j < m - (m - z) % 32; j += 32) {
             if (a[j] < a[k - 1 + z]) {
@@ -338,8 +336,8 @@ def _partition_kernel(dtype):
     #else
             if (__any(x >= t)) {
     #endif
-                bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
-                merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
+                bitonic_sort< ${dtype} >(a, k + z, 32 * t + k + z, id);
+                merge< ${dtype} >(a, k, id, z, k + z, min(k, 32 * t));
                 x = 0;
             }
         }
@@ -351,18 +349,18 @@ def _partition_kernel(dtype):
 
         // Finally, we merge the first k elements and the remainders to be
         // stored.
-        bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
-        merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
+        bitonic_sort< ${dtype} >(a, k + z, 32 * t + k + z, id);
+        merge< ${dtype} >(a, k, id, z, k + z, min(k, 32 * t));
     }
 
     __global__ void ${merge_kernel}(
-            CArray<${dtype}, 1> a, int k, ptrdiff_t n, int sz, int s) {
+            CArray<${dtype}, 1, true> a, int k, ptrdiff_t n, int sz, int s) {
         ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
             + threadIdx.x;
         ptrdiff_t z = i / 32 * 2 * s * n / sz;
         ptrdiff_t m = (i / 32 * 2 + 1) * s * n / sz;
         int id = i % 32;
-        merge<${dtype}>(a, k, id, z, m, k);
+        merge< ${dtype} >(a, k, id, z, m, k);
     }
     }
     ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)

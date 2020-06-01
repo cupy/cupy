@@ -1,3 +1,5 @@
+import numbers
+
 import numpy
 
 import cupy
@@ -364,6 +366,10 @@ def _as_pairs(x, ndim, as_index=False):
         # Pass through None as a special case, otherwise cupy.round(x) fails
         # with an AttributeError
         return ((None, None),) * ndim
+    elif isinstance(x, numbers.Number):
+        if as_index:
+            x = round(x)
+        return ((x, x),) * ndim
 
     x = numpy.array(x)
     if as_index:
@@ -585,13 +591,16 @@ def pad(array, pad_width, mode='constant', **kwargs):
            [100, 100, 100, 100, 100, 100, 100],
            [100, 100, 100, 100, 100, 100, 100]])
     """
-    pad_width = numpy.asarray(pad_width)
+    if isinstance(pad_width, numbers.Integral):
+        pad_width = ((pad_width, pad_width),) * array.ndim
+    else:
+        pad_width = numpy.asarray(pad_width)
 
-    if not pad_width.dtype.kind == 'i':
-        raise TypeError('`pad_width` must be of integral type.')
+        if not pad_width.dtype.kind == 'i':
+            raise TypeError('`pad_width` must be of integral type.')
 
-    # Broadcast to shape (array.ndim, 2)
-    pad_width = _as_pairs(pad_width, array.ndim, as_index=True)
+        # Broadcast to shape (array.ndim, 2)
+        pad_width = _as_pairs(pad_width, array.ndim, as_index=True)
 
     if callable(mode):
         # Old behavior: Use user-supplied function with numpy.apply_along_axis
@@ -641,6 +650,13 @@ def pad(array, pad_width, mode='constant', **kwargs):
             )
         )
 
+    if mode == 'constant':
+        values = kwargs.get('constant_values', 0)
+        if isinstance(values, numbers.Number) and values == 0 and (
+                array.ndim == 1 or array.size < 4e6):
+            # faster path for 1d arrays or small n-dimensional arrays
+            return _pad_simple(array, pad_width, 0)[0]
+
     stat_functions = {
         'maximum': cupy.max,
         'minimum': cupy.min,
@@ -656,7 +672,6 @@ def pad(array, pad_width, mode='constant', **kwargs):
     axes = range(padded.ndim)
 
     if mode == 'constant':
-        values = kwargs.get('constant_values', 0)
         values = _as_pairs(values, padded.ndim)
         for axis, width_pair, value_pair in zip(axes, pad_width, values):
             roi = _view_roi(padded, original_area_slice, axis)

@@ -308,6 +308,152 @@ cdef extern from 'cupy_cusolver.h' nogil:
                          cuDoubleComplex* Work, int lwork,
                          double* rwork, int* devInfo)
 
+    # gesvdj ... Singular value decomposition using Jacobi mathod
+    int cusolverDnCreateGesvdjInfo(GesvdjInfo *info)
+    int cusolverDnDestroyGesvdjInfo(GesvdjInfo info)
+
+    int cusolverDnXgesvdjSetTolerance(GesvdjInfo info, double tolerance)
+    int cusolverDnXgesvdjSetMaxSweeps(GesvdjInfo info, int max_sweeps)
+    int cusolverDnXgesvdjSetSortEig(GesvdjInfo info, int sort_svd)
+    int cusolverDnXgesvdjGetResidual(Handle handle, GesvdjInfo info,
+                                     double* residual)
+    int cusolverDnXgesvdjGetSweeps(Handle handle, GesvdjInfo info,
+                                   int* executed_sweeps)
+
+    int cusolverDnSgesvdj_bufferSize(Handle handle, EigMode jobz, int econ,
+                                     int m, int n, const float* A, int lda,
+                                     const float* S, const float* U, int ldu,
+                                     const float* V, int ldv, int* lwork,
+                                     GesvdjInfo params)
+    int cusolverDnDgesvdj_bufferSize(Handle handle, EigMode jobz, int econ,
+                                     int m, int n, const double* A, int lda,
+                                     const double* S, const double* U, int ldu,
+                                     const double* V, int ldv, int* lwork,
+                                     GesvdjInfo params)
+    int cusolverDnCgesvdj_bufferSize(Handle handle, EigMode jobz, int econ,
+                                     int m, int n, const cuComplex* A, int lda,
+                                     const float* S, const cuComplex* U,
+                                     int ldu, const cuComplex* V, int ldv,
+                                     int* lwork, GesvdjInfo params)
+    int cusolverDnZgesvdj_bufferSize(Handle handle, EigMode jobz, int econ,
+                                     int m, int n, const cuDoubleComplex* A,
+                                     int lda, const double* S,
+                                     const cuDoubleComplex* U, int ldu,
+                                     const cuDoubleComplex* V, int ldv,
+                                     int* lwork, GesvdjInfo params)
+
+    int cusolverDnSgesvdj(Handle handle, EigMode jobz, int econ, int m, int n,
+                          float *A, int lda, float *S, float *U, int ldu,
+                          float *V, int ldv, float *work, int lwork, int *info,
+                          GesvdjInfo params)
+    int cusolverDnDgesvdj(Handle handle, EigMode jobz, int econ, int m, int n,
+                          double *A, int lda, double *S, double *U, int ldu,
+                          double *V, int ldv, double *work, int lwork,
+                          int *info, GesvdjInfo params)
+    int cusolverDnCgesvdj(Handle handle, EigMode jobz, int econ, int m, int n,
+                          cuComplex *A, int lda, float *S, cuComplex *U,
+                          int ldu, cuComplex *V, int ldv, cuComplex *work,
+                          int lwork, int *info, GesvdjInfo params)
+    int cusolverDnZgesvdj(Handle handle, EigMode jobz, int econ, int m, int n,
+                          cuDoubleComplex *A, int lda, double *S,
+                          cuDoubleComplex *U, int ldu, cuDoubleComplex *V,
+                          int ldv, cuDoubleComplex *work, int lwork, int *info,
+                          GesvdjInfo params)
+
+    int cusolverDnSgesvdjBatched_bufferSize(
+        Handle handle, EigMode jobz, int m, int n, float* A, int lda,
+        float* S, float* U, int ldu, float* V, int ldv,
+        int* lwork, GesvdjInfo params, int batchSize)
+    int cusolverDnDgesvdjBatched_bufferSize(
+        Handle handle, EigMode jobz, int m, int n, double* A, int lda,
+        double* S, double* U, int ldu, double* V, int ldv,
+        int* lwork, GesvdjInfo params, int batchSize)
+    int cusolverDnCgesvdjBatched_bufferSize(
+        Handle handle, EigMode jobz, int m, int n, cuComplex* A, int lda,
+        float* S, cuComplex* U, int ldu, cuComplex* V, int ldv,
+        int* lwork, GesvdjInfo params, int batchSize)
+    int cusolverDnZgesvdjBatched_bufferSize(
+        Handle handle, EigMode jobz, int m, int n, cuDoubleComplex* A, int lda,
+        double* S, cuDoubleComplex* U, int ldu, cuDoubleComplex* V, int ldv,
+        int* lwork, GesvdjInfo params, int batchSize)
+    int cusolverDnSgesvdjBatched(
+        Handle handle, EigMode jobz, int m, int n, float* A, int lda, float* S,
+        float* U, int ldu, float* V, int ldv, float* work, int lwork,
+        int* info, GesvdjInfo params, int batchSize)
+    int cusolverDnDgesvdjBatched(
+        Handle handle, EigMode jobz, int m, int n, double* A, int lda,
+        double* S, double* U, int ldu, double* V, int ldv,
+        double* work, int lwork,
+        int* info, GesvdjInfo params, int batchSize)
+    int cusolverDnCgesvdjBatched(
+        Handle handle, EigMode jobz, int m, int n, cuComplex* A, int lda,
+        float* S, cuComplex* U, int ldu, cuComplex* V, int ldv,
+        cuComplex* work, int lwork,
+        int* info, GesvdjInfo params, int batchSize)
+    int cusolverDnZgesvdjBatched(
+        Handle handle, EigMode jobz, int m, int n, cuDoubleComplex* A, int lda,
+        double* S, cuDoubleComplex* U, int ldu, cuDoubleComplex* V, int ldv,
+        cuDoubleComplex* work, int lwork,
+        int* info, GesvdjInfo params, int batchSize)
+
+    # gesvda ... Approximate singular value decomposition
+    int cusolverDnSgesvdaStridedBatched_bufferSize(
+        Handle handle, EigMode jobz, int rank, int m, int n, const float *d_A,
+        int lda, long long int strideA, const float *d_S,
+        long long int strideS, const float *d_U, int ldu,
+        long long int strideU, const float *d_V, int ldv,
+        long long int strideV, int *lwork, int batchSize)
+
+    int cusolverDnDgesvdaStridedBatched_bufferSize(
+        Handle handle, EigMode jobz, int rank, int m, int n, const double *d_A,
+        int lda, long long int strideA, const double *d_S,
+        long long int strideS, const double *d_U, int ldu,
+        long long int strideU, const double *d_V, int ldv,
+        long long int strideV, int *lwork, int batchSize)
+
+    int cusolverDnCgesvdaStridedBatched_bufferSize(
+        Handle handle, EigMode jobz, int rank, int m, int n,
+        const cuComplex *d_A, int lda, long long int strideA, const float *d_S,
+        long long int strideS, const cuComplex *d_U, int ldu,
+        long long int strideU, const cuComplex *d_V, int ldv,
+        long long int strideV, int *lwork, int batchSize)
+
+    int cusolverDnZgesvdaStridedBatched_bufferSize(
+        Handle handle, EigMode jobz, int rank, int m, int n,
+        const cuDoubleComplex *d_A, int lda, long long int strideA,
+        const double *d_S, long long int strideS, const cuDoubleComplex *d_U,
+        int ldu, long long int strideU, const cuDoubleComplex *d_V, int ldv,
+        long long int strideV, int *lwork, int batchSize)
+
+    int cusolverDnSgesvdaStridedBatched(
+        Handle handle, EigMode jobz, int rank, int m, int n, const float *d_A,
+        int lda, long long int strideA, float *d_S, long long int strideS,
+        float *d_U, int ldu, long long int strideU, float *d_V, int ldv,
+        long long int strideV, float *d_work, int lwork, int *d_info,
+        double *h_R_nrmF, int batchSize)
+
+    int cusolverDnDgesvdaStridedBatched(
+        Handle handle, EigMode jobz, int rank, int m, int n, const double *d_A,
+        int lda, long long int strideA, double *d_S, long long int strideS,
+        double *d_U, int ldu, long long int strideU, double *d_V, int ldv,
+        long long int strideV, double *d_work, int lwork, int *d_info,
+        double *h_R_nrmF, int batchSize)
+
+    int cusolverDnCgesvdaStridedBatched(
+        Handle handle, EigMode jobz, int rank, int m, int n,
+        const cuComplex *d_A, int lda, long long int strideA, float *d_S,
+        long long int strideS, cuComplex *d_U, int ldu, long long int strideU,
+        cuComplex *d_V, int ldv, long long int strideV, cuComplex *d_work,
+        int lwork, int *d_info, double *h_R_nrmF, int batchSize)
+
+    int cusolverDnZgesvdaStridedBatched(
+        Handle handle, EigMode jobz, int rank, int m, int n,
+        const cuDoubleComplex *d_A, int lda, long long int strideA,
+        double *d_S, long long int strideS, cuDoubleComplex *d_U, int ldu,
+        long long int strideU, cuDoubleComplex *d_V, int ldv,
+        long long int strideV, cuDoubleComplex *d_work, int lwork, int *d_info,
+        double *h_R_nrmF, int batchSize)
+
     # Standard symmetric eigenvalue solver
     int cusolverDnSsyevd_bufferSize(Handle handle,
                                     EigMode jobz, FillMode uplo, int n,
@@ -1302,6 +1448,367 @@ cpdef zgesvd(intptr_t handle, char jobu, char jobvt, int m, int n, size_t A,
             <cuDoubleComplex*>Work, lwork, <double*>rwork, <int*>devInfo)
     check_status(status)
 
+# gesvdj ... Singular value decomposition using Jacobi mathod
+cpdef intptr_t createGesvdjInfo() except? 0:
+    cdef GesvdjInfo info
+    status = cusolverDnCreateGesvdjInfo(&info)
+    check_status(status)
+    return <intptr_t>info
+
+cpdef destroyGesvdjInfo(intptr_t info):
+    status = cusolverDnDestroyGesvdjInfo(<GesvdjInfo>info)
+    check_status(status)
+
+cpdef xgesvdjSetTolerance(intptr_t info, double tolerance):
+    status = cusolverDnXgesvdjSetTolerance(<GesvdjInfo>info, tolerance)
+    check_status(status)
+
+cpdef xgesvdjSetMaxSweeps(intptr_t info, int max_sweeps):
+    status = cusolverDnXgesvdjSetMaxSweeps(<GesvdjInfo>info, max_sweeps)
+    check_status(status)
+
+cpdef xgesvdjSetSortEig(intptr_t info, int sort_svd):
+    status = cusolverDnXgesvdjSetSortEig(<GesvdjInfo>info, sort_svd)
+    check_status(status)
+
+cpdef double xgesvdjGetResidual(intptr_t handle, intptr_t info):
+    cdef double residual
+    status = cusolverDnXgesvdjGetResidual(<Handle>handle, <GesvdjInfo>info,
+                                          &residual)
+    check_status(status)
+    return residual
+
+cpdef int xgesvdjGetSweeps(intptr_t handle, intptr_t info):
+    cdef int executed_sweeps
+    status = cusolverDnXgesvdjGetSweeps(<Handle>handle, <GesvdjInfo>info,
+                                        &executed_sweeps)
+    check_status(status)
+    return executed_sweeps
+
+cpdef int sgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params):
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSgesvdj_bufferSize(
+            <Handle>handle, <EigMode>jobz, econ, m, n, <const float*>A, lda,
+            <const float*>S, <const float*>U, ldu, <const float*>V, ldv,
+            &lwork, <GesvdjInfo>params)
+    check_status(status)
+    return lwork
+
+cpdef int dgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params):
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDgesvdj_bufferSize(
+            <Handle>handle, <EigMode>jobz, econ, m, n, <const double*>A, lda,
+            <const double*>S, <const double*>U, ldu, <const double*>V, ldv,
+            &lwork, <GesvdjInfo>params)
+    check_status(status)
+    return lwork
+
+cpdef int cgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params):
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgesvdj_bufferSize(
+            <Handle>handle, <EigMode>jobz, econ, m, n, <const cuComplex*>A,
+            lda, <const float*>S, <const cuComplex*>U, ldu,
+            <const cuComplex*>V, ldv, &lwork, <GesvdjInfo>params)
+    check_status(status)
+    return lwork
+
+cpdef int zgesvdj_bufferSize(intptr_t handle, int jobz, int econ, int m, int n,
+                             intptr_t A, int lda, intptr_t S, intptr_t U,
+                             int ldu, intptr_t V, int ldv, intptr_t params):
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgesvdj_bufferSize(
+            <Handle>handle, <EigMode>jobz, econ, m, n,
+            <const cuDoubleComplex*>A, lda, <const double*>S,
+            <const cuDoubleComplex*>U, ldu, <const cuDoubleComplex*>V,
+            ldv, &lwork, <GesvdjInfo>params)
+    check_status(status)
+    return lwork
+
+cpdef sgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSgesvdj(<Handle>handle, <EigMode>jobz, econ, m, n,
+                                   <float*>A, lda, <float*>S, <float*>U, ldu,
+                                   <float*>V, ldv, <float*>work, lwork,
+                                   <int*>info, <GesvdjInfo>params)
+    check_status(status)
+
+cpdef dgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDgesvdj(<Handle>handle, <EigMode>jobz, econ, m, n,
+                                   <double*>A, lda, <double*>S, <double*>U,
+                                   ldu, <double*>V, ldv, <double*>work, lwork,
+                                   <int*>info, <GesvdjInfo>params)
+    check_status(status)
+
+cpdef cgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgesvdj(
+            <Handle>handle, <EigMode>jobz, econ, m, n, <cuComplex*>A, lda,
+            <float*>S, <cuComplex*>U, ldu, <cuComplex*>V, ldv,
+            <cuComplex*>work, lwork, <int*>info, <GesvdjInfo>params)
+    check_status(status)
+
+cpdef zgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
+              int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+              intptr_t work, int lwork, intptr_t info, intptr_t params):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgesvdj(
+            <Handle>handle, <EigMode>jobz, econ, m, n, <cuDoubleComplex*>A,
+            lda, <double*>S, <cuDoubleComplex*>U, ldu, <cuDoubleComplex*>V,
+            ldv, <cuDoubleComplex*>work, lwork, <int*>info, <GesvdjInfo>params)
+    check_status(status)
+
+cpdef int sgesvdjBatched_bufferSize(
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t params, int batchSize) except? -1:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSgesvdjBatched_bufferSize(
+            <Handle>handle, <EigMode>jobz, m, n, <float*>A, lda,
+            <float*>S, <float*>U, ldu, <float*>V, ldv, &lwork,
+            <GesvdjInfo>params, batchSize)
+    check_status(status)
+    return lwork
+
+cpdef int dgesvdjBatched_bufferSize(
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t params, int batchSize) except? -1:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDgesvdjBatched_bufferSize(
+            <Handle>handle, <EigMode>jobz, m, n, <double*>A, lda,
+            <double*>S, <double*>U, ldu, <double*>V, ldv, &lwork,
+            <GesvdjInfo>params, batchSize)
+    check_status(status)
+    return lwork
+
+cpdef int cgesvdjBatched_bufferSize(
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t params, int batchSize) except? -1:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgesvdjBatched_bufferSize(
+            <Handle>handle, <EigMode>jobz, m, n, <cuComplex*>A, lda,
+            <float*>S, <cuComplex*>U, ldu, <cuComplex*>V, ldv, &lwork,
+            <GesvdjInfo>params, batchSize)
+    check_status(status)
+    return lwork
+
+cpdef int zgesvdjBatched_bufferSize(
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t params, int batchSize) except? -1:
+    cdef int lwork
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgesvdjBatched_bufferSize(
+            <Handle>handle, <EigMode>jobz, m, n, <cuDoubleComplex*>A, lda,
+            <double*>S, <cuDoubleComplex*>U, ldu, <cuDoubleComplex*>V, ldv,
+            &lwork,
+            <GesvdjInfo>params, batchSize)
+    check_status(status)
+    return lwork
+
+cpdef sgesvdjBatched(
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t work, int lwork, intptr_t info,
+        intptr_t params, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSgesvdjBatched(
+            <Handle>handle, <EigMode>jobz, m, n, <float*>A, lda,
+            <float*>S, <float*>U, ldu, <float*>V, ldv,
+            <float*>work, lwork, <int*>info,
+            <GesvdjInfo>params, batchSize)
+    check_status(status)
+
+cpdef dgesvdjBatched(
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t work, int lwork, intptr_t info,
+        intptr_t params, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDgesvdjBatched(
+            <Handle>handle, <EigMode>jobz, m, n, <double*>A, lda,
+            <double*>S, <double*>U, ldu, <double*>V, ldv,
+            <double*>work, lwork, <int*>info,
+            <GesvdjInfo>params, batchSize)
+    check_status(status)
+
+cpdef cgesvdjBatched(
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t work, int lwork, intptr_t info,
+        intptr_t params, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgesvdjBatched(
+            <Handle>handle, <EigMode>jobz, m, n, <cuComplex*>A, lda,
+            <float*>S, <cuComplex*>U, ldu, <cuComplex*>V, ldv,
+            <cuComplex*>work, lwork, <int*>info,
+            <GesvdjInfo>params, batchSize)
+    check_status(status)
+
+cpdef zgesvdjBatched(
+        intptr_t handle, int jobz, int m, int n, intptr_t A,
+        int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+        intptr_t work, int lwork, intptr_t info,
+        intptr_t params, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgesvdjBatched(
+            <Handle>handle, <EigMode>jobz, m, n, <cuDoubleComplex*>A, lda,
+            <double*>S, <cuDoubleComplex*>U, ldu, <cuDoubleComplex*>V, ldv,
+            <cuDoubleComplex*>work, lwork, <int*>info,
+            <GesvdjInfo>params, batchSize)
+    check_status(status)
+
+# gesvda ... Approximate singular value decomposition
+cpdef int sgesvdaStridedBatched_bufferSize(
+        intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+        int lda, long long int strideA, intptr_t d_S, long long int strideS,
+        intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+        long long int strideV, int batchSize):
+    cdef int lwork
+    status = cusolverDnSgesvdaStridedBatched_bufferSize(
+        <Handle>handle, <EigMode>jobz, rank, m, n, <const float*>d_A, lda,
+        strideA, <const float*>d_S, strideS, <const float*>d_U, ldu, strideU,
+        <const float*>d_V, ldv, strideV, &lwork, batchSize)
+    check_status(status)
+    return lwork
+
+cpdef int dgesvdaStridedBatched_bufferSize(
+        intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+        int lda, long long int strideA, intptr_t d_S, long long int strideS,
+        intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+        long long int strideV, int batchSize):
+    cdef int lwork
+    status = cusolverDnDgesvdaStridedBatched_bufferSize(
+        <Handle>handle, <EigMode>jobz, rank, m, n, <const double*>d_A, lda,
+        strideA, <const double*>d_S, strideS, <const double*>d_U, ldu, strideU,
+        <const double*>d_V, ldv, strideV, &lwork, batchSize)
+    check_status(status)
+    return lwork
+
+cpdef int cgesvdaStridedBatched_bufferSize(
+        intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+        int lda, long long int strideA, intptr_t d_S, long long int strideS,
+        intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+        long long int strideV, int batchSize):
+    cdef int lwork
+    status = cusolverDnCgesvdaStridedBatched_bufferSize(
+        <Handle>handle, <EigMode>jobz, rank, m, n, <const cuComplex*>d_A, lda,
+        strideA, <const float*>d_S, strideS, <const cuComplex*>d_U, ldu,
+        strideU, <const cuComplex*>d_V, ldv, strideV, &lwork, batchSize)
+    check_status(status)
+    return lwork
+
+cpdef int zgesvdaStridedBatched_bufferSize(
+        intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+        int lda, long long int strideA, intptr_t d_S, long long int strideS,
+        intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+        long long int strideV, int batchSize):
+    cdef int lwork
+    status = cusolverDnZgesvdaStridedBatched_bufferSize(
+        <Handle>handle, <EigMode>jobz, rank, m, n, <const cuDoubleComplex*>d_A,
+        lda, strideA, <const double*>d_S, strideS, <const cuDoubleComplex*>d_U,
+        ldu, strideU, <const cuDoubleComplex*>d_V, ldv, strideV, &lwork,
+        batchSize)
+    check_status(status)
+    return lwork
+
+cpdef sgesvdaStridedBatched(
+        intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+        int lda, long long int strideA, intptr_t d_S, long long int strideS,
+        intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+        long long int strideV, intptr_t d_work, int lwork, intptr_t d_info,
+        intptr_t h_R_nrmF, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSgesvdaStridedBatched(
+            <Handle>handle, <EigMode>jobz, rank, m, n, <const float*>d_A, lda,
+            strideA, <float*>d_S, strideS, <float*>d_U, ldu, strideU,
+            <float*>d_V, ldv, strideV, <float*>d_work, lwork, <int*>d_info,
+            <double*>h_R_nrmF, batchSize)
+    check_status(status)
+
+cpdef dgesvdaStridedBatched(
+        intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+        int lda, long long int strideA, intptr_t d_S, long long int strideS,
+        intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+        long long int strideV, intptr_t d_work, int lwork, intptr_t d_info,
+        intptr_t h_R_nrmF, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDgesvdaStridedBatched(
+            <Handle>handle, <EigMode>jobz, rank, m, n, <const double*>d_A, lda,
+            strideA, <double*>d_S, strideS, <double*>d_U, ldu, strideU,
+            <double*>d_V, ldv, strideV, <double*>d_work, lwork, <int*>d_info,
+            <double*>h_R_nrmF, batchSize)
+    check_status(status)
+
+cpdef cgesvdaStridedBatched(
+        intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+        int lda, long long int strideA, intptr_t d_S, long long int strideS,
+        intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+        long long int strideV, intptr_t d_work, int lwork, intptr_t d_info,
+        intptr_t h_R_nrmF, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCgesvdaStridedBatched(
+            <Handle>handle, <EigMode>jobz, rank, m, n, <const cuComplex*>d_A,
+            lda, strideA, <float*>d_S, strideS, <cuComplex*>d_U, ldu, strideU,
+            <cuComplex*>d_V, ldv, strideV, <cuComplex*>d_work, lwork,
+            <int*>d_info, <double*>h_R_nrmF, batchSize)
+    check_status(status)
+
+cpdef zgesvdaStridedBatched(
+        intptr_t handle, int jobz, int rank, int m, int n, intptr_t d_A,
+        int lda, long long int strideA, intptr_t d_S, long long int strideS,
+        intptr_t d_U, int ldu, long long int strideU, intptr_t d_V, int ldv,
+        long long int strideV, intptr_t d_work, int lwork, intptr_t d_info,
+        intptr_t h_R_nrmF, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZgesvdaStridedBatched(
+            <Handle>handle, <EigMode>jobz, rank, m, n,
+            <const cuDoubleComplex*>d_A, lda, strideA, <double*>d_S, strideS,
+            <cuDoubleComplex*>d_U, ldu, strideU, <cuDoubleComplex*>d_V, ldv,
+            strideV, <cuDoubleComplex*>d_work, lwork, <int*>d_info,
+            <double*>h_R_nrmF, batchSize)
+    check_status(status)
 
 # Standard symmetric eigenvalue solver
 cpdef int ssyevd_bufferSize(intptr_t handle, int jobz, int uplo, int n,

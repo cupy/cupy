@@ -1,6 +1,7 @@
 import functools
 
 import numpy
+import platform
 
 import cupy
 from cupy.cuda import cusparse
@@ -80,15 +81,28 @@ def _dtype_to_DataType(dtype):
 
 
 _available_cuda_version = {
-    'csrmv': (9000, 11000),
-    'csrmvEx': (9000, None),
-    'csrmm': (9000, 11000),
-    'csrmm2': (9000, 11000),
-    'csrgeam': (9000, 11000),
-    'csrgemm': (9000, 11000),
-    'spmv': (10010, None),
-    'spmm': (10010, None),
+    'csrmv': (8000, 11000),
+    'csrmvEx': (8000, None),
+    'csrmm': (8000, 11000),
+    'csrmm2': (8000, 11000),
+    'csrgeam': (8000, 11000),
+    'csrgeam2': (9020, None),
+    'csrgemm': (8000, 11000),
+    'csrgemm2': (8000, None),
+    # TODO(anaruse): check availability on Windows when CUDA 11 is relased
+    'spmv': ({'Linux': 10010, 'Windows': 11000}, None),
+    'spmm': ({'Linux': 10010, 'Windows': 11000}, None),
 }
+
+
+def _get_version(x):
+    if isinstance(x, dict):
+        os_name = platform.system()
+        if os_name not in x:
+            msg = 'No version information specified for the OS {}'.os_name
+            raise ValueError(msg)
+        return x[os_name]
+    return x
 
 
 def check_availability(name):
@@ -96,6 +110,8 @@ def check_availability(name):
         msg = 'No available version information specified for {}'.name
         raise ValueError(msg)
     version_added, version_removed = _available_cuda_version[name]
+    version_added = _get_version(version_added)
+    version_removed = _get_version(version_removed)
     cuda_version = runtime.runtimeGetVersion()
     if version_added is not None and cuda_version < version_added:
         return False
@@ -375,6 +391,13 @@ def csrgeam(a, b, alpha=1, beta=1):
         cupyx.scipy.sparse.csr_matrix: Result matrix.
 
     """
+    if not check_availability('csrgeam'):
+        raise RuntimeError('csrgeam is not available.')
+
+    if not isinstance(a, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(a)))
+    if not isinstance(b, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(b)))
     assert a.has_canonical_format
     assert b.has_canonical_format
     if a.shape != b.shape:
@@ -409,6 +432,75 @@ def csrgeam(a, b, alpha=1, beta=1):
         b.indptr.data.ptr, b.indices.data.ptr,
         c_descr.descriptor, c_data.data.ptr, c_indptr.data.ptr,
         c_indices.data.ptr)
+
+    c = cupyx.scipy.sparse.csr_matrix(
+        (c_data, c_indices, c_indptr), shape=a.shape)
+    c._has_canonical_format = True
+    return c
+
+
+def csrgeam2(a, b, alpha=1, beta=1):
+    """Matrix-matrix addition.
+
+    .. math::
+        C = \\alpha A + \\beta B
+
+    Args:
+        a (cupyx.scipy.sparse.csr_matrix): Sparse matrix A.
+        b (cupyx.scipy.sparse.csr_matrix): Sparse matrix B.
+        alpha (float): Coefficient for A.
+        beta (float): Coefficient for B.
+
+    Returns:
+        cupyx.scipy.sparse.csr_matrix: Result matrix.
+
+    """
+    if not check_availability('csrgeam2'):
+        raise RuntimeError('csrgeam2 is not available.')
+
+    if not isinstance(a, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(a)))
+    if not isinstance(b, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(b)))
+    assert a.has_canonical_format
+    assert b.has_canonical_format
+    if a.shape != b.shape:
+        raise ValueError('inconsistent shapes')
+
+    handle = device.get_cusparse_handle()
+    m, n = a.shape
+    a, b = _cast_common_type(a, b)
+    nnz = numpy.empty((), 'i')
+    cusparse.setPointerMode(
+        handle, cusparse.CUSPARSE_POINTER_MODE_HOST)
+
+    alpha = numpy.array(alpha, a.dtype).ctypes
+    beta = numpy.array(beta, a.dtype).ctypes
+    c_descr = MatDescriptor.create()
+    c_indptr = cupy.empty(m + 1, 'i')
+
+    null_ptr = 0
+    buff_size = _call_cusparse(
+        'csrgeam2_bufferSizeExt', a.dtype,
+        handle, m, n, alpha.data, a._descr.descriptor, a.nnz, a.data.data.ptr,
+        a.indptr.data.ptr, a.indices.data.ptr, beta.data, b._descr.descriptor,
+        b.nnz, b.data.data.ptr, b.indptr.data.ptr, b.indices.data.ptr,
+        c_descr.descriptor, null_ptr, c_indptr.data.ptr, null_ptr)
+    buff = cupy.empty(buff_size, numpy.int8)
+    cusparse.xcsrgeam2Nnz(
+        handle, m, n, a._descr.descriptor, a.nnz, a.indptr.data.ptr,
+        a.indices.data.ptr, b._descr.descriptor, b.nnz, b.indptr.data.ptr,
+        b.indices.data.ptr, c_descr.descriptor, c_indptr.data.ptr,
+        nnz.ctypes.data, buff.data.ptr)
+    c_indices = cupy.empty(int(nnz), 'i')
+    c_data = cupy.empty(int(nnz), a.dtype)
+    _call_cusparse(
+        'csrgeam2', a.dtype,
+        handle, m, n, alpha.data, a._descr.descriptor, a.nnz, a.data.data.ptr,
+        a.indptr.data.ptr, a.indices.data.ptr, beta.data, b._descr.descriptor,
+        b.nnz, b.data.data.ptr, b.indptr.data.ptr, b.indices.data.ptr,
+        c_descr.descriptor, c_data.data.ptr, c_indptr.data.ptr,
+        c_indices.data.ptr, buff.data.ptr)
 
     c = cupyx.scipy.sparse.csr_matrix(
         (c_data, c_indices, c_indptr), shape=a.shape)
@@ -479,6 +571,109 @@ def csrgemm(a, b, transa=False, transb=False):
     c = cupyx.scipy.sparse.csr_matrix(
         (c_data, c_indices, c_indptr), shape=(m, n))
     c._has_canonical_format = True
+    return c
+
+
+def csrgemm2(a, b, d=None, alpha=1, beta=1):
+    """Matrix-matrix product for CSR-matrix.
+
+    math::
+       C = alpha * A * B + beta * D
+
+    Args:
+        a (cupyx.scipy.sparse.csr_matrix): Sparse matrix A.
+        b (cupyx.scipy.sparse.csr_matrix): Sparse matrix B.
+        d (cupyx.scipy.sparse.csr_matrix or None): Sparse matrix D.
+        alpha (scalar): Coefficient
+        beta (scalar): Coefficient
+
+    Returns:
+        cupyx.scipy.sparse.csr_matrix
+
+    """
+    if not check_availability('csrgemm2'):
+        raise RuntimeError('csrgemm2 is not available.')
+
+    assert a.ndim == b.ndim == 2
+    if not isinstance(a, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(a)))
+    if not isinstance(b, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(b)))
+    assert a.has_canonical_format
+    assert b.has_canonical_format
+    if a.shape[1] != b.shape[0]:
+        raise ValueError('mismatched shape')
+    if d is not None:
+        assert d.ndim == 2
+        if not isinstance(d, cupyx.scipy.sparse.csr_matrix):
+            raise TypeError('unsupported type (actual: {})'.format(type(d)))
+        assert d.has_canonical_format
+        if a.shape[0] != d.shape[0] or b.shape[1] != d.shape[1]:
+            raise ValueError('mismatched shape')
+
+    handle = device.get_cusparse_handle()
+    m, k = a.shape
+    _, n = b.shape
+
+    if d is None:
+        a, b = _cast_common_type(a, b)
+    else:
+        a, b, d = _cast_common_type(a, b, d)
+
+    info = cusparse.createCsrgemm2Info()
+    alpha = numpy.array(alpha, a.dtype).ctypes
+    null_ptr = 0
+    if d is None:
+        beta_data = null_ptr
+        d_descr = MatDescriptor.create()
+        d_nnz = 0
+        d_data = null_ptr
+        d_indptr = null_ptr
+        d_indices = null_ptr
+    else:
+        beta = numpy.array(beta, a.dtype).ctypes
+        beta_data = beta.data
+        d_descr = d._descr
+        d_nnz = d.nnz
+        d_data = d.data.data.ptr
+        d_indptr = d.indptr.data.ptr
+        d_indices = d.indices.data.ptr
+
+    buff_size = _call_cusparse(
+        'csrgemm2_bufferSizeExt', a.dtype,
+        handle, m, n, k, alpha.data, a._descr.descriptor, a.nnz,
+        a.indptr.data.ptr, a.indices.data.ptr, b._descr.descriptor, b.nnz,
+        b.indptr.data.ptr, b.indices.data.ptr, beta_data, d_descr.descriptor,
+        d_nnz, d_indptr, d_indices, info)
+    buff = cupy.empty(buff_size, numpy.int8)
+
+    c_nnz = numpy.empty((), 'i')
+    cusparse.setPointerMode(handle, cusparse.CUSPARSE_POINTER_MODE_HOST)
+
+    c_descr = MatDescriptor.create()
+    c_indptr = cupy.empty(m + 1, 'i')
+    cusparse.xcsrgemm2Nnz(
+        handle, m, n, k, a._descr.descriptor, a.nnz, a.indptr.data.ptr,
+        a.indices.data.ptr, b._descr.descriptor, b.nnz, b.indptr.data.ptr,
+        b.indices.data.ptr, d_descr.descriptor, d_nnz, d_indptr, d_indices,
+        c_descr.descriptor, c_indptr.data.ptr, c_nnz.ctypes.data, info,
+        buff.data.ptr)
+
+    c_indices = cupy.empty(int(c_nnz), 'i')
+    c_data = cupy.empty(int(c_nnz), a.dtype)
+    _call_cusparse(
+        'csrgemm2', a.dtype,
+        handle, m, n, k, alpha.data, a._descr.descriptor, a.nnz,
+        a.data.data.ptr, a.indptr.data.ptr, a.indices.data.ptr,
+        b._descr.descriptor, b.nnz, b.data.data.ptr, b.indptr.data.ptr,
+        b.indices.data.ptr, beta_data, d_descr.descriptor, d_nnz, d_data,
+        d_indptr, d_indices, c_descr.descriptor, c_data.data.ptr,
+        c_indptr.data.ptr, c_indices.data.ptr, info, buff.data.ptr)
+
+    c = cupyx.scipy.sparse.csr_matrix(
+        (c_data, c_indices, c_indptr), shape=(m, n))
+    c._has_canonical_format = True
+    cusparse.destroyCsrgemm2Info(info)
     return c
 
 
@@ -878,7 +1073,8 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
         y = \\alpha * op(A) x + \\beta * y
 
     Args:
-        a (cupyx.scipy.sparse.csr_matrix or coo_matrix): Sparse matrix A
+        a (cupyx.scipy.sparse.csr_matrix, csc_matrix or coo_matrix):
+            Sparse matrix A
         x (cupy.ndarray): Dense vector x
         y (cupy.ndarray or None): Dense vector y
         alpha (scalar): Coefficent
@@ -891,17 +1087,27 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     if not check_availability('spmv'):
         raise RuntimeError('spmv is not available.')
 
+    if isinstance(a, cupyx.scipy.sparse.csc_matrix):
+        aT = a.T
+        if not isinstance(aT, cupyx.scipy.sparse.csr_matrix):
+            msg = 'aT must be csr_matrix (actual: {})'.format(type(aT))
+            raise TypeError(msg)
+        a = aT
+        transa = not transa
+    if not (isinstance(a, cupyx.scipy.sparse.csr_matrix) or
+            isinstance(a, cupyx.scipy.sparse.coo_matrix)):
+        raise TypeError('unsupported type (actual: {})'.format(type(a)))
     a_shape = a.shape if not transa else a.shape[::-1]
     if a_shape[1] != len(x):
         raise ValueError('dimension mismatch')
+    assert a.has_canonical_format
+
     m, n = a_shape
     a, x, y = _cast_common_type(a, x, y)
     if y is None:
         y = cupy.zeros(m, a.dtype)
     elif len(y) != m:
         raise ValueError('dimension mismatch')
-    if a.format == 'coo':
-        a.sum_duplicates()
     if a.nnz == 0:
         y[...] = 0
         return y
@@ -934,28 +1140,41 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
         C = \\alpha * op(A) op(B) + \\beta * C
 
     Args:
-        a (cupyx.scipy.sparse.csr_matrix or coo_matrix): Sparse matrix A
+        a (cupyx.scipy.sparse.csr_matrix, csc_matrix or coo_matrix):
+            Sparse matrix A
         b (cupy.ndarray): Dense matrix B
         c (cupy.ndarray or None): Dense matrix C
         alpha (scalar): Coefficent
         beta (scalar): Coefficent
         transa (bool): If ``True``, op(A) = transpose of A.
-        transa (bool): If ``True``, op(B) = transpose of B.
+        transb (bool): If ``True``, op(B) = transpose of B.
 
     Returns:
         cupy.ndarray
     """
+    if not check_availability('spmm'):
+        raise RuntimeError('spmm is not available.')
+
     assert a.ndim == b.ndim == 2
     assert b.flags.f_contiguous
     assert c is None or c.flags.f_contiguous
 
-    if not check_availability('spmm'):
-        raise RuntimeError('spmm is not available.')
-
+    if isinstance(a, cupyx.scipy.sparse.csc_matrix):
+        aT = a.T
+        if not isinstance(aT, cupyx.scipy.sparse.csr_matrix):
+            msg = 'aT must be csr_matrix (actual: {})'.format(type(aT))
+            raise TypeError(msg)
+        a = aT
+        transa = not transa
+    if not (isinstance(a, cupyx.scipy.sparse.csr_matrix) or
+            isinstance(a, cupyx.scipy.sparse.coo_matrix)):
+        raise TypeError('unsupported type (actual: {})'.format(type(a)))
     a_shape = a.shape if not transa else a.shape[::-1]
     b_shape = b.shape if not transb else b.shape[::-1]
     if a_shape[1] != b_shape[0]:
         raise ValueError('dimension mismatch')
+    assert a.has_canonical_format
+
     m, k = a_shape
     _, n = b_shape
     a, b, c = _cast_common_type(a, b, c)
@@ -963,8 +1182,6 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
         c = cupy.zeros((m, n), a.dtype, 'F')
     elif c.shape[0] != m or c.shape[1] != n:
         raise ValueError('dimension mismatch')
-    if a.format == 'coo':
-        a.sum_duplicates()
     if a.nnz == 0:
         c[...] = 0
         return c

@@ -2,6 +2,9 @@ import math
 import sys
 import unittest
 
+import numpy
+import pytest
+
 import cupy
 from cupy import testing
 
@@ -49,9 +52,10 @@ class TestRanges(unittest.TestCase):
     def test_arange8(self, xp, dtype):
         return xp.arange(10, 8, -1, dtype=dtype)
 
-    @testing.numpy_cupy_raises()
-    def test_arange9(self, xp):
-        return xp.arange(10, dtype=xp.bool_)
+    def test_arange9(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.arange(10, dtype=xp.bool_)
 
     @testing.numpy_cupy_array_equal()
     def test_arange_no_dtype_int(self, xp):
@@ -127,9 +131,10 @@ class TestRanges(unittest.TestCase):
     def test_linspace_float_args_with_int_dtype(self, xp):
         return xp.linspace(0.1, 9.1, 11, dtype=int)
 
-    @testing.numpy_cupy_raises()
-    def test_linspace_neg_num(self, xp):
-        return xp.linspace(0, 10, -1)
+    def test_linspace_neg_num(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.linspace(0, 10, -1)
 
     @testing.numpy_cupy_allclose()
     def test_linspace_float_overflow(self, xp):
@@ -238,9 +243,10 @@ class TestRanges(unittest.TestCase):
     def test_logspace_float_args_with_int_dtype(self, xp):
         return xp.logspace(0.1, 2.1, 11, dtype=int)
 
-    @testing.numpy_cupy_raises()
-    def test_logspace_neg_num(self, xp):
-        return xp.logspace(0, 10, -1)
+    def test_logspace_neg_num(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.logspace(0, 10, -1)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose()

@@ -503,6 +503,28 @@ cdef class TextureObject:
         self.ptr = 0
 
 
+cdef class SurfaceObject:
+    '''A class that holds a surface object. Equivalent to
+    ``cudaSurfaceObject_t``. The returned :class:`SurfaceObject` instance can
+    be passed as a argument when launching :class:`~cupy.RawKernel`.
+
+    Args:
+        ResDesc (ResourceDescriptor): an intance of the resource descriptor.
+
+    .. seealso:: `cudaCreateSurfaceObject()`_
+
+    .. _cudaCreateSurfaceObject():
+        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__SURFACE__OBJECT.html#group__CUDART__SURFACE__OBJECT_1g958899474ab2c5f40d233b524d6c5a01
+    '''  # noqa
+    def __init__(self, ResourceDescriptor ResDesc):
+        self.ptr = runtime.createSurfaceObject(ResDesc.ptr)
+        self.ResDesc = ResDesc
+
+    def __dealloc__(self):
+        runtime.destroySurfaceObject(self.ptr)
+        self.ptr = 0
+
+
 cdef class TextureReference:
     '''A class that holds a texture reference. Equivalent to ``CUtexref`` (the
     driver API is used under the hood).

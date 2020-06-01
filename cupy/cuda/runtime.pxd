@@ -21,6 +21,7 @@ cdef extern from *:
         int x, y, z, w
         ChannelFormatKind f
     ctypedef uintmax_t TextureObject 'cudaTextureObject_t'
+    ctypedef uintmax_t SurfaceObject 'cudaSurfaceObject_t'
     ctypedef int ResourceType 'cudaResourceType'
     ctypedef int TextureAddressMode 'cudaTextureAddressMode'
     ctypedef int TextureFilterMode 'cudaTextureFilterMode'
@@ -249,6 +250,13 @@ cpdef enum:
     cudaChannelFormatKindFloat = 2
     cudaChannelFormatKindNone = 3
 
+    # CUDA array flags
+    cudaArrayDefault = 0
+    # cudaArrayLayered = 1
+    cudaArraySurfaceLoadStore = 2
+    # cudaArrayCubemap = 4
+    # cudaArrayTextureGather = 8
+
     # cudaResourceType
     cudaResourceTypeArray = 0
     cudaResourceTypeMipmappedArray = 1
@@ -410,3 +418,7 @@ cdef TextureDesc getTextureObjectTextureDesc(uintmax_t texobj)
 cdef Extent make_Extent(size_t w, size_t h, size_t d)
 cdef Pos make_Pos(size_t x, size_t y, size_t z)
 cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz)
+
+cpdef uintmax_t createSurfaceObject(intptr_t ResDesc)
+cpdef destroySurfaceObject(uintmax_t surfObject)
+# TODO(leofang): add cudaGetSurfaceObjectResourceDesc

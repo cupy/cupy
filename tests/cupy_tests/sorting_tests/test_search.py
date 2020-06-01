@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -64,16 +65,18 @@ class TestSearch(unittest.TestCase):
         return a.argmax()
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_argmax_zero_size(self, xp, dtype):
-        a = testing.shaped_random((0, 1), xp, dtype)
-        return a.argmax()
+    def test_argmax_zero_size(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((0, 1), xp, dtype)
+            with pytest.raises(ValueError):
+                a.argmax()
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_argmax_zero_size_axis0(self, xp, dtype):
-        a = testing.shaped_random((0, 1), xp, dtype)
-        return a.argmax(axis=0)
+    def test_argmax_zero_size_axis0(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((0, 1), xp, dtype)
+            with pytest.raises(ValueError):
+                a.argmax(axis=0)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
@@ -136,16 +139,18 @@ class TestSearch(unittest.TestCase):
         return a.argmin()
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_argmin_zero_size(self, xp, dtype):
-        a = testing.shaped_random((0, 1), xp, dtype)
-        return a.argmin()
+    def test_argmin_zero_size(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((0, 1), xp, dtype)
+            with pytest.raises(ValueError):
+                return a.argmin()
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_argmin_zero_size_axis0(self, xp, dtype):
-        a = testing.shaped_random((0, 1), xp, dtype)
-        return a.argmin(axis=0)
+    def test_argmin_zero_size_axis0(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((0, 1), xp, dtype)
+            with pytest.raises(ValueError):
+                a.argmin(axis=0)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
@@ -220,11 +225,12 @@ class TestWhereCond(unittest.TestCase):
 @testing.gpu
 class TestWhereError(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_one_argument(self, xp):
-        cond = testing.shaped_random((3, 4), xp, dtype=xp.bool_)
-        x = testing.shaped_random((2, 3, 4), xp, xp.int32)
-        xp.where(cond, x)
+    def test_one_argument(self):
+        for xp in (numpy, cupy):
+            cond = testing.shaped_random((3, 4), xp, dtype=xp.bool_)
+            x = testing.shaped_random((2, 3, 4), xp, xp.int32)
+            with pytest.raises(ValueError):
+                xp.where(cond, x)
 
 
 @testing.parameterize(
@@ -253,10 +259,11 @@ class TestNonzero(unittest.TestCase):
 class TestNonzeroZeroDimension(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises(accept_error=DeprecationWarning)
-    def test_nonzero(self, xp, dtype):
-        array = xp.array(self.array, dtype=dtype)
-        return xp.nonzero(array)
+    def test_nonzero(self, dtype):
+        for xp in (numpy, cupy):
+            array = xp.array(self.array, dtype=dtype)
+            with pytest.raises(DeprecationWarning):
+                xp.nonzero(array)
 
 
 @testing.parameterize(
@@ -378,16 +385,18 @@ class TestNanArgMin(unittest.TestCase):
         return xp.nanargmin(a)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_nanargmin_zero_size(self, xp, dtype):
-        a = testing.shaped_random((0, 1), xp, dtype)
-        return xp.nanargmin(a)
+    def test_nanargmin_zero_size(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((0, 1), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.nanargmin(a)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_nanargmin_zero_size_axis0(self, xp, dtype):
-        a = testing.shaped_random((0, 1), xp, dtype)
-        return xp.nanargmin(a, axis=0)
+    def test_nanargmin_zero_size_axis0(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((0, 1), xp, dtype)
+            with pytest.raises(ValueError):
+                return xp.nanargmin(a, axis=0)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
@@ -468,16 +477,18 @@ class TestNanArgMax(unittest.TestCase):
         return xp.nanargmax(a)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_nanargmax_zero_size(self, xp, dtype):
-        a = testing.shaped_random((0, 1), xp, dtype)
-        return xp.nanargmax(a)
+    def test_nanargmax_zero_size(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((0, 1), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.nanargmax(a)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_nanargmax_zero_size_axis0(self, xp, dtype):
-        a = testing.shaped_random((0, 1), xp, dtype)
-        return xp.nanargmax(a, axis=0)
+    def test_nanargmax_zero_size_axis0(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((0, 1), xp, dtype)
+            with pytest.raises(ValueError):
+                return xp.nanargmax(a, axis=0)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
@@ -584,12 +595,12 @@ class TestSearchSortedInvalid(unittest.TestCase):
     # Cant test unordered bins due to numpy undefined
     # behavior for searchsorted
 
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_searchsorted_ndbins(self, xp):
-        x = testing.shaped_arange((10,), xp, xp.float64)
-        bins = xp.array([[10, 4], [2, 1], [7, 8]])
-        y = xp.searchsorted(bins, x)
-        return y,
+    def test_searchsorted_ndbins(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((10,), xp, xp.float64)
+            bins = xp.array([[10, 4], [2, 1], [7, 8]])
+            with pytest.raises(ValueError):
+                xp.searchsorted(bins, x)
 
 
 @testing.gpu
@@ -603,16 +614,18 @@ class TestSearchSortedWithSorter(unittest.TestCase):
         y = xp.searchsorted(bins, x, sorter=sorter)
         return y,
 
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_invalid_sorter(self, xp):
-        x = testing.shaped_arange((12,), xp, xp.float64)
-        bins = xp.array([10, 4, 2, 1, 8])
-        sorter = xp.array([0])
-        xp.searchsorted(bins, x, sorter=sorter)
+    def test_invalid_sorter(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((12,), xp, xp.float64)
+            bins = xp.array([10, 4, 2, 1, 8])
+            sorter = xp.array([0])
+            with pytest.raises(ValueError):
+                xp.searchsorted(bins, x, sorter=sorter)
 
-    @testing.numpy_cupy_raises(accept_error=TypeError)
-    def test_nonint_sorter(self, xp):
-        x = testing.shaped_arange((12,), xp, xp.float64)
-        bins = xp.array([10, 4, 2, 1, 8])
-        sorter = xp.array([], dtype=xp.float64)
-        xp.searchsorted(bins, x, sorter=sorter)
+    def test_nonint_sorter(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((12,), xp, xp.float64)
+            bins = xp.array([10, 4, 2, 1, 8])
+            sorter = xp.array([], dtype=xp.float64)
+            with pytest.raises(TypeError):
+                xp.searchsorted(bins, x, sorter=sorter)

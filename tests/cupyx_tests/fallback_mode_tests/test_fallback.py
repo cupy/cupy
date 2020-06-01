@@ -8,6 +8,11 @@ import cupy
 from cupy import testing
 from cupyx import fallback_mode
 from cupyx.fallback_mode import fallback
+from cupyx.fallback_mode.notification import FallbackWarning
+
+
+ignore_fallback_warnings = pytest.mark.filterwarnings(
+    "ignore", category=FallbackWarning)
 
 
 def numpy_fallback_equal(name='xp'):
@@ -124,6 +129,7 @@ def get_numpy_version():
     return tuple(map(int, numpy.__version__.split('.')))
 
 
+@ignore_fallback_warnings
 @testing.gpu
 class TestFallbackMode(unittest.TestCase):
 
@@ -183,6 +189,7 @@ class TestFallbackMode(unittest.TestCase):
     {'func': 'asarray_chkfinite', 'shape': (2, 4), 'args': (),
      'kwargs': {'dtype': numpy.float64}}
 )
+@ignore_fallback_warnings
 @testing.gpu
 class TestFallbackMethodsArrayExternal(unittest.TestCase):
 
@@ -207,6 +214,7 @@ class TestFallbackMethodsArrayExternal(unittest.TestCase):
     {'func': 'nanpercentile', 'shape': (3, 4), 'args': (50,),
      'kwargs': {'axis': 0}, 'numpy_version': None}
 )
+@ignore_fallback_warnings
 @testing.gpu
 class TestFallbackMethodsArrayExternalOut(unittest.TestCase):
 
@@ -507,6 +515,7 @@ class TestVectorizeWrapper(unittest.TestCase):
         return vabs.__doc__
 
 
+@ignore_fallback_warnings
 @testing.gpu
 class TestInplaceSpecialMethods(unittest.TestCase):
 
@@ -563,6 +572,7 @@ class TestInplaceSpecialMethods(unittest.TestCase):
         return res
 
 
+@ignore_fallback_warnings
 @testing.gpu
 class TestArrayVariants(unittest.TestCase):
 

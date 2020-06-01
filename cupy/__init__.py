@@ -447,7 +447,13 @@ from cupy.indexing.indexing import take_along_axis  # NOQA
 
 from cupy.indexing.insert import place  # NOQA
 from cupy.indexing.insert import put  # NOQA
+from cupy.indexing.insert import putmask  # NOQA
 from cupy.indexing.insert import fill_diagonal  # NOQA
+from cupy.indexing.insert import diag_indices  # NOQA
+from cupy.indexing.insert import diag_indices_from  # NOQA
+
+from cupy.indexing.iterate import flatiter  # NOQA
+
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
@@ -488,6 +494,7 @@ from cupy.linalg.norms import trace  # NOQA
 # Logic functions
 # -----------------------------------------------------------------------------
 from cupy.logic.comparison import allclose  # NOQA
+from cupy.logic.comparison import array_equal  # NOQA
 from cupy.logic.comparison import isclose  # NOQA
 
 from cupy.logic.content import isfinite  # NOQA
@@ -569,9 +576,11 @@ from cupy.math.sumprod import cumsum  # NOQA
 from cupy.math.sumprod import nansum  # NOQA
 from cupy.math.sumprod import nanprod  # NOQA
 from cupy.math.sumprod import diff  # NOQA
+from cupy.math.window import bartlett  # NOQA
 from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA
 from cupy.math.window import hanning  # NOQA
+from cupy.math.window import kaiser  # NOQA
 
 from cupy.math.explog import exp  # NOQA
 from cupy.math.explog import exp2  # NOQA
@@ -591,6 +600,9 @@ from cupy.math.floating import frexp  # NOQA
 from cupy.math.floating import ldexp  # NOQA
 from cupy.math.floating import nextafter  # NOQA
 from cupy.math.floating import signbit  # NOQA
+
+from cupy.math.rational import gcd  # NOQA
+from cupy.math.rational import lcm  # NOQA
 
 from cupy.math.arithmetic import add  # NOQA
 from cupy.math.arithmetic import divide  # NOQA
@@ -631,6 +643,7 @@ from cupy.math.misc import square  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.misc import may_share_memory  # NOQA
 from cupy.misc import shares_memory  # NOQA
+from cupy.misc import who  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -676,6 +689,7 @@ from cupy.statistics.order import nanmin  # NOQA
 from cupy.statistics.order import percentile  # NOQA
 from cupy.statistics.order import ptp  # NOQA
 
+from cupy.statistics.meanvar import median  # NOQA
 from cupy.statistics.meanvar import average  # NOQA
 from cupy.statistics.meanvar import mean  # NOQA
 from cupy.statistics.meanvar import std  # NOQA

@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -65,11 +66,12 @@ class TestCholeskyDecomposition(unittest.TestCase):
 @testing.gpu
 class TestCholeskyInvalid(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=numpy.linalg.LinAlgError)
-    def check_L(self, array, xp):
-        a = xp.asarray(array)
-        with cupyx.errstate(linalg='raise'):
-            xp.linalg.cholesky(a)
+    def check_L(self, array):
+        for xp in (numpy, cupy):
+            a = xp.asarray(array)
+            with cupyx.errstate(linalg='raise'):
+                with pytest.raises(numpy.linalg.LinAlgError):
+                    xp.linalg.cholesky(a)
 
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
@@ -136,7 +138,10 @@ class TestSVD(unittest.TestCase):
         # Check if the input matrix is not broken
         cupy.testing.assert_allclose(a_gpu, a_cpu)
 
-        self.assertEqual(len(result_gpu), len(result_cpu))
+        assert len(result_gpu) == 3
+        for i in range(3):
+            assert result_gpu[i].shape == result_cpu[i].shape
+            assert result_gpu[i].dtype == result_cpu[i].dtype
         u_cpu, s_cpu, vh_cpu = result_cpu
         u_gpu, s_gpu, vh_gpu = result_gpu
         cupy.testing.assert_allclose(s_gpu, s_cpu, atol=1e-4)
@@ -184,7 +189,7 @@ class TestSVD(unittest.TestCase):
         return result
 
     def check_rank2(self, array):
-        with self.assertRaises(numpy.linalg.LinAlgError):
+        with pytest.raises(numpy.linalg.LinAlgError):
             cupy.linalg.svd(array, full_matrices=self.full_matrices)
 
     @condition.repeat(3, 10)

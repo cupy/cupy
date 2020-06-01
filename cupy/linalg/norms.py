@@ -2,6 +2,7 @@ import numpy
 from numpy import linalg
 
 import cupy
+from cupy import core
 from cupy.linalg import decomposition
 from cupy.linalg import util
 
@@ -12,6 +13,20 @@ def _multi_svd_norm(x, row_axis, col_axis, op):
     y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
     result = op(decomposition.svd(y, compute_uv=False), axis=-1)
     return result
+
+
+_norm_ord2 = core.create_reduction_func(
+    '_norm_ord2',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d'),
+    ('in0 * in0', 'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
+_norm_ord2_complex = core.create_reduction_func(
+    '_norm_ord2_complex',
+    ('F->F', 'D->D'),
+    ('in0.real() * in0.real() + in0.imag() * in0.imag()',
+     'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
 
 
 def norm(x, ord=None, axis=None, keepdims=False):
@@ -78,11 +93,8 @@ def norm(x, ord=None, axis=None, keepdims=False):
         elif ord is None or ord == 2:
             # special case for speedup
             if x.dtype.kind == 'c':
-                s = abs(x)
-                s *= s
-            else:
-                s = x * x
-            return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
+                return _norm_ord2_complex(x, axis=axis, keepdims=keepdims)
+            return _norm_ord2(x, axis=axis, keepdims=keepdims)
         else:
             try:
                 float(ord)
@@ -129,11 +141,9 @@ def norm(x, ord=None, axis=None, keepdims=False):
             ret = abs(x).sum(axis=col_axis).min(axis=row_axis)
         elif ord in [None, 'fro', 'f']:
             if x.dtype.kind == 'c':
-                s = abs(x)
-                s *= s
-                ret = cupy.sqrt(s.sum(axis=axis))
+                ret = _norm_ord2_complex(x, axis=axis)
             else:
-                ret = cupy.sqrt((x * x).sum(axis=axis))
+                ret = _norm_ord2(x, axis=axis)
         elif ord == 'nuc':
             ret = _multi_svd_norm(x, row_axis, col_axis, cupy.sum)
         else:
