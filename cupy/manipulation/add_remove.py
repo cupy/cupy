@@ -50,9 +50,9 @@ def trim_zeros(filt, trim='fb'):
     end = filt.size
     trim = trim.upper()
     if 'F' in trim:
-        start = _first_nonzero_krnl(filt, filt.size)
+        start = _first_nonzero_krnl(filt, filt.size).item()
     if 'B' in trim:
-        end = filt.size - _first_nonzero_krnl(filt[::-1], filt.size)
+        end = filt.size - _first_nonzero_krnl(filt[::-1], filt.size).item()
     return filt[start:end]
 
 
