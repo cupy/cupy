@@ -65,6 +65,7 @@ typedef enum {
 } cudaError_t;
 typedef enum {} cudaDataType;
 enum cudaDeviceAttr {};
+enum cudaLimit {};
 enum cudaMemoryAdvise {};
 enum cudaMemcpyKind {};
 
