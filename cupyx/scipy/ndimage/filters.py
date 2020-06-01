@@ -67,6 +67,7 @@ def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
                 origin=0):
     """One-dimensional correlate.
     The array is correlated with the given kernel.
+
     Args:
         input (cupy.ndarray): The input array.
         weights (cupy.ndarray): One-dimensional array of weights
@@ -81,8 +82,10 @@ def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
         origin (int): The origin parameter controls the placement of the
             filter, relative to the center of the current element of the
             input. Default is ``0``.
+
     Returns:
         cupy.ndarray: The result of the 1D correlation.
+
     .. seealso:: :func:`scipy.ndimage.correlate1d`
     """
     weights, origins = _convert_1d_args(input.ndim, weights, origin, axis)
@@ -94,6 +97,7 @@ def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
                origin=0):
     """One-dimensional convolution.
     The array is convolved with the given kernel.
+
     Args:
         input (cupy.ndarray): The input array.
         weights (cupy.ndarray): One-dimensional array of weights
@@ -108,8 +112,10 @@ def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
         origin (int): The origin parameter controls the placement of the
             filter, relative to the center of the current element of the
             input. Default is ``0``.
+
     Returns:
         cupy.ndarray: The result of the 1D convolution.
+
     .. seealso:: :func:`scipy.ndimage.convolve1d`
     """
     weights = weights[::-1]
@@ -189,19 +195,20 @@ def _check_mode(mode):
     return mode
 
 
-def _check_axis(axis, ndim):
-    axis = int(axis)
-    if axis < 0:
-        axis += ndim
-    if axis < 0 or axis >= ndim:
-        raise ValueError('invalid axis')
-    return axis
+# def _check_axis(axis, ndim):
+#     axis = int(axis)
+#     if axis < 0:
+#         axis += ndim
+#     if axis < 0 or axis >= ndim:
+#         raise ValueError('invalid axis')
+#     return axis
 
 
 def _convert_1d_args(ndim, weights, origin, axis):
     if weights.ndim != 1 or weights.size < 1:
         raise RuntimeError('incorrect filter size')
-    axis = _check_axis(axis, ndim)
+    # axis = _check_axis(axis, ndim)
+    axis = cupy.util._normalize_axis_index(axis, ndim)
     wshape = [1]*ndim
     wshape[axis] = weights.size
     weights = weights.reshape(wshape)
@@ -328,7 +335,7 @@ def _get_nd_kernel(name, pre, found, post, mode, wshape, int_type,
         else:
             boundary = _generate_boundary_condition_ops(
                 mode, 'ix_{}'.format(j), 'xsize_{}'.format(j))
-        loops.append('''
+            loops.append('''
     for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)
     {{
         {type} ix_{j} = ind_{j} + iw_{j};
