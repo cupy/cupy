@@ -356,6 +356,13 @@ def preconfigure_modules(compiler, settings):
         status = 'No'
         errmsg = []
 
+        if module['name'] == 'cub':
+            # for <cupy/complex.cuh>
+            cupy_header = os.path.join(
+                os.path.dirname(os.path.realpath(__file__)),
+                'cupy/core/include')
+            settings['include_dirs'].append(cupy_header)
+
         if module['name'] == 'cutensor':
             cuda_version = build.get_cuda_version()
             cuda_version = str(cuda_version // 1000) + '.' + \
