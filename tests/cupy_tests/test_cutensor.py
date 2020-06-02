@@ -27,9 +27,9 @@ class TestCuTensor(unittest.TestCase):
             (40, 30, 20), cupy, self.dtype, seed=1)
         self.c = testing.shaped_random(
             (30, 20, 40), cupy, self.dtype, seed=2)
-        self.mode_a = ('y', 'z', 'x')
-        self.mode_b = ('z', 'x', 'y')
-        self.mode_c = ('x', 'y', 'z')
+        self.mode_a = cutensor.create_mode('y', 'z', 'x')
+        self.mode_b = cutensor.create_mode('z', 'x', 'y')
+        self.mode_c = cutensor.create_mode('x', 'y', 'z')
         self.alpha = 1.1
         self.beta = 1.2
         self.gamma = 1.3
@@ -146,10 +146,11 @@ class TestCuTensor(unittest.TestCase):
 
         desc_a = cutensor.create_tensor_descriptor(self.a)
         desc_c = cutensor.create_tensor_descriptor(c)
+        mode_c = cutensor.create_mode('x')
 
         d = cutensor.reduction(
             self.alpha, self.a, desc_a, self.mode_a,
-            self.beta, c, desc_c, ('x',)
+            self.beta, c, desc_c, mode_c
         )
 
         assert c is d
@@ -171,9 +172,9 @@ class TestCuTensorDescriptor(unittest.TestCase):
             (40, 30, 20), cupy, numpy.float32, seed=1)
         self.c = testing.shaped_random(
             (30, 20, 40), cupy, numpy.float32, seed=2)
-        self.mode_a = ('y', 'z', 'x')
-        self.mode_b = ('z', 'x', 'y')
-        self.mode_c = ('x', 'y', 'z')
+        self.mode_a = cutensor.create_mode('y', 'z', 'x')
+        self.mode_b = cutensor.create_mode('z', 'x', 'y')
+        self.mode_c = cutensor.create_mode('x', 'y', 'z')
         self.alpha = 1.1
         self.beta = 1.2
         self.gamma = 1.3
@@ -224,10 +225,11 @@ class TestCuTensorDescriptor(unittest.TestCase):
 
         desc_a = cutensor.create_tensor_descriptor(self.a, ct.OP_COS)
         desc_c = cutensor.create_tensor_descriptor(c, ct.OP_TANH)
+        mode_c = cutensor.create_mode('x')
 
         d = cutensor.reduction(
             self.alpha, self.a, desc_a, self.mode_a,
-            self.beta, c, desc_c, ('x',),
+            self.beta, c, desc_c, mode_c,
             reduce_op=ct.OP_MAX
         )
 
