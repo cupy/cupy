@@ -82,7 +82,7 @@ def _dtype_to_DataType(dtype):
 
 _available_cuda_version = {
     'csrmv': (8000, 11000),
-    'csrmvEx': (8000, None),
+    'csrmvEx': (8000, 11000),  # TODO(anaruse): failure in CUDA 11
     'csrmm': (8000, 11000),
     'csrmm2': (8000, 11000),
     'csrgeam': (8000, 11000),
