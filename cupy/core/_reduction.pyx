@@ -284,8 +284,9 @@ __global__ void ${name}(${params}) {
     # instead. For this, we have to explicitly spell out the default values for
     # arch, cachd, and prepend_cupy_headers to bypass cdef/cpdef limitation...
     # TODO(leofang): investigate Jitify for using NVRTC (also NVlabs/cub#171)
-    module = compile_with_cache(module_code, options, arch=None, cachd_dir=None,
-                                prepend_cupy_headers=True, backend='nvcc')
+    module = compile_with_cache(
+        module_code, options, arch=None, cachd_dir=None,
+        prepend_cupy_headers=True, backend='nvcc')
     return module.get_function(name)
 
 
@@ -427,13 +428,13 @@ cdef _cub_two_pass_launch(
 
     # Retrieve the kernel function
     func = _SimpleReductionKernel_get_cached_function(
-            pre_map_expr, reduce_expr, post_map_expr1, reduce_type,
-            params,
-            _get_arginfos(inout_args), 
-            type_map,
-            name, block_size, identity,
-            input_expr, output_expr, preamble,
-            ('-DFIRST_PASS=1',), cub_params)
+        pre_map_expr, reduce_expr, post_map_expr1, reduce_type,
+        params,
+        _get_arginfos(inout_args),
+        type_map,
+        name, block_size, identity,
+        input_expr, output_expr, preamble,
+        ('-DFIRST_PASS=1',), cub_params)
 
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num * block_size)
@@ -455,20 +456,21 @@ cdef _cub_two_pass_launch(
 
     # For mean()
     if 'mean' in name:
-        post_map_expr2 = post_map_expr.replace('_in_ind.size()', str(segment_size))
+        post_map_expr2 = post_map_expr.replace('_in_ind.size()',
+                                               str(segment_size))
         post_map_expr2 = post_map_expr2.replace('_out_ind.size()', '1.0')
     else:
         post_map_expr2 = post_map_expr
 
     # Retrieve the kernel function
     func = _SimpleReductionKernel_get_cached_function(
-            'in0', reduce_expr, post_map_expr2, reduce_type,
-            params,
-            _get_arginfos(inout_args), 
-            type_map,
-            name, block_size, identity,
-            input_expr, output_expr, preamble,
-            ('-DSECOND_PASS=1',), cub_params)
+        'in0', reduce_expr, post_map_expr2, reduce_type,
+        params,
+        _get_arginfos(inout_args),
+        type_map,
+        name, block_size, identity,
+        input_expr, output_expr, preamble,
+        ('-DSECOND_PASS=1',), cub_params)
 
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num * block_size)
@@ -700,7 +702,7 @@ cdef class _AbstractReductionKernel:
                     contiguous_size, -1)
             else:
                 # Optimize dynamically
-    
+
                 # Calculate a key unique to the reduction setting.
                 for x in in_args + out_args:
                     if isinstance(x, ndarray):
@@ -713,7 +715,7 @@ cdef class _AbstractReductionKernel:
                     self.name, tuple(shape_and_strides),
                     in_types, out_types, reduce_type, device_id,
                 )
-    
+
                 params = optimize_context.get_params(key)
                 if params is None:
                     params = self._get_optimized_params(
@@ -735,14 +737,16 @@ cdef class _AbstractReductionKernel:
             # Calculate the reduction block dimensions.
             # Ideally, we want each block to handle one segment, so:
             # 1. block size < segment size: the block loops over the segment
-            # 2. block size >= segment size: the segment fits in the entire block
+            # 2. block size >= segment size: the segment fits in the block
             # TODO(leofang): also auto-tune the block size?
-            block_size = (contiguous_size + items_per_thread - 1) // items_per_thread
+            block_size = (contiguous_size + items_per_thread - 1) \
+                // items_per_thread
             block_size = internal.clp2(block_size)
             if block_size < 32:
                 block_size = 32  # warp size
             elif block_size > _default_block_size:
-                block_size = _default_block_size  # TODO(leofang): try 1024 as maximum?
+                # TODO(leofang): try 1024 as maximum?
+                block_size = _default_block_size
 
             block_stride = block_size * items_per_thread
 
@@ -760,10 +764,13 @@ cdef class _AbstractReductionKernel:
                     out_block_num *= in_shape[i]
 
                 if 'mean' in self.name:
-                    post_map_expr = post_map_expr.replace('_in_ind.size()', '_segment_size')
-                    post_map_expr = post_map_expr.replace('_out_ind.size()', '1')
+                    post_map_expr = post_map_expr.replace('_in_ind.size()',
+                                                          '_segment_size')
+                    post_map_expr = post_map_expr.replace('_out_ind.size()',
+                                                          '1.0')
 
-            params = (self._params[0:2] + _get_param_info('int32 _segment_size', False)
+            params = (self._params[0:2]
+                      + _get_param_info('int32 _segment_size', False)
                       + _get_param_info('int32 _array_size', True))
             cub_params = (True, items_per_thread, contiguous_size)
 
@@ -792,7 +799,7 @@ cdef class _AbstractReductionKernel:
             self, optimize_config, in_args, out_args, in_shape, out_shape,
             type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
             stream, cub_params):
-        out_size = internal.prod_sequence(out_shape)
+        out_size = internal.prod(out_shape)
 
         def copy_arg(a):
             if isinstance(a, ndarray):
@@ -1011,7 +1018,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
             self.name, block_size, self.identity,
-            self._input_expr, self._output_expr, self._preamble, (), cub_params)
+            self._input_expr, self._output_expr, self._preamble,
+            (), cub_params)
 
 
 @util.memoize(for_each_device=True)
