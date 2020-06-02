@@ -159,10 +159,10 @@ class TestPiecewise(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_mismatched_lengths(self, dtype):
-        x = cupy.linspace(-2, 4, 6, dtype=dtype)
-        condlist = [x < 0, x >= 0]
         funclist = cupy.array([-1, 0, 2, 4, 5])
         for xp in (numpy, cupy):
+            x = xp.linspace(-2, 4, 6, dtype=dtype)
+            condlist = [x < 0, x >= 0]
             with pytest.raises(ValueError):
                 xp.piecewise(x, condlist, funclist)
 
@@ -171,15 +171,13 @@ class TestPiecewise(unittest.TestCase):
         x = cupy.linspace(-2, 4, 6, dtype=dtype)
         condlist = [x < 0, x > 0]
         funclist = [lambda x: -x, lambda x: x]
-        for xp in (numpy, cupy):
-            with pytest.raises(NotImplementedError):
-                xp.piecewise(x, condlist, funclist)
+        with pytest.raises(NotImplementedError):
+            cupy.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
     def test_mixed_funclist(self, dtype):
         x = cupy.linspace(-2, 2, 6, dtype=dtype)
         condlist = [x < 0, x == 0, x > 0]
         funclist = [-10, lambda x: -x, 10, lambda x: x]
-        for xp in (numpy, cupy):
-            with pytest.raises(NotImplementedError):
-                xp.piecewise(x, condlist, funclist)
+        with pytest.raises(NotImplementedError):
+            cupy.piecewise(x, condlist, funclist)
