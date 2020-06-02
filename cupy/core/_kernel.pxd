@@ -69,7 +69,7 @@ cdef class _TypeMap:
     cdef:
         tuple _pairs
 
-    cpdef str get_typedef_code(self)
+    cdef str get_typedef_code(self)
 
 
 cdef class _Op:

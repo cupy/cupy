@@ -29,7 +29,6 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
 from cupy.cuda cimport runtime
-from cupy.cuda cimport driver
 
 import math
 import string
@@ -162,6 +161,7 @@ struct _reduction_op {
 
 extern "C"
 __global__ void ${name}(${params}) {
+  assert(sizeof(_type_reduce) <= 32);
   unsigned int _tid = threadIdx.x;
   unsigned int _bid = blockIdx.x * BLOCK_SIZE + _tid;
 '''

@@ -196,6 +196,7 @@ cdef class _ArgInfo:
                 'type={!r}'.format(self.type),
                 'dtype={!r}'.format(self.dtype),
                 'ndim={!r}'.format(self.ndim),
+                'c_contiguous={!r}'.format(self.c_contiguous),
             ]))
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim):
@@ -439,7 +440,7 @@ cdef class _TypeMap:
     def __str__(self):
         return '<_TypeMap {}>'.format(self._pairs)
 
-    cpdef str get_typedef_code(self):
+    cdef str get_typedef_code(self):
         # Returns a code fragment of typedef statements used as preamble.
         return ''.join([
             'typedef %s %s;\n' % (_get_typename(ctype2), ctype1)
