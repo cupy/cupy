@@ -91,7 +91,7 @@ __global__ void ${name}(${params}) {
 
   // loop over tiles within 1 segment
   for (i = 0; i < _segment_size; i += BLOCK_SIZE * ITEMS_PER_THREAD) {
-      if (_tid == 0) printf("At tile: %i, i=%llu\\n", blockIdx.x, i);
+      //if (_tid == 0) printf("At tile: %i, i=%llu\\n", blockIdx.x, i);
       if (_segment_size - i <= tile_size) { // for the last tile
           tile_size = _segment_size - i;
           //if (_tid == 0) printf("last tile: i=%llu\\n", i);
@@ -126,10 +126,10 @@ __global__ void ${name}(${params}) {
               const type_mid_in in0 = *(segment_head + i + _tid * ITEMS_PER_THREAD + j);
               //const type_mid_in in0 = segment_head[i + _tid * ITEMS_PER_THREAD + j];
               _sdata[j] = static_cast<_type_reduce>(${pre_map_expr});
-              printf("%s, element %lld loads %lld\\n", __func__, blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j, _sdata[j]);
+              //printf("%s, element %lld loads %lld\\n", __func__, blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j, _sdata[j]);
           } else { 
               _sdata[j] = _type_reduce(${identity});
-              printf("%s, element %lld resets %lld\\n", __func__, blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j, _sdata[j]);
+              //printf("%s, element %lld resets %lld\\n", __func__, blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j, _sdata[j]);
           }
           //printf("%s, after: %i, %lld\\n", __func__, _bid, _sdata[j]);
           //printf("%s, element %lld: %lld\\n", __func__, blockIdx.x * _segment_size + i + _tid * ITEMS_PER_THREAD + j, _sdata[j]);
