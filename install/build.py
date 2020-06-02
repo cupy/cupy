@@ -16,7 +16,7 @@ PLATFORM_WIN32 = sys.platform.startswith('win32')
 
 minimum_cuda_version = 8000
 minimum_cudnn_version = 5000
-maximum_cudnn_version = 7999
+maximum_cudnn_version = 8099
 
 _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
