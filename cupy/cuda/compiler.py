@@ -13,6 +13,7 @@ from cupy.cuda import nvrtc
 from cupy.cuda import runtime
 from cupy import util
 
+
 _nvrtc_version = None
 _nvrtc_max_compute_capability = None
 _win32 = sys.platform.startswith('win32')
@@ -75,6 +76,10 @@ def _is_cudadevrt_needed(options):
 
 
 def _get_cudadevrt_path():
+    global _cudadevrt
+    if _cudadevrt is not None:
+        return _cudadevrt
+
     # defer import to here to avoid circular dependency
     from cupy.cuda import get_cuda_path
     global _win32
@@ -113,7 +118,8 @@ def _get_bool_env_variable(name, default):
         return False
 
 
-def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
+def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
+                        name_expressions=None):
     if not arch:
         arch = _get_arch()
 
@@ -125,9 +131,10 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
         with open(cu_path, 'w') as cu_file:
             cu_file.write(source)
 
-        prog = _NVRTCProgram(source, cu_path)
+        prog = _NVRTCProgram(source, cu_path,
+                             name_expressions=name_expressions)
         try:
-            ptx = prog.compile(options)
+            ptx, mapping = prog.compile(options)
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -135,7 +142,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
                 e.dump(sys.stderr)
             raise
 
-        return ptx
+        return ptx, mapping
 
 
 def compile_using_nvcc(source, options=(), arch=None,
@@ -232,7 +239,7 @@ def _preprocess(source, options, arch, backend):
 
         prog = _NVRTCProgram(source, '')
         try:
-            result = prog.compile(options)
+            result, _ = prog.compile(options)
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -268,7 +275,8 @@ _empty_file_preprocess_cache = {}
 
 def compile_with_cache(
         source, options=(), arch=None, cache_dir=None, extra_source=None,
-        backend='nvrtc', *, enable_cooperative_groups=False):
+        backend='nvrtc', *, enable_cooperative_groups=False,
+        name_expressions=None):
 
     if enable_cooperative_groups:
         if backend != 'nvcc':
@@ -278,18 +286,22 @@ def compile_with_cache(
             raise ValueError(
                 'Cooperative groups is not supported in HIP.')
 
+    if name_expressions is not None:
+        if runtime.is_hip or backend != 'nvrtc':
+            raise NotImplementedError
+
     if runtime.is_hip:
         return _compile_with_cache_hipcc(
             source, options, arch, cache_dir, extra_source)
     else:
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
-            enable_cooperative_groups)
+            enable_cooperative_groups, name_expressions)
 
 
 def _compile_with_cache_cuda(
         source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
-        enable_cooperative_groups=False):
+        enable_cooperative_groups=False, name_expressions=None):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -330,8 +342,9 @@ def _compile_with_cache_cuda(
     mod = function.Module()
     # To handle conflicts in concurrent situation, we adopt lock-free method
     # to avoid performance degradation.
+    # We force recompiling to retrieve C++ mangled names if so desired.
     path = os.path.join(cache_dir, name)
-    if os.path.exists(path):
+    if os.path.exists(path) and not name_expressions:
         with open(path, 'rb') as file:
             data = file.read()
         if len(data) >= 32:
@@ -343,16 +356,16 @@ def _compile_with_cache_cuda(
                 return mod
 
     if backend == 'nvrtc':
-        ptx = compile_using_nvrtc(source, options, arch, name + '.cu')
+        ptx, mapping = compile_using_nvrtc(
+            source, options, arch, name + '.cu', name_expressions)
         ls = function.LinkState()
         ls.add_ptr_data(ptx, 'cupy.ptx')
         # for separate compilation
         if _is_cudadevrt_needed(options):
-            global _cudadevrt
-            if _cudadevrt is None:
-                _cudadevrt = _get_cudadevrt_path()
+            _cudadevrt = _get_cudadevrt_path()
             ls.add_ptr_file(_cudadevrt)
         cubin = ls.complete()
+        mod._set_mapping(mapping)
     elif backend == 'nvcc':
         rdc = _is_cudadevrt_needed(options)
         cubin = compile_using_nvcc(source, options, arch, name + '.cu',
@@ -422,7 +435,7 @@ class CompileException(Exception):
 class _NVRTCProgram(object):
 
     def __init__(self, src, name='default_program', headers=(),
-                 include_names=()):
+                 include_names=(), name_expressions=None):
         self.ptr = None
 
         if isinstance(src, bytes):
@@ -433,6 +446,7 @@ class _NVRTCProgram(object):
         self.src = src
         self.name = name
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
+        self.name_expressions = name_expressions
 
     def __del__(self, is_shutting_down=util.is_shutting_down):
         if is_shutting_down():
@@ -442,8 +456,16 @@ class _NVRTCProgram(object):
 
     def compile(self, options=()):
         try:
+            if self.name_expressions:
+                for ker in self.name_expressions:
+                    nvrtc.addAddNameExpression(self.ptr, ker)
             nvrtc.compileProgram(self.ptr, options)
-            return nvrtc.getPTX(self.ptr)
+            mapping = None
+            if self.name_expressions:
+                mapping = {}
+                for ker in self.name_expressions:
+                    mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
+            return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
             raise CompileException(log, self.src, self.name, options, 'nvrtc')
