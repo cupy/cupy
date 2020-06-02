@@ -197,11 +197,11 @@ cdef tuple _can_use_cub_block_reduction(
     # TODO(leofang): perhaps this can be relaxed?
     for i in reduce_axis:
         contiguous_size *= in_arr.shape[i]
-    if contiguous_size > 0x7fffffffUL:
+    if contiguous_size > 0x7fffffff or contiguous_size == 0:
         return None
 
     # check if number of blocks to be launched exceeds INT_MAX:
-    if in_arr.size // contiguous_size > 0x7fffffffUL:
+    if in_arr.size // contiguous_size > 0x7fffffff:
         return None
 
     return (axis_permutes_cub, contiguous_size)
@@ -256,7 +256,7 @@ cdef _cub_two_pass_launch(
     # fair share
     contiguous_size = min(segment_size, block_size * items_per_thread)
     out_block_num = (segment_size + contiguous_size - 1) // contiguous_size
-    assert out_block_num <= 0x7fffffffUL
+    assert out_block_num <= 0x7fffffff
 
     # Because we can't know sizeof(reduce_type) in advance, here we
     # conservatively assume it's 32 bytes and allocate a work area
