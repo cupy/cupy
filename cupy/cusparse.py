@@ -92,6 +92,18 @@ _available_cuda_version = {
     # TODO(anaruse): check availability on Windows when CUDA 11 is relased
     'spmv': ({'Linux': 10010, 'Windows': 11000}, None),
     'spmm': ({'Linux': 10010, 'Windows': 11000}, None),
+    'csr2dense': (8000, None),
+    'csc2dense': (8000, None),
+    'csrsort': (8000, None),
+    'cscsort': (8000, None),
+    'coosort': (8000, None),
+    'coo2csr': (8000, None),
+    'csr2coo': (8000, None),
+    'csr2csc': (8000, 11000),
+    'csr2cscEx2': (10010, None),
+    'dense2csc': (8000, None),
+    'dense2csr': (8000, None),
+    'csr2csr_compress': (8000, None),
 }
 
 
@@ -142,6 +154,9 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
         cupy.ndarray: Calculated ``y``.
 
     """
+    if not check_availability('csrmv'):
+        raise RuntimeError('csrmv is not available.')
+
     assert y is None or y.flags.f_contiguous
 
     a_shape = a.shape if not transa else a.shape[::-1]
@@ -218,6 +233,9 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
         cupy.ndarray: Calculated ``y``.
 
     """
+    if not check_availability('csrmvEx'):
+        raise RuntimeError('csrmvEx is not available.')
+
     assert y is None or y.flags.f_contiguous
 
     if a.shape[1] != len(x):
@@ -284,6 +302,9 @@ def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
         cupy.ndarray: Calculated C.
 
     """
+    if not check_availability('csrmm'):
+        raise RuntimeError('csrmm is not available.')
+
     assert a.ndim == b.ndim == 2
     assert b.flags.f_contiguous
     assert c is None or c.flags.f_contiguous
@@ -341,6 +362,9 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
         cupy.ndarray: Calculated C.
 
     """
+    if not check_availability('csrmm2'):
+        raise RuntimeError('csrmm2 is not available.')
+
     assert a.ndim == b.ndim == 2
     assert a.has_canonical_format
     assert b.flags.f_contiguous
@@ -524,6 +548,9 @@ def csrgemm(a, b, transa=False, transb=False):
         cupyx.scipy.sparse.csr_matrix: Calculated C.
 
     """
+    if not check_availability('csrgemm'):
+        raise RuntimeError('csrgemm is not available.')
+
     assert a.ndim == b.ndim == 2
     assert a.has_canonical_format
     assert b.has_canonical_format
@@ -689,6 +716,9 @@ def csr2dense(x, out=None):
         cupy.ndarray: Converted result.
 
     """
+    if not check_availability('csr2dense'):
+        raise RuntimeError('csr2dense is not available.')
+
     dtype = x.dtype
     assert dtype.char in 'fdFD'
     if out is None:
@@ -718,6 +748,9 @@ def csc2dense(x, out=None):
         cupy.ndarray: Converted result.
 
     """
+    if not check_availability('csc2dense'):
+        raise RuntimeError('csc2dense is not available.')
+
     dtype = x.dtype
     assert dtype.char in 'fdFD'
     if out is None:
@@ -742,6 +775,9 @@ def csrsort(x):
         x (cupyx.scipy.sparse.csr_matrix): A sparse matrix to sort.
 
     """
+    if not check_availability('csrsort'):
+        raise RuntimeError('csrsort is not available.')
+
     nnz = x.nnz
     if nnz == 0:
         return
@@ -771,6 +807,9 @@ def cscsort(x):
         x (cupyx.scipy.sparse.csc_matrix): A sparse matrix to sort.
 
     """
+    if not check_availability('cscsort'):
+        raise RuntimeError('cscsort is not available.')
+
     nnz = x.nnz
     if nnz == 0:
         return
@@ -800,6 +839,9 @@ def coosort(x):
         x (cupyx.scipy.sparse.coo_matrix): A sparse matrix to sort.
 
     """
+    if not check_availability('coosort'):
+        raise RuntimeError('coosort is not available.')
+
     nnz = x.nnz
     if nnz == 0:
         return
@@ -844,6 +886,9 @@ def csr2coo(x, data, indices):
         cupyx.scipy.sparse.coo_matrix: A converted matrix.
 
     """
+    if not check_availability('csr2coo'):
+        raise RuntimeError('csr2coo is not available.')
+
     handle = device.get_cusparse_handle()
     m = x.shape[0]
     nnz = len(x.data)
@@ -857,6 +902,9 @@ def csr2coo(x, data, indices):
 
 
 def csr2csc(x):
+    if not check_availability('csr2csc'):
+        raise RuntimeError('csr2csc is not available.')
+
     handle = device.get_cusparse_handle()
     m, n = x.shape
     nnz = x.nnz
@@ -875,6 +923,36 @@ def csr2csc(x):
         (data, indices, indptr), shape=x.shape)
 
 
+def csr2cscEx2(x):
+    if not check_availability('csr2cscEx2'):
+        raise RuntimeError('csr2cscEx2 is not available.')
+
+    handle = device.get_cusparse_handle()
+    m, n = x.shape
+    nnz = x.nnz
+    data = cupy.empty(nnz, x.dtype)
+    indices = cupy.empty(nnz, 'i')
+    if nnz == 0:
+        indptr = cupy.zeros(n + 1, 'i')
+    else:
+        indptr = cupy.empty(n + 1, 'i')
+        x_dtype = _dtype_to_DataType(x.dtype)
+        action = cusparse.CUSPARSE_ACTION_NUMERIC
+        ibase = cusparse.CUSPARSE_INDEX_BASE_ZERO
+        algo = cusparse.CUSPARSE_CSR2CSC_ALG1
+        buffer_size = cusparse.csr2cscEx2_bufferSize(
+            handle, m, n, nnz, x.data.data.ptr, x.indptr.data.ptr,
+            x.indices.data.ptr, data.data.ptr, indptr.data.ptr,
+            indices.data.ptr, x_dtype, action, ibase, algo)
+        buffer = cupy.empty(buffer_size, numpy.int8)
+        cusparse.csr2cscEx2(
+            handle, m, n, nnz, x.data.data.ptr, x.indptr.data.ptr,
+            x.indices.data.ptr, data.data.ptr, indptr.data.ptr,
+            indices.data.ptr, x_dtype, action, ibase, algo, buffer.data.ptr)
+    return cupyx.scipy.sparse.csc_matrix(
+        (data, indices, indptr), shape=x.shape)
+
+
 def dense2csc(x):
     """Converts a dense matrix in CSC format.
 
@@ -885,6 +963,9 @@ def dense2csc(x):
         cupyx.scipy.sparse.csc_matrix: A converted matrix.
 
     """
+    if not check_availability('dense2csc'):
+        raise RuntimeError('dense2csc is not available.')
+
     assert x.ndim == 2
     x = cupy.asfortranarray(x)
     nnz = numpy.empty((), dtype='i')
@@ -924,6 +1005,9 @@ def dense2csr(x):
         cupyx.scipy.sparse.csr_matrix: A converted matrix.
 
     """
+    if not check_availability('dense2csr'):
+        raise RuntimeError('dense2csr is not available.')
+
     assert x.ndim == 2
     x = cupy.asfortranarray(x)
     nnz = numpy.empty((), dtype='i')
@@ -954,6 +1038,9 @@ def dense2csr(x):
 
 
 def csr2csr_compress(x, tol):
+    if not check_availability('csr2csr_compress'):
+        raise RuntimeError('csr2csr_compress is not available.')
+
     assert x.dtype.char in 'fdFD'
 
     handle = device.get_cusparse_handle()
