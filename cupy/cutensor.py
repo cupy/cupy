@@ -3,11 +3,9 @@ import warnings
 
 import cupy
 from cupy.cuda import cutensor
-from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy import util
 
-_handles = {}
 _tensor_descriptors = {}
 _contraction_descriptors = {}
 _contraction_finds = {}
@@ -30,14 +28,11 @@ class Descriptor(object):
             self.value = None
 
 
+@util.memoize(for_each_device=True)
 def get_handle():
-    global _handles
-    dev = device.get_device_id()
-    if dev not in _handles:
-        handle = cutensor.Handle()
-        cutensor.init(handle)
-        _handles[dev] = handle
-    return _handles[dev]
+    handle = cutensor.Handle()
+    cutensor.init(handle)
+    return handle
 
 
 def get_cuda_dtype(numpy_dtype):
