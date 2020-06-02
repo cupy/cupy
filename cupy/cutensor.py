@@ -31,6 +31,7 @@ class Descriptor(object):
 
 
 def get_handle():
+    global _handles
     dev = device.get_device_id()
     if dev not in _handles:
         handle = cutensor.Handle()
@@ -97,6 +98,7 @@ def create_tensor_descriptor(a, uop=cutensor.OP_IDENTITY):
         (Descriptor): A instance of class Descriptor which holds a pointer to
             tensor descriptor and its destructor.
     """
+    global _tensor_descriptors
     handle = get_handle()
     key = (handle.ptr, a.dtype, tuple(a.shape), tuple(a.strides), uop)
     if key in _tensor_descriptors:
@@ -246,6 +248,7 @@ def elementwise_binary(alpha, A, desc_A, mode_A,
 def _create_contraction_descriptor(A, desc_A, mode_A, B, desc_B, mode_B,
                                    C, desc_C, mode_C, compute_dtype=None):
     """Create a contraction descriptor"""
+    global _contraction_descriptors
     assert A.dtype == B.dtype == C.dtype
     assert A.ndim == len(mode_A)
     assert B.ndim == len(mode_B)
@@ -284,6 +287,8 @@ def _create_contraction_descriptor(A, desc_A, mode_A, B, desc_B, mode_B,
 
 def _create_contraction_plan(desc, algo, ws_pref):
     """Create a contraction plan"""
+    global _contraction_finds
+    global _contraction_plans
     handle = get_handle()
     key = (handle.ptr, algo)
     if key in _contraction_finds:
