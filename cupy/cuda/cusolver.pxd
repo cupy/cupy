@@ -105,13 +105,17 @@ cpdef zpotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
                     size_t infoArray, int batchSize)
 
 cpdef spotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
-                    int lda, size_t Barray, int ldb, size_t devInfo, int batchSize)
+                    int lda, size_t Barray, int ldb, size_t devInfo,
+                    int batchSize)
 cpdef dpotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
-                    int lda, size_t Barray, int ldb, size_t devInfo, int batchSize)
+                    int lda, size_t Barray, int ldb, size_t devInfo,
+                    int batchSize)
 cpdef cpotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
-                    int lda, size_t Barray, int ldb, size_t devInfo, int batchSize)
+                    int lda, size_t Barray, int ldb, size_t devInfo,
+                    int batchSize)
 cpdef zpotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
-                    int lda, size_t Barray, int ldb, size_t devInfo, int batchSize)
+                    int lda, size_t Barray, int ldb, size_t devInfo,
+                    int batchSize)
 
 # LU factorization
 cpdef int sgetrf_bufferSize(intptr_t handle, int m, int n,

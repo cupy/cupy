@@ -822,7 +822,7 @@ cpdef zpotrs(intptr_t handle, int uplo, int n, int nrhs,
     check_status(status)
 
 cpdef spotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
-             size_t infoArray, int batchSize):
+                    size_t infoArray, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnSpotrfBatched(
@@ -831,7 +831,7 @@ cpdef spotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
     check_status(status)
 
 cpdef dpotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
-             size_t infoArray, int batchSize):
+                    size_t infoArray, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnDpotrfBatched(
@@ -840,7 +840,7 @@ cpdef dpotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
     check_status(status)
 
 cpdef cpotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
-             size_t infoArray, int batchSize):
+                    size_t infoArray, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnCpotrfBatched(
@@ -849,7 +849,7 @@ cpdef cpotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
     check_status(status)
 
 cpdef zpotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
-             size_t infoArray, int batchSize):
+                    size_t infoArray, int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnZpotrfBatched(
@@ -858,7 +858,8 @@ cpdef zpotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
     check_status(status)
 
 cpdef spotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
-                    int lda, size_t Barray, int ldb, size_t devInfo, int batchSize):
+                    int lda, size_t Barray, int ldb, size_t devInfo,
+                    int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnSpotrsBatched(
@@ -868,7 +869,8 @@ cpdef spotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
     check_status(status)
 
 cpdef dpotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
-                    int lda, size_t Barray, int ldb, size_t devInfo, int batchSize):
+                    int lda, size_t Barray, int ldb, size_t devInfo,
+                    int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnDpotrsBatched(
@@ -878,7 +880,8 @@ cpdef dpotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
     check_status(status)
 
 cpdef cpotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
-                    int lda, size_t Barray, int ldb, size_t devInfo, int batchSize):
+                    int lda, size_t Barray, int ldb, size_t devInfo,
+                    int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnCpotrsBatched(
@@ -888,7 +891,8 @@ cpdef cpotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
     check_status(status)
 
 cpdef zpotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
-                    int lda, size_t Barray, int ldb, size_t devInfo, int batchSize):
+                    int lda, size_t Barray, int ldb, size_t devInfo,
+                    int batchSize):
     setStream(handle, stream_module.get_current_stream_ptr())
     with nogil:
         status = cusolverDnZpotrsBatched(
