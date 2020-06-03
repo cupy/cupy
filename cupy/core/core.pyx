@@ -2466,7 +2466,7 @@ cdef _mat_ptrs_kernel = ElementwiseKernel(
     reduce_dims=False)
 
 
-cdef ndarray _mat_ptrs(ndarray a):
+cpdef ndarray _mat_ptrs(ndarray a):
     """Creates an array of pointers to matrices
     Args:
         a: A batch of matrices on GPU.
