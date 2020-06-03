@@ -383,6 +383,27 @@ cpdef str _get_cub_kernel_params(tuple params, tuple arginfos):
     return ', '.join(lst)
 
 
+cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(
+        Py_ssize_t contiguous_size):
+    # This is recommended in the CUB internal and should be an
+    # even number
+    items_per_thread = 4
+
+    # Calculate the reduction block dimensions.
+    # Ideally, we want each block to handle one segment, so:
+    # 1. block size < segment size: the block loops over the segment
+    # 2. block size >= segment size: the segment fits in the block
+    block_size = (contiguous_size + items_per_thread - 1) // items_per_thread
+    block_size = internal.clp2(block_size)
+    if block_size < 32:
+        block_size = 32  # warp size
+    elif block_size > _default_block_size:
+        # TODO(leofang): try 1024 as maximum?
+        block_size = _default_block_size
+
+    return items_per_thread, block_size
+
+
 cdef _scalar.CScalar _cub_convert_to_c_scalar(
         Py_ssize_t segment_size, Py_ssize_t value):
     if segment_size > 0x7fffffff:
@@ -635,7 +656,7 @@ cdef class _AbstractReductionKernel:
             stream, bint try_use_cub=False):
         cdef tuple reduce_axis, out_axis, axis_permutes
         cdef tuple can_use_cub, cub_params
-        cdef tuple params
+        cdef tuple params, opt_params
         cdef Py_ssize_t i
         cdef Py_ssize_t contiguous_size = -1, items_per_thread
         cdef Py_ssize_t block_size, block_stride, out_block_num = 0
@@ -701,6 +722,7 @@ cdef class _AbstractReductionKernel:
                 out_shape = _reduce_dims(out_args, self.out_params, out_shape)
 
             cub_params = (False,)
+            params = self._params
 
             # Calculate the reduction block dimensions.
             optimize_context = _optimize_config.get_current_context()
@@ -727,16 +749,14 @@ cdef class _AbstractReductionKernel:
                        in_types, out_types, reduce_type, device_id,
                        use_cub, full_reduction,)
 
-                params = optimize_context.get_params(key)
-                if params is None:
-                    params = self._get_optimized_params(
+                opt_params = optimize_context.get_params(key)
+                if opt_params is None:
+                    opt_params = self._get_optimized_params(
                         optimize_context.config, in_args, out_args,
                         in_shape, out_shape, type_map, map_expr, reduce_expr,
-                        post_map_expr, reduce_type, stream, cub_params)
-                    optimize_context.set_params(key, params)
-                block_size, block_stride, out_block_num = params
-
-            params = self._params
+                        post_map_expr, reduce_type, stream)
+                    optimize_context.set_params(key, opt_params)
+                block_size, block_stride, out_block_num = opt_params
         else:
             # Note: reduce_dims is not needed in this call path
 
@@ -754,34 +774,6 @@ cdef class _AbstractReductionKernel:
                     post_map_expr = post_map_expr.replace('_out_ind.size()',
                                                           '1.0')
 
-            # Calculate the reduction block dimensions.
-            optimize_context = _optimize_config.get_current_context()
-            if optimize_context is None:
-                # Calculate manually
-
-                # This is recommended in the CUB internal and should be an
-                # even number
-                items_per_thread = 4
-
-                # Calculate the reduction block dimensions.
-                # Ideally, we want each block to handle one segment, so:
-                # 1. block size < segment size: the block loops over the segment
-                # 2. block size >= segment size: the segment fits in the block
-                block_size = (contiguous_size + items_per_thread - 1) \
-                    // items_per_thread
-                block_size = internal.clp2(block_size)
-                if block_size < 32:
-                    block_size = 32  # warp size
-                elif block_size > _default_block_size:
-                    # TODO(leofang): try 1024 as maximum?
-                    block_size = _default_block_size
-            else:
-                # Optimize dynamically
-                # TODO(leofang): get block_size & items_per_thread
-                pass
-
-            block_stride = block_size * items_per_thread
-
             if contiguous_size > 0x7fffffff:  # INT_MAX
                 size_type = 'uint64 '
             else:
@@ -790,6 +782,40 @@ cdef class _AbstractReductionKernel:
                       + _get_param_info(size_type + '_segment_size',
                                         not full_reduction)
                       + _get_param_info(size_type + '_array_size', True))
+
+            # Calculate the reduction block dimensions.
+            optimize_context = _optimize_config.get_current_context()
+            if optimize_context is None:
+                # Calculate manually
+
+                items_per_thread, block_size = \
+                    _get_cub_block_specs(contiguous_size)
+            else:
+                # Optimize dynamically
+
+                # Calculate a key unique to the reduction setting.
+                for x in in_args + out_args:
+                    if isinstance(x, ndarray):
+                        shape_and_strides.append(x.shape)
+                        shape_and_strides.append(x.strides)
+                    else:
+                        shape_and_strides.append(None)
+                        shape_and_strides.append(None)
+                key = (self.name, tuple(shape_and_strides),
+                       in_types, out_types, reduce_type, device_id,
+                       use_cub, full_reduction,)
+
+                opt_params = optimize_context.get_params(key)
+                if opt_params is None:
+                    opt_params = self._get_cub_optimized_params(
+                        optimize_context.config, in_args, out_args,
+                        in_shape, out_shape, type_map, map_expr, reduce_expr,
+                        post_map_expr, reduce_type, stream,
+                        full_reduction, out_block_num, contiguous_size, params)
+                    optimize_context.set_params(key, opt_params)
+                items_per_thread, block_size = opt_params
+
+            block_stride = block_size * items_per_thread
             cub_params = (
                 True, items_per_thread, contiguous_size, full_reduction)
 
@@ -809,7 +835,7 @@ cdef class _AbstractReductionKernel:
     def _get_optimized_params(
             self, optimize_config, in_args, out_args, in_shape, out_shape,
             type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
-            stream, cub_params):
+            stream):
         out_size = internal.prod(out_shape)
 
         def copy_arg(a):
@@ -837,7 +863,7 @@ cdef class _AbstractReductionKernel:
             self._launch(
                 out_block_num, block_size, block_stride, in_args, out_args,
                 in_shape, out_shape, type_map, map_expr, reduce_expr,
-                post_map_expr, reduce_type, stream, self._params, cub_params)
+                post_map_expr, reduce_type, stream, self._params, (False,))
 
         def suggest_func(trial):
             block_size_log = trial.suggest_int('block_size_log', 5, 9)
@@ -866,6 +892,61 @@ cdef class _AbstractReductionKernel:
             best.user_attrs['block_size'],
             best.user_attrs['block_stride'],
             best.params['out_block_num'])
+
+    def _get_cub_optimized_params(
+            self, optimize_config, in_args, out_args, in_shape, out_shape,
+            type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
+            stream, full_reduction, out_block_num, contiguous_size, params):
+        out_size = internal.prod(out_shape)
+
+        def copy_arg(a):
+            if isinstance(a, ndarray):
+                x = _create_ndarray_from_shape_strides(
+                    a._shape, a._strides, a.dtype)
+                assert a.data.device_id == x.data.device_id
+                elementwise_copy(a, x)
+                return x
+            return a
+
+        in_args = [copy_arg(a) for a in in_args]
+        out_args = [copy_arg(a) for a in out_args]
+
+        items_per_thread, block_size = _get_cub_block_specs(contiguous_size)
+        block_stride = block_size * items_per_thread
+
+        default_block_size_log = math.floor(math.log2(block_size))
+        default_items_per_thread_log = math.floor(math.log2(items_per_thread))
+
+        def target_func(block_size, items_per_thread):
+            block_stride = block_size * items_per_thread
+            cub_params = (
+                True, items_per_thread, contiguous_size, full_reduction)
+            self._launch(
+                out_block_num, block_size, block_stride, in_args, out_args,
+                in_shape, out_shape, type_map, map_expr, reduce_expr,
+                post_map_expr, reduce_type, stream, params, cub_params)
+
+        def suggest_func(trial):
+            block_size_log = trial.suggest_int('block_size_log', 5, 9)
+            block_size = 2 ** block_size_log
+            items_per_thread_log = trial.suggest_int(
+                'items_per_thread_log', 1, 5)
+            items_per_thread = 2 ** items_per_thread_log
+
+            trial.set_user_attr('block_size', block_size)
+            trial.set_user_attr('items_per_thread', items_per_thread)
+            return block_size, items_per_thread
+
+        optimize_impl = optimize_config.optimize_impl
+        best = optimize_impl(
+            optimize_config, target_func, suggest_func,
+            default_best={
+                'block_size_log': default_block_size_log,
+                'items_per_thread_log': default_items_per_thread_log,
+            })
+
+        return (best.user_attrs['items_per_thread'],
+                best.user_attrs['block_size'],)
 
     cdef inline void _launch(
             self, out_block_num, block_size, block_stride,
