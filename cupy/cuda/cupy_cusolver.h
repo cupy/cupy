@@ -224,6 +224,22 @@ cusolverStatus_t cusolverDnZpotrf(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverDnSpotrfBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDpotrfBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCpotrfBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZpotrfBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverDnSpotrs(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
@@ -237,6 +253,22 @@ cusolverStatus_t cusolverDnCpotrs(...) {
 }
 
 cusolverStatus_t cusolverDnZpotrs(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnSpotrsBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDpotrsBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCpotrsBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZpotrsBatched(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
