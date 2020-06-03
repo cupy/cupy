@@ -121,6 +121,9 @@ cpdef function.Function _create_cub_reduction_function(
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, preamble, options):
+    # static_assert needs at least C++11 in NVRTC
+    options += ('--std=c++11',)
+
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
     # https://github.com/NVlabs/cub/blob/c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/agent/agent_reduce.cuh#L311-L346
@@ -134,9 +137,12 @@ ${preamble}
 ${type_preamble}
 typedef ${reduce_type} _type_reduce;
 
+static_assert(sizeof(_type_reduce) <= 32,
+    "The intermediate reduction type is assumed to be at most 32 bytes.");
+
 // Compile-time constants for CUB template specializations
-#define ITEMS_PER_THREAD ${items_per_thread}
-#define BLOCK_SIZE ${block_size}
+#define ITEMS_PER_THREAD  ${items_per_thread}
+#define BLOCK_SIZE        ${block_size}
 
 #if defined FIRST_PASS
     typedef type_in0_raw  type_mid_in;
@@ -161,9 +167,7 @@ struct _reduction_op {
 
 extern "C"
 __global__ void ${name}(${params}) {
-  assert(sizeof(_type_reduce) <= 32);
   unsigned int _tid = threadIdx.x;
-  unsigned int _bid = blockIdx.x * BLOCK_SIZE + _tid;
 '''
 
     if pre_map_expr == 'in0':
@@ -217,9 +221,7 @@ __global__ void ${name}(${params}) {
   _type_reduce aggregate = _type_reduce(${identity});
   for (i = 0; i < _segment_size; i += BLOCK_SIZE * ITEMS_PER_THREAD) {
       // for the last tile
-      if (_segment_size - i <= tile_size) {
-          tile_size = _segment_size - i;
-      }
+      if (_segment_size - i <= tile_size) { tile_size = _segment_size - i; }
 '''
 
     if pre_map_expr == 'in0':
@@ -293,8 +295,8 @@ __global__ void ${name}(${params}) {
 cdef tuple _can_use_cub_block_reduction(
         list in_args, list out_args, tuple reduce_axis, tuple out_axis):
     '''
-    If CUB BlockReduce can be used, this function returns the axes,
-    otherwise returns None.
+    If CUB BlockReduce can be used, this function returns a tuple of the needed
+    parameters, otherwise returns None.
     '''
     from cupy import _environment
     from cupy import core
@@ -349,11 +351,15 @@ cdef tuple _can_use_cub_block_reduction(
     if contiguous_size > 0x7fffffff or contiguous_size == 0:
         return None
 
+    # full-reduction of N-D array: need to invoke the kernel twice
+    cdef bint full_reduction = True if len(out_axis) == 0 else False
+
     # check if number of blocks to be launched exceeds INT_MAX:
+    # TODO(leofang): full reduction may need a different check
     if in_arr.size // contiguous_size > 0x7fffffff:
         return None
 
-    return (axis_permutes_cub, contiguous_size)
+    return (axis_permutes_cub, contiguous_size, full_reduction)
 
 
 # similar to cupy.core._kernel._get_kernel_params()
@@ -421,8 +427,8 @@ cdef _cub_two_pass_launch(
 
     # For mean()
     if 'mean' in name:
-        post_map_expr1 = post_map_expr.replace('_in_ind.size()', '1')
-        post_map_expr1 = post_map_expr1.replace('_out_ind.size()', '1')
+        post_map_expr1 = post_map_expr.replace('_in_ind.size()', '1.0')
+        post_map_expr1 = post_map_expr1.replace('_out_ind.size()', '1.0')
     else:
         post_map_expr1 = post_map_expr
 
@@ -457,7 +463,7 @@ cdef _cub_two_pass_launch(
     # For mean()
     if 'mean' in name:
         post_map_expr2 = post_map_expr.replace('_in_ind.size()',
-                                               str(segment_size))
+                                               str(float(segment_size)))
         post_map_expr2 = post_map_expr2.replace('_out_ind.size()', '1.0')
     else:
         post_map_expr2 = post_map_expr
@@ -629,7 +635,7 @@ cdef class _AbstractReductionKernel:
         cdef ndarray arr
         cdef ndarray ret
         cdef function.Function func
-        cdef bint use_cub, full_reduction
+        cdef bint use_cub = False, full_reduction = False
         cdef size_t gridx, blockx
         cdef list out_args_2nd_pass = []
         cdef list shape_and_strides = []
@@ -670,14 +676,13 @@ cdef class _AbstractReductionKernel:
                    for x, t in zip(in_args, in_types)]
 
         # decide to use CUB or not
-        use_cub = False
         axis_permutes = reduce_axis + out_axis
         if try_use_cub:
             can_use_cub = _can_use_cub_block_reduction(
                 in_args, out_args, reduce_axis, out_axis)
             if can_use_cub is not None:
                 use_cub = True
-                axis_permutes, contiguous_size = can_use_cub
+                axis_permutes, contiguous_size, full_reduction = can_use_cub
 
         in_shape = _set_permuted_args(in_args, axis_permutes,
                                       a_shape, self.in_params)
@@ -727,7 +732,10 @@ cdef class _AbstractReductionKernel:
 
             params = self._params
         else:
-            # TODO(leofang): fix reduce_dims
+            # Note: reduce_dims is not needed in this call path
+
+            if in_args[0].flags.f_contiguous:
+                ret = out_args[0] = _internal_asfortranarray(ret)
 
             # This should be an even number
             # TODO(leofang): this is recommended in the CUB internal, but
@@ -750,15 +758,7 @@ cdef class _AbstractReductionKernel:
 
             block_stride = block_size * items_per_thread
 
-            if in_args[0].flags.f_contiguous:
-                ret = out_args[0] = _internal_asfortranarray(ret)
-
-            if len(out_axis) == 0:
-                # full-reduction of N-D array: need to invoke the kernel twice
-                full_reduction = True
-            else:
-                # just need one pass
-                full_reduction = False
+            if not full_reduction:  # just need one pass
                 out_block_num = 1  # = number of segments
                 for i in out_axis:
                     out_block_num *= in_shape[i]
