@@ -383,7 +383,7 @@ cpdef str _get_cub_kernel_params(tuple params, tuple arginfos):
     return ', '.join(lst)
 
 
-cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(
+cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # noqa
         Py_ssize_t contiguous_size):
     # This is recommended in the CUB internal and should be an
     # even number
@@ -915,7 +915,7 @@ cdef class _AbstractReductionKernel:
         block_stride = block_size * items_per_thread
 
         default_block_size_log = math.floor(math.log2(block_size))
-        default_items_per_thread_log = math.floor(math.log2(items_per_thread))
+        default_items_per_thread = items_per_thread
 
         def target_func(block_size, items_per_thread):
             block_stride = block_size * items_per_thread
@@ -929,9 +929,8 @@ cdef class _AbstractReductionKernel:
         def suggest_func(trial):
             block_size_log = trial.suggest_int('block_size_log', 5, 9)
             block_size = 2 ** block_size_log
-            items_per_thread_log = trial.suggest_int(
-                'items_per_thread_log', 1, 5)
-            items_per_thread = 2 ** items_per_thread_log
+            items_per_thread = trial.suggest_int(
+                'items_per_thread', 2, 32, step=2)
 
             trial.set_user_attr('block_size', block_size)
             trial.set_user_attr('items_per_thread', items_per_thread)
@@ -942,7 +941,7 @@ cdef class _AbstractReductionKernel:
             optimize_config, target_func, suggest_func,
             default_best={
                 'block_size_log': default_block_size_log,
-                'items_per_thread_log': default_items_per_thread_log,
+                'items_per_thread': default_items_per_thread,
             })
 
         return (best.user_attrs['items_per_thread'],
