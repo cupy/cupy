@@ -75,6 +75,7 @@ def _batched_invh(a):
 
     return b
 
+
 def invh(a):
     """Compute the inverse of a Hermitian matrix.
 
