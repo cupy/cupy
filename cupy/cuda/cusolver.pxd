@@ -95,7 +95,6 @@ cpdef cpotrs(intptr_t handle, int uplo, int n, int nrhs,
 cpdef zpotrs(intptr_t handle, int uplo, int n, int nrhs,
              size_t A, int lda, size_t B, int ldb, size_t devInfo)
 
-# TODO(anaruse): potrfBatched and potrsBatched
 cpdef spotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
                     size_t infoArray, int batchSize)
 cpdef dpotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,

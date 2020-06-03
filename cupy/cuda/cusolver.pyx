@@ -77,7 +77,6 @@ cdef extern from 'cupy_cusolver.h' nogil:
                          const cuDoubleComplex* A, int lda,
                          cuDoubleComplex* B, int ldb, int* devInfo)
 
-    # TODO(anaruse): potrfBatched and potrsBatched
     int cusolverDnSpotrfBatched(Handle handle, FillMode uplo, int n,
                                 float** Aarray, int lda,
                                 int* infoArray, int batchSize)
