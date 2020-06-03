@@ -221,9 +221,9 @@ def elementwise_trinary(alpha, A, desc_A, mode_A,
 
     if compute_dtype is None:
         compute_dtype = A.dtype
-    alpha = numpy.array(alpha, compute_dtype)
-    beta = numpy.array(beta, compute_dtype)
-    gamma = numpy.array(gamma, compute_dtype)
+    alpha = numpy.asarray(alpha, compute_dtype)
+    beta = numpy.asarray(beta, compute_dtype)
+    gamma = numpy.asarray(gamma, compute_dtype)
     handle = get_handle()
     cuda_dtype = get_cuda_dtype(compute_dtype)
     cutensor.elementwiseTrinary(
@@ -276,8 +276,8 @@ def elementwise_binary(alpha, A, desc_A, mode_A,
 
     if compute_dtype is None:
         compute_dtype = A.dtype
-    alpha = numpy.array(alpha, compute_dtype)
-    gamma = numpy.array(gamma, compute_dtype)
+    alpha = numpy.asarray(alpha, compute_dtype)
+    gamma = numpy.asarray(gamma, compute_dtype)
     handle = get_handle()
     cuda_dtype = get_cuda_dtype(compute_dtype)
     cutensor.elementwiseBinary(
@@ -425,8 +425,8 @@ def contraction(alpha, A, desc_A, mode_A, B, desc_B, mode_B,
     out = C
     compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
     handle = get_handle()
-    alpha = numpy.array(alpha, compute_dtype)
-    beta = numpy.array(beta, compute_dtype)
+    alpha = numpy.asarray(alpha, compute_dtype)
+    beta = numpy.asarray(beta, compute_dtype)
     desc = _create_contraction_descriptor(A, desc_A, mode_A,
                                           B, desc_B, mode_B,
                                           C, desc_C, mode_C,
@@ -492,8 +492,8 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
 
     out = C
     compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
-    alpha = numpy.array(alpha, compute_dtype)
-    beta = numpy.array(beta, compute_dtype)
+    alpha = numpy.asarray(alpha, compute_dtype)
+    beta = numpy.asarray(beta, compute_dtype)
     handle = get_handle()
     cutensor_dtype = get_cutensor_dtype(compute_dtype)
     ws_size = cutensor.reductionGetWorkspace(
