@@ -344,11 +344,11 @@ cdef tuple _can_use_cub_block_reduction(
     if axis_permutes_cub != tuple(range(in_arr.ndim)):
         return None
 
-    # check if number of elements exceeds INT_MAX (CUB limit, see #3309)
-    # TODO(leofang): perhaps this can be relaxed?
+    # check if number of elements exceeds 2**63-1
+    # (ref: cupy/cupy#3309 for CUB limit)
     for i in reduce_axis:
         contiguous_size *= in_arr.shape[i]
-    if contiguous_size > 0x7fffffff or contiguous_size == 0:
+    if contiguous_size > 0x7fffffffffffffff or contiguous_size == 0:
         return None
 
     # full-reduction of N-D array: need to invoke the kernel twice
@@ -381,6 +381,14 @@ cpdef str _get_cub_kernel_params(tuple params, tuple arginfos):
             c_type,
             arginfo.get_c_var_name(p)))
     return ', '.join(lst)
+
+
+cdef _scalar.CScalar _cub_convert_to_c_scalar(
+        Py_ssize_t segment_size, Py_ssize_t value):
+    if segment_size > 0x7fffffff:
+        return _scalar.scalar_to_c_scalar(value)
+    else:
+        return _scalar.CScalar.from_int32(value)
 
 
 cdef _cub_two_pass_launch(
@@ -421,8 +429,8 @@ cdef _cub_two_pass_launch(
     # ************************ 1st pass ************************
     name += '_pass1'
     inout_args = [in_args[0], out_args[0],
-                  _scalar.CScalar.from_int32(contiguous_size),
-                  _scalar.CScalar.from_int32(segment_size)]
+                  _cub_convert_to_c_scalar(segment_size, contiguous_size),
+                  _cub_convert_to_c_scalar(segment_size, segment_size)]
     cub_params = (True, items_per_thread)
 
     # For mean()
@@ -457,8 +465,8 @@ cdef _cub_two_pass_launch(
     in_args = out_args
     out_args = out_args_2nd_pass
     inout_args = [in_args[0], out_args[0],
-                  _scalar.CScalar.from_int32(contiguous_size),
-                  _scalar.CScalar.from_int32(contiguous_size)]
+                  _cub_convert_to_c_scalar(segment_size, contiguous_size),
+                  _cub_convert_to_c_scalar(segment_size, contiguous_size)]
 
     # For mean()
     if 'mean' in name:
@@ -769,9 +777,14 @@ cdef class _AbstractReductionKernel:
                     post_map_expr = post_map_expr.replace('_out_ind.size()',
                                                           '1.0')
 
+            if contiguous_size > 0x7fffffff:  # INT_MAX
+                size_type = 'uint64 '
+            else:
+                size_type = 'int32 '
             params = (self._params[0:2]
-                      + _get_param_info('int32 _segment_size', False)
-                      + _get_param_info('int32 _array_size', True))
+                      + _get_param_info(size_type + '_segment_size',
+                                        not full_reduction)
+                      + _get_param_info(size_type + '_array_size', True))
             cub_params = (True, items_per_thread, contiguous_size)
 
         # Launch the kernel
@@ -869,8 +882,9 @@ cdef class _AbstractReductionKernel:
         if use_cub:
             contiguous_size = cub_params[2]
             inout_args = (in_args + out_args
-                          + [_scalar.CScalar.from_int32(contiguous_size),
-                             _scalar.CScalar.from_int32(0)])
+                          + [_cub_convert_to_c_scalar(contiguous_size,
+                                                      contiguous_size),
+                             _cub_convert_to_c_scalar(contiguous_size, 0)])
         else:
             inout_args = (
                 in_args
