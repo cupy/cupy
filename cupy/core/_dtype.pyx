@@ -10,12 +10,12 @@ all_type_chars = '?bhilqBHILQefdFD'
 # b ... int8
 # h ... int16
 # i ... int32
-# l ... int64
+# l ... int64  (int32 in windows)
 # q ... int64
 # B ... uint8
 # H ... uint16
 # I ... uint32
-# L ... uint64
+# L ... uint64  (uint32 in windows)
 # Q ... uint64
 # e ... float16
 # f ... float32
