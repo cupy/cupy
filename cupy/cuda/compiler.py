@@ -17,7 +17,6 @@ from cupy.cuda import runtime
 from cupy import util
 
 _nvrtc_version = None
-_nvrtc_max_compute_capability = None
 _win32 = sys.platform.startswith('win32')
 _rdc_flags = ('--device-c', '-dc', '-rdc=true',
               '--relocatable-device-code=true')
@@ -56,21 +55,30 @@ def _get_nvrtc_version():
     return _nvrtc_version
 
 
-def _get_arch():
-    global _nvrtc_max_compute_capability
-    if _nvrtc_max_compute_capability is None:
-        # See Supported Compile Options section of NVRTC User Guide for
-        # the maximum value allowed for `--gpu-architecture`.
-        major, minor = _get_nvrtc_version()
-        if major < 9:
-            # CUDA 7.0 / 7.5 / 8.0
-            _nvrtc_max_compute_capability = '50'
-        else:
-            # CUDA 9.0 / 9.1
-            _nvrtc_max_compute_capability = '70'
+# Known archs for Tegra/Jetson/Xavier/etc
+_tegra_archs = ('53', '62', '72')
 
-    return min(device.Device().compute_capability,
-               _nvrtc_max_compute_capability)
+
+@util.memoize(for_each_device=True)
+def _get_arch():
+    # See Supported Compile Options section of NVRTC User Guide for
+    # the maximum value allowed for `--gpu-architecture`.
+    major, minor = _get_nvrtc_version()
+    if major < 9:
+        # CUDA 8.0
+        _nvrtc_max_compute_capability = '52'
+    elif major < 10 or (major == 10 and minor == 0):
+        # CUDA 9.x / 10.0
+        _nvrtc_max_compute_capability = '70'
+    else:
+        # CUDA 10.1 / 10.2
+        _nvrtc_max_compute_capability = '75'
+
+    arch = device.Device().compute_capability
+    if arch in _tegra_archs:
+        return arch
+    else:
+        return min(arch, _nvrtc_max_compute_capability)
 
 
 def _is_cudadevrt_needed(options):
