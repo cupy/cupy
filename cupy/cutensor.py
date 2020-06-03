@@ -34,6 +34,7 @@ class Mode(object):
 
     def __init__(self, mode):
         self.mode = numpy.array(mode, dtype=numpy.int32)
+        assert self.mode.ndim == 1
 
     @property
     def ndim(self):
@@ -42,6 +43,9 @@ class Mode(object):
     @property
     def data(self):
         return self.mode.ctypes.data
+
+    def __repr__(self):
+        return 'mode([' + ', '.join(self.mode) + '])'
 
 
 def get_handle():
@@ -84,7 +88,7 @@ def get_cutensor_dtype(numpy_dtype):
 
 
 def create_mode(*mode):
-    """Create a tensor mode
+    """Create the tensor mode from the given integers or characters.
     """
     integer_mode = []
     for x in mode:
@@ -95,6 +99,15 @@ def create_mode(*mode):
         else:
             raise TypeError('Cannot create tensor mode: {}'.format(type(x)))
     return Mode(integer_mode)
+
+
+def _auto_create_mode(array, mode):
+    if not isinstance(mode, Mode):
+        mode = create_mode(*mode)
+    if array.ndim != mode.ndim:
+        raise ValueError(
+            'ndim mismatch: {} != {}'.format(array.ndim, mode.ndim))
+    return mode
 
 
 def _set_compute_dtype(array_dtype, compute_dtype=None):
@@ -202,12 +215,9 @@ def elementwise_trinary(alpha, A, desc_A, mode_A,
     elif not out.flags.c_contiguous:
         raise ValueError('`out` should be a contiguous array.')
 
-    if A.ndim != mode_A.ndim:
-        raise ValueError('ndim mismatch: {} != {}'.format(A.ndim, mode_A.ndim))
-    if B.ndim != mode_B.ndim:
-        raise ValueError('ndim mismatch: {} != {}'.format(B.ndim, mode_B.ndim))
-    if C.ndim != mode_C.ndim:
-        raise ValueError('ndim mismatch: {} != {}'.format(C.ndim, mode_C.ndim))
+    mode_A = _auto_create_mode(A, mode_A)
+    mode_B = _auto_create_mode(B, mode_B)
+    mode_C = _auto_create_mode(C, mode_C)
 
     if compute_dtype is None:
         compute_dtype = A.dtype
@@ -261,10 +271,8 @@ def elementwise_binary(alpha, A, desc_A, mode_A,
     elif not out.flags.c_contiguous:
         raise ValueError('`out` should be a contiguous array.')
 
-    if A.ndim != mode_A.ndim:
-        raise ValueError('ndim mismatch: {} != {}'.format(A.ndim, mode_A.ndim))
-    if C.ndim != mode_C.ndim:
-        raise ValueError('ndim mismatch: {} != {}'.format(C.ndim, mode_C.ndim))
+    mode_A = _auto_create_mode(A, mode_A)
+    mode_C = _auto_create_mode(C, mode_C)
 
     if compute_dtype is None:
         compute_dtype = A.dtype
@@ -410,12 +418,9 @@ def contraction(alpha, A, desc_A, mode_A, B, desc_B, mode_B,
             and C.flags.c_contiguous):
         raise ValueError('The inputs should be contiguous arrays.')
 
-    if A.ndim != mode_A.ndim:
-        raise ValueError('ndim mismatch: {} != {}'.format(A.ndim, mode_A.ndim))
-    if B.ndim != mode_B.ndim:
-        raise ValueError('ndim mismatch: {} != {}'.format(B.ndim, mode_B.ndim))
-    if C.ndim != mode_C.ndim:
-        raise ValueError('ndim mismatch: {} != {}'.format(C.ndim, mode_C.ndim))
+    mode_A = _auto_create_mode(A, mode_A)
+    mode_B = _auto_create_mode(B, mode_B)
+    mode_C = _auto_create_mode(C, mode_C)
 
     out = C
     compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
@@ -482,10 +487,8 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
     if not (A.flags.c_contiguous and C.flags.c_contiguous):
         raise ValueError('The inputs should be contiguous arrays.')
 
-    if A.ndim != mode_A.ndim:
-        raise ValueError('ndim mismatch: {} != {}'.format(A.ndim, mode_A.ndim))
-    if C.ndim != mode_C.ndim:
-        raise ValueError('ndim mismatch: {} != {}'.format(C.ndim, mode_C.ndim))
+    mode_A = _auto_create_mode(A, mode_A)
+    mode_C = _auto_create_mode(C, mode_C)
 
     out = C
     compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
