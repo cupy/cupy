@@ -695,13 +695,12 @@ cdef class _AbstractReductionKernel:
         in_shape = _set_permuted_args(in_args, axis_permutes,
                                       a_shape, self.in_params)
 
-        # TODO(leofang): support optimizer in CUB-based kernels
         if not use_cub:
             if reduce_dims:
                 in_shape = _reduce_dims(in_args, self.in_params, in_shape)
                 out_shape = _reduce_dims(out_args, self.out_params, out_shape)
 
-            cub_params = (False, None)
+            cub_params = (False,)
 
             # Calculate the reduction block dimensions.
             optimize_context = _optimize_config.get_current_context()
@@ -724,10 +723,9 @@ cdef class _AbstractReductionKernel:
                     else:
                         shape_and_strides.append(None)
                         shape_and_strides.append(None)
-                key = (
-                    self.name, tuple(shape_and_strides),
-                    in_types, out_types, reduce_type, device_id,
-                )
+                key = (self.name, tuple(shape_and_strides),
+                       in_types, out_types, reduce_type, device_id,
+                       use_cub, full_reduction,)
 
                 params = optimize_context.get_params(key)
                 if params is None:
@@ -745,27 +743,6 @@ cdef class _AbstractReductionKernel:
             if in_args[0].flags.f_contiguous:
                 ret = out_args[0] = _internal_asfortranarray(ret)
 
-            # This should be an even number
-            # TODO(leofang): this is recommended in the CUB internal, but
-            # perhaps we could do some auto-tuning to determine this?
-            items_per_thread = 4
-
-            # Calculate the reduction block dimensions.
-            # Ideally, we want each block to handle one segment, so:
-            # 1. block size < segment size: the block loops over the segment
-            # 2. block size >= segment size: the segment fits in the block
-            # TODO(leofang): also auto-tune the block size?
-            block_size = (contiguous_size + items_per_thread - 1) \
-                // items_per_thread
-            block_size = internal.clp2(block_size)
-            if block_size < 32:
-                block_size = 32  # warp size
-            elif block_size > _default_block_size:
-                # TODO(leofang): try 1024 as maximum?
-                block_size = _default_block_size
-
-            block_stride = block_size * items_per_thread
-
             if not full_reduction:  # just need one pass
                 out_block_num = 1  # = number of segments
                 for i in out_axis:
@@ -777,6 +754,34 @@ cdef class _AbstractReductionKernel:
                     post_map_expr = post_map_expr.replace('_out_ind.size()',
                                                           '1.0')
 
+            # Calculate the reduction block dimensions.
+            optimize_context = _optimize_config.get_current_context()
+            if optimize_context is None:
+                # Calculate manually
+
+                # This is recommended in the CUB internal and should be an
+                # even number
+                items_per_thread = 4
+
+                # Calculate the reduction block dimensions.
+                # Ideally, we want each block to handle one segment, so:
+                # 1. block size < segment size: the block loops over the segment
+                # 2. block size >= segment size: the segment fits in the block
+                block_size = (contiguous_size + items_per_thread - 1) \
+                    // items_per_thread
+                block_size = internal.clp2(block_size)
+                if block_size < 32:
+                    block_size = 32  # warp size
+                elif block_size > _default_block_size:
+                    # TODO(leofang): try 1024 as maximum?
+                    block_size = _default_block_size
+            else:
+                # Optimize dynamically
+                # TODO(leofang): get block_size & items_per_thread
+                pass
+
+            block_stride = block_size * items_per_thread
+
             if contiguous_size > 0x7fffffff:  # INT_MAX
                 size_type = 'uint64 '
             else:
@@ -785,26 +790,19 @@ cdef class _AbstractReductionKernel:
                       + _get_param_info(size_type + '_segment_size',
                                         not full_reduction)
                       + _get_param_info(size_type + '_array_size', True))
-            cub_params = (True, items_per_thread, contiguous_size)
+            cub_params = (
+                True, items_per_thread, contiguous_size, full_reduction)
 
         # Launch the kernel
-        if use_cub and full_reduction:
-            _cub_two_pass_launch(
-                self.name, block_size, contiguous_size, items_per_thread,
-                reduce_type, params, in_args, out_args, self.identity,
-                map_expr, reduce_expr, post_map_expr,
-                type_map, self._input_expr, self._output_expr, self._preamble,
-                (), stream)
-        else:
-            self._launch(
-                out_block_num,
-                block_size,
-                block_stride,
-                in_args, out_args,
-                in_shape, out_shape,
-                type_map,
-                map_expr, reduce_expr, post_map_expr, reduce_type,
-                stream, params, cub_params)
+        self._launch(
+            out_block_num,
+            block_size,
+            block_stride,
+            in_args, out_args,
+            in_shape, out_shape,
+            type_map,
+            map_expr, reduce_expr, post_map_expr, reduce_type,
+            stream, params, cub_params)
 
         return ret
 
@@ -874,17 +872,27 @@ cdef class _AbstractReductionKernel:
             in_args, out_args, in_shape, out_shape, type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
             stream, params, cub_params):
-        # TODO(leofang): rewrite this part
-        cdef bint use_cub = cub_params[0]
-        cdef Py_ssize_t contiguous_size
+        cdef bint full_reduction, use_cub = cub_params[0]
+        cdef Py_ssize_t contiguous_size, items_per_thread
 
         # Kernel arguments passed to the __global__ function.
         if use_cub:
+            items_per_thread = cub_params[1]
             contiguous_size = cub_params[2]
-            inout_args = (in_args + out_args
-                          + [_cub_convert_to_c_scalar(contiguous_size,
-                                                      contiguous_size),
-                             _cub_convert_to_c_scalar(contiguous_size, 0)])
+            full_reduction = cub_params[3]
+            if full_reduction:
+                _cub_two_pass_launch(
+                    self.name, block_size, contiguous_size, items_per_thread,
+                    reduce_type, params, in_args, out_args, self.identity,
+                    map_expr, reduce_expr, post_map_expr,
+                    type_map, self._input_expr, self._output_expr,
+                    self._preamble, (), stream)
+                return
+            else:
+                inout_args = (in_args + out_args
+                              + [_cub_convert_to_c_scalar(contiguous_size,
+                                                          contiguous_size),
+                                 _cub_convert_to_c_scalar(contiguous_size, 0)])
         else:
             inout_args = (
                 in_args
@@ -920,10 +928,7 @@ cdef class _AbstractReductionKernel:
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size, tuple cub_params=(False, None)):
-        '''
-        cub_params (tuple): (use_cub, items_per_thread)
-        '''
+            Py_ssize_t block_size, tuple cub_params=(False,)):
         raise NotImplementedError()
 
 
@@ -1027,7 +1032,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size, tuple cub_params=(False, None)):
+            Py_ssize_t block_size, tuple cub_params=(False,)):
         return _SimpleReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
@@ -1043,13 +1048,13 @@ def _SimpleReductionKernel_get_cached_function(
         name, block_size, identity, input_expr, output_expr, _preamble,
         options, cub_params):
     use_cub = cub_params[0]
-    items_per_thread = cub_params[1]
     if not use_cub:
         return _create_reduction_function(
             name, block_size, reduce_type, params, arginfos, identity,
             map_expr, reduce_expr, post_map_expr,
             type_map, input_expr, output_expr, _preamble, options)
     else:
+        items_per_thread = cub_params[1]
         name = name.replace('cupy_', 'cupy_cub_')
         name = name.replace('cupyx_', 'cupyx_cub_')
         return _create_cub_reduction_function(
@@ -1202,7 +1207,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size, tuple cub_params=(False, None)):
+            Py_ssize_t block_size, tuple cub_params=(False,)):
         return _ReductionKernel_get_cached_function(
             self.nin, self.nout, params, arginfos, type_map,
             self.name, block_size, reduce_type, self.identity,
