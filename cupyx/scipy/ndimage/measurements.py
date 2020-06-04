@@ -205,149 +205,89 @@ def _kernel_finalize():
         'cupyx_nd_label_finalize')
 
 
-_ndimage_variance_kernel = cupy.ElementwiseKernel(
-    'T input, R labels, raw X index, uint64 size, raw float64 mean',
-    'raw float64 out',
-    """
-    for (ptrdiff_t j = 0; j < size; j++) {
-      if (labels == index[j]) {
-        atomicAdd(&out[j], (input - mean[j]) * (input - mean[j]));
-        break;
-      }
-    }
-    """)
+def _safely_castable_to_int(dt):
+    """Test whether the NumPy data type `dt` can be safely cast to an int."""
+    int_size = cupy.dtype(int).itemsize
+    safe = ((cupy.issubdtype(dt, cupy.signedinteger) and dt.itemsize <= int_size) or
+            (cupy.issubdtype(dt, cupy.unsignedinteger) and dt.itemsize < int_size))
+    return safe
 
 
-_ndimage_sum_kernel = cupy.ElementwiseKernel(
-    'T input, R labels, raw X index, uint64 size',
-    'raw float64 out',
-    """
-    for (ptrdiff_t j = 0; j < size; j++) {
-      if (labels == index[j]) {
-        atomicAdd(&out[j], input);
-        break;
-      }
-    }
-    """)
-
-
-def _ndimage_sum_kernel_2(input, labels, index, sum_val, batch_size=4):
-    for i in range(0, index.size, batch_size):
-        matched = labels == index[i:i + batch_size].reshape(
-            (-1,) + (1,) * input.ndim)
-        sum_axes = tuple(range(1, 1 + input.ndim))
-        sum_val[i:i + batch_size] = cupy.where(matched, input, 0).sum(
-            axis=sum_axes)
-    return sum_val
-
-
-_ndimage_mean_kernel = cupy.ElementwiseKernel(
-    'T input, R labels, raw X index, uint64 size',
-    'raw float64 out, raw uint64 count',
-    """
-    for (ptrdiff_t j = 0; j < size; j++) {
-      if (labels == index[j]) {
-        atomicAdd(&out[j], input);
-        atomicAdd(&count[j], 1);
-        break;
-      }
-    }
-    """)
-
-
-def _ndimage_mean_kernel_2(input, labels, index, batch_size=4,
-                           return_count=False):
-    sum_val = cupy.empty_like(index, dtype=cupy.float64)
-    count = cupy.empty_like(index, dtype=cupy.uint64)
-    for i in range(0, index.size, batch_size):
-        matched = labels == index[i:i + batch_size].reshape(
-            (-1,) + (1,) * input.ndim)
-        mean_axes = tuple(range(1, 1 + input.ndim))
-        count[i:i + batch_size] = matched.sum(axis=mean_axes)
-        sum_val[i:i + batch_size] = cupy.where(matched, input, 0).sum(
-            axis=mean_axes)
-    if return_count:
-        return sum_val / count, count
-    return sum_val / count
-
-
-def _mean_driver(input, labels, index, return_count=False, use_kern=False):
-    if use_kern:
-        return _ndimage_mean_kernel_2(input, labels, index,
-                                      return_count=return_count)
-
-    out = cupy.zeros_like(index, cupy.float64)
-    count = cupy.zeros_like(index, dtype=cupy.uint64)
-    sum, count = _ndimage_mean_kernel(input,
-                                      labels, index, index.size, out, count)
-    if return_count:
-        return sum / count, count
-    return sum / count
-
-
-def variance(input, labels=None, index=None):
-    """Calculates the variance of the values of an n-D image array, optionally
-    at specified sub-regions.
-
-    Args:
-        input (cupy.ndarray): Nd-image data to process.
-        labels (cupy.ndarray or None): Labels defining sub-regions in `input`.
-            If not None, must be same shape as `input`.
-        index (cupy.ndarray or None): `labels` to include in output. If None
-            (default), all values where `labels` is non-zero are used.
-
-    Returns:
-        variance (cupy.ndarray): Values of variance, for each sub-region if
-            `labels` and `index` are specified.
-
-    .. seealso:: :func:`scipy.ndimage.variance`
-    """
-    if not isinstance(input, cupy.ndarray):
-        raise TypeError('input must be cupy.ndarray')
-
-    if input.dtype in (cupy.bool_, cupy.complex64, cupy.complex128):
-        raise TypeError("cupyx.scipy.ndimage.variance doesn't support %{}"
-                        "".format(input.dtype.type))
-
-    use_kern = False
-    # There is constraints on types because of atomicAdd() in CUDA.
-    if input.dtype not in [cupy.int32, cupy.float16, cupy.float32,
-                           cupy.float64, cupy.uint32, cupy.uint64,
-                           cupy.ulonglong]:
-        warnings.warn(
-            'Using the slower implmentation as '
-            'cupyx.scipy.ndimage.sum supports int32, float16, '
-            'float32, float64, uint32, uint64 as data types'
-            'for the fast implmentation', util.PerformanceWarning)
-        use_kern = True
+def _stats(input, labels=None, index=None, centered=False):
+    def single_group(vals):
+        if centered:
+            vals_c = vals - vals.mean()
+            return vals.size, vals.sum(), (vals_c * vals_c.conjugate()).sum()
+        else:
+            return vals.size, vals.sum()
 
     if labels is None:
-        return input.var().astype(cupy.float64, copy=False)
+        return single_group(input)
 
-    if not isinstance(labels, cupy.ndarray):
-        raise TypeError('label must be cupy.ndarray')
-
-    if index is None:
-        return (input[labels != 0]).var().astype(cupy.float64, copy=False)
-
+    # ensure input and labels match sizes
     input, labels = cupy.broadcast_arrays(input, labels)
 
-    if not isinstance(index, cupy.ndarray):
-        if not isinstance(index, int):
-            raise TypeError('index must be cupy.ndarray or a scalar int')
-        else:
-            return (input[labels == index]).var().astype(cupy.float64,
-                                                         copy=False)
+    if index is None:
+        return single_group(input[labels > 0])
 
-    mean_val, count = _mean_driver(input, labels, index, True, use_kern)
-    if use_kern:
-        new_axis = (..., *(cupy.newaxis for _ in range(input.ndim)))
-        return cupy.where(labels[None, ...] == index[new_axis],
-                          cupy.square(input - mean_val[new_axis]),
-                          0).sum(tuple(range(1, input.ndim + 1))) / count
-    out = cupy.zeros_like(index, dtype=cupy.float64)
-    return _ndimage_variance_kernel(input, labels, index, index.size, mean_val,
-                                    out) / count
+    if cupy.isscalar(index):
+        return single_group(input[labels == index])
+
+    def _sum_centered(labels):
+        # `labels` is expected to be an ndarray with the same shape as `input`.
+        # It must contain the label indices (which are not necessarily the labels
+        # themselves).
+        means = sums / counts
+        centered_input = input - means[labels]
+        # bincount expects 1-D inputs, so we ravel the arguments.
+        bc = cupy.bincount(labels.ravel(),
+                           weights=(centered_input *
+                                    centered_input.conjugate()).ravel())
+        return bc
+
+    # Remap labels to unique integers if necessary, or if the largest
+    # label is larger than the number of values.
+
+    if (not _safely_castable_to_int(labels.dtype) or
+            labels.min() < 0 or labels.max() > labels.size):
+        # Use numpy.unique to generate the label indices.  `new_labels` will
+        # be 1-D, but it should be interpreted as the flattened N-D array of
+        # label indices.
+        unique_labels, new_labels = numpy.unique(labels, return_inverse=True)
+        counts = numpy.bincount(new_labels)
+        sums = numpy.bincount(new_labels, weights=input.ravel())
+        if centered:
+            # Compute the sum of the mean-centered squares.
+            # We must reshape new_labels to the N-D shape of `input` before
+            # passing it _sum_centered.
+            sums_c = _sum_centered(new_labels.reshape(labels.shape))
+        idxs = numpy.searchsorted(unique_labels, index)
+        # make all of idxs valid
+        idxs[idxs >= unique_labels.size] = 0
+        found = (unique_labels[idxs] == index)
+    else:
+        # labels are an integer type allowed by bincount, and there aren't too
+        # many, so call bincount directly.
+        counts = cupy.bincount(labels.ravel())
+        sums = cupy.bincount(labels.ravel(), weights=input.ravel())
+        if centered:
+            sums_c = _sum_centered(labels)
+        # make sure all index values are valid
+        idxs = cupy.asanyarray(index, cupy.int).copy()
+        found = (idxs >= 0) & (idxs < counts.size)
+        idxs[~found] = 0
+
+    counts = counts[idxs]
+    counts[~found] = 0
+    sums = sums[idxs]
+    sums[~found] = 0
+
+    if not centered:
+        return (counts, sums)
+    else:
+        sums_c = sums_c[idxs]
+        sums_c[~found] = 0
+        return (counts, sums, sums_c)
 
 
 def sum(input, labels=None, index=None):
@@ -367,50 +307,8 @@ def sum(input, labels=None, index=None):
 
     .. seealso:: :func:`scipy.ndimage.sum`
     """
-    if not isinstance(input, cupy.ndarray):
-        raise TypeError('input must be cupy.ndarray')
-
-    if input.dtype in (cupy.bool_, cupy.complex64, cupy.complex128):
-        raise TypeError("cupyx.scipy.ndimage.sum doesnt support %{}".format(
-            input.dtype.type))
-
-    use_kern = False
-    # There is constraints on types because of atomicAdd() in CUDA.
-    if input.dtype not in [cupy.int32, cupy.float16, cupy.float32,
-                           cupy.float64, cupy.uint32, cupy.uint64,
-                           cupy.ulonglong]:
-        warnings.warn(
-            'Using the slower implmentation as '
-            'cupyx.scipy.ndimage.sum supports int32, float16, '
-            'float32, float64, uint32, uint64 as data types'
-            'for the fast implmentation', util.PerformanceWarning)
-        use_kern = True
-
-    if labels is None:
-        return input.sum()
-    if len(labels) == 0:
-        return cupy.array([], dtype=cupy.int64)
-
-    if not isinstance(labels, cupy.ndarray):
-        raise TypeError('label must be cupy.ndarray')
-
-    if index is None:
-        return input[labels != 0].sum()
-
-    input, labels = cupy.broadcast_arrays(input, labels)
-
-    if not isinstance(index, cupy.ndarray):
-        if not isinstance(index, int):
-            raise TypeError('index must be cupy.ndarray or a scalar int')
-        else:
-            return (input[labels == index]).sum()
-
-    out = cupy.zeros_like(index, dtype=cupy.float64)
-
-    # The following parameters for sum where determined using a Tesla P100.
-    if (input.size >= 262144 and index.size <= 4) or use_kern:
-        return _ndimage_sum_kernel_2(input, labels, index, out)
-    return _ndimage_sum_kernel(input, labels, index, index.size, out)
+    count, sum = _stats(input, labels, index)
+    return sum
 
 
 def mean(input, labels=None, index=None):
@@ -431,43 +329,29 @@ def mean(input, labels=None, index=None):
 
     .. seealso:: :func:`scipy.ndimage.mean`
     """
-    if not isinstance(input, cupy.ndarray):
-        raise TypeError('input must be cupy.ndarray')
+    count, sum = _stats(input, labels, index)
+    return sum / cupy.asanyarray(count).astype(cupy.float)
 
-    if input.dtype in (cupy.bool_, cupy.complex64, cupy.complex128):
-        raise TypeError("cupyx.scipy.ndimage.mean doesnt support %{}".format(
-            input.dtype.type))
 
-    use_kern = False
-    # There is constraints on types because of atomicAdd() in CUDA.
-    if input.dtype not in [cupy.int32, cupy.float16, cupy.float32,
-                           cupy.float64, cupy.uint32, cupy.uint64,
-                           cupy.ulonglong]:
-        warnings.warn(
-            'Using the slower implmentation as '
-            'cupyx.scipy.ndimage.mean supports int32, float16, '
-            'float32, float64, uint32, uint64 as data types '
-            'for the fast implmentation', util.PerformanceWarning)
-        use_kern = True
+def variance(input, labels=None, index=None):
+    """Calculates the variance of the values of an n-D image array, optionally
+    at specified sub-regions.
 
-    if labels is None:
-        return input.mean(dtype=cupy.float64)
+    Args:
+        input (cupy.ndarray): Nd-image data to process.
+        labels (cupy.ndarray or None): Labels defining sub-regions in `input`.
+            If not None, must be same shape as `input`.
+        index (cupy.ndarray or None): `labels` to include in output. If None
+            (default), all values where `labels` is non-zero are used.
 
-    if not isinstance(labels, cupy.ndarray):
-        raise TypeError('label must be cupy.ndarray')
+    Returns:
+        variance (cupy.ndarray): Values of variance, for each sub-region if
+            `labels` and `index` are specified.
 
-    if index is None:
-        return (input[labels != 0]).mean(dtype=cupy.float64)
-
-    input, labels = cupy.broadcast_arrays(input, labels)
-
-    if not isinstance(index, cupy.ndarray):
-        if not isinstance(index, int):
-            raise TypeError('index must be cupy.ndarray or a scalar int')
-        else:
-            return (input[labels == index]).mean(dtype=cupy.float64)
-
-    return _mean_driver(input, labels, index, use_kern=use_kern)
+    .. seealso:: :func:`scipy.ndimage.variance`
+    """
+    count, sum, sum_c_sq = _stats(input, labels, index, centered=True)
+    return sum_c_sq / cupy.asanyarray(count).astype(float)
 
 
 def standard_deviation(input, labels=None, index=None):
