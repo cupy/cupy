@@ -32,10 +32,10 @@ def piecewise(x, condlist, funclist):
         condlist = [condlist]
     elif isinstance(condlist[0], tuple) and x.ndim != 0:
         diffshape = 2
-        funclist = cupy.asarray(funclist)
     elif cupy.isscalar(condlist[0]) and x.ndim != 0:
         diffshape = 1
-    condlist = cupy.array(condlist, dtype=bool)
+    if not isinstance(condlist[0], cupy.ndarray):
+        condlist = cupy.asarray(condlist)
     condlen = len(condlist)
     if diffshape:
         if x.ndim == condlist.ndim:
@@ -53,21 +53,26 @@ def piecewise(x, condlist, funclist):
                              'dimension 0; dimension is {} but corresponding '
                              'boolean dimension is {}'
                              .format(x.shape[0], condlen))
-    funclist = funclist.astype(dtype=x.dtype, copy=False)
+    if isinstance(funclist, cupy.ndarray):
+        funclist = funclist.tolist()
     funclen = len(funclist)
     if condlen == funclen:
         y = cupy.zeros(shape=x.shape, dtype=x.dtype)
     elif condlen + 1 == funclen:  # o.w
-        y = cupy.full(shape=x.shape, fill_value=funclist[-1], dtype=x.dtype)
+        y = cupy.full(shape=x.shape,
+                      fill_value=x.dtype.type(funclist[-1]), dtype=x.dtype)
         funclist = funclist[:-1]
     else:
         raise ValueError('with {} condition(s), either {} or {} functions'
                          ' are expected'.format(condlen, condlen, condlen + 1))
     if diffshape == 1:
-        cupy._sorting.search._where_ufunc(condlist, funclist[0], y.T, y.T)
+        cupy._sorting.search._where_ufunc(
+            condlist, x.dtype.type(funclist[0]), y.T, y.T)
     elif diffshape == 2:
-        cupy._sorting.search._where_ufunc(condlist, funclist[0], y, y)
+        cupy._sorting.search._where_ufunc(
+            condlist, x.dtype.type(funclist[0]), y, y)
     else:
         for condition, func in zip(condlist, funclist):
-            cupy._sorting.search._where_ufunc(condition, func, y, y)
+            cupy._sorting.search._where_ufunc(
+                condition, x.dtype.type(func), y, y)
     return y
