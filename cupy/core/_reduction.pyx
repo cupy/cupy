@@ -490,12 +490,12 @@ cdef _cub_two_pass_launch(
     out_args = out_args_2nd_pass
     inout_args = [in_args[0], out_args[0],
                   _cub_convert_to_c_scalar(segment_size, contiguous_size),
-                  _cub_convert_to_c_scalar(segment_size, contiguous_size)]
+                  _cub_convert_to_c_scalar(segment_size, segment_size)]
 
     # For mean()
     if 'mean' in name:
         post_map_expr2 = post_map_expr.replace('_in_ind.size()',
-                                               str(float(segment_size)))
+                                               '_array_size')
         post_map_expr2 = post_map_expr2.replace('_out_ind.size()', '1.0')
     else:
         post_map_expr2 = post_map_expr
@@ -915,8 +915,6 @@ cdef class _AbstractReductionKernel:
         out_args = [copy_arg(a) for a in out_args]
 
         items_per_thread, block_size = _get_cub_block_specs(contiguous_size)
-        block_stride = block_size * items_per_thread
-
         default_block_size_log = math.floor(math.log2(block_size))
         default_items_per_thread = items_per_thread
 
@@ -930,13 +928,12 @@ cdef class _AbstractReductionKernel:
                 post_map_expr, reduce_type, stream, params, cub_params)
 
         def suggest_func(trial):
-            block_size_log = trial.suggest_int('block_size_log', 5, 10)
+            block_size_log = trial.suggest_int('block_size_log', 5, 9)
             block_size = 2 ** block_size_log
             items_per_thread = trial.suggest_int(
                 'items_per_thread', 2, 32, step=2)
 
             trial.set_user_attr('block_size', block_size)
-            trial.set_user_attr('items_per_thread', items_per_thread)
             return block_size, items_per_thread
 
         optimize_impl = optimize_config.optimize_impl
@@ -947,8 +944,7 @@ cdef class _AbstractReductionKernel:
                 'items_per_thread': default_items_per_thread,
             })
 
-        return (best.user_attrs['items_per_thread'],
-                best.user_attrs['block_size'],)
+        return best.params['items_per_thread'], best.user_attrs['block_size']
 
     cdef inline void _launch(
             self, out_block_num, block_size, block_stride,
@@ -972,10 +968,11 @@ cdef class _AbstractReductionKernel:
                     self._preamble, (), stream)
                 return
             else:
-                inout_args = (in_args + out_args
-                              + [_cub_convert_to_c_scalar(contiguous_size,
-                                                          contiguous_size),
-                                 _cub_convert_to_c_scalar(contiguous_size, 0)])
+                inout_args = (
+                    in_args + out_args +
+                    [_cub_convert_to_c_scalar(contiguous_size,
+                                              contiguous_size),
+                     _cub_convert_to_c_scalar(contiguous_size, 0)])
         else:
             inout_args = (
                 in_args
