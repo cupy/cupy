@@ -292,7 +292,8 @@ __global__ void ${name}(${params}) {
     return module.get_function(name)
 
 
-cdef tuple _can_use_cub_block_reduction(
+# make it cpdef'd for unit tests
+cpdef tuple _can_use_cub_block_reduction(
         list in_args, list out_args, tuple reduce_axis, tuple out_axis):
     '''
     If CUB BlockReduce can be used, this function returns a tuple of the needed
@@ -344,26 +345,29 @@ cdef tuple _can_use_cub_block_reduction(
     if axis_permutes_cub != tuple(range(in_arr.ndim)):
         return None
 
-    # check if number of elements exceeds 2**63-1
+    # full-reduction of N-D array: need to invoke the kernel twice
+    cdef bint full_reduction = True if len(out_axis) == 0 else False
+
+    # check if the number of elements is too large
     # (ref: cupy/cupy#3309 for CUB limit)
     for i in reduce_axis:
         contiguous_size *= in_arr.shape[i]
     if contiguous_size > 0x7fffffffffffffff or contiguous_size == 0:
         return None
-
-    # full-reduction of N-D array: need to invoke the kernel twice
-    cdef bint full_reduction = True if len(out_axis) == 0 else False
-
-    # check if number of blocks to be launched exceeds INT_MAX:
-    # TODO(leofang): full reduction may need a different check
-    if in_arr.size // contiguous_size > 0x7fffffff:
-        return None
+    if full_reduction:
+        # assume a GPU has at most 64 GB of physical memory
+        if contiguous_size > 0x1000000000:
+            return None
+    else:
+        # the number of blocks to be launched exceeds INT_MAX:
+        if in_arr.size // contiguous_size > 0x7fffffff:
+            return None
 
     return (axis_permutes_cub, contiguous_size, full_reduction)
 
 
 # similar to cupy.core._kernel._get_kernel_params()
-cpdef str _get_cub_kernel_params(tuple params, tuple arginfos):
+cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
     cdef ParameterInfo p
     cdef _ArgInfo arginfo
     cdef lst = []
@@ -479,7 +483,6 @@ cdef _cub_two_pass_launch(
     func.linear_launch(gridx, inout_args, 0, blockx, stream)
 
     # ************************ 2nd pass ************************
-    # TODO(leofang): just copy if out_block_num is already 1?
     name = name[:-1] + '2'
     contiguous_size = out_block_num
     out_block_num = 1
@@ -927,7 +930,7 @@ cdef class _AbstractReductionKernel:
                 post_map_expr, reduce_type, stream, params, cub_params)
 
         def suggest_func(trial):
-            block_size_log = trial.suggest_int('block_size_log', 5, 9)
+            block_size_log = trial.suggest_int('block_size_log', 5, 10)
             block_size = 2 ** block_size_log
             items_per_thread = trial.suggest_int(
                 'items_per_thread', 2, 32, step=2)
