@@ -213,7 +213,7 @@ if not use_hip:
             ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
         ],
         'include': [
-            'cupy/cub/cub/util_namespace.cuh',  # dummy
+            'cub/util_namespace.cuh',  # dummy
         ],
         'libraries': [
             'cudart',
@@ -342,7 +342,7 @@ def preconfigure_modules(compiler, settings):
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
                 'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC',
-                'ROCM_HOME']:
+                'ROCM_HOME', 'CUPY_CUB_PATH']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [

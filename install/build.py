@@ -164,10 +164,19 @@ def get_compiler_setting(use_hip):
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
-    # for CUB, we need the complex and CUB headers
+    # For CUB, we need the complex and CUB headers. CuPy has bundled CUB, but
+    # if the env var is set, we allow overwriting. The search precedence is:
+    #   1. User-provided CUB path, if any
+    #   2. CuPy's CUB bundle
+    #   3. built-in CUB (for CUDA 11+)
+    cub_path = os.environ.get('CUPY_CUB_PATH', '')
     cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                '../cupy/core/include')
-    include_dirs.append(cupy_header)
+    if os.path.exists(cub_path):
+        include_dirs.insert(0, cub_path)
+    else:
+        include_dirs.insert(0, os.path.join(cupy_header, 'cupy/cub'))
+    include_dirs.insert(1, cupy_header)
 
     return {
         'include_dirs': include_dirs,

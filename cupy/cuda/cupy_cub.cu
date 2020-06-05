@@ -1,8 +1,8 @@
 #include <cupy/complex.cuh>
-#include <cupy/cub/cub/device/device_reduce.cuh>
-#include <cupy/cub/cub/device/device_segmented_reduce.cuh>
-#include <cupy/cub/cub/device/device_spmv.cuh>
-#include <cupy/cub/cub/device/device_scan.cuh>
+#include <cub/device/device_reduce.cuh>
+#include <cub/device/device_segmented_reduce.cuh>
+#include <cub/device/device_spmv.cuh>
+#include <cub/device/device_scan.cuh>
 #include "cupy_cub.h"
 #include <stdexcept>
 
