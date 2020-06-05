@@ -321,14 +321,24 @@ def variance(input, labels=None, index=None):
             'for the fast implmentation', util.PerformanceWarning)
         use_kern = True
 
+    def single_group(vals):
+        vals_c = vals - vals.mean()
+        return vals.size, cupy.square(vals_c).sum()
+
     if labels is None:
-        return input.var().astype(cupy.float64, copy=False)
+        count, sum_c_sq = single_group(input)
+        return sum_c_sq / cupy.asanyarray(count).astype(float)
 
     if not isinstance(labels, cupy.ndarray):
         raise TypeError('label must be cupy.ndarray')
 
     if index is None:
-        return (input[labels != 0]).var().astype(cupy.float64, copy=False)
+        count, sum_c_sq = single_group(input[labels > 0])
+        return sum_c_sq / cupy.asanyarray(count).astype(float)
+
+    if cupy.isscalar(index):
+        count, sum_c_sq = single_group(input[labels == index])
+        return sum_c_sq / cupy.asanyarray(count).astype(float)
 
     input, labels = cupy.broadcast_arrays(input, labels)
 
@@ -450,14 +460,23 @@ def mean(input, labels=None, index=None):
             'for the fast implmentation', util.PerformanceWarning)
         use_kern = True
 
+    def single_group(vals):
+        return vals.size, vals.sum()
+
     if labels is None:
-        return input.mean(dtype=cupy.float64)
+        count, sum = single_group(input)
+        return sum / cupy.asanyarray(count).astype(float)
 
     if not isinstance(labels, cupy.ndarray):
         raise TypeError('label must be cupy.ndarray')
 
     if index is None:
-        return (input[labels != 0]).mean(dtype=cupy.float64)
+        count, sum = single_group(input[labels > 0])
+        return sum / cupy.asanyarray(count).astype(float)
+
+    if cupy.isscalar(index):
+        count, sum = single_group(input[labels == index])
+        return sum / cupy.asanyarray(count).astype(float)
 
     input, labels = cupy.broadcast_arrays(input, labels)
 
