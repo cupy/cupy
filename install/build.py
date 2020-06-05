@@ -169,7 +169,12 @@ def get_compiler_setting(use_hip):
     #   1. User-provided CUB path, if any
     #   2. CuPy's CUB bundle
     #   3. built-in CUB (for CUDA 11+)
-    cub_path = os.environ.get('CUPY_CUB_PATH', '')
+    cub_path = os.environ.get('CUB_PATH', '')
+    if cub_path:
+        utils.print_warning('CUB_PATH is detected and will be honored, but it '
+                            'will be deprecated in favor of CUPY_CUB_PATH')
+    else:
+        cub_path = os.environ.get('CUPY_CUB_PATH', '')
     cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                '../cupy/core/include')
     if os.path.exists(cub_path):
