@@ -9,6 +9,7 @@ import shutil
 
 _cuda_path = None
 _nvcc_path = None
+_cub_path = None
 
 
 def get_cuda_path():
@@ -25,6 +26,14 @@ def get_nvcc_path():
     if _nvcc_path is None:
         _nvcc_path = _get_nvcc_path()
     return _nvcc_path
+
+
+def get_cub_path():
+    # Returns the CUB header path or None if not found.
+    global _cub_path
+    if _cub_path is None:
+        _cub_path = _get_cub_path()
+    return _cub_path
 
 
 def _get_cuda_path():
@@ -57,6 +66,22 @@ def _get_nvcc_path():
         return None
 
     return shutil.which('nvcc', path=os.path.join(cuda_path, 'bin'))
+
+
+def _get_cub_path():
+    # runtime discovery of CUB headers
+    temp = os.path.join(get_cuda_path(), 'include/cub')
+
+    if os.path.isdir('cupy/core/include/cupy/cub'):
+        _cub_path = '<bundle>'
+    elif 'CUPY_CUB_PATH' in os.environ:
+        _cub_path = os.environ['CUPY_CUB_PATH']
+    elif os.path.isdir(temp):
+        # use built-in CUB for CUDA 11+
+        _cub_path = '<CUDA>'
+    else:
+        _cub_path = None
+    return _cub_path
 
 
 def _setup_win32_dll_directory():

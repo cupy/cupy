@@ -68,5 +68,13 @@ from cupy.core.raw import RawModule  # NOQA
 import os
 cub_block_reduction_enabled = False
 if int(os.getenv('CUPY_CUB_BLOCK_REDUCTION_DISABLED', 1)) == 0:
-    cub_block_reduction_enabled = True
+    from .._environment import get_cub_path
+    if get_cub_path() is None:
+        import warnings
+        warnings.warn("CUB header is not found, please set CUPY_CUB_PATH",
+                      RuntimeWarning)
+        del warnings
+    else:
+        cub_block_reduction_enabled = True
+    del get_cub_path
 del os

@@ -40,6 +40,7 @@ from cupy.core._kernel import _decide_params_type
 from cupy.core._ufuncs import elementwise_copy
 from cupy.cuda import compiler
 from cupy import util
+from cupy import _environment
 
 
 cpdef function.Function _create_reduction_function(
@@ -128,10 +129,8 @@ cpdef function.Function _create_cub_reduction_function(
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
     # https://github.com/NVlabs/cub/blob/c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/agent/agent_reduce.cuh#L311-L346
 
-    cdef str module_code = '''
-#include <cupy/cub/cub/block/block_reduce.cuh>
-#include <cupy/cub/cub/block/block_load.cuh>
-
+    cdef str module_code = _get_cub_header_include()
+    module_code += '''
 ${preamble}
 
 ${type_preamble}
@@ -292,6 +291,34 @@ __global__ void ${name}(${params}) {
     return module.get_function(name)
 
 
+cdef str _cub_path = _environment.get_cub_path()
+cdef str _cub_header = None
+
+
+cdef str _get_cub_header_include():
+    global _cub_header
+    if _cub_header is not None:
+        return _cub_header
+
+    if _cub_path == '<bundle>':
+        _cub_header = '''
+#include <cupy/cub/cub/block/block_reduce.cuh>
+#include <cupy/cub/cub/block/block_load.cuh>
+'''
+    elif _cub_path == '<CUDA>':
+        _cub_header = '''
+#include <cub/block/block_reduce.cuh>
+#include <cub/block/block_load.cuh>
+'''
+    else:  # assume CUB exists
+        _cub_header = '''
+#include \"${CUB}/cub/block/block_reduce.cuh\"
+#include \"${CUB}/cub/block/block_load.cuh\"
+'''
+        _cub_header = string.Template(_cub_header).substitute(CUB=_cub_path)
+    return _cub_header
+
+
 # make it cpdef'd for unit tests
 cpdef tuple _can_use_cub_block_reduction(
         list in_args, list out_args, tuple reduce_axis, tuple out_axis):
@@ -299,7 +326,6 @@ cpdef tuple _can_use_cub_block_reduction(
     If CUB BlockReduce can be used, this function returns a tuple of the needed
     parameters, otherwise returns None.
     '''
-    from cupy import _environment
     from cupy import core
 
     cdef tuple axis_permutes_cub
@@ -308,6 +334,10 @@ cpdef tuple _can_use_cub_block_reduction(
 
     # first check the flag settable at runtime from outside
     if not core.cub_block_reduction_enabled:
+        return None
+
+    # detect whether CUB headers exists somewhere:
+    if _cub_path is None:
         return None
 
     # rare event (mainly for conda-forge users): nvcc is not found!
