@@ -140,12 +140,12 @@ def sort_complex(a):
     .. seealso:: :func:`numpy.sort_complex`
 
     """
-    if a.dtype.char == 'e':
+    if a.dtype.char in 'bhBHF':
+        a = a.astype('F')
+    else:
         a = a.astype('D')
     a.sort()
-    if a.dtype.char in 'bhBHF':
-        return a.astype('F')
-    return a.astype('D')
+    return a
 
 
 def partition(a, kth, axis=-1):
