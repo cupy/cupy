@@ -1,5 +1,14 @@
 import cupy
 
+from cupy import core
+
+_piecewise_krnl = core.ElementwiseKernel(
+    'U condlist, T funclist',
+    'T y',
+    ' if(condlist) y = funclist',
+    'piecewise_kernel'
+)
+
 
 def piecewise(x, condlist, funclist):
     """Evaluate a piecewise-defined function.
@@ -24,9 +33,6 @@ def piecewise(x, condlist, funclist):
 
         .. seealso:: :func:`numpy.piecewise`
         """
-    if any(callable(item) for item in funclist):
-        raise NotImplementedError(
-            'Callable functions are not supported currently')
     diffshape = 0
     if cupy.isscalar(condlist):
         condlist = [condlist]
@@ -53,26 +59,26 @@ def piecewise(x, condlist, funclist):
                              'dimension 0; dimension is {} but corresponding '
                              'boolean dimension is {}'
                              .format(x.shape[0], condlen))
+        condlist = [condlist]
     if isinstance(funclist, cupy.ndarray):
         funclist = funclist.tolist()
     funclen = len(funclist)
     if condlen == funclen:
         y = cupy.zeros(shape=x.shape, dtype=x.dtype)
     elif condlen + 1 == funclen:  # o.w
+        if callable(funclist[-1]):
+            raise NotImplementedError(
+                'Callable functions are not supported currently')
         y = cupy.full(shape=x.shape,
                       fill_value=x.dtype.type(funclist[-1]), dtype=x.dtype)
         funclist = funclist[:-1]
     else:
         raise ValueError('with {} condition(s), either {} or {} functions'
                          ' are expected'.format(condlen, condlen, condlen + 1))
-    if diffshape == 1:
-        cupy._sorting.search._where_ufunc(
-            condlist, x.dtype.type(funclist[0]), y.T, y.T)
-    elif diffshape == 2:
-        cupy._sorting.search._where_ufunc(
-            condlist, x.dtype.type(funclist[0]), y, y)
-    else:
-        for condition, func in zip(condlist, funclist):
-            cupy._sorting.search._where_ufunc(
-                condition, x.dtype.type(func), y, y)
+    output = y.T if diffshape == 1 else y
+    for condition, func in zip(condlist, funclist):
+        if callable(func):
+            raise NotImplementedError(
+                'Callable functions are not supported currently')
+        _piecewise_krnl(condition, func, output)
     return y
