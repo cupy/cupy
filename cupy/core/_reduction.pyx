@@ -300,6 +300,7 @@ cdef str _get_cub_header_include():
     if _cub_header is not None:
         return _cub_header
 
+    assert _cub_path is not None
     if _cub_path == '<bundle>':
         _cub_header = '''
 #include <cupy/cub/cub/block/block_reduce.cuh>
@@ -310,7 +311,7 @@ cdef str _get_cub_header_include():
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
 '''
-    else:  # assume CUB exists
+    else:
         _cub_header = '''
 #include \"${CUB}/cub/block/block_reduce.cuh\"
 #include \"${CUB}/cub/block/block_load.cuh\"
@@ -320,7 +321,7 @@ cdef str _get_cub_header_include():
 
 
 # make it cpdef'd for unit tests
-cpdef tuple _can_use_cub_block_reduction(
+cpdef inline tuple _can_use_cub_block_reduction(
         list in_args, list out_args, tuple reduce_axis, tuple out_axis):
     '''
     If CUB BlockReduce can be used, this function returns a tuple of the needed
@@ -338,6 +339,11 @@ cpdef tuple _can_use_cub_block_reduction(
 
     # detect whether CUB headers exists somewhere:
     if _cub_path is None:
+        import warnings
+        warnings.warn('cupy.core.cub_block_reduction_enabled is set to True, '
+                      'but the CUB headers are not found, please set the '
+                      'environment variable CUPY_CUB_PATH to the CUB '
+                      'location.', RuntimeWarning)
         return None
 
     # rare event (mainly for conda-forge users): nvcc is not found!
@@ -446,7 +452,7 @@ cdef _scalar.CScalar _cub_convert_to_c_scalar(
         return _scalar.CScalar.from_int32(value)
 
 
-cdef _cub_two_pass_launch(
+cdef inline _cub_two_pass_launch(
         str name, Py_ssize_t block_size, Py_ssize_t segment_size,
         Py_ssize_t items_per_thread, str reduce_type, tuple params,
         list in_args, list out_args,
