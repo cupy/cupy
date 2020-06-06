@@ -92,6 +92,9 @@ cdef extern from 'cupy_cuda.h' nogil:
                                 int peerDevice)
     int cudaDeviceEnablePeerAccess(int peerDevice, unsigned int flags)
 
+    int cudaDeviceGetLimit(size_t* value, Limit limit)
+    int cudaDeviceSetLimit(Limit limit, size_t value)
+
     # Memory management
     int cudaMalloc(void** devPtr, size_t size)
     int cudaMallocManaged(void** devPtr, size_t size, unsigned int flags)
@@ -256,7 +259,6 @@ cpdef int getDevice() except? -1:
     check_status(status)
     return device
 
-
 cpdef int deviceGetAttribute(int attrib, int device) except? -1:
     cdef int ret
     status = cudaDeviceGetAttribute(&ret, <DeviceAttr>attrib, device)
@@ -288,17 +290,14 @@ cpdef int getDeviceCount() except? -1:
     check_status(status)
     return count
 
-
 cpdef setDevice(int device):
     status = cudaSetDevice(device)
     check_status(status)
-
 
 cpdef deviceSynchronize():
     with nogil:
         status = cudaDeviceSynchronize()
     check_status(status)
-
 
 cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1:
     cpdef int ret
@@ -306,9 +305,18 @@ cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1:
     check_status(status)
     return ret
 
-
 cpdef deviceEnablePeerAccess(int peerDevice):
     status = cudaDeviceEnablePeerAccess(peerDevice, 0)
+    check_status(status)
+
+cpdef size_t deviceGetLimit(int limit) except? -1:
+    cdef size_t value
+    status = cudaDeviceGetLimit(&value, <Limit>limit)
+    check_status(status)
+    return value
+
+cpdef deviceSetLimit(int limit, size_t value):
+    status = cudaDeviceSetLimit(<Limit>limit, value)
     check_status(status)
 
 

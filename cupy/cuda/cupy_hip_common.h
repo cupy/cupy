@@ -63,6 +63,7 @@ const CUresult cudaErrorMemoryAllocation = hipErrorMemoryAllocation;
 const CUresult cudaErrorPeerAccessAlreadyEnabled = hipErrorPeerAccessAlreadyEnabled;
 typedef enum {} cudaDataType;
 typedef hipDeviceAttribute_t cudaDeviceAttr;
+typedef hipLimit_t cudaLimit;
 enum cudaMemoryAdvise {};
 typedef hipMemcpyKind cudaMemcpyKind;
 
