@@ -195,6 +195,7 @@ __global__ void ${name}(${params}) {
 
   // Per-thread tile data
   _type_reduce _sdata[ITEMS_PER_THREAD];
+  #pragma unroll
   for (int j = 0; j < ITEMS_PER_THREAD; j++) {
       _sdata[j] = _type_reduce(${identity});
   }
