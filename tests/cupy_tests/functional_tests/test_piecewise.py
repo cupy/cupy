@@ -116,6 +116,15 @@ class TestPiecewise(unittest.TestCase):
                 xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
+    def test_piecewise_diff_shapes5(self, dtype):
+        condlist = [False, True, True]
+        funclist = [1, 2]
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((2, 3), xp, dtype)
+            with pytest.raises(IndexError):
+                xp.piecewise(x, condlist, funclist)
+
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_piecewise_tuple(self, xp, dtype):
         x = testing.shaped_arange((4, 3), xp, dtype)

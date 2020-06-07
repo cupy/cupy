@@ -5,7 +5,7 @@ from cupy import core
 _piecewise_krnl = core.ElementwiseKernel(
     'U condlist, T funclist',
     'T y',
-    ' if(condlist) y = funclist',
+    'if(condlist) y = funclist',
     'piecewise_kernel'
 )
 
@@ -20,7 +20,7 @@ def piecewise(x, condlist, funclist):
                 in funclist. Length of funclist is equal to that of
                 condlist. If one extra function is given, it is used
                 as the default value when the otherwise condition is met
-            funclist (cupy.ndarray or list): list of scalar functions.
+            funclist (list of scalars): list of scalar functions.
 
         Returns:
             cupy.ndarray: the scalar values in funclist on portions of x
