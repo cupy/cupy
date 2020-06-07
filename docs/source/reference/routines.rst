@@ -22,6 +22,7 @@ These functions cover a subset of
    logic
    math
    pad
+   polynomial
    random
    sorting
    statistics
