@@ -156,12 +156,12 @@ class TestSearch(unittest.TestCase):
 
 # This class compares CUB results against NumPy's
 # TODO(leofang): test axis after support is added
-@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
 @testing.parameterize(*testing.product({
     'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
     'order': ('C', 'F'),
 }))
 @testing.gpu
+@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
 class TestCUBreduction(unittest.TestCase):
     @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
