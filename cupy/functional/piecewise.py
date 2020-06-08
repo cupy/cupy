@@ -49,7 +49,7 @@ def piecewise(x, condlist, funclist):
                 raise IndexError('boolean index did not match indexed '
                                  'array along the same dimension; shape '
                                  'is {} but corresponding boolean shape '
-                                 'is {}'.format(x.shape,condlist.shape))
+                                 'is {}'.format(x.shape, condlist.shape))
         if condlen == x.shape[0]:
             condlen = 1
         else:
