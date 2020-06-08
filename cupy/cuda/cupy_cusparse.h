@@ -391,7 +391,7 @@ cusparseStatus_t cusparseConstrainedGeMM(...) {
 // Functions added in CUDA 10.1
 
 // CSR2CSC
-typedef enum {} cusparseSpMMAlg_t;
+typedef enum {} cusparseCsr2CscAlg_t;
 
 cusparseStatus_t cusparseCsr2cscEx2_bufferSize(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -1525,6 +1525,16 @@ cusparseStatus_t cusparseConstrainedGeMM_bufferSize(...) {
 }
 
 cusparseStatus_t cusparseConstrainedGeMM(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+typedef enum {} cusparseCsr2CscAlg_t;
+
+cusparseStatus_t cusparseCsr2cscEx2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCsr2cscEx2(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
