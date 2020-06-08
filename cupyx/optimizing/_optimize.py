@@ -1,4 +1,5 @@
 import contextlib
+import math
 
 import optuna
 
@@ -6,7 +7,9 @@ from cupy.core import _optimize_config
 from cupyx import time
 
 
-def _optimize(optimize_config, target_func, suggest_func, default_best):
+def _optimize(
+        optimize_config, target_func, suggest_func,
+        default_best, ignore_error=()):
     assert isinstance(optimize_config, _optimize_config._OptimizationConfig)
     assert callable(target_func)
     assert callable(suggest_func)
@@ -14,8 +17,14 @@ def _optimize(optimize_config, target_func, suggest_func, default_best):
     def objective(trial):
         args = suggest_func(trial)
         max_total_time = optimize_config.max_total_time_per_trial
-        perf = time.repeat(target_func, args, max_duration=max_total_time)
-        return perf.gpu_times.mean()
+        try:
+            perf = time.repeat(target_func, args, max_duration=max_total_time)
+            return perf.gpu_times.mean()
+        except Exception as e:
+            if isinstance(e, ignore_error):
+                return math.inf
+            else:
+                raise e
 
     study = optuna.create_study()
     study.enqueue_trial(default_best)
