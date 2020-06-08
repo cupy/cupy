@@ -4,6 +4,7 @@ import cupy
 from cupy.cuda import cusolver
 from cupy.cuda import runtime
 from cupy.cuda import device
+from cupy import util
 
 
 _available_cuda_version = {
@@ -12,6 +13,7 @@ _available_cuda_version = {
 }
 
 
+@util.memoize()
 def check_availability(name):
     if name not in _available_cuda_version:
         msg = 'No available version information specified for {}'.name

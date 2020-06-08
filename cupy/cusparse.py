@@ -117,6 +117,7 @@ def _get_version(x):
     return x
 
 
+@util.memoize()
 def check_availability(name):
     if name not in _available_cuda_version:
         msg = 'No available version information specified for {}'.name
