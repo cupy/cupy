@@ -45,13 +45,11 @@ def piecewise(x, condlist, funclist):
     condlen = len(condlist)
     if diffshape:
         if x.ndim == condlist.ndim:
-            for i in range(x.ndim - 1, -1, -1):
-                if condlist.shape[i] != x.shape[i]:
-                    raise IndexError('boolean index did not match indexed '
-                                     'array along dimension {}; dimension is '
-                                     '{} but corresponding boolean dimension '
-                                     'is {}'.format(i, x.shape[i],
-                                                    condlist.shape[i]))
+            if x.shape != condlist.shape:
+                raise IndexError('boolean index did not match indexed '
+                                 'array along the same dimension; shape '
+                                 'is {} but corresponding boolean shape '
+                                 'is {}'.format(x.shape,condlist.shape))
         if condlen == x.shape[0]:
             condlen = 1
         else:
@@ -75,10 +73,11 @@ def piecewise(x, condlist, funclist):
     else:
         raise ValueError('with {} condition(s), either {} or {} functions'
                          ' are expected'.format(condlen, condlen, condlen + 1))
-    output = y.T if diffshape == 1 else y
     for condition, func in zip(condlist, funclist):
         if callable(func):
             raise NotImplementedError(
                 'Callable functions are not supported currently')
-        _piecewise_krnl(condition, func, output)
+        if diffshape == 1:
+            condition = condition.reshape((-1, 1))
+        _piecewise_krnl(condition, func, y)
     return y
