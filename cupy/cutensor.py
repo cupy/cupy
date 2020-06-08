@@ -162,20 +162,34 @@ def elementwise_trinary(alpha, A, desc_A, mode_A,
     Examples:
         See examples/cutensor/elementwise_trinary.py
     """
-    assert A.dtype == B.dtype == C.dtype
-    assert A.ndim == len(mode_A)
-    assert B.ndim == len(mode_B)
-    assert C.ndim == len(mode_C)
+    if not (A.dtype == B.dtype == C.dtype):
+        raise ValueError(
+            'dtype mismatch: ({}, {}, {})'.format(A.dtype, B.dtype, C.dtype))
+    if not (A.flags.c_contiguous
+            and B.flags.c_contiguous
+            and C.flags.c_contiguous):
+        raise ValueError('The inputs should be contiguous arrays.')
+
+    if out is None:
+        out = cupy.ndarray(C.shape, dtype=C.dtype)
+    elif C.dtype != out.dtype:
+        raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
+    elif C.shape != out.shape:
+        raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
+    elif not out.flags.c_contiguous:
+        raise ValueError('`out` should be a contiguous array.')
+
+    if A.ndim != len(mode_A):
+        raise ValueError('ndim mismatch: {} != {}'.format(A.ndim, len(mode_A)))
+    if B.ndim != len(mode_B):
+        raise ValueError('ndim mismatch: {} != {}'.format(B.ndim, len(mode_B)))
+    if C.ndim != len(mode_C):
+        raise ValueError('ndim mismatch: {} != {}'.format(C.ndim, len(mode_C)))
+
     mode_A = _convert_mode(mode_A)
     mode_B = _convert_mode(mode_B)
     mode_C = _convert_mode(mode_C)
-    if out is None:
-        out = cupy.ndarray(C.shape, dtype=C.dtype)
-    else:
-        assert C.dtype == out.dtype
-        assert C.ndim == out.ndim
-        for i in range(C.ndim):
-            assert C.shape[i] == out.shape[i]
+
     if compute_dtype is None:
         compute_dtype = A.dtype
     alpha = numpy.array(alpha, compute_dtype)
@@ -214,18 +228,28 @@ def elementwise_binary(alpha, A, desc_A, mode_A,
     Examples:
         See examples/cutensor/elementwise_binary.py
     """
-    assert A.dtype == C.dtype
-    assert A.ndim == len(mode_A)
-    assert C.ndim == len(mode_C)
-    mode_A = _convert_mode(mode_A)
-    mode_C = _convert_mode(mode_C)
+    if A.dtype != C.dtype:
+        raise ValueError('dtype mismatch: {} != {}'.format(A.dtype, C.dtype))
+    if not (A.flags.c_contiguous and C.flags.c_contiguous):
+        raise ValueError('The inputs should be contiguous arrays.')
+
     if out is None:
         out = cupy.ndarray(C.shape, dtype=C.dtype)
-    else:
-        assert C.dtype == out.dtype
-        assert C.ndim == out.ndim
-        for i in range(C.ndim):
-            assert C.shape[i] == out.shape[i]
+    elif C.dtype != out.dtype:
+        raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
+    elif C.shape != out.shape:
+        raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
+    elif not out.flags.c_contiguous:
+        raise ValueError('`out` should be a contiguous array.')
+
+    if A.ndim != len(mode_A):
+        raise ValueError('ndim mismatch: {} != {}'.format(A.ndim, len(mode_A)))
+    if C.ndim != len(mode_C):
+        raise ValueError('ndim mismatch: {} != {}'.format(C.ndim, len(mode_C)))
+
+    mode_A = _convert_mode(mode_A)
+    mode_C = _convert_mode(mode_C)
+
     if compute_dtype is None:
         compute_dtype = A.dtype
     alpha = numpy.array(alpha, compute_dtype)
@@ -365,10 +389,21 @@ def contraction(alpha, A, desc_A, mode_A, B, desc_B, mode_B,
     Examples:
         See examples/cutensor/contraction.py
     """
-    assert A.dtype == B.dtype == C.dtype
-    assert A.ndim == len(mode_A)
-    assert B.ndim == len(mode_B)
-    assert C.ndim == len(mode_C)
+    if not (A.dtype == B.dtype == C.dtype):
+        raise ValueError(
+            'dtype mismatch: ({}, {}, {})'.format(A.dtype, B.dtype, C.dtype))
+    if not (A.flags.c_contiguous
+            and B.flags.c_contiguous
+            and C.flags.c_contiguous):
+        raise ValueError('The inputs should be contiguous arrays.')
+
+    if A.ndim != len(mode_A):
+        raise ValueError('ndim mismatch: {} != {}'.format(A.ndim, len(mode_A)))
+    if B.ndim != len(mode_B):
+        raise ValueError('ndim mismatch: {} != {}'.format(B.ndim, len(mode_B)))
+    if C.ndim != len(mode_C):
+        raise ValueError('ndim mismatch: {} != {}'.format(C.ndim, len(mode_C)))
+
     out = C
     compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
     handle = get_handle()
@@ -429,9 +464,16 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
     Examples:
         See examples/cutensor/reduction.py
     """
-    assert A.dtype == C.dtype
-    assert A.ndim == len(mode_A)
-    assert C.ndim == len(mode_C)
+    if A.dtype != C.dtype:
+        raise ValueError('dtype mismatch: {} != {}'.format(A.dtype, C.dtype))
+    if not (A.flags.c_contiguous and C.flags.c_contiguous):
+        raise ValueError('The inputs should be contiguous arrays.')
+
+    if A.ndim != len(mode_A):
+        raise ValueError('ndim mismatch: {} != {}'.format(A.ndim, len(mode_A)))
+    if C.ndim != len(mode_C):
+        raise ValueError('ndim mismatch: {} != {}'.format(C.ndim, len(mode_C)))
+
     mode_A = _convert_mode(mode_A)
     mode_C = _convert_mode(mode_C)
     out = C
