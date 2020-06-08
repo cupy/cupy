@@ -167,6 +167,7 @@ def get_compiler_setting(use_hip):
     # for <cupy/complex.cuh>
     cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                '../cupy/core/include')
+    cub_path = None
     if cuda_path:
         cub_path = os.path.join(cuda_path, 'include', 'cub')
         if os.path.exists(cub_path):
