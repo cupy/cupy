@@ -121,3 +121,21 @@ configs {
     command: "bash .pfnci/script.sh py37.amd"
   }
 }
+
+
+# ChainerCV's tests are disabled in the master branch, but configs can be removed
+# only after removing web hooks.
+# TODO(maehashi): when discontinuing v7 branch, remove the web hooks and remove
+# configurations below.
+configs {
+  key: "cupy.py3.cv.gpu"
+  value {
+    command: "true"
+  }
+}
+configs {
+  key: "cupy.py3.cv.examples"
+  value {
+    command: "true"
+  }
+}
