@@ -665,6 +665,28 @@ def _sort_axis(tuple axis, tuple strides):
     return tuple(sorted(axis, key=lambda i: -abs(strides[i])))
 
 
+cdef tuple _get_shape_and_strides(list in_args, list out_args):
+    cdef list shape_and_strides = []
+    for x in in_args + out_args:
+        if isinstance(x, ndarray):
+            shape_and_strides.append(x.shape)
+            shape_and_strides.append(x.strides)
+        else:
+            shape_and_strides.append(None)
+            shape_and_strides.append(None)
+    return tuple(shape_and_strides)
+
+
+cdef _optimizer_copy_arg(a):
+    if isinstance(a, ndarray):
+        x = _create_ndarray_from_shape_strides(
+            a._shape, a._strides, a.dtype)
+        assert a.data.device_id == x.data.device_id
+        elementwise_copy(a, x)
+        return x
+    return a
+
+
 cdef class _AbstractReductionKernel:
 
     def __init__(
@@ -697,17 +719,13 @@ cdef class _AbstractReductionKernel:
         cdef tuple reduce_axis, out_axis, axis_permutes
         cdef tuple can_use_cub, cub_params
         cdef tuple params, opt_params
+        cdef tuple shape_and_strides
         cdef Py_ssize_t i
         cdef Py_ssize_t contiguous_size = -1, items_per_thread
         cdef Py_ssize_t block_size, block_stride, out_block_num = 0
         cdef shape_t in_shape, out_shape
-        cdef ndarray arr
         cdef ndarray ret
-        cdef function.Function func
         cdef bint use_cub = False, full_reduction = False
-        cdef size_t gridx, blockx
-        cdef list out_args_2nd_pass = []
-        cdef list shape_and_strides = []
 
         if dtype is not None:
             dtype = get_dtype(dtype).type
@@ -778,14 +796,8 @@ cdef class _AbstractReductionKernel:
                 # Optimize dynamically
 
                 # Calculate a key unique to the reduction setting.
-                for x in in_args + out_args:
-                    if isinstance(x, ndarray):
-                        shape_and_strides.append(x.shape)
-                        shape_and_strides.append(x.strides)
-                    else:
-                        shape_and_strides.append(None)
-                        shape_and_strides.append(None)
-                key = (self.name, tuple(shape_and_strides),
+                shape_and_strides = _get_shape_and_strides(in_args, out_args)
+                key = (self.name, shape_and_strides,
                        in_types, out_types, reduce_type, device_id,
                        use_cub, full_reduction,)
 
@@ -834,14 +846,8 @@ cdef class _AbstractReductionKernel:
                 # Optimize dynamically
 
                 # Calculate a key unique to the reduction setting.
-                for x in in_args + out_args:
-                    if isinstance(x, ndarray):
-                        shape_and_strides.append(x.shape)
-                        shape_and_strides.append(x.strides)
-                    else:
-                        shape_and_strides.append(None)
-                        shape_and_strides.append(None)
-                key = (self.name, tuple(shape_and_strides),
+                shape_and_strides = _get_shape_and_strides(in_args, out_args)
+                key = (self.name, shape_and_strides,
                        in_types, out_types, reduce_type, device_id,
                        use_cub, full_reduction,)
 
@@ -877,18 +883,8 @@ cdef class _AbstractReductionKernel:
             type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
             stream):
         out_size = internal.prod(out_shape)
-
-        def copy_arg(a):
-            if isinstance(a, ndarray):
-                x = _create_ndarray_from_shape_strides(
-                    a._shape, a._strides, a.dtype)
-                assert a.data.device_id == x.data.device_id
-                elementwise_copy(a, x)
-                return x
-            return a
-
-        in_args = [copy_arg(a) for a in in_args]
-        out_args = [copy_arg(a) for a in out_args]
+        in_args = [_optimizer_copy_arg(a) for a in in_args]
+        out_args = [_optimizer_copy_arg(a) for a in out_args]
 
         contiguous_size = _get_contiguous_size(
             in_args, self.in_params, len(in_shape), len(out_shape))
@@ -938,18 +934,8 @@ cdef class _AbstractReductionKernel:
             type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
             stream, full_reduction, out_block_num, contiguous_size, params):
         out_size = internal.prod(out_shape)
-
-        def copy_arg(a):
-            if isinstance(a, ndarray):
-                x = _create_ndarray_from_shape_strides(
-                    a._shape, a._strides, a.dtype)
-                assert a.data.device_id == x.data.device_id
-                elementwise_copy(a, x)
-                return x
-            return a
-
-        in_args = [copy_arg(a) for a in in_args]
-        out_args = [copy_arg(a) for a in out_args]
+        in_args = [_optimizer_copy_arg(a) for a in in_args]
+        out_args = [_optimizer_copy_arg(a) for a in out_args]
 
         items_per_thread, block_size = _get_cub_block_specs(contiguous_size)
         default_block_size_log = math.floor(math.log2(block_size))
@@ -990,6 +976,7 @@ cdef class _AbstractReductionKernel:
             stream, params, cub_params):
         cdef bint full_reduction, use_cub = cub_params[0]
         cdef Py_ssize_t contiguous_size, items_per_thread
+        cdef function.Function func
 
         # Kernel arguments passed to the __global__ function.
         if use_cub:
