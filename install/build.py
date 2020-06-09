@@ -170,7 +170,7 @@ def get_compiler_setting(use_hip):
     cub_path = os.environ.get('CUB_PATH', '')
     if os.path.exists(cub_path):
         include_dirs.append(cupy_header)
-        include_dirs.append(cub_path)
+        include_dirs.insert(0, cub_path)
     elif cuda_path:
         cub_path = os.path.join(cuda_path, 'include', 'cub')
         if os.path.exists(cub_path):
