@@ -349,8 +349,7 @@ def svd(a, full_matrices=True, compute_uv=True):
     # Remark 4: Remark 2 is removed since cuda 8.0 (new!)
     n, m = a.shape
 
-    mn = min(m, n)
-    if mn == 0:
+    if m == 0 or n == 0:
         s = cupy.empty((0,), s_dtype)
         if compute_uv:
             if full_matrices:
@@ -372,6 +371,7 @@ def svd(a, full_matrices=True, compute_uv=True):
         x = a.transpose().astype(a_dtype, order='C', copy=True)
         trans_flag = True
 
+    k = n  # = min(m, n) where m >= n is ensured above
     if compute_uv:
         if full_matrices:
             u = cupy.empty((m, m), dtype=a_dtype)
@@ -380,7 +380,7 @@ def svd(a, full_matrices=True, compute_uv=True):
             job_vt = ord('O')
         else:
             u = x
-            vt = cupy.empty((mn, n), dtype=a_dtype)
+            vt = cupy.empty((k, n), dtype=a_dtype)
             job_u = ord('O')
             job_vt = ord('S')
         u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
@@ -388,7 +388,7 @@ def svd(a, full_matrices=True, compute_uv=True):
         u_ptr, vt_ptr = 0, 0  # Use nullptr
         job_u = ord('N')
         job_vt = ord('N')
-    s = cupy.empty(mn, dtype=s_dtype)
+    s = cupy.empty(k, dtype=s_dtype)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
 
