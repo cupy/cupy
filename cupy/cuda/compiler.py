@@ -60,11 +60,17 @@ def _get_arch():
         # the maximum value allowed for `--gpu-architecture`.
         major, minor = _get_nvrtc_version()
         if major < 9:
-            # CUDA 7.0 / 7.5 / 8.0
-            _nvrtc_max_compute_capability = '50'
-        else:
-            # CUDA 9.0 / 9.1
+            # CUDA 8.0
+            _nvrtc_max_compute_capability = '52'
+        elif major < 10 or (major == 10 and minor == 0):
+            # CUDA 9.x / 10.0
             _nvrtc_max_compute_capability = '70'
+        elif major < 11:
+            # CUDA 10.1 / 10.2
+            _nvrtc_max_compute_capability = '75'
+        else:
+            # CUDA 11.0
+            _nvrtc_max_compute_capability = '80'
 
     return min(device.Device().compute_capability,
                _nvrtc_max_compute_capability)
