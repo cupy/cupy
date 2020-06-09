@@ -9,7 +9,7 @@ import shutil
 
 _cuda_path = None
 _nvcc_path = None
-_cub_path = None
+_cub_path = ''
 
 
 def get_cuda_path():
@@ -31,7 +31,7 @@ def get_nvcc_path():
 def get_cub_path():
     # Returns the CUB header path or None if not found.
     global _cub_path
-    if _cub_path is None:
+    if _cub_path == '':
         _cub_path = _get_cub_path()
     return _cub_path
 
