@@ -305,7 +305,7 @@ def variance(input, labels=None, index=None):
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
 
-    if input.dtype in (cupy.bool_, cupy.complex64, cupy.complex128):
+    if input.dtype in (cupy.complex64, cupy.complex128):
         raise TypeError("cupyx.scipy.ndimage.variance doesn't support %{}"
                         "".format(input.dtype.type))
 
@@ -380,7 +380,7 @@ def sum(input, labels=None, index=None):
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
 
-    if input.dtype in (cupy.bool_, cupy.complex64, cupy.complex128):
+    if input.dtype in (cupy.complex64, cupy.complex128):
         raise TypeError("cupyx.scipy.ndimage.sum doesnt support %{}".format(
             input.dtype.type))
 
@@ -444,7 +444,7 @@ def mean(input, labels=None, index=None):
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
 
-    if input.dtype in (cupy.bool_, cupy.complex64, cupy.complex128):
+    if input.dtype in (cupy.complex64, cupy.complex128):
         raise TypeError("cupyx.scipy.ndimage.mean doesnt support %{}".format(
             input.dtype.type))
 
