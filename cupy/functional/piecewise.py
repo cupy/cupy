@@ -33,37 +33,17 @@ def piecewise(x, condlist, funclist):
 
         .. seealso:: :func:`numpy.piecewise`
         """
-    diffshape = 0
     if cupy.isscalar(condlist):
         condlist = [condlist]
-    elif isinstance(condlist[0], tuple) and x.ndim != 0:
-        diffshape = 2
-    elif cupy.isscalar(condlist[0]) and x.ndim != 0:
-        diffshape = 1
     if not isinstance(condlist[0], cupy.ndarray):
         condlist = cupy.asarray(condlist)
-    condlen = len(condlist)
-    if diffshape:
-        if x.ndim == condlist.ndim:
-            if x.shape != condlist.shape:
-                raise IndexError('boolean index did not match indexed '
-                                 'array along the same dimension; shape '
-                                 'is {} but corresponding boolean shape '
-                                 'is {}'.format(x.shape, condlist.shape))
-        if condlen == x.shape[0]:
-            condlen = 1
-        else:
-            raise IndexError('boolean index did not match indexed array along '
-                             'dimension 0; dimension is {} but corresponding '
-                             'boolean dimension is {}'
-                             .format(x.shape[0], condlen))
-        condlist = [condlist]
     if isinstance(funclist, cupy.ndarray):
         funclist = funclist.tolist()
+    condlen = len(condlist)
     funclen = len(funclist)
     if condlen == funclen:
         y = cupy.zeros(shape=x.shape, dtype=x.dtype)
-    elif condlen + 1 == funclen:  # o.w
+    elif condlen + 1 == funclen:
         if callable(funclist[-1]):
             raise NotImplementedError(
                 'Callable functions are not supported currently')
@@ -77,7 +57,5 @@ def piecewise(x, condlist, funclist):
         if callable(func):
             raise NotImplementedError(
                 'Callable functions are not supported currently')
-        if diffshape == 1:
-            condition = condition.reshape((-1, 1))
         _piecewise_krnl(condition, func, y)
     return y
