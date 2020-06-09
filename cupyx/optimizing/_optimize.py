@@ -54,6 +54,10 @@ def optimize(*, key=None, **config_dict):
     ...     cupy.sum(x)
     ...
     array(4950)
+
+    .. note::
+      Optuna (https://optuna.org) installation is required.
+      Currently it works for reduction operations only.
     """
     old_context = _optimize_config.get_current_context()
     context = _optimize_config.get_new_context(key, _optimize, config_dict)
