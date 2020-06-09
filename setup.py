@@ -44,7 +44,7 @@ requirements = {
         'theano',
     ],
     'docs': [
-        'sphinx',
+        'sphinx==3.0.4',
         'sphinx_rtd_theme',
     ],
     'travis': [
