@@ -123,40 +123,23 @@ class TestNdimage(unittest.TestCase):
         index = xp.array([0, 1, 2])
         return getattr(scp.ndimage, self.op)(image, label, index)
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True, no_float16=True)
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_ndimage_only_input(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
         return getattr(scp.ndimage, self.op)(image)
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True, no_float16=True)
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_ndimage_no_index(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
         label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3)
         return getattr(scp.ndimage, self.op)(image, label)
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True, no_float16=True)
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=4)
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_ndimage_scalar_index(self, xp, scp, dtype):
         image = xp.arange(100, dtype=dtype)
-        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3)
-        return getattr(scp.ndimage, self.op)(image, label, 1)
-
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=1)
-    def test_ndimage_only_input_float16(self, xp, scp):
-        image = xp.arange(100, dtype=xp.float16)
-        return getattr(scp.ndimage, self.op)(image)
-
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=1)
-    def test_ndimage_no_index_float16(self, xp, scp):
-        image = xp.arange(50, dtype=xp.float16)
-        label = testing.shaped_random((50,), xp, dtype=xp.int32, scale=3)
-        return getattr(scp.ndimage, self.op)(image, label)
-
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=1)
-    def test_ndimage_scalar_index_float16(self, xp, scp):
-        image = xp.arange(100, dtype=xp.float16)
         label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3)
         return getattr(scp.ndimage, self.op)(image, label, 1)
 

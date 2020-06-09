@@ -321,14 +321,24 @@ def variance(input, labels=None, index=None):
             'for the fast implmentation', util.PerformanceWarning)
         use_kern = True
 
+    def calc_var_with_intermediate_float(input):
+        vals_c = input - input.mean()
+        count = vals_c.size
+        # Does not use `ndarray.mean()` here to return the same results as
+        # SciPy does, especially in case `input`'s dtype is float16.
+        return cupy.square(vals_c).sum() / cupy.asanyarray(count).astype(float)
+
     if labels is None:
-        return input.var().astype(cupy.float64, copy=False)
+        return calc_var_with_intermediate_float(input)
 
     if not isinstance(labels, cupy.ndarray):
         raise TypeError('label must be cupy.ndarray')
 
     if index is None:
-        return (input[labels != 0]).var().astype(cupy.float64, copy=False)
+        return calc_var_with_intermediate_float(input[labels > 0])
+
+    if cupy.isscalar(index):
+        return calc_var_with_intermediate_float(input[labels == index])
 
     input, labels = cupy.broadcast_arrays(input, labels)
 
@@ -450,14 +460,24 @@ def mean(input, labels=None, index=None):
             'for the fast implmentation', util.PerformanceWarning)
         use_kern = True
 
+    def calc_mean_with_intermediate_float(input):
+        sum = input.sum()
+        count = input.size
+        # Does not use `ndarray.mean()` here to return the same results as
+        # SciPy does, especially in case `input`'s dtype is float16.
+        return sum / cupy.asanyarray(count).astype(float)
+
     if labels is None:
-        return input.mean(dtype=cupy.float64)
+        return calc_mean_with_intermediate_float(input)
 
     if not isinstance(labels, cupy.ndarray):
         raise TypeError('label must be cupy.ndarray')
 
     if index is None:
-        return (input[labels != 0]).mean(dtype=cupy.float64)
+        return calc_mean_with_intermediate_float(input[labels > 0])
+
+    if cupy.isscalar(index):
+        return calc_mean_with_intermediate_float(input[labels == index])
 
     input, labels = cupy.broadcast_arrays(input, labels)
 
