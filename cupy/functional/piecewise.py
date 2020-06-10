@@ -3,7 +3,7 @@ import cupy
 from cupy import core
 
 _piecewise_krnl = core.ElementwiseKernel(
-    'U cond, T value',
+    'bool cond, T value',
     'T y',
     'if (cond) y = value',
     'piecewise_kernel'
@@ -15,7 +15,7 @@ def piecewise(x, condlist, funclist):
 
         Args:
             x (cupy.ndarray): input domain
-            condlist (list of cupy.ndarray or bool scalars):
+            condlist (list of cupy.ndarray):
                 Each boolean array/ scalar corresponds to a function
                 in funclist. Length of funclist is equal to that of
                 condlist. If one extra function is given, it is used
@@ -35,8 +35,6 @@ def piecewise(x, condlist, funclist):
         """
     if cupy.isscalar(condlist):
         condlist = [condlist]
-    if not isinstance(condlist[0], cupy.ndarray):
-        condlist = cupy.asarray(condlist)
     if isinstance(funclist, cupy.ndarray):
         funclist = funclist.tolist()
 

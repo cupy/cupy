@@ -44,8 +44,11 @@ class TestPiecewise(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_otherwise_condition2(self, xp, dtype):
-        x = cupy.array([-10, 20, 30, 40], dtype=dtype)
-        condlist = [[True, False, False, True], [True, False, False, True]]
+        x = xp.array([-10, 20, 30, 40], dtype=dtype)
+        condlist = [
+            xp.array([True, False, False, True]),
+            xp.array([True, False, False, True]),
+        ]
         funclist = [-1, 1, 2]
         return xp.piecewise(x, condlist, funclist)
 
@@ -66,13 +69,12 @@ class TestPiecewise(unittest.TestCase):
         return xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
-    def test_piecewise_zero_dim_condlist(self, dtype):
-        funclist = [-1, 0, 2, 3, -5]
-        for xp in (numpy, cupy):
-            x = xp.linspace(1, 20, 12, dtype=dtype)
-            condlist = testing.shaped_random(shape=(), xp=xp, dtype=bool)
-            with pytest.raises(IndexError):
-                xp.piecewise(x, condlist, funclist)
+    @testing.numpy_cupy_array_equal()
+    def test_piecewise_zero_dim_condlist(self, xp, dtype):
+        x = testing.shaped_random(shape=(), xp=xp, dtype=dtype)
+        condlist = [testing.shaped_random(shape=(), xp=xp, dtype=bool)]
+        funclist = [-1, 0]
+        return xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -88,14 +90,6 @@ class TestPiecewise(unittest.TestCase):
         x = xp.linspace(1, 20, 12, dtype=dtype)
         condlist = [x > 15, x <= 5, x == 0, x == 10]
         funclist = xp.array([1, 0, 2, 3, 5], dtype=numpy.int64)
-        return xp.piecewise(x, condlist, funclist)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_piecewise_diff_types_condlist(self, xp, dtype):
-        x = cupy.array([-10, 20, 30, 40], dtype=dtype)
-        condlist = [[1.5, 0, 0, 2.6], [7, False, 10, 0]]
-        funclist = [-1, 1, 2]
         return xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
