@@ -35,19 +35,19 @@ def piecewise(x, condlist, funclist):
         """
     if cupy.isscalar(condlist):
         condlist = [condlist]
-    if isinstance(funclist, cupy.ndarray):
-        funclist = funclist.tolist()
 
     condlen = len(condlist)
     funclen = len(funclist)
     if condlen == funclen:
         out = cupy.zeros(x.shape, x.dtype)
     elif condlen + 1 == funclen:
-        if callable(funclist[-1]):
+        func = funclist[-1]
+        funclist = funclist[:-1]
+        if callable(func):
             raise NotImplementedError(
                 'Callable functions are not supported currently')
-        out = cupy.full(x.shape, x.dtype.type(funclist[-1]), x.dtype)
-        funclist = funclist[:-1]
+        out = cupy.empty(x.shape, x.dtype)
+        out[...] = func
     else:
         raise ValueError('with {} condition(s), either {} or {} functions'
                          ' are expected'.format(condlen, condlen, condlen + 1))
@@ -56,5 +56,7 @@ def piecewise(x, condlist, funclist):
         if callable(func):
             raise NotImplementedError(
                 'Callable functions are not supported currently')
+        if isinstance(func, cupy.ndarray):
+            func = func.astype(x.dtype)
         _piecewise_krnl(condition, func, out)
     return out
