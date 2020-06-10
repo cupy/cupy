@@ -123,10 +123,6 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
 
     """
 
-    if self.dtype.kind == 'c':
-        raise NotImplementedError('Sorting arrays with dtype \'{}\' is '
-                                  'not supported'.format(self.dtype))
-
     cdef int ndim = self._shape.size()
     cdef Py_ssize_t k, max_k, length, s, sz, t
     cdef ndarray data
@@ -283,7 +279,7 @@ def _partition_kernel(dtype):
             CArray<T, 1> a, ptrdiff_t x, ptrdiff_t y, int i) {
         for (ptrdiff_t s = 2; s <= y - x; s *= 2) {
             for (ptrdiff_t w = s / 2; w >= 1; w /= 2) {
-                bitonic_sort_step<T>(a, x, y, i, s, w);
+                bitonic_sort_step< T >(a, x, y, i, s, w);
             }
         }
     }
@@ -303,7 +299,7 @@ def _partition_kernel(dtype):
         // After merge step, the first k elements are already bitonic.
         // Therefore, we do not need to fully sort.
         for (int w = k / 2; w >= 1; w /= 2) {
-            bitonic_sort_step<T>(a, x, k + x, i, k, w);
+            bitonic_sort_step< T >(a, x, k + x, i, k, w);
         }
     }
 
@@ -322,7 +318,7 @@ def _partition_kernel(dtype):
         int id = i % 32;
         int x = 0;
 
-        bitonic_sort<${dtype}>(a, z, k + z, id);
+        bitonic_sort< ${dtype} >(a, z, k + z, id);
         ptrdiff_t j;
         for (j = k + id + z; j < m - (m - z) % 32; j += 32) {
             if (a[j] < a[k - 1 + z]) {
@@ -339,8 +335,8 @@ def _partition_kernel(dtype):
     #else
             if (__any(x >= t)) {
     #endif
-                bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
-                merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
+                bitonic_sort< ${dtype} >(a, k + z, 32 * t + k + z, id);
+                merge< ${dtype} >(a, k, id, z, k + z, min(k, 32 * t));
                 x = 0;
             }
         }
@@ -352,8 +348,8 @@ def _partition_kernel(dtype):
 
         // Finally, we merge the first k elements and the remainders to be
         // stored.
-        bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
-        merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
+        bitonic_sort< ${dtype} >(a, k + z, 32 * t + k + z, id);
+        merge< ${dtype} >(a, k, id, z, k + z, min(k, 32 * t));
     }
 
     __global__ void ${merge_kernel}(
@@ -363,7 +359,7 @@ def _partition_kernel(dtype):
         ptrdiff_t z = i / 32 * 2 * s * n / sz;
         ptrdiff_t m = (i / 32 * 2 + 1) * s * n / sz;
         int id = i % 32;
-        merge<${dtype}>(a, k, id, z, m, k);
+        merge< ${dtype} >(a, k, id, z, m, k);
     }
     }
     ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)
