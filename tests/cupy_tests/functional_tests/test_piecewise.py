@@ -19,7 +19,7 @@ class TestPiecewise(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_scalar_input(self, xp, dtype):
+    def test_piecewise_scalar_input(self, xp, dtype):
         x = dtype(2)
         condlist = [x < 0, x >= 0]
         funclist = [-10, 10]
@@ -27,7 +27,7 @@ class TestPiecewise(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_scalar_condition(self, xp, dtype):
+    def test_piecewise_scalar_condition(self, xp, dtype):
         x = testing.shaped_random(shape=(2, 3, 5), xp=xp, dtype=dtype)
         condlist = True
         funclist = [-10, 10]
@@ -35,7 +35,7 @@ class TestPiecewise(unittest.TestCase):
 
     @testing.for_signed_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_otherwise_condition1(self, xp, dtype):
+    def test_piecewise_otherwise_condition1(self, xp, dtype):
         x = xp.linspace(-2, 20, 12, dtype=dtype)
         condlist = [x > 15, x <= 5, x == 0, x == 10]
         funclist = [-1, 0, 2, 3, -5]
@@ -43,7 +43,7 @@ class TestPiecewise(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_otherwise_condition2(self, xp, dtype):
+    def test_piecewise_otherwise_condition2(self, xp, dtype):
         x = xp.array([-10, 20, 30, 40], dtype=dtype)
         condlist = [
             xp.array([True, False, False, True]),
@@ -78,18 +78,19 @@ class TestPiecewise(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_piecewise_ndarray(self, xp, dtype):
+    def test_piecewise_ndarray_condlist_funclist(self, xp, dtype):
         x = xp.linspace(1, 20, 12, dtype=dtype)
         condlist = xp.array([x > 15, x <= 5, x == 0, x == 10])
         funclist = xp.array([-1, 0, 2, 3, -5], dtype=dtype)
         return xp.piecewise(x, condlist, funclist)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'], no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_piecewise_diff_types_funclist(self, xp, dtype):
-        x = xp.linspace(1, 20, 12, dtype=dtype)
+    def test_piecewise_diff_types_funclist(self, xp, dtype1, dtype2):
+        x = xp.linspace(1, 20, 12, dtype=dtype1)
         condlist = [x > 15, x <= 5, x == 0, x == 10]
-        funclist = xp.array([1, 0, 2, 3, 5], dtype=numpy.int64)
+        funclist = xp.array([1, 0, 2, 3, 5], dtype=dtype2)
         return xp.piecewise(x, condlist, funclist)
 
     @testing.for_all_dtypes()
