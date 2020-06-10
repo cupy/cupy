@@ -2,7 +2,7 @@ import numpy
 
 import cupy
 from cupy.core import _routines_math as _math
-from cupy.core import fusion
+from cupy.core import _fusion_thread_local
 from cupy.util import _normalize_axis_index
 
 
@@ -23,7 +23,7 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.sum`
 
     """
-    if fusion._is_fusing():
+    if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
                 'cupy.sum does not support `keepdims` in fusion yet.')
@@ -31,7 +31,8 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
             func = _math.sum_auto_dtype
         else:
             func = _math._sum_keep_dtype
-        return fusion._call_reduction(func, a, axis=axis, dtype=dtype, out=out)
+        return _fusion_thread_local.call_reduction(
+            func, a, axis=axis, dtype=dtype, out=out)
 
     # TODO(okuta): check type
     return a.sum(axis, dtype, out, keepdims)
@@ -54,7 +55,7 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.prod`
 
     """
-    if fusion._is_fusing():
+    if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
                 'cupy.prod does not support `keepdims` in fusion yet.')
@@ -62,7 +63,8 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
             func = _math._prod_auto_dtype
         else:
             func = _math._prod_keep_dtype
-        return fusion._call_reduction(func, a, axis=axis, dtype=dtype, out=out)
+        return _fusion_thread_local.call_reduction(
+            func, a, axis=axis, dtype=dtype, out=out)
 
     # TODO(okuta): check type
     return a.prod(axis, dtype, out, keepdims)
@@ -86,7 +88,7 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nansum`
 
     """
-    if fusion._is_fusing():
+    if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
                 'cupy.nansum does not support `keepdims` in fusion yet.')
@@ -96,7 +98,8 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False):
             func = _math._nansum_auto_dtype
         else:
             func = _math._nansum_keep_dtype
-        return fusion._call_reduction(func, a, axis=axis, dtype=dtype, out=out)
+        return _fusion_thread_local.call_reduction(
+            func, a, axis=axis, dtype=dtype, out=out)
 
     # TODO(okuta): check type
     return _math._nansum(a, axis, dtype, out, keepdims)
@@ -120,7 +123,7 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanprod`
 
     """
-    if fusion._is_fusing():
+    if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
                 'cupy.nanprod does not support `keepdims` in fusion yet.')
@@ -128,7 +131,8 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
             func = _math._nanprod_auto_dtype
         else:
             func = _math._nanprod_keep_dtype
-        return fusion._call_reduction(func, a, axis=axis, dtype=dtype, out=out)
+        return _fusion_thread_local.call_reduction(
+            func, a, axis=axis, dtype=dtype, out=out)
 
     # TODO(okuta): check type
     return _math._nanprod(a, axis, dtype, out, keepdims)

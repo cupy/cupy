@@ -119,13 +119,14 @@ class TestFusionReductionAndElementwise(unittest.TestCase):
     def test_premap_postmap(self, xp):
         return lambda x, y: xp.sum(xp.sqrt(x) + y, self.axis) * 2 + y
 
-    @fusion_utils.check_fusion()
-    def test_premap_inplace(self, xp):
-        def impl(x, y):
-            x += 2
-            y += x
-            return xp.sum(y, self.axis)
-        return impl
+    # TODO(asi1024): Uncomment after replace fusion implementaiton.
+    # @fusion_utils.check_fusion()
+    # def test_premap_inplace(self, xp):
+    #     def impl(x, y):
+    #         x += 2
+    #         y += x
+    #         return xp.sum(y, self.axis)
+    #     return impl
 
     @fusion_utils.check_fusion(accept_error=ValueError)
     def test_postmap_inplace(self, xp):

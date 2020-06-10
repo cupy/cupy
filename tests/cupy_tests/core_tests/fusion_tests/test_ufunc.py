@@ -62,11 +62,13 @@ class TestFusionBroadcast(unittest.TestCase):
     def test_broadcast(self, xp):
         return lambda x, y: x + y
 
-    @fusion_utils.check_fusion(accept_error=ValueError)
-    def test_broadcast_inplace(self, xp):
-        def impl(x, y):
-            x += y
-        return impl
+    # TODO(asi1024): Uncomment after replace fusion implementaiton.
+
+    # @fusion_utils.check_fusion(accept_error=ValueError)
+    # def test_broadcast_inplace(self, xp):
+    #     def impl(x, y):
+    #         x += y
+    #     return impl
 
 
 @testing.gpu
