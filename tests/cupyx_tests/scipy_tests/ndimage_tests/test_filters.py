@@ -153,7 +153,8 @@ class TestConvolveAndCorrelateSpecialCases(unittest.TestCase):
     }) + testing.product({
         # don't use (1, 2, 3, 4) with 'mirror' due to a bug in scipy:
         # https://github.com/scipy/scipy/issues/11661
-        'shape': [(3, 4), (2, 3, 4), (2, 2, 3, 4)],
+        # Fixed by specifying scipy>=1.5.0
+        'shape': [(3, 4), (2, 3, 4), (1, 2, 3, 4)],
         'ksize': [3, 4],
         'axis': [0, 1, -1],
         'mode': ['nearest', 'mirror', 'wrap'],
@@ -166,7 +167,7 @@ class TestConvolveAndCorrelateSpecialCases(unittest.TestCase):
     })
 ))
 @testing.gpu
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.5.0')
 class TestConvolve1DAndCorrelate1D(unittest.TestCase):
 
     def _filter(self, xp, scp, a, w):

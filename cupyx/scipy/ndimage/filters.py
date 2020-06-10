@@ -68,6 +68,7 @@ def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
 def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
                 origin=0):
     """One-dimensional correlate.
+
     The array is correlated with the given kernel.
 
     Args:
@@ -98,6 +99,7 @@ def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
 def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
                origin=0):
     """One-dimensional convolution.
+
     The array is convolved with the given kernel.
 
     Args:
@@ -147,7 +149,7 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
     return _call_kernel(kernel, input, weights, output)
 
 
-@cupy.util.memoize()
+@cupy.util.memoize(for_each_device=True)
 def _get_correlate_kernel(mode, wshape, int_type, origins, cval):
     return _get_nd_kernel('correlate',
                           'W sum = (W)0;',
@@ -174,6 +176,11 @@ def _get_output(output, input, shape=None):
 
 def _fix_sequence_arg(arg, ndim, name, conv=lambda x: x):
     if hasattr(arg, '__iter__') and not isinstance(arg, str):
+    # if not isinstance(arg, str):
+    #     try:
+    #         arg = iter(arg)
+    #     except TypeError:
+    #         return NotImplemented
         lst = [conv(x) for x in arg]
         if len(lst) != ndim:
             msg = "{} must have length equal to input rank".format(name)
@@ -197,19 +204,9 @@ def _check_mode(mode):
     return mode
 
 
-# def _check_axis(axis, ndim):
-#     axis = int(axis)
-#     if axis < 0:
-#         axis += ndim
-#     if axis < 0 or axis >= ndim:
-#         raise ValueError('invalid axis')
-#     return axis
-
-
 def _convert_1d_args(ndim, weights, origin, axis):
     if weights.ndim != 1 or weights.size < 1:
         raise RuntimeError('incorrect filter size')
-    # axis = _check_axis(axis, ndim)
     axis = cupy.util._normalize_axis_index(axis, ndim)
     wshape = [1]*ndim
     wshape[axis] = weights.size
@@ -445,7 +442,7 @@ def _generate_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
     return in_params, out_params, operation, name
 
 
-@cupy.util.memoize()
+@cupy.util.memoize(for_each_device=True)
 def _get_correlete_kernel(ndim, mode, cval, xshape, wshape, origin):
     # weights is always casted to float64 in order to get an output compatible
     # with SciPy, thought float32 might be sufficient when input dtype is low
@@ -588,7 +585,7 @@ def _generate_min_or_max_kernel(ndim, fp_shape, use_structure, modes, cval,
     return in_params, out_params, operation, name
 
 
-@cupy.util.memoize()
+@cupy.util.memoize(for_each_device=True)
 def _get_min_or_max_kernel(ndim, fp_shape, use_structure, modes, cval,
                            origins, minimum):
     in_params, out_params, operation, name = _generate_min_or_max_kernel(
