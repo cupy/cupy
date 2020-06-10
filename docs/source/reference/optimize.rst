@@ -1,3 +1,5 @@
+.. module:: cupyx.optimizing
+
 Automatic Kernel Parameters Optimizations
 =========================================
 
