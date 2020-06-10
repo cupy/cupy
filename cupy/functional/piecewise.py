@@ -3,9 +3,9 @@ import cupy
 from cupy import core
 
 _piecewise_krnl = core.ElementwiseKernel(
-    'U condlist, T funclist',
+    'U cond, T value',
     'T y',
-    'if(condlist) y = funclist',
+    'if (cond) y = value',
     'piecewise_kernel'
 )
 
@@ -39,23 +39,24 @@ def piecewise(x, condlist, funclist):
         condlist = cupy.asarray(condlist)
     if isinstance(funclist, cupy.ndarray):
         funclist = funclist.tolist()
+
     condlen = len(condlist)
     funclen = len(funclist)
     if condlen == funclen:
-        y = cupy.zeros(shape=x.shape, dtype=x.dtype)
+        out = cupy.zeros(x.shape, x.dtype)
     elif condlen + 1 == funclen:
         if callable(funclist[-1]):
             raise NotImplementedError(
                 'Callable functions are not supported currently')
-        y = cupy.full(shape=x.shape,
-                      fill_value=x.dtype.type(funclist[-1]), dtype=x.dtype)
+        out = cupy.full(x.shape, x.dtype.type(funclist[-1]), x.dtype)
         funclist = funclist[:-1]
     else:
         raise ValueError('with {} condition(s), either {} or {} functions'
                          ' are expected'.format(condlen, condlen, condlen + 1))
+
     for condition, func in zip(condlist, funclist):
         if callable(func):
             raise NotImplementedError(
                 'Callable functions are not supported currently')
-        _piecewise_krnl(condition, func, y)
-    return y
+        _piecewise_krnl(condition, func, out)
+    return out
