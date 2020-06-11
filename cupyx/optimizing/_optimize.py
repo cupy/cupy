@@ -1,7 +1,13 @@
 import contextlib
 import math
 
-import optuna
+
+try:
+    import optuna
+    _optuna_available = True
+except ImportError:
+    _optuna_available = False
+
 
 from cupy.core import _optimize_config
 from cupyx import time
@@ -37,6 +43,11 @@ def _optimize(
 
 @contextlib.contextmanager
 def optimize(*, key=None, **config_dict):
+    if not _optuna_available:
+        raise RuntimeError(
+            'Optuna is required to run optimization. '
+            'See https://optuna.org/ for the installation instructions.')
+
     old_context = _optimize_config.get_current_context()
     context = _optimize_config.get_new_context(key, _optimize, config_dict)
     _optimize_config.set_current_context(context)
