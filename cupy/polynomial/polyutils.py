@@ -14,10 +14,10 @@ def trimseq(seq):
     .. seealso:: :func:`numpy.polynomial.polyutils.trimseq`
 
     """
-    if not len(seq):
+    if seq.size == 0:
         return seq
     ret = cupy.trim_zeros(seq, trim='b')
-    if len(ret):
+    if ret.size > 0:
         return ret
     return seq[:1]
 
@@ -26,8 +26,8 @@ def as_series(alist, trim=True):
     """Returns argument as a list of 1-d arrays.
 
     Args:
-        alist (cupy.ndarray): 1-D or 2-D input array
-        trim (boolean, optional): trim trailing zeros by default
+        alist (cupy.ndarray): 1-D or 2-D input array.
+        trim (bool, optional): trim trailing zeros.
 
     Returns:
         list of cupy.ndarray: list of 1-D arrays.
@@ -49,5 +49,5 @@ def as_series(alist, trim=True):
         dtype = cupy.common_type(*arrays)
     except Exception:
         raise ValueError('Coefficient arrays have no common type')
-    ret = [cupy.array(a, dtype=dtype) for a in arrays]
+    ret = [a.astype(dtype, copy=False) for a in arrays]
     return ret

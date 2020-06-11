@@ -20,5 +20,5 @@ def polycompanion(c):
     deg = len(c) - 1
     matrix = cupy.zeros((deg, deg), dtype=c.dtype)
     matrix.reshape(-1)[deg:: len(c)] = 1
-    matrix[:, -1].__isub__(cupy.divide(c[:-1], c[-1]))
+    matrix[:, -1] -= c[:-1] / c[-1]
     return matrix
