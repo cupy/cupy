@@ -56,6 +56,7 @@ from cupy import binary  # NOQA
 import cupy.core.fusion  # NOQA
 from cupy import creation  # NOQA
 from cupy import fft  # NOQA
+from cupy import functional  # NOQA
 from cupy import indexing  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
@@ -277,6 +278,11 @@ from cupy.creation.matrix import diagflat  # NOQA
 from cupy.creation.matrix import tri  # NOQA
 from cupy.creation.matrix import tril  # NOQA
 from cupy.creation.matrix import triu  # NOQA
+
+# -----------------------------------------------------------------------------
+# Functional routines
+# -----------------------------------------------------------------------------
+from cupy.functional.piecewise import piecewise  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
