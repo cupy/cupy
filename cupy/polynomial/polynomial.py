@@ -14,14 +14,12 @@ def polyvander(x, deg):
     .. seealso:: :func:`numpy.polynomial.polynomial.polyvander`
 
     """
-    deg.__index__()
+    deg = cupy.polynomial.polyutils._deprecate_as_int(deg, 'deg')
     if deg < 0:
-        raise ValueError('deg must be non-negative')
-    if not isinstance(x, cupy.ndarray) or x.ndim != 1:
-        x = cupy.array(x, copy=False, ndmin=1)
+        raise ValueError('degree must be non-negative')
+    if not x.ndim:
+        x = cupy.expand_dims(x, axis=0)
+    x = cupy.expand_dims(x, axis=-1)
     x = x + 0.0
-    dims = (deg + 1,) + x.shape
-    v = cupy.ones(dims, dtype=x.dtype)
-    for i in range(1, deg + 1):
-        cupy.multiply(v[i-1], x, v[i])
-    return cupy.moveaxis(v, 0, -1)
+    v = x ** cupy.arange(deg + 1)
+    return cupy.asarray(v, x.dtype, order='F')
