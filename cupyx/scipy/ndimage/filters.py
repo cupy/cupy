@@ -242,7 +242,8 @@ def _min_or_max_filter(input, size, ftprnt, output, mode, cval, origin, func):
             input = output_orig
         return input
 
-    origins, int_type = _check_nd_args(input, ftprnt, mode, origin, 'footprint')
+    origins, int_type = _check_nd_args(input, ftprnt, mode, origin,
+                                       'footprint')
     if ftprnt.size == 0:
         return cupy.zeros_like(input)
     kernel = _get_min_or_max_kernel(mode, ftprnt.shape, func,
@@ -302,14 +303,16 @@ def _max_or_min_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
                    origin=0, func='min'):
     ftprnt = cupy.ones(size, dtype=bool)
     ftprnt, origins = _convert_1d_args(input.ndim, ftprnt, origin, axis)
-    origins, int_type = _check_nd_args(input, ftprnt, mode, origins, 'footprint')
+    origins, int_type = _check_nd_args(input, ftprnt, mode, origins,
+                                       'footprint')
     kernel = _get_min_or_max_kernel(mode, ftprnt.shape, func, origins,
                                     float(cval), int_type, False)
     return _call_kernel(kernel, input, None, output, bool)
 
 
 @cupy.util.memoize()
-def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type, has_weights=True):
+def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type,
+                           has_weights=True):
     return _generate_nd_kernel(
         func, 'X value = x[i];',
         'value = {func}((X){{value}}, value);'.format(func=func),
