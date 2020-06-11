@@ -103,7 +103,8 @@ class coo_matrix(sparse_data._data_matrix):
             has_canonical_format = False
 
         else:
-            raise TypeError('invalid input format')
+            raise ValueError(
+                'Only (data, (row, col)) format is supported')
 
         if dtype is None:
             dtype = data.dtype
@@ -215,7 +216,7 @@ class coo_matrix(sparse_data._data_matrix):
         if self.data.size == 0:
             self._has_canonical_format = True
             return
-        keys = cupy.stack([self.col, self.row])
+        keys = cupy.stack([self.row, self.col])
         order = cupy.lexsort(keys)
         src_data = self.data[order]
         src_row = self.row[order]
@@ -319,7 +320,11 @@ class coo_matrix(sparse_data._data_matrix):
             cupyx.scipy.sparse.csc_matrix: Converted matrix.
 
         """
-        return self.T.tocsr().T
+        x=self.T.tocsr().T
+        x._has_canonical_format=True
+        return x
+        #return self.T.tocsr().T
+    
 
     def tocsr(self, copy=False):
         """Converts the matrix to Compressed Sparse Row format.
@@ -339,7 +344,11 @@ class coo_matrix(sparse_data._data_matrix):
         # copy is ignored because coosort method breaks an original.
         x = self.copy()
         cusparse.coosort(x)
-        return cusparse.coo2csr(x)
+        #return cusparse.coo2csr(x)
+        x=cusparse.coo2csr(x)
+        x._has_canonical_format=True
+        return x
+
 
     def transpose(self, axes=None, copy=False):
         """Returns a transpose matrix.
