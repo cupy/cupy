@@ -31,6 +31,12 @@ class TestAs_series(unittest.TestCase):
         a = xp.array([3, 5, 7, 0, 0, 0], dtype)
         return xp.polynomial.polyutils.as_series(a, trim=self.trim)
 
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_as_series_list(self, xp, dtype):
+        a = [xp.array([3, 5, 7, -4, 1, 2], dtype)]
+        return xp.polynomial.polyutils.as_series(a, trim=self.trim)
+
     @testing.for_all_dtypes()
     def test_as_series_ndim(self, dtype):
         for xp in (numpy, cupy):
