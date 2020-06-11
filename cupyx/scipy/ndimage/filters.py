@@ -141,11 +141,12 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
 
 @cupy.util.memoize()
 def _get_correlate_kernel(mode, wshape, int_type, origins, cval):
-    return _get_nd_kernel('correlate',
-                          'W sum = (W)0;',
-                          'sum += (W){value} * wval;',
-                          'y = (Y)sum;',
-                          mode, wshape, int_type, origins, cval)
+    return _generate_correlete_kernel(
+        'correlate',
+        'W sum = (W)0;',
+        'sum += (W){value} * wval;',
+        'y = (Y)sum;',
+        mode, wshape, int_type, origins, cval)
 
 
 # ######## Utility Functions ##########
@@ -299,8 +300,9 @@ def _generate_boundary_condition_ops(mode, ix, xsize):
     return ops
 
 
-def _get_nd_kernel(name, pre, found, post, mode, wshape, int_type,
-                   origins, cval, preamble='', options=(), has_weights=True):
+def _generate_correlete_kernel(name, pre, found, post, mode, wshape, int_type,
+                               origins, cval, preamble='', options=(),
+                               has_weights=True):
     ndim = len(wshape)
     in_params = 'raw X x, raw W w'
     out_params = 'Y y'
