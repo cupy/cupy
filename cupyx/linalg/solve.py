@@ -96,7 +96,7 @@ def invh(a):
     # TODO: Remove this assert once cusolver supports nrhs > 1 for potrsBatched
     util._assert_rank2(a)
     if a.ndim > 2:
-        _batched_invh(a)
+        return _batched_invh(a)
 
     # to prevent `a` from being overwritten
     a = a.copy()
