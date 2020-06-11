@@ -41,7 +41,7 @@ class TestAs_series(unittest.TestCase):
     def test_as_series_nocommon_types(self):
         for xp in (numpy, cupy):
             a = testing.shaped_random((5,), xp, dtype=bool)
-            with pytest.raises(Exception):
+            with pytest.raises(ValueError):
                 xp.polynomial.polyutils.as_series(a, trim=self.trim)
 
 
@@ -76,7 +76,7 @@ class TestTrimseq(unittest.TestCase):
     def test_trimseq_zero_dim(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_random((), xp, dtype)
-            with pytest.raises(Exception):
+            with pytest.raises(TypeError):
                 xp.polynomial.polyutils.trimseq(a)
 
     @testing.for_all_dtypes()
