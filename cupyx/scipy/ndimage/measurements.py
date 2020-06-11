@@ -398,8 +398,6 @@ def sum(input, labels=None, index=None):
 
     if labels is None:
         return input.sum()
-    if len(labels) == 0:
-        return cupy.array([], dtype=cupy.int64)
 
     if not isinstance(labels, cupy.ndarray):
         raise TypeError('label must be cupy.ndarray')
@@ -414,6 +412,9 @@ def sum(input, labels=None, index=None):
             raise TypeError('index must be cupy.ndarray or a scalar int')
         else:
             return (input[labels == index]).sum()
+
+    if index.size == 0:
+        return cupy.array([], dtype=cupy.int64)
 
     out = cupy.zeros_like(index, dtype=cupy.float64)
 
