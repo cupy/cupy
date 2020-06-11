@@ -4,4 +4,3 @@
 # "NOQA" to suppress flake8 warning
 from cupy.polynomial import polynomial  # NOQA
 from cupy.polynomial import polyutils  # NOQA
-
