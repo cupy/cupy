@@ -54,3 +54,22 @@ class TestErrorInvh(unittest.TestCase):
         a = testing.shaped_random((n, n), cupy, dtype, scale=1)
         a = a + a.T - cupy.eye(n, dtype=dtype)
         return a
+
+
+# TODO: cusolver does not support nrhs > 1 for potrsBatched
+@testing.parameterize(*testing.product({
+    'shape': [(2, 3, 3)],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+}))
+@testing.gpu
+class TestXFailBatchedInvh(unittest.TestCase):
+
+    def test_invh(self):
+        a = self._create_symmetric_matrix(self.shape, self.dtype)
+        with self.assertRaises(cupy.cuda.cusolver.CUSOLVERError):
+            cupyx.linalg.solve._batched_invh(a)
+
+    def _create_symmetric_matrix(self, shape, dtype):
+        a = testing.shaped_random(shape, cupy, dtype, scale=1)
+        a = a @ a.transpose(0, 2, 1)
+        return a
