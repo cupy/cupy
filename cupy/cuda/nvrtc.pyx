@@ -32,6 +32,8 @@ cdef extern from 'cupy_nvrtc.h' nogil:
     int nvrtcGetPTX(Program prog, char *ptx)
     int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
     int nvrtcGetProgramLog(Program prog, char* log)
+    int nvrtcAddNameExpression(Program, const char*)
+    int nvrtcGetLoweredName(Program, const char*, const char**)
 
 
 ###############################################################################
@@ -146,3 +148,22 @@ cpdef unicode getProgramLog(intptr_t prog):
 
     # Strip the trailing NULL.
     return (&log[0])[:logSizeRet-1].decode('UTF-8')
+
+
+cpdef addAddNameExpression(intptr_t prog, str name):
+    cdef bytes b_name = name.encode()
+    cdef const char* c_name = b_name
+    with nogil:
+        status = nvrtcAddNameExpression(<Program>prog, c_name)
+    check_status(status)
+
+
+cpdef str getLoweredName(intptr_t prog, str name):
+    cdef bytes b_name = name.encode()
+    cdef const char* c_name = b_name
+    cdef const char* mangled_name
+    with nogil:
+        status = nvrtcGetLoweredName(<Program>prog, c_name, &mangled_name)
+    check_status(status)
+    b_name = mangled_name
+    return b_name.decode('UTF-8')
