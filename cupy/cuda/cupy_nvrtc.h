@@ -57,6 +57,14 @@ nvrtcResult nvrtcGetProgramLog(...) {
     return NVRTC_SUCCESS;
 }
 
+nvrtcResult nvrtcAddNameExpression(...) {
+    return NVRTC_SUCCESS;
+}
+
+nvrtcResult nvrtcGetLoweredName(...) {
+    return NVRTC_SUCCESS;
+}
+
 }
 
 #endif

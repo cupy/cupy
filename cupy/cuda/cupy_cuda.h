@@ -269,6 +269,14 @@ cudaError_t cudaDeviceEnablePeerAccess(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaDeviceGetLimit(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDeviceSetLimit(...) {
+    return cudaSuccess;
+}
+
 
 // Memory management
 cudaError_t cudaMalloc(...) {
@@ -477,6 +485,15 @@ cudaPitchedPtr make_cudaPitchedPtr(...) {
 cudaPos make_cudaPos(...) {
     struct cudaPos pos = {0};
     return pos;
+}
+
+// Surface
+cudaError_t cudaCreateSurfaceObject(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDestroySurfaceObject(...) {
+    return cudaSuccess;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

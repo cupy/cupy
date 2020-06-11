@@ -61,8 +61,8 @@ Streams and events
    cupy.cuda.get_elapsed_time
 
 
-Texture memory
---------------
+Texture and surface memory
+--------------------------
 
 .. autosummary::
    :toctree: generated/
@@ -73,6 +73,7 @@ Texture memory
    cupy.cuda.texture.ResourceDescriptor
    cupy.cuda.texture.TextureDescriptor
    cupy.cuda.texture.TextureObject
+   cupy.cuda.texture.SurfaceObject
    cupy.cuda.texture.TextureReference
 
 
@@ -133,6 +134,8 @@ to use these functions.
    cupy.cuda.runtime.deviceSynchronize
    cupy.cuda.runtime.deviceCanAccessPeer
    cupy.cuda.runtime.deviceEnablePeerAccess
+   cupy.cuda.runtime.deviceGetLimit
+   cupy.cuda.runtime.deviceSetLimit
    cupy.cuda.runtime.malloc
    cupy.cuda.runtime.mallocManaged
    cupy.cuda.runtime.malloc3DArray

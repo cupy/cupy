@@ -11,9 +11,10 @@ from cupy.cuda import compiler
 
 _test_source1 = r'''
 extern "C" __global__
-void test_sum(const float* x1, const float* x2, float* y) {
+void test_sum(const float* x1, const float* x2, float* y, unsigned int N) {
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
-    y[tid] = x1[tid] + x2[tid];
+    if (tid < N)
+        y[tid] = x1[tid] + x2[tid];
 }
 '''
 
@@ -106,6 +107,16 @@ __global__ void test_kernel(float *arr, int N, int inner_blk)
 }
 '''
 
+# to generate cubin/ptx
+_test_source5 = r'''
+extern "C" __global__
+void test_div(const float* x1, const float* x2, float* y, unsigned int N) {
+    int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N)
+        y[tid] = x1[tid] / (x2[tid] + 1.0);
+}
+'''
+
 _test_cuComplex = r'''
 #include <cuComplex.h>
 #define N 100
@@ -182,6 +193,14 @@ __global__ void test_downcast(cuDoubleComplex* arr, cuComplex* out) {
     }
 }
 
+__global__ void test_add_scalar(cuDoubleComplex* arr, cuDoubleComplex scalar,
+                                cuDoubleComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCadd(arr[tid], scalar);
+    }
+}
+
 /* ------------------- single complex ------------------- */
 
 __global__ void test_addf(cuComplex* arr1, cuComplex* arr2,
@@ -253,6 +272,14 @@ __global__ void test_upcast(cuComplex* arr, cuDoubleComplex* out) {
     }
 }
 
+__global__ void test_addf_scalar(cuComplex* arr, cuComplex scalar,
+                                 cuComplex* out) {
+    unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (tid < N) {
+        out[tid] = cuCadd(arr[tid], scalar);
+    }
+}
+
 }
 '''
 
@@ -267,6 +294,25 @@ __global__ void multiply_by_const(float* x, int N) {
         x[id] *= some_array[id];
     }
 }
+}
+'''
+
+test_cxx_template = r'''
+#include <cupy/complex.cuh>
+
+template<typename T>
+__global__ void my_sqrt(T* input, int N) {
+  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+  if (x < N) {
+    input[x] *= input[x];
+  }
+}
+
+__global__ void my_func(double* input, int N) {
+  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+  if (x < N) {
+    input[x] *= input[x];
+  }
 }
 '''
 
@@ -285,6 +331,9 @@ _test_cache_dir = None
 class TestRaw(unittest.TestCase):
 
     def setUp(self):
+        self.dev = cupy.cuda.runtime.getDevice()
+        assert self.dev != 1
+
         global _test_cache_dir
         _test_cache_dir = tempfile.mkdtemp()
         os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
@@ -369,6 +418,52 @@ class TestRaw(unittest.TestCase):
                 options=('-DPRECISION=3',),
                 backend=self.backend)
         assert 'precision not supported' in str(ex.value)
+
+    def _generate_file(self, ext: str):
+        # generate cubin/ptx by calling nvcc
+        global _test_cache_dir
+
+        nvcc = cupy.cuda.get_nvcc_path()
+        # split() is needed because nvcc could come from the env var NVCC
+        cmd = nvcc.split()
+        arch = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(
+            cc=compiler._get_arch())
+        source = '{}/test_load_cubin.cu'.format(_test_cache_dir)
+        file_path = _test_cache_dir + 'test_load_cubin'
+        with open(source, 'w') as f:
+            f.write(_test_source5)
+        if ext == 'cubin':
+            file_path += '.cubin'
+            flag = '-cubin'
+        elif ext == 'ptx':
+            file_path += '.ptx'
+            flag = '-ptx'
+        else:
+            raise ValueError
+        cmd += [arch, flag, source, '-o', file_path]
+        compiler._run_nvcc(cmd, _test_cache_dir)
+
+        return file_path
+
+    def test_load_cubin(self):
+        # generate cubin in the temp dir
+        file_path = self._generate_file('cubin')
+
+        # load cubin and test the kernel
+        mod = cupy.RawModule(path=file_path, backend=self.backend)
+        ker = mod.get_function('test_div')
+        x1, x2, y = self._helper(ker, cupy.float32)
+        assert cupy.allclose(y, x1 / (x2 + 1.0))
+
+    def test_load_ptx(self):
+        # generate ptx in the temp dir
+        file_path = self._generate_file('ptx')
+
+        # load ptx and test the kernel
+        mod = cupy.RawModule(path=file_path, backend=self.backend)
+        ker = mod.get_function('test_div')
+        x1, x2, y = self._helper(ker, cupy.float32)
+        assert cupy.allclose(y, x1 / (x2 + 1.0))
 
     def test_module_load_failure(self):
         # in principle this test is better done in test_driver.py, but
@@ -478,6 +573,12 @@ class TestRaw(unittest.TestCase):
         ker((grid,), (block,), (a, out_up))
         assert (out_up == a.astype(cupy.complex128)).all()
 
+        # NumPy scalars.
+        b = cupy.complex64(2 + 3j)
+        ker = mod.get_function('test_addf_scalar')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a + b).all()
+
     def test_cuDoubleComplex(self):
         N = 100
         block = 32
@@ -533,6 +634,18 @@ class TestRaw(unittest.TestCase):
         ker((grid,), (block,), (a, out_down))
         assert (out_down == a.astype(cupy.complex64)).all()
 
+        # NumPy scalars.
+        b = cupy.complex128(2 + 3j)
+        ker = mod.get_function('test_add_scalar')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a + b).all()
+
+        # Python scalars.
+        b = 2 + 3j
+        ker = mod.get_function('test_add_scalar')
+        ker((grid,), (block,), (a, b, out))
+        assert (out == a + b).all()
+
     def test_const_memory(self):
         mod = cupy.RawModule(code=test_const_mem, backend=self.backend)
         ker = mod.get_function('multiply_by_const')
@@ -543,6 +656,176 @@ class TestRaw(unittest.TestCase):
         output_arr = cupy.ones(100, dtype=cupy.float32)
         ker((1,), (100,), (output_arr, cupy.int32(100)))
         assert (data == output_arr).all()
+
+    def test_template_specialization(self):
+        if self.backend == 'nvcc':
+            self.skipTest('nvcc does not support template specialization')
+
+        # compile code
+        name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
+                            'my_sqrt<complex<double>>', 'my_func']
+        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
+                             name_expressions=name_expressions)
+
+        dtypes = (cupy.int32, cupy.float32, cupy.complex128, cupy.float64)
+        for ker_T, dtype in zip(name_expressions, dtypes):
+            # get specialized kernels
+            ker = mod.get_function(ker_T)
+
+            # prepare inputs & expected outputs
+            in_arr = cupy.testing.shaped_random((10,), dtype=dtype)
+            out_arr = in_arr**2
+
+            # run
+            ker((1,), (10,), (in_arr, 10))
+
+            # check results
+            assert cupy.allclose(in_arr, out_arr)
+
+    def test_template_failure(self):
+        name_expressions = ['my_sqrt<int>']
+
+        # 1. nvcc is disabled for this feature
+        if self.backend == 'nvcc':
+            with pytest.raises(ValueError) as e:
+                cupy.RawModule(code=test_cxx_template, backend=self.backend,
+                               options=('--std=c++11',),
+                               name_expressions=name_expressions)
+            assert 'nvrtc' in str(e.value)
+            return  # the rest of tests do not apply to nvcc
+
+        # 2. compile code without specializations
+        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',))
+        # ...try to get a specialized kernel
+        with pytest.raises(cupy.cuda.driver.CUDADriverError,
+                           match='named symbol not found'):
+            mod.get_function('my_sqrt<int>')
+
+        # 3. compile code without specifying C++ standard
+        with pytest.raises(ValueError):
+            cupy.RawModule(code=test_cxx_template,
+                           name_expressions=name_expressions)
+
+        # 4. try to fetch something we didn't specialize for
+        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
+                             name_expressions=name_expressions)
+        with pytest.raises(cupy.cuda.driver.CUDADriverError,
+                           match='named symbol not found'):
+            mod.get_function('my_sqrt<double>')
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawKernel(self):
+        # run test_basic() on another device
+
+        # For RawKernel, we need to launch it once to force compiling
+        x1, x2, y = self._helper(self.kern, cupy.float32)
+
+        with cupy.cuda.Device(1):
+            x1, x2, y = self._helper(self.kern, cupy.float32)
+            assert cupy.allclose(y, x1 + x2)
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawModule1(self):
+        # run test_module() on another device
+        # in this test, re-compiling happens at get_function()
+        with cupy.cuda.Device(1):
+            module = self.mod2
+            ker_sum = module.get_function('test_sum')
+            x1, x2, y = self._helper(ker_sum, cupy.float32)
+            assert cupy.allclose(y, x1 + x2)
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawModule2(self):
+        # run test_module() on another device
+        # in this test, re-compiling happens at kernel launch
+        module = self.mod2
+        ker_sum = module.get_function('test_sum')
+
+        with cupy.cuda.Device(1):
+            x1, x2, y = self._helper(ker_sum, cupy.float32)
+            assert cupy.allclose(y, x1 + x2)
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawModule3(self):
+        # run test_load_cubin() on another device
+        # generate cubin in the temp dir and load it on device 0
+        file_path = self._generate_file('cubin')
+        mod = cupy.RawModule(path=file_path, backend=self.backend)
+
+        # in this test, reloading happens at get_function()
+        with cupy.cuda.Device(1):
+            ker = mod.get_function('test_div')
+            x1, x2, y = self._helper(ker, cupy.float32)
+            assert cupy.allclose(y, x1 / (x2 + 1.0))
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawModule4(self):
+        # run test_load_cubin() on another device
+        # generate cubin in the temp dir and load it on device 0
+        file_path = self._generate_file('cubin')
+        mod = cupy.RawModule(path=file_path, backend=self.backend)
+        ker = mod.get_function('test_div')
+
+        # in this test, reloading happens at kernel launch
+        with cupy.cuda.Device(1):
+            x1, x2, y = self._helper(ker, cupy.float32)
+            assert cupy.allclose(y, x1 / (x2 + 1.0))
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawModule5(self):
+        # run test_template_specialization() on another device
+        # in this test, re-compiling happens at get_function()
+        if self.backend == 'nvcc':
+            self.skipTest('nvcc does not support template specialization')
+
+        # compile code
+        name_expressions = ['my_sqrt<unsigned int>']
+        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
+                             name_expressions=name_expressions)
+
+        # switch device
+        with cupy.cuda.Device(1):
+            # get specialized kernels
+            name = name_expressions[0]
+            ker = mod.get_function(name)
+
+            # prepare inputs & expected outputs
+            in_arr = cupy.testing.shaped_random((10,), dtype=cupy.uint32)
+            out_arr = in_arr**2
+
+            # run
+            ker((1,), (10,), (in_arr, 10))
+
+            # check results
+            assert cupy.allclose(in_arr, out_arr)
+
+    @testing.multi_gpu(2)
+    def test_context_switch_RawModule6(self):
+        # run test_template_specialization() on another device
+        # in this test, re-compiling happens at kernel launch
+        if self.backend == 'nvcc':
+            self.skipTest('nvcc does not support template specialization')
+
+        # compile code
+        name_expressions = ['my_sqrt<unsigned int>']
+        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
+                             name_expressions=name_expressions)
+
+        # get specialized kernels
+        name = name_expressions[0]
+        ker = mod.get_function(name)
+
+        # switch device
+        with cupy.cuda.Device(1):
+            # prepare inputs & expected outputs
+            in_arr = cupy.testing.shaped_random((10,), dtype=cupy.uint32)
+            out_arr = in_arr**2
+
+            # run
+            ker((1,), (10,), (in_arr, 10))
+
+            # check results
+            assert cupy.allclose(in_arr, out_arr)
 
 
 _test_grid_sync = r'''

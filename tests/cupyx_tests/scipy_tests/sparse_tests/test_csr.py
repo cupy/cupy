@@ -986,6 +986,27 @@ class TestCsrMatrixSum(unittest.TestCase):
             out = xp.asmatrix(out)
         return m.sum(axis=self.axis, dtype=self.ret_dtype, out=out)
 
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=self.axis, dtype=self.ret_dtype)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_with_out(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        if self.axis is None:
+            shape = ()
+        else:
+            shape = list(m.shape)
+            shape[self.axis] = 1
+            shape = tuple(shape)
+        out = xp.empty(shape, dtype=self.ret_dtype)
+        if xp is numpy:
+            # TODO(unno): numpy.matrix is used for scipy.sparse though
+            # cupy.ndarray is used for cupyx.scipy.sparse.
+            out = xp.asmatrix(out)
+        return m.mean(axis=self.axis, dtype=self.ret_dtype, out=out)
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],

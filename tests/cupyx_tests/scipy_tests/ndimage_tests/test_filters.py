@@ -63,6 +63,9 @@ class TestConvolveAndCorrelate(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_convolve_and_correlate(self, xp, scp):
+        # A bug in Scipy <1.5.0 means this test needs to be in its own
+        if 1 in self.shape and self.mode == 'mirror':
+            return xp.array(True)
         if self.adtype == self.wdtype or self.adtype == self.output:
             return xp.array(True)
         a = testing.shaped_random(self.shape, xp, self.adtype)
@@ -72,6 +75,23 @@ class TestConvolveAndCorrelate(unittest.TestCase):
             wdtype = self.wdtype
         w = testing.shaped_random((self.ksize,) * a.ndim, xp, wdtype)
         return self._filter(xp, scp, a, w)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(1, 2, 3, 4)],
+    'ksize': [3, 4],
+    'dtype': [numpy.int32, numpy.float64],
+    'filter': ['convolve', 'correlate']
+}))
+@testing.gpu
+@testing.with_requires('scipy>=1.5.0')
+class TestConvolveAndCorrelateMirrorDim1(unittest.TestCase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_convolve_and_correlate(self, xp, scp):
+        a = testing.shaped_random(self.shape, xp, self.dtype)
+        w = testing.shaped_random((self.ksize,) * a.ndim, xp, self.dtype)
+        filter = getattr(scp.ndimage, self.filter)
+        return filter(a, w, output=None, mode='mirror', cval=0.0, origin=0)
 
 
 @testing.parameterize(*testing.product({
@@ -234,3 +254,46 @@ class TestConvolve1DAndCorrelate1DSpecialCases(unittest.TestCase):
                         self._filter(cupyx.scipy, a, w, origin=origin)
                 else:
                     self._filter(cupyx.scipy, a, w, origin=origin)
+
+
+# ######### Testing minimum_filter and maximum_filter ##########
+
+
+@testing.parameterize(*testing.product({
+    'size': [3, 4],
+    'footprint': [None, 'random'],
+    'mode': ['reflect', 'constant', 'nearest', 'mirror', 'wrap'],
+    'origin': [0, None],
+    'x_dtype': [numpy.int32, numpy.float32],
+    'output': [None, numpy.float64],
+    'filter': ['minimum_filter', 'maximum_filter']
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestMinimumMaximumFilter(unittest.TestCase):
+
+    shape = (4, 5)
+    cval = 0.0
+
+    def _filter(self, xp, scp, x):
+        filter = getattr(scp.ndimage, self.filter)
+        if self.origin is None:
+            origin = (-1, 1, -1, 1)[:x.ndim]
+        else:
+            origin = self.origin
+        if self.footprint is None:
+            footprint = None
+        else:
+            shape = (self.size, ) * x.ndim
+            r = testing.shaped_random(shape, xp, scale=1)
+            footprint = xp.where(r < .5, 1, 0)
+            if not footprint.any():
+                footprint = xp.ones(shape)
+        return filter(x, size=self.size, footprint=footprint,
+                      output=self.output, mode=self.mode, cval=self.cval,
+                      origin=origin)
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_minimum_and_maximum_filter(self, xp, scp):
+        x = testing.shaped_random(self.shape, xp, self.x_dtype)
+        return self._filter(xp, scp, x)
