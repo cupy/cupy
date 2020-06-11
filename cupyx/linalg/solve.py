@@ -60,7 +60,8 @@ def _batched_invh(a):
         potrfBatched, dev_info)
 
     identity_matrix = cupy.eye(n, dtype=dtype)
-    b = cupy.tile(identity_matrix, (*a.shape[:-2], 1, 1))
+    b = cupy.empty(a.shape, dtype)
+    b[...] = identity_matrix
     nrhs = b.shape[-1]
     ldb = b.strides[-2] // a.dtype.itemsize
     bp = cupy.core.core._mat_ptrs(b)
