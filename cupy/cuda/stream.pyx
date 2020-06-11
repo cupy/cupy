@@ -184,12 +184,16 @@ class Stream(object):
         cdef intptr_t current_ptr
         if is_shutting_down():
             return
+        tls = _StreamThreadLocal.get()
         if self.ptr:
-            tls = _StreamThreadLocal.get()
             current_ptr = <intptr_t>tls.get_current_stream_ptr()
             if <intptr_t>self.ptr == current_ptr:
                 tls.set_current_stream(self.null)
             runtime.streamDestroy(self.ptr)
+        else:
+            current_stream = tls.get_current_stream()
+            if current_stream == self:
+                tls.set_current_stream(self.null)
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.
 
