@@ -314,13 +314,16 @@ def _get_output(output, input, shape=None):
 
 
 def _fix_sequence_arg(arg, ndim, name, conv=lambda x: x):
-    if hasattr(arg, '__iter__') and not isinstance(arg, str):
-        lst = [conv(x) for x in arg]
-        if len(lst) != ndim:
-            msg = "{} must have length equal to input rank".format(name)
-            raise RuntimeError(msg)
-    else:
-        lst = [conv(arg)] * ndim
+    if isinstance(arg, str):
+        return [conv(arg)] * ndim
+    try:
+        arg = iter(arg)
+    except TypeError:
+        return [conv(arg)] * ndim
+    lst = [conv(x) for x in arg]
+    if len(lst) != ndim:
+        msg = "{} must have length equal to input rank".format(name)
+        raise RuntimeError(msg)
     return lst
 
 
@@ -478,7 +481,7 @@ def _generate_correlate_kernel(name, pre, found, post, mode, wshape, int_type,
         else:
             boundary = _generate_boundary_condition_ops(
                 mode, 'ix_{}'.format(j), 'xsize_{}'.format(j))
-        loops.append('''
+            loops.append('''
     for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)
     {{
         {type} ix_{j} = ind_{j} + iw_{j};
