@@ -3,8 +3,6 @@ import warnings
 import cupy
 
 
-# ######## Convolutions and Correlations ##########
-
 def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
     """Multi-dimensional correlate.
 
@@ -68,7 +66,9 @@ def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
 def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
                 origin=0):
     """One-dimensional correlate.
+
     The array is correlated with the given kernel.
+
     Args:
         input (cupy.ndarray): The input array.
         weights (cupy.ndarray): One-dimensional array of weights
@@ -95,7 +95,9 @@ def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
 def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
                origin=0):
     """One-dimensional convolution.
+
     The array is convolved with the given kernel.
+
     Args:
         input (cupy.ndarray): The input array.
         weights (cupy.ndarray): One-dimensional array of weights
@@ -141,7 +143,7 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
     return _call_kernel(kernel, input, weights, output)
 
 
-@cupy.util.memoize()
+@cupy.util.memoize(for_each_device=True)
 def _get_correlate_kernel(mode, wshape, int_type, origins, cval):
     return _generate_nd_kernel(
         'correlate',
@@ -151,11 +153,10 @@ def _get_correlate_kernel(mode, wshape, int_type, origins, cval):
         mode, wshape, int_type, origins, cval)
 
 
-# ######## Rank-Base Filters ##########
-
 def minimum_filter(input, size=None, footprint=None, output=None,
                    mode="reflect", cval=0.0, origin=0):
     """Multi-dimensional minimum filter.
+
     Args:
         input (cupy.ndarray): The input array.
         size (int or sequence of int): One of ``size`` or ``footprint`` must be
@@ -186,6 +187,7 @@ def minimum_filter(input, size=None, footprint=None, output=None,
 def maximum_filter(input, size=None, footprint=None, output=None,
                    mode="reflect", cval=0.0, origin=0):
     """Multi-dimensional maximum filter.
+
     Args:
         input (cupy.ndarray): The input array.
         size (int or sequence of int): One of ``size`` or ``footprint`` must be
@@ -218,7 +220,7 @@ def _min_or_max_filter(input, size, ftprnt, output, mode, cval, origin, func):
         _check_size_or_ftprnt(input.ndim, size, ftprnt, 3, True)
 
     if sep:
-        # seperable filter, run as a series of 1D filters
+        # Seperable filter, run as a series of 1D filters
         fltr = minimum_filter1d if func == 'min' else maximum_filter1d
         output_orig = output
         output = _get_output(output, input)
@@ -254,6 +256,7 @@ def _min_or_max_filter(input, size, ftprnt, output, mode, cval, origin, func):
 def minimum_filter1d(input, size, axis=-1, output=None, mode="reflect",
                      cval=0.0, origin=0):
     """Compute the minimum filter along a single axis.
+
     Args:
         input (cupy.ndarray): The input array.
         size (int): Length of the minimum filter.
@@ -278,6 +281,7 @@ def minimum_filter1d(input, size, axis=-1, output=None, mode="reflect",
 def maximum_filter1d(input, size, axis=-1, output=None, mode="reflect",
                      cval=0.0, origin=0):
     """Compute the maximum filter along a single axis.
+
     Args:
         input (cupy.ndarray): The input array.
         size (int): Length of the maximum filter.
@@ -310,7 +314,7 @@ def _max_or_min_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
     return _call_kernel(kernel, input, None, output, bool)
 
 
-@cupy.util.memoize()
+@cupy.util.memoize(for_each_device=True)
 def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type,
                            has_weights=True):
     return _generate_nd_kernel(
@@ -319,8 +323,6 @@ def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type,
         'y = (Y)value;', mode, wshape, int_type, origins, cval,
         has_weights=has_weights)
 
-
-# ######## Utility Functions ##########
 
 def _get_output(output, input, shape=None):
     if shape is None:
@@ -364,15 +366,6 @@ def _check_mode(mode):
     return mode
 
 
-def _check_axis(axis, ndim):
-    axis = int(axis)
-    if axis < 0:
-        axis += ndim
-    if axis < 0 or axis >= ndim:
-        raise ValueError('invalid axis')
-    return axis
-
-
 def _check_size_or_ftprnt(ndim, size, ftprnt, stacklevel, check_sep=False):
     if (size is not None) and (ftprnt is not None):
         warnings.warn("ignoring size because footprint is set",
@@ -398,7 +391,7 @@ def _check_size_or_ftprnt(ndim, size, ftprnt, stacklevel, check_sep=False):
 def _convert_1d_args(ndim, weights, origin, axis):
     if weights.ndim != 1 or weights.size < 1:
         raise RuntimeError('incorrect filter size')
-    axis = _check_axis(axis, ndim)
+    axis = cupy.util._normalize_axis_index(axis, ndim)
     wshape = [1]*ndim
     wshape[axis] = weights.size
     weights = weights.reshape(wshape)
@@ -457,8 +450,6 @@ def _call_kernel(kernel, input, weights, output,
         output = temp
     return output
 
-
-# ######## Generating Elementwise Kernels ##########
 
 def _generate_boundary_condition_ops(mode, ix, xsize):
     if mode == 'reflect':
