@@ -127,7 +127,7 @@ def _potrf_batched(a):
     n = x.shape[-1]
     ldx = x.strides[-2] // x.dtype.itemsize
     handle = device.get_cusolver_handle()
-    batch_size = int(numpy.prod(x.shape[:-2]))
+    batch_size = cupy.core.internal.prod(x.shape[:-2])
     dev_info = cupy.empty(batch_size, dtype=numpy.int32)
 
     potrfBatched(
