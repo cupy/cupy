@@ -3,6 +3,7 @@ import os
 from libcpp cimport vector
 
 from cupy.cuda cimport function
+from cupy.core cimport internal
 
 
 cdef class CArray(function.CPointer):
@@ -25,26 +26,31 @@ cdef class CArray(function.CPointer):
 
 cdef class CIndexer(function.CPointer):
 
-    def __init__(self, Py_ssize_t size, tuple shape):
+    cdef void init(self, Py_ssize_t size, const shape_t &shape):
         self.val.size = size
         cdef Py_ssize_t i
-        for i in range(len(shape)):
+        for i in range(shape.size()):
             self.val.shape_and_index[i] = shape[i]
         self.ptr = <void*>&self.val
 
 
 cdef class Indexer:
 
-    def __init__(self, tuple shape):
-        cdef Py_ssize_t size = 1
-        for s in shape:
-            size *= s
+    cdef void init(self, const shape_t& shape):
         self.shape = shape
-        self.size = size
+        self.size = internal.prod(shape)
 
     @property
     def ndim(self):
-        return len(self.shape)
+        return self.shape.size()
 
     cdef function.CPointer get_pointer(self):
-        return CIndexer(self.size, self.shape)
+        cdef CIndexer indexer = CIndexer.__new__(CIndexer)
+        indexer.init(self.size, self.shape)
+        return indexer
+
+
+cdef inline Indexer _indexer_init(const shape_t& shape):
+    cdef Indexer indexer = Indexer.__new__(Indexer)
+    indexer.init(shape)
+    return indexer

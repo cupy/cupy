@@ -10,6 +10,8 @@ cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args)
 
 cpdef Py_ssize_t prod_sequence(object args)
 
+cpdef bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x)
+
 cpdef tuple get_size(object size)
 
 cpdef bint vector_equal(

@@ -8,7 +8,7 @@ import numpy
 from cupy import testing
 from cupyx import fallback_mode
 from cupyx import _ufunc_config
-from tests.cupyx_tests.fallback_mode_tests import test_fallback as test_utils
+from cupyx_tests.fallback_mode_tests import test_fallback as test_utils
 
 
 @testing.gpu

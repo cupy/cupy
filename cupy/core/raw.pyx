@@ -48,8 +48,12 @@ cdef class RawKernel:
         self.translate_cucomplex = translate_cucomplex
         self.enable_cooperative_groups = enable_cooperative_groups
 
-        # only used when RawKernels are produced by a cubin/ptx RawModule
-        self.file_path = None
+        # only used when RawKernels are produced from RawModule
+        self.file_path = None  # for cubin/ptx
+        self.name_expressions = None  # for C++ template
+
+        # per-device, per-instance cache, to be initialized on first call
+        self._kernel_cache = []
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -77,9 +81,22 @@ cdef class RawKernel:
         # we would just look up from the cache, and do recompiling only when
         # switching to a different device
         cdef Function ker
-        ker = _get_raw_kernel(
-            self.code, self.file_path, self.name, self.options, self.backend,
-            self.translate_cucomplex, self.enable_cooperative_groups)
+        cdef Module mod
+
+        # We delay establishing the CUDA context until it's really needed
+        cdef int dev = runtime.getDevice()
+        if not self._kernel_cache:
+            self._kernel_cache = [None] * runtime.getDeviceCount()
+
+        ker = self._kernel_cache[dev]
+        if ker is None:
+            assert (self.code is None) != (self.file_path is None)
+            mod = _get_raw_module(
+                self.code, self.file_path, self.options, self.backend,
+                self.translate_cucomplex, self.enable_cooperative_groups,
+                self.name_expressions)
+            ker = mod.get_function(self.name)
+            self._kernel_cache[dev] = ker
         return ker
 
     @property
@@ -201,20 +218,6 @@ cdef class RawKernel:
         driver.funcSetAttribute(self.kernel.ptr, attr, fraction)
 
 
-@cupy.util.memoize(for_each_device=True)
-def _get_raw_kernel(str code, str path, str name, tuple options=(),
-                    str backend='nvrtc',
-                    bint translate_cucomplex=False,
-                    bint enable_cooperative_groups=False):
-    cdef Module mod
-    cdef Function ker
-    assert (code is None) != (path is None)
-    mod = _get_raw_module(code, path, options, backend,
-                          translate_cucomplex, enable_cooperative_groups)
-    ker = mod.get_function(name)
-    return ker
-
-
 cdef class RawModule:
     """User-defined custom module.
 
@@ -249,17 +252,40 @@ cdef class RawModule:
             ``cuLaunchCooperativeKernel`` so that cooperative groups can be
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
+        name_expressions (sequence of str): A sequence (e.g. list) of strings
+            referring to the names of C++ global/template kernels. For example,
+            ``name_expressions=['func1<int>', 'func1<double>', 'func2']`` for
+            the template kernel ``func1<T>`` and non-template kernel ``func2``.
+            Strings in this tuple must then be passed, one at a time, to
+            :meth:`get_function` to retrieve the corresponding kernel.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
     """
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
-                 bint enable_cooperative_groups=False):
+                 bint enable_cooperative_groups=False,
+                 name_expressions=None):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
                 'given.')
+        if name_expressions is not None:
+            if code is None:
+                raise ValueError('need CUDA C++ code for the requested '
+                                 'kernels')
+            if backend != 'nvrtc':
+                raise ValueError('only nvrtc supports retrieving the mangled '
+                                 'names for the given name expressions')
+            for option in options:
+                if '-std=c++' in option:  # both -std and --std are valid
+                    break
+            else:
+                raise ValueError('need to specify C++ standard for compiling '
+                                 'template code')
+            self.name_expressions = tuple(name_expressions)  # make it hashable
+        else:
+            self.name_expressions = None
 
         self.code = code
         self.file_path = path
@@ -285,27 +311,67 @@ cdef class RawModule:
         cdef Module mod
         mod = _get_raw_module(
             self.code, self.file_path, self.options, self.backend,
-            self.translate_cucomplex, self.enable_cooperative_groups)
+            self.translate_cucomplex, self.enable_cooperative_groups,
+            self.name_expressions)
         return mod
 
     def get_function(self, str name):
         """Retrieve a CUDA kernel by its name from the module.
 
         Args:
-            name (str): Name of the kernel function.
+            name (str): Name of the kernel function. For C++ global/template
+                kernels, ``name`` refers to one of the name expressions
+                specified when initializing the present :class:`RawModule`
+                instance.
 
         Returns:
             RawKernel: An ``RawKernel`` instance.
+
+        .. note::
+            The following example shows how to retrieve one of the specialized
+            C++ template kernels:
+
+            .. code-block:: python
+
+                code = r'''
+                template<typename T>
+                __global__ void func(T* in_arr) { /* do something */ }
+                '''
+
+                kers = ('func<int>', 'func<float>', 'func<double>')
+                mod = cupy.RawModule(code=code, options=('--std=c++11',),
+                                     name_expressions=kers)
+
+                // retrieve func<int>
+                ker_int = mod.get_function(kers[0])
+
+        .. seealso::
+            ``nvrtcAddNameExpression`` and ``nvrtcGetLoweredName`` from
+            `Accessing Lowered Names`_ of the NVRTC documentation.
+
+        .. _Accessing Lowered Names:
+            https://docs.nvidia.com/cuda/nvrtc/index.html#accessing-lowered-names
+
         """
         cdef RawKernel ker
         cdef Function func
+        cdef str mangled_name
+
+        # check if the name is a valid C++ name expression
+        if self.name_expressions:
+            mangled_name = self.module.mapping.get(name)
+            if mangled_name is not None:
+                name = mangled_name
+
         ker = RawKernel(
             self.code, name, self.options, self.backend,
             translate_cucomplex=self.translate_cucomplex,
             enable_cooperative_groups=self.enable_cooperative_groups)
         # for lookup in case we loaded from cubin/ptx
         ker.file_path = self.file_path
-        # register the kernel in the cache.
+        # for lookup in case we specialize a template
+        ker.name_expressions = self.name_expressions
+        # register the kernel in the cache
         func = ker.kernel  # noqa
         return ker
 
@@ -356,13 +422,15 @@ cdef class RawModule:
 @cupy.util.memoize(for_each_device=True)
 def _get_raw_module(str code, str path, tuple options=(), str backend='nvrtc',
                     bint translate_cucomplex=False,
-                    bint enable_cooperative_groups=False):
+                    bint enable_cooperative_groups=False,
+                    tuple name_expressions=None):
     cdef Module mod
     if code is not None:
         mod = cupy.core.core.compile_with_cache(
             code, options, prepend_cupy_headers=False, backend=backend,
             translate_cucomplex=translate_cucomplex,
-            enable_cooperative_groups=enable_cooperative_groups)
+            enable_cooperative_groups=enable_cooperative_groups,
+            name_expressions=name_expressions)
     elif path is not None:
         mod = Module()
         mod.load_file(path)

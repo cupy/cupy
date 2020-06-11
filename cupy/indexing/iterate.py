@@ -5,7 +5,7 @@ from cupy import core
 from cupy.core import internal
 
 
-class flatiter():
+class flatiter:
     """Flat iterator object to iterate over arrays.
 
     A flatiter iterator is returned by ``x.flat`` for any array ``x``. It
@@ -14,6 +14,9 @@ class flatiter():
 
     Iteration is done in row-major, C-style order (the last index varying the
     fastest).
+
+    Attributes:
+        base (cupy.ndarray): A reference to the array that is iterated over.
 
     .. note::
        Restricted support of basic slicing is currently supplied. Advanced
@@ -25,6 +28,7 @@ class flatiter():
 
     def __init__(self, a):
         self._base = a
+        self._index = 0
 
     def __setitem__(self, ind, value):
         if ind is Ellipsis:
@@ -102,11 +106,19 @@ class flatiter():
 
     # TODO(Takagi): Implement __iter__
 
-    # TODO(Takagi): Implement __next__
+    def __next__(self):
+        index = self._index
+        if index == len(self):
+            raise StopIteration()
+        self._index += 1
+        return self[index]
 
     # TODO(Takagi): Implement copy
 
-    # TODO(Takagi): Implement base
+    @property
+    def base(self):
+        """A reference to the array that is iterate over."""
+        return self._base
 
     # TODO(Takagi): Implement coords
 
@@ -124,7 +136,8 @@ class flatiter():
 
     # TODO(Takagi): Implement __gt__
 
-    # TODO(Takagi): Implement __len__
+    def __len__(self):
+        return self.base.size
 
 
 _flatiter_setitem_slice = core.ElementwiseKernel(

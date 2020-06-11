@@ -7,14 +7,15 @@ import os.path
 import shutil
 
 
-_cuda_path = None
-_nvcc_path = None
+# '' for uninitialized, None for non-existing
+_cuda_path = ''
+_nvcc_path = ''
 
 
 def get_cuda_path():
     # Returns the CUDA installation path or None if not found.
     global _cuda_path
-    if _cuda_path is None:
+    if _cuda_path == '':
         _cuda_path = _get_cuda_path()
     return _cuda_path
 
@@ -22,7 +23,7 @@ def get_cuda_path():
 def get_nvcc_path():
     # Returns the path to the nvcc command or None if not found.
     global _nvcc_path
-    if _nvcc_path is None:
+    if _nvcc_path == '':
         _nvcc_path = _get_nvcc_path()
     return _nvcc_path
 
