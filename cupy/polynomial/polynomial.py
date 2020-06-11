@@ -17,7 +17,7 @@ def polyvander(x, deg):
     deg = cupy.polynomial.polyutils._deprecate_as_int(deg, 'deg')
     if deg < 0:
         raise ValueError('degree must be non-negative')
-    if not x.ndim:
+    if x.ndim == 0:
         x = cupy.expand_dims(x, axis=0)
     x = cupy.expand_dims(x, axis=-1)
     x = x + 0.0
