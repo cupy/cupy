@@ -1,6 +1,6 @@
-import cupy
-
 import warnings
+
+import cupy
 
 
 # ######## Convolutions and Correlations ##########
@@ -143,7 +143,7 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
 
 @cupy.util.memoize()
 def _get_correlate_kernel(mode, wshape, int_type, origins, cval):
-    return _generate_correlate_kernel(
+    return _generate_nd_kernel(
         'correlate',
         'W sum = (W)0;',
         'sum += (W){value} * wval;',
@@ -216,12 +216,32 @@ def maximum_filter(input, size=None, footprint=None, output=None,
 def _min_or_max_filter(input, size, ftprnt, output, mode, cval, origin, func):
     sizes, ftprnt, sep = \
         _check_size_or_ftprnt(input.ndim, size, ftprnt, 3, True)
-    
+
     if sep:
+        # seperable filter, run as a series of 1D filters
         fltr = minimum_filter1d if func == 'min' else maximum_filter1d
-        return _nd_filter([fltr if size > 1 else None for size in sizes],
-                          input, sizes, output, mode, cval, origin)
-    
+        output_orig = output
+        output = _get_output(output, input)
+        modes = _fix_sequence_arg(mode, input.ndim, 'mode', _check_mode)
+        origins = _fix_sequence_arg(origin, input.ndim, 'origin', int)
+        n_filters = sum(size > 1 for size in sizes)
+        if n_filters == 0:
+            output[...] = input[...]
+            return output
+        # We can't operate in-place efficiently, so use a 2-buffer system
+        temp = _get_output(output.dtype, input) if n_filters > 1 else None
+        first = True
+        iterator = zip(sizes, modes, origins)
+        for axis, (size, mode, origin) in enumerate(iterator):
+            if size <= 1:
+                continue
+            fltr(input, size, axis, output, mode, cval, origin)
+            input, output = output, temp if first else input
+        if output_orig is not None and input is not output_orig:
+            output_orig[...] = input
+            input = output_orig
+        return input
+
     origins, int_type = _check_nd_args(input, ftprnt, mode, origin, 'footprint')
     if ftprnt.size == 0:
         return cupy.zeros_like(input)
@@ -290,7 +310,7 @@ def _max_or_min_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
 
 @cupy.util.memoize()
 def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type, has_weights=True):
-    return _get_nd_kernel(
+    return _generate_nd_kernel(
         func, 'X value = x[i];',
         'value = {func}((X){{value}}, value);'.format(func=func),
         'y = (Y)value;', mode, wshape, int_type, origins, cval,
@@ -348,6 +368,28 @@ def _check_axis(axis, ndim):
     if axis < 0 or axis >= ndim:
         raise ValueError('invalid axis')
     return axis
+
+
+def _check_size_or_ftprnt(ndim, size, ftprnt, stacklevel, check_sep=False):
+    if (size is not None) and (ftprnt is not None):
+        warnings.warn("ignoring size because footprint is set",
+                      UserWarning, stacklevel=stacklevel+1)
+    if ftprnt is None:
+        if size is None:
+            raise RuntimeError("no footprint or filter size provided")
+        sizes = _fix_sequence_arg(size, ndim, 'size', int)
+        if check_sep:
+            return sizes, None, True
+        ftprnt = cupy.ones(sizes, dtype=bool)
+    else:
+        ftprnt = cupy.ascontiguousarray(ftprnt, dtype=bool)
+        if not ftprnt.any():
+            raise ValueError("All-zero footprint is not supported.")
+        if check_sep:
+            if ftprnt.all():
+                return ftprnt.shape, None, True
+            return None, ftprnt, False
+    return ftprnt
 
 
 def _convert_1d_args(ndim, weights, origin, axis):
@@ -451,9 +493,9 @@ def _generate_boundary_condition_ops(mode, ix, xsize):
     return ops
 
 
-def _generate_correlate_kernel(name, pre, found, post, mode, wshape, int_type,
-                               origins, cval, preamble='', options=(),
-                               has_weights=True):
+def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
+                        origins, cval, preamble='', options=(),
+                        has_weights=True):
     ndim = len(wshape)
     in_params = 'raw X x, raw W w'
     out_params = 'Y y'
@@ -530,4 +572,3 @@ def _generate_indices_ops(ndim, int_type, xsize='x.shape()[{j}]', extras=None):
             for j in range(ndim-1, 0, -1)]
     return '{type} _i = i;\n{body}\n{type} ind_0 = _i{extra};'.format(
         type=int_type, body='\n'.join(body), extra=extras[0])
-
