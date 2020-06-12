@@ -32,7 +32,6 @@ def _check_cusolver_dev_info_if_synchronization_allowed(routine, dev_info):
     # routine call. It is referred to as "infoArray" or "devInfo" in the
     # official cuSOLVER documentation.
     assert isinstance(dev_info, core.ndarray)
-    assert dev_info.ndim == 1
     config_linalg = cupyx._ufunc_config.get_config_linalg()
     # Only 'ignore' and 'raise' are currently supported.
     if config_linalg == 'ignore':
