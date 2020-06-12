@@ -1,6 +1,7 @@
 from cupy.core import _kernel
 from cupy.core import _memory_range
 from cupy.manipulation import join
+from cupy._sorting import search
 
 
 def may_share_memory(a, b, max_work=None):
@@ -33,6 +34,9 @@ def shares_memory(a, b, max_work=None):
     if max_work in (None, 'MAY_SHARE_EXACT'):
         a_ptrs = _get_memory_ptrs(a).ravel()
         b_ptrs = _get_memory_ptrs(b).reshape(-1, 1)
-        return bool((a_ptrs == b_ptrs).any())
+        a_ptrs.sort()
+        x = search.searchsorted(a_ptrs, b_ptrs, 'left')
+        y = search.searchsorted(a_ptrs, b_ptrs, 'right')
+        return bool((x != y).any())
 
     raise NotImplementedError('Not supported for integer `max_work`.')
