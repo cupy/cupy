@@ -896,6 +896,25 @@ def csr2csc(x):
         (data, indices, indptr), shape=x.shape)
 
 
+def csc2csr(x):
+    handle = device.get_cusparse_handle()
+    m, n = x.shape
+    nnz = x.nnz
+    data = cupy.empty(nnz, x.dtype)
+    indptr = cupy.empty(m + 1, 'i')
+    indices = cupy.empty(nnz, 'i')
+
+    _call_cusparse(
+        'csr2csc', x.dtype,
+        handle, n, m, nnz, x.data.data.ptr,
+        x.indptr.data.ptr, x.indices.data.ptr,
+        data.data.ptr, indices.data.ptr, indptr.data.ptr,
+        cusparse.CUSPARSE_ACTION_NUMERIC,
+        cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    return cupyx.scipy.sparse.csr_matrix(
+        (data, indices, indptr), shape=x.shape)
+
+
 def dense2csc(x):
     """Converts a dense matrix in CSC format.
 
