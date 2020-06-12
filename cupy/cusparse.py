@@ -793,11 +793,12 @@ def cscsort(x):
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 
-def coosort(x):
+def coosort(x, sort_by='r'):
     """Sorts indices of COO-matrix in place.
 
     Args:
         x (cupyx.scipy.sparse.coo_matrix): A sparse matrix to sort.
+        sort_by (str): Sort the indices by row ('r', default) or column ('c').
 
     """
     nnz = x.nnz
@@ -812,9 +813,16 @@ def coosort(x):
     P = cupy.empty(nnz, 'i')
     data_orig = x.data.copy()
     cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
-    cusparse.xcoosortByRow(
-        handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
-        P.data.ptr, buf.data.ptr)
+    if sort_by == 'r':
+        cusparse.xcoosortByRow(
+            handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
+            P.data.ptr, buf.data.ptr)
+    elif sort_by == 'c':
+        cusparse.xcoosortByColumn(
+            handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
+            P.data.ptr, buf.data.ptr)
+    else:
+        raise ValueError("sort_by must be either 'r' or 'c'")
     _call_cusparse(
         'gthr', x.dtype,
         handle, nnz, data_orig.data.ptr, x.data.data.ptr,
@@ -830,6 +838,17 @@ def coo2csr(x):
         indptr.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
     return cupyx.scipy.sparse.csr.csr_matrix(
         (x.data, x.col, indptr), shape=x.shape)
+
+
+def coo2csc(x):
+    handle = device.get_cusparse_handle()
+    n = x.shape[1]
+    indptr = cupy.empty(n + 1, 'i')
+    cusparse.xcoo2csr(
+        handle, x.col.data.ptr, x.nnz, n,
+        indptr.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    return cupyx.scipy.sparse.csc.csc_matrix(
+        (x.data, x.row, indptr), shape=x.shape)
 
 
 def csr2coo(x, data, indices):
