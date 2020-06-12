@@ -1,5 +1,6 @@
 from cupy.core import _kernel
 from cupy.core import _memory_range
+from cupy.manipulation import join
 
 
 def may_share_memory(a, b, max_work=None):
@@ -9,11 +10,20 @@ def may_share_memory(a, b, max_work=None):
     raise NotImplementedError('Only supported for `max_work` is `None`')
 
 
-_get_memory_ptrs = _kernel.ElementwiseKernel(
+_get_memory_ptrs_kernel = _kernel.ElementwiseKernel(
     'T x', 'uint64 out',
     'out = (unsigned long long)(&x)',
     'get_memory_ptrs'
 )
+
+
+def _get_memory_ptrs(x):
+    if x.dtype.kind != 'c':
+        return _get_memory_ptrs_kernel(x)
+    return join.concatenate([
+        _get_memory_ptrs_kernel(x.real),
+        _get_memory_ptrs_kernel(x.imag)
+    ])
 
 
 def shares_memory(a, b, max_work=None):

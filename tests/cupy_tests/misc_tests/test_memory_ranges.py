@@ -142,3 +142,8 @@ class TestSharesMemory(unittest.TestCase):
             assert xp.shares_memory(x[0::2], x[1::3]) is True
             assert xp.shares_memory(x[0::2], x[1::4]) is False
             assert xp.shares_memory(x[0::2], x[::, 1::2]) is True
+
+    def test_complex_type_case(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_random((2, 3, 4), xp, numpy.complex128)
+            assert xp.shares_memory(x, x.imag) is True
