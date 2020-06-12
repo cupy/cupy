@@ -418,6 +418,15 @@ class TestCoosort(unittest.TestCase):
         testing.assert_array_equal(self.a.col[argsort], a.col)
         testing.assert_array_almost_equal(self.a.data[argsort], a.data)
 
+    def test_coosort_by_column(self):
+        a = sparse.coo_matrix(self.a)
+        cupy.cusparse.coosort(a, sort_by='c')
+        # lexsort by col first and row second
+        argsort = numpy.lexsort((self.a.row, self.a.col))
+        testing.assert_array_equal(self.a.row[argsort], a.row)
+        testing.assert_array_equal(self.a.col[argsort], a.col)
+        testing.assert_array_almost_equal(self.a.data[argsort], a.data)
+
 
 @testing.with_requires('scipy')
 class TestCsrsort(unittest.TestCase):
