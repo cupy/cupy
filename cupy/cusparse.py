@@ -827,6 +827,8 @@ def coosort(x, sort_by='r'):
         'gthr', x.dtype,
         handle, nnz, data_orig.data.ptr, x.data.data.ptr,
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    if sort_by == 'c':  # coo is sorted by row first
+        x._has_canonical_format = False
 
 
 def coo2csr(x):
