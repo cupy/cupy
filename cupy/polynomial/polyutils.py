@@ -26,7 +26,7 @@ def as_series(alist, trim=True):
     """Returns argument as a list of 1-d arrays.
 
     Args:
-        alist (cupy.ndarray): 1-D or 2-D input array.
+        alist (cupy.ndarray or list of cupy.ndarray): 1-D or 2-D input array.
         trim (bool, optional): trim trailing zeros.
 
     Returns:
