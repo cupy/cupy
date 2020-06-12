@@ -94,3 +94,51 @@ class TestMayShareMemory(unittest.TestCase):
                 ret_cp = cupy.may_share_memory(array1_cp, array2_cp)
                 assert ret_np == ret_cp, \
                     'Failed in case of {} and {}'.format(sl1, sl2)
+
+
+@testing.gpu
+class TestSharesMemory(unittest.TestCase):
+
+    def test_different_arrays(self):
+        for xp in (numpy, cupy):
+            a = xp.array([1, 2, 3])
+            b = xp.array([1, 2, 3])
+            assert xp.shares_memory(a, b) is False
+
+    def test_same_array(self):
+        for xp in (numpy, cupy):
+            a = xp.array([1, 2, 3])
+            assert xp.shares_memory(a, a) is True
+
+    def test_zero_size_array(self):
+        for xp in (numpy, cupy):
+            a = xp.array([])
+            assert xp.shares_memory(a, a) is False
+
+    def test_contiguous_arrays(self):
+        for xp in (numpy, cupy):
+            x = xp.arange(12)
+            # shares memory
+            assert xp.shares_memory(x[0:7], x[6:12]) is True
+            # covers
+            assert xp.shares_memory(x[1:10], x[4:6]) is True
+            assert xp.shares_memory(x[4:6], x[1:10]) is True
+            # detached
+            assert xp.shares_memory(x[1:6], x[8:11]) is False
+            # touch
+            assert xp.shares_memory(x[1:10], x[7:10]) is True
+            assert xp.shares_memory(x[1:7], x[7:10]) is False
+
+    def test_non_contiguous_case(self):
+        for xp in (numpy, cupy):
+            x = xp.arange(100)
+            assert xp.shares_memory(x, x[1::4]) is True
+            assert xp.shares_memory(x[0::2], x[1::4]) is False
+            assert xp.shares_memory(x[0::9], x[1::11]) is True
+
+    def test_multi_dimension_case(self):
+        for xp in (numpy, cupy):
+            x = xp.arange(100).reshape(10, 10)
+            assert xp.shares_memory(x[0::2], x[1::3]) is True
+            assert xp.shares_memory(x[0::2], x[1::4]) is False
+            assert xp.shares_memory(x[0::2], x[::, 1::2]) is True
