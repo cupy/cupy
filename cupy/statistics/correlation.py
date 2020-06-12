@@ -130,7 +130,7 @@ def correlate_util(a1, a2, mode):
     inverted = 0
     max_threads = 1024
     dtype = a1.dtype
-    if not a1.size or not a2.size:
+    if a1.size == 0 or a2.size == 0:
         raise ValueError("Array arguments cannot be empty")
     if a1.size < a2.size:
         a1, a2 = a2, a1
@@ -139,8 +139,8 @@ def correlate_util(a1, a2, mode):
     n = n2 = a2.size
     left, right, length = _generate_boundaries(mode, length, n)
     output = cupy.zeros(shape=length, dtype=float)
-    a1 = a1.astype(dtype=float, copy=False)
-    a2 = a2.astype(dtype=float, copy=False)
+    a1 = cupy.ascontiguousarray(a1, float)
+    a2 = cupy.ascontiguousarray(a2, float)
     if left:
         nTPB = min(left, max_threads)
         _correlate_kernel((int((left + nTPB - 1) / nTPB),), (nTPB,),
