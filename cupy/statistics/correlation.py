@@ -6,58 +6,57 @@ import numpy
 import cupy
 from cupy import core
 
+# https: // www.micc.unifi.it / bertini / download
+# / gpu - programming - basics / 2017 / gpu_cuda_5.pdf
+
 _correlate_kernel = core.RawKernel(r'''
-  #define MAX_TPB 256
+  #define MAX_TPB 1024
   extern "C"{
   __device__ double atomicAdd(double* address, double val){
-    unsigned long long int* address_as_ull =
-                                          (unsigned long long int*)address;
-    unsigned long long int old = *address_as_ull, assumed;
-    do {
+        unsigned long long int* address_as_ull =
+                            (unsigned long long int*)address;
+        unsigned long long int old = *address_as_ull, assumed;
+        do {
         assumed = old;
         old = atomicCAS(address_as_ull, assumed,
                         __double_as_longlong(val +
                         __longlong_as_double(assumed)));
-    } while (assumed != old);
-    return __longlong_as_double(old);
-}
-
+        } while (assumed != old);
+        return __longlong_as_double(old);
+   }
   __global__ void dot_kernel(const double* x1, const double* x2,
-  double* y, int j, int j1, int j2, int n){
-    __shared__ double temp[MAX_TPB];
-    unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
-    temp[threadIdx.x] = x1[j1 + tid] * x2[j2 + tid];
-    __syncthreads();
-
-    if (threadIdx.x == 0)
-    {
-        double sum = 0;
-        for (int i = 0; i < n; i++)
-        {
-            sum += temp[i];
-        }
-        atomicAdd(&y[j], sum);
-     }
-  }
-     __global__ void correlate_kernel(const double* x1, const double* x2,
-     double* y, int j, int j1, int j2, int n, int mode){
+    double* y, int j, int j1, int j2, int n){
+        __shared__ double temp[MAX_TPB];
+        unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
+        temp[threadIdx.x] = x1[j1 + tid] * x2[j2 + tid];
+        __syncthreads();
+        if (threadIdx.x == 0){
+            double sum = 0;
+            for (int i = 0; i < n; i++){
+                sum += temp[i];
+            }
+            atomicAdd(&y[j], sum);
+         }
+   }
+  __global__ void correlate_kernel(const double* x1, const double* x2,
+    double* y, int j, int j1, int j2, int n, const int mode){
         unsigned int tid = blockDim.x * blockIdx.x + threadIdx.x;
         int nTPB = MAX_TPB;
         if (mode == 0){ // left
             nTPB = min (n + tid, nTPB);
-            dot_kernel<<<(n + tid)/nTPB + 1, nTPB>>>
+            dot_kernel<<<(n + tid + nTPB - 1)/nTPB, nTPB>>>
             (x1, x2, y, j + tid, j1, j2 - tid, nTPB);
         }else if (mode == 1){ //right
             nTPB = min (n - tid, nTPB);
-            dot_kernel<<<(n - tid)/nTPB + 1, nTPB>>>
+            dot_kernel<<<(n - tid + nTPB - 1)/nTPB, nTPB>>>
             (x1, x2, y, j + tid,  j1 + tid, j2, nTPB);
         }else{ // valid
             nTPB = min (n, nTPB);
-            dot_kernel<<<n/nTPB + 1, nTPB>>>
+            dot_kernel<<<(n + nTPB - 1)/nTPB , nTPB>>>
             (x1, x2, y, j + tid,  j1 + tid, j2, nTPB);
+            }
         }
-     }
-}''', 'correlate_kernel', ('-rdc=true',))
+   }''', 'correlate_kernel', ('-rdc=true',))
 
 
 def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None):
@@ -129,7 +128,7 @@ def correlate(a, v, mode='valid'):
 def correlate_util(a1, a2, mode):
     inverted = 0
     max_threads = 1024
-    dtype = a1.dtype
+    dtype = cupy.result_type(*[a1, a2])
     if a1.size == 0 or a2.size == 0:
         raise ValueError("Array arguments cannot be empty")
     if a1.size < a2.size:
@@ -138,9 +137,9 @@ def correlate_util(a1, a2, mode):
     length = n1 = a1.size
     n = n2 = a2.size
     left, right, length = _generate_boundaries(mode, length, n)
-    output = cupy.zeros(shape=length, dtype=float)
-    a1 = cupy.ascontiguousarray(a1, float)
-    a2 = cupy.ascontiguousarray(a2, float)
+    output = cupy.zeros(length, cupy.float64)
+    a1 = cupy.ascontiguousarray(a1, cupy.float64)
+    a2 = cupy.ascontiguousarray(a2, cupy.float64)
     if left:
         nTPB = min(left, max_threads)
         _correlate_kernel((int((left + nTPB - 1) / nTPB),), (nTPB,),
@@ -152,7 +151,7 @@ def correlate_util(a1, a2, mode):
         nTPB = min(right, max_threads)
         _correlate_kernel((int((right + nTPB - 1) / nTPB),), (nTPB,),
                           (a1, a2, output, left + n1 - n2 + 1,
-                           n1 - n2 + 1, 0, n, 1))
+                           n1 - n2 + 1, 0, n - 1, 1))
     return inverted, output.astype(dtype=dtype, copy=False)
 
 

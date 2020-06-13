@@ -93,23 +93,30 @@ class TestCov(unittest.TestCase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'mode': ['valid', 'same', 'full']
+    'mode': ['valid', 'full', 'same']
 }))
 class TestCorrelate(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_equal()
-    def test_correlate_empty(self, xp, dtype):
-        a = testing.empty(xp, dtype)
-        b = testing.empty(xp, dtype)
+    @testing.numpy_cupy_allclose()
+    def test_correlate(self, xp, dtype):
+        a = testing.shaped_arange((1000,), xp, dtype)
+        b = testing.shaped_arange((100,), xp, dtype)
         return xp.correlate(a, b, mode=self.mode)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_correlate_large(self, xp, dtype):
-        a = testing.shaped_arange((1000,), xp, dtype)
-        b = testing.shaped_arange((10000,), xp, dtype)
+    def test_correlate_inverted_case(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        b = testing.shaped_arange((10,), xp, dtype)
         return xp.correlate(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes(no_complex=True)
+    def test_correlate_empty(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.empty(xp, dtype)
+            with pytest.raises(ValueError):
+                xp.correlate(a, a, mode=self.mode)
 
     @testing.for_all_dtypes(no_complex=True)
     def test_correlate_ndim(self, dtype):
@@ -130,6 +137,14 @@ class TestCorrelate(unittest.TestCase):
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_correlate_non_contiguous(self, xp, dtype):
-        a = testing.shaped_arange((7,), xp, dtype)
-        b = testing.shaped_arange((10,), xp, dtype)
-        return xp.correlate(a[::2], b[::3], mode=self.mode)
+        a = testing.shaped_arange((3000,), xp, dtype)
+        b = testing.shaped_arange((100,), xp, dtype)
+        return xp.correlate(a[::200], b[10::70], mode=self.mode)
+
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'], no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_correlate_diff_types(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((200,), xp, dtype1)
+        b = testing.shaped_arange((100,), xp, dtype2)
+        return xp.correlate(a, b, mode=self.mode)
