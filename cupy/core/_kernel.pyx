@@ -13,6 +13,7 @@ from libcpp cimport vector
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
+from cupy.cuda cimport memory
 from cupy.core cimport _carray
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
@@ -145,6 +146,8 @@ cdef class _ArgInfo:
             return _ArgInfo.from_scalar(arg)
         if typ is _carray.Indexer:
             return _ArgInfo.from_indexer(arg)
+        if typ is memory.MemoryPointer:
+            return _ArgInfo.from_memptr(arg)
         assert False, typ
 
     @staticmethod
@@ -166,6 +169,10 @@ cdef class _ArgInfo:
         return _ArgInfo(
             ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True)
 
+    @staticmethod
+    cdef _ArgInfo from_memptr(memory.MemoryPointer arg):
+        return _ArgInfo(ARG_KIND_POINTER, memory.MemoryPointer, None, 0, True)
+
     def __hash__(self):
         return hash((self.arg_kind, self.type, self.dtype, self.ndim,
                      self.c_contiguous))
@@ -181,6 +188,16 @@ cdef class _ArgInfo:
             and self.dtype == oth.dtype
             and self.ndim == oth.ndim
             and self.c_contiguous == oth.c_contiguous)
+
+    def __repr__(self):
+        return '<_ArgInfo({})>'.format(
+            ' '.join([
+                'arg_kind={!r}'.format(self.arg_kind),
+                'type={!r}'.format(self.type),
+                'dtype={!r}'.format(self.dtype),
+                'ndim={!r}'.format(self.ndim),
+                'c_contiguous={!r}'.format(self.c_contiguous),
+            ]))
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim):
         # Returns an ndarray _ArgInfo with altered ndim.
@@ -216,7 +233,7 @@ cdef class _ArgInfo:
         return ctyp
 
     cdef str get_c_var_name(self, ParameterInfo p):
-        if self.arg_kind == ARG_KIND_NDARRAY and not p.raw:
+        if self.arg_kind in (ARG_KIND_NDARRAY, ARG_KIND_POINTER) and not p.raw:
             return '_raw_' + p.name
         return p.name
 

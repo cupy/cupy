@@ -16,6 +16,7 @@ from cupy.core cimport core
 from cupy.cuda cimport driver
 from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
+from cupy.cuda.memory cimport MemoryPointer
 from cupy.cuda.texture cimport TextureObject, SurfaceObject
 
 
@@ -78,26 +79,33 @@ cdef class CUIntMax(CPointer):
         self.ptr = <void*>&self.val
 
 
+cdef class CIntptr(CPointer):
+    cdef:
+        intptr_t val
+
+    def __init__(self, intptr_t v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
+
 cdef set _pointer_numpy_types = {numpy.dtype(i).type
                                  for i in '?bhilqBHILQefdFD'}
 
 
 cdef inline CPointer _pointer(x):
     cdef Py_ssize_t itemsize
+
     if x is None:
         return CPointer()
     if isinstance(x, core.ndarray):
         return (<core.ndarray>x).get_pointer()
     if isinstance(x, _carray.Indexer):
         return (<_carray.Indexer>x).get_pointer()
-
+    if isinstance(x, MemoryPointer):
+        return CIntptr(x.ptr)
     if isinstance(x, CPointer):
         return x
-
-    if isinstance(x, TextureObject):
-        return CUIntMax(x.ptr)
-
-    if isinstance(x, SurfaceObject):
+    if isinstance(x, (TextureObject, SurfaceObject)):
         return CUIntMax(x.ptr)
 
     if type(x) not in _pointer_numpy_types:
