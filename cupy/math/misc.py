@@ -18,13 +18,19 @@ def convolve(a, v, mode='full'):
     .. seealso:: :func:`numpy.convolve`
 
     """
+    if a.ndim == 0:
+        a = a.ravel()
+    if v.ndim == 0:
+        v = v.ravel()
     if v.size > a.size:
         a, v = v, a
     if a.size == 0:
         raise ValueError('a cannot be empty')
     if v.size == 0:
         raise ValueError('v cannot be empty')
-    return correlate_util(a, v[::-1], mode)
+    if v.ndim > 1:
+        raise ValueError('v cannot be multidimensional array')
+    return correlate_util(a, v[::-1], mode)[1]
 
 
 def clip(a, a_min=None, a_max=None, out=None):
