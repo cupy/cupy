@@ -18,11 +18,11 @@ def convolve(a, v, mode='full'):
     .. seealso:: :func:`numpy.convolve`
 
     """
-    if len(v) > len(a):
+    if v.size > a.size:
         a, v = v, a
-    if not len(a):
+    if a.size == 0:
         raise ValueError('a cannot be empty')
-    if not len(v):
+    if v.size == 0:
         raise ValueError('v cannot be empty')
     return correlate_util(a, v[::-1], mode)
 
