@@ -1,4 +1,5 @@
 from cupy_cuda cimport runtime
+from cupy_cuda cimport stream as stream_module
 
 import threading
 import weakref
@@ -23,11 +24,15 @@ cdef class _ThreadLocal:
         return <_ThreadLocal>tls
 
     cdef set_current_stream(self, stream):
-        self.current_stream = <void*><intptr_t>stream.ptr
+        cdef intptr_t ptr = <intptr_t>stream.ptr
+        stream_module.set_current_stream_ptr(ptr)
+        self.current_stream = <void*>ptr
         self.current_stream_ref = weakref.ref(stream)
 
     cdef set_current_stream_ref(self, stream_ref):
-        self.current_stream = <void*><intptr_t>stream_ref().ptr
+        cdef intptr_t ptr = <intptr_t>stream_ref().ptr
+        stream_module.set_current_stream_ptr(ptr)
+        self.current_stream = <void*>ptr
         self.current_stream_ref = stream_ref
 
     cdef get_current_stream(self):
