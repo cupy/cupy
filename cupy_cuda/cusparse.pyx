@@ -2,7 +2,7 @@ cimport cython  # NOQA
 
 from cupy_cuda cimport driver
 from cupy_cuda.runtime cimport DataType
-from cupy.cuda cimport stream as stream_module
+from cupy_cuda cimport stream as stream_module
 
 
 cdef extern from 'cupy_cuComplex.h':
@@ -1357,12 +1357,19 @@ cpdef size_t getStream(intptr_t handle) except? 0:
     return <size_t>stream
 
 
+cdef _setStream(intptr_t handle):
+    """Set current stream when enable_current_stream is True
+    """
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+
+
 ########################################
 # cuSPARSE Level1 Function
 
 cpdef sgthr(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd,
             int idxBase):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseSgthr(
         <Handle>handle, nnz, <const float *>y, <float *>xVal,
         <const int *>xInd, <IndexBase>idxBase)
@@ -1370,7 +1377,7 @@ cpdef sgthr(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd,
 
 cpdef dgthr(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd,
             int idxBase):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDgthr(
         <Handle>handle, nnz, <const double *>y, <double *>xVal,
         <const int *>xInd, <IndexBase>idxBase)
@@ -1378,7 +1385,7 @@ cpdef dgthr(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd,
 
 cpdef cgthr(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd,
             int idxBase):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCgthr(
         <Handle>handle, nnz, <const cuComplex *>y, <cuComplex *>xVal,
         <const int *>xInd, <IndexBase>idxBase)
@@ -1386,7 +1393,7 @@ cpdef cgthr(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd,
 
 cpdef zgthr(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd,
             int idxBase):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZgthr(
         <Handle>handle, nnz, <const cuDoubleComplex *>y,
         <cuDoubleComplex *>xVal, <const int *>xInd, <IndexBase>idxBase)
@@ -1400,7 +1407,7 @@ cpdef scsrmv(
         size_t alpha, size_t descrA, size_t csrSortedValA,
         size_t csrSortedRowPtrA, size_t csrSortedColIndA,
         size_t x, size_t beta, size_t y):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseScsrmv(
         <Handle>handle, <Operation>transA, m, n, nnz,
         <const float *>alpha, <MatDescr>descrA, <const float *>csrSortedValA,
@@ -1413,7 +1420,7 @@ cpdef dcsrmv(
         size_t alpha, size_t descrA, size_t csrSortedValA,
         size_t csrSortedRowPtrA, size_t csrSortedColIndA,
         size_t x, size_t beta, size_t y):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDcsrmv(
         <Handle>handle, <Operation>transA, m, n, nnz,
         <const double *>alpha, <MatDescr>descrA, <const double *>csrSortedValA,
@@ -1426,7 +1433,7 @@ cpdef ccsrmv(
         size_t alpha, size_t descrA, size_t csrSortedValA,
         size_t csrSortedRowPtrA, size_t csrSortedColIndA,
         size_t x, size_t beta, size_t y):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCcsrmv(
         <Handle>handle, <Operation>transA, m, n, nnz,
         <const cuComplex *>alpha, <MatDescr>descrA,
@@ -1440,7 +1447,7 @@ cpdef zcsrmv(
         size_t alpha, size_t descrA, size_t csrSortedValA,
         size_t csrSortedRowPtrA, size_t csrSortedColIndA,
         size_t x, size_t beta, size_t y):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZcsrmv(
         <Handle>handle, <Operation>transA, m, n, nnz,
         <const cuDoubleComplex *>alpha, <MatDescr>descrA,
@@ -1457,7 +1464,7 @@ cpdef size_t csrmvEx_bufferSize(
         size_t csrColIndA, size_t x, int xtype, size_t beta,
         int betatype, size_t y, int ytype, int executiontype):
     cdef size_t bufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCsrmvEx_bufferSize(
         <Handle>handle, <AlgMode>alg, <Operation>transA, m,
         n, nnz, <const void *>alpha, <DataType>alphatype,
@@ -1476,7 +1483,7 @@ cpdef csrmvEx(
         size_t csrColIndA, size_t x, int xtype, size_t beta,
         int betatype, size_t y, int ytype, int executiontype,
         size_t buffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCsrmvEx(
         <Handle>handle, <AlgMode>alg, <Operation>transA, m,
         n, nnz, <const void *>alpha, <DataType>alphatype,
@@ -1495,7 +1502,7 @@ cpdef scsrmm(
         size_t alpha, size_t descrA, size_t csrSortedValA,
         size_t csrSortedRowPtrA, size_t csrSortedColIndA,
         size_t B, int ldb, size_t beta, size_t C, int ldc):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseScsrmm(
         <Handle>handle, <Operation>transA, m, n, k, nnz,
         <const float *>alpha, <MatDescr>descrA, <const float *>csrSortedValA,
@@ -1508,7 +1515,7 @@ cpdef dcsrmm(
         size_t alpha, size_t descrA, size_t csrSortedValA,
         size_t csrSortedRowPtrA, size_t csrSortedColIndA,
         size_t B, int ldb, size_t beta, size_t C, int ldc):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDcsrmm(
         <Handle>handle, <Operation>transA, m, n, k, nnz,
         <const double *>alpha, <MatDescr>descrA, <const double *>csrSortedValA,
@@ -1521,7 +1528,7 @@ cpdef ccsrmm(
         size_t alpha, size_t descrA, size_t csrSortedValA,
         size_t csrSortedRowPtrA, size_t csrSortedColIndA,
         size_t B, int ldb, size_t beta, size_t C, int ldc):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCcsrmm(
         <Handle>handle, <Operation>transA, m, n, k, nnz,
         <const cuComplex *>alpha, <MatDescr>descrA,
@@ -1536,7 +1543,7 @@ cpdef zcsrmm(
         size_t alpha, size_t descrA, size_t csrSortedValA,
         size_t csrSortedRowPtrA, size_t csrSortedColIndA,
         size_t B, int ldb, size_t beta, size_t C, int ldc):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZcsrmm(
         <Handle>handle, <Operation>transA, m, n, k, nnz,
         <const cuDoubleComplex *>alpha, <MatDescr>descrA,
@@ -1551,7 +1558,7 @@ cpdef scsrmm2(
         size_t alpha, size_t descrA, size_t csrValA,
         size_t csrRowPtrA, size_t csrColIndA,
         size_t B, int ldb, size_t beta, size_t C, int ldc):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseScsrmm2(
         <Handle>handle, <Operation>transA, <Operation>transB, m, n, k, nnz,
         <const float *>alpha, <MatDescr>descrA, <const float *>csrValA,
@@ -1564,7 +1571,7 @@ cpdef dcsrmm2(
         size_t alpha, size_t descrA, size_t csrValA,
         size_t csrRowPtrA, size_t csrColIndA,
         size_t B, int ldb, size_t beta, size_t C, int ldc):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDcsrmm2(
         <Handle>handle, <Operation>transA, <Operation>transB, m, n, k, nnz,
         <const double *>alpha, <MatDescr>descrA, <const double *>csrValA,
@@ -1577,7 +1584,7 @@ cpdef ccsrmm2(
         size_t alpha, size_t descrA, size_t csrValA,
         size_t csrRowPtrA, size_t csrColIndA,
         size_t B, int ldb, size_t beta, size_t C, int ldc):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCcsrmm2(
         <Handle>handle, <Operation>transA, <Operation>transB, m, n, k, nnz,
         <const cuComplex *>alpha, <MatDescr>descrA, <const cuComplex *>csrValA,
@@ -1591,7 +1598,7 @@ cpdef zcsrmm2(
         size_t alpha, size_t descrA, size_t csrValA,
         size_t csrRowPtrA, size_t csrColIndA,
         size_t B, int ldb, size_t beta, size_t C, int ldc):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZcsrmm2(
         <Handle>handle, <Operation>transA, <Operation>transB, m, n, k, nnz,
         <const cuDoubleComplex *>alpha, <MatDescr>descrA,
@@ -1609,7 +1616,7 @@ cpdef xcsrgeamNnz(
         size_t csrRowPtrA, size_t csrColIndA, size_t descrB,
         int nnzB, size_t csrRowPtrB, size_t csrColIndB,
         size_t descrC, size_t csrRowPtrC, size_t nnzTotalDevHostPtr):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseXcsrgeamNnz(
         <Handle>handle, m, n, <const MatDescr>descrA, nnzA,
         <const int *>csrRowPtrA, <const int *>csrColIndA,
@@ -1625,7 +1632,7 @@ cpdef scsrgeam(
         int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseScsrgeam(
         <Handle>handle, m, n, <const float *>alpha,
         <const MatDescr>descrA, nnzA, <const float *>csrValA,
@@ -1643,7 +1650,7 @@ cpdef dcsrgeam(
         int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDcsrgeam(
         <Handle>handle, m, n, <const double *>alpha,
         <const MatDescr>descrA, nnzA, <const double *>csrValA,
@@ -1661,7 +1668,7 @@ cpdef ccsrgeam(
         int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCcsrgeam(
         <Handle>handle, m, n, <const cuComplex *>alpha,
         <const MatDescr>descrA, nnzA, <const cuComplex *>csrValA,
@@ -1680,7 +1687,7 @@ cpdef zcsrgeam(
         int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZcsrgeam(
         <Handle>handle, m, n, <const cuDoubleComplex *>alpha,
         <const MatDescr>descrA, nnzA, <const cuDoubleComplex *>csrValA,
@@ -1700,7 +1707,7 @@ cpdef size_t scsrgeam2_bufferSizeExt(
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC):
     cdef size_t bufferSize
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseScsrgeam2_bufferSizeExt(
         <Handle>handle, m, n, <const float *>alpha,
         <const MatDescr>descrA, nnzA, <const float *>csrValA,
@@ -1720,7 +1727,7 @@ cpdef size_t dcsrgeam2_bufferSizeExt(
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC):
     cdef size_t bufferSize
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDcsrgeam2_bufferSizeExt(
         <Handle>handle, m, n, <const double *>alpha,
         <const MatDescr>descrA, nnzA, <const double *>csrValA,
@@ -1740,7 +1747,7 @@ cpdef size_t ccsrgeam2_bufferSizeExt(
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC):
     cdef size_t bufferSize
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCcsrgeam2_bufferSizeExt(
         <Handle>handle, m, n, <const cuComplex *>alpha,
         <const MatDescr>descrA, nnzA, <const cuComplex *>csrValA,
@@ -1761,7 +1768,7 @@ cpdef size_t zcsrgeam2_bufferSizeExt(
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC):
     cdef size_t bufferSize
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZcsrgeam2_bufferSizeExt(
         <Handle>handle, m, n, <const cuDoubleComplex *>alpha,
         <const MatDescr>descrA, nnzA, <const cuDoubleComplex *>csrValA,
@@ -1780,7 +1787,7 @@ cpdef xcsrgeam2Nnz(
         int nnzB, size_t csrRowPtrB, size_t csrColIndB,
         size_t descrC, size_t csrRowPtrC, size_t nnzTotalDevHostPtr,
         size_t workspace):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseXcsrgeam2Nnz(
         <Handle>handle, m, n, <const MatDescr>descrA, nnzA,
         <const int *>csrRowPtrA, <const int *>csrColIndA,
@@ -1796,7 +1803,7 @@ cpdef size_t scsrgeam2(
         int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC, size_t buffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseScsrgeam2(
         <Handle>handle, m, n, <const float *>alpha,
         <const MatDescr>descrA, nnzA, <const float *>csrValA,
@@ -1814,7 +1821,7 @@ cpdef size_t dcsrgeam2(
         int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC, size_t buffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDcsrgeam2(
         <Handle>handle, m, n, <const double *>alpha,
         <const MatDescr>descrA, nnzA, <const double *>csrValA,
@@ -1832,7 +1839,7 @@ cpdef size_t ccsrgeam2(
         int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC, size_t buffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCcsrgeam2(
         <Handle>handle, m, n, <const cuComplex *>alpha,
         <const MatDescr>descrA, nnzA, <const cuComplex *>csrValA,
@@ -1851,7 +1858,7 @@ cpdef size_t zcsrgeam2(
         int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC, size_t buffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZcsrgeam2(
         <Handle>handle, m, n, <const cuDoubleComplex *>alpha,
         <const MatDescr>descrA, nnzA, <const cuDoubleComplex *>csrValA,
@@ -1869,7 +1876,7 @@ cpdef xcsrgemmNnz(
         size_t csrColIndA, size_t descrB, int nnzB,
         size_t csrRowPtrB, size_t csrColIndB,
         size_t descrC, size_t csrRowPtrC, size_t nnzTotalDevHostPtr):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseXcsrgemmNnz(
         <Handle>handle, <Operation>transA, <Operation>transB, m, n, k,
         <const MatDescr>descrA, nnzA, <const int *>csrRowPtrA,
@@ -1885,7 +1892,7 @@ cpdef scsrgemm(
         const int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseScsrgemm(
         <Handle>handle, <Operation>transA, <Operation>transB, m, n, k,
         <const MatDescr>descrA, nnzA, <const float *>csrValA,
@@ -1903,7 +1910,7 @@ cpdef dcsrgemm(
         const int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDcsrgemm(
         <Handle>handle, <Operation>transA, <Operation>transB, m, n, k,
         <const MatDescr>descrA, nnzA, <const double *>csrValA,
@@ -1921,7 +1928,7 @@ cpdef ccsrgemm(
         const int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCcsrgemm(
         <Handle>handle, <Operation>transA, <Operation>transB, m, n, k,
         <const MatDescr>descrA, nnzA, <const cuComplex *>csrValA,
@@ -1939,7 +1946,7 @@ cpdef zcsrgemm(
         const int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t descrC, size_t csrValC,
         size_t csrRowPtrC, size_t csrColIndC):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZcsrgemm(
         <Handle>handle, <Operation>transA, <Operation>transB, m, n, k,
         <const MatDescr>descrA, nnzA, <const cuDoubleComplex *>csrValA,
@@ -2049,7 +2056,7 @@ cpdef xcsrgemm2Nnz(
         size_t descrD, int nnzD, size_t csrRowPtrD, size_t csrColIndD,
         size_t descrC, size_t csrRowPtrC,
         intptr_t nnzTotalDevHostPtr, size_t info, intptr_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseXcsrgemm2Nnz(
         <Handle>handle, m, n, k,
         <MatDescr>descrA, nnzA, <int*>csrRowPtrA, <int*>csrColIndA,
@@ -2067,7 +2074,7 @@ cpdef scsrgemm2(
         size_t csrValD, size_t csrRowPtrD, size_t csrColIndD, size_t descrC,
         size_t csrValC, size_t csrRowPtrC, size_t csrColIndC, size_t info,
         intptr_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseScsrgemm2(
         <Handle>handle, m, n, k, <float*>alpha, <MatDescr>descrA, nnzA,
         <float*>csrValA, <int*>csrRowPtrA, <int*>csrColIndA, <MatDescr>descrB,
@@ -2086,7 +2093,7 @@ cpdef dcsrgemm2(
         size_t csrValD, size_t csrRowPtrD, size_t csrColIndD, size_t descrC,
         size_t csrValC, size_t csrRowPtrC, size_t csrColIndC, size_t info,
         intptr_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDcsrgemm2(
         <Handle>handle, m, n, k, <double*>alpha, <MatDescr>descrA, nnzA,
         <double*>csrValA, <int*>csrRowPtrA, <int*>csrColIndA, <MatDescr>descrB,
@@ -2105,7 +2112,7 @@ cpdef ccsrgemm2(
         size_t csrValD, size_t csrRowPtrD, size_t csrColIndD, size_t descrC,
         size_t csrValC, size_t csrRowPtrC, size_t csrColIndC, size_t info,
         intptr_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCcsrgemm2(
         <Handle>handle, m, n, k, <cuComplex*>alpha, <MatDescr>descrA, nnzA,
         <cuComplex*>csrValA, <int*>csrRowPtrA, <int*>csrColIndA,
@@ -2124,7 +2131,7 @@ cpdef zcsrgemm2(
         size_t csrValD, size_t csrRowPtrD, size_t csrColIndD, size_t descrC,
         size_t csrValC, size_t csrRowPtrC, size_t csrColIndC, size_t info,
         intptr_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZcsrgemm2(
         <Handle>handle, m, n, k, <cuDoubleComplex*>alpha, <MatDescr>descrA,
         nnzA, <cuDoubleComplex*>csrValA, <int*>csrRowPtrA, <int*>csrColIndA,
@@ -2141,7 +2148,7 @@ cpdef zcsrgemm2(
 cpdef xcoo2csr(
         intptr_t handle, size_t cooRowInd, int nnz, int m, size_t csrRowPtr,
         int idxBase):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseXcoo2csr(
         <Handle>handle, <const int *>cooRowInd, nnz, m, <int *>csrRowPtr,
         <IndexBase>idxBase)
@@ -2152,7 +2159,7 @@ cpdef scsc2dense(
         intptr_t handle, int m, int n, size_t descrA,
         size_t cscSortedValA, size_t cscSortedRowIndA,
         size_t cscSortedColPtrA, size_t A, int lda):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseScsc2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const float *>cscSortedValA, <const int *>cscSortedRowIndA,
@@ -2164,7 +2171,7 @@ cpdef dcsc2dense(
         intptr_t handle, int m, int n, size_t descrA,
         size_t cscSortedValA, size_t cscSortedRowIndA,
         size_t cscSortedColPtrA, size_t A, int lda):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDcsc2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const double *>cscSortedValA, <const int *>cscSortedRowIndA,
@@ -2175,7 +2182,7 @@ cpdef ccsc2dense(
         intptr_t handle, int m, int n, size_t descrA,
         size_t cscSortedValA, size_t cscSortedRowIndA,
         size_t cscSortedColPtrA, size_t A, int lda):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCcsc2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuComplex *>cscSortedValA, <const int *>cscSortedRowIndA,
@@ -2186,7 +2193,7 @@ cpdef zcsc2dense(
         intptr_t handle, int m, int n, size_t descrA,
         size_t cscSortedValA, size_t cscSortedRowIndA,
         size_t cscSortedColPtrA, size_t A, int lda):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZcsc2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuDoubleComplex *>cscSortedValA, <const int *>cscSortedRowIndA,
@@ -2196,7 +2203,7 @@ cpdef zcsc2dense(
 cpdef xcsr2coo(
         intptr_t handle, size_t csrRowPtr, int nnz, int m, size_t cooRowInd,
         int idxBase):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseXcsr2coo(
         <Handle>handle, <const int *>csrRowPtr, nnz, m, <int *>cooRowInd,
         <IndexBase>idxBase)
@@ -2207,7 +2214,7 @@ cpdef scsr2csc(
         intptr_t handle, int m, int n, int nnz, size_t csrVal,
         size_t csrRowPtr, size_t csrColInd, size_t cscVal,
         size_t cscRowInd, size_t cscColPtr, int copyValues, int idxBase):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseScsr2csc(
         <Handle>handle, m, n, nnz, <const float *>csrVal,
         <const int *>csrRowPtr, <const int *>csrColInd, <float *>cscVal,
@@ -2220,7 +2227,7 @@ cpdef dcsr2csc(
         intptr_t handle, int m, int n, int nnz, size_t csrVal,
         size_t csrRowPtr, size_t csrColInd, size_t cscVal,
         size_t cscRowInd, size_t cscColPtr, int copyValues, int idxBase):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDcsr2csc(
         <Handle>handle, m, n, nnz, <const double *>csrVal,
         <const int *>csrRowPtr, <const int *>csrColInd, <double *>cscVal,
@@ -2232,7 +2239,7 @@ cpdef ccsr2csc(
         intptr_t handle, int m, int n, int nnz, size_t csrVal,
         size_t csrRowPtr, size_t csrColInd, size_t cscVal,
         size_t cscRowInd, size_t cscColPtr, int copyValues, int idxBase):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCcsr2csc(
         <Handle>handle, m, n, nnz, <const cuComplex *>csrVal,
         <const int *>csrRowPtr, <const int *>csrColInd, <cuComplex *>cscVal,
@@ -2244,7 +2251,7 @@ cpdef zcsr2csc(
         intptr_t handle, int m, int n, int nnz, size_t csrVal,
         size_t csrRowPtr, size_t csrColInd, size_t cscVal,
         size_t cscRowInd, size_t cscColPtr, int copyValues, int idxBase):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZcsr2csc(
         <Handle>handle, m, n, nnz, <const cuDoubleComplex *>csrVal,
         <const int *>csrRowPtr, <const int *>csrColInd,
@@ -2257,7 +2264,7 @@ cpdef scsr2dense(
         intptr_t handle, int m, int n, size_t descrA,
         size_t csrSortedValA, size_t csrSortedRowPtrA,
         size_t csrSortedColIndA, size_t A, int lda):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseScsr2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const float *>csrSortedValA, <const int *>csrSortedRowPtrA,
@@ -2268,7 +2275,7 @@ cpdef dcsr2dense(
         intptr_t handle, int m, int n, size_t descrA,
         size_t csrSortedValA, size_t csrSortedRowPtrA,
         size_t csrSortedColIndA, size_t A, int lda):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDcsr2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const double *>csrSortedValA, <const int *>csrSortedRowPtrA,
@@ -2279,7 +2286,7 @@ cpdef ccsr2dense(
         intptr_t handle, int m, int n, size_t descrA,
         size_t csrSortedValA, size_t csrSortedRowPtrA,
         size_t csrSortedColIndA, size_t A, int lda):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCcsr2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuComplex *>csrSortedValA, <const int *>csrSortedRowPtrA,
@@ -2290,7 +2297,7 @@ cpdef zcsr2dense(
         intptr_t handle, int m, int n, size_t descrA,
         size_t csrSortedValA, size_t csrSortedRowPtrA,
         size_t csrSortedColIndA, size_t A, int lda):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZcsr2dense(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuDoubleComplex *>csrSortedValA, <const int *>csrSortedRowPtrA,
@@ -2302,7 +2309,7 @@ cpdef snnz_compress(
         size_t values, size_t rowPtr, size_t nnzPerRow,
         float tol):
     cdef int nnz_total
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseSnnz_compress(
         <Handle>handle, m, <const MatDescr>descr,
         <const float *>values, <const int *>rowPtr, <int *>nnzPerRow,
@@ -2315,7 +2322,7 @@ cpdef dnnz_compress(
         size_t values, size_t rowPtr, size_t nnzPerRow,
         double tol):
     cdef int nnz_total
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDnnz_compress(
         <Handle>handle, m, <const MatDescr>descr,
         <const double *>values, <const int *>rowPtr, <int *>nnzPerRow,
@@ -2328,7 +2335,7 @@ cpdef cnnz_compress(
         size_t values, size_t rowPtr, size_t nnzPerRow,
         complex tol):
     cdef int nnz_total
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCnnz_compress(
         <Handle>handle, m, <const MatDescr>descr,
         <const cuComplex *>values, <const int *>rowPtr, <int *>nnzPerRow,
@@ -2341,7 +2348,7 @@ cpdef znnz_compress(
         size_t values, size_t rowPtr, size_t nnzPerRow,
         double complex tol):
     cdef int nnz_total
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZnnz_compress(
         <Handle>handle, m, <const MatDescr>descr,
         <const cuDoubleComplex *>values, <const int *>rowPtr, <int *>nnzPerRow,
@@ -2354,7 +2361,7 @@ cpdef scsr2csr_compress(
         size_t inVal, size_t inColInd, size_t inRowPtr,
         int inNnz, size_t nnzPerRow, size_t outVal, size_t outColInd,
         size_t outRowPtr, float tol):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseScsr2csr_compress(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const float *>inVal, <const int *>inColInd, <const int *>inRowPtr,
@@ -2368,7 +2375,7 @@ cpdef dcsr2csr_compress(
         size_t inVal, size_t inColInd, size_t inRowPtr,
         int inNnz, size_t nnzPerRow, size_t outVal, size_t outColInd,
         size_t outRowPtr, float tol):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDcsr2csr_compress(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const double *>inVal, <const int *>inColInd, <const int *>inRowPtr,
@@ -2381,7 +2388,7 @@ cpdef ccsr2csr_compress(
         size_t inVal, size_t inColInd, size_t inRowPtr,
         int inNnz, size_t nnzPerRow, size_t outVal, size_t outColInd,
         size_t outRowPtr, complex tol):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCcsr2csr_compress(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuComplex *>inVal, <const int *>inColInd, <const int *>inRowPtr,
@@ -2394,7 +2401,7 @@ cpdef zcsr2csr_compress(
         size_t inVal, size_t inColInd, size_t inRowPtr,
         int inNnz, size_t nnzPerRow, size_t outVal, size_t outColInd,
         size_t outRowPtr, double complex tol):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZcsr2csr_compress(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuDoubleComplex *>inVal, <const int *>inColInd,
@@ -2407,7 +2414,7 @@ cpdef sdense2csc(
         intptr_t handle, int m, int n, size_t descrA, size_t A,
         int lda, size_t nnzPerCol, size_t cscValA, size_t cscRowIndA,
         size_t cscColPtrA):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseSdense2csc(
         <Handle>handle, m, n, <const MatDescr>descrA, <const float *>A,
         lda, <const int *>nnzPerCol, <float *>cscValA, <int *>cscRowIndA,
@@ -2419,7 +2426,7 @@ cpdef ddense2csc(
         intptr_t handle, int m, int n, size_t descrA, size_t A,
         int lda, size_t nnzPerCol, size_t cscValA, size_t cscRowIndA,
         size_t cscColPtrA):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDdense2csc(
         <Handle>handle, m, n, <const MatDescr>descrA, <const double *>A,
         lda, <const int *>nnzPerCol, <double *>cscValA, <int *>cscRowIndA,
@@ -2430,7 +2437,7 @@ cpdef cdense2csc(
         intptr_t handle, int m, int n, size_t descrA, size_t A,
         int lda, size_t nnzPerCol, size_t cscValA, size_t cscRowIndA,
         size_t cscColPtrA):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCdense2csc(
         <Handle>handle, m, n, <const MatDescr>descrA, <const cuComplex *>A,
         lda, <const int *>nnzPerCol, <cuComplex *>cscValA, <int *>cscRowIndA,
@@ -2441,7 +2448,7 @@ cpdef zdense2csc(
         intptr_t handle, int m, int n, size_t descrA, size_t A,
         int lda, size_t nnzPerCol, size_t cscValA, size_t cscRowIndA,
         size_t cscColPtrA):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZdense2csc(
         <Handle>handle, m, n,
         <const MatDescr>descrA, <const cuDoubleComplex *>A,
@@ -2454,7 +2461,7 @@ cpdef sdense2csr(
         intptr_t handle, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRow, size_t csrValA,
         size_t csrRowPtrA, size_t csrColIndA):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseSdense2csr(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const float *>A, lda, <const int *>nnzPerRow, <float *>csrValA,
@@ -2466,7 +2473,7 @@ cpdef ddense2csr(
         intptr_t handle, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRow, size_t csrValA,
         size_t csrRowPtrA, size_t csrColIndA):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDdense2csr(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const double *>A, lda, <const int *>nnzPerRow, <double *>csrValA,
@@ -2477,7 +2484,7 @@ cpdef cdense2csr(
         intptr_t handle, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRow, size_t csrValA,
         size_t csrRowPtrA, size_t csrColIndA):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCdense2csr(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuComplex *>A, lda, <const int *>nnzPerRow,
@@ -2488,7 +2495,7 @@ cpdef zdense2csr(
         intptr_t handle, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRow, size_t csrValA,
         size_t csrRowPtrA, size_t csrColIndA):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZdense2csr(
         <Handle>handle, m, n, <MatDescr>descrA,
         <const cuDoubleComplex *>A, lda, <const int *>nnzPerRow,
@@ -2498,7 +2505,7 @@ cpdef zdense2csr(
 cpdef snnz(
         intptr_t handle, int dirA, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRowColumn, size_t nnzTotalDevHostPtr):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseSnnz(
         <Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA,
         <const float *>A, lda, <int *>nnzPerRowColumn,
@@ -2509,7 +2516,7 @@ cpdef snnz(
 cpdef dnnz(
         intptr_t handle, int dirA, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRowColumn, size_t nnzTotalDevHostPtr):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseDnnz(
         <Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA,
         <const double *>A, lda, <int *>nnzPerRowColumn,
@@ -2519,7 +2526,7 @@ cpdef dnnz(
 cpdef cnnz(
         intptr_t handle, int dirA, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRowColumn, size_t nnzTotalDevHostPtr):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCnnz(
         <Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA,
         <const cuComplex *>A, lda, <int *>nnzPerRowColumn,
@@ -2529,7 +2536,7 @@ cpdef cnnz(
 cpdef znnz(
         intptr_t handle, int dirA, int m, int n, size_t descrA,
         size_t A, int lda, size_t nnzPerRowColumn, size_t nnzTotalDevHostPtr):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseZnnz(
         <Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA,
         <const cuDoubleComplex *>A, lda, <int *>nnzPerRowColumn,
@@ -2538,7 +2545,7 @@ cpdef znnz(
 
 cpdef createIdentityPermutation(
         intptr_t handle, int n, size_t p):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseCreateIdentityPermutation(
         <Handle>handle, n, <int *>p)
     check_status(status)
@@ -2548,7 +2555,7 @@ cpdef size_t xcoosort_bufferSizeExt(
         intptr_t handle, int m, int n, int nnz, size_t cooRows,
         size_t cooCols):
     cdef size_t bufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseXcoosort_bufferSizeExt(
         <Handle>handle, m, n, nnz, <const int *>cooRows,
         <const int *>cooCols, &bufferSizeInBytes)
@@ -2559,7 +2566,7 @@ cpdef size_t xcoosort_bufferSizeExt(
 cpdef xcoosortByRow(
         intptr_t handle, int m, int n, int nnz, size_t cooRows, size_t cooCols,
         size_t P, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseXcoosortByRow(
         <Handle>handle, m, n, nnz, <int *>cooRows, <int *>cooCols,
         <int *>P, <void *>pBuffer)
@@ -2570,7 +2577,7 @@ cpdef size_t xcsrsort_bufferSizeExt(
         intptr_t handle, int m, int n, int nnz, size_t csrRowPtr,
         size_t csrColInd):
     cdef size_t bufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseXcsrsort_bufferSizeExt(
         <Handle>handle, m, n, nnz, <const int *>csrRowPtr,
         <const int *>csrColInd, &bufferSizeInBytes)
@@ -2581,7 +2588,7 @@ cpdef size_t xcsrsort_bufferSizeExt(
 cpdef xcsrsort(
         intptr_t handle, int m, int n, int nnz, size_t descrA,
         size_t csrRowPtr, size_t csrColInd, size_t P, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseXcsrsort(
         <Handle>handle, m, n, nnz, <const MatDescr>descrA,
         <const int *>csrRowPtr, <int *>csrColInd, <int *>P, <void *>pBuffer)
@@ -2592,7 +2599,7 @@ cpdef size_t xcscsort_bufferSizeExt(
         intptr_t handle, int m, int n, int nnz, size_t cscColPtr,
         size_t cscRowInd):
     cdef size_t bufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseXcscsort_bufferSizeExt(
         <Handle>handle, m, n, nnz, <const int *>cscColPtr,
         <const int *>cscRowInd, &bufferSizeInBytes)
@@ -2603,7 +2610,7 @@ cpdef size_t xcscsort_bufferSizeExt(
 cpdef xcscsort(
         intptr_t handle, int m, int n, int nnz, size_t descrA,
         size_t cscColPtr, size_t cscRowInd, size_t P, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseXcscsort(
         <Handle>handle, m, n, nnz, <const MatDescr>descrA,
         <const int *>cscColPtr, <int *>cscRowInd, <int *>P, <void *>pBuffer)
@@ -2662,7 +2669,7 @@ cpdef destroyBsric02Info(size_t info):
 
 cpdef scsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
                              size_t tol, size_t boost_val):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseScsrilu02_numericBoost(
             <cusparseHandle_t>handle, <csrilu02Info_t>info, enable_boost,
@@ -2671,7 +2678,7 @@ cpdef scsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
 
 cpdef dcsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
                              size_t tol, size_t boost_val):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDcsrilu02_numericBoost(
             <cusparseHandle_t>handle, <csrilu02Info_t>info, enable_boost,
@@ -2680,7 +2687,7 @@ cpdef dcsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
 
 cpdef ccsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
                              size_t tol, size_t boost_val):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCcsrilu02_numericBoost(
             <cusparseHandle_t>handle, <csrilu02Info_t>info, enable_boost,
@@ -2689,7 +2696,7 @@ cpdef ccsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
 
 cpdef zcsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
                              size_t tol, size_t boost_val):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZcsrilu02_numericBoost(
             <cusparseHandle_t>handle, <csrilu02Info_t>info, enable_boost,
@@ -2697,7 +2704,7 @@ cpdef zcsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
     check_status(status)
 
 cpdef xcsrilu02_zeroPivot(intptr_t handle, size_t info, size_t position):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseXcsrilu02_zeroPivot(
             <cusparseHandle_t>handle, <csrilu02Info_t>info, <int*>position)
@@ -2707,7 +2714,7 @@ cpdef int scsrilu02_bufferSize(intptr_t handle, int m, int nnz, size_t descrA,
                                size_t csrSortedValA, size_t csrSortedRowPtrA,
                                size_t csrSortedColIndA, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseScsrilu02_bufferSize(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -2721,7 +2728,7 @@ cpdef int dcsrilu02_bufferSize(intptr_t handle, int m, int nnz, size_t descrA,
                                size_t csrSortedValA, size_t csrSortedRowPtrA,
                                size_t csrSortedColIndA, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDcsrilu02_bufferSize(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -2735,7 +2742,7 @@ cpdef int ccsrilu02_bufferSize(intptr_t handle, int m, int nnz, size_t descrA,
                                size_t csrSortedValA, size_t csrSortedRowPtrA,
                                size_t csrSortedColIndA, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCcsrilu02_bufferSize(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -2749,7 +2756,7 @@ cpdef int zcsrilu02_bufferSize(intptr_t handle, int m, int nnz, size_t descrA,
                                size_t csrSortedValA, size_t csrSortedRowPtrA,
                                size_t csrSortedColIndA, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZcsrilu02_bufferSize(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -2763,7 +2770,7 @@ cpdef scsrilu02_analysis(intptr_t handle, int m, int nnz, size_t descrA,
                          size_t csrSortedValA, size_t csrSortedRowPtrA,
                          size_t csrSortedColIndA, size_t info, int policy,
                          size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseScsrilu02_analysis(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -2776,7 +2783,7 @@ cpdef dcsrilu02_analysis(intptr_t handle, int m, int nnz, size_t descrA,
                          size_t csrSortedValA, size_t csrSortedRowPtrA,
                          size_t csrSortedColIndA, size_t info, int policy,
                          size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDcsrilu02_analysis(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -2789,7 +2796,7 @@ cpdef ccsrilu02_analysis(intptr_t handle, int m, int nnz, size_t descrA,
                          size_t csrSortedValA, size_t csrSortedRowPtrA,
                          size_t csrSortedColIndA, size_t info, int policy,
                          size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCcsrilu02_analysis(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -2802,7 +2809,7 @@ cpdef zcsrilu02_analysis(intptr_t handle, int m, int nnz, size_t descrA,
                          size_t csrSortedValA, size_t csrSortedRowPtrA,
                          size_t csrSortedColIndA, size_t info, int policy,
                          size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZcsrilu02_analysis(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -2816,7 +2823,7 @@ cpdef scsrilu02(intptr_t handle, int m, int nnz, size_t descrA,
                 size_t csrSortedValA_valM, size_t csrSortedRowPtrA,
                 size_t csrSortedColIndA, size_t info, int policy,
                 size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseScsrilu02(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -2829,7 +2836,7 @@ cpdef dcsrilu02(intptr_t handle, int m, int nnz, size_t descrA,
                 size_t csrSortedValA_valM, size_t csrSortedRowPtrA,
                 size_t csrSortedColIndA, size_t info, int policy,
                 size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDcsrilu02(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -2842,7 +2849,7 @@ cpdef ccsrilu02(intptr_t handle, int m, int nnz, size_t descrA,
                 size_t csrSortedValA_valM, size_t csrSortedRowPtrA,
                 size_t csrSortedColIndA, size_t info, int policy,
                 size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCcsrilu02(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -2855,7 +2862,7 @@ cpdef zcsrilu02(intptr_t handle, int m, int nnz, size_t descrA,
                 size_t csrSortedValA_valM, size_t csrSortedRowPtrA,
                 size_t csrSortedColIndA, size_t info, int policy,
                 size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZcsrilu02(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -2866,7 +2873,7 @@ cpdef zcsrilu02(intptr_t handle, int m, int nnz, size_t descrA,
 
 cpdef sbsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
                              size_t tol, size_t boost_val):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSbsrilu02_numericBoost(
             <cusparseHandle_t>handle, <bsrilu02Info_t>info, enable_boost,
@@ -2875,7 +2882,7 @@ cpdef sbsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
 
 cpdef dbsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
                              size_t tol, size_t boost_val):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDbsrilu02_numericBoost(
             <cusparseHandle_t>handle, <bsrilu02Info_t>info, enable_boost,
@@ -2884,7 +2891,7 @@ cpdef dbsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
 
 cpdef cbsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
                              size_t tol, size_t boost_val):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCbsrilu02_numericBoost(
             <cusparseHandle_t>handle, <bsrilu02Info_t>info, enable_boost,
@@ -2893,7 +2900,7 @@ cpdef cbsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
 
 cpdef zbsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
                              size_t tol, size_t boost_val):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZbsrilu02_numericBoost(
             <cusparseHandle_t>handle, <bsrilu02Info_t>info, enable_boost,
@@ -2901,7 +2908,7 @@ cpdef zbsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost,
     check_status(status)
 
 cpdef xbsrilu02_zeroPivot(intptr_t handle, size_t info, size_t position):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseXbsrilu02_zeroPivot(
             <cusparseHandle_t>handle, <bsrilu02Info_t>info, <int*>position)
@@ -2912,7 +2919,7 @@ cpdef int sbsrilu02_bufferSize(intptr_t handle, int dirA, int mb, int nnzb,
                                size_t bsrSortedRowPtr, size_t bsrSortedColInd,
                                int blockDim, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSbsrilu02_bufferSize(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -2927,7 +2934,7 @@ cpdef int dbsrilu02_bufferSize(intptr_t handle, int dirA, int mb, int nnzb,
                                size_t bsrSortedRowPtr, size_t bsrSortedColInd,
                                int blockDim, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDbsrilu02_bufferSize(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -2942,7 +2949,7 @@ cpdef int cbsrilu02_bufferSize(intptr_t handle, int dirA, int mb, int nnzb,
                                size_t bsrSortedRowPtr, size_t bsrSortedColInd,
                                int blockDim, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCbsrilu02_bufferSize(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -2957,7 +2964,7 @@ cpdef int zbsrilu02_bufferSize(intptr_t handle, int dirA, int mb, int nnzb,
                                size_t bsrSortedRowPtr, size_t bsrSortedColInd,
                                int blockDim, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZbsrilu02_bufferSize(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -2971,7 +2978,7 @@ cpdef sbsrilu02_analysis(
         intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
         size_t bsrSortedVal, size_t bsrSortedRowPtr, size_t bsrSortedColInd,
         int blockDim, size_t info, int policy, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSbsrilu02_analysis(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -2985,7 +2992,7 @@ cpdef dbsrilu02_analysis(
         intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
         size_t bsrSortedVal, size_t bsrSortedRowPtr, size_t bsrSortedColInd,
         int blockDim, size_t info, int policy, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDbsrilu02_analysis(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -2999,7 +3006,7 @@ cpdef cbsrilu02_analysis(
         intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
         size_t bsrSortedVal, size_t bsrSortedRowPtr, size_t bsrSortedColInd,
         int blockDim, size_t info, int policy, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCbsrilu02_analysis(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3013,7 +3020,7 @@ cpdef zbsrilu02_analysis(
         intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
         size_t bsrSortedVal, size_t bsrSortedRowPtr, size_t bsrSortedColInd,
         int blockDim, size_t info, int policy, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZbsrilu02_analysis(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3027,7 +3034,7 @@ cpdef sbsrilu02(intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
                 size_t bsrSortedVal, size_t bsrSortedRowPtr,
                 size_t bsrSortedColInd, int blockDim, size_t info, int policy,
                 size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSbsrilu02(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3041,7 +3048,7 @@ cpdef dbsrilu02(intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
                 size_t bsrSortedVal, size_t bsrSortedRowPtr,
                 size_t bsrSortedColInd, int blockDim, size_t info, int policy,
                 size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDbsrilu02(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3055,7 +3062,7 @@ cpdef cbsrilu02(intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
                 size_t bsrSortedVal, size_t bsrSortedRowPtr,
                 size_t bsrSortedColInd, int blockDim, size_t info, int policy,
                 size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCbsrilu02(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3069,7 +3076,7 @@ cpdef zbsrilu02(intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
                 size_t bsrSortedVal, size_t bsrSortedRowPtr,
                 size_t bsrSortedColInd, int blockDim, size_t info, int policy,
                 size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZbsrilu02(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3080,7 +3087,7 @@ cpdef zbsrilu02(intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
     check_status(status)
 
 cpdef xcsric02_zeroPivot(intptr_t handle, size_t info, size_t position):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseXcsric02_zeroPivot(
             <cusparseHandle_t>handle, <csric02Info_t>info, <int*>position)
@@ -3090,7 +3097,7 @@ cpdef int scsric02_bufferSize(intptr_t handle, int m, int nnz, size_t descrA,
                               size_t csrSortedValA, size_t csrSortedRowPtrA,
                               size_t csrSortedColIndA, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseScsric02_bufferSize(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -3104,7 +3111,7 @@ cpdef int dcsric02_bufferSize(intptr_t handle, int m, int nnz, size_t descrA,
                               size_t csrSortedValA, size_t csrSortedRowPtrA,
                               size_t csrSortedColIndA, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDcsric02_bufferSize(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -3118,7 +3125,7 @@ cpdef int ccsric02_bufferSize(intptr_t handle, int m, int nnz, size_t descrA,
                               size_t csrSortedValA, size_t csrSortedRowPtrA,
                               size_t csrSortedColIndA, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCcsric02_bufferSize(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -3132,7 +3139,7 @@ cpdef int zcsric02_bufferSize(intptr_t handle, int m, int nnz, size_t descrA,
                               size_t csrSortedValA, size_t csrSortedRowPtrA,
                               size_t csrSortedColIndA, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZcsric02_bufferSize(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -3146,7 +3153,7 @@ cpdef scsric02_analysis(intptr_t handle, int m, int nnz, size_t descrA,
                         size_t csrSortedValA, size_t csrSortedRowPtrA,
                         size_t csrSortedColIndA, size_t info, int policy,
                         size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseScsric02_analysis(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -3159,7 +3166,7 @@ cpdef dcsric02_analysis(intptr_t handle, int m, int nnz, size_t descrA,
                         size_t csrSortedValA, size_t csrSortedRowPtrA,
                         size_t csrSortedColIndA, size_t info, int policy,
                         size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDcsric02_analysis(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -3172,7 +3179,7 @@ cpdef ccsric02_analysis(intptr_t handle, int m, int nnz, size_t descrA,
                         size_t csrSortedValA, size_t csrSortedRowPtrA,
                         size_t csrSortedColIndA, size_t info, int policy,
                         size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCcsric02_analysis(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -3185,7 +3192,7 @@ cpdef zcsric02_analysis(intptr_t handle, int m, int nnz, size_t descrA,
                         size_t csrSortedValA, size_t csrSortedRowPtrA,
                         size_t csrSortedColIndA, size_t info, int policy,
                         size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZcsric02_analysis(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -3198,7 +3205,7 @@ cpdef scsric02(intptr_t handle, int m, int nnz, size_t descrA,
                size_t csrSortedValA_valM, size_t csrSortedRowPtrA,
                size_t csrSortedColIndA, size_t info, int policy,
                size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseScsric02(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -3211,7 +3218,7 @@ cpdef dcsric02(intptr_t handle, int m, int nnz, size_t descrA,
                size_t csrSortedValA_valM, size_t csrSortedRowPtrA,
                size_t csrSortedColIndA, size_t info, int policy,
                size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDcsric02(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -3224,7 +3231,7 @@ cpdef ccsric02(intptr_t handle, int m, int nnz, size_t descrA,
                size_t csrSortedValA_valM, size_t csrSortedRowPtrA,
                size_t csrSortedColIndA, size_t info, int policy,
                size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCcsric02(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -3237,7 +3244,7 @@ cpdef zcsric02(intptr_t handle, int m, int nnz, size_t descrA,
                size_t csrSortedValA_valM, size_t csrSortedRowPtrA,
                size_t csrSortedColIndA, size_t info, int policy,
                size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZcsric02(
             <cusparseHandle_t>handle, m, nnz, <const cusparseMatDescr_t>descrA,
@@ -3247,7 +3254,7 @@ cpdef zcsric02(intptr_t handle, int m, int nnz, size_t descrA,
     check_status(status)
 
 cpdef xbsric02_zeroPivot(intptr_t handle, size_t info, size_t position):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseXbsric02_zeroPivot(
             <cusparseHandle_t>handle, <bsric02Info_t>info, <int*>position)
@@ -3258,7 +3265,7 @@ cpdef int sbsric02_bufferSize(intptr_t handle, int dirA, int mb, int nnzb,
                               size_t bsrSortedRowPtr, size_t bsrSortedColInd,
                               int blockDim, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSbsric02_bufferSize(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3273,7 +3280,7 @@ cpdef int dbsric02_bufferSize(intptr_t handle, int dirA, int mb, int nnzb,
                               size_t bsrSortedRowPtr, size_t bsrSortedColInd,
                               int blockDim, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDbsric02_bufferSize(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3288,7 +3295,7 @@ cpdef int cbsric02_bufferSize(intptr_t handle, int dirA, int mb, int nnzb,
                               size_t bsrSortedRowPtr, size_t bsrSortedColInd,
                               int blockDim, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCbsric02_bufferSize(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3303,7 +3310,7 @@ cpdef int zbsric02_bufferSize(intptr_t handle, int dirA, int mb, int nnzb,
                               size_t bsrSortedRowPtr, size_t bsrSortedColInd,
                               int blockDim, size_t info):
     cdef int pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZbsric02_bufferSize(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3317,7 +3324,7 @@ cpdef sbsric02_analysis(
         intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
         size_t bsrSortedVal, size_t bsrSortedRowPtr, size_t bsrSortedColInd,
         int blockDim, size_t info, int policy, size_t pInputBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSbsric02_analysis(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3331,7 +3338,7 @@ cpdef dbsric02_analysis(
         intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
         size_t bsrSortedVal, size_t bsrSortedRowPtr, size_t bsrSortedColInd,
         int blockDim, size_t info, int policy, size_t pInputBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDbsric02_analysis(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3345,7 +3352,7 @@ cpdef cbsric02_analysis(
         intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
         size_t bsrSortedVal, size_t bsrSortedRowPtr, size_t bsrSortedColInd,
         int blockDim, size_t info, int policy, size_t pInputBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCbsric02_analysis(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3359,7 +3366,7 @@ cpdef zbsric02_analysis(
         intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
         size_t bsrSortedVal, size_t bsrSortedRowPtr, size_t bsrSortedColInd,
         int blockDim, size_t info, int policy, size_t pInputBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZbsric02_analysis(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3373,7 +3380,7 @@ cpdef sbsric02(intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
                size_t bsrSortedVal, size_t bsrSortedRowPtr,
                size_t bsrSortedColInd, int blockDim, size_t info, int policy,
                size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSbsric02(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3386,7 +3393,7 @@ cpdef dbsric02(intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
                size_t bsrSortedVal, size_t bsrSortedRowPtr,
                size_t bsrSortedColInd, int blockDim, size_t info, int policy,
                size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDbsric02(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3399,7 +3406,7 @@ cpdef cbsric02(intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
                size_t bsrSortedVal, size_t bsrSortedRowPtr,
                size_t bsrSortedColInd, int blockDim, size_t info, int policy,
                size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCbsric02(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3412,7 +3419,7 @@ cpdef zbsric02(intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
                size_t bsrSortedVal, size_t bsrSortedRowPtr,
                size_t bsrSortedColInd, int blockDim, size_t info, int policy,
                size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZbsric02(
             <cusparseHandle_t>handle, <cusparseDirection_t>dirA, mb, nnzb,
@@ -3424,7 +3431,7 @@ cpdef zbsric02(intptr_t handle, int dirA, int mb, int nnzb, size_t descrA,
 cpdef sgtsv2_bufferSizeExt(intptr_t handle, int m, int n, size_t dl, size_t d,
                            size_t du, size_t B, int ldb,
                            size_t bufferSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSgtsv2_bufferSizeExt(
             <cusparseHandle_t>handle, m, n, <const float*>dl, <const float*>d,
@@ -3434,7 +3441,7 @@ cpdef sgtsv2_bufferSizeExt(intptr_t handle, int m, int n, size_t dl, size_t d,
 cpdef dgtsv2_bufferSizeExt(intptr_t handle, int m, int n, size_t dl, size_t d,
                            size_t du, size_t B, int ldb,
                            size_t bufferSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDgtsv2_bufferSizeExt(
             <cusparseHandle_t>handle, m, n, <const double*>dl,
@@ -3445,7 +3452,7 @@ cpdef dgtsv2_bufferSizeExt(intptr_t handle, int m, int n, size_t dl, size_t d,
 cpdef cgtsv2_bufferSizeExt(intptr_t handle, int m, int n, size_t dl, size_t d,
                            size_t du, size_t B, int ldb,
                            size_t bufferSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCgtsv2_bufferSizeExt(
             <cusparseHandle_t>handle, m, n, <const cuComplex*>dl,
@@ -3456,7 +3463,7 @@ cpdef cgtsv2_bufferSizeExt(intptr_t handle, int m, int n, size_t dl, size_t d,
 cpdef zgtsv2_bufferSizeExt(intptr_t handle, int m, int n, size_t dl, size_t d,
                            size_t du, size_t B, int ldb,
                            size_t bufferSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZgtsv2_bufferSizeExt(
             <cusparseHandle_t>handle, m, n, <const cuDoubleComplex*>dl,
@@ -3466,7 +3473,7 @@ cpdef zgtsv2_bufferSizeExt(intptr_t handle, int m, int n, size_t dl, size_t d,
 
 cpdef sgtsv2(intptr_t handle, int m, int n, size_t dl, size_t d, size_t du,
              size_t B, int ldb, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSgtsv2(
             <cusparseHandle_t>handle, m, n, <const float*>dl, <const float*>d,
@@ -3475,7 +3482,7 @@ cpdef sgtsv2(intptr_t handle, int m, int n, size_t dl, size_t d, size_t du,
 
 cpdef dgtsv2(intptr_t handle, int m, int n, size_t dl, size_t d, size_t du,
              size_t B, int ldb, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDgtsv2(<cusparseHandle_t>handle, m, n,
                                 <const double*>dl, <const double*>d,
@@ -3485,7 +3492,7 @@ cpdef dgtsv2(intptr_t handle, int m, int n, size_t dl, size_t d, size_t du,
 
 cpdef cgtsv2(intptr_t handle, int m, int n, size_t dl, size_t d, size_t du,
              size_t B, int ldb, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCgtsv2(<cusparseHandle_t>handle, m, n,
                                 <const cuComplex*>dl, <const cuComplex*>d,
@@ -3495,7 +3502,7 @@ cpdef cgtsv2(intptr_t handle, int m, int n, size_t dl, size_t d, size_t du,
 
 cpdef zgtsv2(intptr_t handle, int m, int n, size_t dl, size_t d, size_t du,
              size_t B, int ldb, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZgtsv2(
             <cusparseHandle_t>handle, m, n, <const cuDoubleComplex*>dl,
@@ -3506,7 +3513,7 @@ cpdef zgtsv2(intptr_t handle, int m, int n, size_t dl, size_t d, size_t du,
 cpdef sgtsv2_nopivot_bufferSizeExt(intptr_t handle, int m, int n, size_t dl,
                                    size_t d, size_t du, size_t B, int ldb,
                                    size_t bufferSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSgtsv2_nopivot_bufferSizeExt(
             <cusparseHandle_t>handle, m, n, <const float*>dl, <const float*>d,
@@ -3516,7 +3523,7 @@ cpdef sgtsv2_nopivot_bufferSizeExt(intptr_t handle, int m, int n, size_t dl,
 cpdef dgtsv2_nopivot_bufferSizeExt(intptr_t handle, int m, int n, size_t dl,
                                    size_t d, size_t du, size_t B, int ldb,
                                    size_t bufferSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDgtsv2_nopivot_bufferSizeExt(
             <cusparseHandle_t>handle, m, n, <const double*>dl,
@@ -3527,7 +3534,7 @@ cpdef dgtsv2_nopivot_bufferSizeExt(intptr_t handle, int m, int n, size_t dl,
 cpdef cgtsv2_nopivot_bufferSizeExt(intptr_t handle, int m, int n, size_t dl,
                                    size_t d, size_t du, size_t B, int ldb,
                                    size_t bufferSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCgtsv2_nopivot_bufferSizeExt(
             <cusparseHandle_t>handle, m, n, <const cuComplex*>dl,
@@ -3538,7 +3545,7 @@ cpdef cgtsv2_nopivot_bufferSizeExt(intptr_t handle, int m, int n, size_t dl,
 cpdef zgtsv2_nopivot_bufferSizeExt(intptr_t handle, int m, int n, size_t dl,
                                    size_t d, size_t du, size_t B, int ldb,
                                    size_t bufferSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZgtsv2_nopivot_bufferSizeExt(
             <cusparseHandle_t>handle, m, n, <const cuDoubleComplex*>dl,
@@ -3548,7 +3555,7 @@ cpdef zgtsv2_nopivot_bufferSizeExt(intptr_t handle, int m, int n, size_t dl,
 
 cpdef sgtsv2_nopivot(intptr_t handle, int m, int n, size_t dl, size_t d,
                      size_t du, size_t B, int ldb, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSgtsv2_nopivot(
             <cusparseHandle_t>handle, m, n, <const float*>dl, <const float*>d,
@@ -3557,7 +3564,7 @@ cpdef sgtsv2_nopivot(intptr_t handle, int m, int n, size_t dl, size_t d,
 
 cpdef dgtsv2_nopivot(intptr_t handle, int m, int n, size_t dl, size_t d,
                      size_t du, size_t B, int ldb, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDgtsv2_nopivot(<cusparseHandle_t>handle, m, n,
                                         <const double*>dl, <const double*>d,
@@ -3567,7 +3574,7 @@ cpdef dgtsv2_nopivot(intptr_t handle, int m, int n, size_t dl, size_t d,
 
 cpdef cgtsv2_nopivot(intptr_t handle, int m, int n, size_t dl, size_t d,
                      size_t du, size_t B, int ldb, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCgtsv2_nopivot(
             <cusparseHandle_t>handle, m, n, <const cuComplex*>dl,
@@ -3577,7 +3584,7 @@ cpdef cgtsv2_nopivot(intptr_t handle, int m, int n, size_t dl, size_t d,
 
 cpdef zgtsv2_nopivot(intptr_t handle, int m, int n, size_t dl, size_t d,
                      size_t du, size_t B, int ldb, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZgtsv2_nopivot(
             <cusparseHandle_t>handle, m, n, <const cuDoubleComplex*>dl,
@@ -3588,7 +3595,7 @@ cpdef zgtsv2_nopivot(intptr_t handle, int m, int n, size_t dl, size_t d,
 cpdef sgtsv2StridedBatch_bufferSizeExt(
         intptr_t handle, int m, size_t dl, size_t d, size_t du, size_t x,
         int batchCount, int batchStride, size_t bufferSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSgtsv2StridedBatch_bufferSizeExt(
             <cusparseHandle_t>handle, m, <const float*>dl, <const float*>d,
@@ -3599,7 +3606,7 @@ cpdef sgtsv2StridedBatch_bufferSizeExt(
 cpdef dgtsv2StridedBatch_bufferSizeExt(
         intptr_t handle, int m, size_t dl, size_t d, size_t du, size_t x,
         int batchCount, int batchStride, size_t bufferSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDgtsv2StridedBatch_bufferSizeExt(
             <cusparseHandle_t>handle, m, <const double*>dl, <const double*>d,
@@ -3610,7 +3617,7 @@ cpdef dgtsv2StridedBatch_bufferSizeExt(
 cpdef cgtsv2StridedBatch_bufferSizeExt(
         intptr_t handle, int m, size_t dl, size_t d, size_t du, size_t x,
         int batchCount, int batchStride, size_t bufferSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCgtsv2StridedBatch_bufferSizeExt(
             <cusparseHandle_t>handle, m, <const cuComplex*>dl,
@@ -3621,7 +3628,7 @@ cpdef cgtsv2StridedBatch_bufferSizeExt(
 cpdef zgtsv2StridedBatch_bufferSizeExt(
         intptr_t handle, int m, size_t dl, size_t d, size_t du, size_t x,
         int batchCount, int batchStride, size_t bufferSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZgtsv2StridedBatch_bufferSizeExt(
             <cusparseHandle_t>handle, m, <const cuDoubleComplex*>dl,
@@ -3633,7 +3640,7 @@ cpdef zgtsv2StridedBatch_bufferSizeExt(
 cpdef sgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d,
                          size_t du, size_t x, int batchCount, int batchStride,
                          size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSgtsv2StridedBatch(
             <cusparseHandle_t>handle, m, <const float*>dl, <const float*>d,
@@ -3644,7 +3651,7 @@ cpdef sgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d,
 cpdef dgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d,
                          size_t du, size_t x, int batchCount, int batchStride,
                          size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDgtsv2StridedBatch(
             <cusparseHandle_t>handle, m, <const double*>dl, <const double*>d,
@@ -3655,7 +3662,7 @@ cpdef dgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d,
 cpdef cgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d,
                          size_t du, size_t x, int batchCount, int batchStride,
                          size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCgtsv2StridedBatch(
             <cusparseHandle_t>handle, m, <const cuComplex*>dl,
@@ -3666,7 +3673,7 @@ cpdef cgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d,
 cpdef zgtsv2StridedBatch(intptr_t handle, int m, size_t dl, size_t d,
                          size_t du, size_t x, int batchCount, int batchStride,
                          size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZgtsv2StridedBatch(
             <cusparseHandle_t>handle, m, <const cuDoubleComplex*>dl,
@@ -3678,7 +3685,7 @@ cpdef size_t sgtsvInterleavedBatch_bufferSizeExt(
         intptr_t handle, int algo, int m, size_t dl, size_t d, size_t du,
         size_t x, int batchCount):
     cdef size_t pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSgtsvInterleavedBatch_bufferSizeExt(
             <cusparseHandle_t>handle, algo, m, <const float*>dl,
@@ -3691,7 +3698,7 @@ cpdef size_t dgtsvInterleavedBatch_bufferSizeExt(
         intptr_t handle, int algo, int m, size_t dl, size_t d, size_t du,
         size_t x, int batchCount):
     cdef size_t pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDgtsvInterleavedBatch_bufferSizeExt(
             <cusparseHandle_t>handle, algo, m, <const double*>dl,
@@ -3704,7 +3711,7 @@ cpdef size_t cgtsvInterleavedBatch_bufferSizeExt(
         intptr_t handle, int algo, int m, size_t dl, size_t d, size_t du,
         size_t x, int batchCount):
     cdef size_t pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCgtsvInterleavedBatch_bufferSizeExt(
             <cusparseHandle_t>handle, algo, m, <const cuComplex*>dl,
@@ -3717,7 +3724,7 @@ cpdef size_t zgtsvInterleavedBatch_bufferSizeExt(
         intptr_t handle, int algo, int m, size_t dl, size_t d, size_t du,
         size_t x, int batchCount):
     cdef size_t pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZgtsvInterleavedBatch_bufferSizeExt(
             <cusparseHandle_t>handle, algo, m, <const cuDoubleComplex*>dl,
@@ -3729,7 +3736,7 @@ cpdef size_t zgtsvInterleavedBatch_bufferSizeExt(
 cpdef sgtsvInterleavedBatch(intptr_t handle, int algo, int m, size_t dl,
                             size_t d, size_t du, size_t x, int batchCount,
                             size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSgtsvInterleavedBatch(
             <cusparseHandle_t>handle, algo, m, <float*>dl, <float*>d,
@@ -3739,7 +3746,7 @@ cpdef sgtsvInterleavedBatch(intptr_t handle, int algo, int m, size_t dl,
 cpdef dgtsvInterleavedBatch(intptr_t handle, int algo, int m, size_t dl,
                             size_t d, size_t du, size_t x, int batchCount,
                             size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDgtsvInterleavedBatch(
             <cusparseHandle_t>handle, algo, m, <double*>dl, <double*>d,
@@ -3749,7 +3756,7 @@ cpdef dgtsvInterleavedBatch(intptr_t handle, int algo, int m, size_t dl,
 cpdef cgtsvInterleavedBatch(intptr_t handle, int algo, int m, size_t dl,
                             size_t d, size_t du, size_t x, int batchCount,
                             size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCgtsvInterleavedBatch(
             <cusparseHandle_t>handle, algo, m, <cuComplex*>dl, <cuComplex*>d,
@@ -3759,7 +3766,7 @@ cpdef cgtsvInterleavedBatch(intptr_t handle, int algo, int m, size_t dl,
 cpdef zgtsvInterleavedBatch(intptr_t handle, int algo, int m, size_t dl,
                             size_t d, size_t du, size_t x, int batchCount,
                             size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZgtsvInterleavedBatch(
             <cusparseHandle_t>handle, algo, m, <cuDoubleComplex*>dl,
@@ -3771,7 +3778,7 @@ cpdef size_t sgpsvInterleavedBatch_bufferSizeExt(
         intptr_t handle, int algo, int m, size_t ds, size_t dl, size_t d,
         size_t du, size_t dw, size_t x, int batchCount):
     cdef size_t pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSgpsvInterleavedBatch_bufferSizeExt(
             <cusparseHandle_t>handle, algo, m, <const float*>ds,
@@ -3784,7 +3791,7 @@ cpdef size_t dgpsvInterleavedBatch_bufferSizeExt(
         intptr_t handle, int algo, int m, size_t ds, size_t dl, size_t d,
         size_t du, size_t dw, size_t x, int batchCount):
     cdef size_t pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDgpsvInterleavedBatch_bufferSizeExt(
             <cusparseHandle_t>handle, algo, m, <const double*>ds,
@@ -3798,7 +3805,7 @@ cpdef size_t cgpsvInterleavedBatch_bufferSizeExt(
         intptr_t handle, int algo, int m, size_t ds, size_t dl, size_t d,
         size_t du, size_t dw, size_t x, int batchCount):
     cdef size_t pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCgpsvInterleavedBatch_bufferSizeExt(
             <cusparseHandle_t>handle, algo, m, <const cuComplex*>ds,
@@ -3812,7 +3819,7 @@ cpdef size_t zgpsvInterleavedBatch_bufferSizeExt(
         intptr_t handle, int algo, int m, size_t ds, size_t dl, size_t d,
         size_t du, size_t dw, size_t x, int batchCount):
     cdef size_t pBufferSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZgpsvInterleavedBatch_bufferSizeExt(
             <cusparseHandle_t>handle, algo, m, <const cuDoubleComplex*>ds,
@@ -3825,7 +3832,7 @@ cpdef size_t zgpsvInterleavedBatch_bufferSizeExt(
 cpdef sgpsvInterleavedBatch(intptr_t handle, int algo, int m, size_t ds,
                             size_t dl, size_t d, size_t du, size_t dw,
                             size_t x, int batchCount, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseSgpsvInterleavedBatch(
             <cusparseHandle_t>handle, algo, m, <float*>ds, <float*>dl,
@@ -3836,7 +3843,7 @@ cpdef sgpsvInterleavedBatch(intptr_t handle, int algo, int m, size_t ds,
 cpdef dgpsvInterleavedBatch(intptr_t handle, int algo, int m, size_t ds,
                             size_t dl, size_t d, size_t du, size_t dw,
                             size_t x, int batchCount, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseDgpsvInterleavedBatch(
             <cusparseHandle_t>handle, algo, m, <double*>ds, <double*>dl,
@@ -3847,7 +3854,7 @@ cpdef dgpsvInterleavedBatch(intptr_t handle, int algo, int m, size_t ds,
 cpdef cgpsvInterleavedBatch(intptr_t handle, int algo, int m, size_t ds,
                             size_t dl, size_t d, size_t du, size_t dw,
                             size_t x, int batchCount, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseCgpsvInterleavedBatch(
             <cusparseHandle_t>handle, algo, m, <cuComplex*>ds, <cuComplex*>dl,
@@ -3858,7 +3865,7 @@ cpdef cgpsvInterleavedBatch(intptr_t handle, int algo, int m, size_t ds,
 cpdef zgpsvInterleavedBatch(intptr_t handle, int algo, int m, size_t ds,
                             size_t dl, size_t d, size_t du, size_t dw,
                             size_t x, int batchCount, size_t pBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cusparseZgpsvInterleavedBatch(
             <cusparseHandle_t>handle, algo, m, <cuDoubleComplex*>ds,
@@ -4122,7 +4129,7 @@ cpdef size_t spVV_bufferSize(intptr_t handle, Operation opX,
 
 cpdef spVV(intptr_t handle, Operation opX, size_t vecX, size_t vecY,
            intptr_t result, DataType computeType, intptr_t externalBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseSpVV(<Handle>handle, opX, <SpVecDescr>vecX,
                           <DnVecDescr>vecY, <void*>result, computeType,
                           <void*>externalBuffer)
@@ -4142,7 +4149,7 @@ cpdef size_t spMV_bufferSize(intptr_t handle, Operation opA, intptr_t alpha,
 cpdef spMV(intptr_t handle, Operation opA, intptr_t alpha, size_t matA,
            size_t vecX, intptr_t beta, size_t vecY, DataType computeType,
            SpMVAlg alg, intptr_t externalBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseSpMV(<Handle>handle, opA, <void*>alpha, <SpMatDescr>matA,
                           <DnVecDescr>vecX, <void*>beta, <DnVecDescr>vecY,
                           computeType, alg, <void*>externalBuffer)
@@ -4163,7 +4170,7 @@ cpdef size_t spMM_bufferSize(intptr_t handle, Operation opA, Operation opB,
 cpdef spMM(intptr_t handle, Operation opA, Operation opB, intptr_t alpha,
            size_t matA, size_t matB, intptr_t beta, size_t matC,
            DataType computeType, SpMMAlg alg, intptr_t externalBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseSpMM(<Handle>handle, opA, opB, <void*>alpha,
                           <SpMatDescr>matA, <DnMatDescr>matB, <void*>beta,
                           <DnMatDescr>matC, computeType, alg,
@@ -4187,7 +4194,7 @@ cpdef constrainedGeMM(intptr_t handle, Operation opA, Operation opB,
                       intptr_t alpha, size_t matA, size_t matB, intptr_t beta,
                       size_t matC, DataType computeType,
                       intptr_t externalBuffer):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     status = cusparseConstrainedGeMM(
         <Handle>handle, opA, opB, <void*>alpha, <DnMatDescr>matA,
         <DnMatDescr>matB, <void*>beta, <SpMatDescr>matC, computeType,

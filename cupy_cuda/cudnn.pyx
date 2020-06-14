@@ -6,11 +6,12 @@ cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy_cuda cimport driver
-from cupy.cuda cimport stream as stream_module
+from cupy_cuda cimport stream as stream_module
 
 ###############################################################################
 # Extern
 ###############################################################################
+from cupy_cuda.cusparse import setStream
 
 cdef extern from 'cupy_cudnn.h' nogil:
     # Types
@@ -844,6 +845,12 @@ cpdef size_t getStream(intptr_t handle) except? 0:
     return <size_t>stream
 
 
+cdef _setStream(intptr_t handle):
+    """Set current stream when enable_current_stream is True
+    """
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+
 ###############################################################################
 # Tensor manipulation
 ###############################################################################
@@ -897,7 +904,7 @@ cpdef destroyTensorDescriptor(size_t tensorDesc):
 
 cpdef addTensor_v3(intptr_t handle, size_t alpha, size_t bDesc,
                    size_t b, size_t beta, size_t yDesc, size_t y):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnAddTensor_v3(
             <Handle>handle, <void*>alpha, <TensorDescriptor>bDesc,
@@ -943,7 +950,7 @@ cpdef destroyOpTensorDescriptor(size_t opTensorDesc):
 cpdef opTensor(intptr_t handle, size_t opTensorDesc, size_t alpha1,
                size_t aDesc, size_t A, size_t alpha2, size_t bDesc,
                size_t B, size_t beta, size_t cDesc, size_t C):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnOpTensor(
             <Handle>handle, <OpTensorDescriptor>opTensorDesc, <void*>alpha1,
@@ -1021,7 +1028,7 @@ cpdef reduceTensor(intptr_t handle, size_t reduceTensorDesc, size_t indices,
                    size_t indicesSizeInBytes, size_t workspace,
                    size_t workspaceSizeInBytes, size_t alpha, size_t aDesc,
                    size_t A, size_t beta, size_t cDesc, size_t C):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnReduceTensor(
             <Handle>handle, <ReduceTensorDescriptor>reduceTensorDesc,
@@ -1032,7 +1039,7 @@ cpdef reduceTensor(intptr_t handle, size_t reduceTensorDesc, size_t indices,
 
 
 cpdef setTensor(intptr_t handle, size_t yDesc, size_t y, size_t valuePtr):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnSetTensor(
             <Handle>handle, <TensorDescriptor>yDesc, <void*>y,
@@ -1041,7 +1048,7 @@ cpdef setTensor(intptr_t handle, size_t yDesc, size_t y, size_t valuePtr):
 
 
 cpdef scaleTensor(intptr_t handle, size_t yDesc, size_t y, size_t alpha):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnScaleTensor(
             <Handle>handle, <TensorDescriptor>yDesc, <void*> y,
@@ -1270,7 +1277,7 @@ cpdef convolutionForward(
         size_t filterDesc, size_t filterData, size_t convDesc, int algo,
         size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
         size_t destDesc, size_t destData):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnConvolutionForward(
             <Handle>handle, <void*>alpha,
@@ -1285,7 +1292,7 @@ cpdef convolutionForward(
 cpdef convolutionBackwardBias(
         intptr_t handle, size_t alpha, size_t srcDesc, size_t srcData,
         size_t beta, size_t destDesc, size_t destData):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnConvolutionBackwardBias(
             <Handle>handle, <void*>alpha,
@@ -1398,7 +1405,7 @@ cpdef convolutionBackwardFilter_v3(
         size_t diffDesc, size_t diffData, size_t convDesc, int algo,
         size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
         size_t gradDesc, size_t gradData):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnConvolutionBackwardFilter_v3(
             <Handle>handle, <void*>alpha,
@@ -1514,7 +1521,7 @@ cpdef convolutionBackwardData_v3(
         size_t diffDesc, size_t diffData, size_t convDesc, int algo,
         size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
         size_t gradDesc, size_t gradData):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnConvolutionBackwardData_v3(
             <Handle>handle, <void*>alpha,
@@ -1565,7 +1572,7 @@ cpdef destroyPoolingDescriptor(size_t poolingDesc):
 cpdef poolingForward(
         intptr_t handle, size_t poolingDesc, size_t alpha, size_t srcDesc,
         size_t srcData, size_t beta, size_t dstDesc, size_t dstData):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnPoolingForward(
             <Handle>handle, <PoolingDescriptor>poolingDesc, <void*>alpha,
@@ -1579,7 +1586,7 @@ cpdef poolingBackward(
         size_t srcData, size_t srcDiffDesc, size_t srcDiffData,
         size_t destDesc, size_t destData, size_t beta, size_t destDiffDesc,
         size_t destDiffData):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnPoolingBackward(
             <Handle>handle, <PoolingDescriptor>poolingDesc, <void*>alpha,
@@ -1611,7 +1618,7 @@ cpdef batchNormalizationForwardTraining(
         size_t bnBias, double exponentialAverageFactor,
         size_t resultRunningMean, size_t resultRunningVariance,
         double epsilon, size_t resultSaveMean, size_t resultSaveInvVariance):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnBatchNormalizationForwardTraining(
             <Handle>handle, <BatchNormMode> mode,
@@ -1631,7 +1638,7 @@ cpdef batchNormalizationForwardInference(
         size_t bnScaleBiasMeanVarDesc, size_t bnScale,
         size_t bnBias, size_t estimatedMean, size_t estimatedVariance,
         double epsilon):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnBatchNormalizationForwardInference(
             <Handle>handle, <BatchNormMode> mode,
@@ -1652,7 +1659,7 @@ cpdef batchNormalizationBackward(
         size_t dBnScaleBiasDesc, size_t bnScale,
         size_t dBnScaleResult, size_t dBnBiasResult,
         double epsilon, size_t savedMean, size_t savedInvVariance):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnBatchNormalizationBackward(
             <Handle>handle, <BatchNormMode>mode,
@@ -1681,7 +1688,7 @@ cpdef batchNormalizationForwardTrainingEx(
         size_t activationDesc,
         size_t workSpace, size_t workSpaceSizeInBytes,
         size_t reserveSpace, size_t reserveSpaceSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnBatchNormalizationForwardTrainingEx(
             <Handle>handle, <BatchNormMode> mode, <BatchNormOps> bnOps,
@@ -1738,7 +1745,7 @@ cpdef batchNormalizationBackwardEx(
         size_t activationDesc,
         size_t workSpace, size_t workSpaceSizeInBytes,
         size_t reserveSpace, size_t reserveSpaceSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnBatchNormalizationBackwardEx(
             <Handle> handle,
@@ -1831,7 +1838,7 @@ cpdef destroyActivationDescriptor(size_t activationDesc):
 cpdef softmaxForward(
         intptr_t handle, int algorithm, int mode, size_t alpha, size_t srcDesc,
         size_t srcData, size_t beta, size_t dstDesc, size_t dstData):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnSoftmaxForward(
             <Handle>handle, <SoftmaxAlgorithm>algorithm, <SoftmaxMode>mode,
@@ -1844,7 +1851,7 @@ cpdef softmaxBackward(
         intptr_t handle, int algorithm, int mode, size_t alpha, size_t srcDesc,
         size_t srcData, size_t srcDiffDesc, size_t srcDiffData, size_t beta,
         size_t destDiffDesc, size_t destDiffData):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnSoftmaxBackward(
             <Handle>handle, <SoftmaxAlgorithm>algorithm, <SoftmaxMode>mode,
@@ -1857,7 +1864,7 @@ cpdef softmaxBackward(
 cpdef activationForward_v4(
         intptr_t handle, size_t activationDesc, size_t alpha, size_t srcDesc,
         size_t srcData, size_t beta, size_t dstDesc, size_t dstData):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnActivationForward_v4(
             <Handle>handle, <ActivationDescriptor>activationDesc, <void*>alpha,
@@ -1871,7 +1878,7 @@ cpdef activationBackward_v4(
         size_t srcData, size_t srcDiffDesc, size_t srcDiffData,
         size_t destDesc, size_t destData, size_t beta, size_t destDiffDesc,
         size_t destDiffData):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnActivationBackward_v4(
             <Handle>handle, <ActivationDescriptor>activationDesc, <void*>alpha,
@@ -1928,7 +1935,7 @@ cpdef dropoutForward(
         size_t srcDesc, size_t srcData,
         size_t dstDesc, size_t dstData,
         size_t reserveSpace, size_t reserveSpaceSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnDropoutForward(
             <Handle>handle, <DropoutDescriptor>dropoutDesc,
@@ -1943,7 +1950,7 @@ cpdef dropoutBackward(
         size_t dyDesc, size_t dyData,
         size_t dxDesc, size_t dxData,
         size_t reserveSpace, size_t reserveSpaceSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnDropoutBackward(
             <Handle>handle, <DropoutDescriptor>dropoutDesc,
@@ -2174,7 +2181,7 @@ cpdef RNNForwardInference(
         size_t cx, size_t wDesc, size_t w, size_t yDesc,
         size_t y, size_t hyDesc, size_t hy, size_t cyDesc,
         size_t cy, size_t workspace, size_t workSpaceSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnRNNForwardInference(
             <Handle>handle, <RNNDescriptor>rnnDesc, seqLength,
@@ -2196,7 +2203,7 @@ cpdef RNNForwardTraining(
         size_t hyDesc, size_t hy, size_t cyDesc, size_t cy,
         size_t workspace, size_t workSpaceSizeInBytes, size_t reserveSpace,
         size_t reserveSpaceSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnRNNForwardTraining(
             <Handle>handle, <RNNDescriptor>rnnDesc, seqLength,
@@ -2221,7 +2228,7 @@ cpdef RNNBackwardData(
         size_t dcxDesc, size_t dcx, size_t workspace,
         size_t workSpaceSizeInBytes, size_t reserveSpace,
         size_t reserveSpaceSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnRNNBackwardData(
             <Handle>handle, <RNNDescriptor>rnnDesc, seqLength,
@@ -2245,7 +2252,7 @@ cpdef RNNBackwardWeights(
         size_t hxDesc, size_t hx, size_t yDesc, size_t y,
         size_t workspace, size_t workSpaceSizeInBytes, size_t dwDesc,
         size_t dw, size_t reserveSpace, size_t reserveSpaceSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnRNNBackwardWeights(
             <Handle>handle, <RNNDescriptor>rnnDesc, seqLength,
@@ -2265,7 +2272,7 @@ cpdef RNNForwardInferenceEx(
         size_t cy, size_t kDesc, size_t keys, size_t cDesc, size_t cAttn,
         size_t iDesc, size_t iAttn, size_t qDesc, size_t queries,
         size_t workSpace, size_t workSpaceSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnRNNForwardInferenceEx(
             <Handle>handle, <RNNDescriptor>rnnDesc,
@@ -2292,7 +2299,7 @@ cpdef RNNForwardTrainingEx(
         size_t iDesc, size_t iAttn, size_t qDesc, size_t queries,
         size_t workSpace, size_t workSpaceSizeInBytes,
         size_t reserveSpace, size_t reserveSpaceSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnRNNForwardTrainingEx(
             <Handle>handle, <RNNDescriptor>rnnDesc,
@@ -2321,7 +2328,7 @@ cpdef RNNBackwardDataEx(
         size_t dkDesc, size_t dkeys,
         size_t workSpace, size_t workSpaceSizeInBytes,
         size_t reserveSpace, size_t reserveSpaceSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnRNNBackwardDataEx(
             <Handle>handle, <RNNDescriptor>rnnDesc,
@@ -2348,7 +2355,7 @@ cpdef RNNBackwardWeightsEx(
         size_t workSpace, size_t workSpaceSizeInBytes,
         size_t dwDesc, size_t dw,
         size_t reserveSpace, size_t reserveSpaceSizeInBytes):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnRNNBackwardWeightsEx(
             <Handle>handle, <RNNDescriptor>rnnDesc,
@@ -2389,7 +2396,7 @@ cpdef setSpatialTransformerDescriptor(
 
 cpdef spatialTfGridGeneratorForward(
         intptr_t handle, size_t stDesc, size_t theta, size_t grid):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnSpatialTfGridGeneratorForward(
             <Handle>handle, <SpatialTransformerDescriptor> stDesc,
@@ -2399,7 +2406,7 @@ cpdef spatialTfGridGeneratorForward(
 
 cpdef spatialTfGridGeneratorBackward(
         intptr_t handle, size_t stDesc, size_t dgrid, size_t dtheta):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnSpatialTfGridGeneratorBackward(
             <Handle>handle, <SpatialTransformerDescriptor>stDesc,
@@ -2410,7 +2417,7 @@ cpdef spatialTfGridGeneratorBackward(
 cpdef spatialTfSamplerForward(
         intptr_t handle, size_t stDesc, size_t alpha, size_t xDesc,
         size_t x, size_t grid, size_t beta, size_t yDesc, size_t y):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnSpatialTfSamplerForward(
             <Handle>handle, <SpatialTransformerDescriptor>stDesc,
@@ -2423,7 +2430,7 @@ cpdef spatialTfSamplerBackward(
         intptr_t handle, size_t stDesc, size_t alpha, size_t xDesc,
         size_t x, size_t beta, size_t dxDesc, size_t dx, size_t alphaDgrid,
         size_t dyDesc, size_t dy, size_t grid, size_t betaDgrid, size_t dgrid):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnSpatialTfSamplerBackward(
             <Handle>handle, <SpatialTransformerDescriptor>stDesc,
@@ -2511,7 +2518,7 @@ cpdef destroyFusedOpsPlan(size_t plan):
 
 cpdef makeFusedOpsPlan(intptr_t handle, size_t plan, size_t constPack):
     cdef size_t workspaceSizeInBytes
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnMakeFusedOpsPlan(<Handle>handle, <FusedOpsPlan>plan,
                                        <const FusedOpsConstParamPack>constPack,
@@ -2520,7 +2527,7 @@ cpdef makeFusedOpsPlan(intptr_t handle, size_t plan, size_t constPack):
     return workspaceSizeInBytes
 
 cpdef fusedOpsExecute(intptr_t handle, size_t plan, size_t varPack):
-    setStream(handle, stream_module.get_current_stream_ptr())
+    _setStream(handle)
     with nogil:
         status = cudnnFusedOpsExecute(<Handle>handle, <const FusedOpsPlan>plan,
                                       <FusedOpsVariantParamPack>varPack)

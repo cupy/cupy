@@ -4,7 +4,7 @@
 cimport cython  # NOQA
 
 from cupy_cuda cimport driver
-from cupy.cuda cimport stream as stream_module
+from cupy_cuda cimport stream as stream_module
 
 ###############################################################################
 # Extern
@@ -115,6 +115,13 @@ cpdef setStream(size_t generator, size_t stream):
     check_status(status)
 
 
+cdef _setStream(size_t generator):
+    """Set current stream when enable_current_stream is True
+    """
+    if stream_module.enable_current_stream:
+        setStream(generator, stream_module.get_current_stream_ptr())
+
+
 cpdef setPseudoRandomGeneratorSeed(size_t generator, unsigned long long seed):
     status = curandSetPseudoRandomGeneratorSeed(<Generator>generator, seed)
     check_status(status)
@@ -135,28 +142,28 @@ cpdef setGeneratorOrdering(size_t generator, int order):
 ###############################################################################
 
 cpdef generate(size_t generator, size_t outputPtr, size_t num):
-    setStream(generator, stream_module.get_current_stream_ptr())
+    _setStream(generator)
     status = curandGenerate(
         <Generator>generator, <unsigned int*>outputPtr, num)
     check_status(status)
 
 
 cpdef generateLongLong(size_t generator, size_t outputPtr, size_t num):
-    setStream(generator, stream_module.get_current_stream_ptr())
+    _setStream(generator)
     status = curandGenerateLongLong(
         <Generator>generator, <unsigned long long*>outputPtr, num)
     check_status(status)
 
 
 cpdef generateUniform(size_t generator, size_t outputPtr, size_t num):
-    setStream(generator, stream_module.get_current_stream_ptr())
+    _setStream(generator)
     status = curandGenerateUniform(
         <Generator>generator, <float*>outputPtr, num)
     check_status(status)
 
 
 cpdef generateUniformDouble(size_t generator, size_t outputPtr, size_t num):
-    setStream(generator, stream_module.get_current_stream_ptr())
+    _setStream(generator)
     status = curandGenerateUniformDouble(
         <Generator>generator, <double*>outputPtr, num)
     check_status(status)
@@ -168,7 +175,7 @@ cpdef generateNormal(size_t generator, size_t outputPtr, size_t n,
         msg = ('curandGenerateNormal can only generate even number of '
                'random variables simultaneously. See issue #390 for detail.')
         raise ValueError(msg)
-    setStream(generator, stream_module.get_current_stream_ptr())
+    _setStream(generator)
     status = curandGenerateNormal(
         <Generator>generator, <float*>outputPtr, n, mean, stddev)
     check_status(status)
@@ -180,7 +187,7 @@ cpdef generateNormalDouble(size_t generator, size_t outputPtr, size_t n,
         msg = ('curandGenerateNormalDouble can only generate even number of '
                'random variables simultaneously. See issue #390 for detail.')
         raise ValueError(msg)
-    setStream(generator, stream_module.get_current_stream_ptr())
+    _setStream(generator)
     status = curandGenerateNormalDouble(
         <Generator>generator, <double*>outputPtr, n, mean, stddev)
     check_status(status)
@@ -192,7 +199,7 @@ def generateLogNormal(size_t generator, size_t outputPtr, size_t n,
         msg = ('curandGenerateLogNormal can only generate even number of '
                'random variables simultaneously. See issue #390 for detail.')
         raise ValueError(msg)
-    setStream(generator, stream_module.get_current_stream_ptr())
+    _setStream(generator)
     status = curandGenerateLogNormal(
         <Generator>generator, <float*>outputPtr, n, mean, stddev)
     check_status(status)
@@ -205,7 +212,7 @@ cpdef generateLogNormalDouble(size_t generator, size_t outputPtr, size_t n,
                'of random variables simultaneously. See issue #390 for '
                'detail.')
         raise ValueError(msg)
-    setStream(generator, stream_module.get_current_stream_ptr())
+    _setStream(generator)
     status = curandGenerateLogNormalDouble(
         <Generator>generator, <double*>outputPtr, n, mean, stddev)
     check_status(status)
@@ -213,7 +220,7 @@ cpdef generateLogNormalDouble(size_t generator, size_t outputPtr, size_t n,
 
 cpdef generatePoisson(size_t generator, size_t outputPtr, size_t n,
                       double lam):
-    setStream(generator, stream_module.get_current_stream_ptr())
+    _setStream(generator)
     status = curandGeneratePoisson(
         <Generator>generator, <unsigned int*>outputPtr, n, lam)
     check_status(status)
