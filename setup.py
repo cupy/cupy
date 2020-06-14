@@ -43,7 +43,7 @@ requirements = {
         'theano',
     ],
     'docs': [
-        'sphinx==3.0.4',
+        'sphinx!=3.1.0',  # due to a 3.1.0 bug, see sphinx-doc/sphinx#7809
         'sphinx_rtd_theme',
     ],
     'travis': [
