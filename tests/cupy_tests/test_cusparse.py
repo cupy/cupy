@@ -456,7 +456,7 @@ class TestCscsort(unittest.TestCase):
         numpy.random.shuffle(self.a.indices)
         self.a.has_sorted_indices = False
 
-    def test_csrsort(self):
+    def test_cscsort(self):
         a = sparse.csc_matrix(self.a)
         cupy.cusparse.cscsort(a)
 

@@ -322,11 +322,8 @@ class coo_matrix(sparse_data._data_matrix):
         """
         if self.nnz == 0:
             return csc.csc_matrix(self.shape, dtype=self.dtype)
-        # copy is ignored because both sum_duplicates and coosort change
-        # the underlying data
-        if copy:
-            import warnings
-            warnings.warn("copy=True is not supported")
+        # copy is silently ignored (in line with SciPy) because both
+        # sum_duplicates and coosort change the underlying data
         self.sum_duplicates()
         x = self.copy()
         cusparse.coosort(x, 'c')
@@ -348,11 +345,8 @@ class coo_matrix(sparse_data._data_matrix):
         """
         if self.nnz == 0:
             return csr.csr_matrix(self.shape, dtype=self.dtype)
-        # copy is ignored because both sum_duplicates and coosort change
-        # the underlying data
-        if copy:
-            import warnings
-            warnings.warn("copy=True is not supported")
+        # copy is silently ignored (in line with SciPy) because both
+        # sum_duplicates and coosort change the underlying data
         self.sum_duplicates()
         x = self.copy()
         cusparse.coosort(x, 'r')
