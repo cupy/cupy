@@ -896,6 +896,30 @@ def csr2csc(x):
         (data, indices, indptr), shape=x.shape)
 
 
+def csc2coo(x, data, indices):
+    """Converts a CSC-matrix to COO format.
+
+    Args:
+        x (cupyx.scipy.sparse.csc_matrix): A matrix to be converted.
+        data (cupy.ndarray): A data array for converted data.
+        indices (cupy.ndarray): An index array for converted data.
+
+    Returns:
+        cupyx.scipy.sparse.coo_matrix: A converted matrix.
+
+    """
+    handle = device.get_cusparse_handle()
+    n = x.shape[1]
+    nnz = len(x.data)
+    col = cupy.empty(nnz, 'i')
+    cusparse.xcsr2coo(
+        handle, x.indptr.data.ptr, nnz, n, col.data.ptr,
+        cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    # data and indices did not need to be copied already
+    return cupyx.scipy.sparse.coo_matrix(
+        (data, (indices, col)), shape=x.shape)
+
+
 def csc2csr(x):
     handle = device.get_cusparse_handle()
     m, n = x.shape
