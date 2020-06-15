@@ -39,7 +39,7 @@ def as_series(alist, trim=True):
     for a in alist:
         if a.ndim == 0:
             a = a.ravel()
-        if not a.size:
+        if a.size == 0:
             raise ValueError('Coefficient array is empty')
         if a.ndim > 1:
             raise ValueError('Coefficient array is not 1-d')
