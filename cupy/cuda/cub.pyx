@@ -104,7 +104,7 @@ cdef tuple _get_output_shape(ndarray arr, tuple out_axis, bint keepdims):
     return out_shape
 
 
-cpdef Py_ssize_t _preprocess_array(ndarray arr, tuple reduce_axis,
+cpdef Py_ssize_t _preprocess_array(tuple arr_shape, tuple reduce_axis,
                                    tuple out_axis, str order):
     '''
     This function more or less follows the logic of _get_permuted_args() in
@@ -118,10 +118,10 @@ cpdef Py_ssize_t _preprocess_array(ndarray arr, tuple reduce_axis,
         axis_permutes = out_axis + reduce_axis
     elif order == 'F':
         axis_permutes = reduce_axis + out_axis
-    assert axis_permutes == tuple(range(len(arr.shape)))
+    assert axis_permutes == tuple(range(len(arr_shape)))
 
     for axis in reduce_axis:
-        contiguous_size *= arr.shape[axis]
+        contiguous_size *= arr_shape[axis]
     return contiguous_size
 
 
@@ -222,7 +222,7 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
         raise RuntimeError('input is neither C- nor F- contiguous.')
 
     # prepare input
-    contiguous_size = _preprocess_array(x, reduce_axis, out_axis, order)
+    contiguous_size = _preprocess_array(x.shape, reduce_axis, out_axis, order)
     out_shape = _get_output_shape(x, out_axis, keepdims)
     x_ptr = <void*>x.data.ptr
     y = ndarray(out_shape, dtype=x.dtype, order=order)
@@ -365,16 +365,22 @@ cdef bint _cub_device_segmented_reduce_axis_compatible(
     return False
 
 
-def can_use_device_reduce(int op, x_dtype, tuple out_axis, dtype=None):
-    return out_axis is () and _cub_reduce_dtype_compatible(x_dtype, op, dtype)
+def can_use_device_reduce(ndarray x, int op, tuple out_axis, dtype=None):
+    return (out_axis is () and
+        _cub_reduce_dtype_compatible(x.dtype, op, dtype) and
+        x.size <= 0x7fffffff)  # until we resolve cupy/cupy#3309
 
 
-def can_use_device_segmented_reduce(int op, x_dtype, Py_ssize_t ndim,
-                                    reduce_axis, dtype=None, order='C'):
-    if not _cub_reduce_dtype_compatible(x_dtype, op, dtype):
+def can_use_device_segmented_reduce(
+        ndarray x, int op, tuple reduce_axis, tuple out_axis,
+        dtype=None, order='C'):
+    if not _cub_reduce_dtype_compatible(x.dtype, op, dtype):
         return False
-    return _cub_device_segmented_reduce_axis_compatible(reduce_axis, ndim,
-                                                        order)
+    contiguous_size = _preprocess_array(x.shape, reduce_axis, out_axis, order)
+    return (_cub_device_segmented_reduce_axis_compatible(
+        reduce_axis, x.ndim, order) and
+        # until we resolve cupy/cupy#3309
+        contiguous_size <= 0x7fffffff)
 
 
 cdef _cub_support_dtype(bint sum_mode, int dev_id):
@@ -456,23 +462,23 @@ def cub_reduction(arr, op, axis=None, dtype=None, out=None, keepdims=False):
                 # fallback to existing non-CUB behavior
                 return None
 
+    if arr.flags.c_contiguous:
+        order = 'C'
+    elif arr.flags.f_contiguous:
+        order = 'F'
+    else:
+        return None
+
     reduce_axis, out_axis = _get_axis(axis, arr.ndim)
-    if can_use_device_reduce(op, arr.dtype, out_axis, dtype):
+    if can_use_device_reduce(arr, op, out_axis, dtype):
         return device_reduce(arr, op, out_axis, out, keepdims)
 
     if op in (CUPY_CUB_ARGMIN, CUPY_CUB_ARGMAX):
         # segmented reduction not currently implemented for argmax, argmin
         return None
 
-    if arr.flags.c_contiguous:
-        order = 'C'
-    elif arr.flags.f_contiguous:
-        order = 'F'
-    else:
-        order = None
-
-    if can_use_device_segmented_reduce(op, arr.dtype, arr.ndim,
-                                       reduce_axis, dtype, order):
+    if can_use_device_segmented_reduce(arr, op, reduce_axis, out_axis,
+                                       dtype, order):
         return device_segmented_reduce(arr, op, reduce_axis, out_axis,
                                        out, keepdims)
     return None
