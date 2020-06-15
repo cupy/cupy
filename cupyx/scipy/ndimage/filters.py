@@ -354,3 +354,69 @@ def _get_min_or_max_kernel(ndim, fp_shape, use_structure, modes, cval,
     in_params, out_params, operation, name = _generate_min_or_max_kernel(
         ndim, fp_shape, use_structure, modes, cval, origins, minimum)
     return cupy.ElementwiseKernel(in_params, out_params, operation, name)
+
+
+def minimum_filter(input, size=None, footprint=None, output=None,
+                   mode='reflect', cval=0.0, origin=0):
+    """Calculates a multi-dimensional minimum filter.
+
+    Args:
+        input (cupy.ndarray): The input array.
+        size (tuple of ints): ```size``` specifies the shape that is taken from
+            the input array, at every element position, to define the input to
+            the filter function.
+        footprint (array of ints): ```footprint``` specifies the shape, but
+            also which elements within the shape will get passed to the filter
+             function.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``constant``. Default is ``0.0``.
+        origin (scalar or tuple of scalar): The origin parameter controls the
+            placement of the filter, relative to the center of the current
+            element of the input. Default of 0 is equivalent to
+            ``(0,)*input.ndim``.
+
+    Returns:
+        cupy.ndarray: The result of minimum filter.
+
+    .. seealso:: :func:`scipy.ndimage.minimum_filter`
+    """
+    return _min_or_max_filter(input, size, footprint, None, output, mode, cval,
+                              origin, True)
+
+
+def maximum_filter(input, size=None, footprint=None, output=None,
+                   mode='reflect', cval=0.0, origin=0):
+    """Calculates a multi-dimensional maximum filter.
+
+    Args:
+        input (cupy.ndarray): The input array.
+        size (tuple of ints): ```size``` specifies the shape that is taken from
+            the input array, at every element position, to define the input to
+            the filter function.
+        footprint (array of ints): ```footprint``` specifies the shape, but
+            also which elements within the shape will get passed to the filter
+             function.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``constant``. Default is ``0.0``.
+        origin (scalar or tuple of scalar): The origin parameter controls the
+            placement of the filter, relative to the center of the current
+            element of the input. Default of 0 is equivalent to
+            ``(0,)*input.ndim``.
+
+    Returns:
+        cupy.ndarray: The result of maximum filter.
+
+    .. seealso:: :func:`scipy.ndimage.maximum_filter`
+    """
+    return _min_or_max_filter(input, size, footprint, None, output, mode, cval,
+                              origin, False)

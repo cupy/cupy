@@ -35,10 +35,11 @@ cdef object _thread_local = threading.local()
 
 cdef class _ThreadLocal:
 
-    cdef bint context_initialized
+    cdef list context_initialized
 
     def __init__(self):
-        self.context_initialized = False
+        cdef int i
+        self.context_initialized = [False for i in range(getDeviceCount())]
 
     @staticmethod
     cdef _ThreadLocal get():
@@ -90,6 +91,9 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaDeviceCanAccessPeer(int* canAccessPeer, int device,
                                 int peerDevice)
     int cudaDeviceEnablePeerAccess(int peerDevice, unsigned int flags)
+
+    int cudaDeviceGetLimit(size_t* value, Limit limit)
+    int cudaDeviceSetLimit(Limit limit, size_t value)
 
     # Memory management
     int cudaMalloc(void** devPtr, size_t size)
@@ -179,6 +183,11 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaGetTextureObjectResourceDesc(ResourceDesc* desc, TextureObject obj)
     int cudaGetTextureObjectTextureDesc(TextureDesc* desc, TextureObject obj)
 
+    # Surface
+    int cudaCreateSurfaceObject(SurfaceObject* pSurObject,
+                                const ResourceDesc* pResDesc)
+    int cudaDestroySurfaceObject(SurfaceObject surObject)
+
     bint hip_environment
     int cudaDevAttrComputeCapabilityMajor
     int cudaDevAttrComputeCapabilityMinor
@@ -250,7 +259,6 @@ cpdef int getDevice() except? -1:
     check_status(status)
     return device
 
-
 cpdef int deviceGetAttribute(int attrib, int device) except? -1:
     cdef int ret
     status = cudaDeviceGetAttribute(&ret, <DeviceAttr>attrib, device)
@@ -282,17 +290,14 @@ cpdef int getDeviceCount() except? -1:
     check_status(status)
     return count
 
-
 cpdef setDevice(int device):
     status = cudaSetDevice(device)
     check_status(status)
-
 
 cpdef deviceSynchronize():
     with nogil:
         status = cudaDeviceSynchronize()
     check_status(status)
-
 
 cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1:
     cpdef int ret
@@ -300,9 +305,18 @@ cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1:
     check_status(status)
     return ret
 
-
 cpdef deviceEnablePeerAccess(int peerDevice):
     status = cudaDeviceEnablePeerAccess(peerDevice, 0)
+    check_status(status)
+
+cpdef size_t deviceGetLimit(int limit) except? -1:
+    cdef size_t value
+    status = cudaDeviceGetLimit(&value, <Limit>limit)
+    check_status(status)
+    return value
+
+cpdef deviceSetLimit(int limit, size_t value):
+    status = cudaDeviceSetLimit(<Limit>limit, value)
     check_status(status)
 
 
@@ -637,10 +651,11 @@ cdef _ensure_context():
     See discussion on https://github.com/cupy/cupy/issues/72 for details.
     """
     tls = _ThreadLocal.get()
-    if not tls.context_initialized:
+    cdef int dev = getDevice()
+    if not tls.context_initialized[dev]:
         # Call Runtime API to establish context on this host thread.
         memGetInfo()
-        tls.context_initialized = True
+        tls.context_initialized[dev] = True
 
 
 ##############################################################################
@@ -660,6 +675,19 @@ cpdef uintmax_t createTextureObject(intptr_t ResDescPtr, intptr_t TexDescPtr):
 cpdef destroyTextureObject(uintmax_t texObject):
     with nogil:
         status = cudaDestroyTextureObject(<TextureObject>texObject)
+    check_status(status)
+
+cpdef uintmax_t createSurfaceObject(intptr_t ResDescPtr):
+    cdef uintmax_t surfobj = 0
+    with nogil:
+        status = cudaCreateSurfaceObject(<SurfaceObject*>(&surfobj),
+                                         <ResourceDesc*>ResDescPtr)
+    check_status(status)
+    return surfobj
+
+cpdef destroySurfaceObject(uintmax_t surfObject):
+    with nogil:
+        status = cudaDestroySurfaceObject(<SurfaceObject>surfObject)
     check_status(status)
 
 cdef ChannelFormatDesc getChannelDesc(intptr_t array):

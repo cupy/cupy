@@ -1,6 +1,9 @@
+from cpython cimport sequence
+
 import numpy
 from numpy import nan
 
+from cupy.core import _reduction
 from cupy.core._reduction import create_reduction_func
 from cupy.core._reduction import ReductionKernel
 
@@ -310,6 +313,74 @@ cdef _nanargmax_func = create_reduction_func(
     None, _min_max_preamble)
 
 
+cpdef ndarray _median(
+        ndarray a, axis, out, overwrite_input, keepdims):
+
+    keep_ndim = a.ndim
+
+    out_shape = None
+    if sequence.PySequence_Check(axis):
+        # cupy.sort and cupy.partition only support integer axis, so move
+        # all reduced dimensions to the end and reshape them into a single
+        # reduction axis.
+        reduce_axis, out_axis = _reduction._get_axis(axis, keep_ndim)
+        out_shape = _reduction._get_out_shape(a.shape, reduce_axis, out_axis,
+                                              keepdims)
+        a = a.transpose(out_axis + reduce_axis)
+        sort_shape = tuple([a.shape[n] for n in range(len(out_axis))]) + (-1,)
+        a = a.reshape(sort_shape)
+        if not a.flags.c_contiguous:
+            a = cupy.ascontiguousarray(a)
+        axis = -1
+
+    if axis is None:
+        sz = a.size
+    else:
+        if axis < -keep_ndim or axis >= keep_ndim:
+            raise numpy.AxisError('Axis overrun')
+        sz = a.shape[axis]
+    if sz % 2 == 0:
+        szh = sz // 2
+        kth = [szh - 1, szh]
+    else:
+        kth = [(sz - 1) // 2]
+
+    if overwrite_input:
+        part = a
+    else:
+        part = a.copy()
+
+    if axis is None:
+        part = part.ravel()
+        part.partition(kth)
+    else:
+        part.partition(kth, axis=axis)
+
+    if part.shape == ():
+        return part
+    if axis is None:
+        axis = 0
+
+    indexer = [slice(None)] * part.ndim
+
+    if keepdims and out_shape is None:
+        _indexer = [None] * (keep_ndim - part.ndim)
+        indexer.extend(_indexer)
+
+    index = part.shape[axis] // 2
+    if part.shape[axis] % 2 == 1:
+        indexer[axis] = slice(index, index+1)
+    else:
+        indexer[axis] = slice(index-1, index+1)
+    indexer = tuple(indexer)
+
+    out = _mean(
+        part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
+    if out_shape is not None:
+        out = out.reshape(out_shape)
+    return out
+
+
 cdef ndarray _mean(
         ndarray a, axis=None, dtype=None, out=None, keepdims=False):
     if a.size == 0:
@@ -450,7 +521,7 @@ cdef _nanmean_func = create_reduction_func(
 
 _count_non_nan = create_reduction_func(
     'cupy_count_non_nan',
-    ('e->l', 'f->l', 'd->l'),
+    ('e->q', 'f->q', 'd->q'),
     ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0)
 
 

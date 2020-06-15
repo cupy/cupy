@@ -33,7 +33,9 @@ class Descriptor(object):
 def get_handle():
     dev = device.get_device_id()
     if dev not in _handles:
-        _handles[dev] = Descriptor(cutensor.init(), cutensor.destroy)
+        handle = cutensor.Handle()
+        cutensor.init(handle)
+        _handles[dev] = handle
     return _handles[dev]
 
 
@@ -96,7 +98,7 @@ def create_tensor_descriptor(a, uop=cutensor.OP_IDENTITY):
             tensor descriptor and its destructor.
     """
     handle = get_handle()
-    key = (handle.value, a.dtype, tuple(a.shape), tuple(a.strides), uop)
+    key = (handle.ptr, a.dtype, tuple(a.shape), tuple(a.strides), uop)
     if key in _tensor_descriptors:
         desc = _tensor_descriptors[key]
         return desc
@@ -104,10 +106,10 @@ def create_tensor_descriptor(a, uop=cutensor.OP_IDENTITY):
     extent = numpy.array(a.shape, dtype=numpy.int64)
     stride = numpy.array(a.strides, dtype=numpy.int64) // a.itemsize
     cuda_dtype = get_cuda_dtype(a.dtype)
-    desc = cutensor.initTensorDescriptor(
-        handle.value, num_modes, extent.ctypes.data, stride.ctypes.data,
+    desc = cutensor.TensorDescriptor()
+    cutensor.initTensorDescriptor(
+        handle, desc, num_modes, extent.ctypes.data, stride.ctypes.data,
         cuda_dtype, uop)
-    desc = Descriptor(desc, cutensor.destroyTensorDescriptor)
     _tensor_descriptors[key] = desc
     return desc
 
@@ -160,20 +162,34 @@ def elementwise_trinary(alpha, A, desc_A, mode_A,
     Examples:
         See examples/cutensor/elementwise_trinary.py
     """
-    assert A.dtype == B.dtype == C.dtype
-    assert A.ndim == len(mode_A)
-    assert B.ndim == len(mode_B)
-    assert C.ndim == len(mode_C)
+    if not (A.dtype == B.dtype == C.dtype):
+        raise ValueError(
+            'dtype mismatch: ({}, {}, {})'.format(A.dtype, B.dtype, C.dtype))
+    if not (A.flags.c_contiguous
+            and B.flags.c_contiguous
+            and C.flags.c_contiguous):
+        raise ValueError('The inputs should be contiguous arrays.')
+
+    if out is None:
+        out = cupy.ndarray(C.shape, dtype=C.dtype)
+    elif C.dtype != out.dtype:
+        raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
+    elif C.shape != out.shape:
+        raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
+    elif not out.flags.c_contiguous:
+        raise ValueError('`out` should be a contiguous array.')
+
+    if A.ndim != len(mode_A):
+        raise ValueError('ndim mismatch: {} != {}'.format(A.ndim, len(mode_A)))
+    if B.ndim != len(mode_B):
+        raise ValueError('ndim mismatch: {} != {}'.format(B.ndim, len(mode_B)))
+    if C.ndim != len(mode_C):
+        raise ValueError('ndim mismatch: {} != {}'.format(C.ndim, len(mode_C)))
+
     mode_A = _convert_mode(mode_A)
     mode_B = _convert_mode(mode_B)
     mode_C = _convert_mode(mode_C)
-    if out is None:
-        out = cupy.ndarray(C.shape, dtype=C.dtype)
-    else:
-        assert C.dtype == out.dtype
-        assert C.ndim == out.ndim
-        for i in range(C.ndim):
-            assert C.shape[i] == out.shape[i]
+
     if compute_dtype is None:
         compute_dtype = A.dtype
     alpha = numpy.array(alpha, compute_dtype)
@@ -182,14 +198,14 @@ def elementwise_trinary(alpha, A, desc_A, mode_A,
     handle = get_handle()
     cuda_dtype = get_cuda_dtype(compute_dtype)
     cutensor.elementwiseTrinary(
-        handle.value,
+        handle,
         alpha.ctypes.data,
-        A.data.ptr, desc_A.value, mode_A.ctypes.data,
+        A.data.ptr, desc_A, mode_A.ctypes.data,
         beta.ctypes.data,
-        B.data.ptr, desc_B.value, mode_B.ctypes.data,
+        B.data.ptr, desc_B, mode_B.ctypes.data,
         gamma.ctypes.data,
-        C.data.ptr, desc_C.value, mode_C.ctypes.data,
-        out.data.ptr, desc_C.value, mode_C.ctypes.data,
+        C.data.ptr, desc_C, mode_C.ctypes.data,
+        out.data.ptr, desc_C, mode_C.ctypes.data,
         op_AB, op_ABC, cuda_dtype)
     return out
 
@@ -212,18 +228,28 @@ def elementwise_binary(alpha, A, desc_A, mode_A,
     Examples:
         See examples/cutensor/elementwise_binary.py
     """
-    assert A.dtype == C.dtype
-    assert A.ndim == len(mode_A)
-    assert C.ndim == len(mode_C)
-    mode_A = _convert_mode(mode_A)
-    mode_C = _convert_mode(mode_C)
+    if A.dtype != C.dtype:
+        raise ValueError('dtype mismatch: {} != {}'.format(A.dtype, C.dtype))
+    if not (A.flags.c_contiguous and C.flags.c_contiguous):
+        raise ValueError('The inputs should be contiguous arrays.')
+
     if out is None:
         out = cupy.ndarray(C.shape, dtype=C.dtype)
-    else:
-        assert C.dtype == out.dtype
-        assert C.ndim == out.ndim
-        for i in range(C.ndim):
-            assert C.shape[i] == out.shape[i]
+    elif C.dtype != out.dtype:
+        raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
+    elif C.shape != out.shape:
+        raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
+    elif not out.flags.c_contiguous:
+        raise ValueError('`out` should be a contiguous array.')
+
+    if A.ndim != len(mode_A):
+        raise ValueError('ndim mismatch: {} != {}'.format(A.ndim, len(mode_A)))
+    if C.ndim != len(mode_C):
+        raise ValueError('ndim mismatch: {} != {}'.format(C.ndim, len(mode_C)))
+
+    mode_A = _convert_mode(mode_A)
+    mode_C = _convert_mode(mode_C)
+
     if compute_dtype is None:
         compute_dtype = A.dtype
     alpha = numpy.array(alpha, compute_dtype)
@@ -231,12 +257,12 @@ def elementwise_binary(alpha, A, desc_A, mode_A,
     handle = get_handle()
     cuda_dtype = get_cuda_dtype(compute_dtype)
     cutensor.elementwiseBinary(
-        handle.value,
+        handle,
         alpha.ctypes.data,
-        A.data.ptr, desc_A.value, mode_A.ctypes.data,
+        A.data.ptr, desc_A, mode_A.ctypes.data,
         gamma.ctypes.data,
-        C.data.ptr, desc_C.value, mode_C.ctypes.data,
-        out.data.ptr, desc_C.value, mode_C.ctypes.data,
+        C.data.ptr, desc_C, mode_C.ctypes.data,
+        out.data.ptr, desc_C, mode_C.ctypes.data,
         op_AC, cuda_dtype)
     return out
 
@@ -251,15 +277,15 @@ def _create_contraction_descriptor(A, desc_A, mode_A, B, desc_B, mode_B,
     compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
     handle = get_handle()
     alignment_req_A = cutensor.getAlignmentRequirement(
-        handle.value, A.data.ptr, desc_A.value)
+        handle, A.data.ptr, desc_A)
     alignment_req_B = cutensor.getAlignmentRequirement(
-        handle.value, B.data.ptr, desc_B.value)
+        handle, B.data.ptr, desc_B)
     alignment_req_C = cutensor.getAlignmentRequirement(
-        handle.value, C.data.ptr, desc_C.value)
-    key = (handle, compute_dtype,
-           desc_A, tuple(mode_A), alignment_req_A,
-           desc_B, tuple(mode_B), alignment_req_B,
-           desc_C, tuple(mode_C), alignment_req_C)
+        handle, C.data.ptr, desc_C)
+    key = (handle.ptr, compute_dtype,
+           desc_A.ptr, tuple(mode_A), alignment_req_A,
+           desc_B.ptr, tuple(mode_B), alignment_req_B,
+           desc_C.ptr, tuple(mode_C), alignment_req_C)
     if key in _contraction_descriptors:
         desc = _contraction_descriptors[key]
         return desc
@@ -267,14 +293,15 @@ def _create_contraction_descriptor(A, desc_A, mode_A, B, desc_B, mode_B,
     mode_B = _convert_mode(mode_B)
     mode_C = _convert_mode(mode_C)
     cutensor_dtype = get_cutensor_dtype(compute_dtype)
-    desc = cutensor.initContractionDescriptor(
-        handle.value,
-        desc_A.value, mode_A.ctypes.data, alignment_req_A,
-        desc_B.value, mode_B.ctypes.data, alignment_req_B,
-        desc_C.value, mode_C.ctypes.data, alignment_req_C,
-        desc_C.value, mode_C.ctypes.data, alignment_req_C,
+    desc = cutensor.ContractionDescriptor()
+    cutensor.initContractionDescriptor(
+        handle,
+        desc,
+        desc_A, mode_A.ctypes.data, alignment_req_A,
+        desc_B, mode_B.ctypes.data, alignment_req_B,
+        desc_C, mode_C.ctypes.data, alignment_req_C,
+        desc_C, mode_C.ctypes.data, alignment_req_C,
         cutensor_dtype)
-    desc = Descriptor(desc, cutensor.destroyContractionDescriptor)
     _contraction_descriptors[key] = desc
     return desc
 
@@ -282,18 +309,17 @@ def _create_contraction_descriptor(A, desc_A, mode_A, B, desc_B, mode_B,
 def _create_contraction_plan(desc, algo, ws_pref):
     """Create a contraction plan"""
     handle = get_handle()
-    key = (handle.value, algo)
+    key = (handle.ptr, algo)
     if key in _contraction_finds:
         find = _contraction_finds[key]
     else:
-        find = cutensor.initContractionFind(handle.value, algo)
-        find = Descriptor(find, cutensor.destroyContractionFind)
+        find = cutensor.ContractionFind()
+        cutensor.initContractionFind(handle, find, algo)
         _contraction_finds[key] = find
 
     ws_allocation_success = False
     for pref in (ws_pref, cutensor.WORKSPACE_MIN):
-        ws_size = cutensor.contractionGetWorkspace(handle.value, desc.value,
-                                                   find.value, pref)
+        ws_size = cutensor.contractionGetWorkspace(handle, desc, find, pref)
         try:
             ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
             ws_allocation_success = True
@@ -306,13 +332,12 @@ def _create_contraction_plan(desc, algo, ws_pref):
     if not ws_allocation_success:
         raise RuntimeError('cuTENSOR: failed to allocate memory of workspace.')
 
-    key = (handle.value, desc, find, ws_size)
+    key = (handle.ptr, desc.ptr, find.ptr, ws_size)
     if key in _contraction_plans:
         plan = _contraction_plans[key]
     else:
-        plan = cutensor.initContractionPlan(handle.value, desc.value,
-                                            find.value, ws_size)
-        plan = Descriptor(plan, cutensor.destroyContractionPlan)
+        plan = cutensor.ContractionPlan()
+        cutensor.initContractionPlan(handle, plan, desc, find, ws_size)
         _contraction_plans[key] = plan
 
     return plan, ws, ws_size
@@ -364,10 +389,21 @@ def contraction(alpha, A, desc_A, mode_A, B, desc_B, mode_B,
     Examples:
         See examples/cutensor/contraction.py
     """
-    assert A.dtype == B.dtype == C.dtype
-    assert A.ndim == len(mode_A)
-    assert B.ndim == len(mode_B)
-    assert C.ndim == len(mode_C)
+    if not (A.dtype == B.dtype == C.dtype):
+        raise ValueError(
+            'dtype mismatch: ({}, {}, {})'.format(A.dtype, B.dtype, C.dtype))
+    if not (A.flags.c_contiguous
+            and B.flags.c_contiguous
+            and C.flags.c_contiguous):
+        raise ValueError('The inputs should be contiguous arrays.')
+
+    if A.ndim != len(mode_A):
+        raise ValueError('ndim mismatch: {} != {}'.format(A.ndim, len(mode_A)))
+    if B.ndim != len(mode_B):
+        raise ValueError('ndim mismatch: {} != {}'.format(B.ndim, len(mode_B)))
+    if C.ndim != len(mode_C):
+        raise ValueError('ndim mismatch: {} != {}'.format(C.ndim, len(mode_C)))
+
     out = C
     compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
     handle = get_handle()
@@ -378,7 +414,7 @@ def contraction(alpha, A, desc_A, mode_A, B, desc_B, mode_B,
                                           C, desc_C, mode_C,
                                           compute_dtype=compute_dtype)
     plan, ws, ws_size = _create_contraction_plan(desc, algo, ws_pref)
-    cutensor.contraction(handle.value, plan.value,
+    cutensor.contraction(handle, plan,
                          alpha.ctypes.data, A.data.ptr, B.data.ptr,
                          beta.ctypes.data, C.data.ptr, out.data.ptr,
                          ws.data.ptr, ws_size)
@@ -428,9 +464,16 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
     Examples:
         See examples/cutensor/reduction.py
     """
-    assert A.dtype == C.dtype
-    assert A.ndim == len(mode_A)
-    assert C.ndim == len(mode_C)
+    if A.dtype != C.dtype:
+        raise ValueError('dtype mismatch: {} != {}'.format(A.dtype, C.dtype))
+    if not (A.flags.c_contiguous and C.flags.c_contiguous):
+        raise ValueError('The inputs should be contiguous arrays.')
+
+    if A.ndim != len(mode_A):
+        raise ValueError('ndim mismatch: {} != {}'.format(A.ndim, len(mode_A)))
+    if C.ndim != len(mode_C):
+        raise ValueError('ndim mismatch: {} != {}'.format(C.ndim, len(mode_C)))
+
     mode_A = _convert_mode(mode_A)
     mode_C = _convert_mode(mode_C)
     out = C
@@ -440,10 +483,10 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
     handle = get_handle()
     cutensor_dtype = get_cutensor_dtype(compute_dtype)
     ws_size = cutensor.reductionGetWorkspace(
-        handle.value,
-        A.data.ptr, desc_A.value, mode_A.ctypes.data,
-        C.data.ptr, desc_C.value, mode_C.ctypes.data,
-        out.data.ptr, desc_C.value, mode_C.ctypes.data,
+        handle,
+        A.data.ptr, desc_A, mode_A.ctypes.data,
+        C.data.ptr, desc_C, mode_C.ctypes.data,
+        out.data.ptr, desc_C, mode_C.ctypes.data,
         reduce_op, cutensor_dtype)
     try:
         ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
@@ -452,11 +495,11 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
                       '(size: {}).'.format(ws_size))
         ws_size = 0
         ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
-    cutensor.reduction(handle.value,
+    cutensor.reduction(handle,
                        alpha.ctypes.data,
-                       A.data.ptr, desc_A.value, mode_A.ctypes.data,
+                       A.data.ptr, desc_A, mode_A.ctypes.data,
                        beta.ctypes.data,
-                       C.data.ptr, desc_C.value, mode_C.ctypes.data,
-                       out.data.ptr, desc_C.value, mode_C.ctypes.data,
+                       C.data.ptr, desc_C, mode_C.ctypes.data,
+                       out.data.ptr, desc_C, mode_C.ctypes.data,
                        reduce_op, cutensor_dtype, ws.data.ptr, ws_size)
     return out
