@@ -68,7 +68,7 @@ class TestTrimseq(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
-    def test_trimseq_zeros_value(self, xp, dtype):
+    def test_trimseq_zeros(self, xp, dtype):
         a = xp.zeros(10, dtype)
         b = xp.polynomial.polyutils.trimseq(a)
         return xp.shares_memory(a[:1], b), b
