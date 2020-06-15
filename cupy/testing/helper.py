@@ -1190,6 +1190,10 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
 
 
 def empty(xp=cupy, dtype=numpy.float32):
+    warnings.warn(
+        '`cupy.testing.empty` is deprecated. '
+        'Use `xp.zeros((0,), dtype)` instead.',
+        DeprecationWarning)
     return xp.zeros((0,), dtype=dtype)
 
 
