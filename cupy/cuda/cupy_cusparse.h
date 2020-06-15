@@ -776,6 +776,10 @@ cusparseStatus_t cusparseXcoosortByRow(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseXcoosortByColumn(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseXcsrsort_bufferSizeExt(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }

@@ -295,8 +295,10 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 'swapping dimensions is the only logical permutation.')
 
         shape = self.shape[1], self.shape[0]
-        return csc.csc_matrix(
+        trans = csc.csc_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
+        trans._has_canonical_format = self._has_canonical_format
+        return trans
 
 
 def isspmatrix_csr(x):
