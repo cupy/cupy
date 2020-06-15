@@ -37,10 +37,11 @@ def as_series(alist, trim=True):
     """
     arrays = []
     for a in alist:
-        a = cupy.array(a, ndmin=1, copy=False)
+        if a.ndim == 0:
+            a = a.ravel()
         if not a.size:
             raise ValueError('Coefficient array is empty')
-        if a.ndim != 1:
+        if a.ndim > 1:
             raise ValueError('Coefficient array is not 1-d')
         if trim:
             a = trimseq(a)

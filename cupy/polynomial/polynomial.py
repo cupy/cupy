@@ -18,7 +18,6 @@ def polycompanion(c):
     if len(c) < 2:
         raise ValueError('Series must have maximum degree of at least 1.')
     deg = len(c) - 1
-    matrix = cupy.zeros((deg, deg), dtype=c.dtype)
-    matrix.reshape(-1)[deg:: len(c)] = 1
+    matrix = cupy.eye(deg, k=-1, dtype=c.dtype)
     matrix[:, -1] -= c[:-1] / c[-1]
     return matrix
