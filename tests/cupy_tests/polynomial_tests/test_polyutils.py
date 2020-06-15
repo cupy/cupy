@@ -11,7 +11,7 @@ from cupy import testing
     'trim': [True, False]
 }))
 @testing.gpu
-class TestAs_series(unittest.TestCase):
+class TestAsSeries(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()

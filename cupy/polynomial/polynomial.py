@@ -15,9 +15,9 @@ def polycompanion(c):
 
     """
     [c] = cupy.polynomial.polyutils.as_series([c])
-    if len(c) < 2:
+    deg = c.size - 1
+    if deg == 0:
         raise ValueError('Series must have maximum degree of at least 1.')
-    deg = len(c) - 1
     matrix = cupy.eye(deg, k=-1, dtype=c.dtype)
     matrix[:, -1] -= c[:-1] / c[-1]
     return matrix

@@ -10,8 +10,8 @@ from cupy import testing
 @testing.gpu
 class TestPolynomial(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_equal()
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_polycompanion(self, xp, dtype):
         a = testing.shaped_random((1000,), xp, dtype)
         return xp.polynomial.polynomial.polycompanion(a)
