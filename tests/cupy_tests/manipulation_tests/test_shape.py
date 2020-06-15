@@ -70,15 +70,15 @@ class TestShape(unittest.TestCase):
             with pytest.raises(ValueError):
                 a.reshape(2, 4, 4, order='K')
 
-    def test_reshape_empty_invalid(self):
+    def test_reshape_zerosize_invalid(self):
         for xp in (numpy, cupy):
-            a = testing.empty(xp)
+            a = xp.zeros((0,))
             with pytest.raises(ValueError):
                 a.reshape(())
 
     @testing.numpy_cupy_array_equal()
-    def test_reshape_empty(self, xp):
-        a = testing.empty(xp)
+    def test_reshape_zerosize(self, xp):
+        a = xp.zeros((0,))
         return a.reshape((0,))
 
     @testing.for_orders('CFA')
