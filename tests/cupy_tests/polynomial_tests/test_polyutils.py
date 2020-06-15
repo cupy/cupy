@@ -37,6 +37,12 @@ class TestAsSeries(unittest.TestCase):
         a = [xp.array([3, 5, 7, -4, 1, 2], dtype)]
         return xp.polynomial.polyutils.as_series(a, trim=self.trim)
 
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_as_series_2dim(self, xp, dtype):
+        a = testing.shaped_random((4, 5), xp, dtype)
+        return xp.polynomial.polyutils.as_series(a, trim=self.trim)
+
     @testing.for_all_dtypes()
     def test_as_series_ndim(self, dtype):
         for xp in (numpy, cupy):
@@ -61,13 +67,11 @@ class TestTrimseq(unittest.TestCase):
         return xp.polynomial.polyutils.trimseq(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
-    @testing.numpy_cupy_array_equal()
-    def test_trimseq_zeros(self, xp, dtype):
+    @testing.numpy_cupy_array_list_equal()
+    def test_trimseq_zeros_value(self, xp, dtype):
         a = xp.zeros(10, dtype)
         b = xp.polynomial.polyutils.trimseq(a)
-        assert xp.shares_memory(a[:1], b) is True
-        return b
+        return xp.shares_memory(a[:1], b), b
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

@@ -37,6 +37,25 @@ class TestPolynomial(unittest.TestCase):
         return xp.polynomial.polynomial.polycompanion(a)
 
     @testing.for_all_dtypes()
+    def test_polycompanion_single_value1(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array([3, 0, 0, 0], dtype)
+            with pytest.raises(ValueError):
+                xp.polynomial.polynomial.polycompanion(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polycompanion_single_value2(self, xp, dtype):
+        a = xp.array([0, 0, 0, 3], dtype)
+        return xp.polynomial.polynomial.polycompanion(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polycompanion_single_value3(self, xp, dtype):
+        a = xp.array([0, 3, 0, 0], dtype)
+        return xp.polynomial.polynomial.polycompanion(a)
+
+    @testing.for_all_dtypes()
     def test_polycompanion_ndim(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_random((3, 4, 5), xp, dtype)
