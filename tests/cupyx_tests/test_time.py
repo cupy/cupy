@@ -85,6 +85,8 @@ class TestPerfCaseResult(unittest.TestCase):
             '(min:    4.200 / max:    7.100) us'
         )
         assert perf.to_str() == expected
+        # Checks if the result does not change.
+        assert perf.to_str() == expected
 
     def test_single_show_gpu(self):
         times = numpy.array([[5.4], [6.4]]) * 1e-6

@@ -4,6 +4,7 @@ from cupy.core cimport _carray
 from cupy.core cimport _scalar
 from cupy.core._carray cimport shape_t
 from cupy.core.core cimport ndarray
+from cupy.cuda cimport memory
 
 
 cdef class ParameterInfo:
@@ -19,6 +20,7 @@ cdef enum _ArgKind:
     ARG_KIND_NDARRAY = 1
     ARG_KIND_INDEXER
     ARG_KIND_SCALAR
+    ARG_KIND_POINTER
 
 
 cdef class _ArgInfo:
@@ -43,6 +45,9 @@ cdef class _ArgInfo:
 
     @staticmethod
     cdef _ArgInfo from_indexer(_carray.Indexer arg)
+
+    @staticmethod
+    cdef _ArgInfo from_memptr(memory.MemoryPointer arg)
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim)
 

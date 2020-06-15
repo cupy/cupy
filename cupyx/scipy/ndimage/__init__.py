@@ -10,6 +10,10 @@ from cupyx.scipy.ndimage.interpolation import shift  # NOQA
 from cupyx.scipy.ndimage.interpolation import zoom  # NOQA
 
 from cupyx.scipy.ndimage.measurements import label  # NOQA
+from cupyx.scipy.ndimage.measurements import sum  # NOQA
+from cupyx.scipy.ndimage.measurements import mean  # NOQA
+from cupyx.scipy.ndimage.measurements import variance  # NOQA
+from cupyx.scipy.ndimage.measurements import standard_deviation  # NOQA
 
 from cupyx.scipy.ndimage.morphology import grey_erosion  # NOQA
 from cupyx.scipy.ndimage.morphology import grey_dilation  # NOQA

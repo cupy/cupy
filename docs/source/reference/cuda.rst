@@ -134,6 +134,8 @@ to use these functions.
    cupy.cuda.runtime.deviceSynchronize
    cupy.cuda.runtime.deviceCanAccessPeer
    cupy.cuda.runtime.deviceEnablePeerAccess
+   cupy.cuda.runtime.deviceGetLimit
+   cupy.cuda.runtime.deviceSetLimit
    cupy.cuda.runtime.malloc
    cupy.cuda.runtime.mallocManaged
    cupy.cuda.runtime.malloc3DArray

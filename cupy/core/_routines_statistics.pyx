@@ -521,7 +521,7 @@ cdef _nanmean_func = create_reduction_func(
 
 _count_non_nan = create_reduction_func(
     'cupy_count_non_nan',
-    ('e->l', 'f->l', 'd->l'),
+    ('e->q', 'f->q', 'd->q'),
     ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0)
 
 
