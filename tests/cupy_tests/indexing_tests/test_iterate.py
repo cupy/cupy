@@ -19,12 +19,12 @@ class TestFlatiter(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), cupy)
         e = a.flatten()
         for ai, ei in zip(a.flat, e):
-            assert(ai == ei)
+            assert ai == ei
 
     def test_len(self):
         a = cupy.zeros((2, 3, 4))
-        assert(len(a.flat) == 24)
-        assert(len(a[::2].flat) == 12)
+        assert len(a.flat) == 24
+        assert len(a[::2].flat) == 12
 
     @testing.numpy_cupy_array_equal()
     def test_copy(self, xp):
