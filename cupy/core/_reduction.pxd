@@ -55,4 +55,11 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         readonly str preamble
 
 
+cdef shape_t _set_permuted_args(
+    list args, tuple axis_permutes, const shape_t& shape, tuple params)
+
+cdef tuple _get_shape_and_strides(list in_args, list out_args)
+
+cdef _optimizer_copy_arg(a)
+
 cpdef create_reduction_func(name, ops, routine=*, identity=*, preamble=*)

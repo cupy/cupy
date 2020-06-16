@@ -1,5 +1,9 @@
+from cupy.core._carray cimport shape_t
 from cupy.core cimport _kernel
+from cupy.core cimport _optimize_config
+from cupy.core cimport _reduction
 from cupy.core cimport _scalar
+from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
@@ -7,8 +11,10 @@ from cupy.cuda cimport function
 from cupy.cuda cimport memory
 from cupy.cuda cimport runtime
 
+import math
 import string
 from cupy import _environment
+from cupy.core._kernel import _get_param_info
 from cupy import util
 
 
@@ -512,3 +518,138 @@ cdef _launch_cub(
 
         func.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
+
+
+def _get_cub_optimized_params(
+        self, optimize_config, in_args, out_args, in_shape, out_shape,
+        type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
+        stream, full_reduction, out_block_num, contiguous_size, params):
+    out_size = internal.prod(out_shape)
+    in_args = [_reduction._optimizer_copy_arg(a) for a in in_args]
+    out_args = [_reduction._optimizer_copy_arg(a) for a in out_args]
+
+    items_per_thread, block_size = (
+        _get_cub_block_specs(contiguous_size))
+    default_block_size_log = math.floor(math.log2(block_size))
+    default_items_per_thread = items_per_thread
+
+    def target_func(block_size, items_per_thread):
+        block_stride = block_size * items_per_thread
+        cub_params = (
+            True, items_per_thread, contiguous_size, full_reduction)
+        _launch_cub(
+            self,
+            out_block_num, block_size, block_stride, in_args, out_args,
+            in_shape, out_shape, type_map, map_expr, reduce_expr,
+            post_map_expr, reduce_type, stream, params, cub_params)
+
+    def suggest_func(trial):
+        block_size_log = trial.suggest_int('block_size_log', 5, 9)
+        block_size = 2 ** block_size_log
+        items_per_thread = trial.suggest_int(
+            'items_per_thread', 2, 32, step=2)
+
+        trial.set_user_attr('block_size', block_size)
+        return block_size, items_per_thread
+
+    optimize_impl = optimize_config.optimize_impl
+    best = optimize_impl(
+        optimize_config, target_func, suggest_func,
+        default_best={
+            'block_size_log': default_block_size_log,
+            'items_per_thread': default_items_per_thread,
+        })
+
+    return best.params['items_per_thread'], best.user_attrs['block_size']
+
+
+cdef bint _try_to_call_cub_reduction(
+        self, list in_args, list out_args,
+        const shape_t& a_shape, int device_id, stream,
+        map_expr, reduce_expr, post_map_expr, in_types, out_types,
+        reduce_type, type_map,
+        tuple reduce_axis, tuple out_axis, const shape_t& out_shape,
+        ndarray ret):
+    cdef tuple axis_permutes
+    cdef tuple params, opt_params
+    cdef shape_t in_shape
+    cdef Py_ssize_t i
+    cdef Py_ssize_t contiguous_size = -1
+    cdef Py_ssize_t block_size, block_stride, out_block_num = 0
+
+    # decide to use CUB or not
+    can_use_cub = _can_use_cub_block_reduction(
+        in_args, out_args, reduce_axis, out_axis)
+
+    if can_use_cub is None:
+        return False
+
+    axis_permutes, contiguous_size, full_reduction = can_use_cub
+
+    in_shape = _reduction._set_permuted_args(
+        in_args, axis_permutes, a_shape, self.in_params)
+
+    if in_args[0].flags.f_contiguous:
+        ret = out_args[0] = _internal_asfortranarray(ret)
+
+    if not full_reduction:  # just need one pass
+        out_block_num = 1  # = number of segments
+        for i in out_axis:
+            out_block_num *= in_shape[i]
+
+        if 'mean' in self.name:
+            post_map_expr = post_map_expr.replace(
+                '_in_ind.size()', '_segment_size')
+            post_map_expr = post_map_expr.replace(
+                '_out_ind.size()', '1.0')
+
+    if contiguous_size > 0x7fffffff:  # INT_MAX
+        size_type = 'uint64 '
+    else:
+        size_type = 'int32 '
+    params = (self._params[0:2]
+              + _get_param_info(
+                  size_type + '_segment_size', not full_reduction)
+              + _get_param_info(size_type + '_array_size', True))
+
+    # Calculate the reduction block dimensions.
+    optimize_context = _optimize_config.get_current_context()
+    if optimize_context is None:
+        # Calculate manually
+        items_per_thread, block_size = _get_cub_block_specs(contiguous_size)
+    else:
+        # Optimize dynamically
+
+        # Calculate a key unique to the reduction setting.
+        shape_and_strides = _reduction._get_shape_and_strides(
+            in_args, out_args)
+        # TODO: rename
+        key = (self.name, shape_and_strides,
+               in_types, out_types, reduce_type, device_id,
+               full_reduction,)
+
+        opt_params = optimize_context.get_params(key)
+        if opt_params is None:
+            opt_params = self._get_cub_optimized_params(
+                optimize_context.config, in_args, out_args,
+                in_shape, out_shape, type_map, map_expr, reduce_expr,
+                post_map_expr, reduce_type, stream,
+                full_reduction, out_block_num, contiguous_size, params)
+            optimize_context.set_params(key, opt_params)
+        items_per_thread, block_size = opt_params
+
+    block_stride = block_size * items_per_thread
+    cub_params = (True, items_per_thread, contiguous_size, full_reduction)
+
+    _launch_cub(
+        self,
+        out_block_num,
+        block_size,
+        block_stride,
+        in_args, out_args,
+        in_shape, out_shape,
+        type_map,
+        map_expr, reduce_expr, post_map_expr, reduce_type,
+        stream, params, cub_params)
+
+    return True
