@@ -1161,10 +1161,12 @@ cdef class ndarray:
     # cupy.ndarray does not define __new__
 
     def __array__(self, dtype=None):
-        if dtype is None or self.dtype == dtype:
-            return self
-        else:
-            return self.astype(dtype)
+        # TODO(imanishi): Support an environment variable or a global
+        # configure flag that allows implicit conversions to NumPy array.
+        # (See https://github.com/cupy/cupy/issues/589 for the detail.)
+        raise TypeError(
+            'Implicit conversion to a NumPy array is not allowed. '
+            'Please use `.get()` to construct a NumPy array explicitly.')
 
     # TODO(okuta): Implement __array_wrap__
 
