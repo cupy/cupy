@@ -26,6 +26,20 @@ class TestFlatiter(unittest.TestCase):
         assert(len(a.flat) == 24)
         assert(len(a[::2].flat) == 12)
 
+    @testing.numpy_cupy_array_equal()
+    def test_copy(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        o = a.flat.copy()
+        assert a is not o
+        return a.flat.copy()
+
+    @testing.numpy_cupy_array_equal()
+    def test_copy_next(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        it = a.flat
+        it.__next__()
+        return it.copy()  # Returns the flattened copy of whole `a`
+
 
 @testing.parameterize(
     {'shape': (2, 3, 4), 'index': Ellipsis},
