@@ -102,6 +102,7 @@ _available_cuda_version = {
     'csr2csc': (8000, 11000),
     'csc2csr': (8000, 11000),  # the entity is csr2csc
     'csr2cscEx2': (10010, None),
+    'csc2csrEx2': (10010, None),  # the entity is csr2cscEx2
     'dense2csc': (8000, None),
     'dense2csr': (8000, None),
     'csr2csr_compress': (8000, None),
@@ -1018,6 +1019,36 @@ def csc2csr(x):
         data.data.ptr, indices.data.ptr, indptr.data.ptr,
         cusparse.CUSPARSE_ACTION_NUMERIC,
         cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    return cupyx.scipy.sparse.csr_matrix(
+        (data, indices, indptr), shape=x.shape)
+
+
+def csc2csrEx2(x):
+    if not check_availability('csc2csrEx2'):
+        raise RuntimeError('csc2csrEx2 is not available.')
+
+    handle = device.get_cusparse_handle()
+    m, n = x.shape
+    nnz = x.nnz
+    data = cupy.empty(nnz, x.dtype)
+    indices = cupy.empty(nnz, 'i')
+    if nnz == 0:
+        indptr = cupy.zeros(m + 1, 'i')
+    else:
+        indptr = cupy.empty(m + 1, 'i')
+        x_dtype = _dtype_to_DataType(x.dtype)
+        action = cusparse.CUSPARSE_ACTION_NUMERIC
+        ibase = cusparse.CUSPARSE_INDEX_BASE_ZERO
+        algo = cusparse.CUSPARSE_CSR2CSC_ALG1
+        buffer_size = cusparse.csr2cscEx2_bufferSize(
+            handle, n, m, nnz, x.data.data.ptr, x.indptr.data.ptr,
+            x.indices.data.ptr, data.data.ptr, indptr.data.ptr,
+            indices.data.ptr, x_dtype, action, ibase, algo)
+        buffer = cupy.empty(buffer_size, numpy.int8)
+        cusparse.csr2cscEx2(
+            handle, n, m, nnz, x.data.data.ptr, x.indptr.data.ptr,
+            x.indices.data.ptr, data.data.ptr, indptr.data.ptr,
+            indices.data.ptr, x_dtype, action, ibase, algo, buffer.data.ptr)
     return cupyx.scipy.sparse.csr_matrix(
         (data, indices, indptr), shape=x.shape)
 

@@ -248,9 +248,12 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         """
         # copy is ignored
         if cusparse.check_availability('csc2csr'):
-            return cusparse.csc2csr(self)
+            csc2csr = cusparse.csc2csr
+        elif cusparse.check_availability('csc2csrEx2'):
+            csc2csr = cusparse.csc2csrEx2
         else:
-            return self.T.tocsc(copy=False).T
+            raise NotImplementedError
+        return csc2csr(self)
 
     # TODO(unno): Implement todia
     # TODO(unno): Implement todok
