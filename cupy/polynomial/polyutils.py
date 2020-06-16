@@ -43,12 +43,11 @@ def as_series(alist, trim=True):
             raise ValueError('Coefficient array is empty')
         if a.ndim > 1:
             raise ValueError('Coefficient array is not 1-d')
+        if a.dtype.kind == 'b':
+            raise ValueError('Coefficient arrays have no common type')
         if trim:
             a = trimseq(a)
         arrays.append(a)
-    try:
-        dtype = cupy.common_type(*arrays)
-    except Exception:
-        raise ValueError('Coefficient arrays have no common type')
+    dtype = cupy.common_type(*arrays)
     ret = [a.astype(dtype, copy=False) for a in arrays]
     return ret
