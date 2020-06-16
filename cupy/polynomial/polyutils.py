@@ -37,14 +37,13 @@ def as_series(alist, trim=True):
     """
     arrays = []
     for a in alist:
-        if a.ndim == 0:
-            a = a.ravel()
         if a.size == 0:
             raise ValueError('Coefficient array is empty')
         if a.ndim > 1:
             raise ValueError('Coefficient array is not 1-d')
         if a.dtype.kind == 'b':
             raise ValueError('Coefficient arrays have no common type')
+        a = a.ravel()
         if trim:
             a = trimseq(a)
         arrays.append(a)
