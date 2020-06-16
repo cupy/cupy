@@ -209,7 +209,14 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.coo_matrix: Converted matrix.
 
         """
-        return self.T.tocoo(copy).T
+        if copy:
+            data = self.data.copy()
+            indices = self.indices.copy()
+        else:
+            data = self.data
+            indices = self.indices
+
+        return cusparse.csc2coo(self, data, indices)
 
     def tocsc(self, copy=None):
         """Converts the matrix to Compressed Sparse Column format.
@@ -239,7 +246,11 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.csr_matrix: Converted matrix.
 
         """
-        return self.T.tocsc(copy=False).T
+        # copy is ignored
+        if cusparse.check_availability('csc2csr'):
+            return cusparse.csc2csr(self)
+        else:
+            return self.T.tocsc(copy=False).T
 
     # TODO(unno): Implement todia
     # TODO(unno): Implement todok

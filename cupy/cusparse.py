@@ -100,6 +100,7 @@ _available_cuda_version = {
     'coo2csr': (8000, None),
     'csr2coo': (8000, None),
     'csr2csc': (8000, 11000),
+    'csc2csr': (8000, 11000),  # the entity is csr2csc
     'csr2cscEx2': (10010, None),
     'dense2csc': (8000, None),
     'dense2csr': (8000, None),
@@ -833,11 +834,12 @@ def cscsort(x):
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 
-def coosort(x):
+def coosort(x, sort_by='r'):
     """Sorts indices of COO-matrix in place.
 
     Args:
         x (cupyx.scipy.sparse.coo_matrix): A sparse matrix to sort.
+        sort_by (str): Sort the indices by row ('r', default) or column ('c').
 
     """
     if not check_availability('coosort'):
@@ -855,13 +857,22 @@ def coosort(x):
     P = cupy.empty(nnz, 'i')
     data_orig = x.data.copy()
     cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
-    cusparse.xcoosortByRow(
-        handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
-        P.data.ptr, buf.data.ptr)
+    if sort_by == 'r':
+        cusparse.xcoosortByRow(
+            handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
+            P.data.ptr, buf.data.ptr)
+    elif sort_by == 'c':
+        cusparse.xcoosortByColumn(
+            handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
+            P.data.ptr, buf.data.ptr)
+    else:
+        raise ValueError("sort_by must be either 'r' or 'c'")
     _call_cusparse(
         'gthr', x.dtype,
         handle, nnz, data_orig.data.ptr, x.data.data.ptr,
         P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    if sort_by == 'c':  # coo is sorted by row first
+        x._has_canonical_format = False
 
 
 def coo2csr(x):
@@ -873,6 +884,17 @@ def coo2csr(x):
         indptr.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
     return cupyx.scipy.sparse.csr.csr_matrix(
         (x.data, x.col, indptr), shape=x.shape)
+
+
+def coo2csc(x):
+    handle = device.get_cusparse_handle()
+    n = x.shape[1]
+    indptr = cupy.empty(n + 1, 'i')
+    cusparse.xcoo2csr(
+        handle, x.col.data.ptr, x.nnz, n,
+        indptr.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    return cupyx.scipy.sparse.csc.csc_matrix(
+        (x.data, x.row, indptr), shape=x.shape)
 
 
 def csr2coo(x, data, indices):
@@ -951,6 +973,52 @@ def csr2cscEx2(x):
             x.indices.data.ptr, data.data.ptr, indptr.data.ptr,
             indices.data.ptr, x_dtype, action, ibase, algo, buffer.data.ptr)
     return cupyx.scipy.sparse.csc_matrix(
+        (data, indices, indptr), shape=x.shape)
+
+
+def csc2coo(x, data, indices):
+    """Converts a CSC-matrix to COO format.
+
+    Args:
+        x (cupyx.scipy.sparse.csc_matrix): A matrix to be converted.
+        data (cupy.ndarray): A data array for converted data.
+        indices (cupy.ndarray): An index array for converted data.
+
+    Returns:
+        cupyx.scipy.sparse.coo_matrix: A converted matrix.
+
+    """
+    handle = device.get_cusparse_handle()
+    n = x.shape[1]
+    nnz = len(x.data)
+    col = cupy.empty(nnz, 'i')
+    cusparse.xcsr2coo(
+        handle, x.indptr.data.ptr, nnz, n, col.data.ptr,
+        cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    # data and indices did not need to be copied already
+    return cupyx.scipy.sparse.coo_matrix(
+        (data, (indices, col)), shape=x.shape)
+
+
+def csc2csr(x):
+    if not check_availability('csc2csr'):
+        raise RuntimeError('csr2csc is not available.')
+
+    handle = device.get_cusparse_handle()
+    m, n = x.shape
+    nnz = x.nnz
+    data = cupy.empty(nnz, x.dtype)
+    indptr = cupy.empty(m + 1, 'i')
+    indices = cupy.empty(nnz, 'i')
+
+    _call_cusparse(
+        'csr2csc', x.dtype,
+        handle, n, m, nnz, x.data.data.ptr,
+        x.indptr.data.ptr, x.indices.data.ptr,
+        data.data.ptr, indices.data.ptr, indptr.data.ptr,
+        cusparse.CUSPARSE_ACTION_NUMERIC,
+        cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    return cupyx.scipy.sparse.csr_matrix(
         (data, indices, indptr), shape=x.shape)
 
 

@@ -18,13 +18,13 @@ cdef class _AbstractReductionKernel:
         list in_args, list out_args,
         const shape_t& a_shape, axis, dtype,
         bint keepdims, bint reduce_dims, int device_id,
-        stream)
+        stream, bint try_use_cub=*)
 
     cdef void _launch(
         self, out_block_num, block_size, block_stride,
         in_args, out_args, in_shape, out_shape, types,
         map_expr, reduce_expr, post_map_expr, reduce_type,
-        stream)
+        stream, params, cub_params)
 
     cdef tuple _get_expressions_and_types(
         self, list in_args, list out_args, dtype)
@@ -36,7 +36,7 @@ cdef class _AbstractReductionKernel:
         self,
         tuple params, tuple arginfos, _kernel._TypeMap types,
         str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-        Py_ssize_t block_size)
+        Py_ssize_t block_size, tuple cub_params=*)
 
 
 cdef class ReductionKernel(_AbstractReductionKernel):

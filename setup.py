@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 import sys
 
 import cupy_setup_build
@@ -43,7 +43,7 @@ requirements = {
         'theano',
     ],
     'docs': [
-        'sphinx',
+        'sphinx==3.0.4',
         'sphinx_rtd_theme',
     ],
     'travis': [
@@ -168,43 +168,7 @@ setup(
         "Source Code": "https://github.com/cupy/cupy",
     },
     classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
-    packages=[
-        'cupy',
-        'cupy.binary',
-        'cupy.core',
-        'cupy.creation',
-        'cupy.cuda',
-        'cupy.cuda.memory_hooks',
-        'cupy.fft',
-        'cupy.indexing',
-        'cupy.io',
-        'cupy.lib',
-        'cupy.linalg',
-        'cupy.logic',
-        'cupy.manipulation',
-        'cupy.math',
-        'cupy.misc',
-        'cupy.padding',
-        'cupy.prof',
-        'cupy.random',
-        'cupy._sorting',
-        'cupy.sparse',
-        'cupy.sparse.linalg',
-        'cupy.statistics',
-        'cupy.testing',
-        'cupyx',
-        'cupyx.fallback_mode',
-        'cupyx.scipy',
-        'cupyx.scipy.fft',
-        'cupyx.scipy.fftpack',
-        'cupyx.scipy.ndimage',
-        'cupyx.scipy.sparse',
-        'cupyx.scipy.sparse.linalg',
-        'cupyx.scipy.special',
-        'cupyx.scipy.linalg',
-        'cupyx.linalg',
-        'cupyx.linalg.sparse'
-    ],
+    packages=find_packages(exclude=['install', 'tests']),
     package_data=package_data,
     zip_safe=False,
     python_requires='>=3.5.0',

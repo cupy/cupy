@@ -277,10 +277,10 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
         """
         # copy is ignored
-        if cusparse.check_availability('csr2cscEx2'):
-            csr2csc = cusparse.csr2cscEx2
-        elif cusparse.check_availability('csr2csc'):
+        if cusparse.check_availability('csr2csc'):
             csr2csc = cusparse.csr2csc
+        elif cusparse.check_availability('csr2cscEx2'):
+            csr2csc = cusparse.csr2cscEx2
         else:
             raise NotImplementedError
         return csr2csc(self)
@@ -331,8 +331,10 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 'swapping dimensions is the only logical permutation.')
 
         shape = self.shape[1], self.shape[0]
-        return csc.csc_matrix(
+        trans = csc.csc_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
+        trans._has_canonical_format = self._has_canonical_format
+        return trans
 
 
 def isspmatrix_csr(x):
