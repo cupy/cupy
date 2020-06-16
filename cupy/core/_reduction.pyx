@@ -427,6 +427,19 @@ cdef class _AbstractReductionKernel:
             cub_params = (
                 True, items_per_thread, contiguous_size, full_reduction)
 
+        if cub_params[0]:
+            _cub_reduction._launch_cub(
+                self,
+                out_block_num,
+                block_size,
+                block_stride,
+                in_args, out_args,
+                in_shape, out_shape,
+                type_map,
+                map_expr, reduce_expr, post_map_expr, reduce_type,
+                stream, params, cub_params)
+            return ret
+
         # Launch the kernel
         self._launch(
             out_block_num,
@@ -436,7 +449,7 @@ cdef class _AbstractReductionKernel:
             in_shape, out_shape,
             type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
-            stream, params, cub_params)
+            stream, params)
 
         return ret
 
@@ -461,7 +474,7 @@ cdef class _AbstractReductionKernel:
             self._launch(
                 out_block_num, block_size, block_stride, in_args, out_args,
                 in_shape, out_shape, type_map, map_expr, reduce_expr,
-                post_map_expr, reduce_type, stream, self._params, (False,))
+                post_map_expr, reduce_type, stream, self._params)
 
         def suggest_func(trial):
             block_size_log = trial.suggest_int('block_size_log', 5, 9)
@@ -508,7 +521,8 @@ cdef class _AbstractReductionKernel:
             block_stride = block_size * items_per_thread
             cub_params = (
                 True, items_per_thread, contiguous_size, full_reduction)
-            self._launch(
+            _cub_reduction._launch_cub(
+                self,
                 out_block_num, block_size, block_stride, in_args, out_args,
                 in_shape, out_shape, type_map, map_expr, reduce_expr,
                 post_map_expr, reduce_type, stream, params, cub_params)
@@ -536,41 +550,18 @@ cdef class _AbstractReductionKernel:
             self, out_block_num, block_size, block_stride,
             in_args, out_args, in_shape, out_shape, type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
-            stream, params, cub_params):
-        cdef bint full_reduction, use_cub = cub_params[0]
-        cdef Py_ssize_t contiguous_size, items_per_thread
+            stream, params):
         cdef function.Function func
 
-        # Kernel arguments passed to the __global__ function.
-        if use_cub:
-            items_per_thread = cub_params[1]
-            contiguous_size = cub_params[2]
-            full_reduction = cub_params[3]
-            if full_reduction:
-                _cub_reduction._cub_two_pass_launch(
-                    self.name, block_size, contiguous_size, items_per_thread,
-                    reduce_type, params, in_args, out_args, self.identity,
-                    map_expr, reduce_expr, post_map_expr,
-                    type_map, self._input_expr, self._output_expr,
-                    self._preamble, (), stream)
-                return
-            else:
-                inout_args = (
-                    in_args + out_args +
-                    [_cub_reduction._cub_convert_to_c_scalar(
-                        contiguous_size, contiguous_size),
-                     _cub_reduction._cub_convert_to_c_scalar(
-                         contiguous_size, 0)])
-        else:
-            inout_args = (
-                in_args
-                + out_args
-                + [
-                    _carray._indexer_init(in_shape),
-                    _carray._indexer_init(out_shape),
-                    # block_stride is passed as the last argument.
-                    _scalar.CScalar.from_int32(block_stride),
-                ])
+        inout_args = (
+            in_args
+            + out_args
+            + [
+                _carray._indexer_init(in_shape),
+                _carray._indexer_init(out_shape),
+                # block_stride is passed as the last argument.
+                _scalar.CScalar.from_int32(block_stride),
+            ])
 
         # Retrieve the kernel function
         func = self._get_function(
@@ -578,7 +569,7 @@ cdef class _AbstractReductionKernel:
             _get_arginfos(inout_args),
             type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
-            block_size, cub_params)
+            block_size)
 
         # Launch the kernel
         func.linear_launch(
@@ -596,7 +587,7 @@ cdef class _AbstractReductionKernel:
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size, tuple cub_params=(False,)):
+            Py_ssize_t block_size):
         raise NotImplementedError()
 
 
@@ -700,13 +691,12 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size, tuple cub_params=(False,)):
+            Py_ssize_t block_size):
         return _SimpleReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
             self.name, block_size, self.identity,
-            self._input_expr, self._output_expr, self._preamble,
-            (), cub_params)
+            self._input_expr, self._output_expr, self._preamble, ())
 
 
 @util.memoize(for_each_device=True)
@@ -714,9 +704,7 @@ def _SimpleReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, input_expr, output_expr, _preamble,
-        options, cub_params):
-    use_cub = cub_params[0]
-    assert not use_cub  # TODO
+        options):
     return _create_reduction_function(
         name, block_size, reduce_type, params, arginfos, identity,
         map_expr, reduce_expr, post_map_expr,
@@ -866,7 +854,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size, tuple cub_params=(False,)):
+            Py_ssize_t block_size):
         return _ReductionKernel_get_cached_function(
             self.nin, self.nout, params, arginfos, type_map,
             self.name, block_size, reduce_type, self.identity,

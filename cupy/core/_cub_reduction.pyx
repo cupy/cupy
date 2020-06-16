@@ -470,3 +470,45 @@ cdef inline _cub_two_pass_launch(
 
     # Launch the kernel
     func.linear_launch(gridx, inout_args, 0, blockx, stream)
+
+
+cdef _launch_cub(
+        self, out_block_num, block_size, block_stride,
+        in_args, out_args, in_shape, out_shape, type_map,
+        map_expr, reduce_expr, post_map_expr, reduce_type,
+        stream, params, cub_params):
+    cdef bint full_reduction, use_cub = cub_params[0]
+    cdef Py_ssize_t contiguous_size, items_per_thread
+    cdef function.Function func
+
+    # Kernel arguments passed to the __global__ function.
+    assert use_cub
+    items_per_thread = cub_params[1]
+    contiguous_size = cub_params[2]
+    full_reduction = cub_params[3]
+
+    if full_reduction:
+        _cub_two_pass_launch(
+            self.name, block_size, contiguous_size, items_per_thread,
+            reduce_type, params, in_args, out_args, self.identity,
+            map_expr, reduce_expr, post_map_expr,
+            type_map, self._input_expr, self._output_expr,
+            self._preamble, (), stream)
+        return
+    else:
+        inout_args = (
+            in_args + out_args +
+            [_cub_convert_to_c_scalar(
+                contiguous_size, contiguous_size),
+             _cub_convert_to_c_scalar(
+                 contiguous_size, 0)])
+        arginfos = _kernel._get_arginfos(inout_args)
+        func = _SimpleCubReductionKernel_get_cached_function(
+            map_expr, reduce_expr, post_map_expr, reduce_type,
+            params, arginfos, type_map,
+            self.name, block_size, self.identity,
+            self._input_expr, self._output_expr, self._preamble,
+            (), cub_params)
+
+        func.linear_launch(
+            out_block_num * block_size, inout_args, 0, block_size, stream)
