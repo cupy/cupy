@@ -216,10 +216,9 @@ def maximum_filter(input, size=None, footprint=None, output=None,
 
 
 def _min_or_max_filter(input, size, ftprnt, output, mode, cval, origin, func):
-    sizes, ftprnt, sep = \
-        _check_size_or_ftprnt(input.ndim, size, ftprnt, 3, True)
+    sizes, ftprnt = _check_size_or_ftprnt(input.ndim, size, ftprnt, 3, True)
 
-    if sep:
+    if sizes is not None:
         # Seperable filter, run as a series of 1D filters
         fltr = minimum_filter1d if func == 'min' else maximum_filter1d
         output_orig = output
@@ -239,7 +238,7 @@ def _min_or_max_filter(input, size, ftprnt, output, mode, cval, origin, func):
                 continue
             fltr(input, size, axis, output, mode, cval, origin)
             input, output = output, temp if first else input
-        if output_orig is not None and input is not output_orig:
+        if isinstance(output_orig, cupy.ndarray) and input is not output_orig:
             output_orig[...] = input
             input = output_orig
         return input
@@ -248,8 +247,11 @@ def _min_or_max_filter(input, size, ftprnt, output, mode, cval, origin, func):
                                        'footprint')
     if ftprnt.size == 0:
         return cupy.zeros_like(input)
+    center = tuple(x//2 for x in ftprnt.shape)
     kernel = _get_min_or_max_kernel(mode, ftprnt.shape, func,
-                                    origins, float(cval), int_type)
+                                    origins, float(cval), int_type,
+                                    has_central_value=bool(ftprnt[center]))
+    ftprnt[center] = 0 # can skip going over the central pixel in all cases
     return _call_kernel(kernel, input, ftprnt, output, bool)
 
 
@@ -316,13 +318,19 @@ def _max_or_min_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
 
 @cupy.util.memoize(for_each_device=True)
 def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type,
-                           has_weights=True):
+                           has_weights=True, has_central_value=True):
+    if has_central_value:
+        pre = 'X value = x[i];'
+        found = 'value = {func}({{value}}, value);'
+    else:
+        # If the central pixel is not included in the footprint we cannot
+        # assume `x[i]` is not below the min or above the max and thus cannot
+        # seed with that value. Instead we keep track of having set `value`.
+        pre = 'X value; bool set = false;'
+        found = 'value = set? {func}({{value}}, value) : {{value}}; set=true;'
     return _generate_nd_kernel(
-        func, 'X value = x[i];',
-        'value = {func}((X){{value}}, value);'.format(func=func),
-        'y = (Y)value;', mode, wshape, int_type, origins, cval,
-        has_weights=has_weights)
-
+        func, pre, found.format(func=func), 'y = (Y)value;',
+        mode, wshape, int_type, origins, cval, has_weights=has_weights)
 
 def _get_output(output, input, shape=None):
     if shape is None:
@@ -367,24 +375,24 @@ def _check_mode(mode):
 
 
 def _check_size_or_ftprnt(ndim, size, ftprnt, stacklevel, check_sep=False):
-    if (size is not None) and (ftprnt is not None):
-        warnings.warn("ignoring size because footprint is set",
-                      UserWarning, stacklevel=stacklevel+1)
     if ftprnt is None:
         if size is None:
             raise RuntimeError("no footprint or filter size provided")
         sizes = _fix_sequence_arg(size, ndim, 'size', int)
         if check_sep:
-            return sizes, None, True
+            return sizes, None
         ftprnt = cupy.ones(sizes, dtype=bool)
     else:
-        ftprnt = cupy.ascontiguousarray(ftprnt, dtype=bool)
+        if size is not None:
+            warnings.warn("ignoring size because footprint is set",
+                          UserWarning, stacklevel=stacklevel+1)
+        ftprnt = cupy.array(ftprnt, bool, True, 'C')
         if not ftprnt.any():
             raise ValueError("All-zero footprint is not supported.")
         if check_sep:
             if ftprnt.all():
-                return ftprnt.shape, None, True
-            return None, ftprnt, False
+                return ftprnt.shape, None
+            return None, ftprnt
     return ftprnt
 
 
@@ -417,7 +425,7 @@ def _check_nd_args(input, weights, mode, origins, wghts_name='filter weights'):
 
 
 def _call_kernel(kernel, input, weights, output,
-                 weight_dtype=cupy.float64):
+                 weights_dtype=cupy.float64):
     """
     Calls a constructed ElementwiseKernel. The kernel must take an input image,
     an array of weights, and an output array.
@@ -433,10 +441,11 @@ def _call_kernel(kernel, input, weights, output,
 
     * weights is always casted to float64 or bool in order to get an output
     compatible with SciPy, though float32 might be sufficient when input dtype
-    is low precision.
+    is low precision. If weights_dtype is passed as weights.dtype then no
+    dtype conversion will occur. The input and output are never converted.
     """
     if weights is not None:
-        weights = cupy.ascontiguousarray(weights, weight_dtype)
+        weights = cupy.ascontiguousarray(weights, weights_dtype)
     output = _get_output(output, input)
     needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
     if needs_temp:
@@ -499,12 +508,11 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
         [' - {}'.format(wshape[j]//2 + origins[j]) for j in range(ndim)])
     sizes = ['{type} xsize_{j}=x.shape()[{j}], xstride_{j}=x.strides()[{j}];'.
              format(j=j, type=int_type) for j in range(ndim)]
-    cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
     expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
 
     if has_weights:
-        weights_init = 'const W* weights = (const W*)&w[0];\nint iw = 0;'
-        weights_check = 'W wval = weights[iw++];\nif (wval)'
+        weights_init = 'int iw = 0;'
+        weights_check = 'W wval = w[iw++];\nif (wval)'
     else:
         in_params = 'raw X x'
         weights_init = weights_check = ''
@@ -527,6 +535,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
 
     value = '(*(X*)&data[{expr}])'.format(expr=expr)
     if mode == 'constant':
+        cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
         value = '(({cond}) ? (X){cval} : {value})'.format(
             cond=cond, cval=cval, value=value)
     found = found.format(value=value)
