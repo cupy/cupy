@@ -18,11 +18,11 @@ def polyvander(x, deg):
     if deg < 0:
         raise ValueError('degree must be non-negative')
     if x.ndim == 0:
-        x = cupy.expand_dims(x, axis=0)
-    x = cupy.expand_dims(x, axis=-1)
+        x = x.ravel()
     x = x + 0.0
-    v = x ** cupy.arange(deg + 1)
-    return cupy.asarray(v, x.dtype, order='F')
+    dtype = cupy.float64 if x.dtype.kind in 'biu' else x.dtype
+    out = x ** cupy.arange(deg + 1, dtype=dtype).reshape((-1,) + (1,) * x.ndim)
+    return cupy.moveaxis(out, 0, -1)
 
 
 def polycompanion(c):
