@@ -192,6 +192,77 @@ class TestSumprod(unittest.TestCase):
         return a.prod(dtype=dst_dtype)
 
 
+# This class compares CUB results against NumPy's
+@testing.parameterize(*testing.product({
+    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+    'order': ('C', 'F'),
+}))
+@testing.gpu
+@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
+class TestCUBreduction(unittest.TestCase):
+    @testing.for_contiguous_axes()
+    # sum supports less dtypes; don't test float16 as it's not as accurate?
+    @testing.for_dtypes('lLfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_sum(self, xp, dtype, axis):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.sum(axis=axis)
+
+    @testing.for_contiguous_axes()
+    # prod supports less dtypes; don't test float16 as it's not as accurate?
+    @testing.for_dtypes('lLfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_prod(self, xp, dtype, axis):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.prod(axis=axis)
+
+    # TODO(leofang): test axis after support is added
+    # don't test float16 as it's not as accurate?
+    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-4)
+    def test_cub_cumsum(self, xp, dtype):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.cumsum()
+
+    # TODO(leofang): test axis after support is added
+    # don't test float16 as it's not as accurate?
+    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-4)
+    def test_cub_cumprod(self, xp, dtype):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        result = a.cumprod()
+        # for testing cumprod against complex arrays, the gotcha is CuPy may
+        # produce only Inf at the position where NumPy starts to give NaN. So,
+        # an error would be raised during assert_allclose where the positions
+        # of NaNs are examined. Since this is both algorithm and architecture
+        # dependent, we have no control over this behavior and can only
+        # circumvent the issue by manually converting Inf to NaN
+        if dtype in (numpy.complex64, numpy.complex128):
+            pos = xp.where(xp.isinf(result))
+            result[pos] = xp.nan + 1j * xp.nan
+        return result
+
+
 @testing.parameterize(
     *testing.product({
         'shape': [(2, 3, 4), (20, 30, 40)],

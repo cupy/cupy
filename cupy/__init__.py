@@ -56,11 +56,13 @@ from cupy import binary  # NOQA
 import cupy.core.fusion  # NOQA
 from cupy import creation  # NOQA
 from cupy import fft  # NOQA
+from cupy import functional  # NOQA
 from cupy import indexing  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import padding  # NOQA
+from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 from cupy import _sorting  # NOQA
 from cupy import sparse  # NOQA
@@ -279,10 +281,16 @@ from cupy.creation.matrix import tril  # NOQA
 from cupy.creation.matrix import triu  # NOQA
 
 # -----------------------------------------------------------------------------
+# Functional routines
+# -----------------------------------------------------------------------------
+from cupy.functional.piecewise import piecewise  # NOQA
+
+# -----------------------------------------------------------------------------
 # Array manipulation routines
 # -----------------------------------------------------------------------------
 from cupy.manipulation.basic import copyto  # NOQA
 
+from cupy.manipulation.shape import shape  # NOQA
 from cupy.manipulation.shape import ravel  # NOQA
 from cupy.manipulation.shape import reshape  # NOQA
 
@@ -320,6 +328,7 @@ from cupy.manipulation.tiling import repeat  # NOQA
 from cupy.manipulation.tiling import tile  # NOQA
 
 from cupy.manipulation.add_remove import unique  # NOQA
+from cupy.manipulation.add_remove import trim_zeros  # NOQA
 
 from cupy.manipulation.rearrange import flip  # NOQA
 from cupy.manipulation.rearrange import fliplr  # NOQA
@@ -644,6 +653,7 @@ from cupy.math.misc import convolve  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.misc import may_share_memory  # NOQA
 from cupy.misc import shares_memory  # NOQA
+from cupy.misc import who  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -671,6 +681,7 @@ from cupy._sorting.sort import argpartition  # NOQA
 from cupy._sorting.sort import argsort  # NOQA
 from cupy._sorting.sort import lexsort  # NOQA
 from cupy._sorting.sort import msort  # NOQA
+from cupy._sorting.sort import sort_complex  # NOQA
 from cupy._sorting.sort import partition  # NOQA
 from cupy._sorting.sort import sort  # NOQA
 

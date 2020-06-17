@@ -16,12 +16,14 @@ These functions cover a subset of
    binary
    dtype
    fft
+   functional
    indexing
    io
    linalg
    logic
    math
    pad
+   polynomials
    random
    sorting
    statistics
