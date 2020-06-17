@@ -199,9 +199,7 @@ def _SimpleCubReductionKernel_get_cached_function(
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, input_expr, output_expr, _preamble,
         options, cub_params):
-    use_cub = cub_params[0]
-    assert use_cub  # TODO
-    items_per_thread = cub_params[1]
+    items_per_thread = cub_params[0]
     name = name.replace('cupy_', 'cupy_cub_')
     name = name.replace('cupyx_', 'cupyx_cub_')
     return _create_cub_reduction_function(
@@ -416,7 +414,7 @@ cdef inline _cub_two_pass_launch(
     inout_args = [in_args[0], out_args[0],
                   _cub_convert_to_c_scalar(segment_size, contiguous_size),
                   _cub_convert_to_c_scalar(segment_size, segment_size)]
-    cub_params = (True, items_per_thread)
+    cub_params = (items_per_thread,)
 
     # For mean()
     if 'mean' in name:
@@ -478,20 +476,19 @@ cdef inline _cub_two_pass_launch(
     func.linear_launch(gridx, inout_args, 0, blockx, stream)
 
 
-cdef _launch_cub(
+cdef inline _launch_cub(
         self, out_block_num, block_size, block_stride,
         in_args, out_args, in_shape, out_shape, type_map,
         map_expr, reduce_expr, post_map_expr, reduce_type,
         stream, params, cub_params):
-    cdef bint full_reduction, use_cub = cub_params[0]
+    cdef bint full_reduction
     cdef Py_ssize_t contiguous_size, items_per_thread
     cdef function.Function func
 
     # Kernel arguments passed to the __global__ function.
-    assert use_cub
-    items_per_thread = cub_params[1]
-    contiguous_size = cub_params[2]
-    full_reduction = cub_params[3]
+    items_per_thread = cub_params[0]
+    contiguous_size = cub_params[1]
+    full_reduction = cub_params[2]
 
     if full_reduction:
         _cub_two_pass_launch(
@@ -536,7 +533,7 @@ def _get_cub_optimized_params(
     def target_func(block_size, items_per_thread):
         block_stride = block_size * items_per_thread
         cub_params = (
-            True, items_per_thread, contiguous_size, full_reduction)
+            items_per_thread, contiguous_size, full_reduction)
         _launch_cub(
             self,
             out_block_num, block_size, block_stride, in_args, out_args,
@@ -564,12 +561,15 @@ def _get_cub_optimized_params(
 
 
 cdef bint _try_to_call_cub_reduction(
-        self, list in_args, list out_args,
-        const shape_t& a_shape, int device_id, stream,
-        map_expr, reduce_expr, post_map_expr, in_types, out_types,
-        reduce_type, type_map,
+        self, list in_args, list out_args, const shape_t& a_shape,
+        stream, optimize_context, tuple key,
+        map_expr, reduce_expr, post_map_expr, reduce_type, type_map,
         tuple reduce_axis, tuple out_axis, const shape_t& out_shape,
         ndarray ret):
+    """Try to use cub.
+
+    Updates `ret` and returns a boolean value whether cub is used.
+    """
     cdef tuple axis_permutes
     cdef tuple params, opt_params
     cdef shape_t in_shape
@@ -619,18 +619,11 @@ cdef bint _try_to_call_cub_reduction(
         items_per_thread, block_size = _get_cub_block_specs(contiguous_size)
     else:
         # Optimize dynamically
-
-        # Calculate a key unique to the reduction setting.
-        shape_and_strides = _reduction._get_shape_and_strides(
-            in_args, out_args)
-        # TODO: rename
-        key = (self.name, shape_and_strides,
-               in_types, out_types, reduce_type, device_id,
-               full_reduction,)
-
+        key = ('cub_reduction',) + key
         opt_params = optimize_context.get_params(key)
         if opt_params is None:
-            opt_params = self._get_cub_optimized_params(
+            opt_params = _get_cub_optimized_params(
+                self,
                 optimize_context.config, in_args, out_args,
                 in_shape, out_shape, type_map, map_expr, reduce_expr,
                 post_map_expr, reduce_type, stream,
@@ -639,7 +632,7 @@ cdef bint _try_to_call_cub_reduction(
         items_per_thread, block_size = opt_params
 
     block_stride = block_size * items_per_thread
-    cub_params = (True, items_per_thread, contiguous_size, full_reduction)
+    cub_params = (items_per_thread, contiguous_size, full_reduction)
 
     _launch_cub(
         self,

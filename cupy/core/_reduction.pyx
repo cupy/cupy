@@ -22,13 +22,11 @@ from cupy.core cimport _scalar
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport _convert_object_with_cuda_array_interface
 from cupy.core.core cimport _create_ndarray_from_shape_strides
-from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.cuda cimport device
 from cupy.cuda cimport function
-from cupy.cuda cimport memory
 from cupy.cuda cimport runtime
 
 import math
@@ -323,11 +321,19 @@ cdef class _AbstractReductionKernel:
                    _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
                    for x, t in zip(in_args, in_types)]
 
+        optimize_context = _optimize_config.get_current_context()
+        key = ()
+        if optimize_context is None:
+            # Calculate a key unique to the reduction setting.
+            shape_and_strides = _get_shape_and_strides(in_args, out_args)
+            key = (self.name, shape_and_strides,
+                   in_types, out_types, reduce_type, device_id)
+
         # Try to use CUB
         if try_use_cub:
             cub_success = _cub_reduction._try_to_call_cub_reduction(
-                self, in_args, out_args, a_shape, device_id, stream,
-                map_expr, reduce_expr, post_map_expr, in_types, out_types,
+                self, in_args, out_args, a_shape, stream,
+                optimize_context, key, map_expr, reduce_expr, post_map_expr,
                 reduce_type, type_map, reduce_axis, out_axis, out_shape, ret)
             if cub_success:
                 return ret
@@ -343,7 +349,6 @@ cdef class _AbstractReductionKernel:
         params = self._params
 
         # Calculate the reduction block dimensions.
-        optimize_context = _optimize_config.get_current_context()
         if optimize_context is None:
             # Calculate manually
             contiguous_size = _get_contiguous_size(
@@ -354,12 +359,7 @@ cdef class _AbstractReductionKernel:
                 contiguous_size, -1)
         else:
             # Optimize dynamically
-
-            # Calculate a key unique to the reduction setting.
-            shape_and_strides = _get_shape_and_strides(in_args, out_args)
-            key = (self.name, shape_and_strides,
-                   in_types, out_types, reduce_type, device_id)
-
+            key = ('simple_reduction',) + key
             opt_params = optimize_context.get_params(key)
             if opt_params is None:
                 opt_params = self._get_optimized_params(
