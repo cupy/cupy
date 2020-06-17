@@ -13,6 +13,7 @@ DEF MAX_NDIM = 25
 cdef struct _CArray:
     void* data
     Py_ssize_t size
+    Py_ssize_t nbytes
     Py_ssize_t shape_and_strides[MAX_NDIM * 2]
 
 
@@ -23,7 +24,7 @@ cdef class CArray(function.CPointer):
         _CArray val
 
     cdef void init(
-        self, void* data_ptr, Py_ssize_t data_size,
+        self, void* data_ptr, Py_ssize_t data_size, Py_ssize_t nbytes,
         const shape_t& shape, const strides_t& strides)
 
 
