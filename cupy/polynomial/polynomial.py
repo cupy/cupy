@@ -19,7 +19,6 @@ def polyvander(x, deg):
         raise ValueError('degree must be non-negative')
     if x.ndim == 0:
         x = x.ravel()
-    x = x + 0.0
     dtype = cupy.float64 if x.dtype.kind in 'biu' else x.dtype
     out = x ** cupy.arange(deg + 1, dtype=dtype).reshape((-1,) + (1,) * x.ndim)
     return cupy.moveaxis(out, 0, -1)

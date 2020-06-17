@@ -10,20 +10,20 @@ from cupy import testing
 @testing.gpu
 class TestPolynomial(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyvander1(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return xp.polynomial.polynomial.polyvander(a, 20)
 
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyvander2(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         return xp.polynomial.polynomial.polyvander(a, 10)
 
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyvander3(self, xp, dtype):
         a = testing.shaped_random((100,), xp, dtype)
         return xp.polynomial.polynomial.polyvander(a, 10)
@@ -49,20 +49,20 @@ class TestPolynomial(unittest.TestCase):
             with pytest.raises(DeprecationWarning):
                 xp.polynomial.polynomial.polyvander(a, 5.0)
 
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_polyvander_zeros(self, xp, dtype):
         a = xp.zeros(10, dtype)
-        return xp.polynomial.polynomial.polyvander(a, 5)
+        return xp.polynomial.polynomial.polyvander(a, 10)
 
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyvander_ndim(self, xp, dtype):
         a = testing.shaped_random((3, 2, 1), xp, dtype)
         return xp.polynomial.polynomial.polyvander(a, 2)
 
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyvander_zero_dim(self, xp, dtype):
         a = testing.shaped_random((), xp, dtype)
         return xp.polynomial.polynomial.polyvander(a, 5)
