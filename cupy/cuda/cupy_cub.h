@@ -24,6 +24,11 @@
 #define CUPY_CUB_CUMPROD 6
 #define CUPY_CUB_PROD    7
 
+// this is defined during the build process
+#ifndef CUPY_CUB_VERSION_CODE
+#define CUPY_CUB_VERSION_CODE 0
+#endif
+
 #ifndef CUPY_NO_CUDA
 #include <cuda_runtime.h>  // for cudaStream_t
 

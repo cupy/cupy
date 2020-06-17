@@ -218,7 +218,8 @@ if not use_hip:
         'libraries': [
             'cudart',
         ],
-        'check_method': build.check_cuda_version,
+        'check_method': build.check_cub_version,
+        'version_method': build.get_cub_version,
     })
 
 if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
