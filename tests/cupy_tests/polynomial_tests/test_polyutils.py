@@ -82,8 +82,8 @@ class TestTrimseq(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_trimseq_empty(self, xp, dtype):
-        a = testing.empty(xp, dtype)
+    def test_trimseq_zerosize(self, xp, dtype):
+        a = xp.zeros((0,), dtype)
         return xp.polynomial.polyutils.trimseq(a)
 
     @testing.for_all_dtypes()
