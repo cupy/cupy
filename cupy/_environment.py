@@ -7,14 +7,16 @@ import os.path
 import shutil
 
 
-_cuda_path = None
-_nvcc_path = None
+# '' for uninitialized, None for non-existing
+_cuda_path = ''
+_nvcc_path = ''
+_cub_path = ''
 
 
 def get_cuda_path():
     # Returns the CUDA installation path or None if not found.
     global _cuda_path
-    if _cuda_path is None:
+    if _cuda_path == '':
         _cuda_path = _get_cuda_path()
     return _cuda_path
 
@@ -22,9 +24,17 @@ def get_cuda_path():
 def get_nvcc_path():
     # Returns the path to the nvcc command or None if not found.
     global _nvcc_path
-    if _nvcc_path is None:
+    if _nvcc_path == '':
         _nvcc_path = _get_nvcc_path()
     return _nvcc_path
+
+
+def get_cub_path():
+    # Returns the CUB header path or None if not found.
+    global _cub_path
+    if _cub_path == '':
+        _cub_path = _get_cub_path()
+    return _cub_path
 
 
 def _get_cuda_path():
@@ -57,6 +67,24 @@ def _get_nvcc_path():
         return None
 
     return shutil.which('nvcc', path=os.path.join(cuda_path, 'bin'))
+
+
+def _get_cub_path():
+    # runtime discovery of CUB headers
+    cuda_path = get_cuda_path()
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    if 'CUPY_CUB_PATH' in os.environ:
+        _cub_path = os.environ['CUPY_CUB_PATH']
+    elif os.path.isdir(os.path.join(current_dir, 'core/include/cupy/cub')):
+        _cub_path = '<bundle>'
+    elif cuda_path is not None and os.path.isdir(
+            os.path.join(cuda_path, 'include/cub')):
+        # use built-in CUB for CUDA 11+
+        _cub_path = '<CUDA>'
+    else:
+        _cub_path = None
+    return _cub_path
 
 
 def _setup_win32_dll_directory():
