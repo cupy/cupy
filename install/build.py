@@ -253,6 +253,7 @@ def _get_compiler_base_options():
 
 
 _cuda_version = None
+_thrust_version = None
 _cudnn_version = None
 _nccl_version = None
 
@@ -297,6 +298,39 @@ def get_cuda_version(formatted=False):
     if formatted:
         return _format_cuda_version(_cuda_version)
     return _cuda_version
+
+
+def check_thrust_version(compiler, settings):
+    global _thrust_version
+
+    try:
+        out = build_and_run(compiler, '''
+        #include <thrust/version.h>
+        #include <stdio.h>
+
+        int main() {
+          printf("%d", THRUST_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+    except Exception as e:
+        utils.print_warning('Cannot check Thrust version\n{0}'.format(e))
+        return False
+
+    _thrust_version = int(out)
+
+    return True
+
+
+def get_thrust_version(formatted=False):
+    """Return Thrust version cached in check_thrust_version()."""
+    global _thrust_version
+    if _thrust_version is None:
+        msg = 'check_thrust_version() must be called first.'
+        raise RuntimeError(msg)
+    if formatted:
+        return str(_thrust_version)
+    return _thrust_version
 
 
 def check_cudnn_version(compiler, settings):

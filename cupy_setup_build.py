@@ -250,7 +250,8 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
             'libraries': [
                 'cudart',
             ],
-            'check_method': build.check_cuda_version,
+            'check_method': build.check_thrust_version,
+            'version_method': build.get_thrust_version,
         })
 
 
