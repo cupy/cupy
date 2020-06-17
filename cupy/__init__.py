@@ -290,6 +290,7 @@ from cupy.functional.piecewise import piecewise  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.manipulation.basic import copyto  # NOQA
 
+from cupy.manipulation.shape import shape  # NOQA
 from cupy.manipulation.shape import ravel  # NOQA
 from cupy.manipulation.shape import reshape  # NOQA
 
