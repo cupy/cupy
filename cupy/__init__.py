@@ -62,6 +62,7 @@ from cupy import io  # NOQA
 from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import padding  # NOQA
+from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 from cupy import _sorting  # NOQA
 from cupy import sparse  # NOQA

@@ -23,6 +23,7 @@ These functions cover a subset of
    logic
    math
    pad
+   polynomials
    random
    sorting
    statistics
