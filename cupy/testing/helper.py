@@ -1189,14 +1189,6 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
         return xp.asarray(numpy.random.rand(*shape) * scale, dtype=dtype)
 
 
-def empty(xp=cupy, dtype=numpy.float32):
-    warnings.warn(
-        '`cupy.testing.empty` is deprecated. '
-        'Use `xp.zeros((0,), dtype)` instead.',
-        DeprecationWarning)
-    return xp.zeros((0,), dtype=dtype)
-
-
 class NumpyError(object):
 
     def __init__(self, **kw):
