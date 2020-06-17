@@ -10,11 +10,23 @@ from cupy import testing
 @testing.gpu
 class TestPolynomial(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_polyvander(self, xp, dtype):
-        a = testing.shaped_random((3,), xp, dtype)
-        return xp.polynomial.polynomial.polyvander(a, 3)
+    def test_polyvander1(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        return xp.polynomial.polynomial.polyvander(a, 20)
+
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_polyvander2(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        return xp.polynomial.polynomial.polyvander(a, 10)
+
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_polyvander3(self, xp, dtype):
+        a = testing.shaped_random((100,), xp, dtype)
+        return xp.polynomial.polynomial.polyvander(a, 10)
 
     @testing.for_all_dtypes()
     def test_polyvander_negative_degree(self, dtype):
