@@ -34,6 +34,7 @@ Creation from other data
    cupy.asanyarray
    cupy.ascontiguousarray
    cupy.copy
+   cupy.fromfile
 
 
 Numerical ranges
