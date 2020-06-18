@@ -41,45 +41,48 @@ def convolve(a, v, mode='full'):
             a, v[::-1], mode)[1]
     elif method == 'fft':
         out = _fftconvolve1d(a, v, mode)
-        result_type = cupy.result_type(a, v)
-        if result_type.kind in {'u', 'i'}:
-            out = cupy.around(out)
-        out = out.astype(result_type, copy=False)
     else:
         raise ValueError('Unsupported method')
     return out
 
 
 def _fftconvolve1d(a1, a2, mode='full'):
+
+    if a2.size > a1.size:
+        a1, a2 = a2, a1
     siz1 = a1.size
     siz2 = a2.size
-    shape = a1.size + a2.size - 1
+    shape = siz1 + siz2 - 1
     complex = a1.dtype.kind == 'c' or a2.dtype.kind == 'c'
     # TODO: Replace with cupy.fft.next_fast_len
     fshape = scipy.fft.next_fast_len(shape, not complex)
-
     if not complex:
-        a1 = cupy.fft.rfft(a1, fshape)
-        a2 = cupy.fft.rfft(a2, fshape)
-        out = cupy.fft.irfft(a1 * a2, fshape)
+        fa1 = cupy.fft.rfft(a1, fshape)
+        fa2 = cupy.fft.rfft(a2, fshape)
+        out = cupy.fft.irfft(fa1 * fa2, fshape)
     else:
-        a1 = cupy.fft.fft(a1, fshape)
-        a2 = cupy.fft.fft(a2, fshape)
-        out = cupy.fft.ifft(a1 * a2, fshape)
-
+        fa1 = cupy.fft.fft(a1, fshape)
+        fa2 = cupy.fft.fft(a2, fshape)
+        out = cupy.fft.ifft(fa1 * fa2, fshape)
+    out = out[slice(shape)]
     if mode == 'full':
-        return out
+        pass
     elif mode == 'same':
         start = (out.size - siz1) / 2
         end = start + siz1
-        return out[slice(start, end)]
+        out = out[slice(start, end)]
     elif mode == 'valid':
         newsize = siz1 - siz2 + 1
         start = (out.size - newsize) / 2
         end = start + newsize
-        return out[slice(start, end)]
-    raise ValueError("acceptable mode flags are 'valid',"
-                     "'same', or 'full'")
+        out = out[slice(start, end)]
+    else:
+        raise ValueError("acceptable mode flags are 'valid',"
+                         "'same', or 'full'")
+    result_type = cupy.result_type(a1, a2)
+    if result_type.kind in {'u', 'i'}:
+        out = cupy.around(out)
+    return out.astype(result_type, copy=False)
 
 
 def clip(a, a_min=None, a_max=None, out=None):
