@@ -81,9 +81,9 @@ class TestPolynomial(unittest.TestCase):
                 xp.polynomial.polynomial.polycompanion(a)
 
     @testing.for_all_dtypes()
-    def test_polycompanion_empty(self, dtype):
+    def test_polycompanion_zerosize(self, dtype):
         for xp in (numpy, cupy):
-            a = testing.empty(xp, dtype)
+            a = xp.zeros((0,), dtype)
             with pytest.raises(ValueError):
                 xp.polynomial.polynomial.polycompanion(a)
 
