@@ -2,7 +2,6 @@ import unittest
 
 import numpy
 
-import cupy
 from cupy import testing
 import cupyx.scipy.ndimage  # NOQA
 
