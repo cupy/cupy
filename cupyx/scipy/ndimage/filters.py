@@ -244,7 +244,7 @@ def _min_or_max_filter(input, size, ftprnt, output, mode, cval, origin, func):
                                        'footprint')
     if ftprnt.size == 0:
         return cupy.zeros_like(input)
-    center = tuple(x//2 for x in ftprnt.shape)
+    center = tuple(x//2 + origin for x, origin in zip(ftprnt.shape, origins))
     kernel = _get_min_or_max_kernel(mode, ftprnt.shape, func,
                                     origins, float(cval), int_type,
                                     has_central_value=bool(ftprnt[center]))
