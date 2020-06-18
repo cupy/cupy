@@ -10,6 +10,7 @@ Polynomial Module
    :toctree: generated/
    :nosignatures:
 
+   cupy.polynomial.polynomial.polyvander
    cupy.polynomial.polynomial.polycompanion
 
 
