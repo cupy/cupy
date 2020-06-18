@@ -241,17 +241,14 @@ class TestWeightDtype(FilterTestCaseBase):
 @testing.gpu
 @testing.with_requires('scipy')
 class TestSpecialWeightCases(FilterTestCaseBase):
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    #@testing.numpy_cupy_raises(scipy_name='scp', accept_error=ValueError)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
     def test_extra_0_dim(self, xp, scp):
         # NOTE: minimum/maximum_filter raise ValueError but convolve/correlate
         # return an array of zeroes the same shape as the input. This will
         # handle both and only pass is both numpy and cupy do the same thing.
         self.kshape = (0,) + self.shape
-        try:
-            return self._filter(xp, scp)
-        except ValueError:
-            return xp.zeros((0,)) #xp.zeros(self.shape)
+        return self._filter(xp, scp)
 
 
     @testing.numpy_cupy_raises(scipy_name='scp', accept_error=RuntimeError)
