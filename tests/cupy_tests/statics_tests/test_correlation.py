@@ -98,17 +98,45 @@ class TestCov(unittest.TestCase):
 class TestCorrelate(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose()
-    def test_correlate(self, xp, dtype):
+    @testing.numpy_cupy_array_equal()
+    def test_correlate_dot(self, xp, dtype):
         a = testing.shaped_arange((1000,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
         return xp.correlate(a, b, mode=self.mode)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_correlate_inverted_case(self, xp, dtype):
+    def test_correlate_dot_inverted_case(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         b = testing.shaped_arange((10,), xp, dtype)
+        return xp.correlate(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_correlate_dot_same_length(self, xp, dtype):
+        a = testing.shaped_arange((100,), xp, dtype)
+        b = testing.shaped_arange((100,), xp, dtype)
+        return xp.correlate(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_correlate_fft(self, xp, dtype):
+        a = testing.shaped_arange((10000,), xp, dtype)
+        b = testing.shaped_arange((100,), xp, dtype)
+        return xp.correlate(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_correlate_fft_inverted_case(self, xp, dtype):
+        a = testing.shaped_arange((100,), xp, dtype)
+        b = testing.shaped_arange((10000,), xp, dtype)
+        return xp.correlate(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_correlate_fft_same_length(self, xp, dtype):
+        a = testing.shaped_arange((10000,), xp, dtype)
+        b = testing.shaped_arange((10000,), xp, dtype)
         return xp.correlate(a, b, mode=self.mode)
 
     @testing.for_all_dtypes(no_complex=True)
@@ -136,15 +164,30 @@ class TestCorrelate(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_correlate_non_contiguous(self, xp, dtype):
+    def test_correlate_dot_non_contiguous(self, xp, dtype):
         a = testing.shaped_arange((3000,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
         return xp.correlate(a[::200], b[10::70], mode=self.mode)
 
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_correlate_fft_non_contiguous(self, xp, dtype):
+        a = testing.shaped_arange((10000,), xp, dtype)
+        b = testing.shaped_arange((100,), xp, dtype)
+        return xp.correlate(a[200::], b[10::70], mode=self.mode)
+
     @testing.for_all_dtypes_combination(
         names=['dtype1', 'dtype2'], no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_correlate_diff_types(self, xp, dtype1, dtype2):
+    def test_correlate_dot_diff_types(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((200,), xp, dtype1)
+        b = testing.shaped_arange((100,), xp, dtype2)
+        return xp.correlate(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'], no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_correlate_fft_diff_types(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((10000,), xp, dtype1)
         b = testing.shaped_arange((100,), xp, dtype2)
         return xp.correlate(a, b, mode=self.mode)

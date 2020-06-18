@@ -218,34 +218,62 @@ class TestMisc(unittest.TestCase):
 }))
 class TestConvolve(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_array_equal()
-    def test_convolve(self, xp, dtype):
+    def test_convolve_dot(self, xp, dtype):
         a = testing.shaped_arange((1000,), xp, dtype)
+        b = testing.shaped_arange((100,), xp, dtype)
+        return xp.convolve(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_array_equal()
+    def test_convolve_dot_inverted_case(self, xp, dtype):
+        a = testing.shaped_arange((100,), xp, dtype)
+        b = testing.shaped_arange((1000,), xp, dtype)
+        return xp.convolve(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_array_equal()
+    def test_convolve_dot_same_length(self, xp, dtype):
+        a = testing.shaped_arange((100,), xp, dtype)
+        b = testing.shaped_arange((100,), xp, dtype)
+        return xp.convolve(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_convolve_fft(self, xp, dtype):
+        a = testing.shaped_arange((10000,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
         return xp.convolve(a, b, mode=self.mode)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_convolve_inverted_case(self, xp, dtype):
+    def test_convolve_fft_inverted_case(self, xp, dtype):
         a = testing.shaped_arange((100,), xp, dtype)
-        b = testing.shaped_arange((1000,), xp, dtype)
+        b = testing.shaped_arange((10000,), xp, dtype)
         return xp.convolve(a, b, mode=self.mode)
 
     @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_convolve_fft_same_length(self, xp, dtype):
+        a = testing.shaped_arange((10000,), xp, dtype)
+        b = testing.shaped_arange((10000,), xp, dtype)
+        return xp.convolve(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes()
     def test_convolve_empty(self, dtype):
         for xp in (numpy, cupy):
             a = testing.empty(xp, dtype)
             with pytest.raises(ValueError):
                 xp.convolve(a, a, mode=self.mode)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_convolve_zero_dim(self, xp, dtype):
         a = testing.shaped_arange((), xp, dtype)
         return xp.convolve(a, a, mode=self.mode)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     def test_convolve_ndim(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp, dtype)
@@ -253,10 +281,32 @@ class TestConvolve(unittest.TestCase):
             with pytest.raises(ValueError):
                 xp.convolve(a, b, mode=self.mode)
 
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_convolve_dot_non_contiguous(self, xp, dtype):
+        a = testing.shaped_arange((3000,), xp, dtype)
+        b = testing.shaped_arange((100,), xp, dtype)
+        return xp.convolve(a[::200], b[10::70], mode=self.mode)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_convolve_fft_non_contiguous(self, xp, dtype):
+        a = testing.shaped_arange((10000,), xp, dtype)
+        b = testing.shaped_arange((100,), xp, dtype)
+        return xp.convolve(a[200::], b[10::70], mode=self.mode)
+
     @testing.for_all_dtypes_combination(
         names=['dtype1', 'dtype2'], no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_convolve_diff_types(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((200,), xp, dtype1)
+        b = testing.shaped_arange((100,), xp, dtype2)
+        return xp.convolve(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'], no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_convolve_fft_diff_types(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((10000,), xp, dtype1)
         b = testing.shaped_arange((100,), xp, dtype2)
         return xp.convolve(a, b, mode=self.mode)

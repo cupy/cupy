@@ -1,7 +1,10 @@
+import scipy
+
+import cupy
+
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
-from cupy.statistics.correlation import correlate_util
 
 
 def convolve(a, v, mode='full'):
@@ -30,7 +33,52 @@ def convolve(a, v, mode='full'):
         raise ValueError('v cannot be empty')
     if v.ndim > 1:
         raise ValueError('v cannot be multidimensional array')
-    return correlate_util(a, v[::-1], mode)[1]
+    # TODO: Replace with choose conv method
+    if a.size <= 1000:
+        return cupy.statistics.correlation._dot_correlate(
+            a, v[::-1], mode)[1]
+    out = _fftconvolve(a, v, mode)
+    result_type = cupy.result_type(a, v)
+    if result_type.kind in {'u', 'i'}:
+        out = cupy.around(out)
+    return out.astype(result_type)
+
+
+def _fftconvolve(a1, a2, mode='full'):
+    isiz1 = a1.size
+    isiz2 = a2.size
+    shape = a1.size + a2.size - 1
+    complex = a1.dtype.kind == 'c' or a2.dtype.kind == 'c'
+    # TODO: Replace with cupy.fft.next_fast_len
+    fshape = scipy.fft.next_fast_len(shape, not complex)
+    if not complex:
+        a1 = cupy.fft.rfft(a1, fshape)
+        a2 = cupy.fft.rfft(a2, fshape)
+        out = cupy.fft.irfft(a1 * a2, fshape)
+    else:
+        a1 = cupy.fft.fft(a1, fshape)
+        a2 = cupy.fft.fft(a2, fshape)
+        out = cupy.fft.ifft(a1 * a2, fshape)
+    fslice = tuple([slice(shape)])
+    out = out[fslice]
+    if mode == 'full':
+        return out.copy()
+    elif mode == 'same':
+        return _centered(out, isiz1).copy()
+    elif mode == 'valid':
+        return _centered(out, isiz1 - isiz2 + 1).copy()
+    else:
+        raise ValueError("acceptable mode flags are 'valid',"
+                         "'same', or 'full'")
+
+
+def _centered(arr, newshape):
+    newshape = cupy.asarray(newshape)
+    currshape = cupy.array(arr.shape)
+    start = (currshape - newshape) // 2
+    end = start + newshape
+    slice_ = [slice(start[i], end[i]) for i in range(len(end))]
+    return arr[tuple(slice_)]
 
 
 def clip(a, a_min=None, a_max=None, out=None):
