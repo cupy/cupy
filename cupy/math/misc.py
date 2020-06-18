@@ -37,15 +37,17 @@ def convolve(a, v, mode='full'):
 
     method = cupyx.scipy.signal.choose_conv_method(a, v, mode)
     if method == 'direct':
-        return cupy.statistics.correlation._dot_correlate(
+        out = cupy.statistics.correlation._dot_correlate(
             a, v[::-1], mode)[1]
     elif method == 'fft':
         out = _fftconvolve1d(a, v, mode)
         result_type = cupy.result_type(a, v)
         if result_type.kind in {'u', 'i'}:
             out = cupy.around(out)
-        return out.astype(result_type)
-    raise ValueError('Unsupported method')
+        out = out.astype(result_type, copy=False)
+    else:
+        raise ValueError('Unsupported method')
+    return out
 
 
 def _fftconvolve1d(a1, a2, mode='full'):

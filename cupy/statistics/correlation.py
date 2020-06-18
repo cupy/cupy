@@ -4,6 +4,7 @@ import warnings
 import numpy
 
 import cupy
+import cupyx
 from cupy import core
 
 dot_kernel = core.ReductionKernel(
@@ -74,20 +75,18 @@ def correlate(a, v, mode='valid'):
     """
     if a.ndim != 1 or v.ndim != 1:
         raise ValueError("object too deep for desired array")
-    # TODO: choose corr method
-    if max(a.size, v.size) <= 1000:
+    method = cupyx.scipy.signal.choose_conv_method(a, v, mode)
+    if method == 'direct':
         if cupy.iscomplexobj(v):
             v = cupy.conj(v)
         inverted, output = _dot_correlate(a, v, mode)
         if inverted:
             output = output[::-1]
-    else:
+    elif method == 'fft':
         v = cupy.conj(v[::-1])
-        output = cupy.math.misc._fftconvolve(a, v, mode)
-        result_type = cupy.result_type(a, v)
-        if result_type.kind in {'u', 'i'}:
-            output = cupy.around(output)
-        output = output.astype(result_type, copy=False)
+        output = cupy.math.misc.convolve(a, v, mode)
+    else:
+        raise ValueError('Unsupported method')
     return output
 
 
