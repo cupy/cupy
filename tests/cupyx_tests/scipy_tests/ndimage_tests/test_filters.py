@@ -29,10 +29,8 @@ class FilterTestCaseBase(unittest.TestCase):
     dtype = numpy.float64
     footprint = True
 
-
     # Params that need no processing and just go into kwargs
     KWARGS_PARAMS = ('output', 'axis', 'mode', 'cval')
-
 
     def _filter(self, xp, scp):
         """
@@ -43,7 +41,7 @@ class FilterTestCaseBase(unittest.TestCase):
         filter = getattr(scp.ndimage, self.filter)
 
         # The kwargs to pass to the filter function
-        kwargs = {param:getattr(self, param)
+        kwargs = {param: getattr(self, param)
                   for param in FilterTestCaseBase.KWARGS_PARAMS
                   if hasattr(self, param)}
         if hasattr(self, 'origin'):
@@ -60,7 +58,6 @@ class FilterTestCaseBase(unittest.TestCase):
 
         # Actually perform filtering
         return filter(arr, wghts, **kwargs)
-
 
     def _get_weights(self, xp):
         # Gets the second argument to the filter functions.
@@ -91,21 +88,17 @@ class FilterTestCaseBase(unittest.TestCase):
 
         raise RuntimeError('unsupported filter name')
 
-
     @property
     def _dtype(self):
         return getattr(self, 'wdtype', None) or self.dtype
-
 
     @property
     def _ndim(self):
         return getattr(self, 'ndim', len(getattr(self, 'shape', [])))
 
-
     @property
     def _kshape(self):
         return getattr(self, 'kshape', (self.ksize,) * self._ndim)
-
 
     @property
     def _origin(self):
@@ -156,7 +149,7 @@ COMMON_PARAMS = {
             'mode': ['nearest', 'wrap'],
         }) + testing.product({
             **COMMON_PARAMS,
-            'shape': [(4, 5), (3, 4, 5)], # no (1,3,4,5) here due to scipy bug
+            'shape': [(4, 5), (3, 4, 5)],  # no (1,3,4,5) due to scipy bug
             'mode': ['mirror'],
         })
     ])
@@ -250,18 +243,15 @@ class TestSpecialWeightCases(FilterTestCaseBase):
         self.kshape = (0,) + self.shape
         return self._filter(xp, scp)
 
-
     @testing.numpy_cupy_raises(scipy_name='scp', accept_error=RuntimeError)
     def test_missing_dim(self, xp, scp):
         self.kshape = self.shape[1:]
         return self._filter(xp, scp)
 
-
     @testing.numpy_cupy_raises(scipy_name='scp', accept_error=RuntimeError)
     def test_extra_dim(self, xp, scp):
         self.kshape = self.shape[:1] + self.shape
         return self._filter(xp, scp)
-
 
     @testing.numpy_cupy_raises(scipy_name='scp', accept_error=(RuntimeError,
                                                                ValueError))

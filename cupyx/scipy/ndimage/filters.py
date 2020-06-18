@@ -249,7 +249,7 @@ def _min_or_max_filter(input, size, ftprnt, output, mode, cval, origin, func):
     kernel = _get_min_or_max_kernel(mode, ftprnt.shape, func,
                                     origins, float(cval), int_type,
                                     has_central_value=bool(ftprnt[center]))
-    ftprnt[center] = 0 # can skip going over the central pixel in all cases
+    ftprnt[center] = 0  # can skip going over the central pixel in all cases
     return _call_kernel(kernel, input, ftprnt, output, bool)
 
 
@@ -329,6 +329,7 @@ def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type,
     return _generate_nd_kernel(
         func, pre, found.format(func=func), 'y = (Y)value;',
         mode, wshape, int_type, origins, cval, has_weights=has_weights)
+
 
 def _get_output(output, input, shape=None):
     if shape is None:
