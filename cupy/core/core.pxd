@@ -15,6 +15,8 @@ cdef class ndarray:
         public strides_t _strides
         readonly bint _c_contiguous
         readonly bint _f_contiguous
+        # To do fast indexing in the CArray class
+        readonly bint _index_32_bits
         readonly object dtype
         readonly memory.MemoryPointer data
         # TODO(niboshi): Return arbitrary owner object as `base` if the

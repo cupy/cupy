@@ -346,7 +346,6 @@ def _compile_with_cache_cuda(
         except OSError:
             if not os.path.isdir(cache_dir):
                 raise
-
     mod = function.Module()
     # To handle conflicts in concurrent situation, we adopt lock-free method
     # to avoid performance degradation.

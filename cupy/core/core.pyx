@@ -137,6 +137,7 @@ cdef class ndarray:
             self.data = memory.alloc(self.size * itemsize)
         else:
             self.data = memptr
+        self._index_32_bits = (self.size * itemsize) < (1 << 32)
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
@@ -144,6 +145,7 @@ cdef class ndarray:
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
         self._set_contiguous_strides(itemsize, c_order)
         self.data = memory.alloc(self.size * itemsize)
+        self._index_32_bits = (self.size * itemsize) < (1 << 32)
 
     @property
     def __cuda_array_interface__(self):
@@ -1629,6 +1631,7 @@ cdef class ndarray:
         v.dtype = self.dtype
         v._c_contiguous = self._c_contiguous
         v._f_contiguous = self._f_contiguous
+        v._index_32_bits = self._index_32_bits
         v._set_shape_and_strides(
             shape, strides, update_c_contiguity, update_f_contiguity)
         return v
@@ -1686,7 +1689,7 @@ cdef inline _carray.CArray _CArray_from_ndarray(ndarray arr):
     # Note that this function cannot be defined in _carray.pxd because that
     # would cause cyclic cimport dependencies.
     cdef _carray.CArray carr = _carray.CArray.__new__(_carray.CArray)
-    carr.init(<void*>arr.data.ptr, arr.size, arr.nbytes, arr._shape, arr._strides)
+    carr.init(<void*>arr.data.ptr, arr.size, arr._shape, arr._strides)
     return carr
 
 

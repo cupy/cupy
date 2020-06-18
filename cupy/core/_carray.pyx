@@ -9,7 +9,7 @@ from cupy.core cimport internal
 cdef class CArray(function.CPointer):
 
     cdef void init(
-            self, void* data_ptr, Py_ssize_t data_size, Py_ssize_t nbytes,
+            self, void* data_ptr, Py_ssize_t data_size,
             const shape_t& shape, const strides_t& strides):
         cdef size_t ndim = shape.size()
         cdef Py_ssize_t* shape_and_strides = (
@@ -17,7 +17,6 @@ cdef class CArray(function.CPointer):
         cdef size_t i
 
         self.val.data = data_ptr
-        self.val.nbytes = nbytes
         self.val.size = data_size
         for i in range(ndim):
             shape_and_strides[i] = shape[i]

@@ -173,15 +173,15 @@ __device__ int signbit(float16 x) {return x.signbit();}
          i < (n); \
          i += static_cast<ptrdiff_t>(blockDim.x) * gridDim.x)
 
-template <typename T, int _ndim, bool _c_contiguous=false>
+template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false>
 class CArray {
 public:
   static const int ndim = _ndim;
   static const bool c_contiguous = _c_contiguous;
+  static const bool use_32bit_indexing = _use_32bit_indexing;
 private:
   T* data_;
   ptrdiff_t size_;
-  ptrdiff_t nbytes_;
   ptrdiff_t shape_[ndim];
   ptrdiff_t strides_[ndim];
 
@@ -226,7 +226,7 @@ public:
     // lead to severe perforamance degradation in computation bound
     // kernels
     const char* ptr = reinterpret_cast<const char*>(data_);
-    if (nbytes_ < (1LL << 31)) {
+    if (use_32bit_indexing) {
         int i = static_cast<int>(idx);
         for (int dim = ndim; --dim > 0; ) {
           int shape_dim = static_cast<int>(shape_[dim]);
@@ -251,11 +251,10 @@ public:
 };
 
 template <typename T>
-class CArray<T, 0, true> {
+class CArray<T, 0, true, true> {
 private:
   T* data_;
   ptrdiff_t size_;
-  ptrdiff_t nbytes_;
 
 public:
   static const int ndim = 0;
