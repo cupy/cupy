@@ -137,7 +137,7 @@ cdef class ndarray:
             self.data = memory.alloc(self.size * itemsize)
         else:
             self.data = memptr
-        self._index_32_bits = (self.size * itemsize) < (1 << 32)
+        self._index_32_bits = (self.size * itemsize) <= (1 << 31)
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
@@ -145,7 +145,7 @@ cdef class ndarray:
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
         self._set_contiguous_strides(itemsize, c_order)
         self.data = memory.alloc(self.size * itemsize)
-        self._index_32_bits = (self.size * itemsize) < (1 << 32)
+        self._index_32_bits = (self.size * itemsize) <= (1 << 31)
 
     @property
     def __cuda_array_interface__(self):

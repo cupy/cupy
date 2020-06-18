@@ -206,8 +206,15 @@ public:
   template <typename Int>
   __device__ const T& operator[](const Int (&idx)[ndim]) const {
     const char* ptr = reinterpret_cast<const char*>(data_);
-    for (int dim = 0; dim < ndim; ++dim) {
-      ptr += static_cast<ptrdiff_t>(strides_[dim]) * idx[dim];
+    if (use_32bit_indexing) {
+      for (int dim = 0; dim < ndim; ++dim) {
+        int i = static_cast<int>(idx[dim]);
+        ptr += static_cast<int>(strides_[dim]) * i;
+      }
+    } else {
+      for (int dim = 0; dim < ndim; ++dim) {
+        ptr += static_cast<ptrdiff_t>(strides_[dim]) * idx[dim];
+      }
     }
     return *reinterpret_cast<const T*>(ptr);
   }
@@ -227,30 +234,31 @@ public:
     // kernels
     const char* ptr = reinterpret_cast<const char*>(data_);
     if (use_32bit_indexing) {
-        int i = static_cast<int>(idx);
-        for (int dim = ndim; --dim > 0; ) {
-          int shape_dim = static_cast<int>(shape_[dim]);
-          ptr += static_cast<int>(strides_[dim]) * (i % shape_dim);
-          i /= shape_dim;
-        }
-        if (ndim > 0) {
-          ptr += static_cast<int>(strides_[0]) * i;
-        }
+      int i = static_cast<int>(idx);
+      for (int dim = ndim; --dim > 0; ) {
+        int shape_dim = static_cast<int>(shape_[dim]);
+        ptr += static_cast<int>(strides_[dim]) * (i % shape_dim);
+        i /= shape_dim;
+      }
+      if (ndim > 0) {
+        ptr += static_cast<int>(strides_[0]) * i;
+      }
     } else {
-        ptrdiff_t i = idx;
-        for (int dim = ndim; --dim > 0; ) {
-          ptr += static_cast<ptrdiff_t>(strides_[dim]) * (i % shape_[dim]);
-          i /= shape_[dim];
-        }
-        if (ndim > 0) {
-          ptr += static_cast<ptrdiff_t>(strides_[0]) * i;
-        }
+      ptrdiff_t i = idx;
+      for (int dim = ndim; --dim > 0; ) {
+        ptr += static_cast<ptrdiff_t>(strides_[dim]) * (i % shape_[dim]);
+        i /= shape_[dim];
+      }
+      if (ndim > 0) {
+        ptr += static_cast<ptrdiff_t>(strides_[0]) * i;
+      }
     }
     return *reinterpret_cast<const T*>(ptr);
   }
 };
 
 template <typename T>
+
 class CArray<T, 0, true, true> {
 private:
   T* data_;

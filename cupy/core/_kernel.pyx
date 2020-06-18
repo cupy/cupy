@@ -174,7 +174,8 @@ cdef class _ArgInfo:
 
     @staticmethod
     cdef _ArgInfo from_memptr(memory.MemoryPointer arg):
-        return _ArgInfo(ARG_KIND_POINTER, memory.MemoryPointer, None, 0, True, True)
+        return _ArgInfo(
+            ARG_KIND_POINTER, memory.MemoryPointer, None, 0, True, True)
 
     def __hash__(self):
         return hash((self.arg_kind, self.type, self.dtype, self.ndim,
@@ -210,7 +211,8 @@ cdef class _ArgInfo:
         assert self.arg_kind == ARG_KIND_NDARRAY
         if self.ndim == ndim:
             return self
-        return _ArgInfo(ARG_KIND_NDARRAY, ndarray, self.dtype, ndim, False, False)
+        return _ArgInfo(
+            ARG_KIND_NDARRAY, ndarray, self.dtype, ndim, False, False)
 
     cdef bint is_ndarray(self):
         return self.arg_kind == ARG_KIND_NDARRAY
@@ -222,8 +224,8 @@ cdef class _ArgInfo:
         # Returns the C type representation.
         if self.arg_kind == ARG_KIND_NDARRAY:
             return 'CArray<%s, %d, %d, %d>' % (
-                _get_typename(self.dtype), self.ndim, self.c_contiguous,
-                              self.index_32_bits)
+                _get_typename(self.dtype), self.ndim,
+                self.c_contiguous, self.index_32_bits)
         if self.arg_kind == ARG_KIND_SCALAR:
             return _get_typename(self.dtype)
         if self.arg_kind == ARG_KIND_INDEXER:
