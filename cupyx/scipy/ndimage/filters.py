@@ -409,9 +409,14 @@ def _check_nd_args(input, weights, mode, origins, wghts_name='filter weights'):
     if input.dtype.kind == 'c':
         raise TypeError('Complex type not supported.')
     _check_mode(mode)
-    # The integer type to use for positions in input
-    # We will always assume that wsize is int32 however
-    int_type = 'size_t' if input.size > 1 << 31 else 'int'
+    # The integer type to use for indices in the input array
+    # We will always assume that weights will always use int32 however
+    # The indices actually use byte positions and we can't just use
+    # input.nbytes since that won't tell us the number of bytes between the
+    # first and last elements when the array is non-contiguous
+    nbytes = sum((x-1)*stride for x,stride in zip(input.shape, input.strides))
+    nbytes += input.dtype.itemsize
+    int_type = 'int' if nbytes < (1 << 31) else 'ptrdiff_t'
     weight_dims = [x for x in weights.shape if x != 0]
     if len(weight_dims) != input.ndim:
         raise RuntimeError('{} array has incorrect shape.'.format(wghts_name))
