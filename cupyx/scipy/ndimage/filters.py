@@ -220,6 +220,7 @@ def _min_or_max_filter(input, size, ftprnt, output, mode, cval, origin, func):
         fltr = minimum_filter1d if func == 'min' else maximum_filter1d
         output_orig = output
         output = _get_output(output, input)
+        sizes = _fix_sequence_arg(sizes, input.ndim, 'size', int)
         modes = _fix_sequence_arg(mode, input.ndim, 'mode', _check_mode)
         origins = _fix_sequence_arg(origin, input.ndim, 'origin', int)
         n_filters = sum(size > 1 for size in sizes)
