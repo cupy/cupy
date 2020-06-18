@@ -29,8 +29,7 @@ def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
 
     .. seealso:: :func:`scipy.ndimage.correlate`
     """
-    return _correlate_or_convolve(input, weights, output, mode, cval, origin,
-                                  False)
+    return _correlate_or_convolve(input, weights, output, mode, cval, origin)
 
 
 def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
@@ -88,8 +87,7 @@ def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
     .. seealso:: :func:`scipy.ndimage.correlate1d`
     """
     weights, origins = _convert_1d_args(input.ndim, weights, origin, axis)
-    return _correlate_or_convolve(input, weights, output, mode, cval, origins,
-                                  False)
+    return _correlate_or_convolve(input, weights, output, mode, cval, origins)
 
 
 def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
@@ -121,12 +119,11 @@ def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
     if not len(weights) & 1:
         origin -= 1
     weights, origins = _convert_1d_args(input.ndim, weights, origin, axis)
-    return _correlate_or_convolve(input, weights, output, mode, cval, origins,
-                                  False)
+    return _correlate_or_convolve(input, weights, output, mode, cval, origins)
 
 
 def _correlate_or_convolve(input, weights, output, mode, cval, origin,
-                           convolution):
+                           convolution=False):
     origins, int_type = _check_nd_args(input, weights, mode, origin)
     if weights.size == 0:
         return cupy.zeros_like(input)
@@ -417,7 +414,7 @@ def _check_nd_args(input, weights, mode, origins, wghts_name='filter weights'):
     int_type = 'size_t' if input.size > 1 << 31 else 'int'
     weight_dims = [x for x in weights.shape if x != 0]
     if len(weight_dims) != input.ndim:
-        raise RuntimeError('{} array has incorrect shape'.format(wghts_name))
+        raise RuntimeError('{} array has incorrect shape.'.format(wghts_name))
     origins = _fix_sequence_arg(origins, len(weight_dims), 'origin', int)
     for origin, width in zip(origins, weight_dims):
         _check_origin(origin, width)
