@@ -1,6 +1,7 @@
 import scipy
 
 import cupy
+import cupyx
 
 from cupy import core
 from cupy.core import _routines_math as _math
@@ -33,24 +34,28 @@ def convolve(a, v, mode='full'):
         raise ValueError('v cannot be empty')
     if v.ndim > 1:
         raise ValueError('v cannot be multidimensional array')
-    # TODO: Replace with choose conv method
-    if a.size <= 1000:
+
+    method = cupyx.scipy.signal.choose_conv_method(a, v, mode)
+    if method == 'direct':
         return cupy.statistics.correlation._dot_correlate(
             a, v[::-1], mode)[1]
-    out = _fftconvolve(a, v, mode)
-    result_type = cupy.result_type(a, v)
-    if result_type.kind in {'u', 'i'}:
-        out = cupy.around(out)
-    return out.astype(result_type)
+    elif method == 'fft':
+        out = _fftconvolve1d(a, v, mode)
+        result_type = cupy.result_type(a, v)
+        if result_type.kind in {'u', 'i'}:
+            out = cupy.around(out)
+        return out.astype(result_type)
+    raise ValueError('Unsupported method')
 
 
-def _fftconvolve(a1, a2, mode='full'):
-    isiz1 = a1.size
-    isiz2 = a2.size
+def _fftconvolve1d(a1, a2, mode='full'):
+    siz1 = a1.size
+    siz2 = a2.size
     shape = a1.size + a2.size - 1
     complex = a1.dtype.kind == 'c' or a2.dtype.kind == 'c'
     # TODO: Replace with cupy.fft.next_fast_len
     fshape = scipy.fft.next_fast_len(shape, not complex)
+
     if not complex:
         a1 = cupy.fft.rfft(a1, fshape)
         a2 = cupy.fft.rfft(a2, fshape)
@@ -59,26 +64,20 @@ def _fftconvolve(a1, a2, mode='full'):
         a1 = cupy.fft.fft(a1, fshape)
         a2 = cupy.fft.fft(a2, fshape)
         out = cupy.fft.ifft(a1 * a2, fshape)
-    fslice = tuple([slice(shape)])
-    out = out[fslice]
+
     if mode == 'full':
-        return out.copy()
+        return out
     elif mode == 'same':
-        return _centered(out, isiz1).copy()
+        start = (out.size - siz1) / 2
+        end = start + siz1
+        return out[slice(start, end)]
     elif mode == 'valid':
-        return _centered(out, isiz1 - isiz2 + 1).copy()
-    else:
-        raise ValueError("acceptable mode flags are 'valid',"
-                         "'same', or 'full'")
-
-
-def _centered(arr, newshape):
-    newshape = cupy.asarray(newshape)
-    currshape = cupy.array(arr.shape)
-    start = (currshape - newshape) // 2
-    end = start + newshape
-    slice_ = [slice(start[i], end[i]) for i in range(len(end))]
-    return arr[tuple(slice_)]
+        newsize = siz1 - siz2 + 1
+        start = (out.size - newsize) / 2
+        end = start + newsize
+        return out[slice(start, end)]
+    raise ValueError("acceptable mode flags are 'valid',"
+                     "'same', or 'full'")
 
 
 def clip(a, a_min=None, a_max=None, out=None):
