@@ -264,16 +264,22 @@ cdef inline tuple _can_use_cub_block_reduction(
                       'location.', RuntimeWarning)
         return None
 
-    # rare event (mainly for conda-forge users): nvcc is not found!
-    if _environment.get_nvcc_path() is None:
-        return None
-
     # we currently support only _SimpleReductionKernel
     if len(in_args) != 1 or len(out_args) != 1:
         return None
 
     in_arr = in_args[0]
     out_arr = out_args[0]
+
+    # check reduction axes, if not contiguous then fall back to old kernel
+    if in_arr._f_contiguous:
+        axis_permutes_cub = tuple(sorted(reduce_axis) + sorted(out_axis))
+    elif in_arr._c_contiguous:
+        axis_permutes_cub = tuple(sorted(out_axis) + sorted(reduce_axis))
+    else:
+        return None
+    if axis_permutes_cub != tuple(range(in_arr.ndim)):
+        return None
 
     # To support generic reductions, note that some NumPy casting rules
     # are not applicable in the C++ space (unless we tweak the type
@@ -286,18 +292,6 @@ cdef inline tuple _can_use_cub_block_reduction(
         # cannot cast float16 to complex
         if in_arr.dtype.char == 'e' and out_arr.dtype.kind == 'c':
             return None
-
-    # check reduction axes, if not contiguous then fall back to old kernel
-    reduce_axis = tuple(sorted(reduce_axis))
-    out_axis = tuple(sorted(out_axis))
-    if in_arr.flags.f_contiguous:
-        axis_permutes_cub = reduce_axis + out_axis
-    elif in_arr.flags.c_contiguous:
-        axis_permutes_cub = out_axis + reduce_axis
-    else:
-        return None
-    if axis_permutes_cub != tuple(range(in_arr.ndim)):
-        return None
 
     # full-reduction of N-D array: need to invoke the kernel twice
     cdef bint full_reduction = True if len(out_axis) == 0 else False
@@ -316,6 +310,10 @@ cdef inline tuple _can_use_cub_block_reduction(
         # the number of blocks to be launched exceeds INT_MAX:
         if in_arr.size // contiguous_size > 0x7fffffff:
             return None
+
+    # rare event (mainly for conda-forge users): nvcc is not found!
+    if _environment.get_nvcc_path() is None:
+        return None
 
     return (axis_permutes_cub, contiguous_size, full_reduction)
 
