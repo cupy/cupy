@@ -38,7 +38,7 @@ except ImportError:
     thrust_enabled = False
 
 cub_enabled = False
-if int(os.getenv('CUB_DISABLED', 0)) == 0:
+if int(os.getenv('CUPY_CUB_ENABLED', 0)) == 1:
     try:
         from cupy.cuda import cub  # NOQA
         cub_enabled = True
