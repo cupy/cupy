@@ -323,7 +323,7 @@ cdef class _AbstractReductionKernel:
 
         optimize_context = _optimize_config.get_current_context()
         key = ()
-        if optimize_context is None:
+        if optimize_context is not None:
             # Calculate a key unique to the reduction setting.
             shape_and_strides = _get_shape_and_strides(in_args, out_args)
             key = (self.name, shape_and_strides,
