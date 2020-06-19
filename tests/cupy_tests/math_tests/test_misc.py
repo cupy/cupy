@@ -253,17 +253,10 @@ class TestConvolve(unittest.TestCase):
         b = testing.shaped_arange((10000,), xp, dtype)
         return xp.convolve(a, b, mode=self.mode)
 
-    # @testing.for_all_dtypes(no_float16=True)
-    # @testing.numpy_cupy_allclose(rtol=1e-4)
-    # def test_convolve_large_same_length(self, xp, dtype):
-    #     a = testing.shaped_arange((10000,), xp, dtype)
-    #     b = testing.shaped_arange((10000,), xp, dtype)
-    #     return xp.convolve(a, b, mode=self.mode)
-
     @testing.for_all_dtypes()
     def test_convolve_empty(self, dtype):
         for xp in (numpy, cupy):
-            a = testing.empty(xp, dtype)
+            a = xp.zeros((0,), dtype)
             with pytest.raises(ValueError):
                 xp.convolve(a, a, mode=self.mode)
 
