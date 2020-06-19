@@ -6,6 +6,7 @@ import cupyx
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
+from cupyx.scipy import fft
 
 
 def convolve(a, v, mode='full'):
@@ -54,20 +55,18 @@ def _fftconvolve1d(a1, a2, mode='full'):
     siz2 = a2.size
     shape = siz1 + siz2 - 1
     complex = a1.dtype.kind == 'c' or a2.dtype.kind == 'c'
-    # TODO: Replace with cupy.fft.next_fast_len
+    # TODO: Replace with cupyx.scipy.fft.next_fast_len
     fshape = scipy.fft.next_fast_len(shape, not complex)
     if not complex:
-        fa1 = cupy.fft.rfft(a1, fshape)
-        fa2 = cupy.fft.rfft(a2, fshape)
-        out = cupy.fft.irfft(fa1 * fa2, fshape)
+        fa1 = fft.rfft(a1, fshape)
+        fa2 = fft.rfft(a2, fshape)
+        out = fft.irfft(fa1 * fa2, fshape)
     else:
-        fa1 = cupy.fft.fft(a1, fshape)
-        fa2 = cupy.fft.fft(a2, fshape)
-        out = cupy.fft.ifft(fa1 * fa2, fshape)
+        fa1 = fft.fft(a1, fshape)
+        fa2 = fft.fft(a2, fshape)
+        out = fft.ifft(fa1 * fa2, fshape)
     out = out[slice(shape)]
-    if mode == 'full':
-        pass
-    elif mode == 'same':
+    if mode == 'same':
         start = (out.size - siz1) / 2
         end = start + siz1
         out = out[slice(start, end)]
@@ -77,8 +76,9 @@ def _fftconvolve1d(a1, a2, mode='full'):
         end = start + newsize
         out = out[slice(start, end)]
     else:
-        raise ValueError("acceptable mode flags are 'valid',"
-                         "'same', or 'full'")
+        if mode != 'full':
+            raise ValueError("acceptable mode flags are 'valid',"
+                             "'same', or 'full'")
     result_type = cupy.result_type(a1, a2)
     if result_type.kind in {'u', 'i'}:
         out = cupy.around(out)
