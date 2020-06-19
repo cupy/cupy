@@ -1041,7 +1041,6 @@ def for_contiguous_axes(name='axis'):
                 else:
                     raise ValueError('Please specify the array order.')
                 try:
-                    print(order, ', testing', a)
                     kw[name] = a
                     impl(self, *args, **kw)
                 except Exception:

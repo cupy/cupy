@@ -209,7 +209,6 @@ def _SimpleCubReductionKernel_get_cached_function(
         type_map, _preamble, options)
 
 
-cdef str _cub_path = _environment.get_cub_path()
 cdef str _cub_header = None
 
 
@@ -218,7 +217,7 @@ cdef str _get_cub_header_include():
     if _cub_header is not None:
         return _cub_header
 
-    assert _cub_path is not None
+    cdef str _cub_path = _environment.get_cub_path()
     if _cub_path == '<bundle>':
         _cub_header = '''
 #include <cupy/cub/cub/block/block_reduce.cuh>
@@ -239,7 +238,7 @@ cdef str _get_cub_header_include():
 
 
 # make it cpdef'd for unit tests
-cdef inline tuple _can_use_cub_block_reduction(
+cpdef inline tuple _can_use_cub_block_reduction(
         list in_args, list out_args, tuple reduce_axis, tuple out_axis):
     '''
     If CUB BlockReduce can be used, this function returns a tuple of the needed
@@ -256,7 +255,7 @@ cdef inline tuple _can_use_cub_block_reduction(
         return None
 
     # detect whether CUB headers exists somewhere:
-    if _cub_path is None:
+    if _environment.get_cub_path() is None:
         import warnings
         warnings.warn('cupy.core.cub_block_reduction_enabled is set to True, '
                       'but the CUB headers are not found, please set the '
