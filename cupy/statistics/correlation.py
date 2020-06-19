@@ -92,7 +92,7 @@ def correlate(a, v, mode='valid'):
 
 def _dot_correlate(a1, a2, mode):
     inverted = 0
-    dtype = cupy.result_type(*[a1, a2])
+    dtype = cupy.result_type(a1, a2)
     if a1.size == 0 or a2.size == 0:
         raise ValueError("Array arguments cannot be empty")
     if a1.size < a2.size:
