@@ -138,7 +138,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
 
 
 def det(a):
-    """Retruns the deteminant of an array.
+    """Returns the determinant of an array.
 
     Args:
         a (cupy.ndarray): The input matrix with dimension ``(..., N, N)``.
