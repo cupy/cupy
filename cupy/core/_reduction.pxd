@@ -24,7 +24,7 @@ cdef class _AbstractReductionKernel:
         self, out_block_num, block_size, block_stride,
         in_args, out_args, in_shape, out_shape, types,
         map_expr, reduce_expr, post_map_expr, reduce_type,
-        stream, params, cub_params)
+        stream, params)
 
     cdef tuple _get_expressions_and_types(
         self, list in_args, list out_args, dtype)
@@ -36,7 +36,7 @@ cdef class _AbstractReductionKernel:
         self,
         tuple params, tuple arginfos, _kernel._TypeMap types,
         str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-        Py_ssize_t block_size, tuple cub_params=*)
+        Py_ssize_t block_size)
 
 
 cdef class ReductionKernel(_AbstractReductionKernel):
@@ -54,5 +54,12 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         readonly object reduce_type
         readonly str preamble
 
+
+cdef shape_t _set_permuted_args(
+    list args, tuple axis_permutes, const shape_t& shape, tuple params)
+
+cdef tuple _get_shape_and_strides(list in_args, list out_args)
+
+cdef _optimizer_copy_arg(a)
 
 cpdef create_reduction_func(name, ops, routine=*, identity=*, preamble=*)

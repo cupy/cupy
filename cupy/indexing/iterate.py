@@ -113,11 +113,13 @@ class flatiter:
         self._index += 1
         return self[index]
 
-    # TODO(Takagi): Implement copy
+    def copy(self):
+        """Get a copy of the iterator as a 1-D array."""
+        return self.base.flatten()
 
     @property
     def base(self):
-        """A reference to the array that is iterate over."""
+        """A reference to the array that is iterated over."""
         return self._base
 
     # TODO(Takagi): Implement coords

@@ -62,6 +62,7 @@ from cupy import io  # NOQA
 from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import padding  # NOQA
+from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 from cupy import _sorting  # NOQA
 from cupy import sparse  # NOQA
@@ -289,6 +290,7 @@ from cupy.functional.piecewise import piecewise  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.manipulation.basic import copyto  # NOQA
 
+from cupy.manipulation.shape import shape  # NOQA
 from cupy.manipulation.shape import ravel  # NOQA
 from cupy.manipulation.shape import reshape  # NOQA
 

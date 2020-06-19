@@ -135,8 +135,11 @@ cdef class ndarray:
         # data
         if memptr is None:
             self.data = memory.alloc(self.size * itemsize)
+            self._index_32_bits = (self.size * itemsize) <= (1 << 31)
         else:
             self.data = memptr
+            bound = cupy.core._memory_range.get_bound(self)
+            self._index_32_bits = bound[1] - bound[0] <= (1 << 31)
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
@@ -144,6 +147,7 @@ cdef class ndarray:
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
         self._set_contiguous_strides(itemsize, c_order)
         self.data = memory.alloc(self.size * itemsize)
+        self._index_32_bits = (self.size * itemsize) <= (1 << 31)
 
     @property
     def __cuda_array_interface__(self):
@@ -1161,10 +1165,12 @@ cdef class ndarray:
     # cupy.ndarray does not define __new__
 
     def __array__(self, dtype=None):
-        if dtype is None or self.dtype == dtype:
-            return self
-        else:
-            return self.astype(dtype)
+        # TODO(imanishi): Support an environment variable or a global
+        # configure flag that allows implicit conversions to NumPy array.
+        # (See https://github.com/cupy/cupy/issues/589 for the detail.)
+        raise TypeError(
+            'Implicit conversion to a NumPy array is not allowed. '
+            'Please use `.get()` to construct a NumPy array explicitly.')
 
     # TODO(okuta): Implement __array_wrap__
 
@@ -1629,6 +1635,7 @@ cdef class ndarray:
         v.dtype = self.dtype
         v._c_contiguous = self._c_contiguous
         v._f_contiguous = self._f_contiguous
+        v._index_32_bits = self._index_32_bits
         v._set_shape_and_strides(
             shape, strides, update_c_contiguity, update_f_contiguity)
         return v
