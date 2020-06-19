@@ -40,6 +40,7 @@ use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 MODULES = []
 
 cuda_files = [
+    'cupy.core._backend',
     'cupy.core._carray',
     'cupy.core._cub_reduction',
     'cupy.core._dtype',

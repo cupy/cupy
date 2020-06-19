@@ -3,6 +3,8 @@ from cupy.core import internal  # NOQA
 
 
 # import class and function
+from cupy.core._backend import set_reduction_backends  # NOQA
+from cupy.core._backend import set_routine_backends  # NOQA
 from cupy.core._kernel import create_ufunc  # NOQA
 from cupy.core._kernel import ElementwiseKernel  # NOQA
 from cupy.core._kernel import ufunc  # NOQA
