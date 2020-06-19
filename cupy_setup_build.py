@@ -41,6 +41,7 @@ MODULES = []
 
 cuda_files = [
     'cupy.core._carray',
+    'cupy.core._cub_reduction',
     'cupy.core._dtype',
     'cupy.core._kernel',
     'cupy.core._memory_range',
