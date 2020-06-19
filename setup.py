@@ -40,7 +40,7 @@ requirements = {
     ],
     'doctest': [
         'matplotlib',
-        'theano',
+        'optuna',
     ],
     'docs': [
         'sphinx==3.0.4',
