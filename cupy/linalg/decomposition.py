@@ -4,6 +4,7 @@ import cupy
 from cupy.cuda import cublas
 from cupy.cuda import cusolver
 from cupy.cuda import device
+from cupy.cusolver import check_availability
 from cupy.linalg import util
 
 
@@ -108,6 +109,9 @@ def _potrf_batched(a):
     Returns:
         cupy.ndarray: The lower-triangular matrix.
     """
+    if not check_availability('potrfBatched'):
+        raise RuntimeError('potrfBatched is not available')
+
     if a.dtype.char == 'f' or a.dtype.char == 'd':
         dtype = a.dtype.char
     else:

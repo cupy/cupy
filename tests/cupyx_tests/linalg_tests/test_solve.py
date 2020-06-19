@@ -1,8 +1,10 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
+from cupy import cusolver
 from cupy import testing
 import cupyx
 
@@ -65,6 +67,8 @@ class TestErrorInvh(unittest.TestCase):
 class TestXFailBatchedInvh(unittest.TestCase):
 
     def test_invh(self):
+        if not cusolver.check_availability('potrsBatched'):
+            pytest.skip('potrsBatched is not available')
         a = self._create_symmetric_matrix(self.shape, self.dtype)
         with cupyx.errstate(linalg='ignore'):
             with self.assertRaises(cupy.cuda.cusolver.CUSOLVERError):

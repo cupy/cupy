@@ -4,6 +4,7 @@ import cupy
 from cupy.cuda import cublas
 from cupy.cuda import cusolver
 from cupy.cuda import device
+from cupy.cusolver import check_availability
 from cupy.linalg import util
 
 
@@ -22,6 +23,9 @@ def _batched_invh(a):
     Returns:
         cupy.ndarray: The array of inverses of matrices ``a[i]``.
     """
+    if not check_availability('potrsBatched'):
+        raise RuntimeError('potrsBatched is not available')
+
     if a.dtype.char == 'f' or a.dtype.char == 'd':
         dtype = a.dtype.char
     else:
