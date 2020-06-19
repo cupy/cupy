@@ -41,7 +41,6 @@ requirements = {
     ],
     'doctest': [
         'matplotlib',
-        'theano',
     ],
     'docs': [
         'sphinx==3.0.4',
