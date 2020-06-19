@@ -65,7 +65,7 @@ def correlate(a, v, mode='valid'):
     Args:
         a (cupy.ndarray): first 1-dimensional input.
         v (cupy.ndarray): second 1-dimensional input.
-        mode (optional): `valid`, `same`, `full`
+        mode (str, optional): `valid`, `same`, `full`
 
     Returns:
         cupy.ndarray: Discrete cross-correlation of a and v.

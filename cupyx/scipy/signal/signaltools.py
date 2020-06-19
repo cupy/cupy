@@ -11,6 +11,26 @@ def _numeric_arrays(arrays, kinds='buifc'):
 
 
 def choose_conv_method(in1, in2, mode='full'):
+    """Find the fastest convolution/correlation method.
+
+    Args:
+        in1 (cupy.ndarray): first input.
+        in2 (cupy.ndarray): second input.
+        mode (str, optional): `valid`, `same`, `full`
+
+    Returns:
+        str: A string indicating which convolution method is fastest,
+         either ‘direct’ or ‘fft’.
+
+    .. warning::
+        This function currently doesn't support measure option,
+        nor multidimensional inputs.
+
+    .. seealso:: :func:`scipy.signal.choose_conv_method`
+
+    """
+    if in1.ndim != 1 or in2.ndim != 1:
+        raise NotImplementedError('Only 1d inputs are supported currently')
 
     if any([_numeric_arrays([x], kinds='ui') for x in [in1, in2]]):
         max_value = int(cupy.abs(in1).max()) * int(cupy.abs(in2).max())
