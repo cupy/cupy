@@ -1,5 +1,6 @@
 import pickle
 import unittest
+from unittest import mock
 
 import numpy
 import pytest
@@ -1526,10 +1527,9 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
         return _make(xp, sp, self.dtype)[None:4]
 
 
+# CUB SpMV works only when the matrix size is nonzero
 @testing.parameterize(*testing.product({
-    'make_method': [
-        '_make', '_make_unordered', '_make_empty', '_make_duplicate',
-        '_make_shape'],
+    'make_method': ['_make', '_make_unordered', '_make_duplicate'],
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
 @testing.with_requires('scipy')
@@ -1546,4 +1546,15 @@ class TestCUBspmv(unittest.TestCase):
 
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(4).astype(self.dtype)
+        if xp is numpy:
+            return m * x
+
+        # xp is cupy, first ensure we really use CUB
+        func = 'cupyx.scipy.sparse.csr.device_csrmv'
+        side_effect = NotImplementedError('gotcha')
+        with mock.patch(func, side_effect=side_effect), \
+                pytest.raises(NotImplementedError) as e:
+            m * x
+        assert str(e.value) == 'gotcha'
+        # ...then perform the actual computation
         return m * x

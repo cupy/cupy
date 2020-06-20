@@ -1,4 +1,8 @@
 import unittest
+from unittest import mock
+
+import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -228,6 +232,25 @@ class TestCUBreduction(unittest.TestCase):
             a = xp.ascontiguousarray(a)
         elif self.order in ('f', 'F'):
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.min(axis=axis)
+
+        # xp is cupy, first ensure we really use CUB
+        full_reduction = 'cupy.core._routines_statistics.cub.device_reduce'
+        full_raise = NotImplementedError('gotcha_full')
+        segmented_reduction = ('cupy.core._routines_statistics.cub.'
+                               'device_segmented_reduce')
+        segmented_raise = NotImplementedError('gotcha_segment')
+        with mock.patch(full_reduction, side_effect=full_raise), \
+                mock.patch(segmented_reduction, side_effect=segmented_raise), \
+                pytest.raises(NotImplementedError) as e:
+            a.min(axis=axis)
+        if len(axis) == len(self.shape):
+            assert str(e.value) == 'gotcha_full'
+        else:
+            assert str(e.value) == 'gotcha_segment'
+        # ...then perform the actual computation
         return a.min(axis=axis)
 
     @testing.for_contiguous_axes()
@@ -240,4 +263,23 @@ class TestCUBreduction(unittest.TestCase):
             a = xp.ascontiguousarray(a)
         elif self.order in ('f', 'F'):
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.max(axis=axis)
+
+        # xp is cupy, first ensure we really use CUB
+        full_reduction = 'cupy.core._routines_statistics.cub.device_reduce'
+        full_raise = NotImplementedError('gotcha_full')
+        segmented_reduction = ('cupy.core._routines_statistics.cub.'
+                               'device_segmented_reduce')
+        segmented_raise = NotImplementedError('gotcha_segment')
+        with mock.patch(full_reduction, side_effect=full_raise), \
+                mock.patch(segmented_reduction, side_effect=segmented_raise), \
+                pytest.raises(NotImplementedError) as e:
+            a.max(axis=axis)
+        if len(axis) == len(self.shape):
+            assert str(e.value) == 'gotcha_full'
+        else:
+            assert str(e.value) == 'gotcha_segment'
+        # ...then perform the actual computation
         return a.max(axis=axis)

@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 import numpy
 import pytest
@@ -177,6 +178,18 @@ class TestCUBreduction(unittest.TestCase):
             a = xp.ascontiguousarray(a)
         else:
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.argmin()
+
+        # xp is cupy, first ensure we really use CUB
+        full_scan = 'cupy.core._routines_statistics.cub.device_reduce'
+        full_raise = NotImplementedError('gotcha_full')
+        with mock.patch(full_scan, side_effect=full_raise), \
+                pytest.raises(NotImplementedError) as e:
+            a.argmin()
+        assert str(e.value) == 'gotcha_full'
+        # ...then perform the actual computation
         return a.argmin()
 
     @testing.for_dtypes('bhilBHILefdFD')
@@ -188,6 +201,18 @@ class TestCUBreduction(unittest.TestCase):
             a = xp.ascontiguousarray(a)
         else:
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.argmax()
+
+        # xp is cupy, first ensure we really use CUB
+        full_scan = 'cupy.core._routines_statistics.cub.device_reduce'
+        full_raise = NotImplementedError('gotcha_full')
+        with mock.patch(full_scan, side_effect=full_raise), \
+                pytest.raises(NotImplementedError) as e:
+            a.argmax()
+        assert str(e.value) == 'gotcha_full'
+        # ...then perform the actual computation
         return a.argmax()
 
 
