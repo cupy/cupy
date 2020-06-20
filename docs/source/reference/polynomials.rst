@@ -22,3 +22,23 @@ Polyutils
 
    cupy.polynomial.polyutils.as_series
    cupy.polynomial.polyutils.trimseq
+
+
+Basics
+------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.poly1d
+
+
+Warnings
+--------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.RankWarning
