@@ -34,13 +34,7 @@ def choose_conv_method(in1, in2, mode='full'):
     if in1.ndim != 1 or in2.ndim != 1:
         raise NotImplementedError('Only 1d inputs are supported currently')
 
-    if any([_numeric_arrays([x], kinds='ui') for x in [in1, in2]]):
-        # max_value = int(cupy.abs(in1).max()) * int(cupy.abs(in2).max())
-        # max_value *= int(min(in1.size, in2.size))
-        # if max_value > 2 ** cupy.finfo('float').nmant - 1:
-        return 'direct'
-
-    if _numeric_arrays([in1, in2], kinds='b'):
+    if _numeric_arrays([in1, in2], kinds='bui'):
         return 'direct'
 
     if _fftconv_faster(in1, in2, mode):
@@ -68,14 +62,14 @@ def _fftconv_faster(x, h, mode):
 
 
 def _conv_ops(siz1, siz2, mode):
-    if mode == "full":
+    if mode == 'full':
         direct_ops = siz1 * siz2
-    elif mode == "valid":
+    elif mode == 'valid':
         if siz2 >= siz1:
             direct_ops = (siz2 - siz1 + 1) * siz1
         else:
             direct_ops = (siz1 - siz2 + 1) * siz2
-    elif mode == "same":
+    elif mode == 'same':
         if siz1 < siz2:
             direct_ops = siz1 * siz2
         else:
