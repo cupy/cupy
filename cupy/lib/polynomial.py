@@ -124,6 +124,7 @@ class poly1d(object):
     def __array__(self, t=None):
         if t:
             return cupy.asarray(self.coeffs, t)
+        return self.coeffs
 
     def __repr__(self):
         vals = repr(self.coeffs)
