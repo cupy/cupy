@@ -3,7 +3,6 @@ import numpy
 import cupy
 from cupy.cuda import device
 import cupyx.scipy.sparse
-from cupy import sqrt, Inf
 
 __all__ = ['norm']
 
@@ -13,7 +12,7 @@ def _sparse_frobenius_norm(x):
         sqnorm = abs(x).power(2).sum()
     else:
         sqnorm = x.power(2).sum()
-    return sqrt(sqnorm).item()
+    return cupy.sqrt(sqnorm).item()
 
 def norm(x, ord=None, axis=None):
     """
@@ -91,7 +90,7 @@ def norm(x, ord=None, axis=None):
     >>> norm(b, -1)
     6
     """
-    if not issparse(x):
+    if not cupyx.scipy.sparse.issparse(x):
         raise TypeError(("input is not sparse. use cupy.linalg.norm"))
     
     # Check the default case first and handle it immediately.
@@ -129,11 +128,11 @@ def norm(x, ord=None, axis=None):
             #return _multi_svd_norm(x, row_axis, col_axis, amin)
         elif ord == 1:
             return abs(x).sum(axis=row_axis).max(axis=col_axis).item()
-        elif ord == Inf:
+        elif ord == numpy.Inf:
             return abs(x).sum(axis=col_axis).max(axis=row_axis).item()
         elif ord == -1:
             return abs(x).sum(axis=row_axis).min(axis=col_axis).item()
-        elif ord == -Inf:
+        elif ord == -numpy.Inf:
             return abs(x).sum(axis=col_axis).min(axis=row_axis).item()
         elif ord in (None, 'f', 'fro'):
             # The axis order does not matter for this norm.
@@ -145,9 +144,9 @@ def norm(x, ord=None, axis=None):
         if not (-nd <= a < nd):
             raise ValueError('Invalid axis %r for an array with shape %r' %
                              (axis, x.shape))
-        if ord == Inf:
+        if ord == numpy.Inf:
             M = abs(x).max(axis=a)
-        elif ord == -Inf:
+        elif ord == -numpy.Inf:
             M = abs(x).min(axis=a)
         elif ord == 0:
             # Zero norm
@@ -156,7 +155,7 @@ def norm(x, ord=None, axis=None):
             # special case for speedup
             M = abs(x).sum(axis=a)
         elif ord in (2, None):
-            M = sqrt(abs(x).power(2).sum(axis=a))
+            M = cupy.sqrt(abs(x).power(2).sum(axis=a))
         else:
             try:
                 ord + 1
