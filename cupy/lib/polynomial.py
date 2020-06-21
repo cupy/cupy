@@ -2,8 +2,10 @@ import re
 import warnings
 
 import cupy
+from cupy.core.overrides import set_module
 
 
+@set_module('cupy')
 class RankWarning(UserWarning):
     """Issued when the Vandermonde matrix is rank deficient.
 
@@ -43,6 +45,7 @@ def _raise_power(astr, wrap=70):
     return output + astr[n:]
 
 
+@set_module('cupy')
 class poly1d(object):
     """A one-dimensional polynomial class.
 
@@ -131,7 +134,7 @@ class poly1d(object):
         return self.order
 
     def __str__(self):
-        thestr = "0"
+        thestr = '0'
         var = self.variable
 
         coeffs = cupy.trim_zeros(self.coeffs, trim='f')
