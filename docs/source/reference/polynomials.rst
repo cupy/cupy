@@ -3,8 +3,11 @@ Polynomials
 
 .. https://numpy.org/doc/stable/reference/routines.polynomials.html
 
+Polynomial Package
+------------------
+
 Polynomial Module
------------------
+~~~~~~~~~~~~~~~~~
 
 .. autosummary::
    :toctree: generated/
@@ -14,7 +17,7 @@ Polynomial Module
 
 
 Polyutils
----------
+~~~~~~~~~
 
 .. autosummary::
    :toctree: generated/
@@ -24,18 +27,21 @@ Polyutils
    cupy.polynomial.polyutils.trimseq
 
 
-Basics
+Poly1d
 ------
+
+Basics
+~~~~~~
 
 .. autosummary::
    :toctree: generated/
    :nosignatures:
 
-   cupy.poly1d
+    cupy.poly1d
 
 
 Warnings
---------
+~~~~~~~~
 
 .. autosummary::
    :toctree: generated/
