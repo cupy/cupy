@@ -1,7 +1,6 @@
 import threading
 import unittest
-
-import mock
+from unittest import mock
 
 import cupy
 from cupy import testing

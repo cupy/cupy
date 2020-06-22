@@ -4,8 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-
-import mock
+from unittest import mock
 import numpy
 
 import cupy
