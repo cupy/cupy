@@ -1,7 +1,6 @@
 import numpy
 
 import cupy
-from cupy.cuda import device
 import cupyx.scipy.sparse
 
 __all__ = ['norm']
@@ -23,38 +22,38 @@ def norm(x, ord=None, axis=None):
 
     Args:
         x (sparse matrix) : Input sparse matrix.
-        ord (non-zero int, inf, -inf, 'fro', optional) : Order of the norm (see 
+        ord (non-zero int, inf, -inf, 'fro', optional) : Order of the norm (see
             table under ``Notes``). inf means numpy's `inf` object.
-        axis : ( int, 2-tuple of ints, None, optional) : If `axis` is an integer
-            , it specifies the axis of `x` along which to
+        axis : ( int, 2-tuple of ints, None, optional) : If `axis` is an
+            integer, it specifies the axis of `x` along which to
             compute the vector norms.  If `axis` is a 2-tuple, it specifies the
             axes that hold 2-D matrices, and the matrix norms of these matrices
-            are computed.  If `axis` is None then either a vector norm (when `x`
-            is 1-D) or a matrix norm (when `x` is 2-D) is returned.
+            are computed.  If `axis` is None then either a vector norm
+            (when `x` is 1-D) or a matrix norm (when `x` is 2-D) is returned.
     Returns :
         n : float or ndarray
 
     Notes
     -----
-    Some of the ord are not implemented because some associated functions like, 
-    _multi_svd_norm, are not yet available for sparse matrix. 
-    This docstring is modified based on numpy.linalg.norm. 
-    https://github.com/numpy/numpy/blob/master/numpy/linalg/linalg.py 
+    Some of the ord are not implemented because some associated functions like,
+    _multi_svd_norm, are not yet available for sparse matrix.
+    This docstring is modified based on numpy.linalg.norm.
+    https://github.com/numpy/numpy/blob/master/numpy/linalg/linalg.py
     The following norms can be calculated:
-    =====  ============================  
-    ord    norm for sparse matrices             
-    =====  ============================  
-    None   Frobenius norm                
-    'fro'  Frobenius norm                
-    inf    max(sum(abs(x), axis=1))      
-    -inf   min(sum(abs(x), axis=1))      
-    0      abs(x).sum(axis=axis)                           
-    1      max(sum(abs(x), axis=0))      
-    -1     min(sum(abs(x), axis=0))      
-    2      Not implemented  
-    -2     Not implemented      
-    other  Not implemented                               
-    =====  ============================  
+    =====  ============================
+    ord    norm for sparse matrices
+    =====  ============================
+    None   Frobenius norm
+    'fro'  Frobenius norm
+    inf    max(sum(abs(x), axis=1))
+    -inf   min(sum(abs(x), axis=1))
+    0      abs(x).sum(axis=axis)
+    1      max(sum(abs(x), axis=0))
+    -1     min(sum(abs(x), axis=0))
+    2      Not implemented
+    -2     Not implemented
+    other  Not implemented
+    =====  ============================
     The Frobenius norm is given by [1]_:
         :math:`||A||_F = [\\sum_{i,j} abs(a_{i,j})^2]^{1/2}`
     References
