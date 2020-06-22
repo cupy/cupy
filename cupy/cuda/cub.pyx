@@ -374,7 +374,6 @@ def device_histogram(ndarray x, ndarray bins, ndarray y):
     y = _internal_ascontiguousarray(y)
 
     x_ptr = <void*>x.data.ptr
-    y = y.astype(numpy.uint64, 'C', None, None, False)
     y_ptr = <void*>y.data.ptr
     n_bins = bins.size
     bins_ptr = <void*>bins.data.ptr
@@ -390,7 +389,7 @@ def device_histogram(ndarray x, ndarray bins, ndarray y):
     with nogil:
         cub_device_histogram_range(ws_ptr, ws_size, x_ptr, y_ptr, n_bins,
                                    bins_ptr, n_samples, s, dtype_id)
-    return y.astype(numpy.int64, 'C', None, None, False)
+    return y
 
 
 cdef bint _cub_device_segmented_reduce_axis_compatible(

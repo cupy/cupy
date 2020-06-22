@@ -1,11 +1,10 @@
+#include "cupy_cub.h"
 #include <cupy/complex.cuh>
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_spmv.cuh>
 #include <cub/device/device_scan.cuh>
 #include <cub/device/device_histogram.cuh>
-#include "cupy_cub.h"
-#include <stdexcept>
 
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
@@ -403,12 +402,6 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()
 }
 #endif
 
-//// To support CUB histogram. Copied from cupy/statistics/histogram.py.
-//__device__ long long atomicAdd(long long *address, long long val) {
-//    return atomicAdd(reinterpret_cast<unsigned long long*>(address),
-//                     static_cast<unsigned long long>(val));
-//}
-
 /* ------------------------------------ End of "patches" ------------------------------------ */
 
 
@@ -631,14 +624,18 @@ struct _cub_histogram_range {
     void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
         int n_bins, void* bins, size_t n_samples, cudaStream_t s) const
     {
-        //if (n_samples < 1ULL << 31) {
+        // TODO(leofang): CUB seems to bake the OffsetT type somewhere that specializing
+        // for n_samples of type size_t would error. Need to pinpoint where went wrong.
+        // The code path splitting is disabled and a type check is done in the caller.
+
+        // if (n_samples < (1ULL << 31)) {
             int num_samples = n_samples;
             DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<sampleT*>(input),
-                static_cast<unsigned long long*>(output), n_bins, static_cast<binT*>(bins), num_samples, s);
-        //} else {
-        //    DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<sampleT*>(input),
-        //        static_cast<unsigned long long*>(output), n_bins, static_cast<binT*>(bins), n_samples, s);
-        //}
+                static_cast<long long*>(output), n_bins, static_cast<binT*>(bins), num_samples, s);
+        // } else {
+        //     DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<sampleT*>(input),
+        //         static_cast<long long*>(output), n_bins, static_cast<binT*>(bins), n_samples, s);
+        // }
     }
 };
 
@@ -773,9 +770,9 @@ void cub_device_histogram_range(void* workspace, size_t& workspace_size, void* x
 {
     _cub_histogram_range hist;
 
-    // 1. n_samples is of type size_t, but if it's < 2^31 -1 we cast it to int later
-    // 2. we don't call dtype_dispatcher because histogram has a weird type rule...
-    // TODO(leofang): there got to be a smarter way to dispatch and forward the args...
+    // We don't call dtype_dispatcher because histogram has a weird type rule...
+    // TODO(leofang): there got to be a smarter way to specialize, dispatch, and forward the args...
+    // TODO(leofang): n_samples is of type size_t, but if it's < 2^31 we cast it to int later
     switch (dtype_id) {
     case CUPY_CUB_INT8:
         return hist.template operator()<char, double>(

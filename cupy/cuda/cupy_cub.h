@@ -43,6 +43,14 @@ size_t cub_device_spmv_get_workspace_size(void*, void*, void*, void*, void*, int
 size_t cub_device_scan_get_workspace_size(void*, void*, int, cudaStream_t, int, int);
 size_t cub_device_histogram_range_get_workspace_size(void*, void*, int, void*, size_t, cudaStream_t, int);
 
+// This is for CUB's HistogramRange
+#ifdef __CUDA_ARCH__
+__device__ long long atomicAdd(long long *address, long long val) {
+    return atomicAdd(reinterpret_cast<unsigned long long*>(address),
+                     static_cast<unsigned long long>(val));
+}
+#endif // __CUDA_ARCH__
+
 #else // CUPY_NO_CUDA
 
 typedef struct CUstream_st *cudaStream_t;
@@ -57,6 +65,9 @@ void cub_device_spmv(...) {
 }
 
 void cub_device_scan(...) {
+}
+
+void cub_device_histogram_range(...) {
 }
 
 size_t cub_device_reduce_get_workspace_size(...) {
@@ -74,6 +85,17 @@ size_t cub_device_spmv_get_workspace_size(...) {
 size_t cub_device_scan_get_workspace_size(...) {
     return 0;
 }
+
+size_t cub_device_histogram_range_get_workspace_size(...) {
+    return 0;
+}
+
+// This is for CUB's HistogramRange
+#ifdef __CUDA_ARCH__
+__device__ long long atomicAdd(long long *address, long long val) {
+    return val;
+}
+#endif // __CUDA_ARCH__
 
 #endif // #ifndef CUPY_NO_CUDA
 
