@@ -1,7 +1,7 @@
 import re
 import unittest
-
 from unittest import mock
+
 import numpy
 import pytest
 try:

@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+
 import numpy
 
 import cupy
