@@ -749,11 +749,18 @@ class TestRaw(unittest.TestCase):
     def test_context_switch_RawModule3(self):
         # run test_load_cubin() on another device
         # generate cubin in the temp dir and load it on device 0
-        file_path = self._generate_file('cubin')
-        mod = cupy.RawModule(path=file_path, backend=self.backend)
+
+        device0 = cupy.cuda.Device(0)
+        device1 = cupy.cuda.Device(1)
+        if device0.compute_capability != device1.compute_capability:
+            raise pytest.skip()
+
+        with device0:
+            file_path = self._generate_file('cubin')
+            mod = cupy.RawModule(path=file_path, backend=self.backend)
 
         # in this test, reloading happens at get_function()
-        with cupy.cuda.Device(1):
+        with device1:
             ker = mod.get_function('test_div')
             x1, x2, y = self._helper(ker, cupy.float32)
             assert cupy.allclose(y, x1 / (x2 + 1.0))
@@ -762,12 +769,19 @@ class TestRaw(unittest.TestCase):
     def test_context_switch_RawModule4(self):
         # run test_load_cubin() on another device
         # generate cubin in the temp dir and load it on device 0
-        file_path = self._generate_file('cubin')
-        mod = cupy.RawModule(path=file_path, backend=self.backend)
-        ker = mod.get_function('test_div')
+
+        device0 = cupy.cuda.Device(0)
+        device1 = cupy.cuda.Device(1)
+        if device0.compute_capability != device1.compute_capability:
+            raise pytest.skip()
+
+        with device0:
+            file_path = self._generate_file('cubin')
+            mod = cupy.RawModule(path=file_path, backend=self.backend)
+            ker = mod.get_function('test_div')
 
         # in this test, reloading happens at kernel launch
-        with cupy.cuda.Device(1):
+        with device1:
             x1, x2, y = self._helper(ker, cupy.float32)
             assert cupy.allclose(y, x1 / (x2 + 1.0))
 
