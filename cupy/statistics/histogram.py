@@ -5,6 +5,8 @@ import numpy
 
 import cupy
 from cupy import core
+if cupy.cuda.cub_enabled:
+    from cupy.cuda import cub
 
 
 _preamble = '''
@@ -212,7 +214,28 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
 
     if weights is None:
         y = cupy.zeros(bin_edges.size - 1, dtype='l')
-        _histogram_kernel(x, bin_edges, bin_edges.size, y)
+        if (cupy.cuda.cub_enabled and x.size <= 0x7fffffff):
+                #and x.dtype != cupy.float16):
+                #and x.dtype.char != 'e'):
+            #print("USING CUB")
+            # 1. CUB uses int for input size count
+            # 2. CUB's upper bin boundary is exclusive for all bins, including
+            #    the last bin, so we must correct it to comply with NumPy
+            #if y.dtype.kind == 'f':
+            #    last_upper = bin_edges[-1]
+            #    bin_edges[-1] += 1.0
+            bin_type = cupy.result_type(bin_edges, x)
+            if cupy.issubdtype(bin_type, cupy.integer):
+                bin_type = cupy.result_type(bin_type, float)
+            bin_edges = bin_edges.astype(bin_type)
+            y = cub.device_histogram(x, bin_edges, y)
+            #if y.dtype.kind == 'f':
+            #    bin_edges[-1] = last_upper
+            #print(x.size, y[0:-1].sum(), y[-1])
+            #y[-1] = x.size - y[0:-1].sum()
+            y[-1] += cupy.count_nonzero(x == bin_edges[-1])
+        else:
+            _histogram_kernel(x, bin_edges, bin_edges.size, y)
     else:
         simple_weights = (
             cupy.can_cast(weights.dtype, cupy.float64) or
@@ -242,16 +265,19 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
         return y/db/y.sum(), bin_edges
     return y, bin_edges
 
+
 # TODO(okuta): Implement histogram2d
 
 
 # TODO(okuta): Implement histogramdd
+
 
 _bincount_kernel = core.ElementwiseKernel(
     'S x', 'raw U bin',
     'atomicAdd(&bin[x], U(1))',
     'bincount_kernel',
     preamble=_preamble)
+
 _bincount_with_weight_kernel = core.ElementwiseKernel(
     'S x, T w', 'raw U bin',
     'atomicAdd(&bin[x], w)',

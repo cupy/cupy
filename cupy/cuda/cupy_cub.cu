@@ -3,6 +3,7 @@
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_spmv.cuh>
 #include <cub/device/device_scan.cuh>
+#include <cub/device/device_histogram.cuh>
 #include "cupy_cub.h"
 #include <stdexcept>
 
@@ -401,6 +402,13 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()
 
 }
 #endif
+
+//// To support CUB histogram. Copied from cupy/statistics/histogram.py.
+//__device__ long long atomicAdd(long long *address, long long val) {
+//    return atomicAdd(reinterpret_cast<unsigned long long*>(address),
+//                     static_cast<unsigned long long>(val));
+//}
+
 /* ------------------------------------ End of "patches" ------------------------------------ */
 
 
@@ -616,6 +624,26 @@ struct _cub_inclusive_product {
 };
 
 //
+// **** CUB histogram range ****
+//
+struct _cub_histogram_range {
+    template <typename sampleT, typename binT>
+    void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
+        int n_bins, void* bins, size_t n_samples, cudaStream_t s) const
+    {
+        //if (n_samples < 1ULL << 31) {
+            int num_samples = n_samples;
+            DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<sampleT*>(input),
+                static_cast<unsigned long long*>(output), n_bins, static_cast<binT*>(bins), num_samples, s);
+        //} else {
+        //    DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<sampleT*>(input),
+        //        static_cast<unsigned long long*>(output), n_bins, static_cast<binT*>(bins), n_samples, s);
+        //}
+    }
+};
+
+
+//
 // APIs exposed to CuPy
 //
 
@@ -735,5 +763,69 @@ size_t cub_device_scan_get_workspace_size(void* x, void* y, int num_items,
     size_t workspace_size = 0;
     cub_device_scan(NULL, workspace_size, x, y, num_items, stream,
                     op, dtype_id);
+    return workspace_size;
+}
+
+/* -------- device histogram -------- */
+
+void cub_device_histogram_range(void* workspace, size_t& workspace_size, void* x, void* y,
+    int n_bins, void* bins, size_t n_samples, cudaStream_t stream, int dtype_id)
+{
+    _cub_histogram_range hist;
+
+    // 1. n_samples is of type size_t, but if it's < 2^31 -1 we cast it to int later
+    // 2. we don't call dtype_dispatcher because histogram has a weird type rule...
+    // TODO(leofang): there got to be a smarter way to dispatch and forward the args...
+    switch (dtype_id) {
+    case CUPY_CUB_INT8:
+        return hist.template operator()<char, double>(
+            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+    case CUPY_CUB_INT16:
+        return hist.template operator()<short, double>(
+            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+    case CUPY_CUB_INT32:
+        return hist.template operator()<int, double>(
+            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+    case CUPY_CUB_INT64:
+        return hist.template operator()<long, double>(
+            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+    case CUPY_CUB_UINT8:
+        return hist.template operator()<unsigned char, double>(
+            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+    case CUPY_CUB_UINT16:
+        return hist.template operator()<unsigned short, double>(
+            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+    case CUPY_CUB_UINT32:
+        return hist.template operator()<unsigned int, double>(
+            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+    case CUPY_CUB_UINT64:
+        return hist.template operator()<unsigned long, double>(
+            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+    case CUPY_CUB_FLOAT16:
+        return hist.template operator()<__half, __half>(
+            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+#endif
+    case CUPY_CUB_FLOAT32:
+        return hist.template operator()<float, float>(
+            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+    case CUPY_CUB_FLOAT64:
+        return hist.template operator()<double, double>(
+            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+    // TODO(leofang): support complex
+    // case CUPY_CUB_COMPLEX64:
+    // case CUPY_CUB_COMPLEX128:
+    default:
+	    throw std::runtime_error("Unsupported dtype ID");
+    }
+}
+
+size_t cub_device_histogram_range_get_workspace_size(void* x, void* y, int n_bins,
+    void* bins, size_t n_samples, cudaStream_t stream, int dtype_id)
+{
+    size_t workspace_size = 0;
+    cub_device_histogram_range(NULL, workspace_size, x, y, n_bins, bins, n_samples,
+                               stream, dtype_id);
     return workspace_size;
 }
