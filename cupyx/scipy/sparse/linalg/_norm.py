@@ -126,6 +126,8 @@ def norm(x, ord=None, axis=None):
         elif ord == -2:
             raise NotImplementedError
             #return _multi_svd_norm(x, row_axis, col_axis, amin)
+        elif ord == 0:
+            return abs(x).sum().item()
         elif ord == 1:
             return abs(x).sum(axis=row_axis).max(axis=col_axis).item()
         elif ord == numpy.Inf:
@@ -161,7 +163,7 @@ def norm(x, ord=None, axis=None):
                 ord + 1
             except TypeError:
                 raise ValueError('Invalid norm order for vectors.')
-            M = abs(x).power(ord).sum(axis=a).power( 1/ord)
+            M = cupy.power(abs(x).power(ord).sum(axis=a), 1 / ord)
         return M.ravel()
     else:
         raise ValueError("Improper number of dimensions to norm.")

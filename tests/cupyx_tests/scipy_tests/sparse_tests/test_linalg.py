@@ -59,12 +59,13 @@ class TestLsqr(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'ord': [None , -numpy.Inf, -2, -1, 0, 1, 2, 3, numpy.Inf],
-    'dtype': [numpy.float64, numpy.float64],
-    }))
+    'ord': [None , -numpy.Inf, -2, -1, 1, 2, 3, numpy.Inf, 'fro'],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+}))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 @testing.gpu
 class TestMatrixNorm(unittest.TestCase):
+
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp', type_check=False, accept_error=True)
     def test_matrix_norm(self, xp, sp):
         a = xp.arange(9, dtype=self.dtype) - 4
@@ -72,5 +73,52 @@ class TestMatrixNorm(unittest.TestCase):
         b = sp.csr_matrix(b, dtype=self.dtype)
         return xp.array(sp.linalg.norm(b, ord=self.ord))
 
+    @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp', type_check=False, accept_error=True)
+    def test_matrix_norm_axis_1(self, xp, sp):
+        a = xp.arange(9, dtype=self.dtype) - 4
+        b = a.reshape((3,3))
+        b = sp.csr_matrix(b, dtype=self.dtype)
+        return xp.array(sp.linalg.norm(b, ord=self.ord, axis=None))
+
+    @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp', type_check=False, accept_error=True)
+    def test_matrix_norm_axis_2(self, xp, sp):
+        a = xp.arange(9, dtype=self.dtype) - 4
+        b = a.reshape((3,3))
+        b = sp.csr_matrix(b, dtype=self.dtype)
+        return xp.array(sp.linalg.norm(b, ord=self.ord, axis=(0, 1)))
+
+    @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp', type_check=False, accept_error=True)
+    def test_matrix_norm_axis_3(self, xp, sp):
+        a = xp.arange(9, dtype=self.dtype) - 4
+        b = a.reshape((3,3))
+        b = sp.csr_matrix(b, dtype=self.dtype)
+        return xp.array(sp.linalg.norm(b.T, ord=self.ord, axis=(1, 0)))
+
+
+@testing.parameterize(*testing.product({
+    'ord': [None , -numpy.Inf, -2, -1, 1, 2, numpy.Inf, 'fro'],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'Transpose':[False],
+    'axis':[0, (0, )],# _min_or_max() doesn't support axes for -2, (-2, )
+}) + testing.product({
+    'ord': [None , -numpy.Inf, -2, -1, 1, 2, numpy.Inf, 'fro'],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'Transpose':[True],
+    'axis':[1, (1, )],#  _min_or_max() doesn't support axes for -1, (-1, )
+})
+)
+@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.gpu
+class TestVectorNorm(unittest.TestCase):
+    @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp', type_check=False, accept_error=True)
+    def test_vector_norm(self, xp, sp):
+        a = xp.arange(9, dtype=self.dtype) - 4
+        b = a.reshape((3,3))
+        b = sp.csr_matrix(b, dtype=self.dtype)
+        if self.Transpose:
+            b = b.T
+        return sp.linalg.norm(b, ord=self.ord, axis=self.axis)
+
+# TODO : TestVsNumpyNorm
 
 
