@@ -70,7 +70,7 @@ class TestMatrixNorm(unittest.TestCase):
     def test_matrix_norm(self, xp, sp):
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3,3))
-        b = sp.csr_matrix(b, dtype=self.dtype)
+        b = self._sparse_types(b, dtype=self.dtype)
         return xp.array(sp.linalg.norm(b, ord=self.ord))
 
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp', type_check=False, accept_error=True)
@@ -98,13 +98,8 @@ class TestMatrixNorm(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'ord': [None , -numpy.Inf, -2, -1, 1, 2, numpy.Inf, 'fro'],
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-    'Transpose':[False],
-    'axis':[0, (0, )],# _min_or_max() doesn't support axes for -2, (-2, )
-}) + testing.product({
-    'ord': [None , -numpy.Inf, -2, -1, 1, 2, numpy.Inf, 'fro'],
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-    'Transpose':[True],
-    'axis':[1, (1, )],#  _min_or_max() doesn't support axes for -1, (-1, )
+    'Transpose':[True, False],
+    'axis':[0, (0, ), 1, (1, )], # _min_or_max() doesn't support axes for -1, (-1, ), -2, (-2, )
 })
 )
 @unittest.skipUnless(scipy_available, 'requires scipy')
