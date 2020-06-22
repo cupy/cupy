@@ -1,16 +1,5 @@
 import math
 
-import cupy
-
-
-def _numeric_arrays(arrays, kinds='buifc'):
-    if type(arrays) == cupy.ndarray:
-        return arrays.dtype.kind in kinds
-    for array in arrays:
-        if array.dtype.kind not in kinds:
-            return False
-    return True
-
 
 def choose_conv_method(in1, in2, mode='full'):
     """Find the fastest convolution/correlation method.
@@ -18,15 +7,17 @@ def choose_conv_method(in1, in2, mode='full'):
     Args:
         in1 (cupy.ndarray): first input.
         in2 (cupy.ndarray): second input.
-        mode (str, optional): `valid`, `same`, `full`
+        mode (str, optional): ``valid``, ``same``, ``full``.
 
     Returns:
         str: A string indicating which convolution method is fastest,
-         either ‘direct’ or ‘fft’.
+        either ``direct`` or ``fft1``.
 
     .. warning::
         This function currently doesn't support measure option,
-        nor multidimensional inputs.
+        nor multidimensional inputs. It differs from SciPy's
+        behavior in handling signed and unsigned integers by
+        always choosing ``direct`` convolution method.
 
     .. seealso:: :func:`scipy.signal.choose_conv_method`
 
@@ -34,7 +25,7 @@ def choose_conv_method(in1, in2, mode='full'):
     if in1.ndim != 1 or in2.ndim != 1:
         raise NotImplementedError('Only 1d inputs are supported currently')
 
-    if _numeric_arrays([in1, in2], kinds='bui'):
+    if in1.dtype.kind in 'bui' or in2.dtype.kind in 'bui':
         return 'direct'
 
     if _fftconv_faster(in1, in2, mode):
