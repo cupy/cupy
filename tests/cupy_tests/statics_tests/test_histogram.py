@@ -1,5 +1,6 @@
 import sys
 import unittest
+from unittest import mock
 
 import numpy
 import pytest
@@ -310,6 +311,29 @@ class TestHistogram(unittest.TestCase):
             # a test for TypeError.
             with pytest.raises((ValueError, TypeError)):
                 xp.bincount(x, minlength=-1)
+
+
+# This class compares CUB results against NumPy's
+@testing.gpu
+@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
+class TestCUBHistogram(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_histogram(self, xp, dtype):
+        x = testing.shaped_arange((10,), xp, dtype)
+
+        if xp is numpy:
+            return xp.histogram(x)
+
+        # xp is cupy, first ensure we really use CUB
+        cub_func = 'cupy.statistics.histogram.cub.device_histogram'
+        with mock.patch(cub_func) as func:
+            assert func.call_count == 0
+            xp.histogram(x)
+            assert func.call_count == 1
+        # ...then perform the actual computation
+        return xp.histogram(x)
 
 
 @testing.gpu

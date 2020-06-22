@@ -359,8 +359,7 @@ def device_scan(ndarray x, op):
 
 def device_histogram(ndarray x, ndarray bins, ndarray y):
     cdef memory.MemoryPointer ws
-    cdef size_t ws_size,
-    cdef size_t n_samples
+    cdef size_t ws_size, n_samples
     cdef int dtype_id, n_bins
     cdef void* x_ptr
     cdef void* bins_ptr
