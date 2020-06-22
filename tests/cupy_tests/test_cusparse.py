@@ -32,6 +32,8 @@ class TestCsrmm(unittest.TestCase):
         self.c = numpy.random.uniform(-1, 1, (2, 4)).astype(self.dtype)
 
     def test_csrmm(self):
+        if not cusparse.check_availability('csrmm'):
+            pytest.skip('csrmm is not available')
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         y = cupy.cusparse.csrmm(a, b, alpha=self.alpha, transa=self.transa)
@@ -39,6 +41,8 @@ class TestCsrmm(unittest.TestCase):
         testing.assert_array_almost_equal(y, expect)
 
     def test_csrmm_with_c(self):
+        if not cusparse.check_availability('csrmm'):
+            pytest.skip('csrmm is not available')
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.c, order='f')
@@ -74,6 +78,8 @@ class TestCsrmm2(unittest.TestCase):
         self.c = numpy.random.uniform(-1, 1, (2, 4)).astype(self.dtype)
 
     def test_csrmm2(self):
+        if not cusparse.check_availability('csrmm2'):
+            pytest.skip('csrmm2 is not available')
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         y = cupy.cusparse.csrmm2(
@@ -82,6 +88,8 @@ class TestCsrmm2(unittest.TestCase):
         testing.assert_array_almost_equal(y, expect)
 
     def test_csrmm2_with_c(self):
+        if not cusparse.check_availability('csrmm2'):
+            pytest.skip('csrmm2 is not available')
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.c, order='f')
@@ -332,6 +340,8 @@ class TestCsrmv(unittest.TestCase):
         self.y = numpy.random.uniform(-1, 1, 2).astype(self.dtype)
 
     def test_csrmv(self):
+        if not cusparse.check_availability('csrmv'):
+            pytest.skip('csrmv is not available')
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
         y = cupy.cusparse.csrmv(
@@ -340,6 +350,8 @@ class TestCsrmv(unittest.TestCase):
         testing.assert_array_almost_equal(y, expect)
 
     def test_csrmv_with_y(self):
+        if not cusparse.check_availability('csrmv'):
+            pytest.skip('csrmv is not available')
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
         y = cupy.array(self.y, order='f')
@@ -350,12 +362,16 @@ class TestCsrmv(unittest.TestCase):
         testing.assert_array_almost_equal(y, expect)
 
     def test_csrmvEx_aligned(self):
+        if not cusparse.check_availability('csrmvEx'):
+            pytest.skip('csrmvEx is not available')
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
 
         self.assertTrue(cupy.cusparse.csrmvExIsAligned(a, x))
 
     def test_csrmvEx_not_aligned(self):
+        if not cusparse.check_availability('csrmvEx'):
+            pytest.skip('csrmvEx is not available')
         a = sparse.csr_matrix(self.a)
         tmp = cupy.array(numpy.hstack([self.x, self.y]), order='f')
         x = tmp[0:len(self.x)]
@@ -363,6 +379,8 @@ class TestCsrmv(unittest.TestCase):
         self.assertFalse(cupy.cusparse.csrmvExIsAligned(a, x, y))
 
     def test_csrmvEx(self):
+        if not cusparse.check_availability('csrmvEx'):
+            pytest.skip('csrmvEx is not available')
         if self.transa:
             # no support for transa
             return
@@ -374,6 +392,8 @@ class TestCsrmv(unittest.TestCase):
         testing.assert_array_almost_equal(y, expect)
 
     def test_csrmvEx_with_y(self):
+        if not cusparse.check_availability('csrmvEx'):
+            pytest.skip('csrmvEx is not available')
         if self.transa:
             # no support for transa
             return

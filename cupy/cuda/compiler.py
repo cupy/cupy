@@ -70,9 +70,12 @@ def _get_arch():
     elif major < 10 or (major == 10 and minor == 0):
         # CUDA 9.x / 10.0
         _nvrtc_max_compute_capability = '70'
-    else:
+    elif major < 11:
         # CUDA 10.1 / 10.2
         _nvrtc_max_compute_capability = '75'
+    else:
+        # CUDA 11.0
+        _nvrtc_max_compute_capability = '80'
 
     arch = device.Device().compute_capability
     if arch in _tegra_archs:

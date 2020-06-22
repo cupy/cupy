@@ -1043,6 +1043,30 @@ cudnnStatus_t cudnnFusedOpsExecute(...) {
 
 #endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION < 7600)
 
+#if !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 8000)
+
+typedef enum {} cudnnConvolutionFwdPreference_t;
+typedef enum {} cudnnConvolutionBwdFilterPreference_t;
+typedef enum {} cudnnConvolutionBwdDataPreference_t;
+
+cudnnStatus_t cudnnGetConvolutionForwardAlgorithm_v6(...) {
+    return CUDNN_STATUS_SUCCESS;
+}
+
+cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm_v6(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm_v6(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnSetRNNDescriptor_v5(...) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+#endif // !defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 8000)
+
 } // extern "C"
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDNN_H

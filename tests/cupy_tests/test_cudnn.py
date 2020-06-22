@@ -356,8 +356,8 @@ class TestConvolutionBackwardData(unittest.TestCase):
     'stride': [2, 4],
     'auto_tune': [True, False],
 }))
-@unittest.skipIf(not cudnn_enabled or cudnn_version < 7500,
-                 'cuDNN 7.5.0 or later is required')
+@unittest.skipIf(not cudnn_enabled or cudnn_version < 7500 or
+                 cudnn_version >= 8000, 'cuDNN 7.5.0 or later is required')
 class TestConvolutionNoAvailableAlgorithm(unittest.TestCase):
     '''Checks if an expected error is raised.
 

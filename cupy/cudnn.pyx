@@ -1377,7 +1377,7 @@ cpdef _Algorithm _get_algorithm_fwd(
     algo = _get_algorithm_fwd_cache.get(key, None)
     if algo is not None:
         return algo
-    if use_tensor_core and _cudnn_version >= 7000:
+    if (use_tensor_core and _cudnn_version >= 7000) or _cudnn_version >= 8000:
         ret = cudnn.getConvolutionForwardAlgorithm_v7(
             handle, x_desc, filter_desc, conv_desc, y_desc, 10)
         for i, perf in enumerate(ret):

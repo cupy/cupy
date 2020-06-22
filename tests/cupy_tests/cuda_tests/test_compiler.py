@@ -42,6 +42,11 @@ class TestNvrtcArch(unittest.TestCase):
     def test_get_arch_cuda101(self):
         self._check_get_arch('75', '75')
 
+    @unittest.skipUnless(11000 <= cuda_version(),
+                         'Requires CUDA 11.0 or later')
+    def test_get_arch_cuda11(self):
+        self._check_get_arch('80', '80')
+
     def _compile(self, arch):
         compiler.compile_using_nvrtc('', arch=arch)
 
@@ -85,6 +90,18 @@ class TestNvrtcArch(unittest.TestCase):
         # It should fail. (compute_80 is not supported until CUDA 11)
         self.assertRaises(
             compiler.CompileException, self._compile, '80')
+
+    @unittest.skipUnless(11000 <= cuda_version(),
+                         'Requires CUDA 11.0 or later')
+    def test_compile_cuda11(self):
+        # This test is intended to detect specification change in NVRTC API.
+
+        # It should not fail.
+        self._compile('80')
+
+        # It should fail.
+        self.assertRaises(
+            compiler.CompileException, self._compile, '83')
 
 
 @testing.gpu

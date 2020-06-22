@@ -16,7 +16,7 @@ PLATFORM_WIN32 = sys.platform.startswith('win32')
 
 minimum_cuda_version = 8000
 minimum_cudnn_version = 5000
-maximum_cudnn_version = 7999
+maximum_cudnn_version = 8099
 
 _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
@@ -162,13 +162,17 @@ def get_compiler_setting(use_hip):
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
+    # for <cupy/complex.cuh>
+    cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                               '../cupy/core/include')
     cub_path = os.environ.get('CUB_PATH', '')
     if os.path.exists(cub_path):
-        # for <cupy/complex.cuh>
-        cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                   '../cupy/core/include')
         include_dirs.append(cupy_header)
-        include_dirs.append(cub_path)
+        include_dirs.insert(0, cub_path)
+    elif cuda_path:
+        cub_path = os.path.join(cuda_path, 'include', 'cub')
+        if os.path.exists(cub_path):
+            include_dirs.append(cupy_header)
 
     return {
         'include_dirs': include_dirs,
