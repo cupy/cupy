@@ -1551,12 +1551,9 @@ class TestCUBspmv(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         func = 'cupyx.scipy.sparse.csr.device_csrmv'
-        probe = Exception('gotcha')
-        patch = mock.patch(func, side_effect=probe)
-        with patch as f, pytest.raises(Exception) as e:
+        with mock.patch(func) as f:
             assert f.call_count == 0
             m * x
             assert f.call_count == 1
-            assert str(e.value) == 'gotcha'
         # ...then perform the actual computation
         return m * x
