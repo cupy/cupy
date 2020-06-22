@@ -14,27 +14,26 @@ def _sparse_frobenius_norm(x):
         sqnorm = x.power(2).sum()
     return cupy.sqrt(sqnorm).item()
 
+
 def norm(x, ord=None, axis=None):
     """
     Norm of a cupy.scipy.spmatrix
     This function is able to return one of seven different matrix norms,
     depending on the value of the ``ord`` parameter.
-    Parameters
-    ----------
-    x : a sparse matrix
-        Input sparse matrix.
-    ord : {non-zero int, inf, -inf, 'fro'}, optional
-        Order of the norm (see table under ``Notes``). inf means numpy's
-        `inf` object.
-    axis : {int, 2-tuple of ints, None}, optional
-        If `axis` is an integer, it specifies the axis of `x` along which to
-        compute the vector norms.  If `axis` is a 2-tuple, it specifies the
-        axes that hold 2-D matrices, and the matrix norms of these matrices
-        are computed.  If `axis` is None then either a vector norm (when `x`
-        is 1-D) or a matrix norm (when `x` is 2-D) is returned.
-    Returns
-    -------
-    n : float or ndarray
+
+    Args:
+        x (sparse matrix) : Input sparse matrix.
+        ord (non-zero int, inf, -inf, 'fro', optional) : Order of the norm (see 
+            table under ``Notes``). inf means numpy's `inf` object.
+        axis : ( int, 2-tuple of ints, None, optional) : If `axis` is an integer
+            , it specifies the axis of `x` along which to
+            compute the vector norms.  If `axis` is a 2-tuple, it specifies the
+            axes that hold 2-D matrices, and the matrix norms of these matrices
+            are computed.  If `axis` is None then either a vector norm (when `x`
+            is 1-D) or a matrix norm (when `x` is 2-D) is returned.
+    Returns :
+        n : float or ndarray
+
     Notes
     -----
     Some of the ord are not implemented because some associated functions like, 
@@ -89,10 +88,11 @@ def norm(x, ord=None, axis=None):
     7
     >>> norm(b, -1)
     6
+
     """
     if not cupyx.scipy.sparse.issparse(x):
         raise TypeError(("input is not sparse. use cupy.linalg.norm"))
-    
+
     # Check the default case first and handle it immediately.
     if axis is None and ord in (None, 'fro', 'f'):
         return _sparse_frobenius_norm(x)
@@ -122,10 +122,10 @@ def norm(x, ord=None, axis=None):
             raise ValueError('Duplicate axes given.')
         if ord == 2:
             raise NotImplementedError
-            #return _multi_svd_norm(x, row_axis, col_axis, amax)
+            # return _multi_svd_norm(x, row_axis, col_axis, amax)
         elif ord == -2:
             raise NotImplementedError
-            #return _multi_svd_norm(x, row_axis, col_axis, amin)
+            # return _multi_svd_norm(x, row_axis, col_axis, amin)
         elif ord == 0:
             return abs(x).sum().item()
         elif ord == 1:
