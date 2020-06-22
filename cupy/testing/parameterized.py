@@ -8,6 +8,7 @@ import unittest
 import six
 
 from cupy.testing import _bundle
+from cupy.cuda import driver
 
 
 def _raise_from(exc_type, message, orig_exc):
@@ -104,7 +105,10 @@ def _parameterize_test_case(base, i, param):
                 s.write('Test parameters:\n')
                 for k, v in sorted(param.items()):
                     s.write('  {}: {}\n'.format(k, v))
-                _raise_from(e.__class__, s.getvalue(), e)
+                err_class = e.__class__
+                if isinstance(e, driver.CUDADriverError):
+                    err_class, = err_class.__bases__
+                _raise_from(err_class, s.getvalue(), e)
         return new_method
 
     return (cls_name, mb, method_generator)
