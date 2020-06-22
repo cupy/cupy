@@ -127,9 +127,10 @@ cpdef unicode getPTX(intptr_t prog):
     with nogil:
         status = nvrtcGetPTXSize(<Program>prog, &ptxSizeRet)
     check_status(status)
+    if ptxSizeRet == 0:
+        return ''
     ptx.resize(ptxSizeRet)
-    if ptxSizeRet > 0:
-        ptx_ptr = ptx.data()
+    ptx_ptr = ptx.data()
     with nogil:
         status = nvrtcGetPTX(<Program>prog, ptx_ptr)
     check_status(status)
@@ -145,9 +146,10 @@ cpdef unicode getProgramLog(intptr_t prog):
     with nogil:
         status = nvrtcGetProgramLogSize(<Program>prog, &logSizeRet)
     check_status(status)
+    if logSizeRet == 0:
+        return ''
     log.resize(logSizeRet)
-    if logSizeRet > 0:
-        log_ptr = log.data()
+    log_ptr = log.data()
     with nogil:
         status = nvrtcGetProgramLog(<Program>prog, log_ptr)
     check_status(status)
