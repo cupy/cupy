@@ -626,7 +626,7 @@ struct _cub_histogram_range {
     {
         // TODO(leofang): CUB seems to bake the OffsetT type somewhere that specializing
         // for n_samples of type size_t would error. Need to pinpoint where went wrong.
-        // The code path splitting is disabled and a type check is done in the caller.
+        // The code path splitting is disabled and a type/range check is done in the caller.
 
         // if (n_samples < (1ULL << 31)) {
             int num_samples = n_samples;

@@ -214,8 +214,8 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
 
     if weights is None:
         y = cupy.zeros(bin_edges.size - 1, dtype='l')
-        # CUB uses int for input size count
-        # TODO(leofang): support >= 2^31 bins?
+        # CUB uses int for bin counts
+        # TODO(leofang): support >= 2^31 elements in x?
         if (cupy.cuda.cub_enabled
                 and x.size <= 0x7fffffff and bin_edges.size <= 0x7fffffff):
             # Need to ensure the dtype of bin_edges as it's needed for
