@@ -1551,10 +1551,12 @@ class TestCUBspmv(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         func = 'cupyx.scipy.sparse.csr.device_csrmv'
-        side_effect = NotImplementedError('gotcha')
-        with mock.patch(func, side_effect=side_effect), \
-                pytest.raises(NotImplementedError) as e:
+        probe = Exception('gotcha')
+        patch = mock.patch(func, side_effect=probe)
+        with patch as f, pytest.raises(Exception) as e:
+            assert f.call_count == 0
             m * x
-        assert str(e.value) == 'gotcha'
+            assert f.call_count == 1
+            assert str(e.value) == 'gotcha'
         # ...then perform the actual computation
         return m * x

@@ -183,12 +183,14 @@ class TestCUBreduction(unittest.TestCase):
             return a.argmin()
 
         # xp is cupy, first ensure we really use CUB
-        full_scan = 'cupy.core._routines_statistics.cub.device_reduce'
-        full_raise = NotImplementedError('gotcha_full')
-        with mock.patch(full_scan, side_effect=full_raise), \
-                pytest.raises(NotImplementedError) as e:
+        full_func = 'cupy.core._routines_statistics.cub.device_reduce'
+        full_probe = Exception('gotcha_full')
+        full_patch = mock.patch(full_func, side_effect=full_probe)
+        with full_patch as f, pytest.raises(Exception) as e:
+            assert f.call_count == 0
             a.argmin()
-        assert str(e.value) == 'gotcha_full'
+            assert f.call_count == 1
+            assert str(e.value) == 'gotcha_full'
         # ...then perform the actual computation
         return a.argmin()
 
@@ -206,12 +208,14 @@ class TestCUBreduction(unittest.TestCase):
             return a.argmax()
 
         # xp is cupy, first ensure we really use CUB
-        full_scan = 'cupy.core._routines_statistics.cub.device_reduce'
-        full_raise = NotImplementedError('gotcha_full')
-        with mock.patch(full_scan, side_effect=full_raise), \
-                pytest.raises(NotImplementedError) as e:
+        full_func = 'cupy.core._routines_statistics.cub.device_reduce'
+        full_probe = Exception('gotcha_full')
+        full_patch = mock.patch(full_func, side_effect=full_probe)
+        with full_patch as f, pytest.raises(Exception) as e:
+            assert f.call_count == 0
             a.argmax()
-        assert str(e.value) == 'gotcha_full'
+            assert f.call_count == 1
+            assert str(e.value) == 'gotcha_full'
         # ...then perform the actual computation
         return a.argmax()
 
