@@ -75,6 +75,7 @@ cuda_files = [
     'cupy.cuda.runtime',
     'cupy.cuda.texture',
     'cupy.util',
+    'cupy.lib.polynomial'
 ]
 
 if use_hip:
