@@ -313,7 +313,7 @@ cdef class ndarray:
     cpdef tofile(self, fid, sep='', format='%s'):
         """Writes the array to a file.
 
-        .. seealso:: :meth:`numpy.ndarray.tolist`
+        .. seealso:: :meth:`numpy.ndarray.tofile`
 
         """
         self.get().tofile(fid, sep, format)
