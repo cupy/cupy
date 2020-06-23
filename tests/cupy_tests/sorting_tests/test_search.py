@@ -183,14 +183,13 @@ class TestCUBreduction(unittest.TestCase):
             return a.argmin()
 
         # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
         full_func = 'cupy.core._routines_statistics.cub.device_reduce'
-        full_probe = Exception('gotcha_full')
-        full_patch = mock.patch(full_func, side_effect=full_probe)
-        with full_patch as f, pytest.raises(Exception) as e:
+        full_patch = mock.patch(full_func, return_value=ret)
+        with full_patch as f:
             assert f.call_count == 0
             a.argmin()
             assert f.call_count == 1
-            assert str(e.value) == 'gotcha_full'
         # ...then perform the actual computation
         return a.argmin()
 
@@ -208,14 +207,13 @@ class TestCUBreduction(unittest.TestCase):
             return a.argmax()
 
         # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
         full_func = 'cupy.core._routines_statistics.cub.device_reduce'
-        full_probe = Exception('gotcha_full')
-        full_patch = mock.patch(full_func, side_effect=full_probe)
-        with full_patch as f, pytest.raises(Exception) as e:
+        full_patch = mock.patch(full_func, return_value=ret)
+        with full_patch as f:
             assert f.call_count == 0
             a.argmax()
             assert f.call_count == 1
-            assert str(e.value) == 'gotcha_full'
         # ...then perform the actual computation
         return a.argmax()
 

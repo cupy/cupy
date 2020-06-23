@@ -237,23 +237,20 @@ class TestCUBreduction(unittest.TestCase):
             return a.min(axis=axis)
 
         # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
         full_func = 'cupy.core._routines_statistics.cub.device_reduce'
-        full_probe = Exception('gotcha_full')
-        full_patch = mock.patch(full_func, side_effect=full_probe)
+        full_patch = mock.patch(full_func, return_value=ret)
         seg_func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
-        seg_probe = Exception('gotcha_seg')
-        seg_patch = mock.patch(seg_func, side_effect=seg_probe)
-        with full_patch as f, seg_patch as s, pytest.raises(Exception) as e:
-            assert (f.call_count, s.call_count) == (0, 0)
+        seg_patch = mock.patch(seg_func, return_value=ret)
+        with full_patch as f, seg_patch as s:
+            assert f.call_count == s.call_count == 0
             a.min(axis=axis)
             if len(axis) == len(self.shape):
-                assert f.assert_called_with(axis=axis)
+                assert f.call_count == 1
                 assert s.call_count == 0
-                assert str(e.value) == 'gotcha_full'
             else:
                 assert f.call_count == 0
-                assert s.assert_called_with(axis=axis)
-                assert str(e.value) == 'gotcha_seg'
+                assert s.call_count == 1
         # ...then perform the actual computation
         return a.min(axis=axis)
 
@@ -272,22 +269,19 @@ class TestCUBreduction(unittest.TestCase):
             return a.max(axis=axis)
 
         # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
         full_func = 'cupy.core._routines_statistics.cub.device_reduce'
-        full_probe = Exception('gotcha_full')
-        full_patch = mock.patch(full_func, side_effect=full_probe)
+        full_patch = mock.patch(full_func, return_value=ret)
         seg_func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
-        seg_probe = Exception('gotcha_seg')
-        seg_patch = mock.patch(seg_func, side_effect=seg_probe)
-        with full_patch as f, seg_patch as s, pytest.raises(Exception) as e:
-            assert (f.call_count, s.call_count) == (0, 0)
+        seg_patch = mock.patch(seg_func, return_value=ret)
+        with full_patch as f, seg_patch as s:
+            assert f.call_count == s.call_count == 0
             a.max(axis=axis)
             if len(axis) == len(self.shape):
-                assert f.assert_called_with(axis=axis)
+                assert f.call_count == 1
                 assert s.call_count == 0
-                assert str(e.value) == 'gotcha_full'
             else:
                 assert f.call_count == 0
-                assert s.assert_called_with(axis=axis)
-                assert str(e.value) == 'gotcha_seg'
+                assert s.call_count == 1
         # ...then perform the actual computation
         return a.max(axis=axis)

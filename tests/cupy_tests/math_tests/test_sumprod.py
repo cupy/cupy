@@ -217,23 +217,20 @@ class TestCUBreduction(unittest.TestCase):
             return a.sum(axis=axis)
 
         # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
         full_func = 'cupy.core._routines_math.cub.device_reduce'
-        full_probe = Exception('gotcha_full')
-        full_patch = mock.patch(full_func, side_effect=full_probe)
+        full_patch = mock.patch(full_func, return_value=ret)
         seg_func = 'cupy.core._routines_math.cub.device_segmented_reduce'
-        seg_probe = Exception('gotcha_seg')
-        seg_patch = mock.patch(seg_func, side_effect=seg_probe)
-        with full_patch as f, seg_patch as s, pytest.raises(Exception) as e:
-            assert (f.call_count, s.call_count) == (0, 0)
+        seg_patch = mock.patch(seg_func, return_value=ret)
+        with full_patch as f, seg_patch as s:
+            assert f.call_count == s.call_count == 0
             a.sum(axis=axis)
             if len(axis) == len(self.shape):
-                assert f.assert_called_with(axis=axis)
+                assert f.call_count == 1
                 assert s.call_count == 0
-                assert str(e.value) == 'gotcha_full'
             else:
                 assert f.call_count == 0
-                assert s.assert_called_with(axis=axis)
-                assert str(e.value) == 'gotcha_seg'
+                assert s.call_count == 1
         # ...then perform the actual computation
         return a.sum(axis=axis)
 
@@ -253,23 +250,20 @@ class TestCUBreduction(unittest.TestCase):
             return a.prod(axis=axis)
 
         # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
         full_func = 'cupy.core._routines_math.cub.device_reduce'
-        full_probe = Exception('gotcha_full')
-        full_patch = mock.patch(full_func, side_effect=full_probe)
+        full_patch = mock.patch(full_func, return_value=ret)
         seg_func = 'cupy.core._routines_math.cub.device_segmented_reduce'
-        seg_probe = Exception('gotcha_seg')
-        seg_patch = mock.patch(seg_func, side_effect=seg_probe)
-        with full_patch as f, seg_patch as s, pytest.raises(Exception) as e:
-            assert (f.call_count, s.call_count) == (0, 0)
+        seg_patch = mock.patch(seg_func, return_value=ret)
+        with full_patch as f, seg_patch as s:
+            assert f.call_count == s.call_count == 0
             a.prod(axis=axis)
             if len(axis) == len(self.shape):
-                assert f.assert_called_with(axis=axis)
+                assert f.call_count == 1
                 assert s.call_count == 0
-                assert str(e.value) == 'gotcha_full'
             else:
                 assert f.call_count == 0
-                assert s.assert_called_with(axis=axis)
-                assert str(e.value) == 'gotcha_seg'
+                assert s.call_count == 1
         # ...then perform the actual computation
         return a.prod(axis=axis)
 
@@ -289,14 +283,13 @@ class TestCUBreduction(unittest.TestCase):
             return a.cumsum()
 
         # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
         full_func = 'cupy.core._routines_math.cub.device_scan'
-        full_probe = Exception('gotcha_full')
-        full_patch = mock.patch(full_func, side_effect=full_probe)
-        with full_patch as f, pytest.raises(Exception) as e:
+        full_patch = mock.patch(full_func, return_value=ret)
+        with full_patch as f:
             assert f.call_count == 0
             a.cumsum()
             assert f.call_count == 1
-            assert str(e.value) == 'gotcha_full'
         # ...then perform the actual computation
         return a.cumsum()
 
@@ -317,14 +310,13 @@ class TestCUBreduction(unittest.TestCase):
             return self._mitigate_cumprod(xp, dtype, result)
 
         # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
         full_func = 'cupy.core._routines_math.cub.device_scan'
-        full_probe = Exception('gotcha_full')
-        full_patch = mock.patch(full_func, side_effect=full_probe)
-        with full_patch as f, pytest.raises(Exception) as e:
+        full_patch = mock.patch(full_func, return_value=ret)
+        with full_patch as f:
             assert f.call_count == 0
             a.cumprod()
             assert f.call_count == 1
-            assert str(e.value) == 'gotcha_full'
         # ...then perform the actual computation
         result = a.cumprod()
         return self._mitigate_cumprod(xp, dtype, result)
