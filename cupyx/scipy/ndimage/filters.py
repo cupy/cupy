@@ -519,7 +519,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
         [' - {}'.format(wshape[j]//2 + origins[j]) for j in range(ndim)])
     # CArray: remove xstride_{j}=... from string
     sizes = ['{type} xsize_{j}=x.shape()[{j}], xstride_{j}=x.strides()[{j}];'.
-            format(j=j, type=int_type) for j in range(ndim)]
+             format(j=j, type=int_type) for j in range(ndim)]
     # CArray: remove expr entirely
     expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
 
@@ -535,7 +535,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
         if wshape[j] == 1:
             # CArray: string becomes 'inds[{j}] = ind_{j};', remove (int_)type
             loops.append('{{ {type} ix_{j} = ind_{j} * xstride_{j};'.
-                        format(j=j, type=int_type))
+                         format(j=j, type=int_type))
         else:
             boundary = _generate_boundary_condition_ops(
                 mode, 'ix_{}'.format(j), 'xsize_{}'.format(j))
