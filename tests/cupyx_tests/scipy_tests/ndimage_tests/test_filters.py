@@ -206,9 +206,9 @@ class TestMirrorWithDim1(FilterTestCaseBase):
             'axis': [0, 1, -1],
         }),
         testing.product({
-             **COMMON_PARAMS,
-             'shape': [(4, 5), (3, 4, 5)],
-             'order': ['F'],
+            **COMMON_PARAMS,
+            'shape': [(4, 5), (3, 4, 5)],
+            'order': ['F'],
         })
     ])
 ))
