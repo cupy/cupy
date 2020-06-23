@@ -2,7 +2,6 @@ import unittest
 from unittest import mock
 
 import numpy
-import pytest
 
 import cupy
 from cupy import testing
