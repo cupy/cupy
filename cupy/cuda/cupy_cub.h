@@ -90,13 +90,6 @@ size_t cub_device_histogram_range_get_workspace_size(...) {
     return 0;
 }
 
-// This is for CUB's HistogramRange
-#ifdef __CUDA_ARCH__
-__device__ long long atomicAdd(long long *address, long long val) {
-    return val;
-}
-#endif // __CUDA_ARCH__
-
 #endif // #ifndef CUPY_NO_CUDA
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_CUB_H
