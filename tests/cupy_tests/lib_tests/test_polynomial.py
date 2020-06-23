@@ -8,9 +8,6 @@ from cupy import testing
 
 
 @testing.gpu
-@testing.parameterize(*testing.product({
-    'key': [-1, 100, 5],
-}))
 class TestPoly1d(unittest.TestCase):
 
     def make_poly1d(self, xp, dtype):
@@ -65,9 +62,21 @@ class TestPoly1d(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
-    def test_poly1d_getitem(self, xp, dtype):
+    def test_poly1d_getitem1(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
-        return xp.poly1d(a)[self.key]
+        return xp.poly1d(a)[-1]
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_getitem2(self, xp, dtype):
+        a = testing.shaped_arange((10,), xp, dtype)
+        return xp.poly1d(a)[5]
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_getitem3(self, xp, dtype):
+        a = testing.shaped_arange((10,), xp, dtype)
+        return xp.poly1d(a)[100]
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()

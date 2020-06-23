@@ -38,13 +38,3 @@ Basics
    :nosignatures:
 
     cupy.poly1d
-
-
-Warnings
-~~~~~~~~
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   cupy.RankWarning
