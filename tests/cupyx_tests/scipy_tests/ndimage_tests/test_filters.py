@@ -27,6 +27,7 @@ class FilterTestCaseBase(unittest.TestCase):
     ksize = 3
     dtype = numpy.float64
     footprint = True
+    order = 'C'
 
     # Params that need no processing and just go into kwargs
     KWARGS_PARAMS = ('output', 'axis', 'mode', 'cval')
@@ -48,6 +49,8 @@ class FilterTestCaseBase(unittest.TestCase):
 
         # The array we are filtering
         arr = testing.shaped_random(self.shape, xp, self.dtype)
+        if self.order == 'F':
+            arr = xp.asfortranarray(arr)
 
         # The weights we are using to filter
         wghts = self._get_weights(xp)
@@ -138,8 +141,6 @@ COMMON_PARAMS = {
             # With reflect test some of the other parameters as well
             'origin': [0, 1, None],
             'output': [None, numpy.int32, numpy.float64],
-            'dtype': [numpy.uint8, numpy.int16, numpy.int32,
-                      numpy.float32, numpy.float64],
         }) + testing.product({
             **COMMON_PARAMS,
             'mode': ['constant'], 'cval': [-1.0, 0.0, 1.0],
@@ -168,14 +169,12 @@ class TestFilter(FilterTestCaseBase):
     testing.product([
         # Filter-function specific params
         testing.product({
-            'filter': ['convolve', 'correlate'],
+            'filter': ['convolve', 'correlate',
+                       'minimum_filter', 'maximum_filter'],
         }) + testing.product({
             'filter': ['convolve1d', 'correlate1d',
                        'minimum_filter1d', 'maximum_filter1d'],
             'axis': [0, 1, -1],
-        }) + testing.product({
-            'filter': ['minimum_filter', 'maximum_filter'],
-            'footprint': [False, True],
         }),
 
         # Mode-specific params
@@ -190,6 +189,31 @@ class TestFilter(FilterTestCaseBase):
 # SciPy behavior fixed in 1.5.0: https://github.com/scipy/scipy/issues/11661
 @testing.with_requires('scipy>=1.5.0')
 class TestMirrorWithDim1(FilterTestCaseBase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
+        return self._filter(xp, scp)
+
+
+# Tests with Fortran-ordered arrays
+@testing.parameterize(*(
+    testing.product([
+        testing.product({
+            'filter': ['convolve', 'correlate',
+                       'minimum_filter', 'maximum_filter'],
+        }) + testing.product({
+            'filter': ['convolve1d', 'correlate1d',
+                       'minimum_filter1d', 'maximum_filter1d'],
+            'axis': [0, 1, -1],
+        }),
+        testing.product({
+             **COMMON_PARAMS,
+             'shape': [(4, 5), (3, 4, 5)],
+             'order': ['F'],
+        })
+    ])
+))
+@testing.gpu
+class TestFortranOrder(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
         return self._filter(xp, scp)
@@ -242,18 +266,20 @@ class TestSpecialWeightCases(FilterTestCaseBase):
         self.kshape = (0,) + self.shape
         return self._filter(xp, scp)
 
-    @testing.numpy_cupy_raises(scipy_name='scp', accept_error=RuntimeError)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=RuntimeError)
     def test_missing_dim(self, xp, scp):
         self.kshape = self.shape[1:]
         return self._filter(xp, scp)
 
-    @testing.numpy_cupy_raises(scipy_name='scp', accept_error=RuntimeError)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=RuntimeError)
     def test_extra_dim(self, xp, scp):
         self.kshape = self.shape[:1] + self.shape
         return self._filter(xp, scp)
 
-    @testing.numpy_cupy_raises(scipy_name='scp', accept_error=(RuntimeError,
-                                                               ValueError))
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=(RuntimeError, ValueError))
     def test_replace_dim_with_0(self, xp, scp):
         self.kshape = (0,) + self.shape[1:]
         return self._filter(xp, scp)
@@ -269,7 +295,8 @@ class TestSpecialWeightCases(FilterTestCaseBase):
 @testing.gpu
 @testing.with_requires('scipy')
 class TestSpecialCases1D(FilterTestCaseBase):
-    @testing.numpy_cupy_raises(scipy_name='scp', accept_error=RuntimeError)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=RuntimeError)
     def test_0_dim(self, xp, scp):
         self.ksize = 0
         return self._filter(xp, scp)
@@ -284,7 +311,8 @@ class TestSpecialCases1D(FilterTestCaseBase):
 @testing.gpu
 @testing.with_requires('scipy')
 class TestInvalidAxis(FilterTestCaseBase):
-    @testing.numpy_cupy_raises(scipy_name='scp', accept_error=ValueError)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
     def test_invalid_axis_pos(self, xp, scp):
         self.axis = len(self.shape)
         try:
@@ -295,7 +323,8 @@ class TestInvalidAxis(FilterTestCaseBase):
             # raising ValueError
             raise ValueError('invalid axis')
 
-    @testing.numpy_cupy_raises(scipy_name='scp', accept_error=ValueError)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
     def test_invalid_axis_neg(self, xp, scp):
         self.axis = -len(self.shape) - 1
         try:
@@ -316,7 +345,8 @@ class TestInvalidAxis(FilterTestCaseBase):
 @testing.gpu
 @testing.with_requires('scipy')
 class TestInvalidMode(FilterTestCaseBase):
-    @testing.numpy_cupy_raises(scipy_name='scp', accept_error=RuntimeError)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=RuntimeError)
     def test_invalid_mode(self, xp, scp):
         return self._filter(xp, scp)
 
@@ -334,12 +364,14 @@ class TestInvalidMode(FilterTestCaseBase):
 # SciPy behavior fixed in 1.2.0: https://github.com/scipy/scipy/issues/822
 @testing.with_requires('scipy>=1.2.0')
 class TestInvalidOrigin(FilterTestCaseBase):
-    @testing.numpy_cupy_raises(scipy_name='scp', accept_error=ValueError)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
     def test_invalid_origin_neg(self, xp, scp):
         self.origin = -self.ksize // 2 - 1
         return self._filter(xp, scp)
 
-    @testing.numpy_cupy_raises(scipy_name='scp', accept_error=ValueError)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
     def test_invalid_origin_pos(self, xp, scp):
         self.origin = self.ksize - self.ksize // 2
         return self._filter(xp, scp)

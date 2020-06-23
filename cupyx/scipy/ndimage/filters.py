@@ -445,7 +445,7 @@ def _call_kernel(kernel, input, weights, output,
     also deals with the situation that the input and output arrays overlap in
     memory.
 
-    * weights is always casted to float64 or bool in order to get an output
+    * weights is always cast to float64 or bool in order to get an output
     compatible with SciPy, though float32 might be sufficient when input dtype
     is low precision. If weights_dtype is passed as weights.dtype then no
     dtype conversion will occur. The input and output are never converted.
@@ -505,6 +505,11 @@ def _generate_boundary_condition_ops(mode, ix, xsize):
 def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
                         origins, cval, preamble='', options=(),
                         has_weights=True):
+    # Currently this code uses CArray for weights but avoids using CArray for
+    # the input data and instead does the indexing itself since it is faster.
+    # If CArray becomes faster than follow the comments that start with
+    # CArray: to switch over to using CArray for the input data as well.
+
     ndim = len(wshape)
     in_params = 'raw X x, raw W w'
     out_params = 'Y y'
@@ -512,8 +517,10 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
     inds = _generate_indices_ops(
         ndim, int_type, 'xsize_{j}',
         [' - {}'.format(wshape[j]//2 + origins[j]) for j in range(ndim)])
+    # CArray: remove xstride_{j}=... from string
     sizes = ['{type} xsize_{j}=x.shape()[{j}], xstride_{j}=x.strides()[{j}];'.
-             format(j=j, type=int_type) for j in range(ndim)]
+            format(j=j, type=int_type) for j in range(ndim)]
+    # CArray: remove expr entirely
     expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
 
     if has_weights:
@@ -526,11 +533,13 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
     loops = []
     for j in range(ndim):
         if wshape[j] == 1:
+            # CArray: string becomes 'inds[{j}] = ind_{j};', remove (int_)type
             loops.append('{{ {type} ix_{j} = ind_{j} * xstride_{j};'.
-                         format(j=j, type=int_type))
+                        format(j=j, type=int_type))
         else:
             boundary = _generate_boundary_condition_ops(
                 mode, 'ix_{}'.format(j), 'xsize_{}'.format(j))
+            # CArray: last line of string becomes inds[{j}] = ix_{j};
             loops.append('''
     for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)
     {{
@@ -539,6 +548,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
         ix_{j} *= xstride_{j};
         '''.format(j=j, wsize=wshape[j], boundary=boundary, type=int_type))
 
+    # CArray: string becomes 'x[inds]', no format call needed
     value = '(*(X*)&data[{expr}])'.format(expr=expr)
     if mode == 'constant':
         cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
@@ -546,6 +556,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
             cond=cond, cval=cval, value=value)
     found = found.format(value=value)
 
+    # CArray: replace comment and next line in string with
+    #   {type} inds[{ndim}] = {{0}};
+    # and add ndim=ndim, type=int_type to format call
     operation = '''
     {sizes}
     {inds}
