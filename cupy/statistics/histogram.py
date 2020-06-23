@@ -7,6 +7,9 @@ import cupy
 from cupy import core
 if cupy.cuda.cub_enabled:
     from cupy.cuda import cub
+    from cupy.cuda import memory
+else:
+    cub = memory = None
 
 
 _preamble = '''
@@ -218,17 +221,29 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
         # TODO(leofang): support >= 2^31 elements in x?
         if (cupy.cuda.cub_enabled
                 and x.size <= 0x7fffffff and bin_edges.size <= 0x7fffffff):
-            # Need to ensure the dtype of bin_edges as it's needed for
-            # the correction later
+            # Need to ensure the dtype of bin_edges as it's needed for both the
+            # CUB call and the correction later
             if isinstance(bins, cupy.ndarray):
                 bin_type = cupy.result_type(bin_edges, x)
                 if cupy.issubdtype(bin_type, cupy.integer):
                     bin_type = cupy.result_type(bin_type, float)
                 bin_edges = bin_edges.astype(bin_type)
-            y = cub.device_histogram(x, bin_edges, y)
             # CUB's upper bin boundary is exclusive for all bins, including
-            # the last bin, so we must correct it to comply with NumPy
-            y[-1] += cupy.count_nonzero(x == bin_edges[-1])
+            # the last bin, so we must shift it to comply with NumPy
+            if x.dtype.kind in 'ui':
+                bin_edges[-1] += 1
+            elif x.dtype.kind == 'f':
+                old_edge = memory.alloc(1 * bin_edges.dtype.itemsize)
+                old_edge.copy_from_device(bin_edges[-1].data,
+                                          bin_edges.dtype.itemsize)
+                bin_edges[-1] = cupy.nextafter(bin_edges[-1], bin_edges[-1]+1)
+            y = cub.device_histogram(x, bin_edges, y)
+            # shift the uppermost edge back
+            if x.dtype.kind in 'ui':
+                bin_edges[-1] -= 1
+            elif x.dtype.kind == 'f':
+                bin_edges[-1].data.copy_from_device(old_edge,
+                                                    bin_edges.dtype.itemsize)
         else:
             _histogram_kernel(x, bin_edges, bin_edges.size, y)
     else:
