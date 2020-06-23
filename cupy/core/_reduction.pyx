@@ -45,6 +45,12 @@ cpdef function.Function _create_reduction_function(
         name, block_size, reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
+    # A (incomplete) list of internal variables:
+    # _J            : the index of an element in the array
+    # _block_size   : the number of threads in a block; should be power of 2
+    # _block_stride : the number of elements being processed by a block; should
+    #                 be power of 2 and <= _block_size
+
     module_code = string.Template('''
 ${type_preamble}
 ${preamble}
