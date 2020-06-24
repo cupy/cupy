@@ -483,35 +483,121 @@ cdef extern from 'cupy_cusolver.h' nogil:
         double *h_R_nrmF, int batchSize)
 
     # Standard symmetric eigenvalue solver
-    int cusolverDnSsyevd_bufferSize(Handle handle,
-                                    EigMode jobz, FillMode uplo, int n,
-                                    const float* A, int lda,
-                                    const float* W, int* lwork)
-    int cusolverDnDsyevd_bufferSize(Handle handle,
-                                    EigMode jobz, FillMode uplo, int n,
-                                    const double* A, int lda,
-                                    const double* W, int* lwork)
-    int cusolverDnCheevd_bufferSize(Handle handle,
-                                    EigMode jobz, FillMode uplo, int n,
-                                    const cuComplex* A, int lda,
-                                    const float* W, int* lwork)
-    int cusolverDnZheevd_bufferSize(Handle handle,
-                                    EigMode jobz, FillMode uplo, int n,
-                                    const cuDoubleComplex* A, int lda,
-                                    const double* W, int* lwork)
+    int cusolverDnSsyevd_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const float* A, int lda, const float* W, int* lwork)
+    int cusolverDnDsyevd_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const double* A, int lda, const double* W, int* lwork)
+    int cusolverDnCheevd_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const cuComplex* A, int lda, const float* W, int* lwork)
+    int cusolverDnZheevd_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const cuDoubleComplex* A, int lda, const double* W, int* lwork)
 
-    int cusolverDnSsyevd(Handle handle, EigMode jobz, FillMode uplo, int n,
-                         float* A, int lda, float* W,
-                         float* work, int lwork, int* info)
-    int cusolverDnDsyevd(Handle handle, EigMode jobz, FillMode uplo, int n,
-                         double* A, int lda, double* W,
-                         double* work, int lwork, int* info)
-    int cusolverDnCheevd(Handle handle, EigMode jobz, FillMode uplo, int n,
-                         cuComplex* A, int lda, float* W,
-                         cuComplex* work, int lwork, int* info)
-    int cusolverDnZheevd(Handle handle, EigMode jobz, FillMode uplo, int n,
-                         cuDoubleComplex* A, int lda, double* W,
-                         cuDoubleComplex* work, int lwork, int* info)
+    int cusolverDnSsyevd(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        float* A, int lda, float* W,
+        float* work, int lwork, int* info)
+    int cusolverDnDsyevd(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        double* A, int lda, double* W,
+        double* work, int lwork, int* info)
+    int cusolverDnCheevd(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        cuComplex* A, int lda, float* W,
+        cuComplex* work, int lwork, int* info)
+    int cusolverDnZheevd(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        cuDoubleComplex* A, int lda, double* W,
+        cuDoubleComplex* work, int lwork, int* info)
+
+    # Symmetric eigenvalue solver using Jacobi method
+    int cusolverDnCreateSyevjInfo(SyevjInfo *info)
+    int cusolverDnDestroySyevjInfo(SyevjInfo info)
+
+    int cusolverDnXsyevjSetTolerance(SyevjInfo info, double tolerance)
+    int cusolverDnXsyevjSetMaxSweeps(SyevjInfo info, int max_sweeps)
+    int cusolverDnXsyevjSetSortEig(SyevjInfo info, int sort_eig)
+    int cusolverDnXsyevjGetResidual(
+        Handle handle, SyevjInfo info, double* residual)
+    int cusolverDnXsyevjGetSweeps(
+        Handle handle, SyevjInfo info, int* executed_sweeps)
+
+    int cusolverDnSsyevj_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const float *A, int lda, const float *W, int *lwork,
+        SyevjInfo params)
+    int cusolverDnDsyevj_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const double *A, int lda, const double *W, int *lwork,
+        SyevjInfo params)
+    int cusolverDnCheevj_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const cuComplex *A, int lda, const float *W, int *lwork,
+        SyevjInfo params)
+    int cusolverDnZheevj_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const cuDoubleComplex *A, int lda, const double *W, int *lwork,
+        SyevjInfo params)
+
+    int cusolverDnSsyevj(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        float *A, int lda, float *W, float *work,
+        int lwork, int *info, SyevjInfo params)
+    int cusolverDnDsyevj(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        double *A, int lda, double *W, double *work,
+        int lwork, int *info, SyevjInfo params)
+    int cusolverDnCheevj(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        cuComplex *A, int lda, float *W, cuComplex *work,
+        int lwork, int *info, SyevjInfo params)
+    int cusolverDnZheevj(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        cuDoubleComplex *A, int lda, double *W, cuDoubleComplex *work,
+        int lwork, int *info, SyevjInfo params)
+
+    int cusolverDnSsyevjBatched_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const float *A, int lda, const float *W, int *lwork,
+        SyevjInfo params, int batchSize)
+
+    int cusolverDnDsyevjBatched_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const double *A, int lda, const double *W, int *lwork,
+        SyevjInfo params, int batchSize)
+
+    int cusolverDnCheevjBatched_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const cuComplex *A, int lda, const float *W, int *lwork,
+        SyevjInfo params, int batchSize)
+
+    int cusolverDnZheevjBatched_bufferSize(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        const cuDoubleComplex *A, int lda, const double *W, int *lwork,
+        SyevjInfo params, int batchSize)
+
+    int cusolverDnSsyevjBatched(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        float *A, int lda, float *W, float *work, int lwork,
+        int *info, SyevjInfo params, int batchSize)
+
+    int cusolverDnDsyevjBatched(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        double *A, int lda, double *W, double *work, int lwork,
+        int *info, SyevjInfo params, int batchSize)
+
+    int cusolverDnCheevjBatched(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        cuComplex *A, int lda, float *W, cuComplex *work, int lwork,
+        int *info, SyevjInfo params, int batchSize)
+
+    int cusolverDnZheevjBatched(
+        Handle handle, EigMode jobz, FillMode uplo, int n,
+        cuDoubleComplex *A, int lda, double *W, cuDoubleComplex *work,
+        int lwork, int *info, SyevjInfo params, int batchSize)
 
     ###########################################################################
     # Sparse LAPACK Functions
@@ -2010,6 +2096,245 @@ cpdef zheevd(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
             <cuDoubleComplex*>work, lwork, <int*>info)
     check_status(status)
 
+# Symmetric eigenvalue solver via Jacobi method
+cpdef intptr_t createSyevjInfo() except? 0:
+    cdef SyevjInfo info
+    status = cusolverDnCreateSyevjInfo(&info)
+    check_status(status)
+    return <intptr_t>info
+
+cpdef destroySyevjInfo(intptr_t info):
+    status = cusolverDnDestroySyevjInfo(<SyevjInfo>info)
+    check_status(status)
+
+cpdef xsyevjSetTolerance(intptr_t info, double tolerance):
+    status = cusolverDnXsyevjSetTolerance(<SyevjInfo>info, tolerance)
+    check_status(status)
+
+cpdef xsyevjSetMaxSweeps(intptr_t info, int max_sweeps):
+    status = cusolverDnXsyevjSetMaxSweeps(<SyevjInfo>info, max_sweeps)
+    check_status(status)
+
+cpdef xsyevjSetSortEig(intptr_t info, int sort_eig):
+    status = cusolverDnXsyevjSetSortEig(<SyevjInfo>info, sort_eig)
+    check_status(status)
+
+cpdef double xsyevjGetResidual(intptr_t handle, intptr_t info):
+    cdef double residual
+    status = cusolverDnXsyevjGetResidual(
+        <Handle>handle, <SyevjInfo>info, &residual)
+    check_status(status)
+    return residual
+
+cpdef int xsyevjGetSweeps(intptr_t handle, intptr_t info):
+    cdef int executed_sweeps
+    status = cusolverDnXsyevjGetSweeps(
+        <Handle>handle, <SyevjInfo>info, &executed_sweeps)
+    check_status(status)
+    return executed_sweeps
+
+cpdef int ssyevj_bufferSize(intptr_t handle, int jobz, int uplo,
+                            int n, size_t A, int lda, size_t W,
+                            intptr_t params) except? -1:
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSsyevj_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <const float*>A,
+            lda, <const float*>W, &lwork, <SyevjInfo>params)
+    check_status(status)
+    return lwork
+
+cpdef int dsyevj_bufferSize(intptr_t handle, int jobz, int uplo,
+                            int n, size_t A, int lda, size_t W,
+                            intptr_t params) except? -1:
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDsyevj_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <const double*>A,
+            lda, <const double*>W, &lwork, <SyevjInfo>params)
+    check_status(status)
+    return lwork
+
+cpdef int cheevj_bufferSize(intptr_t handle, int jobz, int uplo,
+                            int n, size_t A, int lda, size_t W,
+                            intptr_t params) except? -1:
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCheevj_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <const cuComplex*>A,
+            lda, <const float*>W, &lwork, <SyevjInfo>params)
+    check_status(status)
+    return lwork
+
+cpdef int zheevj_bufferSize(intptr_t handle, int jobz, int uplo,
+                            int n, size_t A, int lda, size_t W,
+                            intptr_t params) except? -1:
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZheevj_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <const cuDoubleComplex*>A,
+            lda, <const double*>W, &lwork, <SyevjInfo>params)
+    check_status(status)
+    return lwork
+
+cpdef ssyevj(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
+             size_t W, size_t work, int lwork, size_t info, intptr_t params):
+    cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSsyevj(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <float*>A, lda, <float*>W,
+            <float*>work, lwork, <int*>info, <SyevjInfo>params)
+    check_status(status)
+
+cpdef dsyevj(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
+             size_t W, size_t work, int lwork, size_t info, intptr_t params):
+    cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDsyevj(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <double*>A, lda, <double*>W,
+            <double*>work, lwork, <int*>info, <SyevjInfo>params)
+    check_status(status)
+
+cpdef cheevj(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
+             size_t W, size_t work, int lwork, size_t info, intptr_t params):
+    cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCheevj(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <cuComplex*>A, lda, <float*>W,
+            <cuComplex*>work, lwork, <int*>info, <SyevjInfo>params)
+    check_status(status)
+
+cpdef zheevj(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
+             size_t W, size_t work, int lwork, size_t info, intptr_t params):
+    cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZheevj(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <cuDoubleComplex*>A, lda, <double*>W,
+            <cuDoubleComplex*>work, lwork, <int*>info, <SyevjInfo>params)
+    check_status(status)
+
+# Batched symmetric eigenvalue solver via Jacobi method
+
+cpdef int ssyevjBatched_bufferSize(
+        intptr_t handle, int jobz, int uplo, int n,
+        size_t A, int lda, size_t W, intptr_t params,
+        int batchSize) except? -1:
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSsyevjBatched_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <const float *>A, lda, <const float *>W, &lwork,
+            <SyevjInfo>params, batchSize)
+    check_status(status)
+    return lwork
+
+cpdef int dsyevjBatched_bufferSize(
+        intptr_t handle, int jobz, int uplo, int n,
+        size_t A, int lda, size_t W, intptr_t params,
+        int batchSize) except? -1:
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDsyevjBatched_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <const double *>A, lda, <const double *>W, &lwork,
+            <SyevjInfo>params, batchSize)
+    check_status(status)
+    return lwork
+
+cpdef int cheevjBatched_bufferSize(
+        intptr_t handle, int jobz, int uplo, int n,
+        size_t A, int lda, size_t W, intptr_t params,
+        int batchSize) except? -1:
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCheevjBatched_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <const cuComplex *>A, lda, <const float *>W, &lwork,
+            <SyevjInfo>params, batchSize)
+    check_status(status)
+    return lwork
+
+cpdef int zheevjBatched_bufferSize(
+        intptr_t handle, int jobz, int uplo, int n,
+        size_t A, int lda, size_t W, intptr_t params,
+        int batchSize) except? -1:
+    cdef int lwork, status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZheevjBatched_bufferSize(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <const cuDoubleComplex *>A, lda, <const double *>W, &lwork,
+            <SyevjInfo>params, batchSize)
+    check_status(status)
+    return lwork
+
+cpdef ssyevjBatched(intptr_t handle, int jobz, int uplo, int n,
+                    size_t A, int lda, size_t W, size_t work, int lwork,
+                    size_t info, intptr_t params, int batchSize):
+    cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSsyevjBatched(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <float*>A, lda, <float*>W,
+            <float*>work, lwork, <int*>info, <SyevjInfo>params, batchSize)
+    check_status(status)
+
+cpdef dsyevjBatched(intptr_t handle, int jobz, int uplo, int n,
+                    size_t A, int lda, size_t W, size_t work, int lwork,
+                    size_t info, intptr_t params, int batchSize):
+    cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDsyevjBatched(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <double*>A, lda, <double*>W,
+            <double*>work, lwork, <int*>info, <SyevjInfo>params, batchSize)
+    check_status(status)
+
+cpdef cheevjBatched(intptr_t handle, int jobz, int uplo, int n,
+                    size_t A, int lda, size_t W, size_t work, int lwork,
+                    size_t info, intptr_t params, int batchSize):
+    cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCheevjBatched(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <cuComplex*>A, lda, <float*>W,
+            <cuComplex*>work, lwork, <int*>info, <SyevjInfo>params, batchSize)
+    check_status(status)
+
+cpdef zheevjBatched(intptr_t handle, int jobz, int uplo, int n,
+                    size_t A, int lda, size_t W, size_t work, int lwork,
+                    size_t info, intptr_t params, int batchSize):
+    cdef int status
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZheevjBatched(
+            <Handle>handle, <EigMode>jobz, <FillMode>uplo, n,
+            <cuDoubleComplex*>A, lda, <double*>W,
+            <cuDoubleComplex*>work, lwork, <int*>info,
+            <SyevjInfo>params, batchSize)
+    check_status(status)
 
 ###############################################################################
 # Sparse LAPACK Functions

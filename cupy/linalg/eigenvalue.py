@@ -121,7 +121,10 @@ def eigh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigh`
     """
-    return _syevd(a, UPLO, True)
+    if a.ndim == 3:
+        return cupy.cusolver._syevj_batched(a, UPLO, True)
+    else:
+        return _syevd(a, UPLO, True)
 
 
 # TODO(okuta): Implement eigvals
@@ -156,4 +159,7 @@ def eigvalsh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """
-    return _syevd(a, UPLO, False)[0]
+    if a.ndim == 3:
+        return cupy.cusolver._syevj_batched(a, UPLO, False)[0]
+    else:
+        return _syevd(a, UPLO, False)[0]

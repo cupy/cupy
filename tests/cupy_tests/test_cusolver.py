@@ -127,3 +127,45 @@ class TestGesvda(unittest.TestCase):
         else:
             decimal = 10
         testing.assert_array_almost_equal(s, expect, decimal=decimal)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'order': ['C', 'F'],
+    'UPLO': ['L', 'U'],
+}))
+@attr.gpu
+class TestSyevj(unittest.TestCase):
+
+    def setUp(self):
+        if not cusolver.check_availability('syevj'):
+            pytest.skip('syevj is not available')
+        if self.dtype in (numpy.complex64, numpy.complex128):
+            self.a = numpy.array(
+                [[1, 2j, 3], [-2j, 5, 4j], [3, -4j, 9]], dtype=self.dtype)
+        else:
+            self.a = numpy.array(
+                [[1, 2, 3], [2, 5, 4], [3, 4, 9]], dtype=self.dtype)
+
+    def test_syevj(self):
+        a = cupy.array(self.a, order=self.order)
+        w, v = cusolver.syevj(a, UPLO=self.UPLO, with_eigen_vector=True)
+
+        # check eignvalue equation
+        testing.assert_allclose(self.a.dot(
+            v.get()), w * v, rtol=1e-3, atol=1e-4)
+
+    def test_syevjBatched(self):
+
+        lda, m = self.a.shape
+
+        na = numpy.stack([self.a, self.a + numpy.diag(numpy.ones(m))])
+        a = cupy.array(na, order=self.order)
+
+        w, v = cusolver.syevj(a, UPLO=self.UPLO, with_eigen_vector=True)
+
+        # check eignvalue equation
+        batch_size = a.shape[0]
+        for i in range(batch_size):
+            testing.assert_allclose(
+                na[i].dot(v[i].get()), w[i] * v[i], rtol=1e-3, atol=1e-4)
