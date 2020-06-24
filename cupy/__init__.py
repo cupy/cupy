@@ -4,11 +4,21 @@ import sys as _sys
 import numpy as _numpy
 
 from cupy import _environment
-from cupy import _version
 
 
 _environment._setup_win32_dll_directory()  # NOQA
 _environment._preload_libraries()  # NOQA
+
+
+try:
+    from cupy._version import __version__  # NOQA
+except ImportError as e:
+    raise ImportError('''
+Error importing CuPy: version information could not be found.
+
+It is likely that you are trying to import cupy from its source directory without building it;
+please exit the cupy source tree, and relaunch your python interpreter from there.
+''') from e  # NOQA
 
 
 try:
@@ -36,16 +46,13 @@ original error: {}'''.format(_exc_info[1]))  # NOQA
     raise ImportError(_msg) from e
 
 
-from cupy import cuda
+from cupy import cuda  # NOQA
 # Do not make `cupy.cupyx` available because it is confusing.
-import cupyx as _cupyx
+import cupyx as _cupyx  # NOQA
 
 
 def is_available():
     return cuda.is_available()
-
-
-__version__ = _version.__version__
 
 
 import cupy.core.fusion  # NOQA
