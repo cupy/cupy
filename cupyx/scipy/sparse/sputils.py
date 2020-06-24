@@ -65,6 +65,29 @@ def get_index_dtype(arrays=(), maxval=None, check_contents=False):
     return dtype
 
 
+def validateaxis(axis):
+    if axis is not None:
+        axis_type = type(axis)
+
+        # In NumPy, you can pass in tuples for 'axis', but they are
+        # not very useful for sparse matrices given their limited
+        # dimensions, so let's make it explicit that they are not
+        # allowed to be passed in
+        if axis_type == tuple:
+            raise TypeError(("Tuples are not accepted for the 'axis' "
+                             "parameter. Please pass in one of the "
+                             "following: {-2, -1, 0, 1, None}."))
+
+        # If not a tuple, check that the provided axis is actually
+        # an integer and raise a TypeError similar to NumPy's
+        if not cupy.issubdtype(cupy.dtype(axis_type), cupy.integer):
+            raise TypeError("axis must be an integer, not {name}"
+                            .format(name=axis_type.__name__))
+
+        if not (-2 <= axis <= 1):
+            raise ValueError("axis out of range")
+
+
 def upcast(*args):
     """Returns the nearest supported sparse dtype for the
     combination of one or more types.

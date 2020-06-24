@@ -2,6 +2,7 @@ import numpy
 
 import cupy
 from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import sputils
 
 
 class spmatrix(object):
@@ -330,7 +331,70 @@ class spmatrix(object):
     def maximum(self, other):
         return self.tocsr().maximum(other)
 
-    # TODO(unno): Implement mean
+    def mean(self, axis=None, dtype=None, out=None):
+        """
+        Compute the arithmetic mean along the specified axis.
+        Returns the average of the matrix elements. The average is taken
+        over all elements in the matrix by default, otherwise over the
+        specified axis. `float64` intermediate and return values are used
+        for integer inputs.
+        Parameters
+        ----------
+        axis : {-2, -1, 0, 1, None} optional
+            Axis along which the mean is computed. The default is to compute
+            the mean of all elements in the matrix (i.e., `axis` = `None`).
+        dtype : data-type, optional
+            Type to use in computing the mean. For integer inputs, the default
+            is `float64`; for floating point inputs, it is the same as the
+            input dtype.
+            .. versionadded:: 0.18.0
+        out : np.matrix, optional
+            Alternative output matrix in which to place the result. It must
+            have the same shape as the expected output, but the type of the
+            output values will be cast if necessary.
+            .. versionadded:: 0.18.0
+        Returns
+        -------
+        m : np.matrix
+        See Also
+        --------
+        numpy.matrix.mean : NumPy's implementation of 'mean' for matrices
+        """
+        def _is_integral(dtype):
+            return (cupy.issubdtype(dtype, cupy.integer) or
+                    cupy.issubdtype(dtype, cupy.bool_))
+
+        sputils.validateaxis(axis)
+
+        res_dtype = self.dtype.type
+        integral = _is_integral(self.dtype)
+
+        # output dtype
+        if dtype is None:
+            if integral:
+                res_dtype = cupy.float64
+        else:
+            res_dtype = cupy.dtype(dtype).type
+
+        # intermediate dtype for summation
+        inter_dtype = cupy.float64 if integral else res_dtype
+        inter_self = self.astype(inter_dtype)
+
+        if axis is None:
+            return (inter_self / cupy.array(
+                self.shape[0] * self.shape[1]))\
+                .sum(dtype=res_dtype, out=out)
+
+        if axis < 0:
+            axis += 2
+
+        # axis = 0 or 1 now
+        if axis == 0:
+            return (inter_self * (1.0 / self.shape[0])).sum(
+                axis=0, dtype=res_dtype, out=out)
+        else:
+            return (inter_self * (1.0 / self.shape[1])).sum(
+                axis=1, dtype=res_dtype, out=out)
 
     def minimum(self, other):
         return self.tocsr().minimum(other)
