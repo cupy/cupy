@@ -45,7 +45,6 @@ between CuPy's functions and corresponding NumPy's ones.
    cupy.testing.numpy_cupy_array_equal
    cupy.testing.numpy_cupy_array_list_equal
    cupy.testing.numpy_cupy_array_less
-   cupy.testing.numpy_cupy_raises
 
 
 Parameterized dtype Test

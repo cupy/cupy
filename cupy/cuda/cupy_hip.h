@@ -245,6 +245,14 @@ cudaError_t cudaDeviceEnablePeerAccess(int peerDeviceId, unsigned int flags) {
     return hipDeviceEnablePeerAccess(peerDeviceId, flags);
 }
 
+cudaError_t cudaDeviceGetLimit(size_t* pValue, cudaLimit limit) {
+    return hipDeviceGetLimit(pValue, limit);
+}
+
+cudaError_t cudaDeviceSetLimit(cudaLimit limit, size_t value) {
+    // see https://github.com/ROCm-Developer-Tools/HIP/issues/1632
+    return hipErrorUnknown;
+}
 
 // Memory management
 cudaError_t cudaMalloc(void** ptr, size_t size) {

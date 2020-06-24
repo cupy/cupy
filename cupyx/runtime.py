@@ -5,6 +5,11 @@ import os
 import cupy
 
 try:
+    import cupy.cuda.thrust as thrust
+except ImportError:
+    thrust = None
+
+try:
     import cupy.cuda.cudnn as cudnn
 except ImportError:
     cudnn = None
@@ -88,6 +93,7 @@ class _RuntimeInfo(object):
     cusolver_version = None
     cusparse_version = None
     nvrtc_version = None
+    thrust_version = None
 
     # Optional Libraries
     cudnn_build_version = None
@@ -132,6 +138,9 @@ class _RuntimeInfo(object):
             cupy.cuda.nvrtc.getVersion,
             cupy.cuda.nvrtc.NVRTCError)
 
+        if thrust is not None:
+            self.thrust_version = thrust.get_build_version()
+
         if cudnn is not None:
             self.cudnn_build_version = cudnn.get_build_version()
             self.cudnn_version = _eval_or_error(
@@ -170,6 +179,7 @@ class _RuntimeInfo(object):
             ('cuSOLVER Version', self.cusolver_version),
             ('cuSPARSE Version', self.cusparse_version),
             ('NVRTC Version', self.nvrtc_version),
+            ('Thrust Version', self.thrust_version),
         ]
 
         records += [

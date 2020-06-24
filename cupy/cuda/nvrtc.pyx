@@ -32,6 +32,8 @@ cdef extern from 'cupy_nvrtc.h' nogil:
     int nvrtcGetPTX(Program prog, char *ptx)
     int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
     int nvrtcGetProgramLog(Program prog, char* log)
+    int nvrtcAddNameExpression(Program, const char*)
+    int nvrtcGetLoweredName(Program, const char*, const char**)
 
 
 ###############################################################################
@@ -121,28 +123,55 @@ cpdef compileProgram(intptr_t prog, options):
 cpdef unicode getPTX(intptr_t prog):
     cdef size_t ptxSizeRet
     cdef vector.vector[char] ptx
+    cdef char* ptx_ptr = NULL
     with nogil:
         status = nvrtcGetPTXSize(<Program>prog, &ptxSizeRet)
     check_status(status)
+    if ptxSizeRet == 0:
+        return ''
     ptx.resize(ptxSizeRet)
+    ptx_ptr = ptx.data()
     with nogil:
-        status = nvrtcGetPTX(<Program>prog, &ptx[0])
+        status = nvrtcGetPTX(<Program>prog, ptx_ptr)
     check_status(status)
 
     # Strip the trailing NULL.
-    return (&ptx[0])[:ptxSizeRet-1].decode('UTF-8')
+    return ptx_ptr[:ptxSizeRet-1].decode('UTF-8')
 
 
 cpdef unicode getProgramLog(intptr_t prog):
     cdef size_t logSizeRet
     cdef vector.vector[char] log
+    cdef char* log_ptr = NULL
     with nogil:
         status = nvrtcGetProgramLogSize(<Program>prog, &logSizeRet)
     check_status(status)
+    if logSizeRet == 0:
+        return ''
     log.resize(logSizeRet)
+    log_ptr = log.data()
     with nogil:
-        status = nvrtcGetProgramLog(<Program>prog, &log[0])
+        status = nvrtcGetProgramLog(<Program>prog, log_ptr)
     check_status(status)
 
     # Strip the trailing NULL.
-    return (&log[0])[:logSizeRet-1].decode('UTF-8')
+    return log_ptr[:logSizeRet-1].decode('UTF-8')
+
+
+cpdef addAddNameExpression(intptr_t prog, str name):
+    cdef bytes b_name = name.encode()
+    cdef const char* c_name = b_name
+    with nogil:
+        status = nvrtcAddNameExpression(<Program>prog, c_name)
+    check_status(status)
+
+
+cpdef str getLoweredName(intptr_t prog, str name):
+    cdef bytes b_name = name.encode()
+    cdef const char* c_name = b_name
+    cdef const char* mangled_name
+    with nogil:
+        status = nvrtcGetLoweredName(<Program>prog, c_name, &mangled_name)
+    check_status(status)
+    b_name = mangled_name
+    return b_name.decode('UTF-8')

@@ -39,6 +39,8 @@ cdef extern from *:
     ctypedef int MemoryKind 'cudaMemcpyKind'
     ctypedef void* MipmappedArray 'cudaMipmappedArray_t'
 
+    ctypedef int Limit 'cudaLimit'
+
     # This is for the annoying nested struct cudaResourceDesc, which is not
     # perfectly supprted in Cython
     ctypedef struct _array:
@@ -244,6 +246,14 @@ cpdef enum:
     cudaDevAttrPageableMemoryAccessUsesHostPageTables = 100
     cudaDevAttrDirectManagedMemAccessFromHost = 101
 
+    # CUDA Limits
+    cudaLimitStackSize = 0x00
+    cudaLimitPrintfFifoSize = 0x01
+    cudaLimitMallocHeapSize = 0x02
+    cudaLimitDevRuntimeSyncDepth = 0x03
+    cudaLimitDevRuntimePendingLaunchCount = 0x04
+    cudaLimitMaxL2FetchGranularity = 0x05
+
     # cudaChannelFormatKind
     cudaChannelFormatKindSigned = 0
     cudaChannelFormatKindUnsigned = 1
@@ -325,6 +335,9 @@ cpdef deviceSynchronize()
 
 cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1
 cpdef deviceEnablePeerAccess(int peerDevice)
+
+cpdef size_t deviceGetLimit(int limit) except? -1
+cpdef deviceSetLimit(int limit, size_t value)
 
 
 ###############################################################################

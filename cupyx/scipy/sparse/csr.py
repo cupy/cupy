@@ -81,7 +81,13 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         self.sum_duplicates()
         other = other.tocsr()
         other.sum_duplicates()
-        return cusparse.csrgeam(self, other, alpha, beta)
+        if cusparse.check_availability('csrgeam2'):
+            csrgeam = cusparse.csrgeam2
+        elif cusparse.check_availability('csrgeam'):
+            csrgeam = cusparse.csrgeam
+        else:
+            raise NotImplementedError
+        return csrgeam(self, other, alpha, beta)
 
     def __eq__(self, other):
         raise NotImplementedError
@@ -108,11 +114,23 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         elif isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            return cusparse.csrgemm(self, other)
+            if cusparse.check_availability('csrgemm2'):
+                return cusparse.csrgemm2(self, other)
+            elif cusparse.check_availability('csrgemm'):
+                return cusparse.csrgemm(self, other)
+            else:
+                raise NotImplementedError
         elif csc.isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            return cusparse.csrgemm(self, other.T, transb=True)
+            if cusparse.check_availability('csrgemm'):
+                return cusparse.csrgemm(self, other.T, transb=True)
+            elif cusparse.check_availability('csrgemm2'):
+                b = other.tocsr()
+                b.sum_duplicates()
+                return cusparse.csrgemm2(self, b)
+            else:
+                raise NotImplementedError
         elif base.isspmatrix(other):
             return self * other.tocsr()
         elif base.isdense(other):
@@ -131,10 +149,22 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                     else:
                         return cusparse.csrmvEx(self, other)
                 else:
-                    return cusparse.csrmv(self, other)
+                    if cusparse.check_availability('csrmv'):
+                        csrmv = cusparse.csrmv
+                    elif cusparse.check_availability('spmv'):
+                        csrmv = cusparse.spmv
+                    else:
+                        raise NotImplementedError
+                    return csrmv(self, other)
             elif other.ndim == 2:
                 self.sum_duplicates()
-                return cusparse.csrmm2(self, cupy.asfortranarray(other))
+                if cusparse.check_availability('csrmm2'):
+                    csrmm = cusparse.csrmm2
+                elif cusparse.check_availability('spmm'):
+                    csrmm = cusparse.spmm
+                else:
+                    raise NotImplementedError
+                return csrmm(self, cupy.asfortranarray(other))
             else:
                 raise ValueError('could not interpret dimensions')
         else:
@@ -251,7 +281,13 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
         """
         # copy is ignored
-        return cusparse.csr2csc(self)
+        if cusparse.check_availability('csr2csc'):
+            csr2csc = cusparse.csr2csc
+        elif cusparse.check_availability('csr2cscEx2'):
+            csr2csc = cusparse.csr2cscEx2
+        else:
+            raise NotImplementedError
+        return csr2csc(self)
 
     def tocsr(self, copy=False):
         """Converts the matrix to Compressed Sparse Row format.
@@ -299,8 +335,10 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 'swapping dimensions is the only logical permutation.')
 
         shape = self.shape[1], self.shape[0]
-        return csc.csc_matrix(
+        trans = csc.csc_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
+        trans._has_canonical_format = self._has_canonical_format
+        return trans
 
 
 def isspmatrix_csr(x):

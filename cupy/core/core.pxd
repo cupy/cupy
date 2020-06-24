@@ -15,6 +15,8 @@ cdef class ndarray:
         public strides_t _strides
         readonly bint _c_contiguous
         readonly bint _f_contiguous
+        # To do fast indexing in the CArray class
+        readonly bint _index_32_bits
         readonly object dtype
         readonly memory.MemoryPointer data
         # TODO(niboshi): Return arbitrary owner object as `base` if the
@@ -94,13 +96,15 @@ cdef class ndarray:
 
 cpdef ndarray _internal_ascontiguousarray(ndarray a)
 cpdef ndarray _internal_asfortranarray(ndarray a)
+cpdef ndarray _mat_ptrs(ndarray a)
 cpdef ndarray ascontiguousarray(ndarray a, dtype=*)
 cpdef ndarray asfortranarray(ndarray a, dtype=*)
 
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*,
                                 backend=*, translate_cucomplex=*,
-                                enable_cooperative_groups=*)
+                                enable_cooperative_groups=*,
+                                name_expressions=*)
 
 
 # TODO(niboshi): Move to _routines_creation.pyx
