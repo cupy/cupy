@@ -1,3 +1,5 @@
+import os
+
 cdef list _reduction_backends = []
 cdef list _routine_backends = []
 
@@ -12,9 +14,18 @@ def _get_backend(str s):
 
 def set_reduction_backends(str s):
     global _reduction_backends
-    _reduction_backends = [_get_backend(t) for t in s.split(',')]
+    _reduction_backends = [_get_backend(t) for t in s.split(',') if t]
 
 
 def set_routine_backends(str s):
     global _routine_backends
-    _routine_backends = [_get_backend(t) for t in s.split(',')]
+    _routine_backends = [_get_backend(t) for t in s.split(',') if t]
+
+
+cdef _set_default_backends():
+    cdef str default_backends = os.getenv('CUPY_BACKENDS', '')
+    set_reduction_backends(default_backends)
+    set_routine_backends(default_backends)
+
+
+_set_default_backends()
