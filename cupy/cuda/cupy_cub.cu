@@ -630,19 +630,22 @@ struct _cub_histogram_range {
         // TODO(leofang): revisit this part when complex support is added to cupy.histogram()
         typedef typename If<(Equals<sampleT, complex<float>>::VALUE || Equals<sampleT, complex<double>>::VALUE),
                             double,
-                            sampleT>::Type hackT;
+                            sampleT>::Type h_sampleT;
+        typedef typename If<(Equals<binT, complex<float>>::VALUE || Equals<binT, complex<double>>::VALUE),
+                            double,
+                            binT>::Type h_binT;
 
-        // TODO(leofang): CUB seems to bake the OffsetT type somewhere that specializing
-        // for n_samples of type size_t would error. Need to pinpoint where went wrong.
-        // The code path splitting is disabled and a type/range check is done in the caller.
+        // TODO(leofang): CUB has a bug that when specializing n_samples with type size_t,
+        // it would error out. Before the fix (thrust/cub#38) is merged we disable the code
+        // path splitting for now. A type/range check must be done in the caller.
 
         // if (n_samples < (1ULL << 31)) {
             int num_samples = n_samples;
-            DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<hackT*>(input),
-                static_cast<long long*>(output), n_bins, static_cast<binT*>(bins), num_samples, s);
+            DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
+                static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), num_samples, s);
         // } else {
-        //     DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<hackT*>(input),
-        //         static_cast<long long*>(output), n_bins, static_cast<binT*>(bins), n_samples, s);
+        //     DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
+        //         static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), n_samples, s);
         // }
     }
 };
