@@ -7,6 +7,7 @@ from cupy.core import _reduction
 from cupy.core._reduction import create_reduction_func
 from cupy.core._reduction import ReductionKernel
 
+from cupy.core cimport _backend
 from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray
 
@@ -16,34 +17,37 @@ if cupy.cuda.cub_enabled:
 
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
-    if cupy.cuda.cub_enabled:
-        # result will be None if the reduction is not compatible with CUB
-        result = cub.cub_reduction(self, cub.CUPY_CUB_MAX, axis, dtype, out,
-                                   keepdims)
-        if result is not None:
-            return result
+    for backend in _backend._routine_backends:
+        if backend == _backend.BACKEND_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_MAX, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
-    if cupy.cuda.cub_enabled:
-        # result will be None if the reduction is not compatible with CUB
-        result = cub.cub_reduction(self, cub.CUPY_CUB_MIN, axis, out, dtype,
-                                   keepdims)
-        if result is not None:
-            return result
+    for backend in _backend._routine_backends:
+        if backend == _backend.BACKEND_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_MIN, axis, out, dtype, keepdims)
+            if result is not None:
+                return result
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef ndarray _ndarray_ptp(ndarray self, axis, out, keepdims):
-    if cupy.cuda.cub_enabled:
-        # result will be None if the reduction is not compatible with CUB
-        result = cub.cub_reduction(self, cub.CUPY_CUB_MAX, axis, out, None,
-                                   keepdims)
-        if result is not None:
-            result -= cub.cub_reduction(self, cub.CUPY_CUB_MIN, axis, None,
-                                        None, keepdims)
-            return result
+    for backend in _backend._routine_backends:
+        if backend == _backend.BACKEND_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_MAX, axis, out, None, keepdims)
+            if result is not None:
+                result -= cub.cub_reduction(
+                    self, cub.CUPY_CUB_MIN, axis, None, None, keepdims)
+                return result
 
     result = _amax(self, axis=axis, out=out, keepdims=keepdims)
     result -= _amin(self, axis=axis, out=None, keepdims=keepdims)
@@ -52,23 +56,25 @@ cdef ndarray _ndarray_ptp(ndarray self, axis, out, keepdims):
 
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
-    if cupy.cuda.cub_enabled:
-        # result will be None if the reduction is not compatible with CUB
-        result = cub.cub_reduction(self, cub.CUPY_CUB_ARGMAX, axis, dtype, out,
-                                   keepdims)
-        if result is not None:
-            return result
+    for backend in _backend._routine_backends:
+        if backend == _backend.BACKEND_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_ARGMAX, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
-    if cupy.cuda.cub_enabled:
-        # result will be None if the reduction is not compatible with CUB
-        result = cub.cub_reduction(self, cub.CUPY_CUB_ARGMIN, axis, dtype, out,
-                                   keepdims)
-        if result is not None:
-            return result
+    for backend in _backend._routine_backends:
+        if backend == _backend.BACKEND_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_ARGMIN, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
@@ -86,16 +92,18 @@ cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
         dtype_out = dtype
         dtype_sum = numpy.float64
 
-    result = None
-    if (cupy.cuda.cub_enabled and self.size != 0):
-        result = cub.cub_reduction(self, cub.CUPY_CUB_SUM, axis, dtype_sum,
-                                   out, keepdims)
-    if result is not None:
-        n = self.size // result.size
-        cupy.true_divide(result, n, out=result, casting='unsafe')
+    for backend in _backend._routine_backends:
+        if backend == _backend.BACKEND_CUB and self.size != 0:
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_SUM, axis, dtype_sum, out, keepdims)
+            if result is not None:
+                n = self.size // result.size
+                cupy.true_divide(result, n, out=result, casting='unsafe')
+                break
     else:
-        result = _mean(self, axis=axis, dtype=dtype_sum, out=out,
-                       keepdims=keepdims)
+        result = _mean(
+            self, axis=axis, dtype=dtype_sum, out=out, keepdims=keepdims)
+
     if dtype_out is not None and out is None:
         result = result.astype(dtype_out)
     return result
