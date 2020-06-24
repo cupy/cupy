@@ -15,9 +15,8 @@ def choose_conv_method(in1, in2, mode='full'):
 
     .. warning::
         This function currently doesn't support measure option,
-        nor multidimensional inputs. It differs from SciPy's
-        behavior in handling signed and unsigned integers by
-        always choosing ``direct`` convolution method.
+        nor multidimensional inputs. It does not guarantee
+        the compatibility of the return value to NumPy's one.
 
     .. seealso:: :func:`scipy.signal.choose_conv_method`
 
@@ -40,16 +39,8 @@ def _fftconv_faster(x, h, mode):
 
     """
     fft_ops, direct_ops = _conv_ops(x.size, h.size, mode)
-    offset = -1e-3
-    constants = {
-        'valid': (1.89095737e-9, 2.1364985e-10, offset),
-        'full': (1.7649070e-9, 2.1414831e-10, offset),
-        'same': (3.2646654e-9, 2.8478277e-10, offset)
-        if h.size <= x.size
-        else (3.21635404e-9, 1.1773253e-8, -1e-5),
-    }
-    O_fft, O_direct, O_offset = constants[mode]
-    return O_fft * fft_ops < O_direct * direct_ops + O_offset
+    # TODO(Dahlia-Chehata): replace with GPU-based constants.
+    return True
 
 
 def _conv_ops(siz1, siz2, mode):
