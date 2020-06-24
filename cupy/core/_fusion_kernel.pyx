@@ -325,10 +325,11 @@ cdef class FusedKernel:
             if isinstance(a, _TraceArray):
                 array = ndarray_list[i]
                 ndim = array.ndim
-                c_contiguous = 'true' if array.flags.c_contiguous else 'false'
+                c_contiguous = 'true' if array._c_contiguous else 'false'
+                index_32_bits = 'true' if array._index_32_bits else 'false'
                 cuda_params.append(a.format(
-                    'CArray<${type}, ${ndim}, ${c_contiguous}> ${var}',
-                    ndim=ndim, c_contiguous=c_contiguous))
+                    'CArray<${type}, ${ndim}, ${cont}, ${ind32}> ${var}',
+                    ndim=ndim, cont=c_contiguous, ind32=index_32_bits))
                 indexers.append(
                     a.format('CIndexer<${ndim}> ${indexer}', ndim=ndim))
             elif isinstance(a, _TraceScalar):
