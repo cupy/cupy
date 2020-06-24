@@ -213,6 +213,7 @@ class TestMirrorWithDim1(FilterTestCaseBase):
     ])
 ))
 @testing.gpu
+@testing.with_requires('scipy')
 class TestFortranOrder(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
