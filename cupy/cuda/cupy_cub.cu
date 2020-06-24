@@ -620,20 +620,28 @@ struct _cub_inclusive_product {
 // **** CUB histogram range ****
 //
 struct _cub_histogram_range {
-    template <typename sampleT, typename binT>
+    template <typename sampleT,
+              typename binT = typename If<std::is_integral<sampleT>::value, double, sampleT>::Type>
     void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
         int n_bins, void* bins, size_t n_samples, cudaStream_t s) const
     {
+        // Ugly hack to avoid specializing complex types, which cub::DeviceHistogram does not support.
+        // The If and Equals templates are from cub/util_type.cuh.
+        // TODO(leofang): revisit this part when complex support is added to cupy.histogram()
+        typedef typename If<(Equals<sampleT, complex<float>>::VALUE || Equals<sampleT, complex<double>>::VALUE),
+                            double,
+                            sampleT>::Type hackT;
+
         // TODO(leofang): CUB seems to bake the OffsetT type somewhere that specializing
         // for n_samples of type size_t would error. Need to pinpoint where went wrong.
         // The code path splitting is disabled and a type/range check is done in the caller.
 
         // if (n_samples < (1ULL << 31)) {
             int num_samples = n_samples;
-            DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<sampleT*>(input),
+            DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<hackT*>(input),
                 static_cast<long long*>(output), n_bins, static_cast<binT*>(bins), num_samples, s);
         // } else {
-        //     DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<sampleT*>(input),
+        //     DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<hackT*>(input),
         //         static_cast<long long*>(output), n_bins, static_cast<binT*>(bins), n_samples, s);
         // }
     }
@@ -768,54 +776,14 @@ size_t cub_device_scan_get_workspace_size(void* x, void* y, int num_items,
 void cub_device_histogram_range(void* workspace, size_t& workspace_size, void* x, void* y,
     int n_bins, void* bins, size_t n_samples, cudaStream_t stream, int dtype_id)
 {
-    _cub_histogram_range hist;
-
-    // We don't call dtype_dispatcher because histogram has a weird type rule...
-    // TODO(leofang): there got to be a smarter way to specialize, dispatch, and forward the args...
-    // TODO(leofang): n_samples is of type size_t, but if it's < 2^31 we cast it to int later
-    switch (dtype_id) {
-    case CUPY_CUB_INT8:
-        return hist.template operator()<char, double>(
-            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
-    case CUPY_CUB_INT16:
-        return hist.template operator()<short, double>(
-            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
-    case CUPY_CUB_INT32:
-        return hist.template operator()<int, double>(
-            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
-    case CUPY_CUB_INT64:
-        return hist.template operator()<long, double>(
-            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
-    case CUPY_CUB_UINT8:
-        return hist.template operator()<unsigned char, double>(
-            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
-    case CUPY_CUB_UINT16:
-        return hist.template operator()<unsigned short, double>(
-            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
-    case CUPY_CUB_UINT32:
-        return hist.template operator()<unsigned int, double>(
-            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
-    case CUPY_CUB_UINT64:
-        return hist.template operator()<unsigned long, double>(
-            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
-    case CUPY_CUB_FLOAT16:
-        return hist.template operator()<__half, __half>(
-            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
-#endif
-    case CUPY_CUB_FLOAT32:
-        return hist.template operator()<float, float>(
-            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
-    case CUPY_CUB_FLOAT64:
-        return hist.template operator()<double, double>(
-            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
     // TODO(leofang): support complex
-    // case CUPY_CUB_COMPLEX64:
-    // case CUPY_CUB_COMPLEX128:
-    default:
-	    throw std::runtime_error("Unsupported dtype ID");
+    if (dtype_id == CUPY_CUB_COMPLEX64 || dtype_id == CUPY_CUB_COMPLEX128) {
+	    throw std::runtime_error("complex dtype is not yet supported");
     }
+
+    // TODO(leofang): n_samples is of type size_t, but if it's < 2^31 we cast it to int later
+    return dtype_dispatcher(dtype_id, _cub_histogram_range(),
+                            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
 }
 
 size_t cub_device_histogram_range_get_workspace_size(void* x, void* y, int n_bins,
