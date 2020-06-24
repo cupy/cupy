@@ -12,6 +12,7 @@ from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import data as sparse_data
 from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import sputils
 
 
 class _compressed_sparse_matrix(sparse_data._data_matrix,
@@ -508,6 +509,227 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         raise ValueError('unsupported indexing')
 
+    # @todo: Need to build csr_column_index1- slice columns given as an array of indices (pass1)
+    # @todo: Need to build csr_column_index2- slice columns given as an array of indices (pass2)
+    """
+        /*
+     * Slice columns given as an array of indices (pass 1).
+     * This pass counts idx entries and computes a new indptr.
+     *
+     * Input Arguments:
+     *   I  n_idx           - number of indices to slice
+     *   I  col_idxs[n_idx] - indices to slice
+     *   I  n_row           - major axis dimension
+     *   I  n_col           - minor axis dimension
+     *   I  Ap[n_row+1]     - indptr
+     *   I  Aj[nnz(A)]      - indices
+     *
+     * Output Arguments:
+     *   I  col_offsets[n_col] - cumsum of index repeats
+     *   I  Bp[n_row+1]        - new indptr
+     *
+     */
+    template<class I>
+    void csr_column_index1(const I n_idx,
+                           const I col_idxs[],
+                           const I n_row,
+                           const I n_col,
+                           const I Ap[],
+                           const I Aj[],
+                           I col_offsets[],
+                           I Bp[])
+    {
+        // bincount(col_idxs)
+        for(I jj = 0; jj < n_idx; jj++){
+            const I j = col_idxs[jj];
+            col_offsets[j]++;
+        }
+    
+        // Compute new indptr
+        I new_nnz = 0;
+        Bp[0] = 0;
+        for(I i = 0; i < n_row; i++){
+            for(I jj = Ap[i]; jj < Ap[i+1]; jj++){
+                new_nnz += col_offsets[Aj[jj]];
+            }
+            Bp[i+1] = new_nnz;
+        }
+    
+        // cumsum in-place
+        for(I j = 1; j < n_col; j++){
+            col_offsets[j] += col_offsets[j - 1];
+        }
+    }
+    
+    
+    /*
+     * Slice columns given as an array of indices (pass 2).
+     * This pass populates indices/data entries for selected columns.
+     *
+     * Input Arguments:
+     *   I  col_order[n_idx]   - order of col indices
+     *   I  col_offsets[n_col] - cumsum of col index counts
+     *   I  nnz                - nnz(A)
+     *   I  Aj[nnz(A)]         - column indices
+     *   T  Ax[nnz(A)]         - data
+     *
+     * Output Arguments:
+     *   I  Bj[nnz(B)] - new column indices
+     *   T  Bx[nnz(B)] - new data
+     *
+     */
+    template<class I, class T>
+    void csr_column_index2(const I col_order[],
+                           const I col_offsets[],
+                           const I nnz,
+                           const I Aj[],
+                           const T Ax[],
+                           I Bj[],
+                           T Bx[])
+    {
+        I n = 0;
+        for(I jj = 0; jj < nnz; jj++){
+            const I j = Aj[jj];
+            const I offset = col_offsets[j];
+            const I prev_offset = j == 0 ? 0 : col_offsets[j-1];
+            if (offset != prev_offset) {
+                const T v = Ax[jj];
+                for(I k = prev_offset; k < offset; k++){
+                    Bj[n] = col_order[k];
+                    Bx[n] = v;
+                    n++;
+                }
+            }
+        }
+    }
+
+    """
+
+    # @todo: Need to build get_csr_submatrix
+    """
+    template<class I, class T>
+    void get_csr_submatrix(const I n_row,
+                           const I n_col,
+                           const I Ap[],
+                           const I Aj[],
+                           const T Ax[],
+                           const I ir0,
+                           const I ir1,
+                           const I ic0,
+                           const I ic1,
+                           std::vector<I>* Bp,
+                           std::vector<I>* Bj,
+                           std::vector<T>* Bx)
+    {
+        I new_n_row = ir1 - ir0;
+        //I new_n_col = ic1 - ic0;  //currently unused
+        I new_nnz = 0;
+        I kk = 0;
+    
+        // Count nonzeros total/per row.
+        for(I i = 0; i < new_n_row; i++){
+            I row_start = Ap[ir0+i];
+            I row_end   = Ap[ir0+i+1];
+    
+            for(I jj = row_start; jj < row_end; jj++){
+                if ((Aj[jj] >= ic0) && (Aj[jj] < ic1)) {
+                    new_nnz++;
+                }
+            }
+        }
+    
+        // Allocate.
+        Bp->resize(new_n_row+1);
+        Bj->resize(new_nnz);
+        Bx->resize(new_nnz);
+    
+        // Assign.
+        (*Bp)[0] = 0;
+        for(I i = 0; i < new_n_row; i++){
+            I row_start = Ap[ir0+i];
+            I row_end   = Ap[ir0+i+1];
+    
+            for(I jj = row_start; jj < row_end; jj++){
+                if ((Aj[jj] >= ic0) && (Aj[jj] < ic1)) {
+                    (*Bj)[kk] = Aj[jj] - ic0;
+                    (*Bx)[kk] = Ax[jj];
+                    kk++;
+                }
+            }
+            (*Bp)[i+1] = kk;
+        }
+    }
+    """
+
+    def _get_minor_index_fancy(self, idx):
+        """Index along the minor axis where idx is an array of ints.
+        """
+        idx_dtype = self.indices.dtype
+        idx = cupy.asarray(idx, dtype=idx_dtype).ravel()
+
+        M, N = self._swap(self.shape)
+        k = len(idx)
+        new_shape = self._swap((M, k))
+        if k == 0:
+            return self.__class__(new_shape)
+
+        # pass 1: count idx entries and compute new indptr
+        col_offsets = cupy.zeros(N, dtype=idx_dtype)
+        res_indptr = cupy.empty_like(self.indptr)
+
+        # @todo
+        csr_column_index1(k, idx, M, N, self.indptr, self.indices,
+                          col_offsets, res_indptr)
+
+        # pass 2: copy indices/data for selected idxs
+        col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
+        nnz = res_indptr[-1]
+        res_indices = cupy.empty(nnz, dtype=idx_dtype)
+        res_data = cupy.empty(nnz, dtype=self.dtype)
+
+        # @todo
+        csr_column_index2(col_order, col_offsets, len(self.indices),
+                          self.indices, self.data, res_indices, res_data)
+        return self.__class__((res_data, res_indices, res_indptr),
+                              shape=new_shape, copy=False)
+
+    def _get_minor_slice(self, idx, copy=False):
+        """Index along the minor axis where idx is a slice object.
+        """
+        if idx == slice(None):
+            return self.copy() if copy else self
+
+        M, N = self._swap(self.shape)
+        start, stop, step = idx.indices(N)
+        N = len(range(start, stop, step))
+        if N == 0:
+            return self.__class__(self._swap((M, N)))
+        if step == 1:
+            return self._get_submatrix(minor=idx, copy=copy)
+        # TODO: don't fall back to fancy indexing here
+        return self._get_minor_index_fancy(cupy.arange(start, stop, step))
+
+    @staticmethod
+    def _process_slice(sl, num):
+        if sl is None:
+            i0, i1 = 0, num
+        elif isinstance(sl, slice):
+            i0, i1, stride = sl.indices(num)
+            if stride != 1:
+                raise ValueError('slicing with step != 1 not supported')
+            i0 = min(i0, i1)  # give an empty slice when i0 > i1
+        elif sputils.isintlike(sl):
+            if sl < 0:
+                sl += num
+            i0, i1 = sl, sl + 1
+            if i0 < 0 or i1 > num:
+                raise IndexError('index out of bounds: 0 <= %d < %d <= %d' %
+                                 (i0, i1, num))
+        else:
+            raise TypeError('expected slice or scalar')
+
+        return i0, i1
+
     def _get_single(self, major, minor):
         start = self.indptr[major]
         end = self.indptr[major + 1]
@@ -521,6 +743,24 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             self._compress_getitem_kern(
                 data, indices, minor, answer)
         return answer[()]
+
+    def _get_submatrix(self, major=None, minor=None, copy=False):
+        """Return a submatrix of this matrix.
+        major, minor: None, int, or slice with step 1
+        """
+        M, N = self._swap(self.shape)
+        i0, i1 = self._process_slice(major, M)
+        j0, j1 = self._process_slice(minor, N)
+
+        if i0 == 0 and j0 == 0 and i1 == M and j1 == N:
+            return self.copy() if copy else self
+                                # @todo
+        indptr, indices, data = get_csr_submatrix(
+            M, N, self.indptr, self.indices, self.data, i0, i1, j0, j1)
+
+        shape = self._swap((i1 - i0, j1 - j0))
+        return self.__class__((data, indices, indptr), shape=shape,
+                              dtype=self.dtype, copy=False)
 
     def _get_major_slice(self, major):
         major_size, minor_size = self._swap(*self._shape)
