@@ -7,7 +7,7 @@ from cupy.core import _fusion_interface
 
 
 cdef class _AbstractDim:
-    """An abstrated data structure for a length of dimensions.
+    """An abstracted data structure for a length of dimensions.
 
     Attributes:
         input_index (int):
