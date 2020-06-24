@@ -18,22 +18,16 @@ class TestChooseConvMethod(unittest.TestCase):
     @testing.for_dtypes('efdFD')
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_choose_conv_method1(self, xp, scp, dtype):
-        a = testing.shaped_arange((10,), xp, dtype)
-        b = testing.shaped_arange((5,), xp, dtype)
+        a = testing.shaped_arange((10000,), xp, dtype)
+        b = testing.shaped_arange((5000,), xp, dtype)
         return scp.signal.choose_conv_method(a, b, mode=self.mode)
 
     @testing.for_dtypes('efdFD')
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_choose_conv_method2(self, xp, scp, dtype):
-        a = testing.shaped_arange((5,), xp, dtype)
-        b = testing.shaped_arange((10,), xp, dtype)
+        a = testing.shaped_arange((5000,), xp, dtype)
+        b = testing.shaped_arange((10000,), xp, dtype)
         return scp.signal.choose_conv_method(a, b, mode=self.mode)
-
-    @testing.for_dtypes('efdFD')
-    @testing.numpy_cupy_equal(scipy_name='scp')
-    def test_choose_conv_method_same(self, xp, scp, dtype):
-        a = testing.shaped_arange((10,), xp, dtype)
-        return scp.signal.choose_conv_method(a, a, mode=self.mode)
 
     @testing.for_int_dtypes()
     def test_choose_conv_method_int(self, dtype):

@@ -1,5 +1,3 @@
-import math
-
 
 def choose_conv_method(in1, in2, mode='full'):
     """Find the fastest convolution/correlation method.
@@ -38,26 +36,5 @@ def _fftconv_faster(x, h, mode):
     .. seealso:: :func: `scipy.signal.signaltools._fftconv_faster`
 
     """
-    fft_ops, direct_ops = _conv_ops(x.size, h.size, mode)
     # TODO(Dahlia-Chehata): replace with GPU-based constants.
     return True
-
-
-def _conv_ops(siz1, siz2, mode):
-    if mode == 'full':
-        direct_ops = siz1 * siz2
-    elif mode == 'valid':
-        if siz2 >= siz1:
-            direct_ops = (siz2 - siz1 + 1) * siz1
-        else:
-            direct_ops = (siz1 - siz2 + 1) * siz2
-    elif mode == 'same':
-        if siz1 < siz2:
-            direct_ops = siz1 * siz2
-        else:
-            direct_ops = siz1 * siz2 - (siz2 / 2) * ((siz2 + 1) / 2)
-    else:
-        raise ValueError('Unsupported mode')
-    N = siz1 + siz2 - 1
-    fft_ops = 3 * N * math.log(N)
-    return fft_ops, direct_ops
