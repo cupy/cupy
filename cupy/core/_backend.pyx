@@ -22,6 +22,10 @@ def set_routine_backends(str s):
     _routine_backends = [_get_backend(t) for t in s.split(',') if t]
 
 
+def _get_routine_backends():
+    return _routine_backends
+
+
 cdef _set_default_backends():
     cdef str default_backends = os.getenv('CUPY_BACKENDS', '')
     set_reduction_backends(default_backends)

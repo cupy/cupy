@@ -5,6 +5,7 @@ except ImportError:
     _scipy_available = False
 
 import cupy
+from cupy.core import _backend
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
@@ -120,12 +121,13 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 other = cupy.asfortranarray(other)
                 # csrmvEx does not work if nnz == 0
                 if self.nnz > 0 and cusparse.csrmvExIsAligned(self, other):
-                    if cupy.cuda.cub_enabled and other.flags.c_contiguous:
-                        return device_csrmv(
-                            self.shape[0], self.shape[1], self.nnz, self.data,
-                            self.indptr, self.indices, other)
-                    else:
-                        return cusparse.csrmvEx(self, other)
+                    for backend in _backend._get_routine_backends():
+                        if (backend == _backend.BACKEND_CUB
+                                and other.flags.c_contiguous):
+                            return device_csrmv(
+                                self.shape[0], self.shape[1], self.nnz,
+                                self.data, self.indptr, self.indices, other)
+                    return cusparse.csrmvEx(self, other)
                 else:
                     return cusparse.csrmv(self, other)
             elif other.ndim == 2:
