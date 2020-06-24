@@ -14,7 +14,7 @@ def choose_conv_method(in1, in2, mode='full'):
     .. warning::
         This function currently doesn't support measure option,
         nor multidimensional inputs. It does not guarantee
-        the compatibility of the return value to NumPy's one.
+        the compatibility of the return value to SciPy's one.
 
     .. seealso:: :func:`scipy.signal.choose_conv_method`
 

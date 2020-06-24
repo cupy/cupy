@@ -1,7 +1,6 @@
 import unittest
 
 import pytest
-import scipy.signal  # NOQA
 
 import cupy
 import cupyx
@@ -12,22 +11,21 @@ from cupy import testing
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full']
 }))
-@testing.with_requires('scipy')
 class TestChooseConvMethod(unittest.TestCase):
 
     @testing.for_dtypes('efdFD')
-    @testing.numpy_cupy_equal(scipy_name='scp')
-    def test_choose_conv_method1(self, xp, scp, dtype):
-        a = testing.shaped_arange((10000,), xp, dtype)
-        b = testing.shaped_arange((5000,), xp, dtype)
-        return scp.signal.choose_conv_method(a, b, mode=self.mode)
+    def test_choose_conv_method1(self, dtype):
+        a = testing.shaped_arange((10000,), cupy, dtype)
+        b = testing.shaped_arange((5000,), cupy, dtype)
+        assert cupyx.scipy.signal.choose_conv_method(
+            a, b, mode=self.mode) == 'fft'
 
     @testing.for_dtypes('efdFD')
-    @testing.numpy_cupy_equal(scipy_name='scp')
-    def test_choose_conv_method2(self, xp, scp, dtype):
-        a = testing.shaped_arange((5000,), xp, dtype)
-        b = testing.shaped_arange((10000,), xp, dtype)
-        return scp.signal.choose_conv_method(a, b, mode=self.mode)
+    def test_choose_conv_method2(self, dtype):
+        a = testing.shaped_arange((5000,), cupy, dtype)
+        b = testing.shaped_arange((10000,), cupy, dtype)
+        assert cupyx.scipy.signal.choose_conv_method(
+            a, b, mode=self.mode) == 'fft'
 
     @testing.for_int_dtypes()
     def test_choose_conv_method_int(self, dtype):
