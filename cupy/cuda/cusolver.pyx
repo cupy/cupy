@@ -483,35 +483,35 @@ cdef extern from 'cupy_cusolver.h' nogil:
         double *h_R_nrmF, int batchSize)
 
     # Standard symmetric eigenvalue solver
-    int cusolverDnSsyevd_bufferSize(
-        Handle handle, EigMode jobz, FillMode uplo, int n,
-        const float* A, int lda, const float* W, int* lwork)
-    int cusolverDnDsyevd_bufferSize(
-        Handle handle, EigMode jobz, FillMode uplo, int n,
-        const double* A, int lda, const double* W, int* lwork)
-    int cusolverDnCheevd_bufferSize(
-        Handle handle, EigMode jobz, FillMode uplo, int n,
-        const cuComplex* A, int lda, const float* W, int* lwork)
-    int cusolverDnZheevd_bufferSize(
-        Handle handle, EigMode jobz, FillMode uplo, int n,
-        const cuDoubleComplex* A, int lda, const double* W, int* lwork)
+    int cusolverDnSsyevd_bufferSize(Handle handle,
+                                    EigMode jobz, FillMode uplo, int n,
+                                    const float* A, int lda,
+                                    const float* W, int* lwork)
+    int cusolverDnDsyevd_bufferSize(Handle handle,
+                                    EigMode jobz, FillMode uplo, int n,
+                                    const double* A, int lda,
+                                    const double* W, int* lwork)
+    int cusolverDnCheevd_bufferSize(Handle handle,
+                                    EigMode jobz, FillMode uplo, int n,
+                                    const cuComplex* A, int lda,
+                                    const float* W, int* lwork)
+    int cusolverDnZheevd_bufferSize(Handle handle,
+                                    EigMode jobz, FillMode uplo, int n,
+                                    const cuDoubleComplex* A, int lda,
+                                    const double* W, int* lwork)
 
-    int cusolverDnSsyevd(
-        Handle handle, EigMode jobz, FillMode uplo, int n,
-        float* A, int lda, float* W,
-        float* work, int lwork, int* info)
-    int cusolverDnDsyevd(
-        Handle handle, EigMode jobz, FillMode uplo, int n,
-        double* A, int lda, double* W,
-        double* work, int lwork, int* info)
-    int cusolverDnCheevd(
-        Handle handle, EigMode jobz, FillMode uplo, int n,
-        cuComplex* A, int lda, float* W,
-        cuComplex* work, int lwork, int* info)
-    int cusolverDnZheevd(
-        Handle handle, EigMode jobz, FillMode uplo, int n,
-        cuDoubleComplex* A, int lda, double* W,
-        cuDoubleComplex* work, int lwork, int* info)
+    int cusolverDnSsyevd(Handle handle, EigMode jobz, FillMode uplo, int n,
+                         float* A, int lda, float* W,
+                         float* work, int lwork, int* info)
+    int cusolverDnDsyevd(Handle handle, EigMode jobz, FillMode uplo, int n,
+                         double* A, int lda, double* W,
+                         double* work, int lwork, int* info)
+    int cusolverDnCheevd(Handle handle, EigMode jobz, FillMode uplo, int n,
+                         cuComplex* A, int lda, float* W,
+                         cuComplex* work, int lwork, int* info)
+    int cusolverDnZheevd(Handle handle, EigMode jobz, FillMode uplo, int n,
+                         cuDoubleComplex* A, int lda, double* W,
+                         cuDoubleComplex* work, int lwork, int* info)
 
     # Symmetric eigenvalue solver using Jacobi method
     int cusolverDnCreateSyevjInfo(SyevjInfo *info)
