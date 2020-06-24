@@ -99,27 +99,18 @@ def _dot_correlate(a1, a2, mode):
         a1, a2 = a2, a1
         inverted = 1
     length = n1 = a1.size
-    n = n2 = a2.size
-    left, right, length = _generate_boundaries(mode, length, n)
+    n2 = a2.size
+    left, right, length = _generate_boundaries(mode, length, n2)
     output = cupy.zeros(length, dtype)
     a1 = a1.astype(dtype, copy=False)
     a2 = a2.astype(dtype, copy=False)
-    start = j1 = 0
-    j2 = left
-    n -= left
     for i in range(left):
-        dot_kernel(a1[:n], a2[j2:], output[i])
-        n += 1
-        j2 -= 1
-    start += left
-    for i in range(n1 - n2 + 1):
-        dot_kernel(a1[j1:j1 + n], a2[:n], output[start + i])
-        j1 += 1
-    start += n1 - n2 + 1
+        dot_kernel(a1[:n2 - left + i], a2[left - i:], output[i])
+    A1 = _rolling_window(a1, n2)
+    dot_kernel(A1, a2, output[left:(left + n1 - n2 + 1)], axis=1)
     for i in range(right):
-        n -= 1
-        dot_kernel(a1[j1:], a2[:n], output[start + i])
-        j1 += 1
+        dot_kernel(a1[n1 - n2 + 1 + i:], a2[:n2 - 1 - i],
+                   output[left + n1 - n2 + 1 + i])
     return inverted, output
 
 
@@ -136,6 +127,12 @@ def _generate_boundaries(mode, length, n):
     else:
         raise ValueError("Invalid mode")
     return left, right, length
+
+
+def _rolling_window(a, window):
+    shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
+    strides = a.strides + (a.strides[-1],)
+    return cupy.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
 
 def cov(a, y=None, rowvar=True, bias=False, ddof=None):
