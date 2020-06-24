@@ -25,9 +25,13 @@ class NVCCException(Exception):
     pass
 
 
-def _run_nvcc(cmd, cwd):
+def _run_nvcc(cmd, cwd, verbose):
     try:
-        return subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT)
+        stdout = subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT,
+                                         universal_newlines=True)
+        if verbose is True:
+            print(stdout)
+        return stdout
     except subprocess.CalledProcessError as e:
         msg = ('`nvcc` command returns non-zero exit status. \n'
                'command: {0}\n'
@@ -156,7 +160,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
         return ptx, mapping
 
 
-def compile_using_nvcc(source, options=(), arch=None,
+def compile_using_nvcc(source, options=(), verbose=False, arch=None,
                        filename='kern.cu', code_type='cubin',
                        separate_compilation=False):
     # defer import to here to avoid circular dependency
@@ -192,7 +196,7 @@ def compile_using_nvcc(source, options=(), arch=None,
             cmd.append(cu_path)
 
             try:
-                _run_nvcc(cmd, root_dir)
+                _run_nvcc(cmd, root_dir, verbose)
             except NVCCException as e:
                 cex = CompileException(str(e), source, cu_path, options,
                                        'nvcc')
@@ -212,7 +216,7 @@ def compile_using_nvcc(source, options=(), arch=None,
             cmd.append(cu_path)
 
             try:
-                _run_nvcc(cmd, root_dir)
+                _run_nvcc(cmd, root_dir, verbose)
             except NVCCException as e:
                 cex = CompileException(str(e), source, cu_path, options,
                                        'nvcc')
@@ -229,7 +233,7 @@ def compile_using_nvcc(source, options=(), arch=None,
             cmd = cmd_partial + list(options)
 
             try:
-                _run_nvcc(cmd, root_dir)
+                _run_nvcc(cmd, root_dir, verbose)
             except NVCCException as e:
                 cex = CompileException(str(e), '', '', options, 'nvcc')
                 raise cex
@@ -244,7 +248,7 @@ def compile_using_nvcc(source, options=(), arch=None,
             assert False, code_type
 
 
-def _preprocess(source, options, arch, backend):
+def _preprocess(source, options, verbose, arch, backend):
     if backend == 'nvrtc':
         options += ('-arch=compute_{}'.format(arch),)
 
@@ -259,7 +263,7 @@ def _preprocess(source, options, arch, backend):
             raise
     elif backend == 'nvcc':
         try:
-            result = compile_using_nvcc(source, options, arch, 'preprocess.cu',
+            result = compile_using_nvcc(source, options, verbose, arch, 'preprocess.cu',
                                         code_type='ptx')
         except CompileException as e:
             dump = _get_bool_env_variable(
@@ -287,7 +291,7 @@ _empty_file_preprocess_cache = {}
 def compile_with_cache(
         source, options=(), arch=None, cache_dir=None, extra_source=None,
         backend='nvrtc', *, enable_cooperative_groups=False,
-        name_expressions=None):
+        name_expressions=None, verbose=False):
 
     if enable_cooperative_groups:
         if backend != 'nvcc':
@@ -306,12 +310,12 @@ def compile_with_cache(
             source, options, arch, cache_dir, extra_source)
     else:
         return _compile_with_cache_cuda(
-            source, options, arch, cache_dir, extra_source, backend,
+            source, options, verbose, arch, cache_dir, extra_source, backend,
             enable_cooperative_groups, name_expressions)
 
 
 def _compile_with_cache_cuda(
-        source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
+        source, options, verbose, arch, cache_dir, extra_source=None, backend='nvrtc',
         enable_cooperative_groups=False, name_expressions=None):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
@@ -331,11 +335,11 @@ def _compile_with_cache_cuda(
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
 
-    env = (arch, options, _get_nvrtc_version(), backend)
+    env = (arch, options, _get_nvrtc_version(), backend, verbose)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is checking of NVRTC compiler internal version
-        base = _preprocess('', options, arch, backend)
+        base = _preprocess('', options, verbose, arch, backend)
         _empty_file_preprocess_cache[env] = base
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
@@ -378,7 +382,7 @@ def _compile_with_cache_cuda(
         mod._set_mapping(mapping)
     elif backend == 'nvcc':
         rdc = _is_cudadevrt_needed(options)
-        cubin = compile_using_nvcc(source, options, arch, name + '.cu',
+        cubin = compile_using_nvcc(source, options, verbose, arch, name + '.cu',
                                    code_type='cubin', separate_compilation=rdc)
     else:
         raise ValueError('Invalid backend %s' % backend)
