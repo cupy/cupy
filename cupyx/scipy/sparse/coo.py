@@ -8,6 +8,7 @@ except ImportError:
 import cupy
 from cupy import cusparse
 from cupyx.scipy.sparse import base
+from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import csr
 from cupyx.scipy.sparse import data as sparse_data
 from cupyx.scipy.sparse import util
@@ -319,7 +320,16 @@ class coo_matrix(sparse_data._data_matrix):
             cupyx.scipy.sparse.csc_matrix: Converted matrix.
 
         """
-        return self.T.tocsr().T
+        if self.nnz == 0:
+            return csc.csc_matrix(self.shape, dtype=self.dtype)
+        # copy is silently ignored (in line with SciPy) because both
+        # sum_duplicates and coosort change the underlying data
+        self.sum_duplicates()
+        x = self.copy()
+        cusparse.coosort(x, 'c')
+        x = cusparse.coo2csc(x)
+        x._has_canonical_format = True
+        return x
 
     def tocsr(self, copy=False):
         """Converts the matrix to Compressed Sparse Row format.
@@ -335,11 +345,14 @@ class coo_matrix(sparse_data._data_matrix):
         """
         if self.nnz == 0:
             return csr.csr_matrix(self.shape, dtype=self.dtype)
+        # copy is silently ignored (in line with SciPy) because both
+        # sum_duplicates and coosort change the underlying data
         self.sum_duplicates()
-        # copy is ignored because coosort method breaks an original.
         x = self.copy()
-        cusparse.coosort(x)
-        return cusparse.coo2csr(x)
+        cusparse.coosort(x, 'r')
+        x = cusparse.coo2csr(x)
+        x._has_canonical_format = True
+        return x
 
     def transpose(self, axes=None, copy=False):
         """Returns a transpose matrix.

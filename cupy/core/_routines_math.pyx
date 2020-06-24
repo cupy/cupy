@@ -781,6 +781,11 @@ inline __device__ T integral_power(T in0, T in1) {
     }
     return out0;
 }
+
+template <typename T>
+inline __device__ T complex_power(T in0, T in1) {
+    return in1 == T(0) ? T(1): pow(in0, in1);
+}
 '''
 
 _power = create_ufunc(
@@ -790,8 +795,8 @@ _power = create_ufunc(
      ('ee->e', 'out0 = powf(in0, in1)'),
      ('ff->f', 'out0 = powf(in0, in1)'),
      ('dd->d', 'out0 = pow(in0, in1)'),
-     ('FF->F', 'out0 = pow(in0, in1)'),
-     ('DD->D', 'out0 = pow(in0, in1)')),
+     ('FF->F', 'out0 = complex_power(in0, in1)'),
+     ('DD->D', 'out0 = complex_power(in0, in1)')),
     'out0 = integral_power(in0, in1)',
     preamble=_power_preamble,
     doc='''Computes ``x1 ** x2`` elementwise.

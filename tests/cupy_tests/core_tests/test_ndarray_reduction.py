@@ -1,5 +1,6 @@
 import unittest
 
+import cupy
 from cupy import testing
 
 
@@ -207,3 +208,36 @@ class TestArrayReduction(unittest.TestCase):
     def test_ptp_nan_imag(self, xp, dtype):
         a = xp.array([float('nan')*1.j, 1.j, -1.j], dtype)
         return a.ptp()
+
+
+# This class compares CUB results against NumPy's
+@testing.parameterize(*testing.product({
+    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+    'order': ('C', 'F'),
+}))
+@testing.gpu
+@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
+class TestCUBreduction(unittest.TestCase):
+    @testing.for_contiguous_axes()
+    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_min(self, xp, dtype, axis):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.min(axis=axis)
+
+    @testing.for_contiguous_axes()
+    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_max(self, xp, dtype, axis):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.max(axis=axis)

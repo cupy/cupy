@@ -611,6 +611,10 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
     Decorated test fixture is required throw same errors
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
+    warnings.warn(
+        'cupy.testing.numpy_cupy_raises is deprecated.',
+        DeprecationWarning)
+
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -1013,6 +1017,45 @@ def for_CF_orders(name='order'):
     return for_orders([None, 'C', 'F', 'c', 'f'], name)
 
 
+def for_contiguous_axes(name='axis'):
+    '''Decorator for parametrizing tests with possible contiguous axes.
+
+    Args:
+        name(str): Argument name to which specified axis are passed.
+
+    .. note::
+        1. Adapted from tests/cupy_tests/fft_tests/test_fft.py.
+        2. Example: for ``shape = (1, 2, 3)``, the tested axes are
+            ``[(2,), (1, 2), (0, 1, 2)]`` for the C order, and
+            ``[(0,), (0, 1), (0, 1, 2)]`` for the F order.
+    '''
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            ndim = len(self.shape)
+            order = self.order
+            for i in range(ndim):
+                a = ()
+                if order in ('c', 'C'):
+                    for j in range(ndim-1, i-1, -1):
+                        a = (j,) + a
+                elif order in ('f', 'F'):
+                    for j in range(0, i+1):
+                        a = a + (j,)
+                else:
+                    raise ValueError('Please specify the array order.')
+                try:
+                    print(order, ', testing', a)
+                    kw[name] = a
+                    impl(self, *args, **kw)
+                except Exception:
+                    print(name, 'is', a, ', ndim is', ndim, ', shape is',
+                          self.shape, ', order is', order)
+                    raise
+        return test_func
+    return decorator
+
+
 def with_requires(*requirements):
     """Run a test case only when given requirements are satisfied.
 
@@ -1148,10 +1191,6 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
         return xp.asarray(a * scale, dtype=dtype)
     else:
         return xp.asarray(numpy.random.rand(*shape) * scale, dtype=dtype)
-
-
-def empty(xp=cupy, dtype=numpy.float32):
-    return xp.zeros((0,))
 
 
 class NumpyError(object):

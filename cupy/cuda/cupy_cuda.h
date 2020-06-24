@@ -269,6 +269,14 @@ cudaError_t cudaDeviceEnablePeerAccess(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaDeviceGetLimit(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDeviceSetLimit(...) {
+    return cudaSuccess;
+}
+
 
 // Memory management
 cudaError_t cudaMalloc(...) {
