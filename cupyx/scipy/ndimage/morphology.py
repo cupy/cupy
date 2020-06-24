@@ -89,7 +89,7 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
         footprint = cupy.array(footprint)
         footprint = footprint[tuple([slice(None, None, -1)] * footprint.ndim)]
 
-    origin = filters._normalize_sequence(origin, input.ndim)
+    origin = filters._fix_sequence_arg(origin, input.ndim, 'origin', int)
     for i in range(len(origin)):
         origin[i] = -origin[i]
         if footprint is not None:
