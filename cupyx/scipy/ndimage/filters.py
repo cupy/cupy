@@ -399,7 +399,7 @@ def _check_size_footprint_structure(ndim, size, footprint, structure,
     if size is not None:
         warnings.warn("ignoring size because {} is set".format(
             'structure' if footprint is None else 'footprint'),
-                      UserWarning, stacklevel=stacklevel+1)
+            UserWarning, stacklevel=stacklevel+1)
 
     if footprint is not None:
         footprint = cupy.array(footprint, bool, True, 'C')
