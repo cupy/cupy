@@ -1,5 +1,4 @@
 import unittest
-from unittest import mock
 
 import numpy
 import pytest
@@ -184,12 +183,9 @@ class TestCUBreduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        full_func = 'cupy.core._routines_statistics.cub.device_reduce'
-        full_patch = mock.patch(full_func, return_value=ret)
-        with full_patch as f:
-            assert f.call_count == 0
+        func = 'cupy.core._routines_statistics.cub.device_reduce'
+        with testing.CUBMockTest(func, return_value=ret):
             a.argmin()
-            assert f.call_count == 1
         # ...then perform the actual computation
         return a.argmin()
 
@@ -208,12 +204,9 @@ class TestCUBreduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        full_func = 'cupy.core._routines_statistics.cub.device_reduce'
-        full_patch = mock.patch(full_func, return_value=ret)
-        with full_patch as f:
-            assert f.call_count == 0
+        func = 'cupy.core._routines_statistics.cub.device_reduce'
+        with testing.CUBMockTest(func, return_value=ret):
             a.argmax()
-            assert f.call_count == 1
         # ...then perform the actual computation
         return a.argmax()
 

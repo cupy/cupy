@@ -1,6 +1,5 @@
 import pickle
 import unittest
-from unittest import mock
 
 import numpy
 import pytest
@@ -1551,9 +1550,7 @@ class TestCUBspmv(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         func = 'cupyx.scipy.sparse.csr.device_csrmv'
-        with mock.patch(func) as f:
-            assert f.call_count == 0
+        with testing.CUBMockTest(func):
             m * x
-            assert f.call_count == 1
         # ...then perform the actual computation
         return m * x

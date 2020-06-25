@@ -5,6 +5,7 @@ import os
 import random
 import traceback
 import unittest
+from unittest import mock
 import warnings
 
 import numpy
@@ -1253,3 +1254,19 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
 
     def test_values(self):
         assert self.cupy_func(*self.args) == self.numpy_func(*self.args)
+
+
+class CUBMockTest:
+
+    def __init__(self, mock_mod, return_value=None):
+        self.patch = mock.patch(mock_mod, return_value=return_value)
+
+    def __enter__(self):
+        self.handle = self.patch.__enter__()
+        assert self.handle.call_count == 0
+        return self.handle
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        assert self.handle.call_count == 1
+        del self.handle
+        return self.patch.__exit__(exc_type, exc_value, traceback)

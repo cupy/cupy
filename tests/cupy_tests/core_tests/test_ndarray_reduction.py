@@ -1,5 +1,4 @@
 import unittest
-from unittest import mock
 
 import numpy
 
@@ -237,19 +236,12 @@ class TestCUBreduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        full_func = 'cupy.core._routines_statistics.cub.device_reduce'
-        full_patch = mock.patch(full_func, return_value=ret)
-        seg_func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
-        seg_patch = mock.patch(seg_func, return_value=ret)
-        with full_patch as f, seg_patch as s:
-            assert f.call_count == s.call_count == 0
+        if len(axis) == len(self.shape):
+            func = 'cupy.core._routines_statistics.cub.device_reduce'
+        else:
+            func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
+        with testing.CUBMockTest(func, return_value=ret):
             a.min(axis=axis)
-            if len(axis) == len(self.shape):
-                assert f.call_count == 1
-                assert s.call_count == 0
-            else:
-                assert f.call_count == 0
-                assert s.call_count == 1
         # ...then perform the actual computation
         return a.min(axis=axis)
 
@@ -269,18 +261,11 @@ class TestCUBreduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        full_func = 'cupy.core._routines_statistics.cub.device_reduce'
-        full_patch = mock.patch(full_func, return_value=ret)
-        seg_func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
-        seg_patch = mock.patch(seg_func, return_value=ret)
-        with full_patch as f, seg_patch as s:
-            assert f.call_count == s.call_count == 0
+        if len(axis) == len(self.shape):
+            func = 'cupy.core._routines_statistics.cub.device_reduce'
+        else:
+            func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
+        with testing.CUBMockTest(func, return_value=ret):
             a.max(axis=axis)
-            if len(axis) == len(self.shape):
-                assert f.call_count == 1
-                assert s.call_count == 0
-            else:
-                assert f.call_count == 0
-                assert s.call_count == 1
         # ...then perform the actual computation
         return a.max(axis=axis)

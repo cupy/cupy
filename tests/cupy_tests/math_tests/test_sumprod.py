@@ -1,5 +1,4 @@
 import unittest
-from unittest import mock
 
 import numpy
 import pytest
@@ -218,19 +217,12 @@ class TestCUBreduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        full_func = 'cupy.core._routines_math.cub.device_reduce'
-        full_patch = mock.patch(full_func, return_value=ret)
-        seg_func = 'cupy.core._routines_math.cub.device_segmented_reduce'
-        seg_patch = mock.patch(seg_func, return_value=ret)
-        with full_patch as f, seg_patch as s:
-            assert f.call_count == s.call_count == 0
+        if len(axis) == len(self.shape):
+            func = 'cupy.core._routines_math.cub.device_reduce'
+        else:
+            func = 'cupy.core._routines_math.cub.device_segmented_reduce'
+        with testing.CUBMockTest(func, return_value=ret):
             a.sum(axis=axis)
-            if len(axis) == len(self.shape):
-                assert f.call_count == 1
-                assert s.call_count == 0
-            else:
-                assert f.call_count == 0
-                assert s.call_count == 1
         # ...then perform the actual computation
         return a.sum(axis=axis)
 
@@ -251,19 +243,12 @@ class TestCUBreduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        full_func = 'cupy.core._routines_math.cub.device_reduce'
-        full_patch = mock.patch(full_func, return_value=ret)
-        seg_func = 'cupy.core._routines_math.cub.device_segmented_reduce'
-        seg_patch = mock.patch(seg_func, return_value=ret)
-        with full_patch as f, seg_patch as s:
-            assert f.call_count == s.call_count == 0
+        if len(axis) == len(self.shape):
+            func = 'cupy.core._routines_math.cub.device_reduce'
+        else:
+            func = 'cupy.core._routines_math.cub.device_segmented_reduce'
+        with testing.CUBMockTest(func, return_value=ret):
             a.prod(axis=axis)
-            if len(axis) == len(self.shape):
-                assert f.call_count == 1
-                assert s.call_count == 0
-            else:
-                assert f.call_count == 0
-                assert s.call_count == 1
         # ...then perform the actual computation
         return a.prod(axis=axis)
 
@@ -284,12 +269,9 @@ class TestCUBreduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        full_func = 'cupy.core._routines_math.cub.device_scan'
-        full_patch = mock.patch(full_func, return_value=ret)
-        with full_patch as f:
-            assert f.call_count == 0
+        func = 'cupy.core._routines_math.cub.device_scan'
+        with testing.CUBMockTest(func, return_value=ret):
             a.cumsum()
-            assert f.call_count == 1
         # ...then perform the actual computation
         return a.cumsum()
 
@@ -311,12 +293,9 @@ class TestCUBreduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        full_func = 'cupy.core._routines_math.cub.device_scan'
-        full_patch = mock.patch(full_func, return_value=ret)
-        with full_patch as f:
-            assert f.call_count == 0
+        func = 'cupy.core._routines_math.cub.device_scan'
+        with testing.CUBMockTest(func, return_value=ret):
             a.cumprod()
-            assert f.call_count == 1
         # ...then perform the actual computation
         result = a.cumprod()
         return self._mitigate_cumprod(xp, dtype, result)
