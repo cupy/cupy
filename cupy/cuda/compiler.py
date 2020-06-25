@@ -25,7 +25,7 @@ class NVCCException(Exception):
     pass
 
 
-def _run_nvcc(cmd, cwd, log_stream):
+def _run_nvcc(cmd, cwd, log_stream=None):
     try:
         stdout = subprocess.check_output(cmd, cwd=cwd,
                                          stderr=subprocess.STDOUT,
@@ -43,8 +43,7 @@ def _run_nvcc(cmd, cwd, log_stream):
                'stdout/stderr: \n'
                '{2}'.format(e.cmd,
                             e.returncode,
-                            e.output.decode(encoding='UTF-8',
-                                            errors='replace')))
+                            e.output))
         raise NVCCException(msg)
     except OSError as e:
         msg = 'Failed to run `nvcc` command. ' \
@@ -162,7 +161,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                 with open(log_stream, 'w') as f:
                     f.write(ptx)
                     f.write("\n")
-                    f.write(mapping)
+                    f.write(str(mapping))
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
