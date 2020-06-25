@@ -517,11 +517,47 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 # Fetch list of columns for single row
                 # Since we know how many columns we have, it should be straightforward
                 # to schedule as a kernel
+                # Pass 1- Compute output degree (indptr)
+                # Pass 2- Populate columns & values
+                """
+                Example of use:
+                
+                indptr = self._compute_output_degree(major, minor)
+                indices, data = self._populate_indices_and_data(indptr, major, minor)
+                
+                The branching conditionals that require both major/minor will be pushed
+                down to compute_output_degree and populate_indices_and_data
+                
+                Pass #1:
+                --------
+                We really have 3 different types of functions to compute the output 
+                degrees based on the indptr:
+                   - major == scalar: grab index from indptr
+                   - major == list/tuple/set: grab elements from indptr that exist
+                   - major == slice: grab range of elements from indptr 
+                   - major == slice(None): noop- don't need to do anything
+                   
+                Then we have 3 different types of functions to compute the output
+                degrees based on the indices/values:
+                   - minor == scalar: just need to filter indptr for a single column
+                   - minor == list/tuple/set: Just need to filter indptr for elements that exist
+                   - minor == slice: grab range of minor elements from filtered indptr
+                   - minor == slice(None): noop- don't need to do anything
+                   
+                   
+                Pass #2:
+                --------
+                
+                Then we just need to apply the rules from Pass #1 to populate the data and indices.
+                """
+
                 self._major_scalar_minor_index(major, minor)
 
             else:
 
                 # Slice columns for single row
+                # Pass 1- Compute output degree (indptr)
+                # Pass 2- Populate columns & values
                 return self._major_scalar_minor_slice(major, minor)
 
         elif major == slice(None):
@@ -560,7 +596,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 # Get range of rows for a predefined set of columns
                 # Slice `indptr` and diff to figure out grid size & # threads
                 # Pass 1- Compute output degree based on non-zero
-                #         values for indexed cols
+                #         values for indexed cols (indptr)
                 # Pass 2- Populate output values
                 return self._major_slice_minor_index(major, minor)
 
@@ -570,7 +606,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 # Two-pass kernel-
                 # Slice `indptr` and diff to figure out the grid size and
                 # number of threads.
-                # Pass 1- Compute output degree (intptr)
+                # Pass 1- Compute output degree (indptr)
                 # Pass 2- Compute output values
                 return self._major_slice_minor_slice(major, minor)
 
@@ -600,6 +636,55 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 # Pass 2- Populate values for rows
                 self._major_index_minor_slice(major, minor)
 
+        raise ValueError("unsupported indexing: %s" % slices)
+
+    def _compute_output_degree(self, major, minor):
+        """
+        Based on the values of major and minor, returns the output degrees (indptr.)
+
+        This constitutes pass #1 of comprehensive indexing
+
+        Parameters
+        ----------
+
+        major : list, tuple, set, slice or integer
+            Major index
+
+        minor : list, tuple, set, slice, or integer
+            Minor index
+
+        Returns
+        -------
+
+        indptr : Index pointer of output array
+        """
+        pass
+
+    def _populate_indices_and_data(self, indptr, major, minor):
+        """
+        Uses output degree aray and major/minor indexes to populate minor axis & values
+
+        This constitutes pass #2 of comprehensive indexing
+
+
+        Parameters
+        ----------
+
+        major : list, tuple, set, slice or integer
+            Major index
+
+        minor : list, tuple, set, slice, or integer
+            Minor index
+
+        Returns
+        -------
+
+        indices : Indices of resulting sparse array
+
+        data : Data of resulting sparse array
+        """
+
+
         """
         Notes: 
         1. can have a tuple of slices of size n_dims
@@ -607,8 +692,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         3. Slice can have 3 pieces, the unknown pieces are filled in with None. 
         4. 
         """
+        pass
 
-        raise ValueError("unsupported indexing: %s" % slices)
 
     # @todo: Need to build csr_column_index1- slice columns given as an array of indices (pass1)
     # @todo: Need to build csr_column_index2- slice columns given as an array of indices (pass2)
