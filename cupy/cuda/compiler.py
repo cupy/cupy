@@ -138,7 +138,7 @@ def _get_bool_env_variable(name, default):
 
 
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
-                        name_expressions=None):
+                        name_expressions=None, log_stream=None):
     if not arch:
         arch = _get_arch()
 
@@ -154,6 +154,15 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                              name_expressions=name_expressions)
         try:
             ptx, mapping = prog.compile(options)
+            if log_stream == 'stdout':
+                print(ptx)
+                print()
+                print(mapping)
+            elif log_stream is not None:
+                with open(log_stream, 'w') as f:
+                    f.write(ptx)
+                    f.write("\n")
+                    f.write(mapping)
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -258,7 +267,14 @@ def _preprocess(source, options, arch, backend, log_stream):
 
         prog = _NVRTCProgram(source, '')
         try:
+
             result, _ = prog.compile(options)
+            if log_stream == 'stdout':
+                print(result)
+            elif log_stream is not None:
+                with open(log_stream, 'w') as f:
+                    f.write(result)
+
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -375,7 +391,7 @@ def _compile_with_cache_cuda(
 
     if backend == 'nvrtc':
         ptx, mapping = compile_using_nvrtc(
-            source, options, arch, name + '.cu', name_expressions)
+            source, options, arch, name + '.cu', name_expressions, log_stream)
         ls = function.LinkState()
         ls.add_ptr_data(ptx, 'cupy.ptx')
         # for separate compilation
