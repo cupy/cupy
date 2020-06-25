@@ -274,7 +274,7 @@ cdef class RawModule:
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
                  bint enable_cooperative_groups=False,
-                 name_expressions=None, str log_stream=None):
+                 tuple name_expressions=None, str log_stream=None):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
@@ -376,7 +376,7 @@ cdef class RawModule:
         ker = RawKernel(
             self.code, name, self.options, self.backend,
             translate_cucomplex=self.translate_cucomplex,
-            enable_cooperative_groups=self.enable_cooperative_groups
+            enable_cooperative_groups=self.enable_cooperative_groups,
             log_stream=self.log_stream)
         # for lookup in case we loaded from cubin/ptx
         ker.file_path = self.file_path
