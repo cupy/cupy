@@ -509,7 +509,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             elif minor == slice(None):
 
                 # Get all columns for single row
-                # Status: Already implemented
+                # Done.
                 return self._get_major_slice(slice(i, i + 1))
 
             elif isinstance(minor, (list, tuple, set)):
@@ -524,6 +524,27 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 # Slice columns for single row
                 return self._major_scalar_minor_slice(major, minor)
 
+        elif major == slice(None):
+
+            if minor == slice(None):
+
+                # Just return self.
+                return self.copy()
+
+            elif isinstance(min, (list, tuple, set)):
+
+                # Get all rows for a predefined set of columns
+                # Pass 1- Compute output degree (indptr)
+                # Pass 2- Populate values
+                return self._minor_index(minor)
+
+            elif isinstance(minor, slice):
+
+                # Get range of columns for all rows
+                # Pass 1- Compute output degree (indptr)
+                # Pass 2- Populate values in slice
+                return self._minor_slice(minor)
+
         elif isinstance(major, slice):
 
             # Fails: csr[:, 1:5], csr[1:5, 1:5], Succeeds: csr[1:5, :]
@@ -531,16 +552,26 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if minor == slice(None):
 
                 # Get all columns for a range of rows
+                # Done.
                 return self._get_major_slice(major)
 
             elif isinstance(minor, (list, tuple, set)):
 
                 # Get range of rows for a predefined set of columns
+                # Slice `indptr` and diff to figure out grid size & # threads
+                # Pass 1- Compute output degree based on non-zero
+                #         values for indexed cols
+                # Pass 2- Populate output values
                 return self._major_slice_minor_index(major, minor)
 
             elif isinstance(minor, slice):
 
                 # Slice rows and columns
+                # Two-pass kernel-
+                # Slice `indptr` and diff to figure out the grid size and
+                # number of threads.
+                # Pass 1- Compute output degree (intptr)
+                # Pass 2- Compute output values
                 return self._major_slice_minor_slice(major, minor)
 
         elif isinstance(major, (list, tuple, set)):
@@ -548,16 +579,25 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if minor == slice(None):
 
                 # Get all columns for index of rows
+                # Two-pass kernel-
+                # Pass 1- Compute output degree (indptr)
+                # Pass 2- Populate values for rows
                 self._major_index(major)
 
             elif isinstance(minor, (list, tuple, set)):
 
                 # Get predefined set of rows and predefined set of columns
+                # Two-pass kernel
+                # Pass 1- Compute output degree (indptr)
+                # Pass 2- Populate values for rows
                 self._major_index_minor_index(major, minor)
 
             elif isinstance(minor, slice):
 
                 # Get predefined set of rows and a range of columns
+                # Two-pass kernel
+                # Pass 1- Compute output degree (indptr)
+                # Pass 2- Populate values for rows
                 self._major_index_minor_slice(major, minor)
 
         """
