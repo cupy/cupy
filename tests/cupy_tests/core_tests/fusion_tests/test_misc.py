@@ -94,6 +94,9 @@ class TestFusionTuple(FusionTestBase):
 
         return func
 
+    @unittest.skipUnless(
+        fusion_utils.can_use_grid_synchronization(),
+        'Requires CUDA grid synchronization')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @fusion_utils.check_fusion(generate_inputs_args=(2,))
     def test_various_shape(self, xp, dtype):

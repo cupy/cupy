@@ -134,3 +134,10 @@ def check_fusion(
 
         return wrapper
     return deco
+
+
+def can_use_grid_synchronization():
+    return (
+        cupy.cuda.runtime.runtimeGetVersion() >= 9000 and
+        int(cupy.cuda.device.get_compute_capability()) >= 70
+    )

@@ -110,6 +110,9 @@ class TestIndexingCombination(unittest.TestCase):
     def test_indexing_twice_2(self, xp, dtype1, dtype2):
         return lambda x, y, z: x[0][1] + x[1][0]
 
+    @unittest.skipUnless(
+        fusion_utils.can_use_grid_synchronization(),
+        'Requires CUDA grid synchronization')
     @testing.for_all_dtypes_combination(
         names=['dtype1', 'dtype2'], no_bool=True)
     @fusion_utils.check_fusion()
