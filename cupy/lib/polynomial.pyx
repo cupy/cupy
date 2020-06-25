@@ -1,43 +1,6 @@
-import re
-import warnings
-
-import ctypes
 import numpy
 
 import cupy
-from cupy.cuda import device
-from cupy.core import syncdetect
-from cupy.cuda cimport stream as stream_module
-
-
-_poly_mat = re.compile(r'[*][*]([0-9]*)')
-
-
-def _raise_power(astr, wrap=70):
-    n = 0
-    line1 = ''
-    line2 = ''
-    output = ' '
-    while True:
-        mat = _poly_mat.search(astr, n)
-        if mat is None:
-            break
-        span = mat.span()
-        power = mat.groups()[0]
-        partstr = astr[n:span[0]]
-        n = span[1]
-        toadd2 = partstr + ' ' * (len(power) - 1)
-        toadd1 = ' ' * (len(partstr) - 1) + power
-        if ((len(line2) + len(toadd2) > wrap) or
-                (len(line1) + len(toadd1) > wrap)):
-            output += line1 + '\n' + line2 + '\n '
-            line1 = toadd1
-            line2 = toadd2
-        else:
-            line2 += partstr + ' ' * (len(power) - 1)
-            line1 += ' ' * (len(partstr) - 1) + power
-    output += line1 + '\n' + line2
-    return output + astr[n:]
 
 
 class poly1d(object):
@@ -78,14 +41,6 @@ class poly1d(object):
     def roots(self):
         raise NotImplementedError
 
-    @property
-    def _coeffs(self):
-        return self.__dict__['coeffs']
-
-    @_coeffs.setter
-    def _coeffs(self, coeffs):
-        self.__dict__['coeffs'] = coeffs
-
     r = roots
     c = coef = coefficients = coeffs
     o = order
@@ -94,12 +49,6 @@ class poly1d(object):
         if isinstance(c_or_r, poly1d):
             self._variable = c_or_r._variable
             self._coeffs = c_or_r._coeffs
-
-            if set(c_or_r.__dict__) - set(self.__dict__):
-                msg = ('In the future extra properties will not be copied '
-                       'across when constructing one poly1d from another')
-                warnings.warn(msg, FutureWarning, stacklevel=2)
-                self.__dict__.update(c_or_r.__dict__)
 
             if variable is not None:
                 self._variable = variable
@@ -123,67 +72,13 @@ class poly1d(object):
             'Please use `.get()` to construct a NumPy array explicitly.')
 
     def __repr__(self):
-        vals = repr(self.coeffs)
-        vals = vals[6:-1]
-        return "poly1d(%s)" % vals
+        return repr(self.get())
 
     def __len__(self):
         return self.order
 
     def __str__(self):
-        thestr = '0'
-        var = self.variable
-
-        coeffs = cupy.trim_zeros(self.coeffs, trim='f')
-
-        def fmt_float(q):
-            s = '%.4g' % q
-            if s.endswith('.0000'):
-                s = s[:-5]
-            return s
-
-        for i, coeff in enumerate(coeffs):
-            if not cupy.iscomplex(coeff):
-                coefstr = fmt_float(cupy.real(coeff))
-            elif cupy.real(coeff) == 0:
-                coefstr = '%sj' % fmt_float(cupy.imag(coeff))
-            else:
-                coefstr = '(%s + %sj)' % (fmt_float(cupy.real(coeff)),
-                                          fmt_float(cupy.imag(coeff)))
-
-            power = coeffs.size - 1 - i
-            if power == 0:
-                if coefstr != '0':
-                    newstr = '%s' % (coefstr,)
-                else:
-                    if i == 0:
-                        newstr = '0'
-                    else:
-                        newstr = ''
-            elif power == 1:
-                if coefstr == '0':
-                    newstr = ''
-                elif coefstr == 'b':
-                    newstr = var
-                else:
-                    newstr = '%s %s' % (coefstr, var)
-            else:
-                if coefstr == '0':
-                    newstr = ''
-                elif coefstr == 'b':
-                    newstr = '%s**%d' % (var, power,)
-                else:
-                    newstr = '%s %s**%d' % (coefstr, var, power)
-
-            if i > 0:
-                if newstr != '':
-                    if newstr.startswith('-'):
-                        thestr = "%s - %s" % (thestr, newstr[1:])
-                    else:
-                        thestr = "%s + %s" % (thestr, newstr)
-            else:
-                thestr = newstr
-        return _raise_power(thestr)
+        return str(self.get())
 
     # TODO(Dahlia-Chehata): implement using polyval
     def __call__(self, val):
@@ -302,7 +197,7 @@ class poly1d(object):
         """
         if out is not None:
             if not isinstance(out, numpy.poly1d):
-                raise TypeError('Only numpy.poly1d can be obtained from'
+                raise TypeError('Only numpy.poly1d can be obtained from '
                                 'cupy.poly1d')
             if self.coeffs.dtype != out.coeffs.dtype:
                 raise TypeError(
@@ -313,26 +208,7 @@ class poly1d(object):
                     'Shape mismatch. Expected shape: {}, '
                     'actual shape: {}'.format(self.coeffs.shape,
                                               out.coeffs.shape))
-            coeffs_cpu = out.coeffs
-        else:
-            if self.coeffs.size == 0:
-                c = numpy.array(self.coeffs.shape, self.coeffs.dtype)
-                return numpy.poly1d(c, variable=self.variable)
-            coeffs_gpu = self.coeffs
-            coeffs_cpu = numpy.empty(self.coeffs.shape, self.coeffs.dtype)
-        syncdetect._declare_synchronize()
-        ptr = ctypes.c_void_p(coeffs_cpu.__array_interface__['data'][0])
-        with self.coeffs.device:
-            if stream is not None:
-                coeffs_gpu.data.copy_to_host_async(ptr,
-                                                   coeffs_gpu.nbytes, stream)
-            else:
-                stream_ptr = stream_module.get_current_stream_ptr()
-                if stream_ptr == 0:
-                    coeffs_gpu.data.copy_to_host(ptr, coeffs_gpu.nbytes)
-                else:
-                    coeffs_gpu.data.copy_to_host_async(ptr, coeffs_gpu.nbytes)
-        return numpy.poly1d(coeffs_cpu, variable=self.variable)
-
-
-warnings.simplefilter('always', numpy.RankWarning)
+            out.coeffs = self.coeffs.get()
+            return out
+        return numpy.poly1d(self.coeffs.get(stream=stream),
+                            variable=self.variable)

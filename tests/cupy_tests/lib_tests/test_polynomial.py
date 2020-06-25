@@ -102,3 +102,15 @@ class TestPoly1d(unittest.TestCase):
         b1 = cupy.poly1d(a1).get()
         b2 = numpy.poly1d(a2)
         assert b1 == b2
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_repr(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.poly1d(a).__repr__()
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_str(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.poly1d(a).__str__()
