@@ -458,6 +458,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return self._add(other, True, False)
 
     def __getitem__(self, slices):
+
         if isinstance(slices, tuple):
             slices = list(slices)
         elif isinstance(slices, list):
@@ -486,8 +487,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         else:
             raise IndexError('invalid number of indices')
 
-        major, minor = self._swap(row, col)
+        major, minor = self._swap(row, col)  # This will fail on COO
         major_size, minor_size = self._swap(*self._shape)
+
         if numpy.isscalar(major):
             i = int(major)
             if i < 0:
@@ -500,14 +502,73 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     j += minor_size
                 if not (0 <= j < minor_size):
                     raise IndexError('index out of bounds')
+
+                # If i,j are both scalars, just grab the element
                 return self._get_single(i, j)
+
             elif minor == slice(None):
+
+                # Get all columns for single row
+                # Status: Already implemented
                 return self._get_major_slice(slice(i, i + 1))
+
+            elif isinstance(minor, (list, tuple, set)):
+
+                # Fetch list of columns for single row
+                # Since we know how many columns we have, it should be straightforward
+                # to schedule as a kernel
+                self._major_scalar_minor_index(major, minor)
+
+            else:
+
+                # Slice columns for single row
+                return self._major_scalar_minor_slice(major, minor)
+
         elif isinstance(major, slice):
+
+            # Fails: csr[:, 1:5], csr[1:5, 1:5], Succeeds: csr[1:5, :]
+            # Fails: csc[1:5, :], csc[1:5, 1:5], Succeeds: csc[:, 1:5]
             if minor == slice(None):
+
+                # Get all columns for a range of rows
                 return self._get_major_slice(major)
 
-        raise ValueError('unsupported indexing')
+            elif isinstance(minor, (list, tuple, set)):
+
+                # Get range of rows for a predefined set of columns
+                return self._major_slice_minor_index(major, minor)
+
+            elif isinstance(minor, slice):
+
+                # Slice rows and columns
+                return self._major_slice_minor_slice(major, minor)
+
+        elif isinstance(major, (list, tuple, set)):
+
+            if minor == slice(None):
+
+                # Get all columns for index of rows
+                self._major_index(major)
+
+            elif isinstance(minor, (list, tuple, set)):
+
+                # Get predefined set of rows and predefined set of columns
+                self._major_index_minor_index(major, minor)
+
+            elif isinstance(minor, slice):
+
+                # Get predefined set of rows and a range of columns
+                self._major_index_minor_slice(major, minor)
+
+        """
+        Notes: 
+        1. can have a tuple of slices of size n_dims
+        2. can be slice or some other value (eg. int, string)
+        3. Slice can have 3 pieces, the unknown pieces are filled in with None. 
+        4. 
+        """
+
+        raise ValueError("unsupported indexing: %s" % slices)
 
     # @todo: Need to build csr_column_index1- slice columns given as an array of indices (pass1)
     # @todo: Need to build csr_column_index2- slice columns given as an array of indices (pass2)
