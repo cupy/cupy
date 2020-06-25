@@ -326,18 +326,18 @@ def ravel_multi_index(multi_index, dims, mode='wrap', order='C'):
 
     s = 1
     ravel_strides = [1] * ndim
-    if order is None:
-        order = "C"
-    if order == "C":
+
+    order = 'C' if order is None else order.upper()
+    if order == 'C':
         for i in range(ndim - 2, -1, -1):
             s = s * dims[i + 1]
             ravel_strides[i] = s
-    elif order == "F":
+    elif order == 'F':
         for i in range(1, ndim):
             s = s * dims[i - 1]
             ravel_strides[i] = s
     else:
-        raise TypeError("order not understood")
+        raise ValueError('order not understood')
 
     multi_index = cupy.broadcast_arrays(*multi_index)
     raveled_indices = cupy.zeros(multi_index[0].shape, dtype=cupy.int64)
@@ -395,15 +395,13 @@ def unravel_index(indices, dims, order='C'):
     .. seealso:: :func:`numpy.unravel_index`, :func:`ravel_multi_index`
 
     """
-    if order is None:
-        order = 'C'
-
+    order = 'C' if order is None else order.upper()
     if order == 'C':
         dims = reversed(dims)
     elif order == 'F':
         pass
     else:
-        raise TypeError('order not understood')
+        raise ValueError('order not understood')
 
     if not cupy.can_cast(indices, cupy.int64, 'same_kind'):
         raise TypeError(

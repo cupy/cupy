@@ -170,7 +170,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         """
         if order is None:
             order = 'C'
-
+        order = order.upper()
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
 
@@ -182,7 +182,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         elif order == 'F':
             return cusparse.csc2dense(self)
         else:
-            raise TypeError('order not understood')
+            raise ValueError('order not understood')
 
     def _add_sparse(self, other, alpha, beta):
         self.sum_duplicates()
