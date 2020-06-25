@@ -15,9 +15,9 @@ def _sparse_frobenius_norm(x):
 
 
 def norm(x, ord=None, axis=None):
-    """
-    Norm of a cupy.scipy.spmatrix
-    This function is able to return one of seven different matrix norms,
+    """Norm of a cupy.scipy.spmatrix
+
+    This function is able to return one of seven different sparse matrix norms,
     depending on the value of the ``ord`` parameter.
 
     Args:
@@ -33,62 +33,9 @@ def norm(x, ord=None, axis=None):
     Returns :
         n : float or ndarray
 
-    Notes
-    -----
-    Some of the ord are not implemented because some associated functions like,
-    _multi_svd_norm, are not yet available for sparse matrix.
-    This docstring is modified based on numpy.linalg.norm.
-    https://github.com/numpy/numpy/blob/master/numpy/linalg/linalg.py
-    The following norms can be calculated:
-    =====  ============================
-    ord    norm for sparse matrices
-    =====  ============================
-    None   Frobenius norm
-    'fro'  Frobenius norm
-    inf    max(sum(abs(x), axis=1))
-    -inf   min(sum(abs(x), axis=1))
-    0      abs(x).sum(axis=axis)
-    1      max(sum(abs(x), axis=0))
-    -1     min(sum(abs(x), axis=0))
-    2      Not implemented
-    -2     Not implemented
-    other  Not implemented
-    =====  ============================
-    The Frobenius norm is given by [1]_:
-        :math:`||A||_F = [\\sum_{i,j} abs(a_{i,j})^2]^{1/2}`
-    References
-    ----------
-    .. [1] G. H. Golub and C. F. Van Loan, *Matrix Computations*,
-        Baltimore, MD, Johns Hopkins University Press, 1985, pg. 15
-    Examples
-    --------
-    >>> from cupyx.scipy.sparse import *
-    >>> import numpy as np
-    >>> import cupy as cp
-    >>> from cupyx.scipy.sparse.linalg import norm
-    >>> a = cp.arange(9, dtype=cp.float) - 4
-    >>> a
-    array([-4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.])
-    >>> b = a.reshape((3, 3))
-    >>> b
-    array([[-4., -3., -2.],
-           [-1., 0., 1.],
-           [ 2., 3., 4.]])
-    >>> b = csr_matrix(b)
-    >>> norm(b)
-    7.745966692414834
-    >>> norm(b, 'fro')
-    7.745966692414834
-    >>> norm(b, np.inf)
-    9
-    >>> norm(b, -np.inf)
-    2
-    >>> norm(b, 1)
-    7
-    >>> norm(b, -1)
-    6
-
+    .. seealso:: :func:`scipy.sparse.linalg.norm`
     """
+
     if not cupyx.scipy.sparse.issparse(x):
         raise TypeError(("input is not sparse. use cupy.linalg.norm"))
 
