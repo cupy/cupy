@@ -1258,8 +1258,8 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
 
 class CUBMockTest:
 
-    def __init__(self, mock_mod, return_value=None):
-        self.patch = mock.patch(mock_mod, return_value=return_value)
+    def __init__(self, mock_mod, **kwargs):
+        self.patch = mock.patch(mock_mod, **kwargs)
 
     def __enter__(self):
         self.handle = self.patch.__enter__()
