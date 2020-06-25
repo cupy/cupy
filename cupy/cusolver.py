@@ -276,7 +276,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
         tuple of :class:`~cupy.ndarray`:
             Returns a tuple ``(w, v)``. ``w`` contains eigenvalues and
             ``v`` contains eigenvectors. ``v[:, i]`` is an eigenvector
-            corresponding to an eigenvalue ``w[i]``. For batch input, 
+            corresponding to an eigenvalue ``w[i]``. For batch input,
             ``v[k, :, i]`` is an eigenvector corresponding to an eigenvalue
             ``w[k, i]`` of ``a[k]``.
     """
