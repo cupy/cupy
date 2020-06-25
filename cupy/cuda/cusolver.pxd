@@ -401,14 +401,18 @@ cpdef xsyevjSetSortEig(intptr_t info, int sort_eig)
 cpdef double xsyevjGetResidual(intptr_t handle, intptr_t info)
 cpdef int xsyevjGetSweeps(intptr_t handle, intptr_t info)
 
-cpdef int ssyevj_bufferSize(intptr_t handle, int jobz, int uplo, int n,
-                            size_t A, int lda, size_t W, intptr_t params) except? -1
-cpdef int dsyevj_bufferSize(intptr_t handle, int jobz, int uplo, int n,
-                            size_t A, int lda, size_t W, intptr_t params) except? -1
-cpdef int cheevj_bufferSize(intptr_t handle, int jobz, int uplo, int n,
-                            size_t A, int lda, size_t W, intptr_t params) except? -1
-cpdef int zheevj_bufferSize(intptr_t handle, int jobz, int uplo, int n,
-                            size_t A, int lda, size_t W, intptr_t params) except? -1
+cpdef int ssyevj_bufferSize(
+    intptr_t handle, int jobz, int uplo, int n,
+    size_t A, int lda, size_t W, intptr_t params) except? -1
+cpdef int dsyevj_bufferSize(
+    intptr_t handle, int jobz, int uplo, int n,
+    size_t A, int lda, size_t W, intptr_t params) except? -1
+cpdef int cheevj_bufferSize(
+    intptr_t handle, int jobz, int uplo, int n,
+    size_t A, int lda, size_t W, intptr_t params) except? -1
+cpdef int zheevj_bufferSize(
+    intptr_t handle, int jobz, int uplo, int n,
+    size_t A, int lda, size_t W, intptr_t params) except? -1
 cpdef ssyevj(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
              size_t W, size_t work, int lwork, size_t info, intptr_t params)
 cpdef dsyevj(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
@@ -418,23 +422,35 @@ cpdef cheevj(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
 cpdef zheevj(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
              size_t W, size_t work, int lwork, size_t info, intptr_t params)
 
-cpdef int ssyevjBatched_bufferSize(intptr_t handle, int jobz, int uplo, int n,
-                            size_t A, int lda, size_t W, intptr_t params, int batchSize) except? -1
-cpdef int dsyevjBatched_bufferSize(intptr_t handle, int jobz, int uplo, int n,
-                            size_t A, int lda, size_t W, intptr_t params, int batchSize) except? -1
-cpdef int cheevjBatched_bufferSize(intptr_t handle, int jobz, int uplo, int n,
-                            size_t A, int lda, size_t W, intptr_t params, int batchSize) except? -1
-cpdef int zheevjBatched_bufferSize(intptr_t handle, int jobz, int uplo, int n,
-                            size_t A, int lda, size_t W, intptr_t params, int batchSize) except? -1
-cpdef ssyevjBatched(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
-             size_t W, size_t work, int lwork, size_t info, intptr_t params, int batchSize)
-cpdef dsyevjBatched(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
-             size_t W, size_t work, int lwork, size_t info, intptr_t params, int batchSize)
-cpdef cheevjBatched(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
-             size_t W, size_t work, int lwork, size_t info, intptr_t params, int batchSize)
-cpdef zheevjBatched(intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
-             size_t W, size_t work, int lwork, size_t info, intptr_t params, int batchSize)
-             
+cpdef int ssyevjBatched_bufferSize(
+    intptr_t handle, int jobz, int uplo, int n,
+    size_t A, int lda, size_t W, intptr_t params, int batchSize) except? -1
+cpdef int dsyevjBatched_bufferSize(
+    intptr_t handle, int jobz, int uplo, int n,
+    size_t A, int lda, size_t W, intptr_t params, int batchSize) except? -1
+cpdef int cheevjBatched_bufferSize(
+    intptr_t handle, int jobz, int uplo, int n,
+    size_t A, int lda, size_t W, intptr_t params, int batchSize) except? -1
+cpdef int zheevjBatched_bufferSize(
+    intptr_t handle, int jobz, int uplo, int n,
+    size_t A, int lda, size_t W, intptr_t params, int batchSize) except? -1
+cpdef ssyevjBatched(
+    intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
+    size_t W, size_t work, int lwork, size_t info, intptr_t params,
+    int batchSize)
+cpdef dsyevjBatched(
+    intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
+    size_t W, size_t work, int lwork, size_t info, intptr_t params,
+    int batchSize)
+cpdef cheevjBatched(
+    intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
+    size_t W, size_t work, int lwork, size_t info, intptr_t params,
+    int batchSize)
+cpdef zheevjBatched(
+    intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
+    size_t W, size_t work, int lwork, size_t info, intptr_t params,
+    int batchSize)
+
 ###############################################################################
 # Sparse LAPACK Functions
 ###############################################################################
