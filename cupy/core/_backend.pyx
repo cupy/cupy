@@ -4,7 +4,7 @@ cdef list _reduction_backends = []
 cdef list _routine_backends = []
 
 
-def _get_backend(str s):
+cdef int _get_backend(str s) except -1:
     if s == 'cub':
         return BACKEND_CUB
     # if s == 'cutensor':
