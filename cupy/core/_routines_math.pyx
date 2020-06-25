@@ -17,9 +17,9 @@ from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
 
-if cupy.cuda.cub_enabled:
+try:
     from cupy.cuda import cub
-else:
+except ImportError:
     cub = None
 
 

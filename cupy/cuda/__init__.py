@@ -1,5 +1,4 @@
 import contextlib
-import os
 
 from cupy._environment import get_cuda_path, get_nvcc_path  # NOQA
 from cupy.cuda import compiler  # NOQA
@@ -36,14 +35,6 @@ try:
     thrust_enabled = True
 except ImportError:
     thrust_enabled = False
-
-cub_enabled = False
-if int(os.getenv('CUPY_CUB_ENABLED', 0)) == 1:
-    try:
-        from cupy.cuda import cub  # NOQA
-        cub_enabled = True
-    except ImportError:
-        pass
 
 try:
     from cupy.cuda import nccl  # NOQA

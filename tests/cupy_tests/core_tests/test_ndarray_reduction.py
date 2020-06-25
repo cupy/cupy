@@ -216,13 +216,14 @@ class TestArrayReduction(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
-class TestCUBreduction(unittest.TestCase):
+@unittest.skipUnless(
+    cupy.core._backend.get_routine_backends() == ['cub'],
+    'The CUB routine is not enabled')
+class TestFcontiguousReduction(unittest.TestCase):
     @testing.for_contiguous_axes()
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_min(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
@@ -231,10 +232,9 @@ class TestCUBreduction(unittest.TestCase):
         return a.min(axis=axis)
 
     @testing.for_contiguous_axes()
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_max(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)

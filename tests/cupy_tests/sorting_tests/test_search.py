@@ -166,12 +166,13 @@ class TestSearch(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
+@unittest.skipUnless(
+    cupy.core._backend.get_routine_backends() == ['cub'],
+    'The CUB routine is not enabled')
 class TestCUBreduction(unittest.TestCase):
     @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_argmin(self, xp, dtype):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order == 'C':
             a = xp.ascontiguousarray(a)
@@ -182,7 +183,6 @@ class TestCUBreduction(unittest.TestCase):
     @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_argmax(self, xp, dtype):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order == 'C':
             a = xp.ascontiguousarray(a)

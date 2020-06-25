@@ -1534,7 +1534,9 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
 }))
 @testing.with_requires('scipy')
 @testing.gpu
-@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
+@unittest.skipUnless(
+    cupy.core._backend.get_routine_backends() == ['cub'],
+    'The CUB routine is not enabled')
 class TestCUBspmv(unittest.TestCase):
     @property
     def make(self):
@@ -1542,8 +1544,6 @@ class TestCUBspmv(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_dense_vector(self, xp, sp):
-        assert cupy.cuda.cub_enabled
-
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(4).astype(self.dtype)
         return m * x

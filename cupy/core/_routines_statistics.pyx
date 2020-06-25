@@ -12,8 +12,11 @@ from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray
 
 import cupy
-if cupy.cuda.cub_enabled:
+
+try:
     from cupy.cuda import cub
+except ImportError:
+    cub = None
 
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):

@@ -198,14 +198,15 @@ class TestSumprod(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
+@unittest.skipUnless(
+    cupy.core._backend.get_routine_backends() == ['cub'],
+    'The CUB routine is not enabled')
 class TestCUBreduction(unittest.TestCase):
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?
     @testing.for_dtypes('lLfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_sum(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
@@ -218,7 +219,6 @@ class TestCUBreduction(unittest.TestCase):
     @testing.for_dtypes('lLfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_prod(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
@@ -231,7 +231,6 @@ class TestCUBreduction(unittest.TestCase):
     @testing.for_dtypes('bhilBHILfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumsum(self, xp, dtype):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
@@ -244,7 +243,6 @@ class TestCUBreduction(unittest.TestCase):
     @testing.for_dtypes('bhilBHILfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumprod(self, xp, dtype):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
