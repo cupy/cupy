@@ -35,13 +35,6 @@ class TestPoly1d(unittest.TestCase):
         a = testing.shaped_arange((5,), xp, dtype)
         return xp.poly1d(a, variable='p').variable
 
-    @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2'], no_complex=True)
-    @testing.numpy_cupy_array_equal()
-    def test_poly1d_astype(self, xp, dtype1, dtype2):
-        a = testing.shaped_arange((5,), xp, dtype1)
-        return xp.poly1d(a).__array__(dtype2)
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_poly1d_order(self, xp, dtype):
@@ -93,3 +86,19 @@ class TestPoly1d(unittest.TestCase):
             b = xp.poly1d(a)
             with pytest.raises(ValueError):
                 b[-1] = 20
+
+    @testing.for_all_dtypes()
+    def test_poly1d_get1(self, dtype):
+        a1 = testing.shaped_arange((10,), cupy, dtype)
+        a2 = testing.shaped_arange((10,), numpy, dtype)
+        b1 = cupy.poly1d(a1).get()
+        b2 = numpy.poly1d(a2)
+        assert b1 == b2
+
+    @testing.for_all_dtypes()
+    def test_poly1d_get2(self, dtype):
+        a1 = testing.shaped_arange((), cupy, dtype)
+        a2 = testing.shaped_arange((), numpy, dtype)
+        b1 = cupy.poly1d(a1).get()
+        b2 = numpy.poly1d(a2)
+        assert b1 == b2

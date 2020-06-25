@@ -1,9 +1,14 @@
 import re
 import warnings
 
+import ctypes
 import numpy
 
 import cupy
+from cupy.cuda import device
+from cupy.core import syncdetect
+from cupy.cuda cimport stream as stream_module
+
 
 _poly_mat = re.compile(r'[*][*]([0-9]*)')
 
@@ -39,12 +44,12 @@ class poly1d(object):
     """A one-dimensional polynomial class.
 
     Args:
-        c_or_r (cupy.ndarray or cupy.poly1d): The polynomial's
+        c_or_r (array_like): The polynomial's
          coefficients in decreasing powers
-        r (bool, optional): If True, `c_or_r` specifies the
+        r (bool, optional): If True, ```c_or_r`` specifies the
             polynomial's roots; the default is False.
         variable (str, optional): Changes the variable used when
-            printing the polynomial from `x` to `variable`
+            printing the polynomial from ``x`` to ``variable``
 
     .. seealso:: :func:`numpy.poly1d`
 
@@ -68,10 +73,10 @@ class poly1d(object):
     def order(self):
         return self._coeffs.size - 1
 
-    # TODO
+    # TODO(Dahlia-Chehata): implement using cupy.roots
     @property
     def roots(self):
-        pass
+        raise NotImplementedError
 
     @property
     def _coeffs(self):
@@ -99,7 +104,9 @@ class poly1d(object):
             if variable is not None:
                 self._variable = variable
             return
-        # TODO: if r: c_or_r = poly(c_or_r)
+        # TODO(Dahlia-Chehata): if r: c_or_r = poly(c_or_r)
+        if c_or_r.ndim < 1:
+            c_or_r = cupy.atleast_1d(c_or_r)
         if c_or_r.ndim > 1:
             raise ValueError('Polynomial must be 1d only.')
         c_or_r = cupy.trim_zeros(c_or_r, trim='f')
@@ -110,10 +117,10 @@ class poly1d(object):
             variable = 'x'
         self._variable = variable
 
-    def __array__(self, t=None):
-        if t:
-            return cupy.asarray(self.coeffs, t)
-        return self.coeffs
+    def __array__(self, dtype=None):
+        raise TypeError(
+            'Implicit conversion to a NumPy array is not allowed. '
+            'Please use `.get()` to construct a NumPy array explicitly.')
 
     def __repr__(self):
         vals = repr(self.coeffs)
@@ -178,9 +185,9 @@ class poly1d(object):
                 thestr = newstr
         return _raise_power(thestr)
 
-    # TODO
+    # TODO(Dahlia-Chehata): implement using polyval
     def __call__(self, val):
-        pass
+        raise NotImplementedError
 
     def __neg__(self):
         return poly1d(-self.coeffs)
@@ -188,61 +195,66 @@ class poly1d(object):
     def __pos__(self):
         return self
 
-    # TODO
+    # TODO(Dahlia-Chehata): use polymul for non-scalars
     def __mul__(self, other):
         if cupy.isscalar(other):
             return poly1d(self.coeffs * other)
+        raise NotImplementedError
 
-    # TODO
+    # TODO(Dahlia-Chehata): use polymul for non-scalars
     def __rmul__(self, other):
         if cupy.isscalar(other):
             return poly1d(other * self.coeffs)
+        raise NotImplementedError
 
-    # TODO
+    # TODO(Dahlia-Chehata): implement using polyadd
     def __add__(self, other):
-        pass
+        raise NotImplementedError
 
-    # TODO
+    # TODO(Dahlia-Chehata): implement using polyadd
     def __radd__(self, other):
-        pass
+        raise NotImplementedError
 
-    # TODO
+    # TODO(Dahlia-Chehata): implement using polymul
     def __pow__(self, val):
         if not cupy.isscalar(val) or int(val) != val or val < 0:
             raise ValueError('Power to non-negative integers only.')
+        raise NotImplementedError
 
-    # TODO
+    # TODO(Dahlia-Chehata): implement using polysub
     def __sub__(self, other):
-        pass
+        raise NotImplementedError
 
-    # TODO
+    # TODO(Dahlia-Chehata): implement using polysub
     def __rsub__(self, other):
-        pass
+        raise NotImplementedError
 
-    # TODO
+    # TODO(Dahlia-Chehata): use polydiv for non-scalars
     def __div__(self, other):
         if cupy.isscalar(other):
             return poly1d(self.coeffs / other)
+        raise NotImplementedError
 
     __truediv__ = __div__
 
-    # TODO
+    # TODO(Dahlia-Chehata): use polydiv for non-scalars
     def __rdiv__(self, other):
         if cupy.isscalar(other):
             return poly1d(other / self.coeffs)
+        raise NotImplementedError
 
     __rtruediv__ = __rdiv__
 
     def __eq__(self, other):
         if not isinstance(other, poly1d):
-            return NotImplemented
+            raise NotImplementedError
         if self.coeffs.shape != other.coeffs.shape:
             return False
         return (self.coeffs == other.coeffs).all()
 
     def __ne__(self, other):
         if not isinstance(other, poly1d):
-            return NotImplemented
+            raise NotImplementedError
         return not self.__eq__(other)
 
     def __getitem__(self, val):
@@ -266,10 +278,61 @@ class poly1d(object):
         return iter(self.coeffs)
 
     def integ(self, m=1, k=0):
-        pass
+        raise NotImplementedError
 
     def deriv(self, m=1):
-        pass
+        raise NotImplementedError
+
+    # -------------------------------------------------------------------------
+    # Cupy specific attributes and methods
+    # -------------------------------------------------------------------------
+    def get(self, stream=None, out=None):
+        """Returns a copy of poly1d object on host memory.
+
+        Args:
+            stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
+                copy runs asynchronously. Otherwise, the copy is synchronous.
+                The default uses CUDA stream object of the current context.
+            out (numpy.poly1d): Output object. In order to enable asynchronous
+                copy, the underlying memory should be a pinned memory.
+
+        Returns:
+            numpy.poly1d: Copy of poly1d object on host memory.
+
+        """
+        if out is not None:
+            if not isinstance(out, numpy.poly1d):
+                raise TypeError('Only numpy.poly1d can be obtained from'
+                                'cupy.poly1d')
+            if self.coeffs.dtype != out.coeffs.dtype:
+                raise TypeError(
+                    '{} poly1d cannot be obtained from {} poly1d'.format(
+                        out.coeffs.dtype, self.coeffs.dtype))
+            if self.coeffs.shape != out.coeffs.shape:
+                raise ValueError(
+                    'Shape mismatch. Expected shape: {}, '
+                    'actual shape: {}'.format(self.coeffs.shape,
+                                              out.coeffs.shape))
+            coeffs_cpu = out.coeffs
+        else:
+            if self.coeffs.size == 0:
+                c = numpy.array(self.coeffs.shape, self.coeffs.dtype)
+                return numpy.poly1d(c, variable=self.variable)
+            coeffs_gpu = self.coeffs
+            coeffs_cpu = numpy.empty(self.coeffs.shape, self.coeffs.dtype)
+        syncdetect._declare_synchronize()
+        ptr = ctypes.c_void_p(coeffs_cpu.__array_interface__['data'][0])
+        with self.coeffs.device:
+            if stream is not None:
+                coeffs_gpu.data.copy_to_host_async(ptr,
+                                                   coeffs_gpu.nbytes, stream)
+            else:
+                stream_ptr = stream_module.get_current_stream_ptr()
+                if stream_ptr == 0:
+                    coeffs_gpu.data.copy_to_host(ptr, coeffs_gpu.nbytes)
+                else:
+                    coeffs_gpu.data.copy_to_host_async(ptr, coeffs_gpu.nbytes)
+        return numpy.poly1d(coeffs_cpu, variable=self.variable)
 
 
 warnings.simplefilter('always', numpy.RankWarning)
