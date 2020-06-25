@@ -730,6 +730,7 @@ cusolverStatus_t cusolverDnXsyevjGetResidual(...) {
 
 cusolverStatus_t cusolverDnXsyevjGetSweeps(...) {
     return CUSOLVER_STATUS_SUCCESS;
+}
 
 cusolverStatus_t cusolverDnSsyevj_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
