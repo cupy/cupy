@@ -177,8 +177,8 @@ def minimum_filter(input, size=None, footprint=None, output=None,
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.minimum_filter`
     """
-    return _min_or_max_filter(input, size, footprint, output, mode, cval,
-                              origin, 'min')
+    return _min_or_max_filter(input, size, footprint, None, output, mode,
+                              cval, origin, 'min')
 
 
 def maximum_filter(input, size=None, footprint=None, output=None,
@@ -208,12 +208,17 @@ def maximum_filter(input, size=None, footprint=None, output=None,
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.maximum_filter`
     """
-    return _min_or_max_filter(input, size, footprint, output, mode, cval,
-                              origin, 'max')
+    return _min_or_max_filter(input, size, footprint, None, output, mode,
+                              cval, origin, 'max')
 
 
-def _min_or_max_filter(input, size, ftprnt, output, mode, cval, origin, func):
-    sizes, ftprnt = _check_size_or_ftprnt(input.ndim, size, ftprnt, 3, True)
+def _min_or_max_filter(input, size, footprint, structure, output, mode, cval,
+                       origin, func):
+    # structure is used by morphology.grey_erosion() and grey_dilation()
+    # and not by the regular min/max filters
+
+    sizes, footprint, structure = _check_size_footprint_structure(
+        input.ndim, size, footprint, structure, 3)
 
     if sizes is not None:
         # Seperable filter, run as a series of 1D filters
@@ -241,16 +246,21 @@ def _min_or_max_filter(input, size, ftprnt, output, mode, cval, origin, func):
             input = output_orig
         return input
 
-    origins, int_type = _check_nd_args(input, ftprnt, mode, origin,
+    origins, int_type = _check_nd_args(input, footprint, mode, origin,
                                        'footprint')
-    if ftprnt.size == 0:
+    if structure is not None and structure.ndim != input.ndim:
+        raise RuntimeError('structure array has incorrect shape')
+
+    if footprint.size == 0:
         return cupy.zeros_like(input)
-    center = tuple(x//2 + origin for x, origin in zip(ftprnt.shape, origins))
-    kernel = _get_min_or_max_kernel(mode, ftprnt.shape, func,
+    center = tuple(x//2 + origin
+                   for x, origin in zip(footprint.shape, origins))
+    kernel = _get_min_or_max_kernel(mode, footprint.shape, func,
                                     origins, float(cval), int_type,
-                                    has_central_value=bool(ftprnt[center]))
-    ftprnt[center] = 0  # can skip going over the central pixel in all cases
-    return _call_kernel(kernel, input, ftprnt, output, bool)
+                                    has_structure=structure is not None,
+                                    has_central_value=bool(footprint[center]))
+    return _call_kernel(kernel, input, footprint, output, structure,
+                        weights_dtype=bool)
 
 
 def minimum_filter1d(input, size, axis=-1, output=None, mode="reflect",
@@ -275,7 +285,7 @@ def minimum_filter1d(input, size, axis=-1, output=None, mode="reflect",
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.minimum_filter1d`
     """
-    return _max_or_min_1d(input, size, axis, output, mode, cval, origin, 'min')
+    return _min_or_max_1d(input, size, axis, output, mode, cval, origin, 'min')
 
 
 def maximum_filter1d(input, size, axis=-1, output=None, mode="reflect",
@@ -300,35 +310,41 @@ def maximum_filter1d(input, size, axis=-1, output=None, mode="reflect",
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.maximum_filter1d`
     """
-    return _max_or_min_1d(input, size, axis, output, mode, cval, origin, 'max')
+    return _min_or_max_1d(input, size, axis, output, mode, cval, origin, 'max')
 
 
-def _max_or_min_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
+def _min_or_max_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
                    origin=0, func='min'):
     ftprnt = cupy.ones(size, dtype=bool)
     ftprnt, origins = _convert_1d_args(input.ndim, ftprnt, origin, axis)
     origins, int_type = _check_nd_args(input, ftprnt, mode, origins,
                                        'footprint')
     kernel = _get_min_or_max_kernel(mode, ftprnt.shape, func, origins,
-                                    float(cval), int_type, False)
-    return _call_kernel(kernel, input, None, output, bool)
+                                    float(cval), int_type, has_weights=False)
+    return _call_kernel(kernel, input, None, output, weights_dtype=bool)
 
 
 @cupy.util.memoize(for_each_device=True)
 def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type,
-                           has_weights=True, has_central_value=True):
+                           has_weights=True, has_structure=False,
+                           has_central_value=True):
+    value = '{value}'
+    if has_structure:
+        value += ' - (X)sval' if func == 'min' else ' + (X)sval'
+
     if has_central_value:
         pre = 'X value = x[i];'
-        found = 'value = {func}({{value}}, value);'
+        found = 'value = {func}({value}, value);'
     else:
         # If the central pixel is not included in the footprint we cannot
         # assume `x[i]` is not below the min or above the max and thus cannot
         # seed with that value. Instead we keep track of having set `value`.
         pre = 'X value; bool set = false;'
-        found = 'value = set? {func}({{value}}, value) : {{value}}; set=true;'
+        found = 'value = set ? {func}({value}, value) : {value}; set=true;'
     return _generate_nd_kernel(
-        func, pre, found.format(func=func), 'y = (Y)value;',
-        mode, wshape, int_type, origins, cval, has_weights=has_weights)
+        func, pre, found.format(func=func, value=value), 'y = (Y)value;',
+        mode, wshape, int_type, origins, cval,
+        has_weights=has_weights, has_structure=has_structure)
 
 
 def _get_output(output, input, shape=None):
@@ -368,31 +384,37 @@ def _check_origin(origin, width):
 
 def _check_mode(mode):
     if mode not in ('reflect', 'constant', 'nearest', 'mirror', 'wrap'):
-        msg = 'boundary mode not supported (actual: {}).'.format(mode)
+        msg = 'boundary mode not supported (actual: {})'.format(mode)
         raise RuntimeError(msg)
     return mode
 
 
-def _check_size_or_ftprnt(ndim, size, ftprnt, stacklevel, check_sep=False):
-    if ftprnt is None:
+def _check_size_footprint_structure(ndim, size, footprint, structure,
+                                    stacklevel):
+    if structure is None and footprint is None:
         if size is None:
             raise RuntimeError("no footprint or filter size provided")
         sizes = _fix_sequence_arg(size, ndim, 'size', int)
-        if check_sep:
-            return sizes, None
-        ftprnt = cupy.ones(sizes, dtype=bool)
-    else:
-        if size is not None:
-            warnings.warn("ignoring size because footprint is set",
-                          UserWarning, stacklevel=stacklevel+1)
-        ftprnt = cupy.array(ftprnt, bool, True, 'C')
-        if not ftprnt.any():
-            raise ValueError("All-zero footprint is not supported.")
-        if check_sep:
-            if ftprnt.all():
-                return ftprnt.shape, None
-            return None, ftprnt
-    return ftprnt
+        return sizes, None, None
+    if size is not None:
+        warnings.warn("ignoring size because {} is set".format(
+            'structure' if footprint is None else 'footprint'),
+                      UserWarning, stacklevel=stacklevel+1)
+
+    if footprint is not None:
+        footprint = cupy.array(footprint, bool, True, 'C')
+        if not footprint.any():
+            raise ValueError("all-zero footprint is not supported")
+
+    if structure is None:
+        if footprint.all():
+            return footprint.shape, None, None
+        return None, footprint, None
+
+    structure = cupy.ascontiguousarray(structure)
+    if footprint is None:
+        footprint = cupy.ones(structure.shape, bool)
+    return None, footprint, structure
 
 
 def _convert_1d_args(ndim, weights, origin, axis):
@@ -409,7 +431,7 @@ def _convert_1d_args(ndim, weights, origin, axis):
 
 def _check_nd_args(input, weights, mode, origins, wghts_name='filter weights'):
     if input.dtype.kind == 'c':
-        raise TypeError('Complex type not supported.')
+        raise TypeError('Complex type not supported')
     _check_mode(mode)
     # The integer type to use for indices in the input array
     # The indices actually use byte positions and we can't just use
@@ -423,43 +445,47 @@ def _check_nd_args(input, weights, mode, origins, wghts_name='filter weights'):
         raise RuntimeError('weights must be 2 GiB or less, use FFTs instead')
     weight_dims = [x for x in weights.shape if x != 0]
     if len(weight_dims) != input.ndim:
-        raise RuntimeError('{} array has incorrect shape.'.format(wghts_name))
+        raise RuntimeError('{} array has incorrect shape'.format(wghts_name))
     origins = _fix_sequence_arg(origins, len(weight_dims), 'origin', int)
     for origin, width in zip(origins, weight_dims):
         _check_origin(origin, width)
     return tuple(origins), int_type
 
 
-def _call_kernel(kernel, input, weights, output,
-                 weights_dtype=cupy.float64):
+def _call_kernel(kernel, input, weights, output, structure=None,
+                 weights_dtype=cupy.float64, structure_dtype=cupy.float64):
     """
     Calls a constructed ElementwiseKernel. The kernel must take an input image,
-    an array of weights, and an output array.
+    an optional array of weights, an optional array for the structure, and an
+    output array.
 
-    The weights are the only optional part and can be passed as None and then
-    one less argument is passed to the kernel. If the output is given as None
-    then it will be allocated in this function.
+    weights and structure can be given as None (structure defaults to None) in
+    which case they are not passed to the kernel at all. If the output is given
+    as None then it will be allocated in this function.
 
-    This function deals with making sure that the weights are contiguous and
-    float64 or bool*, that the output is allocated and appriopate shaped. This
-    also deals with the situation that the input and output arrays overlap in
-    memory.
+    This function deals with making sure that the weights and structure are
+    contiguous and float64 (or bool for weights that are footprints)*, that the
+    output is allocated and appriopately shaped. This also deals with the
+    situation that the input and output arrays overlap in memory.
 
     * weights is always cast to float64 or bool in order to get an output
     compatible with SciPy, though float32 might be sufficient when input dtype
     is low precision. If weights_dtype is passed as weights.dtype then no
     dtype conversion will occur. The input and output are never converted.
     """
+    args = [input]
     if weights is not None:
         weights = cupy.ascontiguousarray(weights, weights_dtype)
+        args.append(weights)
+    if structure is not None:
+        structure = cupy.ascontiguousarray(structure, structure_dtype)
+        args.append(structure)
     output = _get_output(output, input)
     needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
     if needs_temp:
         output, temp = _get_output(output.dtype, input), output
-    if weights is None:
-        kernel(input, output)
-    else:
-        kernel(input, weights, output)
+    args.append(output)
+    kernel(*args)
     if needs_temp:
         temp[...] = output[...]
         output = temp
@@ -504,14 +530,18 @@ def _generate_boundary_condition_ops(mode, ix, xsize):
 
 def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
                         origins, cval, preamble='', options=(),
-                        has_weights=True):
+                        has_weights=True, has_structure=False):
     # Currently this code uses CArray for weights but avoids using CArray for
     # the input data and instead does the indexing itself since it is faster.
     # If CArray becomes faster than follow the comments that start with
     # CArray: to switch over to using CArray for the input data as well.
 
     ndim = len(wshape)
-    in_params = 'raw X x, raw W w'
+    in_params = 'raw X x'
+    if has_weights:
+        in_params += ', raw W w'
+    if has_structure:
+        in_params += ', raw S s'
     out_params = 'Y y'
 
     inds = _generate_indices_ops(
@@ -523,12 +553,14 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
     # CArray: remove expr entirely
     expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
 
-    if has_weights:
-        weights_init = 'int iw = 0;'
-        weights_check = 'W wval = w[iw++];\nif (wval)'
-    else:
-        in_params = 'raw X x'
-        weights_init = weights_check = ''
+    ws_init = ws_pre = ws_post = ''
+    if has_weights or has_structure:
+        ws_init = 'int iws = 0;'
+        if has_structure:
+            ws_pre = 'S sval = s[iws];\n'
+        if has_weights:
+            ws_pre += 'W wval = w[iws];\nif (wval)'
+        ws_post = 'iws++;'
 
     loops = []
     for j in range(ndim):
@@ -564,23 +596,26 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
     {inds}
     // don't use a CArray for indexing (faster to deal with indexing ourselves)
     const unsigned char* data = (const unsigned char*)&x[0];
-    {weights_init}
+    {ws_init}
     {pre}
     {loops}
         // inner-most loop
-        {weights_check} {{
+        {ws_pre} {{
             {found}
         }}
+        {ws_post}
     {end_loops}
     {post}
     '''.format(sizes='\n'.join(sizes), inds=inds, pre=pre, post=post,
-               weights_init=weights_init, weights_check=weights_check,
+               ws_init=ws_init, ws_pre=ws_pre, ws_post=ws_post,
                loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
     name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
         name, ndim, mode, '_'.join(['{}'.format(j) for j in wshape]))
     if int_type == 'ptrdiff_t':
         name += '_i64'
+    if has_structure:
+        name += '_with_structure'
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
                                   options=options)
