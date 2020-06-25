@@ -473,7 +473,7 @@ def _rank_filter(input, get_rank, size=None, footprint=None, output=None,
                                   cval, origins, 'max')
     kernel = _get_rank_kernel(filter_size, rank, mode, footprint.shape,
                               origins, float(cval), int_type)
-    return _call_kernel(kernel, input, footprint, output, bool)
+    return _call_kernel(kernel, input, footprint, output, None, bool)
 
 
 __SHELL_SORT = '''
@@ -496,11 +496,11 @@ __device__ void sort(X *array, int size) {{
 
 __SELECTION_SORT = '''
 __device__ void sort(X *array, int size) {
-    for (int i = 0; i < size; ++i) {
-        int min_val = array[i];
+    for (int i = 0; i < size-1; ++i) {
+        X min_val = array[i];
         int min_idx = i;
         for (int j = i+1; j < size; ++j) {
-            int val_j = array[j];
+            X val_j = array[j];
             if (val_j < min_val) {
                 min_idx = j;
                 min_val = val_j;
@@ -527,7 +527,7 @@ def _get_rank_kernel(filter_size, rank, mode, wshape, origins, cval, int_type):
     # Below 225 (15x15 median filter) selection sort is 1.5-2.5x faster
     # Above, shell sort does progressively better (by 3025 (55x55) it is 9x)
     # Also tried insertion sort, which is always slower than either one
-    sorter = __SELECTION_SORT if filter_size <= 225 else \
+    sorter = __SELECTION_SORT if filter_size <= 255 else \
         __SHELL_SORT.format(gap=_get_shell_gap(filter_size))
     return _generate_nd_kernel(
         'rank_{}_{}'.format(filter_size, rank),
