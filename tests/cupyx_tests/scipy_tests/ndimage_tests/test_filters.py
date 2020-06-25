@@ -76,7 +76,8 @@ class FilterTestCaseBase(unittest.TestCase):
         if self.filter in ('convolve1d', 'correlate1d'):
             return testing.shaped_random((self.ksize,), xp, self._dtype)
 
-        if self.filter in ('minimum_filter', 'maximum_filter'):
+        if self.filter in ('minimum_filter', 'maximum_filter', 'median_filter',
+                           'rank_filter', 'percentile_filter'):
             if not self.footprint:
                 return self.ksize
             kshape = self._kshape
@@ -130,8 +131,16 @@ COMMON_PARAMS = {
                        'minimum_filter1d', 'maximum_filter1d'],
             'axis': [0, 1, -1],
         }) + testing.product({
-            'filter': ['minimum_filter', 'maximum_filter'],
+            'filter': ['minimum_filter', 'maximum_filter', 'median_filter'],
             'footprint': [False, True],
+        }) + testing.product({
+            'filter': ['percentile_filter'],
+            'footprint': [False, True],
+            'percentile': [0, 25, 50, -25, 100],
+        }) + testing.product({
+            'filter': ['rank_filter'],
+            'footprint': [False, True],
+            'rank': [0, 1, -1],
         }),
 
         # Mode-specific params
