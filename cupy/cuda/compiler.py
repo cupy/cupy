@@ -30,7 +30,6 @@ def _run_nvcc(cmd, cwd, log_stream):
         stdout = subprocess.check_output(cmd, cwd=cwd,
                                          stderr=subprocess.STDOUT,
                                          universal_newlines=True)
-
         if log_stream == 'stdout':
             print(stdout)
         elif log_stream is not None:
@@ -389,7 +388,8 @@ def _compile_with_cache_cuda(
         rdc = _is_cudadevrt_needed(options)
         cubin = compile_using_nvcc(source, options, arch,
                                    name + '.cu', code_type='cubin',
-                                   separate_compilation=rdc, log_stream=None)
+                                   separate_compilation=rdc,
+                                   log_stream=log_stream)
     else:
         raise ValueError('Invalid backend %s' % backend)
 
