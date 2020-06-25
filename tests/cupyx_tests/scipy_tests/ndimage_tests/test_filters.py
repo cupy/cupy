@@ -262,7 +262,6 @@ class TestShelSort(FilterTestCaseBase):
         return self._filter(xp, scp)
 
 
-
 # Tests with Fortran-ordered arrays
 @testing.parameterize(*(
     testing.product([
