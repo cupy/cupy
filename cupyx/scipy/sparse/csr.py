@@ -121,7 +121,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 other = cupy.asfortranarray(other)
                 # csrmvEx does not work if nnz == 0
                 if self.nnz > 0 and cusparse.csrmvExIsAligned(self, other):
-                    for backend in _backend._get_routine_backends():
+                    for backend in _backend.get_routine_backends():
                         if (backend == _backend.BACKEND_CUB
                                 and other.flags.c_contiguous):
                             return device_csrmv(

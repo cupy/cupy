@@ -22,7 +22,7 @@ def set_routine_backends(backends):
     _routine_backends = [_get_backend(b) for b in backends]
 
 
-def _get_routine_backends():
+def get_routine_backends():
     return _routine_backends
 
 
