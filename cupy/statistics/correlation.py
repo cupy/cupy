@@ -104,13 +104,15 @@ def _dot_correlate(a1, a2, mode):
     output = cupy.zeros(length, dtype)
     a1 = a1.astype(dtype, copy=False)
     a2 = a2.astype(dtype, copy=False)
-    for i in range(left):
-        dot_kernel(a1[:n2 - left + i], a2[left - i:], output[i])
-    A1 = _rolling_window(a1, n2)
-    dot_kernel(A1, a2, output[left:(left + n1 - n2 + 1)], axis=1)
-    for i in range(right):
-        dot_kernel(a1[n1 - n2 + 1 + i:], a2[:n2 - 1 - i],
-                   output[left + n1 - n2 + 1 + i])
+    if left > 0:
+        a1_2dims, a2_2dims = _rolling_window(a1, a2, n2 - 1, 'left', left)
+        dot_kernel(a1_2dims, a2_2dims, output[:left], axis=1)
+    a1_2dims = _rolling_window(a1, a2, n2, 'mid')
+    dot_kernel(a1_2dims, a2, output[left:(left + n1 - n2 + 1)], axis=1)
+    if right > 0:
+        a1_2dims, a2_2dims = _rolling_window(a2, a1[n1 - n2 + 1:],
+                                             n2 - 1, 'right', right)
+        dot_kernel(a1_2dims, a2_2dims, output[left + n1 - n2 + 1:], axis=1)
     return inverted, output
 
 
@@ -129,10 +131,33 @@ def _generate_boundaries(mode, length, n):
     return left, right, length
 
 
-def _rolling_window(a, window):
+def _rolling_window(a, b, window, pos, padsize=0):
+    if padsize > 0:
+        a = cupy.pad(a, padsize)
     shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
     strides = a.strides + (a.strides[-1],)
-    return cupy.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
+    a = cupy.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
+    if pos == 'mid':
+        return a
+
+    a = a[1: 1 + padsize]
+    rows, cols = cupy.ogrid[:a.shape[0], :a.shape[1]]
+    r = cupy.arange(- a.shape[0] + 1, 1)
+    r[r < 0] += a.shape[1]
+    cols = cols - r[:, cupy.newaxis]
+    a = a[rows, cols]
+
+    b = cupy.pad(b, padsize)
+    shape = b.shape[:-1] + (b.shape[-1] - window + 1, window)
+    strides = b.strides + (b.strides[-1],)
+    b = cupy.lib.stride_tricks.as_strided(b, shape=shape, strides=strides)
+    b = b[::-1][1: 1 + padsize]
+
+    if pos == 'left':
+        return a, b
+    if pos == 'right':
+        return a[::-1], b[::-1]
+    raise ValueError('Invalid pos')
 
 
 def cov(a, y=None, rowvar=True, bias=False, ddof=None):
