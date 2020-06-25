@@ -27,7 +27,8 @@ class NVCCException(Exception):
 
 def _run_nvcc(cmd, cwd, log_stream):
     try:
-        stdout = subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT,
+        stdout = subprocess.check_output(cmd, cwd=cwd,
+                                         stderr=subprocess.STDOUT,
                                          universal_newlines=True)
         if log_stream is None:
             pass
@@ -165,9 +166,9 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
         return ptx, mapping
 
 
-def compile_using_nvcc(source, options=(), log_stream=None, arch=None,
+def compile_using_nvcc(source, options=(), arch=None,
                        filename='kern.cu', code_type='cubin',
-                       separate_compilation=False):
+                       separate_compilation=False, log_stream=None):
     # defer import to here to avoid circular dependency
     from cupy.cuda import get_nvcc_path
 
@@ -253,7 +254,7 @@ def compile_using_nvcc(source, options=(), log_stream=None, arch=None,
             assert False, code_type
 
 
-def _preprocess(source, options, log_stream, arch, backend):
+def _preprocess(source, options, arch, backend, log_stream):
     if backend == 'nvrtc':
         options += ('-arch=compute_{}'.format(arch),)
 
@@ -268,8 +269,8 @@ def _preprocess(source, options, log_stream, arch, backend):
             raise
     elif backend == 'nvcc':
         try:
-            result = compile_using_nvcc(source, options, log_stream, arch, 'preprocess.cu',
-                                        code_type='ptx')
+            result = compile_using_nvcc(source, options, arch, 'preprocess.cu',
+                                        code_type='ptx', log_stream=None)
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -315,13 +316,13 @@ def compile_with_cache(
             source, options, arch, cache_dir, extra_source)
     else:
         return _compile_with_cache_cuda(
-            source, options, log_stream, arch, cache_dir, extra_source, backend,
-            enable_cooperative_groups, name_expressions)
+            source, options, arch, cache_dir, extra_source, backend,
+            enable_cooperative_groups, name_expressions, log_stream)
 
 
 def _compile_with_cache_cuda(
-        source, options, log_stream, arch, cache_dir, extra_source=None, backend='nvrtc',
-        enable_cooperative_groups=False, name_expressions=None):
+        source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
+        enable_cooperative_groups=False, name_expressions=None, log_stream=None):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -344,7 +345,7 @@ def _compile_with_cache_cuda(
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is checking of NVRTC compiler internal version
-        base = _preprocess('', options, log_stream, arch, backend)
+        base = _preprocess('', options, arch, backend, log_stream)
         _empty_file_preprocess_cache[env] = base
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
