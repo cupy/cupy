@@ -274,7 +274,7 @@ cdef class RawModule:
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
                  bint enable_cooperative_groups=False,
-                 tuple name_expressions=None, str log_stream=None):
+                 name_expressions=None, str log_stream=None):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '

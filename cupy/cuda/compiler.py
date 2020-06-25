@@ -30,11 +30,10 @@ def _run_nvcc(cmd, cwd, log_stream):
         stdout = subprocess.check_output(cmd, cwd=cwd,
                                          stderr=subprocess.STDOUT,
                                          universal_newlines=True)
-        if log_stream is None:
-            pass
-        elif log_stream == 'stdout':
+
+        if log_stream == 'stdout':
             print(stdout)
-        else:
+        elif log_stream is not None:
             with open(log_stream, 'w') as f:
                 f.write(stdout)
         return stdout
@@ -341,7 +340,7 @@ def _compile_with_cache_cuda(
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
 
-    env = (arch, options, _get_nvrtc_version(), backend, log_stream)
+    env = (arch, options, _get_nvrtc_version(), backend)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is checking of NVRTC compiler internal version
@@ -388,9 +387,9 @@ def _compile_with_cache_cuda(
         mod._set_mapping(mapping)
     elif backend == 'nvcc':
         rdc = _is_cudadevrt_needed(options)
-        cubin = compile_using_nvcc(source, options, log_stream, arch,
+        cubin = compile_using_nvcc(source, options, arch,
                                    name + '.cu', code_type='cubin',
-                                   separate_compilation=rdc)
+                                   separate_compilation=rdc, log_stream=None)
     else:
         raise ValueError('Invalid backend %s' % backend)
 
