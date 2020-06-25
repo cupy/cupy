@@ -58,7 +58,7 @@ class TestLsqr(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'ord': [None, -numpy.Inf, -2, -1, 1, 2, 3, numpy.Inf, 'fro'],
+    'ord': [None, -numpy.Inf, -2, -1, 0, 1, 2, 3, numpy.Inf, 'fro'],
     'dtype': [
         numpy.float32,
         numpy.float64,
@@ -111,9 +111,10 @@ class TestMatrixNorm(unittest.TestCase):
         numpy.complex64,
         numpy.complex128
     ],
-    'Transpose': [True, False],
-    # _min_or_max() doesn't support axes for -1, (-1, ), -2, (-2, )
+    'transpose': [True, False],
     'axis': [0, (0, ), 1, (1, )],
+    # _min_or_max() doesn't support axes for -1, (-1, ), -2, (-2, )
+    # TODO: Fix it after #3474 is resolved.
 })
 )
 @unittest.skipUnless(scipy_available, 'requires scipy')
@@ -125,8 +126,16 @@ class TestVectorNorm(unittest.TestCase):
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
         b = sp.csr_matrix(b, dtype=self.dtype)
-        if self.Transpose:
+        if self.transpose:
             b = b.T
         return sp.linalg.norm(b, ord=self.ord, axis=self.axis)
+
+    # requires spmatrix.__ne__
+    def test_ord_zero(self):
+        a = cupy.arange(9, dtype=self.dtype) - 4
+        b = a.reshape((3, 3))
+        b = sparse.csr_matrix(b, dtype=self.dtype)
+        with self.assertRaises(NotImplementedError):
+            sparse.linalg.norm(b, ord=0, axis=self.axis)
 
 # TODO : TestVsNumpyNorm

@@ -89,3 +89,4 @@ Linear Algebra
    :nosignatures:
 
    cupyx.scipy.sparse.linalg.lsqr
+   cupyx.scipy.sparse.linalg.norm
