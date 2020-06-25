@@ -744,7 +744,7 @@ cusolverStatus_t cusolverDnCheevj_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnZheevd_bufferSize(...) {
+cusolverStatus_t cusolverDnZheevj_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
@@ -776,7 +776,7 @@ cusolverStatus_t cusolverDnCheevjBatched_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnZheevdBatched_bufferSize(...) {
+cusolverStatus_t cusolverDnZheevjBatched_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
