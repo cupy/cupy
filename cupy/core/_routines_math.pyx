@@ -396,17 +396,6 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
     if a._shape.size() != 1:
         raise TypeError('Input array should be 1D array.')
 
-    for backend in _backend._routine_backends:
-        if backend == _backend.BACKEND_CUB:
-            # result will be None if the scan is not compatible with CUB
-            if op == scan_op.SCAN_SUM:
-                cub_op = cub.CUPY_CUB_CUMSUM
-            else:
-                cub_op = cub.CUPY_CUB_CUMPROD
-            res = cub.cub_scan(out, cub_op)
-            if res is not None:
-                return out
-
     cdef Py_ssize_t block_size = 256
     if out is None:
         out = _ndarray_init(a.shape, a.dtype)
@@ -513,7 +502,18 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
 
     if axis is None:
         result = result.ravel()
-        scan(result, op, dtype, result)
+        for backend in _backend._routine_backends:
+            if backend == _backend.BACKEND_CUB:
+                # result will be None if the scan is not compatible with CUB
+                if op == scan_op.SCAN_SUM:
+                    cub_op = cub.CUPY_CUB_CUMSUM
+                else:
+                    cub_op = cub.CUPY_CUB_CUMPROD
+                res = cub.cub_scan(out, cub_op)
+                if res is not None:
+                    break
+        else:
+            scan(result, op, dtype, result)
     else:
         axis = cupy.util._normalize_axis_index(axis, a.ndim)
         result = _proc_as_batch(result, axis, dtype, op)
