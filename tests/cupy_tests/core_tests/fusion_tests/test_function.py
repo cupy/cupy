@@ -1,7 +1,6 @@
 import threading
 import unittest
-
-import mock
+from unittest import mock
 
 import cupy
 from cupy import testing
@@ -200,7 +199,7 @@ class TestFusionKernelName(unittest.TestCase):
 
             with mock.patch(target_full_name) as kernel:
                 func(a, b, c)
-                kernel.assert_called_once()
+                assert kernel.call_count == 1
                 self.assertEqual(kernel.call_args[1]['name'], expected_name)
 
         # Test there's no error in computation (without mock)

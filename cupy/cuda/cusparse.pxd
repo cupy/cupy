@@ -50,6 +50,9 @@ cdef extern from *:
     ctypedef void* cusparseSpMatDescr_t
     ctypedef void* cusparseDnMatDescr_t
 
+    # CSR2CSC
+    ctypedef int Csr2CscAlg 'cusparseCsr2CscAlg_t'
+
 cpdef enum:
     CUSPARSE_POINTER_MODE_HOST = 0
     CUSPARSE_POINTER_MODE_DEVICE = 1
@@ -101,6 +104,10 @@ cpdef enum:
     CUSPARSE_INDEX_16U = 1  # 16-bit unsigned integer
     CUSPARSE_INDEX_32I = 2  # 32-bit signed integer
     CUSPARSE_INDEX_64I = 3  # 64-bit signed integer
+
+    # CSR2CSC
+    CUSPARSE_CSR2CSC_ALG1 = 1  # faster than ALG2 (in general), deterministc
+    CUSPARSE_CSR2CSC_ALG2 = 2  # low memory requirement, non-deterministc
 
 cdef class SpVecAttributes:
     cdef:

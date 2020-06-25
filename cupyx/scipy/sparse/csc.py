@@ -79,11 +79,30 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         elif cupyx.scipy.sparse.isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            return cusparse.csrgemm(self.T, other, transa=True)
+            if cusparse.check_availability('csrgemm'):
+                a = self.T
+                return cusparse.csrgemm(a, other, transa=True)
+            elif cusparse.check_availability('csrgemm2'):
+                a = self.tocsr()
+                a.sum_duplicates()
+                return cusparse.csrgemm2(a, other)
+            else:
+                raise NotImplementedError
         elif isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            return cusparse.csrgemm(self.T, other.T, transa=True, transb=True)
+            if cusparse.check_availability('csrgemm'):
+                a = self.T
+                b = other.T
+                return cusparse.csrgemm(a, b, transa=True, transb=True)
+            elif cusparse.check_availability('csrgemm2'):
+                a = self.tocsr()
+                b = other.tocsr()
+                a.sum_duplicates()
+                b.sum_duplicates()
+                return cusparse.csrgemm2(a, b)
+            else:
+                raise NotImplementedError
         elif cupyx.scipy.sparse.isspmatrix(other):
             return self * other.tocsr()
         elif base.isdense(other):
@@ -92,12 +111,22 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 return self._with_data(self.data * other)
             elif other.ndim == 1:
                 self.sum_duplicates()
-                return cusparse.csrmv(
-                    self.T, cupy.asfortranarray(other), transa=True)
+                if cusparse.check_availability('csrmv'):
+                    csrmv = cusparse.csrmv
+                elif cusparse.check_availability('spmv'):
+                    csrmv = cusparse.spmv
+                else:
+                    raise NotImplementedError
+                return csrmv(self.T, cupy.asfortranarray(other), transa=True)
             elif other.ndim == 2:
                 self.sum_duplicates()
-                return cusparse.csrmm2(
-                    self.T, cupy.asfortranarray(other), transa=True)
+                if cusparse.check_availability('csrmm2'):
+                    csrmm = cusparse.csrmm2
+                elif cusparse.check_availability('spmm'):
+                    csrmm = cusparse.spmm
+                else:
+                    raise NotImplementedError
+                return csrmm(self.T, cupy.asfortranarray(other), transa=True)
             else:
                 raise ValueError('could not interpret dimensions')
         else:
@@ -159,7 +188,13 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         self.sum_duplicates()
         other = other.tocsc().T
         other.sum_duplicates()
-        return cusparse.csrgeam(self.T, other, alpha, beta).T
+        if cusparse.check_availability('csrgeam2'):
+            csrgeam = cusparse.csrgeam2
+        elif cusparse.check_availability('csrgeam'):
+            csrgeam = cusparse.csrgeam
+        else:
+            raise NotImplementedError
+        return csrgeam(self.T, other, alpha, beta).T
 
     # TODO(unno): Implement tobsr
 
@@ -212,7 +247,13 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
         """
         # copy is ignored
-        return cusparse.csc2csr(self)
+        if cusparse.check_availability('csc2csr'):
+            csc2csr = cusparse.csc2csr
+        elif cusparse.check_availability('csc2csrEx2'):
+            csc2csr = cusparse.csc2csrEx2
+        else:
+            raise NotImplementedError
+        return csc2csr(self)
 
     # TODO(unno): Implement todia
     # TODO(unno): Implement todok

@@ -151,7 +151,7 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
     kargs.reserve(len(args))
     for a in args:
         cp = _pointer(a)
-        pargs.append(cp)
+        pargs.append(cp)  # keep the CPointer objects alive
         kargs.push_back(cp.ptr)
 
     runtime._ensure_context()
