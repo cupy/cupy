@@ -74,7 +74,7 @@ def correlate(a, v, mode='valid'):
 
     """
     if a.ndim != 1 or v.ndim != 1:
-        raise ValueError("object too deep for desired array")
+        raise ValueError('object too deep for desired array')
     conj_v = cupy.conj(v[::-1])
     method = cupyx.scipy.signal.choose_conv_method(a, conj_v, mode)
     if method == 'direct':
@@ -82,7 +82,7 @@ def correlate(a, v, mode='valid'):
             v = cupy.conj(v)
         inverted, out = _dot_correlate(a, v, mode)
         if inverted:
-            out = out[::-1]
+            out = cupy.ascontiguousarray(out[::-1])
     elif method == 'fft':
         out = cupy.math.misc._fftconvolve1d(a, conj_v, mode)
     else:
@@ -94,7 +94,7 @@ def _dot_correlate(a1, a2, mode):
     inverted = 0
     dtype = cupy.result_type(a1, a2)
     if a1.size == 0 or a2.size == 0:
-        raise ValueError("Array arguments cannot be empty")
+        raise ValueError('Array arguments cannot be empty')
     if a1.size < a2.size:
         a1, a2 = a2, a1
         inverted = 1
@@ -127,7 +127,7 @@ def _generate_boundaries(mode, length, n):
         left = right = n - 1
         length += n - 1
     else:
-        raise ValueError("Invalid mode")
+        raise ValueError('Invalid mode')
     return left, right, length
 
 

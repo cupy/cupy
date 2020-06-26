@@ -49,8 +49,10 @@ def convolve(a, v, mode='full'):
 
 def _fftconvolve1d(a1, a2, mode='full'):
 
+    inverted = 0
     if a2.size > a1.size:
         a1, a2 = a2, a1
+        inverted = 1
     siz1 = a1.size
     siz2 = a2.size
     shape = siz1 + siz2 - 1
@@ -67,18 +69,18 @@ def _fftconvolve1d(a1, a2, mode='full'):
         out = fft.ifft(fa1 * fa2, fshape)
     out = out[slice(shape)]
     if mode == 'same':
-        start = (out.size - siz1) / 2
+        start = (out.size - siz1) / 2 + inverted
         end = start + siz1
-        out = out[slice(start, end)]
+        out = out[start: end]
     elif mode == 'valid':
         newsize = siz1 - siz2 + 1
         start = (out.size - newsize) / 2
         end = start + newsize
-        out = out[slice(start, end)]
+        out = out[start: end]
     else:
         if mode != 'full':
-            raise ValueError("acceptable mode flags are 'valid',"
-                             "'same', or 'full'")
+            raise ValueError('acceptable mode flags are `valid`,'
+                             ' `same`, or `full`.')
     result_type = cupy.result_type(a1, a2)
     if result_type.kind in {'u', 'i'}:
         out = cupy.around(out)
