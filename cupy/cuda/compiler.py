@@ -152,16 +152,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
         prog = _NVRTCProgram(source, cu_path,
                              name_expressions=name_expressions)
         try:
-            ptx, mapping = prog.compile(options)
-            if log_stream == 'stdout':
-                print(ptx)
-                print()
-                print(mapping)
-            elif log_stream is not None:
-                with open(log_stream, 'w') as f:
-                    f.write(ptx)
-                    f.write("\n")
-                    f.write(str(mapping))
+            ptx, mapping = prog.compile(options, log_stream)
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -267,12 +258,7 @@ def _preprocess(source, options, arch, backend, log_stream):
         prog = _NVRTCProgram(source, '')
         try:
 
-            result, _ = prog.compile(options)
-            if log_stream == 'stdout':
-                print(result)
-            elif log_stream is not None:
-                with open(log_stream, 'w') as f:
-                    f.write(result)
+            result, _ = prog.compile(options, log_stream)
 
         except CompileException as e:
             dump = _get_bool_env_variable(
@@ -489,7 +475,7 @@ class _NVRTCProgram(object):
         if self.ptr:
             nvrtc.destroyProgram(self.ptr)
 
-    def compile(self, options=()):
+    def compile(self, options=(), log_stream=None):
         try:
             if self.name_expressions:
                 for ker in self.name_expressions:
@@ -500,6 +486,11 @@ class _NVRTCProgram(object):
                 mapping = {}
                 for ker in self.name_expressions:
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
+            if log_stream == 'stdout':
+                print(nvrtc.getProgramLog(self.ptr))
+            elif log_stream is not None:
+                with open(log_stream, 'w') as f:
+                    f.write(nvrtc.getProgramLog(self.ptr))
             return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
