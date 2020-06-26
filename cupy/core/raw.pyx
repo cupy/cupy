@@ -36,8 +36,8 @@ cdef class RawKernel:
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
         log_stream (str): Whether the output of nvcc should be displayed in
-            'stdout' or stored to a 'file'. For example, `log_stream('file.txt')`
-            will write to output to file.txt.
+            'stdout' or stored to a 'file'. For example, ``log_stream='./file.txt'``
+            will write to output to ``file.txt`` in the current directory.
     """
 
     def __init__(self, str code, str name, tuple options=(),
@@ -263,8 +263,8 @@ cdef class RawModule:
             Strings in this tuple must then be passed, one at a time, to
             :meth:`get_function` to retrieve the corresponding kernel.
         log_stream (str): Whether the output of nvcc should be displayed in
-            'stdout' or stored to a 'file'. For example, `log_stream('file.txt')`
-            will write to output to file.txt.
+            'stdout' or stored to a 'file'. For example, ``log_stream='./file.txt'``
+            will write to output to ``file.txt`` in the current directory.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
