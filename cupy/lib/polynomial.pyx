@@ -1,9 +1,10 @@
 import numpy
 
 import cupy
+from cupy.core.core cimport ndarray
 
 
-class poly1d(object):
+cdef class poly1d:
     """A one-dimensional polynomial class.
 
     Args:
@@ -18,6 +19,10 @@ class poly1d(object):
 
     """
     __hash__ = None
+
+    cdef:
+        readonly ndarray _coeffs
+        readonly str _variable
 
     @property
     def coeffs(self):
@@ -41,9 +46,25 @@ class poly1d(object):
     def roots(self):
         raise NotImplementedError
 
-    r = roots
-    c = coef = coefficients = coeffs
-    o = order
+    @property
+    def r(self):
+        return self.roots
+
+    @property
+    def c(self):
+        return self.coeffs
+
+    @property
+    def coef(self):
+        return self.coeffs
+
+    @property
+    def coefficients(self):
+        return self.coeffs
+
+    @property
+    def o(self):
+        return self.order
 
     def __init__(self, c_or_r, r=False, variable=None):
         if isinstance(c_or_r, poly1d):
@@ -111,7 +132,7 @@ class poly1d(object):
         raise NotImplementedError
 
     # TODO(Dahlia-Chehata): implement using polymul
-    def __pow__(self, val):
+    def __pow__(self, val, modulo):
         if not cupy.isscalar(val) or int(val) != val or val < 0:
             raise ValueError('Power to non-negative integers only.')
         raise NotImplementedError
@@ -130,22 +151,18 @@ class poly1d(object):
             return poly1d(self.coeffs / other)
         raise NotImplementedError
 
-    __truediv__ = __div__
-
     # TODO(Dahlia-Chehata): use polydiv for non-scalars
     def __rdiv__(self, other):
         if cupy.isscalar(other):
             return poly1d(other / self.coeffs)
         raise NotImplementedError
 
-    __rtruediv__ = __rdiv__
-
     def __eq__(self, other):
         if not isinstance(other, poly1d):
             raise NotImplementedError
         if self.coeffs.shape != other.coeffs.shape:
             return False
-        return (self.coeffs == other.coeffs).all()
+        return (self.coeffs == other.coeffs).all().get()
 
     def __ne__(self, other):
         if not isinstance(other, poly1d):

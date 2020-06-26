@@ -19,9 +19,16 @@ class TestPoly1d(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_poly1d(self, xp, dtype):
+    def test_poly1d_arr(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         return xp.poly1d(a).coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_poly1d(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        b = xp.poly1d(a)
+        return xp.poly1d(b).coeffs
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -34,6 +41,12 @@ class TestPoly1d(unittest.TestCase):
     def test_poly1d_variable(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         return xp.poly1d(a, variable='p').variable
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_novariable(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.poly1d(a, variable=None).variable
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
