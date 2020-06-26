@@ -240,7 +240,7 @@ class TestCUBreduction(unittest.TestCase):
             func = 'cupy.core._routines_statistics.cub.device_reduce'
         else:
             func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
-        with testing.CUBMockTest(func, return_value=ret):
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.min(axis=axis)
         # ...then perform the actual computation
         return a.min(axis=axis)
@@ -265,7 +265,7 @@ class TestCUBreduction(unittest.TestCase):
             func = 'cupy.core._routines_statistics.cub.device_reduce'
         else:
             func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
-        with testing.CUBMockTest(func, return_value=ret):
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.max(axis=axis)
         # ...then perform the actual computation
         return a.max(axis=axis)

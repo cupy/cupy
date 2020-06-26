@@ -1256,7 +1256,7 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
         assert self.cupy_func(*self.args) == self.numpy_func(*self.args)
 
 
-class CUBMockTest:
+class AssertFunctionIsCalled:
 
     def __init__(self, mock_mod, **kwargs):
         self.patch = mock.patch(mock_mod, **kwargs)
