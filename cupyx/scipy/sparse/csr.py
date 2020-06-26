@@ -12,9 +12,9 @@ from cupyx.scipy.sparse import compressed
 from cupyx.scipy.sparse import csc
 
 try:
-    from cupy.cuda.cub import device_csrmv
+    from cupy.cuda import cub
 except ImportError:
-    pass
+    cub = None
 
 
 class csr_matrix(compressed._compressed_sparse_matrix):
@@ -127,7 +127,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                     for backend in _backend.get_routine_backends():
                         if (backend == _backend.BACKEND_CUB
                                 and other.flags.c_contiguous):
-                            return device_csrmv(
+                            return cub.device_csrmv(
                                 self.shape[0], self.shape[1], self.nnz,
                                 self.data, self.indptr, self.indices, other)
                     return cusparse.csrmvEx(self, other)
