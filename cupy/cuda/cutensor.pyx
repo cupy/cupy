@@ -212,6 +212,9 @@ cpdef enum:
     R_MIN_32U = 128  # NOQA, real as a uint32
     R_MIN_8I  = 256  # NOQA, real as a int8
     R_MIN_32I = 512  # NOQA, real as a int32
+    R_MIN_16BF = 1024  # NOQA, real as a bfloat16
+    R_MIN_TF32 = 2048  # NOQA, real as a tensorfloat32
+    C_MIN_TF32 = 4096  # NOQA, complex as a tensorfloat32
 
 
 ###############################################################################
