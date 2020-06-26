@@ -227,9 +227,16 @@ class TestConvolve(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3)
-    def test_convolve_inverted_case(self, xp, dtype):
+    def test_convolve_inverted_even_len(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
+        return xp.convolve(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3)
+    def test_convolve_inverted_odd_len(self, xp, dtype):
+        a = testing.shaped_arange((15,), xp, dtype)
+        b = testing.shaped_arange((155,), xp, dtype)
         return xp.convolve(a, b, mode=self.mode)
 
     @testing.for_all_dtypes(no_float16=True)

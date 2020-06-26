@@ -52,7 +52,7 @@ def _fftconvolve1d(a1, a2, mode='full'):
     inverted = 0
     if a2.size > a1.size:
         a1, a2 = a2, a1
-        inverted = 1
+        inverted = not a2.size % 2
     siz1 = a1.size
     siz2 = a2.size
     shape = siz1 + siz2 - 1
