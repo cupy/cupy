@@ -251,14 +251,14 @@ def compile_using_nvcc(source, options=(), arch=None,
             assert False, code_type
 
 
-def _preprocess(source, options, arch, backend, log_stream):
+def _preprocess(source, options, arch, backend):
     if backend == 'nvrtc':
         options += ('-arch=compute_{}'.format(arch),)
 
         prog = _NVRTCProgram(source, '')
         try:
 
-            result, _ = prog.compile(options, log_stream)
+            result, _ = prog.compile(options)
 
         except CompileException as e:
             dump = _get_bool_env_variable(
@@ -269,7 +269,7 @@ def _preprocess(source, options, arch, backend, log_stream):
     elif backend == 'nvcc':
         try:
             result = compile_using_nvcc(source, options, arch, 'preprocess.cu',
-                                        code_type='ptx', log_stream=None)
+                                        code_type='ptx')
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -344,7 +344,7 @@ def _compile_with_cache_cuda(
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is checking of NVRTC compiler internal version
-        base = _preprocess('', options, arch, backend, log_stream)
+        base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
