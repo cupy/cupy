@@ -319,7 +319,8 @@ def compile_with_cache(
 
 def _compile_with_cache_cuda(
         source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
-        enable_cooperative_groups=False, name_expressions=None, log_stream=None):
+        enable_cooperative_groups=False, name_expressions=None,
+        log_stream=None):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:

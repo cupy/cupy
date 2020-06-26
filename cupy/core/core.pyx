@@ -1812,7 +1812,8 @@ cdef inline str _translate_cucomplex_to_thrust(str source):
 cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None,
         prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False,
-        enable_cooperative_groups=False, name_expressions=None, log_stream=None):
+        enable_cooperative_groups=False, name_expressions=None,
+        log_stream=None):
     if translate_cucomplex:
         source = _translate_cucomplex_to_thrust(source)
         _cupy_header_list.append('cupy/cuComplex_bridge.h')
