@@ -219,7 +219,7 @@ class TestArrayReduction(unittest.TestCase):
 @unittest.skipUnless(
     cupy.core._backend.get_routine_backends() == ['cub'],
     'The CUB routine is not enabled')
-class TestFcontiguousReduction(unittest.TestCase):
+class TestCubReduction(unittest.TestCase):
     @testing.for_contiguous_axes()
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1E-5)
