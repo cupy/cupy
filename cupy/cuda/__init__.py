@@ -16,7 +16,6 @@ from cupy.cuda import texture  # NOQA
 
 
 _available = None
-_cub_disabled = None
 
 
 from cupy.cuda import cusolver  # NOQA
