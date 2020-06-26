@@ -257,9 +257,7 @@ def _preprocess(source, options, arch, backend):
 
         prog = _NVRTCProgram(source, '')
         try:
-
             result, _ = prog.compile(options)
-
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
