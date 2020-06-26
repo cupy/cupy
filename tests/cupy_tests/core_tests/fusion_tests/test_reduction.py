@@ -52,7 +52,6 @@ class TestFusionReductionMultiAxis(unittest.TestCase):
 
 
 @testing.gpu
-@testing.slow
 @testing.parameterize(*testing.product({
     'shape': [
         (120, 128, 144),
@@ -62,6 +61,7 @@ class TestFusionReductionMultiAxis(unittest.TestCase):
     ],
     'axis': [None, 0, 1, 2, (0, 1), (0, 2), (1, 2)],
 }))
+@testing.slow
 class TestFusionReductionLarge(unittest.TestCase):
 
     def generate_inputs(self, xp):
