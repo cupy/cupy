@@ -98,30 +98,23 @@ class TestCov(unittest.TestCase):
 class TestCorrelate(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(rtol=1e-4)
     def test_correlate(self, xp, dtype):
         a = testing.shaped_arange((100,), xp, dtype)
         b = testing.shaped_arange((10,), xp, dtype)
         return xp.correlate(a, b, mode=self.mode)
 
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(rtol=1e-4)
     def test_correlate_inverted_case(self, xp, dtype):
-        a = testing.shaped_arange((5,), xp, dtype)
+        a = testing.shaped_arange((10,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
         return xp.correlate(a, b, mode=self.mode)
 
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(rtol=1e-3)
     def test_correlate_same_length(self, xp, dtype):
         a = testing.shaped_arange((100,), xp, dtype)
-        b = testing.shaped_arange((100,), xp, dtype)
-        return xp.correlate(a, b, mode=self.mode)
-
-    @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-5)
-    def test_correlate_large(self, xp, dtype):
-        a = testing.shaped_arange((10000,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
         return xp.correlate(a, b, mode=self.mode)
 
@@ -149,14 +142,14 @@ class TestCorrelate(unittest.TestCase):
                 xp.correlate(a, b, mode=self.mode)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_correlate_non_contiguous(self, xp, dtype):
         a = testing.shaped_arange((300,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
         return xp.correlate(a[::200], b[10::70], mode=self.mode)
 
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(rtol=1e-4)
     def test_correlate_large_non_contiguous(self, xp, dtype):
         a = testing.shaped_arange((10000,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
@@ -164,16 +157,8 @@ class TestCorrelate(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(
         names=['dtype1', 'dtype2'], no_float16=True)
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(rtol=1e-3)
     def test_correlate_diff_types(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((200,), xp, dtype1)
-        b = testing.shaped_arange((100,), xp, dtype2)
-        return xp.correlate(a, b, mode=self.mode)
-
-    @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2'], no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_correlate_large_diff_types(self, xp, dtype1, dtype2):
-        a = testing.shaped_arange((10000,), xp, dtype1)
         b = testing.shaped_arange((100,), xp, dtype2)
         return xp.correlate(a, b, mode=self.mode)
