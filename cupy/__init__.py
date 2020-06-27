@@ -690,7 +690,6 @@ from cupy._sorting.sort import sort  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.statistics.correlation import corrcoef  # NOQA
 from cupy.statistics.correlation import cov  # NOQA
-from cupy.statistics.correlation import correlate  # NOQA
 
 from cupy.statistics.order import amax  # NOQA
 from cupy.statistics.order import amax as max  # NOQA
