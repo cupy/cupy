@@ -153,6 +153,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     def sort_indices(self):
         """Sorts the indices of the matrix in place."""
         cusparse.cscsort(self)
+        self.has_sorted_indices = True
 
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value.
@@ -253,6 +254,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             csc2csr = cusparse.csc2csrEx2
         else:
             raise NotImplementedError
+        # don't touch has_sorted_indices, as cuSPARSE made no guarantee
         return csc2csr(self)
 
     # TODO(unno): Implement todia
@@ -279,7 +281,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         shape = self.shape[1], self.shape[0]
         trans = cupyx.scipy.sparse.csr.csr_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
-        trans._has_canonical_format = self._has_canonical_format
+        trans.has_canonical_format = self.has_canonical_format
+        trans.has_sorted_indices = self.has_sorted_indices
         return trans
 
 

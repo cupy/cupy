@@ -62,7 +62,7 @@ class coo_matrix(sparse_data._data_matrix):
             if shape is None:
                 shape = arg1.shape
 
-            has_canonical_format = x.has_canonical_format
+            self.has_canonical_format = x.has_canonical_format
 
         elif util.isshape(arg1):
             m, n = arg1
@@ -73,7 +73,8 @@ class coo_matrix(sparse_data._data_matrix):
             # shape and copy argument is ignored
             shape = (m, n)
             copy = False
-            has_canonical_format = True
+            
+            self.has_canonical_format = True
 
         elif _scipy_available and scipy.sparse.issparse(arg1):
             # Convert scipy.sparse to cupyx.scipy.sparse
@@ -82,10 +83,10 @@ class coo_matrix(sparse_data._data_matrix):
             row = cupy.array(x.row, dtype='i')
             col = cupy.array(x.col, dtype='i')
             copy = False
-
             if shape is None:
                 shape = arg1.shape
-            has_canonical_format = x.has_canonical_format
+
+            self.has_canonical_format = x.has_canonical_format
 
         elif isinstance(arg1, tuple) and len(arg1) == 2:
             try:
@@ -101,9 +102,10 @@ class coo_matrix(sparse_data._data_matrix):
                 raise ValueError(
                     'row, column, and data array must all be the same length')
 
-            has_canonical_format = False
+            self.has_canonical_format = False
 
         else:
+            # TODO(leofang): support constructing from a dense matrix
             raise TypeError('invalid input format')
 
         if dtype is None:
@@ -142,7 +144,6 @@ class coo_matrix(sparse_data._data_matrix):
         if not util.isshape(shape):
             raise ValueError('invalid shape (must be a 2-tuple of int)')
         self._shape = int(shape[0]), int(shape[1])
-        self._has_canonical_format = has_canonical_format
 
     def _with_data(self, data, copy=True):
         """Returns a matrix with the same sparsity structure as self,
@@ -164,10 +165,6 @@ class coo_matrix(sparse_data._data_matrix):
         self.data = self.data[ind]
         self.row = self.row[ind]
         self.col = self.col[ind]
-
-    @property
-    def has_canonical_format(self):
-        return self._has_canonical_format
 
     def get_shape(self):
         """Returns the shape of the matrix.
@@ -211,10 +208,10 @@ class coo_matrix(sparse_data._data_matrix):
            :meth:`scipy.sparse.coo_matrix.sum_duplicates`
 
         """
-        if self._has_canonical_format:
+        if self.has_canonical_format:
             return
         if self.data.size == 0:
-            self._has_canonical_format = True
+            self.has_canonical_format = True
             return
         keys = cupy.stack([self.col, self.row])
         order = cupy.lexsort(keys)
@@ -275,7 +272,7 @@ class coo_matrix(sparse_data._data_matrix):
         self.data = data
         self.row = row
         self.col = col
-        self._has_canonical_format = True
+        self.has_canonical_format = True
 
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value.
@@ -328,7 +325,8 @@ class coo_matrix(sparse_data._data_matrix):
         x = self.copy()
         cusparse.coosort(x, 'c')
         x = cusparse.coo2csc(x)
-        x._has_canonical_format = True
+        x.has_canonical_format = True
+        x.has_sorted_indices = True
         return x
 
     def tocsr(self, copy=False):
@@ -351,7 +349,8 @@ class coo_matrix(sparse_data._data_matrix):
         x = self.copy()
         cusparse.coosort(x, 'r')
         x = cusparse.coo2csr(x)
-        x._has_canonical_format = True
+        x.has_canonical_format = True
+        x.has_sorted_indices = True
         return x
 
     def transpose(self, axes=None, copy=False):
