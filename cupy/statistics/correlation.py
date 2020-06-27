@@ -4,18 +4,7 @@ import warnings
 import numpy
 
 import cupy
-import cupyx
 from cupy import core
-
-dot_kernel = core.ReductionKernel(
-    'T x1, T x2',
-    'T y',
-    'x1 * x2',
-    'a + b',
-    'y = a',
-    '0',
-    'dot_product'
-)
 
 
 def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None):
@@ -59,105 +48,7 @@ def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None):
     return out
 
 
-def correlate(a, v, mode='valid'):
-    """Returns the cross-correlation of two 1-dimensional sequences.
-
-    Args:
-        a (cupy.ndarray): first 1-dimensional input.
-        v (cupy.ndarray): second 1-dimensional input.
-        mode (str, optional): `valid`, `same`, `full`
-
-    Returns:
-        cupy.ndarray: Discrete cross-correlation of a and v.
-
-    .. seealso:: :func:`numpy.correlate`
-
-    """
-    if a.ndim != 1 or v.ndim != 1:
-        raise ValueError('object too deep for desired array')
-    conj_v = cupy.conj(v[::-1])
-    method = cupyx.scipy.signal.choose_conv_method(a, conj_v, mode)
-    if method == 'direct':
-        if cupy.iscomplexobj(v):
-            v = cupy.conj(v)
-        inverted, out = _dot_correlate(a, v, mode)
-        if inverted:
-            out = cupy.ascontiguousarray(out[::-1])
-    elif method == 'fft':
-        out = cupy.math.misc._fftconvolve1d(a, conj_v, mode)
-    else:
-        raise ValueError('Unsupported method')
-    return out
-
-
-def _dot_correlate(a1, a2, mode):
-    inverted = 0
-    dtype = cupy.result_type(a1, a2)
-    if a1.size == 0 or a2.size == 0:
-        raise ValueError('Array arguments cannot be empty')
-    if a1.size < a2.size:
-        a1, a2 = a2, a1
-        inverted = 1
-    length = n1 = a1.size
-    n2 = a2.size
-    left, right, length = _generate_boundaries(mode, length, n2)
-    output = cupy.zeros(length, dtype)
-    a1 = a1.astype(dtype, copy=False)
-    a2 = a2.astype(dtype, copy=False)
-    if left > 0:
-        a1_2dims, a2_2dims = _rolling_window(a1, a2, n2 - 1, 'left', left)
-        dot_kernel(a1_2dims, a2_2dims, output[:left], axis=1)
-    a1_2dims = _rolling_window(a1, a2, n2, 'mid')
-    dot_kernel(a1_2dims, a2, output[left:(left + n1 - n2 + 1)], axis=1)
-    if right > 0:
-        a1_2dims, a2_2dims = _rolling_window(a2, a1[n1 - n2 + 1:],
-                                             n2 - 1, 'right', right)
-        dot_kernel(a1_2dims, a2_2dims, output[left + n1 - n2 + 1:], axis=1)
-    return inverted, output
-
-
-def _generate_boundaries(mode, length, n):
-    if mode == 'valid':
-        length += 1 - n
-        left = right = 0
-    elif mode == 'same':
-        left = int(n / 2)
-        right = n - left - 1
-    elif mode == 'full':
-        left = right = n - 1
-        length += n - 1
-    else:
-        raise ValueError('Invalid mode')
-    return left, right, length
-
-
-def _rolling_window(a, b, window, pos, padsize=0):
-    if padsize > 0:
-        a = cupy.pad(a, padsize)
-    shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
-    strides = a.strides + (a.strides[-1],)
-    a = cupy.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
-    if pos == 'mid':
-        return a
-
-    a = a[1: 1 + padsize]
-    rows, cols = cupy.ogrid[:a.shape[0], :a.shape[1]]
-    r = cupy.arange(- a.shape[0] + 1, 1)
-    r[r < 0] += a.shape[1]
-    cols = cols - r[:, cupy.newaxis]
-    a = a[rows, cols]
-
-    b = cupy.pad(b, padsize)
-    shape = b.shape[:-1] + (b.shape[-1] - window + 1, window)
-    strides = b.strides + (b.strides[-1],)
-    b = cupy.lib.stride_tricks.as_strided(b, shape=shape, strides=strides)
-    b = b[::-1][1: 1 + padsize]
-
-    if pos == 'left':
-        return a, b
-    if pos == 'right':
-        return a[::-1], b[::-1]
-    raise ValueError('Invalid pos')
+# TODO(okuta): Implement correlate
 
 
 def cov(a, y=None, rowvar=True, bias=False, ddof=None):
