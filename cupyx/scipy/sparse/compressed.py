@@ -292,6 +292,39 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         ''', 'min_arg_reduction')
 
+    # TODO(leofang): rewrite a more load-balanced approach than this naive one?
+    _has_sorted_indices_kern = cupy.ElementwiseKernel(
+            'T indptr, raw T indices',
+            'bool diff',
+            '''
+            bool out = true;
+            for(T jj = indptr[i]; jj < indptr[i+1] - 1; jj++) {
+                if(indices[jj] > indices[jj+1]){
+                    out = false;
+                }
+            }
+            diff = out;
+            ''',
+            'has_sorted_indices')
+
+    # TODO(leofang): rewrite a more load-balanced approach than this naive one?
+    _has_canonical_format = cupy.ElementwiseKernel(
+            'T indptr, raw T indices',
+            'bool diff',
+            '''
+            bool out = true;
+            if (indptr[i] > indptr[i+1]) {
+                out = false;
+            }
+            for(T jj = indptr[i] + 1; jj < indptr[i+1]; jj++) {
+                if( !(indices[jj-1] < indices[jj]) ) {
+                    out = false;
+                }
+            }
+            diff = out;
+            ''',
+            'has_sorted_indices')
+
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None:
             if not util.isshape(shape):
@@ -594,9 +627,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         # first check to see if result was cached
         if not hasattr(self, '_has_sorted_indices'):
-            self._has_sorted_indices = _csr_has_sorted_indices( # TODO(leofang): write this
-                len(self.indptr) - 1, self.indptr, self.indices)
-        return self._has_sorted_indices
+            _has_sorted_indices = self._has_sorted_indices_kern(
+                self.indptr, self.indices)
+        return _has_sorted_indices.all()
 
     def __set_sorted(self, val):
         self._has_sorted_indices = bool(val)
