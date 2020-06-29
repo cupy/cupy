@@ -4,9 +4,11 @@ import cupyx
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
+from cupy.lib import stride_tricks
 from cupyx.scipy import fft
 
-dot_kernel = core.ReductionKernel(
+
+_dot_kernel = core.ReductionKernel(
     'T x1, T x2',
     'T y',
     'x1 * x2',
@@ -92,73 +94,33 @@ def _fftconvolve1d(a1, a2, mode='full'):
 
 
 def _dot_convolve(a1, a2, mode):
-    inverted = 0
-    dtype = cupy.result_type(a1, a2)
     if a1.size == 0 or a2.size == 0:
         raise ValueError('Array arguments cannot be empty')
+
+    inverted = False
     if a1.size < a2.size:
         a1, a2 = a2, a1
-        inverted = 1
-    length = n1 = a1.size
-    n2 = a2.size
-    left, right, length = _generate_boundaries(mode, length, n2)
-    output = cupy.zeros(length, dtype)
+        inverted = True
+
+    dtype = cupy.result_type(a1, a2)
+    n1, n2 = a1.size, a2.size
     a1 = a1.astype(dtype, copy=False)
     a2 = a2.astype(dtype, copy=False)
-    if left > 0:
-        a1_2dims, a2_2dims = _rolling_window(a1, a2, n2 - 1, 'left', left)
-        dot_kernel(a1_2dims, a2_2dims, output[:left], axis=1)
-    a1_2dims = _rolling_window(a1, a2, n2, 'mid')
-    dot_kernel(a1_2dims, a2, output[left:(left + n1 - n2 + 1)], axis=1)
-    if right > 0:
-        a1_2dims, a2_2dims = _rolling_window(a2, a1[n1 - n2 + 1:],
-                                             n2 - 1, 'right', right)
-        dot_kernel(a1_2dims, a2_2dims, output[left + n1 - n2 + 1:], axis=1)
-    return inverted, output
 
-
-def _generate_boundaries(mode, length, n):
-    if mode == 'valid':
-        length += 1 - n
-        left = right = 0
+    if mode == 'full':
+        out_size = n1 + n2 - 1
+        a1 = cupy.pad(a1, n2 - 1)
     elif mode == 'same':
-        left = int(n / 2)
-        right = n - left - 1
-    elif mode == 'full':
-        left = right = n - 1
-        length += n - 1
-    else:
-        raise ValueError('Invalid mode')
-    return left, right, length
+        out_size = n1
+        pad_size = (n2 - 1) // 2
+        a1 = cupy.pad(a1, (n2 - 1 - pad_size, pad_size))
+    elif mode == 'valid':
+        out_size = n1 - n2 + 1
 
-
-def _rolling_window(a, b, window, pos, padsize=0):
-    if padsize > 0:
-        a = cupy.pad(a, padsize)
-    shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
-    strides = a.strides + (a.strides[-1],)
-    a = cupy.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
-    if pos == 'mid':
-        return a
-
-    a = a[1: 1 + padsize]
-    rows, cols = cupy.ogrid[:a.shape[0], :a.shape[1]]
-    r = cupy.arange(- a.shape[0] + 1, 1)
-    r[r < 0] += a.shape[1]
-    cols = cols - r[:, cupy.newaxis]
-    a = a[rows, cols]
-
-    b = cupy.pad(b, padsize)
-    shape = b.shape[:-1] + (b.shape[-1] - window + 1, window)
-    strides = b.strides + (b.strides[-1],)
-    b = cupy.lib.stride_tricks.as_strided(b, shape=shape, strides=strides)
-    b = b[::-1][1: 1 + padsize]
-
-    if pos == 'left':
-        return a, b
-    if pos == 'right':
-        return a[::-1], b[::-1]
-    raise ValueError('Invalid pos')
+    stride = a1.strides[0]
+    a1 = stride_tricks.as_strided(a1, (out_size, n2), (stride, stride))
+    output = _dot_kernel(a1, a2, axis=1)
+    return inverted, output
 
 
 def clip(a, a_min=None, a_max=None, out=None):
