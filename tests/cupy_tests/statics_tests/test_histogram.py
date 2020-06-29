@@ -1,6 +1,5 @@
 import sys
 import unittest
-from unittest import mock
 
 import numpy
 import pytest
@@ -328,10 +327,8 @@ class TestCUBHistogram(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         cub_func = 'cupy.statistics.histogram.cub.device_histogram'
-        with mock.patch(cub_func) as func:
-            assert func.call_count == 0
+        with testing.AssertFunctionIsCalled(cub_func):
             xp.histogram(x)
-            assert func.call_count == 1
         # ...then perform the actual computation
         return xp.histogram(x)
 
