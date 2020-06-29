@@ -294,37 +294,35 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     # TODO(leofang): rewrite a more load-balanced approach than this naive one?
     _has_sorted_indices_kern = core.ElementwiseKernel(
-            'raw T indptr, raw T indices',
-            'bool diff',
-            '''
-            bool diff_out = true;
-            for (T jj = indptr[i]; jj < indptr[i+1] - 1; jj++) {
-                if (indices[jj] > indices[jj+1]){
-                    diff_out = false;
-                }
+        'raw T indptr, raw T indices',
+        'bool diff',
+        '''
+        bool diff_out = true;
+        for (T jj = indptr[i]; jj < indptr[i+1] - 1; jj++) {
+            if (indices[jj] > indices[jj+1]){
+                diff_out = false;
             }
-            diff = diff_out;
-            ''',
-            'has_sorted_indices')
+        }
+        diff = diff_out;
+        ''', 'has_sorted_indices')
 
     # TODO(leofang): rewrite a more load-balanced approach than this naive one?
     _has_canonical_format_kern = core.ElementwiseKernel(
-            'raw T indptr, raw T indices',
-            'bool diff',
-            '''
-            bool diff_out = true;
-            if (indptr[i] > indptr[i+1]) {
-                diff = false;
-                return;
+        'raw T indptr, raw T indices',
+        'bool diff',
+        '''
+        bool diff_out = true;
+        if (indptr[i] > indptr[i+1]) {
+            diff = false;
+            return;
+        }
+        for (T jj = indptr[i]; jj < indptr[i+1] - 1; jj++) {
+            if (indices[jj] >= indices[jj+1]) {
+                diff_out = false;
             }
-            for (T jj = indptr[i]; jj < indptr[i+1] - 1; jj++) {
-                if (indices[jj] >= indices[jj+1]) {
-                    diff_out = false;
-                }
-            }
-            diff = diff_out;
-            ''',
-            'has_canonical_format')
+        }
+        diff = diff_out;
+        ''', 'has_canonical_format')
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None:
@@ -683,13 +681,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return A
 
     def sort_indices(self):
-        # Unlike in SciPy, here this is implemented in child classes
+        # Unlike in SciPy, here this is implemented in child classes because
+        # each child needs to call its own sort function from cuSPARSE
         raise NotImplementedError
 
     def sum_duplicates(self):
         if self.has_canonical_format:
             return
-        # TODO(leofang): do we need to call self.sort_indices() here?
+        # TODO(leofang): add a kernel for compressed sparse matrices without
+        # converting to coo
         coo = self.tocoo()
         coo.sum_duplicates()
         self.__init__(coo.asformat(self.format))

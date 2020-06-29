@@ -6,6 +6,7 @@ except ImportError:
     _scipy_available = False
 
 import cupy
+from cupy import core
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import csc
@@ -43,6 +44,17 @@ class coo_matrix(sparse_data._data_matrix):
     """
 
     format = 'coo'
+
+    _sum_duplicates_diff = core.ElementwiseKernel(
+        'raw T row, raw T col',
+        'T diff',
+        '''
+        T diff_out = 1;
+        if (i == 0 || row[i - 1] == row[i] && col[i - 1] == col[i]) {
+          diff_out = 0;
+        }
+        diff = diff_out;
+        ''', 'sum_duplicates_diff')
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None and len(shape) != 2:
@@ -210,27 +222,16 @@ class coo_matrix(sparse_data._data_matrix):
         """
         if self.has_canonical_format:
             return
-        if self.data.size == 0:
-            self.has_canonical_format = True
-            return
-        keys = cupy.stack([self.col, self.row])
+        # Note: it is unclear how the sorting order would matter. However, this
+        # is what SciPy performs in sum_duplicates(). Although this order is
+        # different from cuSPARSE convention (first row then col), we are not
+        # calling coosort here so it should be alright.
+        keys = cupy.stack([self.row, self.col])
         order = cupy.lexsort(keys)
         src_data = self.data[order]
         src_row = self.row[order]
         src_col = self.col[order]
-        diff = cupy.ElementwiseKernel(
-            'raw int32 row, raw int32 col',
-            'int32 diff',
-            '''
-            int index;
-            if (i == 0 || row[i - 1] == row[i] && col[i - 1] == col[i]) {
-              diff = 0;
-            } else {
-              diff = 1;
-            }
-            ''',
-            'sum_duplicates_diff'
-        )(src_row, src_col, size=self.row.size)
+        diff = self._sum_duplicates_diff(src_row, src_col, size=self.row.size)
 
         if diff[1:].all():
             # All elements have different indices.
@@ -238,6 +239,8 @@ class coo_matrix(sparse_data._data_matrix):
             row = src_row
             col = src_col
         else:
+            # TODO(leofang): move the kernels outside this method, and handle
+            # large arrays indexed by int64
             index = cupy.cumsum(diff, dtype='i')
             size = int(index[-1]) + 1
             data = cupy.zeros(size, dtype=self.data.dtype)
