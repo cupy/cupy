@@ -10,9 +10,16 @@ from cupy import testing
 @testing.gpu
 class TestPoly1d(unittest.TestCase):
 
-    def make_poly1d(self, xp, dtype):
+    def make_poly1d1(self, xp, dtype):
         a1 = testing.shaped_arange((4,), xp, dtype)
         a2 = xp.zeros((4,), dtype)
+        b1 = xp.poly1d(a1)
+        b2 = xp.poly1d(a2)
+        return b1, b2
+
+    def make_poly1d2(self, xp, dtype):
+        a1 = testing.shaped_arange((4,), xp, dtype)
+        a2 = testing.shaped_arange((4,), xp, dtype)
         b1 = xp.poly1d(a1)
         b2 = xp.poly1d(a2)
         return b1, b2
@@ -25,10 +32,19 @@ class TestPoly1d(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_poly1d_poly1d(self, xp, dtype):
+    def test_poly1d_cp_poly1d(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         b = xp.poly1d(a)
         return xp.poly1d(b).coeffs
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_poly1d_np_poly1d(self, dtype):
+        arr1 = testing.shaped_arange((10,), cupy, dtype)
+        arr2 = numpy.ones(10, dtype=dtype)
+        a = cupy.poly1d(arr1)
+        b = numpy.poly1d(arr2)
+        a.set(b)
+        testing.assert_array_equal(a.coeffs, b.coeffs)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -56,14 +72,20 @@ class TestPoly1d(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
-    def test_poly1d_eq(self, xp, dtype):
-        a, b = self.make_poly1d(xp, dtype)
+    def test_poly1d_eq1(self, xp, dtype):
+        a, b = self.make_poly1d1(xp, dtype)
+        return a == b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_eq2(self, xp, dtype):
+        a, b = self.make_poly1d2(xp, dtype)
         return a == b
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_poly1d_neg(self, xp, dtype):
-        a, b = self.make_poly1d(xp, dtype)
+        a, b = self.make_poly1d1(xp, dtype)
         return a != b
 
     @testing.for_all_dtypes()

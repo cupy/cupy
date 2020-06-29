@@ -229,3 +229,24 @@ cdef class poly1d:
             return out
         return numpy.poly1d(self.coeffs.get(stream=stream),
                             variable=self.variable)
+
+    def set(self, polyin, stream=None):
+        """Copies a poly1d object on the host memory to :class:`cupy.poly1d`.
+
+        Args:
+            polyin (numpy.poly1d): The source object on the host memory.
+            stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
+                copy runs asynchronously. Otherwise, the copy is synchronous.
+                The default uses CUDA stream object of the current context.
+
+        """
+        if not isinstance(polyin, numpy.poly1d):
+            raise TypeError('Only numpy.poly1d can be set to cupy.poly1d')
+        if self.coeffs.dtype != polyin.coeffs.dtype:
+            raise TypeError('{} poly1d cannot be set to {} poly1d'.format(
+                polyin.coeffs.dtype, self.coeffs.dtype))
+        if self.coeffs.shape != polyin.coeffs.shape:
+            raise ValueError(
+                'Shape mismatch. Old shape: {}, new shape: {}'.format(
+                    self.coeffs.shape, polyin.coeffs.shape))
+        self.coeffs.set(polyin.coeffs, stream=stream)
