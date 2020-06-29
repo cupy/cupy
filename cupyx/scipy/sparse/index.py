@@ -23,6 +23,275 @@ def _broadcast_arrays(a, b):
     y.flags.writeable = b.flags.writeable
     return x, y
 
+    # @todo: Need to build csr_column_index1- slice columns given as an array of indices (pass1)
+    # @todo: Need to build csr_column_index2- slice columns given as an array of indices (pass2)
+    """
+        /*
+        
+        BUILDS OUTPUT DEGREES
+     * Slice columns given as an array of indices (pass 1).
+     * This pass counts idx entries and computes a new indptr.
+     *
+     * Input Arguments:
+     *   I  n_idx           - number of indices to slice
+     *   I  col_idxs[n_idx] - indices to slice
+     *   I  n_row           - major axis dimension
+     *   I  n_col           - minor axis dimension
+     *   I  Ap[n_row+1]     - indptr
+     *   I  Aj[nnz(A)]      - indices
+     *
+     * Output Arguments:
+     *   I  col_offsets[n_col] - cumsum of index repeats
+     *   I  Bp[n_row+1]        - new indptr
+     *
+     */
+    template<class I>
+    void csr_column_index1(const I n_idx,           
+                           const I col_idxs[],
+                           const I n_row,
+                           const I n_col,
+                           const I Ap[],
+                           const I Aj[],
+                           I col_offsets[],
+                           I Bp[])
+    {
+        // bincount(col_idxs)
+        for(I jj = 0; jj < n_idx; jj++){
+            const I j = col_idxs[jj];
+            col_offsets[j]++;
+        }
+
+
+        // build output degree!
+        // Compute new indptr
+        I new_nnz = 0;
+        Bp[0] = 0;
+        for(I i = 0; i < n_row; i++){
+            for(I jj = Ap[i]; jj < Ap[i+1]; jj++){
+                new_nnz += col_offsets[Aj[jj]];
+            }
+            Bp[i+1] = new_nnz;
+        }
+
+        // cumsum in-place
+        for(I j = 1; j < n_col; j++){
+            col_offsets[j] += col_offsets[j - 1];
+        }
+    }
+
+
+    /*
+        POPULATES COLS AND DATA
+     * Slice columns given as an array of indices (pass 2).
+     * This pass populates indices/data entries for selected columns.
+     *
+     * Input Arguments:
+     *   I  col_order[n_idx]   - order of col indices
+     *   I  col_offsets[n_col] - cumsum of col index counts
+     *   I  nnz                - nnz(A)
+     *   I  Aj[nnz(A)]         - column indices
+     *   T  Ax[nnz(A)]         - data
+     *
+     * Output Arguments:
+     *   I  Bj[nnz(B)] - new column indices
+     *   T  Bx[nnz(B)] - new data
+     *
+     */
+    template<class I, class T>
+    void csr_column_index2(const I col_order[],
+                           const I col_offsets[],
+                           const I nnz,
+                           const I Aj[],
+                           const T Ax[],
+                           I Bj[],
+                           T Bx[])
+    {
+        I n = 0;
+        for(I jj = 0; jj < nnz; jj++){
+            const I j = Aj[jj];
+            const I offset = col_offsets[j];
+            const I prev_offset = j == 0 ? 0 : col_offsets[j-1];
+            if (offset != prev_offset) {
+                const T v = Ax[jj];
+                for(I k = prev_offset; k < offset; k++){
+                    Bj[n] = col_order[k];
+                    Bx[n] = v;
+                    n++;
+                }
+            }
+        }
+    }
+
+    """
+
+    # @todo: Need to build get_csr_submatrix
+    """
+    template<class I, class T>
+    void get_csr_submatrix(const I n_row,    - number of rows in A (M)
+                           const I n_col,    - number of cols in A (N)
+                           const I Ap[],     - row pointer (self.indptr)
+                           const I Aj[],     - column pointer (self.indices)
+                           const T Ax[],     - nonzeros (self.data)
+                           const I ir0,      - major
+                           const I ir1,      - major+1
+                           const I ic0,      - minor
+                           const I ic1,      - minor+1
+                           std::vector<I>* Bp,   - out row pointer
+                           std::vector<I>* Bj,   - out cols
+                           std::vector<T>* Bx)   - out nonzeros
+    {
+        I new_n_row = ir1 - ir0;
+        //I new_n_col = ic1 - ic0;  //currently unused
+        I new_nnz = 0;
+        I kk = 0;
+
+
+        // BUILD output degrees
+        
+        // Count nonzeros total/per row.
+        for(I i = 0; i < new_n_row; i++){
+            I row_start = Ap[ir0+i];
+            I row_end   = Ap[ir0+i+1];
+
+            for(I jj = row_start; jj < row_end; jj++){
+                if ((Aj[jj] >= ic0) && (Aj[jj] < ic1)) {
+                    new_nnz++;
+                }
+            }
+        }
+
+        // Allocate.
+        Bp->resize(new_n_row+1);
+        Bj->resize(new_nnz);
+        Bx->resize(new_nnz);
+
+
+        // populate output
+        // Assign.
+        (*Bp)[0] = 0;
+        for(I i = 0; i < new_n_row; i++){
+            I row_start = Ap[ir0+i];
+            I row_end   = Ap[ir0+i+1];
+
+            for(I jj = row_start; jj < row_end; jj++){
+                if ((Aj[jj] >= ic0) && (Aj[jj] < ic1)) {
+                    (*Bj)[kk] = Aj[jj] - ic0;
+                    (*Bx)[kk] = Ax[jj];
+                    kk++;
+                }
+            }
+            (*Bp)[i+1] = kk;
+        }
+    }
+    """
+
+
+"""
+/*
+ * Sample the matrix at specific locations
+ *
+ * Determine the matrix value for each row,col pair
+ *    Bx[n] = A(Bi[n],Bj[n])
+ *
+ * Input Arguments:
+ *   I  n_row         - number of rows in A
+ *   I  n_col         - number of columns in A
+ *   I  Ap[n_row+1]   - row pointer
+ *   I  Aj[nnz(A)]    - column indices
+ *   T  Ax[nnz(A)]    - nonzeros
+ *   I  n_samples     - number of samples
+ *   I  Bi[N]         - sample rows
+ *   I  Bj[N]         - sample columns
+ *
+ * Output Arguments:
+ *   T  Bx[N]         - sample values
+ *
+ * Note:
+ *   Output array Bx must be preallocated
+ *
+ *   Complexity: varies
+ *
+ *   TODO handle other cases with asymptotically optimal method
+ *
+ */
+template <class I, class T>
+void csr_sample_values(const I n_row,
+                       const I n_col,
+                       const I Ap[],
+                       const I Aj[],
+                       const T Ax[],
+                       const I n_samples,
+                       const I Bi[],
+                       const I Bj[],
+                             T Bx[])
+{
+    // ideally we'd do the following
+    // Case 1: A is canonical and B is sorted by row and column
+    //   -> special purpose csr_binop_csr() (optimized form)
+    // Case 2: A is canonical and B is unsorted and max(log(Ap[i+1] - Ap[i])) > log(num_samples)
+    //   -> do binary searches for each sample
+    // Case 3: A is canonical and B is unsorted and max(log(Ap[i+1] - Ap[i])) < log(num_samples)
+    //   -> sort B by row and column and use Case 1
+    // Case 4: A is not canonical and num_samples ~ nnz
+    //   -> special purpose csr_binop_csr() (general form)
+    // Case 5: A is not canonical and num_samples << nnz
+    //   -> do linear searches for each sample
+
+    const I nnz = Ap[n_row];
+
+    const I threshold = nnz / 10; // constant is arbitrary
+
+    if (n_samples > threshold && csr_has_canonical_format(n_row, Ap, Aj))
+    {
+        for(I n = 0; n < n_samples; n++)
+        {
+            const I i = Bi[n] < 0 ? Bi[n] + n_row : Bi[n]; // sample row
+            const I j = Bj[n] < 0 ? Bj[n] + n_col : Bj[n]; // sample column
+
+            const I row_start = Ap[i];
+            const I row_end   = Ap[i+1];
+
+            if (row_start < row_end)
+            {
+                const I offset = std::lower_bound(Aj + row_start, Aj + row_end, j) - Aj;
+
+                if (offset < row_end && Aj[offset] == j)
+                    Bx[n] = Ax[offset];
+                else
+                    Bx[n] = 0;
+            }
+            else
+            {
+                Bx[n] = 0;
+            }
+
+        }
+    }
+    else
+    {
+        for(I n = 0; n < n_samples; n++)
+        {
+            const I i = Bi[n] < 0 ? Bi[n] + n_row : Bi[n]; // sample row
+            const I j = Bj[n] < 0 ? Bj[n] + n_col : Bj[n]; // sample column
+
+            const I row_start = Ap[i];
+            const I row_end   = Ap[i+1];
+
+            T x = 0;
+
+            for(I jj = row_start; jj < row_end; jj++)
+            {
+                if (Aj[jj] == j)
+                    x += Ax[jj];
+            }
+
+            Bx[n] = x;
+        }
+
+    }
+}
+"""
+
 
 class IndexMixin(object):
     """

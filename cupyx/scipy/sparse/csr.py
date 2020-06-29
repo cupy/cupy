@@ -298,6 +298,88 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         return csc.csc_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
 
+    def getrow(self, i):
+        """Returns a copy of row i of the matrix, as a (1 x n)
+        CSR matrix (row vector).
+        """
+        M, N = self.shape
+        i = int(i)
+        if i < 0:
+            i += M
+        if i < 0 or i >= M:
+            raise IndexError('index (%d) out of range' % i)
+        indptr, indices, data = get_csr_submatrix(
+            M, N, self.indptr, self.indices, self.data, i, i + 1, 0, N)
+        return csr_matrix((data, indices, indptr), shape=(1, N),
+                          dtype=self.dtype, copy=False)
+
+    def getcol(self, i):
+        """Returns a copy of column i of the matrix, as a (m x 1)
+        CSR matrix (column vector).
+        """
+        M, N = self.shape
+        i = int(i)
+        if i < 0:
+            i += N
+        if i < 0 or i >= N:
+            raise IndexError('index (%d) out of range' % i)
+        indptr, indices, data = get_csr_submatrix(
+            M, N, self.indptr, self.indices, self.data, 0, M, i, i + 1)
+        return csr_matrix((data, indices, indptr), shape=(M, 1),
+                          dtype=self.dtype, copy=False)
+
+    def _get_intXarray(self, row, col):
+        return self.getrow(row)._minor_index_fancy(col)
+
+    def _get_intXslice(self, row, col):
+        if col.step in (1, None):
+            return self._get_submatrix(row, col, copy=True)
+        # TODO: uncomment this once it's faster:
+        # return self.getrow(row)._minor_slice(col)
+
+        M, N = self.shape
+        start, stop, stride = col.indices(N)
+
+        ii, jj = self.indptr[row:row+2]
+        row_indices = self.indices[ii:jj]
+        row_data = self.data[ii:jj]
+
+        if stride > 0:
+            ind = (row_indices >= start) & (row_indices < stop)
+        else:
+            ind = (row_indices <= start) & (row_indices > stop)
+
+        if abs(stride) > 1:
+            ind &= (row_indices - start) % stride == 0
+
+        row_indices = (row_indices[ind] - start) // stride
+        row_data = row_data[ind]
+        row_indptr = np.array([0, len(row_indices)])
+
+        if stride < 0:
+            row_data = row_data[::-1]
+            row_indices = abs(row_indices[::-1])
+
+        shape = (1, int(np.ceil(float(stop - start) / stride)))
+        return csr_matrix((row_data, row_indices, row_indptr), shape=shape,
+                          dtype=self.dtype, copy=False)
+
+    def _get_sliceXint(self, row, col):
+        if row.step in (1, None):
+            return self._get_submatrix(row, col, copy=True)
+        return self._major_slice(row)._get_submatrix(minor=col)
+
+    def _get_sliceXarray(self, row, col):
+        return self._major_slice(row)._minor_index_fancy(col)
+
+    def _get_arrayXint(self, row, col):
+        return self._major_index_fancy(row)._get_submatrix(minor=col)
+
+    def _get_arrayXslice(self, row, col):
+        if col.step not in (1, None):
+            col = np.arange(*col.indices(self.shape[1]))
+            return self._get_arrayXarray(row, col)
+        return self._major_index_fancy(row)._get_submatrix(minor=col)
 
 def isspmatrix_csr(x):
     """Checks if a given matrix is of CSR format.
