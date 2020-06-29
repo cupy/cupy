@@ -279,11 +279,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 'swapping dimensions is the only logical permutation.')
 
         shape = self.shape[1], self.shape[0]
-        trans = cupyx.scipy.sparse.csr.csr_matrix(
+        return cupyx.scipy.sparse.csr.csr_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
-        trans.has_canonical_format = self.has_canonical_format
-        trans.has_sorted_indices = self.has_sorted_indices
-        return trans
 
 
 def isspmatrix_csc(x):
