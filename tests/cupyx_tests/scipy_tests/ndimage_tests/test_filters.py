@@ -32,6 +32,9 @@ class FilterTestCaseBase(unittest.TestCase):
     # Params that need no processing and just go into kwargs
     KWARGS_PARAMS = ('output', 'axis', 'mode', 'cval')
 
+    # Params that need no processing go before weights in the arguments
+    ARGS_PARAMS = ('rank', 'percentile')
+
     def _filter(self, xp, scp):
         """
         The function that all tests end up calling, possibly after a few
@@ -58,8 +61,14 @@ class FilterTestCaseBase(unittest.TestCase):
             # w is actually a tuple of (None, footprint)
             wghts, kwargs['footprint'] = wghts
 
+        # Bulid the arguments
+        args = [getattr(self, param)
+                for param in FilterTestCaseBase.ARGS_PARAMS
+                if hasattr(self, param)]
+        args.append(wghts)
+
         # Actually perform filtering
-        return filter(arr, wghts, **kwargs)
+        return filter(arr, *args, **kwargs)
 
     def _get_weights(self, xp):
         # Gets the second argument to the filter functions.
@@ -76,7 +85,8 @@ class FilterTestCaseBase(unittest.TestCase):
         if self.filter in ('convolve1d', 'correlate1d'):
             return testing.shaped_random((self.ksize,), xp, self._dtype)
 
-        if self.filter in ('minimum_filter', 'maximum_filter'):
+        if self.filter in ('minimum_filter', 'maximum_filter', 'median_filter',
+                           'rank_filter', 'percentile_filter'):
             if not self.footprint:
                 return self.ksize
             kshape = self._kshape
@@ -126,11 +136,10 @@ COMMON_PARAMS = {
         testing.product({
             'filter': ['convolve', 'correlate'],
         }) + testing.product({
-            'filter': ['convolve1d', 'correlate1d',
-                       'minimum_filter1d', 'maximum_filter1d'],
+            'filter': ['convolve1d', 'correlate1d', 'minimum_filter1d'],
             'axis': [0, 1, -1],
         }) + testing.product({
-            'filter': ['minimum_filter', 'maximum_filter'],
+            'filter': ['minimum_filter', 'median_filter'],
             'footprint': [False, True],
         }),
 
@@ -164,6 +173,38 @@ class TestFilter(FilterTestCaseBase):
         return self._filter(xp, scp)
 
 
+# This tests filters that are very similar to other filters so we only check
+# the basics with them.
+@testing.parameterize(*(
+    testing.product([
+        # Filter-function specific params
+        testing.product({
+            'filter': ['maximum_filter1d', 'maximum_filter'],
+        }) + testing.product({
+            'filter': ['percentile_filter'],
+            'percentile': [0, 25, 50, -25, 100],
+        }) + testing.product({
+            'filter': ['rank_filter'],
+            'rank': [0, 1, -1],
+        }),
+
+        # Only do reflect with some extras
+        testing.product({
+            **COMMON_PARAMS,
+            'mode': ['reflect'],
+            'origin': [0, 1, None],
+            'output': [None, numpy.int32, numpy.float64],
+        })
+    ])
+))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestFilterFast(FilterTestCaseBase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
+        return self._filter(xp, scp)
+
+
 # Tests things requiring scipy >= 1.5.0
 @testing.parameterize(*(
     testing.product([
@@ -189,6 +230,33 @@ class TestFilter(FilterTestCaseBase):
 # SciPy behavior fixed in 1.5.0: https://github.com/scipy/scipy/issues/11661
 @testing.with_requires('scipy>=1.5.0')
 class TestMirrorWithDim1(FilterTestCaseBase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
+        return self._filter(xp, scp)
+
+
+# Tests kernels large enough to trigger shell sort in rank-based filters
+@testing.parameterize(*(
+    testing.product([
+        testing.product({
+            'filter': ['median_filter'],
+        }) + testing.product({
+            'filter': ['percentile_filter'],
+            'percentile': [25, -25],
+        }) + testing.product({
+            'filter': ['rank_filter'],
+            'rank': [1],
+        }),
+        testing.product({
+            'fooprint': [False, True],
+            'ksize': [16, 17],
+            'shape': [(20, 21)],
+        })
+    ])
+))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestShelSort(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
         return self._filter(xp, scp)
