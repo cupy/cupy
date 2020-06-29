@@ -242,11 +242,4 @@ cdef class poly1d:
         """
         if not isinstance(polyin, numpy.poly1d):
             raise TypeError('Only numpy.poly1d can be set to cupy.poly1d')
-        if self.coeffs.dtype != polyin.coeffs.dtype:
-            raise TypeError('{} poly1d cannot be set to {} poly1d'.format(
-                polyin.coeffs.dtype, self.coeffs.dtype))
-        if self.coeffs.shape != polyin.coeffs.shape:
-            raise ValueError(
-                'Shape mismatch. Old shape: {}, new shape: {}'.format(
-                    self.coeffs.shape, polyin.coeffs.shape))
-        self.coeffs.set(polyin.coeffs, stream=stream)
+        self.coeffs.set(polyin.coeffs, stream)

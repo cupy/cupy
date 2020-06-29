@@ -10,20 +10,6 @@ from cupy import testing
 @testing.gpu
 class TestPoly1d(unittest.TestCase):
 
-    def make_poly1d1(self, xp, dtype):
-        a1 = testing.shaped_arange((4,), xp, dtype)
-        a2 = xp.zeros((4,), dtype)
-        b1 = xp.poly1d(a1)
-        b2 = xp.poly1d(a2)
-        return b1, b2
-
-    def make_poly1d2(self, xp, dtype):
-        a1 = testing.shaped_arange((4,), xp, dtype)
-        a2 = testing.shaped_arange((4,), xp, dtype)
-        b1 = xp.poly1d(a1)
-        b2 = xp.poly1d(a2)
-        return b1, b2
-
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_arr(self, xp, dtype):
@@ -72,24 +58,6 @@ class TestPoly1d(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
-    def test_poly1d_eq1(self, xp, dtype):
-        a, b = self.make_poly1d1(xp, dtype)
-        return a == b
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
-    def test_poly1d_eq2(self, xp, dtype):
-        a, b = self.make_poly1d2(xp, dtype)
-        return a == b
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
-    def test_poly1d_neg(self, xp, dtype):
-        a, b = self.make_poly1d1(xp, dtype)
-        return a != b
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
     def test_poly1d_getitem1(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
         return xp.poly1d(a)[-1]
@@ -107,12 +75,12 @@ class TestPoly1d(unittest.TestCase):
         return xp.poly1d(a)[100]
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_poly1d_setitem(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
         b = xp.poly1d(a)
         b[100] = 20
-        return b[100]
+        return b.coeffs
 
     @testing.for_all_dtypes()
     def test_poly1d_setitem_neg(self, dtype):
@@ -142,10 +110,52 @@ class TestPoly1d(unittest.TestCase):
     @testing.numpy_cupy_equal()
     def test_poly1d_repr(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
-        return xp.poly1d(a).__repr__()
+        return repr(xp.poly1d(a))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_poly1d_str(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
-        return xp.poly1d(a).__str__()
+        return str(xp.poly1d(a))
+
+
+@testing.gpu
+class TestPoly1dEquality(unittest.TestCase):
+
+    def make_poly1d1(self, xp, dtype):
+        a1 = testing.shaped_arange((4,), xp, dtype)
+        a2 = xp.zeros((4,), dtype)
+        b1 = xp.poly1d(a1)
+        b2 = xp.poly1d(a2)
+        return b1, b2
+
+    def make_poly1d2(self, xp, dtype):
+        a1 = testing.shaped_arange((4,), xp, dtype)
+        a2 = testing.shaped_arange((4,), xp, dtype)
+        b1 = xp.poly1d(a1)
+        b2 = xp.poly1d(a2)
+        return b1, b2
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_eq1(self, xp, dtype):
+        a, b = self.make_poly1d1(xp, dtype)
+        return a == b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_eq2(self, xp, dtype):
+        a, b = self.make_poly1d2(xp, dtype)
+        return a == b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_neg1(self, xp, dtype):
+        a, b = self.make_poly1d1(xp, dtype)
+        return a != b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_neg2(self, xp, dtype):
+        a, b = self.make_poly1d2(xp, dtype)
+        return a != b
