@@ -24,266 +24,319 @@ def _broadcast_arrays(a, b):
     y.flags.writeable = b.flags.writeable
     return x, y
 
-    #csr_column_index1(k, idx, M, N, self.indptr, self.indices,
-    #                  col_offsets, res_indptr)
 
-    bin_col_offsets_ker = cupy.RawKernel("""
-        extern "C" __global__
-        void bin_col_offsets_ker_str(int n_idx, int *col_idxs, int *col_offsets) {
-                                      
-            // Get the index of the thread
-            int i = blockIdx.x * blockDim.x + threadIdx.x;
-            
-            if(i > n_idx) return;
-            col_offsets[i]++;
-    """, "bin_col_offsets_ker_str")
-
-    def bin_col_offsets(n_idx, col_idsx, col_offsets, tpb=32):
-        grid = math.ceil(n_idx / tpb)
-        bin_col_offsets_ker((grid,), (tpb,), (n_idx, col_idsx, col_offsets))
-
-    csr_column_index1_ker = cupy.RawKernel("""
-        extern "C" __global__
-        void csr_column_index1_ker_str(int n_row, 
-                                     int *col_offsets,
-                                     int *Ap,
-                                     int *Aj,
-                                     int *Bp) {
-            int new_col_size = 0;
-                                    
-            // Get the index of the thread
-            int i = blockIdx.x * blockDim.x + threadIdx.x;
-            
-            if(i > n_row) return;
-            
-            for(int jj = Ap[i]; jj < Ap[i+1]; jj++) 
-                new_col_size += col_offsets[Aj[jj]];
-            
-            Bp[i+1] = new_col_size;
-    }
-    """, "csr_column_index1_ker_str")
-
-    def csr_column_index1_degree(n_row, col_offsets, Ap, Aj, Bp, tpb=32):
-        grid = math.ceil(n_row / tpb)
-        csr_column_index1_ker((grid,), (tpb,), (n_row, col_offsets, Ap, Aj, Bp))
-
-    def get_csr_column_index1(n_idx, col_idxs, n_row, n_col,
-                              indptr, indices, offsets, new_indptr):
-        bin_col_offsets(n_idx, col_idxs, offsets)
-        csr_column_index1_degree(n_row, offsets, indptr, indices, new_indptr)
-
-    def get_csr_column_index2():
-        pass
-
-    # @todo: Need to build csr_column_index1- slice columns given as an array of indices (pass1)
-    # @todo: Need to build csr_column_index2- slice columns given as an array of indices (pass2)
-    """
-        /*
+bin_col_offsets_ker = cupy.RawKernel("""
+    extern "C" __global__
+    void bin_col_offsets_ker_str(int n_idx, int *col_idxs, int *col_offsets) {
+                                  
+        // Get the index of the thread
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
         
-        BUILDS OUTPUT DEGREES
-     * Slice columns given as an array of indices (pass 1).
-     * This pass counts idx entries and computes a new indptr.
-     *
-     * Input Arguments:
-     *   I  n_idx           - number of indices to slice
-     *   I  col_idxs[n_idx] - indices to slice
-     *   I  n_row           - major axis dimension
-     *   I  n_col           - minor axis dimension
-     *   I  Ap[n_row+1]     - indptr
-     *   I  Aj[nnz(A)]      - indices
-     *
-     * Output Arguments:
-     *   I  col_offsets[n_col] - cumsum of index repeats
-     *   I  Bp[n_row+1]        - new indptr
-     *
-     */
-    template<class I>
-    void csr_column_index1(const I n_idx,           
-                           const I col_idxs[],
-                           const I n_row,
-                           const I n_col,
-                           const I Ap[],
-                           const I Aj[],
-                           I col_offsets[],
-                           I Bp[])
-    {
+        if(i > n_idx) return;
+        col_offsets[i]++;
+""", "bin_col_offsets_ker_str")
 
-        // build output degree!
-        // Compute new indptr
-        I new_nnz = 0;
-        Bp[0] = 0;
+
+def bin_col_offsets(n_idx, col_idsx, col_offsets, tpb=32):
+    grid = math.ceil(n_idx / tpb)
+    bin_col_offsets_ker((grid,), (tpb,), (n_idx, col_idsx, col_offsets))
+
+csr_column_index1_ker = cupy.RawKernel("""
+    extern "C" __global__
+    void csr_column_index1_ker_str(int n_row, 
+                                 int *col_offsets,
+                                 int *Ap,
+                                 int *Aj,
+                                 int *Bp) {
+                                
+        // Get the index of the thread
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
         
-        // One row per thread
-        for(I i = 0; i < n_row; i++){
+        if(i > n_row) return;
+
+        int new_col_size = 0;
         
-            // For each col in the current row, add column offsets
-            for(I jj = Ap[i]; jj < Ap[i+1]; jj++){
-            
-                // this is building the indptr array, but we can build the degree first
-                new_nnz += col_offsets[Aj[jj]];
+        for(int jj = Ap[i]; jj < Ap[i+1]; jj++) 
+            new_col_size += col_offsets[Aj[jj]];
+        
+        Bp[i+1] = new_col_size;
+}
+""", "csr_column_index1_ker_str")
+
+
+def csr_column_index1_degree(n_row, col_offsets, Ap, Aj, Bp, tpb=32):
+    grid = math.ceil(n_row / tpb)
+    csr_column_index1_ker((grid,), (tpb,), (n_row, col_offsets, Ap, Aj, Bp))
+
+
+def csr_column_index1(n_idx, col_idxs, n_row, n_col,
+                          indptr, indices, offsets, new_indptr):
+    bin_col_offsets(n_idx, col_idxs, offsets)
+    csr_column_index1_degree(n_row, offsets, indptr, indices, new_indptr)
+
+    cupy.cumsum(offsets, out=offsets)
+    cupy.cumsum(new_indptr, out=new_indptr)
+
+
+get_csr_index2_ker = cupy.RawKernel("""
+    extern "C" __global__
+    void get_csr_index2_ker_str(int *col_order,
+                                int *col_offsets,
+                                const int *Ap,
+                                const int *Aj,
+                                const float *Ax,
+                                int n_row,
+                                int *Bp,
+                                int *Bj,
+                                float *Bx) {
+                                
+    // Get the index of the thread
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    if(i > n_row) return;
+    
+
+    int n = Bp[i];
+    
+    for(int jj = Ap[i]; jj < Ap[i+1]; i++) {
+        const int j = Aj[jj];
+        
+        const int offset = col_offsets[j];
+        const int prev_offset = j == 0 ? 0 : col_offsets[j-1];
+        if (offset != prev_offset) {
+            const float v = Ax[jj];
+            for(int k = prev_offset; k < offset; k++){
+                Bj[n] = col_order[k];
+                Bx[n] = v;
+                n++;
             }
-            Bp[i+1] = new_nnz;
-        }
-
-        // cumsum in-place
-        for(I j = 1; j < n_col; j++){
-            col_offsets[j] += col_offsets[j - 1];
         }
     }
+}
+""", "get_csr_index2_ker_str")
 
 
+def csr_column_index2(out_rows, col_order, col_offsets, nnz,
+                   Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
+
+    grid = math.ceil(out_rows / tpb)
+    get_csr_index2_ker((grid,), (tpb,), (col_order, col_offsets,
+                                         Ap, Aj, Ax, len(Ap), Bp, Bj, Bx))
+
+# @todo: Need to build csr_column_index1- slice columns given as an array of indices (pass1)
+# @todo: Need to build csr_column_index2- slice columns given as an array of indices (pass2)
+"""
     /*
-        POPULATES COLS AND DATA
-     * Slice columns given as an array of indices (pass 2).
-     * This pass populates indices/data entries for selected columns.
-     *
-     * Input Arguments:
-     *   I  col_order[n_idx]   - order of col indices
-     *   I  col_offsets[n_col] - cumsum of col index counts
-     *   I  nnz                - nnz(A)
-     *   I  Aj[nnz(A)]         - column indices
-     *   T  Ax[nnz(A)]         - data
-     *
-     * Output Arguments:
-     *   I  Bj[nnz(B)] - new column indices
-     *   T  Bx[nnz(B)] - new data
-     *
-     */
-    template<class I, class T>
-    void csr_column_index2(const I col_order[],
-                           const I col_offsets[],
-                           const I nnz,
-                           const I Aj[],
-                           const T Ax[],
-                           I Bj[],
-                           T Bx[]) {
-        I n = 0;
-        for(I jj = 0; jj < nnz; jj++){
-            const I j = Aj[jj];
-            const I offset = col_offsets[j];
-            const I prev_offset = j == 0 ? 0 : col_offsets[j-1];
-            if (offset != prev_offset) {
-                const T v = Ax[jj];
-                for(I k = prev_offset; k < offset; k++){
-                    Bj[n] = col_order[k];
-                    Bx[n] = v;
-                    n++;
-                }
+    
+    BUILDS OUTPUT DEGREES
+ * Slice columns given as an array of indices (pass 1).
+ * This pass counts idx entries and computes a new indptr.
+ *
+ * Input Arguments:
+ *   I  n_idx           - number of indices to slice
+ *   I  col_idxs[n_idx] - indices to slice
+ *   I  n_row           - major axis dimension
+ *   I  n_col           - minor axis dimension
+ *   I  Ap[n_row+1]     - indptr
+ *   I  Aj[nnz(A)]      - indices
+ *
+ * Output Arguments:
+ *   I  col_offsets[n_col] - cumsum of index repeats
+ *   I  Bp[n_row+1]        - new indptr
+ *
+ */
+template<class I>
+void csr_column_index1(const I n_idx,           
+                       const I col_idxs[],
+                       const I n_row,
+                       const I n_col,
+                       const I Ap[],
+                       const I Aj[],
+                       I col_offsets[],
+                       I Bp[])
+{
+
+    // build output degree!
+    // Compute new indptr
+    I new_nnz = 0;
+    Bp[0] = 0;
+    
+    // One row per thread
+    for(I i = 0; i < n_row; i++){
+    
+        // For each col in the current row, add column offsets
+        for(I jj = Ap[i]; jj < Ap[i+1]; jj++){
+        
+            // this is building the indptr array, but we can build the degree first
+            new_nnz += col_offsets[Aj[jj]];
+        }
+        Bp[i+1] = new_nnz;
+    }
+
+    // cumsum in-place
+    for(I j = 1; j < n_col; j++){
+        col_offsets[j] += col_offsets[j - 1];
+    }
+}
+
+
+/*
+    POPULATES COLS AND DATA
+ * Slice columns given as an array of indices (pass 2).
+ * This pass populates indices/data entries for selected columns.
+ *
+ * Input Arguments:
+ *   I  col_order[n_idx]   - order of col indices
+ *   I  col_offsets[n_col] - cumsum of col index counts
+ *   I  nnz                - nnz(A)
+ *   I  Aj[nnz(A)]         - column indices
+ *   T  Ax[nnz(A)]         - data
+ *
+ * Output Arguments:
+ *   I  Bj[nnz(B)] - new column indices
+ *   T  Bx[nnz(B)] - new data
+ *
+ */
+template<class I, class T>
+void csr_column_index2(const I col_order[],
+                       const I col_offsets[],
+                       const I nnz,  // input NNZ
+                       const I Aj[],
+                       const T Ax[],
+                       I Bj[],
+                       T Bx[]) {
+    I n = 0;
+    for(I jj = 0; jj < nnz; jj++){
+        const I j = Aj[jj];  // row offset
+        const I offset = col_offsets[j];
+        const I prev_offset = j == 0 ? 0 : col_offsets[j-1];
+        if (offset != prev_offset) {
+            const T v = Ax[jj];
+            for(I k = prev_offset; k < offset; k++){
+                Bj[n] = col_order[k];
+                Bx[n] = v;
+                n++;
             }
         }
     }
+}
 
-    """
+"""
 
-    def get_csr_submatrix(n_row, n_col, indptr, indices, data,
-                          start_maj, stop_maj, start_min, stop_min):
 
-        # We first compute the degree, then use it to compute the indptr
-        new_n_row = stop_maj - start_maj
+def get_csr_submatrix(n_row, n_col, indptr, indices, data,
+                      start_maj, stop_maj, start_min, stop_min):
 
-        new_indptr = cupy.zeros((new_n_row+1,), dtype=indptr.dtype)
+    # We first compute the degree, then use it to compute the indptr
+    new_n_row = stop_maj - start_maj
 
-        get_csr_submatrix_degree(new_n_row, indptr, indices,
-                                 start_maj, stop_maj,
-                                 start_min, stop_min, new_indptr)
+    new_indptr = cupy.zeros((new_n_row+1,), dtype=indptr.dtype)
 
-        new_indptr = cupy.cumsum(new_indptr)
+    get_csr_submatrix_degree(new_n_row, indptr, indices,
+                             start_maj, stop_maj,
+                             start_min, stop_min, new_indptr)
 
-        new_nnz = new_indptr[-1]
+    new_indptr = cupy.cumsum(new_indptr)
 
-        new_indices = cupy.zeros((new_nnz,), dtype=indices.dtype)
-        new_data = cupy.zeros((new_nnz,), dtype=data.dtype)
+    new_nnz = new_indptr[-1]
 
-        get_csr_submatrix_cols_data(new_n_row, indptr, indices, data,
-                                    start_maj, stop_maj,
-                                    start_min, stop_min,
-                                    new_indptr, new_indices, new_data)
+    new_indices = cupy.zeros((new_nnz,), dtype=indices.dtype)
+    new_data = cupy.zeros((new_nnz,), dtype=data.dtype)
 
-        return new_indptr, new_indices, new_data
+    get_csr_submatrix_cols_data(new_n_row, indptr, indices, data,
+                                start_maj, stop_maj,
+                                start_min, stop_min,
+                                new_indptr, new_indices, new_data)
 
-    get_csr_submatrix_degree_ker = cupy.RawKernel("""
-        extern "C" __global__
-        void get_csr_submatrix_degree_kernel(const int *Ap,
-                                             const int *Aj,
-                                             const int ir0,
-                                             const int ir1,
-                                             const int ic0,
-                                             const int ic1,
-                                             int *Bp) {
-                                      
-            // Get the index of the thread
-            int i = blockIdx.x * blockDim.x + threadIdx.x;
-            
-            if(i > new_n_row) return;
-            
-            int row_start = Ap[ir0+i];
-            int row_end = Ap[ir0+i+1];
-            
-            int row_count = 0;
-            for int jj = row_start; jj < row_end; jj++) {
-                if((Aj[jj] >= ic0) && (Aj[jj] < ic1)) 
-                    row_count++;
-            }
-            
-            Bp[i+1] = row_count;
-        }
-    """, "get_csr_submatrix_degree_kernel")
+    return new_indptr, new_indices, new_data
 
-    def get_csr_submatrix_degree(new_rows, Ap, Aj, ir0, ir1,
-                                 ic0, ic1, Bp, tpb=32):
 
-        """
-        Invokes get_csr_submatrix_degree_ker with the given inputs
-        """
-
-        grid = math.ceil(new_rows / tpb)
-        get_csr_submatrix_degree_ker((grid,), (tpb,),
-                                     (Ap, Aj, ir0, ir1,
-                                      ic0, ic1, Bp))
-
-    get_csr_submatrix_cols_data_ker = cupy.RawKernel("""
-        extern "C" __global__
-        void get_csr_submatrix_cols_data(const int *Ap,
+get_csr_submatrix_degree_ker = cupy.RawKernel("""
+    extern "C" __global__
+    void get_csr_submatrix_degree_kernel(const int *Ap,
                                          const int *Aj,
-                                         const float *Ax,
                                          const int ir0,
                                          const int ir1,
                                          const int ic0,
                                          const int ic1,
-                                         int *Bp,
-                                         int *Bj,
-                                         float *Bx) {
+                                         int *Bp) {
+                                  
+        // Get the index of the thread
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        
+        if(i > new_n_row) return;
+        
+        int row_start = Ap[ir0+i];
+        int row_end = Ap[ir0+i+1];
+        
+        int row_count = 0;
+        for int jj = row_start; jj < row_end; jj++) {
+            if((Aj[jj] >= ic0) && (Aj[jj] < ic1)) 
+                row_count++;
+        }
+        
+        Bp[i+1] = row_count;
+    }
+""", "get_csr_submatrix_degree_kernel")
 
-            // Get the index of the thread
-            int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-            I row_start = Ap[ir0+i];
-            I row_end   = Ap[ir0+i+1];
+def get_csr_submatrix_degree(new_rows, Ap, Aj, ir0, ir1,
+                             ic0, ic1, Bp, tpb=32):
 
-            int kk = Bp[i];
+    """
+    Invokes get_csr_submatrix_degree_ker with the given inputs
+    """
 
-            for(int jj = row_start; jj < row_end; jj++) {
-                if ((Aj[jj] >= ic0) && (Aj[jj] < ic1)) {
-                    (*Bj)[kk] = Aj[jj] - ic0;
-                    (*Bx)[kk] = Ax[jj];
-                    kk++;
-                }
+    grid = math.ceil(new_rows / tpb)
+    get_csr_submatrix_degree_ker((grid,), (tpb,),
+                                 (Ap, Aj, ir0, ir1,
+                                  ic0, ic1, Bp))
+
+
+get_csr_submatrix_cols_data_ker = cupy.RawKernel("""
+    extern "C" __global__
+    void get_csr_submatrix_cols_data(const int *Ap,
+                                     const int *Aj,
+                                     const float *Ax,
+                                     const int ir0,
+                                     const int ir1,
+                                     const int ic0,
+                                     const int ic1,
+                                     int *Bp,
+                                     int *Bj,
+                                     float *Bx) {
+
+        // Get the index of the thread
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+        I row_start = Ap[ir0+i];
+        I row_end   = Ap[ir0+i+1];
+
+        int kk = Bp[i];
+
+        for(int jj = row_start; jj < row_end; jj++) {
+            if ((Aj[jj] >= ic0) && (Aj[jj] < ic1)) {
+                (*Bj)[kk] = Aj[jj] - ic0;
+                (*Bx)[kk] = Ax[jj];
+                kk++;
             }
-    """, "get_csr_submatrix_cols_data")
+        }
+""", "get_csr_submatrix_cols_data")
 
-    def get_csr_submatrix_cols_data(new_rows,
-                                    Ap, Aj, Ax,
-                                    ir0, ir1,
-                                    ic0, ic1,
-                                    Bp, Bj, Bx,
-                                    tpb=32):
 
-        grid = math.ceil(new_rows/tpb)
-        get_csr_submatrix_cols_data_ker((grid,), (tpb,),
-                                        (Ap, Aj, Ax,
-                                         ir0, ir1,
-                                         ic0, ic1,
-                                         Bp, Bj, Bx))
+def get_csr_submatrix_cols_data(new_rows,
+                                Ap, Aj, Ax,
+                                ir0, ir1,
+                                ic0, ic1,
+                                Bp, Bj, Bx,
+                                tpb=32):
+
+    grid = math.ceil(new_rows/tpb)
+    get_csr_submatrix_cols_data_ker((grid,), (tpb,),
+                                    (Ap, Aj, Ax,
+                                     ir0, ir1,
+                                     ic0, ic1,
+                                     Bp, Bj, Bx))
 
 
 """
