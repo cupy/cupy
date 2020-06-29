@@ -15,6 +15,10 @@ class TestFlatiter(unittest.TestCase):
         a = cupy.zeros((2, 3, 4))
         assert a.flat.base is a
 
+    def test_iter(self):
+        it = cupy.zeros((2, 3, 4)).flat
+        assert it.__iter__() is it
+
     def test_next(self):
         a = testing.shaped_arange((2, 3, 4), cupy)
         e = a.flatten()
