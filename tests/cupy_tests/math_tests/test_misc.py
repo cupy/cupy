@@ -233,7 +233,7 @@ class TestConvolve(unittest.TestCase):
         return xp.convolve(a, b, mode=self.mode)
 
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-3)
+    @testing.numpy_cupy_allclose(rtol=1e-2)
     def test_convolve_inverted_odd_len(self, xp, dtype):
         a = testing.shaped_arange((15,), xp, dtype)
         b = testing.shaped_arange((155,), xp, dtype)

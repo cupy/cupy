@@ -1,5 +1,3 @@
-import scipy
-
 import cupy
 import cupyx
 
@@ -58,27 +56,25 @@ def convolve(a, v, mode='full'):
 
 def _fftconvolve1d(a1, a2, mode='full'):
 
-    inverted = 0
+    is_inverted = False
     if a2.size > a1.size:
         a1, a2 = a2, a1
-        inverted = not a2.size % 2
+        is_inverted = a2.size % 2 == 0
     siz1 = a1.size
     siz2 = a2.size
     shape = siz1 + siz2 - 1
-    complex = a1.dtype.kind == 'c' or a2.dtype.kind == 'c'
-    # TODO: Replace with cupyx.scipy.fft.next_fast_len
-    fshape = scipy.fft.next_fast_len(shape, not complex)
-    if not complex:
-        fa1 = fft.rfft(a1, fshape)
-        fa2 = fft.rfft(a2, fshape)
-        out = fft.irfft(fa1 * fa2, fshape)
+    is_complex = a1.dtype.kind == 'c' or a2.dtype.kind == 'c'
+    if is_complex:
+        fa1 = fft.fft(a1, shape)
+        fa2 = fft.fft(a2, shape)
+        out = fft.ifft(fa1 * fa2, shape)
     else:
-        fa1 = fft.fft(a1, fshape)
-        fa2 = fft.fft(a2, fshape)
-        out = fft.ifft(fa1 * fa2, fshape)
+        fa1 = fft.rfft(a1, shape)
+        fa2 = fft.rfft(a2, shape)
+        out = fft.irfft(fa1 * fa2, shape)
     out = out[slice(shape)]
     if mode == 'same':
-        start = (out.size - siz1) / 2 + inverted
+        start = (out.size - siz1) / 2 + is_inverted
         end = start + siz1
         out = out[start: end]
     elif mode == 'valid':
@@ -86,12 +82,11 @@ def _fftconvolve1d(a1, a2, mode='full'):
         start = (out.size - newsize) / 2
         end = start + newsize
         out = out[start: end]
-    else:
-        if mode != 'full':
-            raise ValueError('acceptable mode flags are `valid`,'
-                             ' `same`, or `full`.')
+    elif mode != 'full':
+        raise ValueError('acceptable mode flags are `valid`,'
+                         ' `same`, or `full`.')
     result_type = cupy.result_type(a1, a2)
-    if result_type.kind in {'u', 'i'}:
+    if result_type.kind in 'iu':
         out = cupy.around(out)
     return out.astype(result_type, copy=False)
 
