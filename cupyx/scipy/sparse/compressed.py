@@ -14,9 +14,12 @@ from cupyx.scipy.sparse import data as sparse_data
 from cupyx.scipy.sparse import util
 from cupyx.scipy.sparse import sputils
 
+from cupyx.scipy.sparse.index import IndexMixin
+
 
 class _compressed_sparse_matrix(sparse_data._data_matrix,
-                                sparse_data._minmax_mixin):
+                                sparse_data._minmax_mixin,
+                                IndexMixin):
 
     _compress_getitem_kern = core.ElementwiseKernel(
         'T d, S ind, int32 minor', 'raw T answer',
@@ -457,186 +460,237 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def __rsub__(self, other):
         return self._add(other, True, False)
 
-    def __getitem__(self, slices):
+    # def __getitem__(self, slices):
+    #
+    #     if isinstance(slices, tuple):
+    #         slices = list(slices)
+    #     elif isinstance(slices, list):
+    #         slices = list(slices)
+    #         if all([isinstance(s, int) for s in slices]):
+    #             slices = [slices]
+    #     else:
+    #         slices = [slices]
+    #
+    #     ellipsis = -1
+    #     n_ellipsis = 0
+    #     for i, s in enumerate(slices):
+    #         if s is None:
+    #             raise IndexError('newaxis is not supported')
+    #         elif s is Ellipsis:
+    #             ellipsis = i
+    #             n_ellipsis += 1
+    #     if n_ellipsis > 0:
+    #         ellipsis_size = self.ndim - (len(slices) - 1)
+    #         slices[ellipsis:ellipsis + 1] = [slice(None)] * ellipsis_size
+    #
+    #     if len(slices) == 2:
+    #         row, col = slices
+    #     elif len(slices) == 1:
+    #         row, col = slices[0], slice(None)
+    #     else:
+    #         raise IndexError('invalid number of indices')
+    #
+    #     major, minor = self._swap(row, col)  # This will fail on COO
+    #     major_size, minor_size = self._swap(*self._shape)
+    #
+    #     if numpy.isscalar(major):
+    #         i = int(major)
+    #         if i < 0:
+    #             i += major_size
+    #         if not (0 <= i < major_size):
+    #             raise IndexError('index out of bounds')
+    #         if numpy.isscalar(minor):
+    #             j = int(minor)
+    #             if j < 0:
+    #                 j += minor_size
+    #             if not (0 <= j < minor_size):
+    #                 raise IndexError('index out of bounds')
+    #
+    #             # If i,j are both scalars, just grab the element
+    #             return self._get_single(i, j)
+    #
+    #         elif minor == slice(None):
+    #
+    #             # Get all columns for single row
+    #             # Done.
+    #             return self._get_major_slice(slice(i, i + 1))
+    #
+    #         elif isinstance(minor, (list, tuple, set)):
+    #
+    #             # Fetch list of columns for single row
+    #             # Since we know how many columns we have, it should be straightforward
+    #             # to schedule as a kernel
+    #             # Pass 1- Compute output degree (indptr)
+    #             # Pass 2- Populate columns & values
+    #             """
+    #             Example of use:
+    #
+    #             indptr = self._compute_output_degree(major, minor)
+    #             indices, data = self._populate_indices_and_data(indptr, major, minor)
+    #
+    #             The branching conditionals that require both major/minor will be pushed
+    #             down to compute_output_degree and populate_indices_and_data
+    #
+    #             Pass #1:
+    #             --------
+    #             We really have 3 different types of functions to compute the output
+    #             degrees based on the indptr:
+    #                - major == scalar: grab index from indptr
+    #                - major == list/tuple/set: grab elements from indptr that exist
+    #                - major == slice: grab range of elements from indptr
+    #                - major == slice(None): noop- don't need to do anything
+    #
+    #             Then we have 3 different types of functions to compute the output
+    #             degrees based on the indices/values:
+    #                - minor == scalar: just need to filter indptr for a single column
+    #                - minor == list/tuple/set: Just need to filter indptr for elements that exist
+    #                - minor == slice: grab range of minor elements from filtered indptr
+    #                - minor == slice(None): noop- don't need to do anything
+    #
+    #
+    #             Pass #2:
+    #             --------
+    #
+    #             Then we just need to apply the rules from Pass #1 to populate the data and indices.
+    #             """
+    #
+    #             self._major_scalar_minor_index(major, minor)
+    #
+    #         else:
+    #
+    #             # Slice columns for single row
+    #             # Pass 1- Compute output degree (indptr)
+    #             # Pass 2- Populate columns & values
+    #             return self._major_scalar_minor_slice(major, minor)
+    #
+    #     elif major == slice(None):
+    #
+    #         if minor == slice(None):
+    #
+    #             # Just return self.
+    #             return self.copy()
+    #
+    #         elif isinstance(min, (list, tuple, set)):
+    #
+    #             # Get all rows for a predefined set of columns
+    #             # Pass 1- Compute output degree (indptr)
+    #             # Pass 2- Populate values
+    #             return self._minor_index(minor)
+    #
+    #         elif isinstance(minor, slice):
+    #
+    #             # Get range of columns for all rows
+    #             # Pass 1- Compute output degree (indptr)
+    #             # Pass 2- Populate values in slice
+    #             return self._minor_slice(minor)
+    #
+    #     elif isinstance(major, slice):
+    #
+    #         # Fails: csr[:, 1:5], csr[1:5, 1:5], Succeeds: csr[1:5, :]
+    #         # Fails: csc[1:5, :], csc[1:5, 1:5], Succeeds: csc[:, 1:5]
+    #         if minor == slice(None):
+    #
+    #             # Get all columns for a range of rows
+    #             # Done.
+    #             return self._get_major_slice(major)
+    #
+    #         elif isinstance(minor, (list, tuple, set)):
+    #
+    #             # Get range of rows for a predefined set of columns
+    #             # Slice `indptr` and diff to figure out grid size & # threads
+    #             # Pass 1- Compute output degree based on non-zero
+    #             #         values for indexed cols (indptr)
+    #             # Pass 2- Populate output values
+    #             return self._major_slice_minor_index(major, minor)
+    #
+    #         elif isinstance(minor, slice):
+    #
+    #             # Slice rows and columns
+    #             # Two-pass kernel-
+    #             # Slice `indptr` and diff to figure out the grid size and
+    #             # number of threads.
+    #             # Pass 1- Compute output degree (indptr)
+    #             # Pass 2- Compute output values
+    #             return self._major_slice_minor_slice(major, minor)
+    #
+    #     elif isinstance(major, (list, tuple, set)):
+    #
+    #         if minor == slice(None):
+    #
+    #             # Get all columns for index of rows
+    #             # Two-pass kernel-
+    #             # Pass 1- Compute output degree (indptr)
+    #             # Pass 2- Populate values for rows
+    #             self._major_index(major)
+    #
+    #         elif isinstance(minor, (list, tuple, set)):
+    #
+    #             # Get predefined set of rows and predefined set of columns
+    #             # Two-pass kernel
+    #             # Pass 1- Compute output degree (indptr)
+    #             # Pass 2- Populate values for rows
+    #             self._major_index_minor_index(major, minor)
+    #
+    #         elif isinstance(minor, slice):
+    #
+    #             # Get predefined set of rows and a range of columns
+    #             # Two-pass kernel
+    #             # Pass 1- Compute output degree (indptr)
+    #             # Pass 2- Populate values for rows
+    #             self._major_index_minor_slice(major, minor)
+    #
+    #     raise ValueError("unsupported indexing: %s" % slices)
 
-        if isinstance(slices, tuple):
-            slices = list(slices)
-        elif isinstance(slices, list):
-            slices = list(slices)
-            if all([isinstance(s, int) for s in slices]):
-                slices = [slices]
-        else:
-            slices = [slices]
 
-        ellipsis = -1
-        n_ellipsis = 0
-        for i, s in enumerate(slices):
-            if s is None:
-                raise IndexError('newaxis is not supported')
-            elif s is Ellipsis:
-                ellipsis = i
-                n_ellipsis += 1
-        if n_ellipsis > 0:
-            ellipsis_size = self.ndim - (len(slices) - 1)
-            slices[ellipsis:ellipsis + 1] = [slice(None)] * ellipsis_size
+    #######################
+    # Getting and Setting #
+    #######################
 
-        if len(slices) == 2:
-            row, col = slices
-        elif len(slices) == 1:
-            row, col = slices[0], slice(None)
-        else:
-            raise IndexError('invalid number of indices')
+    def _get_intXint(self, row, col):
+        M, N = self._swap(self.shape)
+        major, minor = self._swap((row, col))
 
-        major, minor = self._swap(row, col)  # This will fail on COO
-        major_size, minor_size = self._swap(*self._shape)
+        # @TODO
+        indptr, indices, data = get_csr_submatrix(
+            M, N, self.indptr, self.indices, self.data,
+            major, major + 1, minor, minor + 1)
+        return data.sum(dtype=self.dtype)
 
-        if numpy.isscalar(major):
-            i = int(major)
-            if i < 0:
-                i += major_size
-            if not (0 <= i < major_size):
-                raise IndexError('index out of bounds')
-            if numpy.isscalar(minor):
-                j = int(minor)
-                if j < 0:
-                    j += minor_size
-                if not (0 <= j < minor_size):
-                    raise IndexError('index out of bounds')
+    def _get_sliceXslice(self, row, col):
+        major, minor = self._swap((row, col))
+        if major.step in (1, None) and minor.step in (1, None):
+            return self._get_submatrix(major, minor, copy=True)
+        return self._major_slice(major)._minor_slice(minor)
 
-                # If i,j are both scalars, just grab the element
-                return self._get_single(i, j)
+    def _get_arrayXarray(self, row, col):
+        # inner indexing
+        idx_dtype = self.indices.dtype
+        M, N = self._swap(self.shape)
+        major, minor = self._swap((row, col))
+        major = cupy.asarray(major, dtype=idx_dtype)
+        minor = cupy.asarray(minor, dtype=idx_dtype)
 
-            elif minor == slice(None):
+        val = cupy.empty(major.size, dtype=self.dtype)
 
-                # Get all columns for single row
-                # Done.
-                return self._get_major_slice(slice(i, i + 1))
+        # @TODO
+        csr_sample_values(M, N, self.indptr, self.indices, self.data,
+                          major.size, major.ravel(), minor.ravel(), val)
+        if major.ndim == 1:
 
-            elif isinstance(minor, (list, tuple, set)):
+            # @TODO
+            return asmatrix(val)
+        return self.__class__(val.reshape(major.shape))
 
-                # Fetch list of columns for single row
-                # Since we know how many columns we have, it should be straightforward
-                # to schedule as a kernel
-                # Pass 1- Compute output degree (indptr)
-                # Pass 2- Populate columns & values
-                """
-                Example of use:
-                
-                indptr = self._compute_output_degree(major, minor)
-                indices, data = self._populate_indices_and_data(indptr, major, minor)
-                
-                The branching conditionals that require both major/minor will be pushed
-                down to compute_output_degree and populate_indices_and_data
-                
-                Pass #1:
-                --------
-                We really have 3 different types of functions to compute the output 
-                degrees based on the indptr:
-                   - major == scalar: grab index from indptr
-                   - major == list/tuple/set: grab elements from indptr that exist
-                   - major == slice: grab range of elements from indptr 
-                   - major == slice(None): noop- don't need to do anything
-                   
-                Then we have 3 different types of functions to compute the output
-                degrees based on the indices/values:
-                   - minor == scalar: just need to filter indptr for a single column
-                   - minor == list/tuple/set: Just need to filter indptr for elements that exist
-                   - minor == slice: grab range of minor elements from filtered indptr
-                   - minor == slice(None): noop- don't need to do anything
-                   
-                   
-                Pass #2:
-                --------
-                
-                Then we just need to apply the rules from Pass #1 to populate the data and indices.
-                """
+    def _get_columnXarray(self, row, col):
+        # outer indexing
+        major, minor = self._swap((row, col))
+        return self._major_index_fancy(major)._minor_index_fancy(minor)
 
-                self._major_scalar_minor_index(major, minor)
-
-            else:
-
-                # Slice columns for single row
-                # Pass 1- Compute output degree (indptr)
-                # Pass 2- Populate columns & values
-                return self._major_scalar_minor_slice(major, minor)
-
-        elif major == slice(None):
-
-            if minor == slice(None):
-
-                # Just return self.
-                return self.copy()
-
-            elif isinstance(min, (list, tuple, set)):
-
-                # Get all rows for a predefined set of columns
-                # Pass 1- Compute output degree (indptr)
-                # Pass 2- Populate values
-                return self._minor_index(minor)
-
-            elif isinstance(minor, slice):
-
-                # Get range of columns for all rows
-                # Pass 1- Compute output degree (indptr)
-                # Pass 2- Populate values in slice
-                return self._minor_slice(minor)
-
-        elif isinstance(major, slice):
-
-            # Fails: csr[:, 1:5], csr[1:5, 1:5], Succeeds: csr[1:5, :]
-            # Fails: csc[1:5, :], csc[1:5, 1:5], Succeeds: csc[:, 1:5]
-            if minor == slice(None):
-
-                # Get all columns for a range of rows
-                # Done.
-                return self._get_major_slice(major)
-
-            elif isinstance(minor, (list, tuple, set)):
-
-                # Get range of rows for a predefined set of columns
-                # Slice `indptr` and diff to figure out grid size & # threads
-                # Pass 1- Compute output degree based on non-zero
-                #         values for indexed cols (indptr)
-                # Pass 2- Populate output values
-                return self._major_slice_minor_index(major, minor)
-
-            elif isinstance(minor, slice):
-
-                # Slice rows and columns
-                # Two-pass kernel-
-                # Slice `indptr` and diff to figure out the grid size and
-                # number of threads.
-                # Pass 1- Compute output degree (indptr)
-                # Pass 2- Compute output values
-                return self._major_slice_minor_slice(major, minor)
-
-        elif isinstance(major, (list, tuple, set)):
-
-            if minor == slice(None):
-
-                # Get all columns for index of rows
-                # Two-pass kernel-
-                # Pass 1- Compute output degree (indptr)
-                # Pass 2- Populate values for rows
-                self._major_index(major)
-
-            elif isinstance(minor, (list, tuple, set)):
-
-                # Get predefined set of rows and predefined set of columns
-                # Two-pass kernel
-                # Pass 1- Compute output degree (indptr)
-                # Pass 2- Populate values for rows
-                self._major_index_minor_index(major, minor)
-
-            elif isinstance(minor, slice):
-
-                # Get predefined set of rows and a range of columns
-                # Two-pass kernel
-                # Pass 1- Compute output degree (indptr)
-                # Pass 2- Populate values for rows
-                self._major_index_minor_slice(major, minor)
-
-        raise ValueError("unsupported indexing: %s" % slices)
+    def _major_index_fancy(self, idx):
+        """Index along the major axis where idx is an array of ints.
+        """
+        idx_dtype = self.indices.dtype
+        indices = cupy.asarray(idx, dtype=idx_dtype).ravel()
 
     def _compute_output_degree(self, major, minor):
         """
@@ -846,38 +900,114 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
     }
     """
+    #
+    # def _get_major_row_ind(self, arr, major):
+    #     if numpy.isscalar(major):
+    #         return cupy.array(arr.indptr[major:major+1])
+    #
+    #     elif major == slice(None):
+    #         return arr.indptr
+    #
+    #     elif isinstance(major, slice):
+    #         return arr.indptr[major]
+    #
+    #     elif isinstance(major, (list, tuple, set)):
+    #         raise NotImplementedError("Fancy indexing be implemented shortly ")
+    #
+    #
+    #
+    # _minor_scalar_kernel_str = """
+    #     extern "C" __global__
+    #     void _minor_scalar_pass_one(int* rowind, int* outdegree,
+    #                            int length, int n_cols, int offset) {
+    #
+    #         int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    #
+    #         if(tid > n_cols) return;
+    #
+    #         int input_rowind
+    #
+    #
+    #     }
+    #
+    # """
 
-    def _get_minor_index_fancy(self, idx):
-        """Index along the minor axis where idx is an array of ints.
-        """
-        idx_dtype = self.indices.dtype
-        idx = cupy.asarray(idx, dtype=idx_dtype).ravel()
+    # def _get_minor_pass_1(self, arr, major, minor, start_row_idx, stop_row_idx):
+    #     """
+    #     Compute degrees of resulting rowind array. Kernels being scheduled
+    #     can use the rowind and schedule 1 thread per rowind[stop_row_idx]-rowind[start_row_idx]
+    #     """
+    #
+    #     start_slice = arr.indptr[start_row_idx]
+    #     stop_slice = arr.indptr[stop_row_idx]
+    #
+    #     n_out_rows = stop_row_idx - start_row_idx
+    #
+    #     if numpy.isscalar(minor):
+    #         # Need to go compute the output degree, then schedule a kernel to populate cols and vals
+    #         out_rowind = cupy.zeros((n_out_rows+1,), dtype=arr.indptr.dtype)
+    #         start_offset = arr.indptr[start_row_idx]
+    #
+    #
+    #
+    #     elif minor == slice(None):
+    #         # Use starting value of provided rowind as the offset into the output.
+    #         # Should be able to construct cols and vals in 1 pass
+    #         out_rowind =  cupy.cumsum(cupy.diff(arr.indptr[start_row_idx: stop_row_idx]))
+    #         out_indices = arr.indices[start_slice:stop_slice]
+    #         out_data = arr.data[start_slice:stop_slice]
+    #
+    #
+    #     elif isinstance(minor, slice):
+    #         # Construct degree over range of cols for each element in rowind
+    #         # Perform cumulative sum to convert degree into output row-ind.
+    #
+    #
+    #     elif isinstance(minor, (list, tuple, set)):
+    #         raise NotImplementedError("Fancy indexing will be implemented shortly")
+    #
+    #     # Convert degree to output rowind
+    #
+    #
+    # def _get_minor_pass_2(self, arr, major, minor, input_rowind, output_rowind):
+    #     """
+    #     Populate cols and vals of output array
+    #     """
+    #
+    #
+    #
 
-        M, N = self._swap(self.shape)
-        k = len(idx)
-        new_shape = self._swap((M, k))
-        if k == 0:
-            return self.__class__(new_shape)
-
-        # pass 1: count idx entries and compute new indptr
-        col_offsets = cupy.zeros(N, dtype=idx_dtype)
-        res_indptr = cupy.empty_like(self.indptr)
-
-        # @todo
-        csr_column_index1(k, idx, M, N, self.indptr, self.indices,
-                          col_offsets, res_indptr)
-
-        # pass 2: copy indices/data for selected idxs
-        col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
-        nnz = res_indptr[-1]
-        res_indices = cupy.empty(nnz, dtype=idx_dtype)
-        res_data = cupy.empty(nnz, dtype=self.dtype)
-
-        # @todo
-        csr_column_index2(col_order, col_offsets, len(self.indices),
-                          self.indices, self.data, res_indices, res_data)
-        return self.__class__((res_data, res_indices, res_indptr),
-                              shape=new_shape, copy=False)
+    # def _get_minor_index_fancy(self, idx):
+    #     """Index along the minor axis where idx is an array of ints.
+    #     """
+    #     idx_dtype = self.indices.dtype
+    #     idx = cupy.asarray(idx, dtype=idx_dtype).ravel()
+    #
+    #     M, N = self._swap(self.shape)
+    #     k = len(idx)
+    #     new_shape = self._swap((M, k))
+    #     if k == 0:
+    #         return self.__class__(new_shape)
+    #
+    #     # pass 1: count idx entries and compute new indptr
+    #     col_offsets = cupy.zeros(N, dtype=idx_dtype)
+    #     res_indptr = cupy.empty_like(self.indptr)
+    #
+    #     # @todo
+    #     csr_column_index1(k, idx, M, N, self.indptr, self.indices,
+    #                       col_offsets, res_indptr)
+    #
+    #     # pass 2: copy indices/data for selected idxs
+    #     col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
+    #     nnz = res_indptr[-1]
+    #     res_indices = cupy.empty(nnz, dtype=idx_dtype)
+    #     res_data = cupy.empty(nnz, dtype=self.dtype)
+    #
+    #     # @todo
+    #     csr_column_index2(col_order, col_offsets, len(self.indices),
+    #                       self.indices, self.data, res_indices, res_data)
+    #     return self.__class__((res_data, res_indices, res_indptr),
+    #                           shape=new_shape, copy=False)
 
     def _get_minor_slice(self, idx, copy=False):
         """Index along the minor axis where idx is a slice object.
