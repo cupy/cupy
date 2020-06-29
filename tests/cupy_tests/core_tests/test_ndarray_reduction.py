@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 import cupy
 from cupy import testing
 
@@ -228,6 +230,19 @@ class TestCUBreduction(unittest.TestCase):
             a = xp.ascontiguousarray(a)
         elif self.order in ('f', 'F'):
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.min(axis=axis)
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        if len(axis) == len(self.shape):
+            func = 'cupy.core._routines_statistics.cub.device_reduce'
+        else:
+            func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.min(axis=axis)
+        # ...then perform the actual computation
         return a.min(axis=axis)
 
     @testing.for_contiguous_axes()
@@ -240,4 +255,17 @@ class TestCUBreduction(unittest.TestCase):
             a = xp.ascontiguousarray(a)
         elif self.order in ('f', 'F'):
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.max(axis=axis)
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        if len(axis) == len(self.shape):
+            func = 'cupy.core._routines_statistics.cub.device_reduce'
+        else:
+            func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.max(axis=axis)
+        # ...then perform the actual computation
         return a.max(axis=axis)
