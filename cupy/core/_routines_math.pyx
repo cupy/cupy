@@ -509,7 +509,7 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
                     cub_op = cub.CUPY_CUB_CUMSUM
                 else:
                     cub_op = cub.CUPY_CUB_CUMPROD
-                res = cub.cub_scan(out, cub_op)
+                res = cub.cub_scan(result, cub_op)
                 if res is not None:
                     break
         else:
