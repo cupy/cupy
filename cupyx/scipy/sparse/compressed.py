@@ -15,10 +15,12 @@ from cupyx.scipy.sparse import util
 from cupyx.scipy.sparse import sputils
 
 from cupyx.scipy.sparse.index import IndexMixin
-from cupyx.scipy.sparse.index import csr_sample_values
+from cupyx.scipy.sparse.index import get_csr_submatrix
+
 from cupyx.scipy.sparse.index import csr_column_index1
 from cupyx.scipy.sparse.index import csr_column_index2
-from cupyx.scipy.sparse.index import get_csr_submatrix
+
+from cupyx.scipy.sparse.index import csr_sample_values
 
 
 class _compressed_sparse_matrix(sparse_data._data_matrix,
