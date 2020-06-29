@@ -239,8 +239,7 @@ class coo_matrix(sparse_data._data_matrix):
             row = src_row
             col = src_col
         else:
-            # TODO(leofang): move the kernels outside this method, and handle
-            # large arrays indexed by int64
+            # TODO(leofang): move the kernels outside this method
             index = cupy.cumsum(diff, dtype='i')
             size = int(index[-1]) + 1
             data = cupy.zeros(size, dtype=self.data.dtype)
@@ -324,12 +323,11 @@ class coo_matrix(sparse_data._data_matrix):
             return csc.csc_matrix(self.shape, dtype=self.dtype)
         # copy is silently ignored (in line with SciPy) because both
         # sum_duplicates and coosort change the underlying data
-        self.sum_duplicates()
         x = self.copy()
+        x.sum_duplicates()
         cusparse.coosort(x, 'c')
         x = cusparse.coo2csc(x)
         x.has_canonical_format = True
-        x.has_sorted_indices = True
         return x
 
     def tocsr(self, copy=False):
@@ -348,12 +346,11 @@ class coo_matrix(sparse_data._data_matrix):
             return csr.csr_matrix(self.shape, dtype=self.dtype)
         # copy is silently ignored (in line with SciPy) because both
         # sum_duplicates and coosort change the underlying data
-        self.sum_duplicates()
         x = self.copy()
+        x.sum_duplicates()
         cusparse.coosort(x, 'r')
         x = cusparse.coo2csr(x)
         x.has_canonical_format = True
-        x.has_sorted_indices = True
         return x
 
     def transpose(self, axes=None, copy=False):
