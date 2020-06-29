@@ -1,5 +1,3 @@
-import warnings
-
 import cupy
 
 
@@ -145,9 +143,393 @@ def _get_correlate_kernel(mode, wshape, int_type, origins, cval):
     return _generate_nd_kernel(
         'correlate',
         'W sum = (W)0;',
-        'sum += (W){value} * wval;',
-        'y = (Y)sum;',
-        mode, wshape, int_type, origins, cval)
+        'sum += cast<W>({value}) * wval;',
+        'y = cast<Y>(sum);',
+        mode, wshape, int_type, origins, cval, ctype='W')
+
+
+def uniform_filter1d(input, size, axis=-1, output=None, mode="reflect",
+                     cval=0.0, origin=0):
+    """One-dimensional uniform filter along the given axis.
+    The lines of the array along the given axis are filtered with a uniform
+    filter of the given size.
+    Args:
+        input (cupy.ndarray): The input array.
+        size (int): Length of the uniform filter.
+        axis (int): The axis of input along which to calculate. Default is -1.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+        origin (int): The origin parameter controls the placement of the
+            filter, relative to the center of the current element of the
+            input. Default is ``0``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
+    .. seealso:: :func:`scipy.ndimage.uniform_filter1d`
+    """
+    return correlate1d(input, cupy.ones(size) / size, axis, output, mode, cval,
+                       origin)
+
+
+def uniform_filter(input, size=3, output=None, mode="reflect", cval=0.0,
+                   origin=0):
+    """Multi-dimensional uniform filter.
+    Args:
+        input (cupy.ndarray): The input array.
+        size (int or sequence of int): Lengths of the uniform filter for each
+            dimension. A single value applies to all axes.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+        origin (int or sequence of int): The origin parameter controls the
+            placement of the filter, relative to the center of the current
+            element of the input. Default of ``0`` is equivalent to
+            ``(0,)*input.ndim``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
+    .. seealso:: :func:`scipy.ndimage.uniform_filter`
+    """
+    sizes = _fix_sequence_arg(size, input.ndim, 'size', int)
+
+    def get(size):
+        return None if size <= 1 else cupy.ones(size) / size
+
+    return _run_1d_correlates(input, sizes, get, output, mode, cval, origin)
+
+
+def gaussian_filter1d(input, sigma, axis=-1, order=0, output=None,
+                      mode="reflect", cval=0.0, truncate=4.0):
+    """One-dimensional Gaussian filter along the given axis.
+    The lines of the array along the given axis are filtered with a Gaussian
+    filter of the given standard deviation.
+    Args:
+        input (cupy.ndarray): The input array.
+        sigma (scalar): Standard deviation for Gaussian kernel.
+        axis (int): The axis of input along which to calculate. Default is -1.
+        order (int): An order of ``0``, the default, corresponds to convolution
+            with a Gaussian kernel. A positive order corresponds to convolution
+            with that derivative of a Gaussian.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+        truncate (float): Truncate the filter at this many standard deviations.
+            Default is ``4.0``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
+    .. seealso:: :func:`scipy.ndimage.gaussian_filter1d`
+    """
+    radius = int(float(truncate) * float(sigma) + 0.5)
+    weights = _gaussian_kernel1d(sigma, int(order), radius)
+    return correlate1d(input, weights, axis, output, mode, cval)
+
+
+def gaussian_filter(input, sigma, order=0, output=None, mode="reflect",
+                    cval=0.0, truncate=4.0):
+    """Multi-dimensional Gaussian filter.
+    Args:
+        input (cupy.ndarray): The input array.
+        sigma (scalar or sequence of scalar): Standard deviations for each axis
+            of Gaussian kernel. A single value applies to all axes.
+        order (int or sequence of scalar): An order of ``0``, the default,
+            corresponds to convolution with a Gaussian kernel. A positive order
+            corresponds to convolution with that derivative of a Gaussian. A
+            single value applies to all axes.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+        truncate (float): Truncate the filter at this many standard deviations.
+            Default is ``4.0``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
+    .. seealso:: :func:`scipy.ndimage.gaussian_filter`
+    """
+    sigmas = _fix_sequence_arg(sigma, input.ndim, 'sigma', float)
+    orders = _fix_sequence_arg(order, input.ndim, 'order', int)
+    truncate = float(truncate)
+
+    def get(param):
+        sigma, order = param
+        radius = int(truncate * float(sigma) + 0.5)
+        if radius <= 0:
+            return None
+        return _gaussian_kernel1d(sigma, order, radius)
+
+    return _run_1d_correlates(input, list(zip(sigmas, orders)), get, output,
+                              mode, cval, 0)
+
+
+def _gaussian_kernel1d(sigma, order, radius):
+    """
+    Computes a 1-D Gaussian correlation kernel.
+    """
+    import numpy
+    if order < 0:
+        raise ValueError('order must be non-negative')
+    sigma2 = sigma * sigma
+    x = numpy.arange(-radius, radius+1)
+    phi_x = numpy.exp(-0.5 / sigma2 * x ** 2)
+    phi_x /= phi_x.sum()
+
+    if order == 0:
+        return cupy.asarray(phi_x)
+
+    # f(x) = q(x) * phi(x) = q(x) * exp(p(x))
+    # f'(x) = (q'(x) + q(x) * p'(x)) * phi(x)
+    # p'(x) = -1 / sigma ** 2
+    # Implement q'(x) + q(x) * p'(x) as a matrix operator and apply to the
+    # coefficients of q(x)
+    exponent_range = numpy.arange(order + 1)
+    q = numpy.zeros(order + 1)
+    q[0] = 1
+    D = numpy.diag(exponent_range[1:], 1)  # D @ q(x) = q'(x)
+    P = numpy.diag(numpy.ones(order)/-sigma2, -1)  # P @ q(x) = q(x) * p'(x)
+    Q_deriv = D + P
+    for _ in range(order):
+        q = Q_deriv.dot(q)
+    q = (x[:, None] ** exponent_range).dot(q)
+    return cupy.asarray((q * phi_x)[::-1])
+
+
+def prewitt(input, axis=-1, output=None, mode="reflect", cval=0.0):
+    """Compute a Prewitt filter along the given axis.
+    Args:
+        input (cupy.ndarray): The input array.
+        axis (int): The axis of input along which to calculate. Default is -1.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
+    .. seealso:: :func:`scipy.ndimage.prewitt`
+    """
+    return _prewitt_or_sobel(input, axis, output, mode, cval, cupy.ones(3))
+
+
+def sobel(input, axis=-1, output=None, mode="reflect", cval=0.0):
+    """Compute a Sobel filter along the given axis.
+    Args:
+        input (cupy.ndarray): The input array.
+        axis (int): The axis of input along which to calculate. Default is -1.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
+    .. seealso:: :func:`scipy.ndimage.sobel`
+    """
+    return _prewitt_or_sobel(input, axis, output, mode, cval,
+                             cupy.array([1, 2, 1]))
+
+
+def _prewitt_or_sobel(input, axis, output, mode, cval, weights):
+    axis = cupy.util._normalize_axis_index(axis, input.ndim)
+
+    def get(is_diff):
+        return cupy.array([-1, 0, 1]) if is_diff else weights
+
+    return _run_1d_correlates(input, [a == axis for a in range(input.ndim)],
+                              get, output, mode, cval)
+
+
+def generic_laplace(input, derivative2, output=None, mode="reflect",
+                    cval=0.0, extra_arguments=(), extra_keywords=None):
+    """Multi-dimensional Laplace filter using a provided second derivative
+    function.
+    Args:
+        input (cupy.ndarray): The input array.
+        derivative2 (callable): Function or other callable with the following
+            signature that is called once per axis::
+                derivative2(input, axis, output, mode, cval,
+                            *extra_arguments, **extra_keywords)
+            where ``input`` and ``output`` are ``cupy.ndarray``, ``axis`` is an
+            ``int`` from ``0`` to the number of dimensions, and ``mode``,
+            ``cval``, ``extra_arguments``, ``extra_keywords`` are the values
+            given to this function.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+        extra_arguments (sequence, optional):
+            Sequence of extra positional arguments to pass to ``derivative2``.
+        extra_keywords (dict, optional):
+            dict of extra keyword arguments to pass ``derivative2``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
+    .. seealso:: :func:`scipy.ndimage.generic_laplace`
+    """
+    if extra_keywords is None:
+        extra_keywords = {}
+    modes = _fix_sequence_arg(mode, input.ndim, 'mode', _check_mode)
+    output = _get_output(output, input)
+    if input.ndim == 0:
+        output[...] = input[...]
+        return output
+    derivative2(input, 0, output, modes[0], cval,
+                *extra_arguments, **extra_keywords)
+    if input.ndim > 1:
+        tmp = _get_output(output.dtype, input)
+        for i in range(1, input.ndim):
+            derivative2(input, i, tmp, modes[i], cval,
+                        *extra_arguments, **extra_keywords)
+            output += tmp
+    return output
+
+
+def laplace(input, output=None, mode="reflect", cval=0.0):
+    """Multi-dimensional Laplace filter based on approximate second
+    derivatives.
+    Args:
+        input (cupy.ndarray): The input array.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
+    .. seealso:: :func:`scipy.ndimage.laplace`
+    """
+    weights = cupy.array([1, -2, 1], dtype=cupy.float64)
+
+    def derivative2(input, axis, output, mode, cval):
+        return correlate1d(input, weights, axis, output, mode, cval)
+
+    return generic_laplace(input, derivative2, output, mode, cval)
+
+
+def gaussian_laplace(input, sigma, output=None, mode="reflect",
+                     cval=0.0, **kwargs):
+    """Multi-dimensional Laplace filter using Gaussian second derivatives.
+    Args:
+        input (cupy.ndarray): The input array.
+        sigma (scalar or sequence of scalar): Standard deviations for each axis
+            of Gaussian kernel. A single value applies to all axes.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+        kwargs (dict, optional):
+            dict of extra keyword arguments to pass ``gaussian_filter()``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
+    .. seealso:: :func:`scipy.ndimage.gaussian_laplace`
+    """
+    def derivative2(input, axis, output, mode, cval):
+        order = [0] * input.ndim
+        order[axis] = 2
+        return gaussian_filter(input, sigma, order, output, mode, cval,
+                               **kwargs)
+    return generic_laplace(input, derivative2, output, mode, cval)
+
+
+def generic_gradient_magnitude(input, derivative, output=None,
+                               mode="reflect", cval=0.0,
+                               extra_arguments=(), extra_keywords=None):
+    """Multi-dimensional gradient magnitude filter using a provided derivative
+    function.
+    Args:
+        input (cupy.ndarray): The input array.
+        derivative (callable): Function or other callable with the following
+            signature that is called once per axis::
+                derivative(input, axis, output, mode, cval,
+                           *extra_arguments, **extra_keywords)
+            where ``input`` and ``output`` are ``cupy.ndarray``, ``axis`` is an
+            ``int`` from ``0`` to the number of dimensions, and ``mode``,
+            ``cval``, ``extra_arguments``, ``extra_keywords`` are the values
+            given to this function.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+        extra_arguments (sequence, optional):
+            Sequence of extra positional arguments to pass to ``derivative2``.
+        extra_keywords (dict, optional):
+            dict of extra keyword arguments to pass ``derivative2``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
+    .. seealso:: :func:`scipy.ndimage.generic_gradient_magnitude`
+    """
+    if extra_keywords is None:
+        extra_keywords = {}
+    modes = _fix_sequence_arg(mode, input.ndim, 'mode', _check_mode)
+    output = _get_output(output, input)
+    if input.ndim == 0:
+        output[...] = input[...]
+        return output
+    derivative(input, 0, output, modes[0], cval,
+               *extra_arguments, **extra_keywords)
+    output *= output
+    if input.ndim > 1:
+        tmp = _get_output(output.dtype, input)
+        for i in range(1, input.ndim):
+            derivative(input, i, tmp, modes[i], cval,
+                       *extra_arguments, **extra_keywords)
+            tmp *= tmp
+            output += tmp
+    return cupy.sqrt(output, output, casting='unsafe')
+
+
+def gaussian_gradient_magnitude(input, sigma, output=None, mode="reflect",
+                                cval=0.0, **kwargs):
+    """Multi-dimensional gradient magnitude using Gaussian derivatives.
+    Args:
+        input (cupy.ndarray): The input array.
+        sigma (scalar or sequence of scalar): Standard deviations for each axis
+            of Gaussian kernel. A single value applies to all axes.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+        kwargs (dict, optional):
+            dict of extra keyword arguments to pass ``gaussian_filter()``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
+    .. seealso:: :func:`scipy.ndimage.gaussian_gradient_magnitude`
+    """
+    def derivative(input, axis, output, mode, cval):
+        order = [0] * input.ndim
+        order[axis] = 1
+        return gaussian_filter(input, sigma, order, output, mode, cval,
+                               **kwargs)
+    return generic_gradient_magnitude(input, derivative, output, mode, cval)
 
 
 def minimum_filter(input, size=None, footprint=None, output=None,
@@ -223,28 +605,8 @@ def _min_or_max_filter(input, size, footprint, structure, output, mode, cval,
     if sizes is not None:
         # Seperable filter, run as a series of 1D filters
         fltr = minimum_filter1d if func == 'min' else maximum_filter1d
-        output_orig = output
-        output = _get_output(output, input)
-        sizes = _fix_sequence_arg(sizes, input.ndim, 'size', int)
-        modes = _fix_sequence_arg(mode, input.ndim, 'mode', _check_mode)
-        origins = _fix_sequence_arg(origin, input.ndim, 'origin', int)
-        n_filters = sum(size > 1 for size in sizes)
-        if n_filters == 0:
-            output[...] = input[...]
-            return output
-        # We can't operate in-place efficiently, so use a 2-buffer system
-        temp = _get_output(output.dtype, input) if n_filters > 1 else None
-        first = True
-        iterator = zip(sizes, modes, origins)
-        for axis, (size, mode, origin) in enumerate(iterator):
-            if size <= 1:
-                continue
-            fltr(input, size, axis, output, mode, cval, origin)
-            input, output = output, temp if first else input
-        if isinstance(output_orig, cupy.ndarray) and input is not output_orig:
-            output_orig[...] = input
-            input = output_orig
-        return input
+        return _run_1d_filters([fltr if size > 1 else None for size in sizes],
+                               input, sizes, output, mode, cval, origin)
 
     origins, int_type = _check_nd_args(input, footprint, mode, origin,
                                        'footprint')
@@ -330,7 +692,7 @@ def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type,
                            has_central_value=True):
     value = '{value}'
     if has_structure:
-        value += ' - (X)sval' if func == 'min' else ' + (X)sval'
+        value += ('-' if func == 'min' else '+') + 'cast<X>(sval)'
 
     if has_central_value:
         pre = 'X value = x[i];'
@@ -342,7 +704,7 @@ def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type,
         pre = 'X value; bool set = false;'
         found = 'value = set ? {func}({value}, value) : {value}; set=true;'
     return _generate_nd_kernel(
-        func, pre, found.format(func=func, value=value), 'y = (Y)value;',
+        func, pre, found.format(func=func, value=value), 'y = cast<Y>(value);',
         mode, wshape, int_type, origins, cval,
         has_weights=has_weights, has_structure=has_structure)
 
@@ -533,7 +895,7 @@ def _get_rank_kernel(filter_size, rank, mode, wshape, origins, cval, int_type):
         'rank_{}_{}'.format(filter_size, rank),
         'int iv = 0;\nX values[{}];'.format(filter_size),
         'values[iv++] = {value};',
-        'sort(values, {});\ny = (Y)values[{}];'.format(filter_size, rank),
+        'sort(values,{});\ny=cast<Y>(values[{}]);'.format(filter_size, rank),
         mode, wshape, int_type, origins, cval, preamble=sorter)
 
 
@@ -589,6 +951,7 @@ def _check_size_footprint_structure(ndim, size, footprint, structure,
             return None, cupy.ones(sizes, bool), None
         return sizes, None, None
     if size is not None:
+        import warnings
         warnings.warn("ignoring size because {} is set".format(
             'structure' if footprint is None else 'footprint'),
             UserWarning, stacklevel=stacklevel+1)
@@ -600,6 +963,8 @@ def _check_size_footprint_structure(ndim, size, footprint, structure,
 
     if structure is None:
         if not force_footprint and footprint.all():
+            if footprint.ndim != ndim:
+                raise RuntimeError("size must have length equal to input rank")
             return footprint.shape, None, None
         return None, footprint, None
 
@@ -621,7 +986,7 @@ def _convert_1d_args(ndim, weights, origin, axis):
     return weights, tuple(origins)
 
 
-def _check_nd_args(input, weights, mode, origins, wghts_name='filter weights'):
+def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights'):
     if input.dtype.kind == 'c':
         raise TypeError('Complex type not supported')
     _check_mode(mode)
@@ -638,10 +1003,58 @@ def _check_nd_args(input, weights, mode, origins, wghts_name='filter weights'):
     weight_dims = [x for x in weights.shape if x != 0]
     if len(weight_dims) != input.ndim:
         raise RuntimeError('{} array has incorrect shape'.format(wghts_name))
-    origins = _fix_sequence_arg(origins, len(weight_dims), 'origin', int)
+    origins = _fix_sequence_arg(origin, len(weight_dims), 'origin', int)
     for origin, width in zip(origins, weight_dims):
         _check_origin(origin, width)
     return tuple(origins), int_type
+
+
+def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
+    """
+    Runs a series of 1D filters forming an nd filter. The filters must be a
+    list of callables that take input, arg, axis, output, mode, cval, origin.
+    The args is a list of values that are passed for the arg value to the
+    filter. Individual filters can be None causing that axis to be skipped.
+    """
+    output_orig = output
+    output = _get_output(output, input)
+    modes = _fix_sequence_arg(mode, input.ndim, 'mode', _check_mode)
+    origins = _fix_sequence_arg(origin, input.ndim, 'origin', int)
+    n_filters = sum(filter is not None for filter in filters)
+    if n_filters == 0:
+        output[...] = input[...]
+        return output
+    # We can't operate in-place efficiently, so use a 2-buffer system
+    temp = _get_output(output.dtype, input) if n_filters > 1 else None
+    first = True
+    iterator = zip(filters, args, modes, origins)
+    for axis, (fltr, arg, mode, origin) in enumerate(iterator):
+        if fltr is None:
+            continue
+        fltr(input, arg, axis, output, mode, cval, origin)
+        input, output = output, temp if first else input
+    if isinstance(output_orig, cupy.ndarray) and input is not output_orig:
+        output_orig[...] = input
+        input = output_orig
+    return input
+
+
+def _run_1d_correlates(input, params, get_weights, output, mode, cval,
+                       origin=0):
+    """
+    Enhanced version of _run_1d_filters that uses correlate1d as the filter
+    function. The params are a list of values to pass to the get_weights
+    callable given. If duplicate param values are found, the weights are
+    reused from the first invocation of get_weights. The get_weights callable
+    must return a 1D array of weights to give to correlate1d.
+    """
+    wghts = {}
+    for param in params:
+        if param not in wghts:
+            wghts[param] = get_weights(param)
+    wghts = [wghts[param] for param in params]
+    return _run_1d_filters([None if w is None else correlate1d for w in wghts],
+                           input, wghts, output, mode, cval, origin)
 
 
 def _call_kernel(kernel, input, weights, output, structure=None,
@@ -720,8 +1133,52 @@ def _generate_boundary_condition_ops(mode, ix, xsize):
     return ops
 
 
+_CAST_FUNCTION = """
+// Implements a casting function to make it compatible with scipy
+// Use like cast<to_type>(value)
+// It's actually really simple - most of this is <type_traits>
+
+// Small bit of <type_traits> which cannot be imported in NVRTC
+// Requires compiling with --std=c++11 or higher
+template<bool B, class T=void> struct enable_if {};
+template<class T> struct enable_if<true, T> { typedef T type; };
+template<class T> struct remove_const          { typedef T type; };
+template<class T> struct remove_const<const T> { typedef T type; };
+template<class T> struct remove_volatile             { typedef T type; };
+template<class T> struct remove_volatile<volatile T> { typedef T type; };
+template<class T> struct remove_cv {
+  typedef typename remove_volatile<typename remove_const<T>::type>::type type;
+};
+template<class T, T v>
+struct integral_constant { static constexpr T value = v; };
+//struct true_type { static constexpr bool value = true; };
+//struct false_type { static constexpr bool value = false; };
+typedef integral_constant<bool, true> true_type;
+typedef integral_constant<bool, false> false_type;
+template<class T> struct __is_fp : public false_type {};
+template<>        struct __is_fp<float> : public true_type {};
+template<>        struct __is_fp<double> : public true_type {};
+template<>        struct __is_fp<long double> : public true_type {};
+template<class T> struct is_floating_point
+    : public __is_fp<typename remove_cv<T>::type> {};
+template<class T> struct is_signed : integral_constant<bool, (T)(-1)<0> {};
+
+template <typename B, typename A>
+__device__
+typename enable_if<!is_floating_point<A>::value||is_signed<B>::value, B>::type
+cast(A a) { return (B)a; }
+
+template <typename B, typename A>
+__device__
+typename enable_if<is_floating_point<A>::value&&!is_signed<B>::value, B>::type
+cast(A a) { return (a >= 0) ? (B)a : -(B)(-a); }
+
+
+"""
+
+
 def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
-                        origins, cval, preamble='', options=(),
+                        origins, cval, ctype='X', preamble='', options=(),
                         has_weights=True, has_structure=False):
     # Currently this code uses CArray for weights but avoids using CArray for
     # the input data and instead does the indexing itself since it is faster.
@@ -776,8 +1233,8 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
     value = '(*(X*)&data[{expr}])'.format(expr=expr)
     if mode == 'constant':
         cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
-        value = '(({cond}) ? (X){cval} : {value})'.format(
-            cond=cond, cval=cval, value=value)
+        value = '(({cond}) ? cast<{ctype}>({cval}) : {value})'.format(
+            cond=cond, ctype=ctype, cval=cval, value=value)
     found = found.format(value=value)
 
     # CArray: replace comment and next line in string with
@@ -808,6 +1265,8 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
         name += '_i64'
     if has_structure:
         name += '_with_structure'
+    preamble = _CAST_FUNCTION + preamble
+    options += ('--std=c++11',)
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
                                   options=options)
