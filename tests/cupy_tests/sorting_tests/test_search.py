@@ -166,10 +166,16 @@ class TestSearch(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipUnless(
-    cupy.core._backend.get_routine_backends() == ['cub'],
-    'The CUB routine is not enabled')
-class TestCUBreduction(unittest.TestCase):
+@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+class TestCubReduction(unittest.TestCase):
+
+    def setUp(self):
+        self.old_backends = cupy.core._backend.get_routine_backends()
+        cupy.core._backend.set_routine_backends(['cub'])
+
+    def tearDown(self):
+        cupy.core._backend.set_routine_backends(self.old_backends)
+
     @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_argmin(self, xp, dtype):

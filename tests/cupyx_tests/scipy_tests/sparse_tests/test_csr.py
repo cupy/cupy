@@ -1534,10 +1534,16 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
 }))
 @testing.with_requires('scipy')
 @testing.gpu
-@unittest.skipUnless(
-    cupy.core._backend.get_routine_backends() == ['cub'],
-    'The CUB routine is not enabled')
-class TestCUBspmv(unittest.TestCase):
+@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+class TestCubSpmv(unittest.TestCase):
+
+    def setUp(self):
+        self.old_backends = cupy.core._backend.get_routine_backends()
+        cupy.core._backend.set_routine_backends(['cub'])
+
+    def tearDown(self):
+        cupy.core._backend.set_routine_backends(self.old_backends)
+
     @property
     def make(self):
         return globals()[self.make_method]
