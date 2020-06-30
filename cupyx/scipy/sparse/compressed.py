@@ -470,7 +470,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         M, N = self._swap(self.shape)
         major, minor = self._swap((row, col))
 
-        # @TODO
         indptr, indices, data = get_csr_submatrix(
             M, N, self.indptr, self.indices, self.data,
             major, major + 1, minor, minor + 1)
@@ -531,9 +530,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         res_indices = cupy.empty(nnz, dtype=idx_dtype)
         res_data = cupy.empty(nnz, dtype=self.dtype)
 
-        # @TODO: Need to port this
         csr_row_index(M, indices, self.indptr, self.indices, self.data,
-                      res_indices, res_data)
+                      res_indptr, res_indices, res_data)
 
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
@@ -554,7 +552,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         col_offsets = cupy.zeros(N, dtype=idx_dtype)
         res_indptr = cupy.empty_like(self.indptr)
 
-        # @TODO: Fix arguments
         csr_column_index1(k, idx, M, N, self.indptr, self.indices,
                           col_offsets, res_indptr)
 
@@ -564,9 +561,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         res_indices = cupy.empty(nnz, dtype=idx_dtype)
         res_data = cupy.empty(nnz, dtype=self.dtype)
 
-        # @TODO: Fix arguments
-        csr_column_index2(col_order, col_offsets, len(self.indices),
-                          self.indices, self.data, res_indices, res_data)
+        csr_column_index2(len(res_indptr), col_order, col_offsets,
+                          len(self.indices), self.indices, self.data,
+                          res_indices, res_data)
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
 
@@ -632,7 +629,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if i0 == 0 and j0 == 0 and i1 == M and j1 == N:
             return self.copy() if copy else self
 
-        # @TODO: Verify proper arguments used
         indptr, indices, data = get_csr_submatrix(
             M, N, self.indptr, self.indices, self.data, i0, i1, j0, j1)
 

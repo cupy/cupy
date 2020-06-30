@@ -9,6 +9,7 @@ from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
 from cupyx.scipy.sparse import csc
+from cupyx.scipy.sparse.index import get_csr_submatrix
 if cupy.cuda.cub_enabled:
     from cupy.cuda.cub import device_csrmv
 
@@ -70,8 +71,6 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     def _swap(self, x, y):
         return (x, y)
-
-    # TODO(unno): Implement __getitem__
 
     def _add_sparse(self, other, alpha, beta):
         self.sum_duplicates()
@@ -354,13 +353,13 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
         row_indices = (row_indices[ind] - start) // stride
         row_data = row_data[ind]
-        row_indptr = np.array([0, len(row_indices)])
+        row_indptr = cupy.array([0, len(row_indices)])
 
         if stride < 0:
             row_data = row_data[::-1]
             row_indices = abs(row_indices[::-1])
 
-        shape = (1, int(np.ceil(float(stop - start) / stride)))
+        shape = (1, int(cupy.ceil(float(stop - start) / stride)))
         return csr_matrix((row_data, row_indices, row_indptr), shape=shape,
                           dtype=self.dtype, copy=False)
 
@@ -377,9 +376,10 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     def _get_arrayXslice(self, row, col):
         if col.step not in (1, None):
-            col = np.arange(*col.indices(self.shape[1]))
+            col = cupy.arange(*col.indices(self.shape[1]))
             return self._get_arrayXarray(row, col)
         return self._major_index_fancy(row)._get_submatrix(minor=col)
+
 
 def isspmatrix_csr(x):
     """Checks if a given matrix is of CSR format.

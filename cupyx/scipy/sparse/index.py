@@ -136,7 +136,7 @@ def get_csr_submatrix(n_row, n_col, indptr, indices, data,
                              start_maj, stop_maj,
                              start_min, stop_min, new_indptr)
 
-    new_indptr = cupy.cumsum(new_indptr)
+    cupy.cumsum(new_indptr, out=new_indptr)
 
     new_nnz = new_indptr[-1]
 
@@ -239,40 +239,48 @@ def get_csr_submatrix_cols_data(new_rows,
                                      Bp, Bj, Bx))
 
 
-"""
-/*
- * Slice rows given as an array of indices.
- *
- * Input Arguments:
- *   I  n_row_idx       - number of row indices
- *   I  rows[n_row_idx] - row indices for indexing
- *   I  Ap[n_row+1]     - row pointer
- *   I  Aj[nnz(A)]      - column indices
- *   T  Ax[nnz(A)]      - data
- *
- * Output Arguments:
- *   I  Bj - new column indices
- *   T  Bx - new data
- *
- */
-template<class I, class T>
-void csr_row_index(const I n_row_idx,
-                   const I rows[],
-                   const I Ap[],
-                   const I Aj[],
-                   const T Ax[],
-                   I Bj[],
-                   T Bx[])
-{
-    for(I i = 0; i < n_row_idx; i++){
-        const I row = rows[i];
-        const I row_start = Ap[row];
-        const I row_end   = Ap[row+1];
-        Bj = std::copy(Aj + row_start, Aj + row_end, Bj);
-        Bx = std::copy(Ax + row_start, Ax + row_end, Bx);
-    }
-}
-"""
+csr_row_index_ker = cupy.RawKernel("""
+    extern "C" __global__
+    void csr_row_index_ker_str(const int n_row_idx,
+                               const int *rows,
+                               const int *Ap,
+                               const int *Aj,
+                               const float *Ax,
+                               const int *Bp,
+                               const int *Bj,
+                               const float *Bx) {
+                               
+        // Get the index of the thread
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        
+        if(i > n_row_idx) return;
+        
+        const int row = rows[i];
+        const int row_start = Ap[row];
+        const int row_end = Ap[row+1];
+        
+        const int out_row_idx = Bp[i];
+
+        for(int j = row_start; j < row_end; j++) {
+            Bj[out_row_idx] = Aj[j];
+            Bx[out_row_idx] = Ax[j];
+            out_row_idx++;
+        }
+
+""", "csr_row_index_ker_str")
+
+
+def csr_row_index(n_row_idx, rows,
+                  Ap, Aj, Ax,
+                  Bp, Bj, Bx, tpb=32):
+
+    grid = math.ceil(n_row_idx / tpb)
+
+    csr_row_index_ker((grid,), (tpb,),
+                      (n_row_idx, rows, Ap, Aj, Ax,
+                       Bp, Bj, Bx))
+
+
 
 # @TODO: Port this to CUDA
 """
