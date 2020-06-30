@@ -7,46 +7,74 @@ import cupy
 from cupy import testing
 
 
+@testing.parameterize(
+    {'variable': None},
+    {'variable': 'y'},
+)
+@testing.gpu
+class TestPoly1dInit(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_numpy_array(self, xp, dtype):
+        a = numpy.arange(5, dtype=dtype)
+        out = xp.poly1d(a, variable=self.variable)
+        assert out.variable == (self.variable or 'x')
+        return out.coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_cupy_array(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        out = xp.poly1d(a, variable=self.variable)
+        assert out.variable == (self.variable or 'x')
+        return out.coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_numpy_poly1d(self, xp, dtype):
+        array = testing.shaped_arange((5,), numpy, dtype)
+        a = numpy.poly1d(array)
+        out = xp.poly1d(a, variable=self.variable)
+        assert out.variable == (self.variable or 'x')
+        return out.coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_numpy_poly1d_variable(self, xp, dtype):
+        array = testing.shaped_arange((5,), numpy, dtype)
+        a = numpy.poly1d(array, variable='z')
+        out = xp.poly1d(a, variable=self.variable)
+        assert out.variable == (self.variable or 'z')
+        return out.coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_cupy_poly1d(self, xp, dtype):
+        array = testing.shaped_arange((5,), xp, dtype)
+        a = xp.poly1d(array)
+        out = xp.poly1d(a, variable=self.variable)
+        assert out.variable == (self.variable or 'x')
+        return out.coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_cupy_poly1d_variable(self, xp, dtype):
+        array = testing.shaped_arange((5,), xp, dtype)
+        a = xp.poly1d(array, variable='z')
+        out = xp.poly1d(a, variable=self.variable)
+        assert out.variable == (self.variable or 'z')
+        return out.coeffs
+
+
 @testing.gpu
 class TestPoly1d(unittest.TestCase):
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_poly1d_arr(self, xp, dtype):
-        a = testing.shaped_arange((5,), xp, dtype)
-        return xp.poly1d(a).coeffs
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_poly1d_cp_poly1d(self, xp, dtype):
-        a = testing.shaped_arange((5,), xp, dtype)
-        b = xp.poly1d(a)
-        return xp.poly1d(b).coeffs
-
-    @testing.for_all_dtypes(no_bool=True)
-    def test_poly1d_np_poly1d(self, dtype):
-        arr = testing.shaped_arange((10,), numpy, dtype)
-        a = numpy.poly1d(arr)
-        b = cupy.poly1d(a)
-        testing.assert_array_equal(a.coeffs, b.coeffs)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_leading_zeros(self, xp, dtype):
         a = xp.array([0, 0, 1, 2, 3], dtype)
         return xp.poly1d(a).coeffs
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
-    def test_poly1d_variable(self, xp, dtype):
-        a = testing.shaped_arange((5,), xp, dtype)
-        return xp.poly1d(a, variable='p').variable
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
-    def test_poly1d_novariable(self, xp, dtype):
-        a = testing.shaped_arange((5,), xp, dtype)
-        return xp.poly1d(a, variable=None).variable
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
