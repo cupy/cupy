@@ -295,7 +295,7 @@ cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     elif order_char == b'F' or order_char == b'f':
         order_char = b'F'
     else:
-        raise TypeError('order not understood')
+        raise ValueError('order not understood')
     return order_char
 
 

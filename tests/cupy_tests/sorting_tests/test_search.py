@@ -177,6 +177,16 @@ class TestCUBreduction(unittest.TestCase):
             a = xp.ascontiguousarray(a)
         else:
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.argmin()
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        func = 'cupy.core._routines_statistics.cub.device_reduce'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.argmin()
+        # ...then perform the actual computation
         return a.argmin()
 
     @testing.for_dtypes('bhilBHILefdFD')
@@ -188,6 +198,16 @@ class TestCUBreduction(unittest.TestCase):
             a = xp.ascontiguousarray(a)
         else:
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.argmax()
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        func = 'cupy.core._routines_statistics.cub.device_reduce'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.argmax()
+        # ...then perform the actual computation
         return a.argmax()
 
 
