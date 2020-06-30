@@ -53,7 +53,7 @@ def convolve(a, v, mode='full'):
     return out
 
 
-def _fft_convolve(a1, a2, mode='full'):
+def _fft_convolve(a1, a2, mode):
 
     if a1.size < a2.size:
         a1, a2 = a2, a1
