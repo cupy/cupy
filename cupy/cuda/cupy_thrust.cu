@@ -24,7 +24,7 @@ namespace cuda {
 #endif // #if CUPY_USE_HIP
 
 
-extern "C" char *cupy_malloc(void *, ptrdiff_t);
+extern "C" char *cupy_malloc(void *, size_t);
 extern "C" void cupy_free(void *, char *);
 
 
@@ -37,7 +37,7 @@ public:
 
     cupy_allocator(void* memory) : memory(memory) {}
 
-    char *allocate(std::ptrdiff_t num_bytes) {
+    char *allocate(size_t num_bytes) {
         return cupy_malloc(memory, num_bytes);
     }
 
@@ -48,7 +48,7 @@ public:
 
 
 /*
- * ------------------------------------ Minimum boilerplate to support complex numbers -------------------------------------
+ * ------------------------------------- Minimum boilerplate for NumPy compatibility --------------------------------------
  * We need a specialized operator< here in order to match the NumPy behavior:
  * "The sort order for complex numbers is lexicographic. If both the real and imaginary parts are non-nan then the order is
  * determined by the real parts except when they are equal, in which case the order is determined by the imaginary parts.
@@ -59,6 +59,10 @@ public:
  * where R is a non-nan real value. Complex values with the same nan placements are sorted according to the non-nan part if
  * it exists. Non-nan values are sorted as before."
  * Ref: https://docs.scipy.org/doc/numpy/reference/generated/numpy.sort.html
+ */
+
+/*
+ * ********** complex numbers **********
  */
 
 template <typename T>
@@ -112,47 +116,104 @@ __host__ __device__ __forceinline__ bool operator<(const cuDoubleComplex& lhs, c
     return _cmp_less(lhs, rhs);
 }
 
-/* ------------------------------------ end of boilerplate ------------------------------------ */
+/*
+ * ********** real numbers (templates) **********
+ * We need to specialize thrust::less because obviously we can't overload operator< for floating point numbers...
+ */
+
+template <typename T>
+__host__ __device__ __forceinline__ bool _real_less(const T& lhs, const T& rhs) {
+    if (isnan(lhs)) {
+        return false;
+    } else if (isnan(rhs)) {
+        return true;
+    } else {
+        return lhs < rhs;
+    }
+}
+
+template <typename T>
+__host__ __device__ __forceinline__ bool _tuple_real_less(const tuple<size_t, T>& lhs,
+                                                          const tuple<size_t, T>& rhs) {
+    const size_t& lhs_k = lhs.template get<0>();
+    const size_t& rhs_k = rhs.template get<0>();
+    const T& lhs_v = lhs.template get<1>();
+    const T& rhs_v = rhs.template get<1>();
+
+    // tuple's comparison rule: compare the 1st member, then 2nd, then 3rd, ...,
+    // which should be respected
+    if (lhs_k < rhs_k) {
+        return true;
+    } else if (lhs_k == rhs_k) {
+        // same key, compare values
+        // note that we can't rely on native operator< due to NaN
+        return _real_less<T>(lhs_v, rhs_v);
+    } else {
+        return false;
+    }
+}
 
 /*
- * --------------------------------- Minimum boilerplate to support half precision floats ----------------------------------
- * half_isnan is copied from cupy/cuda/cupy_cub.cu, and the specialization of less<__half> is also borrowed from there.
- * TODO(leofang): is it possible to refactor the code and avoid repetition?
+ * ********** real numbers (specializations for single & double precisions) **********
+ */
+
+// specialize thrust::less for float
+template <>
+__host__ __device__ __forceinline__ bool less<float>::operator() (const float& lhs,
+                                                                  const float& rhs) const {
+    return _real_less<float>(lhs, rhs);
+}
+
+// specialize thrust::less for double
+template <>
+__host__ __device__ __forceinline__ bool less<double>::operator() (const double& lhs, const double& rhs) const {
+    return _real_less<double>(lhs, rhs);
+}
+
+// specialize thrust::less for tuple<size_t, float>
+template <>
+__host__ __device__ __forceinline__ bool less< tuple<size_t, float> >::operator() (const tuple<size_t, float>& lhs,
+                                                                                   const tuple<size_t, float>& rhs) const {
+    return _tuple_real_less<float>(lhs, rhs);
+}
+
+// specialize thrust::less for tuple<size_t, double>
+template <>
+__host__ __device__ __forceinline__ bool less< tuple<size_t, double> >::operator() (const tuple<size_t, double>& lhs,
+                                                                                    const tuple<size_t, double>& rhs) const {
+    return _tuple_real_less<double>(lhs, rhs);
+}
+
+/*
+ * ********** real numbers (specializations for half precision) **********
  */
 
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
-__host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
-#ifdef __CUDA_ARCH__
+
+// it seems Thrust doesn't care the code path on host, so we just need a wrapper for device
+__device__ __forceinline__ bool isnan(const __half& x) {
     return __hisnan(x);
-#else
-    // TODO(leofang): do we really need this branch?
-    return isnan(__half2float(x));
-#endif
 }
 
 // specialize thrust::less for __half
 template <>
-struct less<__half> {
-    __host__ __device__ __forceinline__ bool operator() (const __half& lhs, const __half& rhs) const {
-        if (half_isnan(lhs)) {
-            return false;
-        } else if (half_isnan(rhs)) {
-            return true;
-        } else {
-        #ifdef __CUDA_ARCH__
-            return lhs < rhs;
-        #else
-            // TODO(leofang): do we really need this branch?
-            return __half2float(lhs) < __half2float(rhs);
-        #endif
-        }
-    }
-};
+__host__ __device__ __forceinline__ bool less<__half>::operator() (const __half& lhs, const __half& rhs) const {
+    return _real_less<__half>(lhs, rhs);
+}
+
+// specialize thrust::less for tuple<size_t, __half>
+template <>
+__host__ __device__ __forceinline__ bool less< tuple<size_t, __half> >::operator() (const tuple<size_t, __half>& lhs,
+                                                                                    const tuple<size_t, __half>& rhs) const {
+    return _tuple_real_less<__half>(lhs, rhs);
+}
 
 #endif  // include cupy_fp16.h
 
-/* ------------------------------------ end of boilerplate ------------------------------------ */
+/*
+ * -------------------------------------------------- end of boilerplate --------------------------------------------------
+ */
 
 
 /*
@@ -161,7 +222,7 @@ struct less<__half> {
 
 template <typename T>
 void cupy::thrust::_sort(void *data_start, size_t *keys_start,
-                         const std::vector<ptrdiff_t>& shape, size_t stream,
+                         const std::vector<ptrdiff_t>& shape, intptr_t stream,
                          void* memory) {
     size_t ndim = shape.size();
     ptrdiff_t size;
@@ -201,33 +262,33 @@ void cupy::thrust::_sort(void *data_start, size_t *keys_start,
 }
 
 template void cupy::thrust::_sort<cpy_byte>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_ubyte>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_short>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_ushort>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_int>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_uint>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_long>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_ulong>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_float>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_double>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_complex64>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_complex128>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 template void cupy::thrust::_sort<cpy_bool>(
-    void *, size_t *, const std::vector<ptrdiff_t>& shape, size_t, void *);
+    void *, size_t *, const std::vector<ptrdiff_t>& shape, intptr_t, void *);
 void cupy::thrust::_sort_fp16(void *data_start, size_t *keys_start,
-                              const std::vector<ptrdiff_t>& shape, size_t stream,
+                              const std::vector<ptrdiff_t>& shape, intptr_t stream,
                               void* memory) {
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
@@ -245,8 +306,7 @@ class elem_less {
 public:
     elem_less(const T *data):_data(data) {}
     __device__ __forceinline__ bool operator()(size_t i, size_t j) const {
-        less<T> comp;
-        return comp(_data[i], _data[j]);
+        return less<T>()(_data[i], _data[j]);
     }
 private:
     const T *_data;
@@ -254,7 +314,7 @@ private:
 
 template <typename T>
 void cupy::thrust::_lexsort(size_t *idx_start, void *keys_start, size_t k,
-                            size_t n, size_t stream, void *memory) {
+                            size_t n, intptr_t stream, void *memory) {
     /* idx_start is the beginning of the output array where the indexes that
        would sort the data will be placed. The original contents of idx_start
        will be destroyed. */
@@ -275,33 +335,33 @@ void cupy::thrust::_lexsort(size_t *idx_start, void *keys_start, size_t k,
 }
 
 template void cupy::thrust::_lexsort<cpy_byte>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_ubyte>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_short>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_ushort>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_int>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_uint>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_long>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_ulong>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_float>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_double>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_complex64>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_complex128>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 template void cupy::thrust::_lexsort<cpy_bool>(
-    size_t *, void *, size_t, size_t, size_t, void *);
+    size_t *, void *, size_t, size_t, intptr_t, void *);
 void cupy::thrust::_lexsort_fp16(size_t *idx_start, void *keys_start, size_t k,
-                                 size_t n, size_t stream, void *memory) {
+                                 size_t n, intptr_t stream, void *memory) {
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
     cupy::thrust::_lexsort<__half>(idx_start, keys_start, k, n, stream, memory);
@@ -317,7 +377,7 @@ template <typename T>
 void cupy::thrust::_argsort(size_t *idx_start, void *data_start,
                             void *keys_start,
                             const std::vector<ptrdiff_t>& shape,
-                            size_t stream, void *memory) {
+                            intptr_t stream, void *memory) {
     /* idx_start is the beginning of the output array where the indexes that
        would sort the data will be placed. The original contents of idx_start
        will be destroyed. */
@@ -377,48 +437,48 @@ void cupy::thrust::_argsort(size_t *idx_start, void *data_start,
 }
 
 template void cupy::thrust::_argsort<cpy_byte>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_ubyte>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_short>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_ushort>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_int>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_uint>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_long>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_ulong>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_float>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_double>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_complex64>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_complex128>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 template void cupy::thrust::_argsort<cpy_bool>(
-    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, size_t,
+    size_t *, void *, void *, const std::vector<ptrdiff_t>& shape, intptr_t,
     void *);
 void cupy::thrust::_argsort_fp16(size_t *idx_start, void *data_start,
                                  void *keys_start,
                                  const std::vector<ptrdiff_t>& shape,
-                                 size_t stream, void *memory) {
+                                 intptr_t stream, void *memory) {
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
     cupy::thrust::_argsort<__half>(idx_start, data_start, keys_start, shape, stream, memory);

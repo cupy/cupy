@@ -5,6 +5,7 @@
 import numpy
 
 cimport cython  # NOQA
+from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
 from cupy.cuda cimport common
@@ -18,6 +19,8 @@ from cupy.cuda cimport stream
 # Memory Management
 ###############################################################################
 
+# Before attempting to refactor this part, read the discussion in #3212 first.
+
 cdef class _MemoryManager:
     cdef:
         dict memory
@@ -26,7 +29,7 @@ cdef class _MemoryManager:
         self.memory = dict()
 
 
-cdef public char* cupy_malloc(void *m, ptrdiff_t size) with gil:
+cdef public char* cupy_malloc(void *m, size_t size) with gil:
     if size == 0:
         return <char *>0
     cdef _MemoryManager mm = <_MemoryManager>m
@@ -47,38 +50,34 @@ cdef public void cupy_free(void *m, char* ptr) with gil:
 ###############################################################################
 
 cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
-    void _sort[T](void *, size_t *, const vector.vector[ptrdiff_t]&, size_t,
+    void _sort[T](void *, size_t *, const vector.vector[ptrdiff_t]&, intptr_t,
                   void *)
-    void _lexsort[T](size_t *, void *, size_t, size_t, size_t, void *)
+    void _lexsort[T](size_t *, void *, size_t, size_t, intptr_t, void *)
     void _argsort[T](size_t *, void *, void *, const vector.vector[ptrdiff_t]&,
-                     size_t, void *)
+                     intptr_t, void *)
 
     # for half precision
     # TODO(leofang): eliminate the extra delegation call when we have a dtype
     # dispatcher in C++
-    void _sort_fp16(void *, size_t *, const vector.vector[ptrdiff_t]&, size_t,
-                    void *)
-    void _lexsort_fp16(size_t *, void *, size_t, size_t, size_t, void *)
+    void _sort_fp16(void *, size_t *, const vector.vector[ptrdiff_t]&,
+                    intptr_t, void *)
+    void _lexsort_fp16(size_t *, void *, size_t, size_t, intptr_t, void *)
     void _argsort_fp16(size_t *, void *, void *,
-                       const vector.vector[ptrdiff_t]&, size_t, void *)
+                       const vector.vector[ptrdiff_t]&, intptr_t, void *)
 
 
 ###############################################################################
 # Python interface
 ###############################################################################
 
-cpdef sort(dtype, size_t data_start, size_t keys_start,
+cpdef sort(dtype, intptr_t data_start, intptr_t keys_start,
            const vector.vector[ptrdiff_t]& shape) except +:
 
-    cdef void *_data_start
-    cdef size_t *_keys_start
-    cdef size_t _strm
-
-    _data_start = <void *>data_start
-    _keys_start = <size_t *>keys_start
-    _strm = <size_t>(stream.get_current_stream_ptr())
-    mem_obj = _MemoryManager()
-    cdef void* mem = <void *>mem_obj
+    cdef void* _data_start = <void*>data_start
+    cdef size_t* _keys_start = <size_t*>keys_start
+    cdef intptr_t _strm = stream.get_current_stream_ptr()
+    cdef _MemoryManager mem_obj = _MemoryManager()
+    cdef void* mem = <void*>mem_obj
 
     if dtype == numpy.float16:
         if int(device.get_compute_capability()) < 53 or \
@@ -121,16 +120,14 @@ cpdef sort(dtype, size_t data_start, size_t keys_start,
                                   'supported'.format(dtype))
 
 
-cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
+cpdef lexsort(dtype, intptr_t idx_start, intptr_t keys_start,
               size_t k, size_t n) except +:
 
-    cdef size_t _strm
-
-    idx_ptr = <size_t *>idx_start
-    keys_ptr = <void *>keys_start
-    _strm = <size_t>(stream.get_current_stream_ptr())
-    mem_obj = _MemoryManager()
-    cdef void* mem = <void *>mem_obj
+    cdef size_t* idx_ptr = <size_t*>idx_start
+    cdef void* keys_ptr = <void*>keys_start
+    cdef intptr_t _strm = stream.get_current_stream_ptr()
+    cdef _MemoryManager mem_obj = _MemoryManager()
+    cdef void* mem = <void*>mem_obj
 
     if dtype == numpy.float16:
         if int(device.get_compute_capability()) < 53 or \
@@ -171,18 +168,15 @@ cpdef lexsort(dtype, size_t idx_start, size_t keys_start,
                         'supported'.format(dtype))
 
 
-cpdef argsort(dtype, size_t idx_start, size_t data_start, size_t keys_start,
+cpdef argsort(dtype, intptr_t idx_start, intptr_t data_start,
+              intptr_t keys_start,
               const vector.vector[ptrdiff_t]& shape) except +:
-    cdef size_t *_idx_start
-    cdef size_t *_keys_start
-    cdef void *_data_start
-    cdef size_t _strm
 
-    _idx_start = <size_t *>idx_start
-    _data_start = <void *>data_start
-    _keys_start = <size_t *>keys_start
-    _strm = <size_t>(stream.get_current_stream_ptr())
-    mem_obj = _MemoryManager()
+    cdef size_t*_idx_start = <size_t*>idx_start
+    cdef void* _data_start = <void*>data_start
+    cdef size_t* _keys_start = <size_t*>keys_start
+    cdef intptr_t _strm = stream.get_current_stream_ptr()
+    cdef _MemoryManager mem_obj = _MemoryManager()
     cdef void* mem = <void *>mem_obj
 
     if dtype == numpy.float16:
