@@ -16,8 +16,9 @@ class TestFlatiter(unittest.TestCase):
         assert a.flat.base is a
 
     def test_iter(self):
-        it = cupy.zeros((2, 3, 4)).flat
-        assert it.__iter__() is it
+        for xp in (numpy, cupy):
+            it = xp.zeros((2, 3, 4)).flat
+            assert iter(it) is it
 
     def test_next(self):
         a = testing.shaped_arange((2, 3, 4), cupy)
