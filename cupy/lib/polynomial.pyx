@@ -146,13 +146,13 @@ cdef class poly1d:
         raise NotImplementedError
 
     # TODO(Dahlia-Chehata): use polydiv for non-scalars
-    def __div__(self, other):
+    def __truediv__(self, other):
         if cupy.isscalar(other):
             return poly1d(self.coeffs / other)
         raise NotImplementedError
 
     # TODO(Dahlia-Chehata): use polydiv for non-scalars
-    def __rdiv__(self, other):
+    def __rtruediv__(self, other):
         if cupy.isscalar(other):
             return poly1d(other / self.coeffs)
         raise NotImplementedError

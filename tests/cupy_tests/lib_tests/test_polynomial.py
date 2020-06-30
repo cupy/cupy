@@ -72,6 +72,14 @@ class TestPoly1dInit(unittest.TestCase):
         assert out.variable == (self.variable or 'z')
         return out.coeffs
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_zero_dim(self, xp, dtype):
+        a = testing.shaped_arange((), xp, dtype)
+        out = xp.poly1d(a, variable=self.variable)
+        assert out.variable == (self.variable or 'x')
+        return out.coeffs
+
 
 @testing.gpu
 class TestPoly1d(unittest.TestCase):
@@ -81,6 +89,13 @@ class TestPoly1d(unittest.TestCase):
     def test_poly1d_leading_zeros(self, xp, dtype):
         a = xp.array([0, 0, 1, 2, 3], dtype)
         return xp.poly1d(a).coeffs
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_neg(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        b = -xp.poly1d(a)
+        return b.coeffs
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
@@ -159,6 +174,20 @@ class TestPoly1d(unittest.TestCase):
         a = testing.shaped_arange((5,), xp, dtype)
         return str(xp.poly1d(a))
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_mul_scalar(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        b = xp.poly1d(a) * 10
+        return b.coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_div_scalar(self, xp, dtype):
+        a = testing.shaped_arange((10,), xp, dtype)
+        b = xp.poly1d(a) / 10
+        return b.coeffs
+
 
 @testing.gpu
 class TestPoly1dEquality(unittest.TestCase):
@@ -191,12 +220,12 @@ class TestPoly1dEquality(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
-    def test_poly1d_neg1(self, xp, dtype):
+    def test_poly1d_ne1(self, xp, dtype):
         a, b = self.make_poly1d1(xp, dtype)
         return a != b
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
-    def test_poly1d_neg2(self, xp, dtype):
+    def test_poly1d_ne2(self, xp, dtype):
         a, b = self.make_poly1d2(xp, dtype)
         return a != b
