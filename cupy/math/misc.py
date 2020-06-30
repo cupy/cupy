@@ -5,7 +5,6 @@ from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
 from cupy.lib import stride_tricks
-from cupyx.scipy import fft
 
 
 _dot_kernel = core.ReductionKernel(
@@ -33,74 +32,71 @@ def convolve(a, v, mode='full'):
     .. seealso:: :func:`numpy.convolve`
 
     """
-    if a.ndim == 0:
-        a = a.ravel()
-    if v.ndim == 0:
-        v = v.ravel()
-    if v.size > a.size:
-        a, v = v, a
     if a.size == 0:
         raise ValueError('a cannot be empty')
     if v.size == 0:
         raise ValueError('v cannot be empty')
     if v.ndim > 1:
         raise ValueError('v cannot be multidimensional array')
+    if v.size > a.size:
+        a, v = v, a
+    a = a.ravel()
+    v = v.ravel()
 
     method = cupyx.scipy.signal.choose_conv_method(a, v, mode)
     if method == 'direct':
-        _, out = _dot_convolve(a, v[::-1], mode)
+        _, out = _dot_convolve(a, v, mode)
     elif method == 'fft':
-        out = _fftconvolve1d(a, v, mode)
+        out = _fft_convolve(a, v, mode)
     else:
         raise ValueError('Unsupported method')
     return out
 
 
-def _fftconvolve1d(a1, a2, mode='full'):
+def _fft_convolve(a1, a2, mode='full'):
 
-    is_inverted = False
-    if a2.size > a1.size:
+    if a1.size < a2.size:
         a1, a2 = a2, a1
-        is_inverted = a2.size % 2 == 0
-    siz1 = a1.size
-    siz2 = a2.size
-    shape = siz1 + siz2 - 1
-    is_complex = a1.dtype.kind == 'c' or a2.dtype.kind == 'c'
-    if is_complex:
-        fa1 = fft.fft(a1, shape)
-        fa2 = fft.fft(a2, shape)
-        out = fft.ifft(fa1 * fa2, shape)
+
+    if a1.dtype.kind == 'c' or a2.dtype.kind == 'c':
+        fft, ifft = cupy.fft.fft, cupy.fft.ifft
     else:
-        fa1 = fft.rfft(a1, shape)
-        fa2 = fft.rfft(a2, shape)
-        out = fft.irfft(fa1 * fa2, shape)
-    out = out[slice(shape)]
-    if mode == 'same':
-        start = (out.size - siz1) / 2 + is_inverted
-        end = start + siz1
-        out = out[start: end]
+        fft, ifft = cupy.fft.rfft, cupy.fft.irfft
+
+    dtype = cupy.result_type(a1, a2)
+    n1, n2 = a1.size, a2.size
+    out_size = n1 + n2 - 1
+    fa1 = fft(a1, out_size)
+    fa2 = fft(a2, out_size)
+    out = ifft(fa1 * fa2, out_size)
+
+    if mode == 'full':
+        start, end = None, None
+    elif mode == 'same':
+        start = (n2 - 1) // 2
+        end = start + n1
     elif mode == 'valid':
-        newsize = siz1 - siz2 + 1
-        start = (out.size - newsize) / 2
-        end = start + newsize
-        out = out[start: end]
-    elif mode != 'full':
-        raise ValueError('acceptable mode flags are `valid`,'
-                         ' `same`, or `full`.')
-    result_type = cupy.result_type(a1, a2)
-    if result_type.kind in 'iu':
+        start, end = n2 - 1, n1
+    else:
+        raise ValueError(
+            'acceptable mode flags are `valid`, `same`, or `full`.')
+
+    out = out[start: end]
+
+    if dtype.kind in 'iu':
         out = cupy.around(out)
-    return out.astype(result_type, copy=False)
+
+    return out.astype(dtype, copy=False)
 
 
 def _dot_convolve(a1, a2, mode):
     if a1.size == 0 or a2.size == 0:
         raise ValueError('Array arguments cannot be empty')
 
-    inverted = False
+    is_inverted = False
     if a1.size < a2.size:
         a1, a2 = a2, a1
-        inverted = True
+        is_inverted = True
 
     dtype = cupy.result_type(a1, a2)
     n1, n2 = a1.size, a2.size
@@ -119,8 +115,8 @@ def _dot_convolve(a1, a2, mode):
 
     stride = a1.strides[0]
     a1 = stride_tricks.as_strided(a1, (out_size, n2), (stride, stride))
-    output = _dot_kernel(a1, a2, axis=1)
-    return inverted, output
+    output = _dot_kernel(a1, a2[::-1], axis=1)
+    return is_inverted, output
 
 
 def clip(a, a_min=None, a_max=None, out=None):
