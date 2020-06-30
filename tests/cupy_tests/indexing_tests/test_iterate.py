@@ -12,8 +12,9 @@ from cupy import testing
 class TestFlatiter(unittest.TestCase):
 
     def test_base(self):
-        a = cupy.zeros((2, 3, 4))
-        assert a.flat.base is a
+        for xp in (numpy, cupy):
+            a = xp.zeros((2, 3, 4))
+            assert a.flat.base is a
 
     def test_iter(self):
         for xp in (numpy, cupy):
@@ -21,15 +22,17 @@ class TestFlatiter(unittest.TestCase):
             assert iter(it) is it
 
     def test_next(self):
-        a = testing.shaped_arange((2, 3, 4), cupy)
-        e = a.flatten()
-        for ai, ei in zip(a.flat, e):
-            assert ai == ei
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp)
+            e = a.flatten()
+            for ai, ei in zip(a.flat, e):
+                assert ai == ei
 
     def test_len(self):
-        a = cupy.zeros((2, 3, 4))
-        assert len(a.flat) == 24
-        assert len(a[::2].flat) == 12
+        for xp in (numpy, cupy):
+            a = xp.zeros((2, 3, 4))
+            assert len(a.flat) == 24
+            assert len(a[::2].flat) == 12
 
     @testing.numpy_cupy_array_equal()
     def test_copy(self, xp):
