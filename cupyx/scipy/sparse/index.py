@@ -123,106 +123,6 @@ def csr_column_index2(out_rows, col_order, col_offsets, nnz,
     get_csr_index2_ker((grid,), (tpb,), (col_order, col_offsets,
                                          Ap, Aj, Ax, len(Ap), Bp, Bj, Bx))
 
-# @todo: Need to build csr_column_index1- slice columns given as an array of indices (pass1)
-# @todo: Need to build csr_column_index2- slice columns given as an array of indices (pass2)
-"""
-    /*
-    
-    BUILDS OUTPUT DEGREES
- * Slice columns given as an array of indices (pass 1).
- * This pass counts idx entries and computes a new indptr.
- *
- * Input Arguments:
- *   I  n_idx           - number of indices to slice
- *   I  col_idxs[n_idx] - indices to slice
- *   I  n_row           - major axis dimension
- *   I  n_col           - minor axis dimension
- *   I  Ap[n_row+1]     - indptr
- *   I  Aj[nnz(A)]      - indices
- *
- * Output Arguments:
- *   I  col_offsets[n_col] - cumsum of index repeats
- *   I  Bp[n_row+1]        - new indptr
- *
- */
-template<class I>
-void csr_column_index1(const I n_idx,           
-                       const I col_idxs[],
-                       const I n_row,
-                       const I n_col,
-                       const I Ap[],
-                       const I Aj[],
-                       I col_offsets[],
-                       I Bp[])
-{
-
-    // build output degree!
-    // Compute new indptr
-    I new_nnz = 0;
-    Bp[0] = 0;
-    
-    // One row per thread
-    for(I i = 0; i < n_row; i++){
-    
-        // For each col in the current row, add column offsets
-        for(I jj = Ap[i]; jj < Ap[i+1]; jj++){
-        
-            // this is building the indptr array, but we can build the degree first
-            new_nnz += col_offsets[Aj[jj]];
-        }
-        Bp[i+1] = new_nnz;
-    }
-
-    // cumsum in-place
-    for(I j = 1; j < n_col; j++){
-        col_offsets[j] += col_offsets[j - 1];
-    }
-}
-
-
-/*
-    POPULATES COLS AND DATA
- * Slice columns given as an array of indices (pass 2).
- * This pass populates indices/data entries for selected columns.
- *
- * Input Arguments:
- *   I  col_order[n_idx]   - order of col indices
- *   I  col_offsets[n_col] - cumsum of col index counts
- *   I  nnz                - nnz(A)
- *   I  Aj[nnz(A)]         - column indices
- *   T  Ax[nnz(A)]         - data
- *
- * Output Arguments:
- *   I  Bj[nnz(B)] - new column indices
- *   T  Bx[nnz(B)] - new data
- *
- */
-template<class I, class T>
-void csr_column_index2(const I col_order[],
-                       const I col_offsets[],
-                       const I nnz,  // input NNZ
-                       const I Aj[],
-                       const T Ax[],
-                       I Bj[],
-                       T Bx[]) {
-    I n = 0;
-    for(I jj = 0; jj < nnz; jj++){
-        const I j = Aj[jj];  // row offset
-        const I offset = col_offsets[j];
-        const I prev_offset = j == 0 ? 0 : col_offsets[j-1];
-        if (offset != prev_offset) {
-            const T v = Ax[jj];
-            for(I k = prev_offset; k < offset; k++){
-                Bj[n] = col_order[k];
-                Bx[n] = v;
-                n++;
-            }
-        }
-    }
-}
-
-"""
-
 
 def get_csr_submatrix(n_row, n_col, indptr, indices, data,
                       start_maj, stop_maj, start_min, stop_min):
@@ -339,6 +239,42 @@ def get_csr_submatrix_cols_data(new_rows,
                                      Bp, Bj, Bx))
 
 
+"""
+/*
+ * Slice rows given as an array of indices.
+ *
+ * Input Arguments:
+ *   I  n_row_idx       - number of row indices
+ *   I  rows[n_row_idx] - row indices for indexing
+ *   I  Ap[n_row+1]     - row pointer
+ *   I  Aj[nnz(A)]      - column indices
+ *   T  Ax[nnz(A)]      - data
+ *
+ * Output Arguments:
+ *   I  Bj - new column indices
+ *   T  Bx - new data
+ *
+ */
+template<class I, class T>
+void csr_row_index(const I n_row_idx,
+                   const I rows[],
+                   const I Ap[],
+                   const I Aj[],
+                   const T Ax[],
+                   I Bj[],
+                   T Bx[])
+{
+    for(I i = 0; i < n_row_idx; i++){
+        const I row = rows[i];
+        const I row_start = Ap[row];
+        const I row_end   = Ap[row+1];
+        Bj = std::copy(Aj + row_start, Aj + row_end, Bj);
+        Bx = std::copy(Ax + row_start, Ax + row_end, Bx);
+    }
+}
+"""
+
+# @TODO: Port this to CUDA
 """
 /*
  * Sample the matrix at specific locations

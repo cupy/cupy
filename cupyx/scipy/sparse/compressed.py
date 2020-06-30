@@ -466,192 +466,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def __rsub__(self, other):
         return self._add(other, True, False)
 
-    # def __getitem__(self, slices):
-    #
-    #     if isinstance(slices, tuple):
-    #         slices = list(slices)
-    #     elif isinstance(slices, list):
-    #         slices = list(slices)
-    #         if all([isinstance(s, int) for s in slices]):
-    #             slices = [slices]
-    #     else:
-    #         slices = [slices]
-    #
-    #     ellipsis = -1
-    #     n_ellipsis = 0
-    #     for i, s in enumerate(slices):
-    #         if s is None:
-    #             raise IndexError('newaxis is not supported')
-    #         elif s is Ellipsis:
-    #             ellipsis = i
-    #             n_ellipsis += 1
-    #     if n_ellipsis > 0:
-    #         ellipsis_size = self.ndim - (len(slices) - 1)
-    #         slices[ellipsis:ellipsis + 1] = [slice(None)] * ellipsis_size
-    #
-    #     if len(slices) == 2:
-    #         row, col = slices
-    #     elif len(slices) == 1:
-    #         row, col = slices[0], slice(None)
-    #     else:
-    #         raise IndexError('invalid number of indices')
-    #
-    #     major, minor = self._swap(row, col)  # This will fail on COO
-    #     major_size, minor_size = self._swap(*self._shape)
-    #
-    #     if numpy.isscalar(major):
-    #         i = int(major)
-    #         if i < 0:
-    #             i += major_size
-    #         if not (0 <= i < major_size):
-    #             raise IndexError('index out of bounds')
-    #         if numpy.isscalar(minor):
-    #             j = int(minor)
-    #             if j < 0:
-    #                 j += minor_size
-    #             if not (0 <= j < minor_size):
-    #                 raise IndexError('index out of bounds')
-    #
-    #             # If i,j are both scalars, just grab the element
-    #             return self._get_single(i, j)
-    #
-    #         elif minor == slice(None):
-    #
-    #             # Get all columns for single row
-    #             # Done.
-    #             return self._get_major_slice(slice(i, i + 1))
-    #
-    #         elif isinstance(minor, (list, tuple, set)):
-    #
-    #             # Fetch list of columns for single row
-    #             # Since we know how many columns we have, it should be straightforward
-    #             # to schedule as a kernel
-    #             # Pass 1- Compute output degree (indptr)
-    #             # Pass 2- Populate columns & values
-    #             """
-    #             Example of use:
-    #
-    #             indptr = self._compute_output_degree(major, minor)
-    #             indices, data = self._populate_indices_and_data(indptr, major, minor)
-    #
-    #             The branching conditionals that require both major/minor will be pushed
-    #             down to compute_output_degree and populate_indices_and_data
-    #
-    #             Pass #1:
-    #             --------
-    #             We really have 3 different types of functions to compute the output
-    #             degrees based on the indptr:
-    #                - major == scalar: grab index from indptr
-    #                - major == list/tuple/set: grab elements from indptr that exist
-    #                - major == slice: grab range of elements from indptr
-    #                - major == slice(None): noop- don't need to do anything
-    #
-    #             Then we have 3 different types of functions to compute the output
-    #             degrees based on the indices/values:
-    #                - minor == scalar: just need to filter indptr for a single column
-    #                - minor == list/tuple/set: Just need to filter indptr for elements that exist
-    #                - minor == slice: grab range of minor elements from filtered indptr
-    #                - minor == slice(None): noop- don't need to do anything
-    #
-    #
-    #             Pass #2:
-    #             --------
-    #
-    #             Then we just need to apply the rules from Pass #1 to populate the data and indices.
-    #             """
-    #
-    #             self._major_scalar_minor_index(major, minor)
-    #
-    #         else:
-    #
-    #             # Slice columns for single row
-    #             # Pass 1- Compute output degree (indptr)
-    #             # Pass 2- Populate columns & values
-    #             return self._major_scalar_minor_slice(major, minor)
-    #
-    #     elif major == slice(None):
-    #
-    #         if minor == slice(None):
-    #
-    #             # Just return self.
-    #             return self.copy()
-    #
-    #         elif isinstance(min, (list, tuple, set)):
-    #
-    #             # Get all rows for a predefined set of columns
-    #             # Pass 1- Compute output degree (indptr)
-    #             # Pass 2- Populate values
-    #             return self._minor_index(minor)
-    #
-    #         elif isinstance(minor, slice):
-    #
-    #             # Get range of columns for all rows
-    #             # Pass 1- Compute output degree (indptr)
-    #             # Pass 2- Populate values in slice
-    #             return self._minor_slice(minor)
-    #
-    #     elif isinstance(major, slice):
-    #
-    #         # Fails: csr[:, 1:5], csr[1:5, 1:5], Succeeds: csr[1:5, :]
-    #         # Fails: csc[1:5, :], csc[1:5, 1:5], Succeeds: csc[:, 1:5]
-    #         if minor == slice(None):
-    #
-    #             # Get all columns for a range of rows
-    #             # Done.
-    #             return self._get_major_slice(major)
-    #
-    #         elif isinstance(minor, (list, tuple, set)):
-    #
-    #             # Get range of rows for a predefined set of columns
-    #             # Slice `indptr` and diff to figure out grid size & # threads
-    #             # Pass 1- Compute output degree based on non-zero
-    #             #         values for indexed cols (indptr)
-    #             # Pass 2- Populate output values
-    #             return self._major_slice_minor_index(major, minor)
-    #
-    #         elif isinstance(minor, slice):
-    #
-    #             # Slice rows and columns
-    #             # Two-pass kernel-
-    #             # Slice `indptr` and diff to figure out the grid size and
-    #             # number of threads.
-    #             # Pass 1- Compute output degree (indptr)
-    #             # Pass 2- Compute output values
-    #             return self._major_slice_minor_slice(major, minor)
-    #
-    #     elif isinstance(major, (list, tuple, set)):
-    #
-    #         if minor == slice(None):
-    #
-    #             # Get all columns for index of rows
-    #             # Two-pass kernel-
-    #             # Pass 1- Compute output degree (indptr)
-    #             # Pass 2- Populate values for rows
-    #             self._major_index(major)
-    #
-    #         elif isinstance(minor, (list, tuple, set)):
-    #
-    #             # Get predefined set of rows and predefined set of columns
-    #             # Two-pass kernel
-    #             # Pass 1- Compute output degree (indptr)
-    #             # Pass 2- Populate values for rows
-    #             self._major_index_minor_index(major, minor)
-    #
-    #         elif isinstance(minor, slice):
-    #
-    #             # Get predefined set of rows and a range of columns
-    #             # Two-pass kernel
-    #             # Pass 1- Compute output degree (indptr)
-    #             # Pass 2- Populate values for rows
-    #             self._major_index_minor_slice(major, minor)
-    #
-    #     raise ValueError("unsupported indexing: %s" % slices)
-
-
-    #######################
-    # Getting and Setting #
-    #######################
-
     def _get_intXint(self, row, col):
         M, N = self._swap(self.shape)
         major, minor = self._swap((row, col))
@@ -678,10 +492,14 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         val = cupy.empty(major.size, dtype=self.dtype)
 
-        # @TODO
+        # @TODO: Need to implement this
         csr_sample_values(M, N, self.indptr, self.indices, self.data,
                           major.size, major.ravel(), minor.ravel(), val)
         if major.ndim == 1:
+
+            # @TODO: Temporary
+            def asmatrix(val):
+                return val
 
             # @TODO: Replace w/ 2-d ndarray?
             return asmatrix(val)
@@ -698,7 +516,29 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         idx_dtype = self.indices.dtype
         indices = cupy.asarray(idx, dtype=idx_dtype).ravel()
 
-    def _get_minor_index_fancy(self, idx):
+        _, N = self._swap(self.shape)
+        M = len(indices)
+        new_shape = self._swap((M, N))
+        if M == 0:
+            return self.__class__(new_shape)
+
+        row_nnz = cupy.diff(self.indptr)
+        idx_dtype = self.indices.dtype
+        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
+        cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
+
+        nnz = res_indptr[-1]
+        res_indices = cupy.empty(nnz, dtype=idx_dtype)
+        res_data = cupy.empty(nnz, dtype=self.dtype)
+
+        # @TODO: Need to port this
+        csr_row_index(M, indices, self.indptr, self.indices, self.data,
+                      res_indices, res_data)
+
+        return self.__class__((res_data, res_indices, res_indptr),
+                              shape=new_shape, copy=False)
+
+    def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.
         """
         idx_dtype = self.indices.dtype
@@ -714,7 +554,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         col_offsets = cupy.zeros(N, dtype=idx_dtype)
         res_indptr = cupy.empty_like(self.indptr)
 
-        # @TODO
+        # @TODO: Fix arguments
         csr_column_index1(k, idx, M, N, self.indptr, self.indices,
                           col_offsets, res_indptr)
 
@@ -724,7 +564,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         res_indices = cupy.empty(nnz, dtype=idx_dtype)
         res_data = cupy.empty(nnz, dtype=self.dtype)
 
-        # @TODO
+        # @TODO: Fix arguments
         csr_column_index2(col_order, col_offsets, len(self.indices),
                           self.indices, self.data, res_indices, res_data)
         return self.__class__((res_data, res_indices, res_indptr),
@@ -791,7 +631,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         if i0 == 0 and j0 == 0 and i1 == M and j1 == N:
             return self.copy() if copy else self
-                                # @todo
+
+        # @TODO: Verify proper arguments used
         indptr, indices, data = get_csr_submatrix(
             M, N, self.indptr, self.indices, self.data, i0, i1, j0, j1)
 
