@@ -104,7 +104,8 @@ class flatiter:
 
         raise IndexError('unsupported iterator index')
 
-    # TODO(Takagi): Implement __iter__
+    def __iter__(self):
+        return self
 
     def __next__(self):
         index = self._index
