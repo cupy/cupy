@@ -67,13 +67,17 @@ cdef class poly1d:
         return self.order
 
     def __init__(self, c_or_r, r=False, variable=None):
+        if isinstance(c_or_r, numpy.poly1d):
+           self._coeffs = cupy.empty(c_or_r.coeffs.shape,
+                                     c_or_r.coeffs.dtype)
+           self._coeffs.set(c_or_r.coeffs)
         if isinstance(c_or_r, poly1d):
-            self._variable = c_or_r._variable
             self._coeffs = c_or_r._coeffs
-
-            if variable is not None:
+        if isinstance(c_or_r, (numpy.poly1d, poly1d)):
+           self._variable = c_or_r._variable
+           if variable is not None:
                 self._variable = variable
-            return
+           return
         # TODO(Dahlia-Chehata): if r: c_or_r = poly(c_or_r)
         if c_or_r.ndim < 1:
             c_or_r = cupy.atleast_1d(c_or_r)
@@ -198,7 +202,7 @@ cdef class poly1d:
     # -------------------------------------------------------------------------
     # Cupy specific attributes and methods
     # -------------------------------------------------------------------------
-    def get(self, stream=None, out=None):
+    cpdef get(self, stream=None, out=None):
         """Returns a copy of poly1d object on host memory.
 
         Args:
@@ -230,7 +234,7 @@ cdef class poly1d:
         return numpy.poly1d(self.coeffs.get(stream=stream),
                             variable=self.variable)
 
-    def set(self, polyin, stream=None):
+    cpdef set(self, polyin, stream=None):
         """Copies a poly1d object on the host memory to :class:`cupy.poly1d`.
 
         Args:
