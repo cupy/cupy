@@ -41,7 +41,12 @@ MODULES = []
 
 cuda_files = [
     'cupy.core._carray',
+    'cupy.core._cub_reduction',
     'cupy.core._dtype',
+    'cupy.core._fusion_kernel',
+    'cupy.core._fusion_thread_local',
+    'cupy.core._fusion_trace',
+    'cupy.core._fusion_variable',
     'cupy.core._kernel',
     'cupy.core._memory_range',
     'cupy.core._optimize_config',
@@ -58,6 +63,7 @@ cuda_files = [
     'cupy.core.flags',
     'cupy.core.internal',
     'cupy.core.fusion',
+    'cupy.core.new_fusion',
     'cupy.core.raw',
     'cupy.cuda.cublas',
     'cupy.cuda.cufft',
@@ -250,7 +256,8 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
             'libraries': [
                 'cudart',
             ],
-            'check_method': build.check_cuda_version,
+            'check_method': build.check_thrust_version,
+            'version_method': build.get_thrust_version,
         })
 
 
@@ -796,7 +803,14 @@ def _nvcc_gencode_options(cuda_version):
     arch_list = ['compute_30',
                  'compute_50']
 
-    if cuda_version >= 10000:
+    if cuda_version >= 11000:
+        arch_list += [('compute_60', 'sm_60'),
+                      ('compute_61', 'sm_61'),
+                      ('compute_70', 'sm_70'),
+                      ('compute_75', 'sm_75'),
+                      ('compute_80', 'sm_80'),
+                      'compute_80']
+    elif cuda_version >= 10000:
         arch_list += [('compute_60', 'sm_60'),
                       ('compute_61', 'sm_61'),
                       ('compute_70', 'sm_70'),

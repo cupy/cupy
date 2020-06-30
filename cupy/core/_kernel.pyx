@@ -1,5 +1,4 @@
 import string
-import threading
 
 import numpy
 
@@ -13,27 +12,19 @@ from libcpp cimport vector
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
+from cupy.cuda cimport memory
 from cupy.core cimport _carray
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
+from cupy.core._memory_range cimport may_share_bounds
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport _convert_object_with_cuda_array_interface
 from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
-from cupy.core._memory_range cimport may_share_bounds
 
-
-_thread_local = threading.local()
-
-
-cpdef inline bint _is_fusing() except? -1:
-    try:
-        return _thread_local.history is not None
-    except AttributeError:
-        _thread_local.history = None
-    return False
+from cupy.core import _fusion_thread_local
 
 
 cdef inline bint _contains_zero(const shape_t& v) except? -1:
@@ -129,12 +120,14 @@ cdef class _ArgInfo:
             type typ,
             object dtype,
             int ndim,
-            bint c_contiguous):
+            bint c_contiguous,
+            bint index_32_bits):
         self.arg_kind = arg_kind
         self.type = typ
         self.dtype = dtype
         self.ndim = ndim
         self.c_contiguous = c_contiguous
+        self.index_32_bits = index_32_bits
 
     @staticmethod
     cdef _ArgInfo from_arg(object arg):
@@ -145,6 +138,8 @@ cdef class _ArgInfo:
             return _ArgInfo.from_scalar(arg)
         if typ is _carray.Indexer:
             return _ArgInfo.from_indexer(arg)
+        if typ is memory.MemoryPointer:
+            return _ArgInfo.from_memptr(arg)
         assert False, typ
 
     @staticmethod
@@ -154,21 +149,27 @@ cdef class _ArgInfo:
             ndarray,
             arg.dtype.type,
             arg._shape.size(),
-            arg._c_contiguous)
+            arg._c_contiguous,
+            arg._index_32_bits)
 
     @staticmethod
     cdef _ArgInfo from_scalar(_scalar.CScalar arg):
         dtype = arg.get_numpy_type()
-        return _ArgInfo(ARG_KIND_SCALAR, _scalar.CScalar, dtype, 0, True)
+        return _ArgInfo(ARG_KIND_SCALAR, _scalar.CScalar, dtype, 0, True, True)
 
     @staticmethod
     cdef _ArgInfo from_indexer(_carray.Indexer arg):
         return _ArgInfo(
-            ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True)
+            ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True, True)
+
+    @staticmethod
+    cdef _ArgInfo from_memptr(memory.MemoryPointer arg):
+        return _ArgInfo(
+            ARG_KIND_POINTER, memory.MemoryPointer, None, 0, True, True)
 
     def __hash__(self):
         return hash((self.arg_kind, self.type, self.dtype, self.ndim,
-                     self.c_contiguous))
+                     self.c_contiguous, self.index_32_bits))
 
     def __eq__(self, other):
         cdef _ArgInfo oth
@@ -180,7 +181,19 @@ cdef class _ArgInfo:
             and self.type is oth.type
             and self.dtype == oth.dtype
             and self.ndim == oth.ndim
-            and self.c_contiguous == oth.c_contiguous)
+            and self.c_contiguous == oth.c_contiguous
+            and self.index_32_bits == oth.index_32_bits)
+
+    def __repr__(self):
+        return '<_ArgInfo({})>'.format(
+            ' '.join([
+                'arg_kind={!r}'.format(self.arg_kind),
+                'type={!r}'.format(self.type),
+                'dtype={!r}'.format(self.dtype),
+                'ndim={!r}'.format(self.ndim),
+                'c_contiguous={!r}'.format(self.c_contiguous),
+                'index_32_bits={!r}'.format(self.index_32_bits),
+            ]))
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim):
         # Returns an ndarray _ArgInfo with altered ndim.
@@ -188,7 +201,8 @@ cdef class _ArgInfo:
         assert self.arg_kind == ARG_KIND_NDARRAY
         if self.ndim == ndim:
             return self
-        return _ArgInfo(ARG_KIND_NDARRAY, ndarray, self.dtype, ndim, False)
+        return _ArgInfo(
+            ARG_KIND_NDARRAY, ndarray, self.dtype, ndim, False, False)
 
     cdef bint is_ndarray(self):
         return self.arg_kind == ARG_KIND_NDARRAY
@@ -199,8 +213,9 @@ cdef class _ArgInfo:
     cdef str get_c_type(self):
         # Returns the C type representation.
         if self.arg_kind == ARG_KIND_NDARRAY:
-            return 'CArray<%s, %d, %d>' % (
-                _get_typename(self.dtype), self.ndim, self.c_contiguous)
+            return 'CArray<%s, %d, %d, %d>' % (
+                _get_typename(self.dtype), self.ndim,
+                self.c_contiguous, self.index_32_bits)
         if self.arg_kind == ARG_KIND_SCALAR:
             return _get_typename(self.dtype)
         if self.arg_kind == ARG_KIND_INDEXER:
@@ -216,7 +231,7 @@ cdef class _ArgInfo:
         return ctyp
 
     cdef str get_c_var_name(self, ParameterInfo p):
-        if self.arg_kind == ARG_KIND_NDARRAY and not p.raw:
+        if self.arg_kind in (ARG_KIND_NDARRAY, ARG_KIND_POINTER) and not p.raw:
             return '_raw_' + p.name
         return p.name
 
@@ -977,8 +992,8 @@ cdef class ufunc:
             Output array or a tuple of output arrays.
 
         """
-        if _is_fusing():
-            return _thread_local.history.call_ufunc(self, args, kwargs)
+        if _fusion_thread_local.is_fusing():
+            return _fusion_thread_local.call_ufunc(self, *args, **kwargs)
 
         cdef function.Function kern
         cdef list broad_values
@@ -1117,6 +1132,12 @@ cdef class _Op:
         if self.error_func is not None:
             self.error_func()
 
+    cpdef tuple get_in_dtypes(self):
+        return tuple([get_dtype(t) for t in self.in_types])
+
+    cpdef tuple get_out_dtypes(self):
+        return tuple([get_dtype(t) for t in self.out_types])
+
 
 cdef class _Ops:
 
@@ -1148,7 +1169,7 @@ cdef class _Ops:
             ops_.append(_Op.from_type_and_routine(typ, rt))
         return _Ops(tuple(ops_))
 
-    cdef _Op guess_routine(
+    cpdef _Op guess_routine(
             self, str name, dict cache, list in_args, dtype, _Ops out_ops):
         cdef _Ops ops_
         if dtype is None:

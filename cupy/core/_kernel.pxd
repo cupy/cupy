@@ -4,6 +4,7 @@ from cupy.core cimport _carray
 from cupy.core cimport _scalar
 from cupy.core._carray cimport shape_t
 from cupy.core.core cimport ndarray
+from cupy.cuda cimport memory
 
 
 cdef class ParameterInfo:
@@ -19,6 +20,7 @@ cdef enum _ArgKind:
     ARG_KIND_NDARRAY = 1
     ARG_KIND_INDEXER
     ARG_KIND_SCALAR
+    ARG_KIND_POINTER
 
 
 cdef class _ArgInfo:
@@ -31,6 +33,7 @@ cdef class _ArgInfo:
         readonly object dtype
         readonly int ndim
         readonly bint c_contiguous
+        readonly bint index_32_bits
 
     @staticmethod
     cdef _ArgInfo from_arg(object arg)
@@ -43,6 +46,9 @@ cdef class _ArgInfo:
 
     @staticmethod
     cdef _ArgInfo from_indexer(_carray.Indexer arg)
+
+    @staticmethod
+    cdef _ArgInfo from_memptr(memory.MemoryPointer arg)
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim)
 
@@ -91,6 +97,10 @@ concrete dtype mapping.
     @staticmethod
     cdef _Op from_type_and_routine(str typ, routine)
 
+    cpdef tuple get_in_dtypes(self)
+
+    cpdef tuple get_out_dtypes(self)
+
     # Creates an op instance parsing a dtype mapping with given error function.
     @staticmethod
     cdef _Op from_type_and_error_func(str typ, error_func)
@@ -112,7 +122,7 @@ cdef class _Ops:
     cdef _Ops from_tuples(object ops, routine)
 
     # Queries a single op from input arguments.
-    cdef _Op guess_routine(
+    cpdef _Op guess_routine(
         self, str name, dict cache, list in_args, dtype, _Ops out_ops)
 
     cdef _Op _guess_routine_from_in_types(self, tuple in_types)

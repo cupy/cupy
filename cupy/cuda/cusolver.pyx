@@ -77,7 +77,35 @@ cdef extern from 'cupy_cusolver.h' nogil:
                          const cuDoubleComplex* A, int lda,
                          cuDoubleComplex* B, int ldb, int* devInfo)
 
-    # TODO(anaruse): potrfBatched and potrsBatched
+    int cusolverDnSpotrfBatched(Handle handle, FillMode uplo, int n,
+                                float** Aarray, int lda,
+                                int* infoArray, int batchSize)
+    int cusolverDnDpotrfBatched(Handle handle, FillMode uplo, int n,
+                                double** Aarray, int lda,
+                                int* infoArray, int batchSize)
+    int cusolverDnCpotrfBatched(Handle handle, FillMode uplo, int n,
+                                cuComplex** Aarray, int lda,
+                                int* infoArray, int batchSize)
+    int cusolverDnZpotrfBatched(Handle handle, FillMode uplo, int n,
+                                cuDoubleComplex** Aarray, int lda,
+                                int* infoArray, int batchSize)
+
+    int cusolverDnSpotrsBatched(Handle handle, FillMode uplo, int n,
+                                int nrhs, float** Aarray, int lda,
+                                float** Barray, int ldb,
+                                int* devInfo, int batchSize)
+    int cusolverDnDpotrsBatched(Handle handle, FillMode uplo, int n,
+                                int nrhs, double** Aarray, int lda,
+                                double** Barray, int ldb,
+                                int* devInfo, int batchSize)
+    int cusolverDnCpotrsBatched(Handle handle, FillMode uplo, int n,
+                                int nrhs, cuComplex** Aarray, int lda,
+                                cuComplex** Barray, int ldb,
+                                int* devInfo, int batchSize)
+    int cusolverDnZpotrsBatched(Handle handle, FillMode uplo, int n,
+                                int nrhs, cuDoubleComplex** Aarray, int lda,
+                                cuDoubleComplex** Barray, int ldb,
+                                int* devInfo, int batchSize)
 
     # LU factorization
     int cusolverDnSgetrf_bufferSize(Handle handle, int m, int n,
@@ -793,6 +821,85 @@ cpdef zpotrs(intptr_t handle, int uplo, int n, int nrhs,
             <int*>devInfo)
     check_status(status)
 
+cpdef spotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
+                    size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSpotrfBatched(
+            <Handle>handle, <FillMode>uplo, n, <float**>Aarray,
+            lda, <int*>infoArray, batchSize)
+    check_status(status)
+
+cpdef dpotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
+                    size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDpotrfBatched(
+            <Handle>handle, <FillMode>uplo, n, <double**>Aarray,
+            lda, <int*>infoArray, batchSize)
+    check_status(status)
+
+cpdef cpotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
+                    size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCpotrfBatched(
+            <Handle>handle, <FillMode>uplo, n, <cuComplex**>Aarray,
+            lda, <int*>infoArray, batchSize)
+    check_status(status)
+
+cpdef zpotrfBatched(intptr_t handle, int uplo, int n, size_t Aarray, int lda,
+                    size_t infoArray, int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZpotrfBatched(
+            <Handle>handle, <FillMode>uplo, n, <cuDoubleComplex**>Aarray,
+            lda, <int*>infoArray, batchSize)
+    check_status(status)
+
+cpdef spotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
+                    int lda, size_t Barray, int ldb, size_t devInfo,
+                    int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnSpotrsBatched(
+            <Handle>handle, <FillMode>uplo, n, nrhs,
+            <float**>Aarray, lda, <float**>Barray, ldb,
+            <int*>devInfo, batchSize)
+    check_status(status)
+
+cpdef dpotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
+                    int lda, size_t Barray, int ldb, size_t devInfo,
+                    int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnDpotrsBatched(
+            <Handle>handle, <FillMode>uplo, n, nrhs,
+            <double**>Aarray, lda, <double**>Barray, ldb,
+            <int*>devInfo, batchSize)
+    check_status(status)
+
+cpdef cpotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
+                    int lda, size_t Barray, int ldb, size_t devInfo,
+                    int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnCpotrsBatched(
+            <Handle>handle, <FillMode>uplo, n, nrhs,
+            <cuComplex**>Aarray, lda, <cuComplex**>Barray, ldb,
+            <int*>devInfo, batchSize)
+    check_status(status)
+
+cpdef zpotrsBatched(intptr_t handle, int uplo, int n, int nrhs, size_t Aarray,
+                    int lda, size_t Barray, int ldb, size_t devInfo,
+                    int batchSize):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnZpotrsBatched(
+            <Handle>handle, <FillMode>uplo, n, nrhs,
+            <cuDoubleComplex**>Aarray, lda, <cuDoubleComplex**>Barray, ldb,
+            <int*>devInfo, batchSize)
+    check_status(status)
 
 # LU factorization
 cpdef int sgetrf_bufferSize(intptr_t handle, int m, int n,

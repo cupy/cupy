@@ -1524,3 +1524,33 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_stop_too_large(self, xp, sp):
         return _make(xp, sp, self.dtype)[None:4]
+
+
+# CUB SpMV works only when the matrix size is nonzero
+@testing.parameterize(*testing.product({
+    'make_method': ['_make', '_make_unordered', '_make_duplicate'],
+    'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
+}))
+@testing.with_requires('scipy')
+@testing.gpu
+@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
+class TestCUBspmv(unittest.TestCase):
+    @property
+    def make(self):
+        return globals()[self.make_method]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_dense_vector(self, xp, sp):
+        assert cupy.cuda.cub_enabled
+
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(4).astype(self.dtype)
+        if xp is numpy:
+            return m * x
+
+        # xp is cupy, first ensure we really use CUB
+        func = 'cupyx.scipy.sparse.csr.device_csrmv'
+        with testing.AssertFunctionIsCalled(func):
+            m * x
+        # ...then perform the actual computation
+        return m * x

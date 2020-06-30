@@ -503,3 +503,12 @@ class TestPythonInterface(unittest.TestCase):
     def test_bytes_tobytes_scalar(self, xp, dtype):
         x = xp.array([3], dtype).item()
         return bytes(x)
+
+
+@testing.gpu
+class TestNdarrayImplicitConversion(unittest.TestCase):
+
+    def test_array(self):
+        a = testing.shaped_arange((3, 4, 5), cupy, numpy.int64)
+        with pytest.raises(TypeError):
+            numpy.asarray(a)
