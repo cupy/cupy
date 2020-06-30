@@ -69,7 +69,7 @@ cdef class poly1d:
     def __init__(self, c_or_r, r=False, variable=None):
         if isinstance(c_or_r, numpy.poly1d):
             self._coeffs = cupy.empty(c_or_r.coeffs.shape,
-                                     c_or_r.coeffs.dtype)
+                                      c_or_r.coeffs.dtype)
             self._coeffs.set(c_or_r.coeffs)
         if isinstance(c_or_r, poly1d):
             self._coeffs = c_or_r._coeffs
