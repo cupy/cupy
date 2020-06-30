@@ -206,8 +206,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     def sort_indices(self):
         """Sorts the indices of the matrix in place."""
-        cusparse.csrsort(self)
-        self.has_sorted_indices = True
+        if not self.has_sorted_indices:
+            cusparse.csrsort(self)
+            self.has_sorted_indices = True
 
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value.
