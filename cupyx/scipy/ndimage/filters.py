@@ -690,22 +690,32 @@ def _min_or_max_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
 def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type,
                            has_weights=True, has_structure=False,
                            has_central_value=True):
+    # When there are no 'weights' (the footprint, for the 1D variants) then
+    # we need to make sure intermediate results are stored as doubles for
+    # consistent results with scipy.
+    ctype = 'X' if has_weights else 'double'
     value = '{value}'
+    if not has_weights:
+        value = 'cast<double>({})'.format(value)
+
+    # Having a non-flat structure biases the values
     if has_structure:
         value += ('-' if func == 'min' else '+') + 'cast<X>(sval)'
 
     if has_central_value:
-        pre = 'X value = x[i];'
+        pre = '{} value = x[i];'
         found = 'value = {func}({value}, value);'
     else:
         # If the central pixel is not included in the footprint we cannot
         # assume `x[i]` is not below the min or above the max and thus cannot
         # seed with that value. Instead we keep track of having set `value`.
-        pre = 'X value; bool set = false;'
+        pre = '{} value; bool set = false;'
         found = 'value = set ? {func}({value}, value) : {value}; set=true;'
+
     return _generate_nd_kernel(
-        func, pre, found.format(func=func, value=value), 'y = cast<Y>(value);',
-        mode, wshape, int_type, origins, cval,
+        func, pre.format(ctype),
+        found.format(func=func, value=value), 'y = cast<Y>(value);',
+        mode, wshape, int_type, origins, cval, ctype=ctype,
         has_weights=has_weights, has_structure=has_structure)
 
 

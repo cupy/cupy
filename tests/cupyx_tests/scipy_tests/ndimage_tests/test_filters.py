@@ -176,9 +176,6 @@ COMMON_PARAMS = {
 class TestFilter(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
-        #if (self.mode == 'constant' and self.cval < 0 and
-        #        self.dtype == numpy.uint8):
-        #    raise unittest.SkipTest("undefined behavior")
         if self.dtype == getattr(self, 'output', None):
             raise unittest.SkipTest("redundant")
         return self._filter(xp, scp)
