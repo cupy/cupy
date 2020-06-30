@@ -214,58 +214,25 @@ class TestMisc(unittest.TestCase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'mode': ['valid', 'same', 'full']
+    'mode': ['valid', 'same', 'full'],
+    'shape1': [(), (5,), (6,), (20,), (21,)],
+    'shape2': [(), (5,), (6,), (20,), (21,)],
 }))
-class TestConvolve(unittest.TestCase):
+class TestConvolveShapeCombination(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3)
     def test_convolve(self, xp, dtype):
-        a = testing.shaped_arange((100,), xp, dtype)
-        b = testing.shaped_arange((10,), xp, dtype)
+        a = testing.shaped_arange(self.shape1, xp, dtype)
+        b = testing.shaped_arange(self.shape2, xp, dtype)
         return xp.convolve(a, b, mode=self.mode)
 
-    @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-3)
-    def test_convolve_inverted_even_len(self, xp, dtype):
-        a = testing.shaped_arange((10,), xp, dtype)
-        b = testing.shaped_arange((100,), xp, dtype)
-        return xp.convolve(a, b, mode=self.mode)
 
-    @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-2)
-    def test_convolve_inverted_odd_len(self, xp, dtype):
-        a = testing.shaped_arange((15,), xp, dtype)
-        b = testing.shaped_arange((155,), xp, dtype)
-        return xp.convolve(a, b, mode=self.mode)
-
-    @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-1)
-    def test_convolve_same_length(self, xp, dtype):
-        a = testing.shaped_arange((100,), xp, dtype)
-        b = testing.shaped_arange((100,), xp, dtype)
-        return xp.convolve(a, b, mode=self.mode)
-
-    @testing.for_all_dtypes()
-    def test_convolve_empty(self, dtype):
-        for xp in (numpy, cupy):
-            a = xp.zeros((0,), dtype)
-            with pytest.raises(ValueError):
-                xp.convolve(a, a, mode=self.mode)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_convolve_zero_dim(self, xp, dtype):
-        a = testing.shaped_arange((), xp, dtype)
-        return xp.convolve(a, a, mode=self.mode)
-
-    @testing.for_all_dtypes()
-    def test_convolve_ndim(self, dtype):
-        for xp in (numpy, cupy):
-            a = testing.shaped_arange((2, 3, 4), xp, dtype)
-            b = testing.shaped_arange((10, 5), xp, dtype)
-            with pytest.raises(ValueError):
-                xp.convolve(a, b, mode=self.mode)
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'mode': ['valid', 'same', 'full']
+}))
+class TestConvolve(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
@@ -288,3 +255,25 @@ class TestConvolve(unittest.TestCase):
         a = testing.shaped_arange((200,), xp, dtype1)
         b = testing.shaped_arange((100,), xp, dtype2)
         return xp.convolve(a, b, mode=self.mode)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'mode': ['valid', 'same', 'full']
+}))
+class TestConvolveInvalid(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_convolve_empty(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.zeros((0,), dtype)
+            with pytest.raises(ValueError):
+                xp.convolve(a, a, mode=self.mode)
+
+    @testing.for_all_dtypes()
+    def test_convolve_ndim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp, dtype)
+            b = testing.shaped_arange((10, 5), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.convolve(a, b, mode=self.mode)
