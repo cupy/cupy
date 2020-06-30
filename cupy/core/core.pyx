@@ -107,7 +107,7 @@ cdef class ndarray:
         # `strides` is prioritized over `order`, but invalid `order` should be
         # checked even if `strides` is given.
         if order_char != b'C' and order_char != b'F':
-            raise TypeError('order not understood. order=%s' % order)
+            raise ValueError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
         self._shape.reserve(len(s))

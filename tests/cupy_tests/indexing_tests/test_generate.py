@@ -156,11 +156,12 @@ class TestUnravelIndex(unittest.TestCase):
         a = xp.minimum(a, 6 * 4 - 1)
         return xp.unravel_index(a, (6, 4), order=order)
 
+    @testing.with_requires('numpy>=1.19')
     @testing.for_int_dtypes()
     def test_invalid_order(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((4, 3, 2), xp, dtype)
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 xp.unravel_index(a, (6, 4), order='V')
 
     @testing.for_orders(['C', 'F', None])
@@ -257,12 +258,13 @@ class TestRavelMultiIndex(unittest.TestCase):
             with pytest.raises(ValueError):
                 xp.ravel_multi_index(a, dims, order=order)
 
+    @testing.with_requires('numpy>=1.19')
     @testing.for_int_dtypes(no_bool=True)
     def test_invalid_order(self, dtype):
         for xp in (numpy, cupy):
             dims = (8, 4)
             a = tuple([xp.arange(min(dims), dtype=dtype) for d in dims])
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 xp.ravel_multi_index(a, dims, order='V')
 
     @testing.for_orders(['C', 'F', None])
