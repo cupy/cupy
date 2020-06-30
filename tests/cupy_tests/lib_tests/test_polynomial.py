@@ -153,13 +153,23 @@ class TestPoly1d(unittest.TestCase):
         b2 = numpy.poly1d(a2)
         assert b1 == b2
 
+    @testing.for_all_dtypes()
+    def test_poly1d_get3(self, dtype):
+        arr = testing.shaped_arange((5,), cupy, dtype)
+        out = numpy.poly1d(numpy.empty((5,), dtype))
+        cupy.poly1d(arr, variable='z').get(out=out)
+        a = testing.shaped_arange((5,), numpy, dtype)
+        b = numpy.poly1d(a, variable='z')
+        assert out == b
+
     @testing.for_all_dtypes(no_bool=True)
     def test_poly1d_set(self, dtype):
         arr1 = testing.shaped_arange((10,), cupy, dtype)
         arr2 = numpy.ones(10, dtype=dtype)
         a = cupy.poly1d(arr1)
-        b = numpy.poly1d(arr2)
+        b = numpy.poly1d(arr2, variable='z')
         a.set(b)
+        assert a.variable == b.variable
         testing.assert_array_equal(a.coeffs, b.coeffs)
 
     @testing.for_all_dtypes()

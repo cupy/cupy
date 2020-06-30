@@ -217,6 +217,7 @@ cdef class poly1d:
                 raise TypeError('Only numpy.poly1d can be obtained from '
                                 'cupy.poly1d')
             self.coeffs.get(stream=stream, out=out.coeffs)
+            out._variable = self.variable
             return out
         return numpy.poly1d(self.coeffs.get(stream=stream),
                             variable=self.variable)
@@ -233,4 +234,5 @@ cdef class poly1d:
         """
         if not isinstance(polyin, numpy.poly1d):
             raise TypeError('Only numpy.poly1d can be set to cupy.poly1d')
+        self._variable = polyin.variable
         self.coeffs.set(polyin.coeffs, stream)
