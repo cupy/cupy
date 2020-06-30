@@ -14,7 +14,7 @@ from cupy import testing
 @testing.gpu
 class TestPoly1dInit(unittest.TestCase):
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_poly1d_numpy_array(self, xp, dtype):
         a = numpy.arange(5, dtype=dtype)
@@ -27,6 +27,12 @@ class TestPoly1dInit(unittest.TestCase):
     def test_poly1d_cupy_array(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         out = xp.poly1d(a, variable=self.variable)
+        assert out.variable == (self.variable or 'x')
+        return out.coeffs
+
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_list(self, xp):
+        out = xp.poly1d([1, 2, 3, 4], variable=self.variable)
         assert out.variable == (self.variable or 'x')
         return out.coeffs
 
