@@ -67,22 +67,16 @@ cdef class poly1d:
         return self.order
 
     def __init__(self, c_or_r, r=False, variable=None):
-        if isinstance(c_or_r, numpy.poly1d):
-            self._coeffs = cupy.asarray(c_or_r.coeffs)
-        if isinstance(c_or_r, poly1d):
-            self._coeffs = c_or_r._coeffs
         if isinstance(c_or_r, (numpy.poly1d, poly1d)):
+            self._coeffs = cupy.asarray(c_or_r.coeffs)
             self._variable = c_or_r._variable
             if variable is not None:
                 self._variable = variable
             return
-        if isinstance(c_or_r, (numpy.ndarray, list)):
-            c_or_r = cupy.asarray(c_or_r)
         # TODO(Dahlia-Chehata): if r: c_or_r = poly(c_or_r)
         if r:
             raise NotImplementedError
-        if c_or_r.ndim < 1:
-            c_or_r = cupy.atleast_1d(c_or_r)
+        c_or_r = cupy.atleast_1d(c_or_r)
         if c_or_r.ndim > 1:
             raise ValueError('Polynomial must be 1d only.')
         c_or_r = cupy.trim_zeros(c_or_r, trim='f')
@@ -222,16 +216,7 @@ cdef class poly1d:
             if not isinstance(out, numpy.poly1d):
                 raise TypeError('Only numpy.poly1d can be obtained from '
                                 'cupy.poly1d')
-            if self.coeffs.dtype != out.coeffs.dtype:
-                raise TypeError(
-                    '{} poly1d cannot be obtained from {} poly1d'.format(
-                        out.coeffs.dtype, self.coeffs.dtype))
-            if self.coeffs.shape != out.coeffs.shape:
-                raise ValueError(
-                    'Shape mismatch. Expected shape: {}, '
-                    'actual shape: {}'.format(self.coeffs.shape,
-                                              out.coeffs.shape))
-            out.coeffs = self.coeffs.get()
+            self.coeffs.get(stream=stream, out=out.coeffs)
             return out
         return numpy.poly1d(self.coeffs.get(stream=stream),
                             variable=self.variable)
