@@ -98,9 +98,13 @@ class TestIndexing(unittest.TestCase):
         self._run(rand_bool)
 
     def test_major_slice_with_step(self):
+
+        # positive step
         self._run(slice(1, 10, 2))
         self._run(slice(2, 10, 5))
         self._run(slice(0, 10, 10))
+
+        # negative step
         self._run(slice(10, 1, 2))
         self._run(slice(10, 2, 5))
         self._run(slice(10, 0, 10))
