@@ -129,7 +129,7 @@ class TestCorrelate(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(
         names=['dtype1', 'dtype2'])
-    @testing.numpy_cupy_allclose(rtol=1e-3)
+    @testing.numpy_cupy_allclose(rtol=1e-2)
     def test_correlate_diff_types(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((200,), xp, dtype1)
         b = testing.shaped_arange((100,), xp, dtype2)

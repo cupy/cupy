@@ -65,13 +65,13 @@ def correlate(a, v, mode='valid'):
     """
     if a.ndim != 1 or v.ndim != 1:
         raise ValueError('object too deep for desired array')
+    # choose_conv_method does not choose from the values in
+    # the input array, so no need to apply conj.
     method = cupyx.scipy.signal.choose_conv_method(a, v, mode)
     if method == 'direct':
-        v = v.conj()
-        out = cupy.math.misc._dot_convolve(a, v[::-1], mode)
+        out = cupy.math.misc._dot_convolve(a, v.conj()[::-1], mode)
     elif method == 'fft':
-        conj_v = cupy.conj(v[::-1])
-        out = cupy.math.misc._fft_convolve(a, conj_v, mode)
+        out = cupy.math.misc._fft_convolve(a, v.conj()[::-1], mode)
     else:
         raise ValueError('Unsupported method')
     return out
