@@ -4,6 +4,7 @@ import warnings
 import numpy
 
 import cupy
+import cupyx
 from cupy import core
 
 
@@ -48,7 +49,33 @@ def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None):
     return out
 
 
-# TODO(okuta): Implement correlate
+def correlate(a, v, mode='valid'):
+    """Returns the cross-correlation of two 1-dimensional sequences.
+
+    Args:
+        a (cupy.ndarray): first 1-dimensional input.
+        v (cupy.ndarray): second 1-dimensional input.
+        mode (str, optional): `valid`, `same`, `full`
+
+    Returns:
+        cupy.ndarray: Discrete cross-correlation of a and v.
+
+    .. seealso:: :func:`numpy.correlate`
+
+    """
+    if a.ndim != 1 or v.ndim != 1:
+        raise ValueError('object too deep for desired array')
+    conj_v = cupy.conj(v[::-1])
+    method = cupyx.scipy.signal.choose_conv_method(a, conj_v, mode)
+    if method == 'direct':
+        if cupy.iscomplexobj(v):
+            v = cupy.conj(v)
+        out = cupy.math.misc._dot_convolve(a, v[::-1], mode)
+    elif method == 'fft':
+        out = cupy.math.misc._fft_convolve(a, conj_v, mode)
+    else:
+        raise ValueError('Unsupported method')
+    return out
 
 
 def cov(a, y=None, rowvar=True, bias=False, ddof=None):
