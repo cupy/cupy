@@ -496,12 +496,23 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
 
 _kron_indices_kern = core.ElementwiseKernel(
     'raw T A_vec, T A_nnz, raw U B_vec, U B_nnz, int64 B_size',
-    'raw V out_vec',  # assuming i = 0 to A_nnz * B_nnz - 1
+    'raw V out_vec',
     '''
-    T x = i / B_nnz;
-    U y = i % B_nnz;
-    out_vec[i] = A_vec[x] * B_size + B_vec[y];
-    ''', 'kron_indices', return_tuple=True, no_return=True)
+    for (T x = 0; x < A_nnz; x++) {
+        V idx = x * B_nnz + i;
+        out_vec[idx] = A_vec[x] * B_size + B_vec[i];
+    }
+    ''', 'kron_indices', no_return=True)
+
+_kron_data_kern = core.ElementwiseKernel(
+    'raw T A_vec, int32 A_nnz, raw U B_vec, int32 B_nnz',
+    'raw V out_vec',
+    '''
+    for (int x = 0; x < A_nnz; x++) {
+        int idx = x * B_nnz + i;
+        out_vec[idx] = A_vec[x] * B_vec[i];
+    }
+    ''', 'kron_data', no_return=True)
 
 
 def kron(A, B, format=None):
@@ -525,12 +536,9 @@ def kron(A, B, format=None):
         dtype = cupy.int32
     row = cupy.empty((A.nnz * B.nnz,), dtype=dtype)
     col = cupy.empty((A.nnz * B.nnz,), dtype=dtype)
-    _kron_indices_kern(A.row, A.nnz, B.row, B.nnz, B.shape[0], row, size=A.nnz*B.nnz)
-    _kron_indices_kern(A.col, A.nnz, B.col, B.nnz, B.shape[1], col, size=A.nnz*B.nnz)
-
-    # compute block entries
-    data = A.data.repeat(B.nnz)  # data's dtype follows that of A in SciPy
-    data = data.reshape(-1, B.nnz) * B.data
-    data = data.ravel()
+    data = cupy.empty((A.nnz * B.nnz,), dtype=A.dtype)
+    _kron_indices_kern(A.row, A.nnz, B.row, B.nnz, B.shape[0], row, size=B.nnz)
+    _kron_indices_kern(A.col, A.nnz, B.col, B.nnz, B.shape[1], col, size=B.nnz)
+    _kron_data_kern(A.data, A.nnz, B.data, B.nnz, data, size=B.nnz)
 
     return coo.coo_matrix((data, (row, col)), shape=out_shape).asformat(format)
