@@ -179,21 +179,23 @@ get_csr_submatrix_degree_ker = core.RawKernel("""
 
         // Get the index of the thread
         int i = blockIdx.x * blockDim.x + threadIdx.x;
-        
-        if(i >= (ir1-ir0)) return;
-        
-        const int row_start = Ap[ir0+i];
-        const int row_end = Ap[ir0+i+1];
 
-        int row_count = 0;
-        for(int jj = row_start; jj < row_end; jj++) {
-            int col = Aj[jj];
-            if((col >= ic0) && (col < ic1))
-                row_count++;
+        if(i < (ir1-ir0)) {
+                
+        
+            const int row_start = Ap[ir0+i];
+            const int row_end = Ap[ir0+i+1];
+    
+            int row_count = 0;
+            for(int jj = row_start; jj < row_end; jj++) {
+                int col = Aj[jj];
+                if((col >= ic0) && (col < ic1))
+                    row_count++;
+            }
+    
+            if(row_count > 0)
+                Bp[i+1] = row_count;
         }
-
-        if(row_count > 0)
-            Bp[i+1] = row_count;
     }
 """, "get_csr_submatrix_degree_kernel")
 
@@ -226,20 +228,22 @@ get_csr_submatrix_cols_data_ker = core.RawKernel("""
 
         // Get the index of the thread
         int i = blockIdx.x * blockDim.x + threadIdx.x;
-        
-        if(i > (ir1-ir0)) return;
 
-        int row_start = Ap[ir0+i];
-        int row_end   = Ap[ir0+i+1];
-
-        int kk = Bp[i];
-        
-        for(int jj = row_start; jj < row_end; jj++) {
-            int col = Aj[jj];
-            if ((col >= ic0) && (col < ic1)) {
-                Bj[kk] = col - ic0;
-                Bx[kk] = Ax[jj];
-                kk++;
+        if(i < (ir1-ir0)) {
+                
+    
+            int row_start = Ap[ir0+i];
+            int row_end   = Ap[ir0+i+1];
+    
+            int kk = Bp[i];
+            
+            for(int jj = row_start; jj < row_end; jj++) {
+                int col = Aj[jj];
+                if ((col >= ic0) && (col < ic1)) {
+                    Bj[kk] = col - ic0;
+                    Bx[kk] = Ax[jj];
+                    kk++;
+                }
             }
         }
     }
