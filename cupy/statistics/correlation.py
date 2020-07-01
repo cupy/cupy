@@ -65,13 +65,12 @@ def correlate(a, v, mode='valid'):
     """
     if a.ndim != 1 or v.ndim != 1:
         raise ValueError('object too deep for desired array')
-    conj_v = cupy.conj(v[::-1])
-    method = cupyx.scipy.signal.choose_conv_method(a, conj_v, mode)
+    method = cupyx.scipy.signal.choose_conv_method(a, v, mode)
     if method == 'direct':
-        if cupy.iscomplexobj(v):
-            v = cupy.conj(v)
+        v = v.conj()
         out = cupy.math.misc._dot_convolve(a, v[::-1], mode)
     elif method == 'fft':
+        conj_v = cupy.conj(v[::-1])
         out = cupy.math.misc._fft_convolve(a, conj_v, mode)
     else:
         raise ValueError('Unsupported method')

@@ -58,7 +58,7 @@ def _fft_convolve(a1, a2, mode):
     offset = 0
     if a1.size < a2.size:
         a1, a2 = a2, a1
-        offset = a2.size % 2 == 0
+        offset = 1 - a2.size % 2
 
     if a1.dtype.kind == 'c' or a2.dtype.kind == 'c':
         fft, ifft = cupy.fft.fft, cupy.fft.ifft
@@ -98,7 +98,7 @@ def _dot_convolve(a1, a2, mode):
     offset = 0
     if a1.size < a2.size:
         a1, a2 = a2, a1
-        offset = a2.size % 2 == 0
+        offset = 1 - a2.size % 2
 
     dtype = cupy.result_type(a1, a2)
     n1, n2 = a1.size, a2.size
