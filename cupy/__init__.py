@@ -646,6 +646,7 @@ from cupy.math.misc import nan_to_num  # NOQA
 from cupy.math.misc import sign  # NOQA
 from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
+from cupy.math.misc import convolve  # NOQA
 
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
