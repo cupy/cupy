@@ -494,25 +494,19 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
     return dia.dia_matrix((data_arr, offsets), shape=(m, n)).asformat(format)
 
 
-_kron_indices_kern = core.ElementwiseKernel(
-    'raw T A_vec, T A_nnz, raw U B_vec, U B_nnz, int64 B_size',
-    'raw V out_vec',
+_kron_kern = core.ElementwiseKernel(
+    'raw T A_row, raw T A_col, raw X A_data, T A_nnz, '
+    'raw U B_row, raw U B_col, raw Y B_data, U B_nnz, '
+    'U B_nrows, U B_ncols',
+    'raw V row, raw V col, raw Z data',
     '''
     for (T x = 0; x < A_nnz; x++) {
         V idx = x * B_nnz + i;
-        out_vec[idx] = A_vec[x] * B_size + B_vec[i];
+        row[idx] = A_row[x] * B_nrows + B_row[i];
+        col[idx] = A_col[x] * B_ncols + B_col[i];
+        data[idx] = A_data[x] * B_data[i];
     }
-    ''', 'kron_indices', no_return=True)
-
-_kron_data_kern = core.ElementwiseKernel(
-    'raw T A_vec, int32 A_nnz, raw U B_vec, int32 B_nnz',
-    'raw V out_vec',
-    '''
-    for (int x = 0; x < A_nnz; x++) {
-        int idx = x * B_nnz + i;
-        out_vec[idx] = A_vec[x] * B_vec[i];
-    }
-    ''', 'kron_data', no_return=True)
+    ''', 'kron', no_return=True)
 
 
 def kron(A, B, format=None):
@@ -529,7 +523,6 @@ def kron(A, B, format=None):
         # kronecker product is the zero matrix
         return coo.coo_matrix(out_shape)
 
-    # expand entries of a into blocks
     if max(out_shape[0], out_shape[1]) > cupy.iinfo('int32').max:
         dtype = cupy.int64
     else:
@@ -537,8 +530,11 @@ def kron(A, B, format=None):
     row = cupy.empty((A.nnz * B.nnz,), dtype=dtype)
     col = cupy.empty((A.nnz * B.nnz,), dtype=dtype)
     data = cupy.empty((A.nnz * B.nnz,), dtype=A.dtype)
-    _kron_indices_kern(A.row, A.nnz, B.row, B.nnz, B.shape[0], row, size=B.nnz)
-    _kron_indices_kern(A.col, A.nnz, B.col, B.nnz, B.shape[1], col, size=B.nnz)
-    _kron_data_kern(A.data, A.nnz, B.data, B.nnz, data, size=B.nnz)
+
+    _kron_kern(A.row, A.col, A.data, A.nnz,
+               B.row, B.col, B.data, B.nnz,
+               B.shape[0], B.shape[1],
+               row, col, data,  # outputs
+               size=B.nnz)
 
     return coo.coo_matrix((data, (row, col)), shape=out_shape).asformat(format)
