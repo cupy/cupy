@@ -10,7 +10,7 @@ from cupy import util
 class _PerfCaseResult(object):
     def __init__(self, name, ts, devices):
         assert ts.ndim == 2
-        assert ts.shape[0] >= 2
+        assert ts.shape[0] == len(devices) + 1
         assert ts.shape[1] > 0
         self.name = name
         self._ts = ts
@@ -102,7 +102,7 @@ def _repeat(
         event.synchronize()
 
     cpu_times = []
-    gpu_times = [[] for i in range(len(events_1))]
+    gpu_times = [[] for i in events_1]
     duration = 0
     for i in range(n_repeat):
         for event, device in zip(events_1, devices):
@@ -123,11 +123,9 @@ def _repeat(
         for event, device in zip(events_2, devices):
             with cupy.cuda.Device(device):
                 event.synchronize()
-        i = 0
-        for ev1, ev2 in zip(events_1, events_2):
+        for i, (ev1, ev2) in enumerate(zip(events_1, events_2)):
             gpu_time = cupy.cuda.get_elapsed_time(ev1, ev2) * 1e-3
             gpu_times[i].append(gpu_time)
-            i += 1
 
         duration += time.perf_counter() - t1
         if duration > max_duration:
