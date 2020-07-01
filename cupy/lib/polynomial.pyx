@@ -207,8 +207,9 @@ cdef class poly1d:
             self.coeffs.get(stream=stream, out=out.coeffs)
             out._variable = self.variable
             return out
-        return numpy.poly1d(self.coeffs.get(stream=stream),
-                            variable=self.variable)
+        else:
+            return numpy.poly1d(self.coeffs.get(stream=stream),
+                                variable=self.variable)
 
     cpdef set(self, polyin, stream=None):
         """Copies a poly1d object on the host memory to :class:`cupy.poly1d`.

@@ -161,7 +161,6 @@ class TestPoly1d(unittest.TestCase):
         b1.get(out=out)
         a2 = testing.shaped_arange((5,), numpy, dtype)
         b2 = numpy.poly1d(a2, variable='z')
-        assert out.variable == b2.variable
         assert out == b2
 
     @testing.for_all_dtypes(no_bool=True)
