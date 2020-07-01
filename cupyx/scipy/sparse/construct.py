@@ -494,29 +494,14 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
     return dia.dia_matrix((data_arr, offsets), shape=(m, n)).asformat(format)
 
 
-#_kron_indices_kern = core.ElementwiseKernel(
-#    'raw T A_vec, T A_nnz, raw U B_vec, U B_nnz',
-#    'raw V out_vec',  # assuming max(i) = max(A_nnz, B_nnz) - 1
-#    '''
-#    if (A_nnz == _ind.size()) {
-#        T Avec = A_vec[i];
-#        for (V idx = i; idx += A_nnz; idx < A_nnz * B_nnz) {
-#            out_vec[idx] = Avec * B_nnz;
-#        }
-#    } else {
-#        for (V idx = i; idx += A_nnz; idx < A_nnz * B_nnz) {
-#            out_vec[idx] = A * B_nnz;
-#        }
-#    }
-#
-#    if (B_nnz != _ind.size()) {
-#        for (V idx = i; idx += A_nnz; idx < B_nnz) {
-#            out_vec[idx] += B_vec[idx];
-#        }
-#    } else {
-#        out_vec[i] += B_vec[i];
-#    }
-#    ''', 'kron_indices', return_tuple=True, no_return=True)
+_kron_indices_kern = core.ElementwiseKernel(
+    'raw T A_vec, T A_nnz, raw U B_vec, U B_nnz, int64 B_size',
+    'raw V out_vec',  # assuming i = 0 to A_nnz * B_nnz - 1
+    '''
+    T x = i / B_nnz;
+    U y = i % B_nnz;
+    out_vec[i] = A_vec[x] * B_size + B_vec[y];
+    ''', 'kron_indices', return_tuple=True, no_return=True)
 
 
 def kron(A, B, format=None):
@@ -538,16 +523,10 @@ def kron(A, B, format=None):
         dtype = cupy.int64
     else:
         dtype = cupy.int32
-    row = A.row.astype(dtype, copy=True) * B.shape[0]
-    row = row.repeat(B.nnz)
-    col = A.col.astype(dtype, copy=True) * B.shape[1]
-    col = col.repeat(B.nnz)
-
-    # increment block indices
-    row, col = row.reshape(-1, B.nnz), col.reshape(-1, B.nnz)
-    row += B.row
-    col += B.col
-    row, col = row.ravel(), col.ravel()
+    row = cupy.empty((A.nnz * B.nnz,), dtype=dtype)
+    col = cupy.empty((A.nnz * B.nnz,), dtype=dtype)
+    _kron_indices_kern(A.row, A.nnz, B.row, B.nnz, B.shape[0], row, size=A.nnz*B.nnz)
+    _kron_indices_kern(A.col, A.nnz, B.col, B.nnz, B.shape[1], col, size=A.nnz*B.nnz)
 
     # compute block entries
     data = A.data.repeat(B.nnz)  # data's dtype follows that of A in SciPy
