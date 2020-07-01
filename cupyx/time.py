@@ -8,12 +8,13 @@ from cupy import util
 
 
 class _PerfCaseResult(object):
-    def __init__(self, name, ts):
+    def __init__(self, name, ts, devices=None):
         assert ts.ndim == 2
-        assert ts.shape[0] == 2
+        assert ts.shape[0] >= 2
         assert ts.shape[1] > 0
         self.name = name
         self._ts = ts
+        self._devices = devices
 
     @property
     def cpu_times(self):
@@ -21,7 +22,7 @@ class _PerfCaseResult(object):
 
     @property
     def gpu_times(self):
-        return self._ts[1]
+        return self._ts[1:]
 
     @staticmethod
     def _to_str_per_item(device_name, t):
@@ -38,7 +39,13 @@ class _PerfCaseResult(object):
     def to_str(self, show_gpu=False):
         results = [self._to_str_per_item('CPU', self._ts[0])]
         if show_gpu:
-            results.append(self._to_str_per_item('GPU', self._ts[1]))
+            if self._devices is None:
+                results.append(self._to_str_per_item('GPU', self._ts[1]))
+            else:
+                for i, d in enumerate(self._devices):
+                    results.append(
+                        self._to_str_per_item('GPU-{}'.format(d),
+                                              self._ts[1 + i]))
         return '{:<20s}:{}'.format(self.name, ' '.join(results))
 
     def __str__(self):
@@ -47,7 +54,8 @@ class _PerfCaseResult(object):
 
 def repeat(
         func, args=(), kwargs={}, n_repeat=10000, *,
-        name=None, n_warmup=10, max_duration=math.inf):
+        name=None, n_warmup=10, max_duration=math.inf, devices=None):
+
     util.experimental('cupyx.time.repeat')
     if name is None:
         name = func.__name__
@@ -64,6 +72,17 @@ def repeat(
         raise ValueError('`str` should be a string.')
     if not isinstance(n_warmup, int):
         raise ValueError('`n_warmup` should be an integer.')
+
+    if devices is None:
+        return _repeat_single_device(
+            func, args, kwargs, n_repeat, name, n_warmup, max_duration)
+
+    return _repeat_multi_device(
+        func, args, kwargs, n_repeat, name, n_warmup, max_duration, devices)
+
+
+def _repeat_single_device(
+        func, args, kwargs, n_repeat, name, n_warmup, max_duration):
 
     ev1 = cupy.cuda.stream.Event()
     ev2 = cupy.cuda.stream.Event()
@@ -97,3 +116,61 @@ def repeat(
 
     ts = numpy.asarray([cpu_times, gpu_times], dtype=numpy.float64)
     return _PerfCaseResult(name, ts)
+
+
+def _repeat_multi_device(
+        func, args, kwargs, n_repeat, name, n_warmup, max_duration, devices):
+
+    events_1 = []
+    events_2 = []
+
+    for i in devices:
+        with cupy.cuda.Device(i):
+            events_1.append(cupy.cuda.stream.Event())
+            events_2.append(cupy.cuda.stream.Event())
+
+    ev1 = cupy.cuda.stream.Event()
+    ev2 = cupy.cuda.stream.Event()
+
+    for i in range(n_warmup):
+        func(*args, **kwargs)
+
+    for event, device in zip(events_1, devices):
+        with cupy.cuda.Device(device):
+            event.record()
+        event.synchronize()
+
+    cpu_times = []
+    gpu_times = [[] for i in range(len(events_1))]
+    duration = 0
+    for i in range(n_repeat):
+        for event, device in zip(events_1, devices):
+            with cupy.cuda.Device(device):
+                event.record()
+
+        t1 = time.perf_counter()
+
+        func(*args, **kwargs)
+
+        t2 = time.perf_counter()
+        cpu_time = t2 - t1
+        cpu_times.append(cpu_time)
+
+        for event, device in zip(events_2, devices):
+            with cupy.cuda.Device(device):
+                event.record()
+        for event, device in zip(events_2, devices):
+            with cupy.cuda.Device(device):
+                event.synchronize()
+        i = 0
+        for ev1, ev2 in zip(events_1, events_2):
+            gpu_time = cupy.cuda.get_elapsed_time(ev1, ev2) * 1e-3
+            gpu_times[i].append(gpu_time)
+            i += 1
+
+        duration += time.perf_counter() - t1
+        if duration > max_duration:
+            break
+
+    ts = numpy.asarray([cpu_times] + gpu_times, dtype=numpy.float64)
+    return _PerfCaseResult(name, ts, devices=devices)
