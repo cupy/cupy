@@ -1,11 +1,4 @@
 import unittest
-import numpy
-
-try:
-    import scipy.sparse
-    scipy_available = True
-except ImportError:
-    scipy_available = False
 
 import cupy
 from cupy import testing

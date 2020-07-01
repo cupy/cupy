@@ -564,8 +564,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         res_data = cupy.empty(nnz, dtype=self.dtype)
 
         csr_column_index2(len(res_indptr)-1, col_order, col_offsets,
-                          len(self.indices), self.indptr, self.indices, self.data,
-                          res_indptr, res_indices, res_data)
+                          len(self.indices), self.indptr, self.indices,
+                          self.data, res_indptr, res_indices, res_data)
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
 

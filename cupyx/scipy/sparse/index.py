@@ -30,11 +30,13 @@ def _broadcast_arrays(a, b):
 
 bin_col_offsets_ker = core.RawKernel("""
     extern "C" __global__
-    void bin_col_offsets_ker_str(int n_idx, int *col_idxs, int *col_offsets) {
-                                  
+    void bin_col_offsets_ker_str(int n_idx,
+                                 int *col_idxs,
+                                 int *col_offsets) {
+
         // Get the index of the thread
         int jj = blockIdx.x * blockDim.x + threadIdx.x;
-        
+
         if(jj < n_idx) {
             const int j = col_idxs[jj];
             col_offsets[j]++;
@@ -50,22 +52,22 @@ def bin_col_offsets(n_idx, col_ids, col_offsets, tpb=32):
 
 csr_column_index1_ker = core.RawKernel("""
     extern "C" __global__
-    void csr_column_index1_ker_str(int n_row, 
+    void csr_column_index1_ker_str(int n_row,
                                    int *col_offsets,
                                    int *Ap,
                                    int *Aj,
                                    int *Bp) {
-                                
+
         // Get the index of the thread
         int i = blockIdx.x * blockDim.x + threadIdx.x;
-        
+
         if(i < n_row) {
 
             int new_col_size = 0;
-            
+
             for(int jj = Ap[i]; jj < Ap[i+1]; jj++)
                 new_col_size += col_offsets[Aj[jj]];
-            
+
             Bp[i+1] = new_col_size;
         }
 }
@@ -74,11 +76,12 @@ csr_column_index1_ker = core.RawKernel("""
 
 def csr_column_index1_degree(n_row, col_offsets, Ap, Aj, Bp, tpb=32):
     grid = math.ceil(n_row / tpb)
-    csr_column_index1_ker((grid,), (tpb,), (n_row, col_offsets, Ap, Aj, Bp))
+    csr_column_index1_ker((grid,), (tpb,),
+                          (n_row, col_offsets, Ap, Aj, Bp))
 
 
 def csr_column_index1(n_idx, col_idxs, n_row, n_col,
-                          indptr, indices, offsets, new_indptr):
+                      indptr, indices, offsets, new_indptr):
     bin_col_offsets(n_idx, col_idxs, offsets)
     csr_column_index1_degree(n_row, offsets, indptr, indices, new_indptr)
 
@@ -97,20 +100,20 @@ get_csr_index2_ker = core.RawKernel("""
                                 int *Bp,
                                 int *Bj,
                                 float *Bx) {
-                                
+
     // Get the index of the thread
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if(i < n_row) {
 
         int n = Bp[i];
-        
-        // loop through columns in current row        
+
+        // loop through columns in current row
         for(int jj = Ap[i]; jj < Ap[i+1]; jj++) {
             const int col = Aj[jj];  // current column
             const int offset = col_offsets[col];
             const int prev_offset = col == 0 ? 0 : col_offsets[col-1];
-            
+
             // if current column is in the indices,
             // add it along with any potential duplicates
             if (offset != prev_offset) {
@@ -130,8 +133,9 @@ get_csr_index2_ker = core.RawKernel("""
 def csr_column_index2(out_rows, col_order, col_offsets, nnz,
                       Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
     grid = math.ceil(out_rows / tpb)
-    get_csr_index2_ker((grid,), (tpb,), (col_order, col_offsets,
-                                         Ap, Aj, Ax, len(Ap)-1, Bp, Bj, Bx))
+    get_csr_index2_ker((grid,), (tpb,),
+                       (col_order, col_offsets,
+                        Ap, Aj, Ax, len(Ap)-1, Bp, Bj, Bx))
 
     cupy.cuda.Stream.null.synchronize()
 
@@ -147,26 +151,17 @@ def get_csr_submatrix(indptr, indices, data,
                              start_min, stop_min,
                              new_indptr)
 
-    cupy.cuda.Stream.null.synchronize()
-
     cupy.cumsum(new_indptr, out=new_indptr)
-
-    cupy.cuda.Stream.null.synchronize()
-
     new_nnz = new_indptr[-1].item()
 
     new_indices = cupy.zeros(new_nnz, dtype=indices.dtype)
     new_data = cupy.zeros(new_nnz, dtype=data.dtype)
-
-    cupy.cuda.Stream.null.synchronize()
 
     if new_nnz > 0:
         get_csr_submatrix_cols_data(indptr, indices, data,
                                     start_maj, stop_maj,
                                     start_min, stop_min,
                                     new_indptr, new_indices, new_data)
-
-    cupy.cuda.Stream.null.synchronize()
 
     return new_indptr, new_indices, new_data
 
@@ -185,18 +180,17 @@ get_csr_submatrix_degree_ker = core.RawKernel("""
         int i = blockIdx.x * blockDim.x + threadIdx.x;
 
         if(i < (ir1-ir0)) {
-                
-        
+
             const int row_start = Ap[ir0+i];
             const int row_end = Ap[ir0+i+1];
-    
+
             int row_count = 0;
             for(int jj = row_start; jj < row_end; jj++) {
                 int col = Aj[jj];
                 if((col >= ic0) && (col < ic1))
                     row_count++;
             }
-    
+
             if(row_count > 0)
                 Bp[i+1] = row_count;
         }
@@ -206,7 +200,6 @@ get_csr_submatrix_degree_ker = core.RawKernel("""
 
 def get_csr_submatrix_degree(Ap, Aj, ir0, ir1,
                              ic0, ic1, Bp, tpb=32):
-
     """
     Invokes get_csr_submatrix_degree_ker with the given inputs
     """
@@ -234,13 +227,13 @@ get_csr_submatrix_cols_data_ker = core.RawKernel("""
         int i = blockIdx.x * blockDim.x + threadIdx.x;
 
         if(i < (ir1-ir0)) {
-                
-    
+
+
             int row_start = Ap[ir0+i];
             int row_end   = Ap[ir0+i+1];
-    
+
             int kk = Bp[i];
-            
+
             for(int jj = row_start; jj < row_end; jj++) {
                 int col = Aj[jj];
                 if ((col >= ic0) && (col < ic1)) {
@@ -278,18 +271,18 @@ csr_row_index_ker = core.RawKernel("""
                                const int *Bp,
                                int *Bj,
                                float *Bx) {
-                               
+
         // Get the index of the thread
         int i = blockIdx.x * blockDim.x + threadIdx.x;
-        
+
         if(i < n_row_idx) {
-        
+
             int row = rows[i];
             int row_start = Ap[row];
             int row_end = Ap[row+1];
-            
+
             int out_row_idx = Bp[i];
-    
+
             // Copy columns
             for(int j = row_start; j < row_end; j++) {
                 Bj[out_row_idx] = Aj[j];
@@ -334,12 +327,12 @@ csr_sample_values_kern = core.RawKernel("""
                                 const float *Ax,
                                 const int n_samples,
                                 const int *Bi,
-                                const int *Bj, 
+                                const int *Bj,
                                 float *Bx) {
-                               
+
         // Get the index of the thread
         int n = blockIdx.x * blockDim.x + threadIdx.x;
-        
+
         if(n < n_samples) {
             const int i = Bi[n] < 0 ? Bi[n] + n_row : Bi[n]; // sample row
             const int j = Bj[n] < 0 ? Bj[n] + n_col : Bj[n]; // sample column
@@ -349,8 +342,7 @@ csr_sample_values_kern = core.RawKernel("""
 
             float x = 0;
 
-            for(int jj = row_start; jj < row_end; jj++)
-            {
+            for(int jj = row_start; jj < row_end; jj++) {
                 if (Aj[jj] == j)
                     x += Ax[jj];
             }
@@ -369,44 +361,44 @@ csr_row_slice_kern = core.RawKernel("""
                             const int *Ap,
                             const int *Aj,
                             const float *Ax,
-                            const int *Bp, 
+                            const int *Bp,
                             int *Bj,
                             float *Bx) {
-                               
+
         // Get the index of the thread
         int out_row = blockIdx.x * blockDim.x + threadIdx.x;
-        
+
         if (step > 0) {
-        
+
 
             int in_row = out_row*step + start;
             if(in_row < stop) {
-            
+
                 int out_row_offset = Bp[out_row];
-            
+
                 const int row_start = Ap[in_row];
                 const int row_end   = Ap[in_row+1];
-                
+
                 for(int jj = row_start; jj < row_end; jj++) {
                     Bj[out_row_offset] = Aj[jj];
                     Bx[out_row_offset] = Ax[jj];
                     out_row_offset++;
                 }
             }
-        
+
         } else {
             int in_row = out_row*step + start;
             if(in_row > stop) {
-            
+
                 int out_row_offset = Bp[out_row];
-            
+
                 const int row_start = Ap[in_row];
                 const int row_end   = Ap[in_row+1];
-                
+
                 for(int jj = row_start; jj < row_end; jj++) {
                     Bj[out_row_offset] = Aj[jj];
                     Bx[out_row_offset] = Ax[jj];
-                    
+
                     out_row_offset++;
                 }
             }
@@ -419,63 +411,16 @@ def csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
 
     grid = math.ceil((len(Bp)-1) / tpb)
     csr_row_slice_kern((grid,), (tpb,),
-                           (start, stop, step,
-                            Ap, Aj, Ax,
-                            Bp, Bj, Bx))
-
-
-
-"""
-/*
- * Slice rows given as a (start, stop, step) tuple.
- *
- * Input Arguments:
- *   I  start
- *   I  stop
- *   I  step
- *   I  Ap[N+1]    - row pointer
- *   I  Aj[nnz(A)] - column indices
- *   T  Ax[nnz(A)] - data
- *
- * Output Arguments:
- *   I  Bj - new column indices
- *   T  Bx - new data
- *
- */
-template<class I, class T>
-void csr_row_slice(const I start,
-                   const I stop,
-                   const I step,
-                   const I Ap[],
-                   const I Aj[],
-                   const T Ax[],
-                   I Bj[],
-                   T Bx[])
-{
-    if (step > 0) {
-        for(I row = start; row < stop; row += step){
-            const I row_start = Ap[row];
-            const I row_end   = Ap[row+1];
-            Bj = std::copy(Aj + row_start, Aj + row_end, Bj);
-            Bx = std::copy(Ax + row_start, Ax + row_end, Bx);
-        }
-    } else {
-        for(I row = start; row > stop; row += step){
-            const I row_start = Ap[row];
-            const I row_end   = Ap[row+1];
-            Bj = std::copy(Aj + row_start, Aj + row_end, Bj);
-            Bx = std::copy(Ax + row_start, Ax + row_end, Bx);
-        }
-    }
-}
-
-"""
+                       (start, stop, step,
+                        Ap, Aj, Ax,
+                        Bp, Bj, Bx))
 
 
 class IndexMixin(object):
     """
     This class provides common dispatching and validation logic for indexing.
     """
+
     def __getitem__(self, key):
         row, col = self._validate_indices(key)
         # Dispatch to specialized methods.
@@ -509,7 +454,7 @@ class IndexMixin(object):
                 raise IndexError('index results in >2 dimensions')
             elif row.shape[1] == 1 and (col.ndim == 1 or col.shape[0] == 1):
                 # special case for outer indexing
-                return self._get_columnXarray(row[:,0], col.ravel())
+                return self._get_columnXarray(row[:, 0], col.ravel())
 
         # The only remaining case is inner (fancy) indexing
         row, col = _broadcast_arrays(row, col)
