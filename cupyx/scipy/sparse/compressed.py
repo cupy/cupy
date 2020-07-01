@@ -21,7 +21,7 @@ from cupyx.scipy.sparse.index import csr_column_index1
 from cupyx.scipy.sparse.index import csr_column_index2
 from cupyx.scipy.sparse.index import csr_row_index
 
-# from cupyx.scipy.sparse.index import csr_sample_values
+from cupyx.scipy.sparse.index import csr_sample_values
 
 
 class _compressed_sparse_matrix(sparse_data._data_matrix,
@@ -489,16 +489,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # inner indexing
         idx_dtype = self.indices.dtype
         M, N = self._swap(*self.shape)
-        major, minor = self._swap((row, col))
+        major, minor = self._swap(*(row, col))
         major = cupy.asarray(major, dtype=idx_dtype)
         minor = cupy.asarray(minor, dtype=idx_dtype)
 
         val = cupy.empty(major.size, dtype=self.dtype)
 
-        # @TODO: Need to implement this
-        raise ValueError("Can't do this yet!")
-        # csr_sample_values(M, N, self.indptr, self.indices, self.data,
-        #                   major.size, major.ravel(), minor.ravel(), val)
+        csr_sample_values(M, N, self.indptr, self.indices, self.data,
+                          major.size, major.ravel(), minor.ravel(), val)
+
         if major.ndim == 1:
 
             # @TODO: Temporary
@@ -517,7 +516,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _major_index_fancy(self, idx):
         """Index along the major axis where idx is an array of ints.
         """
-
         print("MAJOR INDEX FANCY!")
         idx_dtype = self.indices.dtype
         indices = cupy.asarray(idx, dtype=idx_dtype).ravel()
@@ -566,18 +564,26 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         # pass 1: count idx entries and compute new indptr
         col_offsets = cupy.zeros(N, dtype=idx_dtype)
-        res_indptr = cupy.empty_like(self.indptr)
+
+        # scipy uses empty-like here, but that seems to return a fully
+        # populated array in cupy
+        res_indptr = cupy.zeros_like(self.indptr)
+
+        print("res_indptr=%s" % res_indptr)
 
         csr_column_index1(k, idx, M, N, self.indptr, self.indices,
                           col_offsets, res_indptr)
 
         # pass 2: copy indices/data for selected idxs
         col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
+
+        print(str(res_indptr))
         nnz = res_indptr[-1].item()
+        print("NNZ: "+ str(nnz))
         res_indices = cupy.empty(nnz, dtype=idx_dtype)
         res_data = cupy.empty(nnz, dtype=self.dtype)
 
-        csr_column_index2(len(res_indptr), col_order, col_offsets,
+        csr_column_index2(len(res_indptr)-1, col_order, col_offsets,
                           len(self.indices), self.indptr, self.indices, self.data,
                           res_indptr, res_indices, res_data)
         return self.__class__((res_data, res_indices, res_indptr),

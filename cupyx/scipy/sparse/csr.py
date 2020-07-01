@@ -346,7 +346,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         if i < 0 or i >= M:
             raise IndexError('index (%d) out of range' % i)
         indptr, indices, data = get_csr_submatrix(
-            M, N, self.indptr, self.indices, self.data, i, i + 1, 0, N)
+            self.indptr, self.indices, self.data, i, i + 1, 0, N)
         return csr_matrix((data, indices, indptr), shape=(1, N),
                           dtype=self.dtype, copy=False)
 
@@ -361,7 +361,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         if i < 0 or i >= N:
             raise IndexError('index (%d) out of range' % i)
         indptr, indices, data = get_csr_submatrix(
-            M, N, self.indptr, self.indices, self.data, 0, M, i, i + 1)
+            self.indptr, self.indices, self.data, 0, M, i, i + 1)
         return csr_matrix((data, indices, indptr), shape=(M, 1),
                           dtype=self.dtype, copy=False)
 

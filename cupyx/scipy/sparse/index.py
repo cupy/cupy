@@ -21,8 +21,10 @@ def _broadcast_arrays(a, b):
     the old behavior.
     """
     x, y = cupy.broadcast_arrays(a, b)
-    x.flags.writeable = a.flags.writeable
-    y.flags.writeable = b.flags.writeable
+
+    # Writeable doesn't seem to exist on flags in cupy
+    # x.flags.writeable = a.flags.writeable
+    # y.flags.writeable = b.flags.writeable
     return x, y
 
 
@@ -31,26 +33,28 @@ bin_col_offsets_ker = core.RawKernel("""
     void bin_col_offsets_ker_str(int n_idx, int *col_idxs, int *col_offsets) {
                                   
         // Get the index of the thread
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        int jj = blockIdx.x * blockDim.x + threadIdx.x;
         
-        if(i < n_idx) 
-            col_offsets[i]++;
+        if(jj < n_idx) {
+            const int j = col_idxs[jj];
+            col_offsets[j]++;
+        }
     }
 """, "bin_col_offsets_ker_str")
 
 
-def bin_col_offsets(n_idx, col_idsx, col_offsets, tpb=32):
+def bin_col_offsets(n_idx, col_ids, col_offsets, tpb=32):
     grid = math.ceil(n_idx / tpb)
-    bin_col_offsets_ker((grid,), (tpb,), (n_idx, col_idsx, col_offsets))
+    bin_col_offsets_ker((grid,), (tpb,), (n_idx, col_ids, col_offsets))
 
 
 csr_column_index1_ker = core.RawKernel("""
     extern "C" __global__
     void csr_column_index1_ker_str(int n_row, 
-                                 int *col_offsets,
-                                 int *Ap,
-                                 int *Aj,
-                                 int *Bp) {
+                                   int *col_offsets,
+                                   int *Ap,
+                                   int *Aj,
+                                   int *Bp) {
                                 
         // Get the index of the thread
         int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -59,7 +63,7 @@ csr_column_index1_ker = core.RawKernel("""
 
             int new_col_size = 0;
             
-            for(int jj = Ap[i]; jj < Ap[i+1]; jj++) 
+            for(int jj = Ap[i]; jj < Ap[i+1]; jj++)
                 new_col_size += col_offsets[Aj[jj]];
             
             Bp[i+1] = new_col_size;
@@ -76,10 +80,24 @@ def csr_column_index1_degree(n_row, col_offsets, Ap, Aj, Bp, tpb=32):
 def csr_column_index1(n_idx, col_idxs, n_row, n_col,
                           indptr, indices, offsets, new_indptr):
     bin_col_offsets(n_idx, col_idxs, offsets)
+
+    print("col_idxs=%s" % col_idxs)
+    print("offsets=%s" % offsets)
+    print("n_row=%s" % n_row)
+
+    print("new_indptr_before=%s" % new_indptr)
+
     csr_column_index1_degree(n_row, offsets, indptr, indices, new_indptr)
 
+    print("new_indptr_after=%s" % new_indptr)
+
     cupy.cumsum(offsets, out=offsets)
+
+    print("offsets_cumsum=%s" % offsets)
     cupy.cumsum(new_indptr, out=new_indptr)
+    print("new_indptr cumsum=%s" % new_indptr)
+
+    cupy.cuda.Stream.null.synchronize()
 
 
 get_csr_index2_ker = core.RawKernel("""
@@ -101,14 +119,17 @@ get_csr_index2_ker = core.RawKernel("""
 
         int n = Bp[i];
         
-        for(int jj = Ap[i]; jj < Ap[i+1]; i++) {
-            const int j = Aj[jj];
+        // loop through columns in current row        
+        for(int jj = Ap[i]; jj < Ap[i+1]; jj++) {
+            const int col = Aj[jj];  // current column
+            const int offset = col_offsets[col];
+            const int prev_offset = col == 0 ? 0 : col_offsets[col-1];
             
-            const int offset = col_offsets[j];
-            const int prev_offset = j == 0 ? 0 : col_offsets[j-1];
+            // if current column is in the indices,
+            // add it along with any potential duplicates
             if (offset != prev_offset) {
                 const float v = Ax[jj];
-                for(int k = prev_offset; k < offset; k++){
+                for(int k = prev_offset; k < offset; k++) {
                     Bj[n] = col_order[k];
                     Bx[n] = v;
                     n++;
@@ -123,9 +144,16 @@ get_csr_index2_ker = core.RawKernel("""
 def csr_column_index2(out_rows, col_order, col_offsets, nnz,
                       Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
 
+    print("out_rows=%s" % out_rows)
+    print("col_order=%s" % col_order)
+    print("col_offsets=%s" % col_offsets)
+    print("col_order_dtype=%s" % col_order.dtype)
+    print("col_offsets_dtype=%s" % col_offsets.dtype)
     grid = math.ceil(out_rows / tpb)
     get_csr_index2_ker((grid,), (tpb,), (col_order, col_offsets,
-                                         Ap, Aj, Ax, len(Ap), Bp, Bj, Bx))
+                                         Ap, Aj, Ax, len(Ap)-1, Bp, Bj, Bx))
+
+    cupy.cuda.Stream.null.synchronize()
 
 
 def get_csr_submatrix(indptr, indices, data,
@@ -314,6 +342,51 @@ def csr_row_index(n_row_idx, rows,
                        Bp, Bj, Bx))
 
 
+def csr_sample_values(n_row, n_col,
+                      Ap, Aj, Ax,
+                      n_samples,
+                      Bi, Bj, Bx, tpb=32):
+    grid = math.ceil(n_samples / tpb)
+
+    csr_sample_values_kern((grid,), (tpb,),
+                           (n_row, n_col, Ap, Aj, Ax,
+                            n_samples, Bi, Bj, Bx))
+
+
+csr_sample_values_kern = core.RawKernel("""
+    extern "C" __global__
+    void csr_sample_values_kern(const int n_row,
+                                const int n_col,
+                                const int *Ap,
+                                const int *Aj,
+                                const float *Ax,
+                                const int n_samples,
+                                const int *Bi,
+                                const int *Bj, 
+                                float *Bx) {
+                               
+        // Get the index of the thread
+        int n = blockIdx.x * blockDim.x + threadIdx.x;
+        
+        if(n < n_samples) {
+            const int i = Bi[n] < 0 ? Bi[n] + n_row : Bi[n]; // sample row
+            const int j = Bj[n] < 0 ? Bj[n] + n_col : Bj[n]; // sample column
+
+            const int row_start = Ap[i];
+            const int row_end   = Ap[i+1];
+
+            float x = 0;
+
+            for(int jj = row_start; jj < row_end; jj++)
+            {
+                if (Aj[jj] == j)
+                    x += Ax[jj];
+            }
+
+            Bx[n] = x;
+        }
+    }
+""", "csr_sample_values_kern")
 
 # @TODO: Port this to CUDA
 """
