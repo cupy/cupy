@@ -498,13 +498,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                           major.size, major.ravel(), minor.ravel(), val)
 
         if major.ndim == 1:
-
-            # @TODO: Temporary
-            def asmatrix(val):
-                return val
-
-            # @TODO: Replace w/ 2-d ndarray?
-            return asmatrix(val)
+            # Scipy returns `matrix` here
+            return val
         return self.__class__(val.reshape(major.shape))
 
     def _get_columnXarray(self, row, col):

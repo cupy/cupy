@@ -395,7 +395,7 @@ csr_row_slice_kern = core.RawKernel("""
             }
         
         } else {
-            int in_row = out_row*step - start;
+            int in_row = out_row*step + start;
             if(in_row > stop) {
             
                 int out_row_offset = Bp[out_row];
