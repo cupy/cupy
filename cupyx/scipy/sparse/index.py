@@ -95,7 +95,6 @@ get_csr_index2_ker = core.RawKernel("""
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     
     if(i > n_row) return;
-    
 
     int n = Bp[i];
     
@@ -125,43 +124,52 @@ def csr_column_index2(out_rows, col_order, col_offsets, nnz,
                                          Ap, Aj, Ax, len(Ap), Bp, Bj, Bx))
 
 
-def get_csr_submatrix(n_row, n_col, indptr, indices, data,
+def get_csr_submatrix(indptr, indices, data,
                       start_maj, stop_maj, start_min, stop_min):
 
     # We first compute the degree, then use it to compute the indptr
     new_n_row = stop_maj - start_maj
 
-    new_indptr = cupy.zeros(new_n_row+1, dtype=indptr.dtype)
+    print("start_maj=%d, stop_maj=%d" % (start_maj, stop_maj))
 
-    get_csr_submatrix_degree(new_n_row, indptr, indices,
+    new_indptr = cupy.zeros(new_n_row+1, dtype=indptr.dtype)
+    get_csr_submatrix_degree(indptr, indices,
                              start_maj, stop_maj,
-                             start_min, stop_min, new_indptr)
+                             start_min, stop_min,
+                             new_indptr)
+
+    cupy.cuda.Stream.null.synchronize()
 
     cupy.cumsum(new_indptr, out=new_indptr)
 
-    print("new_indptr: %s" % new_indptr )
+    cupy.cuda.Stream.null.synchronize()
+
+    print(str(new_indptr))
 
     new_nnz = new_indptr[-1].item()
-
-    print("new_nnz=%s" % new_nnz)
 
     new_indices = cupy.zeros(new_nnz, dtype=indices.dtype)
     new_data = cupy.zeros(new_nnz, dtype=data.dtype)
 
+    cupy.cuda.Stream.null.synchronize()
+
+    print("new_nnz: "+ str(new_nnz))
+    print("new_indptr: "+ str(new_indptr))
+
     if new_nnz > 0:
-        get_csr_submatrix_cols_data(new_n_row, indptr, indices, data,
+        get_csr_submatrix_cols_data(indptr, indices, data,
                                     start_maj, stop_maj,
                                     start_min, stop_min,
                                     new_indptr, new_indices, new_data)
-    print(str(new_indptr))
+
+    cupy.cuda.Stream.null.synchronize()
 
     return new_indptr, new_indices, new_data
 
 
 get_csr_submatrix_degree_ker = core.RawKernel("""
     extern "C" __global__
-    void get_csr_submatrix_degree_kernel(int n_new_row,
-                                         const int *Ap,
+    void get_csr_submatrix_degree_kernel(const int *Ap,
                                          const int *Aj,
                                          const int ir0,
                                          const int ir1,
@@ -172,62 +180,64 @@ get_csr_submatrix_degree_ker = core.RawKernel("""
         // Get the index of the thread
         int i = blockIdx.x * blockDim.x + threadIdx.x;
         
-        if(i > n_new_row) return;
+        if(i >= (ir1-ir0)) return;
         
-        int row_start = Ap[ir0+i];
-        int row_end = Ap[ir0+i+1];
-        
+        const int row_start = Ap[ir0+i];
+        const int row_end = Ap[ir0+i+1];
+
         int row_count = 0;
         for(int jj = row_start; jj < row_end; jj++) {
-            if((Aj[jj] >= ic0) && (Aj[jj] < ic1)) 
+            int col = Aj[jj];
+            if((col >= ic0) && (col < ic1))
                 row_count++;
         }
-        
-        Bp[i+1] = row_count;
+
+        if(row_count > 0)
+            Bp[i+1] = row_count;
     }
 """, "get_csr_submatrix_degree_kernel")
 
 
-def get_csr_submatrix_degree(new_rows, Ap, Aj, ir0, ir1,
+def get_csr_submatrix_degree(Ap, Aj, ir0, ir1,
                              ic0, ic1, Bp, tpb=32):
 
     """
     Invokes get_csr_submatrix_degree_ker with the given inputs
     """
 
-    grid = math.ceil(new_rows / tpb)
+    grid = math.ceil((ir1-ir0) / tpb)
     get_csr_submatrix_degree_ker((grid,), (tpb,),
-                                 (new_rows, Ap, Aj, ir0, ir1,
+                                 (Ap, Aj, ir0, ir1,
                                   ic0, ic1, Bp))
 
 
 get_csr_submatrix_cols_data_ker = core.RawKernel("""
     extern "C" __global__
-    void get_csr_submatrix_cols_data(int n_rows,
-                                     const int *Ap,
+    void get_csr_submatrix_cols_data(const int *Ap,
                                      const int *Aj,
                                      const float *Ax,
                                      const int ir0,
                                      const int ir1,
                                      const int ic0,
                                      const int ic1,
-                                     int *Bp,
+                                     const int *Bp,
                                      int *Bj,
                                      float *Bx) {
 
         // Get the index of the thread
         int i = blockIdx.x * blockDim.x + threadIdx.x;
         
-        if(i > n_rows) return;
+        if(i > (ir1-ir0)) return;
 
         int row_start = Ap[ir0+i];
         int row_end   = Ap[ir0+i+1];
 
         int kk = Bp[i];
-
+        
         for(int jj = row_start; jj < row_end; jj++) {
-            if ((Aj[jj] >= ic0) && (Aj[jj] < ic1)) {
-                Bj[kk] = Aj[jj] - ic0;
+            int col = Aj[jj];
+            if ((col >= ic0) && (col < ic1)) {
+                Bj[kk] = col - ic0;
                 Bx[kk] = Ax[jj];
                 kk++;
             }
@@ -236,17 +246,15 @@ get_csr_submatrix_cols_data_ker = core.RawKernel("""
 """, "get_csr_submatrix_cols_data")
 
 
-def get_csr_submatrix_cols_data(new_rows,
-                                Ap, Aj, Ax,
+def get_csr_submatrix_cols_data(Ap, Aj, Ax,
                                 ir0, ir1,
                                 ic0, ic1,
                                 Bp, Bj, Bx,
                                 tpb=32):
 
-    grid = math.ceil(new_rows/tpb)
+    grid = math.ceil((ir1-ir0)/tpb)
     get_csr_submatrix_cols_data_ker((grid,), (tpb,),
-                                    (new_rows,
-                                     Ap, Aj, Ax,
+                                    (Ap, Aj, Ax,
                                      ir0, ir1,
                                      ic0, ic1,
                                      Bp, Bj, Bx))

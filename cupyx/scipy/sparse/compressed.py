@@ -472,13 +472,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         major, minor = self._swap(*(row, col))
 
         indptr, indices, data = get_csr_submatrix(
-            M, N, self.indptr, self.indices, self.data,
+            self.indptr, self.indices, self.data,
             major, major + 1, minor, minor + 1)
         return data.sum(dtype=self.dtype)
 
     def _get_sliceXslice(self, row, col):
+
+        print("INside get_sliceXslice")
         major, minor = self._swap(*(row, col))
         if major.step in (1, None) and minor.step in (1, None):
+            print("Calling get sub")
             return self._get_submatrix(major, minor, copy=True)
         return self._major_slice(major)._minor_slice(minor)
 
@@ -583,6 +586,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _minor_slice(self, idx, copy=False):
         """Index along the minor axis where idx is a slice object.
         """
+
+        print("Inside minor slice")
         if idx == slice(None):
             return self.copy() if copy else self
 
@@ -643,7 +648,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             return self.copy() if copy else self
 
         indptr, indices, data = get_csr_submatrix(
-            M, N, self.indptr, self.indices, self.data, i0, i1, j0, j1)
+            self.indptr, self.indices, self.data, i0, i1, j0, j1)
 
         shape = self._swap(*(i1 - i0, j1 - j0))
         return self.__class__((data, indices, indptr), shape=shape,
@@ -690,6 +695,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _major_slice(self, idx, copy=False):
         """Index along the major axis where idx is a slice object.
         """
+
+        print("inside major slice")
         if idx == slice(None):
             print("slice(none)")
             return self.copy() if copy else self
