@@ -155,12 +155,14 @@ class TestPoly1d(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_poly1d_get3(self, dtype):
-        arr = testing.shaped_arange((5,), cupy, dtype)
+        a1 = testing.shaped_arange((5,), cupy, dtype)
+        b1 = cupy.poly1d(a1, variable='z')
         out = numpy.poly1d(numpy.empty((5,), dtype))
-        cupy.poly1d(arr, variable='z').get(out=out)
-        a = testing.shaped_arange((5,), numpy, dtype)
-        b = numpy.poly1d(a, variable='z')
-        assert out == b
+        b1.get(out=out)
+        a2 = testing.shaped_arange((5,), numpy, dtype)
+        b2 = numpy.poly1d(a2, variable='z')
+        assert out.variable == b2.variable
+        assert out == b2
 
     @testing.for_all_dtypes(no_bool=True)
     def test_poly1d_set(self, dtype):
