@@ -464,60 +464,9 @@ class IndexMixin(object):
             return self.__class__(cupy.atleast_2d(row).shape, dtype=self.dtype)
         return self._get_arrayXarray(row, col)
 
-    def __setitem__(self, key, x):
-        row, col = self._validate_indices(key)
-
-        if isinstance(row, INT_TYPES) and isinstance(col, INT_TYPES):
-            x = cupy.asarray(x, dtype=self.dtype)
-            if x.size != 1:
-                raise ValueError('Trying to assign a sequence to an item')
-            self._set_intXint(row, col, x.flat[0])
-            return
-
-        if isinstance(row, slice):
-            row = cupy.arange(*row.indices(self.shape[0]))[:, None]
-        else:
-            row = cupy.atleast_1d(row)
-
-        if isinstance(col, slice):
-            col = cupy.arange(*col.indices(self.shape[1]))[None, :]
-            if row.ndim == 1:
-                row = row[:, None]
-        else:
-            col = cupy.atleast_1d(col)
-
-        i, j = _broadcast_arrays(row, col)
-        if i.shape != j.shape:
-            raise IndexError('number of row and column indices differ')
-
-        from .base import isspmatrix
-        if isspmatrix(x):
-            if i.ndim == 1:
-                # Inner indexing, so treat them like row vectors.
-                i = i[None]
-                j = j[None]
-            broadcast_row = x.shape[0] == 1 and i.shape[0] != 1
-            broadcast_col = x.shape[1] == 1 and i.shape[1] != 1
-            if not ((broadcast_row or x.shape[0] == i.shape[0]) and
-                    (broadcast_col or x.shape[1] == i.shape[1])):
-                raise ValueError('shape mismatch in assignment')
-            if x.size == 0:
-                return
-            x = x.tocoo(copy=True)
-            x.sum_duplicates()
-            self._set_arrayXarray_sparse(i, j, x)
-        else:
-            # Make x and i into the same shape
-            x = cupy.asarray(x, dtype=self.dtype)
-            x, _ = _broadcast_arrays(x, i)
-            if x.size == 0:
-                return
-            x = x.reshape(i.shape)
-            self._set_arrayXarray(i, j, x)
-
     def _validate_indices(self, key):
         M, N = self.shape
-        row, col = _ucupyack_index(key)
+        row, col = _unpack_index(key)
 
         if isintlike(row):
             row = int(row)
@@ -633,7 +582,7 @@ class IndexMixin(object):
         self._set_arrayXarray(row, col, x)
 
 
-def _ucupyack_index(index):
+def _unpack_index(index):
     """ Parse index. Always return a tuple of the form (row, col).
     Valid type for row/col is integer, slice, or array of integers.
     """
@@ -686,9 +635,6 @@ def _check_ellipsis(index):
 
     if not isinstance(index, tuple):
         return index
-
-    # TODO: Deprecate this multiple-ellipsis handling,
-    #       as numpy no longer supports it.
 
     # Find first ellipsis.
     for j, v in enumerate(index):
