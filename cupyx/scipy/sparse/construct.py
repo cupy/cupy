@@ -1,5 +1,6 @@
 import numpy
 import cupy
+from cupy import core
 from cupyx.scipy.sparse import coo
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import csr
@@ -491,3 +492,67 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
             raise
 
     return dia.dia_matrix((data_arr, offsets), shape=(m, n)).asformat(format)
+
+
+#_kron_indices_kern = core.ElementwiseKernel(
+#    'raw T A_vec, T A_nnz, raw U B_vec, U B_nnz',
+#    'raw V out_vec',  # assuming max(i) = max(A_nnz, B_nnz) - 1
+#    '''
+#    if (A_nnz == _ind.size()) {
+#        T Avec = A_vec[i];
+#        for (V idx = i; idx += A_nnz; idx < A_nnz * B_nnz) {
+#            out_vec[idx] = Avec * B_nnz;
+#        }
+#    } else {
+#        for (V idx = i; idx += A_nnz; idx < A_nnz * B_nnz) {
+#            out_vec[idx] = A * B_nnz;
+#        }
+#    }
+#
+#    if (B_nnz != _ind.size()) {
+#        for (V idx = i; idx += A_nnz; idx < B_nnz) {
+#            out_vec[idx] += B_vec[idx];
+#        }
+#    } else {
+#        out_vec[i] += B_vec[i];
+#    }
+#    ''', 'kron_indices', return_tuple=True, no_return=True)
+
+
+def kron(A, B, format=None):
+    """kronecker product of sparse matrices A and B
+
+    """
+    # TODO(leofang): support BSR format when it's added to CuPy
+
+    A = coo.coo_matrix(A)
+    B = coo.coo_matrix(B)
+    out_shape = (A.shape[0] * B.shape[0], A.shape[1] * B.shape[1])
+
+    if A.nnz == 0 or B.nnz == 0:
+        # kronecker product is the zero matrix
+        return coo.coo_matrix(out_shape)
+
+    # expand entries of a into blocks
+    if max(out_shape[0], out_shape[1]) > cupy.iinfo('int32').max:
+        dtype = cupy.int64
+    else:
+        dtype = cupy.int32
+    row = A.row.repeat(B.nnz).astype(dtype)
+    col = A.col.repeat(B.nnz).astype(dtype)
+    data = A.data.repeat(B.nnz)  # data's dtype follows that of A in SciPy
+
+    row *= B.shape[0]
+    col *= B.shape[1]
+
+    # increment block indices
+    row, col = row.reshape(-1, B.nnz), col.reshape(-1, B.nnz)
+    row += B.row
+    col += B.col
+    row, col = row.ravel(), col.ravel()
+
+    # compute block entries
+    data = data.reshape(-1, B.nnz) * B.data
+    data = data.ravel()
+
+    return coo.coo_matrix((data, (row, col)), shape=out_shape).asformat(format)

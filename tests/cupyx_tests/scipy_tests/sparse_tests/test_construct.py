@@ -377,3 +377,28 @@ class TestDiags(unittest.TestCase):
         self.assertIsInstance(x, sp.spmatrix)
         self.assertEqual(x.format, self.format)
         return x
+
+
+@testing.parameterize(*testing.product({
+    'dtype': (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128),
+    'format': ('csr', 'csc', 'coo'),
+}))
+@testing.with_requires('scipy')
+class TestKron(unittest.TestCase):
+
+    def _make_sp_mat(self, xp, sp, shape, dtype):
+        a = testing.shaped_random(shape, xp, self.dtype)
+        a[a < 0.98] = 0.
+        a = sp.csr_matrix(a)
+        return a
+
+    @testing.numpy_cupy_allclose(sp_name='sp', rtol=1E-6)
+    def test_kron(self, xp, sp):
+        a = self._make_sp_mat(xp, sp, (2, 3), self.dtype)
+        b = self._make_sp_mat(xp, sp, (4, 5), self.dtype)
+        kron = sp.kron(a.astype(self.dtype),
+                       b.astype(self.dtype),
+                       format=self.format)
+        assert kron.shape == (8, 15)
+        assert kron.nnz == a.nnz * b.nnz
+        return kron
