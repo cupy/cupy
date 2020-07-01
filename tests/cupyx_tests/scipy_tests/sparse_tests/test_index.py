@@ -136,7 +136,6 @@ def test_major_all_minor_slice(format, density, dtype, n_rows):
     cupy.testing.assert_array_equal(actual, expected)
 
 
-
 @pytest.mark.parametrize('format', ['csr', 'csc'])
 @pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
 @pytest.mark.parametrize('dtype', ['float32'])
@@ -149,6 +148,21 @@ def test_major_all_minor_all(format, density, dtype, n_rows):
     expected = a.todense()[maj, min].ravel()
     actual = a[maj, min].todense().ravel()
     cupy.testing.assert_array_equal(actual, expected)
+
+
+@pytest.mark.parametrize('format', ['csr', 'csc'])
+@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
+@pytest.mark.parametrize('dtype', ['float32'])
+@pytest.mark.parametrize('n_rows', [100, 1000])
+def test_major_all(format, density, dtype, n_rows):
+    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
+    maj = slice(None)
+
+    expected = a.todense()[maj].ravel()
+    actual = a[maj].todense().ravel()
+    cupy.testing.assert_array_equal(actual, expected)
+
+
 
 
 @pytest.mark.parametrize('format', ['csr', 'csc'])
