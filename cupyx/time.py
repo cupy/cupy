@@ -8,7 +8,7 @@ from cupy import util
 
 
 class _PerfCaseResult(object):
-    def __init__(self, name, ts, devices=None):
+    def __init__(self, name, ts, devices):
         assert ts.ndim == 2
         assert ts.shape[0] >= 2
         assert ts.shape[1] > 0
@@ -39,13 +39,10 @@ class _PerfCaseResult(object):
     def to_str(self, show_gpu=False):
         results = [self._to_str_per_item('CPU', self._ts[0])]
         if show_gpu:
-            if self._devices is None:
-                results.append(self._to_str_per_item('GPU', self._ts[1]))
-            else:
-                for i, d in enumerate(self._devices):
-                    results.append(
-                        self._to_str_per_item('GPU-{}'.format(d),
-                                              self._ts[1 + i]))
+            for i, d in enumerate(self._devices):
+                results.append(
+                    self._to_str_per_item('GPU-{}'.format(d),
+                                          self._ts[1 + i]))
         return '{:<20s}:{}'.format(self.name, ' '.join(results))
 
     def __str__(self):
@@ -60,6 +57,9 @@ def repeat(
     if name is None:
         name = func.__name__
 
+    if devices is None:
+        devices = (cupy.cuda.get_device_id(),)
+
     if not callable(func):
         raise ValueError('`func` should be a callable object.')
     if not isinstance(args, tuple):
@@ -72,53 +72,14 @@ def repeat(
         raise ValueError('`str` should be a string.')
     if not isinstance(n_warmup, int):
         raise ValueError('`n_warmup` should be an integer.')
+    if not isinstance(devices, tuple):
+        raise ValueError('`devices` should be of tuple type')
 
-    if devices is None:
-        return _repeat_single_device(
-            func, args, kwargs, n_repeat, name, n_warmup, max_duration)
-
-    return _repeat_multi_device(
+    return _repeat(
         func, args, kwargs, n_repeat, name, n_warmup, max_duration, devices)
 
 
-def _repeat_single_device(
-        func, args, kwargs, n_repeat, name, n_warmup, max_duration):
-
-    ev1 = cupy.cuda.stream.Event()
-    ev2 = cupy.cuda.stream.Event()
-
-    for i in range(n_warmup):
-        func(*args, **kwargs)
-
-    ev1.record()
-    ev1.synchronize()
-
-    cpu_times = []
-    gpu_times = []
-    duration = 0
-    for i in range(n_repeat):
-        ev1.record()
-        t1 = time.perf_counter()
-
-        func(*args, **kwargs)
-
-        t2 = time.perf_counter()
-        ev2.record()
-        ev2.synchronize()
-        cpu_time = t2 - t1
-        gpu_time = cupy.cuda.get_elapsed_time(ev1, ev2) * 1e-3
-        cpu_times.append(cpu_time)
-        gpu_times.append(gpu_time)
-
-        duration += time.perf_counter() - t1
-        if duration > max_duration:
-            break
-
-    ts = numpy.asarray([cpu_times, gpu_times], dtype=numpy.float64)
-    return _PerfCaseResult(name, ts)
-
-
-def _repeat_multi_device(
+def _repeat(
         func, args, kwargs, n_repeat, name, n_warmup, max_duration, devices):
 
     events_1 = []
