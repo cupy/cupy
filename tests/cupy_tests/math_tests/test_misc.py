@@ -249,7 +249,7 @@ class TestConvolve(unittest.TestCase):
         return xp.convolve(a[200::], b[10::70], mode=self.mode)
 
     @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2'], no_float16=True, no_complex=True)
+        names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(rtol=1e-1)
     def test_convolve_diff_types(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((200,), xp, dtype1)
