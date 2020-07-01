@@ -20,6 +20,7 @@ from cupyx.scipy.sparse.index import get_csr_submatrix
 from cupyx.scipy.sparse.index import csr_column_index1
 from cupyx.scipy.sparse.index import csr_column_index2
 from cupyx.scipy.sparse.index import csr_row_index
+from cupyx.scipy.sparse.index import csr_row_slice
 
 from cupyx.scipy.sparse.index import csr_sample_values
 
@@ -588,7 +589,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if step == 1:
             return self._get_submatrix(minor=idx, copy=copy)
         # TODO: don't fall back to fancy indexing here
-        return self._get_minor_index_fancy(cupy.arange(start, stop, step))
+        return self._minor_index_fancy(cupy.arange(start, stop, step))
 
     @staticmethod
     def _process_slice(sl, num):
@@ -667,11 +668,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             res_indices = cupy.array(self.indices[all_idx], copy=copy)
             res_data = cupy.array(self.data[all_idx], copy=copy)
         else:
-            nnz = res_indptr[-1]
+            nnz = res_indptr[-1].item()
+
             res_indices = cupy.empty(nnz, dtype=idx_dtype)
             res_data = cupy.empty(nnz, dtype=self.dtype)
-            csr_row_slice(start, stop, step, self.indptr, self.indices,
-                          self.data, res_indices, res_data)
+            csr_row_slice(start, stop, step,
+                          self.indptr, self.indices, self.data,
+                          res_indptr, res_indices, res_data)
 
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)

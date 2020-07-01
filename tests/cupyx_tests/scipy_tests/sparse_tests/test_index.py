@@ -16,10 +16,10 @@ from cupyx.scipy import sparse
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.1, 0.2, 0.5, 0.9, 1.0],
+    'density': [0.1, 0.2, 0.4, 0.5, 0.9, 1.0],
     'dtype': ['float32'],
     'n_rows': [100, 1000],
-    'n_cols' : [10, 100]
+    'n_cols': [10, 100]
 }))
 class TestIndexing(unittest.TestCase):
 
@@ -96,3 +96,12 @@ class TestIndexing(unittest.TestCase):
     def test_major_bool_fancy(self):
         rand_bool = cupy.random.random(self.n_rows).astype(cupy.bool)
         self._run(rand_bool)
+
+    def test_major_slice_with_step(self):
+        self._run(slice(1, 10, 2))
+        self._run(slice(2, 10, 5))
+        self._run(slice(0, 10, 10))
+        self._run(slice(10, 1, 2))
+        self._run(slice(10, 2, 5))
+        self._run(slice(10, 0, 10))
+

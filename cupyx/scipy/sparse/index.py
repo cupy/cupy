@@ -361,6 +361,70 @@ csr_sample_values_kern = core.RawKernel("""
 """, "csr_sample_values_kern")
 
 
+csr_row_slice_kern = core.RawKernel("""
+    extern "C" __global__
+    void csr_row_slice_kern(const int start,
+                            const int stop,
+                            const int step,
+                            const int *Ap,
+                            const int *Aj,
+                            const float *Ax,
+                            const int *Bp, 
+                            int *Bj,
+                            float *Bx) {
+                               
+        // Get the index of the thread
+        int out_row = blockIdx.x * blockDim.x + threadIdx.x;
+        
+        if (step > 0) {
+        
+
+            int in_row = out_row*step + start;
+            if(in_row < stop) {
+            
+                int out_row_offset = Bp[out_row];
+            
+                const int row_start = Ap[in_row];
+                const int row_end   = Ap[in_row+1];
+                
+                for(int jj = row_start; jj < row_end; jj++) {
+                    Bj[out_row_offset] = Aj[jj];
+                    Bx[out_row_offset] = Ax[jj];
+                    out_row_offset++;
+                }
+            }
+        
+        } else {
+            int in_row = out_row*step - start;
+            if(in_row > stop) {
+            
+                int out_row_offset = Bp[out_row];
+            
+                const int row_start = Ap[in_row];
+                const int row_end   = Ap[in_row+1];
+                
+                for(int jj = row_start; jj < row_end; jj++) {
+                    Bj[out_row_offset] = Aj[jj];
+                    Bx[out_row_offset] = Ax[jj];
+                    
+                    out_row_offset++;
+                }
+            }
+        }
+    }
+""", "csr_row_slice_kern")
+
+
+def csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
+
+    grid = math.ceil((len(Bp)-1) / tpb)
+    csr_row_slice_kern((grid,), (tpb,),
+                           (start, stop, step,
+                            Ap, Aj, Ax,
+                            Bp, Bj, Bx))
+
+
+
 """
 /*
  * Slice rows given as a (start, stop, step) tuple.
