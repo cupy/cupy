@@ -538,12 +538,10 @@ def kron(A, B, format=None):
         dtype = cupy.int64
     else:
         dtype = cupy.int32
-    row = A.row.repeat(B.nnz).astype(dtype)
-    col = A.col.repeat(B.nnz).astype(dtype)
-    data = A.data.repeat(B.nnz)  # data's dtype follows that of A in SciPy
-
-    row *= B.shape[0]
-    col *= B.shape[1]
+    row = A.row.astype(dtype, copy=True) * B.shape[0]
+    row = row.repeat(B.nnz)
+    col = A.col.astype(dtype, copy=True) * B.shape[1]
+    col = col.repeat(B.nnz)
 
     # increment block indices
     row, col = row.reshape(-1, B.nnz), col.reshape(-1, B.nnz)
@@ -552,6 +550,7 @@ def kron(A, B, format=None):
     row, col = row.ravel(), col.ravel()
 
     # compute block entries
+    data = A.data.repeat(B.nnz)  # data's dtype follows that of A in SciPy
     data = data.reshape(-1, B.nnz) * B.data
     data = data.ravel()
 
