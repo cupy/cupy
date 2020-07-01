@@ -19,8 +19,9 @@ from cupyx.scipy.sparse.index import get_csr_submatrix
 
 from cupyx.scipy.sparse.index import csr_column_index1
 from cupyx.scipy.sparse.index import csr_column_index2
+from cupyx.scipy.sparse.index import csr_row_index
 
-from cupyx.scipy.sparse.index import csr_sample_values
+# from cupyx.scipy.sparse.index import csr_sample_values
 
 
 class _compressed_sparse_matrix(sparse_data._data_matrix,
@@ -467,8 +468,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return self._add(other, True, False)
 
     def _get_intXint(self, row, col):
-        M, N = self._swap(self.shape)
-        major, minor = self._swap((row, col))
+        M, N = self._swap(*self.shape)
+        major, minor = self._swap(*(row, col))
 
         indptr, indices, data = get_csr_submatrix(
             M, N, self.indptr, self.indices, self.data,
@@ -476,7 +477,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return data.sum(dtype=self.dtype)
 
     def _get_sliceXslice(self, row, col):
-        major, minor = self._swap((row, col))
+        major, minor = self._swap(*(row, col))
         if major.step in (1, None) and minor.step in (1, None):
             return self._get_submatrix(major, minor, copy=True)
         return self._major_slice(major)._minor_slice(minor)
@@ -484,7 +485,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _get_arrayXarray(self, row, col):
         # inner indexing
         idx_dtype = self.indices.dtype
-        M, N = self._swap(self.shape)
+        M, N = self._swap(*self.shape)
         major, minor = self._swap((row, col))
         major = cupy.asarray(major, dtype=idx_dtype)
         minor = cupy.asarray(minor, dtype=idx_dtype)
@@ -492,8 +493,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         val = cupy.empty(major.size, dtype=self.dtype)
 
         # @TODO: Need to implement this
-        csr_sample_values(M, N, self.indptr, self.indices, self.data,
-                          major.size, major.ravel(), minor.ravel(), val)
+        raise ValueError("Can't do this yet!")
+        # csr_sample_values(M, N, self.indptr, self.indices, self.data,
+        #                   major.size, major.ravel(), minor.ravel(), val)
         if major.ndim == 1:
 
             # @TODO: Temporary
@@ -506,18 +508,20 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_columnXarray(self, row, col):
         # outer indexing
-        major, minor = self._swap((row, col))
+        major, minor = self._swap(*(row, col))
         return self._major_index_fancy(major)._minor_index_fancy(minor)
 
     def _major_index_fancy(self, idx):
         """Index along the major axis where idx is an array of ints.
         """
+
+        print("MAJOR INDEX FANCY!")
         idx_dtype = self.indices.dtype
         indices = cupy.asarray(idx, dtype=idx_dtype).ravel()
 
-        _, N = self._swap(self.shape)
+        _, N = self._swap(*self.shape)
         M = len(indices)
-        new_shape = self._swap((M, N))
+        new_shape = self._swap(*(M, N))
         if M == 0:
             return self.__class__(new_shape)
 
@@ -526,11 +530,18 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
         cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
 
-        nnz = res_indptr[-1]
+        print(str(indices.dtype))
+
+        print("res_ind_ptr: "+ str(res_indptr))
+        print("row_nnz: " + str(row_nnz))
+
+        nnz = res_indptr[-1].item()
         res_indices = cupy.empty(nnz, dtype=idx_dtype)
         res_data = cupy.empty(nnz, dtype=self.dtype)
 
-        csr_row_index(M, indices, self.indptr, self.indices, self.data,
+        print("Calling csr_row_index")
+
+        csr_row_index(len(idx), indices, self.indptr, self.indices, self.data,
                       res_indptr, res_indices, res_data)
 
         return self.__class__((res_data, res_indices, res_indptr),
@@ -539,12 +550,14 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.
         """
+
+        print("MINOR INDEX FANCY")
         idx_dtype = self.indices.dtype
         idx = cupy.asarray(idx, dtype=idx_dtype).ravel()
 
-        M, N = self._swap(self.shape)
+        M, N = self._swap(*self.shape)
         k = len(idx)
-        new_shape = self._swap((M, k))
+        new_shape = self._swap(*(M, k))
         if k == 0:
             return self.__class__(new_shape)
 
@@ -573,11 +586,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if idx == slice(None):
             return self.copy() if copy else self
 
-        M, N = self._swap(self.shape)
+        M, N = self._swap(*self.shape)
         start, stop, step = idx.indices(N)
         N = len(range(start, stop, step))
         if N == 0:
-            return self.__class__(self._swap((M, N)))
+            return self.__class__(self._swap(*(M, N)))
         if step == 1:
             return self._get_submatrix(minor=idx, copy=copy)
         # TODO: don't fall back to fancy indexing here
@@ -622,7 +635,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """Return a submatrix of this matrix.
         major, minor: None, int, or slice with step 1
         """
-        M, N = self._swap(self.shape)
+        M, N = self._swap(*self.shape)
         i0, i1 = self._process_slice(major, M)
         j0, j1 = self._process_slice(minor, N)
 
@@ -632,45 +645,83 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         indptr, indices, data = get_csr_submatrix(
             M, N, self.indptr, self.indices, self.data, i0, i1, j0, j1)
 
-        shape = self._swap((i1 - i0, j1 - j0))
+        shape = self._swap(*(i1 - i0, j1 - j0))
         return self.__class__((data, indices, indptr), shape=shape,
                               dtype=self.dtype, copy=False)
 
-    def _major_slice(self, major):
-        major_size, minor_size = self._swap(*self._shape)
-        # major.indices cannot be used because scipy.sparse behaves differently
-        major_start = major.start
-        major_stop = major.stop
-        major_step = major.step
-        if major_start is None:
-            major_start = 0
-        if major_stop is None:
-            major_stop = major_size
-        if major_step is None:
-            major_step = 1
-        if major_start < 0:
-            major_start += major_size
-        if major_stop < 0:
-            major_stop += major_size
-        major_start = max(min(major_start, major_size), 0)
-        major_stop = max(min(major_stop, major_size), 0)
+    # def _major_slice(self, major):
+    #     major_size, minor_size = self._swap(*self._shape)
+    #     # major.indices cannot be used because scipy.sparse behaves differently
+    #     major_start = major.start
+    #     major_stop = major.stop
+    #     major_step = major.step
+    #     if major_start is None:
+    #         major_start = 0
+    #     if major_stop is None:
+    #         major_stop = major_size
+    #     if major_step is None:
+    #         major_step = 1
+    #     if major_start < 0:
+    #         major_start += major_size
+    #     if major_stop < 0:
+    #         major_stop += major_size
+    #     major_start = max(min(major_start, major_size), 0)
+    #     major_stop = max(min(major_stop, major_size), 0)
+    #
+    #     if major_step != 1:
+    #         raise ValueError('slicing with step != 1 not supported')
+    #
+    #     if not (major_start <= major_stop):
+    #         # will give an empty slice, but preserve shape on the other axis
+    #         major_start = major_stop
+    #
+    #     start = self.indptr[major_start]
+    #     stop = self.indptr[major_stop]
+    #     data = self.data[start:stop]
+    #     indptr = self.indptr[major_start:major_stop + 1] - start
+    #     indices = self.indices[start:stop]
+    #
+    #     print("INSIDE MAJOR SLICE")
+    #
+    #     shape = self._swap(len(indptr) - 1, minor_size)
+    #     return self.__class__(
+    #         (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
 
-        if major_step != 1:
-            raise ValueError('slicing with step != 1 not supported')
+    def _major_slice(self, idx, copy=False):
+        """Index along the major axis where idx is a slice object.
+        """
+        if idx == slice(None):
+            print("slice(none)")
+            return self.copy() if copy else self
 
-        if not (major_start <= major_stop):
-            # will give an empty slice, but preserve shape on the other axis
-            major_start = major_stop
+        M, N = self._swap(*self.shape)
+        start, stop, step = idx.indices(M)
+        M = len(range(start, stop, step))
+        new_shape = self._swap(*(M, N))
+        if M == 0:
+            print("M==0")
+            return self.__class__(new_shape)
 
-        start = self.indptr[major_start]
-        stop = self.indptr[major_stop]
-        data = self.data[start:stop]
-        indptr = self.indptr[major_start:major_stop + 1] - start
-        indices = self.indices[start:stop]
+        row_nnz = cupy.diff(self.indptr)
+        idx_dtype = self.indices.dtype
+        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
+        cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
 
-        shape = self._swap(len(indptr) - 1, minor_size)
-        return self.__class__(
-            (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
+        if step == 1:
+            print("step==1")
+            all_idx = slice(self.indptr[start], self.indptr[stop])
+            res_indices = cupy.array(self.indices[all_idx], copy=copy)
+            res_data = cupy.array(self.data[all_idx], copy=copy)
+        else:
+            nnz = res_indptr[-1]
+            res_indices = cupy.empty(nnz, dtype=idx_dtype)
+            res_data = cupy.empty(nnz, dtype=self.dtype)
+            csr_row_slice(start, stop, step, self.indptr, self.indices,
+                          self.data, res_indices, res_data)
+
+        print("YAY!")
+        return self.__class__((res_data, res_indices, res_indptr),
+                              shape=new_shape, copy=False)
 
     @property
     def has_canonical_format(self):

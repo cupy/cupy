@@ -25,7 +25,8 @@ def isintlike(x):
     """
     # Fast-path check to eliminate non-scalar values. operator.index would
     # catch this case too, but the exception catching is slow.
-    if cupy.ndim(x) != 0:
+    # if cupy.ndim(x) != 0:
+    if isinstance(x, cupy.core.ndarray) and x.ndim != 0:
         return False
     try:
         operator.index(x)
@@ -39,6 +40,7 @@ def isintlike(x):
                           DeprecationWarning)
         return loose_int
     return True
+
 
 def get_index_dtype(arrays=(), maxval=None, check_contents=False):
     """Based on input (integer) arrays ``a``, determines a suitable index data
