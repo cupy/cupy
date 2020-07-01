@@ -80,24 +80,10 @@ def csr_column_index1_degree(n_row, col_offsets, Ap, Aj, Bp, tpb=32):
 def csr_column_index1(n_idx, col_idxs, n_row, n_col,
                           indptr, indices, offsets, new_indptr):
     bin_col_offsets(n_idx, col_idxs, offsets)
-
-    print("col_idxs=%s" % col_idxs)
-    print("offsets=%s" % offsets)
-    print("n_row=%s" % n_row)
-
-    print("new_indptr_before=%s" % new_indptr)
-
     csr_column_index1_degree(n_row, offsets, indptr, indices, new_indptr)
 
-    print("new_indptr_after=%s" % new_indptr)
-
     cupy.cumsum(offsets, out=offsets)
-
-    print("offsets_cumsum=%s" % offsets)
     cupy.cumsum(new_indptr, out=new_indptr)
-    print("new_indptr cumsum=%s" % new_indptr)
-
-    cupy.cuda.Stream.null.synchronize()
 
 
 get_csr_index2_ker = core.RawKernel("""
@@ -143,12 +129,6 @@ get_csr_index2_ker = core.RawKernel("""
 
 def csr_column_index2(out_rows, col_order, col_offsets, nnz,
                       Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
-
-    print("out_rows=%s" % out_rows)
-    print("col_order=%s" % col_order)
-    print("col_offsets=%s" % col_offsets)
-    print("col_order_dtype=%s" % col_order.dtype)
-    print("col_offsets_dtype=%s" % col_offsets.dtype)
     grid = math.ceil(out_rows / tpb)
     get_csr_index2_ker((grid,), (tpb,), (col_order, col_offsets,
                                          Ap, Aj, Ax, len(Ap)-1, Bp, Bj, Bx))
@@ -161,9 +141,6 @@ def get_csr_submatrix(indptr, indices, data,
 
     # We first compute the degree, then use it to compute the indptr
     new_n_row = stop_maj - start_maj
-
-    print("start_maj=%d, stop_maj=%d" % (start_maj, stop_maj))
-
     new_indptr = cupy.zeros(new_n_row+1, dtype=indptr.dtype)
     get_csr_submatrix_degree(indptr, indices,
                              start_maj, stop_maj,
@@ -176,17 +153,12 @@ def get_csr_submatrix(indptr, indices, data,
 
     cupy.cuda.Stream.null.synchronize()
 
-    print(str(new_indptr))
-
     new_nnz = new_indptr[-1].item()
 
     new_indices = cupy.zeros(new_nnz, dtype=indices.dtype)
     new_data = cupy.zeros(new_nnz, dtype=data.dtype)
 
     cupy.cuda.Stream.null.synchronize()
-
-    print("new_nnz: "+ str(new_nnz))
-    print("new_indptr: "+ str(new_indptr))
 
     if new_nnz > 0:
         get_csr_submatrix_cols_data(indptr, indices, data,
@@ -388,111 +360,51 @@ csr_sample_values_kern = core.RawKernel("""
     }
 """, "csr_sample_values_kern")
 
-# @TODO: Port this to CUDA
+
 """
 /*
- * Sample the matrix at specific locations
- *
- * Determine the matrix value for each row,col pair
- *    Bx[n] = A(Bi[n],Bj[n])
+ * Slice rows given as a (start, stop, step) tuple.
  *
  * Input Arguments:
- *   I  n_row         - number of rows in A
- *   I  n_col         - number of columns in A
- *   I  Ap[n_row+1]   - row pointer
- *   I  Aj[nnz(A)]    - column indices
- *   T  Ax[nnz(A)]    - nonzeros
- *   I  n_samples     - number of samples
- *   I  Bi[N]         - sample rows
- *   I  Bj[N]         - sample columns
+ *   I  start
+ *   I  stop
+ *   I  step
+ *   I  Ap[N+1]    - row pointer
+ *   I  Aj[nnz(A)] - column indices
+ *   T  Ax[nnz(A)] - data
  *
  * Output Arguments:
- *   T  Bx[N]         - sample values
- *
- * Note:
- *   Output array Bx must be preallocated
- *
- *   Complexity: varies
- *
- *   TODO handle other cases with asymptotically optimal method
+ *   I  Bj - new column indices
+ *   T  Bx - new data
  *
  */
-template <class I, class T>
-void csr_sample_values(const I n_row,
-                       const I n_col,
-                       const I Ap[],
-                       const I Aj[],
-                       const T Ax[],
-                       const I n_samples,
-                       const I Bi[],
-                       const I Bj[],
-                             T Bx[])
+template<class I, class T>
+void csr_row_slice(const I start,
+                   const I stop,
+                   const I step,
+                   const I Ap[],
+                   const I Aj[],
+                   const T Ax[],
+                   I Bj[],
+                   T Bx[])
 {
-    // ideally we'd do the following
-    // Case 1: A is canonical and B is sorted by row and column
-    //   -> special purpose csr_binop_csr() (optimized form)
-    // Case 2: A is canonical and B is unsorted and max(log(Ap[i+1] - Ap[i])) > log(num_samples)
-    //   -> do binary searches for each sample
-    // Case 3: A is canonical and B is unsorted and max(log(Ap[i+1] - Ap[i])) < log(num_samples)
-    //   -> sort B by row and column and use Case 1
-    // Case 4: A is not canonical and num_samples ~ nnz
-    //   -> special purpose csr_binop_csr() (general form)
-    // Case 5: A is not canonical and num_samples << nnz
-    //   -> do linear searches for each sample
-
-    const I nnz = Ap[n_row];
-
-    const I threshold = nnz / 10; // constant is arbitrary
-
-    if (n_samples > threshold && csr_has_canonical_format(n_row, Ap, Aj))
-    {
-        for(I n = 0; n < n_samples; n++)
-        {
-            const I i = Bi[n] < 0 ? Bi[n] + n_row : Bi[n]; // sample row
-            const I j = Bj[n] < 0 ? Bj[n] + n_col : Bj[n]; // sample column
-
-            const I row_start = Ap[i];
-            const I row_end   = Ap[i+1];
-
-            if (row_start < row_end)
-            {
-                const I offset = std::lower_bound(Aj + row_start, Aj + row_end, j) - Aj;
-
-                if (offset < row_end && Aj[offset] == j)
-                    Bx[n] = Ax[offset];
-                else
-                    Bx[n] = 0;
-            }
-            else
-            {
-                Bx[n] = 0;
-            }
-
+    if (step > 0) {
+        for(I row = start; row < stop; row += step){
+            const I row_start = Ap[row];
+            const I row_end   = Ap[row+1];
+            Bj = std::copy(Aj + row_start, Aj + row_end, Bj);
+            Bx = std::copy(Ax + row_start, Ax + row_end, Bx);
         }
-    }
-    else
-    {
-        for(I n = 0; n < n_samples; n++)
-        {
-            const I i = Bi[n] < 0 ? Bi[n] + n_row : Bi[n]; // sample row
-            const I j = Bj[n] < 0 ? Bj[n] + n_col : Bj[n]; // sample column
-
-            const I row_start = Ap[i];
-            const I row_end   = Ap[i+1];
-
-            T x = 0;
-
-            for(I jj = row_start; jj < row_end; jj++)
-            {
-                if (Aj[jj] == j)
-                    x += Ax[jj];
-            }
-
-            Bx[n] = x;
+    } else {
+        for(I row = start; row > stop; row += step){
+            const I row_start = Ap[row];
+            const I row_end   = Ap[row+1];
+            Bj = std::copy(Aj + row_start, Aj + row_end, Bj);
+            Bx = std::copy(Ax + row_start, Ax + row_end, Bx);
         }
-
     }
 }
+
 """
 
 

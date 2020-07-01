@@ -14,286 +14,85 @@ from cupy import testing
 from cupyx.scipy import sparse
 
 
-p_format = ["csr", "csc"]
-
-
-@pytest.mark.parametrize('format', p_format)
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_slice(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-    cupy.testing.assert_array_equal(a[5:9].todense(), a.todense()[5:9])
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc'],
+    'density': [0.1, 0.2, 0.5, 0.9, 1.0],
+    'dtype': ['float32'],
+    'n_rows': [100, 1000],
+    'n_cols' : [10, 100]
+}))
+class TestIndexing(unittest.TestCase):
 
-    cupy.cuda.Stream.null.synchronize()
+    def _run(self, maj, min=None):
+        a = cupy.sparse.random(self.n_rows, self.n_cols,
+                               format=self.format, density=self.density,
+                               dtype=self.dtype)
+        if min is not None:
+            expected = a.todense()[maj, min]
+            actual = a[maj, min]
+        else:
+            expected = a.todense()[maj]
+            actual = a[maj]
 
-
-@pytest.mark.parametrize('format', p_format)
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_slice_minor_slice(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-    maj = slice(1, 5)
-    min = slice(1, 5)
-
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].todense().ravel()
-    cupy.testing.assert_array_equal(actual, expected)
+        if cupy.sparse.isspmatrix(actual):
+            actual = actual.todense()
 
-    cupy.cuda.Stream.null.synchronize()
+        cupy.testing.assert_array_equal(actual.ravel(), expected.ravel())
 
-
-@pytest.mark.parametrize('format', p_format)
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_slice_minor_all(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-    maj = slice(1, 5)
-    min = slice(None)
-
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].todense().ravel()
-    cupy.testing.assert_array_equal(actual, expected)
-
-    cupy.cuda.Stream.null.synchronize()
-
-
-@pytest.mark.parametrize('format', p_format)
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_slice_minor_scalar(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-    maj = slice(1, 5)
-    min = 5
-
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].todense().ravel()
-    cupy.testing.assert_array_equal(actual, expected)
-
-    cupy.cuda.Stream.null.synchronize()
-
-
-@pytest.mark.parametrize('format', p_format)
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_scalar_minor_slice(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-    maj = 5
-    min = slice(1, 5)
-
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].todense().ravel()
-    cupy.testing.assert_array_equal(actual, expected)
-
-    cupy.cuda.Stream.null.synchronize()
-
-
-@pytest.mark.parametrize('format', p_format)
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_scalar_minor_all(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-    maj = 5
-    min = slice(None)
-
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].todense().ravel()
-    cupy.testing.assert_array_equal(actual, expected)
-
-    cupy.cuda.Stream.null.synchronize()
-
-
-@pytest.mark.parametrize('format', p_format)
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_scalar_minor_scalar(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-    maj = 5
-    min = 5
-
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].ravel()
-    cupy.testing.assert_array_equal(actual, expected)
-    cupy.cuda.Stream.null.synchronize()
+    def test_major_slice(self):
+        self._run(slice(5, 9))
 
+    def test_major_slice_minor_slice(self):
+        self._run(slice(1, 5), slice(1, 5))
 
-@pytest.mark.parametrize('format', p_format)
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_all_minor_scalar(format, density, dtype, n_rows):
-
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-    maj = slice(None)
-    min = 5
-
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].todense().ravel()
-    cupy.testing.assert_array_equal(actual, expected)
+    def test_major_slice_minor_all(self):
+        self._run(slice(1, 5), slice(None))
 
+    def test_major_slice_minor_scalar(self):
+        self._run(slice(1, 5), 5)
 
-@pytest.mark.parametrize('format', p_format)
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_all_minor_slice(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-    maj = slice(None)
-    min = slice(5, 10)
+    def test_major_scalar_minor_slice(self):
+        self._run(5, slice(1, 5))
 
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].todense().ravel()
-    cupy.testing.assert_array_equal(actual, expected)
-    cupy.cuda.Stream.null.synchronize()
+    def test_major_scalar_minor_all(self):
+        self._run(5, slice(None))
 
+    def test_major_scalar_minor_scalar(self):
+        self._run(5, 5)
 
-@pytest.mark.parametrize('format', p_format)
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_all_minor_all(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-    maj = slice(None)
-    min = slice(None)
+    def test_major_all_minor_scalar(self):
+        self._run(slice(None), 5)
 
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].todense().ravel()
-    cupy.testing.assert_array_equal(actual, expected)
-    cupy.cuda.Stream.null.synchronize()
+    def test_major_all_minor_slice(self):
+        self._run(slice(None), slice(5, 10))
 
+    def test_major_all_minor_all(self):
+        self._run(slice(None), slice(None))
 
-@pytest.mark.parametrize('format', p_format)
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_all(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-    maj = slice(None)
+    def test_major_all(self):
+        self._run(slice(None))
 
-    expected = a.todense()[maj].ravel()
-    actual = a[maj].todense().ravel()
-    cupy.testing.assert_array_equal(actual, expected)
+    def test_major_scalae(self):
+        self._run(10)
 
+    def test_major_fancy(self):
+        self._run([1, 5, 4])
 
-@pytest.mark.parametrize('format', p_format)
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_scalar(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-    cupy.testing.assert_array_equal(a[5].todense().ravel(), a.todense()[5].ravel())
-    cupy.cuda.Stream.null.synchronize()
+    def test_major_fancy_minor_fancy(self):
+        self._run([1, 5, 4], [1, 5, 4])
 
+    def test_major_fancy_minor_all(self):
+        self._run([1, 5, 4], slice(None))
 
-@pytest.mark.parametrize('format', ['csr']) #'csc'])
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_fancy(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
+    def test_major_fancy_minor_scalar(self):
+        self._run([1, 5, 4], 5)
 
-    idx = [1, 5, 4]
+    def test_major_scalar_minor_fancy(self):
+        self._run(5, [1, 5, 4])
 
-    expected = a.todense()[idx].ravel()
-    actual = a[idx].todense().ravel()
-    cupy.testing.assert_array_equal(actual, expected)
+    def test_major_all_minor_fancy(self):
+        self._run(slice(None), [1, 5, 4])
 
-
-@pytest.mark.parametrize('format', ['csr', 'csc']) #'csc'])
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_fancy_minor_fancy(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-
-    maj = [1, 5, 4]
-    min = [1, 5, 4]
-
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].ravel()
-
-    cupy.testing.assert_array_equal(actual, expected)
-
-
-@pytest.mark.parametrize('format', ['csr', 'csc']) #'csc'])
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_fancy_minor_all(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-
-    maj = [1, 5, 4]
-    min = slice(None)
-
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].todense().ravel()
-
-    cupy.testing.assert_array_equal(actual, expected)
-
-
-@pytest.mark.parametrize('format', ['csr', 'csc']) #'csc'])
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_fancy_minor_scalar(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-
-    maj = [1, 5, 4]
-    min = 5
-
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].todense().ravel()
-
-    cupy.testing.assert_array_equal(actual, expected)
-
-
-
-@pytest.mark.parametrize('format', ['csr', 'csc']) #'csc'])
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_scalar_minor_fancy(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-
-    maj = 5
-    min = [1, 5, 4]
-
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].todense().ravel()
-
-    cupy.testing.assert_array_equal(actual, expected)
-
-@pytest.mark.parametrize('format', ['csr', 'csc']) #'csc'])
-@pytest.mark.parametrize('density',  [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_all_minor_fancy(format, density, dtype, n_rows):
-    a = cupy.sparse.random(n_rows, 10, format=format, density=density, dtype=dtype)
-
-    maj = slice(None)
-    min = [1, 5, 4]
-
-    expected = a.todense()[maj, min].ravel()
-    actual = a[maj, min].todense().ravel()
-    cupy.testing.assert_array_equal(actual, expected)
-
-
-@pytest.mark.parametrize('format', ['csr']) #'csc'])
-@pytest.mark.parametrize('density', [0.1, 0.2, 0.5, 0.9, 1.0])
-@pytest.mark.parametrize('dtype', ['float32'])
-@pytest.mark.parametrize('n_rows', [100, 1000])
-def test_major_bool_fancy(format, density, dtype, n_rows):
-    a = cupy.sparse.random(3, 10, format=format, density=density, dtype=dtype)
-
-    maj = [True, False, True]
-
-    expected = a.todense()[maj].ravel()
-    actual = a[maj].todense().ravel()
-    cupy.testing.assert_array_equal(actual, expected)
-
+    def test_major_bool_fancy(self):
+        rand_bool = cupy.random.random(self.n_rows).astype(cupy.bool)
+        self._run(rand_bool)

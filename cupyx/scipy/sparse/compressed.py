@@ -478,10 +478,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_sliceXslice(self, row, col):
 
-        print("INside get_sliceXslice")
         major, minor = self._swap(*(row, col))
         if major.step in (1, None) and minor.step in (1, None):
-            print("Calling get sub")
             return self._get_submatrix(major, minor, copy=True)
         return self._major_slice(major)._minor_slice(minor)
 
@@ -516,7 +514,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _major_index_fancy(self, idx):
         """Index along the major axis where idx is an array of ints.
         """
-        print("MAJOR INDEX FANCY!")
         idx_dtype = self.indices.dtype
         indices = cupy.asarray(idx, dtype=idx_dtype).ravel()
 
@@ -531,17 +528,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
         cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
 
-        print(str(indices.dtype))
-
-        print("res_ind_ptr: "+ str(res_indptr))
-        print("row_nnz: " + str(row_nnz))
-
         nnz = res_indptr[-1].item()
         res_indices = cupy.empty(nnz, dtype=idx_dtype)
         res_data = cupy.empty(nnz, dtype=self.dtype)
-
-        print("Calling csr_row_index")
-
         csr_row_index(len(idx), indices, self.indptr, self.indices, self.data,
                       res_indptr, res_indices, res_data)
 
@@ -552,7 +541,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """Index along the minor axis where idx is an array of ints.
         """
 
-        print("MINOR INDEX FANCY")
         idx_dtype = self.indices.dtype
         idx = cupy.asarray(idx, dtype=idx_dtype).ravel()
 
@@ -569,17 +557,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # populated array in cupy
         res_indptr = cupy.zeros_like(self.indptr)
 
-        print("res_indptr=%s" % res_indptr)
-
         csr_column_index1(k, idx, M, N, self.indptr, self.indices,
                           col_offsets, res_indptr)
 
         # pass 2: copy indices/data for selected idxs
         col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
 
-        print(str(res_indptr))
         nnz = res_indptr[-1].item()
-        print("NNZ: "+ str(nnz))
         res_indices = cupy.empty(nnz, dtype=idx_dtype)
         res_data = cupy.empty(nnz, dtype=self.dtype)
 
@@ -593,7 +577,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """Index along the minor axis where idx is a slice object.
         """
 
-        print("Inside minor slice")
         if idx == slice(None):
             return self.copy() if copy else self
 
@@ -660,51 +643,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return self.__class__((data, indices, indptr), shape=shape,
                               dtype=self.dtype, copy=False)
 
-    # def _major_slice(self, major):
-    #     major_size, minor_size = self._swap(*self._shape)
-    #     # major.indices cannot be used because scipy.sparse behaves differently
-    #     major_start = major.start
-    #     major_stop = major.stop
-    #     major_step = major.step
-    #     if major_start is None:
-    #         major_start = 0
-    #     if major_stop is None:
-    #         major_stop = major_size
-    #     if major_step is None:
-    #         major_step = 1
-    #     if major_start < 0:
-    #         major_start += major_size
-    #     if major_stop < 0:
-    #         major_stop += major_size
-    #     major_start = max(min(major_start, major_size), 0)
-    #     major_stop = max(min(major_stop, major_size), 0)
-    #
-    #     if major_step != 1:
-    #         raise ValueError('slicing with step != 1 not supported')
-    #
-    #     if not (major_start <= major_stop):
-    #         # will give an empty slice, but preserve shape on the other axis
-    #         major_start = major_stop
-    #
-    #     start = self.indptr[major_start]
-    #     stop = self.indptr[major_stop]
-    #     data = self.data[start:stop]
-    #     indptr = self.indptr[major_start:major_stop + 1] - start
-    #     indices = self.indices[start:stop]
-    #
-    #     print("INSIDE MAJOR SLICE")
-    #
-    #     shape = self._swap(len(indptr) - 1, minor_size)
-    #     return self.__class__(
-    #         (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
-
     def _major_slice(self, idx, copy=False):
         """Index along the major axis where idx is a slice object.
         """
 
-        print("inside major slice")
         if idx == slice(None):
-            print("slice(none)")
             return self.copy() if copy else self
 
         M, N = self._swap(*self.shape)
@@ -712,7 +655,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         M = len(range(start, stop, step))
         new_shape = self._swap(*(M, N))
         if M == 0:
-            print("M==0")
             return self.__class__(new_shape)
 
         row_nnz = cupy.diff(self.indptr)
@@ -721,7 +663,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
 
         if step == 1:
-            print("step==1")
             all_idx = slice(self.indptr[start], self.indptr[stop])
             res_indices = cupy.array(self.indices[all_idx], copy=copy)
             res_data = cupy.array(self.data[all_idx], copy=copy)
@@ -732,7 +673,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             csr_row_slice(start, stop, step, self.indptr, self.indices,
                           self.data, res_indices, res_data)
 
-        print("YAY!")
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
 
