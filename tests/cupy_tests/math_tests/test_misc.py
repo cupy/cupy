@@ -215,8 +215,8 @@ class TestMisc(unittest.TestCase):
 @testing.gpu
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full'],
-    'shape1': [(), (10,), (5,), (11,), (10,), (11,), (10,)],
-    'shape2': [(), (5,), (5,), (21,), (21,), (20,), (20,)],
+    'shape1': [(), (5,), (6,), (20,), (21,)],
+    'shape2': [(), (5,), (6,), (20,), (21,)],
 }))
 class TestConvolveShapeCombination(unittest.TestCase):
 

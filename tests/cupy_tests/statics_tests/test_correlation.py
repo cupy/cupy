@@ -94,8 +94,8 @@ class TestCov(unittest.TestCase):
 @testing.gpu
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full'],
-    'shape1': [(20,), (10,), (5,), (10,), (5,), (10,)],
-    'shape2': [(10,), (20,), (15,), (15,), (10,), (10,)],
+    'shape1': [(5,), (6,), (20,), (21,)],
+    'shape2': [(5,), (6,), (20,), (21,)],
 }))
 class TestCorrelateShapeCombination(unittest.TestCase):
 
