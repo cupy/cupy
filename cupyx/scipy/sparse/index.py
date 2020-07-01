@@ -33,14 +33,16 @@ bin_col_offsets_ker = core.RawKernel("""
         // Get the index of the thread
         int i = blockIdx.x * blockDim.x + threadIdx.x;
         
-        if(i > n_idx) return;
-        col_offsets[i]++;
+        if(i < n_idx) 
+            col_offsets[i]++;
+    }
 """, "bin_col_offsets_ker_str")
 
 
 def bin_col_offsets(n_idx, col_idsx, col_offsets, tpb=32):
     grid = math.ceil(n_idx / tpb)
     bin_col_offsets_ker((grid,), (tpb,), (n_idx, col_idsx, col_offsets))
+
 
 csr_column_index1_ker = core.RawKernel("""
     extern "C" __global__
@@ -53,14 +55,15 @@ csr_column_index1_ker = core.RawKernel("""
         // Get the index of the thread
         int i = blockIdx.x * blockDim.x + threadIdx.x;
         
-        if(i > n_row) return;
+        if(i < n_row) {
 
-        int new_col_size = 0;
-        
-        for(int jj = Ap[i]; jj < Ap[i+1]; jj++) 
-            new_col_size += col_offsets[Aj[jj]];
-        
-        Bp[i+1] = new_col_size;
+            int new_col_size = 0;
+            
+            for(int jj = Ap[i]; jj < Ap[i+1]; jj++) 
+                new_col_size += col_offsets[Aj[jj]];
+            
+            Bp[i+1] = new_col_size;
+        }
 }
 """, "csr_column_index1_ker_str")
 
@@ -94,21 +97,22 @@ get_csr_index2_ker = core.RawKernel("""
     // Get the index of the thread
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     
-    if(i > n_row) return;
+    if(i < n_row) {
 
-    int n = Bp[i];
-    
-    for(int jj = Ap[i]; jj < Ap[i+1]; i++) {
-        const int j = Aj[jj];
+        int n = Bp[i];
         
-        const int offset = col_offsets[j];
-        const int prev_offset = j == 0 ? 0 : col_offsets[j-1];
-        if (offset != prev_offset) {
-            const float v = Ax[jj];
-            for(int k = prev_offset; k < offset; k++){
-                Bj[n] = col_order[k];
-                Bx[n] = v;
-                n++;
+        for(int jj = Ap[i]; jj < Ap[i+1]; i++) {
+            const int j = Aj[jj];
+            
+            const int offset = col_offsets[j];
+            const int prev_offset = j == 0 ? 0 : col_offsets[j-1];
+            if (offset != prev_offset) {
+                const float v = Ax[jj];
+                for(int k = prev_offset; k < offset; k++){
+                    Bj[n] = col_order[k];
+                    Bx[n] = v;
+                    n++;
+                }
             }
         }
     }
@@ -117,7 +121,7 @@ get_csr_index2_ker = core.RawKernel("""
 
 
 def csr_column_index2(out_rows, col_order, col_offsets, nnz,
-                   Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
+                      Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
 
     grid = math.ceil(out_rows / tpb)
     get_csr_index2_ker((grid,), (tpb,), (col_order, col_offsets,
@@ -278,19 +282,20 @@ csr_row_index_ker = core.RawKernel("""
         // Get the index of the thread
         int i = blockIdx.x * blockDim.x + threadIdx.x;
         
-        if(i > n_row_idx) return;
+        if(i < n_row_idx) {
         
-        int row = rows[i];
-        int row_start = Ap[row];
-        int row_end = Ap[row+1];
-        
-        int out_row_idx = Bp[i];
-
-        // Copy columns
-        for(int j = row_start; j < row_end; j++) {
-            Bj[out_row_idx] = Aj[j];
-            Bx[out_row_idx] = Ax[j];
-            out_row_idx++;
+            int row = rows[i];
+            int row_start = Ap[row];
+            int row_end = Ap[row+1];
+            
+            int out_row_idx = Bp[i];
+    
+            // Copy columns
+            for(int j = row_start; j < row_end; j++) {
+                Bj[out_row_idx] = Aj[j];
+                Bx[out_row_idx] = Ax[j];
+                out_row_idx++;
+            }
         }
     }
 
