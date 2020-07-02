@@ -28,12 +28,12 @@ class NVCCException(Exception):
 
 def _run_nvcc(cmd, cwd, log_stream=None):
     try:
-        stdout = subprocess.check_output(cmd, cwd=cwd,
+        log = subprocess.check_output(cmd, cwd=cwd,
                                          stderr=subprocess.STDOUT,
                                          universal_newlines=True)
         if log_stream is not None:
-            log_stream.write(stdout)
-        return stdout
+            log_stream.write(log)
+        return log
     except subprocess.CalledProcessError as e:
         msg = ('`nvcc` command returns non-zero exit status. \n'
                'command: {0}\n'
