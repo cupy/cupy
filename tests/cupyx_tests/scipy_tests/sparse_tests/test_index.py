@@ -14,7 +14,7 @@ import pytest
     'n_cols': [10, 100]
 }))
 @testing.with_requires('scipy')
-class TestIndexing(unittest.TestCase):
+class TestGetitemIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None):
         a = cupy.sparse.random(self.n_rows, self.n_cols,
@@ -204,3 +204,49 @@ class TestIndexing(unittest.TestCase):
 
         with pytest.raises(ValueError):
             self._run([1, 2, 3], [1, 2, 3, 4])
+
+
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc'],
+    'density': [0.1, 0.2, 0.4, 0.5, 0.9, 1.0],
+    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
+    'n_rows': [100, 1000],
+    'n_cols': [10, 100]
+}))
+@testing.with_requires('scipy')
+class TestSetitemIndexing(unittest.TestCase):
+
+    def _run(self, maj, min=None, data=0):
+        a = cupy.sparse.random(self.n_rows, self.n_cols,
+                               format=self.format,
+                               density=self.density)
+
+        # sparse.random doesn't support complex types
+        # so we need to cast
+        a = a.astype(self.dtype)
+        if min is not None:
+            expected = a.get()
+            expected[maj, min] = data
+            actual = a
+            actual[maj, min] = data
+        else:
+            expected = a.get()
+            expected[maj] = data
+            actual = a
+            actual[maj] = data
+
+        if cupy.sparse.isspmatrix(actual):
+            actual = actual.todense()
+            expected = expected.todense()
+
+        cupy.testing.assert_array_equal(actual.ravel(),
+                                        cupy.array(expected).ravel())
+
+    def test_major_slice(self):
+        self._run(slice(4, 5), data=5)
+        self._run(slice(5, 4), data=5)
+        self._run(slice(4, 5, 2), data=5)
+        self._run(slice(5, 4, -2), data=5)
+
+        self._run(slice(2, 4), data=[[4], [1]])
+        self._run(slice(4, 2), data=[[4], [1]])
