@@ -607,6 +607,12 @@ class IndexMixin(object):
 
     def getrow(self, i):
         """Return a copy of row i of the matrix, as a (1 x n) row vector.
+
+        Args:
+            i (integer): Row
+
+        Returns:
+            cupyx.scipy.sparse.spmatrix: Sparse matrix with single row
         """
         M, N = self.shape
         i = int(i)
@@ -618,6 +624,12 @@ class IndexMixin(object):
 
     def getcol(self, i):
         """Return a copy of column i of the matrix, as a (m x 1) column vector.
+
+        Args:
+            i (integer): Column
+
+        Returns:
+            cupyx.scipy.sparse.spmatrix: Sparse matrix with single column
         """
         M, N = self.shape
         i = int(i)
