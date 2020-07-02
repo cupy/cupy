@@ -220,11 +220,11 @@ class TestArrayReduction(unittest.TestCase):
 class TestCubReduction(unittest.TestCase):
 
     def setUp(self):
-        self.old_backends = cupy.core._backend.get_routine_backends()
-        cupy.core._backend.set_routine_backends(['cub'])
+        self.old_backends = cupy.core._backend.get_reduction_backends()
+        cupy.core._backend.set_reduction_backends(['cub'])
 
     def tearDown(self):
-        cupy.core._backend.set_routine_backends(self.old_backends)
+        cupy.core._backend.set_reduction_backends(self.old_backends)
 
     @testing.for_contiguous_axes()
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
