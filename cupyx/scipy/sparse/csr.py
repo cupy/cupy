@@ -223,9 +223,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         .. seealso:: :meth:`scipy.sparse.csr_matrix.toarray`
 
         """
-        if order is None:
-            order = 'C'
-
+        order = 'C' if order is None else order.upper()
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
 
@@ -237,7 +235,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         elif order == 'F':
             return cusparse.csr2dense(self)
         else:
-            raise TypeError('order not understood')
+            raise ValueError('order not understood')
 
     def tobsr(self, blocksize=None, copy=False):
         # TODO(unno): Implement tobsr
