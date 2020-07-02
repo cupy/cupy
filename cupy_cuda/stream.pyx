@@ -15,7 +15,7 @@ cdef class _ThreadLocal:
             tls = _thread_local.tls = _ThreadLocal()
         return <_ThreadLocal>tls
 
-    cdef set_current_stream(self, intptr_t ptr):
+    cdef set_current_stream_ptr(self, intptr_t ptr):
         self.current_stream = ptr
 
     cdef intptr_t get_current_stream_ptr(self):
