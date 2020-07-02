@@ -502,8 +502,10 @@ def kron(A, B, format=None):
         format (str): the format of the returned sparse matrix.
 
     Returns:
-        cupyx.scipy.sparse.spmatrix: Generated sparse matrix in the
-            specified ``format``.
+        cupyx.scipy.sparse.spmatrix:
+            Generated sparse matrix with the specified ``format``.
+
+    .. seealso:: :func:`scipy.sparse.kron`
 
     """
     # TODO(leofang): support BSR format when it's added to CuPy
