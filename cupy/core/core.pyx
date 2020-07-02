@@ -107,7 +107,7 @@ cdef class ndarray:
         # `strides` is prioritized over `order`, but invalid `order` should be
         # checked even if `strides` is given.
         if order_char != b'C' and order_char != b'F':
-            raise TypeError('order not understood. order=%s' % order)
+            raise ValueError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
         self._shape.reserve(len(s))
@@ -135,8 +135,11 @@ cdef class ndarray:
         # data
         if memptr is None:
             self.data = memory.alloc(self.size * itemsize)
+            self._index_32_bits = (self.size * itemsize) <= (1 << 31)
         else:
             self.data = memptr
+            bound = cupy.core._memory_range.get_bound(self)
+            self._index_32_bits = bound[1] - bound[0] <= (1 << 31)
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
@@ -144,6 +147,7 @@ cdef class ndarray:
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
         self._set_contiguous_strides(itemsize, c_order)
         self.data = memory.alloc(self.size * itemsize)
+        self._index_32_bits = (self.size * itemsize) <= (1 << 31)
 
     @property
     def __cuda_array_interface__(self):
@@ -319,7 +323,7 @@ cdef class ndarray:
     cpdef tofile(self, fid, sep='', format='%s'):
         """Writes the array to a file.
 
-        .. seealso:: :meth:`numpy.ndarray.tolist`
+        .. seealso:: :meth:`numpy.ndarray.tofile`
 
         """
         self.get().tofile(fid, sep, format)
@@ -1161,10 +1165,12 @@ cdef class ndarray:
     # cupy.ndarray does not define __new__
 
     def __array__(self, dtype=None):
-        if dtype is None or self.dtype == dtype:
-            return self
-        else:
-            return self.astype(dtype)
+        # TODO(imanishi): Support an environment variable or a global
+        # configure flag that allows implicit conversions to NumPy array.
+        # (See https://github.com/cupy/cupy/issues/589 for the detail.)
+        raise TypeError(
+            'Implicit conversion to a NumPy array is not allowed. '
+            'Please use `.get()` to construct a NumPy array explicitly.')
 
     # TODO(okuta): Implement __array_wrap__
 
@@ -1629,6 +1635,7 @@ cdef class ndarray:
         v.dtype = self.dtype
         v._c_contiguous = self._c_contiguous
         v._f_contiguous = self._f_contiguous
+        v._index_32_bits = self._index_32_bits
         v._set_shape_and_strides(
             shape, strides, update_c_contiguity, update_f_contiguity)
         return v
@@ -1805,7 +1812,7 @@ cdef inline str _translate_cucomplex_to_thrust(str source):
 cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None,
         prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False,
-        enable_cooperative_groups=False):
+        enable_cooperative_groups=False, name_expressions=None):
     if translate_cucomplex:
         source = _translate_cucomplex_to_thrust(source)
         _cupy_header_list.append('cupy/cuComplex_bridge.h')
@@ -1831,6 +1838,8 @@ cpdef function.Module compile_with_cache(
             bundled_include = 'cuda-10.1'
         elif 10020 <= _cuda_runtime_version < 10030:
             bundled_include = 'cuda-10.2'
+        elif 11000 <= _cuda_runtime_version < 11010:
+            bundled_include = 'cuda-11.0'
         else:
             # CUDA v9.0, v9.1 or versions not yet supported.
             bundled_include = None
@@ -1853,7 +1862,8 @@ cpdef function.Module compile_with_cache(
 
     return cuda.compile_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,
-        enable_cooperative_groups=enable_cooperative_groups)
+        enable_cooperative_groups=enable_cooperative_groups,
+        name_expressions=name_expressions)
 
 
 # =============================================================================
@@ -1999,59 +2009,59 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                 # When `copy` is False, `a` is same as `obj`.
                 a = a.view()
             a.shape = (1,) * (ndmin - ndim) + a.shape
-    elif hasattr(obj, '__cuda_array_interface__'):
+        return a
+
+    if hasattr(obj, '__cuda_array_interface__'):
         return array(_convert_object_with_cuda_array_interface(obj),
                      dtype, copy, order, subok, ndmin)
-    else:  # obj is sequence, numpy array, scalar or the other type of object
-        shape, elem_type, elem_dtype = _get_concat_shape(obj)
-        if shape is not None and shape[-1] != 0:
-            # obj is a non-empty sequence of ndarrays which share same shape
-            # and dtype
 
-            # resulting array is C order unless 'F' is explicitly specified
-            # (i.e., it ignores order of element arrays in the sequence)
-            order = (
-                'F'
-                if order is not None and len(order) >= 1 and order[0] in 'Ff'
-                else 'C')
-            ndim = len(shape)
-            if ndmin > ndim:
-                shape = (1,) * (ndmin - ndim) + shape
+    # obj is sequence, numpy array, scalar or the other type of object
+    shape, elem_type, elem_dtype = _get_concat_shape(obj)
+    if shape is not None and shape[-1] != 0:
+        # obj is a non-empty sequence of ndarrays which share same shape
+        # and dtype
 
-            if dtype is None:
-                dtype = elem_dtype
-            # Note: dtype might not be numpy.dtype in this place
+        # resulting array is C order unless 'F' is explicitly specified
+        # (i.e., it ignores order of element arrays in the sequence)
+        order = (
+            'F'
+            if order is not None and len(order) >= 1 and order[0] in 'Ff'
+            else 'C')
+        ndim = len(shape)
+        if ndmin > ndim:
+            shape = (1,) * (ndmin - ndim) + shape
 
-            if issubclass(elem_type, numpy.ndarray):
-                # obj is Seq[numpy.ndarray]
-                a = _send_numpy_array_list_to_gpu(
-                    obj, elem_dtype, dtype, shape, order, ndmin)
-            elif issubclass(elem_type, ndarray):
-                # obj is Seq[cupy.ndarray]
-                lst = _flatten_list(obj)
-                if len(shape) == 1:
-                    # convert each scalar (0-dim) ndarray to 1-dim
-                    lst = [cupy.expand_dims(x, 0) for x in lst]
+        if dtype is None:
+            dtype = elem_dtype
+        # Note: dtype might not be numpy.dtype in this place
 
-                a = (_manipulation.concatenate_method(lst, 0)
-                                  .reshape(shape)
-                                  .astype(dtype, order=order, copy=False))
-            else:
-                # should not be reached here
-                assert issubclass(elem_type, (numpy.ndarray, ndarray))
-        else:
-            # obj is:
-            # - numpy array
-            # - scalar or sequence of scalar
-            # - empty sequence or sequence with elements whose shapes or
-            #   dtypes are unmatched
-            # - other types
+        if issubclass(elem_type, numpy.ndarray):
+            # obj is Seq[numpy.ndarray]
+            return _send_numpy_array_list_to_gpu(
+                obj, elem_dtype, dtype, shape, order, ndmin)
 
-            # fallback to numpy array and send it to GPU
-            # Note: dtype might not be numpy.dtype in this place
-            a = _send_object_to_gpu(obj, dtype, order, ndmin)
+        # obj is Seq[cupy.ndarray]
+        assert issubclass(elem_type, ndarray), elem_type
+        lst = _flatten_list(obj)
+        if len(shape) == 1:
+            # convert each scalar (0-dim) ndarray to 1-dim
+            lst = [cupy.expand_dims(x, 0) for x in lst]
 
-    return a
+        a =_manipulation.concatenate_method(lst, 0)
+        a = a.reshape(shape)
+        a = a.astype(dtype, order=order, copy=False)
+        return a
+
+    # obj is:
+    # - numpy array
+    # - scalar or sequence of scalar
+    # - empty sequence or sequence with elements whose shapes or
+    #   dtypes are unmatched
+    # - other types
+
+    # fallback to numpy array and send it to GPU
+    # Note: dtype might not be numpy.dtype in this place
+    return _send_object_to_gpu(obj, dtype, order, ndmin)
 
 
 cdef tuple _get_concat_shape(object obj):
@@ -2465,7 +2475,7 @@ cdef _mat_ptrs_kernel = ElementwiseKernel(
     reduce_dims=False)
 
 
-cdef ndarray _mat_ptrs(ndarray a):
+cpdef ndarray _mat_ptrs(ndarray a):
     """Creates an array of pointers to matrices
     Args:
         a: A batch of matrices on GPU.

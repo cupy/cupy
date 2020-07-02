@@ -199,7 +199,7 @@ class dia_matrix(data._data_matrix):
         """
         rows, cols = self.shape
         if k <= -rows or k >= cols:
-            raise ValueError("k exceeds matrix dimensions")
+            return cupy.empty(0, dtype=self.data.dtype)
         idx, = cupy.nonzero(self.offsets == k)
         first_col, last_col = max(0, k), min(rows + k, cols)
         if idx.size == 0:

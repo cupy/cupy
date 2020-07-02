@@ -82,8 +82,12 @@ def check_fusion(
 
         if err_e is None:
             # Exception not raised
-            assert err_a is None
+            if err_a is not None:
+                raise err_a
             check(xp, ret_a, ret_e)
+        else:
+            if err_a is None:
+                raise err_e
 
     def deco(func):
         def wrapper(self, **generate_inputs_kwargs):
@@ -121,9 +125,19 @@ def check_fusion(
             check_result(cupy, result_cp, result_np)
             check_result(numpy, result_fuse_np, result_np)
             check_result(cupy, result_fuse_cp, result_np)
-            check(cupy, args_cp, args_np)
-            check(numpy, args_fuse_np, args_np)
-            check(cupy, args_fuse_cp, args_np)
+
+            _, err = result_np
+            if err is None:
+                check(cupy, args_cp, args_np)
+                check(numpy, args_fuse_np, args_np)
+                check(cupy, args_fuse_cp, args_np)
 
         return wrapper
     return deco
+
+
+def can_use_grid_synchronization():
+    return (
+        cupy.cuda.runtime.runtimeGetVersion() >= 9000 and
+        int(cupy.cuda.device.get_compute_capability()) >= 70
+    )

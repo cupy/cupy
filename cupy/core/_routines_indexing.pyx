@@ -109,7 +109,7 @@ cdef ndarray _ndarray_take(ndarray self, indices, axis, out):
 
 cdef ndarray _ndarray_put(ndarray self, indices, values, mode):
     if mode not in ('raise', 'wrap', 'clip'):
-        raise TypeError('clipmode not understood')
+        raise ValueError('clipmode not understood')
 
     n = self.size
     if not isinstance(indices, ndarray):
@@ -159,7 +159,7 @@ cdef ndarray _ndarray_choose(ndarray self, choices, out, mode):
     elif mode == 'clip':
         _choose_clip_kernel(ba[0], bcs, n_channel, n, out)
     else:
-        raise TypeError('clipmode not understood')
+        raise ValueError('clipmode not understood')
 
     return out
 

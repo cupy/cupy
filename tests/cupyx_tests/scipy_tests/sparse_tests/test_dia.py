@@ -291,12 +291,15 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.transpose()
 
-    @testing.with_requires('scipy>=1.0')
+    @testing.with_requires('scipy>=1.5.0')
     def test_diagonal_error(self):
+        # Before scipy 1.5.0 dia_matrix diagonal raised
+        # `ValueError`, now returns empty array.
+        # Check #3469
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
-            with pytest.raises(ValueError):
-                m.diagonal(k=10)  # out of range
+            d = m.diagonal(k=10)
+            assert d.size == 0
 
 
 @testing.parameterize(*testing.product({

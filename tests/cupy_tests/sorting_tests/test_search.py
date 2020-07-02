@@ -159,6 +159,58 @@ class TestSearch(unittest.TestCase):
         return a.argmin(axis=1)
 
 
+# This class compares CUB results against NumPy's
+# TODO(leofang): test axis after support is added
+@testing.parameterize(*testing.product({
+    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+    'order': ('C', 'F'),
+}))
+@testing.gpu
+@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
+class TestCUBreduction(unittest.TestCase):
+    @testing.for_dtypes('bhilBHILefdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_argmin(self, xp, dtype):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order == 'C':
+            a = xp.ascontiguousarray(a)
+        else:
+            a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.argmin()
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        func = 'cupy.core._routines_statistics.cub.device_reduce'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.argmin()
+        # ...then perform the actual computation
+        return a.argmin()
+
+    @testing.for_dtypes('bhilBHILefdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_argmax(self, xp, dtype):
+        assert cupy.cuda.cub_enabled
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order == 'C':
+            a = xp.ascontiguousarray(a)
+        else:
+            a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.argmax()
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        func = 'cupy.core._routines_statistics.cub.device_reduce'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.argmax()
+        # ...then perform the actual computation
+        return a.argmax()
+
+
 @testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['argmin', 'argmax'],

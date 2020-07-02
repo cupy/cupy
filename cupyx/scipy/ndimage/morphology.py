@@ -44,7 +44,7 @@ def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
         raise ValueError('size, footprint or structure must be specified')
 
     return filters._min_or_max_filter(input, size, footprint, structure,
-                                      output, mode, cval, origin, True)
+                                      output, mode, cval, origin, 'min')
 
 
 def grey_dilation(input, size=None, footprint=None, structure=None,
@@ -89,7 +89,7 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
         footprint = cupy.array(footprint)
         footprint = footprint[tuple([slice(None, None, -1)] * footprint.ndim)]
 
-    origin = filters._normalize_sequence(origin, input.ndim)
+    origin = filters._fix_sequence_arg(origin, input.ndim, 'origin', int)
     for i in range(len(origin)):
         origin[i] = -origin[i]
         if footprint is not None:
@@ -104,7 +104,7 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
             origin[i] -= 1
 
     return filters._min_or_max_filter(input, size, footprint, structure,
-                                      output, mode, cval, origin, False)
+                                      output, mode, cval, origin, 'max')
 
 
 def grey_closing(input, size=None, footprint=None, structure=None,

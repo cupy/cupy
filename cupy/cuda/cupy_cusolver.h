@@ -106,6 +106,41 @@ cusolverStatus_t cusolverDnZgesvdjBatched(...) {
 }
 #endif // #if CUDA_VERSION < 9000
 
+#if CUDA_VERSION < 9010
+// Functions added in CUDA 9.1
+cusolverStatus_t cusolverDnSpotrfBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDpotrfBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCpotrfBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZpotrfBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnSpotrsBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDpotrsBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCpotrsBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZpotrsBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+#endif // #if CUDA_VERSION < 9010
+
 #if CUDA_VERSION < 10010
 // Functions added in CUDA 10.1
 cusolverStatus_t cusolverDnSgesvdaStridedBatched_bufferSize(...) {
@@ -224,6 +259,22 @@ cusolverStatus_t cusolverDnZpotrf(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
+cusolverStatus_t cusolverDnSpotrfBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDpotrfBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCpotrfBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZpotrfBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverDnSpotrs(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
@@ -237,6 +288,22 @@ cusolverStatus_t cusolverDnCpotrs(...) {
 }
 
 cusolverStatus_t cusolverDnZpotrs(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnSpotrsBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnDpotrsBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnCpotrsBatched(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnZpotrsBatched(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 

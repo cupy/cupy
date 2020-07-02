@@ -1,5 +1,5 @@
-import mock
 import unittest
+from unittest import mock
 
 import numpy
 
@@ -11,7 +11,7 @@ class TestRepeat(unittest.TestCase):
 
     def test_cpu_routine(self):
         with mock.patch('time.perf_counter',
-                        mock.Mock(side_effect=[2.4, 3.8] * 10)):
+                        mock.Mock(side_effect=[2.4, 3.8, 3.8] * 10)):
             with mock.patch('cupy.cuda.get_elapsed_time',
                             mock.Mock(return_value=2500)):
                 mock_func = mock.Mock()
@@ -32,7 +32,7 @@ class TestRepeat(unittest.TestCase):
 
     def test_repeat_max_duration(self):
         with mock.patch('time.perf_counter',
-                        mock.Mock(side_effect=[1., 2., 3., 4., 5., 6.])):
+                        mock.Mock(side_effect=[1., 2., 2.] * 6)):
             with mock.patch('cupy.cuda.get_elapsed_time',
                             mock.Mock(return_value=2500)):
                 mock_func = mock.Mock()
@@ -84,6 +84,8 @@ class TestPerfCaseResult(unittest.TestCase):
             '    CPU:    5.620 us   +/- 0.943 '
             '(min:    4.200 / max:    7.100) us'
         )
+        assert perf.to_str() == expected
+        # Checks if the result does not change.
         assert perf.to_str() == expected
 
     def test_single_show_gpu(self):
