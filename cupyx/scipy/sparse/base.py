@@ -354,6 +354,10 @@ class spmatrix(object):
 
         Returns:
             m : np.matrix
+
+        .. seealso::
+            :meth:`scipy.sparse.spmatrix.mean`
+
         """
         def _is_integral(dtype):
             return (cupy.issubdtype(dtype, cupy.integer) or
