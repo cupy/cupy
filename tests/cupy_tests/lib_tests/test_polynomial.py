@@ -80,6 +80,14 @@ class TestPoly1dInit(unittest.TestCase):
         assert out.variable == (self.variable or 'x')
         return out.coeffs
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_zero_size(self, xp, dtype):
+        a = testing.shaped_arange((0,), xp, dtype)
+        out = xp.poly1d(a, variable=self.variable)
+        assert out.variable == (self.variable or 'x')
+        return out.coeffs
+
 
 @testing.gpu
 class TestPoly1d(unittest.TestCase):
