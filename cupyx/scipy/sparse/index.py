@@ -15,6 +15,8 @@ INT_TYPES = (int, integer)
 int32_dtype = dtype('int32')
 float32_dtype = dtype('float32')
 float64_dtype = dtype('float64')
+complex64_dtype = dtype('complex64')
+complex128_dtype = dtype('complex128')
 
 module_options = ('--std=c++11',)
 
@@ -108,9 +110,12 @@ def csr_column_index1(n_idx, col_idxs, n_row, n_col,
 
 get_csr_index2_ker_types = {
     (int32_dtype, float32_dtype): 'csr_index2_ker<int, float>',
-    (int32_dtype, float64_dtype): 'csr_index2_ker<int, double>'
+    (int32_dtype, float64_dtype): 'csr_index2_ker<int, double>',
+    (int32_dtype, complex64_dtype): 'csr_index2_ker<int, complex<float>>',
+    (int32_dtype, complex128_dtype): 'csr_index2_ker<int, complex<double>>'
 }
 get_csr_index2_ker = core.RawModule(code="""
+    #include <cupy/complex.cuh>
     template<typename I, typename T>
     __global__
     void csr_index2_ker(I *col_order,
@@ -243,9 +248,12 @@ def get_csr_submatrix_degree(Ap, Aj, ir0, ir1,
 
 get_csr_submatrix_cols_data_ker_types = {
     (int32_dtype, float32_dtype): 'get_csr_submatrix_cols_data<int, float>',
-    (int32_dtype, float64_dtype): 'get_csr_submatrix_cols_data<int, double>'
+    (int32_dtype, float64_dtype): 'get_csr_submatrix_cols_data<int, double>',
+    (int32_dtype, complex64_dtype): 'get_csr_submatrix_cols_data<int, complex<float>>',
+    (int32_dtype, complex128_dtype): 'get_csr_submatrix_cols_data<int, complex<double>>'
 }
 get_csr_submatrix_cols_data_ker = core.RawModule(code="""
+    #include <cupy/complex.cuh>
     template<typename I, typename T>
     __global__
     void get_csr_submatrix_cols_data(const I *Ap,
@@ -303,9 +311,12 @@ def get_csr_submatrix_cols_data(Ap, Aj, Ax,
 
 csr_row_index_ker_types = {
     (int32_dtype, float32_dtype): 'csr_row_index_ker<int, float>',
-    (int32_dtype, float64_dtype): 'csr_row_index_ker<int, double>'
+    (int32_dtype, float64_dtype): 'csr_row_index_ker<int, double>',
+    (int32_dtype, complex64_dtype): 'csr_row_index_ker<int, complex<float>>',
+    (int32_dtype, complex128_dtype): 'csr_row_index_ker<int, complex<double>>'
 }
 csr_row_index_ker = core.RawModule(code="""
+    #include <cupy/complex.cuh>
     template<typename I, typename T>
     __global__
     void csr_row_index_ker(const I n_row_idx,
@@ -372,9 +383,12 @@ def csr_sample_values(n_row, n_col,
 
 csr_sample_values_kern_types = {
     (int32_dtype, float32_dtype): 'csr_sample_values_kern<int, float>',
-    (int32_dtype, float64_dtype): 'csr_sample_values_kern<int, double>'
+    (int32_dtype, float64_dtype): 'csr_sample_values_kern<int, double>',
+    (int32_dtype, complex64_dtype): 'csr_sample_values_kern<int, complex<float>>',
+    (int32_dtype, complex128_dtype): 'csr_sample_values_kern<int, complex<double>>'
 }
 csr_sample_values_kern = core.RawModule(code="""
+    #include <cupy/complex.cuh>
     template<typename I, typename T>
     __global__
     void csr_sample_values_kern(const I n_row,
@@ -413,9 +427,12 @@ csr_sample_values_kern = core.RawModule(code="""
 
 csr_row_slice_kern_types = {
     (int32_dtype, float32_dtype): 'csr_row_slice_kern<int, float>',
-    (int32_dtype, float64_dtype): 'csr_row_slice_kern<int, double>'
+    (int32_dtype, float64_dtype): 'csr_row_slice_kern<int, double>',
+    (int32_dtype, complex64_dtype): 'csr_row_slice_kern<int, complex<float>>',
+    (int32_dtype, complex128_dtype): 'csr_row_slice_kern<int, complex<double>>'
 }
 csr_row_slice_kern = core.RawModule(code="""
+    #include <cupy/complex.cuh>
     template<typename I, typename T>
     __global__
     void csr_row_slice_kern(const I start,

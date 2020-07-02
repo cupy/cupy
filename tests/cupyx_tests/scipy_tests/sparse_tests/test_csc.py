@@ -1351,10 +1351,6 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     def test_getitem_slice_start_larger_than_stop(self, xp, sp):
         return _make(xp, sp, self.dtype)[:, 3:2]
 
-    def test_getitem_slice_step_2(self):
-        with self.assertRaises(ValueError):
-            _make(cupy, sparse, self.dtype)[:, 0::2]
-
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
@@ -1377,3 +1373,79 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_stop_too_large(self, xp, sp):
         return _make(xp, sp, self.dtype)[:, None:5]
+
+
+def test_csc_getrow():
+    N = 10
+    cupy.random.seed(0)
+    X = cupy.random.random((N, N))
+    X[X > 0.7] = 0
+    Xcsc = cupy.sparse.csc_matrix(X)
+
+    for i in range(N):
+        arr_row = X[i:i + 1, :]
+        csc_row = Xcsc.getrow(i)
+
+        cupy.testing.assert_array_almost_equal(arr_row, csc_row.toarray())
+        numpy.testing.assert_(type(csc_row) is cupy.sparse.csr_matrix)
+
+
+def test_csc_getcol():
+    N = 10
+    cupy.random.seed(0)
+    X = cupy.random.random((N, N))
+    X[X > 0.7] = 0
+    Xcsc = cupy.sparse.csc_matrix(X)
+
+    for i in range(N):
+        arr_col = X[:, i:i + 1]
+        csc_col = Xcsc.getcol(i)
+
+        cupy.testing.assert_array_almost_equal(arr_col, csc_col.toarray())
+        numpy.testing.assert_(type(csc_col) is cupy.sparse.csc_matrix)
+
+
+@pytest.mark.parametrize('dtype',
+                         ['float32',
+                          'float64',
+                          'complex64',
+                          'complex128'])
+@pytest.mark.parametrize("matrix_input, axis, expected_shape",
+    [(scipy.sparse.csc_matrix([[1, 0],
+                [0, 0],
+                [0, 2]]),
+      0, (0, 2)),
+     (scipy.sparse.csc_matrix([[1, 0],
+                [0, 0],
+                [0, 2]]),
+      1, (3, 0)),
+     (scipy.sparse.csc_matrix([[1, 0],
+                [0, 0],
+                [0, 2]]),
+      'both', (0, 0)),
+     (scipy.sparse.csc_matrix([[0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 2, 3, 0, 1]]),
+      0, (0, 6))])
+def test_csc_empty_slices(matrix_input, axis, expected_shape, dtype):
+
+    matrix_input = cupy.sparse.csc_matrix(matrix_input, dtype=dtype)
+
+    # see gh-11127 for related discussion
+    slice_1 = matrix_input.A.shape[0] - 1
+    slice_2 = slice_1
+    slice_3 = slice_2 - 1
+
+    if axis == 0:
+        actual_shape_1 = matrix_input[slice_1:slice_2, :].A.shape
+        actual_shape_2 = matrix_input[slice_1:slice_3, :].A.shape
+    elif axis == 1:
+        actual_shape_1 = matrix_input[:, slice_1:slice_2].A.shape
+        actual_shape_2 = matrix_input[:, slice_1:slice_3].A.shape
+    elif axis == 'both':
+        actual_shape_1 = matrix_input[slice_1:slice_2, slice_1:slice_2].A.shape
+        actual_shape_2 = matrix_input[slice_1:slice_3, slice_1:slice_3].A.shape
+
+    assert actual_shape_1 == expected_shape
+    assert actual_shape_1 == actual_shape_2
+

@@ -273,6 +273,9 @@ class TestCsrMatrix(unittest.TestCase):
 
     def test_pickle_roundtrip(self):
         s = _make(cupy, sparse, self.dtype)
+
+        print(str(pickle.dumps(s)))
+
         s2 = pickle.loads(pickle.dumps(s))
         assert s._descr.descriptor != s2._descr.descriptor
         assert s.shape == s2.shape
@@ -1490,10 +1493,6 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     def test_getitem_slice_start_larger_than_stop(self, xp, sp):
         return _make(xp, sp, self.dtype)[3:2]
 
-    def test_getitem_slice_step_2(self):
-        with self.assertRaises(ValueError):
-            _make(cupy, sparse, self.dtype)[0::2]
-
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_ellipsis(self, xp, sp):
         return _make(xp, sp, self.dtype)[...]
@@ -1554,3 +1553,127 @@ class TestCUBspmv(unittest.TestCase):
             m * x
         # ...then perform the actual computation
         return m * x
+
+
+@pytest.mark.parametrize('dtype',
+                         ['float32',
+                          'float64',
+                          'complex64',
+                          'complex128'])
+def test_csr_bool_indexing(dtype):
+    sp_data = scipy.sparse.csr_matrix([[0, 1, 2], [3, 4, 5], [6, 7, 8]],
+                                      dtype=dtype)
+    data = cupy.sparse.csr_matrix(sp_data)
+    list_indices1 = [False, True, False]
+    array_indices1 = cupy.array(list_indices1)
+    list_indices2 = [[False, True, False], [False, True, False], [False, True, False]]
+    array_indices2 = cupy.array(list_indices2)
+    list_indices3 = ([False, True, False], [False, True, False])
+    array_indices3 = (cupy.array(list_indices3[0]), cupy.array(list_indices3[1]))
+    slice_list1 = data[list_indices1].toarray()
+    slice_array1 = data[array_indices1].toarray()
+    slice_list2 = data[list_indices2]
+    slice_array2 = data[array_indices2]
+    slice_list3 = data[list_indices3]
+    slice_array3 = data[array_indices3]
+    assert (slice_list1 == slice_array1).all()
+    assert (slice_list2 == slice_array2).all()
+    assert (slice_list3 == slice_array3).all()
+
+
+@pytest.mark.parametrize('dtype',
+                         ['float32',
+                          'float64',
+                          'complex64',
+                          'complex128'])
+@pytest.mark.parametrize("matrix_input, axis, expected_shape",
+    [(scipy.sparse.csr_matrix([[1, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 2, 3, 0]]),
+      0, (0, 4)),
+     (scipy.sparse.csr_matrix([[1, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 2, 3, 0]]),
+      1, (3, 0)),
+     (scipy.sparse.csr_matrix([[1, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 2, 3, 0]]),
+      'both', (0, 0)),
+     (scipy.sparse.csr_matrix([[0, 1, 0, 0, 0],
+                [0, 0, 0, 0, 0],
+                [0, 0, 2, 3, 0]]),
+      0, (0, 5))])
+def test_csr_empty_slices(matrix_input, axis, expected_shape, dtype):
+    # see gh-11127 for related discussion
+
+    matrix_input = cupy.sparse.csr_matrix(matrix_input, dtype=dtype)
+    slice_1 = matrix_input.A.shape[0] - 1
+    slice_2 = slice_1
+    slice_3 = slice_2 - 1
+
+    if axis == 0:
+        actual_shape_1 = matrix_input[slice_1:slice_2, :].A.shape
+        actual_shape_2 = matrix_input[slice_1:slice_3, :].A.shape
+    elif axis == 1:
+        actual_shape_1 = matrix_input[:, slice_1:slice_2].A.shape
+        actual_shape_2 = matrix_input[:, slice_1:slice_3].A.shape
+    elif axis == 'both':
+        actual_shape_1 = matrix_input[slice_1:slice_2, slice_1:slice_2].A.shape
+        actual_shape_2 = matrix_input[slice_1:slice_3, slice_1:slice_3].A.shape
+
+    assert actual_shape_1 == expected_shape
+    assert actual_shape_1 == actual_shape_2
+
+
+def test_csr_getrow():
+    N = 10
+    cupy.random.seed(0)
+    X = cupy.random.random((N, N))
+    X[X > 0.7] = 0
+    Xcsr = cupy.sparse.csr_matrix(X)
+
+    for i in range(N):
+        arr_row = X[i:i + 1, :]
+        csr_row = Xcsr.getrow(i)
+
+        cupy.testing.assert_array_almost_equal(arr_row, csr_row.toarray())
+        numpy.testing.assert_(type(csr_row) is cupy.sparse.csr_matrix)
+
+
+def test_csr_getcol():
+    N = 10
+    cupy.random.seed(0)
+    X = cupy.random.random((N, N))
+    X[X > 0.7] = 0
+    Xcsr = cupy.sparse.csr_matrix(X)
+
+    for i in range(N):
+        arr_col = X[:, i:i + 1]
+        csr_col = Xcsr.getcol(i)
+
+        cupy.testing.assert_array_almost_equal(arr_col, csr_col.toarray())
+        numpy.testing.assert_(type(csr_col) is cupy.sparse.csr_matrix)
+
+
+def _check_csr_rowslice(i, sl, X, Xcsr):
+    np_slice = X[i, sl]
+    csr_slice = Xcsr[i, sl]
+    cupy.testing.assert_array_almost_equal(np_slice, csr_slice.toarray()[0])
+    numpy.testing.assert_(type(csr_slice) is cupy.sparse.csr_matrix)
+
+
+def test_csr_rowslice():
+    N = 10
+    cupy.random.seed(0)
+    X = cupy.random.random((N, N))
+    X[X > 0.7] = 0
+    Xcsr = cupy.sparse.csr_matrix(X)
+
+    slices = [slice(None, None, None),
+              slice(None, None, -1),
+              slice(1, -2, 2),
+              slice(-2, 1, -2)]
+
+    for i in range(N):
+        for sl in slices:
+            _check_csr_rowslice(i, sl, X, Xcsr)

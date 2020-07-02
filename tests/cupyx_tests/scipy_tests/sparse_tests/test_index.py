@@ -3,11 +3,13 @@ import unittest
 import cupy
 from cupy import testing
 
+import pytest
+
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
     'density': [0.1, 0.2, 0.4, 0.5, 0.9, 1.0],
-    'dtype': ['float32', 'float64'],
+    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
     'n_rows': [100, 1000],
     'n_cols': [10, 100]
 }))
@@ -17,8 +19,11 @@ class TestIndexing(unittest.TestCase):
     def _run(self, maj, min=None):
         a = cupy.sparse.random(self.n_rows, self.n_cols,
                                format=self.format,
-                               density=self.density,
-                               dtype=self.dtype)
+                               density=self.density)
+
+        # sparse.random doesn't support complex types
+        # so we need to cast
+        a = a.astype(self.dtype)
         if min is not None:
             expected = a.get()[maj, min]
             actual = a[maj, min]
@@ -113,10 +118,18 @@ class TestIndexing(unittest.TestCase):
         self._run(slice(2, 10, 5))
         self._run(slice(0, 10, 10))
 
+        self._run(slice(1, None, 2))
+        self._run(slice(2, None, 5))
+        self._run(slice(0, None,  10))
+
         # negative step
-        self._run(slice(10, 1, 2))
-        self._run(slice(10, 2, 5))
-        self._run(slice(10, 0, 10))
+        self._run(slice(10, 1, -2))
+        self._run(slice(10, 2, -5))
+        self._run(slice(10, 0, -10))
+
+        self._run(slice(10, None, -2))
+        self._run(slice(10, None, -5))
+        self._run(slice(10, None, -10))
 
     def test_major_slice_with_step_minor_slice_with_step(self):
 
@@ -166,6 +179,31 @@ class TestIndexing(unittest.TestCase):
 
     def test_major_reorder(self):
         self._run(slice(None, None, -1))
+        self._run(slice(None, None, -2))
+        self._run(slice(None, None, -50))
 
     def test_major_reorder_minor_reorder(self):
         self._run(slice(None, None, -1), slice(None, None, -1))
+        self._run(slice(None, None, -3), slice(None, None, -3))
+
+    def test_ellipsis(self):
+        self._run(Ellipsis)
+        self._run(Ellipsis, 1)
+        self._run(1, Ellipsis)
+        self._run(Ellipsis, slice(None))
+        self._run(slice(None), Ellipsis)
+        self._run(Ellipsis, slice(1, None))
+        self._run(slice(1, None), Ellipsis)
+
+    def test_bad_indexing(self):
+        with pytest.raises(IndexError):
+            self._run("foo")
+
+        with pytest.raises(IndexError):
+            self._run(2, "foo")
+
+        with pytest.raises(ValueError):
+            self._run([1, 2, 3], [1, 2, 3, 4])
+
+        with pytest.raises(IndexError):
+            self._run([True])
