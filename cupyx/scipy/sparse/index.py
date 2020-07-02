@@ -504,6 +504,143 @@ def csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
             Bp, Bj, Bx))
 
 
+"""
+/*
+ * Determine the data offset at specific locations
+ *
+ * Input Arguments:
+ *   I  n_row         - number of rows in A
+ *   I  n_col         - number of columns in A
+ *   I  Ap[n_row+1]   - row pointer
+ *   I  Aj[nnz(A)]    - column indices
+ *   I  n_samples     - number of samples
+ *   I  Bi[N]         - sample rows
+ *   I  Bj[N]         - sample columns
+ *
+ * Output Arguments:
+ *   I  Bp[N]         - offsets into Aj; -1 if non-existent
+ *
+ * Return value:
+ *   1 if any sought entries are duplicated, in which case the
+ *   function has exited early; 0 otherwise.
+ *
+ * Note:
+ *   Output array Bp must be preallocated
+ *
+ *   Complexity: varies. See csr_sample_values
+ *
+ */
+"""
+
+csr_sample_offsets_ker_types = {
+    (int32_dtype): 'csr_sample_offsets<int>'
+}
+csr_sample_offsets_ker = core.RawModule(code="""
+template <typename I>
+__global__
+void csr_sample_offsets(const I n_row,
+                       const I n_col,
+                       const I *Ap,
+                       const I *Aj,
+                       const I n_samples,
+                       const I *Bi,
+                       const I *Bj,
+                             I *Bp,
+                       bool *dupl) {
+    int n = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if(n < n_samples)
+    {
+        const I i = Bi[n] < 0 ? Bi[n] + n_row : Bi[n]; // sample row
+        const I j = Bj[n] < 0 ? Bj[n] + n_col : Bj[n]; // sample column
+
+        const I row_start = Ap[i];
+        const I row_end   = Ap[i+1];
+
+        I offset = -1;
+
+        for(I jj = row_start; jj < row_end; jj++)
+        {
+            if (Aj[jj] == j) {
+                offset = jj;
+                for (jj++; jj < row_end; jj++) {
+                    if (Aj[jj] == j) {
+                        offset = -2;
+                        dupl[0] = true;
+                    }
+                }
+            }
+        }
+        Bp[n] = offset;
+    }
+}
+""", options=module_options,
+     name_expressions=tuple(
+         csr_sample_offsets_ker_types.values()))
+
+
+csr_has_sorted_indices_ker_types = {
+    int32_dtype: 'csr_has_sorted_indices<int>'
+}
+csr_has_sorted_indices_ker = core.RawModule(code="""
+    template<typename I>
+    __global__
+    void csr_has_sorted_indices(const I n_rows,
+                                const I *Ap,
+                                const I *Aj,
+                                bool *sorted) {
+
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        
+        if(i < n_rows) {
+            const I start = Ap[i];
+            const I stop = Ap[i+1];
+    
+            I last_col = -1;
+            for(I jj = start; jj < stop; jj++) {
+                const I cur_col = Aj[jj];
+                if(last_col >= 0 && cur_col < last_col)
+                    sorted[0] = false;
+                last_col = cur_col;
+            }
+        }
+
+    }
+""", options=module_options,
+     name_expressions=tuple(
+         csr_has_sorted_indices_ker_types.values()))
+
+
+def csr_has_sorted_indices(n_rows, Ap, Aj, tpb=32):
+
+    grid = math.ceil(n_rows / tpb)
+
+    kernel = csr_has_sorted_indices_ker.get_function(
+        csr_has_sorted_indices_ker_types[Ap.dtype]
+    )
+
+    is_sorted = cupy.array([True], dtype='bool')
+
+    kernel((grid,), (tpb,), (n_rows, Ap, Aj, is_sorted))
+
+    return is_sorted.item()
+
+
+def csr_sample_offsets(n_row, n_col,
+                       Ap, Aj, n_samples,
+                       Bi, Bj, Bp, tpb=32):
+    grid = math.ceil(n_row / tpb)
+    kernel = csr_sample_offsets_ker.get_function(
+        csr_sample_offsets_ker_types[Ap.dtype]
+    )
+
+    dupl = cupy.array([False], dtype="bool")
+    kernel((grid,), (tpb,),
+           (n_row, n_col, Ap, Aj, n_samples, Bi, Bj, Bp, dupl))
+
+    return dupl.item()
+
+
 class IndexMixin(object):
     """
     This class provides common dispatching and validation logic for indexing.
@@ -551,6 +688,57 @@ class IndexMixin(object):
         if row.size == 0:
             return self.__class__(cupy.atleast_2d(row).shape, dtype=self.dtype)
         return self._get_arrayXarray(row, col)
+
+    def __setitem__(self, key, x):
+        row, col = self._validate_indices(key)
+
+        if isinstance(row, INT_TYPES) and isinstance(col, INT_TYPES):
+            x = cupy.asarray(x, dtype=self.dtype)
+            if x.size != 1:
+                raise ValueError('Trying to assign a sequence to an item')
+            self._set_intXint(row, col, x.flat[0])
+            return
+
+        if isinstance(row, slice):
+            row = cupy.arange(*row.indices(self.shape[0]))[:, None]
+        else:
+            row = cupy.atleast_1d(row)
+
+        if isinstance(col, slice):
+            col = cupy.arange(*col.indices(self.shape[1]))[None, :]
+            if row.ndim == 1:
+                row = row[:, None]
+        else:
+            col = cupy.atleast_1d(col)
+
+        i, j = _broadcast_arrays(row, col)
+        if i.shape != j.shape:
+            raise IndexError('number of row and column indices differ')
+
+        from .base import isspmatrix
+        if isspmatrix(x):
+            if i.ndim == 1:
+                # Inner indexing, so treat them like row vectors.
+                i = i[None]
+                j = j[None]
+            broadcast_row = x.shape[0] == 1 and i.shape[0] != 1
+            broadcast_col = x.shape[1] == 1 and i.shape[1] != 1
+            if not ((broadcast_row or x.shape[0] == i.shape[0]) and
+                    (broadcast_col or x.shape[1] == i.shape[1])):
+                raise ValueError('shape mismatch in assignment')
+            if x.size == 0:
+                return
+            x = x.tocoo(copy=True)
+            x.sum_duplicates()
+            self._set_arrayXarray_sparse(i, j, x)
+        else:
+            # Make x and i into the same shape
+            x = cupy.asarray(x, dtype=self.dtype)
+            x, _ = _broadcast_arrays(x, i)
+            if x.size == 0:
+                return
+            x = x.reshape(i.shape)
+            self._set_arrayXarray(i, j, x)
 
     def _validate_indices(self, key):
         M, N = self.shape

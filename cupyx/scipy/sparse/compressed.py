@@ -23,6 +23,8 @@ from cupyx.scipy.sparse.index import csr_row_index
 from cupyx.scipy.sparse.index import csr_row_slice
 
 from cupyx.scipy.sparse.index import csr_sample_values
+from cupyx.scipy.sparse.index import csr_sample_offsets
+from cupyx.scipy.sparse.index import csr_has_sorted_indices
 
 
 class _compressed_sparse_matrix(sparse_data._data_matrix,
@@ -406,6 +408,30 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         self._shape = shape
         self._has_canonical_format = has_canonical_format
 
+    def _prune_array(self, array):
+        """Return an array equivalent to the input array. If the input
+        array is a view of a much larger array, copy its contents to a
+        newly allocated array. Otherwise, return the input unchanged.
+        """
+        if array.base is not None and array.size < array.base.size // 2:
+            return array.copy()
+        return array
+
+    def prune(self):
+        """Remove empty space after all non-zero elements.
+        """
+        major_dim = self._swap(*self.shape)[0]
+
+        if len(self.indptr) != major_dim + 1:
+            raise ValueError('index pointer has invalid length')
+        if len(self.indices) < self.nnz:
+            raise ValueError('indices array has fewer than nnz elements')
+        if len(self.data) < self.nnz:
+            raise ValueError('data array has fewer than nnz elements')
+
+        self.indices = self._prune_array(self.indices[:self.nnz])
+        self.data = self._prune_array(self.data[:self.nnz])
+
     def _with_data(self, data, copy=True):
         if copy:
             return self.__class__(
@@ -674,6 +700,275 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
 
+    def _set_intXint(self, row, col, x):
+        i, j = self._swap(*(row, col))
+        self._set_many(i, j, x)
+
+    def _set_arrayXarray(self, row, col, x):
+        i, j = self._swap(*(row, col))
+        self._set_many(i, j, x)
+
+    def _set_arrayXarray_sparse(self, row, col, x):
+        # clear entries that will be overwritten
+        self._zero_many(*self._swap(*(row, col)))
+
+        M, N = row.shape  # matches col.shape
+        broadcast_row = M != 1 and x.shape[0] == 1
+        broadcast_col = N != 1 and x.shape[1] == 1
+        r, c = x.row, x.col
+        x = cupy.asarray(x.data, dtype=self.dtype)
+        if broadcast_row:
+            r = cupy.repeat(cupy.arange(M), len(r))
+            c = cupy.tile(c, M)
+            x = cupy.tile(x, M)
+        if broadcast_col:
+            r = cupy.repeat(r, N)
+            c = cupy.tile(cupy.arange(N), len(c))
+            x = cupy.repeat(x, N)
+        # only assign entries in the new sparsity structure
+        i, j = self._swap(*(row[r, c], col[r, c]))
+        self._set_many(i, j, x)
+
+    def _setdiag(self, values, k):
+        if 0 in self.shape:
+            return
+
+        M, N = self.shape
+        broadcast = (values.ndim == 0)
+
+        if k < 0:
+            if broadcast:
+                max_index = min(M + k, N)
+            else:
+                max_index = min(M + k, N, len(values))
+            i = cupy.arange(max_index, dtype=self.indices.dtype)
+            j = cupy.arange(max_index, dtype=self.indices.dtype)
+            i -= k
+
+        else:
+            if broadcast:
+                max_index = min(M, N - k)
+            else:
+                max_index = min(M, N - k, len(values))
+            i = cupy.arange(max_index, dtype=self.indices.dtype)
+            j = cupy.arange(max_index, dtype=self.indices.dtype)
+            j += k
+
+        if not broadcast:
+            values = values[:len(i)]
+
+        self[i, j] = values
+
+    def _prepare_indices(self, i, j):
+        M, N = self._swap(*self.shape)
+
+        def check_bounds(indices, bound):
+            idx = indices.max()
+            if idx >= bound:
+                raise IndexError('index (%d) out of range (>= %d)' %
+                                 (idx, bound))
+            idx = indices.min()
+            if idx < -bound:
+                raise IndexError('index (%d) out of range (< -%d)' %
+                                 (idx, bound))
+
+        i = cupy.array(i, dtype=self.indices.dtype, copy=False, ndmin=1).ravel()
+        j = cupy.array(j, dtype=self.indices.dtype, copy=False, ndmin=1).ravel()
+        check_bounds(i, M)
+        check_bounds(j, N)
+        return i, j, M, N
+
+    def _set_many(self, i, j, x):
+        """Sets value at each (i, j) to x
+        Here (i,j) index major and minor respectively, and must not contain
+        duplicate entries.
+        """
+        i, j, M, N = self._prepare_indices(i, j)
+        x = cupy.array(x, dtype=self.dtype, copy=False, ndmin=1).ravel()
+
+        n_samples = x.size
+        offsets = cupy.empty(n_samples, dtype=self.indices.dtype)
+        ret = csr_sample_offsets(M, N, self.indptr, self.indices, n_samples,
+                                 i, j, offsets)
+        if ret == 1:
+            # rinse and repeat
+            self.sum_duplicates()
+            csr_sample_offsets(M, N, self.indptr, self.indices, n_samples,
+                               i, j, offsets)
+
+        if -1 not in offsets:
+            # only affects existing non-zero cells
+            self.data[offsets] = x
+            return
+
+        else:
+            print("Changing the sparsity structure of a {}_matrix is expensive."
+                 " lil_matrix is more efficient.".format(self.format))
+            # replace where possible
+            mask = offsets > -1
+            self.data[offsets[mask]] = x[mask]
+            # only insertions remain
+            mask = ~mask
+            i = i[mask]
+            i[i < 0] += M
+            j = j[mask]
+            j[j < 0] += N
+            self._insert_many(i, j, x[mask])
+
+    def _zero_many(self, i, j):
+        """Sets value at each (i, j) to zero, preserving sparsity structure.
+        Here (i,j) index major and minor respectively.
+        """
+        i, j, M, N = self._prepare_indices(i, j)
+
+        n_samples = len(i)
+        offsets = cupy.empty(n_samples, dtype=self.indices.dtype)
+        ret = csr_sample_offsets(M, N, self.indptr, self.indices, n_samples,
+                                 i, j, offsets)
+        if ret == 1:
+            # rinse and repeat
+            self.sum_duplicates()
+            csr_sample_offsets(M, N, self.indptr, self.indices, n_samples,
+                               i, j, offsets)
+
+        # only assign zeros to the existing sparsity structure
+        self.data[offsets[offsets > -1]] = 0
+
+    def _insert_many(self, i, j, x):
+        """Inserts new nonzero at each (i, j) with value x
+        Here (i,j) index major and minor respectively.
+        i, j and x must be non-empty, 1d arrays.
+        Inserts each major group (e.g. all entries per row) at a time.
+        Maintains has_sorted_indices property.
+        Modifies i, j, x in place.
+        """
+        order = cupy.argsort(i)  # stable for duplicates
+        i = i.take(order) #, mode='clip')
+        j = j.take(order) #, mode='clip')
+        x = x.take(order) #, mode='clip')
+
+        do_sort = self.has_sorted_indices
+
+        # Update index data type
+        idx_dtype = sputils.get_index_dtype((self.indices, self.indptr),
+                                            maxval=(self.indptr[-1] + x.size))
+        self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
+        self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
+        i = cupy.asarray(i, dtype=idx_dtype)
+        j = cupy.asarray(j, dtype=idx_dtype)
+
+        # Collate old and new in chunks by major index
+        indices_parts = []
+        data_parts = []
+        ui, ui_indptr = cupy.unique(i, return_index=True)
+
+        to_add = cupy.asarray(len(j), ui_indptr.dtype)
+        ui_indptr = cupy.hstack([ui_indptr, to_add])
+        new_nnzs = cupy.diff(ui_indptr)
+        prev = 0
+        for c, (ii, js, je) in enumerate(zip(ui, ui_indptr, ui_indptr[1:])):
+            # old entries
+            start = self.indptr[prev]
+            stop = self.indptr[ii]
+            indices_parts.append(self.indices[start:stop])
+            data_parts.append(self.data[start:stop])
+
+            # handle duplicate j: keep last setting
+            uj, uj_indptr = cupy.unique(j[js:je][::-1], return_index=True)
+            if len(uj) == je - js:
+                indices_parts.append(j[js:je])
+                data_parts.append(x[js:je])
+            else:
+                indices_parts.append(j[js:je][::-1][uj_indptr])
+                data_parts.append(x[js:je][::-1][uj_indptr])
+                new_nnzs[c] = len(uj)
+
+            prev = ii
+
+        # remaining old entries
+        start = self.indptr[ii]
+        indices_parts.append(self.indices[start:])
+        data_parts.append(self.data[start:])
+
+        # update attributes
+        self.indices = cupy.concatenate(indices_parts)
+        self.data = cupy.concatenate(data_parts)
+        nnzs = cupy.empty(self.indptr.shape, dtype=idx_dtype)
+        nnzs[0] = idx_dtype(0)
+        indptr_diff = cupy.diff(self.indptr)
+        indptr_diff[ui] += new_nnzs
+        nnzs[1:] = indptr_diff
+        self.indptr = cupy.cumsum(nnzs, out=nnzs)
+
+        if do_sort:
+            # TODO: only sort where necessary
+            self.has_sorted_indices = False
+            self.sort_indices()
+
+        self.check_format(full_check=False)
+
+    def check_format(self, full_check=True):
+        """check whether the matrix format is valid
+        Parameters
+        ----------
+        full_check : bool, optional
+            If `True`, rigorous check, O(N) operations. Otherwise
+            basic check, O(1) operations (default True).
+        """
+        # use _swap to determine proper bounds
+        major_name, minor_name = self._swap(*('row', 'column'))
+        major_dim, minor_dim = self._swap(*self.shape)
+
+        # index arrays should have integer data types
+        if self.indptr.dtype.kind != 'i':
+            print("indptr array has non-integer dtype ({})"
+                 "".format(self.indptr.dtype.name), stacklevel=3)
+        if self.indices.dtype.kind != 'i':
+            print("indices array has non-integer dtype ({})"
+                 "".format(self.indices.dtype.name), stacklevel=3)
+
+        idx_dtype = sputils.get_index_dtype((self.indptr, self.indices))
+        self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
+        self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
+
+        # @TODO: Is this necessary?
+        # self.data = sputils.to_native(self.data)
+
+        # check array shapes
+        for x in [self.data.ndim, self.indices.ndim, self.indptr.ndim]:
+            if x != 1:
+                raise ValueError('data, indices, and indptr should be 1-D')
+
+        # check index pointer
+        if (len(self.indptr) != major_dim + 1):
+            raise ValueError("index pointer size ({}) should be ({})"
+                             "".format(len(self.indptr), major_dim + 1))
+        if (self.indptr[0] != 0):
+            raise ValueError("index pointer should start with 0")
+
+        # check index and data arrays
+        if (len(self.indices) != len(self.data)):
+            raise ValueError("indices and data should have the same size")
+        if (self.indptr[-1] > len(self.indices)):
+            raise ValueError("Last value of index pointer should be less than "
+                             "the size of index and data arrays")
+
+        self.prune()
+
+        if full_check:
+            # check format validity (more expensive)
+            if self.nnz > 0:
+                if self.indices.max() >= minor_dim:
+                    raise ValueError("{} index values must be < {}"
+                                     "".format(minor_name, minor_dim))
+                if self.indices.min() < 0:
+                    raise ValueError("{} index values must be >= 0"
+                                     "".format(minor_name))
+                if cupy.diff(self.indptr).min() < 0:
+                    raise ValueError("index pointer values must form a "
+                                     "non-decreasing sequence")
+
+
     @property
     def has_canonical_format(self):
         return self._has_canonical_format
@@ -686,6 +981,24 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         """
         return self._shape
+
+    def __get_sorted(self):
+        """Determine whether the matrix has sorted indices
+        Returns
+            - True: if the indices of the matrix are in sorted order
+            - False: otherwise
+        """
+
+        # first check to see if result was cached
+        if not hasattr(self, '_has_sorted_indices'):
+            self._has_sorted_indices = csr_has_sorted_indices(
+                len(self.indptr) - 1, self.indptr, self.indices)
+        return self._has_sorted_indices
+
+    def __set_sorted(self, val):
+        self._has_sorted_indices = bool(val)
+
+    has_sorted_indices = property(fget=__get_sorted, fset=__set_sorted)
 
     def getnnz(self, axis=None):
         """Returns the number of stored values, including explicit zeros.
