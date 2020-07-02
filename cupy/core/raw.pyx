@@ -43,7 +43,7 @@ cdef class RawKernel:
 
     def __init__(self, str code, str name, tuple options=(),
                  str backend='nvrtc', *, bint translate_cucomplex=False,
-                 bint enable_cooperative_groups=False, str log_stream=None):
+                 bint enable_cooperative_groups=False, log_stream=None):
 
         self.code = code
         self.name = name
@@ -274,7 +274,7 @@ cdef class RawModule:
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
                  bint enable_cooperative_groups=False,
-                 name_expressions=None, str log_stream=None):
+                 name_expressions=None, log_stream=None):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
@@ -434,7 +434,7 @@ cdef class RawModule:
 def _get_raw_module(str code, str path, tuple options=(), str backend='nvrtc',
                     bint translate_cucomplex=False,
                     bint enable_cooperative_groups=False,
-                    tuple name_expressions=None, str log_stream=None):
+                    tuple name_expressions=None, log_stream=None):
     cdef Module mod
     if code is not None:
         mod = cupy.core.core.compile_with_cache(

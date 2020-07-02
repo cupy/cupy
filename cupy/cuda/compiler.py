@@ -1,5 +1,6 @@
 import hashlib
 import math
+import io
 import os
 import re
 import shutil
@@ -30,11 +31,8 @@ def _run_nvcc(cmd, cwd, log_stream=None):
         stdout = subprocess.check_output(cmd, cwd=cwd,
                                          stderr=subprocess.STDOUT,
                                          universal_newlines=True)
-        if log_stream == 'stdout':
-            print(stdout)
-        elif log_stream is not None:
-            with open(log_stream, 'w') as f:
-                f.write(stdout)
+        if log_stream is not None:
+            log_stream.write(stdout)
         return stdout
     except subprocess.CalledProcessError as e:
         msg = ('`nvcc` command returns non-zero exit status. \n'
@@ -485,11 +483,8 @@ class _NVRTCProgram(object):
                 mapping = {}
                 for ker in self.name_expressions:
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
-            if log_stream == 'stdout':
-                print(nvrtc.getProgramLog(self.ptr))
-            elif log_stream is not None:
-                with open(log_stream, 'w') as f:
-                    f.write(nvrtc.getProgramLog(self.ptr))
+            if log_stream is not None:
+                log_stream.write(nvrtc.getProgramLog(self.ptr))
             return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)

@@ -7,7 +7,7 @@ cdef class RawKernel:
         readonly tuple options
         readonly str backend
         readonly bint enable_cooperative_groups
-        readonly str log_stream
+        readonly log_stream
         tuple name_expressions
         bint translate_cucomplex
         list _kernel_cache
@@ -22,5 +22,5 @@ cdef class RawModule:
         readonly str backend
         readonly bint enable_cooperative_groups
         readonly tuple name_expressions
-        readonly str log_stream
+        readonly log_stream
         bint translate_cucomplex
