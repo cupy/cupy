@@ -186,30 +186,20 @@ cdef class poly1d:
     # -------------------------------------------------------------------------
     # Cupy specific attributes and methods
     # -------------------------------------------------------------------------
-    cpdef get(self, stream=None, out=None):
+    cpdef get(self, stream=None):
         """Returns a copy of poly1d object on host memory.
 
         Args:
             stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
                 copy runs asynchronously. Otherwise, the copy is synchronous.
                 The default uses CUDA stream object of the current context.
-            out (numpy.poly1d): Output object. In order to enable asynchronous
-                copy, the underlying memory should be a pinned memory.
 
         Returns:
             numpy.poly1d: Copy of poly1d object on host memory.
 
         """
-        if out is not None:
-            if not isinstance(out, numpy.poly1d):
-                raise TypeError('Only numpy.poly1d can be obtained from '
-                                'cupy.poly1d')
-            self.coeffs.get(stream=stream, out=out.coeffs)
-            out._variable = self.variable
-            return out
-        else:
-            return numpy.poly1d(self.coeffs.get(stream=stream),
-                                variable=self.variable)
+        return numpy.poly1d(self.coeffs.get(stream=stream),
+                            variable=self.variable)
 
     cpdef set(self, polyin, stream=None):
         """Copies a poly1d object on the host memory to :class:`cupy.poly1d`.
