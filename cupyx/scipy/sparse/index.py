@@ -50,14 +50,15 @@ bin_col_offsets_ker = core.RawModule(code="""
             col_offsets[j]++;
         }
     }
-""", options=module_options,
-     name_expressions=tuple(bin_col_offsets_ker_types.values()))
+""", options=module_options, name_expressions=tuple(
+    bin_col_offsets_ker_types.values()))
 
 
 def bin_col_offsets(n_idx, col_ids, col_offsets, tpb=32):
     grid = math.ceil(n_idx / tpb)
 
-    kernel = bin_col_offsets_ker.get_function(bin_col_offsets_ker_types[int32_dtype])
+    kernel = bin_col_offsets_ker.get_function(
+        bin_col_offsets_ker_types[int32_dtype])
     kernel((grid,), (tpb,), (n_idx, col_ids, col_offsets))
 
 
@@ -83,8 +84,8 @@ csr_column_index1_ker = core.RawModule(code="""
             Bp[i+1] = new_col_size;
         }
 }
-""", options=module_options,
-     name_expressions=tuple(csr_column_index1_ker_types.values()))
+""", options=module_options, name_expressions=tuple(
+    csr_column_index1_ker_types.values()))
 
 
 def csr_column_index1_degree(n_row, col_offsets, Ap, Aj, Bp, tpb=32):
@@ -148,8 +149,8 @@ get_csr_index2_ker = core.RawModule(code="""
         }
     }
 }
-""", options=module_options,
-     name_expressions=tuple(get_csr_index2_ker_types.values()))
+""", options=module_options, name_expressions=tuple(
+    get_csr_index2_ker_types.values()))
 
 
 def csr_column_index2(out_rows, col_order, col_offsets, nnz,
@@ -221,8 +222,8 @@ get_csr_submatrix_degree_ker = core.RawModule(code="""
                 Bp[i+1] = row_count;
         }
     }
-""", options=module_options,
-     name_expressions=tuple(get_csr_submatrix_degree_ker_types.values()))
+""", options=module_options, name_expressions=tuple(
+    get_csr_submatrix_degree_ker_types.values()))
 
 
 def get_csr_submatrix_degree(Ap, Aj, ir0, ir1,
@@ -279,8 +280,8 @@ get_csr_submatrix_cols_data_ker = core.RawModule(code="""
             }
         }
     }
-""", options=module_options,
-     name_expressions=tuple(get_csr_submatrix_cols_data_ker_types.values()))
+""", options=module_options, name_expressions=tuple(
+    get_csr_submatrix_cols_data_ker_types.values()))
 
 
 def get_csr_submatrix_cols_data(Ap, Aj, Ax,
@@ -336,8 +337,8 @@ csr_row_index_ker = core.RawModule(code="""
         }
     }
 
-""", options=module_options,
-     name_expressions=tuple(csr_row_index_ker_types.values()))
+""", options=module_options, name_expressions=tuple(
+    csr_row_index_ker_types.values()))
 
 
 def csr_row_index(n_row_idx, rows,
@@ -406,8 +407,8 @@ csr_sample_values_kern = core.RawModule(code="""
             Bx[n] = x;
         }
     }
-""", options=module_options,
-     name_expressions=tuple(csr_sample_values_kern_types.values()))
+""", options=module_options, name_expressions=tuple(
+    csr_sample_values_kern_types.values()))
 
 
 csr_row_slice_kern_types = {
@@ -466,8 +467,8 @@ csr_row_slice_kern = core.RawModule(code="""
             }
         }
     }
-""", options=module_options,
-     name_expressions=tuple(csr_row_slice_kern_types.values()))
+""", options=module_options, name_expressions=tuple(
+    csr_row_slice_kern_types.values()))
 
 
 def csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
