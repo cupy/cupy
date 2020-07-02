@@ -4,12 +4,14 @@ cdef list _reduction_backends = []
 cdef list _routine_backends = []
 
 
-cdef int _get_backend(str s) except -1:
-    if s == 'cub':
+cdef int _get_backend(backend) except -1:
+    if isinstance(backend, int):
+        return backend
+    if backend == 'cub':
         return BACKEND_CUB
-    # if s == 'cutensor':
+    # if backend == 'cutensor':
     #     return BACKEND_CUTENSOR
-    raise ValueError('Unknown backend: {}'.format(s))
+    raise ValueError('Unknown backend: {}'.format(backend))
 
 
 def set_reduction_backends(backends):
@@ -20,6 +22,10 @@ def set_reduction_backends(backends):
 def set_routine_backends(backends):
     global _routine_backends
     _routine_backends = [_get_backend(b) for b in backends]
+
+
+def get_reduction_backends():
+    return _reduction_backends
 
 
 def get_routine_backends():
