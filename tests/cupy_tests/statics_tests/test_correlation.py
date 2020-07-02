@@ -135,19 +135,18 @@ class TestCorrelate(unittest.TestCase):
         b = testing.shaped_arange((100,), xp, dtype2)
         return xp.correlate(a, b, mode=self.mode)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_correlate_empty(self, xp, dtype):
+        a = xp.zeros((0,), dtype)
+        return xp.correlate(a, a, mode=self.mode)
+
 
 @testing.gpu
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full']
 }))
 class TestCorrelateInvalid(unittest.TestCase):
-
-    @testing.for_all_dtypes()
-    def test_correlate_empty(self, dtype):
-        for xp in (numpy, cupy):
-            a = xp.zeros((0,), dtype)
-            with pytest.raises(ValueError):
-                xp.correlate(a, a, mode=self.mode)
 
     @testing.for_all_dtypes()
     def test_correlate_ndim(self, dtype):
