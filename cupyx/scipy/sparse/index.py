@@ -4,12 +4,19 @@ import math
 from .sputils import isintlike
 
 from numpy import integer
+from numpy import dtype
 
 import cupy
 from cupy import core
 
 
 INT_TYPES = (int, integer)
+
+int32_dtype = dtype('int32')
+float32_dtype = dtype('float32')
+float64_dtype = dtype('float64')
+
+module_options = ('--std=c++11',)
 
 
 def _broadcast_arrays(a, b):
@@ -28,56 +35,65 @@ def _broadcast_arrays(a, b):
     return x, y
 
 
-bin_col_offsets_ker = core.RawKernel("""
-    extern "C" __global__
-    void bin_col_offsets_ker_str(int n_idx,
-                                 int *col_idxs,
-                                 int *col_offsets) {
+bin_col_offsets_ker_types = {dtype('int32'): 'bin_col_offsets_ker_str<int>'}
+bin_col_offsets_ker = core.RawModule(code="""
+    template<typename I>
+    __global__ void bin_col_offsets_ker_str(I n_idx,
+                                            I *col_idxs,
+                                            I *col_offsets) {
 
         // Get the index of the thread
-        int jj = blockIdx.x * blockDim.x + threadIdx.x;
+        I jj = blockIdx.x * blockDim.x + threadIdx.x;
 
         if(jj < n_idx) {
-            const int j = col_idxs[jj];
+            const I j = col_idxs[jj];
             col_offsets[j]++;
         }
     }
-""", "bin_col_offsets_ker_str")
+""", options=module_options,
+     name_expressions=tuple(bin_col_offsets_ker_types.values()))
 
 
 def bin_col_offsets(n_idx, col_ids, col_offsets, tpb=32):
     grid = math.ceil(n_idx / tpb)
-    bin_col_offsets_ker((grid,), (tpb,), (n_idx, col_ids, col_offsets))
+
+    kernel = bin_col_offsets_ker.get_function(bin_col_offsets_ker_types[int32_dtype])
+    kernel((grid,), (tpb,), (n_idx, col_ids, col_offsets))
 
 
-csr_column_index1_ker = core.RawKernel("""
-    extern "C" __global__
-    void csr_column_index1_ker_str(int n_row,
-                                   int *col_offsets,
-                                   int *Ap,
-                                   int *Aj,
-                                   int *Bp) {
+csr_column_index1_ker_types = {int32_dtype: 'csr_column_index1_ker<int>'}
+csr_column_index1_ker = core.RawModule(code="""
+    template<typename I>
+    __global__ void csr_column_index1_ker(I n_row,
+                                   I *col_offsets,
+                                   I *Ap,
+                                   I *Aj,
+                                   I *Bp) {
 
         // Get the index of the thread
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        I i = blockIdx.x * blockDim.x + threadIdx.x;
 
         if(i < n_row) {
 
-            int new_col_size = 0;
+            I new_col_size = 0;
 
-            for(int jj = Ap[i]; jj < Ap[i+1]; jj++)
+            for(I jj = Ap[i]; jj < Ap[i+1]; jj++)
                 new_col_size += col_offsets[Aj[jj]];
 
             Bp[i+1] = new_col_size;
         }
 }
-""", "csr_column_index1_ker_str")
+""", options=module_options,
+     name_expressions=tuple(csr_column_index1_ker_types.values()))
 
 
 def csr_column_index1_degree(n_row, col_offsets, Ap, Aj, Bp, tpb=32):
     grid = math.ceil(n_row / tpb)
-    csr_column_index1_ker((grid,), (tpb,),
-                          (n_row, col_offsets, Ap, Aj, Bp))
+    kernel = csr_column_index1_ker.get_function(
+        csr_column_index1_ker_types[int32_dtype]
+    )
+    kernel((grid,), (tpb,),
+           (n_row, col_offsets, Ap, Aj, Bp))
 
 
 def csr_column_index1(n_idx, col_idxs, n_row, n_col,
@@ -89,36 +105,41 @@ def csr_column_index1(n_idx, col_idxs, n_row, n_col,
     cupy.cumsum(new_indptr, out=new_indptr)
 
 
-get_csr_index2_ker = core.RawKernel("""
-    extern "C" __global__
-    void get_csr_index2_ker_str(int *col_order,
-                                int *col_offsets,
-                                const int *Ap,
-                                const int *Aj,
-                                const float *Ax,
-                                int n_row,
-                                int *Bp,
-                                int *Bj,
-                                float *Bx) {
+get_csr_index2_ker_types = {
+    (int32_dtype, float32_dtype): 'csr_index2_ker<int, float>',
+    (int32_dtype, float64_dtype): 'csr_index2_ker<int, double>'
+}
+get_csr_index2_ker = core.RawModule(code="""
+    template<typename I, typename T>
+    __global__
+    void csr_index2_ker(I *col_order,
+                        I *col_offsets,
+                        const I *Ap,
+                        const I *Aj,
+                        const T *Ax,
+                        I n_row,
+                        I *Bp,
+                        I *Bj,
+                        T *Bx) {
 
     // Get the index of the thread
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    I i = blockIdx.x * blockDim.x + threadIdx.x;
 
     if(i < n_row) {
 
-        int n = Bp[i];
+        I n = Bp[i];
 
         // loop through columns in current row
         for(int jj = Ap[i]; jj < Ap[i+1]; jj++) {
-            const int col = Aj[jj];  // current column
-            const int offset = col_offsets[col];
-            const int prev_offset = col == 0 ? 0 : col_offsets[col-1];
+            const I col = Aj[jj];  // current column
+            const I offset = col_offsets[col];
+            const I prev_offset = col == 0 ? 0 : col_offsets[col-1];
 
             // if current column is in the indices,
             // add it along with any potential duplicates
             if (offset != prev_offset) {
-                const float v = Ax[jj];
-                for(int k = prev_offset; k < offset; k++) {
+                const T v = Ax[jj];
+                for(I k = prev_offset; k < offset; k++) {
                     Bj[n] = col_order[k];
                     Bx[n] = v;
                     n++;
@@ -127,17 +148,18 @@ get_csr_index2_ker = core.RawKernel("""
         }
     }
 }
-""", "get_csr_index2_ker_str")
+""", options=module_options,
+     name_expressions=tuple(get_csr_index2_ker_types.values()))
 
 
 def csr_column_index2(out_rows, col_order, col_offsets, nnz,
                       Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
     grid = math.ceil(out_rows / tpb)
-    get_csr_index2_ker((grid,), (tpb,),
-                       (col_order, col_offsets,
-                        Ap, Aj, Ax, len(Ap)-1, Bp, Bj, Bx))
-
-    cupy.cuda.Stream.null.synchronize()
+    func = get_csr_index2_ker_types[(Ap.dtype, Bx.dtype)]
+    kernel = get_csr_index2_ker.get_function(func)
+    kernel((grid,), (tpb,),
+           (col_order, col_offsets,
+            Ap, Aj, Ax, len(Ap)-1, Bp, Bj, Bx))
 
 
 def get_csr_submatrix(indptr, indices, data,
@@ -166,27 +188,31 @@ def get_csr_submatrix(indptr, indices, data,
     return new_indptr, new_indices, new_data
 
 
-get_csr_submatrix_degree_ker = core.RawKernel("""
-    extern "C" __global__
-    void get_csr_submatrix_degree_kernel(const int *Ap,
-                                         const int *Aj,
-                                         const int ir0,
-                                         const int ir1,
-                                         const int ic0,
-                                         const int ic1,
-                                         int *Bp) {
+get_csr_submatrix_degree_ker_types = {
+    int32_dtype: 'csr_submatrix_degree_ker<int>',
+}
+get_csr_submatrix_degree_ker = core.RawModule(code="""
+    template<typename I>
+    __global__
+    void csr_submatrix_degree_ker(const I *Ap,
+                                  const I *Aj,
+                                  const I ir0,
+                                  const I ir1,
+                                  const I ic0,
+                                  const I ic1,
+                                  I *Bp) {
 
         // Get the index of the thread
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        I i = blockIdx.x * blockDim.x + threadIdx.x;
 
         if(i < (ir1-ir0)) {
 
-            const int row_start = Ap[ir0+i];
-            const int row_end = Ap[ir0+i+1];
+            const I row_start = Ap[ir0+i];
+            const I row_end = Ap[ir0+i+1];
 
-            int row_count = 0;
-            for(int jj = row_start; jj < row_end; jj++) {
-                int col = Aj[jj];
+            I row_count = 0;
+            for(I jj = row_start; jj < row_end; jj++) {
+                I col = Aj[jj];
                 if((col >= ic0) && (col < ic1))
                     row_count++;
             }
@@ -195,7 +221,8 @@ get_csr_submatrix_degree_ker = core.RawKernel("""
                 Bp[i+1] = row_count;
         }
     }
-""", "get_csr_submatrix_degree_kernel")
+""", options=module_options,
+     name_expressions=tuple(get_csr_submatrix_degree_ker_types.values()))
 
 
 def get_csr_submatrix_degree(Ap, Aj, ir0, ir1,
@@ -205,37 +232,45 @@ def get_csr_submatrix_degree(Ap, Aj, ir0, ir1,
     """
 
     grid = math.ceil((ir1-ir0) / tpb)
-    get_csr_submatrix_degree_ker((grid,), (tpb,),
-                                 (Ap, Aj, ir0, ir1,
-                                  ic0, ic1, Bp))
+    kernel = get_csr_submatrix_degree_ker.get_function(
+        get_csr_submatrix_degree_ker_types[Ap.dtype]
+    )
+    kernel((grid,), (tpb,),
+           (Ap, Aj, ir0, ir1,
+            ic0, ic1, Bp))
 
 
-get_csr_submatrix_cols_data_ker = core.RawKernel("""
-    extern "C" __global__
-    void get_csr_submatrix_cols_data(const int *Ap,
-                                     const int *Aj,
-                                     const float *Ax,
-                                     const int ir0,
-                                     const int ir1,
-                                     const int ic0,
-                                     const int ic1,
-                                     const int *Bp,
-                                     int *Bj,
-                                     float *Bx) {
+get_csr_submatrix_cols_data_ker_types = {
+    (int32_dtype, float32_dtype): 'get_csr_submatrix_cols_data<int, float>',
+    (int32_dtype, float64_dtype): 'get_csr_submatrix_cols_data<int, double>'
+}
+get_csr_submatrix_cols_data_ker = core.RawModule(code="""
+    template<typename I, typename T>
+    __global__
+    void get_csr_submatrix_cols_data(const I *Ap,
+                                     const I *Aj,
+                                     const T *Ax,
+                                     const I ir0,
+                                     const I ir1,
+                                     const I ic0,
+                                     const I ic1,
+                                     const I *Bp,
+                                     I *Bj,
+                                     T *Bx) {
 
         // Get the index of the thread
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        I i = blockIdx.x * blockDim.x + threadIdx.x;
 
         if(i < (ir1-ir0)) {
 
 
-            int row_start = Ap[ir0+i];
-            int row_end   = Ap[ir0+i+1];
+            I row_start = Ap[ir0+i];
+            I row_end   = Ap[ir0+i+1];
 
-            int kk = Bp[i];
+            I kk = Bp[i];
 
-            for(int jj = row_start; jj < row_end; jj++) {
-                int col = Aj[jj];
+            for(I jj = row_start; jj < row_end; jj++) {
+                I col = Aj[jj];
                 if ((col >= ic0) && (col < ic1)) {
                     Bj[kk] = col - ic0;
                     Bx[kk] = Ax[jj];
@@ -244,7 +279,8 @@ get_csr_submatrix_cols_data_ker = core.RawKernel("""
             }
         }
     }
-""", "get_csr_submatrix_cols_data")
+""", options=module_options,
+     name_expressions=tuple(get_csr_submatrix_cols_data_ker_types.values()))
 
 
 def get_csr_submatrix_cols_data(Ap, Aj, Ax,
@@ -254,37 +290,45 @@ def get_csr_submatrix_cols_data(Ap, Aj, Ax,
                                 tpb=32):
 
     grid = math.ceil((ir1-ir0)/tpb)
-    get_csr_submatrix_cols_data_ker((grid,), (tpb,),
-                                    (Ap, Aj, Ax,
-                                     ir0, ir1,
-                                     ic0, ic1,
-                                     Bp, Bj, Bx))
+    kernel = get_csr_submatrix_cols_data_ker.get_function(
+        get_csr_submatrix_cols_data_ker_types[(Ap.dtype, Ax.dtype)]
+    )
+    kernel((grid,), (tpb,),
+           (Ap, Aj, Ax,
+            ir0, ir1,
+            ic0, ic1,
+            Bp, Bj, Bx))
 
 
-csr_row_index_ker = core.RawKernel("""
-    extern "C" __global__
-    void csr_row_index_ker_str(const int n_row_idx,
-                               const int *rows,
-                               const int *Ap,
-                               const int *Aj,
-                               const float *Ax,
-                               const int *Bp,
-                               int *Bj,
-                               float *Bx) {
+csr_row_index_ker_types = {
+    (int32_dtype, float32_dtype): 'csr_row_index_ker<int, float>',
+    (int32_dtype, float64_dtype): 'csr_row_index_ker<int, double>'
+}
+csr_row_index_ker = core.RawModule(code="""
+    template<typename I, typename T>
+    __global__
+    void csr_row_index_ker(const I n_row_idx,
+                           const I *rows,
+                           const I *Ap,
+                           const I *Aj,
+                           const T *Ax,
+                           const I *Bp,
+                           I *Bj,
+                           T *Bx) {
 
         // Get the index of the thread
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        I i = blockIdx.x * blockDim.x + threadIdx.x;
 
         if(i < n_row_idx) {
 
-            int row = rows[i];
-            int row_start = Ap[row];
-            int row_end = Ap[row+1];
+            I row = rows[i];
+            I row_start = Ap[row];
+            I row_end = Ap[row+1];
 
-            int out_row_idx = Bp[i];
+            I out_row_idx = Bp[i];
 
             // Copy columns
-            for(int j = row_start; j < row_end; j++) {
+            for(I j = row_start; j < row_end; j++) {
                 Bj[out_row_idx] = Aj[j];
                 Bx[out_row_idx] = Ax[j];
                 out_row_idx++;
@@ -292,7 +336,8 @@ csr_row_index_ker = core.RawKernel("""
         }
     }
 
-""", "csr_row_index_ker_str")
+""", options=module_options,
+     name_expressions=tuple(csr_row_index_ker_types.values()))
 
 
 def csr_row_index(n_row_idx, rows,
@@ -301,10 +346,13 @@ def csr_row_index(n_row_idx, rows,
 
     grid = math.ceil(n_row_idx / tpb)
 
-    csr_row_index_ker((grid,), (tpb,),
-                      (n_row_idx, rows,
-                       Ap, Aj, Ax,
-                       Bp, Bj, Bx))
+    kernel = csr_row_index_ker.get_function(
+        csr_row_index_ker_types[(Ap.dtype, Ax.dtype)]
+    )
+    kernel((grid,), (tpb,),
+           (n_row_idx, rows,
+            Ap, Aj, Ax,
+            Bp, Bj, Bx))
 
 
 def csr_sample_values(n_row, n_col,
@@ -313,36 +361,44 @@ def csr_sample_values(n_row, n_col,
                       Bi, Bj, Bx, tpb=32):
     grid = math.ceil(n_samples / tpb)
 
-    csr_sample_values_kern((grid,), (tpb,),
-                           (n_row, n_col, Ap, Aj, Ax,
-                            n_samples, Bi, Bj, Bx))
+    kernel = csr_sample_values_kern.get_function(
+        csr_sample_values_kern_types[(Ap.dtype, Ax.dtype)]
+    )
+    kernel((grid,), (tpb,),
+           (n_row, n_col, Ap, Aj, Ax,
+            n_samples, Bi, Bj, Bx))
 
 
-csr_sample_values_kern = core.RawKernel("""
-    extern "C" __global__
-    void csr_sample_values_kern(const int n_row,
-                                const int n_col,
-                                const int *Ap,
-                                const int *Aj,
-                                const float *Ax,
-                                const int n_samples,
-                                const int *Bi,
-                                const int *Bj,
-                                float *Bx) {
+csr_sample_values_kern_types = {
+    (int32_dtype, float32_dtype): 'csr_sample_values_kern<int, float>',
+    (int32_dtype, float64_dtype): 'csr_sample_values_kern<int, double>'
+}
+csr_sample_values_kern = core.RawModule(code="""
+    template<typename I, typename T>
+    __global__
+    void csr_sample_values_kern(const I n_row,
+                                const I n_col,
+                                const I *Ap,
+                                const I *Aj,
+                                const T *Ax,
+                                const I n_samples,
+                                const I *Bi,
+                                const I *Bj,
+                                T *Bx) {
 
         // Get the index of the thread
         int n = blockIdx.x * blockDim.x + threadIdx.x;
 
         if(n < n_samples) {
-            const int i = Bi[n] < 0 ? Bi[n] + n_row : Bi[n]; // sample row
-            const int j = Bj[n] < 0 ? Bj[n] + n_col : Bj[n]; // sample column
+            const I i = Bi[n] < 0 ? Bi[n] + n_row : Bi[n]; // sample row
+            const I j = Bj[n] < 0 ? Bj[n] + n_col : Bj[n]; // sample column
 
-            const int row_start = Ap[i];
-            const int row_end   = Ap[i+1];
+            const I row_start = Ap[i];
+            const I row_end   = Ap[i+1];
 
-            float x = 0;
+            T x = 0;
 
-            for(int jj = row_start; jj < row_end; jj++) {
+            for(I jj = row_start; jj < row_end; jj++) {
                 if (Aj[jj] == j)
                     x += Ax[jj];
             }
@@ -350,20 +406,26 @@ csr_sample_values_kern = core.RawKernel("""
             Bx[n] = x;
         }
     }
-""", "csr_sample_values_kern")
+""", options=module_options,
+     name_expressions=tuple(csr_sample_values_kern_types.values()))
 
 
-csr_row_slice_kern = core.RawKernel("""
-    extern "C" __global__
-    void csr_row_slice_kern(const int start,
-                            const int stop,
-                            const int step,
-                            const int *Ap,
-                            const int *Aj,
-                            const float *Ax,
-                            const int *Bp,
-                            int *Bj,
-                            float *Bx) {
+csr_row_slice_kern_types = {
+    (int32_dtype, float32_dtype): 'csr_row_slice_kern<int, float>',
+    (int32_dtype, float64_dtype): 'csr_row_slice_kern<int, double>'
+}
+csr_row_slice_kern = core.RawModule(code="""
+    template<typename I, typename T>
+    __global__
+    void csr_row_slice_kern(const I start,
+                            const I stop,
+                            const I step,
+                            const I *Ap,
+                            const I *Aj,
+                            const T *Ax,
+                            const I *Bp,
+                            I *Bj,
+                            T *Bx) {
 
         // Get the index of the thread
         int out_row = blockIdx.x * blockDim.x + threadIdx.x;
@@ -371,15 +433,15 @@ csr_row_slice_kern = core.RawKernel("""
         if (step > 0) {
 
 
-            int in_row = out_row*step + start;
+            I in_row = out_row*step + start;
             if(in_row < stop) {
 
-                int out_row_offset = Bp[out_row];
+                I out_row_offset = Bp[out_row];
 
-                const int row_start = Ap[in_row];
-                const int row_end   = Ap[in_row+1];
+                const I row_start = Ap[in_row];
+                const I row_end   = Ap[in_row+1];
 
-                for(int jj = row_start; jj < row_end; jj++) {
+                for(I jj = row_start; jj < row_end; jj++) {
                     Bj[out_row_offset] = Aj[jj];
                     Bx[out_row_offset] = Ax[jj];
                     out_row_offset++;
@@ -387,15 +449,15 @@ csr_row_slice_kern = core.RawKernel("""
             }
 
         } else {
-            int in_row = out_row*step + start;
+            I in_row = out_row*step + start;
             if(in_row > stop) {
 
-                int out_row_offset = Bp[out_row];
+                I out_row_offset = Bp[out_row];
 
-                const int row_start = Ap[in_row];
-                const int row_end   = Ap[in_row+1];
+                const I row_start = Ap[in_row];
+                const I row_end   = Ap[in_row+1];
 
-                for(int jj = row_start; jj < row_end; jj++) {
+                for(I jj = row_start; jj < row_end; jj++) {
                     Bj[out_row_offset] = Aj[jj];
                     Bx[out_row_offset] = Ax[jj];
 
@@ -404,16 +466,20 @@ csr_row_slice_kern = core.RawKernel("""
             }
         }
     }
-""", "csr_row_slice_kern")
+""", options=module_options,
+     name_expressions=tuple(csr_row_slice_kern_types.values()))
 
 
 def csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
 
     grid = math.ceil((len(Bp)-1) / tpb)
-    csr_row_slice_kern((grid,), (tpb,),
-                       (start, stop, step,
-                        Ap, Aj, Ax,
-                        Bp, Bj, Bx))
+    kernel = csr_row_slice_kern.get_function(
+        csr_row_slice_kern_types[(Ap.dtype, Ax.dtype)]
+    )
+    kernel((grid,), (tpb,),
+           (start, stop, step,
+            Ap, Aj, Ax,
+            Bp, Bj, Bx))
 
 
 class IndexMixin(object):

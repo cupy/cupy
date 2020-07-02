@@ -7,7 +7,7 @@ from cupy import testing
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
     'density': [0.1, 0.2, 0.4, 0.5, 0.9, 1.0],
-    'dtype': ['float32'],
+    'dtype': ['float32', 'float64'],
     'n_rows': [100, 1000],
     'n_cols': [10, 100]
 }))
