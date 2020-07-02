@@ -1,6 +1,5 @@
 import numpy
 import cupy
-from cupy import core
 from cupyx.scipy.sparse import coo
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import csr
@@ -495,10 +494,21 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
 
 
 def kron(A, B, format=None):
-    """kronecker product of sparse matrices A and B
+    """Kronecker product of sparse matrices A and B.
+
+    Args:
+        A (cupyx.scipy.sparse.spmatrix): a sparse matrix.
+        B (cupyx.scipy.sparse.spmatrix): a sparse matrix.
+        format (str): the format of the returned sparse matrix.
+
+    Returns:
+        cupyx.scipy.sparse.spmatrix: Generated sparse matrix in the
+            specified ``format``.
 
     """
     # TODO(leofang): support BSR format when it's added to CuPy
+    # TODO(leofang): investigate if possible to optimize performance by
+    #                starting with CSR instead of COO matrices
 
     A = coo.coo_matrix(A)
     B = coo.coo_matrix(B)
@@ -512,10 +522,13 @@ def kron(A, B, format=None):
         dtype = cupy.int64
     else:
         dtype = cupy.int32
+
+    # expand entries of A into blocks
     row = A.row.astype(dtype, copy=True) * B.shape[0]
     row = row.repeat(B.nnz)
     col = A.col.astype(dtype, copy=True) * B.shape[1]
     col = col.repeat(B.nnz)
+    data = A.data.repeat(B.nnz)  # data's dtype follows that of A in SciPy
 
     # increment block indices
     row, col = row.reshape(-1, B.nnz), col.reshape(-1, B.nnz)
@@ -524,7 +537,6 @@ def kron(A, B, format=None):
     row, col = row.ravel(), col.ravel()
 
     # compute block entries
-    data = A.data.repeat(B.nnz)  # data's dtype follows that of A in SciPy
     data = data.reshape(-1, B.nnz) * B.data
     data = data.ravel()
 
