@@ -575,7 +575,7 @@ void csr_sample_offsets(const I n_row,
     }
 }
 """, options=module_options, name_expressions=tuple(
-         csr_sample_offsets_ker_types.values()))
+    csr_sample_offsets_ker_types.values()))
 
 
 csr_has_sorted_indices_ker_types = {
@@ -605,7 +605,7 @@ csr_has_sorted_indices_ker = core.RawModule(code="""
         }
     }
 """, options=module_options, name_expressions=tuple(
-         csr_has_sorted_indices_ker_types.values()))
+    csr_has_sorted_indices_ker_types.values()))
 
 
 def csr_has_sorted_indices(n_rows, Ap, Aj, tpb=32):
