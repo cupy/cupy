@@ -63,6 +63,8 @@ def correlate(a, v, mode='valid'):
     .. seealso:: :func:`numpy.correlate`
 
     """
+    if a.size == 0 or v.size == 0:
+        raise ValueError('Array arguments cannot be empty')
     if a.ndim != 1 or v.ndim != 1:
         raise ValueError('object too deep for desired array')
     # choose_conv_method does not choose from the values in

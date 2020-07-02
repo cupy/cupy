@@ -92,8 +92,6 @@ def _fft_convolve(a1, a2, mode):
 
 
 def _dot_convolve(a1, a2, mode):
-    if a1.size == 0 or a2.size == 0:
-        raise ValueError('Array arguments cannot be empty')
 
     offset = 0
     if a1.size < a2.size:
