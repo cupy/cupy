@@ -204,6 +204,3 @@ class TestIndexing(unittest.TestCase):
 
         with pytest.raises(ValueError):
             self._run([1, 2, 3], [1, 2, 3, 4])
-
-        with pytest.raises(IndexError):
-            self._run([True])
