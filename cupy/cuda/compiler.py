@@ -1,6 +1,5 @@
 import hashlib
 import math
-import io
 import os
 import re
 import shutil
@@ -29,8 +28,8 @@ class NVCCException(Exception):
 def _run_nvcc(cmd, cwd, log_stream=None):
     try:
         log = subprocess.check_output(cmd, cwd=cwd,
-                                         stderr=subprocess.STDOUT,
-                                         universal_newlines=True)
+                                      stderr=subprocess.STDOUT,
+                                      universal_newlines=True)
         if log_stream is not None:
             log_stream.write(log)
         return log
