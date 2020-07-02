@@ -5,6 +5,8 @@ try:
 except ImportError:
     scipy_available = False
 
+import warnings
+
 import cupy
 from cupy import core
 from cupy.creation import basic
@@ -772,8 +774,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 raise IndexError('index (%d) out of range (< -%d)' %
                                  (idx, bound))
 
-        i = cupy.array(i, dtype=self.indices.dtype, copy=False, ndmin=1).ravel()
-        j = cupy.array(j, dtype=self.indices.dtype, copy=False, ndmin=1).ravel()
+        i = cupy.array(i, dtype=self.indices.dtype,
+                       copy=False, ndmin=1).ravel()
+        j = cupy.array(j, dtype=self.indices.dtype,
+                       copy=False, ndmin=1).ravel()
         check_bounds(i, M)
         check_bounds(j, N)
         return i, j, M, N
@@ -802,8 +806,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             return
 
         else:
-            import warnings
-            warnings.warn("Changing the sparsity structure of a {}_matrix is expensive."
+            warnings.warn("Changing the sparsity structure of a "
+                          "{}_matrix is expensive."
                           " lil_matrix is more efficient.".format(self.format))
             # replace where possible
             mask = offsets > -1
@@ -844,9 +848,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         Modifies i, j, x in place.
         """
         order = cupy.argsort(i)  # stable for duplicates
-        i = i.take(order) #, mode='clip')
-        j = j.take(order) #, mode='clip')
-        x = x.take(order) #, mode='clip')
+        i = i.take(order)
+        j = j.take(order)
+        x = x.take(order)
 
         do_sort = self.has_sorted_indices
 
@@ -922,11 +926,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         # index arrays should have integer data types
         if self.indptr.dtype.kind != 'i':
-            print("indptr array has non-integer dtype ({})"
-                 "".format(self.indptr.dtype.name), stacklevel=3)
+            warnings.warn("indptr array has non-integer dtype ({})"
+                          "".format(self.indptr.dtype.name))
         if self.indices.dtype.kind != 'i':
-            print("indices array has non-integer dtype ({})"
-                 "".format(self.indices.dtype.name), stacklevel=3)
+            warnings.warn("indices array has non-integer dtype ({})"
+                          "".format(self.indices.dtype.name))
 
         idx_dtype = sputils.get_index_dtype((self.indptr, self.indices))
         self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
@@ -968,7 +972,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 if cupy.diff(self.indptr).min() < 0:
                     raise ValueError("index pointer values must form a "
                                      "non-decreasing sequence")
-
 
     @property
     def has_canonical_format(self):

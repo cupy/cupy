@@ -574,8 +574,7 @@ void csr_sample_offsets(const I n_row,
         Bp[n] = offset;
     }
 }
-""", options=module_options,
-     name_expressions=tuple(
+""", options=module_options, name_expressions=tuple(
          csr_sample_offsets_ker_types.values()))
 
 
@@ -591,11 +590,11 @@ csr_has_sorted_indices_ker = core.RawModule(code="""
                                 bool *sorted) {
 
         int i = blockIdx.x * blockDim.x + threadIdx.x;
-        
+
         if(i < n_rows) {
             const I start = Ap[i];
             const I stop = Ap[i+1];
-    
+
             I last_col = -1;
             for(I jj = start; jj < stop; jj++) {
                 const I cur_col = Aj[jj];
@@ -604,10 +603,8 @@ csr_has_sorted_indices_ker = core.RawModule(code="""
                 last_col = cur_col;
             }
         }
-
     }
-""", options=module_options,
-     name_expressions=tuple(
+""", options=module_options, name_expressions=tuple(
          csr_has_sorted_indices_ker_types.values()))
 
 
