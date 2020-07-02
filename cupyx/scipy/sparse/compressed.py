@@ -802,8 +802,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             return
 
         else:
-            print("Changing the sparsity structure of a {}_matrix is expensive."
-                 " lil_matrix is more efficient.".format(self.format))
+            import warnings
+            warnings.warn("Changing the sparsity structure of a {}_matrix is expensive."
+                          " lil_matrix is more efficient.".format(self.format))
             # replace where possible
             mask = offsets > -1
             self.data[offsets[mask]] = x[mask]
