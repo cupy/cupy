@@ -494,21 +494,6 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
     return dia.dia_matrix((data_arr, offsets), shape=(m, n)).asformat(format)
 
 
-_kron_kern = core.ElementwiseKernel(
-    'raw T A_row, raw T A_col, raw X A_data, T A_nnz, '
-    'raw U B_row, raw U B_col, raw Y B_data, U B_nnz, '
-    'U B_nrows, U B_ncols',
-    'raw V row, raw V col, raw Z data',
-    '''
-    for (T x = 0; x < A_nnz; x++) {
-        V idx = x * B_nnz + i;
-        row[idx] = A_row[x] * B_nrows + B_row[i];
-        col[idx] = A_col[x] * B_ncols + B_col[i];
-        data[idx] = A_data[x] * B_data[i];
-    }
-    ''', 'kron', no_return=True)
-
-
 def kron(A, B, format=None):
     """kronecker product of sparse matrices A and B
 
@@ -527,14 +512,20 @@ def kron(A, B, format=None):
         dtype = cupy.int64
     else:
         dtype = cupy.int32
-    row = cupy.empty((A.nnz * B.nnz,), dtype=dtype)
-    col = cupy.empty((A.nnz * B.nnz,), dtype=dtype)
-    data = cupy.empty((A.nnz * B.nnz,), dtype=A.dtype)
+    row = A.row.astype(dtype, copy=True) * B.shape[0]
+    row = row.repeat(B.nnz)
+    col = A.col.astype(dtype, copy=True) * B.shape[1]
+    col = col.repeat(B.nnz)
 
-    _kron_kern(A.row, A.col, A.data, A.nnz,
-               B.row, B.col, B.data, B.nnz,
-               B.shape[0], B.shape[1],
-               row, col, data,  # outputs
-               size=B.nnz)
+    # increment block indices
+    row, col = row.reshape(-1, B.nnz), col.reshape(-1, B.nnz)
+    row += B.row
+    col += B.col
+    row, col = row.ravel(), col.ravel()
+
+    # compute block entries
+    data = A.data.repeat(B.nnz)  # data's dtype follows that of A in SciPy
+    data = data.reshape(-1, B.nnz) * B.data
+    data = data.ravel()
 
     return coo.coo_matrix((data, (row, col)), shape=out_shape).asformat(format)
