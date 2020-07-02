@@ -459,10 +459,11 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         self.assertTrue(a.flags.f_contiguous)
         return a
 
+    @testing.with_requires('numpy>=1.19')
     def test_toarray_unknown_order(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 m.toarray(order='#')
 
     @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)

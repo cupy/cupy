@@ -301,7 +301,8 @@ cdef class RawModule:
             self.translate_cucomplex = False
 
         # trigger compiling or loading
-        cdef Module mod = self.module  # noqa
+        IF no_cuda == 0:
+            cdef Module mod = self.module  # noqa
 
     @property
     def module(self):
