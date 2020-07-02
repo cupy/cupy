@@ -340,21 +340,21 @@ class spmatrix(object):
         for integer inputs.
 
         Args:
-            axis : {-2, -1, 0, 1, None} optional
+            axis {-2, -1, 0, 1, None}: optional
                 Axis along which the mean is computed. The default is to
                 compute the mean of all elements in the matrix
                 (i.e., `axis` = `None`).
-            dtype : data-type, optional
+            dtype (dtype): optional
                 Type to use in computing the mean. For integer inputs, the
                 default is `float64`; for floating point inputs, it is the same
                 as the input dtype.
-            out : np.matrix, optional
+            out (cupy.core.ndarray): optional
                 Alternative output matrix in which to place the result. It must
                 have the same shape as the expected output, but the type of the
                 output values will be cast if necessary.
 
         Returns:
-            m : np.matrix
+            m  (cupy.core.ndarray) : Output array of means
 
         .. seealso::
             :meth:`scipy.sparse.spmatrix.mean`
