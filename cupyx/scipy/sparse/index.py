@@ -249,8 +249,10 @@ def get_csr_submatrix_degree(Ap, Aj, ir0, ir1,
 get_csr_submatrix_cols_data_ker_types = {
     (int32_dtype, float32_dtype): 'get_csr_submatrix_cols_data<int, float>',
     (int32_dtype, float64_dtype): 'get_csr_submatrix_cols_data<int, double>',
-    (int32_dtype, complex64_dtype): 'get_csr_submatrix_cols_data<int, complex<float>>',
-    (int32_dtype, complex128_dtype): 'get_csr_submatrix_cols_data<int, complex<double>>'
+    (int32_dtype, complex64_dtype):
+        'get_csr_submatrix_cols_data<int, complex<float>>',
+    (int32_dtype, complex128_dtype):
+        'get_csr_submatrix_cols_data<int, complex<double>>'
 }
 get_csr_submatrix_cols_data_ker = core.RawModule(code="""
     #include <cupy/complex.cuh>
@@ -384,8 +386,10 @@ def csr_sample_values(n_row, n_col,
 csr_sample_values_kern_types = {
     (int32_dtype, float32_dtype): 'csr_sample_values_kern<int, float>',
     (int32_dtype, float64_dtype): 'csr_sample_values_kern<int, double>',
-    (int32_dtype, complex64_dtype): 'csr_sample_values_kern<int, complex<float>>',
-    (int32_dtype, complex128_dtype): 'csr_sample_values_kern<int, complex<double>>'
+    (int32_dtype, complex64_dtype):
+        'csr_sample_values_kern<int, complex<float>>',
+    (int32_dtype, complex128_dtype):
+        'csr_sample_values_kern<int, complex<double>>'
 }
 csr_sample_values_kern = core.RawModule(code="""
     #include <cupy/complex.cuh>

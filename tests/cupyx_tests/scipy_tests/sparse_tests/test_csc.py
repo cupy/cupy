@@ -1411,22 +1411,22 @@ def test_csc_getcol():
                           'complex64',
                           'complex128'])
 @pytest.mark.parametrize("matrix_input, axis, expected_shape",
-    [(scipy.sparse.csc_matrix([[1, 0],
-                [0, 0],
-                [0, 2]]),
-      0, (0, 2)),
-     (scipy.sparse.csc_matrix([[1, 0],
-                [0, 0],
-                [0, 2]]),
-      1, (3, 0)),
-     (scipy.sparse.csc_matrix([[1, 0],
-                [0, 0],
-                [0, 2]]),
-      'both', (0, 0)),
-     (scipy.sparse.csc_matrix([[0, 1, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0],
-                [0, 0, 2, 3, 0, 1]]),
-      0, (0, 6))])
+                         [(scipy.sparse.csc_matrix([[1, 0],
+                                                    [0, 0],
+                                                    [0, 2]]),
+                             0, (0, 2)),
+                             (scipy.sparse.csc_matrix([[1, 0],
+                                                       [0, 0],
+                                                       [0, 2]]),
+                              1, (3, 0)),
+                             (scipy.sparse.csc_matrix([[1, 0],
+                                                       [0, 0],
+                                                       [0, 2]]),
+                              'both', (0, 0)),
+                             (scipy.sparse.csc_matrix([[0, 1, 0, 0, 0, 0],
+                                                       [0, 0, 0, 0, 0, 0],
+                                                       [0, 0, 2, 3, 0, 1]]),
+                              0, (0, 6))])
 def test_csc_empty_slices(matrix_input, axis, expected_shape, dtype):
 
     matrix_input = cupy.sparse.csc_matrix(matrix_input, dtype=dtype)
@@ -1448,4 +1448,3 @@ def test_csc_empty_slices(matrix_input, axis, expected_shape, dtype):
 
     assert actual_shape_1 == expected_shape
     assert actual_shape_1 == actual_shape_2
-

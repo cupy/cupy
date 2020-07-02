@@ -1566,10 +1566,12 @@ def test_csr_bool_indexing(dtype):
     data = cupy.sparse.csr_matrix(sp_data)
     list_indices1 = [False, True, False]
     array_indices1 = cupy.array(list_indices1)
-    list_indices2 = [[False, True, False], [False, True, False], [False, True, False]]
+    list_indices2 = [[False, True, False], [
+        False, True, False], [False, True, False]]
     array_indices2 = cupy.array(list_indices2)
     list_indices3 = ([False, True, False], [False, True, False])
-    array_indices3 = (cupy.array(list_indices3[0]), cupy.array(list_indices3[1]))
+    array_indices3 = (cupy.array(
+        list_indices3[0]), cupy.array(list_indices3[1]))
     slice_list1 = data[list_indices1].toarray()
     slice_array1 = data[array_indices1].toarray()
     slice_list2 = data[list_indices2]
@@ -1587,22 +1589,22 @@ def test_csr_bool_indexing(dtype):
                           'complex64',
                           'complex128'])
 @pytest.mark.parametrize("matrix_input, axis, expected_shape",
-    [(scipy.sparse.csr_matrix([[1, 0, 0, 0],
-                [0, 0, 0, 0],
-                [0, 2, 3, 0]]),
-      0, (0, 4)),
-     (scipy.sparse.csr_matrix([[1, 0, 0, 0],
-                [0, 0, 0, 0],
-                [0, 2, 3, 0]]),
-      1, (3, 0)),
-     (scipy.sparse.csr_matrix([[1, 0, 0, 0],
-                [0, 0, 0, 0],
-                [0, 2, 3, 0]]),
-      'both', (0, 0)),
-     (scipy.sparse.csr_matrix([[0, 1, 0, 0, 0],
-                [0, 0, 0, 0, 0],
-                [0, 0, 2, 3, 0]]),
-      0, (0, 5))])
+                         [(scipy.sparse.csr_matrix([[1, 0, 0, 0],
+                                                    [0, 0, 0, 0],
+                                                    [0, 2, 3, 0]]),
+                             0, (0, 4)),
+                             (scipy.sparse.csr_matrix([[1, 0, 0, 0],
+                                                       [0, 0, 0, 0],
+                                                       [0, 2, 3, 0]]),
+                              1, (3, 0)),
+                             (scipy.sparse.csr_matrix([[1, 0, 0, 0],
+                                                       [0, 0, 0, 0],
+                                                       [0, 2, 3, 0]]),
+                              'both', (0, 0)),
+                             (scipy.sparse.csr_matrix([[0, 1, 0, 0, 0],
+                                                       [0, 0, 0, 0, 0],
+                                                       [0, 0, 2, 3, 0]]),
+                              0, (0, 5))])
 def test_csr_empty_slices(matrix_input, axis, expected_shape, dtype):
     # see gh-11127 for related discussion
 
