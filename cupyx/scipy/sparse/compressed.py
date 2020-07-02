@@ -914,11 +914,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def check_format(self, full_check=True):
         """check whether the matrix format is valid
-        Parameters
-        ----------
-        full_check : bool, optional
-            If `True`, rigorous check, O(N) operations. Otherwise
-            basic check, O(1) operations (default True).
+
+        Args:
+            full_check (bool): optional. If `True`,
+                rigorous check, O(N) operations. Otherwise
+                basic check, O(1) operations (default True).
         """
         # use _swap to determine proper bounds
         major_name, minor_name = self._swap(*('row', 'column'))
@@ -988,7 +988,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def __get_sorted(self):
         """Determine whether the matrix has sorted indices
-        Returns
+
+        Returns:
             - True: if the indices of the matrix are in sorted order
             - False: otherwise
         """
