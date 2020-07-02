@@ -2,6 +2,7 @@
 #define INCLUDE_GUARD_CUPY_CUDA_THRUST_H
 
 #ifndef CUPY_NO_CUDA
+#include <thrust/version.h>  // for THRUST_VERSION
 
 namespace cupy {
 
@@ -34,6 +35,7 @@ void _argsort_fp16(size_t *, void *, void *, const std::vector<ptrdiff_t>&, intp
 #else // CUPY_NO_CUDA
 
 #include "../../cupy_cuda/cupy_common.h"
+#define THRUST_VERSION 0
 
 namespace cupy {
 

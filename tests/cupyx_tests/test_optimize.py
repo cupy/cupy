@@ -1,7 +1,8 @@
-import mock
-import pytest
 import tempfile
 import unittest
+from unittest import mock
+
+import pytest
 
 import cupy
 from cupy import testing

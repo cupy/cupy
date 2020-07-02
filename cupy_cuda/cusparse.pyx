@@ -588,6 +588,10 @@ cdef extern from 'cupy_cusparse.h' nogil:
         Handle handle, int m, int n, int nnz, int *cooRows, int *cooCols,
         int *P, void *pBuffer)
 
+    Status cusparseXcoosortByColumn(
+        Handle handle, int m, int n, int nnz, int *cooRows, int *cooCols,
+        int *P, void *pBuffer)
+
     Status cusparseXcsrsort_bufferSizeExt(
         Handle handle, int m, int n, int nnz, const int *csrRowPtr,
         const int *csrColInd, size_t *pBufferSizeInBytes)
@@ -1148,6 +1152,19 @@ cdef extern from 'cupy_cusparse.h' nogil:
         Handle handle, Operation opA, Operation opB, void* alpha,
         DnMatDescr matA, DnMatDescr matB, void* beta, SpMatDescr matC,
         DataType computeType, void* externalBuffer)
+
+    # CSR2CSC
+    Status cusparseCsr2cscEx2_bufferSize(
+        Handle handle, int m, int n, int nnz, const void* csrVal,
+        const int* csrRowPtr, const int* csrColInd, void* cscVal,
+        int* cscColPtr, int* cscRowInd, DataType valType, Action copyValues,
+        IndexBase idxBase, Csr2CscAlg alg, size_t* bufferSize)
+
+    Status cusparseCsr2cscEx2(
+        Handle handle, int m, int n, int nnz, const void* csrVal,
+        const int* csrRowPtr, const int* csrColInd, void* cscVal,
+        int* cscColPtr, int* cscRowInd, DataType valType, Action copyValues,
+        IndexBase idxBase, Csr2CscAlg alg, void* buffer)
 
     # Build-time version
     int CUSPARSE_VERSION
@@ -2568,6 +2585,16 @@ cpdef xcoosortByRow(
         size_t P, size_t pBuffer):
     _setStream(handle)
     status = cusparseXcoosortByRow(
+        <Handle>handle, m, n, nnz, <int *>cooRows, <int *>cooCols,
+        <int *>P, <void *>pBuffer)
+    check_status(status)
+
+
+cpdef xcoosortByColumn(
+        intptr_t handle, int m, int n, int nnz, size_t cooRows, size_t cooCols,
+        size_t P, size_t pBuffer):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseXcoosortByColumn(
         <Handle>handle, m, n, nnz, <int *>cooRows, <int *>cooCols,
         <int *>P, <void *>pBuffer)
     check_status(status)
@@ -4199,4 +4226,30 @@ cpdef constrainedGeMM(intptr_t handle, Operation opA, Operation opB,
         <Handle>handle, opA, opB, <void*>alpha, <DnMatDescr>matA,
         <DnMatDescr>matB, <void*>beta, <SpMatDescr>matC, computeType,
         <void*>externalBuffer)
+    check_status(status)
+
+# CSR2CSC
+cpdef size_t csr2cscEx2_bufferSize(
+        intptr_t handle, int m, int n, int nnz, intptr_t csrVal,
+        intptr_t csrRowPtr, intptr_t csrColInd, intptr_t cscVal,
+        intptr_t cscColPtr, intptr_t cscRowInd, DataType valType,
+        Action copyValues, IndexBase idxBase, Csr2CscAlg alg):
+    cpdef size_t bufferSize
+    status = cusparseCsr2cscEx2_bufferSize(
+        <Handle>handle, m, n, nnz, <const void*>csrVal, <const int*>csrRowPtr,
+        <const int*>csrColInd, <void*>cscVal, <int*>cscColPtr, <int*>cscRowInd,
+        valType, copyValues, idxBase, alg, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef csr2cscEx2(
+        intptr_t handle, int m, int n, int nnz, intptr_t csrVal,
+        intptr_t csrRowPtr, intptr_t csrColInd, intptr_t cscVal,
+        intptr_t cscColPtr, intptr_t cscRowInd, DataType valType,
+        Action copyValues, IndexBase idxBase, Csr2CscAlg alg, intptr_t buffer):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseCsr2cscEx2(
+        <Handle>handle, m, n, nnz, <const void*>csrVal, <const int*>csrRowPtr,
+        <const int*>csrColInd, <void*>cscVal, <int*>cscColPtr, <int*>cscRowInd,
+        valType, copyValues, idxBase, alg, <void*>buffer)
     check_status(status)

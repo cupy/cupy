@@ -16,7 +16,7 @@ PLATFORM_WIN32 = sys.platform.startswith('win32')
 
 minimum_cuda_version = 8000
 minimum_cudnn_version = 5000
-maximum_cudnn_version = 7999
+maximum_cudnn_version = 8099
 
 _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
@@ -164,13 +164,17 @@ def get_compiler_setting(use_hip):
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
+    # for <cupy/complex.cuh>
+    cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                               '../cupy/core/include')
     cub_path = os.environ.get('CUB_PATH', '')
     if os.path.exists(cub_path):
-        # for <cupy/complex.cuh>
-        cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                   '../cupy/core/include')
         include_dirs.append(cupy_header)
-        include_dirs.append(cub_path)
+        include_dirs.insert(0, cub_path)
+    elif cuda_path:
+        cub_path = os.path.join(cuda_path, 'include', 'cub')
+        if os.path.exists(cub_path):
+            include_dirs.append(cupy_header)
 
     return {
         'include_dirs': include_dirs,
@@ -253,6 +257,7 @@ def _get_compiler_base_options():
 
 
 _cuda_version = None
+_thrust_version = None
 _cudnn_version = None
 _nccl_version = None
 
@@ -297,6 +302,39 @@ def get_cuda_version(formatted=False):
     if formatted:
         return _format_cuda_version(_cuda_version)
     return _cuda_version
+
+
+def check_thrust_version(compiler, settings):
+    global _thrust_version
+
+    try:
+        out = build_and_run(compiler, '''
+        #include <thrust/version.h>
+        #include <stdio.h>
+
+        int main() {
+          printf("%d", THRUST_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+    except Exception as e:
+        utils.print_warning('Cannot check Thrust version\n{0}'.format(e))
+        return False
+
+    _thrust_version = int(out)
+
+    return True
+
+
+def get_thrust_version(formatted=False):
+    """Return Thrust version cached in check_thrust_version()."""
+    global _thrust_version
+    if _thrust_version is None:
+        msg = 'check_thrust_version() must be called first.'
+        raise RuntimeError(msg)
+    if formatted:
+        return str(_thrust_version)
+    return _thrust_version
 
 
 def check_cudnn_version(compiler, settings):

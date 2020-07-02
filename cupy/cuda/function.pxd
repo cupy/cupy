@@ -12,7 +12,8 @@ cdef class Function:
         public intptr_t ptr
 
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=*,
-                        size_t block_max_size=*, stream=*)
+                        size_t block_max_size=*, stream=*,
+                        bint enable_cooperative_groups=*)
 
 
 cdef class Module:

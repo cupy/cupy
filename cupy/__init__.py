@@ -62,6 +62,7 @@ from cupy import io  # NOQA
 from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import padding  # NOQA
+from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 from cupy import _sorting  # NOQA
 from cupy import sparse  # NOQA
@@ -289,6 +290,7 @@ from cupy.functional.piecewise import piecewise  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.manipulation.basic import copyto  # NOQA
 
+from cupy.manipulation.shape import shape  # NOQA
 from cupy.manipulation.shape import ravel  # NOQA
 from cupy.manipulation.shape import reshape  # NOQA
 
@@ -644,6 +646,7 @@ from cupy.math.misc import nan_to_num  # NOQA
 from cupy.math.misc import sign  # NOQA
 from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
+from cupy.math.misc import convolve  # NOQA
 
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
@@ -784,8 +787,8 @@ def get_array_module(*args):
     """
     for arg in args:
         if isinstance(arg, (ndarray, sparse.spmatrix,
-                            cupy.core.fusion._FusionVarScalar,
-                            cupy.core.fusion._FusionVarArray)):
+                            cupy.core.fusion._FusionVarArray,
+                            cupy.core.new_fusion._ArrayProxy)):
             return _cupy
     return numpy
 

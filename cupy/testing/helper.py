@@ -5,6 +5,7 @@ import os
 import random
 import traceback
 import unittest
+from unittest import mock
 import warnings
 
 import numpy
@@ -611,6 +612,10 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
     Decorated test fixture is required throw same errors
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
+    warnings.warn(
+        'cupy.testing.numpy_cupy_raises is deprecated.',
+        DeprecationWarning)
+
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -1189,10 +1194,6 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
         return xp.asarray(numpy.random.rand(*shape) * scale, dtype=dtype)
 
 
-def empty(xp=cupy, dtype=numpy.float32):
-    return xp.zeros((0,))
-
-
 class NumpyError(object):
 
     def __init__(self, **kw):
@@ -1257,3 +1258,19 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
 
     def test_values(self):
         assert self.cupy_func(*self.args) == self.numpy_func(*self.args)
+
+
+class AssertFunctionIsCalled:
+
+    def __init__(self, mock_mod, **kwargs):
+        self.patch = mock.patch(mock_mod, **kwargs)
+
+    def __enter__(self):
+        self.handle = self.patch.__enter__()
+        assert self.handle.call_count == 0
+        return self.handle
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        assert self.handle.call_count == 1
+        del self.handle
+        return self.patch.__exit__(exc_type, exc_value, traceback)
