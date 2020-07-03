@@ -628,10 +628,10 @@ def parse_args():
     }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
-        # pass no_cuda to Cython
-        arg_options['compile_time_env'] = {'no_cuda': True}
-    else:
-        arg_options['compile_time_env'] = {'no_cuda': False}
+    # make some compile-time expressions available to Cython codes
+    arg_options['compile_time_env'] = {
+        'no_cuda': arg_options['no_cuda'],
+    }
     return arg_options
 
 

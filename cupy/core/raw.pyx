@@ -300,9 +300,11 @@ cdef class RawModule:
             self.backend = 'nvcc'
             self.translate_cucomplex = False
 
-        # trigger compiling or loading
-        IF no_cuda == 0:
-            cdef Module mod = self.module  # noqa
+        cdef Module mod = None
+        # no_cuda is defined at build time
+        IF not no_cuda:
+            # trigger compiling or loading
+            mod = self.module
 
     @property
     def module(self):
