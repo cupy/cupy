@@ -511,24 +511,24 @@ check_idx_bounds_ker_types = {
 check_idx_bounds_ker = core.RawModule(code="""
     template<typename I>
     __global__
-    void idx_bounds_ker(const I *idxs, 
+    void idx_bounds_ker(const I *idxs,
                         const I idx_length,
                         const I bounds,
                         bool *out_upper,
                         bool *out_lower,
                         bool *out_neg) {
-                              
+
         int i = blockIdx.x * blockDim.x + threadIdx.x;
-        
+
         if(i < idx_length) {
             const I cur_idx = idxs[i];
-            
-            if(cur_idx >= bounds) 
+
+            if(cur_idx >= bounds)
                 out_upper[0] = true;
-                
+
             if(cur_idx < -idx_length)
                 out_lower[0] = true;
-                
+
             if(cur_idx < 0)
                 out_neg[0] = true;
         }
