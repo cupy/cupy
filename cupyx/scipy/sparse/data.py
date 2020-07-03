@@ -1,5 +1,6 @@
 import cupy
 from cupyx.scipy.sparse import base
+from cupyx.scipy.sparse import coo
 from cupyx.scipy.sparse import util
 
 
@@ -139,6 +140,7 @@ class _minmax_mixin(object):
         N = self.shape[axis]
         if N == 0:
             raise ValueError("zero-size array to reduction operation")
+        M = self.shape[1 - axis]
 
         mat = self.tocsc() if axis == 0 else self.tocsr()
         if sum_duplicates:
@@ -146,8 +148,20 @@ class _minmax_mixin(object):
 
         # Do the reudction
         value = mat._minor_reduce(min_or_max, axis, nonzero)
+        major_index = cupy.arange(M)
 
-        return value
+        mask = value != 0
+        major_index = cupy.compress(mask, major_index)
+        value = cupy.compress(mask, value)
+
+        if axis == 0:
+            return coo.coo_matrix(
+                (value, (cupy.zeros(len(value)), major_index)),
+                dtype=self.dtype, shape=(1, M))
+        else:
+            return coo.coo_matrix(
+                (value, (major_index, cupy.zeros(len(value)))),
+                dtype=self.dtype, shape=(M, 1))
 
     def _min_or_max(self, axis, out, min_or_max, sum_duplicates, non_zero):
         if out is not None:
