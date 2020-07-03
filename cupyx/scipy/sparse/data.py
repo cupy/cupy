@@ -189,7 +189,10 @@ class _minmax_mixin(object):
         # Do the reudction
         value = mat._arg_minor_reduce(op, axis)
 
-        return value
+        if axis == 0:
+            return value.reshape(1, -1)
+        else:
+            return value.reshape(-1, 1)
 
     def _arg_min_or_max(self, axis, out, op, compare, sum_duplicates):
         if out is not None:
