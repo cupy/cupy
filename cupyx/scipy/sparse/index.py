@@ -13,6 +13,7 @@ from cupy import core
 INT_TYPES = (int, integer)
 
 int32_dtype = dtype('int32')
+int64_dtype = dtype('int64')
 float32_dtype = dtype('float32')
 float64_dtype = dtype('float64')
 complex64_dtype = dtype('complex64')
@@ -503,6 +504,56 @@ def csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
             Bp, Bj, Bx))
 
 
+check_idx_bounds_ker_types = {
+    int32_dtype: 'idx_bounds_ker<int>',
+    int64_dtype: 'idx_bounds_ker<size_t>'
+}
+check_idx_bounds_ker = core.RawModule(code="""
+    template<typename I>
+    __global__
+    void idx_bounds_ker(const I *idxs, 
+                        const I idx_length,
+                        const I bounds,
+                        bool *out_upper,
+                        bool *out_lower,
+                        bool *out_neg) {
+                              
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        
+        if(i < idx_length) {
+            const I cur_idx = idxs[i];
+            
+            if(cur_idx >= bounds) 
+                out_upper[0] = true;
+                
+            if(cur_idx < -idx_length)
+                out_lower[0] = true;
+                
+            if(cur_idx < 0)
+                out_neg[0] = true;
+        }
+    }
+
+""", options=module_options, name_expressions=tuple(
+    check_idx_bounds_ker_types.values()))
+
+
+def check_bounds(idxs, bounds, tpb=32):
+
+    grid = math.ceil(len(idxs) / tpb)
+    kernel = check_idx_bounds_ker.get_function(
+        check_idx_bounds_ker_types[idxs.dtype]
+    )
+    upper = cupy.array([False], dtype="bool")
+    lower = cupy.array([False], dtype="bool")
+    neg = cupy.array([False], dtype="bool")
+    kernel((grid,), (tpb,),
+           (idxs, len(idxs),
+            bounds, upper, lower, neg))
+
+    return neg[0].item(), lower[0].item(), upper[0].item()
+
+
 class IndexMixin(object):
     """
     This class provides common dispatching and validation logic for indexing.
@@ -580,7 +631,7 @@ class IndexMixin(object):
         Subclasses that need special validation can override this method.
         """
         try:
-            x = cupy.asarray(idx)
+            x = cupy.asarray(idx, dtype="int32")
         except (ValueError, TypeError, MemoryError):
             raise IndexError('invalid index')
 
@@ -591,14 +642,14 @@ class IndexMixin(object):
             return x
 
         # Check bounds
-        max_indx = x.max()
-        if max_indx >= length:
-            raise IndexError('index (%d) out of range' % max_indx)
+        is_neg, is_out_lower, is_out_upper = check_bounds(x, length)
 
-        min_indx = x.min()
-        if min_indx < 0:
-            if min_indx < -length:
-                raise IndexError('index (%d) out of range' % min_indx)
+        if is_out_upper:
+            raise IndexError('index (%d) out of range' % x.max())
+
+        if is_neg:
+            if is_out_lower:
+                raise IndexError('index (%d) out of range' % x.min())
             if x is idx or not x.flags.owndata:
                 x = x.copy()
             x[x < 0] += length
