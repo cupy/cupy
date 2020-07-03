@@ -510,6 +510,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _major_index_fancy(self, idx):
         """Index along the major axis where idx is an array of ints.
         """
+
         idx_dtype = self.indices.dtype
         indices = cupy.asarray(idx, dtype=idx_dtype).ravel()
 

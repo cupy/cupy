@@ -49,7 +49,7 @@ bin_col_offsets_ker = core.RawModule(code="""
 
         if(jj < n_idx) {
             const I j = col_idxs[jj];
-            col_offsets[j]++;
+            atomicAdd(col_offsets+j, 1);
         }
     }
 """, options=module_options, name_expressions=tuple(
@@ -58,7 +58,6 @@ bin_col_offsets_ker = core.RawModule(code="""
 
 def bin_col_offsets(n_idx, col_ids, col_offsets, tpb=32):
     grid = math.ceil(n_idx / tpb)
-
     kernel = bin_col_offsets_ker.get_function(
         bin_col_offsets_ker_types[int32_dtype])
     kernel((grid,), (tpb,), (n_idx, col_ids, col_offsets))
