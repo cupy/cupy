@@ -63,14 +63,18 @@ cdef tuple _ndarray_nonzero(ndarray self):
 cpdef ndarray _ndarray_argwhere(ndarray self):
     cdef Py_ssize_t count_nonzero
     cdef int ndim
+    cdef ndarray nonzero
     dtype = numpy.int64
     if self.size == 0:
         count_nonzero = 0
     else:
-        r = self.ravel()
-        nonzero = cupy.core.not_equal(r, 0, ndarray(r.shape, dtype))
-        del r
-        scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM)
+        if self.dtype == numpy.bool_:
+            nonzero = self.ravel()
+        else:
+            nonzero = cupy.core.not_equal(self, 0)
+            nonzero = nonzero.ravel()
+        scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM,
+                                dtype=dtype)
         count_nonzero = int(scan_index[-1])  # synchronize!
     ndim = max(<int>self._shape.size(), 1)
     if count_nonzero == 0:
@@ -578,11 +582,11 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     else:
         mask_type = numpy.int64
     op = _math.scan_op.SCAN_SUM
+
     # starts with 1
-    mask_scanned = _math.scan(mask.astype(mask_type).ravel(), op=op)
+    mask_scanned = _math.scan(mask.ravel(), op=op, dtype=mask_type)
     n_true = int(mask_scanned[-1])
     masked_shape = lshape + (n_true,) + rshape
-
     # When mask covers the entire array, broadcasting is not necessary.
     if mask._shape.size() == a._shape.size() and axis == 0:
         return (
@@ -604,7 +608,7 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     else:
         mask_type = numpy.int64
     mask_scanned = _manipulation._reshape(
-        _math.scan(mask.astype(mask_type).ravel(), op=_math.scan_op.SCAN_SUM),
+        _math.scan(mask.ravel(), op=_math.scan_op.SCAN_SUM, dtype=mask_type),
         mask._shape)
     return mask, mask_scanned, masked_shape
 
