@@ -549,7 +549,7 @@ void csr_sample_offsets(const I n_row,
                        bool *dupl) {
     int n = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if(n < n_samples)
+    if(n < n_samples && dupl[0] == false)
     {
         const I i = Bi[n] < 0 ? Bi[n] + n_row : Bi[n]; // sample row
         const I j = Bj[n] < 0 ? Bj[n] + n_col : Bj[n]; // sample column
@@ -591,7 +591,7 @@ csr_has_sorted_indices_ker = core.RawModule(code="""
 
         int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-        if(i < n_rows) {
+        if(i < n_rows && sorted[0] == true) {
             const I start = Ap[i];
             const I stop = Ap[i+1];
 
