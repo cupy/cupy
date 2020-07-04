@@ -7,6 +7,19 @@ import sys
 import cupy_setup_build
 
 
+if len(os.listdir('cupy/core/include/cupy/cub/')) == 0:
+    msg = '''
+    The folder cupy/core/include/cupy/cub/ is a git submodule but is
+    currently empty. Please use the command
+
+        git submodule update --init
+
+    to populate the folder before building from source.
+    '''
+    print(msg, file=sys.stderr)
+    sys.exit(1)
+
+
 if sys.version_info[:3] == (3, 5, 0):
     if not int(os.getenv('CUPY_PYTHON_350_FORCE', '0')):
         msg = """

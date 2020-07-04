@@ -16,7 +16,8 @@ from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
 
-if cupy.cuda.cub_enabled:
+# TODO(leofang): always import cub when hipCUB is supported
+if not cupy.cuda.runtime.is_hip:
     from cupy.cuda import cub
 else:
     cub = None

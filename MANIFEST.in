@@ -6,3 +6,4 @@ recursive-include tests *.py
 include LICENSE
 include docs/LICENSE_THIRD_PARTY
 include docs/source/license.rst
+graft cupy/core/include/cupy/cub*
