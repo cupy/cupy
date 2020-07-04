@@ -252,17 +252,32 @@ class Plan1d(object):
         cdef Handle plan
         cdef bint use_multi_gpus = 0 if devices is None else 1
 
+        self.plan = 0
+        self.xtArr = <intptr_t>0  # pointer to metadata for multi-GPU buffer
+        self.xtArr_buffer = None  # actual multi-GPU intermediate buffer
+
         with nogil:
             result = cufftCreate(&plan)
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
         check_result(result)
 
-        # set plan, work_area, gpus, streams, and events
-        if not use_multi_gpus:
-            self._single_gpu_get_plan(plan, nx, fft_type, batch)
-        else:
-            self._multi_gpu_get_plan(plan, nx, fft_type, batch, devices, out)
+        self.plan = plan
+        self.work_area = None
+        self.gpus = None
+
+        self.gather_streams = None
+        self.gather_events = None
+        self.scatter_streams = None
+        self.scatter_events = None
+
+        if batch != 0:
+            # set plan, work_area, gpus, streams, and events
+            if not use_multi_gpus:
+                self._single_gpu_get_plan(plan, nx, fft_type, batch)
+            else:
+                self._multi_gpu_get_plan(
+                    plan, nx, fft_type, batch, devices, out)
 
         self.nx = nx
         self.fft_type = fft_type
@@ -270,8 +285,6 @@ class Plan1d(object):
 
         self._use_multi_gpus = use_multi_gpus
         self.batch_share = None
-        self.xtArr = <intptr_t>0  # pointer to metadata for multi-GPU buffer
-        self.xtArr_buffer = None  # actual multi-GPU intermediate buffer
 
     def _single_gpu_get_plan(self, Handle plan, int nx, int fft_type,
                              int batch):
@@ -298,14 +311,7 @@ class Plan1d(object):
             result = cufftSetWorkArea(plan, <void*>(ptr))
         check_result(result)
 
-        self.plan = plan
         self.work_area = work_area  # this is for cuFFT plan
-        self.gpus = None
-
-        self.gather_streams = None
-        self.gather_events = None
-        self.scatter_streams = None
-        self.scatter_events = None
 
     def _multi_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch,
                             devices, out):
@@ -378,7 +384,6 @@ class Plan1d(object):
             result = cufftXtSetWorkArea(plan, work_area_ptr.data())
         check_result(result)
 
-        self.plan = plan
         self.work_area = work_area  # this is for cuFFT plan
         self.gpus = list(gpus)
 
@@ -413,9 +418,11 @@ class Plan1d(object):
         cdef int dev = runtime.getDevice()
         cdef int result
 
-        with nogil:
-            result = cufftDestroy(plan)
-        check_result(result)
+        if plan != 0:
+            with nogil:
+                result = cufftDestroy(plan)
+            check_result(result)
+            self.plan = 0
 
         # cuFFT bug: after cufftDestroy(), the current device is mistakenly
         # set to the last device in self.gpus, so we must correct it. See
@@ -695,6 +702,8 @@ class PlanNd(object):
         cdef int* shape_ptr = shape_arr.data()
         cdef int* inembed_ptr
         cdef int* onembed_ptr
+        self.plan = 0
+
         ndim = len(shape)
 
         if inembed is None:
@@ -713,23 +722,28 @@ class PlanNd(object):
             result = cufftCreate(&plan)
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
-            if result == 0:
-                result = cufftMakePlanMany(plan, ndim, shape_ptr,
-                                           inembed_ptr, istride, idist,
-                                           onembed_ptr, ostride, odist,
-                                           <Type>fft_type, batch,
-                                           &work_size)
+        check_result(result)
 
-        # cufftMakePlanMany could use a large amount of memory
-        if result == 2:
-            cupy.get_default_memory_pool().free_all_blocks()
+        if batch == 0:
+            work_size = 0
+        else:
             with nogil:
                 result = cufftMakePlanMany(plan, ndim, shape_ptr,
                                            inembed_ptr, istride, idist,
                                            onembed_ptr, ostride, odist,
                                            <Type>fft_type, batch,
                                            &work_size)
-        check_result(result)
+
+            # cufftMakePlanMany could use a large amount of memory
+            if result == 2:
+                cupy.get_default_memory_pool().free_all_blocks()
+                with nogil:
+                    result = cufftMakePlanMany(plan, ndim, shape_ptr,
+                                               inembed_ptr, istride, idist,
+                                               onembed_ptr, ostride, odist,
+                                               <Type>fft_type, batch,
+                                               &work_size)
+            check_result(result)
 
         # TODO: for CUDA>=9.2 could also allow setting a work area policy
         # result = cufftXtSetWorkAreaPolicy(plan, policy, &work_size)
@@ -749,9 +763,11 @@ class PlanNd(object):
 
     def __del__(self):
         cdef Handle plan = self.plan
-        with nogil:
-            result = cufftDestroy(plan)
-        check_result(result)
+        if plan != 0:
+            with nogil:
+                result = cufftDestroy(plan)
+            check_result(result)
+            self.plan = 0
 
     def __enter__(self):
         _thread_local._current_plan = self

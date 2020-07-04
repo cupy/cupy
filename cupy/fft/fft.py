@@ -87,10 +87,16 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     if a.base is not None or not a.flags.c_contiguous:
         a = a.copy()
 
-    if out_size is None:
-        out_size = a.shape[-1]
+    n = a.shape[-1]
+    if n < 1:
+        raise ValueError(
+            'Invalid number of FFT data points (%d) specified.' % n)
 
-    batch = a.size // a.shape[-1]
+    if out_size is None:
+        out_size = n
+
+    batch = a.size // n
+
     curr_plan = cufft.get_current_plan()
     if curr_plan is not None:
         if plan is None:
@@ -123,11 +129,12 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     else:
         out = plan.get_output_array(a)
 
-    plan.fft(a, out, direction)
+    if batch != 0:
+        plan.fft(a, out, direction)
 
     sz = out.shape[-1]
     if fft_type == cufft.CUFFT_R2C or fft_type == cufft.CUFFT_D2Z:
-        sz = a.shape[-1]
+        sz = n
     if norm is None:
         if direction == cufft.CUFFT_INVERSE:
             out /= sz
@@ -151,12 +158,6 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
     if norm not in (None, 'ortho'):
         raise ValueError('Invalid norm value %s, should be None or "ortho".'
                          % norm)
-
-    if s is not None:
-        for n in s:
-            if (n is not None) and (n < 1):
-                raise ValueError(
-                    'Invalid number of FFT data points (%d) specified.' % n)
 
     if (s is not None) and (axes is not None) and len(s) != len(axes):
         raise ValueError('Shape and axes have different lengths.')
@@ -367,6 +368,11 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
                 'GPU case (Can only batch FFT over the first or last '
                 'spatial axes).')
 
+    for n in plan_dimensions:
+        if n < 1:
+            raise ValueError(
+                'Invalid number of FFT data points specified.')
+
     plan = cufft.PlanNd(shape=plan_dimensions,
                         inembed=inembed,
                         istride=istride,
@@ -451,7 +457,9 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
         out = plan.get_output_array(a, order=order)
     else:
         plan.check_output_array(a, out)
-    plan.fft(a, out, direction)
+
+    if out.size != 0:
+        plan.fft(a, out, direction)
 
     # normalize by the product of the shape along the transformed axes
     arr = a if fft_type in (cufft.CUFFT_R2C, cufft.CUFFT_D2Z) else out
@@ -492,6 +500,12 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
 
     # Note: need to call _cook_shape prior to sorting the axes
     a = _cook_shape(a, s, axes, value_type, order=order)
+
+    print(a.shape, s, axes_sorted)
+    for n in a.shape:
+        if n < 1:
+            raise ValueError(
+                'Invalid number of FFT data points (%d) specified.' % n)
 
     if order == 'C' and not a.flags.c_contiguous:
         a = cupy.ascontiguousarray(a)
