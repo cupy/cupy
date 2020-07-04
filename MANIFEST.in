@@ -1,5 +1,7 @@
 recursive-include cupy *.h *.hpp
 recursive-exclude cupy *.pyx *.pxd *.pxi
+recursive-include cupy_cuda *.h *.hpp
+recursive-exclude cupy_cuda *.pyx *.pxd *.pxi
 include cupy_setup_build.py
 recursive-include install *.py
 recursive-include tests *.py
