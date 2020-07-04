@@ -225,14 +225,13 @@ cdef class RawModule:
     modules (\\*.cubin, \\*.ptx). This class is useful when a number of CUDA
     kernels in the same source need to be retrieved.
 
-    For the former case, the CUDA source code is compiled when initializing a
-    new instance of this class, and the kernels can be retrieved by calling
+    For the former case, the CUDA source code is compiled when any method is
+    called. For the latter case, an existing CUDA binary (\\*.cubin) or a PTX
+    file can be loaded by providing its path.
+
+    CUDA kernels in a :class:`RawModule` can be retrieved by calling
     :meth:`get_function`, which will return an instance of :class:`RawKernel`.
     (Same as in :class:`RawKernel`, the generated binary is also cached.)
-
-    For the latter case, an existing CUDA binary (\\*.cubin) or a PTX file can
-    be loaded by providing its path, and kernels therein can be retrieved
-    similarly.
 
     Args:
         code (str): CUDA source code. Mutually exclusive with ``path``.
@@ -261,6 +260,12 @@ cdef class RawModule:
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
+
+    .. note::
+        Before CuPy v8.0.0, the compilation happens at initialization. Now, it
+        happens at the first time retrieving any object (kernels, pointers, or
+        texrefs) from the module.
+
     """
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
@@ -299,12 +304,6 @@ cdef class RawModule:
             self.options = ()
             self.backend = 'nvcc'
             self.translate_cucomplex = False
-
-        cdef Module mod = None
-        # no_cuda is defined at build time
-        IF not no_cuda:
-            # trigger compiling or loading
-            mod = self.module
 
     @property
     def module(self):

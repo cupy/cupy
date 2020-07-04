@@ -413,10 +413,10 @@ class TestRaw(unittest.TestCase):
 
     def test_invalid_compiler_flag(self):
         with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-            cupy.RawModule(
-                code=_test_source3,
-                options=('-DPRECISION=3',),
-                backend=self.backend)
+            mod = cupy.RawModule(code=_test_source3,
+                                 options=('-DPRECISION=3',),
+                                 backend=self.backend)
+            mod.get_function('test_sum')  # enforce compilation
         assert 'precision not supported' in str(ex.value)
 
     def _generate_file(self, ext: str):
@@ -470,9 +470,10 @@ class TestRaw(unittest.TestCase):
         # this error is more likely to appear when using RawModule, so
         # let us do it here
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
-            cupy.RawModule(
+            mod = cupy.RawModule(
                 path=os.path.expanduser('~/this_does_not_exist.cubin'),
                 backend=self.backend)
+            mod.get_function('nonexisting_kernel')  # enforce loading
         assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)
 
     def test_module_neither_code_nor_path(self):
