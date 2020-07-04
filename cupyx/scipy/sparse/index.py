@@ -100,12 +100,18 @@ def _csr_column_index1_degree(n_row, col_offsets, Ap, Aj, Bp, tpb=32):
 
 
 def _csr_column_index1(n_idx, col_idxs, n_row, n_col,
-                       indptr, indices, offsets, new_indptr):
-    _bin_col_offsets(n_idx, col_idxs, offsets)
-    _csr_column_index1_degree(n_row, offsets, indptr, indices, new_indptr)
+                       indptr, indices):
 
-    cupy.cumsum(offsets, out=offsets)
+    col_offsets = cupy.zeros(n_col, dtype=indptr.dtype)
+    new_indptr = cupy.zeros_like(indptr)
+
+    _bin_col_offsets(n_idx, col_idxs, col_offsets)
+    _csr_column_index1_degree(n_row, col_offsets, indptr, indices, new_indptr)
+
+    cupy.cumsum(col_offsets, out=col_offsets)
     cupy.cumsum(new_indptr, out=new_indptr)
+
+    return col_offsets, new_indptr
 
 
 _get_csr_index2_ker_types = {
@@ -159,13 +165,21 @@ _get_csr_index2_ker = core.RawModule(code="""
 
 
 def _csr_column_index2(out_rows, col_order, col_offsets, nnz,
-                       Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
+                       Ap, Aj, Ax, Bp, tpb=32):
+
+    new_nnz = Bp[-1].item()
+
+    Bj = cupy.empty(new_nnz, dtype=Aj.dtype)
+    Bx = cupy.empty(new_nnz, dtype=Ax.dtype)
+
     grid = math.ceil(out_rows / tpb)
     func = _get_csr_index2_ker_types[(Ap.dtype, Bx.dtype)]
     kernel = _get_csr_index2_ker.get_function(func)
     kernel((grid,), (tpb,),
            (col_order, col_offsets,
             Ap, Aj, Ax, len(Ap)-1, Bp, Bj, Bx))
+
+    return Bj, Bx
 
 
 def _get_csr_submatrix(indptr, indices, data,
@@ -357,9 +371,13 @@ _csr_row_index_ker = core.RawModule(code="""
 
 def _csr_row_index(n_row_idx, rows,
                    Ap, Aj, Ax,
-                   Bp, Bj, Bx, tpb=32):
+                   Bp, tpb=32):
 
     grid = math.ceil(n_row_idx / tpb)
+
+    nnz = Bp[-1].item()
+    Bj = cupy.empty(nnz, dtype=Aj.dtype)
+    Bx = cupy.empty(nnz, dtype=Ax.dtype)
 
     kernel = _csr_row_index_ker.get_function(
         _csr_row_index_ker_types[(Ap.dtype, Ax.dtype)]
@@ -369,12 +387,17 @@ def _csr_row_index(n_row_idx, rows,
             Ap, Aj, Ax,
             Bp, Bj, Bx))
 
+    return Bj, Bx
+
 
 def _csr_sample_values(n_row, n_col,
                        Ap, Aj, Ax,
                        n_samples,
-                       Bi, Bj, Bx, tpb=32):
+                       Bi, Bj, tpb=32):
+
     grid = math.ceil(n_samples / tpb)
+
+    Bx = cupy.empty(Bi.size, dtype=Ax.dtype)
 
     kernel = _csr_sample_values_kern.get_function(
         _csr_sample_values_kern_types[(Ap.dtype, Ax.dtype)]
@@ -382,6 +405,8 @@ def _csr_sample_values(n_row, n_col,
     kernel((grid,), (tpb,),
            (n_row, n_col, Ap, Aj, Ax,
             n_samples, Bi, Bj, Bx))
+
+    return Bx
 
 
 _csr_sample_values_kern_types = {

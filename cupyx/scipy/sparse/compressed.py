@@ -484,10 +484,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         major = cupy.asarray(major, dtype=idx_dtype)
         minor = cupy.asarray(minor, dtype=idx_dtype)
 
-        val = cupy.empty(major.size, dtype=self.dtype)
-
-        index._csr_sample_values(M, N, self.indptr, self.indices, self.data,
-                                 major.size, major.ravel(), minor.ravel(), val)
+        val = index._csr_sample_values(
+            M, N, self.indptr, self.indices, self.data,
+            major.size, major.ravel(), minor.ravel())
 
         if major.ndim == 1:
             # Scipy returns `matrix` here
@@ -517,12 +516,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
         cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
 
-        nnz = res_indptr[-1].item()
-        res_indices = cupy.empty(nnz, dtype=idx_dtype)
-        res_data = cupy.empty(nnz, dtype=self.dtype)
-        index._csr_row_index(len(idx), indices, self.indptr,
-                             self.indices, self.data,
-                             res_indptr, res_indices, res_data)
+        res_indices, res_data = index._csr_row_index(
+            len(idx), indices, self.indptr,
+            self.indices, self.data, res_indptr)
 
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
@@ -541,25 +537,18 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             return self.__class__(new_shape)
 
         # pass 1: count idx entries and compute new indptr
-        col_offsets = cupy.zeros(N, dtype=idx_dtype)
 
-        # scipy uses empty-like here, but that seems to return a fully
-        # populated array in cupy
-        res_indptr = cupy.zeros_like(self.indptr)
-
-        index._csr_column_index1(k, idx, M, N, self.indptr, self.indices,
-                                 col_offsets, res_indptr)
+        col_offsets, res_indptr = index._csr_column_index1(
+            k, idx, M, N, self.indptr, self.indices)
 
         # pass 2: copy indices/data for selected idxs
         col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
 
-        nnz = res_indptr[-1].item()
-        res_indices = cupy.empty(nnz, dtype=idx_dtype)
-        res_data = cupy.empty(nnz, dtype=self.dtype)
+        res_indices, res_data = index._csr_column_index2(
+            len(res_indptr) - 1, col_order, col_offsets,
+            len(self.indices), self.indptr, self.indices,
+            self.data, res_indptr)
 
-        index._csr_column_index2(len(res_indptr) - 1, col_order, col_offsets,
-                                 len(self.indices), self.indptr, self.indices,
-                                 self.data, res_indptr, res_indices, res_data)
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
 
@@ -657,13 +646,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             res_indices = cupy.array(self.indices[all_idx], copy=copy)
             res_data = cupy.array(self.data[all_idx], copy=copy)
         else:
-            nnz = res_indptr[-1].item()
-
-            res_indices = cupy.empty(nnz, dtype=idx_dtype)
-            res_data = cupy.empty(nnz, dtype=self.dtype)
-            index._csr_row_slice(start, stop, step,
-                                 self.indptr, self.indices, self.data,
-                                 res_indptr, res_indices, res_data)
+            res_indices, res_data = index._csr_row_slice(
+                start, stop, step, self.indptr, self.indices, self.data,
+                res_indptr)
 
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
