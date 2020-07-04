@@ -899,19 +899,23 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.has_sorted_indices
 
-    def test_has_sorted_indices2(self):
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_sorted_indices2(self, xp, sp):
         # this test is adopted from SciPy's
-        xp = cupy
-        sp = sparse
-        dtype = xp.float32
-
         sorted_inds = xp.array([0, 1])
-        unsorted_inds = xp.array([1, 0])
-        data = xp.array([1, 1], dtype=dtype)
+        data = xp.array([1, 1], dtype=self.dtype)
         indptr = xp.array([0, 2])
         M = sp.csr_matrix((data, sorted_inds, indptr))
         assert M.has_sorted_indices
+        return M
 
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_sorted_indices3(self, xp, sp):
+        # this test is adopted from SciPy's
+        sorted_inds = xp.array([0, 1])
+        unsorted_inds = xp.array([1, 0])
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
         M = sp.csr_matrix((data, unsorted_inds, indptr))
         assert not M.has_sorted_indices
 
@@ -919,8 +923,16 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         M.sort_indices()
         assert M.has_sorted_indices
         assert (M.indices == sorted_inds).all()
+        return M
 
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_sorted_indices4(self, xp, sp):
+        # this test is adopted from SciPy's
+        unsorted_inds = xp.array([1, 0])
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
         M = sp.csr_matrix((data, unsorted_inds, indptr))
+
         # set manually (although underlyingly unsorted)
         M.has_sorted_indices = True
         assert M.has_sorted_indices
@@ -929,6 +941,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         # ensure sort bypassed when has_sorted_indices == True
         M.sort_indices()
         assert (M.indices == unsorted_inds).all()
+        return M
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sort_indices(self, xp, sp):
