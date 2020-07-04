@@ -810,18 +810,19 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.has_canonical_format
 
-    def test_has_canonical_format2(self):
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_canonical_format2(self, xp, sp):
         # this test is adopted from SciPy's
-        xp = cupy
-        sp = sparse
-        dtype = xp.float32
-
-        M = sp.csc_matrix((xp.array([2], dtype=dtype),
+        M = sp.csc_matrix((xp.array([2], dtype=self.dtype),
                            xp.array([0]), xp.array([0, 1])))
         assert M.has_canonical_format
+        return M
 
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_canonical_format3(self, xp, sp):
+        # this test is adopted from SciPy's
         indices = xp.array([0, 0])  # contains duplicate
-        data = xp.array([1, 1], dtype=dtype)
+        data = xp.array([1, 1], dtype=self.dtype)
         indptr = xp.array([0, 2])
 
         M = sp.csc_matrix((data, indices, indptr))
@@ -831,6 +832,14 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         M.sum_duplicates()
         assert M.has_canonical_format
         assert 1 == len(M.indices)
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_canonical_format4(self, xp, sp):
+        # this test is adopted from SciPy's
+        indices = xp.array([0, 0])  # contains duplicate
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
 
         M = sp.csc_matrix((data, indices, indptr))
         # set manually (although underlyingly duplicated)
@@ -841,6 +850,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         # ensure deduplication bypassed when has_canonical_format == True
         M.sum_duplicates()
         assert 2 == len(M.indices)  # unaffected content
+        return M
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_has_sorted_indices(self, xp, sp):

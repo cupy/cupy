@@ -230,13 +230,15 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
 
-        self.sum_duplicates()
+        x = self.copy()
+        x.has_canonical_format = False  # need to enforce sum_duplicates
+        x.sum_duplicates()
         # csr2dense returns F-contiguous array.
         if order == 'C':
             # To return C-contiguous array, it uses transpose.
-            return cusparse.csc2dense(self.T).T
+            return cusparse.csc2dense(x.T).T
         elif order == 'F':
-            return cusparse.csr2dense(self)
+            return cusparse.csr2dense(x)
         else:
             raise TypeError('order not understood')
 
