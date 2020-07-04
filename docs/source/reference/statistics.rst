@@ -53,3 +53,4 @@ Correlations
 
    cupy.corrcoef
    cupy.cov
+   cupy.correlate
