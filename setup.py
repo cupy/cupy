@@ -31,25 +31,29 @@ set 1 to CUPY_PYTHON_350_FORCE environment variable."""
         print(msg)
         sys.exit(1)
 
+# This is for github dependency graph
+setup_requires = [
+    'fastrlock>=0.3',
+]
+install_requires = [
+    'numpy>=1.15',
+    'fastrlock>=0.3',
+]
+tests_require = [
+    'pytest<4.2.0',  # 4.2.0 is slow collecting tests and times out on CI.
+    'attrs<19.2.0',  # pytest 4.1.1 does not run with attrs==19.2.0
+]
 
 requirements = {
-    'setup': [
-        'fastrlock>=0.3',
-    ],
-    'install': [
-        'numpy>=1.15',
-        'fastrlock>=0.3',
-    ],
+    'setup': setup_requires,
+    'install': install_requires,
     'stylecheck': [
         'autopep8==1.3.5',
         'flake8==3.5.0',
         'pbr==4.0.4',
         'pycodestyle==2.3.1',
     ],
-    'test': [
-        'pytest<4.2.0',  # 4.2.0 is slow collecting tests and times out on CI.
-        'attrs<19.2.0',  # pytest 4.1.1 does not run with attrs==19.2.0
-    ],
+    'test': tests_require,
     'doctest': [
         'matplotlib',
         'optuna',
@@ -96,11 +100,6 @@ for k in requirements.keys():
 extras_require = {k: v for k, v in requirements.items() if k != 'install'}
 
 
-setup_requires = requirements['setup']
-install_requires = requirements['install']
-tests_require = requirements['test']
-
-
 package_data = {
     'cupy': [
         'core/include/cupy/complex/arithmetic.h',
@@ -135,6 +134,7 @@ package_data = {
 
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs()
 
+package_name = 'cupy'  # This line is for github dependency graph
 package_name = cupy_setup_build.get_package_name()
 long_description = cupy_setup_build.get_long_description()
 ext_modules = cupy_setup_build.get_ext_modules()
