@@ -3,6 +3,7 @@ from cpython cimport sequence
 import numpy
 from numpy import nan
 
+import cupy
 from cupy.core import _reduction
 from cupy.core._reduction import create_reduction_func
 from cupy.core._reduction import ReductionKernel
@@ -10,9 +11,11 @@ from cupy.core._reduction import ReductionKernel
 from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray
 
-import cupy
-if cupy.cuda.cub_enabled:
+# TODO(leofang): always import cub when hipCUB is supported
+if not cupy.cuda.runtime.is_hip:
     from cupy.cuda import cub
+else:
+    cub = None
 
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):

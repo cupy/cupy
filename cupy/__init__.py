@@ -546,6 +546,11 @@ from cupy.logic.comparison import not_equal  # NOQA
 from cupy.logic.truth import all  # NOQA
 from cupy.logic.truth import any  # NOQA
 
+# ------------------------------------------------------------------------------
+# Polynomial functions
+# ------------------------------------------------------------------------------
+from cupy.lib.polynomial import poly1d  # NOQA
+
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
@@ -690,6 +695,7 @@ from cupy._sorting.sort import sort  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.statistics.correlation import corrcoef  # NOQA
 from cupy.statistics.correlation import cov  # NOQA
+from cupy.statistics.correlation import correlate  # NOQA
 
 from cupy.statistics.order import amax  # NOQA
 from cupy.statistics.order import amax as max  # NOQA
