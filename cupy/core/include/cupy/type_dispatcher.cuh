@@ -1,8 +1,8 @@
 #ifndef INCLUDE_GUARD_CUPY_TYPE_DISPATCHER_H
 #define INCLUDE_GUARD_CUPY_TYPE_DISPATCHER_H
 
-#include <stdexcept>
 #include "./complex.cuh"
+#include <stdexcept>
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 #include <cuda_fp16.h>
