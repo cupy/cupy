@@ -264,8 +264,8 @@ class TestPoly1dEquality(unittest.TestCase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'shape1': [(), (0,), (3,), (5,), (6,)],
-    'shape2': [(), (0,), (3,), (5,), (6,)]
+    'shape1': [(), (0,), (3,), (5,)],
+    'shape2': [(), (0,), (3,), (5,)]
 }))
 class TestPolyaddShapeCombination(unittest.TestCase):
 
