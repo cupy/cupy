@@ -4,6 +4,32 @@ import cupy
 from cupy.core.core cimport ndarray
 
 
+def polymul(a1, a2):
+    """Computes the product of two polynomials.
+
+    Args:
+        a1 (cupy.ndarray or cupy.poly1d): first input polynomial.
+        a2 (cupy.ndarray or cupy.poly1d): second input polynomial.
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: The product of the inputs.
+
+    .. seealso:: :func:`numpy.polymul`
+
+    """
+    truepoly = False
+    if isinstance(a1, poly1d):
+        a1 = a1.coeffs
+        truepoly = True
+    if isinstance(a2, poly1d):
+        a2 = a2.coeffs
+        truepoly = True
+    val = cupy.convolve(a1, a2)
+    if truepoly:
+        val = poly1d(val)
+    return val
+
+
 cdef class poly1d:
     """A one-dimensional polynomial class.
 
