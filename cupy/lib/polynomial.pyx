@@ -99,9 +99,8 @@ cdef class poly1d:
             if variable is not None:
                 self._variable = variable
             return
-        # TODO(Dahlia-Chehata): if r: c_or_r = poly(c_or_r)
         if r:
-            raise NotImplementedError
+            c_or_r = poly(c_or_r)
         c_or_r = cupy.atleast_1d(c_or_r)
         if c_or_r.ndim > 1:
             raise ValueError('Polynomial must be 1d only.')
