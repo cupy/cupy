@@ -520,9 +520,14 @@ _csr_row_slice_kern = core.RawModule(code="""
     _csr_row_slice_kern_types.values()))
 
 
-def _csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
+def _csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, tpb=32):
 
     grid = math.ceil((len(Bp)-1) / tpb)
+
+    nnz = Bp[-1].item()
+    Bj = cupy.empty(nnz, dtype=Ap.dtype)
+    Bx = cupy.empty(nnz, dtype=Ax.dtype)
+
     kernel = _csr_row_slice_kern.get_function(
         _csr_row_slice_kern_types[(Ap.dtype, Ax.dtype)]
     )
@@ -530,6 +535,8 @@ def _csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
            (start, stop, step,
             Ap, Aj, Ax,
             Bp, Bj, Bx))
+
+    return Bj, Bx
 
 
 _check_idx_bounds_ker_types = {
