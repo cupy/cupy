@@ -17,13 +17,9 @@ def polymul(a1, a2):
     .. seealso:: :func:`numpy.polymul`
 
     """
-    truepoly = False
-    if isinstance(a1, poly1d):
-        a1 = a1.coeffs
-        truepoly = True
-    if isinstance(a2, poly1d):
-        a2 = a2.coeffs
-        truepoly = True
+    truepoly = isinstance(a1, poly1d) or isinstance(a2, poly1d)
+    a1 = cupy.poly1d(a1).coeffs
+    a2 = cupy.poly1d(a2).coeffs
     val = cupy.convolve(a1, a2)
     if truepoly:
         val = poly1d(val)
@@ -137,11 +133,12 @@ cdef class poly1d:
     def __pos__(self):
         return self
 
-    # TODO(Dahlia-Chehata): use polymul for non-scalars
     def __mul__(self, other):
         if cupy.isscalar(other):
             return poly1d(self.coeffs * other)
-        raise NotImplementedError
+        else:
+            other = poly1d(other)
+            return poly1d(polymul(self.coeffs, other.coeffs))
 
     # TODO(Dahlia-Chehata): implement using polyadd
     def __add__(self, other):
@@ -151,11 +148,13 @@ cdef class poly1d:
     def __radd__(self, other):
         raise NotImplementedError
 
-    # TODO(Dahlia-Chehata): implement using polymul
     def __pow__(self, val, modulo):
         if not cupy.isscalar(val) or int(val) != val or val < 0:
             raise ValueError('Power to non-negative integers only.')
-        raise NotImplementedError
+        out = [1]
+        for _ in range(val):
+            out = polymul(self.coeffs, out)
+        return poly1d(out)
 
     # TODO(Dahlia-Chehata): implement using polysub
     def __sub__(self, other):
