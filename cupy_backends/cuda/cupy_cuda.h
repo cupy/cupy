@@ -566,6 +566,14 @@ cublasStatus_t cublasDaxpy(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasCaxpy(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZaxpy(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSdot(...) {
     return CUBLAS_STATUS_SUCCESS;
 }

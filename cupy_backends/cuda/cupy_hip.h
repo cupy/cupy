@@ -553,6 +553,14 @@ cublasStatus_t cublasDaxpy(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
+cublasStatus_t cublasCaxpy(...) {
+    return HIPBLAS_STATUS_NOT_SUPPORTED;
+}
+
+cublasStatus_t cublasZaxpy(...) {
+    return HIPBLAS_STATUS_NOT_SUPPORTED;
+}
+
 cublasStatus_t cublasSdot(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }

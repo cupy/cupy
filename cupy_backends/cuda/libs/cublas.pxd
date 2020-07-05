@@ -93,6 +93,10 @@ cpdef saxpy(intptr_t handle, int n, float alpha, size_t x, int incx, size_t y,
             int incy)
 cpdef daxpy(intptr_t handle, int n, double alpha, size_t x, int incx, size_t y,
             int incy)
+cpdef caxpy(intptr_t handle, int n, float complex alpha, size_t x, int incx, size_t y,
+            int incy)
+cpdef zaxpy(intptr_t handle, int n, double complex alpha, size_t x, int incx, size_t y,
+            int incy)
 cpdef sdot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result)
 cpdef ddot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,

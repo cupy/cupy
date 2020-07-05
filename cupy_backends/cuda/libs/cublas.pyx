@@ -46,6 +46,10 @@ cdef extern from '../cupy_cuda.h' nogil:
                     int incx, float* y, int incy)
     int cublasDaxpy(Handle handle, int n, double* alpha, double* x,
                     int incx, double* y, int incy)
+    int cublasCaxpy(Handle handle, int n, cuComplex* alpha, cuComplex* x,
+                    int incx, cuComplex* y, int incy)
+    int cublasZaxpy(Handle handle, int n, cuDoubleComplex* alpha, cuDoubleComplex* x,
+                    int incx, cuDoubleComplex* y, int incy)
     int cublasSdot(Handle handle, int n, float* x, int incx,
                    float* y, int incy, float* result)
     int cublasDdot(Handle handle, int n, double* x, int incx,
@@ -444,6 +448,24 @@ cpdef daxpy(intptr_t handle, int n, double alpha, size_t x, int incx, size_t y,
             <Handle>handle, n, &alpha, <double*>x, incx, <double*>y, incy)
     check_status(status)
 
+cpdef caxpy(intptr_t handle, int n, float complex alpha, size_t x, int incx, size_t y,
+            int incy):
+    cdef cuComplex a = get_cu_complex(alpha)
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasCaxpy(
+            <Handle>handle, n, &a, <cuComplex*>x, incx, <cuComplex*>y, incy)
+    check_status(status)
+
+
+cpdef zaxpy(intptr_t handle, int n, double complex alpha, size_t x, int incx, size_t y,
+            int incy):
+    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cublasZaxpy(
+            <Handle>handle, n, &a, <cuDoubleComplex*>x, incx, <cuDoubleComplex*>y, incy)
+    check_status(status)
 
 cpdef sdot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result):
