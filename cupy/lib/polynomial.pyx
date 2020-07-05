@@ -137,13 +137,13 @@ cdef class poly1d:
             return poly1d(self.coeffs * other)
         raise NotImplementedError
 
-    # TODO(Dahlia-Chehata): implement using polyadd
     def __add__(self, other):
-        raise NotImplementedError
+        other = poly1d(other)
+        return poly1d(polyadd(self.coeffs, other.coeffs))
 
-    # TODO(Dahlia-Chehata): implement using polyadd
     def __radd__(self, other):
-        raise NotImplementedError
+        other = poly1d(other)
+        return poly1d(polyadd(self.coeffs, other.coeffs))
 
     # TODO(Dahlia-Chehata): implement using polymul
     def __pow__(self, val, modulo):

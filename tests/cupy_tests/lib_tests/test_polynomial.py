@@ -183,6 +183,10 @@ class TestPoly1d(unittest.TestCase):
         a = testing.shaped_arange((5,), xp, dtype)
         return str(xp.poly1d(a))
 
+
+@testing.gpu
+class TestPoly1dArithmetic(unittest.TestCase):
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_mul_scalar(self, xp, dtype):
@@ -196,6 +200,24 @@ class TestPoly1d(unittest.TestCase):
         a = testing.shaped_arange((10,), xp, dtype)
         b = xp.poly1d(a) / 10
         return b.coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_add_poly1d_array(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        b = xp.poly1d(a) + a
+        return b.coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_add_poly1d_poly1d(self, xp, dtype):
+        a1 = testing.shaped_arange((5,), xp, dtype)
+        b1 = xp.poly1d(a1, variable='z')
+        a2 = testing.shaped_arange((2,), xp, dtype)
+        b2 = xp.poly1d(a2)
+        b1 += b2
+        assert b1.variable == 'x'
+        return b1.coeffs
 
 
 @testing.gpu
