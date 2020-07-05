@@ -65,6 +65,7 @@ cuda_files = [
     'cupy.core.fusion',
     'cupy.core.new_fusion',
     'cupy.core.raw',
+    'cupy.cuda.common',
     'cupy.cuda.cublas',
     'cupy.cuda.cufft',
     'cupy.cuda.curand',

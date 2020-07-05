@@ -4,8 +4,6 @@
 
 from cpython cimport sequence
 
-import numpy
-
 from cupy.core.core cimport _internal_ascontiguousarray
 from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport ndarray
@@ -14,29 +12,15 @@ from cupy.cuda cimport device
 from cupy.cuda cimport memory
 from cupy.cuda cimport runtime
 from cupy.cuda cimport stream
+from cupy.cuda.common cimport _get_dtype_id
 from cupy.cuda.driver cimport Stream as Stream_t
 
-cimport cython
+import numpy
 
 
 ###############################################################################
 # Const
 ###############################################################################
-
-cdef enum:
-    CUPY_CUB_INT8 = 0
-    CUPY_CUB_UINT8 = 1
-    CUPY_CUB_INT16 = 2
-    CUPY_CUB_UINT16 = 3
-    CUPY_CUB_INT32 = 4
-    CUPY_CUB_UINT32 = 5
-    CUPY_CUB_INT64 = 6
-    CUPY_CUB_UINT64 = 7
-    CUPY_CUB_FLOAT16 = 8
-    CUPY_CUB_FLOAT32 = 9
-    CUPY_CUB_FLOAT64 = 10
-    CUPY_CUB_COMPLEX64 = 11
-    CUPY_CUB_COMPLEX128 = 12
 
 CUB_support_dtype_without_half = [numpy.int8, numpy.uint8,
                                   numpy.int16, numpy.uint16,
@@ -487,35 +471,3 @@ def cub_scan(arr, op):
         return device_scan(arr, op)
 
     return None
-
-
-def _get_dtype_id(dtype):
-    if dtype == numpy.int8:
-        ret = CUPY_CUB_INT8
-    elif dtype == numpy.uint8:
-        ret = CUPY_CUB_UINT8
-    elif dtype == numpy.int16:
-        ret = CUPY_CUB_INT16
-    elif dtype == numpy.uint16:
-        ret = CUPY_CUB_UINT16
-    elif dtype == numpy.int32:
-        ret = CUPY_CUB_INT32
-    elif dtype == numpy.uint32:
-        ret = CUPY_CUB_UINT32
-    elif dtype == numpy.int64:
-        ret = CUPY_CUB_INT64
-    elif dtype == numpy.uint64:
-        ret = CUPY_CUB_UINT64
-    elif dtype == numpy.float16:
-        ret = CUPY_CUB_FLOAT16
-    elif dtype == numpy.float32:
-        ret = CUPY_CUB_FLOAT32
-    elif dtype == numpy.float64:
-        ret = CUPY_CUB_FLOAT64
-    elif dtype == numpy.complex64:
-        ret = CUPY_CUB_COMPLEX64
-    elif dtype == numpy.complex128:
-        ret = CUPY_CUB_COMPLEX128
-    else:
-        raise ValueError('Unsupported dtype ({})'.format(dtype))
-    return ret
