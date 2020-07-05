@@ -550,6 +550,7 @@ from cupy.logic.truth import any  # NOQA
 # Polynomial functions
 # ------------------------------------------------------------------------------
 from cupy.lib.polynomial import poly1d  # NOQA
+from cupy.lib.polynomial import polyadd  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions

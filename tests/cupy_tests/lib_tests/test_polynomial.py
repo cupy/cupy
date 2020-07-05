@@ -238,3 +238,100 @@ class TestPoly1dEquality(unittest.TestCase):
     def test_poly1d_ne2(self, xp, dtype):
         a, b = self.make_poly1d2(xp, dtype)
         return a != b
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'shape1': [(), (0,), (3,), (5,), (6,)],
+    'shape2': [(), (0,), (3,), (5,), (6,)]
+}))
+class TestPolyaddShapeCombination(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd(self, xp, dtype):
+        a = testing.shaped_arange(self.shape1, xp, dtype)
+        b = testing.shaped_arange(self.shape2, xp, dtype)
+        return xp.polyadd(a, b)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'shape1': [(3, 3, 1), (3, 3), (3, 1), (3,), (1,)],
+    'shape2': [(3, 3, 1), (3, 3), (3, 1), (3,), (1,)]
+}))
+class TestPolyaddNdimShapeCombination(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd(self, xp, dtype):
+        a = testing.shaped_arange(self.shape1, xp, dtype)
+        b = testing.shaped_arange(self.shape2, xp, dtype)
+        return xp.polyadd(a, b)
+
+
+@testing.gpu
+class TestPolyadd(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd_list(self, xp):
+        a = [1, 2, 3]
+        b = [4, 2]
+        return xp.polyadd(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd_poly1d_poly1d(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        b = xp.poly1d(a, variable='z')
+        c = xp.polyadd(b, b)
+        assert c.variable == 'x'
+        return c.coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd_array_poly1d(self, xp, dtype):
+        a = testing.shaped_arange((3,), xp, dtype)
+        b = testing.shaped_arange((5,), xp, dtype)
+        b = xp.poly1d(b)
+        return xp.polyadd(a, b).coeffs
+
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd_diff_types_array(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((10,), xp, dtype1)
+        b = testing.shaped_arange((5,), xp, dtype2)
+        return xp.polyadd(a, b)
+
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd_diff_types_poly1d(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((10,), xp, dtype1)
+        b = testing.shaped_arange((5,), xp, dtype2)
+        a = xp.poly1d(a, variable='z')
+        b = xp.poly1d(b, variable='y')
+        c = xp.polyadd(a, b)
+        assert c.variable == 'x'
+        return c.coeffs
+
+
+@testing.gpu
+class TestPolyaddInvalid(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_polyadd_ndim1(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 4, 2), xp, dtype)
+            b = testing.shaped_arange((4, 2), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.polyadd(a, b)
+
+    @testing.for_all_dtypes()
+    def test_polyadd_ndim2(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 4, 2), xp, dtype)
+            b = testing.shaped_arange((3, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.polyadd(a, b)
