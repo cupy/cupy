@@ -5,7 +5,22 @@ from cupy.core.core cimport ndarray
 
 
 def poly(seq):
+    """Computes the coefficients of a polynomial with the given roots sequence.
 
+    Args:
+        seq (cupy.ndarray): a sequence of polynomial roots.
+
+    Returns:
+        cupy.ndarray: polynomial coefficients from highest to lowest degree.
+
+    .. warning::
+
+        This function doesn't support general 2d square arrays currently.
+        Only complex Hermitian and real symmetric 2d arrays are allowed.
+
+    .. seealso:: :func:`numpy.poly`
+
+    """
     if seq.ndim == 2 and seq.shape[0] == seq.shape[1] and seq.shape[0] != 0:
         if cupy.array_equal(seq, seq.conj().T):
             seq = cupy.linalg.eigvalsh(seq)
