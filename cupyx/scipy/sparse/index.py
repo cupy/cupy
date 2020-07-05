@@ -64,52 +64,28 @@ def _bin_col_offsets(n_idx, col_ids, col_offsets, tpb=32):
     kernel((grid,), (tpb,), (n_idx, col_ids, col_offsets))
 
 
-_csr_column_index1_ker_types = {_int32_dtype: 'csr_column_index1_ker<int>'}
-_csr_column_index1_ker = core.RawModule(code="""
-    template<typename I>
-    __global__ void csr_column_index1_ker(I n_row,
-                                   I *col_offsets,
-                                   I *Ap,
-                                   I *Aj,
-                                   I *Bp) {
+def _csr_column_index1_indptr(col_offsets, Ap, Aj):
+    """Construct output indptr by counting column indices
+    in input matrix.
+    """
+    col_sum = cupy.zeros((Aj.size+1,), dtype=col_offsets.dtype)
+    cupy.cumsum(col_offsets[Aj], out=col_sum[1:])
+    Bp = col_sum[Ap]
+    Bp[1:] -= Bp[:-1]
 
-        // Get the index of the thread
-        I i = blockIdx.x * blockDim.x + threadIdx.x;
+    cupy.cumsum(Bp, out=Bp)
 
-        if(i < n_row) {
-
-            I new_col_size = 0;
-
-            for(I jj = Ap[i]; jj < Ap[i+1]; jj++)
-                new_col_size += col_offsets[Aj[jj]];
-
-            Bp[i+1] = new_col_size;
-        }
-}
-""", options=_module_options, name_expressions=tuple(
-    _csr_column_index1_ker_types.values()))
+    return Bp
 
 
-def _csr_column_index1_degree(n_row, col_offsets, Ap, Aj, Bp, tpb=32):
-    grid = math.ceil(n_row / tpb)
-    kernel = _csr_column_index1_ker.get_function(
-        _csr_column_index1_ker_types[_int32_dtype]
-    )
-    kernel((grid,), (tpb,),
-           (n_row, col_offsets, Ap, Aj, Bp))
-
-
-def _csr_column_index1(n_idx, col_idxs, n_row, n_col,
-                       indptr, indices):
+def _csr_column_index1(col_idxs, n_col, indptr, indices):
 
     col_offsets = cupy.zeros(n_col, dtype=indptr.dtype)
-    new_indptr = cupy.zeros_like(indptr)
 
-    _bin_col_offsets(n_idx, col_idxs, col_offsets)
-    _csr_column_index1_degree(n_row, col_offsets, indptr, indices, new_indptr)
+    _bin_col_offsets(len(col_idxs), col_idxs, col_offsets)
+    new_indptr = _csr_column_index1_indptr(col_offsets, indptr, indices)
 
     cupy.cumsum(col_offsets, out=col_offsets)
-    cupy.cumsum(new_indptr, out=new_indptr)
 
     return col_offsets, new_indptr
 
@@ -164,7 +140,7 @@ _get_csr_index2_ker = core.RawModule(code="""
     _get_csr_index2_ker_types.values()))
 
 
-def _csr_column_index2(out_rows, col_order, col_offsets, nnz,
+def _csr_column_index2(col_order, col_offsets,
                        Ap, Aj, Ax, Bp, tpb=32):
 
     new_nnz = Bp[-1].item()
@@ -172,7 +148,7 @@ def _csr_column_index2(out_rows, col_order, col_offsets, nnz,
     Bj = cupy.empty(new_nnz, dtype=Aj.dtype)
     Bx = cupy.empty(new_nnz, dtype=Ax.dtype)
 
-    grid = math.ceil(out_rows / tpb)
+    grid = math.ceil((len(Bp)-1) / tpb)
     func = _get_csr_index2_ker_types[(Ap.dtype, Bx.dtype)]
     kernel = _get_csr_index2_ker.get_function(func)
     kernel((grid,), (tpb,),
