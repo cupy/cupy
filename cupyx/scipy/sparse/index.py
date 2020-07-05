@@ -12,13 +12,14 @@ from cupy import core
 
 INT_TYPES = (int, integer)
 
-int32_dtype = dtype('int32')
-float32_dtype = dtype('float32')
-float64_dtype = dtype('float64')
-complex64_dtype = dtype('complex64')
-complex128_dtype = dtype('complex128')
+_int32_dtype = dtype('int32')
+_int64_dtype = dtype('int64')
+_float32_dtype = dtype('float32')
+_float64_dtype = dtype('float64')
+_complex64_dtype = dtype('complex64')
+_complex128_dtype = dtype('complex128')
 
-module_options = ('--std=c++11',)
+_module_options = ('--std=c++11',)
 
 
 def _broadcast_arrays(a, b):
@@ -37,8 +38,8 @@ def _broadcast_arrays(a, b):
     return x, y
 
 
-bin_col_offsets_ker_types = {dtype('int32'): 'bin_col_offsets_ker_str<int>'}
-bin_col_offsets_ker = core.RawModule(code="""
+_bin_col_offsets_ker_types = {dtype('int32'): 'bin_col_offsets_ker_str<int>'}
+_bin_col_offsets_ker = core.RawModule(code="""
     template<typename I>
     __global__ void bin_col_offsets_ker_str(I n_idx,
                                             I *col_idxs,
@@ -49,72 +50,53 @@ bin_col_offsets_ker = core.RawModule(code="""
 
         if(jj < n_idx) {
             const I j = col_idxs[jj];
-            col_offsets[j]++;
+            atomicAdd(col_offsets+j, 1);
         }
     }
-""", options=module_options, name_expressions=tuple(
-    bin_col_offsets_ker_types.values()))
+""", options=_module_options, name_expressions=tuple(
+    _bin_col_offsets_ker_types.values()))
 
 
-def bin_col_offsets(n_idx, col_ids, col_offsets, tpb=32):
+def _bin_col_offsets(n_idx, col_ids, col_offsets, tpb=32):
     grid = math.ceil(n_idx / tpb)
-
-    kernel = bin_col_offsets_ker.get_function(
-        bin_col_offsets_ker_types[int32_dtype])
+    kernel = _bin_col_offsets_ker.get_function(
+        _bin_col_offsets_ker_types[_int32_dtype])
     kernel((grid,), (tpb,), (n_idx, col_ids, col_offsets))
 
 
-csr_column_index1_ker_types = {int32_dtype: 'csr_column_index1_ker<int>'}
-csr_column_index1_ker = core.RawModule(code="""
-    template<typename I>
-    __global__ void csr_column_index1_ker(I n_row,
-                                   I *col_offsets,
-                                   I *Ap,
-                                   I *Aj,
-                                   I *Bp) {
+def _csr_column_index1_indptr(col_offsets, Ap, Aj):
+    """Construct output indptr by counting column indices
+    in input matrix.
+    """
+    col_sum = cupy.zeros((Aj.size+1,), dtype=col_offsets.dtype)
+    cupy.cumsum(col_offsets[Aj], out=col_sum[1:])
+    Bp = col_sum[Ap]
+    Bp[1:] -= Bp[:-1]
 
-        // Get the index of the thread
-        I i = blockIdx.x * blockDim.x + threadIdx.x;
+    cupy.cumsum(Bp, out=Bp)
 
-        if(i < n_row) {
+    return Bp
 
-            I new_col_size = 0;
 
-            for(I jj = Ap[i]; jj < Ap[i+1]; jj++)
-                new_col_size += col_offsets[Aj[jj]];
+def _csr_column_index1(col_idxs, n_col, indptr, indices):
 
-            Bp[i+1] = new_col_size;
-        }
+    col_offsets = cupy.zeros(n_col, dtype=indptr.dtype)
+
+    _bin_col_offsets(len(col_idxs), col_idxs, col_offsets)
+    new_indptr = _csr_column_index1_indptr(col_offsets, indptr, indices)
+
+    cupy.cumsum(col_offsets, out=col_offsets)
+
+    return col_offsets, new_indptr
+
+
+_get_csr_index2_ker_types = {
+    (_int32_dtype, _float32_dtype): 'csr_index2_ker<int, float>',
+    (_int32_dtype, _float64_dtype): 'csr_index2_ker<int, double>',
+    (_int32_dtype, _complex64_dtype): 'csr_index2_ker<int, complex<float>>',
+    (_int32_dtype, _complex128_dtype): 'csr_index2_ker<int, complex<double>>'
 }
-""", options=module_options, name_expressions=tuple(
-    csr_column_index1_ker_types.values()))
-
-
-def csr_column_index1_degree(n_row, col_offsets, Ap, Aj, Bp, tpb=32):
-    grid = math.ceil(n_row / tpb)
-    kernel = csr_column_index1_ker.get_function(
-        csr_column_index1_ker_types[int32_dtype]
-    )
-    kernel((grid,), (tpb,),
-           (n_row, col_offsets, Ap, Aj, Bp))
-
-
-def csr_column_index1(n_idx, col_idxs, n_row, n_col,
-                      indptr, indices, offsets, new_indptr):
-    bin_col_offsets(n_idx, col_idxs, offsets)
-    csr_column_index1_degree(n_row, offsets, indptr, indices, new_indptr)
-
-    cupy.cumsum(offsets, out=offsets)
-    cupy.cumsum(new_indptr, out=new_indptr)
-
-
-get_csr_index2_ker_types = {
-    (int32_dtype, float32_dtype): 'csr_index2_ker<int, float>',
-    (int32_dtype, float64_dtype): 'csr_index2_ker<int, double>',
-    (int32_dtype, complex64_dtype): 'csr_index2_ker<int, complex<float>>',
-    (int32_dtype, complex128_dtype): 'csr_index2_ker<int, complex<double>>'
-}
-get_csr_index2_ker = core.RawModule(code="""
+_get_csr_index2_ker = core.RawModule(code="""
     #include <cupy/complex.cuh>
     template<typename I, typename T>
     __global__
@@ -154,30 +136,38 @@ get_csr_index2_ker = core.RawModule(code="""
         }
     }
 }
-""", options=module_options, name_expressions=tuple(
-    get_csr_index2_ker_types.values()))
+""", options=_module_options, name_expressions=tuple(
+    _get_csr_index2_ker_types.values()))
 
 
-def csr_column_index2(out_rows, col_order, col_offsets, nnz,
-                      Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
-    grid = math.ceil(out_rows / tpb)
-    func = get_csr_index2_ker_types[(Ap.dtype, Bx.dtype)]
-    kernel = get_csr_index2_ker.get_function(func)
+def _csr_column_index2(col_order, col_offsets,
+                       Ap, Aj, Ax, Bp, tpb=32):
+
+    new_nnz = Bp[-1].item()
+
+    Bj = cupy.empty(new_nnz, dtype=Aj.dtype)
+    Bx = cupy.empty(new_nnz, dtype=Ax.dtype)
+
+    grid = math.ceil((len(Bp)-1) / tpb)
+    func = _get_csr_index2_ker_types[(Ap.dtype, Bx.dtype)]
+    kernel = _get_csr_index2_ker.get_function(func)
     kernel((grid,), (tpb,),
            (col_order, col_offsets,
             Ap, Aj, Ax, len(Ap)-1, Bp, Bj, Bx))
 
+    return Bj, Bx
 
-def get_csr_submatrix(indptr, indices, data,
-                      start_maj, stop_maj, start_min, stop_min):
+
+def _get_csr_submatrix(indptr, indices, data,
+                       start_maj, stop_maj, start_min, stop_min):
 
     # We first compute the degree, then use it to compute the indptr
     new_n_row = stop_maj - start_maj
     new_indptr = cupy.zeros(new_n_row+1, dtype=indptr.dtype)
-    get_csr_submatrix_degree(indptr, indices,
-                             start_maj, stop_maj,
-                             start_min, stop_min,
-                             new_indptr)
+    _get_csr_submatrix_degree(indptr, indices,
+                              start_maj, stop_maj,
+                              start_min, stop_min,
+                              new_indptr)
 
     cupy.cumsum(new_indptr, out=new_indptr)
     new_nnz = new_indptr[-1].item()
@@ -186,18 +176,18 @@ def get_csr_submatrix(indptr, indices, data,
     new_data = cupy.zeros(new_nnz, dtype=data.dtype)
 
     if new_nnz > 0:
-        get_csr_submatrix_cols_data(indptr, indices, data,
-                                    start_maj, stop_maj,
-                                    start_min, stop_min,
-                                    new_indptr, new_indices, new_data)
+        _get_csr_submatrix_cols_data(indptr, indices, data,
+                                     start_maj, stop_maj,
+                                     start_min, stop_min,
+                                     new_indptr, new_indices, new_data)
 
     return new_indptr, new_indices, new_data
 
 
-get_csr_submatrix_degree_ker_types = {
-    int32_dtype: 'csr_submatrix_degree_ker<int>',
+_get_csr_submatrix_degree_ker_types = {
+    _int32_dtype: 'csr_submatrix_degree_ker<int>',
 }
-get_csr_submatrix_degree_ker = core.RawModule(code="""
+_get_csr_submatrix_degree_ker = core.RawModule(code="""
     template<typename I>
     __global__
     void csr_submatrix_degree_ker(const I *Ap,
@@ -227,34 +217,34 @@ get_csr_submatrix_degree_ker = core.RawModule(code="""
                 Bp[i+1] = row_count;
         }
     }
-""", options=module_options, name_expressions=tuple(
-    get_csr_submatrix_degree_ker_types.values()))
+""", options=_module_options, name_expressions=tuple(
+    _get_csr_submatrix_degree_ker_types.values()))
 
 
-def get_csr_submatrix_degree(Ap, Aj, ir0, ir1,
-                             ic0, ic1, Bp, tpb=32):
+def _get_csr_submatrix_degree(Ap, Aj, ir0, ir1,
+                              ic0, ic1, Bp, tpb=32):
     """
     Invokes get_csr_submatrix_degree_ker with the given inputs
     """
 
     grid = math.ceil((ir1-ir0) / tpb)
-    kernel = get_csr_submatrix_degree_ker.get_function(
-        get_csr_submatrix_degree_ker_types[Ap.dtype]
+    kernel = _get_csr_submatrix_degree_ker.get_function(
+        _get_csr_submatrix_degree_ker_types[Ap.dtype]
     )
     kernel((grid,), (tpb,),
            (Ap, Aj, ir0, ir1,
             ic0, ic1, Bp))
 
 
-get_csr_submatrix_cols_data_ker_types = {
-    (int32_dtype, float32_dtype): 'get_csr_submatrix_cols_data<int, float>',
-    (int32_dtype, float64_dtype): 'get_csr_submatrix_cols_data<int, double>',
-    (int32_dtype, complex64_dtype):
+_get_csr_submatrix_cols_data_ker_types = {
+    (_int32_dtype, _float32_dtype): 'get_csr_submatrix_cols_data<int, float>',
+    (_int32_dtype, _float64_dtype): 'get_csr_submatrix_cols_data<int, double>',
+    (_int32_dtype, _complex64_dtype):
         'get_csr_submatrix_cols_data<int, complex<float>>',
-    (int32_dtype, complex128_dtype):
+    (_int32_dtype, _complex128_dtype):
         'get_csr_submatrix_cols_data<int, complex<double>>'
 }
-get_csr_submatrix_cols_data_ker = core.RawModule(code="""
+_get_csr_submatrix_cols_data_ker = core.RawModule(code="""
     #include <cupy/complex.cuh>
     template<typename I, typename T>
     __global__
@@ -290,19 +280,19 @@ get_csr_submatrix_cols_data_ker = core.RawModule(code="""
             }
         }
     }
-""", options=module_options, name_expressions=tuple(
-    get_csr_submatrix_cols_data_ker_types.values()))
+""", options=_module_options, name_expressions=tuple(
+    _get_csr_submatrix_cols_data_ker_types.values()))
 
 
-def get_csr_submatrix_cols_data(Ap, Aj, Ax,
-                                ir0, ir1,
-                                ic0, ic1,
-                                Bp, Bj, Bx,
-                                tpb=32):
+def _get_csr_submatrix_cols_data(Ap, Aj, Ax,
+                                 ir0, ir1,
+                                 ic0, ic1,
+                                 Bp, Bj, Bx,
+                                 tpb=32):
 
     grid = math.ceil((ir1-ir0)/tpb)
-    kernel = get_csr_submatrix_cols_data_ker.get_function(
-        get_csr_submatrix_cols_data_ker_types[(Ap.dtype, Ax.dtype)]
+    kernel = _get_csr_submatrix_cols_data_ker.get_function(
+        _get_csr_submatrix_cols_data_ker_types[(Ap.dtype, Ax.dtype)]
     )
     kernel((grid,), (tpb,),
            (Ap, Aj, Ax,
@@ -311,13 +301,14 @@ def get_csr_submatrix_cols_data(Ap, Aj, Ax,
             Bp, Bj, Bx))
 
 
-csr_row_index_ker_types = {
-    (int32_dtype, float32_dtype): 'csr_row_index_ker<int, float>',
-    (int32_dtype, float64_dtype): 'csr_row_index_ker<int, double>',
-    (int32_dtype, complex64_dtype): 'csr_row_index_ker<int, complex<float>>',
-    (int32_dtype, complex128_dtype): 'csr_row_index_ker<int, complex<double>>'
+_csr_row_index_ker_types = {
+    (_int32_dtype, _float32_dtype): 'csr_row_index_ker<int, float>',
+    (_int32_dtype, _float64_dtype): 'csr_row_index_ker<int, double>',
+    (_int32_dtype, _complex64_dtype): 'csr_row_index_ker<int, complex<float>>',
+    (_int32_dtype, _complex128_dtype):
+        'csr_row_index_ker<int, complex<double>>'
 }
-csr_row_index_ker = core.RawModule(code="""
+_csr_row_index_ker = core.RawModule(code="""
     #include <cupy/complex.cuh>
     template<typename I, typename T>
     __global__
@@ -350,48 +341,59 @@ csr_row_index_ker = core.RawModule(code="""
         }
     }
 
-""", options=module_options, name_expressions=tuple(
-    csr_row_index_ker_types.values()))
+""", options=_module_options, name_expressions=tuple(
+    _csr_row_index_ker_types.values()))
 
 
-def csr_row_index(n_row_idx, rows,
-                  Ap, Aj, Ax,
-                  Bp, Bj, Bx, tpb=32):
+def _csr_row_index(n_row_idx, rows,
+                   Ap, Aj, Ax,
+                   Bp, tpb=32):
 
     grid = math.ceil(n_row_idx / tpb)
 
-    kernel = csr_row_index_ker.get_function(
-        csr_row_index_ker_types[(Ap.dtype, Ax.dtype)]
+    nnz = Bp[-1].item()
+    Bj = cupy.empty(nnz, dtype=Aj.dtype)
+    Bx = cupy.empty(nnz, dtype=Ax.dtype)
+
+    kernel = _csr_row_index_ker.get_function(
+        _csr_row_index_ker_types[(Ap.dtype, Ax.dtype)]
     )
     kernel((grid,), (tpb,),
            (n_row_idx, rows,
             Ap, Aj, Ax,
             Bp, Bj, Bx))
 
+    return Bj, Bx
 
-def csr_sample_values(n_row, n_col,
-                      Ap, Aj, Ax,
-                      n_samples,
-                      Bi, Bj, Bx, tpb=32):
+
+def _csr_sample_values(n_row, n_col,
+                       Ap, Aj, Ax,
+                       n_samples,
+                       Bi, Bj, tpb=32):
+
     grid = math.ceil(n_samples / tpb)
 
-    kernel = csr_sample_values_kern.get_function(
-        csr_sample_values_kern_types[(Ap.dtype, Ax.dtype)]
+    Bx = cupy.empty(Bi.size, dtype=Ax.dtype)
+
+    kernel = _csr_sample_values_kern.get_function(
+        _csr_sample_values_kern_types[(Ap.dtype, Ax.dtype)]
     )
     kernel((grid,), (tpb,),
            (n_row, n_col, Ap, Aj, Ax,
             n_samples, Bi, Bj, Bx))
 
+    return Bx
 
-csr_sample_values_kern_types = {
-    (int32_dtype, float32_dtype): 'csr_sample_values_kern<int, float>',
-    (int32_dtype, float64_dtype): 'csr_sample_values_kern<int, double>',
-    (int32_dtype, complex64_dtype):
+
+_csr_sample_values_kern_types = {
+    (_int32_dtype, _float32_dtype): 'csr_sample_values_kern<int, float>',
+    (_int32_dtype, _float64_dtype): 'csr_sample_values_kern<int, double>',
+    (_int32_dtype, _complex64_dtype):
         'csr_sample_values_kern<int, complex<float>>',
-    (int32_dtype, complex128_dtype):
+    (_int32_dtype, _complex128_dtype):
         'csr_sample_values_kern<int, complex<double>>'
 }
-csr_sample_values_kern = core.RawModule(code="""
+_csr_sample_values_kern = core.RawModule(code="""
     #include <cupy/complex.cuh>
     template<typename I, typename T>
     __global__
@@ -425,17 +427,19 @@ csr_sample_values_kern = core.RawModule(code="""
             Bx[n] = x;
         }
     }
-""", options=module_options, name_expressions=tuple(
-    csr_sample_values_kern_types.values()))
+""", options=_module_options, name_expressions=tuple(
+    _csr_sample_values_kern_types.values()))
 
 
-csr_row_slice_kern_types = {
-    (int32_dtype, float32_dtype): 'csr_row_slice_kern<int, float>',
-    (int32_dtype, float64_dtype): 'csr_row_slice_kern<int, double>',
-    (int32_dtype, complex64_dtype): 'csr_row_slice_kern<int, complex<float>>',
-    (int32_dtype, complex128_dtype): 'csr_row_slice_kern<int, complex<double>>'
+_csr_row_slice_kern_types = {
+    (_int32_dtype, _float32_dtype): 'csr_row_slice_kern<int, float>',
+    (_int32_dtype, _float64_dtype): 'csr_row_slice_kern<int, double>',
+    (_int32_dtype, _complex64_dtype):
+        'csr_row_slice_kern<int, complex<float>>',
+    (_int32_dtype, _complex128_dtype):
+        'csr_row_slice_kern<int, complex<double>>'
 }
-csr_row_slice_kern = core.RawModule(code="""
+_csr_row_slice_kern = core.RawModule(code="""
     #include <cupy/complex.cuh>
     template<typename I, typename T>
     __global__
@@ -488,20 +492,77 @@ csr_row_slice_kern = core.RawModule(code="""
             }
         }
     }
-""", options=module_options, name_expressions=tuple(
-    csr_row_slice_kern_types.values()))
+""", options=_module_options, name_expressions=tuple(
+    _csr_row_slice_kern_types.values()))
 
 
-def csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, Bj, Bx, tpb=32):
+def _csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, tpb=32):
 
     grid = math.ceil((len(Bp)-1) / tpb)
-    kernel = csr_row_slice_kern.get_function(
-        csr_row_slice_kern_types[(Ap.dtype, Ax.dtype)]
+
+    nnz = Bp[-1].item()
+    Bj = cupy.empty(nnz, dtype=Ap.dtype)
+    Bx = cupy.empty(nnz, dtype=Ax.dtype)
+
+    kernel = _csr_row_slice_kern.get_function(
+        _csr_row_slice_kern_types[(Ap.dtype, Ax.dtype)]
     )
     kernel((grid,), (tpb,),
            (start, stop, step,
             Ap, Aj, Ax,
             Bp, Bj, Bx))
+
+    return Bj, Bx
+
+
+_check_idx_bounds_ker_types = {
+    _int32_dtype: 'idx_bounds_ker<int>',
+    _int64_dtype: 'idx_bounds_ker<size_t>'
+}
+_check_idx_bounds_ker = core.RawModule(code="""
+    template<typename I>
+    __global__
+    void idx_bounds_ker(const I *idxs,
+                        const I idx_length,
+                        const I bounds,
+                        bool *out_upper,
+                        bool *out_lower,
+                        bool *out_neg) {
+
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if(i < idx_length) {
+            const I cur_idx = idxs[i];
+
+            if(cur_idx >= bounds)
+                out_upper[0] = true;
+
+            if(cur_idx < -idx_length)
+                out_lower[0] = true;
+
+            if(cur_idx < 0)
+                out_neg[0] = true;
+        }
+    }
+
+""", options=_module_options, name_expressions=tuple(
+    _check_idx_bounds_ker_types.values()))
+
+
+def _check_bounds(idxs, bounds, tpb=32):
+
+    grid = math.ceil(len(idxs) / tpb)
+    kernel = _check_idx_bounds_ker.get_function(
+        _check_idx_bounds_ker_types[idxs.dtype]
+    )
+    upper = cupy.array([False], dtype='bool')
+    lower = cupy.array([False], dtype='bool')
+    neg = cupy.array([False], dtype='bool')
+    kernel((grid,), (tpb,),
+           (idxs, len(idxs),
+            bounds, upper, lower, neg))
+
+    return neg[0].item(), lower[0].item(), upper[0].item()
 
 
 """
@@ -766,7 +827,7 @@ class IndexMixin(object):
         Subclasses that need special validation can override this method.
         """
         try:
-            x = cupy.asarray(idx)
+            x = cupy.asarray(idx, dtype="int32")
         except (ValueError, TypeError, MemoryError):
             raise IndexError('invalid index')
 
@@ -777,14 +838,14 @@ class IndexMixin(object):
             return x
 
         # Check bounds
-        max_indx = x.max()
-        if max_indx >= length:
-            raise IndexError('index (%d) out of range' % max_indx)
+        is_neg, is_out_lower, is_out_upper = _check_bounds(x, length)
 
-        min_indx = x.min()
-        if min_indx < 0:
-            if min_indx < -length:
-                raise IndexError('index (%d) out of range' % min_indx)
+        if is_out_upper:
+            raise IndexError('index (%d) out of range' % x.max())
+
+        if is_neg:
+            if is_out_lower:
+                raise IndexError('index (%d) out of range' % x.min())
             if x is idx or not x.flags.owndata:
                 x = x.copy()
             x[x < 0] += length

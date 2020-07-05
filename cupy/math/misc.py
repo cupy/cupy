@@ -1,8 +1,122 @@
+import cupy
+import cupyx
+
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
+from cupy.lib import stride_tricks
 
-# TODO(okuta): Implement convolve
+
+_dot_kernel = core.ReductionKernel(
+    'T x1, T x2',
+    'T y',
+    'x1 * x2',
+    'a + b',
+    'y = a',
+    '0',
+    'dot_product'
+)
+
+
+def convolve(a, v, mode='full'):
+    """Returns the discrete, linear convolution of two one-dimensional sequences.
+
+    Args:
+        a (cupy.ndarray): first 1-dimensional input.
+        v (cupy.ndarray): second 1-dimensional input.
+        mode (str, optional): `valid`, `same`, `full`
+
+    Returns:
+        cupy.ndarray: Discrete, linear convolution of a and v.
+
+    .. seealso:: :func:`numpy.convolve`
+
+    """
+    if a.size == 0:
+        raise ValueError('a cannot be empty')
+    if v.size == 0:
+        raise ValueError('v cannot be empty')
+    if v.ndim > 1:
+        raise ValueError('v cannot be multidimensional array')
+    if v.size > a.size:
+        a, v = v, a
+    a = a.ravel()
+    v = v.ravel()
+
+    method = cupyx.scipy.signal.choose_conv_method(a, v, mode)
+    if method == 'direct':
+        out = _dot_convolve(a, v, mode)
+    elif method == 'fft':
+        out = _fft_convolve(a, v, mode)
+    else:
+        raise ValueError('Unsupported method')
+    return out
+
+
+def _fft_convolve(a1, a2, mode):
+
+    offset = 0
+    if a1.size < a2.size:
+        a1, a2 = a2, a1
+        offset = 1 - a2.size % 2
+
+    if a1.dtype.kind == 'c' or a2.dtype.kind == 'c':
+        fft, ifft = cupy.fft.fft, cupy.fft.ifft
+    else:
+        fft, ifft = cupy.fft.rfft, cupy.fft.irfft
+
+    dtype = cupy.result_type(a1, a2)
+    n1, n2 = a1.size, a2.size
+    out_size = n1 + n2 - 1
+    fa1 = fft(a1, out_size)
+    fa2 = fft(a2, out_size)
+    out = ifft(fa1 * fa2, out_size)
+
+    if mode == 'full':
+        start, end = None, None
+    elif mode == 'same':
+        start = (n2 - 1) // 2 + offset
+        end = start + n1
+    elif mode == 'valid':
+        start, end = n2 - 1, n1
+    else:
+        raise ValueError(
+            'acceptable mode flags are `valid`, `same`, or `full`.')
+
+    out = out[start: end]
+
+    if dtype.kind in 'iu':
+        out = cupy.around(out)
+
+    return out.astype(dtype, copy=False)
+
+
+def _dot_convolve(a1, a2, mode):
+
+    offset = 0
+    if a1.size < a2.size:
+        a1, a2 = a2, a1
+        offset = 1 - a2.size % 2
+
+    dtype = cupy.result_type(a1, a2)
+    n1, n2 = a1.size, a2.size
+    a1 = a1.astype(dtype, copy=False)
+    a2 = a2.astype(dtype, copy=False)
+
+    if mode == 'full':
+        out_size = n1 + n2 - 1
+        a1 = cupy.pad(a1, n2 - 1)
+    elif mode == 'same':
+        out_size = n1
+        pad_size = (n2 - 1) // 2 + offset
+        a1 = cupy.pad(a1, (n2 - 1 - pad_size, pad_size))
+    elif mode == 'valid':
+        out_size = n1 - n2 + 1
+
+    stride = a1.strides[0]
+    a1 = stride_tricks.as_strided(a1, (out_size, n2), (stride, stride))
+    output = _dot_kernel(a1, a2[::-1], axis=1)
+    return output
 
 
 def clip(a, a_min=None, a_max=None, out=None):

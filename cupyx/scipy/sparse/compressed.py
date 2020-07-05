@@ -16,22 +16,12 @@ from cupyx.scipy.sparse import data as sparse_data
 from cupyx.scipy.sparse import util
 from cupyx.scipy.sparse import sputils
 
-from cupyx.scipy.sparse.index import IndexMixin
-from cupyx.scipy.sparse.index import get_csr_submatrix
-
-from cupyx.scipy.sparse.index import csr_column_index1
-from cupyx.scipy.sparse.index import csr_column_index2
-from cupyx.scipy.sparse.index import csr_row_index
-from cupyx.scipy.sparse.index import csr_row_slice
-
-from cupyx.scipy.sparse.index import csr_sample_values
-from cupyx.scipy.sparse.index import csr_sample_offsets
-from cupyx.scipy.sparse.index import csr_has_sorted_indices
+from cupyx.scipy.sparse import index
 
 
 class _compressed_sparse_matrix(sparse_data._data_matrix,
                                 sparse_data._minmax_mixin,
-                                IndexMixin):
+                                index.IndexMixin):
 
     _compress_getitem_kern = core.ElementwiseKernel(
         'T d, S ind, int32 minor', 'raw T answer',
@@ -500,7 +490,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         M, N = self._swap(*self.shape)
         major, minor = self._swap(*(row, col))
 
-        indptr, indices, data = get_csr_submatrix(
+        indptr, indices, data = index._get_csr_submatrix(
             self.indptr, self.indices, self.data,
             major, major + 1, minor, minor + 1)
         return data.sum(dtype=self.dtype)
@@ -520,10 +510,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         major = cupy.asarray(major, dtype=idx_dtype)
         minor = cupy.asarray(minor, dtype=idx_dtype)
 
-        val = cupy.empty(major.size, dtype=self.dtype)
-
-        csr_sample_values(M, N, self.indptr, self.indices, self.data,
-                          major.size, major.ravel(), minor.ravel(), val)
+        val = index._csr_sample_values(
+            M, N, self.indptr, self.indices, self.data,
+            major.size, major.ravel(), minor.ravel())
 
         if major.ndim == 1:
             # Scipy returns `matrix` here
@@ -538,6 +527,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _major_index_fancy(self, idx):
         """Index along the major axis where idx is an array of ints.
         """
+
         idx_dtype = self.indices.dtype
         indices = cupy.asarray(idx, dtype=idx_dtype).ravel()
 
@@ -552,11 +542,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
         cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
 
-        nnz = res_indptr[-1].item()
-        res_indices = cupy.empty(nnz, dtype=idx_dtype)
-        res_data = cupy.empty(nnz, dtype=self.dtype)
-        csr_row_index(len(idx), indices, self.indptr, self.indices, self.data,
-                      res_indptr, res_indices, res_data)
+        res_indices, res_data = index._csr_row_index(
+            len(idx), indices, self.indptr,
+            self.indices, self.data, res_indptr)
 
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
@@ -575,25 +563,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             return self.__class__(new_shape)
 
         # pass 1: count idx entries and compute new indptr
-        col_offsets = cupy.zeros(N, dtype=idx_dtype)
 
-        # scipy uses empty-like here, but that seems to return a fully
-        # populated array in cupy
-        res_indptr = cupy.zeros_like(self.indptr)
-
-        csr_column_index1(k, idx, M, N, self.indptr, self.indices,
-                          col_offsets, res_indptr)
+        col_offsets, res_indptr = index._csr_column_index1(
+            idx, N, self.indptr, self.indices)
 
         # pass 2: copy indices/data for selected idxs
         col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
 
-        nnz = res_indptr[-1].item()
-        res_indices = cupy.empty(nnz, dtype=idx_dtype)
-        res_data = cupy.empty(nnz, dtype=self.dtype)
+        res_indices, res_data = index._csr_column_index2(
+            col_order, col_offsets, self.indptr, self.indices,
+            self.data, res_indptr)
 
-        csr_column_index2(len(res_indptr)-1, col_order, col_offsets,
-                          len(self.indices), self.indptr, self.indices,
-                          self.data, res_indptr, res_indices, res_data)
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
 
@@ -660,7 +640,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if i0 == 0 and j0 == 0 and i1 == M and j1 == N:
             return self.copy() if copy else self
 
-        indptr, indices, data = get_csr_submatrix(
+        indptr, indices, data = index._get_csr_submatrix(
             self.indptr, self.indices, self.data, i0, i1, j0, j1)
 
         shape = self._swap(*(i1 - i0, j1 - j0))
@@ -691,13 +671,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             res_indices = cupy.array(self.indices[all_idx], copy=copy)
             res_data = cupy.array(self.data[all_idx], copy=copy)
         else:
-            nnz = res_indptr[-1].item()
-
-            res_indices = cupy.empty(nnz, dtype=idx_dtype)
-            res_data = cupy.empty(nnz, dtype=self.dtype)
-            csr_row_slice(start, stop, step,
-                          self.indptr, self.indices, self.data,
-                          res_indptr, res_indices, res_data)
+            res_indices, res_data = index._csr_row_slice(
+                start, stop, step, self.indptr, self.indices, self.data,
+                res_indptr)
 
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
@@ -792,13 +768,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         n_samples = x.size
         offsets = cupy.empty(n_samples, dtype=self.indices.dtype)
-        ret = csr_sample_offsets(M, N, self.indptr, self.indices, n_samples,
-                                 i, j, offsets)
+        ret = index._csr_sample_offsets(M, N, self.indptr, self.indices, n_samples,
+                                        i, j, offsets)
         if ret == 1:
             # rinse and repeat
             self.sum_duplicates()
-            csr_sample_offsets(M, N, self.indptr, self.indices, n_samples,
-                               i, j, offsets)
+            index._csr_sample_offsets(M, N, self.indptr, self.indices, 
+	        n_samples, i, j, offsets)
 
         if -1 not in offsets:
             # only affects existing non-zero cells
