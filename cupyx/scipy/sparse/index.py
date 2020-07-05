@@ -593,10 +593,10 @@ def _check_bounds(idxs, bounds, tpb=32):
  */
 """
 
-csr_sample_offsets_ker_types = {
-    (int32_dtype): 'csr_sample_offsets<int>'
+_csr_sample_offsets_ker_types = {
+    (_int32_dtype): 'csr_sample_offsets<int>'
 }
-csr_sample_offsets_ker = core.RawModule(code="""
+_csr_sample_offsets_ker = core.RawModule(code="""
 template <typename I>
 __global__
 void csr_sample_offsets(const I n_row,
@@ -635,14 +635,14 @@ void csr_sample_offsets(const I n_row,
         Bp[n] = offset;
     }
 }
-""", options=module_options, name_expressions=tuple(
-    csr_sample_offsets_ker_types.values()))
+""", options=_module_options, name_expressions=tuple(
+    _csr_sample_offsets_ker_types.values()))
 
 
-csr_has_sorted_indices_ker_types = {
-    int32_dtype: 'csr_has_sorted_indices<int>'
+_csr_has_sorted_indices_ker_types = {
+    _int32_dtype: 'csr_has_sorted_indices<int>'
 }
-csr_has_sorted_indices_ker = core.RawModule(code="""
+_csr_has_sorted_indices_ker = core.RawModule(code="""
     template<typename I>
     __global__
     void csr_has_sorted_indices(const I n_rows,
@@ -665,16 +665,16 @@ csr_has_sorted_indices_ker = core.RawModule(code="""
             }
         }
     }
-""", options=module_options, name_expressions=tuple(
-    csr_has_sorted_indices_ker_types.values()))
+""", options=_module_options, name_expressions=tuple(
+    _csr_has_sorted_indices_ker_types.values()))
 
 
-def csr_has_sorted_indices(n_rows, Ap, Aj, tpb=32):
+def _csr_has_sorted_indices(n_rows, Ap, Aj, tpb=32):
 
     grid = math.ceil(n_rows / tpb)
 
-    kernel = csr_has_sorted_indices_ker.get_function(
-        csr_has_sorted_indices_ker_types[Ap.dtype]
+    kernel = _csr_has_sorted_indices_ker.get_function(
+        _csr_has_sorted_indices_ker_types[Ap.dtype]
     )
 
     is_sorted = cupy.array([True], dtype='bool')
@@ -684,12 +684,12 @@ def csr_has_sorted_indices(n_rows, Ap, Aj, tpb=32):
     return is_sorted.item()
 
 
-def csr_sample_offsets(n_row, n_col,
+def _csr_sample_offsets(n_row, n_col,
                        Ap, Aj, n_samples,
                        Bi, Bj, Bp, tpb=32):
     grid = math.ceil(n_row / tpb)
-    kernel = csr_sample_offsets_ker.get_function(
-        csr_sample_offsets_ker_types[Ap.dtype]
+    kernel = _csr_sample_offsets_ker.get_function(
+        _csr_sample_offsets_ker_types[Ap.dtype]
     )
 
     dupl = cupy.array([False], dtype="bool")

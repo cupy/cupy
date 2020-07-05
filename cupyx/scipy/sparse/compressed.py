@@ -972,7 +972,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         # first check to see if result was cached
         if not hasattr(self, '_has_sorted_indices'):
-            self._has_sorted_indices = csr_has_sorted_indices(
+            self._has_sorted_indices = index._csr_has_sorted_indices(
                 len(self.indptr) - 1, self.indptr, self.indices)
         return self._has_sorted_indices
 
