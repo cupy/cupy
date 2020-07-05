@@ -143,6 +143,7 @@ cdef class ndarray:
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
+        cdef Py_ssize_t itemsize
         self._shape = shape
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
         self._set_contiguous_strides(itemsize, c_order)

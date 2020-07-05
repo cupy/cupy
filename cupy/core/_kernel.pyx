@@ -289,10 +289,15 @@ cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
     strides_indexes.reserve(len(args))
     for i in range(len(args)):
         p = params[i]
-        if not p.raw and isinstance(args[i], ndarray):
+        if p.raw:
+            continue
+        a = args[i]
+        if isinstance(a, ndarray):
             array_indexes.push_back(i)
-            arr = args[i]
+            arr = a
             if not arr._c_contiguous:
+                if ndim == 2:  # short cut
+                    return shape
                 strides_indexes.push_back(i)
 
     if array_indexes.size() == 0:
@@ -310,7 +315,7 @@ cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
             newstrides[0] = arr.dtype.itemsize
             # TODO(niboshi): Confirm update_x_contiguity flags
             args[i] = arr._view(newshape, newstrides, False, True)
-        return shape_t(1, total_size)
+        return newshape
 
     axes.reserve(ndim)
     vecshape.reserve(ndim)
