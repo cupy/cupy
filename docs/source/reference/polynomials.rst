@@ -39,3 +39,4 @@ Basics
    :nosignatures:
 
     cupy.poly1d
+    cupy.poly

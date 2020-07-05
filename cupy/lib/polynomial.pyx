@@ -4,6 +4,32 @@ import cupy
 from cupy.core.core cimport ndarray
 
 
+def poly(seq):
+
+    if seq.ndim == 2 and seq.shape[0] == seq.shape[1] and seq.shape[0] != 0:
+        if cupy.array_equal(seq, seq.conj().T):
+            seq = cupy.linalg.eigvalsh(seq)
+        else:
+            raise NotImplementedError('Only complex Hermitian and real '
+                                      'symmetric 2d arrays are supported '
+                                      'currently')
+    elif seq.ndim == 1:
+        seq = seq.astype(cupy.mintypecode(seq.dtype.char), copy=False)
+    elif seq.ndim == 0:
+        raise TypeError('Input must be 1d or non-empty square 2d array.')
+    else:
+        raise ValueError('Input must be 1d or non-empty square 2d array.')
+
+    if seq.size == 0:
+        return 1.0
+
+    out = cupy.ones((1,), seq.dtype)
+    seq = cupy.column_stack((cupy.ones(seq.size, seq.dtype), -seq))
+    for zero in seq:
+        out = cupy.convolve(out, zero, 'full')
+    return out
+
+
 cdef class poly1d:
     """A one-dimensional polynomial class.
 

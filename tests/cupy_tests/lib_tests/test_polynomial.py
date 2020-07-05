@@ -238,3 +238,60 @@ class TestPoly1dEquality(unittest.TestCase):
     def test_poly1d_ne2(self, xp, dtype):
         a, b = self.make_poly1d2(xp, dtype)
         return a != b
+
+
+@testing.gpu
+class TestPoly(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_poly_1d(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.poly(a)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_poly_2d_symmetric_real(self, xp, dtype):
+        a = xp.array([[6, 3, 1],
+                      [3, 0, 5],
+                      [1, 5, 6]], dtype)
+        return xp.poly(a)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_poly_2d_hermitian_complex(self, xp, dtype):
+        a = xp.array([[2, -1j], [1j, 1]], dtype)
+        return xp.poly(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_poly_2d_square(self, dtype):
+        a = testing.shaped_arange((3, 3), cupy, dtype)
+        with pytest.raises(NotImplementedError):
+            cupy.poly(a)
+
+    @testing.for_all_dtypes()
+    def test_poly_2d_general(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.poly(a)
+
+    @testing.for_all_dtypes()
+    def test_poly_ndim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((5, 4, 3), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.poly(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_poly_zero_dim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((), xp, dtype)
+            with pytest.raises(TypeError):
+                numpy.poly(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly_empty(self, xp, dtype):
+        a = xp.zeros((0), dtype)
+        return xp.poly(a)
