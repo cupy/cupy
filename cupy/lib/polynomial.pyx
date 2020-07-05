@@ -5,7 +5,18 @@ from cupy.core.core cimport ndarray
 
 
 def polyadd(a1, a2):
+    """Computes the sum of two polynomials.
 
+    Args:
+        a1 (cupy.ndarray or cupy.poly1d): first input polynomial.
+        a2 (cupy.ndarray or cupy.poly1d): second input polynomial.
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: The sum of the inputs.
+
+    .. seealso:: :func:`numpy.polyadd`
+
+    """
     truepoly = False
     if isinstance(a1, poly1d):
         a1 = a1.coeffs
