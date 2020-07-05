@@ -52,7 +52,8 @@ cdef public void cupy_free(void *m, char* ptr) with gil:
 cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
     void thrust_sort(int, void *, size_t *, const vector.vector[ptrdiff_t]&,
                      intptr_t, void *)
-    void thrust_lexsort(int, size_t *, void *, size_t, size_t, intptr_t, void *)
+    void thrust_lexsort(
+        int, size_t *, void *, size_t, size_t, intptr_t, void *)
     void thrust_argsort(int, size_t *, void *, void *,
                         const vector.vector[ptrdiff_t]&, intptr_t, void *)
 
@@ -83,7 +84,7 @@ cpdef sort(dtype, intptr_t data_start, intptr_t keys_start,
         raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '
                                   'supported'.format(dtype))
     elif dtype_id == 8 and (int(device.get_compute_capability()) < 53
-            or runtime.runtimeGetVersion() < 9020):
+                            or runtime.runtimeGetVersion() < 9020):
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
 
@@ -103,7 +104,7 @@ cpdef lexsort(dtype, intptr_t idx_start, intptr_t keys_start,
         raise TypeError('Sorting keys with dtype \'{}\' is not '
                         'supported'.format(dtype))
     elif dtype_id == 8 and (int(device.get_compute_capability()) < 53
-            or runtime.runtimeGetVersion() < 9020):
+                            or runtime.runtimeGetVersion() < 9020):
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
 
@@ -125,7 +126,7 @@ cpdef argsort(dtype, intptr_t idx_start, intptr_t data_start,
         raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '
                                   'supported'.format(dtype))
     elif dtype_id == 8 and (int(device.get_compute_capability()) < 53
-            or runtime.runtimeGetVersion() < 9020):
+                            or runtime.runtimeGetVersion() < 9020):
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
 
