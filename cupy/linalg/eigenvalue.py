@@ -97,12 +97,9 @@ def eigh(a, UPLO='L'):
     This method calculates eigenvalues and eigenvectors of a given
     symmetric matrix.
 
-    .. note::
-
-       Currently only 2-D matrix is supported.
-
     Args:
-        a (cupy.ndarray): A symmetric 2-D square matrix.
+        a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
+            of symmetric 2-D square matrices ``(N, M, M)``.
         UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
             part of ``a`` is used. ``'L'`` uses the lower triangular part of
             ``a``, and ``'U'`` uses the upper triangular part of ``a``.
@@ -110,7 +107,9 @@ def eigh(a, UPLO='L'):
         tuple of :class:`~cupy.ndarray`:
             Returns a tuple ``(w, v)``. ``w`` contains eigenvalues and
             ``v`` contains eigenvectors. ``v[:, i]`` is an eigenvector
-            corresponding to an eigenvalue ``w[i]``.
+            corresponding to an eigenvalue ``w[i]``. For batch input,
+            ``v[k, :, i]`` is an eigenvector corresponding to an eigenvalue
+            ``w[k, i]`` of ``a[k]``.
 
     .. warning::
         This function calls one or more cuSOLVER routine(s) which may yield
@@ -137,18 +136,16 @@ def eigvalsh(a, UPLO='L'):
     Note that :func:`cupy.linalg.eigh` calculates both eigenvalues and
     eigenvectors.
 
-    .. note::
-
-       Currenlty only 2-D matrix is supported.
-
     Args:
-        a (cupy.ndarray): A symmetric 2-D square matrix.
+        a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
+            of symmetric 2-D square matrices ``(N, M, M)``.
         UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
             part of ``a`` is used. ``'L'`` uses the lower triangular part of
             ``a``, and ``'U'`` uses the upper triangular part of ``a``.
     Returns:
         cupy.ndarray:
-            Returns eigenvalues as a vector.
+            Returns eigenvalues as a vector ``w``. For batch input,
+            ``w[k]`` is a vector of eigenvalues of matrix ``a[k]``.
 
     .. warning::
         This function calls one or more cuSOLVER routine(s) which may yield
