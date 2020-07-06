@@ -28,13 +28,14 @@ cdef ndarray _ndarray_getitem(ndarray self, slices):
     cdef Py_ssize_t mask_i
     cdef list slice_list, adv_mask, adv_slices
     cdef bint advanced, mask_exists
+    cdef ndarray a, mask
 
     slice_list, advanced, mask_exists = _prepare_slice_list(
         slices, self._shape.size())
 
     if mask_exists:
-        mask_i = _get_mask_index(slice_list)
-        return _getitem_mask_single(self, slice_list[mask_i], mask_i)
+        a, mask, mask_i = _get_mask(self, slice_list)
+        return _getitem_mask_single(a, mask, mask_i)
     if advanced:
         a, adv_slices, adv_mask = _prepare_advanced_indexing(
             self, slice_list)
@@ -241,20 +242,45 @@ cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
     return slice_list, advanced, mask_exists
 
 
-cdef Py_ssize_t _get_mask_index(list slice_list) except *:
-    cdef Py_ssize_t i, n_not_slice_none, mask_i
+cdef tuple _get_mask(ndarray a, list slice_list):
+    cdef Py_ssize_t n_not_slice_none, mask_i, mask_slice_cnt
     cdef slice none_slice = slice(None)
+    cdef list basic_slice
+    cdef bint use_getitem
+
+    basic_slice = []
+    use_getitem = False
+    mask_slice_cnt = 0
     n_not_slice_none = 0
     mask_i = -1
-    for i, s in enumerate(slice_list):
-        if not isinstance(s, slice) or s != none_slice:
+    mask = None
+    for s in slice_list:
+        if s is None:
+            basic_slice.append(None)
+            mask_slice_cnt += 1
+            use_getitem = True
+        elif isinstance(s, ndarray):
+            basic_slice.append(none_slice)
             n_not_slice_none += 1
-            if isinstance(s, ndarray) and s.dtype == numpy.bool_:
-                mask_i = i
+            if s.dtype == numpy.bool_:
+                mask_i = mask_slice_cnt
+                mask = s
+        elif isinstance(s, slice):
+            basic_slice.append(s)
+            mask_slice_cnt += 1
+            if not use_getitem and s != none_slice:
+                use_getitem = True
+        else:
+            basic_slice.append(s)
+            use_getitem = True
+
     if n_not_slice_none != 1 or mask_i == -1:
         raise ValueError('currently, CuPy only supports slices that '
                          'consist of one boolean array.')
-    return mask_i
+
+    if use_getitem:
+        a = _simple_getitem(a, basic_slice)
+    return a, mask, mask_i
 
 
 cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
@@ -804,7 +830,7 @@ cdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
 
 cdef _scatter_op(ndarray a, slices, value, op):
     cdef Py_ssize_t i, li, ri
-    cdef ndarray v, x, y, a_interm, reduced_idx
+    cdef ndarray v, x, y, a_interm, reduced_idx, mask
     cdef list slice_list, adv_mask, adv_slices
     cdef bint advanced, mask_exists
 
@@ -812,8 +838,8 @@ cdef _scatter_op(ndarray a, slices, value, op):
         slices, a._shape.size())
 
     if mask_exists:
-        mask_i = _get_mask_index(slice_list)
-        _scatter_op_mask_single(a, slice_list[mask_i], value, mask_i, op)
+        a, mask, mask_i = _get_mask(a, slice_list)
+        _scatter_op_mask_single(a, mask, value, mask_i, op)
         return
 
     if advanced:
