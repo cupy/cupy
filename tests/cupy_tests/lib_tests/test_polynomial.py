@@ -266,7 +266,7 @@ class TestPoly(unittest.TestCase):
         return xp.poly(a)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_poly_2d_hermitian_complex(self, xp, dtype):
         a = xp.array([[2, -1j], [1j, 1]], dtype)
         return xp.poly(a)
