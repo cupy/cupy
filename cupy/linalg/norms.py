@@ -241,11 +241,16 @@ def slogdet(a):
     util._assert_nd_squareness(a)
 
     dtype = numpy.promote_types(a.dtype.char, 'f')
-    real_dtype = dtype
+    print(type(dtype))
+    if dtype == numpy.complex64:
+        real_dtype = numpy.dtype("f")
+    elif dtype == numpy.complex128:
+        real_dtype = numpy.dtype("d")
+    else:
+        real_dtype = dtype
 
-    # TODO(kataoka): support complex types
-    if dtype not in (numpy.float32, numpy.float64):
-        msg = ('dtype must be float32 or float64'
+    if dtype not in ("f", "d", "F", "D"):
+        msg = ('dtype must be float32, float64, complex64, or complex128'
                ' (actual: {})'.format(a.dtype))
         raise ValueError(msg)
 
@@ -268,13 +273,20 @@ def slogdet(a):
 
     diag = cupy.diagonal(lu, axis1=-2, axis2=-1)
 
-    # ipiv is 1-origin
-    non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1) +
-                cupy.count_nonzero(diag < 0, axis=-1))
+    logdet = cupy.log(cupy.abs(diag)).sum(axis=-1)
 
-    # Note: sign == -1 ** (non_zero % 2)
-    sign = (non_zero % 2) * -2 + 1
-    logdet = cupy.log(abs(diag)).sum(axis=-1)
+    if dtype.kind == "f":
+        # ipiv is 1-origin
+        non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1) +
+                    cupy.count_nonzero(diag < 0, axis=-1))
+    
+        # Note: sign == -1 ** (non_zero % 2)
+        sign = (non_zero % 2) * -2 + 1
+    else:  # for complex numbers
+        non_zero = cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1)
+        
+        sign = (non_zero % 2) * -2 + 1
+        sign = sign * cupy.prod(diag, axis=-1) / cupy.exp(logdet)
 
     singular = dev_info > 0
     return (
