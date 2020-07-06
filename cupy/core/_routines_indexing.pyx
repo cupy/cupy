@@ -64,7 +64,6 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
     cdef Py_ssize_t count_nonzero
     cdef int ndim
     cdef ndarray nonzero
-    dtype = numpy.int64
     if self.size == 0:
         count_nonzero = 0
     else:
@@ -74,7 +73,7 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
             nonzero = cupy.core.not_equal(self, 0)
             nonzero = nonzero.ravel()
         scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM,
-                                dtype=dtype)
+                                dtype=numpy.int64)
         count_nonzero = int(scan_index[-1])  # synchronize!
     ndim = max(<int>self._shape.size(), 1)
     if count_nonzero == 0:
