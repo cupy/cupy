@@ -6,7 +6,6 @@
 #include <thrust/sort.h>
 #include <thrust/tuple.h>
 #include <thrust/execution_policy.h>
-#include "cupy_common.h"
 #include "cupy_thrust.h"
 
 
@@ -60,17 +59,13 @@ public:
  */
 
 template <typename T>
-__host__ __device__ __forceinline__ bool _less(const T& lhs, const T& rhs) {
-    return false;  // just a placeholder to be overwritten by specializations
-}
-
-template <typename T>
 __host__ __device__ __forceinline__ bool _tuple_less(const tuple<size_t, T>& lhs,
                                                      const tuple<size_t, T>& rhs) {
     const size_t& lhs_k = lhs.template get<0>();
     const size_t& rhs_k = rhs.template get<0>();
     const T& lhs_v = lhs.template get<1>();
     const T& rhs_v = rhs.template get<1>();
+    const less<T> _less;
 
     // tuple's comparison rule: compare the 1st member, then 2nd, then 3rd, ...,
     // which should be respected
@@ -78,8 +73,9 @@ __host__ __device__ __forceinline__ bool _tuple_less(const tuple<size_t, T>& lhs
         return true;
     } else if (lhs_k == rhs_k) {
         // same key, compare values
-        // note that we can't rely on native operator< due to NaN, so use _less() above
-        return _less<T>(lhs_v, rhs_v);
+        // note that we can't rely on native operator< due to NaN, so we rely on
+        // thrust::less() to be specialized shortly
+        return _less(lhs_v, rhs_v);
     } else {
         return false;
     }
@@ -130,32 +126,18 @@ __host__ __device__ __forceinline__ bool _cmp_less(const T& lhs, const T& rhs) {
 
 // specialize thrust::less for single complex
 template <>
-__host__ __device__ __forceinline__ bool _less<complex<float>> (
-    const complex<float>& lhs, const complex<float>& rhs) {
+__host__ __device__ __forceinline__ bool less<complex<float>>::operator() (
+    const complex<float>& lhs, const complex<float>& rhs) const {
 
     return _cmp_less<complex<float>>(lhs, rhs);
 }
 
-template <>
-__host__ __device__ __forceinline__ bool less<complex<float>>::operator() (
-    const complex<float>& lhs, const complex<float>& rhs) const {
-
-    return _less<complex<float>>(lhs, rhs);
-}
-
 // specialize thrust::less for double complex
-template <>
-__host__ __device__ __forceinline__ bool _less<complex<double>> (
-    const complex<double>& lhs, const complex<double>& rhs) {
-
-    return _cmp_less<complex<double>>(lhs, rhs);
-}
-
 template <>
 __host__ __device__ __forceinline__ bool less<complex<double>>::operator() (
     const complex<double>& lhs, const complex<double>& rhs) const {
 
-    return _less<complex<double>>(lhs, rhs);
+    return _cmp_less<complex<double>>(lhs, rhs);
 }
 
 // specialize thrust::less for tuple<size_t, complex<float>>
@@ -196,28 +178,18 @@ __host__ __device__ __forceinline__ bool _real_less(const T& lhs, const T& rhs) 
 
 // specialize thrust::less for float
 template <>
-__host__ __device__ __forceinline__ bool _less(const float& lhs, const float& rhs) {
-    return _real_less<float>(lhs, rhs);
-}
-
-template <>
 __host__ __device__ __forceinline__ bool less<float>::operator() (
     const float& lhs, const float& rhs) const {
 
-    return _less<float>(lhs, rhs);
+    return _real_less<float>(lhs, rhs);
 }
 
 // specialize thrust::less for double
 template <>
-__host__ __device__ __forceinline__ bool _less(const double& lhs, const double& rhs) {
-    return _real_less<double>(lhs, rhs);
-}
-
-template <>
 __host__ __device__ __forceinline__ bool less<double>::operator() (
     const double& lhs, const double& rhs) const {
 
-    return _less<double>(lhs, rhs);
+    return _real_less<double>(lhs, rhs);
 }
 
 // specialize thrust::less for tuple<size_t, float>
@@ -250,13 +222,8 @@ __device__ __forceinline__ bool isnan(const __half& x) {
 
 // specialize thrust::less for __half
 template <>
-__host__ __device__ __forceinline__ bool _less<__half> (const __half& lhs, const __half& rhs) {
-    return _real_less<__half>(lhs, rhs);
-}
-
-template <>
 __host__ __device__ __forceinline__ bool less<__half>::operator() (const __half& lhs, const __half& rhs) const {
-    return _less<__half>(lhs, rhs);
+    return _real_less<__half>(lhs, rhs);
 }
 
 // specialize thrust::less for tuple<size_t, __half>
@@ -278,7 +245,7 @@ __host__ __device__ __forceinline__ bool less< tuple<size_t, __half> >::operator
  * sort
  */
 
-struct cupy::thrust::_sort {
+struct _sort {
     template <typename T>
     __forceinline__ void operator()(void *data_start, size_t *keys_start,
                                     const std::vector<ptrdiff_t>& shape, intptr_t stream,
@@ -337,7 +304,7 @@ private:
     const T *_data;
 };
 
-struct cupy::thrust::_lexsort {
+struct _lexsort {
     template <typename T>
     __forceinline__ void operator()(size_t *idx_start, void *keys_start, size_t k,
                                     size_t n, intptr_t stream, void *memory) {
@@ -366,7 +333,7 @@ struct cupy::thrust::_lexsort {
  * argsort
  */
 
-struct cupy::thrust::_argsort {
+struct _argsort {
     template <typename T>
     __forceinline__ void operator()(size_t *idx_start, void *data_start,
                                     void *keys_start,
@@ -441,7 +408,7 @@ struct cupy::thrust::_argsort {
 void cupy::thrust::thrust_sort(int dtype_id, void *data_start, size_t *keys_start,
     const std::vector<ptrdiff_t>& shape, intptr_t stream, void* memory) {
 
-    cupy::thrust::_sort op;
+    _sort op;
     return dtype_dispatcher(dtype_id, op, data_start, keys_start, shape, stream, memory);
 }
 
@@ -450,7 +417,7 @@ void cupy::thrust::thrust_sort(int dtype_id, void *data_start, size_t *keys_star
 void cupy::thrust::thrust_lexsort(int dtype_id, size_t *idx_start, void *keys_start, size_t k,
     size_t n, intptr_t stream, void *memory) {
 
-    cupy::thrust::_lexsort op;
+    _lexsort op;
     return dtype_dispatcher(dtype_id, op, idx_start, keys_start, k, n, stream, memory);
 }
 
@@ -459,7 +426,7 @@ void cupy::thrust::thrust_lexsort(int dtype_id, size_t *idx_start, void *keys_st
 void cupy::thrust::thrust_argsort(int dtype_id, size_t *idx_start, void *data_start,
     void *keys_start, const std::vector<ptrdiff_t>& shape, intptr_t stream, void *memory) {
 
-    cupy::thrust::_argsort op;
+    _argsort op;
     return dtype_dispatcher(dtype_id, op, idx_start, data_start, keys_start, shape,
                             stream, memory);
 }
