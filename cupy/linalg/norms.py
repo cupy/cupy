@@ -241,7 +241,6 @@ def slogdet(a):
     util._assert_nd_squareness(a)
 
     dtype = numpy.promote_types(a.dtype.char, 'f')
-    print(type(dtype))
     if dtype == numpy.complex64:
         real_dtype = numpy.dtype("f")
     elif dtype == numpy.complex128:
