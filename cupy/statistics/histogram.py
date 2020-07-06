@@ -227,7 +227,7 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                 bin_type = cupy.result_type(bin_edges, x)
                 if cupy.issubdtype(bin_type, cupy.integer):
                     bin_type = cupy.result_type(bin_type, float)
-                bin_edges = bin_edges.astype(bin_type)
+                bin_edges = bin_edges.astype(bin_type, copy=False)
             # CUB's upper bin boundary is exclusive for all bins, including
             # the last bin, so we must shift it to comply with NumPy
             if x.dtype.kind in 'ui':

@@ -368,9 +368,9 @@ def device_histogram(ndarray x, ndarray bins, ndarray y):
     cdef Stream_t s
 
     # TODO(leofang): perhaps not needed?
+    # y is guaranteed contiguous
     x = _internal_ascontiguousarray(x)
     bins = _internal_ascontiguousarray(bins)
-    y = _internal_ascontiguousarray(y)
 
     x_ptr = <void*>x.data.ptr
     y_ptr = <void*>y.data.ptr
