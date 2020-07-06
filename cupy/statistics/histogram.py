@@ -233,17 +233,14 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
             if x.dtype.kind in 'ui':
                 bin_edges[-1] += 1
             elif x.dtype.kind == 'f':
-                old_edge = memory.alloc(1 * bin_edges.dtype.itemsize)
-                old_edge.copy_from_device(bin_edges[-1].data,
-                                          bin_edges.dtype.itemsize)
+                old_edge = bin_edges[-1].copy()
                 bin_edges[-1] = cupy.nextafter(bin_edges[-1], bin_edges[-1]+1)
             y = cub.device_histogram(x, bin_edges, y)
             # shift the uppermost edge back
             if x.dtype.kind in 'ui':
                 bin_edges[-1] -= 1
             elif x.dtype.kind == 'f':
-                bin_edges[-1].data.copy_from_device(old_edge,
-                                                    bin_edges.dtype.itemsize)
+                bin_edges[-1] = old_edge
         else:
             _histogram_kernel(x, bin_edges, bin_edges.size, y)
     else:
