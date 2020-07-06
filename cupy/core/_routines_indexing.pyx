@@ -557,10 +557,14 @@ _getitem_mask_kernel = ElementwiseKernel(
 cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     cdef ndarray mask_scanned, mask_br, mask_br_scanned
     cdef int n_true
-    cdef tuple lshape, rshape, out_shape
+    cdef tuple lshape, rshape, out_shape, a_shape
+    cdef Py_ssize_t a_ndim, mask_ndim
 
-    lshape = a.shape[:axis]
-    rshape = a.shape[axis + mask._shape.size():]
+    a_ndim = a._shape.size()
+    mask_ndim = mask._shape.size()
+    a_shape = a.shape
+    lshape = a_shape[:axis]
+    rshape = a_shape[axis + mask._shape.size():]
 
     if mask.size == 0:
         masked_shape = lshape + (0,) + rshape
@@ -568,7 +572,7 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
         return mask_br, mask_br, masked_shape
 
     for i, s in enumerate(mask._shape):
-        if a.shape[axis + i] != s:
+        if a_shape[axis + i] != s:
             raise IndexError('boolean index did not match')
 
     # Get number of True in the mask to determine the shape of the array
@@ -584,7 +588,7 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     masked_shape = lshape + (n_true,) + rshape
 
     # When mask covers the entire array, broadcasting is not necessary.
-    if mask._shape.size() == a._shape.size() and axis == 0:
+    if mask_ndim == a_ndim and axis == 0:
         return (
             mask,
             _manipulation._reshape(mask_scanned, mask._shape),
@@ -594,11 +598,11 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     # The scan of the broadcasted array is used to index on kernel.
     mask = _manipulation._reshape(
         mask,
-        axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
-    if mask._shape.size() > a._shape.size():
+        axis * (1,) + mask.shape + (a_ndim - axis - mask_ndim) * (1,))
+    if mask._shape.size() > a_ndim:
         raise IndexError('too many indices for array')
 
-    mask = _manipulation.broadcast_to(mask, a.shape)
+    mask = _manipulation.broadcast_to(mask, a_shape)
     if mask.size <= 2 ** 31 - 1:
         mask_type = numpy.int32
     else:
