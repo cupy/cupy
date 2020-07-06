@@ -370,7 +370,11 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
 
     cusolver.destroySyevjInfo(params)
 
-    return w.astype(ret_w_dtype, copy=False), v.astype(ret_v_dtype, copy=False)
+    w = w.astype(ret_w_dtype, copy=False)
+    if not with_eigen_vector:
+        return w
+    v = v.astype(ret_v_dtype, copy=False)
+    return w, v
 
 
 def _syevj_batched(a, UPLO, with_eigen_vector):
@@ -454,6 +458,7 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
     cusolver.destroySyevjInfo(params)
 
     w = w.astype(ret_w_dtype, copy=False).swapaxes(-2, -1)
+    if not with_eigen_vector:
+        return w
     v = v.astype(ret_v_dtype, copy=False).swapaxes(-2, -1)
-
     return w, v
