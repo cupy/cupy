@@ -164,35 +164,35 @@ class TestDet(unittest.TestCase):
 @testing.gpu
 class TestSlogdet(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet(self, xp, dtype):
         a = testing.shaped_arange((2, 2), xp, dtype) + 1
         sign, logdet = xp.linalg.slogdet(a)
         return xp.array([sign, logdet], dtype)
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_3(self, xp, dtype):
         a = testing.shaped_arange((2, 2, 2), xp, dtype) + 1
         sign, logdet = xp.linalg.slogdet(a)
         return xp.array([sign, logdet], dtype)
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_4(self, xp, dtype):
         a = testing.shaped_arange((2, 2, 2, 2), xp, dtype) + 1
         sign, logdet = xp.linalg.slogdet(a)
         return xp.array([sign, logdet], dtype)
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_singular(self, xp, dtype):
         a = xp.zeros((3, 3), dtype)
         sign, logdet = xp.linalg.slogdet(a)
         return xp.array([sign, logdet], dtype)
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_singular_errstate(self, xp, dtype):
         a = xp.zeros((3, 3), dtype)
@@ -202,7 +202,7 @@ class TestSlogdet(unittest.TestCase):
             sign, logdet = xp.linalg.slogdet(a)
         return xp.array([sign, logdet], dtype)
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     def test_slogdet_one_dim(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2,), xp, dtype)
