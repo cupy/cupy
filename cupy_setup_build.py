@@ -351,7 +351,7 @@ def preconfigure_modules(compiler, settings):
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
                 'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC',
-                'ROCM_HOME', 'CUPY_CUB_PATH']:
+                'ROCM_HOME']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [

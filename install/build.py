@@ -177,7 +177,7 @@ def get_compiler_setting(use_hip):
     old_cub_path = os.environ.get('CUB_PATH', '')
     if old_cub_path:
         utils.print_warning('CUB_PATH is detected: ' + old_cub_path,
-                            'It is no longer used by CuPy and will be igrnoed')
+                            'It is no longer used by CuPy and will be ignored')
     if cuda_path:
         cuda_cub_path = os.path.join(cuda_path, 'include', 'cub')
         if not os.path.exists(cuda_cub_path):

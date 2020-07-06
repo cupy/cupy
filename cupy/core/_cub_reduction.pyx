@@ -232,12 +232,6 @@ cdef str _get_cub_header_include():
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
 '''
-    else:
-        _cub_header = '''
-#include \"${CUB}/cub/block/block_reduce.cuh\"
-#include \"${CUB}/cub/block/block_load.cuh\"
-'''
-        _cub_header = string.Template(_cub_header).substitute(CUB=_cub_path)
     return _cub_header
 
 
@@ -261,10 +255,7 @@ cdef inline tuple _can_use_cub_block_reduction(
     # detect whether CUB headers exists somewhere:
     if _cub_path is None:
         import warnings
-        warnings.warn('cupy.core.cub_block_reduction_enabled is set to True, '
-                      'but the CUB headers are not found, please set the '
-                      'environment variable CUPY_CUB_PATH to the CUB '
-                      'location.', RuntimeWarning)
+        warnings.warn('CUB headers are not found.', RuntimeWarning)
         return None
 
     # we currently support only _SimpleReductionKernel
