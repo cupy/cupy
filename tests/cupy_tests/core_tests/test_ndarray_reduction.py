@@ -237,9 +237,9 @@ class TestCUBreduction(unittest.TestCase):
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
         if len(axis) == len(self.shape):
-            func = 'cupy.core._routines_statistics.cub.device_reduce'
+            func = 'cupy.cuda.cub.device_reduce'
         else:
-            func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
+            func = 'cupy.cuda.cub.device_segmented_reduce'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.min(axis=axis)
         # ...then perform the actual computation
@@ -262,9 +262,9 @@ class TestCUBreduction(unittest.TestCase):
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
         if len(axis) == len(self.shape):
-            func = 'cupy.core._routines_statistics.cub.device_reduce'
+            func = 'cupy.cuda.cub.device_reduce'
         else:
-            func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
+            func = 'cupy.cuda.cub.device_segmented_reduce'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.max(axis=axis)
         # ...then perform the actual computation

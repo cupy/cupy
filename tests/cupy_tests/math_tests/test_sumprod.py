@@ -218,9 +218,9 @@ class TestCUBreduction(unittest.TestCase):
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
         if len(axis) == len(self.shape):
-            func = 'cupy.core._routines_math.cub.device_reduce'
+            func = 'cupy.cuda.cub.device_reduce'
         else:
-            func = 'cupy.core._routines_math.cub.device_segmented_reduce'
+            func = 'cupy.cuda.cub.device_segmented_reduce'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.sum(axis=axis)
         # ...then perform the actual computation
@@ -244,9 +244,9 @@ class TestCUBreduction(unittest.TestCase):
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
         if len(axis) == len(self.shape):
-            func = 'cupy.core._routines_math.cub.device_reduce'
+            func = 'cupy.cuda.cub.device_reduce'
         else:
-            func = 'cupy.core._routines_math.cub.device_segmented_reduce'
+            func = 'cupy.cuda.cub.device_segmented_reduce'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.prod(axis=axis)
         # ...then perform the actual computation
@@ -269,7 +269,7 @@ class TestCUBreduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.core._routines_math.cub.device_scan'
+        func = 'cupy.cuda.cub.device_scan'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.cumsum()
         # ...then perform the actual computation
@@ -293,7 +293,7 @@ class TestCUBreduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.core._routines_math.cub.device_scan'
+        func = 'cupy.cuda.cub.device_scan'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.cumprod()
         # ...then perform the actual computation
