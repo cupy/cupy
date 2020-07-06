@@ -122,7 +122,7 @@ def eigh(a, UPLO='L'):
     .. seealso:: :func:`numpy.linalg.eigh`
     """
     if a.ndim == 3:
-        return cupy.cusolver._syevj_batched(a, UPLO, True)
+        return cusolver._syevj_batched(a, UPLO, True)
     else:
         return _syevd(a, UPLO, True)
 
@@ -160,6 +160,6 @@ def eigvalsh(a, UPLO='L'):
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """
     if a.ndim == 3:
-        return cupy.cusolver._syevj_batched(a, UPLO, False)[0]
+        return cusolver._syevj_batched(a, UPLO, False)[0]
     else:
         return _syevd(a, UPLO, False)[0]

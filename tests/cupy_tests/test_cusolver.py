@@ -156,7 +156,6 @@ class TestSyevj(unittest.TestCase):
             v.get()), w * v, rtol=1e-3, atol=1e-4)
 
     def test_syevjBatched(self):
-
         lda, m = self.a.shape
 
         na = numpy.stack([self.a, self.a + numpy.diag(numpy.ones(m))])

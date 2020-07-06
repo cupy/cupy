@@ -262,7 +262,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
     """Eigenvalue decomposition of symmetric matrix using cusolverDn<t>syevj().
 
     Computes eigenvalues ``w`` and (optionally) eigenvectors ``v`` of a complex
-    Hermitian  or a real symmetric matrix.
+    Hermitian or a real symmetric matrix.
 
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
@@ -272,6 +272,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
             ``a``, and ``'U'`` uses the upper triangular part of ``a``.
         with_eigen_vector (bool): Indicates whether or not eigenvectors
             are computed.
+
     Returns:
         tuple of :class:`~cupy.ndarray`:
             Returns a tuple ``(w, v)``. ``w`` contains eigenvalues and
@@ -367,7 +368,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
     cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         syevj, dev_info)
 
-    cusolver.destroyGesvdjInfo(params)
+    cusolver.destroySyevjInfo(params)
 
     return w.astype(ret_w_dtype, copy=False), v.astype(ret_v_dtype, copy=False)
 
@@ -450,7 +451,7 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
     cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         syevjBatched, dev_info)
 
-    cusolver.destroyGesvdjInfo(params)
+    cusolver.destroySyevjInfo(params)
 
     w = w.astype(ret_w_dtype, copy=False).swapaxes(-2, -1)
     v = v.astype(ret_v_dtype, copy=False).swapaxes(-2, -1)
