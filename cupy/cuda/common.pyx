@@ -43,14 +43,14 @@ cpdef int _get_dtype_id(dtype) except -1:
 cdef int _has_fp16 = -1
 
 
-cpdef bint _is_fp16_supported() except *:
+cpdef int _is_fp16_supported() except -1:
     global _has_fp16
 
     if _has_fp16 != -1:
-        return <bint>_has_fp16
+        return _has_fp16
     if (int(device.get_compute_capability()) < 53
-        or runtime.runtimeGetVersion() < 9020):
+            or runtime.runtimeGetVersion() < 9020):
         _has_fp16 = 0
     else:
         _has_fp16 = 1
-    return <bint>_has_fp16
+    return _has_fp16

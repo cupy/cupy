@@ -35,4 +35,4 @@ cdef enum:
     CUPY_TYPE_BOOL = 13
 
 cpdef int _get_dtype_id(dtype) except -1
-cpdef bint _is_fp16_supported() except *
+cpdef int _is_fp16_supported() except -1

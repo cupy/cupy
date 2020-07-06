@@ -8,11 +8,10 @@ from cupy.core.core cimport _internal_ascontiguousarray
 from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport ndarray
 from cupy.core.internal cimport _contig_axes
+from cupy.cuda cimport common
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
-from cupy.cuda cimport runtime
 from cupy.cuda cimport stream
-from cupy.cuda.common cimport _get_dtype_id
 from cupy.cuda.driver cimport Stream as Stream_t
 
 import numpy
@@ -139,7 +138,7 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
         y = ndarray((kv_bytes,), numpy.int8)
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
-    dtype_id = _get_dtype_id(x.dtype)
+    dtype_id = common._get_dtype_id(x.dtype)
     s = <Stream_t>stream.get_current_stream_ptr()
     x_size = <int>x.size
     ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x.size, s,
@@ -218,7 +217,7 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
     offset_start_ptr = <void*>offset.data.ptr
     offset_end_ptr = <void*>((<int*><void*>offset.data.ptr)+1)
     s = <Stream_t>stream.get_current_stream_ptr()
-    dtype_id = _get_dtype_id(x.dtype)
+    dtype_id = common._get_dtype_id(x.dtype)
 
     # get workspace size and then fire up
     ws_size = cub_device_segmented_reduce_get_workspace_size(
@@ -276,7 +275,7 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
     y_ptr = <void*>y.data.ptr
 
     s = <Stream_t>stream.get_current_stream_ptr()
-    dtype_id = _get_dtype_id(dtype)
+    dtype_id = common._get_dtype_id(dtype)
 
     # get workspace size and then fire up
     ws_size = cub_device_spmv_get_workspace_size(
@@ -312,7 +311,7 @@ def device_scan(ndarray x, op):
     x = _internal_ascontiguousarray(x)
     x_ptr = <void *>x.data.ptr
     s = <Stream_t>stream.get_current_stream_ptr()
-    dtype_id = _get_dtype_id(x.dtype)
+    dtype_id = common._get_dtype_id(x.dtype)
     ws_size = cub_device_scan_get_workspace_size(x_ptr, x_ptr, x_size, s,
                                                  op, dtype_id)
     ws = memory.alloc(ws_size)
@@ -362,8 +361,7 @@ cdef _cub_support_dtype(bint sum_mode, int dev_id):
         without_half = CUB_support_dtype_without_half
 
     if dev_id not in support_dtype_dict:
-        if int(device.get_compute_capability()) >= 53 and \
-                runtime.runtimeGetVersion() >= 9020:
+        if common._is_fp16_supported():
             support_dtype = with_half
         else:
             support_dtype = without_half
