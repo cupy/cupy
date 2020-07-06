@@ -282,7 +282,7 @@ def slogdet(a):
     # Note: sign == -1 ** (non_zero % 2)
     sign = (non_zero % 2) * -2 + 1
     if dtype.kind == "c":
-        sign = sign * cupy.prod(diag, axis=-1) / cupy.exp(logdet)
+        sign = sign * cupy.prod(diag / cupy.abs(diag), axis=-1)
 
     singular = dev_info > 0
     return (
