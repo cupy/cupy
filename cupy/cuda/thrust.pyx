@@ -9,9 +9,7 @@ from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
 from cupy.cuda cimport common
-from cupy.cuda cimport device
 from cupy.cuda cimport memory
-from cupy.cuda cimport runtime
 from cupy.cuda cimport stream
 
 
@@ -79,12 +77,13 @@ cpdef sort(dtype, intptr_t data_start, intptr_t keys_start,
     cdef _MemoryManager mem_obj = _MemoryManager()
     cdef void* mem = <void*>mem_obj
 
-    cdef int dtype_id = common._get_dtype_id(dtype)
-    if dtype_id == -1:
+    cdef int dtype_id
+    try:
+        dtype_id = common._get_dtype_id(dtype)
+    except ValueError:
         raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '
                                   'supported'.format(dtype))
-    elif dtype_id == 8 and (int(device.get_compute_capability()) < 53
-                            or runtime.runtimeGetVersion() < 9020):
+    if dtype_id == 8 and not common._is_fp16_supported():
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
 
@@ -99,12 +98,13 @@ cpdef lexsort(dtype, intptr_t idx_start, intptr_t keys_start,
     cdef _MemoryManager mem_obj = _MemoryManager()
     cdef void* mem = <void*>mem_obj
 
-    cdef int dtype_id = common._get_dtype_id(dtype)
-    if dtype_id == -1:
+    cdef int dtype_id
+    try:
+        dtype_id = common._get_dtype_id(dtype)
+    except ValueError:
         raise TypeError('Sorting keys with dtype \'{}\' is not '
                         'supported'.format(dtype))
-    elif dtype_id == 8 and (int(device.get_compute_capability()) < 53
-                            or runtime.runtimeGetVersion() < 9020):
+    if dtype_id == 8 and not common._is_fp16_supported():
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
 
@@ -121,12 +121,13 @@ cpdef argsort(dtype, intptr_t idx_start, intptr_t data_start,
     cdef _MemoryManager mem_obj = _MemoryManager()
     cdef void* mem = <void *>mem_obj
 
-    cdef int dtype_id = common._get_dtype_id(dtype)
-    if dtype_id == -1:
+    cdef int dtype_id
+    try:
+        dtype_id = common._get_dtype_id(dtype)
+    except ValueError:
         raise NotImplementedError('Sorting arrays with dtype \'{}\' is not '
                                   'supported'.format(dtype))
-    elif dtype_id == 8 and (int(device.get_compute_capability()) < 53
-                            or runtime.runtimeGetVersion() < 9020):
+    if dtype_id == 8 and not common._is_fp16_supported():
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
 
