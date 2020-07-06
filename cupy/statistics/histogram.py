@@ -12,12 +12,6 @@ else:
     cub = memory = None
 
 
-_preamble = '''
-__device__ long long atomicAdd(long long *address, long long val) {
-    return atomicAdd(reinterpret_cast<unsigned long long*>(address),
-                     static_cast<unsigned long long>(val));
-}'''
-
 # TODO(unno): use searchsorted
 _histogram_kernel = core.ElementwiseKernel(
     'S x, raw T bins, int32 n_bins',
@@ -38,8 +32,7 @@ _histogram_kernel = core.ElementwiseKernel(
         }
     }
     atomicAdd(&y[low], U(1));
-    ''',
-    preamble=_preamble)
+    ''')
 
 
 _weighted_histogram_kernel = core.ElementwiseKernel(
@@ -61,8 +54,7 @@ _weighted_histogram_kernel = core.ElementwiseKernel(
         }
     }
     atomicAdd(&y[low], (Y)weights[i]);
-    ''',
-    preamble=_preamble)
+    ''')
 
 
 def _ravel_and_check_weights(a, weights):
@@ -282,8 +274,8 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
 _bincount_kernel = core.ElementwiseKernel(
     'S x', 'raw U bin',
     'atomicAdd(&bin[x], U(1))',
-    'bincount_kernel',
-    preamble=_preamble)
+    'bincount_kernel')
+
 
 _bincount_with_weight_kernel = core.ElementwiseKernel(
     'S x, T w', 'raw U bin',

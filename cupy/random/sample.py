@@ -197,12 +197,7 @@ def choice(a, size=None, replace=True, p=None):
 _multinominal_kernel = core.ElementwiseKernel(
     'int64 x, int32 p, int32 n', 'raw U ys',
     'atomicAdd(&ys[i / n * p + x], U(1))',
-    'cupy_random_multinomial',
-    preamble='''
-__device__ long long atomicAdd(long long *address, long long val) {
-    return atomicAdd(reinterpret_cast<unsigned long long*>(address),
-                     static_cast<unsigned long long>(val));
-}''')
+    'cupy_random_multinomial')
 
 
 def multinomial(n, pvals, size=None):
