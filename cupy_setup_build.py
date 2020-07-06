@@ -628,9 +628,6 @@ def parse_args():
     }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
-    # make some compile-time expressions available to Cython codes;
-    # currently we do not expose any, and leave this for future extension
-    arg_options['compile_time_env'] = {}
     return arg_options
 
 
@@ -731,7 +728,7 @@ def cythonize(extensions, arg_options):
     # Embed signatures for Sphinx documentation.
     directives['embedsignature'] = True
 
-    cythonize_option_keys = ('annotate', 'compile_time_env')
+    cythonize_option_keys = ('annotate',)
     cythonize_options = {key: arg_options[key]
                          for key in cythonize_option_keys}
 
