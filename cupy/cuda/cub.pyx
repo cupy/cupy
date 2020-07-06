@@ -84,7 +84,6 @@ cdef extern from 'cupy_cub.h' nogil:
     size_t cub_device_histogram_range_get_workspace_size(
         void*, void*, int, void*, size_t, Stream_t, int)
 
-
     # Build-time version
     int CUPY_CUB_VERSION_CODE
 
