@@ -35,11 +35,13 @@ cdef class RawKernel:
             ``cuLaunchCooperativeKernel`` so that cooperative groups can be
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
+        log_stream (object): Pass either ``sys.stdout`` or a file object to
+            which the compiler output will be written.
     """
 
     def __init__(self, str code, str name, tuple options=(),
                  str backend='nvrtc', *, bint translate_cucomplex=False,
-                 bint enable_cooperative_groups=False):
+                 bint enable_cooperative_groups=False, log_stream=None):
 
         self.code = code
         self.name = name
@@ -47,6 +49,7 @@ cdef class RawKernel:
         self.backend = backend
         self.translate_cucomplex = translate_cucomplex
         self.enable_cooperative_groups = enable_cooperative_groups
+        self.log_stream = log_stream
 
         # only used when RawKernels are produced from RawModule
         self.file_path = None  # for cubin/ptx
@@ -94,7 +97,7 @@ cdef class RawKernel:
             mod = _get_raw_module(
                 self.code, self.file_path, self.options, self.backend,
                 self.translate_cucomplex, self.enable_cooperative_groups,
-                self.name_expressions)
+                self.name_expressions, self.log_stream)
             ker = mod.get_function(self.name)
             self._kernel_cache[dev] = ker
         return ker
@@ -225,14 +228,13 @@ cdef class RawModule:
     modules (\\*.cubin, \\*.ptx). This class is useful when a number of CUDA
     kernels in the same source need to be retrieved.
 
-    For the former case, the CUDA source code is compiled when initializing a
-    new instance of this class, and the kernels can be retrieved by calling
+    For the former case, the CUDA source code is compiled when any method is
+    called. For the latter case, an existing CUDA binary (\\*.cubin) or a PTX
+    file can be loaded by providing its path.
+
+    CUDA kernels in a :class:`RawModule` can be retrieved by calling
     :meth:`get_function`, which will return an instance of :class:`RawKernel`.
     (Same as in :class:`RawKernel`, the generated binary is also cached.)
-
-    For the latter case, an existing CUDA binary (\\*.cubin) or a PTX file can
-    be loaded by providing its path, and kernels therein can be retrieved
-    similarly.
 
     Args:
         code (str): CUDA source code. Mutually exclusive with ``path``.
@@ -258,14 +260,22 @@ cdef class RawModule:
             the template kernel ``func1<T>`` and non-template kernel ``func2``.
             Strings in this tuple must then be passed, one at a time, to
             :meth:`get_function` to retrieve the corresponding kernel.
+        log_stream (object): Pass either ``sys.stdout`` or a file object to
+            which the compiler output will be written.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
+
+    .. note::
+        Before CuPy v8.0.0, the compilation happens at initialization. Now, it
+        happens at the first time retrieving any object (kernels, pointers, or
+        texrefs) from the module.
+
     """
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
                  bint enable_cooperative_groups=False,
-                 name_expressions=None):
+                 name_expressions=None, log_stream=None):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
@@ -290,6 +300,7 @@ cdef class RawModule:
         self.code = code
         self.file_path = path
         self.enable_cooperative_groups = enable_cooperative_groups
+        self.log_stream = log_stream
 
         if self.code is not None:
             self.options = options
@@ -300,10 +311,6 @@ cdef class RawModule:
             self.backend = 'nvcc'
             self.translate_cucomplex = False
 
-        # trigger compiling or loading
-        IF no_cuda == 0:
-            cdef Module mod = self.module  # noqa
-
     @property
     def module(self):
         # The module is cached, so on the device where this has been called,
@@ -313,7 +320,7 @@ cdef class RawModule:
         mod = _get_raw_module(
             self.code, self.file_path, self.options, self.backend,
             self.translate_cucomplex, self.enable_cooperative_groups,
-            self.name_expressions)
+            self.name_expressions, self.log_stream)
         return mod
 
     def get_function(self, str name):
@@ -367,7 +374,8 @@ cdef class RawModule:
         ker = RawKernel(
             self.code, name, self.options, self.backend,
             translate_cucomplex=self.translate_cucomplex,
-            enable_cooperative_groups=self.enable_cooperative_groups)
+            enable_cooperative_groups=self.enable_cooperative_groups,
+            log_stream=self.log_stream)
         # for lookup in case we loaded from cubin/ptx
         ker.file_path = self.file_path
         # for lookup in case we specialize a template
@@ -424,14 +432,15 @@ cdef class RawModule:
 def _get_raw_module(str code, str path, tuple options=(), str backend='nvrtc',
                     bint translate_cucomplex=False,
                     bint enable_cooperative_groups=False,
-                    tuple name_expressions=None):
+                    tuple name_expressions=None, log_stream=None):
     cdef Module mod
     if code is not None:
         mod = cupy.core.core.compile_with_cache(
             code, options, prepend_cupy_headers=False, backend=backend,
             translate_cucomplex=translate_cucomplex,
             enable_cooperative_groups=enable_cooperative_groups,
-            name_expressions=name_expressions)
+            name_expressions=name_expressions,
+            log_stream=log_stream)
     elif path is not None:
         mod = Module()
         mod.load_file(path)

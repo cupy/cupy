@@ -7,6 +7,7 @@ from numpy import integer
 from numpy import dtype
 
 import cupy
+import cupyx
 from cupy import core
 
 
@@ -38,38 +39,14 @@ def _broadcast_arrays(a, b):
     return x, y
 
 
-_bin_col_offsets_ker_types = {dtype('int32'): 'bin_col_offsets_ker_str<int>'}
-_bin_col_offsets_ker = core.RawModule(code="""
-    template<typename I>
-    __global__ void bin_col_offsets_ker_str(I n_idx,
-                                            I *col_idxs,
-                                            I *col_offsets) {
-
-        // Get the index of the thread
-        I jj = blockIdx.x * blockDim.x + threadIdx.x;
-
-        if(jj < n_idx) {
-            const I j = col_idxs[jj];
-            atomicAdd(col_offsets+j, 1);
-        }
-    }
-""", options=_module_options, name_expressions=tuple(
-    _bin_col_offsets_ker_types.values()))
-
-
-def _bin_col_offsets(n_idx, col_ids, col_offsets, tpb=32):
-    grid = math.ceil(n_idx / tpb)
-    kernel = _bin_col_offsets_ker.get_function(
-        _bin_col_offsets_ker_types[_int32_dtype])
-    kernel((grid,), (tpb,), (n_idx, col_ids, col_offsets))
-
-
 def _csr_column_index1_indptr(col_offsets, Ap, Aj):
     """Construct output indptr by counting column indices
     in input matrix.
     """
+
     col_sum = cupy.zeros((Aj.size+1,), dtype=col_offsets.dtype)
     cupy.cumsum(col_offsets[Aj], out=col_sum[1:])
+
     Bp = col_sum[Ap]
     Bp[1:] -= Bp[:-1]
 
@@ -82,10 +59,10 @@ def _csr_column_index1(col_idxs, n_col, indptr, indices):
 
     col_offsets = cupy.zeros(n_col, dtype=indptr.dtype)
 
-    _bin_col_offsets(len(col_idxs), col_idxs, col_offsets)
-    new_indptr = _csr_column_index1_indptr(col_offsets, indptr, indices)
-
+    cupyx.scatter_add(col_offsets, col_idxs, 1)
     cupy.cumsum(col_offsets, out=col_offsets)
+
+    new_indptr = _csr_column_index1_indptr(col_offsets, indptr, indices)
 
     return col_offsets, new_indptr
 
