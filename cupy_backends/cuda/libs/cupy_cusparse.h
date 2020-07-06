@@ -411,7 +411,51 @@ cusparseStatus_t cusparseCsr2cscEx2(...) {
 // Functions deleted in cuSparse 11.0
 
 // cuSPARSE Level2 Function
-cusparseStatus_t cusparseScsrmv(...) {
+cusparseStatus_t cusparseScsrsv_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsv_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsv_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsv_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsv_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsv_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsv_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsv_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsv_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsv_solve(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
@@ -544,10 +588,13 @@ typedef void* cusparseMatDescr_t;
 typedef void* csric02Info_t;
 typedef void* bsric02Info_t;
 typedef void* csrilu02Info_t;
+typedef void* csrsv2Info_t;
 typedef void* bsrilu02Info_t;
 typedef void* csrgemm2Info_t;
 
 typedef enum {} cusparseMatrixType_t;
+typedef enum {} cusparseDiagType_t;
+typedef enum {} cusparseFillMode_t;
 typedef enum {} cusparseOperation_t;
 typedef enum {} cusparsePointerMode_t;
 typedef enum {} cusparseAction_t;
@@ -582,6 +629,14 @@ cusparseStatus_t cusparseSetMatIndexBase(...) {
 }
 
 cusparseStatus_t cusparseSetMatType(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSetMatFillMode(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSetMatDiagType(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 

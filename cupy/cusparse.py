@@ -37,6 +37,12 @@ class MatDescriptor(object):
     def set_mat_index_base(self, base):
         cusparse.setMatIndexBase(self.descriptor, base)
 
+    def set_mat_diag_type(self, typ):
+        cusparse.setMatDiagType(self.descriptor, typ)
+
+    def set_mat_fill_mode(self, mode):
+        cusparse.setMatFillMode(self.descriptor, mode)
+
 
 def _cast_common_type(*xs):
     dtypes = [x.dtype for x in xs if x is not None]
@@ -89,8 +95,12 @@ _available_cusparse_version = {
     'csrgeam2': (9020, None),
     'csrgemm': (8000, 11000),
     'csrgemm2': (8000, None),
+    'csrilu02': (8000, None),
+    'csrilu02_analysis': (8000, None),
+    'csrsv2_solve': (8000, None),
+    'csrsv2_analysis': (8000, None),
     'spmv': (10200, None),
-    'spmm': (10301, None),  # accuracy bugs in cuSparse 10.3.0
+    'spmm': (10301, None),
     'csr2dense': (8000, None),
     'csc2dense': (8000, None),
     'csrsort': (8000, None),
@@ -104,7 +114,7 @@ _available_cusparse_version = {
     'csc2csrEx2': (10200, None),  # the entity is csr2cscEx2
     'dense2csc': (8000, None),
     'dense2csr': (8000, None),
-    'csr2csr_compress': (8000, None),
+    'csr2csr_compress': (8000, None)
 }
 
 
@@ -399,6 +409,56 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
         a.indptr.data.ptr, a.indices.data.ptr,
         b.data.ptr, ldb, beta.data, c.data.ptr, ldc)
     return c
+
+
+def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
+    """Matrix-vector product for a CSR-matrix and a dense vector.
+
+    .. math::
+
+       y = \\alpha * o_a(A) x + \\beta y,
+
+    where :math:`o_a` is a transpose function when ``transa`` is ``True`` and
+    is an identity function otherwise.
+
+    Args:
+        a (cupy.cusparse.csr_matrix): Matrix A.
+        x (cupy.ndarray): Vector x.
+        y (cupy.ndarray or None): Vector y. It must be F-contiguous.
+        alpha (float): Coefficient for x.
+        beta (float): Coefficient for y.
+        transa (bool): If ``True``, transpose of ``A`` is used.
+
+    Returns:
+        cupy.ndarray: Calculated ``y``.
+
+    """
+    if not check_availability('csrsv'):
+        raise RuntimeError('csrsv is not available.')
+
+    assert y is None or y.flags.f_contiguous
+
+    a_shape = a.shape if not transa else a.shape[::-1]
+    if a_shape[1] != len(x):
+        raise ValueError('dimension mismatch')
+
+    handle = device.get_cusparse_handle()
+    m, n = a_shape
+    a, x, y = _cast_common_type(a, x, y)
+    dtype = a.dtype
+    if y is None:
+        y = cupy.zeros(m, dtype)
+    alpha = numpy.array(alpha, dtype).ctypes
+    beta = numpy.array(beta, dtype).ctypes
+
+    _call_cusparse(
+        'csrsv', dtype,
+        handle, _transpose_flag(transa),
+        a.shape[0], a.shape[1], a.nnz, alpha.data, a._descr.descriptor,
+        a.data.data.ptr, a.indptr.data.ptr, a.indices.data.ptr,
+        x.data.ptr, beta.data, y.data.ptr)
+
+    return y
 
 
 def csrgeam(a, b, alpha=1, beta=1):

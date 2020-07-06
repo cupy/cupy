@@ -13,6 +13,10 @@ cdef extern from *:
 
     ctypedef int MatrixType 'cusparseMatrixType_t'
 
+    ctypedef int DiagType 'cusparseDiagType_t'
+
+    ctypedef int FillMode 'cusparseFillMode_t'
+
     ctypedef int Operation 'cusparseOperation_t'
 
     ctypedef int PointerMode 'cusparsePointerMode_t'
@@ -25,6 +29,7 @@ cdef extern from *:
     ctypedef void* csric02Info_t
     ctypedef void* bsric02Info_t
     ctypedef void* csrilu02Info_t
+    ctypedef void* csrsv2Info_t
     ctypedef void* bsrilu02Info_t
     ctypedef void* csrgemm2Info_t
 
@@ -67,6 +72,13 @@ cpdef enum:
     CUSPARSE_MATRIX_TYPE_SYMMETRIC = 1
     CUSPARSE_MATRIX_TYPE_HERMITIAN = 2
     CUSPARSE_MATRIX_TYPE_TRIANGULAR = 3
+
+    CUSPARSE_DIAG_TYPE_NON_UNIT = 0
+    CUSPARSE_DIAG_TYPE_UNIT = 1
+
+    # Enums for triangular matrices
+    CUSPARSE_FILL_MODE_LOWER = 0
+    CUSPARSE_FILL_MODE_UPPER = 1
 
     CUSPARSE_OPERATION_NON_TRANSPOSE = 0
     CUSPARSE_OPERATION_TRANSPOSE = 1
