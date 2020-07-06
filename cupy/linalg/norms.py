@@ -248,7 +248,8 @@ def slogdet(a):
     else:
         real_dtype = dtype
 
-    if dtype not in ("f", "d", "F", "D"):
+    if dtype not in (numpy.float32, numpy.float64,
+                     numpy.complex64, numpy.complex128):
         msg = ('dtype must be float32, float64, complex64, or complex128'
                ' (actual: {})'.format(a.dtype))
         raise ValueError(msg)
