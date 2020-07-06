@@ -275,17 +275,14 @@ def slogdet(a):
 
     logdet = cupy.log(cupy.abs(diag)).sum(axis=-1)
 
+    # ipiv is 1-origin
+    non_zero = cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1)
     if dtype.kind == "f":
-        # ipiv is 1-origin
-        non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1) +
-                    cupy.count_nonzero(diag < 0, axis=-1))
-    
-        # Note: sign == -1 ** (non_zero % 2)
-        sign = (non_zero % 2) * -2 + 1
-    else:  # for complex numbers
-        non_zero = cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1)
-        
-        sign = (non_zero % 2) * -2 + 1
+        non_zero += cupy.count_nonzero(diag < 0, axis=-1)
+
+    # Note: sign == -1 ** (non_zero % 2)
+    sign = (non_zero % 2) * -2 + 1
+    if dtype.kind == "c":
         sign = sign * cupy.prod(diag, axis=-1) / cupy.exp(logdet)
 
     singular = dev_info > 0
