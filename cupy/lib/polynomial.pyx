@@ -1,5 +1,4 @@
 import numpy
-from cpython cimport bool
 
 import cupy
 from cupy.core.core cimport ndarray
@@ -24,7 +23,7 @@ cdef class poly1d:
     cdef:
         readonly ndarray _coeffs
         readonly str _variable
-        readonly bool _trimmed
+        readonly bint _trimmed
 
     @property
     def coeffs(self):
