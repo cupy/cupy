@@ -8,8 +8,8 @@ def polyadd(a1, a2):
     """Computes the sum of two polynomials.
 
     Args:
-        a1 (cupy.ndarray or cupy.poly1d): first input polynomial.
-        a2 (cupy.ndarray or cupy.poly1d): second input polynomial.
+        a1 (scalar, cupy.ndarray or cupy.poly1d): first input polynomial.
+        a2 (scalar, cupy.ndarray or cupy.poly1d): second input polynomial.
 
     Returns:
         cupy.ndarray or cupy.poly1d: The sum of the inputs.
@@ -41,7 +41,7 @@ cdef class poly1d:
     Args:
         c_or_r (array_like): The polynomial's
          coefficients in decreasing powers
-        r (bool, optional): If True, ```c_or_r`` specifies the
+        r (bool, optional): If True, ``c_or_r`` specifies the
             polynomial's roots; the default is False.
         variable (str, optional): Changes the variable used when
             printing the polynomial from ``x`` to ``variable``
@@ -149,12 +149,10 @@ cdef class poly1d:
         raise NotImplementedError
 
     def __add__(self, other):
-        other = poly1d(other)
-        return poly1d(polyadd(self.coeffs, other.coeffs))
+        return polyadd(self, other)
 
     def __radd__(self, other):
-        other = poly1d(other)
-        return poly1d(polyadd(self.coeffs, other.coeffs))
+        return polyadd(self, other)
 
     # TODO(Dahlia-Chehata): implement using polymul
     def __pow__(self, val, modulo):

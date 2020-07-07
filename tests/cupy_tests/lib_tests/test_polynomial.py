@@ -303,6 +303,14 @@ class TestPolyadd(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_polyadd_scalar_poly1d(self, xp, dtype):
+        a = dtype(10)
+        b = testing.shaped_arange((5,), xp, dtype)
+        b = xp.poly1d(b)
+        return xp.polyadd(a, b).coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_polyadd_poly1d_poly1d(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         b = xp.poly1d(a, variable='z')
