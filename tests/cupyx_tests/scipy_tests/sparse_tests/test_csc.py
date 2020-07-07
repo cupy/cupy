@@ -1235,6 +1235,17 @@ class TestCscMatrixData(unittest.TestCase):
             t = 'd'
         return m.power(2, t)
 
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_axis_0(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=0)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_axis_1(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=1)
+
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
