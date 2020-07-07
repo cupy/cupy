@@ -18,7 +18,6 @@ void thrust_argsort(int, size_t *, void *, void *, const std::vector<ptrdiff_t>&
 
 #else // CUPY_NO_CUDA
 
-#include "cupy_common.h"
 #define THRUST_VERSION 0
 
 namespace cupy {
