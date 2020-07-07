@@ -36,13 +36,13 @@ cdef class _ArgInfo:
         readonly bint index_32_bits
 
     cdef _ArgInfo _init(
-            self,
-            _ArgKind arg_kind,
-            type typ,
-            object dtype,
-            int ndim,
-            bint c_contiguous,
-            bint index_32_bits)
+        self,
+        _ArgKind arg_kind,
+        type typ,
+        object dtype,
+        int ndim,
+        bint c_contiguous,
+        bint index_32_bits)
 
     @staticmethod
     cdef _ArgInfo from_arg(object arg)
