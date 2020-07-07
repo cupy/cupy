@@ -5,13 +5,12 @@
 cimport cython  # NOQA
 from libcpp cimport vector
 
-from cupy_cuda cimport driver
-from cupy_cuda cimport stream as stream_module
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda cimport stream as stream_module
 
 ###############################################################################
 # Extern
 ###############################################################################
-from cupy_cuda.cusparse import setStream
 
 cdef extern from 'cupy_cudnn.h' nogil:
     # Types

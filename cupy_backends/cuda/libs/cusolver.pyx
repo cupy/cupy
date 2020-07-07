@@ -2,14 +2,14 @@
 
 cimport cython  # NOQA
 
-from cupy_cuda cimport driver
-from cupy_cuda cimport stream as stream_module
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda cimport stream as stream_module
 
 ###############################################################################
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_cuComplex.h':
+cdef extern from '../cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 

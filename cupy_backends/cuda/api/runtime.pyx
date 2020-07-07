@@ -14,7 +14,7 @@ import threading
 cimport cpython  # NOQA
 cimport cython  # NOQA
 
-from cupy_cuda cimport driver
+from cupy_backends.cuda.api cimport driver
 
 
 cdef class PointerAttributes:
@@ -62,7 +62,7 @@ cdef extern from *:
     ctypedef StreamCallbackDef* StreamCallback 'cudaStreamCallback_t'
 
 
-cdef extern from 'cupy_cuda.h' nogil:
+cdef extern from '../cupy_cuda.h' nogil:
 
     # Types
     ctypedef struct _PointerAttributes 'cudaPointerAttributes':

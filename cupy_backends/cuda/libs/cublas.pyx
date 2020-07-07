@@ -4,22 +4,22 @@
 
 cimport cython  # NOQA
 
-from cupy_cuda cimport driver
-from cupy_cuda cimport runtime
-from cupy_cuda cimport stream as stream_module
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda cimport stream as stream_module
 
 ###############################################################################
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_cuComplex.h':
+cdef extern from '../cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from 'cupy_cuda.h' nogil:
+cdef extern from '../cupy_cuda.h' nogil:
     # Context
     int cublasCreate(Handle* handle)
     int cublasDestroy(Handle handle)
