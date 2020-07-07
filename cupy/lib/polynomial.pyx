@@ -171,10 +171,8 @@ cdef class poly1d:
         if key < 0:
             raise ValueError('Negative powers are not supported.')
         if key >= self._coeffs.size:
-            zeroz = cupy.zeros(key - (self._coeffs.size - 1),
-                               self._coeffs.dtype)
-            self._coeffs = cupy.concatenate((zeroz, self._coeffs))
-            ind = 0
+            self._coeffs = cupy.pad(self._coeffs,
+                                    (key - (self._coeffs.size - 1), 0))
         self._coeffs[-key-1] = val
         return
 
