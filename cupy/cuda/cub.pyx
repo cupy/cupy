@@ -362,9 +362,10 @@ cdef bint _cub_device_segmented_reduce_axis_compatible(
 
 
 cdef bint can_use_device_reduce(ndarray x, int op, tuple out_axis, dtype=None):
-    return (out_axis is () and
-        _cub_reduce_dtype_compatible(x.dtype, op, dtype) and
-        x.size <= 0x7fffffff)  # until we resolve cupy/cupy#3309
+    return (
+        out_axis is ()
+        and _cub_reduce_dtype_compatible(x.dtype, op, dtype)
+        and x.size <= 0x7fffffff)  # until we resolve cupy/cupy#3309
 
 
 cdef bint can_use_device_segmented_reduce(
