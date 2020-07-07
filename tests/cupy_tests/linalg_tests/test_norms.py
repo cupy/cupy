@@ -169,28 +169,28 @@ class TestSlogdet(unittest.TestCase):
     def test_slogdet(self, xp, dtype):
         a = testing.shaped_arange((2, 2), xp, dtype) + 1
         sign, logdet = xp.linalg.slogdet(a)
-        return xp.array([sign, logdet], dtype)
+        return xp.array([sign, logdet.astype(sign.dtype)], dtype)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_3(self, xp, dtype):
         a = testing.shaped_arange((2, 2, 2), xp, dtype) + 1
         sign, logdet = xp.linalg.slogdet(a)
-        return xp.array([sign, logdet], dtype)
+        return xp.array([sign, logdet.astype(sign.dtype)], dtype)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_4(self, xp, dtype):
         a = testing.shaped_arange((2, 2, 2, 2), xp, dtype) + 1
         sign, logdet = xp.linalg.slogdet(a)
-        return xp.array([sign, logdet], dtype)
+        return xp.array([sign, logdet.astype(sign.dtype)], dtype)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_slogdet_singular(self, xp, dtype):
         a = xp.zeros((3, 3), dtype)
         sign, logdet = xp.linalg.slogdet(a)
-        return xp.array([sign, logdet], dtype)
+        return xp.array([sign, logdet.astype(sign.dtype)], dtype)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
@@ -200,7 +200,7 @@ class TestSlogdet(unittest.TestCase):
             # `cupy.linalg.slogdet` internally catches `dev_info < 0` from
             # cuSOLVER, which should not affect `dev_info > 0` cases.
             sign, logdet = xp.linalg.slogdet(a)
-        return xp.array([sign, logdet], dtype)
+        return xp.array([sign, logdet.astype(sign.dtype)], dtype)
 
     @testing.for_dtypes('fdFD')
     def test_slogdet_one_dim(self, dtype):
