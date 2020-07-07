@@ -1203,14 +1203,13 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
         in_params += ', raw S s'
     out_params = 'Y y'
 
-    inds = _generate_indices_ops(
-        ndim, int_type, 'xsize_{j}',
-        [' - {}'.format(wshape[j]//2 + origins[j]) for j in range(ndim)])
     # CArray: remove xstride_{j}=... from string
     sizes = ['{type} xsize_{j}=x.shape()[{j}], xstride_{j}=x.strides()[{j}];'.
              format(j=j, type=int_type) for j in range(ndim)]
+    inds = _generate_indices_ops(ndim, int_type,
+                                 [x//2 + o for x, o in zip(wshape, origins)])
     # CArray: remove expr entirely
-    expr = ' + '.join(['ix_{0}'.format(j) for j in range(ndim)])
+    expr = ' + '.join(['ix_{}'.format(j) for j in range(ndim)])
 
     ws_init = ws_pre = ws_post = ''
     if has_weights or has_structure:
@@ -1242,7 +1241,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
     # CArray: string becomes 'x[inds]', no format call needed
     value = '(*(X*)&data[{expr}])'.format(expr=expr)
     if mode == 'constant':
-        cond = ' || '.join(['(ix_{0} < 0)'.format(j) for j in range(ndim)])
+        cond = ' || '.join(['(ix_{} < 0)'.format(j) for j in range(ndim)])
         value = '(({cond}) ? cast<{ctype}>({cval}) : {value})'.format(
             cond=cond, ctype=ctype, cval=cval, value=value)
     found = found.format(value=value)
@@ -1270,7 +1269,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
                loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
     name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
-        name, ndim, mode, '_'.join(['{}'.format(j) for j in wshape]))
+        name, ndim, mode, '_'.join(['{}'.format(x) for x in wshape]))
     if int_type == 'ptrdiff_t':
         name += '_i64'
     if has_structure:
@@ -1282,11 +1281,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
                                   options=options)
 
 
-def _generate_indices_ops(ndim, int_type, xsize='x.shape()[{j}]', extras=None):
-    if extras is None:
-        extras = ('',)*ndim
-    code = '{type} ind_{j} = _i % ' + xsize + '{extra}; _i /= ' + xsize + ';'
-    body = [code.format(type=int_type, j=j, extra=extras[j])
+def _generate_indices_ops(ndim, int_type, offsets):
+    code = '{type} ind_{j} = _i % xsize_{j} - {offset}; _i /= xsize_{j};'
+    body = [code.format(type=int_type, j=j, offset=offsets[j])
             for j in range(ndim-1, 0, -1)]
-    return '{type} _i = i;\n{body}\n{type} ind_0 = _i{extra};'.format(
-        type=int_type, body='\n'.join(body), extra=extras[0])
+    return '{type} _i = i;\n{body}\n{type} ind_0 = _i - {offset};'.format(
+        type=int_type, body='\n'.join(body), offset=offsets[0])
