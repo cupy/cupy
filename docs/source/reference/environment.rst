@@ -47,7 +47,7 @@ Here are the environment variables CuPy uses.
 | ``CUPY_EXPERIMENTAL_SLICE_COPY``   | If set to 1, the following syntax is enabled:      |
 |                                    | ``cupy_ndarray[:] = numpy_ndarray``.               |
 +------------------------------------+----------------------------------------------------+
-| ``CUPY_BACKENDS``                  | A comma-separated string of backend names          |
+| ``CUPY_ACCELERATORS``              | A comma-separated string of backend names          |
 |                                    | (``cub``) which indicates the acceleration         |
 |                                    | backends used in CuPy operations and its priority. |
 |                                    | Default is empty string (all accelerators are      |

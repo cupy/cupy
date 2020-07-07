@@ -9,7 +9,7 @@ from cupy.core._scalar import get_typename
 from cupy.core._ufuncs import elementwise_copy
 from cupy import util
 
-from cupy.core cimport _backend
+from cupy.core cimport _accelerator
 from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
 from cupy.core.core cimport _ndarray_init
@@ -79,8 +79,8 @@ cdef ndarray _ndarray_imag_setter(ndarray self, value):
 
 
 cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
-    for backend in _backend._routine_backends:
-        if backend == _backend.BACKEND_CUB:
+    for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
@@ -93,8 +93,8 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
 
 
 cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
-    for backend in _backend._routine_backends:
-        if backend == _backend.BACKEND_CUB:
+    for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_SUM, axis, dtype, out, keepdims)
@@ -502,8 +502,8 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
 
     if axis is None:
         result = result.ravel()
-        for backend in _backend._routine_backends:
-            if backend == _backend.BACKEND_CUB:
+        for accelerator in _accelerator._routine_accelerators:
+            if accelerator == _accelerator.ACCELERATOR_CUB:
                 # result will be None if the scan is not compatible with CUB
                 if op == scan_op.SCAN_SUM:
                     cub_op = cub.CUPY_CUB_CUMSUM
