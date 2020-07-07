@@ -183,7 +183,7 @@ class TestCUBreduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.cuda.cub.device_reduce'
+        func = 'cupy.core._routines_statistics.cub.device_reduce'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.argmin()
         # ...then perform the actual computation
@@ -204,7 +204,7 @@ class TestCUBreduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.cuda.cub.device_reduce'
+        func = 'cupy.core._routines_statistics.cub.device_reduce'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.argmax()
         # ...then perform the actual computation

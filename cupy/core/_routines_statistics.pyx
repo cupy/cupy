@@ -10,7 +10,12 @@ from cupy.core._reduction import ReductionKernel
 
 from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray
-from cupy.cuda cimport cub
+
+# TODO(leofang): always import cub when hipCUB is supported
+if not cupy.cuda.runtime.is_hip:
+    from cupy.cuda import cub
+else:
+    cub = None
 
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):

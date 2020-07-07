@@ -29,7 +29,7 @@
 #define CUPY_CUB_VERSION_CODE 0
 #endif
 
-#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#ifndef CUPY_NO_CUDA
 #include <cuda_runtime.h>  // for cudaStream_t
 
 void cub_device_reduce(void*, size_t&, void*, void*, int, cudaStream_t, int, int);
@@ -41,7 +41,7 @@ size_t cub_device_segmented_reduce_get_workspace_size(void*, void*, int, void*, 
 size_t cub_device_spmv_get_workspace_size(void*, void*, void*, void*, void*, int, int, int, cudaStream_t, int);
 size_t cub_device_scan_get_workspace_size(void*, void*, int, cudaStream_t, int, int);
 
-#else  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#else // CUPY_NO_CUDA
 
 typedef struct CUstream_st *cudaStream_t;
 
@@ -73,8 +73,6 @@ size_t cub_device_scan_get_workspace_size(...) {
     return 0;
 }
 
-#endif  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#endif // #ifndef CUPY_NO_CUDA
 
-// TODO(leofang): support hipCUB?
-
-#endif  // #ifndef INCLUDE_GUARD_CUPY_CUDA_CUB_H
+#endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_CUB_H

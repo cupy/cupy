@@ -14,8 +14,13 @@ from cupy.core cimport _kernel
 from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
-from cupy.cuda cimport cub
 from cupy.cuda cimport memory
+
+# TODO(leofang): always import cub when hipCUB is supported
+if not cupy.cuda.runtime.is_hip:
+    from cupy.cuda import cub
+else:
+    cub = None
 
 
 # ndarray members
