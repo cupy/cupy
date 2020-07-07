@@ -64,6 +64,7 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
     cdef Py_ssize_t count_nonzero
     cdef int ndim
     cdef ndarray nonzero
+    numpy_int64 = numpy.int64
     if self.size == 0:
         count_nonzero = 0
     else:
@@ -72,21 +73,28 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
         else:
             nonzero = cupy.core.not_equal(self, 0)
             nonzero = nonzero.ravel()
+
+        # Get number of True in the mask to determine the shape of the array
+        # after masking.
+        if nonzero.size <= 2 ** 31 - 1:
+            scan_dtype = numpy.int32
+        else:
+            scan_dtype = numpy_int64
         scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM,
-                                dtype=numpy.int64)
+                                dtype=scan_dtype)
         count_nonzero = int(scan_index[-1])  # synchronize!
     ndim = max(<int>self._shape.size(), 1)
     if count_nonzero == 0:
-        return ndarray((0, ndim), dtype=dtype)
+        return ndarray((0, ndim), dtype=numpy_int64)
 
     if ndim <= 1:
-        dst = ndarray((count_nonzero, 1), dtype=dtype)
+        dst = ndarray((count_nonzero, 1), dtype=numpy_int64)
         _nonzero_kernel_1d(nonzero, scan_index, dst)
         return dst
     else:
         nonzero.shape = self.shape
         scan_index.shape = self.shape
-        dst = ndarray((count_nonzero, ndim), dtype=dtype)
+        dst = ndarray((count_nonzero, ndim), dtype=numpy_int64)
         _nonzero_kernel(nonzero, scan_index, dst)
         return dst
 
@@ -367,13 +375,13 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
 
 
 _nonzero_kernel_1d = ElementwiseKernel(
-    'T src, S index', 'raw S dst',
+    'T src, S index', 'raw U dst',
     'if (src != 0) dst[index - 1] = i',
     'nonzero_kernel_1d')
 
 
 _nonzero_kernel = ElementwiseKernel(
-    'T src, S index', 'raw S dst',
+    'T src, S index', 'raw U dst',
     '''
     if (src != 0){
         for(int j = 0; j < _ind.ndim; j++){
