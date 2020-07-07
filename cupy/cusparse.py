@@ -80,18 +80,17 @@ def _dtype_to_DataType(dtype):
         raise TypeError
 
 
-_available_cuda_version = {
+_available_cusparse_version = {
     'csrmv': (8000, 11000),
-    'csrmvEx': (8000, 11000),  # TODO(anaruse): failure in CUDA 11
+    'csrmvEx': (8000, 11000),  # TODO(anaruse): failure in cuSparse 11.0
     'csrmm': (8000, 11000),
     'csrmm2': (8000, 11000),
     'csrgeam': (8000, 11000),
     'csrgeam2': (9020, None),
     'csrgemm': (8000, 11000),
     'csrgemm2': (8000, None),
-    # TODO(anaruse): check availability on Windows when CUDA 11 is relased
-    'spmv': ({'Linux': 10010, 'Windows': 11000}, None),
-    'spmm': ({'Linux': 10010, 'Windows': 11000}, None),
+    'spmv': (10200, None),
+    'spmm': (10301, None),  # accuracy bugs in cuSparse 10.3.0
     'csr2dense': (8000, None),
     'csc2dense': (8000, None),
     'csrsort': (8000, None),
@@ -101,8 +100,8 @@ _available_cuda_version = {
     'csr2coo': (8000, None),
     'csr2csc': (8000, 11000),
     'csc2csr': (8000, 11000),  # the entity is csr2csc
-    'csr2cscEx2': (10010, None),
-    'csc2csrEx2': (10010, None),  # the entity is csr2cscEx2
+    'csr2cscEx2': (10200, None),
+    'csc2csrEx2': (10200, None),  # the entity is csr2cscEx2
     'dense2csc': (8000, None),
     'dense2csr': (8000, None),
     'csr2csr_compress': (8000, None),
@@ -121,16 +120,16 @@ def _get_version(x):
 
 @util.memoize()
 def check_availability(name):
-    if name not in _available_cuda_version:
+    if name not in _available_cusparse_version:
         msg = 'No available version information specified for {}'.name
         raise ValueError(msg)
-    version_added, version_removed = _available_cuda_version[name]
+    version_added, version_removed = _available_cusparse_version[name]
     version_added = _get_version(version_added)
     version_removed = _get_version(version_removed)
-    cuda_version = runtime.runtimeGetVersion()
-    if version_added is not None and cuda_version < version_added:
+    cusparse_version = cusparse.getVersion(device.get_cusparse_handle())
+    if version_added is not None and cusparse_version < version_added:
         return False
-    if version_removed is not None and cuda_version >= version_removed:
+    if version_removed is not None and cusparse_version >= version_removed:
         return False
     return True
 

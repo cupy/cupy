@@ -114,7 +114,11 @@ cdef class _ArgInfo:
     # Holds metadata of an argument.
     # This class is immutable and used as a part of hash keys.
 
-    def __init__(
+    def __init__(self, *args):
+        arg_kind, typ, dtype, ndim, c_contiguous, index_32_bits = args
+        self._init(arg_kind, typ, dtype, ndim, c_contiguous, index_32_bits)
+
+    cdef _ArgInfo _init(
             self,
             _ArgKind arg_kind,
             type typ,
@@ -144,28 +148,36 @@ cdef class _ArgInfo:
 
     @staticmethod
     cdef _ArgInfo from_ndarray(ndarray arg):
-        return _ArgInfo(
+        cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
+        ret._init(
             ARG_KIND_NDARRAY,
             ndarray,
             arg.dtype.type,
             arg._shape.size(),
             arg._c_contiguous,
             arg._index_32_bits)
+        return ret
 
     @staticmethod
     cdef _ArgInfo from_scalar(_scalar.CScalar arg):
+        cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
         dtype = arg.get_numpy_type()
-        return _ArgInfo(ARG_KIND_SCALAR, _scalar.CScalar, dtype, 0, True, True)
+        ret._init(ARG_KIND_SCALAR, _scalar.CScalar, dtype, 0, True, True)
+        return ret
 
     @staticmethod
     cdef _ArgInfo from_indexer(_carray.Indexer arg):
-        return _ArgInfo(
+        cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
+        ret._init(
             ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True, True)
+        return ret
 
     @staticmethod
     cdef _ArgInfo from_memptr(memory.MemoryPointer arg):
-        return _ArgInfo(
+        cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
+        ret._init(
             ARG_KIND_POINTER, memory.MemoryPointer, None, 0, True, True)
+        return ret
 
     def __hash__(self):
         return hash((self.arg_kind, self.type, self.dtype, self.ndim,
