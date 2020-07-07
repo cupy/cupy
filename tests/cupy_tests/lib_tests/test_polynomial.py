@@ -4,6 +4,7 @@ import pytest
 import numpy
 
 import cupy
+import cupyx
 from cupy import testing
 
 
@@ -113,6 +114,12 @@ class TestPoly1d(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
+    def test_poly1d_order_leading_zeros(self, xp, dtype):
+        a = xp.array([0, 0, 1, 2, 3, 0], dtype)
+        return xp.poly1d(a).order
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
     def test_poly1d_getitem1(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
         return xp.poly1d(a)[-1]
@@ -130,11 +137,25 @@ class TestPoly1d(unittest.TestCase):
         return xp.poly1d(a)[100]
 
     @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_getitem4(self, xp, dtype):
+        a = xp.array([0, 0, 1, 2, 3, 0], dtype)
+        return xp.poly1d(a)[2]
+
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_setitem(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
         b = xp.poly1d(a)
         b[100] = 20
+        return b.coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_setitem_leading_zeros(self, xp, dtype):
+        a = xp.array([0, 0, 0, 2, 3, 0], dtype)
+        b = xp.poly1d(a)
+        b[1] = 10
         return b.coeffs
 
     @testing.for_all_dtypes()
