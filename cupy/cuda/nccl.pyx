@@ -169,7 +169,7 @@ cpdef groupStart():
     """Start a group of NCCL calls. Must be paired with :func:`groupEnd()`.
 
     .. note::
-        This method is only useful when the ``NcclCommunicator`` instances are
+        This method is useful when the ``NcclCommunicator`` instances are
         created via :meth:`~.NcclCommunicator.initAll`. A typical usage pattern
         is like this:
 
@@ -182,11 +182,18 @@ cpdef groupStart():
                 # ... make some collective calls ...
             cupy.cuda.nccl.groupEnd()
 
-    .. seealso:: `ncclGroupStart`_
+        Other use cases include fusing several NCCL calls into one, and
+        point-to-point communications using :meth:`~.NcclCommunicator.send` and
+        :meth:`~.NcclCommunicator.recv` (with NCCL 2.7+).
+
+    .. seealso:: `ncclGroupStart`_, `Group Calls`_
 
     .. _ncclGroupStart:
-        https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/group.html#ncclgroupstart
-    """  # noqa
+        https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/group.html#ncclgroupstart
+
+    .. _Group calls:
+        https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/groups.html
+    """
     if NCCL_VERSION_CODE < 2000:
         raise RuntimeError('ncclGroupStart is not available in this version')
     with nogil:
@@ -198,7 +205,7 @@ cpdef groupEnd():
     """End a group of NCCL calls. Must be paired with :func:`groupStart()`.
 
     .. note::
-        This method is only useful when the ``NcclCommunicator`` instances are
+        This method is useful when the ``NcclCommunicator`` instances are
         created via :meth:`~.NcclCommunicator.initAll`. A typical usage pattern
         is like this:
 
@@ -211,11 +218,18 @@ cpdef groupEnd():
                 # ... make some collective calls ...
             cupy.cuda.nccl.groupEnd()
 
-    .. seealso:: `ncclGroupEnd`_
+        Other use cases include fusing several NCCL calls into one, and
+        point-to-point communications using :meth:`~.NcclCommunicator.send` and
+        :meth:`~.NcclCommunicator.recv` (with NCCL 2.7+).
+
+    .. seealso:: `ncclGroupEnd`_, `Group Calls`_
 
     .. _ncclGroupEnd:
-        https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/group.html#ncclgroupend
-    """  # noqa
+        https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/group.html#ncclgroupend
+
+    .. _Group calls:
+        https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/groups.html
+    """
     if NCCL_VERSION_CODE < 2000:
         raise RuntimeError('ncclGroupEnd is not available in this version')
     with nogil:
