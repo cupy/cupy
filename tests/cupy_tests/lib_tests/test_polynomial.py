@@ -259,3 +259,25 @@ class TestPoly1dEquality(unittest.TestCase):
     def test_poly1d_ne2(self, xp, dtype):
         a, b = self.make_poly1d2(xp, dtype)
         return a != b
+
+
+@testing.gpu
+class TestPoly1dDeviceSynchronization(unittest.TestCase):
+
+    @cupyx.allow_synchronize(False)
+    @testing.for_all_dtypes()
+    def test_poly1d_init(self, dtype):
+        a = testing.shaped_arange((10,), cupy, dtype)
+        return cupy.poly1d(a)
+
+    @cupyx.allow_synchronize(False)
+    @testing.for_all_dtypes()
+    def test_poly1d_getitem(self, dtype):
+        a = testing.shaped_arange((10,), cupy, dtype)
+        return cupy.poly1d(a)[2]
+
+    @cupyx.allow_synchronize(False)
+    @testing.for_all_dtypes()
+    def test_poly1d_setitem(self, dtype):
+        a = testing.shaped_arange((10,), cupy, dtype)
+        cupy.poly1d(a)[2] = -1
