@@ -1,4 +1,5 @@
 import numpy
+from cpython cimport bool
 
 import cupy
 from cupy.core.core cimport ndarray
@@ -54,9 +55,16 @@ cdef class poly1d:
     cdef:
         readonly ndarray _coeffs
         readonly str _variable
+        readonly bool _trimmed
 
     @property
     def coeffs(self):
+        if self._trimmed:
+            return self._coeffs
+        self._coeffs = cupy.trim_zeros(self._coeffs, trim='f')
+        if self._coeffs.size == 0:
+            self._coeffs = cupy.array([0.])
+        self._trimmed = True
         return self._coeffs
 
     @coeffs.setter
@@ -70,7 +78,7 @@ cdef class poly1d:
 
     @property
     def order(self):
-        return self._coeffs.size - 1
+        return self.coeffs.size - 1
 
     # TODO(Dahlia-Chehata): implement using cupy.roots
     @property
@@ -110,10 +118,8 @@ cdef class poly1d:
         c_or_r = cupy.atleast_1d(c_or_r)
         if c_or_r.ndim > 1:
             raise ValueError('Polynomial must be 1d only.')
-        c_or_r = cupy.trim_zeros(c_or_r, trim='f')
-        if c_or_r.size == 0:
-            c_or_r = cupy.array([0.])
         self._coeffs = c_or_r
+        self._trimmed = False
         if variable is None:
             variable = 'x'
         self._variable = variable
