@@ -174,6 +174,7 @@ ncclDataType_t _get_proper_datatype(ncclDataType_t datatype) {
     return TYPE2TYPE_V1[datatype];
 }
 
+#ifndef CUPY_NO_CUDA
 ncclResult_t ncclGroupStart() {
     return ncclSuccess;
 }
@@ -181,6 +182,7 @@ ncclResult_t ncclGroupStart() {
 ncclResult_t ncclGroupEnd() {
     return ncclSuccess;
 }
+#endif // #ifndef CUPY_NO_CUDA
 #endif // #if (NCCL_VERSION_CODE < 2000)
 
 #if (NCCL_VERSION_CODE < 2200)
