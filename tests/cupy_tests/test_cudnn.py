@@ -5,7 +5,7 @@ import numpy
 import cupy
 
 try:
-    import cupy_cuda.cudnn as libcudnn
+    import cupy.cuda.cudnn as libcudnn
     cudnn_enabled = True
     modes = [
         libcudnn.CUDNN_ACTIVATION_SIGMOID,
