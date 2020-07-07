@@ -1,5 +1,5 @@
-from cupy_cuda cimport runtime
-from cupy_cuda cimport stream as stream_module
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda cimport stream as stream_module
 
 import threading
 import weakref

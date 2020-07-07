@@ -3,8 +3,8 @@ from numpy import linalg
 
 import cupy
 from cupy.core import core
-from cupy_cuda import cublas
-from cupy_cuda import cusolver
+from cupy_backends.cuda.libs import cublas
+from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.linalg import decomposition
 from cupy.linalg import util

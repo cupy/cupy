@@ -9,7 +9,7 @@ from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
-from cupy_cuda cimport runtime
+from cupy_backends.cuda.api cimport runtime
 
 import math
 import string

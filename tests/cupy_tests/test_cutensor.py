@@ -7,7 +7,7 @@ from cupy import testing
 
 if cupy.cuda.cutensor_enabled:
     from cupy import cutensor
-    from cupy_cuda import cutensor as ct
+    from cupy_backends.cuda.libs import cutensor as ct
 
 
 @testing.parameterize(

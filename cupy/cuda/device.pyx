@@ -3,11 +3,11 @@
 import threading
 
 from cupy.core import syncdetect
-from cupy_cuda import cublas
-from cupy_cuda import cusolver
-from cupy_cuda import cusparse
-from cupy_cuda cimport runtime
-from cupy_cuda import runtime as runtime_module
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.api import runtime as runtime_module
+from cupy_backends.cuda.libs import cublas
+from cupy_backends.cuda.libs import cusolver
+from cupy_backends.cuda.libs import cusparse
 from cupy import util
 
 

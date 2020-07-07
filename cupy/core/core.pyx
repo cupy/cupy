@@ -24,7 +24,7 @@ from cupy.cuda import device
 from cupy.cuda import memory as memory_module
 
 
-from cupy_cuda.runtime import CUDARuntimeError
+from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy import util
 
 cimport cpython  # NOQA
@@ -48,8 +48,8 @@ from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
-from cupy_cuda cimport cublas
-from cupy_cuda cimport runtime
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.libs cimport cublas
 
 
 @cython.profile(False)

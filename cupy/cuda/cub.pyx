@@ -6,14 +6,14 @@ from cpython cimport sequence
 
 import numpy
 
-from cupy_cuda.driver cimport Stream as Stream_t
+from cupy_backends.cuda.api.driver cimport Stream as Stream_t
 from cupy.core.core cimport _internal_ascontiguousarray
 from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport ndarray
 from cupy.core.internal cimport _contig_axes
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
-from cupy_cuda cimport runtime
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport stream
 
 cimport cython

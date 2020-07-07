@@ -9,7 +9,7 @@
 
 #else  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
-#include "../../cupy_cuda/cupy_cuda.h"
+#include "../../cupy_backends/cuda/cupy_cuda.h"
 
 extern "C" {
 

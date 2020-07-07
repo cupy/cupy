@@ -9,8 +9,8 @@ import tempfile
 
 from cupy.cuda import device
 from cupy.cuda import function
-from cupy_cuda import runtime
-from cupy_cuda import nvrtc
+from cupy_backends.cuda.api import runtime
+from cupy_backends.cuda.libs import nvrtc
 from cupy import util
 
 

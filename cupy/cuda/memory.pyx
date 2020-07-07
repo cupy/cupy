@@ -10,7 +10,7 @@ import threading
 import warnings
 import weakref
 
-from cupy_cuda import runtime
+from cupy_backends.cuda.api import runtime
 from cupy.core import syncdetect
 
 from fastrlock cimport rlock
@@ -22,7 +22,7 @@ from cupy.cuda cimport device
 from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport memory_hook
 from cupy.cuda cimport stream as stream_module
-from cupy_cuda cimport runtime
+from cupy_backends.cuda.api cimport runtime
 
 
 cdef bint _exit_mode = False

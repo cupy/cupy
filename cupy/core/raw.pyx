@@ -1,7 +1,7 @@
 import cupy
 
-from cupy_cuda cimport driver
-from cupy_cuda cimport runtime
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda.function cimport Function, Module
 
 

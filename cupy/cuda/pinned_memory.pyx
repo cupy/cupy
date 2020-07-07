@@ -5,10 +5,10 @@ import weakref
 
 from fastrlock cimport rlock
 
-from cupy_cuda import runtime
+from cupy_backends.cuda.api import runtime
 
 from cupy.core cimport internal
-from cupy_cuda cimport runtime
+from cupy_backends.cuda.api cimport runtime
 from cupy import util
 
 

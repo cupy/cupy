@@ -40,14 +40,14 @@ use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 MODULES = []
 
 cuda_files = [
-    'cupy_cuda.cublas',
-    'cupy_cuda.curand',
-    'cupy_cuda.cusparse',
-    'cupy_cuda.driver',
-    'cupy_cuda.nvrtc',
-    'cupy_cuda.profiler',
-    'cupy_cuda.runtime',
-    'cupy_cuda.stream',
+    'cupy_backends.cuda.api.driver',
+    'cupy_backends.cuda.api.runtime',
+    'cupy_backends.cuda.libs.cublas',
+    'cupy_backends.cuda.libs.curand',
+    'cupy_backends.cuda.libs.cusparse',
+    'cupy_backends.cuda.libs.nvrtc',
+    'cupy_backends.cuda.libs.profiler',
+    'cupy_backends.cuda.stream',
     'cupy.core._carray',
     'cupy.core._cub_reduction',
     'cupy.core._dtype',
@@ -133,7 +133,7 @@ if use_hip:
     MODULES.append({
         'name': 'cusolver',
         'file': [
-            'cupy_cuda.cusolver',
+            'cupy_backends.cuda.libs.cusolver',
         ],
         'include': [],
         'libraries': [],
@@ -142,7 +142,7 @@ else:
     MODULES.append({
         'name': 'cusolver',
         'file': [
-            'cupy_cuda.cusolver',
+            'cupy_backends.cuda.libs.cusolver',
         ],
         'include': [
             'cusolverDn.h',
@@ -157,7 +157,7 @@ if not use_hip:
     MODULES.append({
         'name': 'cudnn',
         'file': [
-            'cupy_cuda.cudnn',
+            'cupy_backends.cuda.libs.cudnn',
             'cupy.cudnn',
         ],
         'include': [
@@ -202,7 +202,7 @@ if not use_hip:
     MODULES.append({
         'name': 'cutensor',
         'file': [
-            'cupy_cuda.cutensor',
+            'cupy_backends.cuda.libs.cutensor',
         ],
         'include': [
             'cutensor.h',

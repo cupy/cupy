@@ -11,13 +11,13 @@ from cupy.cuda import memory_hooks  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
 from cupy.cuda import stream  # NOQA
 from cupy.cuda import texture  # NOQA
-from cupy_cuda import cublas  # NOQA
-from cupy_cuda import curand  # NOQA
-from cupy_cuda import cusparse  # NOQA
-from cupy_cuda import driver  # NOQA
-from cupy_cuda import nvrtc  # NOQA
-from cupy_cuda import profiler  # NOQA
-from cupy_cuda import runtime  # NOQA
+from cupy_backends.cuda.api import driver  # NOQA
+from cupy_backends.cuda.api import runtime  # NOQA
+from cupy_backends.cuda.libs import cublas  # NOQA
+from cupy_backends.cuda.libs import curand  # NOQA
+from cupy_backends.cuda.libs import cusparse  # NOQA
+from cupy_backends.cuda.libs import nvrtc  # NOQA
+from cupy_backends.cuda.libs import profiler  # NOQA
 
 
 _available = None
@@ -29,7 +29,7 @@ if not runtime.is_hip:
     if int(os.getenv('CUB_DISABLED', 1)) == 0:
         cub_enabled = True
 
-from cupy_cuda import cusolver  # NOQA
+from cupy_backends.cuda.libs import cusolver  # NOQA
 # This flag is kept for backward compatibility.
 # It is always True as cuSOLVER library is always available in CUDA 8.0+.
 cusolver_enabled = True
@@ -53,7 +53,7 @@ except ImportError:
     nccl_enabled = False
 
 try:
-    from cupy_cuda import cutensor  # NOQA
+    from cupy_backends.cuda.libs import cutensor  # NOQA
     cutensor_enabled = True
 except ImportError:
     cutensor_enabled = False

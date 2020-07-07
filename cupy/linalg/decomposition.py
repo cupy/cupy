@@ -1,8 +1,8 @@
 import numpy
 
 import cupy
-from cupy_cuda import cublas
-from cupy_cuda import cusolver
+from cupy_backends.cuda.libs import cublas
+from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.cusolver import check_availability
 from cupy.linalg import util

@@ -10,9 +10,9 @@ from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.core cimport _routines_manipulation as _manipulation
-from cupy_cuda cimport driver
+from cupy_backends.cuda.api cimport driver
 from cupy.cuda cimport function
-from cupy_cuda cimport runtime
+from cupy_backends.cuda.api cimport runtime
 from cupy.core cimport _reduction
 
 from cupy.core import _dtype

@@ -2,7 +2,7 @@ import numpy
 import warnings
 
 import cupy
-from cupy_cuda import runtime
+from cupy_backends.cuda.api import runtime
 from cupy.cuda import cutensor
 from cupy.cuda import device
 from cupy import util

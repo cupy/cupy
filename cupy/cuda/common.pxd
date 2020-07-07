@@ -2,7 +2,7 @@
 
 from libcpp cimport bool as bool_t
 
-cdef extern from '../../cupy_cuda/cupy_common.h':
+cdef extern from '../../cupy_backends/cuda/cupy_common.h':
     ctypedef char cpy_byte
     ctypedef unsigned char cpy_ubyte
     ctypedef short cpy_short
