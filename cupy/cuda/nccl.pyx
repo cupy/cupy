@@ -64,6 +64,12 @@ cdef extern from 'cupy_nccl.h':
     ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff,
                                 size_t count, ncclDataType_t datatype,
                                 ncclComm_t comm, driver.Stream stream) nogil
+    ncclResult_t ncclSend(const void* sendbuff, size_t count,
+                          ncclDataType_t datatype, int peer, ncclComm_t comm,
+                          driver.Stream stream) nogil
+    ncclResult_t ncclRecv(void* recvbuff, size_t count,
+                          ncclDataType_t datatype, int peer, ncclComm_t comm,
+                          driver.Stream stream) nogil
 
     # Build-time version
     int NCCL_VERSION_CODE
@@ -94,6 +100,7 @@ cdef dict ERROR2 = {
     3: 'NCCL_ERROR_INTERNAL_ERROR',
     4: 'NCCL_ERROR_INVALID_ARGUMENT',
     5: 'NCCL_ERROR_INVALID_USAGE',
+    6: 'NCCL_NUM_RESULTS',
 }
 
 
@@ -424,6 +431,24 @@ cdef class NcclCommunicator:
             status = _ncclAllGather(<void*>sendbuf, <void*>recvbuf,
                                     count, <ncclDataType_t>datatype,
                                     self._comm, <driver.Stream>stream)
+        check_status(status)
+
+    def send(self, intptr_t sendbuf, size_t count, int datatype, int peer,
+             intptr_t stream):
+        if NCCL_VERSION_CODE < 2700:
+            raise RuntimeError('ncclSend is not available in this version')
+        with nogil:
+            status = ncclSend(<void*>sendbuf, count, <ncclDataType_t>datatype,
+                              peer, self._comm, <driver.Stream>stream)
+        check_status(status)
+
+    def recv(self, intptr_t recvbuf, size_t count, int datatype, int peer,
+             intptr_t stream):
+        if NCCL_VERSION_CODE < 2700:
+            raise RuntimeError('ncclRecv is not available in this version')
+        with nogil:
+            status = ncclRecv(<void*>recvbuf, count, <ncclDataType_t>datatype,
+                              peer, self._comm, <driver.Stream>stream)
         check_status(status)
 
     def check_async_error(self):
