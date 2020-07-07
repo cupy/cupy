@@ -13,7 +13,7 @@ from cupyx.scipy.sparse import csc
 
 # TODO(leofang): always import cub when hipCUB is supported
 if not cupy.cuda.runtime.is_hip:
-    from cupy.cuda.cub import cub
+    from cupy.cuda import cub
 else:
     cub = None
 
