@@ -163,21 +163,19 @@ cdef class poly1d:
         return not self.__eq__(other)
 
     def __getitem__(self, val):
-        ind = self._coeffs.size - 1 - val
-        if val > self._coeffs.size - 1 or val < 0:
-            return 0
-        return self._coeffs[ind]
+        if 0 <= val < self._coeffs.size:
+            return self._coeffs[-val-1]
+        return 0
 
     def __setitem__(self, key, val):
-        ind = self._coeffs.size - 1 - key
         if key < 0:
             raise ValueError('Negative powers are not supported.')
-        if key > self._coeffs.size - 1:
+        if key >= self._coeffs.size:
             zeroz = cupy.zeros(key - (self._coeffs.size - 1),
                                self._coeffs.dtype)
             self._coeffs = cupy.concatenate((zeroz, self._coeffs))
             ind = 0
-        self._coeffs[ind] = val
+        self._coeffs[-key-1] = val
         return
 
     def __iter__(self):
