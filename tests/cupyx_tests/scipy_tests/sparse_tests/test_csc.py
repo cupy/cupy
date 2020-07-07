@@ -1246,7 +1246,6 @@ class TestCscMatrixData(unittest.TestCase):
         return m.mean(axis=1)
 
 
-
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'ufunc': [
