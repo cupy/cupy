@@ -26,9 +26,10 @@ def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
         cupy.ndarray: The result of correlate.
 
     .. seealso:: :func:`scipy.ndimage.correlate`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     return _correlate_or_convolve(input, weights, output, mode, cval, origin)
 
@@ -58,9 +59,10 @@ def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
         cupy.ndarray: The result of convolution.
 
     .. seealso:: :func:`scipy.ndimage.convolve`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     return _correlate_or_convolve(input, weights, output, mode, cval, origin,
                                   True)
@@ -89,9 +91,10 @@ def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
     Returns:
         cupy.ndarray: The result of the 1D correlation.
     .. seealso:: :func:`scipy.ndimage.correlate1d`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     weights, origins = _convert_1d_args(input.ndim, weights, origin, axis)
     return _correlate_or_convolve(input, weights, output, mode, cval, origins)
@@ -120,9 +123,10 @@ def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
     Returns:
         cupy.ndarray: The result of the 1D convolution.
     .. seealso:: :func:`scipy.ndimage.convolve1d`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     weights = weights[::-1]
     origin = -origin
@@ -182,9 +186,10 @@ def uniform_filter1d(input, size, axis=-1, output=None, mode="reflect",
     Returns:
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.uniform_filter1d`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     return correlate1d(input, cupy.ones(size) / size, axis, output, mode, cval,
                        origin)
@@ -211,9 +216,10 @@ def uniform_filter(input, size=3, output=None, mode="reflect", cval=0.0,
     Returns:
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.uniform_filter`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     sizes = _fix_sequence_arg(size, input.ndim, 'size', int)
 
@@ -247,9 +253,10 @@ def gaussian_filter1d(input, sigma, axis=-1, order=0, output=None,
     Returns:
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.gaussian_filter1d`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     radius = int(float(truncate) * float(sigma) + 0.5)
     weights = _gaussian_kernel1d(sigma, int(order), radius)
@@ -279,9 +286,10 @@ def gaussian_filter(input, sigma, order=0, output=None, mode="reflect",
     Returns:
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.gaussian_filter`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     sigmas = _fix_sequence_arg(sigma, input.ndim, 'sigma', float)
     orders = _fix_sequence_arg(order, input.ndim, 'order', int)
@@ -345,9 +353,10 @@ def prewitt(input, axis=-1, output=None, mode="reflect", cval=0.0):
     Returns:
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.prewitt`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     return _prewitt_or_sobel(input, axis, output, mode, cval, cupy.ones(3))
 
@@ -367,9 +376,10 @@ def sobel(input, axis=-1, output=None, mode="reflect", cval=0.0):
     Returns:
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.sobel`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     return _prewitt_or_sobel(input, axis, output, mode, cval,
                              cupy.array([1, 2, 1]))
@@ -413,9 +423,10 @@ def generic_laplace(input, derivative2, output=None, mode="reflect",
     Returns:
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.generic_laplace`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     if extra_keywords is None:
         extra_keywords = {}
@@ -450,9 +461,10 @@ def laplace(input, output=None, mode="reflect", cval=0.0):
     Returns:
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.laplace`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     weights = cupy.array([1, -2, 1], dtype=cupy.float64)
 
@@ -481,9 +493,10 @@ def gaussian_laplace(input, sigma, output=None, mode="reflect",
     Returns:
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.gaussian_laplace`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     def derivative2(input, axis, output, mode, cval):
         order = [0] * input.ndim
@@ -522,9 +535,10 @@ def generic_gradient_magnitude(input, derivative, output=None,
     Returns:
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.generic_gradient_magnitude`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     if extra_keywords is None:
         extra_keywords = {}
@@ -565,9 +579,10 @@ def gaussian_gradient_magnitude(input, sigma, output=None, mode="reflect",
     Returns:
         cupy.ndarray: The result of the filtering.
     .. seealso:: :func:`scipy.ndimage.gaussian_gradient_magnitude`
-    .. note:: When the output data type is integral (or when no output is
-    provided and the input is integral) the results may not perfectly match the
-    results from SciPy due to floating-point rounding of intermediate results.
+    .. note::
+        When the output data type is integral (or when no output is provided
+        and input is integral) the results may not perfectly match the results
+        from SciPy due to floating-point rounding of intermediate results.
     """
     def derivative(input, axis, output, mode, cval):
         order = [0] * input.ndim
