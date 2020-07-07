@@ -223,11 +223,11 @@ class TestArrayReduction(unittest.TestCase):
 class TestCubReduction(unittest.TestCase):
 
     def setUp(self):
-        self.old_accelerators = _accelerator.get_reduction_accelerators()
-        _accelerator.set_reduction_accelerators(['cub'])
+        self.old_accelerators = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators(['cub'])
 
     def tearDown(self):
-        _accelerator.set_reduction_accelerators(self.old_accelerators)
+        _accelerator.set_routine_accelerators(self.old_accelerators)
 
     @testing.for_contiguous_axes()
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
