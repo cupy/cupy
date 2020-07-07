@@ -156,8 +156,6 @@ class _RuntimeInfo(object):
         if cub is not None:
             self.cub_build_version = cub.get_build_version()
 
-        # TODO(leofang): detect CUB runtime version
-
         if cutensor is not None:
             self.cutensor_version = cutensor.get_version()
 
@@ -180,6 +178,7 @@ class _RuntimeInfo(object):
             ('cuSPARSE Version', self.cusparse_version),
             ('NVRTC Version', self.nvrtc_version),
             ('Thrust Version', self.thrust_version),
+            ('CUB Build Version', self.cub_build_version),
         ]
 
         records += [
@@ -187,7 +186,6 @@ class _RuntimeInfo(object):
             ('cuDNN Version', self.cudnn_version),
             ('NCCL Build Version', self.nccl_build_version),
             ('NCCL Runtime Version', self.nccl_runtime_version),
-            ('CUB Build Version', self.cub_build_version),
             ('cuTENSOR Version', self.cutensor_version),
         ]
 
