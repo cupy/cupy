@@ -4,6 +4,9 @@ from cupy.core.core cimport ndarray
 from cupy.cuda cimport function
 
 
+cdef Py_ssize_t _block_size
+
+
 cdef class _AbstractReductionKernel:
 
     cdef:

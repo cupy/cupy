@@ -71,6 +71,9 @@ These environment variables are used during installation (building CuPy from sou
 | ``CUTENSOR_PATH``           | Path to the cuTENSOR root directory that contains ``lib`` and  |
 |                             | ``include`` directories. (experimental)                        |
 +-----------------------------+----------------------------------------------------------------+
+| ``CUPY_CUB_PATH``           | Path to the CUB root directory that contains the folders       |
+|                             | ``cub``, ``examples``, etc.                                    |
++-----------------------------+----------------------------------------------------------------+
 | ``NVCC``                    | Define the compiler to use when compiling CUDA files.          |
 +-----------------------------+----------------------------------------------------------------+
 | ``CUPY_PYTHON_350_FORCE``   | Enforce CuPy to be installed against Python 3.5.0 (not         |

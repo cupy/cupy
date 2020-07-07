@@ -23,6 +23,9 @@ cdef function.Function _create_cub_reduction_function(
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, preamble, options):
+    # A (incomplete) list of internal variables:
+    # _J            : the index of an element in the array
+
     # static_assert needs at least C++11 in NVRTC
     options += ('--std=c++11',)
 

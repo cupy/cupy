@@ -143,11 +143,12 @@ class TestBasic(unittest.TestCase):
         self.assertEqual(b.strides, bg.strides)
         return
 
+    @testing.with_requires('numpy>=1.19')
     @testing.for_all_dtypes()
     def test_empty_like_invalid_order(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp, dtype)
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 xp.empty_like(a, order='Q')
 
     def test_empty_like_subok(self):

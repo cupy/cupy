@@ -8,7 +8,15 @@
 #include <cuda.h>
 #include <cusparse.h>
 
-#if CUDA_VERSION < 9000
+#if !defined(CUSPARSE_VERSION)
+#if CUDA_VERSION < 10000
+#define CUSPARSE_VERSION CUDA_VERSION // CUDA_VERSION used instead
+#else
+#define CUSPARSE_VERSION 10000
+#endif
+#endif // #if !defined(CUSPARSE_VERSION)
+
+#if CUSPARSE_VERSION < 9000
 // Functions added in CUDA 9.0
 cusparseStatus_t cusparseSgtsv2_bufferSizeExt(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -105,9 +113,9 @@ cusparseStatus_t cusparseCgtsv2StridedBatch(...) {
 cusparseStatus_t cusparseZgtsv2StridedBatch(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
-#endif // #if CUDA_VERSION < 9000
+#endif // #if CUSPARSE_VERSION < 9000
 
-#if CUDA_VERSION < 9020
+#if CUSPARSE_VERSION < 9020
 // Functions added in CUDA 9.2
 cusparseStatus_t cusparseSgtsvInterleavedBatch_bufferSizeExt(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -209,13 +217,10 @@ cusparseStatus_t cusparseZcsrgeam2(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-#endif // #if CUDA_VERSION < 9020
+#endif // #if CUSPARSE_VERSION < 9020
 
-#if (CUDA_VERSION < 10010) || defined(_WIN32)
-// Types, macro and functions added in CUDA 10.1 except Windows
-// TODO(anaruse): check availability on Windows when CUDA 11 is released
-
-#define CUSPARSE_VERSION CUDA_VERSION // CUDA_VERSION used instead
+#if CUSPARSE_VERSION < 10200
+// Types, macro and functions added in cuSparse 10.2
 
 // cuSPARSE generic API
 typedef void* cusparseSpVecDescr_t;
@@ -385,7 +390,139 @@ cusparseStatus_t cusparseConstrainedGeMM(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-#endif // #if (CUDA_VERSION < 10010) || defined(_WIN32)
+#endif // #if CUSPARSE_VERSION < 10200
+
+#if CUSPARSE_VERSION < 10200
+// Functions added in cuSparse 10.2
+
+// CSR2CSC
+typedef enum {} cusparseCsr2CscAlg_t;
+
+cusparseStatus_t cusparseCsr2cscEx2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCsr2cscEx2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+#endif // #if CUSPARSE_VERSION < 10200
+
+#if CUSPARSE_VERSION >= 11000
+// Functions deleted in cuSparse 11.0
+
+// cuSPARSE Level2 Function
+cusparseStatus_t cusparseScsrmv(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrmv(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrmv(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrmv(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+// cuSPARSE Level3 Function
+cusparseStatus_t cusparseScsrmm(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrmm(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrmm(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrmm(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrmm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrmm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrmm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrmm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+// cuSPARSE Extra Function
+cusparseStatus_t cusparseXcsrgeamNnz(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrgeam(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgeam(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgeam(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgeam(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+
+cusparseStatus_t cusparseXcsrgemmNnz(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrgemm(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgemm(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgemm(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgemm(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+// cuSPARSE Format Convrsion
+cusparseStatus_t cusparseXcsr2coo(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsr2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsr2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsr2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsr2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+#endif // #if CUSPARSE_VERSION >= 11000
 
 #else  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
@@ -1397,6 +1534,16 @@ cusparseStatus_t cusparseConstrainedGeMM_bufferSize(...) {
 }
 
 cusparseStatus_t cusparseConstrainedGeMM(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+typedef enum {} cusparseCsr2CscAlg_t;
+
+cusparseStatus_t cusparseCsr2cscEx2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCsr2cscEx2(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
