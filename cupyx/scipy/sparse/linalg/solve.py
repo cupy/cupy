@@ -120,7 +120,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxit=np.inf, callback=None):
                              f'but got M.ndim == {M.ndim} and M.shape[0] == {M.shape[0]}')
         msolve = lambda vec: vec / M
     elif M == 'ilu':
-        msolve = _get_msolve_ilu(A.copy(), handle)
+        msolve, info_M, info_L, info_U = _get_msolve_ilu(A.copy(), handle)
     elif M == 'jacobi':
         raise NotImplementedError('A.diagonal() still needs to be implemented...')
         # msolve = lambda vec: vec / A.diagonal()
@@ -179,6 +179,11 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxit=np.inf, callback=None):
         if residual < tol:
             break
 
+    if M == 'ilu':
+        cusparse.destroyCsrilu02Info(info_M)
+        cusparse.destroyCsrilu02Info(info_L)
+        cusparse.destroyCsrilu02Info(info_U)
+
     return x, i
 
 
@@ -199,8 +204,8 @@ def _get_msolve_ilu(A, handle):
     n = A.shape[0]
 
     # create info objects
-    info_M = cp.cuda.cusparse.createCsrilu02Info()
-    info_L, info_U = cp.cuda.cusparse.createCsrsv2Info(), cp.cuda.cusparse.createCsrsv2Info()
+    info_M = cusparse.createCsrilu02Info()
+    info_L, info_U = cusparse.createCsrsv2Info(), cusparse.createCsrsv2Info()
 
     # create solve policies
     policy_M, policy_L = cusparse.CUSPARSE_SOLVE_POLICY_NO_LEVEL, cusparse.CUSPARSE_SOLVE_POLICY_NO_LEVEL
@@ -227,7 +232,7 @@ def _get_msolve_ilu(A, handle):
     buff_size_L = cusp._call_cusparse('csrsv2_bufferSize', dtype, handle, trans_L, *A_tuple(descr_L), info_L)
     buff_size_U = cusp._call_cusparse('csrsv2_bufferSize', dtype, handle, trans_U, *A_tuple(descr_U), info_U)
     buff_size = np.max((buff_size_M, buff_size_L, buff_size_U))
-    buff = cp.empty(int(buff_size), dtype=cp.int8)
+    buff = cp.empty(int(buff_size), dtype=cp.int)
     assert buff.data.ptr % 128 == 0
 
     # Analysis (setup) of M = LU, the Incomplete LU factorization of A
@@ -242,8 +247,8 @@ def _get_msolve_ilu(A, handle):
 
     def msolve(vec, out):
         cusp._call_cusparse('csrsv2_solve', dtype, handle, trans_L, *A_tuple_a(descr_L),
-                            info_L, vec.data.ptr, y.data.ptr, policy_L, buff.data.ptr)
+                            info_L, vec.data.ptr, y.data.ptr, info_L, policy_L, buff.data.ptr)
         cusp._call_cusparse('csrsv2_solve', dtype, handle, trans_U, *A_tuple_a(descr_U),
-                            info_U, y.data.ptr, out.data.ptr, policy_U, buff.data.ptr)
+                            info_U, y.data.ptr, out.data.ptr, info_U, policy_U, buff.data.ptr)
 
-    return msolve
+    return msolve, info_M, info_L, info_U
