@@ -39,12 +39,47 @@ def _broadcast_arrays(a, b):
     return x, y
 
 
+_csr_column_index1_ker_types = {
+    (_int32_dtype): 'csr_column_index1_ker<int>'
+}
+_csr_column_index1_ker = core.RawModule(code="""
+    #include <cupy/complex.cuh>
+    template<typename I>
+    __global__
+    void csr_column_index1_ker(const I *col_idxs,
+                               const I *col_offsets,
+                               I n_offsets,
+                               const I *Aj,
+                               I nnz,
+                               I *Bj) {
+
+    // Get the index of the thread
+    I i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if(i < nnz) {
+        I cur_col = Aj[i];
+        for(int jj=0; jj<n_offsets; jj++) {
+            if(cur_col == col_idxs[jj]) {
+                Bj[i] = col_offsets[jj];
+            }
+        }
+    }
+}
+""", options=_module_options, name_expressions=tuple(
+    _csr_column_index1_ker_types.values()
+))
+
+
 def _csr_column_index1_indptr(col_offsets, Ap, Aj):
     """Construct output indptr by counting column indices
     in input matrix.
     """
 
+    # We want col_offsets to be sparse here, so we can csr_column_index1_ker
+
     col_sum = cupy.zeros((Aj.size+1,), dtype=col_offsets.dtype)
+
+    # Instead of this, we can replace the col_offsets in Aj directly
     cupy.cumsum(col_offsets[Aj], out=col_sum[1:])
 
     Bp = col_sum[Ap]
@@ -60,7 +95,9 @@ def _csr_column_index1(col_idxs, n_col, indptr, indices):
     col_offsets = cupy.zeros(n_col, dtype=indptr.dtype)
 
     cupyx.scatter_add(col_offsets, col_idxs, 1)
-    cupy.cumsum(col_offsets, out=col_offsets)
+
+    # Won't need to do this anymore
+    # cupy.cumsum(col_offsets, out=col_offsets)
 
     new_indptr = _csr_column_index1_indptr(col_offsets, indptr, indices)
 
@@ -105,6 +142,7 @@ _get_csr_index2_ker = core.RawModule(code="""
             if (offset != prev_offset) {
                 const T v = Ax[jj];
                 for(I k = prev_offset; k < offset; k++) {
+                    // Will need to go through the col_idxs
                     Bj[n] = col_order[k];
                     Bx[n] = v;
                     n++;
