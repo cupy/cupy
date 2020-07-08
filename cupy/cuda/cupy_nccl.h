@@ -15,6 +15,8 @@
 
 #else // #ifndef CUPY_NO_CUDA
 
+#define UNUSED(x) ((void)x)
+
 #define NCCL_MAJOR 0
 #define NCCL_MINOR 0
 #define NCCL_PATCH 0
@@ -251,10 +253,13 @@ ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcou
 #if (NCCL_VERSION_CODE < 2400)
 // New functions in 2.4
 ncclResult_t ncclCommGetAsyncError(ncclComm_t comm, ncclResult_t *asyncError) {
+  UNUSED(comm);
+  UNUSED(asyncError);
   return ncclSuccess;
 }
 
 void ncclCommAbort(ncclComm_t comm) {
+  UNUSED(comm);
 }
 #endif
 
