@@ -52,6 +52,17 @@ nvrtcResult nvrtcGetProgramLog(nvrtcProgram prog, char* log) {
     return hiprtcGetProgramLog(prog, log);
 }
 
+nvrtcResult nvrtcAddNameExpression(nvrtcProgram prog,
+                                   const char* name_expression) {
+    return hiprtcAddNameExpression(prog, name_expression);
+}
+
+nvrtcResult nvrtcGetLoweredName(nvrtcProgram prog,
+                                const char* name_expression,
+                                const char** lowered_name ) {
+    return hiprtcGetLoweredName(prog, name_expression, lowered_name);
+}
+
 }
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_HIPRTC_H

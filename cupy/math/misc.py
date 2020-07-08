@@ -45,7 +45,7 @@ def convolve(a, v, mode='full'):
 
     method = cupyx.scipy.signal.choose_conv_method(a, v, mode)
     if method == 'direct':
-        _, out = _dot_convolve(a, v, mode)
+        out = _dot_convolve(a, v, mode)
     elif method == 'fft':
         out = _fft_convolve(a, v, mode)
     else:
@@ -55,8 +55,10 @@ def convolve(a, v, mode='full'):
 
 def _fft_convolve(a1, a2, mode):
 
+    offset = 0
     if a1.size < a2.size:
         a1, a2 = a2, a1
+        offset = 1 - a2.size % 2
 
     if a1.dtype.kind == 'c' or a2.dtype.kind == 'c':
         fft, ifft = cupy.fft.fft, cupy.fft.ifft
@@ -73,7 +75,7 @@ def _fft_convolve(a1, a2, mode):
     if mode == 'full':
         start, end = 0, n1 + n2 - 1
     elif mode == 'same':
-        start = (n2 - 1) // 2
+        start = (n2 - 1) // 2 + offset
         end = start + n1
     elif mode == 'valid':
         start, end = n2 - 1, n1
@@ -90,13 +92,11 @@ def _fft_convolve(a1, a2, mode):
 
 
 def _dot_convolve(a1, a2, mode):
-    if a1.size == 0 or a2.size == 0:
-        raise ValueError('Array arguments cannot be empty')
 
-    is_inverted = False
+    offset = 0
     if a1.size < a2.size:
         a1, a2 = a2, a1
-        is_inverted = True
+        offset = 1 - a2.size % 2
 
     dtype = cupy.result_type(a1, a2)
     n1, n2 = a1.size, a2.size
@@ -108,7 +108,7 @@ def _dot_convolve(a1, a2, mode):
         a1 = cupy.pad(a1, n2 - 1)
     elif mode == 'same':
         out_size = n1
-        pad_size = (n2 - 1) // 2
+        pad_size = (n2 - 1) // 2 + offset
         a1 = cupy.pad(a1, (n2 - 1 - pad_size, pad_size))
     elif mode == 'valid':
         out_size = n1 - n2 + 1
@@ -116,7 +116,7 @@ def _dot_convolve(a1, a2, mode):
     stride = a1.strides[0]
     a1 = stride_tricks.as_strided(a1, (out_size, n2), (stride, stride))
     output = _dot_kernel(a1, a2[::-1], axis=1)
-    return is_inverted, output
+    return output
 
 
 def clip(a, a_min=None, a_max=None, out=None):
