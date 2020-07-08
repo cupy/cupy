@@ -23,12 +23,23 @@ def _next_fast_len_impl(n, primes):
 def next_fast_len(target, real=False):
     """Find the next fast size to ``fft``.
 
+    Args:
+        target (int): The size of input array.
+        real (bool): ``True`` if the FFT involves real input or output.
+            This parameter is of no use, and only for compatibility to
+            SciPy's interface.
+
+    Returns:
+        int: The smallest fast length greater than or equal to the input value.
+
     .. seealso:: :func:`scipy.fft.next_fast_len`
 
     .. note::
         It may return a different value to :func:`scipy.fft.next_fast_len`
         as pocketfft's prime factors are different from cuFFT's factors.
-        For details, see
+        For details, see the `cuFFT documentation`_.
+
+    .. _cuFFT documentation:
         https://docs.nvidia.com/cuda/cufft/index.html#accuracy-and-performance
     """
     if target == 0:
