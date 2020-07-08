@@ -19,7 +19,8 @@ class TestPoly1dInit(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_poly1d_numpy_array(self, xp, dtype):
         a = numpy.arange(5, dtype=dtype)
-        out = xp.poly1d(a, variable=self.variable)
+        with cupyx.allow_synchronize(False):
+            out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
         return out.coeffs
 
@@ -27,13 +28,15 @@ class TestPoly1dInit(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_poly1d_cupy_array(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
-        out = xp.poly1d(a, variable=self.variable)
+        with cupyx.allow_synchronize(False):
+            out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
         return out.coeffs
 
     @testing.numpy_cupy_array_equal()
     def test_poly1d_list(self, xp):
-        out = xp.poly1d([1, 2, 3, 4], variable=self.variable)
+        with cupyx.allow_synchronize(False):
+            out = xp.poly1d([1, 2, 3, 4], variable=self.variable)
         assert out.variable == (self.variable or 'x')
         return out.coeffs
 
@@ -42,7 +45,8 @@ class TestPoly1dInit(unittest.TestCase):
     def test_poly1d_numpy_poly1d(self, xp, dtype):
         array = testing.shaped_arange((5,), numpy, dtype)
         a = numpy.poly1d(array)
-        out = xp.poly1d(a, variable=self.variable)
+        with cupyx.allow_synchronize(False):
+            out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
         return out.coeffs
 
@@ -51,7 +55,8 @@ class TestPoly1dInit(unittest.TestCase):
     def test_poly1d_numpy_poly1d_variable(self, xp, dtype):
         array = testing.shaped_arange((5,), numpy, dtype)
         a = numpy.poly1d(array, variable='z')
-        out = xp.poly1d(a, variable=self.variable)
+        with cupyx.allow_synchronize(False):
+            out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'z')
         return out.coeffs
 
@@ -77,7 +82,8 @@ class TestPoly1dInit(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_poly1d_zero_dim(self, xp, dtype):
         a = testing.shaped_arange((), xp, dtype)
-        out = xp.poly1d(a, variable=self.variable)
+        with cupyx.allow_synchronize(False):
+            out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
         return out.coeffs
 
@@ -85,7 +91,8 @@ class TestPoly1dInit(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_poly1d_zero_size(self, xp, dtype):
         a = testing.shaped_arange((0,), xp, dtype)
-        out = xp.poly1d(a, variable=self.variable)
+        with cupyx.allow_synchronize(False):
+            out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
         return out.coeffs
 
@@ -122,32 +129,37 @@ class TestPoly1d(unittest.TestCase):
     @testing.numpy_cupy_equal()
     def test_poly1d_getitem1(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
-        return xp.poly1d(a)[-1]
+        with cupyx.allow_synchronize(False):
+            return xp.poly1d(a)[-1]
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_poly1d_getitem2(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
-        return xp.poly1d(a)[5]
+        with cupyx.allow_synchronize(False):
+            return xp.poly1d(a)[5]
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_poly1d_getitem3(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
-        return xp.poly1d(a)[100]
+        with cupyx.allow_synchronize(False):
+            return xp.poly1d(a)[100]
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_poly1d_getitem4(self, xp, dtype):
         a = xp.array([0, 0, 1, 2, 3, 0], dtype)
-        return xp.poly1d(a)[2]
+        with cupyx.allow_synchronize(False):
+            return xp.poly1d(a)[2]
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_setitem(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
         b = xp.poly1d(a)
-        b[100] = 20
+        with cupyx.allow_synchronize(False):
+            b[100] = 20
         return b.coeffs
 
     @testing.for_all_dtypes()
@@ -155,7 +167,8 @@ class TestPoly1d(unittest.TestCase):
     def test_poly1d_setitem_leading_zeros(self, xp, dtype):
         a = xp.array([0, 0, 0, 2, 3, 0], dtype)
         b = xp.poly1d(a)
-        b[1] = 10
+        with cupyx.allow_synchronize(False):
+            b[1] = 10
         return b.coeffs
 
     @testing.for_all_dtypes()
@@ -259,39 +272,3 @@ class TestPoly1dEquality(unittest.TestCase):
     def test_poly1d_ne2(self, xp, dtype):
         a, b = self.make_poly1d2(xp, dtype)
         return a != b
-
-
-@testing.gpu
-class TestPoly1dDeviceSynchronization(unittest.TestCase):
-
-    @testing.for_all_dtypes()
-    def test_poly1d_init_numpy_array(self, dtype):
-        a = testing.shaped_arange((10,), numpy, dtype)
-        with cupyx.allow_synchronize(False):
-            cupy.poly1d(a)
-
-    @testing.for_all_dtypes()
-    def test_poly1d_init_cupy_array(self, dtype):
-        a = testing.shaped_arange((10,), cupy, dtype)
-        with cupyx.allow_synchronize(False):
-            cupy.poly1d(a)
-
-    @testing.for_all_dtypes()
-    def test_poly1d_init_numpy_poly1d(self, dtype):
-        a = testing.shaped_arange((10,), numpy, dtype)
-        b = numpy.poly1d(a)
-        with cupyx.allow_synchronize(False):
-            cupy.poly1d(b)
-
-    @testing.for_all_dtypes()
-    def test_poly1d_getitem(self, dtype):
-        a = testing.shaped_arange((10,), cupy, dtype)
-        with cupyx.allow_synchronize(False):
-            cupy.poly1d(a)[2]
-
-    @cupyx.allow_synchronize(False)
-    @testing.for_all_dtypes()
-    def test_poly1d_setitem(self, dtype):
-        a = testing.shaped_arange((10,), cupy, dtype)
-        with cupyx.allow_synchronize(False):
-            cupy.poly1d(a)[2] = -1
