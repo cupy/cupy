@@ -1557,7 +1557,7 @@ class TestCubSpmv(unittest.TestCase):
             return m * x
 
         # xp is cupy, first ensure we really use CUB
-        func = 'cupyx.scipy.sparse.csr.device_csrmv'
+        func = 'cupyx.scipy.sparse.csr.cub.device_csrmv'
         with testing.AssertFunctionIsCalled(func):
             m * x
         # ...then perform the actual computation
