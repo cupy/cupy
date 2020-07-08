@@ -33,6 +33,14 @@ class TestOrder(unittest.TestCase):
 
     @for_all_interpolations()
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_percentile_q_list(self, xp, dtype, interpolation):
+        a = testing.shaped_arange((1001,), xp, dtype)
+        q = [99, 99.9]
+        return xp.percentile(a, q, interpolation=interpolation)
+
+    @for_all_interpolations()
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_percentile_no_axis(self, xp, dtype, interpolation):
         a = testing.shaped_random((10, 2, 4, 8), xp, dtype)

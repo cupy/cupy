@@ -1,5 +1,4 @@
 import numpy
-from cpython cimport bool
 
 import cupy
 from cupy.core.core cimport ndarray
@@ -55,7 +54,7 @@ cdef class poly1d:
     cdef:
         readonly ndarray _coeffs
         readonly str _variable
-        readonly bool _trimmed
+        readonly bint _trimmed
 
     @property
     def coeffs(self):
@@ -109,6 +108,7 @@ cdef class poly1d:
         if isinstance(c_or_r, (numpy.poly1d, poly1d)):
             self._coeffs = cupy.asarray(c_or_r.coeffs)
             self._variable = c_or_r._variable
+            self._trimmed = True
             if variable is not None:
                 self._variable = variable
             return
@@ -193,20 +193,17 @@ cdef class poly1d:
         return not self.__eq__(other)
 
     def __getitem__(self, val):
-        ind = self.order - val
-        if val > self.order or val < 0:
-            return 0
-        return self.coeffs[ind]
+        if 0 <= val < self._coeffs.size:
+            return self._coeffs[-val-1]
+        return 0
 
     def __setitem__(self, key, val):
-        ind = self.order - key
         if key < 0:
             raise ValueError('Negative powers are not supported.')
-        if key > self.order:
-            zeroz = cupy.zeros(key - self.order, self.coeffs.dtype)
-            self._coeffs = cupy.concatenate((zeroz, self.coeffs))
-            ind = 0
-        self._coeffs[ind] = val
+        if key >= self._coeffs.size:
+            self._coeffs = cupy.pad(self._coeffs,
+                                    (key - (self._coeffs.size - 1), 0))
+        self._coeffs[-key-1] = val
         return
 
     def __iter__(self):

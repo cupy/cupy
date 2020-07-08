@@ -17,8 +17,13 @@ from cupy.cuda import texture  # NOQA
 
 
 _available = None
-_cub_disabled = None
 
+cub_enabled = False  # default to not use CUB for backward compatibility
+# TODO(leofang): always import cub (but not enable it) when hipCUB is supported
+if not runtime.is_hip:
+    from cupy.cuda import cub  # NOQA
+    if int(os.getenv('CUB_DISABLED', 1)) == 0:
+        cub_enabled = True
 
 from cupy.cuda import cusolver  # NOQA
 # This flag is kept for backward compatibility.
@@ -36,14 +41,6 @@ try:
     thrust_enabled = True
 except ImportError:
     thrust_enabled = False
-
-cub_enabled = False
-if int(os.getenv('CUB_DISABLED', 0)) == 0:
-    try:
-        from cupy.cuda import cub  # NOQA
-        cub_enabled = True
-    except ImportError:
-        pass
 
 try:
     from cupy.cuda import nccl  # NOQA
