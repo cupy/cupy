@@ -1,5 +1,6 @@
 import cupy
 import cupyx
+import cupyx.scipy.fft
 
 from cupy import core
 from cupy.core import _routines_math as _math
@@ -67,7 +68,7 @@ def _fft_convolve(a1, a2, mode):
 
     dtype = cupy.result_type(a1, a2)
     n1, n2 = a1.size, a2.size
-    out_size = core.internal.clp2(n1 + n2 - 1)
+    out_size = cupyx.scipy.fft.next_fast_len(n1 + n2 - 1)
     fa1 = fft(a1, out_size)
     fa2 = fft(a2, out_size)
     out = ifft(fa1 * fa2, out_size)
