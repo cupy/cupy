@@ -70,36 +70,55 @@ _csr_column_index1_ker = core.RawModule(code="""
 ))
 
 
-def _csr_column_index1_indptr(col_offsets, Ap, Aj):
+def _csr_column_index1_indptr(col_offsets, unique_idxs, Ap, Aj, tpb=32):
     """Construct output indptr by counting column indices
     in input matrix.
     """
-
-    # We want col_offsets to be sparse here, so we can csr_column_index1_ker
-
     col_sum = cupy.zeros((Aj.size+1,), dtype=col_offsets.dtype)
+    grid = math.ceil(len(Aj) / tpb)
 
-    # Instead of this, we can replace the col_offsets in Aj directly
-    cupy.cumsum(col_offsets[Aj], out=col_sum[1:])
+    kernel = _csr_column_index1_ker.get_function(
+        _csr_column_index1_ker_types[unique_idxs.dtype]
+    )
+
+    kernel((grid,), (tpb,), (unique_idxs, col_offsets,
+                             len(unique_idxs), Aj,
+                             len(Aj), col_sum))
+
+    print("col_sum=%s" % col_sum)
+
+    cupy.cumsum(col_sum, out=col_sum)
 
     Bp = col_sum[Ap]
     Bp[1:] -= Bp[:-1]
 
     cupy.cumsum(Bp, out=Bp)
 
-    return Bp
+    return Bp, col_sum
 
 
-def _csr_column_index1(col_idxs, n_col, indptr, indices):
+def _csr_column_index1(col_idxs, indptr, indices):
 
-    col_offsets = cupy.zeros(n_col, dtype=indptr.dtype)
+    idx_map = cupy.unique(col_idxs)
+    idx_map.sort()
 
-    cupyx.scatter_add(col_offsets, col_idxs, 1)
+    idxs = cupy.searchsorted(idx_map, col_idxs)
+
+    print("idxs: %s" % idxs)
+    print("idx_map: %s" % idx_map)
+
+    col_offsets = cupy.zeros(len(idx_map), dtype=col_idxs.dtype)
+    cupyx.scatter_add(col_offsets, idxs, 1)
+
+    print("col_offsets=%s" % col_offsets)
 
     # Won't need to do this anymore
     # cupy.cumsum(col_offsets, out=col_offsets)
 
-    new_indptr = _csr_column_index1_indptr(col_offsets, indptr, indices)
+    new_indptr, col_offsets = _csr_column_index1_indptr(
+        col_offsets, idx_map, indptr, indices)
+
+    print("col_offsets=%s" % col_offsets)
 
     return col_offsets, new_indptr
 
@@ -158,6 +177,7 @@ _get_csr_index2_ker = core.RawModule(code="""
 def _csr_column_index2(col_order, col_offsets,
                        Ap, Aj, Ax, Bp, tpb=32):
 
+    print("col_order=%s" % col_order)
     new_nnz = Bp[-1].item()
 
     Bj = cupy.empty(new_nnz, dtype=Aj.dtype)

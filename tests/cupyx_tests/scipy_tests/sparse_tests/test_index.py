@@ -90,7 +90,7 @@ class TestIndexing(unittest.TestCase):
         self._run(slice(None), slice(None))
 
     def test_major_all_minor_fancy(self):
-        self._run(slice(None), [1, 5, 4])
+        self._run(slice(None), [1, 5, 4, 1])
 
     def test_major_fancy_minor_fancy(self):
         self._run([1, 5, 4], [1, 5, 4])
