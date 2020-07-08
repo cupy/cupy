@@ -77,6 +77,7 @@ cdef class poly1d:
         if isinstance(c_or_r, (numpy.poly1d, poly1d)):
             self._coeffs = cupy.asarray(c_or_r.coeffs)
             self._variable = c_or_r._variable
+            self._trimmed = True
             if variable is not None:
                 self._variable = variable
             return

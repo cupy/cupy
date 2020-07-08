@@ -265,10 +265,23 @@ class TestPoly1dEquality(unittest.TestCase):
 class TestPoly1dDeviceSynchronization(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    def test_poly1d_init(self, dtype):
+    def test_poly1d_init_numpy_array(self, dtype):
+        a = testing.shaped_arange((10,), numpy, dtype)
+        with cupyx.allow_synchronize(False):
+            cupy.poly1d(a)
+
+    @testing.for_all_dtypes()
+    def test_poly1d_init_cupy_array(self, dtype):
         a = testing.shaped_arange((10,), cupy, dtype)
         with cupyx.allow_synchronize(False):
             cupy.poly1d(a)
+
+    @testing.for_all_dtypes()
+    def test_poly1d_init_numpy_poly1d(self, dtype):
+        a = testing.shaped_arange((10,), numpy, dtype)
+        b = numpy.poly1d(a)
+        with cupyx.allow_synchronize(False):
+            cupy.poly1d(b)
 
     @testing.for_all_dtypes()
     def test_poly1d_getitem(self, dtype):
