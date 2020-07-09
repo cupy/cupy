@@ -783,31 +783,35 @@ def _nvcc_gencode_options(cuda_version):
     #
     #     arch_list = [('compute_61', 'sm_61')]
 
-    arch_list = ['compute_30',
-                 'compute_50']
-
     if cuda_version >= 11000:
-        arch_list += [('compute_60', 'sm_60'),
-                      ('compute_61', 'sm_61'),
-                      ('compute_70', 'sm_70'),
-                      ('compute_75', 'sm_75'),
-                      ('compute_80', 'sm_80'),
-                      'compute_80']
+        arch_list = ['compute_50',
+                     ('compute_60', 'sm_60'),
+                     ('compute_61', 'sm_61'),
+                     ('compute_70', 'sm_70'),
+                     ('compute_75', 'sm_75'),
+                     ('compute_80', 'sm_80'),
+                     'compute_80']
     elif cuda_version >= 10000:
-        arch_list += [('compute_60', 'sm_60'),
-                      ('compute_61', 'sm_61'),
-                      ('compute_70', 'sm_70'),
-                      ('compute_75', 'sm_75'),
-                      'compute_70']
+        arch_list = ['compute_30',
+                     'compute_50',
+                     ('compute_60', 'sm_60'),
+                     ('compute_61', 'sm_61'),
+                     ('compute_70', 'sm_70'),
+                     ('compute_75', 'sm_75'),
+                     'compute_70']
     elif cuda_version >= 9000:
-        arch_list += [('compute_60', 'sm_60'),
-                      ('compute_61', 'sm_61'),
-                      ('compute_70', 'sm_70'),
-                      'compute_70']
+        arch_list = ['compute_30',
+                     'compute_50',
+                     ('compute_60', 'sm_60'),
+                     ('compute_61', 'sm_61'),
+                     ('compute_70', 'sm_70'),
+                     'compute_70']
     elif cuda_version >= 8000:
-        arch_list += [('compute_60', 'sm_60'),
-                      ('compute_61', 'sm_61'),
-                      'compute_60']
+        arch_list = ['compute_30',
+                     'compute_50',
+                     ('compute_60', 'sm_60'),
+                     ('compute_61', 'sm_61'),
+                     'compute_60']
 
     options = []
     for arch in arch_list:
