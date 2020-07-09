@@ -179,9 +179,9 @@ cusolverStatus_t cusolverDnZgesvdaStridedBatched(...) {
 #else // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 #ifdef CUPY_USE_HIP
-#include "cupy_hip_common.h"
+#include "../cupy_hip_common.h"
 #else // #ifdef CUPY_USE_HIP
-#include "cupy_cuda_common.h"
+#include "../cupy_cuda_common.h"
 #endif // #ifdef CUPY_USE_HIP
 
 extern "C" {
