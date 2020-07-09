@@ -14,7 +14,7 @@ import threading
 cimport cpython  # NOQA
 cimport cython  # NOQA
 
-from cupy.cuda cimport driver
+from cupy_backends.cuda.api cimport driver
 
 
 cdef class PointerAttributes:
@@ -62,7 +62,7 @@ cdef extern from *:
     ctypedef StreamCallbackDef* StreamCallback 'cudaStreamCallback_t'
 
 
-cdef extern from 'cupy_cuda.h' nogil:
+cdef extern from '../cupy_cuda.h' nogil:
 
     # Types
     ctypedef struct _PointerAttributes 'cudaPointerAttributes':
@@ -192,6 +192,12 @@ cdef extern from 'cupy_cuda.h' nogil:
     int cudaDevAttrComputeCapabilityMajor
     int cudaDevAttrComputeCapabilityMinor
 
+    # Error code
+    int cudaErrorMemoryAllocation
+    int cudaErrorInvalidValue
+    int cudaErrorPeerAccessAlreadyEnabled
+
+
 _is_hip_environment = hip_environment  # for runtime being cimport'd
 is_hip = hip_environment  # for runtime being import'd
 deviceAttributeComputeCapabilityMajor = cudaDevAttrComputeCapabilityMajor
@@ -204,6 +210,7 @@ deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 
 errorInvalidValue = cudaErrorInvalidValue
 errorMemoryAllocation = cudaErrorMemoryAllocation
+errorPeerAccessAlreadyEnabled = cudaErrorPeerAccessAlreadyEnabled
 
 
 ###############################################################################
