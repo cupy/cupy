@@ -27,6 +27,16 @@ Fast Fourier Transforms
    cupyx.scipy.fft.ihfft
 
 
+Helper functions for FFT
+------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.fft.next_fast_len
+
+
 Code compatibility features
 ---------------------------
 1. As with other FFT modules in CuPy, FFT functions in this module can take advantage of an existing cuFFT plan (returned by :func:`~cupyx.scipy.fftpack.get_fft_plan`) to accelarate the computation. The plan can be either passed in explicitly via the keyword-only ``plan`` argument or used as a context manager.

@@ -32,7 +32,7 @@ cdef class poly1d:
     Args:
         c_or_r (array_like): The polynomial's
          coefficients in decreasing powers
-        r (bool, optional): If True, ```c_or_r`` specifies the
+        r (bool, optional): If True, ``c_or_r`` specifies the
             polynomial's roots; the default is False.
         variable (str, optional): Changes the variable used when
             printing the polynomial from ``x`` to ``variable``
@@ -45,9 +45,16 @@ cdef class poly1d:
     cdef:
         readonly ndarray _coeffs
         readonly str _variable
+        readonly bint _trimmed
 
     @property
     def coeffs(self):
+        if self._trimmed:
+            return self._coeffs
+        self._coeffs = cupy.trim_zeros(self._coeffs, trim='f')
+        if self._coeffs.size == 0:
+            self._coeffs = cupy.array([0.])
+        self._trimmed = True
         return self._coeffs
 
     @coeffs.setter
@@ -61,7 +68,7 @@ cdef class poly1d:
 
     @property
     def order(self):
-        return self._coeffs.size - 1
+        return self.coeffs.size - 1
 
     # TODO(Dahlia-Chehata): implement using cupy.roots
     @property
@@ -92,6 +99,7 @@ cdef class poly1d:
         if isinstance(c_or_r, (numpy.poly1d, poly1d)):
             self._coeffs = cupy.asarray(c_or_r.coeffs)
             self._variable = c_or_r._variable
+            self._trimmed = True
             if variable is not None:
                 self._variable = variable
             return
@@ -101,10 +109,8 @@ cdef class poly1d:
         c_or_r = cupy.atleast_1d(c_or_r)
         if c_or_r.ndim > 1:
             raise ValueError('Polynomial must be 1d only.')
-        c_or_r = cupy.trim_zeros(c_or_r, trim='f')
-        if c_or_r.size == 0:
-            c_or_r = cupy.array([0.])
         self._coeffs = c_or_r
+        self._trimmed = False
         if variable is None:
             variable = 'x'
         self._variable = variable
@@ -183,20 +189,17 @@ cdef class poly1d:
         return not self.__eq__(other)
 
     def __getitem__(self, val):
-        ind = self.order - val
-        if val > self.order or val < 0:
-            return 0
-        return self.coeffs[ind]
+        if 0 <= val < self._coeffs.size:
+            return self._coeffs[-val-1]
+        return 0
 
     def __setitem__(self, key, val):
-        ind = self.order - key
         if key < 0:
             raise ValueError('Negative powers are not supported.')
-        if key > self.order:
-            zeroz = cupy.zeros(key - self.order, self.coeffs.dtype)
-            self._coeffs = cupy.concatenate((zeroz, self.coeffs))
-            ind = 0
-        self._coeffs[ind] = val
+        if key >= self._coeffs.size:
+            self._coeffs = cupy.pad(self._coeffs,
+                                    (key - (self._coeffs.size - 1), 0))
+        self._coeffs[-key-1] = val
         return
 
     def __iter__(self):
