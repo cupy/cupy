@@ -8,8 +8,8 @@ def polymul(a1, a2):
     """Computes the product of two polynomials.
 
     Args:
-        a1 (cupy.ndarray or cupy.poly1d): first input polynomial.
-        a2 (cupy.ndarray or cupy.poly1d): second input polynomial.
+        a1 (scalar, cupy.ndarray or cupy.poly1d): first input polynomial.
+        a2 (scalar, cupy.ndarray or cupy.poly1d): second input polynomial.
 
     Returns:
         cupy.ndarray or cupy.poly1d: The product of the inputs.
@@ -142,9 +142,7 @@ cdef class poly1d:
     def __mul__(self, other):
         if cupy.isscalar(other):
             return poly1d(self.coeffs * other)
-        else:
-            other = poly1d(other)
-            return poly1d(polymul(self.coeffs, other.coeffs))
+        return polymul(self, other)
 
     # TODO(Dahlia-Chehata): implement using polyadd
     def __add__(self, other):

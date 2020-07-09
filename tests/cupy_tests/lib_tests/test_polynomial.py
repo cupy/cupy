@@ -345,6 +345,20 @@ class TestPolymul(unittest.TestCase):
         b = [4, 2]
         return xp.polymul(a, b)
 
+    @testing.numpy_cupy_array_equal()
+    def test_polymul_leading_zeros(self, xp):
+        a = [0, 0, 1, 2, 3, 0]
+        return xp.polymul(a, a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_polymul_scalar_poly1d(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        b = xp.poly1d(a, variable='z')
+        c = xp.polymul(b, dtype(10))
+        assert c.variable == 'x'
+        return c.coeffs
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_polymul_poly1d_poly1d(self, xp, dtype):
