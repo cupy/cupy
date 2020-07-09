@@ -8,8 +8,8 @@ cimport cython  # NOQA
 from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
-from cupy.cuda cimport driver
-from cupy.cuda cimport runtime
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 
 cdef extern from 'cupy_nccl.h':
     ctypedef struct ncclComm:

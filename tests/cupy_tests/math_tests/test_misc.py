@@ -232,6 +232,8 @@ class TestConvolveShapeCombination(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full']
 }))
+@unittest.skipIf(
+    cupy.cuda.cufft.getVersion() == 10000, 'Causes large precision errors')
 class TestConvolve(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
@@ -242,18 +244,17 @@ class TestConvolve(unittest.TestCase):
         return xp.convolve(a[::200], b[10::70], mode=self.mode)
 
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-3)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
     def test_convolve_large_non_contiguous(self, xp, dtype):
         a = testing.shaped_arange((10000,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
         return xp.convolve(a[200::], b[10::70], mode=self.mode)
 
-    @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2'])
-    @testing.numpy_cupy_allclose(rtol=1e-1)
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_allclose(rtol=1e-2)
     def test_convolve_diff_types(self, xp, dtype1, dtype2):
-        a = testing.shaped_arange((200,), xp, dtype1)
-        b = testing.shaped_arange((100,), xp, dtype2)
+        a = testing.shaped_random((200,), xp, dtype1)
+        b = testing.shaped_random((100,), xp, dtype2)
         return xp.convolve(a, b, mode=self.mode)
 
 

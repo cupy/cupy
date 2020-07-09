@@ -130,6 +130,7 @@ package_data = {
         'core/include/cupy/_cuda/cuda-*/*.h',
         'core/include/cupy/_cuda/cuda-*/*.hpp',
         'cuda/cupy_thrust.cu',
+        'cuda/cupy_cub.cu',
     ],
 }
 

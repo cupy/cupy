@@ -19,7 +19,7 @@ from libcpp cimport vector
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_cuda.h' nogil:
+cdef extern from '../cupy_cuda.h' nogil:
     # Error handling
     int cuGetErrorName(Result error, const char** pStr)
     int cuGetErrorString(Result error, const char** pStr)

@@ -4,8 +4,8 @@ import numpy
 import platform
 
 import cupy
-from cupy.cuda import cusparse
-from cupy.cuda import runtime
+from cupy_backends.cuda.libs import cusparse
+from cupy_backends.cuda.api import runtime
 from cupy.cuda import device
 from cupy import util
 import cupyx.scipy.sparse
