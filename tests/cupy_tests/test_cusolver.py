@@ -168,3 +168,12 @@ class TestSyevj(unittest.TestCase):
         for i in range(batch_size):
             testing.assert_allclose(
                 na[i].dot(v[i].get()), w[i] * v[i], rtol=1e-3, atol=1e-4)
+
+        # check arbitrary batch dimension shape
+        na = numpy.stack([na, na, na])
+        a = cupy.array(na, order=self.order)
+
+        w, v = cusolver.syevj(a, UPLO=self.UPLO, with_eigen_vector=True)
+
+        self.assertEqual(v.shape, a.shape)
+        self.assertEqual(w.shape, a.shape[:-1])

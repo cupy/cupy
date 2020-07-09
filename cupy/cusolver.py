@@ -266,7 +266,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
 
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
-            of symmetric 2-D square matrices ``(N, M, M)``.
+            of symmetric 2-D square matrices ``(..., M, M)``.
         UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
             part of ``a`` is used. ``'L'`` uses the lower triangular part of
             ``a``, and ``'U'`` uses the upper triangular part of ``a``.
@@ -287,7 +287,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
     if UPLO not in ('L', 'U'):
         raise ValueError('UPLO argument must be \'L\' or \'U\'')
 
-    if a.ndim == 3:
+    if a.ndim > 2:
         return _syevj_batched(a, UPLO, with_eigen_vector)
 
     assert a.ndim == 2
@@ -410,10 +410,12 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
         ret_w_dtype = 'd'
         ret_v_dtype = 'd'
 
-    # Note that cuSolver assumes fortran array
+    orig_shape = a.shape
+    *batch_shape, m, lda = orig_shape
+    a = a.reshape(-1, m, lda)
     v = cupy.array(a.swapaxes(-2, -1), order='C', copy=True, dtype=inp_v_dtype)
 
-    batch_size, m, lda = a.shape
+    batch_size = a.shape[0]
     w = cupy.empty((batch_size, m), inp_w_dtype).swapaxes(-2, 1)
     dev_info = cupy.empty((), numpy.int32)
     handle = device.Device().cusolver_handle
@@ -457,8 +459,10 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
 
     cusolver.destroySyevjInfo(params)
 
-    w = w.astype(ret_w_dtype, copy=False).swapaxes(-2, -1)
+    w = w.astype(ret_w_dtype, copy=False)
+    w = w.swapaxes(-2, -1).reshape(*batch_shape, m)
     if not with_eigen_vector:
         return w
-    v = v.astype(ret_v_dtype, copy=False).swapaxes(-2, -1)
+    v = v.astype(ret_v_dtype, copy=False)
+    v = v.swapaxes(-2, -1).reshape(orig_shape)
     return w, v

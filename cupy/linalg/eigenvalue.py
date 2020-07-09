@@ -99,7 +99,7 @@ def eigh(a, UPLO='L'):
 
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
-            of symmetric 2-D square matrices ``(N, M, M)``.
+            of symmetric 2-D square matrices ``(..., M, M)``.
         UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
             part of ``a`` is used. ``'L'`` uses the lower triangular part of
             ``a``, and ``'U'`` uses the upper triangular part of ``a``.
@@ -120,8 +120,8 @@ def eigh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigh`
     """
-    if a.ndim == 3:
-        return cupy.cusolver._syevj_batched(a, UPLO, True)
+    if a.ndim > 2:
+        return cupy.cusolver.syevj(a, UPLO, True)
     else:
         return _syevd(a, UPLO, True)
 
@@ -138,7 +138,7 @@ def eigvalsh(a, UPLO='L'):
 
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
-            of symmetric 2-D square matrices ``(N, M, M)``.
+            of symmetric 2-D square matrices ``(..., M, M)``.
         UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
             part of ``a`` is used. ``'L'`` uses the lower triangular part of
             ``a``, and ``'U'`` uses the upper triangular part of ``a``.
@@ -156,7 +156,7 @@ def eigvalsh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """
-    if a.ndim == 3:
-        return cupy.cusolver._syevj_batched(a, UPLO, False)[0]
+    if a.ndim > 2:
+        return cupy.cusolver.syevj(a, UPLO, False)
     else:
         return _syevd(a, UPLO, False)[0]
