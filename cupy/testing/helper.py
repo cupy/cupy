@@ -492,8 +492,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
 
 
 def numpy_cupy_array_list_equal(
-        err_msg='', verbose=True, name='xp',
-        sp_name=None, scipy_name=None, type_check=True):
+        err_msg='', verbose=True, name='xp', sp_name=None, scipy_name=None):
     """Decorator that checks the resulting lists of NumPy and CuPy's one are equal.
 
     Args:
