@@ -85,16 +85,23 @@ def _csr_column_index1_indptr(col_offsets, unique_idxs, Ap, Aj, tpb=32):
                              len(unique_idxs), Aj,
                              len(Aj), col_sum))
 
-    print("col_sum=%s" % col_sum)
+    s2 = col_sum[:Aj.size].copy()
+
+    s2[s2 == 0] = -1
+    s2[s2 > 0] = Aj[s2 > 0]
+    s2[s2 > 0] = cupy.searchsorted(unique_idxs, s2[s2 > 0])
 
     cupy.cumsum(col_sum, out=col_sum)
+
+    # We want to store only the offsets for the given column_idxs
+    # and we want to have Bj already have the given values
 
     Bp = col_sum[Ap]
     Bp[1:] -= Bp[:-1]
 
     cupy.cumsum(Bp, out=Bp)
 
-    return Bp, col_sum
+    return Bp, s2
 
 
 def _csr_column_index1(col_idxs, indptr, indices):
@@ -102,25 +109,20 @@ def _csr_column_index1(col_idxs, indptr, indices):
     idx_map = cupy.unique(col_idxs)
     idx_map.sort()
 
-    idxs = cupy.searchsorted(idx_map, col_idxs)
+    idxs = cupy.searchsorted(idx_map, col_idxs).astype('int32')
 
-    print("idxs: %s" % idxs)
-    print("idx_map: %s" % idx_map)
+    print(str(idxs.dtype))
 
-    col_offsets = cupy.zeros(len(idx_map), dtype=col_idxs.dtype)
-    cupyx.scatter_add(col_offsets, idxs, 1)
-
-    print("col_offsets=%s" % col_offsets)
+    col_counts = cupy.zeros(len(idx_map), dtype=col_idxs.dtype)
+    cupyx.scatter_add(col_counts, idxs, 1)
 
     # Won't need to do this anymore
     # cupy.cumsum(col_offsets, out=col_offsets)
 
     new_indptr, col_offsets = _csr_column_index1_indptr(
-        col_offsets, idx_map, indptr, indices)
+        col_counts, idx_map, indptr, indices)
 
-    print("col_offsets=%s" % col_offsets)
-
-    return col_offsets, new_indptr
+    return col_offsets, col_counts, idx_map, new_indptr
 
 
 _get_csr_index2_ker_types = {
@@ -133,7 +135,9 @@ _get_csr_index2_ker = core.RawModule(code="""
     #include <cupy/complex.cuh>
     template<typename I, typename T>
     __global__
-    void csr_index2_ker(I *col_order,
+    void csr_index2_ker(I *idx_map,
+                        I *col_counts,
+                        I *col_order,
                         I *col_offsets,
                         const I *Ap,
                         const I *Aj,
@@ -152,17 +156,12 @@ _get_csr_index2_ker = core.RawModule(code="""
 
         // loop through columns in current row
         for(int jj = Ap[i]; jj < Ap[i+1]; jj++) {
-            const I col = Aj[jj];  // current column
-            const I offset = col_offsets[col];
-            const I prev_offset = col == 0 ? 0 : col_offsets[col-1];
-
-            // if current column is in the indices,
-            // add it along with any potential duplicates
-            if (offset != prev_offset) {
+            const I col = col_offsets[jj];  // current column
+            if(col != -1) {
                 const T v = Ax[jj];
-                for(I k = prev_offset; k < offset; k++) {
-                    // Will need to go through the col_idxs
-                    Bj[n] = col_order[k];
+                for(int l = col; l < col+col_counts[col]; l++) {
+                    printf("i=%d, col=%d, l=%d, n=%d, v=%f\\n", i, col, l, n, v);
+                    Bj[n] = col_order[l];
                     Bx[n] = v;
                     n++;
                 }
@@ -175,20 +174,30 @@ _get_csr_index2_ker = core.RawModule(code="""
 
 
 def _csr_column_index2(col_order, col_offsets,
+                       col_counts, idx_map,
                        Ap, Aj, Ax, Bp, tpb=32):
 
     print("col_order=%s" % col_order)
     new_nnz = Bp[-1].item()
 
-    Bj = cupy.empty(new_nnz, dtype=Aj.dtype)
-    Bx = cupy.empty(new_nnz, dtype=Ax.dtype)
+    Bj = cupy.zeros(new_nnz, dtype=Aj.dtype)
+    Bx = cupy.zeros(new_nnz, dtype=Ax.dtype)
 
     grid = math.ceil((len(Bp)-1) / tpb)
     func = _get_csr_index2_ker_types[(Ap.dtype, Bx.dtype)]
     kernel = _get_csr_index2_ker.get_function(func)
+
+    print("col_offsets: %s" % col_offsets)
+    print("col_counts: %s" % col_counts)
+    print("Aj: %s" % Aj)
+
     kernel((grid,), (tpb,),
-           (col_order, col_offsets,
+           (idx_map.astype('int32'), col_counts.astype('int32'),
+            col_order, col_offsets.astype('int32'),
             Ap, Aj, Ax, len(Ap)-1, Bp, Bj, Bx))
+
+    print("Bj: %s" % Bj)
+    print("Bx: %s" % Bx)
 
     return Bj, Bx
 
