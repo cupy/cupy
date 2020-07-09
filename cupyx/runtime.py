@@ -5,6 +5,11 @@ import os
 import cupy
 
 try:
+    import cupy.cuda.thrust as thrust
+except ImportError:
+    thrust = None
+
+try:
     import cupy.cuda.cudnn as cudnn
 except ImportError:
     cudnn = None
@@ -88,13 +93,14 @@ class _RuntimeInfo(object):
     cusolver_version = None
     cusparse_version = None
     nvrtc_version = None
+    thrust_version = None
 
     # Optional Libraries
     cudnn_build_version = None
     cudnn_version = None
     nccl_build_version = None
     nccl_runtime_version = None
-    cub_version = None
+    cub_build_version = None
     cutensor_version = None
 
     def __init__(self):
@@ -132,6 +138,9 @@ class _RuntimeInfo(object):
             cupy.cuda.nvrtc.getVersion,
             cupy.cuda.nvrtc.NVRTCError)
 
+        if thrust is not None:
+            self.thrust_version = thrust.get_build_version()
+
         if cudnn is not None:
             self.cudnn_build_version = cudnn.get_build_version()
             self.cudnn_version = _eval_or_error(
@@ -145,9 +154,9 @@ class _RuntimeInfo(object):
             self.nccl_runtime_version = nccl_runtime_version
 
         if cub is not None:
-            # There is no API in CUB to retrieve the current version
-            # We show if its enabled or disabled
-            self.cub_version = 'Enabled'
+            self.cub_build_version = cub.get_build_version()
+
+        # TODO(leofang): detect CUB runtime version
 
         if cutensor is not None:
             self.cutensor_version = cutensor.get_version()
@@ -170,6 +179,7 @@ class _RuntimeInfo(object):
             ('cuSOLVER Version', self.cusolver_version),
             ('cuSPARSE Version', self.cusparse_version),
             ('NVRTC Version', self.nvrtc_version),
+            ('Thrust Version', self.thrust_version),
         ]
 
         records += [
@@ -177,7 +187,7 @@ class _RuntimeInfo(object):
             ('cuDNN Version', self.cudnn_version),
             ('NCCL Build Version', self.nccl_build_version),
             ('NCCL Runtime Version', self.nccl_runtime_version),
-            ('CUB Version', self.cub_version),
+            ('CUB Build Version', self.cub_build_version),
             ('cuTENSOR Version', self.cutensor_version),
         ]
 

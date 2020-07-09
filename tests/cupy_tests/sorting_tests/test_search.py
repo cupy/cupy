@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.core import _accelerator
 from cupy import testing
 
 
@@ -166,28 +167,54 @@ class TestSearch(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
-class TestCUBreduction(unittest.TestCase):
+@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+class TestCubReduction(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators(['cub'])
+
+    def tearDown(self):
+        _accelerator.set_routine_accelerators(self.old_accelerators)
+
     @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_argmin(self, xp, dtype):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order == 'C':
             a = xp.ascontiguousarray(a)
         else:
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.argmin()
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        func = 'cupy.core._routines_statistics.cub.device_reduce'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.argmin()
+        # ...then perform the actual computation
         return a.argmin()
 
     @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_argmax(self, xp, dtype):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order == 'C':
             a = xp.ascontiguousarray(a)
         else:
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.argmax()
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        func = 'cupy.core._routines_statistics.cub.device_reduce'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.argmax()
+        # ...then perform the actual computation
         return a.argmax()
 
 

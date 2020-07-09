@@ -1,0 +1,4 @@
+[submodule "cupy/core/include/cupy/cub"]
+	path = cupy/core/include/cupy/cub
+	url = https://github.com/NVlabs/cub.git
+	branch = 1.8.0

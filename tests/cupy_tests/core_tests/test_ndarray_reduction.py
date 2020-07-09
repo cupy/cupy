@@ -1,6 +1,9 @@
 import unittest
 
+import numpy
+
 import cupy
+from cupy.core import _accelerator
 from cupy import testing
 
 
@@ -216,28 +219,60 @@ class TestArrayReduction(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
-class TestCUBreduction(unittest.TestCase):
+@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+class TestCubReduction(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators(['cub'])
+
+    def tearDown(self):
+        _accelerator.set_routine_accelerators(self.old_accelerators)
+
     @testing.for_contiguous_axes()
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_min(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
         elif self.order in ('f', 'F'):
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.min(axis=axis)
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        if len(axis) == len(self.shape):
+            func = 'cupy.core._routines_statistics.cub.device_reduce'
+        else:
+            func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.min(axis=axis)
+        # ...then perform the actual computation
         return a.min(axis=axis)
 
     @testing.for_contiguous_axes()
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_max(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
         elif self.order in ('f', 'F'):
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.max(axis=axis)
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        if len(axis) == len(self.shape):
+            func = 'cupy.core._routines_statistics.cub.device_reduce'
+        else:
+            func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.max(axis=axis)
+        # ...then perform the actual computation
         return a.max(axis=axis)

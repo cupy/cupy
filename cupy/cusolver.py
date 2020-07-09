@@ -1,17 +1,21 @@
 import numpy
 
 import cupy
-from cupy.cuda import cusolver
-from cupy.cuda import runtime
+from cupy_backends.cuda.api import runtime
+from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
+from cupy import util
 
 
 _available_cuda_version = {
     'gesvdj': (9000, None),
     'gesvda': (10010, None),
+    'potrfBatched': (9010, None),
+    'potrsBatched': (9010, None),
 }
 
 
+@util.memoize()
 def check_availability(name):
     if name not in _available_cuda_version:
         msg = 'No available version information specified for {}'.name

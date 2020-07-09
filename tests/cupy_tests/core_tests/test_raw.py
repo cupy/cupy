@@ -424,10 +424,10 @@ class TestRaw(unittest.TestCase):
 
     def test_invalid_compiler_flag(self):
         with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-            cupy.RawModule(
-                code=_test_source3,
-                options=('-DPRECISION=3',),
-                backend=self.backend)
+            mod = cupy.RawModule(code=_test_source3,
+                                 options=('-DPRECISION=3',),
+                                 backend=self.backend)
+            mod.get_function('test_sum')  # enforce compilation
         assert 'precision not supported' in str(ex.value)
 
     def _generate_file(self, ext: str):
@@ -481,9 +481,10 @@ class TestRaw(unittest.TestCase):
         # this error is more likely to appear when using RawModule, so
         # let us do it here
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
-            cupy.RawModule(
+            mod = cupy.RawModule(
                 path=os.path.expanduser('~/this_does_not_exist.cubin'),
                 backend=self.backend)
+            mod.get_function('nonexisting_kernel')  # enforce loading
         assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)
 
     def test_module_neither_code_nor_path(self):
@@ -741,7 +742,7 @@ class TestRaw(unittest.TestCase):
     def test_context_switch_RawKernel(self):
         # run test_basic() on another device
 
-        # For RawKernel, we need to launch it once to force compiling
+        # we need to launch it once to force compiling
         x1, x2, y = self._helper(self.kern, cupy.float32)
 
         with cupy.cuda.Device(1):
@@ -751,9 +752,12 @@ class TestRaw(unittest.TestCase):
     @testing.multi_gpu(2)
     def test_context_switch_RawModule1(self):
         # run test_module() on another device
-        # in this test, re-compiling happens at get_function()
+        # in this test, re-compiling happens at 2nd get_function()
+        module = self.mod2
+        with cupy.cuda.Device(0):
+            module.get_function('test_sum')
+
         with cupy.cuda.Device(1):
-            module = self.mod2
             ker_sum = module.get_function('test_sum')
             x1, x2, y = self._helper(ker_sum, cupy.float32)
             assert cupy.allclose(y, x1 + x2)
@@ -763,7 +767,8 @@ class TestRaw(unittest.TestCase):
         # run test_module() on another device
         # in this test, re-compiling happens at kernel launch
         module = self.mod2
-        ker_sum = module.get_function('test_sum')
+        with cupy.cuda.Device(0):
+            ker_sum = module.get_function('test_sum')
 
         with cupy.cuda.Device(1):
             x1, x2, y = self._helper(ker_sum, cupy.float32)
@@ -773,11 +778,19 @@ class TestRaw(unittest.TestCase):
     def test_context_switch_RawModule3(self):
         # run test_load_cubin() on another device
         # generate cubin in the temp dir and load it on device 0
-        file_path = self._generate_file('cubin')
-        mod = cupy.RawModule(path=file_path, backend=self.backend)
 
-        # in this test, reloading happens at get_function()
-        with cupy.cuda.Device(1):
+        device0 = cupy.cuda.Device(0)
+        device1 = cupy.cuda.Device(1)
+        if device0.compute_capability != device1.compute_capability:
+            raise pytest.skip()
+
+        with device0:
+            file_path = self._generate_file('cubin')
+            mod = cupy.RawModule(path=file_path, backend=self.backend)
+            mod.get_function('test_div')
+
+        # in this test, reloading happens at 2nd get_function()
+        with device1:
             ker = mod.get_function('test_div')
             x1, x2, y = self._helper(ker, cupy.float32)
             assert cupy.allclose(y, x1 / (x2 + 1.0))
@@ -786,12 +799,19 @@ class TestRaw(unittest.TestCase):
     def test_context_switch_RawModule4(self):
         # run test_load_cubin() on another device
         # generate cubin in the temp dir and load it on device 0
-        file_path = self._generate_file('cubin')
-        mod = cupy.RawModule(path=file_path, backend=self.backend)
-        ker = mod.get_function('test_div')
+
+        device0 = cupy.cuda.Device(0)
+        device1 = cupy.cuda.Device(1)
+        if device0.compute_capability != device1.compute_capability:
+            raise pytest.skip()
+
+        with device0:
+            file_path = self._generate_file('cubin')
+            mod = cupy.RawModule(path=file_path, backend=self.backend)
+            ker = mod.get_function('test_div')
 
         # in this test, reloading happens at kernel launch
-        with cupy.cuda.Device(1):
+        with device1:
             x1, x2, y = self._helper(ker, cupy.float32)
             assert cupy.allclose(y, x1 / (x2 + 1.0))
 
@@ -804,13 +824,18 @@ class TestRaw(unittest.TestCase):
 
         # compile code
         name_expressions = ['my_sqrt<unsigned int>']
-        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
-                             name_expressions=name_expressions)
+        name = name_expressions[0]
+        with cupy.cuda.Device(0):
+            mod = cupy.RawModule(code=test_cxx_template,
+                                 options=('--std=c++11',),
+                                 name_expressions=name_expressions)
+
+            # get specialized kernels
+            mod.get_function(name)
 
         # switch device
         with cupy.cuda.Device(1):
             # get specialized kernels
-            name = name_expressions[0]
             ker = mod.get_function(name)
 
             # prepare inputs & expected outputs
@@ -832,12 +857,14 @@ class TestRaw(unittest.TestCase):
 
         # compile code
         name_expressions = ['my_sqrt<unsigned int>']
-        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
-                             name_expressions=name_expressions)
-
-        # get specialized kernels
         name = name_expressions[0]
-        ker = mod.get_function(name)
+        with cupy.cuda.Device(0):
+            mod = cupy.RawModule(code=test_cxx_template,
+                                 options=('--std=c++11',),
+                                 name_expressions=name_expressions)
+
+            # get specialized kernels
+            ker = mod.get_function(name)
 
         # switch device
         with cupy.cuda.Device(1):

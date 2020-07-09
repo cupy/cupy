@@ -6,15 +6,15 @@ from cpython cimport sequence
 
 import numpy
 
+from cupy_backends.cuda.api.driver cimport Stream as Stream_t
 from cupy.core.core cimport _internal_ascontiguousarray
 from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport ndarray
 from cupy.core.internal cimport _contig_axes
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
-from cupy.cuda cimport runtime
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport stream
-from cupy.cuda.driver cimport Stream as Stream_t
 
 cimport cython
 
@@ -79,9 +79,19 @@ cdef extern from 'cupy_cub.h' nogil:
     size_t cub_device_scan_get_workspace_size(
         void*, void*, int, Stream_t, int, int)
 
+    # Build-time version
+    int CUPY_CUB_VERSION_CODE
+
+
 ###############################################################################
 # Python interface
 ###############################################################################
+
+def get_build_version():
+    if CUPY_CUB_VERSION_CODE == -1:
+        return '<unknown>'
+    return CUPY_CUB_VERSION_CODE
+
 
 cdef tuple _get_output_shape(ndarray arr, tuple out_axis, bint keepdims):
     cdef tuple out_shape

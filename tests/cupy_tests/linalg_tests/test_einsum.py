@@ -234,9 +234,10 @@ class TestEinSumError(unittest.TestCase):
 
 class TestListArgEinSumError(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.19')
     def test_invalid_sub1(self):
         for xp in (numpy, cupy):
-            with pytest.raises(ValueError):
+            with pytest.raises(TypeError):
                 xp.einsum(xp.arange(2), [None])
 
     def test_invalid_sub2(self):

@@ -546,6 +546,11 @@ from cupy.logic.comparison import not_equal  # NOQA
 from cupy.logic.truth import all  # NOQA
 from cupy.logic.truth import any  # NOQA
 
+# ------------------------------------------------------------------------------
+# Polynomial functions
+# ------------------------------------------------------------------------------
+from cupy.lib.polynomial import poly1d  # NOQA
+
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
@@ -646,6 +651,7 @@ from cupy.math.misc import nan_to_num  # NOQA
 from cupy.math.misc import sign  # NOQA
 from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
+from cupy.math.misc import convolve  # NOQA
 
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
@@ -689,6 +695,7 @@ from cupy._sorting.sort import sort  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.statistics.correlation import corrcoef  # NOQA
 from cupy.statistics.correlation import cov  # NOQA
+from cupy.statistics.correlation import correlate  # NOQA
 
 from cupy.statistics.order import amax  # NOQA
 from cupy.statistics.order import amax as max  # NOQA
@@ -786,8 +793,8 @@ def get_array_module(*args):
     """
     for arg in args:
         if isinstance(arg, (ndarray, sparse.spmatrix,
-                            cupy.core.fusion._FusionVarScalar,
-                            cupy.core.fusion._FusionVarArray)):
+                            cupy.core.fusion._FusionVarArray,
+                            cupy.core.new_fusion._ArrayProxy)):
             return _cupy
     return numpy
 

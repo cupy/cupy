@@ -11,8 +11,8 @@ from libcpp cimport vector
 from cupy.cuda cimport common
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
-from cupy.cuda cimport runtime
 from cupy.cuda cimport stream
+from cupy_backends.cuda.api cimport runtime
 
 
 ###############################################################################
@@ -49,7 +49,7 @@ cdef public void cupy_free(void *m, char* ptr) with gil:
 # Extern
 ###############################################################################
 
-cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
+cdef extern from 'cupy_thrust.h' namespace 'cupy::thrust':
     void _sort[T](void *, size_t *, const vector.vector[ptrdiff_t]&, intptr_t,
                   void *)
     void _lexsort[T](size_t *, void *, size_t, size_t, intptr_t, void *)
@@ -65,10 +65,18 @@ cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
     void _argsort_fp16(size_t *, void *, void *,
                        const vector.vector[ptrdiff_t]&, intptr_t, void *)
 
+cdef extern from 'cupy_thrust.h':
+    # Build-time version
+    int THRUST_VERSION
+
 
 ###############################################################################
 # Python interface
 ###############################################################################
+
+def get_build_version():
+    return THRUST_VERSION
+
 
 cpdef sort(dtype, intptr_t data_start, intptr_t keys_start,
            const vector.vector[ptrdiff_t]& shape) except +:

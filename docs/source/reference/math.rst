@@ -158,6 +158,7 @@ Miscellaneous
    :toctree: generated/
    :nosignatures:
 
+   cupy.convolve
    cupy.clip
    cupy.sqrt
    cupy.cbrt
