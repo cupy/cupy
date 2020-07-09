@@ -47,7 +47,7 @@ cdef class CIndexer(CPointer):
     def __init__(self, Py_ssize_t size, tuple shape):
         self.val.size = size
         cdef Py_ssize_t i
-        for i in range(len(shape)):
+        for i in range(<Py_ssize_t>len(shape)):
             self.val.shape_and_index[i] = shape[i]
         self.ptr = <void*>&self.val
 
