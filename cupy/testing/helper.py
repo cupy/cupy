@@ -1262,7 +1262,21 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
 class AssertFunctionIsCalled:
 
     def __init__(self, mock_mod, **kwargs):
+        """A handy wrapper for unittest.mock to check if a function is called.
+
+        This class should be used as a context manager.
+
+        Args:
+            mock_mod (str): the function to be mocked.
+            is_called (bool): whether this function should be called (``True``)
+                or not (``False``). Default is ``True``.
+        """
+
         self.patch = mock.patch(mock_mod, **kwargs)
+
+        # is_called is bool for testing whether mock_mod iscalled or not
+        is_called = kwargs.get('is_called')
+        self.is_called = is_called if is_called is not None else True
 
     def __enter__(self):
         self.handle = self.patch.__enter__()
@@ -1270,6 +1284,6 @@ class AssertFunctionIsCalled:
         return self.handle
 
     def __exit__(self, exc_type, exc_value, traceback):
-        assert self.handle.call_count == 1
+        assert self.handle.call_count == int(self.is_called)
         del self.handle
         return self.patch.__exit__(exc_type, exc_value, traceback)

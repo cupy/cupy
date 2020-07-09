@@ -1,12 +1,10 @@
 from itertools import combinations
 import unittest
-from unittest import mock
 import sys
-
-import pytest
 
 import cupy
 from cupy import testing
+from cupy.core import _accelerator
 from cupy.cuda import memory
 
 
@@ -14,9 +12,19 @@ from cupy.cuda import memory
 # or not; they don't verify its correctness as it's already extensively covered
 # by existing tests
 class CubReductionTestBase(unittest.TestCase):
+    """
+    Note: call self.can_use() when arrays are already allocated, otherwise
+    call self._test_can_use().
+    """
 
     def setUp(self):
         self.can_use = cupy.core._cub_reduction._can_use_cub_block_reduction
+
+        self.old_accelerators = _accelerator.get_reduction_accelerators()
+        _accelerator.set_reduction_accelerators(['cub'])
+
+    def tearDown(self):
+        _accelerator.set_reduction_accelerators(self.old_accelerators)
 
     def _test_can_use(
             self, i_shape, o_shape, r_axis, o_axis, order, expected):
@@ -26,14 +34,11 @@ class CubReductionTestBase(unittest.TestCase):
         assert result is expected
 
 
-# TODO(leofang): rewrite the skip condition
 @testing.parameterize(*testing.product({
     'shape': [(2,), (2, 3), (2, 3, 4), (2, 3, 4, 5)],
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipIf(cupy.core.cub_block_reduction_enabled is False,
-                 '_cub_reduction backend is not enabled')
 class TestSimpleCubReductionKernelContiguity(CubReductionTestBase):
 
     @testing.for_contiguous_axes()
@@ -60,10 +65,7 @@ class TestSimpleCubReductionKernelContiguity(CubReductionTestBase):
                                self.order, False)
 
 
-# TODO(leofang): rewrite the skip condition
 @testing.gpu
-@unittest.skipIf(cupy.core.cub_block_reduction_enabled is False,
-                 '_cub_reduction backend is not enabled')
 class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
 
     def test_can_use_cub_nonsense_input1(self):
@@ -87,19 +89,17 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
 
     def test_can_use_cub_no_nvcc(self):
         # cannot use CUB if nvcc is not found
-        with mock.patch('cupy._environment.get_nvcc_path') as get_path:
+        func = 'cupy._environment.get_nvcc_path'
+        with testing.AssertFunctionIsCalled(func) as get_path:
             get_path.return_value = None
             self._test_can_use((2, 3, 4), (), (0, 1, 2), (), 'C', False)
-            assert get_path.called_once()
 
     def test_can_use_cub_no_cub(self):
         # cannot use CUB if CUB headers are not found
-        with mock.patch('cupy._environment.get_cub_path') as get_path,\
-                pytest.warns(RuntimeWarning) as w:
+        func = 'cupy._environment.get_cub_path'
+        with testing.AssertFunctionIsCalled(func) as get_path:
             get_path.return_value = None
             self._test_can_use((2, 3, 4), (), (0, 1, 2), (), 'C', False)
-            assert get_path.called_once()
-            assert 'CUPY_CUB_PATH' in w[0].message.args[0]
 
     def test_can_use_cub_zero_size_input(self):
         self._test_can_use((2, 0, 3), (), (0, 1, 2), (), 'C', False)
@@ -134,5 +134,20 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
         b = cupy.empty((), dtype=cupy.int8)
         assert self.can_use([a], [b], (1,), (0,)) is None
 
-    # TODO(leofang): test the skipped type casts?
-    # TODO(leofang): ensure _can_use returns None when backend is not set
+    def test_can_use_accelerator_set_unset(self):
+        # ensure we use CUB block reduction and not CUB device reduction
+        old_routine_accelerators = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators([])
+
+        a = cupy.random.random((10, 10))
+        # this is the only function we can mock; the rest is cdef'd
+        func = ''.join(('cupy.core._cub_reduction.',
+                        '_SimpleCubReductionKernel_get_cached_function'))
+        with testing.AssertFunctionIsCalled(func):
+            a.sum()
+        with testing.AssertFunctionIsCalled(func):
+            a.sum(axis=1)
+        with testing.AssertFunctionIsCalled(func, is_called=False):
+            a.sum(axis=0)
+
+        _accelerator.set_routine_accelerators(old_routine_accelerators)
