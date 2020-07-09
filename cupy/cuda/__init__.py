@@ -1,26 +1,34 @@
 import contextlib
-import os
 
 from cupy._environment import get_cuda_path, get_nvcc_path  # NOQA
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
-from cupy.cuda import driver  # NOQA
 from cupy.cuda import function  # NOQA
 from cupy.cuda import memory  # NOQA
 from cupy.cuda import memory_hook  # NOQA
 from cupy.cuda import memory_hooks  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
-from cupy.cuda import profiler  # NOQA
-from cupy.cuda import runtime  # NOQA
 from cupy.cuda import stream  # NOQA
 from cupy.cuda import texture  # NOQA
+from cupy_backends.cuda.api import driver  # NOQA
+from cupy_backends.cuda.api import runtime  # NOQA
+from cupy_backends.cuda.libs import cublas  # NOQA
+from cupy_backends.cuda.libs import curand  # NOQA
+from cupy_backends.cuda.libs import cusparse  # NOQA
+from cupy_backends.cuda.libs import nvrtc  # NOQA
+from cupy_backends.cuda.libs import profiler  # NOQA
 
 
 _available = None
-_cub_disabled = None
 
+# TODO(leofang): always import cub (but not enable it) when hipCUB is supported
+if not runtime.is_hip:
+    from cupy.cuda import cub  # NOQA
+    cub_enabled = True
+else:
+    cub_enabled = False
 
-from cupy.cuda import cusolver  # NOQA
+from cupy_backends.cuda.libs import cusolver  # NOQA
 # This flag is kept for backward compatibility.
 # It is always True as cuSOLVER library is always available in CUDA 8.0+.
 cusolver_enabled = True
@@ -37,14 +45,6 @@ try:
 except ImportError:
     thrust_enabled = False
 
-cub_enabled = False
-if int(os.getenv('CUB_DISABLED', 0)) == 0:
-    try:
-        from cupy.cuda import cub  # NOQA
-        cub_enabled = True
-    except ImportError:
-        pass
-
 try:
     from cupy.cuda import nccl  # NOQA
     nccl_enabled = True
@@ -52,7 +52,7 @@ except ImportError:
     nccl_enabled = False
 
 try:
-    from cupy.cuda import cutensor  # NOQA
+    from cupy_backends.cuda.libs import cutensor  # NOQA
     cutensor_enabled = True
 except ImportError:
     cutensor_enabled = False

@@ -176,7 +176,7 @@ You can install CuPy from the tarball::
 
 You can also install the development version of CuPy from a cloned Git repository::
 
-  $ git clone https://github.com/cupy/cupy.git
+  $ git clone --recursive https://github.com/cupy/cupy.git
   $ cd cupy
   $ pip install .
 

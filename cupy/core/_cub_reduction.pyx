@@ -9,7 +9,7 @@ from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
-from cupy.cuda cimport runtime
+from cupy_backends.cuda.api cimport runtime
 
 import math
 import string
@@ -248,15 +248,9 @@ cdef inline tuple _can_use_cub_block_reduction(
     If CUB BlockReduce can be used, this function returns a tuple of the needed
     parameters, otherwise returns None.
     '''
-    from cupy import core
-
     cdef tuple axis_permutes_cub
     cdef ndarray in_arr, out_arr
     cdef Py_ssize_t contiguous_size = 1
-
-    # first check the flag settable at runtime from outside
-    if not core.cub_block_reduction_enabled:
-        return None
 
     # detect whether CUB headers exists somewhere:
     if _cub_path is None:

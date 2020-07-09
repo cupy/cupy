@@ -52,7 +52,7 @@ def _parse_int_subscript(list_subscript):
         elif isinstance(s, int):
             str_subscript += einsum_symbols[s]
         else:
-            raise ValueError(
+            raise TypeError(
                 'each subscript must be either an integer or an ellipsis'
                 ' to provide subscripts strings as lists')
     return str_subscript

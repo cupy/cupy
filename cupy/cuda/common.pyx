@@ -1,5 +1,5 @@
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport device
-from cupy.cuda cimport runtime
 
 import numpy
 

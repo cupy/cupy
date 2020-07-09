@@ -11,6 +11,7 @@ from libcpp cimport vector
 from cupy.cuda cimport common
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream
+from cupy_backends.cuda.api cimport runtime
 
 
 ###############################################################################
@@ -47,7 +48,7 @@ cdef public void cupy_free(void *m, char* ptr) with gil:
 # Extern
 ###############################################################################
 
-cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
+cdef extern from 'cupy_thrust.h' namespace 'cupy::thrust':
     void thrust_sort(int, void *, size_t *, const vector.vector[ptrdiff_t]&,
                      intptr_t, void *)
     void thrust_lexsort(
@@ -56,7 +57,7 @@ cdef extern from '../cuda/cupy_thrust.h' namespace 'cupy::thrust':
                         const vector.vector[ptrdiff_t]&, intptr_t, void *)
 
 
-cdef extern from '../cuda/cupy_thrust.h':
+cdef extern from 'cupy_thrust.h':
     # Build-time version
     int THRUST_VERSION
 

@@ -11,13 +11,13 @@ from cupy.core._carray cimport shape_t
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport core
 from cupy.core cimport internal
-from cupy.cuda cimport cudnn
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
+from cupy_backends.cuda.libs cimport cudnn
 
 from cupy.core._ufuncs import elementwise_copy
-from cupy.cuda import cudnn as py_cudnn
 from cupy import util
+from cupy_backends.cuda.libs import cudnn as py_cudnn
 
 cdef int _cudnn_version = cudnn.getVersion()
 cdef _thread_local = threading.local()
@@ -139,8 +139,8 @@ cpdef _create_tensor_nd_descriptor(
             next_stride = c_shape[i] * c_strides[i]
 
     cudnn.setTensorNdDescriptor(
-        desc, data_type, arr._shape.size(), <size_t>&c_shape[0],
-        <size_t>&c_strides[0])
+        desc, data_type, arr._shape.size(), <size_t>c_shape.data(),
+        <size_t>c_strides.data())
 
 
 cpdef _create_tensor_descriptor(size_t desc, core.ndarray arr,
@@ -191,7 +191,7 @@ cpdef _create_filter_descriptor(
         for s in arr._shape:
             c_shape.push_back(s)
         cudnn.setFilterNdDescriptor_v4(
-            desc, data_type, format, ndim, <size_t>&c_shape[0])
+            desc, data_type, format, ndim, <size_t>c_shape.data())
 
 
 cpdef _create_convolution_descriptor(
@@ -222,8 +222,8 @@ cpdef _create_convolution_descriptor(
                         raise ValueError(
                             'dilation must be one when cuDNN < 6.0')
         cudnn.setConvolutionNdDescriptor_v3(
-            desc, ndim, <size_t>&c_pad[0], <size_t>&c_stride[0],
-            <size_t>&c_dilation[0], mode, compute_type)
+            desc, ndim, <size_t>c_pad.data(), <size_t>c_stride.data(),
+            <size_t>c_dilation.data(), mode, compute_type)
     else:
         if dilation is None:
             d0 = d1 = 1
@@ -331,7 +331,8 @@ cdef _create_pooling_descriptor(
         c_stride = stride
         cudnn.setPoolingNdDescriptor_v4(
             desc, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, ndim,
-            <size_t>&c_ksize[0], <size_t>&c_pad[0], <size_t>&c_stride[0])
+            <size_t>c_ksize.data(), <size_t>c_pad.data(),
+            <size_t>c_stride.data())
 
     return desc
 
@@ -879,7 +880,7 @@ cdef class _DescriptorArray:
 
     @property
     def data(self):
-        return <size_t>&self._value[0]
+        return <size_t>self._value.data()
 
 
 cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
@@ -910,7 +911,8 @@ cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
         desc = cudnn.createTensorDescriptor()
         descs.append(desc)
         cudnn.setTensorNdDescriptor(
-            desc, data_type, 3, <size_t>&c_shape[0], <size_t>&c_strides[0])
+            desc, data_type, 3,
+            <size_t>c_shape.data(), <size_t>c_strides.data())
 
     return descs
 
@@ -933,7 +935,8 @@ cdef _DescriptorArray _make_tensor_descriptor_array_for_padded(xs):
         desc = cudnn.createTensorDescriptor()
         descs.append(desc)
         cudnn.setTensorNdDescriptor(
-            desc, data_type, 3, <size_t>&c_shape[0], <size_t>&c_strides[0])
+            desc, data_type, 3,
+            <size_t>c_shape.data(), <size_t>c_strides.data())
 
     return descs
 
