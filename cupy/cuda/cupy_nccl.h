@@ -3,6 +3,8 @@
 #ifndef INCLUDE_GUARD_CUPY_NCCL_H
 #define INCLUDE_GUARD_CUPY_NCCL_H
 
+#define UNUSED(x) ((void)x)
+
 #ifndef CUPY_NO_CUDA
 
 #include <nccl.h>
@@ -14,8 +16,6 @@
 #endif
 
 #else // #ifndef CUPY_NO_CUDA
-
-#define UNUSED(x) ((void)x)
 
 #define NCCL_MAJOR 0
 #define NCCL_MINOR 0
