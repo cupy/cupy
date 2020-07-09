@@ -5,11 +5,12 @@ import numpy
 
 import cupy
 from cupy import core
-if cupy.cuda.cub_enabled:
+from cupy.core import _accelerator
+# TODO(leofang): always import cub when hipCUB is supported
+if not cupy.cuda.runtime.is_hip:
     from cupy.cuda import cub
-    from cupy.cuda import memory
 else:
-    cub = memory = None
+    cub = None
 
 
 # TODO(unno): use searchsorted
@@ -209,30 +210,33 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
 
     if weights is None:
         y = cupy.zeros(bin_edges.size - 1, dtype='l')
-        # CUB uses int for bin counts
-        # TODO(leofang): support >= 2^31 elements in x?
-        if (cupy.cuda.cub_enabled
-                and x.size <= 0x7fffffff and bin_edges.size <= 0x7fffffff):
-            # Need to ensure the dtype of bin_edges as it's needed for both the
-            # CUB call and the correction later
-            if isinstance(bins, cupy.ndarray):
-                bin_type = cupy.result_type(bin_edges, x)
-                if cupy.issubdtype(bin_type, cupy.integer):
-                    bin_type = cupy.result_type(bin_type, float)
-                bin_edges = bin_edges.astype(bin_type, copy=False)
-            # CUB's upper bin boundary is exclusive for all bins, including
-            # the last bin, so we must shift it to comply with NumPy
-            if x.dtype.kind in 'ui':
-                bin_edges[-1] += 1
-            elif x.dtype.kind == 'f':
-                old_edge = bin_edges[-1].copy()
-                bin_edges[-1] = cupy.nextafter(bin_edges[-1], bin_edges[-1]+1)
-            y = cub.device_histogram(x, bin_edges, y)
-            # shift the uppermost edge back
-            if x.dtype.kind in 'ui':
-                bin_edges[-1] -= 1
-            elif x.dtype.kind == 'f':
-                bin_edges[-1] = old_edge
+        for accelerator in _accelerator.get_routine_accelerators():
+            # CUB uses int for bin counts
+            # TODO(leofang): support >= 2^31 elements in x?
+            if (accelerator == _accelerator.ACCELERATOR_CUB
+                    and x.size <= 0x7fffffff and bin_edges.size <= 0x7fffffff):
+                # Need to ensure the dtype of bin_edges as it's needed for both
+                # the CUB call and the correction later
+                if isinstance(bins, cupy.ndarray):
+                    bin_type = cupy.result_type(bin_edges, x)
+                    if cupy.issubdtype(bin_type, cupy.integer):
+                        bin_type = cupy.result_type(bin_type, float)
+                    bin_edges = bin_edges.astype(bin_type, copy=False)
+                # CUB's upper bin boundary is exclusive for all bins, including
+                # the last bin, so we must shift it to comply with NumPy
+                if x.dtype.kind in 'ui':
+                    bin_edges[-1] += 1
+                elif x.dtype.kind == 'f':
+                    old_edge = bin_edges[-1].copy()
+                    bin_edges[-1] = cupy.nextafter(bin_edges[-1],
+                                                   bin_edges[-1] + 1)
+                y = cub.device_histogram(x, bin_edges, y)
+                # shift the uppermost edge back
+                if x.dtype.kind in 'ui':
+                    bin_edges[-1] -= 1
+                elif x.dtype.kind == 'f':
+                    bin_edges[-1] = old_edge
+                break
         else:
             _histogram_kernel(x, bin_edges, bin_edges.size, y)
     else:
