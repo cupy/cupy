@@ -18,11 +18,11 @@ from libc.stdint cimport int8_t
 from libc.stdint cimport intptr_t
 from libcpp cimport algorithm
 
+from cupy_backends.cuda cimport stream as stream_module
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport device
 from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport memory_hook
-from cupy.cuda cimport stream as stream_module
-from cupy_backends.cuda.api cimport runtime
 
 
 cdef bint _exit_mode = False

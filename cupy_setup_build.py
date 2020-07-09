@@ -80,7 +80,6 @@ cuda_files = [
     'cupy.cuda.memory_hook',
     'cupy.cuda.pinned_memory',
     'cupy.cuda.function',
-    'cupy.cuda.stream',
     'cupy.cuda.texture',
     'cupy.lib.polynomial',
     'cupy.util'

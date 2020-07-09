@@ -3,8 +3,8 @@
 """Thin wrapper of cuRAND."""
 cimport cython  # NOQA
 
-from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda cimport stream as stream_module
+from cupy_backends.cuda.api cimport driver
 
 ###############################################################################
 # Extern

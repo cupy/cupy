@@ -14,7 +14,7 @@ from cupy.core.internal cimport _contig_axes
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
 from cupy_backends.cuda.api cimport runtime
-from cupy.cuda cimport stream
+from cupy_backends.cuda cimport stream
 
 cimport cython
 

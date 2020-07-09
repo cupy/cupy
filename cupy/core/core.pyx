@@ -47,7 +47,7 @@ from cupy.core cimport internal
 from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport memory
-from cupy.cuda cimport stream as stream_module
+from cupy_backends.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cublas
 

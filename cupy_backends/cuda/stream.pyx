@@ -1,10 +1,8 @@
-from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda cimport stream as stream_module
-
+import atexit
 import threading
 import weakref
 
-from cupy import util
+from cupy_backends.cuda.api cimport runtime
 
 
 cdef object _thread_local = threading.local()
@@ -25,13 +23,13 @@ cdef class _ThreadLocal:
 
     cdef set_current_stream(self, stream):
         cdef intptr_t ptr = <intptr_t>stream.ptr
-        stream_module.set_current_stream_ptr(ptr)
+        enable_current_stream = True
         self.current_stream = <void*>ptr
         self.current_stream_ref = weakref.ref(stream)
 
     cdef set_current_stream_ref(self, stream_ref):
         cdef intptr_t ptr = <intptr_t>stream_ref().ptr
-        stream_module.set_current_stream_ptr(ptr)
+        enable_current_stream = True
         self.current_stream = <void*>ptr
         self.current_stream_ref = stream_ref
 
@@ -103,8 +101,8 @@ class Event(object):
                 (interprocess and runtime.eventInterprocess))
         self.ptr = runtime.eventCreateWithFlags(flag)
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
-        if is_shutting_down():
+    def __del__(self):
+        if _is_shutting_down:
             return
         if self.ptr:
             runtime.eventDestroy(self.ptr)
@@ -278,9 +276,9 @@ class Stream(BaseStream):
         else:
             self.ptr = runtime.streamCreate()
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self):
         cdef intptr_t current_ptr
-        if is_shutting_down():
+        if _is_shutting_down:
             return
         tls = _ThreadLocal.get()
         if self.ptr:
@@ -318,3 +316,18 @@ class ExternalStream(BaseStream):
 
 
 Stream.null = Stream(null=True)
+
+
+"""
+This code is to signal when the interpreter is in shutdown mode
+to prevent using globals that could be already deleted in
+objects `__del__` method
+
+This solution is taken from the Numba/llvmlite code
+"""
+cdef bint _is_shutting_down = False
+
+
+@atexit.register
+def _at_shutdown():
+    _is_shutting_down = True

@@ -13,9 +13,9 @@ from libcpp cimport vector
 
 from cupy.core cimport _carray
 from cupy.core cimport core
+from cupy_backends.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
-from cupy.cuda cimport stream as stream_module
 from cupy.cuda.memory cimport MemoryPointer
 from cupy.cuda.texture cimport TextureObject, SurfaceObject
 
