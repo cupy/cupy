@@ -312,27 +312,18 @@ class TestPolyaddShapeCombination(unittest.TestCase):
 
 
 @testing.gpu
-@testing.parameterize(*testing.product({
-    'shape1': [(3, 3, 1), (3, 3), (3, 1), (3,), (1,)],
-    'shape2': [(3, 3, 1), (3, 3), (3, 1), (3,), (1,)]
-}))
-class TestPolyaddNdimShapeCombination(unittest.TestCase):
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_polyadd(self, xp, dtype):
-        a = testing.shaped_arange(self.shape1, xp, dtype)
-        b = testing.shaped_arange(self.shape2, xp, dtype)
-        return xp.polyadd(a, b)
-
-
-@testing.gpu
 class TestPolyadd(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_polyadd_list(self, xp):
         a = [1, 2, 3]
         b = [4, 2]
+        return xp.polyadd(a, b)
+
+    @testing.numpy_cupy_array_equal()
+    def test_polyadd_leading_zeros(self, xp):
+        a = [0, 0, 1, 2, 3, 0, 0]
+        b = [0, 4, 2, 0]
         return xp.polyadd(a, b)
 
     @testing.for_all_dtypes()
