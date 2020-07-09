@@ -1,5 +1,4 @@
 import contextlib
-import os
 
 from cupy._environment import get_cuda_path, get_nvcc_path  # NOQA
 from cupy.cuda import compiler  # NOQA
@@ -22,12 +21,12 @@ from cupy_backends.cuda.libs import profiler  # NOQA
 
 _available = None
 
-cub_enabled = False  # default to not use CUB for backward compatibility
 # TODO(leofang): always import cub (but not enable it) when hipCUB is supported
 if not runtime.is_hip:
     from cupy.cuda import cub  # NOQA
-    if int(os.getenv('CUB_DISABLED', 1)) == 0:
-        cub_enabled = True
+    cub_enabled = True
+else:
+    cub_enabled = False
 
 from cupy_backends.cuda.libs import cusolver  # NOQA
 # This flag is kept for backward compatibility.
