@@ -35,7 +35,7 @@ def mock_fusion_history():
                 numpy_result = impl(self, numpy, m)
             with mock.patch(target, CreateMock(target)) as m:
                 cupy_result = impl(self, cupy, m)
-            testing.assert_array_list_equal(numpy_result, cupy_result)
+            testing.assert_array_equal(numpy_result, cupy_result)
         return new_impl
     return wrapper
 

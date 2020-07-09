@@ -492,7 +492,8 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
 
 
 def numpy_cupy_array_list_equal(
-        err_msg='', verbose=True, name='xp', sp_name=None, scipy_name=None):
+        err_msg='', verbose=True, name='xp',
+        sp_name=None, scipy_name=None, type_check=True):
     """Decorator that checks the resulting lists of NumPy and CuPy's one are equal.
 
     Args:
@@ -513,6 +514,11 @@ def numpy_cupy_array_list_equal(
 
     .. seealso:: :func:`cupy.testing.assert_array_list_equal`
     """  # NOQA
+    warnings.warn(
+        'numpy_cupy_array_list_equal is deprecated.'
+        ' Use numpy_cupy_array_equal instead.',
+        DeprecationWarning)
+
     def check_func(x, y):
         array.assert_array_equal(x, y, err_msg, verbose)
     return _make_decorator(check_func, name, False, False, sp_name, scipy_name)

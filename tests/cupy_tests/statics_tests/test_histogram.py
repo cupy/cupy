@@ -41,21 +41,21 @@ def for_all_dtypes_combination_bincount(names):
 class TestHistogram(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_histogram(self, xp, dtype):
         x = testing.shaped_arange((10,), xp, dtype)
         y, bin_edges = xp.histogram(x)
         return y, bin_edges
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_histogram_same_value(self, xp, dtype):
         x = xp.zeros(10, dtype)
         y, bin_edges = xp.histogram(x, 3)
         return y, bin_edges
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_histogram_density(self, xp, dtype):
         x = testing.shaped_arange((10,), xp, dtype)
         y, bin_edges = xp.histogram(x, density=True)
@@ -65,7 +65,7 @@ class TestHistogram(unittest.TestCase):
         return y, bin_edges
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_histogram_range_lower_outliers(self, xp, dtype):
         # Check that lower outliers are not tallied
         a = xp.arange(10, dtype=dtype) + .5
@@ -74,7 +74,7 @@ class TestHistogram(unittest.TestCase):
         return h, b
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_histogram_range_upper_outliers(self, xp, dtype):
         # Check that upper outliers are not tallied
         a = xp.arange(10, dtype=dtype) + .5
@@ -158,7 +158,7 @@ class TestHistogram(unittest.TestCase):
         return wb
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal(type_check=False)
     def test_histogram_int_weights(self, xp, dtype):
         # Check with integer weights
         v = xp.asarray([1, 2, 2, 4], dtype=dtype)
@@ -178,7 +178,7 @@ class TestHistogram(unittest.TestCase):
         return wb
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_histogram_int_weights_nonuniform_bins(self, xp, dtype):
         # Check weights with non-uniform bin widths
         a, b = xp.histogram(
@@ -190,7 +190,7 @@ class TestHistogram(unittest.TestCase):
         return a, b
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal(type_check=False)
     def test_histogram_complex_weights(self, xp, dtype):
         values = xp.asarray([1.3, 2.5, 2.3])
         weights = xp.asarray([1, -1, 2]) + 1j * xp.asarray([2, 1, 2])
@@ -200,7 +200,7 @@ class TestHistogram(unittest.TestCase):
         return a, b
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal(type_check=False)
     def test_histogram_complex_weights_uneven_bins(self, xp, dtype):
         values = xp.asarray([1.3, 2.5, 2.3])
         weights = xp.asarray([1, -1, 2]) + 1j * xp.asarray([2, 1, 2])
@@ -210,21 +210,21 @@ class TestHistogram(unittest.TestCase):
         return a, b
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_histogram_empty(self, xp, dtype):
         x = xp.array([], dtype)
         y, bin_edges = xp.histogram(x)
         return y, bin_edges
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_histogram_int_bins(self, xp, dtype):
         x = testing.shaped_arange((10,), xp, dtype)
         y, bin_edges = xp.histogram(x, 4)
         return y, bin_edges
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_histogram_array_bins(self, xp, dtype):
         x = testing.shaped_arange((10,), xp, dtype)
         bins = testing.shaped_arange((3,), xp, dtype)
@@ -329,7 +329,7 @@ class TestHistogram(unittest.TestCase):
 class TestDigitize(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_digitize(self, xp, dtype):
         x = testing.shaped_arange(self.shape, xp, dtype)
         bins = self.bins
@@ -346,7 +346,7 @@ class TestDigitize(unittest.TestCase):
     {'right': False})
 class TestDigitizeNanInf(unittest.TestCase):
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_digitize_nan(self, xp):
         x = testing.shaped_arange((14,), xp, xp.float32)
         x[5] = float('nan')
@@ -354,14 +354,14 @@ class TestDigitizeNanInf(unittest.TestCase):
         y = xp.digitize(x, bins, right=self.right)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_digitize_nan_bins(self, xp):
         x = testing.shaped_arange((14,), xp, xp.float32)
         bins = xp.array([1.0, 3.0, 5.0, 8.0, float('nan')], xp.float32)
         y = xp.digitize(x, bins, right=self.right)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_digitize_nan_bins_repeated(self, xp):
         x = testing.shaped_arange((14,), xp, xp.float32)
         x[5] = float('nan')
@@ -370,7 +370,7 @@ class TestDigitizeNanInf(unittest.TestCase):
         y = xp.digitize(x, bins, right=self.right)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_digitize_nan_bins_decreasing(self, xp):
         x = testing.shaped_arange((14,), xp, xp.float32)
         x[5] = float('nan')
@@ -379,7 +379,7 @@ class TestDigitizeNanInf(unittest.TestCase):
         y = xp.digitize(x, bins, right=self.right)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_digitize_nan_bins_decreasing_repeated(self, xp):
         x = testing.shaped_arange((14,), xp, xp.float32)
         x[5] = float('nan')
@@ -388,7 +388,7 @@ class TestDigitizeNanInf(unittest.TestCase):
         y = xp.digitize(x, bins, right=self.right)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_digitize_all_nan_bins(self, xp):
         x = testing.shaped_arange((14,), xp, xp.float32)
         x[5] = float('nan')
@@ -397,7 +397,7 @@ class TestDigitizeNanInf(unittest.TestCase):
         y = xp.digitize(x, bins, right=self.right)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_searchsorted_inf(self, xp):
         x = testing.shaped_arange((14,), xp, xp.float64)
         x[5] = float('inf')
@@ -405,7 +405,7 @@ class TestDigitizeNanInf(unittest.TestCase):
         y = xp.digitize(x, bins, right=self.right)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_searchsorted_minf(self, xp):
         x = testing.shaped_arange((14,), xp, xp.float64)
         x[5] = float('-inf')

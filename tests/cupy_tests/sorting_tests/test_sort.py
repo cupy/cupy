@@ -426,19 +426,19 @@ class TestSort_complex(unittest.TestCase):
                 xp.sort_complex(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_sort_complex_1dim(self, xp, dtype):
         a = testing.shaped_random((100,), xp, dtype)
         return a, xp.sort_complex(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_sort_complex_ndim(self, xp, dtype):
         a = testing.shaped_random((2, 5, 3), xp, dtype)
         return a, xp.sort_complex(a)
 
     @testing.for_dtypes('efdFD')
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_sort_complex_nan(self, xp, dtype):
         a = testing.shaped_random((2, 3, 5), xp, dtype)
         a[0, 2, 1] = a[1, 0, 3] = xp.nan
