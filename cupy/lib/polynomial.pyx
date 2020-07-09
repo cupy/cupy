@@ -28,8 +28,7 @@ def polyadd(a1, a2):
     a2 = cupy.atleast_1d(a2)
     if a1.shape[0] < a2.shape[0]:
         a1, a2 = a2, a1
-    a2 = cupy.pad(a2, (a1.shape[0] - a2.shape[0], 0))
-    val = a1 + a2
+    val = a1 + cupy.pad(a2, (a1.shape[0] - a2.shape[0], 0))
     if truepoly:
         val = poly1d(val)
     return val
