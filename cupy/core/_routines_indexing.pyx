@@ -564,8 +564,8 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     # The scan of the broadcasted array is used to index on kernel.
     mask = _manipulation._reshape(
         mask,
-        axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
-    if mask._shape.size() > a._shape.size():
+        axis * (1,) + mask.shape + (a_ndim - axis - mask_ndim) * (1,))
+    if <Py_ssize_t>mask._shape.size() > a_ndim:
         raise IndexError('too many indices for array')
 
     mask = _manipulation.broadcast_to(mask, a.shape)
