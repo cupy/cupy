@@ -541,14 +541,14 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         print("idx: %s" % idx)
 
-        col_offsets, col_counts, idx_map, res_indptr, data_filtered, aBp = index._csr_column_index1(
-            col_order, idx, self.indptr, self.indices, self.data)
+        res_indptr, indices_mask, col_counts, idxs = index._csr_column_index1(
+            idx, self.indptr, self.indices, self.data)
 
         # pass 2: copy indices/data for selected idxs
 
         res_indices, res_data = index._csr_column_index2(
-            aBp, col_order, col_offsets, col_counts, idx_map, self.indptr, self.indices,
-            data_filtered, res_indptr)
+            col_order, col_counts, idxs, self.indptr, indices_mask,
+            self.data, res_indptr)
 
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
