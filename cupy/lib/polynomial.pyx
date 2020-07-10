@@ -19,10 +19,10 @@ def polyadd(a1, a2):
     """
     truepoly = False
     if isinstance(a1, poly1d):
-        a1 = a1.coeffs
+        a1 = a1._coeffs
         truepoly = True
     if isinstance(a2, poly1d):
-        a2 = a2.coeffs
+        a2 = a2._coeffs
         truepoly = True
     a1 = cupy.atleast_1d(a1)
     a2 = cupy.atleast_1d(a2)
