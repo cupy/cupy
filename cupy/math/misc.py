@@ -74,19 +74,25 @@ def _fft_convolve(a1, a2, mode):
     dtype = cupy.result_type(a1, a2)
     n1, n2 = a1.size, a2.size
     out_size = cupyx.scipy.fft.next_fast_len(n1 + n2 - 1)
+    # skip calling get_fft_plan() as we know the args exactly
     if is_c2c:
-        # skip calling get_fft_plan() as we know the args exactly
         fft_plan = cufft.Plan1d(
             out_size,
             cufft.CUFFT_C2C if dtype == cupy.complex64 else cufft.CUFFT_Z2Z,
             1)
+        ifft_plan = fft_plan
     else:
+        fft_plan = cufft.Plan1d(
+            out_size,
+            cufft.CUFFT_R2C if dtype == cupy.float32 else cufft.CUFFT_D2Z,
+            1)
         # this is a no-op context manager
         # TODO(leofang): use contextlib.nullcontext() for PY37+?
-        fft_plan = contextlib.suppress()
+        ifft_plan = contextlib.suppress()
     with fft_plan:
         fa1 = fft(a1, out_size)
         fa2 = fft(a2, out_size)
+    with ifft_plan:
         out = ifft(fa1 * fa2, out_size)
 
     if mode == 'full':
