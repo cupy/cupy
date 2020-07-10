@@ -155,10 +155,10 @@ cdef class poly1d:
     def __pow__(self, val, modulo):
         if not cupy.isscalar(val) or int(val) != val or val < 0:
             raise ValueError('Power to non-negative integers only.')
-        out = [1]
+        out = 1
         for _ in range(val):
-            out = polymul(self.coeffs, out)
-        return poly1d(out)
+            out = polymul(self, out)
+        return out
 
     # TODO(Dahlia-Chehata): implement using polysub
     def __sub__(self, other):
