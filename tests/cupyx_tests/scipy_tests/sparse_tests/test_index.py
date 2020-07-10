@@ -19,8 +19,9 @@ class TestSetitemIndexing(unittest.TestCase):
     def _run(self, maj, min=None, data=0):
         a = cupy.sparse.random(self.n_rows, self.n_cols,
                                format=self.format,
-                               density=self.density,
-                               dtype=self.dtype)
+                               density=self.density)
+
+        a = a.astype(self.dtype)
 
         print(str(self.format))
         print(str(self.dtype))
@@ -65,17 +66,17 @@ class TestSetitemIndexing(unittest.TestCase):
     def test_major_slice(self):
         self._run(slice(5, 10000), data=5)
         self._run(slice(5, 4), data=5)
-        # self._run(slice(4, 5, 2), data=5)
-        # self._run(slice(5, 4, -2), data=5)
-        #
-        # self._run(slice(2, 4), slice(0, 2), [[4], [1]])
-        # self._run(slice(2, 4), slice(0, 2), [[4, 5], [6, 7]])
-        # self._run(slice(2, 4), 0, [[4], [6]])
-        #
-        # self._run(0, 0, 5)
-        # self._run([0, 5, 10], 0, [1, 2, 3])
-        #
-        # self._run([[True], [False], [True]], data=5)
+        self._run(slice(4, 5, 2), data=5)
+        self._run(slice(5, 4, -2), data=5)
+
+        self._run(slice(2, 4), slice(0, 2), [[4], [1]])
+        self._run(slice(2, 4), slice(0, 2), [[4, 5], [6, 7]])
+        self._run(slice(2, 4), 0, [[4], [6]])
+
+        self._run(0, 0, 5)
+        self._run([0, 5, 10, 0], 0, [1, 2, 3, 2])
+
+        self._run([[True], [False], [True]], data=5)
         # self._run([[True, False], [False, True], [True, True]], data=5)
 
 
