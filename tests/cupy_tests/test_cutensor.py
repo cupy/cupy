@@ -238,3 +238,103 @@ class TestCuTensorDescriptor(unittest.TestCase):
             d,
             rtol=1e-6, atol=1e-6
         )
+
+
+@unittest.skipUnless(cupy.cuda.cutensor_enabled, 'cuTensor is unavailable')
+class TestCuTensorReduceNumpyArrayCreation(unittest.TestCase):
+
+    def setUp(self):
+        self.a = testing.shaped_random(
+            (20, 40, 30), cupy, numpy.float32, seed=0)
+        self.b = testing.shaped_random(
+            (40, 30, 20), cupy, numpy.float32, seed=1)
+        self.c = testing.shaped_random(
+            (30, 20, 40), cupy, numpy.float32, seed=2)
+        self.mode_a = cutensor.create_mode('y', 'z', 'x')
+        self.mode_b = cutensor.create_mode('z', 'x', 'y')
+        self.mode_c = cutensor.create_mode('x', 'y', 'z')
+        self.alpha = numpy.array(1.1, dtype=numpy.float32)
+        self.beta = numpy.array(1.2, dtype=numpy.float32)
+        self.gamma = numpy.array(1.3, dtype=numpy.float32)
+        self.a_transposed = self.a.transpose(2, 0, 1).copy()
+        self.b_transposed = self.b.transpose(1, 2, 0).copy()
+        self.c_transposed = self.c.copy()
+
+    def test_elementwise_trinary(self):
+        desc_a = cutensor.create_tensor_descriptor(self.a)
+        desc_b = cutensor.create_tensor_descriptor(self.b)
+        desc_c = cutensor.create_tensor_descriptor(self.c)
+
+        d = cutensor.elementwise_trinary(
+            self.alpha, self.a, desc_a, self.mode_a,
+            self.beta, self.b, desc_b, self.mode_b,
+            self.gamma, self.c, desc_c, self.mode_c
+        )
+
+        assert d.dtype == numpy.float32
+
+        testing.assert_allclose(
+            self.alpha.item() * self.a_transposed +
+            self.beta.item() * self.b_transposed +
+            self.gamma.item() * self.c_transposed,
+            d,
+            rtol=1e-6, atol=1e-6
+        )
+
+    def test_elementwise_binary(self):
+        desc_a = cutensor.create_tensor_descriptor(self.a)
+        desc_c = cutensor.create_tensor_descriptor(self.c)
+
+        d = cutensor.elementwise_binary(
+            self.alpha, self.a, desc_a, self.mode_a,
+            self.gamma, self.c, desc_c, self.mode_c
+        )
+
+        assert d.dtype == numpy.float32
+
+        testing.assert_allclose(
+            self.alpha.item() * self.a_transposed +
+            self.gamma.item() * self.c_transposed,
+            d,
+            rtol=1e-6, atol=1e-6
+        )
+
+    def test_contraction(self):
+        desc_a = cutensor.create_tensor_descriptor(self.a)
+        desc_b = cutensor.create_tensor_descriptor(self.b)
+        desc_c = cutensor.create_tensor_descriptor(self.c)
+
+        d = cutensor.contraction(
+            self.alpha, self.a, desc_a, self.mode_a,
+            self.b, desc_b, self.mode_b,
+            self.beta, self.c, desc_c, self.mode_c
+        )
+
+        assert self.c is d
+        testing.assert_allclose(
+            self.alpha.item() * self.a_transposed * self.b_transposed +
+            self.beta.item() * self.c_transposed,
+            d,
+            rtol=1e-6, atol=1e-6
+        )
+
+    def test_reduction(self):
+        c = testing.shaped_random((30,), cupy, numpy.float32, seed=2)
+        c_orig = c.copy()
+
+        desc_a = cutensor.create_tensor_descriptor(self.a)
+        desc_c = cutensor.create_tensor_descriptor(c)
+        mode_c = cutensor.create_mode('x')
+
+        d = cutensor.reduction(
+            self.alpha, self.a, desc_a, self.mode_a,
+            self.beta, c, desc_c, mode_c
+        )
+
+        assert c is d
+        testing.assert_allclose(
+            self.alpha.item() * self.a_transposed.sum(axis=(1, 2)) +
+            self.beta.item() * c_orig,
+            d,
+            rtol=1e-6, atol=1e-6
+        )
