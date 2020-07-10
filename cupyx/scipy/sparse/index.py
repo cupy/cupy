@@ -82,8 +82,8 @@ _csr_column_index2_order_ker = core.RawModule(code="""
 
     // Get the index of the thread
     I i = blockIdx.x * blockDim.x + threadIdx.x;
-    
-    if(i < n) 
+
+    if(i < n)
         out_index[col_order[i]] = col_order[i+1];
 }
 """, options=_module_options, name_expressions=tuple(
@@ -123,9 +123,8 @@ def _csr_column_index1_indptr(idx, col_offsets, unique_idxs,
     indices_mask[indices_mask == 0] = -1
 
     indices_mask[indices_mask > 0] = Aj[indices_mask > 0]
-    indices_mask[indices_mask > 0] = cupy.searchsorted(unique_idxs,
-                                                       indices_mask[indices_mask > 0])
-
+    indices_mask[indices_mask > 0] = cupy.searchsorted(
+        unique_idxs, indices_mask[indices_mask > 0])
 
     indices_mask[indices_mask >= 0] = idx[indices_mask[indices_mask >= 0]]
 
@@ -182,7 +181,7 @@ _get_csr_index2_ker = core.RawModule(code="""
     if(i < n_row) {
 
         I n = Bp[i];
-        
+
         // loop through columns in current row
         for(int jj = Ap[i]; jj < Ap[i+1]; jj++) {
             I col = Aj[jj];  // current column

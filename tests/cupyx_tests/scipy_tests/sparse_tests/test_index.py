@@ -32,12 +32,11 @@ class TestIndexing(unittest.TestCase):
             actual = a[maj]
 
         if cupy.sparse.isspmatrix(actual):
-            print("actual indptr:   %s" % actual.indptr)
-            print("expected indptr: %s" % expected.indptr)
-            #
-            print("actual:   %s" % actual.indices)
-            print("expected: %s" % expected.indices)
-
+            # print("actual indptr:   %s" % actual.indptr)
+            # print("expected indptr: %s" % expected.indptr)
+            # #
+            # print("actual:   %s" % actual.indices)
+            # print("expected: %s" % expected.indices)
             actual.sort_indices()
             expected.sort_indices()
 
@@ -118,7 +117,7 @@ class TestIndexing(unittest.TestCase):
     def test_major_fancy_minor_slice(self):
         self._run([1, 5, 4], slice(1, 5))
         self._run([1, 5, 4], slice(5, 1, -1))
-    #
+
     def test_major_bool_fancy(self):
         rand_bool = cupy.random.random(self.n_rows).astype(cupy.bool)
         self._run(rand_bool.get())

@@ -539,8 +539,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # pass 1: count idx entries and compute new indptr
         col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
 
-        print("idx: %s" % idx)
-
         res_indptr, indices_mask, col_counts, idxs = index._csr_column_index1(
             idx, self.indptr, self.indices, self.data)
 
