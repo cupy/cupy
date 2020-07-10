@@ -4,6 +4,38 @@ import cupy
 from cupy.core.core cimport ndarray
 
 
+def polysub(a1, a2):
+    """Computes the difference of two polynomials.
+
+    Args:
+        a1 (scalar, cupy.ndarray or cupy.poly1d): first input polynomial.
+        a2 (scalar, cupy.ndarray or cupy.poly1d): second input polynomial.
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: The difference of the inputs.
+
+    .. seealso:: :func:`numpy.polysub`
+
+    """
+    truepoly = False
+    if isinstance(a1, poly1d):
+        a1 = a1.coeffs
+        truepoly = True
+    if isinstance(a2, poly1d):
+        a2 = a2.coeffs
+        truepoly = True
+    a1 = cupy.atleast_1d(a1)
+    a2 = cupy.atleast_1d(a2)
+    if a1.size < a2.size:
+        a1 = cupy.pad(a1, (a2.size - a1.size, 0))
+    elif a1.size > a2.size:
+        a2 = cupy.pad(a2, (a1.size - a2.size, 0))
+    val = a1 - a2
+    if truepoly:
+        val = poly1d(val)
+    return val
+
+
 cdef class poly1d:
     """A one-dimensional polynomial class.
 
@@ -137,13 +169,11 @@ cdef class poly1d:
             raise ValueError('Power to non-negative integers only.')
         raise NotImplementedError
 
-    # TODO(Dahlia-Chehata): implement using polysub
     def __sub__(self, other):
-        raise NotImplementedError
+        return polysub(self, other)
 
-    # TODO(Dahlia-Chehata): implement using polysub
     def __rsub__(self, other):
-        raise NotImplementedError
+        return polysub(other, self)
 
     # TODO(Dahlia-Chehata): use polydiv for non-scalars
     def __truediv__(self, other):

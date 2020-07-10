@@ -217,6 +217,10 @@ class TestPoly1d(unittest.TestCase):
         a = testing.shaped_arange((5,), xp, dtype)
         return str(xp.poly1d(a))
 
+
+@testing.gpu
+class TestPoly1dArithmetic(unittest.TestCase):
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_mul_scalar(self, xp, dtype):
@@ -230,6 +234,31 @@ class TestPoly1d(unittest.TestCase):
         a = testing.shaped_arange((10,), xp, dtype)
         b = xp.poly1d(a) / 10
         return b.coeffs
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_sub_poly1d_array(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        b = xp.ones((5,), dtype)
+        return (xp.poly1d(a) - b).coeffs
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_sub_poly1d_scalar(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        b = dtype(10)
+        return (xp.poly1d(a) - b).coeffs
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_sub_poly1d_poly1d(self, xp, dtype):
+        a1 = testing.shaped_arange((5,), xp, dtype)
+        b1 = xp.poly1d(a1, variable='z')
+        a2 = testing.shaped_arange((2,), xp, dtype)
+        b2 = xp.poly1d(a2)
+        b1 -= b2
+        assert b1.variable == 'x'
+        return b1.coeffs
 
 
 @testing.gpu
@@ -272,3 +301,105 @@ class TestPoly1dEquality(unittest.TestCase):
     def test_poly1d_ne2(self, xp, dtype):
         a, b = self.make_poly1d2(xp, dtype)
         return a != b
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'shape1': [(), (0,), (3,), (5,)],
+    'shape2': [(), (0,), (3,), (5,)]
+}))
+class TestPolysubShapeCombination(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polysub(self, xp, dtype):
+        a = testing.shaped_arange(self.shape1, xp, dtype)
+        b = testing.shaped_arange(self.shape2, xp, dtype)
+        return xp.polysub(a, b)
+
+
+@testing.gpu
+class TestPolysub(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_polysub_list(self, xp):
+        a = [1, 2, 3]
+        b = [4, 2]
+        return xp.polysub(a, b)
+
+    @testing.numpy_cupy_array_equal()
+    def test_polysub_leading_zeros(self, xp):
+        a = [0, 0, 1, 2, 3, 0, 0]
+        b = [0, 4, 2, 0]
+        return xp.polysub(a, b)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polysub_scalar_poly1d(self, xp, dtype):
+        a = dtype(10)
+        b = testing.shaped_arange((5,), xp, dtype)
+        b = xp.poly1d(b)
+        return xp.polysub(a, b).coeffs
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polysub_poly1d_scalar(self, xp, dtype):
+        a = dtype(10)
+        b = testing.shaped_arange((5,), xp, dtype)
+        b = xp.poly1d(b)
+        return xp.polysub(b, a).coeffs
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polysub_poly1d_poly1d(self, xp, dtype):
+        a1 = testing.shaped_arange((5,), xp, dtype)
+        b1 = xp.poly1d(a1, variable='z')
+        a2 = testing.shaped_arange((2,), xp, dtype)
+        b2 = xp.poly1d(a2, variable='z')
+        c = xp.polysub(b1, b2)
+        assert c.variable == 'x'
+        return c.coeffs
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polysub_array_poly1d(self, xp, dtype):
+        a = testing.shaped_arange((3,), xp, dtype)
+        b = testing.shaped_arange((5,), xp, dtype)
+        b = xp.poly1d(b)
+        return xp.polysub(a, b).coeffs
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polysub_poly1d_array(self, xp, dtype):
+        a = testing.shaped_arange((3,), xp, dtype)
+        b = testing.shaped_arange((5,), xp, dtype)
+        b = xp.poly1d(b)
+        return xp.polysub(b, a).coeffs
+
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'], no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polysub_diff_types_array(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((10,), xp, dtype1)
+        b = testing.shaped_arange((5,), xp, dtype2)
+        return xp.polysub(a, b)
+
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'], no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polysub_diff_types_poly1d(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((5,), xp, dtype1)
+        b = testing.shaped_arange((10,), xp, dtype2)
+        a = xp.poly1d(a, variable='z')
+        b = xp.poly1d(b, variable='y')
+        c = xp.polysub(a, b)
+        assert c.variable == 'x'
+        return c.coeffs
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_polysub_ndim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 4, 2), xp, dtype)
+            b = testing.shaped_arange((4, 2), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.polysub(a, b)

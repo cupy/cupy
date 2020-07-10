@@ -39,3 +39,13 @@ Basics
    :nosignatures:
 
     cupy.poly1d
+
+
+Arithmetic
+~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+    cupy.polysub
