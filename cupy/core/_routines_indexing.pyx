@@ -565,7 +565,7 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     mask = _manipulation._reshape(
         mask,
         axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
-    if mask._shape.size() > a._shape.size():
+    if <Py_ssize_t>mask._shape.size() > a._shape.size():
         raise IndexError('too many indices for array')
 
     mask = _manipulation.broadcast_to(mask, a.shape)
