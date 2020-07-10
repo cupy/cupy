@@ -39,32 +39,119 @@ def _broadcast_arrays(a, b):
     return x, y
 
 
-def _csr_column_index1_indptr(col_offsets, Ap, Aj):
+_csr_column_index1_ker_types = {
+    (_int32_dtype): 'csr_column_index1_ker<int>'
+}
+_csr_column_index1_ker = core.RawModule(code="""
+    #include <cupy/complex.cuh>
+    template<typename I>
+    __global__
+    void csr_column_index1_ker(const I *col_idxs,
+                               const I *col_offsets,
+                               I n_offsets,
+                               const I *Aj,
+                               I nnz,
+                               I *Bj) {
+
+    // Get the index of the thread
+    I i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if(i < nnz) {
+        I cur_col = Aj[i];
+        for(int jj=0; jj<n_offsets; jj++) {
+            if(cur_col == col_idxs[jj]) {
+                Bj[i+1] = col_offsets[jj];
+            }
+        }
+    }
+}
+""", options=_module_options, name_expressions=tuple(
+    _csr_column_index1_ker_types.values()
+))
+
+
+_csr_column_index2_order_types = {
+    (_int32_dtype): '_csr_column_index2_order<int>'
+}
+_csr_column_index2_order_ker = core.RawModule(code="""
+    template<typename I>
+    __global__
+    void _csr_column_index2_order(const I *col_order,
+                                  const I n,
+                                  I *out_index) {
+
+    // Get the index of the thread
+    I i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if(i < n)
+        out_index[col_order[i]] = col_order[i+1];
+}
+""", options=_module_options, name_expressions=tuple(
+    _csr_column_index2_order_types.values()
+))
+
+
+def _csr_column_index2_order(col_order, tpb=32):
+
+    grid = math.ceil(col_order.size-1 / tpb)
+    kernel = _csr_column_index2_order_ker.get_function(
+        _csr_column_index2_order_types[col_order.dtype]
+    )
+    out_order = cupy.empty_like(col_order)
+    kernel((grid,), (tpb,), (col_order, col_order.size-1, out_order))
+
+    return out_order
+
+
+def _csr_column_index1_indptr(idx, col_offsets, unique_idxs,
+                              Ap, Aj, Ax, tpb=32):
     """Construct output indptr by counting column indices
-    in input matrix.
+    in input matrix for each row.
     """
 
-    col_sum = cupy.zeros((Aj.size+1,), dtype=col_offsets.dtype)
-    cupy.cumsum(col_offsets[Aj], out=col_sum[1:])
+    out_col_sum = cupy.zeros((Aj.size+1,), dtype=col_offsets.dtype)
+    grid = math.ceil(len(Aj) / tpb)
 
-    Bp = col_sum[Ap]
+    kernel = _csr_column_index1_ker.get_function(
+        _csr_column_index1_ker_types[unique_idxs.dtype]
+    )
+    kernel((grid,), (tpb,), (unique_idxs, col_offsets,
+                             len(unique_idxs), Aj,
+                             len(Aj), out_col_sum))
+
+    indices_mask = out_col_sum[1:].copy()
+    indices_mask[indices_mask == 0] = -1
+
+    indices_mask[indices_mask > 0] = Aj[indices_mask > 0]
+    indices_mask[indices_mask > 0] = cupy.searchsorted(
+        unique_idxs, indices_mask[indices_mask > 0])
+
+    indices_mask[indices_mask >= 0] = idx[indices_mask[indices_mask >= 0]]
+
+    cupy.cumsum(out_col_sum, out=out_col_sum)
+    Bp = out_col_sum[Ap]
     Bp[1:] -= Bp[:-1]
-
     cupy.cumsum(Bp, out=Bp)
 
-    return Bp
+    return Bp, indices_mask
 
 
-def _csr_column_index1(col_idxs, n_col, indptr, indices):
+def _csr_column_index1(col_idxs, indptr, indices, data):
 
-    col_offsets = cupy.zeros(n_col, dtype=indptr.dtype)
+    idx_map, idx = cupy.unique(col_idxs, return_index=True)
+    idxs = cupy.searchsorted(idx_map, col_idxs).astype('int32')
 
-    cupyx.scatter_add(col_offsets, col_idxs, 1)
-    cupy.cumsum(col_offsets, out=col_offsets)
+    col_idxs = col_idxs.astype('int32')
 
-    new_indptr = _csr_column_index1_indptr(col_offsets, indptr, indices)
+    col_counts = cupy.zeros(len(idx_map), dtype=col_idxs.dtype)
+    cupyx.scatter_add(col_counts, idxs, 1)
 
-    return col_offsets, new_indptr
+    new_indptr, indices_mask,  = _csr_column_index1_indptr(
+        idx, col_counts, idx_map, indptr, indices, data)
+
+    idx = idx.astype('int32')
+
+    return new_indptr, indices_mask, col_counts, idx
 
 
 _get_csr_index2_ker_types = {
@@ -77,8 +164,9 @@ _get_csr_index2_ker = core.RawModule(code="""
     #include <cupy/complex.cuh>
     template<typename I, typename T>
     __global__
-    void csr_index2_ker(I *col_order,
-                        I *col_offsets,
+    void csr_index2_ker(I *idxs,
+                        I *col_counts,
+                        I *col_order,
                         const I *Ap,
                         const I *Aj,
                         const T *Ax,
@@ -96,16 +184,14 @@ _get_csr_index2_ker = core.RawModule(code="""
 
         // loop through columns in current row
         for(int jj = Ap[i]; jj < Ap[i+1]; jj++) {
-            const I col = Aj[jj];  // current column
-            const I offset = col_offsets[col];
-            const I prev_offset = col == 0 ? 0 : col_offsets[col-1];
-
-            // if current column is in the indices,
-            // add it along with any potential duplicates
-            if (offset != prev_offset) {
+            I col = Aj[jj];  // current column
+            if(col != -1) {
                 const T v = Ax[jj];
-                for(I k = prev_offset; k < offset; k++) {
-                    Bj[n] = col_order[k];
+                const I counts = col_counts[idxs[col]];
+                for(int l = 0; l < counts; l++) {
+                    if(l > 0)
+                        col = col_order[col];
+                    Bj[n] = col;
                     Bx[n] = v;
                     n++;
                 }
@@ -116,20 +202,62 @@ _get_csr_index2_ker = core.RawModule(code="""
 """, options=_module_options, name_expressions=tuple(
     _get_csr_index2_ker_types.values()))
 
+_csr_column_index2_idx_types = {
+    (_int32_dtype): '_csr_column_index2_idx<int>',
+    (_int64_dtype): '_csr_column_index2_idx<long long>'
+}
+_csr_column_index2_idx_ker = core.RawModule(code="""
+    template<typename I>
+    __global__
+    void _csr_column_index2_idx(const I *idxs,
+                                const I n,
+                                I *out_index) {
 
-def _csr_column_index2(col_order, col_offsets,
+    // Get the index of the thread
+    I i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if(i < n)
+        out_index[idxs[i]] = i;
+}
+""", options=_module_options, name_expressions=tuple(
+    _csr_column_index2_idx_types.values()
+))
+
+
+def _csr_column_index2_idx(idxs, tpb=32):
+
+    max_idx = idxs.max().item()
+    idxs_adj = cupy.zeros(max_idx + 1, dtype=idxs.dtype)
+
+    grid = math.ceil(len(idxs) / tpb)
+    kernel = _csr_column_index2_idx_ker.get_function(
+        _csr_column_index2_idx_types[idxs.dtype]
+    )
+    kernel((grid,), (tpb,), (idxs, len(idxs), idxs_adj))
+
+    return idxs_adj
+
+
+def _csr_column_index2(col_order,
+                       col_counts,
+                       idxs,
                        Ap, Aj, Ax, Bp, tpb=32):
 
     new_nnz = Bp[-1].item()
 
-    Bj = cupy.empty(new_nnz, dtype=Aj.dtype)
-    Bx = cupy.empty(new_nnz, dtype=Ax.dtype)
+    Bj = cupy.zeros(new_nnz, dtype=Aj.dtype)
+    Bx = cupy.zeros(new_nnz, dtype=Ax.dtype)
+
+    col_order = _csr_column_index2_order(col_order)
+    idxs_adj = _csr_column_index2_idx(idxs.astype('int32'))
 
     grid = math.ceil((len(Bp)-1) / tpb)
     func = _get_csr_index2_ker_types[(Ap.dtype, Bx.dtype)]
     kernel = _get_csr_index2_ker.get_function(func)
     kernel((grid,), (tpb,),
-           (col_order, col_offsets,
+           (idxs_adj.astype("int32"),
+            col_counts.astype('int32'),
+            col_order,
             Ap, Aj, Ax, len(Ap)-1, Bp, Bj, Bx))
 
     return Bj, Bx

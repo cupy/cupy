@@ -563,15 +563,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             return self.__class__(new_shape)
 
         # pass 1: count idx entries and compute new indptr
-
-        col_offsets, res_indptr = index._csr_column_index1(
-            idx, N, self.indptr, self.indices)
-
-        # pass 2: copy indices/data for selected idxs
         col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
 
+        res_indptr, indices_mask, col_counts, idxs = index._csr_column_index1(
+            idx, self.indptr, self.indices, self.data)
+
+        # pass 2: copy indices/data for selected idxs
+
         res_indices, res_data = index._csr_column_index2(
-            col_order, col_offsets, self.indptr, self.indices,
+            col_order, col_counts, idxs, self.indptr, indices_mask,
             self.data, res_indptr)
 
         return self.__class__((res_data, res_indices, res_indptr),

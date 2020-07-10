@@ -8,10 +8,10 @@ import pytest
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.9],
-    'dtype': ['float32', 'float64'],
-    'n_rows': [100000],
-    'n_cols': [1000]
+    'density': [0.1, 0.4, 0.9],
+    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
+    'n_rows': [15, 25],
+    'n_cols': [15, 25]
 }))
 @testing.with_requires('scipy')
 class TestSetitemIndexing(unittest.TestCase):
