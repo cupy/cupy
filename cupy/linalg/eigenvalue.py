@@ -120,6 +120,13 @@ def eigh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigh`
     """
+    if a.ndim < 2:
+        raise ValueError('Array must be at least two-dimensional')
+
+    m, n = a.shape[-2:]
+    if m != n:
+        raise ValueError('Last 2 dimensions of the array must be square')
+
     if a.ndim > 2:
         return cupy.cusolver.syevj(a, UPLO, True)
     else:
@@ -156,6 +163,13 @@ def eigvalsh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """
+    if a.ndim < 2:
+        raise ValueError('Array must be at least two-dimensional')
+
+    m, n = a.shape[-2:]
+    if m != n:
+        raise ValueError('Last 2 dimensions of the array must be square')
+
     if a.ndim > 2:
         return cupy.cusolver.syevj(a, UPLO, False)
     else:

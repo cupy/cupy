@@ -410,12 +410,11 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
         ret_w_dtype = 'd'
         ret_v_dtype = 'd'
 
-    orig_shape = a.shape
     *batch_shape, m, lda = orig_shape
-    a = a.reshape(-1, m, lda)
+    batch_size = numpy.prod(batch_shape)
+    a = a.reshape(batch_size, m, lda)
     v = cupy.array(a.swapaxes(-2, -1), order='C', copy=True, dtype=inp_v_dtype)
 
-    batch_size = a.shape[0]
     w = cupy.empty((batch_size, m), inp_w_dtype).swapaxes(-2, 1)
     dev_info = cupy.empty((), numpy.int32)
     handle = device.Device().cusolver_handle
@@ -464,5 +463,5 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
     if not with_eigen_vector:
         return w
     v = v.astype(ret_v_dtype, copy=False)
-    v = v.swapaxes(-2, -1).reshape(orig_shape)
+    v = v.swapaxes(-2, -1).reshape(*batch_shape, m, m)
     return w, v
