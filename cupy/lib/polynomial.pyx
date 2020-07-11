@@ -19,21 +19,22 @@ def polysub(a1, a2):
     """
     truepoly = False
     if isinstance(a1, poly1d):
-        a1 = a1.coeffs
+        a1 = a1._coeffs
         truepoly = True
     if isinstance(a2, poly1d):
-        a2 = a2.coeffs
+        a2 = a2._coeffs
         truepoly = True
     a1 = cupy.atleast_1d(a1)
     a2 = cupy.atleast_1d(a2)
-    if a1.size < a2.size:
-        a1 = cupy.pad(a1, (a2.size - a1.size, 0))
-    elif a1.size > a2.size:
-        a2 = cupy.pad(a2, (a1.size - a2.size, 0))
-    val = a1 - a2
+    if a1.shape[0] < a2.shape[0]:
+        a1 = cupy.pad(a1, (a2.shape[0] - a1.shape[0], 0))
+    elif a1.shape[0] > a2.shape[0]:
+        a2 = cupy.pad(a2, (a1.shape[0] - a2.shape[0], 0))
+    a1 = a1.astype(cupy.result_type(a1, a2), copy=False)
+    a1 -= a2
     if truepoly:
-        val = poly1d(val)
-    return val
+        a1 = poly1d(a1)
+    return a1
 
 
 cdef class poly1d:
