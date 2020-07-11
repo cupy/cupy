@@ -20,7 +20,27 @@ _float64_dtype = dtype('float64')
 _complex64_dtype = dtype('complex64')
 _complex128_dtype = dtype('complex128')
 
+_supported_types = {
+    _int32_dtype: "int",
+    _int64_dtype: "long long",
+    _float32_dtype: "float",
+    _float64_dtype: "double",
+    _complex64_dtype: "complex<float>",
+    _complex128_dtype: "complex<double>"
+}
+
 _module_options = ('--std=c++11',)
+
+
+def _build_name_expressions(types, kernel_name):
+
+    def parse_types(t):
+        if isinstance(types[0], tuple):
+            return ",".join([_supported_types[tu] for tu in t])
+        else:
+            return _supported_types[t]
+
+    return {t: "%s<%s>" % (kernel_name, parse_types(t)) for t in types}
 
 
 def _broadcast_arrays(a, b):
@@ -39,39 +59,9 @@ def _broadcast_arrays(a, b):
     return x, y
 
 
-_csr_column_index1_ker_types = {
-    (_int32_dtype): 'csr_column_index1_ker<int>'
-}
-_csr_column_index1_ker = core.RawModule(code="""
-    template<typename I>
-    __global__
-    void csr_column_index1_ker(const I *col_idxs,
-                               const I *col_offsets,
-                               I n_offsets,
-                               const I *Aj,
-                               I nnz,
-                               I *Bj) {
-
-    // Get the index of the thread
-    I i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if(i < nnz) {
-        I cur_col = Aj[i];
-        for(int jj=0; jj<n_offsets; jj++) {
-            if(cur_col == col_idxs[jj]) {
-                Bj[i+1] = col_offsets[jj];
-            }
-        }
-    }
-}
-""", options=_module_options, name_expressions=tuple(
-    _csr_column_index1_ker_types.values()
-))
-
-
-_csr_column_index2_order_types = {
-    (_int32_dtype): '_csr_column_index2_order<int>'
-}
+_csr_column_index2_order_types = \
+    _build_name_expressions([_int32_dtype, _int64_dtype],
+                            '_csr_column_index2_order')
 _csr_column_index2_order_ker = core.RawModule(code="""
     template<typename I>
     __global__
@@ -90,7 +80,7 @@ _csr_column_index2_order_ker = core.RawModule(code="""
 ))
 
 
-def _csr_column_index2_order(col_order, tpb=32):
+def _csr_column_index2_order(col_order, tpb=1024):
 
     grid = math.ceil(col_order.size-1 / tpb)
     kernel = _csr_column_index2_order_ker.get_function(
@@ -103,20 +93,19 @@ def _csr_column_index2_order(col_order, tpb=32):
 
 
 def _csr_column_index1_indptr(idx, col_offsets, unique_idxs,
-                              Ap, Aj, tpb=32):
+                              Ap, Aj):
     """Construct output indptr by counting column indices
     in input matrix for each row.
     """
-
     out_col_sum = cupy.zeros((Aj.size+1,), dtype=col_offsets.dtype)
-    grid = math.ceil(Aj.size / tpb)
 
-    kernel = _csr_column_index1_ker.get_function(
-        _csr_column_index1_ker_types[unique_idxs.dtype]
-    )
-    kernel((grid,), (tpb,), (unique_idxs, col_offsets,
-                             unique_idxs.size, Aj,
-                             Aj.size, out_col_sum))
+    index = cupy.argsort(unique_idxs)
+    sorted_idxs = unique_idxs[index]
+
+    sorted_index = cupy.searchsorted(sorted_idxs, Aj)
+    yindex = cupy.take(index, sorted_index)
+    mask = unique_idxs[yindex] == Aj
+    out_col_sum[1:][mask] = col_offsets[Aj[mask]]
 
     indices_mask = out_col_sum[1:].copy()
     indices_mask[indices_mask == 0] = -1
@@ -138,17 +127,14 @@ def _csr_column_index1_indptr(idx, col_offsets, unique_idxs,
 def _csr_column_index1(col_idxs, indptr, indices):
 
     idx_map, idx = cupy.unique(col_idxs, return_index=True)
-    idxs = cupy.searchsorted(idx_map, col_idxs).astype('int32')
-
-    col_idxs = col_idxs.astype('int32')
+    idx = idx.astype(idx_map.dtype)
+    idxs = cupy.searchsorted(idx_map, col_idxs)
 
     col_counts = cupy.zeros(idx_map.size, dtype=col_idxs.dtype)
     cupyx.scatter_add(col_counts, idxs, 1)
 
     new_indptr, indices_mask,  = _csr_column_index1_indptr(
         idx, col_counts, idx_map, indptr, indices)
-
-    idx = idx.astype('int32')
 
     return new_indptr, indices_mask, col_counts, idx
 
@@ -157,7 +143,13 @@ _get_csr_index2_ker_types = {
     (_int32_dtype, _float32_dtype): 'csr_index2_ker<int, float>',
     (_int32_dtype, _float64_dtype): 'csr_index2_ker<int, double>',
     (_int32_dtype, _complex64_dtype): 'csr_index2_ker<int, complex<float>>',
-    (_int32_dtype, _complex128_dtype): 'csr_index2_ker<int, complex<double>>'
+    (_int32_dtype, _complex128_dtype): 'csr_index2_ker<int, complex<double>>',
+    (_int64_dtype, _float32_dtype): 'csr_index2_ker<long long, float>',
+    (_int64_dtype, _float64_dtype): 'csr_index2_ker<long long, double>',
+    (_int64_dtype, _complex64_dtype):
+        'csr_index2_ker<long long, complex<float>>',
+    (_int64_dtype, _complex128_dtype):
+        'csr_index2_ker<long long, complex<double>>'
 }
 _get_csr_index2_ker = core.RawModule(code="""
     #include <cupy/complex.cuh>
@@ -223,7 +215,7 @@ _csr_column_index2_idx_ker = core.RawModule(code="""
 ))
 
 
-def _csr_column_index2_idx(idxs, tpb=32):
+def _csr_column_index2_idx(idxs, tpb=1024):
 
     max_idx = idxs.max().item()
     idxs_adj = cupy.zeros(max_idx + 1, dtype=idxs.dtype)
@@ -240,7 +232,7 @@ def _csr_column_index2_idx(idxs, tpb=32):
 def _csr_column_index2(col_order,
                        col_counts,
                        idxs,
-                       Ap, Aj, Ax, Bp, tpb=32):
+                       Ap, Aj, Ax, Bp, tpb=1024):
 
     new_nnz = Bp[-1].item()
 
@@ -248,14 +240,14 @@ def _csr_column_index2(col_order,
     Bx = cupy.zeros(new_nnz, dtype=Ax.dtype)
 
     col_order = _csr_column_index2_order(col_order)
-    idxs_adj = _csr_column_index2_idx(idxs.astype('int32'))
+    idxs_adj = _csr_column_index2_idx(idxs)
 
     grid = math.ceil((Bp.size-1) / tpb)
     func = _get_csr_index2_ker_types[(Ap.dtype, Bx.dtype)]
     kernel = _get_csr_index2_ker.get_function(func)
     kernel((grid,), (tpb,),
-           (idxs_adj.astype("int32"),
-            col_counts.astype('int32'),
+           (idxs_adj,
+            col_counts,
             col_order,
             Ap, Aj, Ax, Ap.size-1, Bp, Bj, Bx))
 
@@ -289,6 +281,7 @@ def _get_csr_submatrix(indptr, indices, data,
 
 _get_csr_submatrix_degree_ker_types = {
     _int32_dtype: 'csr_submatrix_degree_ker<int>',
+    _int64_dtype: 'csr_submatrix_degree_ker<long long>',
 }
 _get_csr_submatrix_degree_ker = core.RawModule(code="""
     template<typename I>
@@ -325,7 +318,7 @@ _get_csr_submatrix_degree_ker = core.RawModule(code="""
 
 
 def _get_csr_submatrix_degree(Ap, Aj, ir0, ir1,
-                              ic0, ic1, Bp, tpb=32):
+                              ic0, ic1, Bp, tpb=1024):
     """
     Invokes get_csr_submatrix_degree_ker with the given inputs
     """
@@ -345,7 +338,16 @@ _get_csr_submatrix_cols_data_ker_types = {
     (_int32_dtype, _complex64_dtype):
         'get_csr_submatrix_cols_data<int, complex<float>>',
     (_int32_dtype, _complex128_dtype):
-        'get_csr_submatrix_cols_data<int, complex<double>>'
+        'get_csr_submatrix_cols_data<int, complex<double>>',
+    (_int64_dtype, _float32_dtype):
+        'get_csr_submatrix_cols_data<long long, float>',
+    (_int64_dtype, _float64_dtype):
+        'get_csr_submatrix_cols_data<long long, double>',
+    (_int64_dtype, _complex64_dtype):
+        'get_csr_submatrix_cols_data<long long, complex<float>>',
+    (_int64_dtype, _complex128_dtype):
+        'get_csr_submatrix_cols_data<long long, complex<double>>'
+
 }
 _get_csr_submatrix_cols_data_ker = core.RawModule(code="""
     #include <cupy/complex.cuh>
@@ -390,7 +392,7 @@ def _get_csr_submatrix_cols_data(Ap, Aj, Ax,
                                  ir0, ir1,
                                  ic0, ic1,
                                  Bp, Bj, Bx,
-                                 tpb=32):
+                                 tpb=1024):
 
     grid = math.ceil((ir1-ir0)/tpb)
     kernel = _get_csr_submatrix_cols_data_ker.get_function(
@@ -406,9 +408,16 @@ def _get_csr_submatrix_cols_data(Ap, Aj, Ax,
 _csr_row_index_ker_types = {
     (_int32_dtype, _float32_dtype): 'csr_row_index_ker<int, float>',
     (_int32_dtype, _float64_dtype): 'csr_row_index_ker<int, double>',
-    (_int32_dtype, _complex64_dtype): 'csr_row_index_ker<int, complex<float>>',
+    (_int32_dtype, _complex64_dtype):
+        'csr_row_index_ker<int, complex<float>>',
     (_int32_dtype, _complex128_dtype):
-        'csr_row_index_ker<int, complex<double>>'
+        'csr_row_index_ker<int, complex<double>>',
+    (_int64_dtype, _float32_dtype): 'csr_row_index_ker<long long, float>',
+    (_int64_dtype, _float64_dtype): 'csr_row_index_ker<long long, double>',
+    (_int64_dtype, _complex64_dtype):
+        'csr_row_index_ker<long long, complex<float>>',
+    (_int64_dtype, _complex128_dtype):
+        'csr_row_index_ker<long long, complex<double>>'
 }
 _csr_row_index_ker = core.RawModule(code="""
     #include <cupy/complex.cuh>

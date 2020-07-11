@@ -8,10 +8,10 @@ import pytest
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.1, 0.4, 0.9],
+    'density': [0.2],
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'n_rows': [15, 25],
-    'n_cols': [15, 25]
+    'n_rows': [15000],
+    'n_cols': [15000]
 }))
 @testing.with_requires('scipy')
 class TestIndexing(unittest.TestCase):
@@ -21,32 +21,66 @@ class TestIndexing(unittest.TestCase):
                                format=self.format,
                                density=self.density)
 
-        # sparse.random doesn't support complex types
-        # so we need to cast
-        a = a.astype(self.dtype)
-        if min is not None:
-            expected = a.get()[maj, min]
-            actual = a[maj, min]
-        else:
-            expected = a.get()[maj]
-            actual = a[maj]
+        print("format=%s, density=%s, dtype=%s" % (self.format,
+                                                   self.density, self.dtype))
 
-        if cupy.sparse.isspmatrix(actual):
-            # print("actual indptr:   %s" % actual.indptr)
-            # print("expected indptr: %s" % expected.indptr)
-            # #
-            # print("actual:   %s" % actual.indices)
-            # print("expected: %s" % expected.indices)
-            actual.sort_indices()
-            expected.sort_indices()
+        for i in range(2):
+            import time
+            # sparse.random doesn't support complex types
+            # so we need to cast
+            a = a.astype(self.dtype)
 
-            cupy.testing.assert_array_equal(actual.indptr, expected.indptr)
-            cupy.testing.assert_array_equal(actual.indices, expected.indices)
-            cupy.testing.assert_array_equal(actual.data, expected.data)
-        else:
+            if isinstance(maj, cupy.ndarray):
+                maj_h = maj.get()
+            else:
+                maj_h = maj
 
-            cupy.testing.assert_array_equal(actual.ravel(),
-                                            cupy.array(expected).ravel())
+            if isinstance(min, cupy.ndarray):
+                min_h = min.get()
+            else:
+                min_h = min
+
+            if min is not None:
+
+                start_cpu = time.time()
+                expected = a.get()[maj_h, min_h]
+                stop_cpu = time.time() - start_cpu
+
+                start_gpu = time.time()
+                actual = a[maj, min]
+                cupy.cuda.Stream.null.synchronize()
+                stop_gpu = time.time() - start_gpu
+            else:
+                start_cpu = time.time()
+                expected = a.get()[maj_h]
+                stop_cpu = time.time() - start_cpu
+
+                start_gpu = time.time()
+                actual = a[maj]
+                cupy.cuda.Stream.null.synchronize()
+                stop_gpu = time.time() - start_gpu
+
+            if cupy.sparse.isspmatrix(actual):
+                actual.sort_indices()
+                expected.sort_indices()
+
+                cupy.testing.assert_array_equal(
+                    actual.indptr, expected.indptr)
+                cupy.testing.assert_array_equal(
+                    actual.indices, expected.indices)
+                cupy.testing.assert_array_equal(
+                    actual.data, expected.data)
+            else:
+
+                cupy.testing.assert_array_equal(
+                    actual.ravel(), cupy.array(expected).ravel())
+
+        if(stop_cpu < stop_gpu):
+            print("+++++++++")
+            print("maj=%s, min=%s" % (maj, min))
+            print("+++++++++")
+
+        print("cpu=%s, gpu=%s" % (stop_cpu, stop_gpu))
 
     def test_major_slice(self):
         self._run(slice(5, 9))
@@ -120,7 +154,7 @@ class TestIndexing(unittest.TestCase):
 
     def test_major_bool_fancy(self):
         rand_bool = cupy.random.random(self.n_rows).astype(cupy.bool)
-        self._run(rand_bool.get())
+        self._run(rand_bool)
 
     def test_major_slice_with_step(self):
 
