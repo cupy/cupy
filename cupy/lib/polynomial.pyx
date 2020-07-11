@@ -26,11 +26,14 @@ def polysub(a1, a2):
         truepoly = True
     a1 = cupy.atleast_1d(a1)
     a2 = cupy.atleast_1d(a2)
-    if a1.shape[0] < a2.shape[0]:
-        a1 = cupy.pad(a1, (a2.shape[0] - a1.shape[0], 0))
-    elif a1.shape[0] > a2.shape[0]:
-        a2 = cupy.pad(a2, (a1.shape[0] - a2.shape[0], 0))
-    val = a1 - a2
+    if a1.shape[0] <= a2.shape[0]:
+        val = cupy.pad(a1, (a2.shape[0] - a1.shape[0], 0))
+        val = val.astype(cupy.result_type(a1, a2), copy=False)
+        val -= a2
+    else:
+        val = cupy.pad(a2, (a1.shape[0] - a2.shape[0], 0))
+        val = val.astype(cupy.result_type(a1, a2), copy=False)
+        val -= 2 * val - a1
     if truepoly:
         val = poly1d(val)
     return val
