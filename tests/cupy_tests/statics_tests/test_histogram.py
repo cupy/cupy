@@ -6,6 +6,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.core import _accelerator
 
 
 # Note that numpy.bincount does not support uint64 on 64-bit environment
@@ -310,6 +311,34 @@ class TestHistogram(unittest.TestCase):
             # a test for TypeError.
             with pytest.raises((ValueError, TypeError)):
                 xp.bincount(x, minlength=-1)
+
+
+# This class compares CUB results against NumPy's
+@testing.gpu
+@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+class TestCubHistogram(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators(['cub'])
+
+    def tearDown(self):
+        _accelerator.set_routine_accelerators(self.old_accelerators)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_list_equal()
+    def test_histogram(self, xp, dtype):
+        x = testing.shaped_arange((10,), xp, dtype)
+
+        if xp is numpy:
+            return xp.histogram(x)
+
+        # xp is cupy, first ensure we really use CUB
+        cub_func = 'cupy.statistics.histogram.cub.device_histogram'
+        with testing.AssertFunctionIsCalled(cub_func):
+            xp.histogram(x)
+        # ...then perform the actual computation
+        return xp.histogram(x)
 
 
 @testing.gpu

@@ -41,10 +41,10 @@ requirements = {
         'fastrlock>=0.3',
     ],
     'stylecheck': [
-        'autopep8==1.3.5',
-        'flake8==3.5.0',
+        'autopep8==1.4.4',
+        'flake8==3.7.9',
         'pbr==4.0.4',
-        'pycodestyle==2.3.1',
+        'pycodestyle==2.5.0',
     ],
     'test': [
         'pytest<4.2.0',  # 4.2.0 is slow collecting tests and times out on CI.

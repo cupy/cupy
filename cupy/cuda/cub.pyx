@@ -41,6 +41,7 @@ CUB_sum_support_dtype_with_half = \
 
 CUB_sum_support_dtype = {}
 
+
 ###############################################################################
 # Extern
 ###############################################################################
@@ -53,6 +54,8 @@ cdef extern from 'cupy_cub.h' nogil:
     void cub_device_spmv(void*, size_t&, void*, void*, void*, void*, void*,
                          int, int, int, Stream_t, int)
     void cub_device_scan(void*, size_t&, void*, void*, int, Stream_t, int, int)
+    void cub_device_histogram_range(void*, size_t&, void*, void*, int, void*,
+                                    size_t, Stream_t, int)
     size_t cub_device_reduce_get_workspace_size(void*, void*, int, Stream_t,
                                                 int, int)
     size_t cub_device_segmented_reduce_get_workspace_size(
@@ -61,6 +64,8 @@ cdef extern from 'cupy_cub.h' nogil:
         void*, void*, void*, void*, void*, int, int, int, Stream_t, int)
     size_t cub_device_scan_get_workspace_size(
         void*, void*, int, Stream_t, int, int)
+    size_t cub_device_histogram_range_get_workspace_size(
+        void*, void*, int, void*, size_t, Stream_t, int)
 
     # Build-time version
     int CUPY_CUB_VERSION_CODE
@@ -332,6 +337,40 @@ def device_scan(ndarray x, op):
         cub_device_scan(ws_ptr, ws_size, x_ptr, x_ptr, x_size, s,
                         op_code, dtype_id)
     return x
+
+
+def device_histogram(ndarray x, ndarray bins, ndarray y):
+    cdef memory.MemoryPointer ws
+    cdef size_t ws_size, n_samples
+    cdef int dtype_id, n_bins
+    cdef void* x_ptr
+    cdef void* bins_ptr
+    cdef void* y_ptr
+    cdef void* ws_ptr
+    cdef Stream_t s
+
+    # TODO(leofang): perhaps not needed?
+    # y is guaranteed contiguous
+    x = _internal_ascontiguousarray(x)
+    bins = _internal_ascontiguousarray(bins)
+
+    x_ptr = <void*>x.data.ptr
+    y_ptr = <void*>y.data.ptr
+    n_bins = bins.size
+    bins_ptr = <void*>bins.data.ptr
+    n_samples = x.size
+    s = <Stream_t>stream.get_current_stream_ptr()
+    dtype_id = common._get_dtype_id(x.dtype)
+    assert y.size == n_bins - 1
+    ws_size = cub_device_histogram_range_get_workspace_size(
+        x_ptr, y_ptr, n_bins, bins_ptr, n_samples, s, dtype_id)
+
+    ws = memory.alloc(ws_size)
+    ws_ptr = <void*>ws.ptr
+    with nogil:
+        cub_device_histogram_range(ws_ptr, ws_size, x_ptr, y_ptr, n_bins,
+                                   bins_ptr, n_samples, s, dtype_id)
+    return y
 
 
 cdef bint _cub_device_segmented_reduce_axis_compatible(
