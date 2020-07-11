@@ -100,12 +100,12 @@ def _csr_column_index1_indptr(idx, col_offsets, unique_idxs,
     out_col_sum = cupy.zeros((Aj.size+1,), dtype=col_offsets.dtype)
 
     index = cupy.argsort(unique_idxs)
-    sorted_idxs = unique_idxs[index]
+    sorted_index = cupy.searchsorted(unique_idxs, Aj)
 
-    sorted_index = cupy.searchsorted(sorted_idxs, Aj)
     yindex = cupy.take(index, sorted_index)
     mask = unique_idxs[yindex] == Aj
-    out_col_sum[1:][mask] = col_offsets[Aj[mask]]
+    idxs_adj = _csr_column_index2_idx(unique_idxs)
+    out_col_sum[1:][mask] = col_offsets[idxs_adj[Aj[mask]]]
 
     indices_mask = out_col_sum[1:].copy()
     indices_mask[indices_mask == 0] = -1
