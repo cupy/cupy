@@ -30,11 +30,10 @@ def polysub(a1, a2):
         a1 = cupy.pad(a1, (a2.shape[0] - a1.shape[0], 0))
     elif a1.shape[0] > a2.shape[0]:
         a2 = cupy.pad(a2, (a1.shape[0] - a2.shape[0], 0))
-    a1 = a1.astype(cupy.result_type(a1, a2), copy=False)
-    a1 -= a2
+    val = a1 - a2
     if truepoly:
-        a1 = poly1d(a1)
-    return a1
+        val = poly1d(val)
+    return val
 
 
 cdef class poly1d:
