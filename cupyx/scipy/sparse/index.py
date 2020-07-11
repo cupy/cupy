@@ -43,7 +43,6 @@ _csr_column_index1_ker_types = {
     (_int32_dtype): 'csr_column_index1_ker<int>'
 }
 _csr_column_index1_ker = core.RawModule(code="""
-    #include <cupy/complex.cuh>
     template<typename I>
     __global__
     void csr_column_index1_ker(const I *col_idxs,
@@ -104,20 +103,20 @@ def _csr_column_index2_order(col_order, tpb=32):
 
 
 def _csr_column_index1_indptr(idx, col_offsets, unique_idxs,
-                              Ap, Aj, Ax, tpb=32):
+                              Ap, Aj, tpb=32):
     """Construct output indptr by counting column indices
     in input matrix for each row.
     """
 
     out_col_sum = cupy.zeros((Aj.size+1,), dtype=col_offsets.dtype)
-    grid = math.ceil(len(Aj) / tpb)
+    grid = math.ceil(Aj.size / tpb)
 
     kernel = _csr_column_index1_ker.get_function(
         _csr_column_index1_ker_types[unique_idxs.dtype]
     )
     kernel((grid,), (tpb,), (unique_idxs, col_offsets,
-                             len(unique_idxs), Aj,
-                             len(Aj), out_col_sum))
+                             unique_idxs.size, Aj,
+                             Aj.size, out_col_sum))
 
     indices_mask = out_col_sum[1:].copy()
     indices_mask[indices_mask == 0] = -1
@@ -136,18 +135,18 @@ def _csr_column_index1_indptr(idx, col_offsets, unique_idxs,
     return Bp, indices_mask
 
 
-def _csr_column_index1(col_idxs, indptr, indices, data):
+def _csr_column_index1(col_idxs, indptr, indices):
 
     idx_map, idx = cupy.unique(col_idxs, return_index=True)
     idxs = cupy.searchsorted(idx_map, col_idxs).astype('int32')
 
     col_idxs = col_idxs.astype('int32')
 
-    col_counts = cupy.zeros(len(idx_map), dtype=col_idxs.dtype)
+    col_counts = cupy.zeros(idx_map.size, dtype=col_idxs.dtype)
     cupyx.scatter_add(col_counts, idxs, 1)
 
     new_indptr, indices_mask,  = _csr_column_index1_indptr(
-        idx, col_counts, idx_map, indptr, indices, data)
+        idx, col_counts, idx_map, indptr, indices)
 
     idx = idx.astype('int32')
 
@@ -229,11 +228,11 @@ def _csr_column_index2_idx(idxs, tpb=32):
     max_idx = idxs.max().item()
     idxs_adj = cupy.zeros(max_idx + 1, dtype=idxs.dtype)
 
-    grid = math.ceil(len(idxs) / tpb)
+    grid = math.ceil(idxs.size / tpb)
     kernel = _csr_column_index2_idx_ker.get_function(
         _csr_column_index2_idx_types[idxs.dtype]
     )
-    kernel((grid,), (tpb,), (idxs, len(idxs), idxs_adj))
+    kernel((grid,), (tpb,), (idxs, idxs.size, idxs_adj))
 
     return idxs_adj
 
@@ -251,14 +250,14 @@ def _csr_column_index2(col_order,
     col_order = _csr_column_index2_order(col_order)
     idxs_adj = _csr_column_index2_idx(idxs.astype('int32'))
 
-    grid = math.ceil((len(Bp)-1) / tpb)
+    grid = math.ceil((Bp.size-1) / tpb)
     func = _get_csr_index2_ker_types[(Ap.dtype, Bx.dtype)]
     kernel = _get_csr_index2_ker.get_function(func)
     kernel((grid,), (tpb,),
            (idxs_adj.astype("int32"),
             col_counts.astype('int32'),
             col_order,
-            Ap, Aj, Ax, len(Ap)-1, Bp, Bj, Bx))
+            Ap, Aj, Ax, Ap.size-1, Bp, Bj, Bx))
 
     return Bj, Bx
 
@@ -266,7 +265,6 @@ def _csr_column_index2(col_order,
 def _get_csr_submatrix(indptr, indices, data,
                        start_maj, stop_maj, start_min, stop_min):
 
-    # We first compute the degree, then use it to compute the indptr
     new_n_row = stop_maj - start_maj
     new_indptr = cupy.zeros(new_n_row+1, dtype=indptr.dtype)
     _get_csr_submatrix_degree(indptr, indices,
@@ -368,7 +366,6 @@ _get_csr_submatrix_cols_data_ker = core.RawModule(code="""
         I i = blockIdx.x * blockDim.x + threadIdx.x;
 
         if(i < (ir1-ir0)) {
-
 
             I row_start = Ap[ir0+i];
             I row_end   = Ap[ir0+i+1];
