@@ -1,9 +1,10 @@
+#include "cupy_cub.h"  // need to make atomicAdd visible to CUB templates early
 #include <cupy/complex.cuh>
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_spmv.cuh>
 #include <cub/device/device_scan.cuh>
-#include "cupy_cub.h"
+#include <cub/device/device_histogram.cuh>
 #include <stdexcept>
 
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
@@ -401,6 +402,7 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()
 
 }
 #endif
+
 /* ------------------------------------ End of "patches" ------------------------------------ */
 
 
@@ -616,6 +618,41 @@ struct _cub_inclusive_product {
 };
 
 //
+// **** CUB histogram range ****
+//
+struct _cub_histogram_range {
+    template <typename sampleT,
+              typename binT = typename If<std::is_integral<sampleT>::value, double, sampleT>::Type>
+    void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
+        int n_bins, void* bins, size_t n_samples, cudaStream_t s) const
+    {
+        // Ugly hack to avoid specializing complex types, which cub::DeviceHistogram does not support.
+        // The If and Equals templates are from cub/util_type.cuh.
+        // TODO(leofang): revisit this part when complex support is added to cupy.histogram()
+        typedef typename If<(Equals<sampleT, complex<float>>::VALUE || Equals<sampleT, complex<double>>::VALUE),
+                            double,
+                            sampleT>::Type h_sampleT;
+        typedef typename If<(Equals<binT, complex<float>>::VALUE || Equals<binT, complex<double>>::VALUE),
+                            double,
+                            binT>::Type h_binT;
+
+        // TODO(leofang): CUB has a bug that when specializing n_samples with type size_t,
+        // it would error out. Before the fix (thrust/cub#38) is merged we disable the code
+        // path splitting for now. A type/range check must be done in the caller.
+
+        // if (n_samples < (1ULL << 31)) {
+            int num_samples = n_samples;
+            DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
+                static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), num_samples, s);
+        // } else {
+        //     DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
+        //         static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), n_samples, s);
+        // }
+    }
+};
+
+
+//
 // APIs exposed to CuPy
 //
 
@@ -735,5 +772,29 @@ size_t cub_device_scan_get_workspace_size(void* x, void* y, int num_items,
     size_t workspace_size = 0;
     cub_device_scan(NULL, workspace_size, x, y, num_items, stream,
                     op, dtype_id);
+    return workspace_size;
+}
+
+/* -------- device histogram -------- */
+
+void cub_device_histogram_range(void* workspace, size_t& workspace_size, void* x, void* y,
+    int n_bins, void* bins, size_t n_samples, cudaStream_t stream, int dtype_id)
+{
+    // TODO(leofang): support complex
+    if (dtype_id == CUPY_CUB_COMPLEX64 || dtype_id == CUPY_CUB_COMPLEX128) {
+	    throw std::runtime_error("complex dtype is not yet supported");
+    }
+
+    // TODO(leofang): n_samples is of type size_t, but if it's < 2^31 we cast it to int later
+    return dtype_dispatcher(dtype_id, _cub_histogram_range(),
+                            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+}
+
+size_t cub_device_histogram_range_get_workspace_size(void* x, void* y, int n_bins,
+    void* bins, size_t n_samples, cudaStream_t stream, int dtype_id)
+{
+    size_t workspace_size = 0;
+    cub_device_histogram_range(NULL, workspace_size, x, y, n_bins, bins, n_samples,
+                               stream, dtype_id);
     return workspace_size;
 }
