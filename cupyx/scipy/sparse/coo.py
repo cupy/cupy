@@ -216,6 +216,9 @@ class coo_matrix(sparse_data._data_matrix):
     def sum_duplicates(self):
         """Eliminate duplicate matrix entries by adding them together.
 
+        .. warning::
+            Calling this function might synchronize the device.
+
         .. seealso::
            :meth:`scipy.sparse.coo_matrix.sum_duplicates`
 

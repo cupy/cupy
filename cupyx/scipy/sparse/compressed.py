@@ -681,8 +681,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def sorted_indices(self):
         """Return a copy of this matrix with sorted indices
 
-        Taken from SciPy as is.
+        .. warning::
+            Calling this function might synchronize the device.
+
         """
+        # Taken from SciPy as is.
         A = self.copy()
         A.sort_indices()
         return A
@@ -693,6 +696,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         raise NotImplementedError
 
     def sum_duplicates(self):
+        """Eliminate duplicate matrix entries by adding them together.
+
+        .. note::
+            This is an *in place* operation.
+
+        .. warning::
+            Calling this function might synchronize the device.
+
+        """
         if self.has_canonical_format:
             return
         # TODO(leofang): add a kernel for compressed sparse matrices without
