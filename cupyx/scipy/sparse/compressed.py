@@ -583,18 +583,21 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
 
     def __get_has_canonical_format(self):
-        """Determine whether the matrix has sorted indices and no duplicates
+        """Determine whether the matrix has sorted indices and no duplicates.
 
         Returns
-            - True: if the above applies
-            - False: otherwise
+            bool: ``True`` if the above applies, otherwise ``False``.
 
-        has_canonical_format implies has_sorted_indices, so if the latter flag
-        is False, so will the former be; if the former is found True, the
-        latter flag is also set.
+        .. note::
+            :attr:`has_canonical_format` implies :attr:`has_sorted_indices`, so
+            if the latter flag is ``False``, so will the former be; if the
+            former is found ``True``, the latter flag is also set.
 
-        Modified from the SciPy counterpart.
+        .. warning::
+            Getting this property might synchronize the device.
+
         """
+        # Modified from the SciPy counterpart.
 
         # In CuPy the implemented conversions do not exactly match those of
         # SciPy's, so it's hard to put this exactly as where it is in SciPy,
@@ -621,14 +624,18 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                                     fset=__set_has_canonical_format)
 
     def __get_sorted(self):
-        """Determine whether the matrix has sorted indices
+        """Determine whether the matrix has sorted indices.
 
         Returns
-            - True: if the indices of the matrix are in sorted order
-            - False: otherwise
+            bool:
+                ``True`` if the indices of the matrix are in sorted order,
+                otherwise ``False``.
 
-        Modified from the SciPy counterpart.
+        .. warning::
+            Getting this property might synchronize the device.
+
         """
+        # Modified from the SciPy counterpart.
 
         # In CuPy the implemented conversions do not exactly match those of
         # SciPy's, so it's hard to put this exactly as where it is in SciPy,

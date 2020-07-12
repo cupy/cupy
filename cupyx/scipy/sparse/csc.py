@@ -35,7 +35,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         copy (bool): If ``True``, copies of given arrays are always used.
 
     .. seealso::
-       :class:`scipy.sparse.csc_matrix`
+        :class:`scipy.sparse.csc_matrix`
 
     """
 
