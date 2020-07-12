@@ -14,22 +14,6 @@ _contraction_finds = {}
 _contraction_plans = {}
 
 
-class Descriptor(object):
-
-    def __init__(self, descriptor, destroyer=None):
-        self.value = descriptor
-        self.destroy = destroyer
-
-    def __del__(self, is_shutting_down=util.is_shutting_down):
-        if is_shutting_down():
-            return
-        if self.destroy is None:
-            self.value = None
-        elif self.value is not None:
-            self.destroy(self.value)
-            self.value = None
-
-
 class Mode(object):
 
     def __init__(self, mode):
