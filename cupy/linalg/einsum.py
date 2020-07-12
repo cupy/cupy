@@ -293,8 +293,6 @@ def _flatten_transpose(a, axeses):
 
 
 def _use_cutensor(dtype0, sub0, dtype1, sub1, batch_dims, contract_dims):
-    if not cupy.cuda.cutensor_enabled:
-        return False
     if dtype0 != dtype1:
         return False
     if dtype0 not in (cupy.float32, cupy.float64,
@@ -384,7 +382,7 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
         arr1 = _expand_dims_transpose(arr1, sub1, sub_out)
         return arr0 * arr1, sub_out
 
-    for accelerator in _accelerator._routine_accelerators:
+    for accelerator in _accelerator.get_routine_accelerators():
         if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
             if _use_cutensor(arr0.dtype, sub0, arr1.dtype, sub1,
                              batch_dims, contract_dims):
