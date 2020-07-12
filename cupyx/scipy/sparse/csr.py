@@ -5,12 +5,17 @@ except ImportError:
     _scipy_available = False
 
 import cupy
+from cupy.core import _accelerator
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
 from cupyx.scipy.sparse import csc
-if cupy.cuda.cub_enabled:
-    from cupy.cuda.cub import device_csrmv
+
+# TODO(leofang): always import cub when hipCUB is supported
+if not cupy.cuda.runtime.is_hip:
+    from cupy.cuda import cub
+else:
+    cub = None
 
 
 class csr_matrix(compressed._compressed_sparse_matrix):
@@ -138,12 +143,13 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 other = cupy.asfortranarray(other)
                 # csrmvEx does not work if nnz == 0
                 if self.nnz > 0 and cusparse.csrmvExIsAligned(self, other):
-                    if cupy.cuda.cub_enabled and other.flags.c_contiguous:
-                        return device_csrmv(
-                            self.shape[0], self.shape[1], self.nnz, self.data,
-                            self.indptr, self.indices, other)
-                    else:
-                        return cusparse.csrmvEx(self, other)
+                    for accelerator in _accelerator.get_routine_accelerators():
+                        if (accelerator == _accelerator.ACCELERATOR_CUB
+                                and other.flags.c_contiguous):
+                            return cub.device_csrmv(
+                                self.shape[0], self.shape[1], self.nnz,
+                                self.data, self.indptr, self.indices, other)
+                    return cusparse.csrmvEx(self, other)
                 else:
                     if cusparse.check_availability('csrmv'):
                         csrmv = cusparse.csrmv
@@ -224,9 +230,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         .. seealso:: :meth:`scipy.sparse.csr_matrix.toarray`
 
         """
-        if order is None:
-            order = 'C'
-
+        order = 'C' if order is None else order.upper()
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
 
@@ -238,7 +242,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         elif order == 'F':
             return cusparse.csr2dense(self)
         else:
-            raise TypeError('order not understood')
+            raise ValueError('order not understood')
 
     def tobsr(self, blocksize=None, copy=False):
         # TODO(unno): Implement tobsr

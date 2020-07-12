@@ -1,7 +1,6 @@
 import pickle
 import unittest
-
-import mock
+from unittest import mock
 
 import cupy
 from cupy.cuda import compiler

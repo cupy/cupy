@@ -3,6 +3,8 @@ from cupy.core import internal  # NOQA
 
 
 # import class and function
+from cupy.core._accelerator import set_reduction_accelerators  # NOQA
+from cupy.core._accelerator import set_routine_accelerators  # NOQA
 from cupy.core._kernel import create_ufunc  # NOQA
 from cupy.core._kernel import ElementwiseKernel  # NOQA
 from cupy.core._kernel import ufunc  # NOQA
@@ -62,11 +64,3 @@ from cupy.core.internal import complete_slice  # NOQA
 from cupy.core.internal import get_size  # NOQA
 from cupy.core.raw import RawKernel  # NOQA
 from cupy.core.raw import RawModule  # NOQA
-
-
-# Whether to use reduction kernels based on cub::BlockReduce
-import os
-cub_block_reduction_enabled = False
-if int(os.getenv('CUPY_CUB_BLOCK_REDUCTION_DISABLED', 1)) == 0:
-    cub_block_reduction_enabled = True
-del os

@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.core import _accelerator
 from cupy import testing
 
 
@@ -198,19 +199,39 @@ class TestSumprod(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
-class TestCUBreduction(unittest.TestCase):
+@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+class TestCubReduction(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators(['cub'])
+
+    def tearDown(self):
+        _accelerator.set_routine_accelerators(self.old_accelerators)
+
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?
     @testing.for_dtypes('lLfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_sum(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
         elif self.order in ('f', 'F'):
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.sum(axis=axis)
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        if len(axis) == len(self.shape):
+            func = 'cupy.core._routines_math.cub.device_reduce'
+        else:
+            func = 'cupy.core._routines_math.cub.device_segmented_reduce'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.sum(axis=axis)
+        # ...then perform the actual computation
         return a.sum(axis=axis)
 
     @testing.for_contiguous_axes()
@@ -218,39 +239,73 @@ class TestCUBreduction(unittest.TestCase):
     @testing.for_dtypes('lLfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_prod(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
         elif self.order in ('f', 'F'):
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.prod(axis=axis)
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        if len(axis) == len(self.shape):
+            func = 'cupy.core._routines_math.cub.device_reduce'
+        else:
+            func = 'cupy.core._routines_math.cub.device_segmented_reduce'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.prod(axis=axis)
+        # ...then perform the actual computation
         return a.prod(axis=axis)
 
     # TODO(leofang): test axis after support is added
     # don't test float16 as it's not as accurate?
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_dtypes('bhilBHILfdF')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumsum(self, xp, dtype):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
         elif self.order in ('f', 'F'):
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.cumsum()
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        func = 'cupy.core._routines_math.cub.device_scan'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.cumsum()
+        # ...then perform the actual computation
         return a.cumsum()
 
     # TODO(leofang): test axis after support is added
     # don't test float16 as it's not as accurate?
-    @testing.for_dtypes('bhilBHILfdFD')
+    @testing.for_dtypes('bhilBHILfdF')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumprod(self, xp, dtype):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
         elif self.order in ('f', 'F'):
             a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            result = a.cumprod()
+            return self._mitigate_cumprod(xp, dtype, result)
+
+        # xp is cupy, first ensure we really use CUB
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        func = 'cupy.core._routines_math.cub.device_scan'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.cumprod()
+        # ...then perform the actual computation
         result = a.cumprod()
+        return self._mitigate_cumprod(xp, dtype, result)
+
+    def _mitigate_cumprod(self, xp, dtype, result):
         # for testing cumprod against complex arrays, the gotcha is CuPy may
         # produce only Inf at the position where NumPy starts to give NaN. So,
         # an error would be raised during assert_allclose where the positions
