@@ -377,3 +377,46 @@ class TestDiags(unittest.TestCase):
         self.assertIsInstance(x, sp.spmatrix)
         self.assertEqual(x.format, self.format)
         return x
+
+
+# borrowed from scipy:
+arrs = [[[0]],
+        [[-1]],
+        [[4]],
+        [[10]],
+        [[0], [0]],
+        [[0, 0]],
+        [[1, 2], [3, 4]],
+        [[0, 2], [5, 0]],
+        [[0, 2, -6], [8, 0, 14]],
+        [[5, 4], [0, 0], [6, 0]],
+        [[5, 4, 4], [1, 0, 0], [6, 0, 8]],
+        [[0, 1, 0, 2, 0, 5, 8]],
+        [[0.5, 0.125, 0, 3.25], [0, 2.5, 0, 0]], ]
+
+
+@testing.parameterize(*testing.product({
+    'dtype': (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128),
+    'format': ('csr', 'csc', 'coo'),
+    'arrA': arrs,
+    'arrB': arrs,
+}))
+@testing.with_requires('scipy')
+class TestKron(unittest.TestCase):
+
+    def _make_sp_mat(self, xp, sp, arr, dtype):
+        a = xp.array(arr, dtype=dtype)
+        a = sp.csr_matrix(a)
+        return a
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_kron(self, xp, sp):
+        a = self._make_sp_mat(xp, sp, self.arrA, self.dtype)
+        b = self._make_sp_mat(xp, sp, self.arrB, self.dtype)
+        kron = sp.kron(a, b, format=self.format)
+        assert kron.shape == (a.shape[0] * b.shape[0], a.shape[1] * b.shape[1])
+        assert kron.nnz == a.nnz * b.nnz
+        return kron
+
+    # TODO(leofang): check oversize inputs as in scipy/scipy#11879 after
+    # #3513 is fixed
