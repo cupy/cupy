@@ -5,7 +5,6 @@ import cupy
 from cupy_backends.cuda.api import runtime
 from cupy.cuda import cutensor
 from cupy.cuda import device
-from cupy import util
 
 _handles = {}
 _tensor_descriptors = {}
