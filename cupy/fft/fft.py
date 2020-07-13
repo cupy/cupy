@@ -501,7 +501,6 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
     # Note: need to call _cook_shape prior to sorting the axes
     a = _cook_shape(a, s, axes, value_type, order=order)
 
-    print(a.shape, s, axes_sorted)
     for n in a.shape:
         if n < 1:
             raise ValueError(
