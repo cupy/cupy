@@ -1268,15 +1268,15 @@ class AssertFunctionIsCalled:
 
         Args:
             mock_mod (str): the function to be mocked.
-            is_called (bool): whether this function should be called (``True``)
-                or not (``False``). Default is ``True``.
+            is_called (int or bool): the number of times the mocked function
+                should be called. Default is ``1``.
         """
 
         self.patch = mock.patch(mock_mod, **kwargs)
 
         # is_called is bool for testing whether mock_mod iscalled or not
         is_called = kwargs.get('is_called')
-        self.is_called = is_called if is_called is not None else True
+        self.is_called = is_called if is_called is not None else 1
 
     def __enter__(self):
         self.handle = self.patch.__enter__()
