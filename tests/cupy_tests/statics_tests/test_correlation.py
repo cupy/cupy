@@ -1,5 +1,9 @@
 import unittest
 
+import numpy
+import pytest
+
+import cupy
 from cupy import testing
 
 
@@ -36,29 +40,35 @@ class TestCorrcoef(unittest.TestCase):
 @testing.gpu
 class TestCov(unittest.TestCase):
 
-    def _check(self, a_shape, y_shape=None, rowvar=True, bias=False, ddof=None,
-               xp=None, dtype=None):
+    def generate_input(self, a_shape, y_shape, xp, dtype):
         a = testing.shaped_arange(a_shape, xp, dtype)
         y = None
         if y_shape is not None:
             y = testing.shaped_arange(y_shape, xp, dtype)
+        return a, y
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def check(self, a_shape, y_shape=None, rowvar=True, bias=False,
+              ddof=None, xp=None, dtype=None):
+        a, y = self.generate_input(a_shape, y_shape, xp, dtype)
         return xp.cov(a, y, rowvar, bias, ddof)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def check(self, *args, **kw):
-        return self._check(*args, **kw)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
-    def check_warns(self, *args, **kw):
+    def check_warns(self, a_shape, y_shape=None, rowvar=True, bias=False,
+                    ddof=None, xp=None, dtype=None):
         with testing.assert_warns(RuntimeWarning):
-            return self._check(*args, **kw)
+            a, y = self.generate_input(a_shape, y_shape, xp, dtype)
+            return xp.cov(a, y, rowvar, bias, ddof)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def check_raises(self, *args, **kw):
-        self._check(*args, **kw)
+    def check_raises(self, a_shape, y_shape=None, rowvar=True, bias=False,
+                     ddof=None, dtype=None):
+        for xp in (numpy, cupy):
+            a, y = self.generate_input(a_shape, y_shape, xp, dtype)
+            with pytest.raises(ValueError):
+                xp.cov(a, y, rowvar, bias, ddof)
 
     def test_cov(self):
         self.check((2, 3))
@@ -79,3 +89,80 @@ class TestCov(unittest.TestCase):
 
     def test_cov_empty(self):
         self.check((0, 1))
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'mode': ['valid', 'same', 'full'],
+    'shape1': [(5,), (6,), (20,), (21,)],
+    'shape2': [(5,), (6,), (20,), (21,)],
+}))
+class TestCorrelateShapeCombination(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_correlate(self, xp, dtype):
+        a = testing.shaped_arange(self.shape1, xp, dtype)
+        b = testing.shaped_arange(self.shape2, xp, dtype)
+        return xp.correlate(a, b, mode=self.mode)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'mode': ['valid', 'full', 'same']
+}))
+@unittest.skipIf(
+    cupy.cuda.cufft.getVersion() == 10000, 'Causes large precision errors')
+class TestCorrelate(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_correlate_non_contiguous(self, xp, dtype):
+        a = testing.shaped_arange((300,), xp, dtype)
+        b = testing.shaped_arange((100,), xp, dtype)
+        return xp.correlate(a[::200], b[10::70], mode=self.mode)
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_correlate_large_non_contiguous(self, xp, dtype):
+        a = testing.shaped_arange((10000,), xp, dtype)
+        b = testing.shaped_arange((1000,), xp, dtype)
+        return xp.correlate(a[200::], b[10::700], mode=self.mode)
+
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_allclose(rtol=1e-2)
+    def test_correlate_diff_types(self, xp, dtype1, dtype2):
+        a = testing.shaped_random((200,), xp, dtype1)
+        b = testing.shaped_random((100,), xp, dtype2)
+        return xp.correlate(a, b, mode=self.mode)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'mode': ['valid', 'same', 'full']
+}))
+class TestCorrelateInvalid(unittest.TestCase):
+
+    @testing.with_requires('numpy>=1.18')
+    @testing.for_all_dtypes()
+    def test_correlate_empty(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.zeros((0,), dtype)
+            with pytest.raises(ValueError):
+                xp.correlate(a, a, mode=self.mode)
+
+    @testing.for_all_dtypes()
+    def test_correlate_ndim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((5, 10, 2), xp, dtype)
+            b = testing.shaped_arange((3, 4, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.correlate(a, b, mode=self.mode)
+
+    @testing.for_all_dtypes()
+    def test_correlate_zero_dim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((), xp, dtype)
+            b = testing.shaped_arange((1,), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.correlate(a, b, mode=self.mode)

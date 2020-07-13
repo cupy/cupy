@@ -13,10 +13,11 @@ from libcpp cimport vector
 
 from cupy.core cimport _carray
 from cupy.core cimport core
-from cupy.cuda cimport driver
-from cupy.cuda cimport runtime
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport stream as stream_module
-from cupy.cuda.texture cimport TextureObject
+from cupy.cuda.memory cimport MemoryPointer
+from cupy.cuda.texture cimport TextureObject, SurfaceObject
 
 
 cdef class CPointer:
@@ -78,23 +79,33 @@ cdef class CUIntMax(CPointer):
         self.ptr = <void*>&self.val
 
 
+cdef class CIntptr(CPointer):
+    cdef:
+        intptr_t val
+
+    def __init__(self, intptr_t v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
+
 cdef set _pointer_numpy_types = {numpy.dtype(i).type
                                  for i in '?bhilqBHILQefdFD'}
 
 
 cdef inline CPointer _pointer(x):
     cdef Py_ssize_t itemsize
+
     if x is None:
         return CPointer()
     if isinstance(x, core.ndarray):
         return (<core.ndarray>x).get_pointer()
     if isinstance(x, _carray.Indexer):
         return (<_carray.Indexer>x).get_pointer()
-
+    if isinstance(x, MemoryPointer):
+        return CIntptr(x.ptr)
     if isinstance(x, CPointer):
         return x
-
-    if isinstance(x, TextureObject):
+    if isinstance(x, (TextureObject, SurfaceObject)):
         return CUIntMax(x.ptr)
 
     if type(x) not in _pointer_numpy_types:
@@ -104,6 +115,8 @@ cdef inline CPointer _pointer(x):
             x = numpy.float64(x)
         elif isinstance(x, bool):
             x = numpy.bool_(x)
+        elif isinstance(x, complex):
+            x = numpy.complex128(x)
         else:
             raise TypeError('Unsupported type %s' % type(x))
 
@@ -138,7 +151,7 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
     kargs.reserve(len(args))
     for a in args:
         cp = _pointer(a)
-        pargs.append(cp)
+        pargs.append(cp)  # keep the CPointer objects alive
         kargs.push_back(cp.ptr)
 
     runtime._ensure_context()
@@ -146,11 +159,11 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
     if enable_cooperative_groups:
         driver.launchCooperativeKernel(
             func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
-            <int>shared_mem, stream, <intptr_t>&(kargs[0]))
+            <int>shared_mem, stream, <intptr_t>kargs.data())
     else:
         driver.launchKernel(
             func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
-            <int>shared_mem, stream, <intptr_t>&(kargs[0]), <intptr_t>0)
+            <int>shared_mem, stream, <intptr_t>kargs.data(), <intptr_t>0)
 
 
 cdef class Function:
@@ -173,14 +186,18 @@ cdef class Function:
             args, shared_mem, s, enable_cooperative_groups)
 
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
-                        size_t block_max_size=128, stream=None):
+                        size_t block_max_size=128, stream=None,
+                        bint enable_cooperative_groups=False):
         # TODO(beam2d): Tune it
         cdef size_t gridx = min(
             0x7fffffffUL, (size + block_max_size - 1) // block_max_size)
         cdef size_t blockx = min(block_max_size, size)
         s = _get_stream(stream)
-        _launch(self.ptr,
-                gridx, 1, 1, blockx, 1, 1, args, shared_mem, s)
+        _launch(
+            self.ptr,
+            gridx, 1, 1, blockx, 1, 1,
+            args,
+            shared_mem, s, enable_cooperative_groups)
 
 
 cdef class Module:
@@ -189,6 +206,7 @@ cdef class Module:
 
     def __init__(self):
         self.ptr = 0
+        self.mapping = None
 
     def __dealloc__(self):
         if self.ptr:
@@ -219,6 +237,9 @@ cdef class Module:
         if isinstance(name, bytes):
             name = name.decode()
         return driver.moduleGetTexRef(self.ptr, name)
+
+    cpdef _set_mapping(self, dict mapping):
+        self.mapping = mapping
 
 
 cdef class LinkState:

@@ -1,6 +1,11 @@
 from cpython cimport sequence
 
+from libcpp cimport vector
+
 from cupy.core cimport _carray
+from cupy.core cimport _accelerator
+from cupy.core._carray cimport shape_t
+from cupy.core cimport _cub_reduction
 from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
 from cupy.core._kernel cimport _broadcast
@@ -11,23 +16,29 @@ from cupy.core._kernel cimport _get_out_args
 from cupy.core._kernel cimport _get_out_args_with_params
 from cupy.core._kernel cimport _preprocess_args
 from cupy.core._kernel cimport _reduce_dims
-from cupy.core._kernel cimport ParameterInfo
+from cupy.core._kernel cimport ParameterInfo, _ArgInfo
+from cupy.core cimport _optimize_config
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport _scalar
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport _convert_object_with_cuda_array_interface
+from cupy.core.core cimport _create_ndarray_from_shape_strides
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.cuda cimport device
 from cupy.cuda cimport function
-from cupy.cuda cimport runtime
+from cupy.cuda cimport memory
+from cupy_backends.cuda.api cimport runtime
 
+import math
 import string
 
-from cupy.core import _errors
+import numpy
+
 from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
+from cupy.core._ufuncs import elementwise_copy
 from cupy.cuda import compiler
 from cupy import util
 
@@ -36,6 +47,12 @@ cpdef function.Function _create_reduction_function(
         name, block_size, reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
+    # A (incomplete) list of internal variables:
+    # _J            : the index of an element in the array
+    # _block_size   : the number of threads in a block; should be power of 2
+    # _block_stride : the number of elements being processed by a block; should
+    #                 be power of 2 and <= _block_size
+
     module_code = string.Template('''
 ${type_preamble}
 ${preamble}
@@ -117,28 +134,34 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
 
     for dim in axis:
         if dim < -ndim or dim >= ndim:
-            raise _errors._AxisError('Axis overrun')
+            raise numpy.AxisError('Axis overrun')
     reduce_axis = tuple(sorted([dim % ndim for dim in axis]))
     out_axis = tuple([dim for dim in range(ndim) if dim not in reduce_axis])
     return reduce_axis, out_axis
 
 
-cpdef tuple _get_out_shape(
-        tuple shape, tuple reduce_axis, tuple out_axis, bint keepdims):
+cpdef shape_t _get_out_shape(
+        const shape_t& shape, tuple reduce_axis, tuple out_axis,
+        bint keepdims):
+    cdef shape_t out_shape
     if keepdims:
-        out_shape = list(shape)
+        out_shape = shape
         for i in reduce_axis:
             out_shape[i] = 1
-        return tuple(out_shape)
-    return tuple([shape[i] for i in out_axis])
+    else:
+        out_shape.reserve(len(out_axis))
+        for i in out_axis:
+            out_shape.push_back(shape[i])
+    return out_shape
 
 
-cdef tuple _set_permuted_args(
-        list args, tuple axis_permutes, tuple shape, tuple params):
+cdef shape_t _set_permuted_args(
+        list args, tuple axis_permutes, const shape_t& shape, tuple params):
     # This function updates `args`
     cdef ParameterInfo p
     cdef Py_ssize_t i, s
     cdef bint need_permutation = False
+    cdef shape_t out_shape
     for i, s in enumerate(axis_permutes):
         if i != s:
             need_permutation = True
@@ -150,13 +173,20 @@ cdef tuple _set_permuted_args(
         for i, a in enumerate(args):
             if isinstance(a, ndarray):
                 args[i] = _manipulation._transpose(a, axis_permutes)
-        shape = tuple([shape[i] for i in axis_permutes])
-    return shape
+        out_shape.reserve(len(axis_permutes))
+        for i in axis_permutes:
+            out_shape.push_back(shape[i])
+        return out_shape
+    else:
+        return shape
 
 
 cdef Py_ssize_t _get_contiguous_size(
         list args, tuple params, Py_ssize_t ndim,
         Py_ssize_t out_ndim) except -1:
+    '''
+    get contiguous size in the *output* axis (not *reduce* axis!)
+    '''
     cdef int i, j
     cdef ParameterInfo p
     cdef Py_ssize_t contiguous_size, tmp_contiguous_size, itemsize
@@ -177,26 +207,52 @@ cdef Py_ssize_t _get_contiguous_size(
     return contiguous_size
 
 
+cdef Py_ssize_t _default_block_size = (
+    256 if runtime._is_hip_environment else 512)
+
+
 cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
         Py_ssize_t in_size, Py_ssize_t out_size,
-        Py_ssize_t contiguous_size) except*:
+        Py_ssize_t contiguous_size,
+        Py_ssize_t block_size) except*:
     cdef Py_ssize_t reduce_block_size, block_stride, out_block_num
+    if block_size == -1:
+        block_size = _default_block_size
 
     reduce_block_size = max(1, in_size // out_size)
     contiguous_size = min(contiguous_size, 32)
-    block_stride = max(contiguous_size, _block_size // reduce_block_size)
+    block_stride = max(contiguous_size, block_size // reduce_block_size)
     block_stride = internal.clp2(block_stride // 2 + 1)  # floor
     out_block_num = (out_size + block_stride - 1) // block_stride
 
-    return _block_size, block_stride, out_block_num
-
-
-cdef Py_ssize_t _block_size = 256 if runtime._is_hip_environment else 512
+    return block_size, block_stride, out_block_num
 
 
 def _sort_axis(tuple axis, tuple strides):
     # Sorts axis in the decreasing order of absolute values of strides.
     return tuple(sorted(axis, key=lambda i: -abs(strides[i])))
+
+
+cdef tuple _get_shape_and_strides(list in_args, list out_args):
+    cdef list shape_and_strides = []
+    for x in in_args + out_args:
+        if isinstance(x, ndarray):
+            shape_and_strides.append(x.shape)
+            shape_and_strides.append(x.strides)
+        else:
+            shape_and_strides.append(None)
+            shape_and_strides.append(None)
+    return tuple(shape_and_strides)
+
+
+cdef _optimizer_copy_arg(a):
+    if isinstance(a, ndarray):
+        x = _create_ndarray_from_shape_strides(
+            a._shape, a._strides, a.dtype)
+        assert a.data.device_id == x.data.device_id
+        elementwise_copy(a, x)
+        return x
+    return a
 
 
 cdef class _AbstractReductionKernel:
@@ -225,14 +281,18 @@ cdef class _AbstractReductionKernel:
     cpdef ndarray _call(
             self,
             list in_args, list out_args,
-            tuple a_shape, axis, dtype,
-            bint keepdims, bint reduce_dims,
-            stream):
-        cdef tuple reduce_axis, out_axis
-        cdef Py_ssize_t contiguous_size
-        cdef Py_ssize_t block_size, block_stride, out_block_num
+            const shape_t& a_shape, axis, dtype,
+            bint keepdims, bint reduce_dims, int device_id,
+            stream, bint try_use_cub=False):
+        cdef tuple reduce_axis, out_axis, axis_permutes
+        cdef tuple params, opt_params
+        cdef tuple shape_and_strides
+        cdef Py_ssize_t i
+        cdef Py_ssize_t contiguous_size = -1
+        cdef Py_ssize_t block_size, block_stride, out_block_num = 0
+        cdef shape_t in_shape, out_shape
         cdef ndarray ret
-        cdef function.Function kern
+        cdef bint cub_success
 
         if dtype is not None:
             dtype = get_dtype(dtype).type
@@ -243,7 +303,7 @@ cdef class _AbstractReductionKernel:
             type_map,
         ) = self._get_expressions_and_types(in_args, out_args, dtype)
 
-        reduce_axis, out_axis = _get_axis(axis, len(a_shape))
+        reduce_axis, out_axis = _get_axis(axis, a_shape.size())
 
         # When there is only one input array, sort the axes in such a way that
         # contiguous (C or F) axes can be squashed in _reduce_dims() later.
@@ -261,42 +321,147 @@ cdef class _AbstractReductionKernel:
         if ret.size == 0:
             return ret
 
-        if self.identity == '' and 0 in a_shape:
+        if self.identity == '' and internal.is_in(a_shape, 0):
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
         in_args = [x if isinstance(x, ndarray) else
                    _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
                    for x, t in zip(in_args, in_types)]
+
+        optimize_context = _optimize_config.get_current_context()
+        key = ()
+        if optimize_context is not None:
+            # Calculate a key unique to the reduction setting.
+            shape_and_strides = _get_shape_and_strides(in_args, out_args)
+            key = (self.name, shape_and_strides,
+                   in_types, out_types, reduce_type, device_id)
+
+        # Try to use CUB
+        for accelerator in _accelerator._reduction_accelerators:
+            if try_use_cub and accelerator == _accelerator.ACCELERATOR_CUB:
+                cub_success = _cub_reduction._try_to_call_cub_reduction(
+                    self, in_args, out_args, a_shape, stream, optimize_context,
+                    key, map_expr, reduce_expr, post_map_expr, reduce_type,
+                    type_map, reduce_axis, out_axis, out_shape, ret)
+                if cub_success:
+                    return ret
+
+        axis_permutes = reduce_axis + out_axis
         in_shape = _set_permuted_args(
-            in_args, reduce_axis + out_axis, a_shape, self.in_params)
+            in_args, axis_permutes, a_shape, self.in_params)
 
         if reduce_dims:
             in_shape = _reduce_dims(in_args, self.in_params, in_shape)
             out_shape = _reduce_dims(out_args, self.out_params, out_shape)
 
+        params = self._params
+
         # Calculate the reduction block dimensions.
+        if optimize_context is None:
+            # Calculate manually
+            contiguous_size = _get_contiguous_size(
+                in_args, self.in_params, in_shape.size(), out_shape.size())
+            block_size, block_stride, out_block_num = _get_block_specs(
+                internal.prod(in_shape),
+                internal.prod(out_shape),
+                contiguous_size, -1)
+        else:
+            # Optimize dynamically
+            key = ('simple_reduction',) + key
+            opt_params = optimize_context.get_params(key)
+            if opt_params is None:
+                opt_params = self._get_optimized_params(
+                    optimize_context.config, in_args, out_args,
+                    in_shape, out_shape, type_map, map_expr, reduce_expr,
+                    post_map_expr, reduce_type, stream)
+                optimize_context.set_params(key, opt_params)
+            block_size, block_stride, out_block_num = opt_params
+
+        # Launch the kernel
+        self._launch(
+            out_block_num,
+            block_size,
+            block_stride,
+            in_args, out_args,
+            in_shape, out_shape,
+            type_map,
+            map_expr, reduce_expr, post_map_expr, reduce_type,
+            stream, params)
+
+        return ret
+
+    def _get_optimized_params(
+            self, optimize_config, in_args, out_args, in_shape, out_shape,
+            type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
+            stream):
+        out_size = internal.prod(out_shape)
+        in_args = [_optimizer_copy_arg(a) for a in in_args]
+        out_args = [_optimizer_copy_arg(a) for a in out_args]
+
         contiguous_size = _get_contiguous_size(
             in_args, self.in_params, len(in_shape), len(out_shape))
-        block_size, block_stride, out_block_num = _get_block_specs(
-            internal.prod_sequence(in_shape),
-            internal.prod_sequence(out_shape),
-            contiguous_size)
+        block_size, block_stride, default_out_block_num = _get_block_specs(
+            internal.prod(in_shape),
+            internal.prod(out_shape),
+            contiguous_size, -1)
+        default_block_size_log = math.floor(math.log2(block_size))
+        default_block_stride_log = math.floor(math.log2(block_stride))
 
-        # Kernel arguments passed to the __global__ function.
+        def target_func(block_size, block_stride, out_block_num):
+            self._launch(
+                out_block_num, block_size, block_stride, in_args, out_args,
+                in_shape, out_shape, type_map, map_expr, reduce_expr,
+                post_map_expr, reduce_type, stream, self._params)
+
+        def suggest_func(trial):
+            block_size_log = trial.suggest_int('block_size_log', 5, 9)
+            block_size = 2 ** block_size_log
+            block_stride_log = trial.suggest_int(
+                'block_stride_log', 0, block_size_log)
+            block_stride = 2 ** block_stride_log
+            max_out_block_num = (out_size + block_stride - 1) // block_stride
+            out_block_num = trial.suggest_int(
+                'out_block_num', 1, max_out_block_num)
+
+            trial.set_user_attr('block_size', block_size)
+            trial.set_user_attr('block_stride', block_stride)
+            return block_size, block_stride, out_block_num
+
+        optimize_impl = optimize_config.optimize_impl
+        best = optimize_impl(
+            optimize_config, target_func, suggest_func,
+            default_best={
+                'block_size_log': default_block_size_log,
+                'block_stride_log': default_block_stride_log,
+                'out_block_num': default_out_block_num,
+            }
+        )
+        return (
+            best.user_attrs['block_size'],
+            best.user_attrs['block_stride'],
+            best.params['out_block_num'])
+
+    cdef inline void _launch(
+            self, out_block_num, block_size, block_stride,
+            in_args, out_args, in_shape, out_shape, type_map,
+            map_expr, reduce_expr, post_map_expr, reduce_type,
+            stream, params):
+        cdef function.Function func
+
         inout_args = (
             in_args
             + out_args
             + [
-                _carray.Indexer(in_shape),
-                _carray.Indexer(out_shape),
+                _carray._indexer_init(in_shape),
+                _carray._indexer_init(out_shape),
                 # block_stride is passed as the last argument.
                 _scalar.CScalar.from_int32(block_stride),
             ])
 
         # Retrieve the kernel function
         func = self._get_function(
-            self._params,
+            params,
             _get_arginfos(inout_args),
             type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
@@ -306,14 +471,12 @@ cdef class _AbstractReductionKernel:
         func.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
 
-        return ret
-
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
         raise NotImplementedError()
 
     cdef list _get_out_args(
-            self, list out_args, tuple out_types, tuple out_shape):
+            self, list out_args, tuple out_types, const shape_t& out_shape):
         raise NotImplementedError()
 
     cdef function.Function _get_function(
@@ -387,7 +550,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         reduce_dims = True
         return self._call(
             in_args, out_args,
-            arr.shape, axis, dtype, keepdims, reduce_dims, None)
+            arr._shape, axis, dtype, keepdims, reduce_dims, dev_id, None, True)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
@@ -416,7 +579,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             type_map)
 
     cdef list _get_out_args(
-            self, list out_args, tuple out_types, tuple out_shape):
+            self, list out_args, tuple out_types, const shape_t& out_shape):
         return _get_out_args(
             out_args, out_types, out_shape, 'unsafe')
 
@@ -438,7 +601,6 @@ def _SimpleReductionKernel_get_cached_function(
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, input_expr, output_expr, _preamble,
         options):
-
     return _create_reduction_function(
         name, block_size, reduce_type, params, arginfos, identity,
         map_expr, reduce_expr, post_map_expr,
@@ -530,6 +692,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             ``__init__`` method.
 
         """
+        cdef shape_t broad_shape
 
         out = kwargs.pop('out', None)
         axis = kwargs.pop('axis', None)
@@ -554,12 +717,12 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         dev_id = device.get_device_id()
         in_args = _preprocess_args(dev_id, args[:self.nin], False)
         out_args = _preprocess_args(dev_id, out_args, False)
-        in_args, broad_shape = _broadcast(in_args, self.in_params, False)
+        in_args = _broadcast(in_args, self.in_params, False, broad_shape)
 
         return self._call(
             in_args, out_args,
             broad_shape, axis, None,
-            keepdims, self.reduce_dims, stream)
+            keepdims, self.reduce_dims, dev_id, stream, False)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
@@ -579,7 +742,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             type_map)
 
     cdef list _get_out_args(
-            self, list out_args, tuple out_types, tuple out_shape):
+            self, list out_args, tuple out_types, const shape_t& out_shape):
         return _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params, False)
 
@@ -600,8 +763,8 @@ def _ReductionKernel_get_cached_function(
         nin, nout, params, arginfos, _kernel._TypeMap type_map,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
         post_map_expr, preamble, options):
-    cdef _kernel.ParameterInfo p
-    cdef _kernel._ArgInfo arginfo
+    cdef ParameterInfo p
+    cdef _ArgInfo arginfo
     in_arrays = [
         p for p, arginfo in zip(params[:nin], arginfos[:nin])
         if not p.raw and arginfo.is_ndarray()]

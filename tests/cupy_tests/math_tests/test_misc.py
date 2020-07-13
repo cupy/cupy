@@ -2,7 +2,9 @@ import sys
 import unittest
 
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -112,10 +114,11 @@ class TestMisc(unittest.TestCase):
         return a.clip(3, None)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_clip_min_max_none(self, xp, dtype):
-        a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        return a.clip(None, None)
+    def test_clip_min_max_none(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                a.clip(None, None)
 
     @unittest.skipIf(
         sys.platform == 'win32', 'dtype problem on Windows')
@@ -207,3 +210,71 @@ class TestMisc(unittest.TestCase):
 
     def test_nan_to_num_inf_nan(self):
         self.check_unary_inf_nan('nan_to_num')
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'mode': ['valid', 'same', 'full'],
+    'shape1': [(), (5,), (6,), (20,), (21,)],
+    'shape2': [(), (5,), (6,), (20,), (21,)],
+}))
+class TestConvolveShapeCombination(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3)
+    def test_convolve(self, xp, dtype):
+        a = testing.shaped_arange(self.shape1, xp, dtype)
+        b = testing.shaped_arange(self.shape2, xp, dtype)
+        return xp.convolve(a, b, mode=self.mode)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'mode': ['valid', 'same', 'full']
+}))
+@unittest.skipIf(
+    cupy.cuda.cufft.getVersion() == 10000, 'Causes large precision errors')
+class TestConvolve(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_convolve_non_contiguous(self, xp, dtype):
+        a = testing.shaped_arange((300,), xp, dtype)
+        b = testing.shaped_arange((100,), xp, dtype)
+        return xp.convolve(a[::200], b[10::70], mode=self.mode)
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_convolve_large_non_contiguous(self, xp, dtype):
+        a = testing.shaped_arange((10000,), xp, dtype)
+        b = testing.shaped_arange((100,), xp, dtype)
+        return xp.convolve(a[200::], b[10::70], mode=self.mode)
+
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_allclose(rtol=1e-2)
+    def test_convolve_diff_types(self, xp, dtype1, dtype2):
+        a = testing.shaped_random((200,), xp, dtype1)
+        b = testing.shaped_random((100,), xp, dtype2)
+        return xp.convolve(a, b, mode=self.mode)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'mode': ['valid', 'same', 'full']
+}))
+class TestConvolveInvalid(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_convolve_empty(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.zeros((0,), dtype)
+            with pytest.raises(ValueError):
+                xp.convolve(a, a, mode=self.mode)
+
+    @testing.for_all_dtypes()
+    def test_convolve_ndim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp, dtype)
+            b = testing.shaped_arange((10, 5), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.convolve(a, b, mode=self.mode)

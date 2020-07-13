@@ -1,5 +1,7 @@
-import numpy
 import unittest
+
+import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -17,7 +19,7 @@ class TestDims(unittest.TestCase):
         f = numpy.float32(1)
         return func(a, b, c, d, e, f)
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_atleast_1d1(self, xp):
         return self.check_atleast(xp.atleast_1d, xp)
 
@@ -26,7 +28,7 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((1, 3, 2), xp)
         return xp.atleast_1d(a)
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_atleast_2d1(self, xp):
         return self.check_atleast(xp.atleast_2d, xp)
 
@@ -35,7 +37,7 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((1, 3, 2), xp)
         return xp.atleast_2d(a)
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_atleast_3d1(self, xp):
         return self.check_atleast(xp.atleast_3d, xp)
 
@@ -53,18 +55,20 @@ class TestDims(unittest.TestCase):
         return b
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_broadcast_to_fail(self, xp, dtype):
-        # Note that broadcast_to is only supported on numpy>=1.10
-        a = testing.shaped_arange((3, 1, 4), xp, dtype)
-        xp.broadcast_to(a, (1, 3, 4))
+    def test_broadcast_to_fail(self, dtype):
+        for xp in (numpy, cupy):
+            # Note that broadcast_to is only supported on numpy>=1.10
+            a = testing.shaped_arange((3, 1, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.broadcast_to(a, (1, 3, 4))
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_broadcast_to_short_shape(self, xp, dtype):
-        # Note that broadcast_to is only supported on numpy>=1.10
-        a = testing.shaped_arange((1, 3, 4), xp, dtype)
-        xp.broadcast_to(a, (3, 4))
+    def test_broadcast_to_short_shape(self, dtype):
+        for xp in (numpy, cupy):
+            # Note that broadcast_to is only supported on numpy>=1.10
+            a = testing.shaped_arange((1, 3, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.broadcast_to(a, (3, 4))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -80,17 +84,19 @@ class TestDims(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_broadcast_to_fail_numpy19(self, dtype):
-        # Note that broadcast_to is only supported on numpy>=1.10
-        a = testing.shaped_arange((3, 1, 4), cupy, dtype)
-        with self.assertRaises(ValueError):
-            cupy.broadcast_to(a, (1, 3, 4))
+        for xp in (numpy, cupy):
+            # Note that broadcast_to is only supported on numpy>=1.10
+            a = testing.shaped_arange((3, 1, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.broadcast_to(a, (1, 3, 4))
 
     @testing.for_all_dtypes()
     def test_broadcast_to_short_shape_numpy19(self, dtype):
-        # Note that broadcast_to is only supported on numpy>=1.10
-        a = testing.shaped_arange((1, 3, 4), cupy, dtype)
-        with self.assertRaises(ValueError):
-            cupy.broadcast_to(a, (3, 4))
+        for xp in (numpy, cupy):
+            # Note that broadcast_to is only supported on numpy>=1.10
+            a = testing.shaped_arange((1, 3, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.broadcast_to(a, (3, 4))
 
     @testing.numpy_cupy_array_equal()
     def test_expand_dims0(self, xp):
@@ -113,15 +119,14 @@ class TestDims(unittest.TestCase):
         return xp.expand_dims(a, -2)
 
     @testing.with_requires('numpy>=1.18')
-    @testing.numpy_cupy_array_equal()
-    def test_expand_dims_negative2(self, xp):
-        a = testing.shaped_arange((2, 3), xp)
-        with self.assertRaises(numpy.AxisError):
-            xp.expand_dims(a, -4)
-        return xp.array(True)
+    def test_expand_dims_negative2(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3), xp)
+            with pytest.raises(numpy.AxisError):
+                xp.expand_dims(a, -4)
 
     @testing.with_requires('numpy>=1.18')
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_expand_dims_tuple_axis(self, xp):
         a = testing.shaped_arange((2, 2, 2), xp)
         return [xp.expand_dims(a, axis) for axis in [
@@ -134,24 +139,19 @@ class TestDims(unittest.TestCase):
         ]]
 
     @testing.with_requires('numpy>=1.18')
-    @testing.numpy_cupy_array_equal()
-    def test_expand_dims_out_of_range(self, xp):
-        a = testing.shaped_arange((2, 2, 2), xp)
-        for axis in [
-                (1, -6),
-                (1, 5),
-        ]:
-            with self.assertRaises(numpy.AxisError):
-                xp.expand_dims(a, axis)
-        return xp.array(True)
+    def test_expand_dims_out_of_range(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 2, 2), xp)
+            for axis in [(1, -6), (1, 5)]:
+                with pytest.raises(numpy.AxisError):
+                    xp.expand_dims(a, axis)
 
     @testing.with_requires('numpy>=1.18')
-    @testing.numpy_cupy_array_equal()
-    def test_expand_dims_repeated_axis(self, xp):
-        a = testing.shaped_arange((2, 2, 2), xp)
-        with self.assertRaises(ValueError):
-            xp.expand_dims(a, (1, 1))
-        return xp.array(True)
+    def test_expand_dims_repeated_axis(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 2, 2), xp)
+            with pytest.raises(ValueError):
+                xp.expand_dims(a, (1, 1))
 
     @testing.numpy_cupy_array_equal()
     def test_squeeze1(self, xp):
@@ -173,15 +173,17 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
         return a.squeeze(axis=-3)
 
-    @testing.numpy_cupy_raises()
-    def test_squeeze_int_axis_failure1(self, xp):
-        a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
-        a.squeeze(axis=-9)
+    def test_squeeze_int_axis_failure1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
+            with pytest.raises(ValueError):
+                a.squeeze(axis=-9)
 
     def test_squeeze_int_axis_failure2(self):
-        a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), cupy)
-        with self.assertRaises(cupy.core._AxisError):
-            a.squeeze(axis=-9)
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
+            with pytest.raises(numpy.AxisError):
+                a.squeeze(axis=-9)
 
     @testing.numpy_cupy_array_equal()
     def test_squeeze_tuple_axis1(self, xp):
@@ -203,20 +205,23 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
         return a.squeeze(axis=())
 
-    @testing.numpy_cupy_raises()
-    def test_squeeze_tuple_axis_failure1(self, xp):
-        a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
-        a.squeeze(axis=(-9,))
+    def test_squeeze_tuple_axis_failure1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
+            with pytest.raises(ValueError):
+                a.squeeze(axis=(-9,))
 
-    @testing.numpy_cupy_raises()
-    def test_squeeze_tuple_axis_failure2(self, xp):
-        a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
-        a.squeeze(axis=(2, 2))
+    def test_squeeze_tuple_axis_failure2(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
+            with pytest.raises(ValueError):
+                a.squeeze(axis=(2, 2))
 
     def test_squeeze_tuple_axis_failure3(self):
-        a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), cupy)
-        with self.assertRaises(cupy.core._AxisError):
-            a.squeeze(axis=(-9,))
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
+            with pytest.raises(numpy.AxisError):
+                a.squeeze(axis=(-9,))
 
     @testing.numpy_cupy_array_equal()
     def test_squeeze_scalar1(self, xp):
@@ -228,30 +233,35 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((), xp)
         return a.squeeze(axis=-1)
 
-    @testing.numpy_cupy_raises()
-    def test_squeeze_scalar_failure1(self, xp):
-        a = testing.shaped_arange((), xp)
-        a.squeeze(axis=-2)
+    def test_squeeze_scalar_failure1(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((), xp)
+            with pytest.raises(ValueError):
+                a.squeeze(axis=-2)
 
-    @testing.numpy_cupy_raises()
-    def test_squeeze_scalar_failure2(self, xp):
-        a = testing.shaped_arange((), xp)
-        a.squeeze(axis=1)
+    def test_squeeze_scalar_failure2(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((), xp)
+            with pytest.raises(ValueError):
+                a.squeeze(axis=1)
 
     def test_squeeze_scalar_failure3(self):
-        a = testing.shaped_arange((), cupy)
-        with self.assertRaises(cupy.core._AxisError):
-            a.squeeze(axis=-2)
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((), xp)
+            with pytest.raises(numpy.AxisError):
+                a.squeeze(axis=-2)
 
     def test_squeeze_scalar_failure4(self):
-        a = testing.shaped_arange((), cupy)
-        with self.assertRaises(cupy.core._AxisError):
-            a.squeeze(axis=1)
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((), cupy)
+            with pytest.raises(numpy.AxisError):
+                a.squeeze(axis=1)
 
-    @testing.numpy_cupy_raises()
-    def test_squeeze_failure(self, xp):
-        a = testing.shaped_arange((2, 1, 3, 4), xp)
-        a.squeeze(axis=2)
+    def test_squeeze_failure(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 1, 3, 4), xp)
+            with pytest.raises(ValueError):
+                a.squeeze(axis=2)
 
     @testing.numpy_cupy_array_equal()
     def test_external_squeeze(self, xp):
@@ -289,7 +299,7 @@ class TestBroadcast(unittest.TestCase):
         self.assertEqual(broadcast_np.nd, broadcast_cp.nd)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_broadcast_arrays(self, xp, dtype):
         arrays = [
             testing.shaped_arange(s, xp, dtype) for s in self.shapes]
@@ -306,15 +316,15 @@ class TestBroadcast(unittest.TestCase):
 class TestInvalidBroadcast(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_invalid_broadcast(self, xp, dtype):
-        arrays = [
-            testing.shaped_arange(s, xp, dtype) for s in self.shapes]
-        xp.broadcast(*arrays)
+    def test_invalid_broadcast(self, dtype):
+        for xp in (numpy, cupy):
+            arrays = [testing.shaped_arange(s, xp, dtype) for s in self.shapes]
+            with pytest.raises(ValueError):
+                xp.broadcast(*arrays)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_raises()
-    def test_invalid_broadcast_arrays(self, xp, dtype):
-        arrays = [
-            testing.shaped_arange(s, xp, dtype) for s in self.shapes]
-        xp.broadcast_arrays(*arrays)
+    def test_invalid_broadcast_arrays(self, dtype):
+        for xp in (numpy, cupy):
+            arrays = [testing.shaped_arange(s, xp, dtype) for s in self.shapes]
+            with pytest.raises(ValueError):
+                xp.broadcast_arrays(*arrays)

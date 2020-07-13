@@ -2,7 +2,9 @@ import unittest
 import warnings
 
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -26,12 +28,6 @@ class TestPadDefault(unittest.TestCase):
         if (xp.dtype(dtype).kind in ['i', 'u'] and
                 self.mode == 'linear_ramp'):
             # TODO: can remove this skip once cupy/cupy/#2330 is merged
-            return array
-
-        if (self.mode == 'linear_ramp' and
-                numpy.lib.NumpyVersion(numpy.__version__) < '1.16.0'):
-            # skip linear_ramp test on older NumPy until pad is updated to
-            # use cupy.linspace with axis argument (cupy/cupy#2461).
             return array
 
         # Older version of NumPy(<1.12) can emit ComplexWarning
@@ -269,35 +265,56 @@ class TestPadSpecial(unittest.TestCase):
 
 @testing.parameterize(
     {'array': [0, 1, 2, 3], 'pad_width': [-1, 1], 'mode': 'constant',
-     'constant_values': 3},
-    {'array': [0, 1, 2, 3], 'pad_width': [], 'mode': 'constant',
-     'constant_values': 3},
+     'kwargs': {'constant_values': 3}},
     {'array': [0, 1, 2, 3], 'pad_width': [[3, 4], [5, 6]], 'mode': 'constant',
-     'constant_values': 3},
+     'kwargs': {'constant_values': 3}},
     {'array': [0, 1, 2, 3], 'pad_width': [1], 'mode': 'constant',
-     'notallowedkeyword': 3},
-    # mode='edge'
-    {'array': [], 'pad_width': 1, 'mode': 'edge'},
-    {'array': [0, 1, 2, 3], 'pad_width': [-1, 1], 'mode': 'edge'},
-    {'array': [0, 1, 2, 3], 'pad_width': [], 'mode': 'edge'},
-    {'array': [0, 1, 2, 3], 'pad_width': [[3, 4], [5, 6]], 'mode': 'edge'},
+     'kwargs': {'notallowedkeyword': 3}},
+    # edge
+    {'array': [], 'pad_width': 1, 'mode': 'edge',
+     'kwargs': {}},
+    {'array': [0, 1, 2, 3], 'pad_width': [-1, 1], 'mode': 'edge',
+     'kwargs': {}},
+    {'array': [0, 1, 2, 3], 'pad_width': [[3, 4], [5, 6]], 'mode': 'edge',
+     'kwargs': {}},
     {'array': [0, 1, 2, 3], 'pad_width': [1], 'mode': 'edge',
-     'notallowedkeyword': 3},
+     'kwargs': {'notallowedkeyword': 3}},
     # mode='reflect'
-    {'array': [], 'pad_width': 1, 'mode': 'reflect'},
-    {'array': [0, 1, 2, 3], 'pad_width': [-1, 1], 'mode': 'reflect'},
-    {'array': [0, 1, 2, 3], 'pad_width': [], 'mode': 'reflect'},
-    {'array': [0, 1, 2, 3], 'pad_width': [[3, 4], [5, 6]], 'mode': 'reflect'},
+    {'array': [], 'pad_width': 1, 'mode': 'reflect',
+     'kwargs': {}},
+    {'array': [0, 1, 2, 3], 'pad_width': [-1, 1], 'mode': 'reflect',
+     'kwargs': {}},
+    {'array': [0, 1, 2, 3], 'pad_width': [[3, 4], [5, 6]], 'mode': 'reflect',
+     'kwargs': {}},
     {'array': [0, 1, 2, 3], 'pad_width': [1], 'mode': 'reflect',
-     'notallowedkeyword': 3},
+     'kwargs': {'notallowedkeyword': 3}},
 )
 @testing.gpu
-class TestPadFailure(unittest.TestCase):
+@testing.with_requires('numpy>=1.17')
+class TestPadValueError(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_pad_failure(self, xp):
-        array = xp.array(self.array)
+    def test_pad_failure(self):
+        for xp in (numpy, cupy):
+            array = xp.array(self.array)
+            with pytest.raises(ValueError):
+                xp.pad(array, self.pad_width, self.mode, **self.kwargs)
 
-        a = xp.pad(array, self.pad_width, mode=self.mode,
-                   constant_values=self.constant_values)
-        return a
+
+@testing.parameterize(
+    {'array': [0, 1, 2, 3], 'pad_width': [], 'mode': 'constant',
+     'kwargs': {'constant_values': 3}},
+    # edge
+    {'array': [0, 1, 2, 3], 'pad_width': [], 'mode': 'edge',
+     'kwargs': {}},
+    # mode='reflect'
+    {'array': [0, 1, 2, 3], 'pad_width': [], 'mode': 'reflect',
+     'kwargs': {}},
+)
+@testing.gpu
+class TestPadTypeError(unittest.TestCase):
+
+    def test_pad_failure(self):
+        for xp in (numpy, cupy):
+            array = xp.array(self.array)
+            with pytest.raises(TypeError):
+                xp.pad(array, self.pad_width, self.mode, **self.kwargs)

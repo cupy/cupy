@@ -6,13 +6,15 @@ from cpython cimport sequence
 
 import numpy
 
-from cupy.core._errors import _AxisError
-from cupy.core.core cimport ndarray, _internal_ascontiguousarray
+from cupy_backends.cuda.api.driver cimport Stream as Stream_t
+from cupy.core.core cimport _internal_ascontiguousarray
 from cupy.core.core cimport _internal_asfortranarray
+from cupy.core.core cimport ndarray
 from cupy.core.internal cimport _contig_axes
+from cupy.cuda cimport device
 from cupy.cuda cimport memory
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport stream
-from cupy.cuda.driver cimport Stream as Stream_t
 
 cimport cython
 
@@ -36,12 +38,26 @@ cdef enum:
     CUPY_CUB_COMPLEX64 = 11
     CUPY_CUB_COMPLEX128 = 12
 
-CUB_support_dtype = [numpy.int8, numpy.uint8,
-                     numpy.int16, numpy.uint16,
-                     numpy.int32, numpy.uint32,
-                     numpy.int64, numpy.uint64,
-                     numpy.float32, numpy.float64,
-                     numpy.complex64, numpy.complex128]
+CUB_support_dtype_without_half = [numpy.int8, numpy.uint8,
+                                  numpy.int16, numpy.uint16,
+                                  numpy.int32, numpy.uint32,
+                                  numpy.int64, numpy.uint64,
+                                  numpy.float32, numpy.float64,
+                                  numpy.complex64, numpy.complex128]
+
+CUB_support_dtype_with_half = CUB_support_dtype_without_half + [numpy.float16]
+
+CUB_support_dtype = {}
+
+CUB_sum_support_dtype_without_half = [numpy.int64, numpy.uint64,
+                                      numpy.float32, numpy.float64,
+                                      numpy.complex64, numpy.complex128]
+
+CUB_sum_support_dtype_with_half = \
+    CUB_sum_support_dtype_without_half + [numpy.float16]
+
+CUB_sum_support_dtype = {}
+
 
 ###############################################################################
 # Extern
@@ -55,6 +71,8 @@ cdef extern from 'cupy_cub.h' nogil:
     void cub_device_spmv(void*, size_t&, void*, void*, void*, void*, void*,
                          int, int, int, Stream_t, int)
     void cub_device_scan(void*, size_t&, void*, void*, int, Stream_t, int, int)
+    void cub_device_histogram_range(void*, size_t&, void*, void*, int, void*,
+                                    size_t, Stream_t, int)
     size_t cub_device_reduce_get_workspace_size(void*, void*, int, Stream_t,
                                                 int, int)
     size_t cub_device_segmented_reduce_get_workspace_size(
@@ -63,10 +81,22 @@ cdef extern from 'cupy_cub.h' nogil:
         void*, void*, void*, void*, void*, int, int, int, Stream_t, int)
     size_t cub_device_scan_get_workspace_size(
         void*, void*, int, Stream_t, int, int)
+    size_t cub_device_histogram_range_get_workspace_size(
+        void*, void*, int, void*, size_t, Stream_t, int)
+
+    # Build-time version
+    int CUPY_CUB_VERSION_CODE
+
 
 ###############################################################################
 # Python interface
 ###############################################################################
+
+def get_build_version():
+    if CUPY_CUB_VERSION_CODE == -1:
+        return '<unknown>'
+    return CUPY_CUB_VERSION_CODE
+
 
 cdef tuple _get_output_shape(ndarray arr, tuple out_axis, bint keepdims):
     cdef tuple out_shape
@@ -122,15 +152,17 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
         raise ValueError(
             'output parameter for reduction operation has the wrong number of '
             'dimensions')
-    if op < CUPY_CUB_SUM or op > CUPY_CUB_ARGMAX:
-        raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_MIN, CUPY_CUB_MAX, '
-                         'CUPY_CUB_ARGMIN, and CUPY_CUB_ARGMAX are supported.')
-    if x.size == 0 and op != CUPY_CUB_SUM:
+    if op not in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX,
+                  CUPY_CUB_ARGMIN, CUPY_CUB_ARGMAX):
+        raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, '
+                         'CUPY_CUB_MAX, CUPY_CUB_ARGMIN, and CUPY_CUB_ARGMAX '
+                         'are supported.')
+    if x.size == 0 and op not in (CUPY_CUB_SUM, CUPY_CUB_PROD):
         raise ValueError('zero-size array to reduction operation {} which has '
                          'no identity'.format(op.name))
     x = _internal_ascontiguousarray(x)
 
-    if CUPY_CUB_SUM <= op <= CUPY_CUB_MAX:
+    if op in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX):
         y = ndarray((), x.dtype)
     else:  # argmin and argmax
         # cub::KeyValuePair has 1 int + 1 arbitrary type
@@ -181,10 +213,10 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
     cdef tuple out_shape
     cdef Stream_t s
 
-    if op < CUPY_CUB_SUM or op > CUPY_CUB_MAX:
-        raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_MIN, and CUPY_CUB_MAX '
-                         'are supported.')
-    if x.size == 0 and op != CUPY_CUB_SUM:
+    if op not in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX):
+        raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, '
+                         'and CUPY_CUB_MAX are supported.')
+    if x.size == 0 and op not in (CUPY_CUB_SUM, CUPY_CUB_PROD):
         raise ValueError('zero-size array to reduction operation {} which has '
                          'no identity'.format(op.name))
     if x.flags.c_contiguous:
@@ -203,10 +235,13 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
     if out is not None and out.shape != out_shape:
         raise ValueError(
             'output parameter for reduction operation has the wrong shape')
-    if x.size == 0:  # for CUPY_CUB_SUM
+    if x.size == 0:  # for CUPY_CUB_SUM & CUPY_CUB_PROD
         if out is not None:
             y = out
-        y[...] = 0
+        if op == CUPY_CUB_SUM:
+            y[...] = 0
+        elif op == CUPY_CUB_PROD:
+            y[...] = 1
         return y
     n_segments = x.size//contiguous_size
     # CUB internally use int for offset...
@@ -321,6 +356,40 @@ def device_scan(ndarray x, op):
     return x
 
 
+def device_histogram(ndarray x, ndarray bins, ndarray y):
+    cdef memory.MemoryPointer ws
+    cdef size_t ws_size, n_samples
+    cdef int dtype_id, n_bins
+    cdef void* x_ptr
+    cdef void* bins_ptr
+    cdef void* y_ptr
+    cdef void* ws_ptr
+    cdef Stream_t s
+
+    # TODO(leofang): perhaps not needed?
+    # y is guaranteed contiguous
+    x = _internal_ascontiguousarray(x)
+    bins = _internal_ascontiguousarray(bins)
+
+    x_ptr = <void*>x.data.ptr
+    y_ptr = <void*>y.data.ptr
+    n_bins = bins.size
+    bins_ptr = <void*>bins.data.ptr
+    n_samples = x.size
+    s = <Stream_t>stream.get_current_stream_ptr()
+    dtype_id = _get_dtype_id(x.dtype)
+    assert y.size == n_bins - 1
+    ws_size = cub_device_histogram_range_get_workspace_size(
+        x_ptr, y_ptr, n_bins, bins_ptr, n_samples, s, dtype_id)
+
+    ws = memory.alloc(ws_size)
+    ws_ptr = <void*>ws.ptr
+    with nogil:
+        cub_device_histogram_range(ws_ptr, ws_size, x_ptr, y_ptr, n_bins,
+                                   bins_ptr, n_samples, s, dtype_id)
+    return y
+
+
 cdef bint _cub_device_segmented_reduce_axis_compatible(
         tuple cub_axis, Py_ssize_t ndim, order):
     # Implementation borrowed from cupy.fft.fft._get_cufft_plan_nd().
@@ -347,22 +416,45 @@ def can_use_device_segmented_reduce(int op, x_dtype, Py_ssize_t ndim,
                                                         order)
 
 
+cdef _cub_support_dtype(bint sum_mode, int dev_id):
+    if sum_mode:
+        support_dtype_dict = CUB_sum_support_dtype
+        with_half = CUB_sum_support_dtype_with_half
+        without_half = CUB_sum_support_dtype_without_half
+    else:
+        support_dtype_dict = CUB_support_dtype
+        with_half = CUB_support_dtype_with_half
+        without_half = CUB_support_dtype_without_half
+
+    if dev_id not in support_dtype_dict:
+        if int(device.get_compute_capability()) >= 53 and \
+                runtime.runtimeGetVersion() >= 9020:
+            support_dtype = with_half
+        else:
+            support_dtype = without_half
+
+        support_dtype_dict[dev_id] = support_dtype
+
+    return support_dtype_dict[dev_id]
+
+
 cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None):
+    dev_id = device.get_device_id()
+
     if dtype is None:
-        if op == CUPY_CUB_SUM:
+        if op in (CUPY_CUB_SUM, CUPY_CUB_PROD):
             # auto dtype:
             # CUB reduce_sum does not support dtype promotion.
             # See _sum_auto_dtype in cupy/core/_routines_math.pyx for which
             # dtypes are promoted.
-            support_dtype = [numpy.int64, numpy.uint64,
-                             numpy.float32, numpy.float64,
-                             numpy.complex64, numpy.complex128]
+            support_dtype = _cub_support_dtype(True, dev_id)
         else:
-            support_dtype = CUB_support_dtype
+            support_dtype = _cub_support_dtype(False, dev_id)
     elif dtype == x_dtype:
-        support_dtype = CUB_support_dtype
+        support_dtype = _cub_support_dtype(False, dev_id)
     else:
         return False
+
     if x_dtype not in support_dtype:
         return False
     return True
@@ -430,13 +522,17 @@ def cub_scan(arr, op):
 
     If the specified scan is not possible, None is returned.
     """
-    if op < CUPY_CUB_CUMSUM or op > CUPY_CUB_CUMPROD:
+    if op not in (CUPY_CUB_CUMSUM, CUPY_CUB_CUMPROD):
         return None
 
-    # cub_device_scan seems buggy for complex128:
-    # https://github.com/cupy/cupy/pull/2919#issuecomment-574633590
     x_dtype = arr.dtype
-    if (x_dtype in CUB_support_dtype and x_dtype != numpy.complex128):
+    if x_dtype == numpy.complex128:
+        # cub_device_scan seems buggy for complex128:
+        # https://github.com/cupy/cupy/pull/2919#issuecomment-574633590
+        return None
+
+    dev_id = device.get_device_id()
+    if x_dtype in _cub_support_dtype(False, dev_id):
         return device_scan(arr, op)
 
     return None
@@ -459,6 +555,8 @@ def _get_dtype_id(dtype):
         ret = CUPY_CUB_INT64
     elif dtype == numpy.uint64:
         ret = CUPY_CUB_UINT64
+    elif dtype == numpy.float16:
+        ret = CUPY_CUB_FLOAT16
     elif dtype == numpy.float32:
         ret = CUPY_CUB_FLOAT32
     elif dtype == numpy.float64:

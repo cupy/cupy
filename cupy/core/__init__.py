@@ -3,7 +3,8 @@ from cupy.core import internal  # NOQA
 
 
 # import class and function
-from cupy.core._errors import _AxisError  # NOQA
+from cupy.core._accelerator import set_reduction_accelerators  # NOQA
+from cupy.core._accelerator import set_routine_accelerators  # NOQA
 from cupy.core._kernel import create_ufunc  # NOQA
 from cupy.core._kernel import ElementwiseKernel  # NOQA
 from cupy.core._kernel import ufunc  # NOQA

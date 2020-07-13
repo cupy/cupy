@@ -47,6 +47,12 @@ Here are the environment variables CuPy uses.
 | ``CUPY_EXPERIMENTAL_SLICE_COPY``   | If set to 1, the following syntax is enabled:      |
 |                                    | ``cupy_ndarray[:] = numpy_ndarray``.               |
 +------------------------------------+----------------------------------------------------+
+| ``CUPY_ACCELERATORS``              | A comma-separated string of backend names          |
+|                                    | (``cub``) which indicates the acceleration         |
+|                                    | backends used in CuPy operations and its priority. |
+|                                    | Default is empty string (all accelerators are      |
+|                                    | disabled).                                         |
++------------------------------------+----------------------------------------------------+
 
 Moreover, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit
 Documentation`_ will also be honored.
@@ -65,6 +71,9 @@ These environment variables are used during installation (building CuPy from sou
 | ``CUTENSOR_PATH``           | Path to the cuTENSOR root directory that contains ``lib`` and  |
 |                             | ``include`` directories. (experimental)                        |
 +-----------------------------+----------------------------------------------------------------+
+| ``CUPY_CUB_PATH``           | Path to the CUB root directory that contains the folders       |
+|                             | ``cub``, ``examples``, etc.                                    |
++-----------------------------+----------------------------------------------------------------+
 | ``NVCC``                    | Define the compiler to use when compiling CUDA files.          |
 +-----------------------------+----------------------------------------------------------------+
 | ``CUPY_PYTHON_350_FORCE``   | Enforce CuPy to be installed against Python 3.5.0 (not         |
@@ -74,6 +83,8 @@ These environment variables are used during installation (building CuPy from sou
 |                             | further detail.                                                |
 +-----------------------------+----------------------------------------------------------------+
 | ``CUPY_NVCC_GENERATE_CODE`` | To build CuPy for a particular CUDA architecture. For example, |
-|                             | ``CUPY_NVCC_GENERATE_CODE=compute_60,sm_60``. When this is not |
-|                             | set, the default is to support all architectures.              |
+|                             | ``CUPY_NVCC_GENERATE_CODE="arch=compute_60,code=sm_60"``. For  |
+|                             | specifying multiple archs, concatenate the ``arch=...`` strings|
+|                             | with semicolons (``;``). When this is not set, the default is  |
+|                             | to support all architectures.                                  |
 +-----------------------------+----------------------------------------------------------------+

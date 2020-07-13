@@ -2,8 +2,31 @@ import numpy
 from numpy import linalg
 
 import cupy
+from cupy import core
 from cupy.linalg import decomposition
 from cupy.linalg import util
+
+import functools
+
+
+def _multi_svd_norm(x, row_axis, col_axis, op):
+    y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
+    result = op(decomposition.svd(y, compute_uv=False), axis=-1)
+    return result
+
+
+_norm_ord2 = core.create_reduction_func(
+    '_norm_ord2',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d'),
+    ('in0 * in0', 'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
+_norm_ord2_complex = core.create_reduction_func(
+    '_norm_ord2_complex',
+    ('F->F', 'D->D'),
+    ('in0.real() * in0.real() + in0.imag() * in0.imag()',
+     'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
 
 
 def norm(x, ord=None, axis=None, keepdims=False):
@@ -70,11 +93,8 @@ def norm(x, ord=None, axis=None, keepdims=False):
         elif ord is None or ord == 2:
             # special case for speedup
             if x.dtype.kind == 'c':
-                s = abs(x)
-                s *= s
-            else:
-                s = x * x
-            return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
+                return _norm_ord2_complex(x, axis=axis, keepdims=keepdims)
+            return _norm_ord2(x, axis=axis, keepdims=keepdims)
         else:
             try:
                 float(ord)
@@ -97,7 +117,13 @@ def norm(x, ord=None, axis=None, keepdims=False):
                              (axis, x.shape))
         if row_axis == col_axis:
             raise ValueError('Duplicate axes given.')
-        if ord == 1:
+        if ord == 2:
+            op_max = functools.partial(cupy.take, indices=0)
+            ret = _multi_svd_norm(x, row_axis, col_axis, op_max)
+        elif ord == -2:
+            op_min = functools.partial(cupy.take, indices=-1)
+            ret = _multi_svd_norm(x, row_axis, col_axis, op_min)
+        elif ord == 1:
             if col_axis > row_axis:
                 col_axis -= 1
             ret = abs(x).sum(axis=row_axis).max(axis=col_axis)
@@ -115,11 +141,11 @@ def norm(x, ord=None, axis=None, keepdims=False):
             ret = abs(x).sum(axis=col_axis).min(axis=row_axis)
         elif ord in [None, 'fro', 'f']:
             if x.dtype.kind == 'c':
-                s = abs(x)
-                s *= s
-                ret = cupy.sqrt(s.sum(axis=axis))
+                ret = _norm_ord2_complex(x, axis=axis)
             else:
-                ret = cupy.sqrt((x * x).sum(axis=axis))
+                ret = _norm_ord2(x, axis=axis)
+        elif ord == 'nuc':
+            ret = _multi_svd_norm(x, row_axis, col_axis, cupy.sum)
         else:
             raise ValueError('Invalid norm order for matrices.')
         if keepdims:
@@ -136,7 +162,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
 
 
 def det(a):
-    """Retruns the deteminant of an array.
+    """Returns the determinant of an array.
 
     Args:
         a (cupy.ndarray): The input matrix with dimension ``(..., N, N)``.
@@ -215,11 +241,11 @@ def slogdet(a):
     util._assert_nd_squareness(a)
 
     dtype = numpy.promote_types(a.dtype.char, 'f')
-    real_dtype = dtype
+    real_dtype = numpy.dtype(dtype.char.lower())
 
-    # TODO(kataoka): support complex types
-    if dtype not in (numpy.float32, numpy.float64):
-        msg = ('dtype must be float32 or float64'
+    if dtype not in (numpy.float32, numpy.float64,
+                     numpy.complex64, numpy.complex128):
+        msg = ('dtype must be float32, float64, complex64, or complex128'
                ' (actual: {})'.format(a.dtype))
         raise ValueError(msg)
 
@@ -242,13 +268,17 @@ def slogdet(a):
 
     diag = cupy.diagonal(lu, axis1=-2, axis2=-1)
 
+    logdet = cupy.log(cupy.abs(diag)).sum(axis=-1)
+
     # ipiv is 1-origin
-    non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1) +
-                cupy.count_nonzero(diag < 0, axis=-1))
+    non_zero = cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1)
+    if dtype.kind == "f":
+        non_zero += cupy.count_nonzero(diag < 0, axis=-1)
 
     # Note: sign == -1 ** (non_zero % 2)
     sign = (non_zero % 2) * -2 + 1
-    logdet = cupy.log(abs(diag)).sum(axis=-1)
+    if dtype.kind == "c":
+        sign = sign * cupy.prod(diag / cupy.abs(diag), axis=-1)
 
     singular = dev_info > 0
     return (

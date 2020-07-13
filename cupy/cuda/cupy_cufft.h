@@ -5,10 +5,11 @@
 
 #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 #include <cufft.h>
+#include <cufftXt.h>
 
 #else  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
-#include "cupy_cuda.h"
+#include "../../cupy_backends/cuda/cupy_cuda.h"
 
 extern "C" {
 
@@ -99,6 +100,60 @@ cufftResult_t cufftExecZ2D(...) {
 
 // cuFFT Version
 cufftResult_t cufftGetVersion(...) {
+    return CUFFT_SUCCESS;
+}
+
+// cufftXt relavant data and functions
+typedef struct cudaXtDesc_t {
+   int version;
+   int nGPUs;
+   int GPUs[64];
+   void* data[64];
+   size_t size[64];
+   void* cudaXtState;
+} cudaXtDesc;
+
+typedef enum cufftXtSubFormat_t {
+    CUFFT_XT_FORMAT_INPUT = 0x00,
+    CUFFT_XT_FORMAT_OUTPUT = 0x01,
+    CUFFT_XT_FORMAT_INPLACE = 0x02,
+    CUFFT_XT_FORMAT_INPLACE_SHUFFLED = 0x03,
+    CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED = 0x04,
+    CUFFT_FORMAT_UNDEFINED = 0x05
+} cufftXtSubFormat;
+
+typedef struct cudaLibXtDesc_t{
+    int version;
+    cudaXtDesc *descriptor;
+    int library;  // libFormat is an undoumented type, so use int here
+    int subFormat;
+    void *libDescriptor;
+} cudaLibXtDesc;
+
+typedef enum cufftXtCopyType_t {
+    CUFFT_COPY_HOST_TO_DEVICE = 0x00,
+    CUFFT_COPY_DEVICE_TO_HOST = 0x01,
+    CUFFT_COPY_DEVICE_TO_DEVICE = 0x02,
+    CUFFT_COPY_UNDEFINED = 0x03
+} cufftXtCopyType;
+
+cufftResult_t cufftXtSetGPUs(...) {
+    return CUFFT_SUCCESS;
+}
+
+cufftResult_t cufftXtSetWorkArea(...) {
+    return CUFFT_SUCCESS;
+}
+
+cufftResult_t cufftXtMemcpy(...) {
+    return CUFFT_SUCCESS;
+}
+
+cufftResult_t cufftXtExecDescriptorC2C(...) {
+    return CUFFT_SUCCESS;
+}
+
+cufftResult_t cufftXtExecDescriptorZ2Z(...) {
     return CUFFT_SUCCESS;
 }
 

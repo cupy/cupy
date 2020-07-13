@@ -16,13 +16,15 @@ PLATFORM_WIN32 = sys.platform.startswith('win32')
 
 minimum_cuda_version = 8000
 minimum_cudnn_version = 5000
-maximum_cudnn_version = 7999
+maximum_cudnn_version = 8099
 
 _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
 
 
+# Using tempfile.TemporaryDirectory would cause an error during cleanup
+# due to a bug: https://bugs.python.org/issue26660
 @contextlib.contextmanager
 def _tempdir():
     temp_dir = tempfile.mkdtemp()
@@ -162,13 +164,33 @@ def get_compiler_setting(use_hip):
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
-    cub_path = os.environ.get('CUB_PATH', '')
-    if os.path.exists(cub_path):
-        # for <cupy/complex.cuh>
-        cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                   '../cupy/core/include')
-        include_dirs.append(cupy_header)
-        include_dirs.append(cub_path)
+    # For CUB, we need the complex and CUB headers. The search precedence for
+    # the latter is:
+    #   1. built-in CUB (for CUDA 11+)
+    #   2. CuPy's CUB bundle
+    # Note that starting CuPy v8 we no longer use CUB_PATH
+
+    # for <cupy/complex.cuh>
+    cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                               '../cupy/core/include')
+    # TODO(leofang): remove this detection in CuPy v9
+    old_cub_path = os.environ.get('CUB_PATH', '')
+    if old_cub_path:
+        utils.print_warning('CUB_PATH is detected: ' + old_cub_path,
+                            'It is no longer used by CuPy and will be igrnoed')
+    if cuda_path:
+        cuda_cub_path = os.path.join(cuda_path, 'include', 'cub')
+        if not os.path.exists(cuda_cub_path):
+            cuda_cub_path = None
+    else:
+        cuda_cub_path = None
+    global _cub_path
+    if cuda_cub_path:
+        _cub_path = cuda_cub_path
+    else:
+        _cub_path = os.path.join(cupy_header, 'cupy', 'cub')
+    include_dirs.insert(0, _cub_path)
+    include_dirs.insert(1, cupy_header)
 
     return {
         'include_dirs': include_dirs,
@@ -251,8 +273,12 @@ def _get_compiler_base_options():
 
 
 _cuda_version = None
+_thrust_version = None
 _cudnn_version = None
 _nccl_version = None
+_cutensor_version = None
+_cub_path = None
+_cub_version = None
 
 
 def check_cuda_version(compiler, settings):
@@ -295,6 +321,39 @@ def get_cuda_version(formatted=False):
     if formatted:
         return _format_cuda_version(_cuda_version)
     return _cuda_version
+
+
+def check_thrust_version(compiler, settings):
+    global _thrust_version
+
+    try:
+        out = build_and_run(compiler, '''
+        #include <thrust/version.h>
+        #include <stdio.h>
+
+        int main() {
+          printf("%d", THRUST_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+    except Exception as e:
+        utils.print_warning('Cannot check Thrust version\n{0}'.format(e))
+        return False
+
+    _thrust_version = int(out)
+
+    return True
+
+
+def get_thrust_version(formatted=False):
+    """Return Thrust version cached in check_thrust_version()."""
+    global _thrust_version
+    if _thrust_version is None:
+        msg = 'check_thrust_version() must be called first.'
+        raise RuntimeError(msg)
+    if formatted:
+        return str(_thrust_version)
+    return _thrust_version
 
 
 def check_cudnn_version(compiler, settings):
@@ -399,6 +458,73 @@ def check_nvtx(compiler, settings):
             return True
         return False
     return True
+
+
+def check_cub_version(compiler, settings):
+    global _cub_version
+    global _cub_path
+
+    # This is guaranteed to work for any CUB source because the search
+    # precedence follows that of include paths.
+    # CUB < 1.9.9 does not provide version.cuh and would error out
+    try:
+        out = build_and_run(compiler, '''
+        #include <cub/version.cuh>
+        #include <stdio.h>
+
+        int main() {
+          printf("%d", CUB_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+    except Exception as e:
+        # could be in a git submodule?
+        try:
+            # CuPy's bundle
+            cupy_cub_include = _cub_path
+            a = subprocess.run(' '.join(['git', 'describe', '--tags']),
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               shell=True, cwd=cupy_cub_include)
+            if a.returncode == 0:
+                tag = a.stdout.decode()[:-1]
+
+                # CUB's tag convention changed after 1.8.0: "v1.9.0" -> "1.9.0"
+                # In any case, we normalize it to be in line with CUB_VERSION
+                if tag.startswith('v'):
+                    tag = tag[1:]
+                tag = tag.split('.')
+                out = int(tag[0]) * 100000 + int(tag[1]) * 100
+                try:
+                    out += int(tag[2])
+                except ValueError:
+                    # there're local commits so tag is like 1.8.0-1-gdcbb288f,
+                    # we add the number of commits to the version
+                    local_patch = tag[2].split('-')
+                    out += int(local_patch[0]) + int(local_patch[1])
+            else:
+                raise RuntimeError('Cannot determine CUB version from git tag'
+                                   '\n{0}'.format(e))
+        except Exception as e:
+            utils.print_warning('Cannot determine CUB version\n{0}'.format(e))
+            # 0: CUB is not built (makes no sense), -1: built with unknown ver
+            out = -1
+
+    _cub_version = int(out)
+    settings['define_macros'].append(('CUPY_CUB_VERSION_CODE', _cub_version))
+    return True  # we always build CUB
+
+
+def get_cub_version(formatted=False):
+    """Return CUB version cached in check_cub_version()."""
+    global _cub_version
+    if _cub_version is None:
+        msg = 'check_cub_version() must be called first.'
+        raise RuntimeError(msg)
+    if formatted:
+        if _cub_version == -1:
+            return '<unknown>'
+        return str(_cub_version)
+    return _cub_version
 
 
 def check_cutensor_version(compiler, settings):

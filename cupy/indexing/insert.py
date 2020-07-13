@@ -1,6 +1,7 @@
 import numpy
 
 import cupy
+from cupy import core
 
 
 def place(arr, mask, vals):
@@ -66,7 +67,76 @@ def put(a, ind, v, mode='wrap'):
     a.put(ind, v, mode=mode)
 
 
-# TODO(okuta): Implement putmask
+_putmask_kernel = core.ElementwiseKernel(
+    'Q mask, raw S values, uint64 len_vals', 'T out',
+    '''
+    if (mask) out = (T) values[i % len_vals];
+    ''',
+    'putmask_kernel'
+)
+
+
+def putmask(a, mask, values):
+    """
+    Changes elements of an array inplace, based on a conditional mask and
+    input values.
+
+    Sets ``a.flat[n] = values[n]`` for each n where ``mask.flat[n]==True``.
+    If `values` is not the same size as `a` and `mask` then it will repeat.
+
+    Args:
+        a (cupy.ndarray): Target array.
+        mask (cupy.ndarray): Boolean mask array. It has to be
+            the same shape as `a`.
+        values (cupy.ndarray or scalar): Values to put into `a` where `mask`
+            is True. If `values` is smaller than `a`, then it will be
+            repeated.
+
+    Examples
+    --------
+    >>> x = cupy.arange(6).reshape(2, 3)
+    >>> cupy.putmask(x, x>2, x**2)
+    >>> x
+    array([[ 0,  1,  2],
+           [ 9, 16, 25]])
+
+    If `values` is smaller than `a` it is repeated:
+
+    >>> x = cupy.arange(6)
+    >>> cupy.putmask(x, x>2, cupy.array([-33, -44]))
+    >>> x
+    array([  0,   1,   2, -44, -33, -44])
+
+    .. seealso:: :func:`numpy.putmask`
+
+    """
+
+    if not isinstance(a, cupy.ndarray):
+        raise TypeError('`a` should be of type cupy.ndarray')
+    if not isinstance(mask, cupy.ndarray):
+        raise TypeError('`mask` should be of type cupy.ndarray')
+    if not (cupy.isscalar(values) or isinstance(values, cupy.ndarray)):
+        raise TypeError('`values` should be of type cupy.ndarray')
+
+    if not a.shape == mask.shape:
+        raise ValueError('mask and data must be the same size')
+
+    mask = mask.astype(numpy.bool_)
+
+    if cupy.isscalar(values):
+        a[mask] = values
+
+    elif not numpy.can_cast(values.dtype, a.dtype):
+        raise TypeError('Cannot cast array data from'
+                        ' {} to {} according to the rule \'safe\''
+                        .format(values.dtype, a.dtype))
+
+    elif a.shape == values.shape:
+        a[mask] = values[mask]
+
+    else:
+        values = values.ravel()
+        _putmask_kernel(mask, values, len(values), a)
 
 
 def fill_diagonal(a, val, wrap=False):
@@ -107,6 +177,79 @@ def fill_diagonal(a, val, wrap=False):
             raise ValueError('All dimensions of input must be of equal length')
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
-    # Since the current cupy does not support a.flat,
-    # we use a.ravel() instead of a.flat
-    a.ravel()[:end:step] = val
+    a.flat[:end:step] = val
+
+
+def diag_indices(n, ndim=2):
+    """ Return the indices to access the main diagonal of an array.
+
+    Returns a tuple of indices that can be used to access the main
+    diagonal of an array with ``ndim >= 2`` dimensions and shape
+    (n, n, ..., n).
+
+    Args:
+        n (int): The size, along each dimension of the arrays for which
+            the indices are to be returned.
+        ndim (int): The number of dimensions. default `2`.
+
+    Examples
+    --------
+    Create a set of indices to access the diagonal of a (4, 4) array:
+    >>> dig = cupy.diag_indices(4)
+    >>> dig
+    (array([0, 1, 2, 3]), array([0, 1, 2, 3]))
+    >>> a = cupy.arange(16).reshape(4, 4)
+    >>> a
+    array([[ 0,  1,  2,  3],
+           [ 4,  5,  6,  7],
+           [ 8,  9, 10, 11],
+           [12, 13, 14, 15]])
+    >>> a[di] = 100
+    >>> a
+    array([[100,   1,   2,   3],
+           [  4, 100,   6,   7],
+           [  8,   9, 100,  11],
+           [ 12,  13,  14, 100]])
+
+    Create indices to manipulate a 3-D array:
+    >>> d3 = cupy.diag_indices(2, 3)
+    >>> d3
+    (array([0, 1]), array([0, 1]), array([0, 1]))
+    And use it to set the diagonal of an array of zeros to 1:
+    >>> a = cupy.zeros((2, 2, 2), dtype=int)
+    >>> a[d3] = 1
+    >>> a
+    array([[[1, 0],
+            [0, 0]],
+           [[0, 0],
+            [0, 1]]])
+
+     .. seealso:: :func:`numpy.diag_indices`
+
+    """
+    idx = cupy.arange(n)
+    return (idx,) * ndim
+
+
+def diag_indices_from(arr):
+    """
+    Return the indices to access the main diagonal of an n-dimensional array.
+    See `diag_indices` for full details.
+
+    Args:
+        arr (cupy.ndarray): At least 2-D.
+
+     .. seealso:: :func:`numpy.diag_indices_from`
+
+    """
+    if not isinstance(arr, cupy.ndarray):
+        raise TypeError("Argument must be cupy.ndarray")
+
+    if not arr.ndim >= 2:
+        raise ValueError("input array must be at least 2-d")
+    # For more than d=2, the strided formula is only valid for arrays with
+    # all dimensions equal, so we check first.
+    if not cupy.all(cupy.diff(arr.shape) == 0):
+        raise ValueError("All dimensions of input must be of equal length")
+
+    return diag_indices(arr.shape[0], arr.ndim)

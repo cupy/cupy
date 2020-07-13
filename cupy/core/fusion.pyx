@@ -5,14 +5,15 @@ import numpy
 
 import cupy
 from cupy.core._dtype import get_dtype
-from cupy.core import _errors
 from cupy.core import _kernel
-from cupy.core._kernel import _is_fusing
+from cupy.core import _fusion_thread_local
 from cupy.core import _reduction
 from cupy.core import core
+from cupy.core import new_fusion
 
 
-_thread_local = _kernel._thread_local
+_is_fusing = _fusion_thread_local.is_fusing  # NOQA
+_thread_local = _fusion_thread_local.thread_local
 
 cdef dict _kind_score = {
     'b': 0,
@@ -852,13 +853,17 @@ class Fusion(object):
         self.func = func
         self.name = name or func.__name__
         self._memo = {}
+        self.new_fusion = None
 
     def __repr__(self):
         return '<Fusion \'{}\'>'.format(self.name)
 
     def __call__(self, *args):
+        if self.new_fusion is not None:
+            return self.new_fusion(*args)
+
         # Inner function of composition of multiple fused functions.
-        if _is_fusing():
+        if _fusion_thread_local.is_old_fusing():
             return self.func(*args)
 
         exec_cupy = False
@@ -903,10 +908,18 @@ class Fusion(object):
             try:
                 history = _FusionHistory()
                 _thread_local.history = history
-                self._memo[key] = history.get_fusion(
-                    self.func, args, self.name)
+                _thread_local.is_old_fusing = True
+                try:
+                    self._memo[key] = history.get_fusion(
+                        self.func, args, self.name)
+                except Exception:
+                    self.new_fusion = new_fusion.Fusion(self.func, self.name)
+                    _thread_local.history = None
+                    _thread_local.is_old_fusing = False
+                    return self.new_fusion(*args)
             finally:
                 _thread_local.history = None
+                _thread_local.is_old_fusing = False
         kernel, kwargs = self._memo[key]
 
         return kernel(
@@ -985,7 +998,7 @@ def _call_reduction(fusion_op, *args, **kwargs):
         ndim = 0
     if ndim < 0:
         mes = 'axis {} is out of bounds for array of dimension {}'
-        raise _errors._AxisError(mes.format(axis, src_ndim))
+        raise numpy.AxisError(mes.format(axis, src_ndim))
 
     _thread_local.history.ndim = ndim
     if ndim >= 1:

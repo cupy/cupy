@@ -1,9 +1,10 @@
 import numpy
 
 import cupy
-from cupy.cuda import cublas
-from cupy.cuda import cusolver
+from cupy_backends.cuda.libs import cublas
+from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
+from cupy.cusolver import check_availability
 from cupy.linalg import util
 
 
@@ -73,9 +74,11 @@ def _lu_factor(a_t, dtype):
             getrf_bufferSize = cusolver.dgetrf_bufferSize
             getrf = cusolver.dgetrf
         elif dtype == numpy.complex64:
-            getrfBatched = cupy.cuda.cublas.cgetrfBatched
+            getrf_bufferSize = cusolver.cgetrf_bufferSize
+            getrf = cusolver.cgetrf
         elif dtype == numpy.complex128:
-            getrfBatched = cupy.cuda.cublas.zgetrfBatched
+            getrf_bufferSize = cusolver.zgetrf_bufferSize
+            getrf = cusolver.zgetrf
         else:
             assert False
 
@@ -92,6 +95,54 @@ def _lu_factor(a_t, dtype):
         ipiv.reshape(orig_shape[:-1]),
         dev_info.reshape(orig_shape[:-2]),
     )
+
+
+def _potrf_batched(a):
+    """Batched Cholesky decomposition.
+
+    Decompose a given array of two-dimensional square matrices into
+    ``L * L.T``, where ``L`` is a lower-triangular matrix and ``.T``
+    is a conjugate transpose operator.
+
+    Args:
+        a (cupy.ndarray): The input array of matrices
+            with dimension ``(..., N, N)``
+
+    Returns:
+        cupy.ndarray: The lower-triangular matrix.
+    """
+    if not check_availability('potrfBatched'):
+        raise RuntimeError('potrfBatched is not available')
+
+    if a.dtype.char == 'f' or a.dtype.char == 'd':
+        dtype = a.dtype.char
+    else:
+        dtype = numpy.promote_types(a.dtype.char, 'f').char
+
+    if dtype == 'f':
+        potrfBatched = cusolver.spotrfBatched
+    elif dtype == 'd':
+        potrfBatched = cusolver.dpotrfBatched
+    elif dtype == 'F':
+        potrfBatched = cusolver.cpotrfBatched
+    else:  # dtype == 'D':
+        potrfBatched = cusolver.zpotrfBatched
+
+    x = a.astype(dtype, order='C', copy=True)
+    xp = cupy.core.core._mat_ptrs(x)
+    n = x.shape[-1]
+    ldx = x.strides[-2] // x.dtype.itemsize
+    handle = device.get_cusolver_handle()
+    batch_size = cupy.core.internal.prod(x.shape[:-2])
+    dev_info = cupy.empty(batch_size, dtype=numpy.int32)
+
+    potrfBatched(
+        handle, cublas.CUBLAS_FILL_MODE_UPPER, n, xp.data.ptr, ldx,
+        dev_info.data.ptr, batch_size)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        potrfBatched, dev_info)
+
+    return cupy.tril(x)
 
 
 def cholesky(a):
@@ -116,10 +167,11 @@ def cholesky(a):
 
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
-    # TODO(Saito): Current implementation only accepts two-dimensional arrays
     util._assert_cupy_array(a)
-    util._assert_rank2(a)
     util._assert_nd_squareness(a)
+
+    if a.ndim > 2:
+        return _potrf_batched(a)
 
     if a.dtype.char == 'f' or a.dtype.char == 'd':
         dtype = a.dtype.char
@@ -349,6 +401,19 @@ def svd(a, full_matrices=True, compute_uv=True):
     # Remark 4: Remark 2 is removed since cuda 8.0 (new!)
     n, m = a.shape
 
+    if m == 0 or n == 0:
+        s = cupy.empty((0,), s_dtype)
+        if compute_uv:
+            if full_matrices:
+                u = cupy.eye(n, dtype=a_dtype)
+                vt = cupy.eye(m, dtype=a_dtype)
+            else:
+                u = cupy.empty((n, 0), dtype=a_dtype)
+                vt = cupy.empty((0, m), dtype=a_dtype)
+            return u, s, vt
+        else:
+            return s
+
     # `a` must be copied because xgesvd destroys the matrix
     if m >= n:
         x = a.astype(a_dtype, order='C', copy=True)
@@ -357,26 +422,27 @@ def svd(a, full_matrices=True, compute_uv=True):
         m, n = a.shape
         x = a.transpose().astype(a_dtype, order='C', copy=True)
         trans_flag = True
-    mn = min(m, n)
 
+    k = n  # = min(m, n) where m >= n is ensured above
     if compute_uv:
         if full_matrices:
             u = cupy.empty((m, m), dtype=a_dtype)
-            vt = cupy.empty((n, n), dtype=a_dtype)
+            vt = x[:, :n]
+            job_u = ord('A')
+            job_vt = ord('O')
         else:
-            u = cupy.empty((mn, m), dtype=a_dtype)
-            vt = cupy.empty((mn, n), dtype=a_dtype)
+            u = x
+            vt = cupy.empty((k, n), dtype=a_dtype)
+            job_u = ord('O')
+            job_vt = ord('S')
         u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
     else:
         u_ptr, vt_ptr = 0, 0  # Use nullptr
-    s = cupy.empty(mn, dtype=s_dtype)
+        job_u = ord('N')
+        job_vt = ord('N')
+    s = cupy.empty(k, dtype=s_dtype)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
-
-    if compute_uv:
-        job = ord('A') if full_matrices else ord('S')
-    else:
-        job = ord('N')
 
     if a_dtype == 'f':
         gesvd = cusolver.sgesvd
@@ -394,12 +460,12 @@ def svd(a, full_matrices=True, compute_uv=True):
     buffersize = gesvd_bufferSize(handle, m, n)
     workspace = cupy.empty(buffersize, dtype=a_dtype)
     gesvd(
-        handle, job, job, m, n, x.data.ptr, m, s.data.ptr, u_ptr, m, vt_ptr, n,
-        workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
+        handle, job_u, job_vt, m, n, x.data.ptr, m, s.data.ptr, u_ptr, m,
+        vt_ptr, n, workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
     cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvd, dev_info)
 
-    # Note that the returned array may need to be transporsed
+    # Note that the returned array may need to be transposed
     # depending on the structure of an input
     if compute_uv:
         if trans_flag:

@@ -16,19 +16,20 @@ from cupyx.scipy.sparse.construct import rand  # NOQA
 from cupyx.scipy.sparse.construct import random  # NOQA
 from cupyx.scipy.sparse.construct import spdiags  # NOQA
 
+from cupyx.scipy.sparse.construct import bmat  # NOQA
+from cupyx.scipy.sparse.construct import hstack  # NOQA
+from cupyx.scipy.sparse.construct import vstack  # NOQA
+
 # TODO(unno): implement bsr_matrix
 # TODO(unno): implement dok_matrix
 # TODO(unno): implement lil_matrix
 
-# TODO(unno): implement kron
+from cupyx.scipy.sparse.construct import kron  # NOQA
 # TODO(unno): implement kronsum
 # TODO(unno): implement diags
 # TODO(unno): implement block_diag
 # TODO(unno): implement tril
 # TODO(unno): implement triu
-# TODO(unno): implement bmat
-# TODO(unno): implement hstack
-# TODO(unno): implement vstack
 
 # TODO(unno): implement save_npz
 # TODO(unno): implement load_npz

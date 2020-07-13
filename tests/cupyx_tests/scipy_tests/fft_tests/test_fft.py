@@ -822,13 +822,21 @@ class TestRfft(unittest.TestCase):
                                    norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
-    # TODO(leofang): rewrite this test when we support R2C/C2R cuFFT plans
     @testing.for_all_dtypes(no_complex=True)
-    def test_rfft_plan(self, dtype):
-        x = testing.shaped_random(self.shape, cp, dtype)
-        with pytest.raises(NotImplementedError, match='not yet supported'):
-            _fft_module(cp).rfft(x, n=self.n, axis=self.axis,
-                                 norm=self.norm, plan='abc')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_rfft_plan(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        if xp is cp:
+            kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis, value_type='R2C')}
+        else:
+            kw = {}
+        out = _fft_module(xp).rfft(x, n=self.n, axis=self.axis, norm=self.norm,
+                                   **kw)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
 
     @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
@@ -844,7 +852,41 @@ class TestRfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_rfft_overwrite_plan(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        if xp is cp:
+            kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis, value_type='R2C'),
+                'overwrite_x': True}
+        else:
+            kw = {}
+        out = _fft_module(xp).rfft(x, n=self.n, axis=self.axis, norm=self.norm,
+                                   **kw)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_rfft_plan_manager(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        if xp is cp:
+            from cupy.cuda.cufft import get_current_plan
+            plan = _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis, value_type='R2C')
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = _fft_module(xp).rfft(x, n=self.n, axis=self.axis)
+            assert get_current_plan() is None
+        else:
+            out = _fft_module(xp).rfft(x, n=self.n, axis=self.axis)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -854,8 +896,8 @@ class TestRfft(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -864,13 +906,55 @@ class TestRfft(unittest.TestCase):
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
-    # TODO(leofang): rewrite this test when we support R2C/C2R cuFFT plans
-    @testing.for_all_dtypes(no_complex=True)
-    def test_irfft_plan(self, dtype):
-        x = testing.shaped_random(self.shape, cp, dtype)
-        with pytest.raises(NotImplementedError, match='not yet supported'):
-            _fft_module(cp).irfft(x, n=self.n, axis=self.axis,
-                                  norm=self.norm, plan='abc')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_irfft_plan(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        if xp is cp:
+            kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis, value_type='C2R')}
+        else:
+            kw = {}
+        out = _fft_module(xp).irfft(
+            x, n=self.n, axis=self.axis, norm=self.norm, **kw)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_irfft_overwrite_plan(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        if xp is cp:
+            kw = {'plan': _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis, value_type='C2R'),
+                'overwrite_x': True}
+        else:
+            kw = {}
+        out = _fft_module(xp).irfft(
+            x, n=self.n, axis=self.axis, norm=self.norm, **kw)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_irfft_plan_manager(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        if xp is cp:
+            from cupy.cuda.cufft import get_current_plan
+            plan = _fft_module(xp).get_fft_plan(
+                x, shape=self.n, axes=self.axis, value_type='C2R')
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = _fft_module(xp).irfft(x, n=self.n, axis=self.axis)
+            assert get_current_plan() is None
+        else:
+            out = _fft_module(xp).irfft(x, n=self.n, axis=self.axis)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
 
     @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
@@ -926,13 +1010,74 @@ class TestRfft2(unittest.TestCase):
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
-    # TODO(leofang): rewrite this test when we support R2C/C2R cuFFT plans
     @testing.for_all_dtypes(no_complex=True)
-    def test_rfft2_plan(self, dtype):
-        x = testing.shaped_random(self.shape, cp, dtype)
-        with pytest.raises(NotImplementedError, match='not yet supported'):
-            _fft_module(cp).rfft2(x, s=self.s, axes=self.axes,
-                                  norm=self.norm, plan='abc')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_rfft2_plan(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+
+        # hack: skip testing if getting a cuFFT plan is impossible
+        try:
+            plan = _fft_module(cp).get_fft_plan(
+                x, shape=self.s, axes=self.axes, value_type='R2C')
+        except ValueError:
+            return x
+
+        if xp is cp:
+            kw = {'plan': plan}
+        else:
+            kw = {}
+        out = _fft_module(xp).rfft2(
+            x, s=self.s, axes=self.axes, norm=self.norm, **kw)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_rfft2_overwrite_plan(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+
+        # hack: skip testing if getting a cuFFT plan is impossible
+        try:
+            plan = _fft_module(cp).get_fft_plan(
+                x, shape=self.s, axes=self.axes, value_type='R2C')
+        except ValueError:
+            return x
+
+        if xp is cp:
+            kw = {'plan': plan, 'overwrite_x': True}
+        else:
+            kw = {}
+        out = _fft_module(xp).rfft2(
+            x, s=self.s, axes=self.axes, norm=self.norm, **kw)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_rfft2_plan_manager(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+
+        # hack: skip testing if getting a cuFFT plan is impossible
+        try:
+            plan = _fft_module(cp).get_fft_plan(
+                x, shape=self.s, axes=self.axes, value_type='R2C')
+        except ValueError:
+            return x
+
+        if xp is cp:
+            from cupy.cuda.cufft import get_current_plan
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = _fft_module(xp).rfft2(x, s=self.s, axes=self.axes)
+            assert get_current_plan() is None
+        else:
+            out = _fft_module(xp).rfft2(x, s=self.s, axes=self.axes)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
 
     @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
@@ -974,13 +1119,80 @@ class TestRfft2(unittest.TestCase):
                                      norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
-    # TODO(leofang): rewrite this test when we support R2C/C2R cuFFT plans
-    @testing.for_all_dtypes(no_complex=True)
-    def test_irfft2_plan(self, dtype):
-        x = testing.shaped_random(self.shape, cp, dtype)
-        with pytest.raises(NotImplementedError, match='not yet supported'):
-            _fft_module(cp).irfft2(x, s=self.s, axes=self.axes,
-                                   norm=self.norm, plan='abc')
+    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
+                        reason="Known to fail with Pascal or older")
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_irfft2_plan(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+
+        # hack: skip testing if getting a cuFFT plan is impossible
+        try:
+            plan = _fft_module(cp).get_fft_plan(
+                x, shape=self.s, axes=self.axes, value_type='C2R')
+        except ValueError:
+            return x
+
+        if xp is cp:
+            kw = {'plan': plan}
+        else:
+            kw = {}
+        out = _fft_module(xp).irfft2(
+            x, s=self.s, axes=self.axes, norm=self.norm, **kw)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
+                        reason="Known to fail with Pascal or older")
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_irfft2_overwrite_plan(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+
+        # hack: skip testing if getting a cuFFT plan is impossible
+        try:
+            plan = _fft_module(cp).get_fft_plan(
+                x, shape=self.s, axes=self.axes, value_type='C2R')
+        except ValueError:
+            return x
+
+        if xp is cp:
+            kw = {'plan': plan, 'overwrite_x': True}
+        else:
+            kw = {}
+        out = _fft_module(xp).irfft2(
+            x, s=self.s, axes=self.axes, norm=self.norm, **kw)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
+                        reason="Known to fail with Pascal or older")
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_irfft2_plan_manager(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+
+        # hack: skip testing if getting a cuFFT plan is impossible
+        try:
+            plan = _fft_module(cp).get_fft_plan(
+                x, shape=self.s, axes=self.axes, value_type='C2R')
+        except ValueError:
+            return x
+
+        if xp is cp:
+            from cupy.cuda.cufft import get_current_plan
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = _fft_module(xp).irfft2(x, s=self.s, axes=self.axes)
+            assert get_current_plan() is None
+        else:
+            out = _fft_module(xp).irfft2(x, s=self.s, axes=self.axes)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
                         10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
@@ -1039,13 +1251,74 @@ class TestRfftn(unittest.TestCase):
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
-    # TODO(leofang): rewrite this test when we support R2C/C2R cuFFT plans
     @testing.for_all_dtypes(no_complex=True)
-    def test_rfftn_plan(self, dtype):
-        x = testing.shaped_random(self.shape, cp, dtype)
-        with pytest.raises(NotImplementedError, match='not yet supported'):
-            _fft_module(cp).rfftn(x, s=self.s, axes=self.axes,
-                                  norm=self.norm, plan='abc')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_rfftn_plan(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+
+        # hack: skip testing if getting a cuFFT plan is impossible
+        try:
+            plan = _fft_module(cp).get_fft_plan(
+                x, shape=self.s, axes=self.axes, value_type='R2C')
+        except ValueError:
+            return x
+
+        if xp is cp:
+            kw = {'plan': plan}
+        else:
+            kw = {}
+        out = _fft_module(xp).rfftn(
+            x, s=self.s, axes=self.axes, norm=self.norm, **kw)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_rfftn_overwrite_plan(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+
+        # hack: skip testing if getting a cuFFT plan is impossible
+        try:
+            plan = _fft_module(cp).get_fft_plan(
+                x, shape=self.s, axes=self.axes, value_type='R2C')
+        except ValueError:
+            return x
+
+        if xp is cp:
+            kw = {'plan': plan, 'overwrite_x': True}
+        else:
+            kw = {}
+        out = _fft_module(xp).rfftn(
+            x, s=self.s, axes=self.axes, norm=self.norm, **kw)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_rfftn_plan_manager(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+
+        # hack: skip testing if getting a cuFFT plan is impossible
+        try:
+            plan = _fft_module(cp).get_fft_plan(
+                x, shape=self.s, axes=self.axes, value_type='R2C')
+        except ValueError:
+            return x
+
+        if xp is cp:
+            from cupy.cuda.cufft import get_current_plan
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = _fft_module(xp).rfftn(x, s=self.s, axes=self.axes)
+            assert get_current_plan() is None
+        else:
+            out = _fft_module(xp).rfftn(x, s=self.s, axes=self.axes)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
 
     @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
@@ -1087,13 +1360,80 @@ class TestRfftn(unittest.TestCase):
                                      norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
-    # TODO(leofang): rewrite this test when we support R2C/C2R cuFFT plans
-    @testing.for_all_dtypes(no_complex=True)
-    def test_irfftn_plan(self, dtype):
-        x = testing.shaped_random(self.shape, cp, dtype)
-        with pytest.raises(NotImplementedError, match='not yet supported'):
-            _fft_module(cp).irfftn(x, s=self.s, axes=self.axes,
-                                   norm=self.norm, plan='abc')
+    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
+                        reason="Known to fail with Pascal or older")
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_irfftn_plan(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+
+        # hack: skip testing if getting a cuFFT plan is impossible
+        try:
+            plan = _fft_module(cp).get_fft_plan(
+                x, shape=self.s, axes=self.axes, value_type='C2R')
+        except ValueError:
+            return x
+
+        if xp is cp:
+            kw = {'plan': plan}
+        else:
+            kw = {}
+        out = _fft_module(xp).irfftn(
+            x, s=self.s, axes=self.axes, norm=self.norm, **kw)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
+                        reason="Known to fail with Pascal or older")
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_irfftn_overwrite_plan(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+
+        # hack: skip testing if getting a cuFFT plan is impossible
+        try:
+            plan = _fft_module(cp).get_fft_plan(
+                x, shape=self.s, axes=self.axes, value_type='C2R')
+        except ValueError:
+            return x
+
+        if xp is cp:
+            kw = {'plan': plan, 'overwrite_x': True}
+        else:
+            kw = {}
+        out = _fft_module(xp).irfftn(
+            x, s=self.s, axes=self.axes, norm=self.norm, **kw)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
+                        reason="Known to fail with Pascal or older")
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_irfftn_plan_manager(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+
+        # hack: skip testing if getting a cuFFT plan is impossible
+        try:
+            plan = _fft_module(cp).get_fft_plan(
+                x, shape=self.s, axes=self.axes, value_type='C2R')
+        except ValueError:
+            return x
+
+        if xp is cp:
+            from cupy.cuda.cufft import get_current_plan
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = _fft_module(xp).irfftn(x, s=self.s, axes=self.axes)
+            assert get_current_plan() is None
+        else:
+            out = _fft_module(xp).irfftn(x, s=self.s, axes=self.axes)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
                         10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,

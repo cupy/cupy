@@ -7,6 +7,7 @@
 [![travis](https://img.shields.io/travis/cupy/cupy.svg)](https://travis-ci.org/cupy/cupy)
 [![coveralls](https://img.shields.io/coveralls/cupy/cupy.svg)](https://coveralls.io/github/cupy/cupy)
 [![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](https://docs-cupy.chainer.org/en/stable/)
+[![Twitter](https://img.shields.io/twitter/follow/CuPy_Team?label=%40CuPy_Team)](https://twitter.com/CuPy_Team)
 
 [**Website**](https://cupy.chainer.org/)
 | [**Docs**](https://docs-cupy.chainer.org/en/stable/)
@@ -78,6 +79,8 @@ Please see [the contribution guide](https://docs-cupy.chainer.org/en/stable/cont
 MIT License (see `LICENSE` file).
 
 CuPy is designed based on NumPy's API and SciPy's API (see `docs/LICENSE_THIRD_PARTY` file).
+
+CuPy is being maintained and developed by [Preferred Networks Inc.](https://preferred.jp/en/) and [community contributors](https://github.com/cupy/cupy/graphs/contributors).
 
 ## Reference
 

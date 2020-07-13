@@ -15,11 +15,11 @@ from cupy.testing.attr import gpu  # NOQA
 from cupy.testing.attr import multi_gpu  # NOQA
 from cupy.testing.attr import slow  # NOQA
 from cupy.testing.helper import assert_warns  # NOQA
-from cupy.testing.helper import empty  # NOQA
 from cupy.testing.helper import for_all_dtypes  # NOQA
 from cupy.testing.helper import for_all_dtypes_combination  # NOQA
 from cupy.testing.helper import for_CF_orders  # NOQA
 from cupy.testing.helper import for_complex_dtypes  # NOQA
+from cupy.testing.helper import for_contiguous_axes  # NOQA
 from cupy.testing.helper import for_dtypes  # NOQA
 from cupy.testing.helper import for_dtypes_combination  # NOQA
 from cupy.testing.helper import for_float_dtypes  # NOQA
@@ -43,6 +43,7 @@ from cupy.testing.helper import numpy_satisfies  # NOQA
 from cupy.testing.helper import NumpyAliasBasicTestBase  # NOQA
 from cupy.testing.helper import NumpyAliasValuesTestBase  # NOQA
 from cupy.testing.helper import NumpyError  # NOQA
+from cupy.testing.helper import AssertFunctionIsCalled  # NOQA
 from cupy.testing.helper import shaped_arange  # NOQA
 from cupy.testing.helper import shaped_random  # NOQA
 from cupy.testing.helper import shaped_reverse_arange  # NOQA

@@ -2,6 +2,7 @@ import unittest
 
 import itertools
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -53,6 +54,11 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': ([0, 1], slice(None), [[2, 1], [3, 1]])},
     # mask
     {'shape': (10,), 'indexes': (numpy.random.choice([False, True], (10,)),)},
+    {'shape': (2, 3, 4), 'indexes': (1, numpy.array([True, False, True]))},
+    {'shape': (2, 3, 4), 'indexes': (numpy.array([True, False]), 1)},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), 2, numpy.array([True, False, True, False]))},
+    {'shape': (2, 3, 4), 'indexes': (slice(None), 2, False)},
     {'shape': (2, 3, 4),
      'indexes': (numpy.random.choice([False, True], (2, 3, 4)),)},
     {'shape': (2, 3, 4),
@@ -61,9 +67,15 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
      'indexes': (slice(None), slice(None),
                  numpy.array([True, False, False, True]))},
     {'shape': (2, 3, 4),
+     'indexes': (1, 2,
+                 numpy.array([True, False, False, True]))},
+    {'shape': (2, 3, 4),
      'indexes': (slice(None), numpy.random.choice([False, True], (3, 4)))},
     {'shape': (2, 3, 4),
      'indexes': numpy.random.choice([False, True], (2, 3))},
+    # TODO(okuta): pass the following commented out tests
+    # {'shape': (2, 3, 4),
+    #  'indexes': (1, None, numpy.array([True, False, True]))},
     # empty arrays
     {'shape': (2, 3, 4), 'indexes': []},
     {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.int32)},
@@ -285,10 +297,11 @@ class TestArrayAdvancedIndexingOverflow(unittest.TestCase):
 @testing.gpu
 class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=IndexError)
-    def test_invalid_adv_getitem(self, xp):
-        a = testing.shaped_arange(self.shape, xp)
-        a[self.indexes]
+    def test_invalid_adv_getitem(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp)
+            with pytest.raises(IndexError):
+                a[self.indexes]
 
 
 @testing.parameterize(
@@ -301,10 +314,11 @@ class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
 @testing.gpu
 class TestArrayInvalidIndexAdvGetitem2(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=IndexError)
-    def test_invalid_adv_getitem(self, xp):
-        a = testing.shaped_arange(self.shape, xp)
-        a[self.indexes]
+    def test_invalid_adv_getitem(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp)
+            with pytest.raises(IndexError):
+                a[self.indexes]
 
 
 @testing.parameterize(
@@ -314,22 +328,11 @@ class TestArrayInvalidIndexAdvGetitem2(unittest.TestCase):
 @testing.with_requires('numpy>=1.16')
 class TestArrayInvalidValueAdvGetitem(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=IndexError)
-    def test_invalid_adv_getitem(self, xp):
-        a = testing.shaped_arange(self.shape, xp)
-        a[self.indexes]
-
-
-@testing.parameterize(
-    {'shape': (2, 3, 4), 'indexes': [1, [1, [1]]]},
-)
-@testing.gpu
-class TestArrayInvalidValueAdvGetitemForOldVersion(unittest.TestCase):
-
-    @testing.numpy_cupy_raises()
-    def test_invalid_adv_getitem(self, xp):
-        a = testing.shaped_arange(self.shape, xp)
-        a[self.indexes]
+    def test_invalid_adv_getitem(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp)
+            with pytest.raises(IndexError):
+                a[self.indexes]
 
 
 @testing.parameterize(
@@ -363,7 +366,16 @@ class TestArrayInvalidValueAdvGetitemForOldVersion(unittest.TestCase):
     {'shape': (2, 3, 4),
      'indexes': numpy.array([True, False]), 'value': 1},
     {'shape': (2, 3, 4),
+     'indexes': (1, numpy.array([True, False, True])), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (numpy.array([True, False]), 1), 'value': 1},
+    {'shape': (2, 3, 4),
      'indexes': (slice(None), numpy.array([True, False, True])), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), 2, numpy.array([True, False, True, False])),
+     'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), 2, False), 'value': 1},
     {'shape': (2, 3, 4),
      'indexes': (slice(None), slice(None),
                  numpy.random.choice([False, True], (4,))),
@@ -491,10 +503,11 @@ class TestArrayAdvancedIndexingSetitemScalarValue2(unittest.TestCase):
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemScalarValueIndexError(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_adv_setitem(self, xp):
-        a = xp.zeros(self.shape)
-        a[self.indexes] = self.value
+    def test_adv_setitem(self):
+        for xp in (numpy, cupy):
+            a = xp.zeros(self.shape)
+            with pytest.raises(IndexError):
+                a[self.indexes] = self.value
 
 
 @testing.parameterize(

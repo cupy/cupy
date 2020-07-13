@@ -4,8 +4,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
-import mock
 import numpy
 
 import cupy
@@ -112,6 +112,10 @@ class TestAliases(unittest.TestCase):
     def test_conj_is_conjugate(self):
         for xp in (numpy, cupy):
             assert xp.conj is xp.conjugate
+
+    def test_bitwise_not_is_invert(self):
+        for xp in (numpy, cupy):
+            assert xp.bitwise_not is xp.invert
 
 
 # This is copied from chainer/testing/__init__.py, so should be replaced in

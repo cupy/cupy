@@ -56,11 +56,13 @@ from cupy import binary  # NOQA
 import cupy.core.fusion  # NOQA
 from cupy import creation  # NOQA
 from cupy import fft  # NOQA
+from cupy import functional  # NOQA
 from cupy import indexing  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import padding  # NOQA
+from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 from cupy import _sorting  # NOQA
 from cupy import sparse  # NOQA
@@ -279,10 +281,16 @@ from cupy.creation.matrix import tril  # NOQA
 from cupy.creation.matrix import triu  # NOQA
 
 # -----------------------------------------------------------------------------
+# Functional routines
+# -----------------------------------------------------------------------------
+from cupy.functional.piecewise import piecewise  # NOQA
+
+# -----------------------------------------------------------------------------
 # Array manipulation routines
 # -----------------------------------------------------------------------------
 from cupy.manipulation.basic import copyto  # NOQA
 
+from cupy.manipulation.shape import shape  # NOQA
 from cupy.manipulation.shape import ravel  # NOQA
 from cupy.manipulation.shape import reshape  # NOQA
 
@@ -308,6 +316,7 @@ from cupy.manipulation.join import stack  # NOQA
 from cupy.manipulation.join import vstack  # NOQA
 
 from cupy.manipulation.kind import asfortranarray  # NOQA
+from cupy.manipulation.kind import require  # NOQA
 
 from cupy.manipulation.split import array_split  # NOQA
 from cupy.manipulation.split import dsplit  # NOQA
@@ -319,6 +328,7 @@ from cupy.manipulation.tiling import repeat  # NOQA
 from cupy.manipulation.tiling import tile  # NOQA
 
 from cupy.manipulation.add_remove import unique  # NOQA
+from cupy.manipulation.add_remove import trim_zeros  # NOQA
 
 from cupy.manipulation.rearrange import flip  # NOQA
 from cupy.manipulation.rearrange import fliplr  # NOQA
@@ -332,6 +342,7 @@ from cupy.manipulation.rearrange import rot90  # NOQA
 from cupy.binary.elementwise import bitwise_and  # NOQA
 from cupy.binary.elementwise import bitwise_or  # NOQA
 from cupy.binary.elementwise import bitwise_xor  # NOQA
+from cupy.binary.elementwise import bitwise_not  # NOQA
 from cupy.binary.elementwise import invert  # NOQA
 from cupy.binary.elementwise import left_shift  # NOQA
 from cupy.binary.elementwise import right_shift  # NOQA
@@ -432,16 +443,26 @@ from cupy.indexing.generate import c_  # NOQA
 from cupy.indexing.generate import indices  # NOQA
 from cupy.indexing.generate import ix_  # NOQA
 from cupy.indexing.generate import r_  # NOQA
+from cupy.indexing.generate import ravel_multi_index  # NOQA
 from cupy.indexing.generate import unravel_index  # NOQA
 
 from cupy.indexing.indexing import choose  # NOQA
+from cupy.indexing.indexing import compress  # NOQA
 from cupy.indexing.indexing import diagonal  # NOQA
+from cupy.indexing.indexing import extract  # NOQA
+from cupy.indexing.indexing import select  # NOQA
 from cupy.indexing.indexing import take  # NOQA
 from cupy.indexing.indexing import take_along_axis  # NOQA
 
 from cupy.indexing.insert import place  # NOQA
 from cupy.indexing.insert import put  # NOQA
+from cupy.indexing.insert import putmask  # NOQA
 from cupy.indexing.insert import fill_diagonal  # NOQA
+from cupy.indexing.insert import diag_indices  # NOQA
+from cupy.indexing.insert import diag_indices_from  # NOQA
+
+from cupy.indexing.iterate import flatiter  # NOQA
+
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
@@ -482,6 +503,7 @@ from cupy.linalg.norms import trace  # NOQA
 # Logic functions
 # -----------------------------------------------------------------------------
 from cupy.logic.comparison import allclose  # NOQA
+from cupy.logic.comparison import array_equal  # NOQA
 from cupy.logic.comparison import isclose  # NOQA
 
 from cupy.logic.content import isfinite  # NOQA
@@ -524,6 +546,11 @@ from cupy.logic.comparison import not_equal  # NOQA
 from cupy.logic.truth import all  # NOQA
 from cupy.logic.truth import any  # NOQA
 
+# ------------------------------------------------------------------------------
+# Polynomial functions
+# ------------------------------------------------------------------------------
+from cupy.lib.polynomial import poly1d  # NOQA
+
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
@@ -563,9 +590,11 @@ from cupy.math.sumprod import cumsum  # NOQA
 from cupy.math.sumprod import nansum  # NOQA
 from cupy.math.sumprod import nanprod  # NOQA
 from cupy.math.sumprod import diff  # NOQA
+from cupy.math.window import bartlett  # NOQA
 from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA
 from cupy.math.window import hanning  # NOQA
+from cupy.math.window import kaiser  # NOQA
 
 from cupy.math.explog import exp  # NOQA
 from cupy.math.explog import exp2  # NOQA
@@ -585,6 +614,9 @@ from cupy.math.floating import frexp  # NOQA
 from cupy.math.floating import ldexp  # NOQA
 from cupy.math.floating import nextafter  # NOQA
 from cupy.math.floating import signbit  # NOQA
+
+from cupy.math.rational import gcd  # NOQA
+from cupy.math.rational import lcm  # NOQA
 
 from cupy.math.arithmetic import add  # NOQA
 from cupy.math.arithmetic import divide  # NOQA
@@ -619,12 +651,14 @@ from cupy.math.misc import nan_to_num  # NOQA
 from cupy.math.misc import sign  # NOQA
 from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
+from cupy.math.misc import convolve  # NOQA
 
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
 # -----------------------------------------------------------------------------
 from cupy.misc import may_share_memory  # NOQA
 from cupy.misc import shares_memory  # NOQA
+from cupy.misc import who  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -640,6 +674,7 @@ from cupy._sorting.count import count_nonzero  # NOQA
 
 from cupy._sorting.search import argmax  # NOQA
 from cupy._sorting.search import argmin  # NOQA
+from cupy._sorting.search import argwhere  # NOQA
 from cupy._sorting.search import flatnonzero  # NOQA
 from cupy._sorting.search import nanargmax  # NOQA
 from cupy._sorting.search import nanargmin  # NOQA
@@ -651,6 +686,7 @@ from cupy._sorting.sort import argpartition  # NOQA
 from cupy._sorting.sort import argsort  # NOQA
 from cupy._sorting.sort import lexsort  # NOQA
 from cupy._sorting.sort import msort  # NOQA
+from cupy._sorting.sort import sort_complex  # NOQA
 from cupy._sorting.sort import partition  # NOQA
 from cupy._sorting.sort import sort  # NOQA
 
@@ -659,6 +695,7 @@ from cupy._sorting.sort import sort  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.statistics.correlation import corrcoef  # NOQA
 from cupy.statistics.correlation import cov  # NOQA
+from cupy.statistics.correlation import correlate  # NOQA
 
 from cupy.statistics.order import amax  # NOQA
 from cupy.statistics.order import amax as max  # NOQA
@@ -669,6 +706,7 @@ from cupy.statistics.order import nanmin  # NOQA
 from cupy.statistics.order import percentile  # NOQA
 from cupy.statistics.order import ptp  # NOQA
 
+from cupy.statistics.meanvar import median  # NOQA
 from cupy.statistics.meanvar import average  # NOQA
 from cupy.statistics.meanvar import mean  # NOQA
 from cupy.statistics.meanvar import std  # NOQA
@@ -755,8 +793,8 @@ def get_array_module(*args):
     """
     for arg in args:
         if isinstance(arg, (ndarray, sparse.spmatrix,
-                            cupy.core.fusion._FusionVarScalar,
-                            cupy.core.fusion._FusionVarArray)):
+                            cupy.core.fusion._FusionVarArray,
+                            cupy.core.new_fusion._ArrayProxy)):
             return _cupy
     return numpy
 

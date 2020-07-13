@@ -4,12 +4,13 @@ import sys
 import numpy
 
 import cupy
-from cupy.core import _errors
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._ufuncs import elementwise_copy
 
 from libcpp cimport vector
 
+from cupy.core._carray cimport shape_t
+from cupy.core._carray cimport strides_t
 from cupy.core cimport core
 from cupy.core cimport _routines_math as _math
 from cupy.core cimport _routines_manipulation as _manipulation
@@ -27,13 +28,14 @@ cdef ndarray _ndarray_getitem(ndarray self, slices):
     cdef Py_ssize_t mask_i
     cdef list slice_list, adv_mask, adv_slices
     cdef bint advanced, mask_exists
+    cdef ndarray a, mask
 
     slice_list, advanced, mask_exists = _prepare_slice_list(
         slices, self._shape.size())
 
     if mask_exists:
-        mask_i = _get_mask_index(slice_list)
-        return _getitem_mask_single(self, slice_list[mask_i], mask_i)
+        a, mask, mask_i = _get_mask(self, slice_list)
+        return _getitem_mask_single(a, mask, mask_i)
     if advanced:
         a, adv_slices, adv_mask = _prepare_advanced_indexing(
             self, slice_list)
@@ -50,31 +52,52 @@ cdef _ndarray_setitem(ndarray self, slices, value):
 
 
 cdef tuple _ndarray_nonzero(ndarray self):
+    cdef int ndim
+    cdef ndarray dst = _ndarray_argwhere(self)
+    ndim = self.ndim
+    if ndim >= 1:
+        return tuple([dst[:, i] for i in range(ndim)])
+    else:
+        return ndarray((0,), dtype=numpy.int64),
+
+
+cpdef ndarray _ndarray_argwhere(ndarray self):
     cdef Py_ssize_t count_nonzero
     cdef int ndim
-    dtype = numpy.int64
+    cdef ndarray nonzero
+    numpy_int64 = numpy.int64
     if self.size == 0:
         count_nonzero = 0
     else:
-        r = self.ravel()
-        nonzero = cupy.core.not_equal(r, 0, ndarray(r.shape, dtype))
-        del r
-        scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM)
+        if self.dtype == numpy.bool_:
+            nonzero = self.ravel()
+        else:
+            nonzero = cupy.core.not_equal(self, 0)
+            nonzero = nonzero.ravel()
+
+        # Get number of True in the mask to determine the shape of the array
+        # after masking.
+        if nonzero.size <= 2 ** 31 - 1:
+            scan_dtype = numpy.int32
+        else:
+            scan_dtype = numpy_int64
+        scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM,
+                                dtype=scan_dtype)
         count_nonzero = int(scan_index[-1])  # synchronize!
     ndim = max(<int>self._shape.size(), 1)
     if count_nonzero == 0:
-        return (ndarray((0,), dtype=dtype),) * ndim
+        return ndarray((0, ndim), dtype=numpy_int64)
 
     if ndim <= 1:
-        dst = ndarray((count_nonzero,), dtype=dtype)
+        dst = ndarray((count_nonzero, 1), dtype=numpy_int64)
         _nonzero_kernel_1d(nonzero, scan_index, dst)
-        return dst,
+        return dst
     else:
         nonzero.shape = self.shape
         scan_index.shape = self.shape
-        dst = ndarray((ndim, count_nonzero), dtype=dtype)
+        dst = ndarray((count_nonzero, ndim), dtype=numpy_int64)
         _nonzero_kernel(nonzero, scan_index, dst)
-        return tuple([dst[i] for i in range(ndim)])
+        return dst
 
 
 cdef _ndarray_scatter_add(ndarray self, slices, value):
@@ -98,15 +121,15 @@ cdef ndarray _ndarray_take(ndarray self, indices, axis, out):
 
 cdef ndarray _ndarray_put(ndarray self, indices, values, mode):
     if mode not in ('raise', 'wrap', 'clip'):
-        raise TypeError('clipmode not understood')
+        raise ValueError('clipmode not understood')
 
     n = self.size
     if not isinstance(indices, ndarray):
-        indices = ndarray(indices)
+        indices = core.array(indices)
     indices = indices.ravel()
 
     if not isinstance(values, ndarray):
-        values = ndarray(values, dtype=self.dtype)
+        values = core.array(values, dtype=self.dtype)
     if values.size == 0:
         return
 
@@ -148,9 +171,25 @@ cdef ndarray _ndarray_choose(ndarray self, choices, out, mode):
     elif mode == 'clip':
         _choose_clip_kernel(ba[0], bcs, n_channel, n, out)
     else:
-        raise TypeError('clipmode not understood')
+        raise ValueError('clipmode not understood')
 
     return out
+
+
+cdef ndarray _ndarray_compress(ndarray self, condition, axis, out):
+    a = self
+
+    if numpy.isscalar(condition):
+        raise ValueError('condition must be a 1-d array')
+
+    if not isinstance(condition, ndarray):
+        condition = core.array(condition, dtype=int)
+        if condition.ndim != 1:
+            raise ValueError('condition must be a 1-d array')
+
+    res = _ndarray_nonzero(condition)  # synchronize
+
+    return _ndarray_take(a, res[0], axis, out)
 
 
 cdef ndarray _ndarray_diagonal(ndarray self, offset, axis1, axis2):
@@ -214,20 +253,45 @@ cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
     return slice_list, advanced, mask_exists
 
 
-cdef Py_ssize_t _get_mask_index(list slice_list) except *:
-    cdef Py_ssize_t i, n_not_slice_none, mask_i
+cdef tuple _get_mask(ndarray a, list slice_list):
+    cdef Py_ssize_t n_not_slice_none, mask_i, mask_slice_cnt
     cdef slice none_slice = slice(None)
+    cdef list basic_slice
+    cdef bint use_getitem
+
+    basic_slice = []
+    use_getitem = False
+    mask_slice_cnt = 0
     n_not_slice_none = 0
     mask_i = -1
-    for i, s in enumerate(slice_list):
-        if not isinstance(s, slice) or s != none_slice:
+    mask = None
+    for s in slice_list:
+        if s is None:
+            basic_slice.append(None)
+            mask_slice_cnt += 1
+            use_getitem = True
+        elif isinstance(s, ndarray):
+            basic_slice.append(none_slice)
             n_not_slice_none += 1
-            if isinstance(s, ndarray) and s.dtype == numpy.bool_:
-                mask_i = i
+            if s.dtype == numpy.bool_:
+                mask_i = mask_slice_cnt
+                mask = s
+        elif isinstance(s, slice):
+            basic_slice.append(s)
+            mask_slice_cnt += 1
+            if not use_getitem and s != none_slice:
+                use_getitem = True
+        else:
+            basic_slice.append(s)
+            use_getitem = True
+
     if n_not_slice_none != 1 or mask_i == -1:
         raise ValueError('currently, CuPy only supports slices that '
                          'consist of one boolean array.')
-    return mask_i
+
+    if use_getitem:
+        a = _simple_getitem(a, basic_slice)
+    return a, mask, mask_i
 
 
 cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
@@ -274,7 +338,8 @@ cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
     return a, adv_slices, adv_mask
 
 cdef ndarray _simple_getitem(ndarray a, list slice_list):
-    cdef vector.vector[Py_ssize_t] shape, strides
+    cdef shape_t shape
+    cdef strides_t strides
     cdef ndarray v
     cdef Py_ssize_t i, j, offset, ndim
     cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
@@ -336,17 +401,17 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
 
 
 _nonzero_kernel_1d = ElementwiseKernel(
-    'T src, S index', 'raw S dst',
+    'T src, S index', 'raw U dst',
     'if (src != 0) dst[index - 1] = i',
     'nonzero_kernel_1d')
 
 
 _nonzero_kernel = ElementwiseKernel(
-    'T src, S index', 'raw S dst',
+    'T src, S index', 'raw U dst',
     '''
     if (src != 0){
         for(int j = 0; j < _ind.ndim; j++){
-            ptrdiff_t ind[] = {j, index - 1};
+            ptrdiff_t ind[] = {index - 1, j};
             dst[ind] = _ind.get()[j];
         }
     }''',
@@ -364,7 +429,8 @@ out = a[out_i];
 
 
 _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, S index_range',
+    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, '
+    'int64 index_range',
     'T out', _take_kernel_core, 'cupy_take')
 
 
@@ -528,10 +594,14 @@ _getitem_mask_kernel = ElementwiseKernel(
 cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     cdef ndarray mask_scanned, mask_br, mask_br_scanned
     cdef int n_true
-    cdef tuple lshape, rshape, out_shape
+    cdef tuple lshape, rshape, out_shape, a_shape
+    cdef Py_ssize_t a_ndim, mask_ndim
 
-    lshape = a.shape[:axis]
-    rshape = a.shape[axis + mask._shape.size():]
+    a_ndim = a._shape.size()
+    mask_ndim = mask._shape.size()
+    a_shape = a.shape
+    lshape = a_shape[:axis]
+    rshape = a_shape[axis + mask._shape.size():]
 
     if mask.size == 0:
         masked_shape = lshape + (0,) + rshape
@@ -539,7 +609,7 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
         return mask_br, mask_br, masked_shape
 
     for i, s in enumerate(mask._shape):
-        if a.shape[axis + i] != s:
+        if a_shape[axis + i] != s:
             raise IndexError('boolean index did not match')
 
     # Get number of True in the mask to determine the shape of the array
@@ -549,13 +619,13 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     else:
         mask_type = numpy.int64
     op = _math.scan_op.SCAN_SUM
+
     # starts with 1
-    mask_scanned = _math.scan(mask.astype(mask_type).ravel(), op=op)
+    mask_scanned = _math.scan(mask.ravel(), op=op, dtype=mask_type)
     n_true = int(mask_scanned[-1])
     masked_shape = lshape + (n_true,) + rshape
-
     # When mask covers the entire array, broadcasting is not necessary.
-    if mask._shape.size() == a._shape.size() and axis == 0:
+    if mask_ndim == a_ndim and axis == 0:
         return (
             mask,
             _manipulation._reshape(mask_scanned, mask._shape),
@@ -565,17 +635,17 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     # The scan of the broadcasted array is used to index on kernel.
     mask = _manipulation._reshape(
         mask,
-        axis * (1,) + mask.shape + (a.ndim - axis - mask.ndim) * (1,))
-    if mask._shape.size() > a._shape.size():
+        axis * (1,) + mask.shape + (a_ndim - axis - mask_ndim) * (1,))
+    if <Py_ssize_t>mask._shape.size() > a_ndim:
         raise IndexError('too many indices for array')
 
-    mask = _manipulation.broadcast_to(mask, a.shape)
+    mask = _manipulation.broadcast_to(mask, a_shape)
     if mask.size <= 2 ** 31 - 1:
         mask_type = numpy.int32
     else:
         mask_type = numpy.int64
     mask_scanned = _manipulation._reshape(
-        _math.scan(mask.astype(mask_type).ravel(), op=_math.scan_op.SCAN_SUM),
+        _math.scan(mask.ravel(), op=_math.scan_op.SCAN_SUM, dtype=mask_type),
         mask._shape)
     return mask, mask_scanned, masked_shape
 
@@ -602,7 +672,7 @@ cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
         ndim = 1
 
     if not (-ndim <= li < ndim and -ndim <= ri < ndim):
-        raise _errors._AxisError('Axis overrun')
+        raise numpy.AxisError('Axis overrun')
 
     if ndim == 1:
         li = ri = 0
@@ -771,7 +841,7 @@ cdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
 
 cdef _scatter_op(ndarray a, slices, value, op):
     cdef Py_ssize_t i, li, ri
-    cdef ndarray v, x, y, a_interm, reduced_idx
+    cdef ndarray v, x, y, a_interm, reduced_idx, mask
     cdef list slice_list, adv_mask, adv_slices
     cdef bint advanced, mask_exists
 
@@ -779,8 +849,8 @@ cdef _scatter_op(ndarray a, slices, value, op):
         slices, a._shape.size())
 
     if mask_exists:
-        mask_i = _get_mask_index(slice_list)
-        _scatter_op_mask_single(a, slice_list[mask_i], value, mask_i, op)
+        a, mask, mask_i = _get_mask(a, slice_list)
+        _scatter_op_mask_single(a, mask, value, mask_i, op)
         return
 
     if advanced:
@@ -828,7 +898,7 @@ cdef ndarray _diagonal(
         Py_ssize_t axis2=1):
     cdef Py_ssize_t ndim = a.ndim
     if not (-ndim <= axis1 < ndim and -ndim <= axis2 < ndim):
-        raise _errors._AxisError(
+        raise numpy.AxisError(
             'axis1(={0}) and axis2(={1}) must be within range '
             '(ndim={2})'.format(axis1, axis2, ndim))
 

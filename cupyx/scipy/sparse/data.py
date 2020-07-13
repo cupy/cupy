@@ -1,6 +1,6 @@
 import cupy
 from cupyx.scipy.sparse import base
-from .util import validateaxis
+from cupyx.scipy.sparse import util
 
 
 _ufuncs = [
@@ -73,6 +73,34 @@ class _data_matrix(base.spmatrix):
         """
         return cupy.count_nonzero(self.data)
 
+    def mean(self, axis=None, dtype=None, out=None):
+        """Compute the arithmetic mean along the specified axis.
+
+        Args:
+            axis (int or ``None``): Axis along which the sum is computed.
+                If it is ``None``, it computes the average of all the elements.
+                Select from ``{None, 0, 1, -2, -1}``.
+
+        Returns:
+            cupy.ndarray: Summed array.
+
+        .. seealso::
+           :meth:`scipy.sparse.spmatrix.mean`
+
+        """
+        util.validateaxis(axis)
+        nRow, nCol = self.shape
+        data = self.data.copy()
+
+        if axis is None:
+            n = nRow * nCol
+        elif axis in (0, -2):
+            n = nRow
+        else:
+            n = nCol
+
+        return self._with_data(data / n).sum(axis, dtype, out)
+
     def power(self, n, dtype=None):
         """Elementwise power function.
 
@@ -126,7 +154,7 @@ class _minmax_mixin(object):
             raise ValueError(("Sparse matrices do not support "
                               "an 'out' parameter."))
 
-        validateaxis(axis)
+        util.validateaxis(axis)
 
         if axis == 0 or axis == 1:
             return self._min_or_max_axis(axis, min_or_max, sum_duplicates,
@@ -154,7 +182,7 @@ class _minmax_mixin(object):
             raise ValueError("Sparse matrices do not support "
                              "an 'out' parameter.")
 
-        validateaxis(axis)
+        util.validateaxis(axis)
 
         if axis is None:
             if 0 in self.shape:

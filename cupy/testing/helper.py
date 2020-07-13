@@ -5,6 +5,7 @@ import os
 import random
 import traceback
 import unittest
+from unittest import mock
 import warnings
 
 import numpy
@@ -81,41 +82,19 @@ def _call_func_numpy_cupy(self, impl, args, kw, name, sp_name, scipy_name):
         numpy_result, numpy_error, numpy_tb)
 
 
-def _get_numpy_errors():
-    numpy_version = numpy.lib.NumpyVersion(numpy.__version__)
-
-    errors = [
-        AttributeError, Exception, IndexError, TypeError, ValueError,
-        NotImplementedError, DeprecationWarning,
-    ]
-    if numpy_version >= '1.13.0':
-        errors.append(numpy.AxisError)
-    if numpy_version >= '1.15.0':
-        errors.append(numpy.linalg.LinAlgError)
-
-    return errors
-
-
-_numpy_errors = _get_numpy_errors()
+_numpy_errors = [
+    AttributeError, Exception, IndexError, TypeError, ValueError,
+    NotImplementedError, DeprecationWarning,
+    numpy.AxisError, numpy.linalg.LinAlgError,
+]
 
 
 def _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
     """Checks if try/except blocks are equivalent up to public error classes
     """
 
-    errors = _numpy_errors
-
-    # Prior to NumPy version 1.13.0, NumPy raises either `ValueError` or
-    # `IndexError` instead of `numpy.AxisError`.
-    numpy_axis_error = getattr(numpy, 'AxisError', None)
-    cupy_axis_error = cupy.core._errors._AxisError
-    if isinstance(cupy_error, cupy_axis_error) and numpy_axis_error is None:
-        if not isinstance(numpy_error, (ValueError, IndexError)):
-            return False
-        errors = list(set(errors) - set([IndexError, ValueError]))
-
     return all([isinstance(cupy_error, err) == isinstance(numpy_error, err)
-                for err in errors])
+                for err in _numpy_errors])
 
 
 def _fail_test_with_unexpected_errors(
@@ -534,6 +513,11 @@ def numpy_cupy_array_list_equal(
 
     .. seealso:: :func:`cupy.testing.assert_array_list_equal`
     """  # NOQA
+    warnings.warn(
+        'numpy_cupy_array_list_equal is deprecated.'
+        ' Use numpy_cupy_array_equal instead.',
+        DeprecationWarning)
+
     def check_func(x, y):
         array.assert_array_equal(x, y, err_msg, verbose)
     return _make_decorator(check_func, name, False, False, sp_name, scipy_name)
@@ -633,6 +617,10 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
     Decorated test fixture is required throw same errors
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
+    warnings.warn(
+        'cupy.testing.numpy_cupy_raises is deprecated.',
+        DeprecationWarning)
+
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -1035,6 +1023,45 @@ def for_CF_orders(name='order'):
     return for_orders([None, 'C', 'F', 'c', 'f'], name)
 
 
+def for_contiguous_axes(name='axis'):
+    '''Decorator for parametrizing tests with possible contiguous axes.
+
+    Args:
+        name(str): Argument name to which specified axis are passed.
+
+    .. note::
+        1. Adapted from tests/cupy_tests/fft_tests/test_fft.py.
+        2. Example: for ``shape = (1, 2, 3)``, the tested axes are
+            ``[(2,), (1, 2), (0, 1, 2)]`` for the C order, and
+            ``[(0,), (0, 1), (0, 1, 2)]`` for the F order.
+    '''
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            ndim = len(self.shape)
+            order = self.order
+            for i in range(ndim):
+                a = ()
+                if order in ('c', 'C'):
+                    for j in range(ndim-1, i-1, -1):
+                        a = (j,) + a
+                elif order in ('f', 'F'):
+                    for j in range(0, i+1):
+                        a = a + (j,)
+                else:
+                    raise ValueError('Please specify the array order.')
+                try:
+                    print(order, ', testing', a)
+                    kw[name] = a
+                    impl(self, *args, **kw)
+                except Exception:
+                    print(name, 'is', a, ', ndim is', ndim, ', shape is',
+                          self.shape, ', order is', order)
+                    raise
+        return test_func
+    return decorator
+
+
 def with_requires(*requirements):
     """Run a test case only when given requirements are satisfied.
 
@@ -1172,10 +1199,6 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
         return xp.asarray(numpy.random.rand(*shape) * scale, dtype=dtype)
 
 
-def empty(xp=cupy, dtype=numpy.float32):
-    return xp.zeros((0,))
-
-
 class NumpyError(object):
 
     def __init__(self, **kw):
@@ -1240,3 +1263,19 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
 
     def test_values(self):
         assert self.cupy_func(*self.args) == self.numpy_func(*self.args)
+
+
+class AssertFunctionIsCalled:
+
+    def __init__(self, mock_mod, **kwargs):
+        self.patch = mock.patch(mock_mod, **kwargs)
+
+    def __enter__(self):
+        self.handle = self.patch.__enter__()
+        assert self.handle.call_count == 0
+        return self.handle
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        assert self.handle.call_count == 1
+        del self.handle
+        return self.patch.__exit__(exc_type, exc_value, traceback)

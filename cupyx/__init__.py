@@ -8,11 +8,13 @@ from cupyx.scatter import scatter_min  # NOQA
 from cupyx import linalg  # NOQA
 from cupyx import time  # NOQA
 from cupyx import scipy  # NOQA
+from cupyx import optimizing  # NOQA
 
 from cupyx._ufunc_config import errstate  # NOQA
 from cupyx._ufunc_config import geterr  # NOQA
 from cupyx._ufunc_config import seterr  # NOQA
 
+from cupyx.scipy import signal  # NOQA
 
 from cupy.core.syncdetect import allow_synchronize  # NOQA
 from cupy.core.syncdetect import DeviceSynchronized  # NOQA

@@ -17,10 +17,26 @@ Interpolation
    :nosignatures:
 
    cupyx.scipy.ndimage.affine_transform
+   cupyx.scipy.ndimage.convolve
+   cupyx.scipy.ndimage.correlate
    cupyx.scipy.ndimage.map_coordinates
    cupyx.scipy.ndimage.rotate
    cupyx.scipy.ndimage.shift
    cupyx.scipy.ndimage.zoom
+
+
+Measurements
+------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.ndimage.label
+   cupyx.scipy.ndimage.mean
+   cupyx.scipy.ndimage.standard_deviation
+   cupyx.scipy.ndimage.sum
+   cupyx.scipy.ndimage.variance
 
 
 OpenCV mode

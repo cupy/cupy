@@ -9,6 +9,7 @@ from cupy.core._scalar import get_typename
 from cupy.core._ufuncs import elementwise_copy
 from cupy import util
 
+from cupy.core cimport _accelerator
 from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
 from cupy.core.core cimport _ndarray_init
@@ -16,7 +17,8 @@ from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
 
-if cupy.cuda.cub_enabled:
+# TODO(leofang): always import cub when hipCUB is supported
+if not cupy.cuda.runtime.is_hip:
     from cupy.cuda import cub
 else:
     cub = None
@@ -78,6 +80,13 @@ cdef ndarray _ndarray_imag_setter(ndarray self, value):
 
 
 cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
+    for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
     if dtype is None:
         return _prod_auto_dtype(self, axis, dtype, out, keepdims)
     else:
@@ -85,12 +94,13 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
 
 
 cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
-    if cupy.cuda.cub_enabled:
-        # result will be None if the reduction is not compatible with CUB
-        result = cub.cub_reduction(self, cub.CUPY_CUB_SUM, axis, dtype, out,
-                                   keepdims)
-        if result is not None:
-            return result
+    for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_SUM, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
     if dtype is None:
         return _sum_auto_dtype(self, axis, dtype, out, keepdims)
     else:
@@ -126,7 +136,8 @@ cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
 
 
 @util.memoize(for_each_device=True)
-def _inclusive_batch_scan_kernel(dtype, block_size, op):
+def _inclusive_batch_scan_kernel(
+        dtype, block_size, op, src_c_cont, out_c_cont):
     """return Prefix Sum(Scan) cuda kernel
     for a 2d array over axis 1
     used for scanning over different axes
@@ -158,8 +169,9 @@ def _inclusive_batch_scan_kernel(dtype, block_size, op):
     name = 'inclusive_batch_scan_kernel'
     dtype = get_typename(dtype)
     source = string.Template("""
-    extern "C" __global__ void ${name}(const CArray<${dtype}, 2> src,
-        CArray<${dtype}, 2> dst, int batch_size){
+    extern "C" __global__ void ${name}(
+        const CArray<${dtype}, 2, ${src_c_cont}> src,
+        CArray<${dtype}, 2, ${out_c_cont}> dst, int batch_size){
         long long n = src.size();
 
         extern __shared__ ${dtype} temp[];
@@ -231,13 +243,15 @@ def _inclusive_batch_scan_kernel(dtype, block_size, op):
         }
     }
     """).substitute(name=name, dtype=dtype, block_size=block_size,
-                    op=op_char[op], identity=identity[op])
+                    op=op_char[op], identity=identity[op],
+                    src_c_cont=src_c_cont, out_c_cont=out_c_cont)
     module = compile_with_cache(source)
     return module.get_function(name)
 
 
 @util.memoize(for_each_device=True)
-def _inclusive_scan_kernel(dtype, block_size, op):
+def _inclusive_scan_kernel(src_dtype, dtype, block_size, op, src_c_cont,
+                           out_c_cont):
     """return Prefix Sum(Scan) cuda kernel
 
     e.g
@@ -259,23 +273,25 @@ def _inclusive_scan_kernel(dtype, block_size, op):
     """
 
     name = 'inclusive_scan_kernel'
+    src_dtype = get_typename(src_dtype)
     dtype = get_typename(dtype)
     op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
     source = string.Template("""
-    extern "C" __global__ void ${name}(const CArray<${dtype}, 1> src,
-        CArray<${dtype}, 1> dst){
+    extern "C" __global__ void ${name}(
+        const CArray<${src_dtype}, 1, ${src_c_cont}> src,
+        CArray<${dtype}, 1, ${out_c_cont}> dst){
         long long n = src.size();
-        extern __shared__ ${dtype} temp[];
+        __shared__ ${dtype} temp[${block_size} * 2];
         unsigned int thid = threadIdx.x;
         unsigned int block = 2 * blockIdx.x * blockDim.x;
 
         unsigned int idx0 = thid + block;
         unsigned int idx1 = thid + blockDim.x + block;
 
-        temp[thid] = (idx0 < n) ? src[idx0] : (${dtype}) ${identity};
+        temp[thid] = (idx0 < n) ? (${dtype})src[idx0] : (${dtype})${identity};
         if (idx1 < n) {
-            temp[thid + blockDim.x] = src[idx1];
+            temp[thid + blockDim.x] = (${dtype}) src[idx1];
         } else {
             temp[thid + blockDim.x] = (${dtype}) ${identity};
         }
@@ -305,18 +321,20 @@ def _inclusive_scan_kernel(dtype, block_size, op):
         }
     }
     """).substitute(name=name, dtype=dtype, block_size=block_size,
-                    op=op_char[op], identity=identity[op])
+                    src_dtype=src_dtype,
+                    op=op_char[op], identity=identity[op],
+                    src_c_cont=src_c_cont, out_c_cont=out_c_cont)
     module = compile_with_cache(source)
     return module.get_function(name)
 
 
 @util.memoize(for_each_device=True)
-def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size):
+def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     name = 'add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
     ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
-    extern "C" __global__ void ${name}(CArray<${dtype}, 2> src_dst,
+    extern "C" __global__ void ${name}(CArray<${dtype}, 2, ${c_cont}> src_dst,
         int batch_size){
         long long n = src_dst.size();
 
@@ -340,18 +358,19 @@ def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size):
             src_dst[dst_idx] ${op}= src_dst[src_idx];
         }
     }
-    """).substitute(name=name, dtype=dtype, op=ops[op], block_size=block_size)
+    """).substitute(name=name, dtype=dtype, op=ops[op], block_size=block_size,
+                    c_cont=c_cont)
     module = compile_with_cache(source)
     return module.get_function(name)
 
 
 @util.memoize(for_each_device=True)
-def _add_scan_blocked_sum_kernel(dtype, op):
+def _add_scan_blocked_sum_kernel(dtype, op, c_cont):
     name = 'add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
     ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
-    extern "C" __global__ void ${name}(CArray<${dtype}, 1> src_dst){
+    extern "C" __global__ void ${name}(CArray<${dtype}, 1, ${c_cont}> src_dst){
         long long n = src_dst.size();
         unsigned int idxBase = (blockDim.x + 1) * (blockIdx.x + 1);
         unsigned int idxAdded = idxBase + threadIdx.x;
@@ -361,7 +380,7 @@ def _add_scan_blocked_sum_kernel(dtype, op):
             src_dst[idxAdded] ${op}= src_dst[idxAdd];
         }
     }
-    """).substitute(name=name, dtype=dtype, op=ops[op])
+    """).substitute(name=name, dtype=dtype, op=ops[op], c_cont=c_cont)
     module = compile_with_cache(source)
     return module.get_function(name)
 
@@ -382,22 +401,27 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
         raise TypeError('Input array should be 1D array.')
 
     cdef Py_ssize_t block_size = 256
+    if dtype is None:
+        dtype = a.dtype
     if out is None:
-        out = _ndarray_init(a.shape, a.dtype)
+        out = _ndarray_init(a._shape, dtype)
     else:
         if a.size != out.size:
             raise ValueError('Provided out is the wrong size')
 
-    kern_scan = _inclusive_scan_kernel(a.dtype, block_size, op)
+    cdef int src_cont = int(a._c_contiguous)
+    cdef int out_cont = int(out._c_contiguous)
+    kern_scan = _inclusive_scan_kernel(a.dtype, dtype, block_size, op,
+                                       src_cont, out_cont)
     kern_scan(grid=((a.size - 1) // (2 * block_size) + 1,),
               block=(block_size,),
-              args=(a, out),
-              shared_mem=a.itemsize * block_size * 2)
+              args=(a, out))
 
     if (a.size - 1) // (block_size * 2) > 0:
         blocked_sum = out[block_size * 2 - 1:None:block_size * 2]
         scan(blocked_sum, op, dtype, blocked_sum)
-        kern_add = _add_scan_blocked_sum_kernel(out.dtype, op)
+        kern_add = _add_scan_blocked_sum_kernel(
+            dtype, op, out_cont)
         kern_add(grid=((a.size - 1) // (2 * block_size),),
                  block=(2 * block_size - 1,),
                  args=(out,))
@@ -418,7 +442,10 @@ cdef ndarray _batch_scan_op(ndarray a, scan_op op, dtype, ndarray out):
         padded_bs = block_size * blocks_per_batch
     padded_size = a.size // batch_size * padded_bs
 
-    kern_scan = _inclusive_batch_scan_kernel(a.dtype, block_size, op)
+    cdef int src_cont = int(a.flags.c_contiguous)
+    cdef int out_cont = int(out.flags.c_contiguous)
+    kern_scan = _inclusive_batch_scan_kernel(a.dtype, block_size, op,
+                                             src_cont, out_cont)
     kern_scan(grid=((padded_size - 1) // (block_size) + 1,),
               block=(block_size,),
               args=(a, out, batch_size),
@@ -427,7 +454,7 @@ cdef ndarray _batch_scan_op(ndarray a, scan_op op, dtype, ndarray out):
         blocked_sum = out[:, block_size-1::block_size]
         _batch_scan_op(blocked_sum, op, dtype, blocked_sum)
         kern_add = _add_scan_batch_blocked_sum_kernel(
-            out.dtype, op, block_size)
+            out.dtype, op, block_size, out_cont)
         kern_add(
             grid=((out.size - 1) // (block_size) + 1,),
             block=(block_size,),
@@ -480,14 +507,17 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
 
     if axis is None:
         result = result.ravel()
-        if cupy.cuda.cub_enabled:
-            # result will be None if the scan is not compatible with CUB
-            if op == scan_op.SCAN_SUM:
-                cub_op = cub.CUPY_CUB_CUMSUM
-            else:
-                cub_op = cub.CUPY_CUB_CUMPROD
-            res = cub.cub_scan(result, cub_op)
-        if not cupy.cuda.cub_enabled or res is None:
+        for accelerator in _accelerator._routine_accelerators:
+            if accelerator == _accelerator.ACCELERATOR_CUB:
+                # result will be None if the scan is not compatible with CUB
+                if op == scan_op.SCAN_SUM:
+                    cub_op = cub.CUPY_CUB_CUMSUM
+                else:
+                    cub_op = cub.CUPY_CUB_CUMPROD
+                res = cub.cub_scan(result, cub_op)
+                if res is not None:
+                    break
+        else:
             scan(result, op, dtype, result)
     else:
         axis = cupy.util._normalize_axis_index(axis, a.ndim)
@@ -762,6 +792,11 @@ inline __device__ T integral_power(T in0, T in1) {
     }
     return out0;
 }
+
+template <typename T>
+inline __device__ T complex_power(T in0, T in1) {
+    return in1 == T(0) ? T(1): pow(in0, in1);
+}
 '''
 
 _power = create_ufunc(
@@ -771,8 +806,8 @@ _power = create_ufunc(
      ('ee->e', 'out0 = powf(in0, in1)'),
      ('ff->f', 'out0 = powf(in0, in1)'),
      ('dd->d', 'out0 = pow(in0, in1)'),
-     ('FF->F', 'out0 = pow(in0, in1)'),
-     ('DD->D', 'out0 = pow(in0, in1)')),
+     ('FF->F', 'out0 = complex_power(in0, in1)'),
+     ('DD->D', 'out0 = complex_power(in0, in1)')),
     'out0 = integral_power(in0, in1)',
     preamble=_power_preamble,
     doc='''Computes ``x1 ** x2`` elementwise.

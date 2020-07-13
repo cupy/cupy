@@ -8,4 +8,5 @@ RUN apt-get update -y && \
     python3-setuptools && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip3 install --no-cache-dir cupy-cuda92==8.0.0a1
+RUN pip3 install --no-cache-dir -U install setuptools pip
+RUN pip3 install --no-cache-dir cupy-cuda92==8.0.0b4

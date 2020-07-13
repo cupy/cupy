@@ -46,32 +46,74 @@ class TestComparisonOperator(unittest.TestCase):
     ]
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_binary_npscalar_array(self, xp, dtype):
         a = numpy.int16(3)
         b = testing.shaped_arange((2, 3), xp, dtype)
         return [op(a, b) for op in self.operators]
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_binary_pyscalar_array(self, xp, dtype):
         a = 3.0
         b = testing.shaped_arange((2, 3), xp, dtype)
         return [op(a, b) for op in self.operators]
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_binary_array_npscalar(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = numpy.float32(3.0)
         return [op(a, b) for op in self.operators]
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_binary_array_pyscalar(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = 3
         return [op(a, b) for op in self.operators]
+
+
+class TestArrayEqual(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equal_not_equal(self, xp, dtype):
+        a = xp.array([1, 2, 3, 4], dtype=dtype)
+        b = xp.array([1, 2, 4, 5], dtype=dtype)
+        return xp.array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equal_is_equal(self, xp, dtype):
+        a = xp.array([1, 2, 3, 4], dtype=dtype)
+        b = xp.array([1, 2, 3, 4], dtype=dtype)
+        return xp.array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equal_diff_length(self, xp, dtype):
+        a = xp.array([1, 2, 3, 4], dtype=dtype)
+        b = xp.array([1, 2, 3], dtype=dtype)
+        return xp.array_equal(a, b)
+
+    @testing.numpy_cupy_equal()
+    def test_array_equal_diff_dtypes_not_equal(self, xp):
+        a = xp.array([0.9e-5, 1.1e-5, 100.5, 10.5])
+        b = xp.array([0, 0, 1000, 1000])
+        return xp.array_equal(a, b)
+
+    @testing.numpy_cupy_equal()
+    def test_array_equal_diff_dtypes_is_equal(self, xp):
+        a = xp.array([0.0, 1.0, 100.0, 10.0])
+        b = xp.array([0, 1, 100, 10])
+        return xp.array_equal(a, b)
+
+    @testing.numpy_cupy_equal()
+    def test_array_equal_broadcast_not_allowed(self, xp):
+        a = xp.array([1, 1, 1, 1])
+        b = xp.array([1])
+        return xp.array_equal(a, b)
 
 
 class TestAllclose(unittest.TestCase):

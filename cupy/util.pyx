@@ -6,9 +6,10 @@ import functools
 import os
 import warnings
 
+import numpy
+
 import cupy
 from cupy.cuda cimport device
-from cupy.core import _errors
 
 
 ENABLE_SLICE_COPY = bool(
@@ -39,8 +40,37 @@ def _normalize_axis_index(axis, ndim):
     if axis < 0:
         axis += ndim
     if not (0 <= axis < ndim):
-        raise _errors._AxisError('axis out of bounds')
+        raise numpy.AxisError('axis out of bounds')
     return axis
+
+
+def _normalize_axis_indices(axes, ndim):
+    """Normalize axis indices.
+
+    Args:
+        axis (int, tuple of int or None):
+            The un-normalized indices of the axis. Can be negative.
+        ndim (int):
+            The number of dimensions of the array that ``axis`` should be
+            normalized against
+
+    Returns:
+        tuple of int:
+            The tuple of normalized axis indices.
+    """
+    if axes is None:
+        axes = tuple(range(ndim))
+    elif not isinstance(axes, tuple):
+        axes = axes,
+
+    res = []
+    for axis in axes:
+        axis = _normalize_axis_index(axis, ndim)
+        if axis in res:
+            raise ValueError('Duplicate value in \'axis\'')
+        res.append(axis)
+
+    return tuple(sorted(res))
 
 
 def memoize(bint for_each_device=False):
@@ -190,6 +220,18 @@ The interface can change in the future. ...
 
 class PerformanceWarning(RuntimeWarning):
     """Warning that indicates possible performance issues."""
+
+
+def check_array(obj, *, arg_name):
+    """Checks if the given object is an array.
+
+    This function raises :class:`TypeError` if ``obj`` is not an instance
+    of :type:`cupy.ndarray`\\ .
+    """
+    if not isinstance(obj, cupy.ndarray):
+        raise TypeError(
+            '\'{}\' must be a cupy.ndarray object, not {}.'.format(
+                arg_name, type(obj)))
 
 
 """

@@ -1,10 +1,17 @@
+#include "cupy_cub.h"  // need to make atomicAdd visible to CUB templates early
 #include <cupy/complex.cuh>
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_spmv.cuh>
 #include <cub/device/device_scan.cuh>
-#include "cupy_cub.h"
+#include <cub/device/device_histogram.cuh>
 #include <stdexcept>
+
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#include <cuda_fp16.h>
+#endif
+
 
 using namespace cub;
 
@@ -45,10 +52,55 @@ template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, t
 
 
 /* ------------------------------------ "Patches" to CUB ------------------------------------
+   This stub is needed because CUB does not have a built-in "prod" operator
+*/
+
+//
+// product functor
+//
+struct _multiply
+{
+    template <typename T>
+    __host__ __device__ __forceinline__ T operator()(const T &a, const T &b) const
+    {
+        return a * b;
+    }
+};
+
+/*
    These stubs are needed because CUB does not handle NaNs properly, while NumPy has certain
    behaviors with which we must comply.
-   TODO(leofang): support half precision?
 */
+
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+__host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
+#ifdef __CUDA_ARCH__
+    return __hisnan(x);
+#else
+    // TODO: avoid cast to float
+    return isnan(__half2float(x));
+#endif
+}
+
+__host__ __device__ __forceinline__ bool half_less(const __half& l, const __half& r) {
+#ifdef __CUDA_ARCH__
+    return l < r;
+#else
+    // TODO: avoid cast to float
+    return __half2float(l) < __half2float(r);
+#endif
+}
+
+__host__ __device__ __forceinline__ bool half_equal(const __half& l, const __half& r) {
+#ifdef __CUDA_ARCH__
+    return l == r;
+#else
+    // TODO: avoid cast to float
+    return __half2float(l) == __half2float(r);
+#endif
+}
+#endif
 
 //
 // Max()
@@ -98,6 +150,20 @@ __host__ __device__ __forceinline__ complex<double> Max::operator()(const comple
     else {return max(a, b);}
 }
 
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ __half Max::operator()(const __half &a, const __half &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (half_isnan(a)) {return a;}
+    else if (half_isnan(b)) {return b;}
+    else if (half_less(a, b)) {return b;}
+    else {return a;}
+}
+#endif
+
 //
 // Min()
 //
@@ -145,6 +211,20 @@ __host__ __device__ __forceinline__ complex<double> Min::operator()(const comple
     else if (isnan(b)) {return b;}
     else {return min(a, b);}
 }
+
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ __half Min::operator()(const __half &a, const __half &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (half_isnan(a)) {return a;}
+    else if (half_isnan(b)) {return b;}
+    else if (half_less(a, b)) {return a;}
+    else {return b;}
+}
+#endif
 
 //
 // ArgMax()
@@ -214,6 +294,26 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMax::o
         return a;
 }
 
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMax::operator()(
+    const KeyValuePair<int, __half> &a,
+    const KeyValuePair<int, __half> &b) const
+{
+    if (half_isnan(a.value))
+        return a;
+    else if (half_isnan(b.value))
+        return b;
+    else if ((half_less(a.value, b.value)) ||
+             (half_equal(a.value, b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+}
+#endif
+
 //
 // ArgMin()
 //
@@ -281,6 +381,28 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMin::o
     else
         return a;
 }
+
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()(
+    const KeyValuePair<int, __half> &a,
+    const KeyValuePair<int, __half> &b) const
+{
+    if (half_isnan(a.value))
+        return a;
+    else if (half_isnan(b.value))
+        return b;
+    else if ((half_less(b.value, a.value)) ||
+             (half_equal(a.value, b.value) && (b.key < a.key)))
+        return b;
+    else
+        return a;
+
+}
+#endif
+
 /* ------------------------------------ End of "patches" ------------------------------------ */
 
 
@@ -302,6 +424,10 @@ void dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args)
     case CUPY_CUB_UINT16:     return f.template operator()<unsigned short>(std::forward<Ts>(args)...);
     case CUPY_CUB_UINT32:     return f.template operator()<unsigned int>(std::forward<Ts>(args)...);
     case CUPY_CUB_UINT64:     return f.template operator()<unsigned long>(std::forward<Ts>(args)...);
+#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+    case CUPY_CUB_FLOAT16:    return f.template operator()<__half>(std::forward<Ts>(args)...);
+#endif
     case CUPY_CUB_FLOAT32:    return f.template operator()<float>(std::forward<Ts>(args)...);
     case CUPY_CUB_FLOAT64:    return f.template operator()<double>(std::forward<Ts>(args)...);
     case CUPY_CUB_COMPLEX64:  return f.template operator()<complex<float>>(std::forward<Ts>(args)...);
@@ -333,6 +459,38 @@ struct _cub_segmented_reduce_sum {
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
             static_cast<int*>(offset_start),
             static_cast<int*>(offset_end), s);
+    }
+};
+
+//
+// **** CUB Prod ****
+//
+struct _cub_reduce_prod {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_items, cudaStream_t s)
+    {
+        _multiply product_op;
+        // the init value is cast from 1.0f because on host __half can only be
+        // initialized by float or double; static_cast<__half>(1) = 0 on host.
+        DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+            static_cast<T*>(y), num_items, product_op, static_cast<T>(1.0f), s);
+    }
+};
+
+struct _cub_segmented_reduce_prod {
+    template <typename T>
+    void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
+        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
+    {
+        _multiply product_op;
+        // the init value is cast from 1.0f because on host __half can only be
+        // initialized by float or double; static_cast<__half>(1) = 0 on host.
+        DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+            static_cast<T*>(x), static_cast<T*>(y), num_segments,
+            static_cast<int*>(offset_start),
+            static_cast<int*>(offset_end),
+            product_op, static_cast<T>(1.0f), s);
     }
 };
 
@@ -457,17 +615,42 @@ struct _cub_inclusive_product {
         DeviceScan::InclusiveScan(workspace, workspace_size, static_cast<T*>(input),
             static_cast<T*>(output), product_op, num_items, s);
     }
-
-    // product functor
-    struct _multiply
-    {
-        template <typename T>
-        __host__ __device__ __forceinline__
-        T operator()(const T &a, const T &b) const {
-            return a * b;
-        }
-    };
 };
+
+//
+// **** CUB histogram range ****
+//
+struct _cub_histogram_range {
+    template <typename sampleT,
+              typename binT = typename If<std::is_integral<sampleT>::value, double, sampleT>::Type>
+    void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
+        int n_bins, void* bins, size_t n_samples, cudaStream_t s) const
+    {
+        // Ugly hack to avoid specializing complex types, which cub::DeviceHistogram does not support.
+        // The If and Equals templates are from cub/util_type.cuh.
+        // TODO(leofang): revisit this part when complex support is added to cupy.histogram()
+        typedef typename If<(Equals<sampleT, complex<float>>::VALUE || Equals<sampleT, complex<double>>::VALUE),
+                            double,
+                            sampleT>::Type h_sampleT;
+        typedef typename If<(Equals<binT, complex<float>>::VALUE || Equals<binT, complex<double>>::VALUE),
+                            double,
+                            binT>::Type h_binT;
+
+        // TODO(leofang): CUB has a bug that when specializing n_samples with type size_t,
+        // it would error out. Before the fix (thrust/cub#38) is merged we disable the code
+        // path splitting for now. A type/range check must be done in the caller.
+
+        // if (n_samples < (1ULL << 31)) {
+            int num_samples = n_samples;
+            DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
+                static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), num_samples, s);
+        // } else {
+        //     DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
+        //         static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), n_samples, s);
+        // }
+    }
+};
+
 
 //
 // APIs exposed to CuPy
@@ -488,6 +671,8 @@ void cub_device_reduce(void* workspace, size_t& workspace_size, void* x, void* y
     case CUPY_CUB_ARGMIN:   return dtype_dispatcher(dtype_id, _cub_reduce_argmin(),
                                 workspace, workspace_size, x, y, num_items, stream);
     case CUPY_CUB_ARGMAX:   return dtype_dispatcher(dtype_id, _cub_reduce_argmax(),
+                                workspace, workspace_size, x, y, num_items, stream);
+    case CUPY_CUB_PROD:     return dtype_dispatcher(dtype_id, _cub_reduce_prod(),
                                 workspace, workspace_size, x, y, num_items, stream);
     default:            throw std::runtime_error("Unsupported operation");
     }
@@ -519,6 +704,10 @@ void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
                    offset_end, stream);
     case CUPY_CUB_MAX:
         return dtype_dispatcher(dtype_id, _cub_segmented_reduce_max(),
+                   workspace, workspace_size, x, y, num_segments, offset_start,
+                   offset_end, stream);
+    case CUPY_CUB_PROD:
+        return dtype_dispatcher(dtype_id, _cub_segmented_reduce_prod(),
                    workspace, workspace_size, x, y, num_segments, offset_start,
                    offset_end, stream);
     default:
@@ -583,5 +772,29 @@ size_t cub_device_scan_get_workspace_size(void* x, void* y, int num_items,
     size_t workspace_size = 0;
     cub_device_scan(NULL, workspace_size, x, y, num_items, stream,
                     op, dtype_id);
+    return workspace_size;
+}
+
+/* -------- device histogram -------- */
+
+void cub_device_histogram_range(void* workspace, size_t& workspace_size, void* x, void* y,
+    int n_bins, void* bins, size_t n_samples, cudaStream_t stream, int dtype_id)
+{
+    // TODO(leofang): support complex
+    if (dtype_id == CUPY_CUB_COMPLEX64 || dtype_id == CUPY_CUB_COMPLEX128) {
+	    throw std::runtime_error("complex dtype is not yet supported");
+    }
+
+    // TODO(leofang): n_samples is of type size_t, but if it's < 2^31 we cast it to int later
+    return dtype_dispatcher(dtype_id, _cub_histogram_range(),
+                            workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
+}
+
+size_t cub_device_histogram_range_get_workspace_size(void* x, void* y, int n_bins,
+    void* bins, size_t n_samples, cudaStream_t stream, int dtype_id)
+{
+    size_t workspace_size = 0;
+    cub_device_histogram_range(NULL, workspace_size, x, y, n_bins, bins, n_samples,
+                               stream, dtype_id);
     return workspace_size;
 }

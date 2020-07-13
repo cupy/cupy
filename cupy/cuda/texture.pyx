@@ -4,13 +4,17 @@ from libc.string cimport memset as c_memset
 import numpy
 
 from cupy.core.core cimport ndarray
-from cupy.cuda cimport device
-from cupy.cuda cimport driver
-from cupy.cuda cimport runtime
-from cupy.cuda.runtime cimport Array, ChannelFormatDesc, ChannelFormatKind,\
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.api.runtime cimport Array,\
+    ChannelFormatDesc, ChannelFormatKind,\
     Memcpy3DParms, MemoryKind, PitchedPtr, ResourceDesc, ResourceType, \
     TextureAddressMode, TextureDesc, TextureFilterMode, TextureReadMode
-from cupy.cuda.runtime import CUDARuntimeError
+from cupy_backends.cuda.api.runtime import CUDARuntimeError
+
+
+cdef extern from '../../cupy_backends/cuda/cupy_cuda.h':
+    pass
 
 
 cdef class ChannelFormatDescriptor:
@@ -503,6 +507,28 @@ cdef class TextureObject:
         self.ptr = 0
 
 
+cdef class SurfaceObject:
+    '''A class that holds a surface object. Equivalent to
+    ``cudaSurfaceObject_t``. The returned :class:`SurfaceObject` instance can
+    be passed as a argument when launching :class:`~cupy.RawKernel`.
+
+    Args:
+        ResDesc (ResourceDescriptor): an intance of the resource descriptor.
+
+    .. seealso:: `cudaCreateSurfaceObject()`_
+
+    .. _cudaCreateSurfaceObject():
+        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__SURFACE__OBJECT.html#group__CUDART__SURFACE__OBJECT_1g958899474ab2c5f40d233b524d6c5a01
+    '''  # noqa
+    def __init__(self, ResourceDescriptor ResDesc):
+        self.ptr = runtime.createSurfaceObject(ResDesc.ptr)
+        self.ResDesc = ResDesc
+
+    def __dealloc__(self):
+        runtime.destroySurfaceObject(self.ptr)
+        self.ptr = 0
+
+
 cdef class TextureReference:
     '''A class that holds a texture reference. Equivalent to ``CUtexref`` (the
     driver API is used under the hood).
@@ -583,7 +609,7 @@ cdef class TextureReference:
         driver.texRefSetFilterMode(texref, TexDescPtr.filterMode)
 
         cdef int flag = 0x00
-        if TexDescPtr.readMode == runtime.cudaReadModeElementType:
+        if TexDescPtr.readMode == <int>(runtime.cudaReadModeElementType):
             flag = flag | driver.CU_TRSF_READ_AS_INTEGER
         if TexDescPtr.normalizedCoords:
             flag = flag | driver.CU_TRSF_NORMALIZED_COORDINATES
