@@ -486,7 +486,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         val = index._csr_sample_values(
             M, N, self.indptr, self.indices, self.data,
-            major.size, major.ravel(), minor.ravel())
+            major.ravel(), minor.ravel())
 
         if major.ndim == 1:
             # Scipy returns `matrix` here
@@ -502,11 +502,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """Index along the major axis where idx is an array of ints.
         """
 
-        idx_dtype = self.indices.dtype
-        indices = cupy.asarray(idx, dtype=idx_dtype).ravel()
-
         _, N = self._swap(*self.shape)
-        M = len(indices)
+        M = len(idx)
         new_shape = self._swap(*(M, N))
         if M == 0:
             return self.__class__(new_shape)
@@ -517,7 +514,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
 
         res_indices, res_data = index._csr_row_index(
-            len(idx), indices, self.indptr,
+            idx, self.indptr,
             self.indices, self.data, res_indptr)
 
         return self.__class__((res_data, res_indices, res_indptr),
@@ -539,13 +536,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # pass 1: count idx entries and compute new indptr
         col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
 
-        res_indptr, indices_mask, col_counts, idxs = index._csr_column_index1(
-            idx, self.indptr, self.indices)
+        index1_outs = index._csr_column_index1(idx, self.indptr, self.indices)
+        res_indptr, indices_mask, col_counts, sort_idxs = index1_outs
 
         # pass 2: copy indices/data for selected idxs
 
         res_indices, res_data = index._csr_column_index2(
-            col_order, col_counts, idxs, self.indptr, indices_mask,
+            col_order, col_counts, sort_idxs, self.indptr, indices_mask,
             self.data, res_indptr)
 
         return self.__class__((res_data, res_indices, res_indptr),

@@ -81,7 +81,16 @@ _csr_column_index2_order_ker = core.RawModule(code="""
 
 
 def _csr_column_index2_order(col_order, tpb=1024):
+    """Index an array of argsorted indices for looking up
+    locations of duplicates.
 
+    Args
+       col_order : array of argsorted indices from index
+
+    Returns
+        out_order : new array where each element points to
+                    its next potential duplicate in the index
+    """
     grid = math.ceil(col_order.size-1 / tpb)
     kernel = _csr_column_index2_order_ker.get_function(
         _csr_column_index2_order_types[col_order.dtype]
@@ -92,65 +101,88 @@ def _csr_column_index2_order(col_order, tpb=1024):
     return out_order
 
 
-def _csr_column_index1_indptr(idx, col_offsets, unique_idxs,
+def _csr_column_index1_indptr(unique_idxs, sort_idxs, col_counts,
                               Ap, Aj):
     """Construct output indptr by counting column indices
     in input matrix for each row.
+
+    Args
+        unique_idxs : Unique set of indices sorted in ascending order
+        sort_idxs : Indices sorted to preserve original order of unique_idxs
+        col_counts : Number of times each unique index occurs in Aj
+        Ap : indptr array of input sparse matrix
+        Aj : indices array of input sparse matrix
+
+    Returns
+        Bp : Output indptr
+        Aj_mask : Input indices array with all cols not matching the
+                  index masked out with -1.
     """
-    out_col_sum = cupy.zeros((Aj.size+1,), dtype=col_offsets.dtype)
+    out_col_sum = cupy.zeros((Aj.size+1,), dtype=col_counts.dtype)
 
     index = cupy.argsort(unique_idxs)
     sorted_index = cupy.searchsorted(unique_idxs, Aj)
 
     yindex = cupy.take(index, sorted_index)
     mask = unique_idxs[yindex] == Aj
-    idxs_adj = _csr_column_index2_idx(unique_idxs)
-    out_col_sum[1:][mask] = col_offsets[idxs_adj[Aj[mask]]]
 
-    indices_mask = out_col_sum[1:].copy()
-    indices_mask[indices_mask == 0] = -1
+    # TODO(cjnolet): Find a more efficient approach for this.
+    idxs_adj = _csr_column_inv_idx(unique_idxs)
+    out_col_sum[1:][mask] = col_counts[idxs_adj[Aj[mask]]]
 
-    indices_mask[indices_mask > 0] = Aj[indices_mask > 0]
-    indices_mask[indices_mask > 0] = cupy.searchsorted(
-        unique_idxs, indices_mask[indices_mask > 0])
+    Aj_mask = out_col_sum[1:].copy()
+    Aj_mask[Aj_mask == 0] = -1
 
-    indices_mask[indices_mask >= 0] = idx[indices_mask[indices_mask >= 0]]
+    Aj_mask[Aj_mask > 0] = Aj[Aj_mask > 0]
+    Aj_mask[Aj_mask > 0] = cupy.searchsorted(
+        unique_idxs, Aj_mask[Aj_mask > 0])
+
+    Aj_mask[Aj_mask >= 0] = sort_idxs[Aj_mask[Aj_mask >= 0]]
 
     cupy.cumsum(out_col_sum, out=out_col_sum)
     Bp = out_col_sum[Ap]
     Bp[1:] -= Bp[:-1]
     cupy.cumsum(Bp, out=Bp)
 
-    return Bp, indices_mask
+    return Bp, Aj_mask
 
 
-def _csr_column_index1(col_idxs, indptr, indices):
+def _csr_column_index1(col_idxs, Ap, Aj):
+    """Construct indptr and components for populating indices and data of
+    output sparse array
 
-    idx_map, idx = cupy.unique(col_idxs, return_index=True)
-    idx = idx.astype(idx_map.dtype)
+    Args
+        col_idxs : column indices to index from input indices
+        Ap : indptr of input sparse matrix
+        Aj : indices of input sparse matrix
+
+    Returns
+        Bp : indptr of output sparse matrix
+        Aj_mask : Input indices array with all cols not matching the index
+                  index masked out with -1.
+        col_counts : Number of times each unique index occurs in Aj
+        sort_idxs : Indices sorted to preserve original order of idxs
+    """
+
+    idx_map, sort_idxs = cupy.unique(col_idxs, return_index=True)
+    sort_idxs = sort_idxs.astype(idx_map.dtype)
     idxs = cupy.searchsorted(idx_map, col_idxs)
 
     col_counts = cupy.zeros(idx_map.size, dtype=col_idxs.dtype)
     cupyx.scatter_add(col_counts, idxs, 1)
 
-    new_indptr, indices_mask,  = _csr_column_index1_indptr(
-        idx, col_counts, idx_map, indptr, indices)
+    Bp, Aj_mask = _csr_column_index1_indptr(
+        idx_map, sort_idxs, col_counts, Ap, Aj)
 
-    return new_indptr, indices_mask, col_counts, idx
+    return Bp, Aj_mask, col_counts, sort_idxs
 
 
-_get_csr_index2_ker_types = {
-    (_int32_dtype, _float32_dtype): 'csr_index2_ker<int, float>',
-    (_int32_dtype, _float64_dtype): 'csr_index2_ker<int, double>',
-    (_int32_dtype, _complex64_dtype): 'csr_index2_ker<int, complex<float>>',
-    (_int32_dtype, _complex128_dtype): 'csr_index2_ker<int, complex<double>>',
-    (_int64_dtype, _float32_dtype): 'csr_index2_ker<long long, float>',
-    (_int64_dtype, _float64_dtype): 'csr_index2_ker<long long, double>',
-    (_int64_dtype, _complex64_dtype):
-        'csr_index2_ker<long long, complex<float>>',
-    (_int64_dtype, _complex128_dtype):
-        'csr_index2_ker<long long, complex<double>>'
-}
+_get_csr_index2_ker_types = _build_name_expressions(
+    [(_int32_dtype, _float32_dtype), (_int32_dtype, _float64_dtype),
+     (_int32_dtype, _complex64_dtype), (_int32_dtype, _complex128_dtype),
+     (_int64_dtype, _float32_dtype), (_int64_dtype, _float64_dtype),
+     (_int64_dtype, _complex64_dtype), (_int64_dtype, _complex128_dtype)],
+    'csr_index2_ker')
 _get_csr_index2_ker = core.RawModule(code="""
     #include <cupy/complex.cuh>
     template<typename I, typename T>
@@ -193,14 +225,13 @@ _get_csr_index2_ker = core.RawModule(code="""
 """, options=_module_options, name_expressions=tuple(
     _get_csr_index2_ker_types.values()))
 
-_csr_column_index2_idx_types = {
-    (_int32_dtype): '_csr_column_index2_idx<int>',
-    (_int64_dtype): '_csr_column_index2_idx<long long>'
-}
-_csr_column_index2_idx_ker = core.RawModule(code="""
+
+_csr_column_inv_idx_types = _build_name_expressions(
+    [_int32_dtype, _int64_dtype], "_csr_column_inv_idx")
+_csr_column_inv_idx_ker = core.RawModule(code="""
     template<typename I>
     __global__
-    void _csr_column_index2_idx(const I *idxs,
+    void _csr_column_inv_idx(const I *idxs,
                                 const I n,
                                 I *out_index) {
 
@@ -211,18 +242,27 @@ _csr_column_index2_idx_ker = core.RawModule(code="""
         out_index[idxs[i]] = i;
 }
 """, options=_module_options, name_expressions=tuple(
-    _csr_column_index2_idx_types.values()
+    _csr_column_inv_idx_types.values()
 ))
 
 
-def _csr_column_index2_idx(idxs, tpb=1024):
+def _csr_column_inv_idx(idxs, tpb=1024):
+    """Construct an inverted index, mapping the indices
+    of the given array to the their values
 
+    Args
+        idxs : array of indices to invert
+        tpb : threads per block for underlying kernel
+
+    Returns
+        idxs_adj : inverted indices where idxs_adj[idxs[i]] = i
+    """
     max_idx = idxs.max().item()
     idxs_adj = cupy.zeros(max_idx + 1, dtype=idxs.dtype)
 
     grid = math.ceil(idxs.size / tpb)
-    kernel = _csr_column_index2_idx_ker.get_function(
-        _csr_column_index2_idx_types[idxs.dtype]
+    kernel = _csr_column_inv_idx_ker.get_function(
+        _csr_column_inv_idx_types[idxs.dtype]
     )
     kernel((grid,), (tpb,), (idxs, idxs.size, idxs_adj))
 
@@ -231,16 +271,35 @@ def _csr_column_index2_idx(idxs, tpb=1024):
 
 def _csr_column_index2(col_order,
                        col_counts,
-                       idxs,
-                       Ap, Aj, Ax, Bp, tpb=1024):
+                       sort_idxs,
+                       Ap, Aj_mask, Ax,
+                       Bp, tpb=1024):
+    """Populate indices and data arrays from column index
+
+    Args
+        col_order : argsort order of column index
+        col_counts : counts of each unique index item from Aj_mask
+        sort_idxs : Indices of unique index columns sorted to preserve
+                    original order
+        Ap : indptr array of input sparse array
+        Aj_mask : Input indices array with all cols not matching the
+                  index masked out with -1.
+        Ax : data array of input sparse matrix
+        Bp : indptr array of output sparse matrix
+        tpb : Threads per block for populating indices and data
+
+    Returns
+        Bj : indices array of output sparse matrix
+        Bx : data array of output sparse matrix
+    """
 
     new_nnz = Bp[-1].item()
 
-    Bj = cupy.zeros(new_nnz, dtype=Aj.dtype)
+    Bj = cupy.zeros(new_nnz, dtype=Aj_mask.dtype)
     Bx = cupy.zeros(new_nnz, dtype=Ax.dtype)
 
     col_order = _csr_column_index2_order(col_order)
-    idxs_adj = _csr_column_index2_idx(idxs)
+    idxs_adj = _csr_column_inv_idx(sort_idxs)
 
     grid = math.ceil((Bp.size-1) / tpb)
     func = _get_csr_index2_ker_types[(Ap.dtype, Bx.dtype)]
@@ -249,40 +308,54 @@ def _csr_column_index2(col_order,
            (idxs_adj,
             col_counts,
             col_order,
-            Ap, Aj, Ax, Ap.size-1, Bp, Bj, Bx))
+            Ap, Aj_mask, Ax, Ap.size - 1, Bp, Bj, Bx))
 
     return Bj, Bx
 
 
-def _get_csr_submatrix(indptr, indices, data,
-                       start_maj, stop_maj, start_min, stop_min):
+def _get_csr_submatrix(Ap, Aj, Ax,
+                       start_maj, stop_maj,
+                       start_min, stop_min):
+    """Return a submatrix of the input sparse matrix by
+    slicing both major and minor axes.
 
-    new_n_row = stop_maj - start_maj
-    new_indptr = cupy.zeros(new_n_row+1, dtype=indptr.dtype)
-    _get_csr_submatrix_degree(indptr, indices,
-                              start_maj, stop_maj,
-                              start_min, stop_min,
-                              new_indptr)
+    Args
+        Ap : indptr array from input sparse matrix
+        Aj : indices array from input sparse matrix
+        Ax : data array from input sparse matrix
+        start_maj : starting index of major axis
+        stop_maj : ending index of major axis
+        start_min : starting index of minor axis
+        stop_min : ending index of minor axis
 
-    cupy.cumsum(new_indptr, out=new_indptr)
-    new_nnz = new_indptr[-1].item()
+    Returns
+        Bp : indptr array of output sparse matrix
+        Bj : indices array of output sparse matrix
+        Bx : data array of output sparse matrix
+    """
 
-    new_indices = cupy.zeros(new_nnz, dtype=indices.dtype)
-    new_data = cupy.zeros(new_nnz, dtype=data.dtype)
+    Bp = _get_csr_submatrix_degree(Ap, Aj,
+                                   start_maj, stop_maj,
+                                   start_min, stop_min)
 
+    cupy.cumsum(Bp, out=Bp)
+
+    # Computing this once to minimize dev->host sync
+    new_nnz = Bp[-1].item()
     if new_nnz > 0:
-        _get_csr_submatrix_cols_data(indptr, indices, data,
-                                     start_maj, stop_maj,
-                                     start_min, stop_min,
-                                     new_indptr, new_indices, new_data)
+        Bj, Bx = _get_csr_submatrix_cols_data(Ap, Aj, Ax,
+                                              start_maj, stop_maj,
+                                              start_min, stop_min,
+                                              new_nnz, Bp)
+    else:
+        Bj = cupy.empty(new_nnz, dtype=Aj.dtype)
+        Bx = cupy.empty(new_nnz, dtype=Ax.dtype)
 
-    return new_indptr, new_indices, new_data
+    return Bp, Bj, Bx
 
 
-_get_csr_submatrix_degree_ker_types = {
-    _int32_dtype: 'csr_submatrix_degree_ker<int>',
-    _int64_dtype: 'csr_submatrix_degree_ker<long long>',
-}
+_get_csr_submatrix_degree_ker_types = _build_name_expressions(
+    [_int32_dtype, _int64_dtype], 'csr_submatrix_degree_ker')
 _get_csr_submatrix_degree_ker = core.RawModule(code="""
     template<typename I>
     __global__
@@ -318,10 +391,25 @@ _get_csr_submatrix_degree_ker = core.RawModule(code="""
 
 
 def _get_csr_submatrix_degree(Ap, Aj, ir0, ir1,
-                              ic0, ic1, Bp, tpb=1024):
+                              ic0, ic1, tpb=1024):
     """
-    Invokes get_csr_submatrix_degree_ker with the given inputs
+    Compute indptr array of output sparse matrix after
+    slicing major and minor axes of input sparse matrix.
+
+    Args
+        Ap : indptr of input sparse matrix
+        Aj : indices of input sparse matrix
+        ir0 : starting index of major axis
+        ir1 : ending index of major axis
+        ic0 : starting index of minor axis
+        ic1 : ending index of minor axis
+        tpb : threads per block of degree computation kernel
+
+    Returns
+        Bp : indptr of output sparse matrix
     """
+    new_n_row = ir1 - ir0
+    Bp = cupy.zeros(new_n_row + 1, dtype=Ap.dtype)
 
     grid = math.ceil((ir1-ir0) / tpb)
     kernel = _get_csr_submatrix_degree_ker.get_function(
@@ -331,24 +419,15 @@ def _get_csr_submatrix_degree(Ap, Aj, ir0, ir1,
            (Ap, Aj, ir0, ir1,
             ic0, ic1, Bp))
 
+    return Bp
 
-_get_csr_submatrix_cols_data_ker_types = {
-    (_int32_dtype, _float32_dtype): 'get_csr_submatrix_cols_data<int, float>',
-    (_int32_dtype, _float64_dtype): 'get_csr_submatrix_cols_data<int, double>',
-    (_int32_dtype, _complex64_dtype):
-        'get_csr_submatrix_cols_data<int, complex<float>>',
-    (_int32_dtype, _complex128_dtype):
-        'get_csr_submatrix_cols_data<int, complex<double>>',
-    (_int64_dtype, _float32_dtype):
-        'get_csr_submatrix_cols_data<long long, float>',
-    (_int64_dtype, _float64_dtype):
-        'get_csr_submatrix_cols_data<long long, double>',
-    (_int64_dtype, _complex64_dtype):
-        'get_csr_submatrix_cols_data<long long, complex<float>>',
-    (_int64_dtype, _complex128_dtype):
-        'get_csr_submatrix_cols_data<long long, complex<double>>'
 
-}
+_get_csr_submatrix_cols_data_ker_types = _build_name_expressions(
+    [(_int32_dtype, _float32_dtype), (_int32_dtype, _float64_dtype),
+     (_int32_dtype, _complex64_dtype), (_int32_dtype, _complex128_dtype),
+     (_int64_dtype, _float32_dtype), (_int64_dtype, _float64_dtype),
+     (_int64_dtype, _complex64_dtype), (_int64_dtype, _complex128_dtype)],
+    'get_csr_submatrix_cols_data')
 _get_csr_submatrix_cols_data_ker = core.RawModule(code="""
     #include <cupy/complex.cuh>
     template<typename I, typename T>
@@ -391,8 +470,29 @@ _get_csr_submatrix_cols_data_ker = core.RawModule(code="""
 def _get_csr_submatrix_cols_data(Ap, Aj, Ax,
                                  ir0, ir1,
                                  ic0, ic1,
-                                 Bp, Bj, Bx,
+                                 new_nnz, Bp,
                                  tpb=1024):
+    """Populate indices and data arrays for submatrix slicing
+
+    Args
+        Ap : indptr array from input sparse matrix
+        Aj : indices array from input sparse matrix
+        Ax : data array from input sparse matrix
+        ir0 : starting index for major axis
+        ir1 : ending index for major axis
+        ic0 : starting index for minor axis
+        ic1 : ending index for minor axis
+        new_nnz : nnz for output sparse matrix
+        Bp : indptr array for output sparse matrix
+        tpb : threads per block for cuda kernel to populate indices/data
+
+    Returns
+        Bj : indices array of output sparse matrix
+        Bx : data array of output sparse matrix
+    """
+
+    Bj = cupy.zeros(new_nnz, dtype=Aj.dtype)
+    Bx = cupy.zeros(new_nnz, dtype=Ax.dtype)
 
     grid = math.ceil((ir1-ir0)/tpb)
     kernel = _get_csr_submatrix_cols_data_ker.get_function(
@@ -404,21 +504,15 @@ def _get_csr_submatrix_cols_data(Ap, Aj, Ax,
             ic0, ic1,
             Bp, Bj, Bx))
 
+    return Bj, Bx
 
-_csr_row_index_ker_types = {
-    (_int32_dtype, _float32_dtype): 'csr_row_index_ker<int, float>',
-    (_int32_dtype, _float64_dtype): 'csr_row_index_ker<int, double>',
-    (_int32_dtype, _complex64_dtype):
-        'csr_row_index_ker<int, complex<float>>',
-    (_int32_dtype, _complex128_dtype):
-        'csr_row_index_ker<int, complex<double>>',
-    (_int64_dtype, _float32_dtype): 'csr_row_index_ker<long long, float>',
-    (_int64_dtype, _float64_dtype): 'csr_row_index_ker<long long, double>',
-    (_int64_dtype, _complex64_dtype):
-        'csr_row_index_ker<long long, complex<float>>',
-    (_int64_dtype, _complex128_dtype):
-        'csr_row_index_ker<long long, complex<double>>'
-}
+
+_csr_row_index_ker_types = _build_name_expressions(
+    [(_int32_dtype, _float32_dtype), (_int32_dtype, _float64_dtype),
+     (_int32_dtype, _complex64_dtype), (_int32_dtype, _complex128_dtype),
+     (_int64_dtype, _float32_dtype), (_int64_dtype, _float64_dtype),
+     (_int64_dtype, _complex64_dtype), (_int64_dtype, _complex128_dtype)],
+    'csr_row_index_ker')
 _csr_row_index_ker = core.RawModule(code="""
     #include <cupy/complex.cuh>
     template<typename I, typename T>
@@ -456,11 +550,25 @@ _csr_row_index_ker = core.RawModule(code="""
     _csr_row_index_ker_types.values()))
 
 
-def _csr_row_index(n_row_idx, rows,
+def _csr_row_index(rows,
                    Ap, Aj, Ax,
-                   Bp, tpb=32):
+                   Bp, tpb=1024):
+    """Populate indices and data arrays from the given row index
 
-    grid = math.ceil(n_row_idx / tpb)
+    Args
+        rows : index array of rows to populate
+        Ap : indptr array from input sparse matrix
+        Aj : indices array from input sparse matrix
+        Ax : data array from input sparse matrix
+        Bp : indptr array for output sparse matrix
+        tpb : threads per block of row index kernel
+
+    Returns
+        Bj : indices array of output sparse matrix
+        Bx : data array of output sparse matrix
+    """
+
+    grid = math.ceil(rows.size / tpb)
 
     nnz = Bp[-1].item()
     Bj = cupy.empty(nnz, dtype=Aj.dtype)
@@ -470,7 +578,7 @@ def _csr_row_index(n_row_idx, rows,
         _csr_row_index_ker_types[(Ap.dtype, Ax.dtype)]
     )
     kernel((grid,), (tpb,),
-           (n_row_idx, rows,
+           (rows.size, rows,
             Ap, Aj, Ax,
             Bp, Bj, Bx))
 
@@ -479,9 +587,24 @@ def _csr_row_index(n_row_idx, rows,
 
 def _csr_sample_values(n_row, n_col,
                        Ap, Aj, Ax,
-                       n_samples,
-                       Bi, Bj, tpb=32):
+                       Bi, Bj, tpb=1024):
+    """Populate data array for a set of rows and columns
 
+    Args
+        n_row : total number of rows in input array
+        n_col : total number of columns in input array
+        Ap : indptr array for input sparse matrix
+        Aj : indices array for input sparse matrix
+        Ax : data array for input sparse matrix
+        Bi : array of rows to extract from input sparse matrix
+        Bj : array of columns to extract from input sparse matrix
+        tpb : threads per block for kernel
+
+    Returns
+        Bx : data array for output sparse matrix
+    """
+
+    n_samples = Bi.size
     grid = math.ceil(n_samples / tpb)
 
     Bx = cupy.empty(Bi.size, dtype=Ax.dtype)
@@ -496,14 +619,10 @@ def _csr_sample_values(n_row, n_col,
     return Bx
 
 
-_csr_sample_values_kern_types = {
-    (_int32_dtype, _float32_dtype): 'csr_sample_values_kern<int, float>',
-    (_int32_dtype, _float64_dtype): 'csr_sample_values_kern<int, double>',
-    (_int32_dtype, _complex64_dtype):
-        'csr_sample_values_kern<int, complex<float>>',
-    (_int32_dtype, _complex128_dtype):
-        'csr_sample_values_kern<int, complex<double>>'
-}
+_csr_sample_values_kern_types = _build_name_expressions(
+    [(_int32_dtype, _float32_dtype), (_int32_dtype, _float64_dtype),
+     (_int32_dtype, _complex64_dtype), (_int32_dtype, _complex128_dtype)],
+    'csr_sample_values_kern')
 _csr_sample_values_kern = core.RawModule(code="""
     #include <cupy/complex.cuh>
     template<typename I, typename T>
@@ -542,14 +661,10 @@ _csr_sample_values_kern = core.RawModule(code="""
     _csr_sample_values_kern_types.values()))
 
 
-_csr_row_slice_kern_types = {
-    (_int32_dtype, _float32_dtype): 'csr_row_slice_kern<int, float>',
-    (_int32_dtype, _float64_dtype): 'csr_row_slice_kern<int, double>',
-    (_int32_dtype, _complex64_dtype):
-        'csr_row_slice_kern<int, complex<float>>',
-    (_int32_dtype, _complex128_dtype):
-        'csr_row_slice_kern<int, complex<double>>'
-}
+_csr_row_slice_kern_types = _build_name_expressions(
+    [(_int32_dtype, _float32_dtype), (_int32_dtype, _float64_dtype),
+     (_int32_dtype, _complex64_dtype), (_int32_dtype, _complex128_dtype)],
+    'csr_row_slice_kern')
 _csr_row_slice_kern = core.RawModule(code="""
     #include <cupy/complex.cuh>
     template<typename I, typename T>
@@ -607,8 +722,24 @@ _csr_row_slice_kern = core.RawModule(code="""
     _csr_row_slice_kern_types.values()))
 
 
-def _csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, tpb=32):
+def _csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, tpb=1024):
+    """Populate indices and data arrays of sparse matrix by slicing the
+    rows of an input sparse matrix
 
+    Args
+        start : starting row
+        stop : ending row
+        step : step increment size
+        Ap : indptr array of input sparse matrix
+        Aj : indices array of input sparse matrix
+        Ax : data array of input sparse matrix
+        Bp : indices array of output sparse matrix
+        tpb : threads per block of row slice kernel
+
+    Returns
+        Bj : indices array of output sparse matrix
+        Bx : data array of output sparse matrix
+    """
     grid = math.ceil((len(Bp)-1) / tpb)
 
     nnz = Bp[-1].item()
@@ -626,19 +757,15 @@ def _csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, tpb=32):
     return Bj, Bx
 
 
-_check_idx_bounds_ker_types = {
-    _int32_dtype: 'idx_bounds_ker<int>',
-    _int64_dtype: 'idx_bounds_ker<size_t>'
-}
+_check_idx_bounds_ker_types = _build_name_expressions(
+    [_int32_dtype, _int64_dtype], 'idx_bounds_ker')
 _check_idx_bounds_ker = core.RawModule(code="""
     template<typename I>
     __global__
     void idx_bounds_ker(const I *idxs,
                         const I idx_length,
                         const I bounds,
-                        bool *out_upper,
-                        bool *out_lower,
-                        bool *out_neg) {
+                        bool *results) {
 
         int i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -646,13 +773,13 @@ _check_idx_bounds_ker = core.RawModule(code="""
             const I cur_idx = idxs[i];
 
             if(cur_idx >= bounds)
-                out_upper[0] = true;
+                results[0] = true;
 
             if(cur_idx < -idx_length)
-                out_lower[0] = true;
+                results[1] = true;
 
             if(cur_idx < 0)
-                out_neg[0] = true;
+                results[2] = true;
         }
     }
 
@@ -660,20 +787,28 @@ _check_idx_bounds_ker = core.RawModule(code="""
     _check_idx_bounds_ker_types.values()))
 
 
-def _check_bounds(idxs, bounds, tpb=32):
+def _check_bounds(idxs, bounds, tpb=1024):
+    """Validate indices are within given bounds.
+    """
 
-    grid = math.ceil(len(idxs) / tpb)
+    # This function doesn't use atomics, which would normally be used to
+    # compute min/max. Further, only a single stream synchronization is
+    # needed to check these bounds, rather than the 3 that would be required
+    # if the 3 bounds checks were performed separately.
+
+    grid = math.ceil(idxs.size / tpb)
     kernel = _check_idx_bounds_ker.get_function(
         _check_idx_bounds_ker_types[idxs.dtype]
     )
-    upper = cupy.array([False], dtype='bool')
-    lower = cupy.array([False], dtype='bool')
-    neg = cupy.array([False], dtype='bool')
+    results = cupy.array([False, False, False], dtype='bool')
     kernel((grid,), (tpb,),
-           (idxs, len(idxs),
-            bounds, upper, lower, neg))
+           (idxs, idxs.size,
+            bounds, results))
 
-    return neg[0].item(), lower[0].item(), upper[0].item()
+    # Only need to perform 1 host synchronization instead of 3
+    res_host = results.get()
+
+    return res_host[2], res_host[1], res_host[0]
 
 
 class IndexMixin(object):
