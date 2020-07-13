@@ -28,12 +28,16 @@ class FilterTestCaseBase(unittest.TestCase):
     dtype = numpy.float64
     footprint = True
     order = 'C'
+    mode = 'reflect'
+
+    # Params that need to be possibly shortened to the right number of dims
+    DIMS_PARAMS = ('origin', 'sigma')
 
     # Params that need no processing and just go into kwargs
-    KWARGS_PARAMS = ('output', 'axis', 'mode', 'cval')
+    KWARGS_PARAMS = ('output', 'axis', 'mode', 'cval', 'truncate')+DIMS_PARAMS
 
     # Params that need no processing go before weights in the arguments
-    ARGS_PARAMS = ('rank', 'percentile')
+    ARGS_PARAMS = ('rank', 'percentile', 'derivative', 'derivative2')
 
     def _filter(self, xp, scp):
         """
@@ -47,8 +51,11 @@ class FilterTestCaseBase(unittest.TestCase):
         kwargs = {param: getattr(self, param)
                   for param in FilterTestCaseBase.KWARGS_PARAMS
                   if hasattr(self, param)}
-        if hasattr(self, 'origin'):
-            kwargs['origin'] = self._origin
+        is_1d = self.filter.endswith('1d')
+        for param in FilterTestCaseBase.DIMS_PARAMS:
+            if param in kwargs and isinstance(kwargs[param], tuple):
+                value = kwargs[param]
+                kwargs[param] = value[0] if is_1d else value[:self._ndim]
 
         # The array we are filtering
         arr = testing.shaped_random(self.shape, xp, self.dtype)
@@ -65,7 +72,8 @@ class FilterTestCaseBase(unittest.TestCase):
         args = [getattr(self, param)
                 for param in FilterTestCaseBase.ARGS_PARAMS
                 if hasattr(self, param)]
-        args.append(wghts)
+        if wghts is not None:
+            args.append(wghts)
 
         # Actually perform filtering
         return filter(arr, *args, **kwargs)
@@ -75,9 +83,11 @@ class FilterTestCaseBase(unittest.TestCase):
         # For convolve/correlate/convolve1d/correlate1d this is the weights.
         # For minimum_filter1d/maximum_filter1d this is the kernel size.
         #
-        # For minimum_filter/maximum_filter this is a bit more complicated and
+        # For filters that take a footprint this is a bit more complicated and
         # is either the kernel size or a tuple of None and the footprint. The
         # _filter() method knows about this and handles it automatically.
+        #
+        # Many specialized filters have no weights and this returns None.
 
         if self.filter in ('convolve', 'correlate'):
             return testing.shaped_random(self._kshape, xp, self._dtype)
@@ -95,10 +105,16 @@ class FilterTestCaseBase(unittest.TestCase):
                 footprint = xp.ones(kshape)
             return None, footprint
 
-        if self.filter in ('minimum_filter1d', 'maximum_filter1d'):
+        if self.filter in ('uniform_filter1d',
+                           'minimum_filter1d', 'maximum_filter1d'):
             return self.ksize
 
-        raise RuntimeError('unsupported filter name')
+        if self.filter == 'uniform_filter':
+            return self._kshape
+
+        # gaussian_filter*, prewitt, sobel, *laplace, and *_gradient_magnitude
+        # all have no 'weights' or similar argument so return None
+        return None
 
     @property
     def _dtype(self):
@@ -112,20 +128,12 @@ class FilterTestCaseBase(unittest.TestCase):
     def _kshape(self):
         return getattr(self, 'kshape', (self.ksize,) * self._ndim)
 
-    @property
-    def _origin(self):
-        origin = getattr(self, 'origin', 0)
-        if origin is not None:
-            return origin
-        is_1d = self.filter.endswith('1d')
-        return -1 if is_1d else (-1, 1, -1, 1)[:self._ndim]
-
 
 # Parameters common across all modes (with some overrides)
 COMMON_PARAMS = {
     'shape': [(4, 5), (3, 4, 5), (1, 3, 4, 5)],
     'ksize': [3, 4],
-    'dtype': [numpy.int32, numpy.float64],
+    'dtype': [numpy.uint8, numpy.float64],
 }
 
 
@@ -148,8 +156,8 @@ COMMON_PARAMS = {
             **COMMON_PARAMS,
             'mode': ['reflect'],
             # With reflect test some of the other parameters as well
-            'origin': [0, 1, None],
-            'output': [None, numpy.int32, numpy.float64],
+            'origin': [0, 1, (-1, 1, -1, 1)],
+            'output': [None, numpy.uint8, numpy.float64],
         }) + testing.product({
             **COMMON_PARAMS,
             'mode': ['constant'], 'cval': [-1.0, 0.0, 1.0],
@@ -173,11 +181,21 @@ class TestFilter(FilterTestCaseBase):
         return self._filter(xp, scp)
 
 
+def dummy_deriv_func(input, axis, output, mode, cval, *args, **kwargs):
+    # For testing generic_laplace and generic_gradient_magnitude. Doesn't test
+    # mode, cval, or extra argument but those are tested indirectly with
+    # laplace, gaussian_laplace, & gaussian_gradient_magnitude.
+    if output is not None and not isinstance(output, numpy.dtype):
+        output[...] = input + axis
+    else:
+        output = input + axis
+    return output
+
+
 # This tests filters that are very similar to other filters so we only check
 # the basics with them.
 @testing.parameterize(*(
     testing.product([
-        # Filter-function specific params
         testing.product({
             'filter': ['maximum_filter1d', 'maximum_filter'],
         }) + testing.product({
@@ -187,13 +205,43 @@ class TestFilter(FilterTestCaseBase):
             'filter': ['rank_filter'],
             'rank': [0, 1, -1],
         }),
-
-        # Only do reflect with some extras
+        testing.product(COMMON_PARAMS)
+    ]) + testing.product([
+        # All of these filters have no ksize and evoke undef behavior
+        # outputting to uint8
         testing.product({
-            **COMMON_PARAMS,
-            'mode': ['reflect'],
-            'origin': [0, 1, None],
-            'output': [None, numpy.int32, numpy.float64],
+            'filter': ['gaussian_filter1d'],
+            'axis': [0, 1, -1],
+            'sigma': [1.5, 2],
+            'truncate': [2.75, 4],
+        }) + testing.product({
+            'filter': ['gaussian_filter', 'gaussian_laplace',
+                       'gaussian_gradient_magnitude'],
+            'sigma': [1.5, 2.25, (1.5, 2.25, 1.0, 3.0)],
+            'truncate': [2.75, 4],
+        }) + testing.product({
+            'filter': ['prewitt', 'sobel'],
+            'axis': [0, 1, -1],
+        }) + testing.product({
+            'filter': ['laplace'],
+        }),
+        testing.product({
+            'shape': [(4, 5), (3, 4, 5), (1, 3, 4, 5)],
+            'dtype': [numpy.uint8, numpy.float64],
+            'output': [numpy.float64],
+        })
+    ]) + testing.product([
+        # These take derivative functions to compute part of the process
+        testing.product({
+            'filter': ['generic_laplace'],
+            'derivative': [dummy_deriv_func],
+        }) + testing.product({
+            'filter': ['generic_gradient_magnitude'],
+            'derivative': [dummy_deriv_func],
+        }),
+        testing.product({
+            'shape': [(4, 5), (3, 4, 5), (1, 3, 4, 5)],
+            'dtype': [numpy.uint8, numpy.float64],
         })
     ])
 ))
@@ -256,7 +304,7 @@ class TestMirrorWithDim1(FilterTestCaseBase):
 ))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestShelSort(FilterTestCaseBase):
+class TestShellSort(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
         return self._filter(xp, scp)
@@ -300,10 +348,10 @@ class TestFortranOrder(FilterTestCaseBase):
         testing.product({
             **COMMON_PARAMS,
             'mode': ['reflect'],
-            'output': [None, numpy.int32, numpy.float64],
+            'output': [None, numpy.uint8, numpy.float64],
             'dtype': [numpy.uint8, numpy.int16, numpy.int32,
                       numpy.float32, numpy.float64],
-            'wdtype': [numpy.int32, numpy.float64],
+            'wdtype': [numpy.uint8, numpy.float64],
         })
     ])
 ))
@@ -321,7 +369,7 @@ class TestWeightDtype(FilterTestCaseBase):
 @testing.parameterize(*testing.product({
     'filter': ['convolve', 'correlate', 'minimum_filter', 'maximum_filter'],
     'shape': [(3, 3), (3, 3, 3)],
-    'dtype': [numpy.int32, numpy.float64],
+    'dtype': [numpy.uint8, numpy.float64],
 }))
 @testing.gpu
 @testing.with_requires('scipy')
@@ -359,7 +407,7 @@ class TestSpecialWeightCases(FilterTestCaseBase):
     'filter': ['convolve1d', 'correlate1d',
                'minimum_filter1d', 'maximum_filter1d'],
     'shape': [(3, 3), (3, 3, 3)],
-    'dtype': [numpy.int32, numpy.float64],
+    'dtype': [numpy.uint8, numpy.float64],
 }))
 @testing.gpu
 @testing.with_requires('scipy')

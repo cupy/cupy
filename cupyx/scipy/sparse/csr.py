@@ -5,6 +5,7 @@ except ImportError:
     _scipy_available = False
 
 import cupy
+from cupy.core import _accelerator
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
@@ -13,9 +14,9 @@ from cupyx.scipy.sparse import index
 
 # TODO(leofang): always import cub when hipCUB is supported
 if not cupy.cuda.runtime.is_hip:
-    from cupy.cuda.cub import device_csrmv
+    from cupy.cuda import cub
 else:
-    device_csrmv = None
+    cub = None
 
 
 class csr_matrix(compressed._compressed_sparse_matrix):
@@ -42,13 +43,11 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         copy (bool): If ``True``, copies of given arrays are always used.
 
     .. seealso::
-       :class:`scipy.sparse.csr_matrix`
+        :class:`scipy.sparse.csr_matrix`
 
     """
 
     format = 'csr'
-
-    # TODO(unno): Implement has_sorted_indices
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
@@ -141,12 +140,13 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 other = cupy.asfortranarray(other)
                 # csrmvEx does not work if nnz == 0
                 if self.nnz > 0 and cusparse.csrmvExIsAligned(self, other):
-                    if cupy.cuda.cub_enabled and other.flags.c_contiguous:
-                        return device_csrmv(
-                            self.shape[0], self.shape[1], self.nnz, self.data,
-                            self.indptr, self.indices, other)
-                    else:
-                        return cusparse.csrmvEx(self, other)
+                    for accelerator in _accelerator.get_routine_accelerators():
+                        if (accelerator == _accelerator.ACCELERATOR_CUB
+                                and other.flags.c_contiguous):
+                            return cub.device_csrmv(
+                                self.shape[0], self.shape[1], self.nnz,
+                                self.data, self.indptr, self.indices, other)
+                    return cusparse.csrmvEx(self, other)
                 else:
                     if cusparse.check_availability('csrmv'):
                         csrmv = cusparse.csrmv
@@ -210,8 +210,15 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement reshape
 
     def sort_indices(self):
-        """Sorts the indices of the matrix in place."""
-        cusparse.csrsort(self)
+        """Sorts the indices of this matrix *in place*.
+
+        .. warning::
+            Calling this function might synchronize the device.
+
+        """
+        if not self.has_sorted_indices:
+            cusparse.csrsort(self)
+            self.has_sorted_indices = True
 
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value.
@@ -231,13 +238,15 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
 
-        self.sum_duplicates()
+        x = self.copy()
+        x.has_canonical_format = False  # need to enforce sum_duplicates
+        x.sum_duplicates()
         # csr2dense returns F-contiguous array.
         if order == 'C':
             # To return C-contiguous array, it uses transpose.
-            return cusparse.csc2dense(self.T).T
+            return cusparse.csc2dense(x.T).T
         elif order == 'F':
-            return cusparse.csr2dense(self)
+            return cusparse.csr2dense(x)
         else:
             raise ValueError('order not understood')
 
@@ -284,6 +293,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             csr2csc = cusparse.csr2cscEx2
         else:
             raise NotImplementedError
+        # don't touch has_sorted_indices, as cuSPARSE made no guarantee
         return csr2csc(self)
 
     def tocsr(self, copy=False):
@@ -334,7 +344,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         shape = self.shape[1], self.shape[0]
         trans = csc.csc_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
-        trans._has_canonical_format = self._has_canonical_format
+        trans.has_canonical_format = self.has_canonical_format
         return trans
 
     def getrow(self, i):

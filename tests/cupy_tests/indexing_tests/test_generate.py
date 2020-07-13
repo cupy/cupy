@@ -35,20 +35,20 @@ class TestIndices(unittest.TestCase):
 @testing.gpu
 class TestIX_(unittest.TestCase):
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_ix_list(self, xp):
         return xp.ix_([0, 1], [2, 4])
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_ix_ndarray(self, xp, dtype):
         return xp.ix_(xp.array([0, 1], dtype), xp.array([2, 3], dtype))
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal(type_check=False)
     def test_ix_empty_ndarray(self, xp):
         return xp.ix_(xp.array([]))
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_ix_bool_ndarray(self, xp):
         return xp.ix_(xp.array([True, False] * 2))
 
@@ -150,7 +150,7 @@ class TestUnravelIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal(type_check=False)
     def test(self, xp, order, dtype):
         a = testing.shaped_arange((4, 3, 2), xp, dtype)
         a = xp.minimum(a, 6 * 4 - 1)
@@ -186,7 +186,7 @@ class TestRavelMultiIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_basic(self, xp, order, dtype):
         dims = (8, 4)
         a = [xp.ones(5, dtype=dtype)] * len(dims)
@@ -194,7 +194,7 @@ class TestRavelMultiIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_multi_index_broadcasting(self, xp, order, dtype):
         dims = (3, 5)
         x, y = xp.meshgrid(*[xp.arange(s, dtype=dtype) for s in dims],
@@ -203,7 +203,7 @@ class TestRavelMultiIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_basic_nd_coords(self, xp, order, dtype):
         dims = (8, 4)
         a = [xp.ones((3, 3, 3), dtype=dtype)] * len(dims)
@@ -211,7 +211,7 @@ class TestRavelMultiIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_basic_clip(self, xp, order, dtype):
         dims = (8, 4, 2)
         a = [xp.arange(max(dims), dtype=dtype)] * len(dims)
@@ -219,7 +219,7 @@ class TestRavelMultiIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_basic_wrap(self, xp, order, dtype):
         dims = (8, 4, 2)
         a = [xp.arange(max(dims), dtype=dtype)] * len(dims)
