@@ -21,12 +21,12 @@ _complex64_dtype = dtype('complex64')
 _complex128_dtype = dtype('complex128')
 
 _supported_types = {
-    _int32_dtype: "int",
-    _int64_dtype: "long long",
-    _float32_dtype: "float",
-    _float64_dtype: "double",
-    _complex64_dtype: "complex<float>",
-    _complex128_dtype: "complex<double>"
+    _int32_dtype: 'int',
+    _int64_dtype: 'long long',
+    _float32_dtype: 'float',
+    _float64_dtype: 'double',
+    _complex64_dtype: 'complex<float>',
+    _complex128_dtype: 'complex<double>'
 }
 
 _module_options = ('--std=c++11',)
@@ -36,11 +36,11 @@ def _build_name_expressions(types, kernel_name):
 
     def parse_types(t):
         if isinstance(types[0], tuple):
-            return ",".join([_supported_types[tu] for tu in t])
+            return ','.join([_supported_types[tu] for tu in t])
         else:
             return _supported_types[t]
 
-    return {t: "%s<%s>" % (kernel_name, parse_types(t)) for t in types}
+    return {t: '%s<%s>' % (kernel_name, parse_types(t)) for t in types}
 
 
 _csr_column_index2_order_types = \
@@ -211,7 +211,7 @@ _get_csr_index2_ker = core.RawModule(code="""
 
 
 _csr_column_inv_idx_types = _build_name_expressions(
-    [_int32_dtype, _int64_dtype], "_csr_column_inv_idx")
+    [_int32_dtype, _int64_dtype], '_csr_column_inv_idx')
 _csr_column_inv_idx_ker = core.RawModule(code="""
     template<typename I>
     __global__
