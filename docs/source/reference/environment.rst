@@ -48,10 +48,10 @@ Here are the environment variables CuPy uses.
 |                                    | ``cupy_ndarray[:] = numpy_ndarray``.               |
 +------------------------------------+----------------------------------------------------+
 | ``CUPY_ACCELERATORS``              | A comma-separated string of backend names          |
-|                                    | (``cub``) which indicates the acceleration         |
-|                                    | backends used in CuPy operations and its priority. |
-|                                    | Default is empty string (all accelerators are      |
-|                                    | disabled).                                         |
+|                                    | (``cub`` or ``cutensor``) which indicates the      |
+|                                    | acceleration backends used in CuPy operations and  |
+|                                    | its priority. Default is empty string (all         |
+|                                    | accelerators are disabled).                        |
 +------------------------------------+----------------------------------------------------+
 
 Moreover, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit
