@@ -326,16 +326,9 @@ class TestPolyaddShapeCombination(unittest.TestCase):
 class TestPolyadd(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
-    def test_polyadd_list(self, xp):
-        a = [1, 2, 3]
-        b = [4, 2]
-        with cupyx.allow_synchronize(False):
-            return xp.polyadd(a, b)
-
-    @testing.numpy_cupy_array_equal()
     def test_polyadd_leading_zeros(self, xp):
-        a = [0, 0, 1, 2, 3, 0, 0]
-        b = [0, 4, 2, 0]
+        a = xp.array([0, 0, 1, 2, 3, 0, 0])
+        b = xp.array([0, 4, 2, 0])
         with cupyx.allow_synchronize(False):
             return xp.polyadd(a, b)
 

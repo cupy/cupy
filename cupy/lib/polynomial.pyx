@@ -4,6 +4,14 @@ import cupy
 from cupy.core.core cimport ndarray
 
 
+def _get_coeffs(x):
+    if isinstance(x, poly1d):
+        return True, x._coeffs
+    if isinstance(x, ndarray) or cupy.isscalar(x):
+        return False, cupy.atleast_1d(x)
+    raise TypeError('Unsupported type')
+
+
 def polyadd(a1, a2):
     """Computes the sum of two polynomials.
 
@@ -17,21 +25,14 @@ def polyadd(a1, a2):
     .. seealso:: :func:`numpy.polyadd`
 
     """
-    truepoly = False
-    if isinstance(a1, poly1d):
-        a1 = a1._coeffs
-        truepoly = True
-    if isinstance(a2, poly1d):
-        a2 = a2._coeffs
-        truepoly = True
-    a1 = cupy.atleast_1d(a1)
-    a2 = cupy.atleast_1d(a2)
+    p1, a1 = _get_coeffs(a1)
+    p2, a2 = _get_coeffs(a2)
     if a1.shape[0] < a2.shape[0]:
         a1, a2 = a2, a1
     val = cupy.pad(a2, (a1.shape[0] - a2.shape[0], 0))
     val = val.astype(cupy.result_type(a1, a2), copy=False)
     val += a1
-    if truepoly:
+    if p1 or p2:
         val = poly1d(val)
     return val
 
@@ -156,9 +157,6 @@ cdef class poly1d:
         raise NotImplementedError
 
     def __add__(self, other):
-        return polyadd(self, other)
-
-    def __radd__(self, other):
         return polyadd(self, other)
 
     # TODO(Dahlia-Chehata): implement using polymul
