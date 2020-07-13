@@ -233,7 +233,7 @@ class TestHistogram(unittest.TestCase):
         return y, bin_edges
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_histogram_numpy_bins(self, xp, dtype):
         x = testing.shaped_arange((10,), xp, dtype)
         bins = testing.shaped_arange((3,), numpy, dtype)
@@ -241,7 +241,7 @@ class TestHistogram(unittest.TestCase):
         return y, bin_edges
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_histogram_list_bins(self, xp, dtype):
         x = testing.shaped_arange((10,), xp, dtype)
         bins = list(testing.shaped_arange((3,), numpy, dtype))
