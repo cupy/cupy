@@ -475,6 +475,15 @@ cudaPos make_cudaPos(...) {
     return pos;
 }
 
+// Surface
+cudaError_t cudaCreateSurfaceObject(cudaSurfaceObject_t* pSurfObject,
+                                    const cudaResourceDesc* pResDesc) {
+    return hipCreateSurfaceObject(pSurfObject, pResDesc);
+}
+
+cudaError_t cudaDestroySurfaceObject(cudaSurfaceObject_t surfObject) {
+    return hipDestroySurfaceObject(surfObject);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // blas

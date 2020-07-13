@@ -186,7 +186,8 @@ def percentile(a, q, axis=None, out=None, interpolation='linear',
     .. seealso:: :func:`numpy.percentile`
 
     """
-    q = cupy.asarray(q, dtype=a.dtype)
+    if not isinstance(q, cupy.ndarray):
+        q = cupy.asarray(q, dtype='d')
     if q.ndim == 0:
         q = q[None]
         zerod = True

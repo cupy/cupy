@@ -6,6 +6,7 @@ except ImportError:
     _scipy_available = False
 
 import cupy
+from cupy import core
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import csc
@@ -44,6 +45,17 @@ class coo_matrix(sparse_data._data_matrix):
 
     format = 'coo'
 
+    _sum_duplicates_diff = core.ElementwiseKernel(
+        'raw T row, raw T col',
+        'T diff',
+        '''
+        T diff_out = 1;
+        if (i == 0 || row[i - 1] == row[i] && col[i - 1] == col[i]) {
+          diff_out = 0;
+        }
+        diff = diff_out;
+        ''', 'sum_duplicates_diff')
+
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None and len(shape) != 2:
             raise ValueError(
@@ -62,7 +74,7 @@ class coo_matrix(sparse_data._data_matrix):
             if shape is None:
                 shape = arg1.shape
 
-            has_canonical_format = x.has_canonical_format
+            self.has_canonical_format = x.has_canonical_format
 
         elif util.isshape(arg1):
             m, n = arg1
@@ -73,7 +85,8 @@ class coo_matrix(sparse_data._data_matrix):
             # shape and copy argument is ignored
             shape = (m, n)
             copy = False
-            has_canonical_format = True
+
+            self.has_canonical_format = True
 
         elif _scipy_available and scipy.sparse.issparse(arg1):
             # Convert scipy.sparse to cupyx.scipy.sparse
@@ -82,10 +95,10 @@ class coo_matrix(sparse_data._data_matrix):
             row = cupy.array(x.row, dtype='i')
             col = cupy.array(x.col, dtype='i')
             copy = False
-
             if shape is None:
                 shape = arg1.shape
-            has_canonical_format = x.has_canonical_format
+
+            self.has_canonical_format = x.has_canonical_format
 
         elif isinstance(arg1, tuple) and len(arg1) == 2:
             try:
@@ -101,9 +114,10 @@ class coo_matrix(sparse_data._data_matrix):
                 raise ValueError(
                     'row, column, and data array must all be the same length')
 
-            has_canonical_format = False
+            self.has_canonical_format = False
 
         else:
+            # TODO(leofang): support constructing from a dense matrix
             raise TypeError('invalid input format')
 
         if dtype is None:
@@ -142,7 +156,6 @@ class coo_matrix(sparse_data._data_matrix):
         if not util.isshape(shape):
             raise ValueError('invalid shape (must be a 2-tuple of int)')
         self._shape = int(shape[0]), int(shape[1])
-        self._has_canonical_format = has_canonical_format
 
     def _with_data(self, data, copy=True):
         """Returns a matrix with the same sparsity structure as self,
@@ -164,10 +177,6 @@ class coo_matrix(sparse_data._data_matrix):
         self.data = self.data[ind]
         self.row = self.row[ind]
         self.col = self.col[ind]
-
-    @property
-    def has_canonical_format(self):
-        return self._has_canonical_format
 
     def get_shape(self):
         """Returns the shape of the matrix.
@@ -207,33 +216,25 @@ class coo_matrix(sparse_data._data_matrix):
     def sum_duplicates(self):
         """Eliminate duplicate matrix entries by adding them together.
 
+        .. warning::
+            Calling this function might synchronize the device.
+
         .. seealso::
            :meth:`scipy.sparse.coo_matrix.sum_duplicates`
 
         """
-        if self._has_canonical_format:
+        if self.has_canonical_format:
             return
-        if self.data.size == 0:
-            self._has_canonical_format = True
-            return
-        keys = cupy.stack([self.col, self.row])
+        # Note: it is unclear how the sorting order would matter. However, this
+        # is what SciPy performs in sum_duplicates(). Although this order is
+        # different from cuSPARSE convention (first row then col), we are not
+        # calling coosort here so it should be alright.
+        keys = cupy.stack([self.row, self.col])
         order = cupy.lexsort(keys)
         src_data = self.data[order]
         src_row = self.row[order]
         src_col = self.col[order]
-        diff = cupy.ElementwiseKernel(
-            'raw int32 row, raw int32 col',
-            'int32 diff',
-            '''
-            int index;
-            if (i == 0 || row[i - 1] == row[i] && col[i - 1] == col[i]) {
-              diff = 0;
-            } else {
-              diff = 1;
-            }
-            ''',
-            'sum_duplicates_diff'
-        )(src_row, src_col, size=self.row.size)
+        diff = self._sum_duplicates_diff(src_row, src_col, size=self.row.size)
 
         if diff[1:].all():
             # All elements have different indices.
@@ -241,6 +242,7 @@ class coo_matrix(sparse_data._data_matrix):
             row = src_row
             col = src_col
         else:
+            # TODO(leofang): move the kernels outside this method
             index = cupy.cumsum(diff, dtype='i')
             size = int(index[-1]) + 1
             data = cupy.zeros(size, dtype=self.data.dtype)
@@ -275,7 +277,7 @@ class coo_matrix(sparse_data._data_matrix):
         self.data = data
         self.row = row
         self.col = col
-        self._has_canonical_format = True
+        self.has_canonical_format = True
 
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value.
@@ -324,11 +326,11 @@ class coo_matrix(sparse_data._data_matrix):
             return csc.csc_matrix(self.shape, dtype=self.dtype)
         # copy is silently ignored (in line with SciPy) because both
         # sum_duplicates and coosort change the underlying data
-        self.sum_duplicates()
         x = self.copy()
+        x.sum_duplicates()
         cusparse.coosort(x, 'c')
         x = cusparse.coo2csc(x)
-        x._has_canonical_format = True
+        x.has_canonical_format = True
         return x
 
     def tocsr(self, copy=False):
@@ -347,11 +349,11 @@ class coo_matrix(sparse_data._data_matrix):
             return csr.csr_matrix(self.shape, dtype=self.dtype)
         # copy is silently ignored (in line with SciPy) because both
         # sum_duplicates and coosort change the underlying data
-        self.sum_duplicates()
         x = self.copy()
+        x.sum_duplicates()
         cusparse.coosort(x, 'r')
         x = cusparse.coo2csr(x)
-        x._has_canonical_format = True
+        x.has_canonical_format = True
         return x
 
     def transpose(self, axes=None, copy=False):

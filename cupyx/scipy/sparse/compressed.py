@@ -298,6 +298,38 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         ''', 'min_arg_reduction')
 
+    # TODO(leofang): rewrite a more load-balanced approach than this naive one?
+    _has_sorted_indices_kern = core.ElementwiseKernel(
+        'raw T indptr, raw T indices',
+        'bool diff',
+        '''
+        bool diff_out = true;
+        for (T jj = indptr[i]; jj < indptr[i+1] - 1; jj++) {
+            if (indices[jj] > indices[jj+1]){
+                diff_out = false;
+            }
+        }
+        diff = diff_out;
+        ''', 'has_sorted_indices')
+
+    # TODO(leofang): rewrite a more load-balanced approach than this naive one?
+    _has_canonical_format_kern = core.ElementwiseKernel(
+        'raw T indptr, raw T indices',
+        'bool diff',
+        '''
+        bool diff_out = true;
+        if (indptr[i] > indptr[i+1]) {
+            diff = false;
+            return;
+        }
+        for (T jj = indptr[i]; jj < indptr[i+1] - 1; jj++) {
+            if (indices[jj] >= indices[jj+1]) {
+                diff_out = false;
+            }
+        }
+        diff = diff_out;
+        ''', 'has_canonical_format')
+
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None:
             if not util.isshape(shape):
@@ -317,7 +349,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if shape is None:
                 shape = arg1.shape
 
-            has_canonical_format = x.has_canonical_format
         elif util.isshape(arg1):
             m, n = arg1
             m, n = int(m), int(n)
@@ -327,7 +358,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             # shape and copy argument is ignored
             shape = (m, n)
             copy = False
-            has_canonical_format = True
 
         elif scipy_available and scipy.sparse.issparse(arg1):
             # Convert scipy.sparse to cupyx.scipy.sparse
@@ -339,7 +369,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             if shape is None:
                 shape = arg1.shape
-            has_canonical_format = x.has_canonical_format
 
         elif isinstance(arg1, tuple) and len(arg1) == 3:
             data, indices, indptr = arg1
@@ -352,8 +381,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
 
-            has_canonical_format = False
-
         elif base.isdense(arg1):
             if arg1.ndim > 2:
                 raise TypeError('expected dimension <= 2 array or matrix')
@@ -365,8 +392,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             copy = False
             if shape is None:
                 shape = arg1.shape
-
-            has_canonical_format = True
 
         else:
             raise ValueError(
@@ -398,7 +423,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         self._descr = cusparse.MatDescriptor.create()
         self._shape = shape
-        self._has_canonical_format = has_canonical_format
 
     def _prune_array(self, array):
         """Return an array equivalent to the input array. If the input
@@ -512,7 +536,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         val = index._csr_sample_values(
             M, N, self.indptr, self.indices, self.data,
-            major.size, major.ravel(), minor.ravel())
+            major.ravel(), minor.ravel())
 
         if major.ndim == 1:
             # Scipy returns `matrix` here
@@ -528,11 +552,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """Index along the major axis where idx is an array of ints.
         """
 
-        idx_dtype = self.indices.dtype
-        indices = cupy.asarray(idx, dtype=idx_dtype).ravel()
-
         _, N = self._swap(*self.shape)
-        M = len(indices)
+        M = len(idx)
         new_shape = self._swap(*(M, N))
         if M == 0:
             return self.__class__(new_shape)
@@ -543,7 +564,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
 
         res_indices, res_data = index._csr_row_index(
-            len(idx), indices, self.indptr,
+            idx, self.indptr,
             self.indices, self.data, res_indptr)
 
         return self.__class__((res_data, res_indices, res_indptr),
@@ -565,13 +586,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # pass 1: count idx entries and compute new indptr
         col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
 
-        res_indptr, indices_mask, col_counts, idxs = index._csr_column_index1(
-            idx, self.indptr, self.indices, self.data)
+        index1_outs = index._csr_column_index1(idx, self.indptr, self.indices)
+        res_indptr, indices_mask, col_counts, sort_idxs = index1_outs
 
         # pass 2: copy indices/data for selected idxs
 
         res_indices, res_data = index._csr_column_index2(
-            col_order, col_counts, idxs, self.indptr, indices_mask,
+            col_order, col_counts, sort_idxs, self.indptr, indices_mask,
             self.data, res_indptr)
 
         return self.__class__((res_data, res_indices, res_indptr),
@@ -949,9 +970,77 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     raise ValueError("index pointer values must form a "
                                      "non-decreasing sequence")
 
-    @property
-    def has_canonical_format(self):
+    def __get_has_canonical_format(self):
+        """Determine whether the matrix has sorted indices and no duplicates.
+
+        Returns
+            bool: ``True`` if the above applies, otherwise ``False``.
+
+        .. note::
+            :attr:`has_canonical_format` implies :attr:`has_sorted_indices`, so
+            if the latter flag is ``False``, so will the former be; if the
+            former is found ``True``, the latter flag is also set.
+
+        .. warning::
+            Getting this property might synchronize the device.
+
+        """
+        # Modified from the SciPy counterpart.
+
+        # In CuPy the implemented conversions do not exactly match those of
+        # SciPy's, so it's hard to put this exactly as where it is in SciPy,
+        # but this should do the job.
+        if self.data.size == 0:
+            self._has_canonical_format = True
+        # check to see if result was cached
+        elif not getattr(self, '_has_sorted_indices', True):
+            # not sorted => not canonical
+            self._has_canonical_format = False
+        elif not hasattr(self, '_has_canonical_format'):
+            is_canonical = self._has_canonical_format_kern(
+                self.indptr, self.indices, size=self.indptr.size-1)
+            self._has_canonical_format = bool(is_canonical.all())
         return self._has_canonical_format
+
+    def __set_has_canonical_format(self, val):
+        """Taken from SciPy as is."""
+        self._has_canonical_format = bool(val)
+        if val:
+            self.has_sorted_indices = True
+
+    has_canonical_format = property(fget=__get_has_canonical_format,
+                                    fset=__set_has_canonical_format)
+
+    def __get_sorted(self):
+        """Determine whether the matrix has sorted indices.
+
+        Returns
+            bool:
+                ``True`` if the indices of the matrix are in sorted order,
+                otherwise ``False``.
+
+        .. warning::
+            Getting this property might synchronize the device.
+
+        """
+        # Modified from the SciPy counterpart.
+
+        # In CuPy the implemented conversions do not exactly match those of
+        # SciPy's, so it's hard to put this exactly as where it is in SciPy,
+        # but this should do the job.
+        if self.data.size == 0:
+            self._has_sorted_indices = True
+        # check to see if result was cached
+        elif not hasattr(self, '_has_sorted_indices'):
+            is_sorted = self._has_sorted_indices_kern(
+                self.indptr, self.indices, size=self.indptr.size-1)
+            self._has_sorted_indices = bool(is_sorted.all())
+        return self._has_sorted_indices
+
+    def __set_sorted(self, val):
+        self._has_sorted_indices = bool(val)
+
+    has_sorted_indices = property(fget=__get_sorted, fset=__set_sorted)
 
     def get_shape(self):
         """Returns the shape of the matrix.
@@ -996,18 +1085,41 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         else:
             raise ValueError
 
-    # TODO(unno): Implement sorted_indices
+    def sorted_indices(self):
+        """Return a copy of this matrix with sorted indices
+
+        .. warning::
+            Calling this function might synchronize the device.
+
+        """
+        # Taken from SciPy as is.
+        A = self.copy()
+        A.sort_indices()
+        return A
+
+    def sort_indices(self):
+        # Unlike in SciPy, here this is implemented in child classes because
+        # each child needs to call its own sort function from cuSPARSE
+        raise NotImplementedError
 
     def sum_duplicates(self):
-        if self._has_canonical_format:
+        """Eliminate duplicate matrix entries by adding them together.
+
+        .. note::
+            This is an *in place* operation.
+
+        .. warning::
+            Calling this function might synchronize the device.
+
+        """
+        if self.has_canonical_format:
             return
-        if self.data.size == 0:
-            self._has_canonical_format = True
-            return
+        # TODO(leofang): add a kernel for compressed sparse matrices without
+        # converting to coo
         coo = self.tocoo()
         coo.sum_duplicates()
         self.__init__(coo.asformat(self.format))
-        self._has_canonical_format = True
+        self.has_canonical_format = True
 
     #####################
     # Reduce operations #
