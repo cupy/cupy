@@ -236,6 +236,10 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                     bin_edges[-1] -= 1
                 elif x.dtype.kind == 'f':
                     bin_edges[-1] = old_edge
+
+                # TODO(asi1024): Refactor temporary fix for dtype compatibility
+                if isinstance(bins, cupy.ndarray):
+                    bin_edges = bin_edges.astype(bins.dtype, copy=False)
                 break
         else:
             _histogram_kernel(x, bin_edges, bin_edges.size, y)
