@@ -385,8 +385,6 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     def _get_intXslice(self, row, col):
         if col.step in (1, None):
             return self._get_submatrix(row, col, copy=True)
-        # TODO: uncomment this once it's faster:
-        # return self.getrow(row)._minor_slice(col)
 
         M, N = self.shape
         start, stop, stride = col.indices(N)
