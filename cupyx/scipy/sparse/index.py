@@ -43,22 +43,6 @@ def _build_name_expressions(types, kernel_name):
     return {t: "%s<%s>" % (kernel_name, parse_types(t)) for t in types}
 
 
-def _broadcast_arrays(a, b):
-    """
-    Same as cupy.broadcast_arrays(a, b) but old writeability rules.
-    NumPy >= 1.17.0 transitions broadcast_arrays to return
-    read-only arrays. Set writeability explicitly to avoid warnings.
-    Retain the old writeability rules, as our Cython code assumes
-    the old behavior.
-    """
-    x, y = cupy.broadcast_arrays(a, b)
-
-    # Writeable doesn't seem to exist on flags in cupy
-    # x.flags.writeable = a.flags.writeable
-    # y.flags.writeable = b.flags.writeable
-    return x, y
-
-
 _csr_column_index2_order_types = \
     _build_name_expressions([_int32_dtype, _int64_dtype],
                             '_csr_column_index2_order')
@@ -852,7 +836,7 @@ class IndexMixin(object):
                 return self._get_columnXarray(row[:, 0], col.ravel())
 
         # The only remaining case is inner (fancy) indexing
-        row, col = _broadcast_arrays(row, col)
+        row, col = cupy.broadcast_arrays(row, col)
         if row.shape != col.shape:
             raise IndexError('number of row and column indices differ')
         if row.size == 0:
@@ -985,7 +969,7 @@ class IndexMixin(object):
     def _set_arrayXarray_sparse(self, row, col, x):
         # Fall back to densifying x
         x = cupy.asarray(x.toarray(), dtype=self.dtype)
-        x, _ = _broadcast_arrays(x, row)
+        x, _ = cupy.broadcast_arrays(x, row)
         self._set_arrayXarray(row, col, x)
 
 
