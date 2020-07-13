@@ -326,7 +326,7 @@ class TestCubHistogram(unittest.TestCase):
         _accelerator.set_routine_accelerators(self.old_accelerators)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_histogram(self, xp, dtype):
         x = testing.shaped_arange((10,), xp, dtype)
 
