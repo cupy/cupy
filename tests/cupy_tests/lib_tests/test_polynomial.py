@@ -236,11 +236,100 @@ class TestPoly1dArithmetic(unittest.TestCase):
         return b.coeffs
 
     @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_add_numpy_scalar_numpy_scalar(self, xp, dtype):
+        with cupyx.allow_synchronize(False):
+            return dtype(5) + dtype(10)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_add_numpy_scalar_python_scalar(self, xp, dtype):
+        with cupyx.allow_synchronize(False):
+            return dtype(5) + dtype(10).item()
+
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_poly1d_add_poly1d_scalar(self, xp, dtype):
+    def test_poly1d_add_numpy_scalar_array(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        with cupyx.allow_synchronize(False):
+            return dtype(5) + a
+
+    # @testing.for_all_dtypes()
+    # @testing.numpy_cupy_array_equal()
+    # def test_poly1d_add_numpy_scalar_poly1d(self, xp, dtype):
+    #     a = testing.shaped_arange((5,), xp, dtype)
+    #     with cupyx.allow_synchronize(False):
+    #         return dtype(5) + xp.poly1d(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_add_python_scalar_numpy_scalar(self, xp, dtype):
+        with cupyx.allow_synchronize(False):
+            return dtype(5).item() + dtype(10)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly1d_add_python_scalar_python_scalar(self, xp, dtype):
+        with cupyx.allow_synchronize(False):
+            return dtype(5).item() + dtype(10).item()
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_add_python_scalar_array(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        with cupyx.allow_synchronize(False):
+            return dtype(5).item() + a
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_add_python_scalar_poly1d(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        with cupyx.allow_synchronize(False):
+            b = dtype(5).item() + xp.poly1d(a)
+        return b.coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_add_array_numpy_scalar(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        with cupyx.allow_synchronize(False):
+            return a + dtype(10)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_add_array_python_scalar(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        with cupyx.allow_synchronize(False):
+            return a + dtype(10).item()
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_add_array_array(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        with cupyx.allow_synchronize(False):
+            return a + a
+
+    # @testing.for_all_dtypes()
+    # @testing.numpy_cupy_array_equal()
+    # def test_poly1d_add_array_poly1d(self, xp, dtype):
+    #     a = testing.shaped_arange((5,), xp, dtype)
+    #     with cupyx.allow_synchronize(False):
+    #         return a + xp.poly1d(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_add_poly1d_numpy_scalar(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         with cupyx.allow_synchronize(False):
             b = xp.poly1d(a) + dtype(10)
+        return b.coeffs
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_poly1d_add_poly1d_python_scalar(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        with cupyx.allow_synchronize(False):
+            b = xp.poly1d(a) + dtype(10).item()
         return b.coeffs
 
     @testing.for_all_dtypes()
@@ -325,43 +414,6 @@ class TestPolyaddShapeCombination(unittest.TestCase):
 @testing.gpu
 class TestPolyadd(unittest.TestCase):
 
-    @testing.numpy_cupy_array_equal()
-    def test_polyadd_leading_zeros(self, xp):
-        a = xp.array([0, 0, 1, 2, 3, 0, 0])
-        b = xp.array([0, 4, 2, 0])
-        with cupyx.allow_synchronize(False):
-            return xp.polyadd(a, b)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_polyadd_scalar_poly1d(self, xp, dtype):
-        a = dtype(10)
-        b = testing.shaped_arange((5,), xp, dtype)
-        b = xp.poly1d(b)
-        with cupyx.allow_synchronize(False):
-            c = xp.polyadd(a, b)
-        return c.coeffs
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_polyadd_poly1d_poly1d(self, xp, dtype):
-        a = testing.shaped_arange((5,), xp, dtype)
-        b = xp.poly1d(a, variable='z')
-        with cupyx.allow_synchronize(False):
-            c = xp.polyadd(b, b)
-        assert c.variable == 'x'
-        return c.coeffs
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_polyadd_array_poly1d(self, xp, dtype):
-        a = testing.shaped_arange((3,), xp, dtype)
-        b = testing.shaped_arange((5,), xp, dtype)
-        b = xp.poly1d(b)
-        with cupyx.allow_synchronize(False):
-            c = xp.polyadd(a, b)
-        return c.coeffs
-
     @testing.for_all_dtypes_combination(
         names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal()
@@ -383,11 +435,3 @@ class TestPolyadd(unittest.TestCase):
             c = xp.polyadd(a, b)
         assert c.variable == 'x'
         return c.coeffs
-
-    @testing.for_all_dtypes()
-    def test_polyadd_ndim(self, dtype):
-        for xp in (numpy, cupy):
-            a = testing.shaped_arange((3, 4, 2), xp, dtype)
-            b = testing.shaped_arange((4, 2), xp, dtype)
-            with pytest.raises(ValueError):
-                xp.polyadd(a, b)
