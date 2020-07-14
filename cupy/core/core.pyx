@@ -2100,10 +2100,11 @@ cdef tuple _get_concat_shape_impl(object obj):
 
             # `elem` is not concatable or the shape and dtype does not match
             # with siblings.
-            if (elem_shape is None
-                    or shape != elem_shape
-                    or dtype != elem_dtype):
+            if elem_shape is None or shape != elem_shape:
                 return (None, obj_type, None)
+
+            if dtype != elem_dtype:
+                dtype = numpy.promote_types(dtype, elem_dtype)
 
         if shape is None:
             shape = ()
