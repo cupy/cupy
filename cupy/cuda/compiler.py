@@ -524,8 +524,9 @@ def _run_hipcc(cmd, cwd='.', env=None):
 
 
 def _hipcc(source, options, arch):
-    cmd = ['hipcc', '--genco', '--targets=' + arch,
-           '--flags="%s"' % ' '.join(options)]
+    assert len(arch) > 0
+    # pass HCC_AMDGPU_TARGET same as arch
+    cmd = ['hipcc', '--genco'] + list(options)
 
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
