@@ -5,6 +5,7 @@ import cupy
 from cupy_backends.cuda.api import runtime
 from cupy.cuda import cutensor
 from cupy.cuda import device
+from cupy.core import _reduction
 
 _handles = {}
 _tensor_descriptors = {}
@@ -495,4 +496,60 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
                        C.data.ptr, desc_C, mode_C.data,
                        out.data.ptr, desc_C, mode_C.data,
                        reduce_op, cutensor_dtype, ws.data.ptr, ws_size)
+    return out
+
+
+_cutensor_dtypes = [
+    numpy.float16,
+    numpy.float32,
+    numpy.float64,
+    numpy.complex64,
+    numpy.complex128,
+]
+
+
+def _try_reduction_routine(x, axis, dtype, out, keepdims, op, alpha, beta):
+    if dtype is None:
+        dtype = x.dtype
+
+    if dtype not in _cutensor_dtypes:
+        return None
+    if dtype != x.dtype:
+        return None
+
+    if not x._c_contiguous:
+        # TODO(asi1024): Support also for F-contiguous array
+        return None
+
+    in_arg = x
+
+    reduce_axis, out_axis = _reduction._get_axis(axis, x.ndim)
+    out_shape = _reduction._get_out_shape(
+        x.shape, reduce_axis, out_axis, keepdims)
+    if out is None:
+        out = cupy.empty(out_shape, dtype)
+    elif out.shape != out_shape:
+        # TODO(asi1024): Support broadcast
+        return None
+    elif out.dtype != dtype:
+        return None
+    elif not out._c_contiguous:
+        # TODO(asi1024): Support also for F-contiguous array
+        return None
+
+    if keepdims:
+        out_arg = out.reshape(
+            _reduction._get_out_shape(x.shape, reduce_axis, out_axis, False))
+    else:
+        out_arg = out
+
+    desc_in = create_tensor_descriptor(in_arg)
+    desc_out = create_tensor_descriptor(out_arg)
+    mode_in = list(range(in_arg.ndim))
+    mode_out = [axis for axis in mode_in if (axis not in reduce_axis)]
+
+    reduction(
+        alpha, in_arg, desc_in, mode_in, beta, out_arg, desc_out, mode_out,
+        op, dtype)
+
     return out

@@ -23,6 +23,13 @@ if not cupy.cuda.runtime.is_hip:
 else:
     cub = None
 
+if cupy.cuda.cutensor_enabled:
+    import cupy_backends.cuda.libs.cutensor as cuda_cutensor
+    from cupy import cutensor
+else:
+    cuda_cutensor = None
+    cutensor = None
+
 
 # ndarray members
 
@@ -95,12 +102,17 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
 
 cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
     for accelerator in _accelerator._routine_accelerators:
+        result = None
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_SUM, axis, dtype, out, keepdims)
-            if result is not None:
-                return result
+        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype, out, keepdims, cuda_cutensor.OP_ADD, 1, 0)
+        if result is not None:
+            return result
+
     if dtype is None:
         return _sum_auto_dtype(self, axis, dtype, out, keepdims)
     else:
