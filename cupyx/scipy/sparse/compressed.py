@@ -789,13 +789,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         x = cupy.array(x, dtype=self.dtype, copy=True, ndmin=1).ravel()
         n_samples = x.size
 
-        offsets, ret = index._csr_sample_offsets(M, N, self.indptr, self.indices, n_samples,
+        offsets, ret = index._csr_sample_offsets(M, N, self.indptr,
+                                                 self.indices, n_samples,
                                                  i, j)
         if ret:
             # rinse and repeat
             self.sum_duplicates()
-            offsets, ret = index._csr_sample_offsets(M, N, self.indptr, self.indices,
-                                                     n_samples, i, j)
+            offsets, _ = index._csr_sample_offsets(M, N, self.indptr,
+                                                   self.indices,
+                                                   n_samples, i, j)
 
         if -1 not in offsets:
             # only affects existing non-zero cells
@@ -824,18 +826,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         i, j, M, N = self._prepare_indices(i, j)
 
         n_samples = len(i)
-        offsets = cupy.empty(n_samples, dtype=self.indices.dtype)
-        ret = index._csr_sample_offsets(M, N, self.indptr, self.indices, n_samples,
-                                 i, j, offsets)
+        offsets, ret = index._csr_sample_offsets(M, N, self.indptr,
+                                                 self.indices,
+                                                 n_samples, i, j)
         if ret == 1:
             # rinse and repeat
             self.sum_duplicates()
-            index._csr_sample_offsets(M, N, self.indptr, self.indices, n_samples,
-                               i, j, offsets)
+            offsets, _ = index._csr_sample_offsets(M, N, self.indptr,
+                                                   self.indices,
+                                                   n_samples, i, j)
 
         # only assign zeros to the existing sparsity structure
         self.data[offsets[offsets > -1]] = 0
 
+    import cupy.prof
+
+    @cupy.prof.TimeRangeDecorator(message="_insert_many", color_id=1)
     def _insert_many(self, i, j, x):
         """Inserts new nonzero at each (i, j) with value x
         Here (i,j) index major and minor respectively.
@@ -852,8 +858,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         do_sort = self.has_sorted_indices
 
         # Update index data type
-        idx_dtype = sputils.get_index_dtype((self.indices, self.indptr),
-                                            maxval=(self.indptr[-1].item() + x.size))
+        idx_dtype = sputils.get_index_dtype(
+            (self.indices, self.indptr), maxval=(
+                    self.indptr[-1].item() + x.size))
         self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
         self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
         i = cupy.asarray(i, dtype=idx_dtype)
@@ -864,30 +871,38 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         data_parts = []
         ui, ui_indptr = cupy.unique(i, return_index=True)
 
+        # This part is modified slightly from the Scipy counterpart
+        # because Cupy doesn't not have an `append` function for
+        # ndarrays.
         to_add = cupy.array([j.size], ui_indptr.dtype)
         ui_indptr = cupy.hstack([ui_indptr, to_add])
 
         new_nnzs = cupy.diff(ui_indptr)
 
-        prev = 0
-        for c, (ii, js, je) in enumerate(zip(ui, ui_indptr, ui_indptr[1:])):
-            # old entries
-            start = self.indptr[prev]
-            stop = self.indptr[ii]
-            indices_parts.append(self.indices[start:stop])
-            data_parts.append(self.data[start:stop])
+        with cupy.prof.time_range(message="computing placement", color_id=4):
 
-            # handle duplicate j: keep last setting
-            uj, uj_indptr = cupy.unique(j[js:je][::-1], return_index=True)
-            if len(uj) == je - js:
-                indices_parts.append(j[js:je])
-                data_parts.append(x[js:je])
-            else:
-                indices_parts.append(j[js:je][::-1][uj_indptr])
-                data_parts.append(x[js:je][::-1][uj_indptr])
-                new_nnzs[c] = len(uj)
+            prev = 0
+            for c, (ii, js, je) in enumerate(zip(ui, ui_indptr, ui_indptr[1:])):
+                # append old entries for each row
 
-            prev = ii
+                # @TODO: This part could be done in complete parallel
+                start = self.indptr[prev]
+                stop = self.indptr[ii]
+                indices_parts.append(self.indices[start:stop])
+                data_parts.append(self.data[start:stop])
+
+                # @TODO(cjnolet): This is where most of the time in this function is spent
+                # handle duplicate j: keep last setting
+                uj, uj_indptr = cupy.unique(j[js:je][::-1], return_index=True)
+                if len(uj) == je - js:
+                    indices_parts.append(j[js:je])
+                    data_parts.append(x[js:je])
+                else:
+                    indices_parts.append([uj_indptr])
+                    data_parts.append(x[js:je][::-1][uj_indptr])
+                    new_nnzs[c] = len(uj)
+
+                prev = ii
 
         # remaining old entries
         start = self.indptr[ii]
@@ -907,10 +922,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         nnzs[1:] = indptr_diff
         self.indptr = cupy.cumsum(nnzs, out=nnzs)
 
-        if do_sort:
-            # TODO: only sort where necessary
-            self.has_sorted_indices = False
-            self.sort_indices()
+        with cupy.prof.time_range(message="sorting", color_id=2):
+            if do_sort:
+                self.has_sorted_indices = False
+                self.sort_indices()
 
         self.check_format(full_check=False)
 
@@ -938,7 +953,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
         self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
 
-        # @TODO: Is this necessary?
+        # @TODO(cjnolet): Is this necessary?
         # self.data = sputils.to_native(self.data)
 
         # check array shapes
@@ -1056,22 +1071,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """
         return self._shape
 
-    def __get_sorted(self):
-        """Determine whether the matrix has sorted indices
-
-        Returns:
-            - True: if the indices of the matrix are in sorted order
-            - False: otherwise
-        """
-
-        # first check to see if result was cached
-        if not hasattr(self, '_has_sorted_indices'):
-            self._has_sorted_indices = index._csr_has_sorted_indices(
-                len(self.indptr) - 1, self.indptr, self.indices)
-        return self._has_sorted_indices
-
-    def __set_sorted(self, val):
-        self._has_sorted_indices = bool(val)
 
     has_sorted_indices = property(fget=__get_sorted, fset=__set_sorted)
 

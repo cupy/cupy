@@ -724,6 +724,7 @@ def _csr_row_slice(start, stop, step, Ap, Aj, Ax, Bp, tpb=1024):
         Bj : indices array of output sparse matrix
         Bx : data array of output sparse matrix
     """
+
     grid = math.ceil((len(Bp)-1) / tpb)
 
     nnz = Bp[-1].item()
@@ -872,54 +873,9 @@ void csr_sample_offsets(const I n_row,
     _csr_sample_offsets_ker_types.values()))
 
 
-_csr_has_sorted_indices_ker_types = {
-    _int32_dtype: 'csr_has_sorted_indices<int>'
-}
-_csr_has_sorted_indices_ker = core.RawModule(code="""
-    template<typename I>
-    __global__
-    void csr_has_sorted_indices(const I n_rows,
-                                const I *Ap,
-                                const I *Aj,
-                                bool *sorted) {
-
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-
-        if(i < n_rows && sorted[0] == true) {
-            const I start = Ap[i];
-            const I stop = Ap[i+1];
-
-            I last_col = -1;
-            for(I jj = start; jj < stop; jj++) {
-                const I cur_col = Aj[jj];
-                if(last_col >= 0 && cur_col < last_col)
-                    sorted[0] = false;
-                last_col = cur_col;
-            }
-        }
-    }
-""", options=_module_options, name_expressions=tuple(
-    _csr_has_sorted_indices_ker_types.values()))
-
-
-def _csr_has_sorted_indices(n_rows, Ap, Aj, tpb=32):
-
-    grid = math.ceil(n_rows / tpb)
-
-    kernel = _csr_has_sorted_indices_ker.get_function(
-        _csr_has_sorted_indices_ker_types[Ap.dtype]
-    )
-
-    is_sorted = cupy.array([True], dtype='bool')
-
-    kernel((grid,), (tpb,), (n_rows, Ap, Aj, is_sorted))
-
-    return is_sorted.item()
-
-
 def _csr_sample_offsets(n_row, n_col,
                        Ap, Aj, n_samples,
-                       Bi, Bj, tpb=32):
+                       Bi, Bj, tpb=1024):
     grid = math.ceil(n_samples / tpb)
     kernel = _csr_sample_offsets_ker.get_function(
         _csr_sample_offsets_ker_types[Ap.dtype]
