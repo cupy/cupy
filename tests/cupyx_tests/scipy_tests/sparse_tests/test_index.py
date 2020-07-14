@@ -71,15 +71,15 @@ class TestSetitemIndexing(unittest.TestCase):
             cupy.testing.assert_array_equal(
                 actual.ravel(), cupy.array(expected).ravel())
 
-    # def test_major_slice(self):
-    #     self._run(slice(5, 9))
-    #     self._run(slice(9, 5))
-    #
-    # def test_major_all(self):
-    #     self._run(slice(None))
-    #
-    # def test_major_scalar(self):
-    #     self._run(10)
+    def test_major_slice(self):
+        self._run(slice(5, 9))
+        self._run(slice(9, 5))
+
+    def test_major_all(self):
+        self._run(slice(None))
+
+    def test_major_scalar(self):
+        self._run(10)
 
     def test_major_fancy(self):
         self._run([1, 5, 4])
