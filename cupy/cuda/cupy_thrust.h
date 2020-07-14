@@ -24,13 +24,13 @@ namespace cupy {
 
 namespace thrust {
 
-void thrust_sort(int, void *, size_t *, const std::vector<ptrdiff_t>&, intptr_t, void *) {
+void thrust_sort(...) {
 }
 
-void thrust_lexsort(int, size_t *, void *, size_t, size_t, intptr_t, void *) {
+void thrust_lexsort(...) {
 }
 
-void thrust_argsort(int, size_t *, void *, void *, const std::vector<ptrdiff_t>&, intptr_t, void *) {
+void thrust_argsort(...) {
 }
 
 } // namespace thrust
