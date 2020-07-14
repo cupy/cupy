@@ -71,7 +71,16 @@ def _fft_convolve(a1, a2, mode):
         fft, ifft = cupy.fft.rfft, cupy.fft.irfft
         is_c2c = False
 
-    dtype = cupy.result_type(a1, a2)
+    out_dtype = cupy.result_type(a1, a2)
+
+    # hack to work around NumPy/CuPy FFT dtype incompatibility
+    if out_dtype == cupy.float16:
+        dtype = cupy.float32
+    else:
+        dtype = out_dtype
+    a1 = a1.astype(dtype, copy=False)
+    a2 = a2.astype(dtype, copy=False)
+
     n1, n2 = a1.size, a2.size
     out_size = cupyx.scipy.fft.next_fast_len(n1 + n2 - 1)
     # skip calling get_fft_plan() as we know the args exactly
@@ -102,12 +111,12 @@ def _fft_convolve(a1, a2, mode):
         raise ValueError(
             'acceptable mode flags are `valid`, `same`, or `full`.')
 
-    out = out[start: end]
+    out = out[start:end]
 
-    if dtype.kind in 'iu':
+    if out.dtype.kind in 'iu':
         out = cupy.around(out)
 
-    return out.astype(dtype, copy=False)
+    return out.astype(out_dtype, copy=False)
 
 
 def _dot_convolve(a1, a2, mode):
