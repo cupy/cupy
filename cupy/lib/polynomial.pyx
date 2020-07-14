@@ -1,40 +1,9 @@
 import numpy
 
-import cupy
 from cupy.core.core cimport ndarray
 
-
-def _get_coeffs(x):
-    if isinstance(x, poly1d):
-        return True, x._coeffs
-    if isinstance(x, ndarray) or cupy.isscalar(x):
-        return False, cupy.atleast_1d(x)
-    raise TypeError('Unsupported type')
-
-
-def polyadd(a1, a2):
-    """Computes the sum of two polynomials.
-
-    Args:
-        a1 (scalar, cupy.ndarray or cupy.poly1d): first input polynomial.
-        a2 (scalar, cupy.ndarray or cupy.poly1d): second input polynomial.
-
-    Returns:
-        cupy.ndarray or cupy.poly1d: The sum of the inputs.
-
-    .. seealso:: :func:`numpy.polyadd`
-
-    """
-    p1, a1 = _get_coeffs(a1)
-    p2, a2 = _get_coeffs(a2)
-    if a1.shape[0] < a2.shape[0]:
-        a1, a2 = a2, a1
-    val = cupy.pad(a2, (a1.shape[0] - a2.shape[0], 0))
-    val = val.astype(cupy.result_type(a1, a2), copy=False)
-    val += a1
-    if p1 or p2:
-        val = poly1d(val)
-    return val
+import cupy
+from cupy.lib import _routines_poly
 
 
 cdef class poly1d:
@@ -157,7 +126,7 @@ cdef class poly1d:
         raise NotImplementedError
 
     def __add__(self, other):
-        return polyadd(self, other)
+        return _routines_poly.polyadd(self, other)
 
     # TODO(Dahlia-Chehata): implement using polymul
     def __pow__(self, val, modulo):
