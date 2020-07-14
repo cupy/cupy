@@ -786,20 +786,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         duplicate entries.
         """
         i, j, M, N = self._prepare_indices(i, j)
-        x = cupy.array(x, dtype=self.dtype, copy=False, ndmin=1).ravel()
-
+        x = cupy.array(x, dtype=self.dtype, copy=True, ndmin=1).ravel()
         n_samples = x.size
 
         offsets, ret = index._csr_sample_offsets(M, N, self.indptr, self.indices, n_samples,
                                                  i, j)
         if ret:
             # rinse and repeat
-            print("Summing duplicates")
             self.sum_duplicates()
             offsets, ret = index._csr_sample_offsets(M, N, self.indptr, self.indices,
                                                      n_samples, i, j)
-
-        print("csr_sample_offsets=%s[%s]" % (ret, offsets))
 
         if -1 not in offsets:
             # only affects existing non-zero cells
@@ -863,28 +859,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         i = cupy.asarray(i, dtype=idx_dtype)
         j = cupy.asarray(j, dtype=idx_dtype)
 
-        print("i=%s, j=%s, x=%s" % (i, j, x))
-
         # Collate old and new in chunks by major index
         indices_parts = []
         data_parts = []
         ui, ui_indptr = cupy.unique(i, return_index=True)
 
         to_add = cupy.array([j.size], ui_indptr.dtype)
-
-        print("initial ui_indptr: %s, to_add=%s" % (ui_indptr, to_add))
-
         ui_indptr = cupy.hstack([ui_indptr, to_add])
 
-        print("after: %s" % ui_indptr)
-
         new_nnzs = cupy.diff(ui_indptr)
-
-
-        print("ui: %s" % ui)
-
-
-        print("new_nnzs: %s" % new_nnzs)
 
         prev = 0
         for c, (ii, js, je) in enumerate(zip(ui, ui_indptr, ui_indptr[1:])):
@@ -906,8 +889,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             prev = ii
 
-        print("new new_nnzs: %s" % new_nnzs)
-
         # remaining old entries
         start = self.indptr[ii]
         indices_parts.append(self.indices[start:])
@@ -916,20 +897,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # update attributes
         self.indices = cupy.concatenate(indices_parts)
         self.data = cupy.concatenate(data_parts)
+
         nnzs = cupy.empty(self.indptr.shape, dtype=idx_dtype)
         nnzs[0] = idx_dtype(0)
         indptr_diff = cupy.diff(self.indptr)
 
-        print("indptr_diff %s" % indptr_diff)
-
         indptr_diff[ui] += new_nnzs
-
-        print("indptr_diff after update %s" % indptr_diff)
 
         nnzs[1:] = indptr_diff
         self.indptr = cupy.cumsum(nnzs, out=nnzs)
-
-        print("new_indptr: %s" % self.indptr)
 
         if do_sort:
             # TODO: only sort where necessary

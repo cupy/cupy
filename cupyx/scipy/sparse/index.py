@@ -1185,13 +1185,8 @@ def _unpack_index(index):
         else:
             raise IndexError('invalid number of indices')
     else:
-        idx = _compatible_boolean_index(index)
-        if idx is None:
-            row, col = index, slice(None)
-        elif idx.ndim < 2:
-            return _boolean_index_to_array(idx), slice(None)
-        elif idx.ndim == 2:
-            return idx.nonzero()
+        row, col = index, slice(None)
+
     # Next, check for validity and transform the index as needed.
     if isspmatrix(row) or isspmatrix(col):
         # Supporting sparse boolean indexing with both row and col does
@@ -1200,12 +1195,10 @@ def _unpack_index(index):
             'Indexing with sparse matrices is not supported '
             'except boolean indexing where matrix and index '
             'are equal shapes.')
-    bool_row = _compatible_boolean_index(row)
-    bool_col = _compatible_boolean_index(col)
-    if bool_row is not None:
-        row = _boolean_index_to_array(bool_row)
-    if bool_col is not None:
-        col = _boolean_index_to_array(bool_col)
+    if isinstance(row, cupy.ndarray) and row.dtype.kind == 'b':
+        row = _boolean_index_to_array(row)
+    if isinstance(col, cupy.ndarray) and col.dtype.kind == 'b':
+        col = _boolean_index_to_array(col)
     return row, col
 
 
@@ -1250,6 +1243,7 @@ def _maybe_bool_ndarray(idx):
     """
     idx = cupy.asanyarray(idx)
     if idx.dtype.kind == 'b':
+        print("It's bool!")
         return idx
     return None
 
@@ -1275,11 +1269,13 @@ def _compatible_boolean_index(idx):
     """
     # Presence of attribute `ndim` indicates a compatible array type.
     if hasattr(idx, 'ndim') or _first_element_bool(idx):
+        print("Returning maybe bool index array")
         return _maybe_bool_ndarray(idx)
     return None
 
 
 def _boolean_index_to_array(idx):
+    print("INside boolean index to array")
     if idx.ndim > 1:
         raise IndexError('invalid index shape')
     return cupy.where(idx)[0]
