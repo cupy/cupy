@@ -500,7 +500,8 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
 
 
 _cutensor_dtypes = [
-    numpy.float16,
+    # TODO(asi1024): Support float16
+    # numpy.float16,
     numpy.float32,
     numpy.float64,
     numpy.complex64,
