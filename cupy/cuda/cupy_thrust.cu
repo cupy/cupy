@@ -405,7 +405,7 @@ struct _argsort {
 
 /* -------- sort -------- */
 
-void cupy::thrust::thrust_sort(int dtype_id, void *data_start, size_t *keys_start,
+void thrust_sort(int dtype_id, void *data_start, size_t *keys_start,
     const std::vector<ptrdiff_t>& shape, intptr_t stream, void* memory) {
 
     _sort op;
@@ -414,7 +414,7 @@ void cupy::thrust::thrust_sort(int dtype_id, void *data_start, size_t *keys_star
 
 
 /* -------- lexsort -------- */
-void cupy::thrust::thrust_lexsort(int dtype_id, size_t *idx_start, void *keys_start, size_t k,
+void thrust_lexsort(int dtype_id, size_t *idx_start, void *keys_start, size_t k,
     size_t n, intptr_t stream, void *memory) {
 
     _lexsort op;
@@ -423,7 +423,7 @@ void cupy::thrust::thrust_lexsort(int dtype_id, size_t *idx_start, void *keys_st
 
 
 /* -------- argsort -------- */
-void cupy::thrust::thrust_argsort(int dtype_id, size_t *idx_start, void *data_start,
+void thrust_argsort(int dtype_id, size_t *idx_start, void *data_start,
     void *keys_start, const std::vector<ptrdiff_t>& shape, intptr_t stream, void *memory) {
 
     _argsort op;

@@ -48,7 +48,7 @@ cdef public void cupy_free(void *m, char* ptr) with gil:
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_thrust.h' namespace 'cupy::thrust':
+cdef extern from 'cupy_thrust.h':
     void thrust_sort(int, void *, size_t *, const vector.vector[ptrdiff_t]&,
                      intptr_t, void *)
     void thrust_lexsort(
@@ -56,8 +56,6 @@ cdef extern from 'cupy_thrust.h' namespace 'cupy::thrust':
     void thrust_argsort(int, size_t *, void *, void *,
                         const vector.vector[ptrdiff_t]&, intptr_t, void *)
 
-
-cdef extern from 'cupy_thrust.h':
     # Build-time version
     int THRUST_VERSION
 
