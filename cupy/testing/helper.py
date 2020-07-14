@@ -1268,15 +1268,15 @@ class AssertFunctionIsCalled:
 
         Args:
             mock_mod (str): the function to be mocked.
-            is_called (int or bool): the number of times the mocked function
-                should be called. Default is ``1``.
+            times_called (int): the number of times the function should be
+                called. Default is ``1``.
+
         """
 
         self.patch = mock.patch(mock_mod, **kwargs)
 
-        # is_called is bool for testing whether mock_mod iscalled or not
-        is_called = kwargs.get('is_called')
-        self.is_called = is_called if is_called is not None else 1
+        times_called = kwargs.get('times_called')
+        self.times_called = times_called if times_called is not None else 1
 
     def __enter__(self):
         self.handle = self.patch.__enter__()
@@ -1284,6 +1284,6 @@ class AssertFunctionIsCalled:
         return self.handle
 
     def __exit__(self, exc_type, exc_value, traceback):
-        assert self.handle.call_count == int(self.is_called)
+        assert self.handle.call_count == int(self.times_called)
         del self.handle
         return self.patch.__exit__(exc_type, exc_value, traceback)

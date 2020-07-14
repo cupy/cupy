@@ -730,11 +730,11 @@ class TestRaw(unittest.TestCase):
         ker = mod.get_function('my_func')
 
         a = cupy.ones((100,), dtype=cupy.float64)
-        arr = memory.alloc(100 * a.dtype.itemsize)
-        arr.copy_from(a.data, 100 * a.dtype.itemsize)  # one-initialize
-        b = cupy.ndarray((100,), cupy.float64, memptr=arr)
+        memptr = memory.alloc(100 * a.dtype.itemsize)
+        memptr.copy_from(a.data, 100 * a.dtype.itemsize)  # one-initialize
+        b = cupy.ndarray((100,), cupy.float64, memptr=memptr)
 
-        ker((1,), (100,), (arr, 100))
+        ker((1,), (100,), (memptr, 100))
         a = 3. * a - 8.
         assert (a == b).all()
 

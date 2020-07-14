@@ -3,6 +3,7 @@ import unittest
 import sys
 
 import cupy
+from cupy import _environment
 from cupy import testing
 from cupy.core import _accelerator
 from cupy.cuda import memory
@@ -11,6 +12,8 @@ from cupy.cuda import memory
 # This test class and its children below only test if CUB backend can be used
 # or not; they don't verify its correctness as it's already extensively covered
 # by existing tests
+@unittest.skipIf(_environment.get_cub_path() is None, 'CUB not found')
+@unittest.skipIf(_environment.get_nvcc_path() is None, 'nvcc not found')
 class CubReductionTestBase(unittest.TestCase):
     """
     Note: call self.can_use() when arrays are already allocated, otherwise
@@ -87,24 +90,6 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
         b = cupy.empty((3,))
         assert self.can_use([a], [b], (1, 2), (0,)) is None
 
-    def test_can_use_cub_no_nvcc(self):
-        # cannot use CUB if nvcc is not found
-        old_path = cupy.core._cub_reduction._get_nvcc_path()
-        try:
-            cupy.core._cub_reduction._set_nvcc_path(None)
-            self._test_can_use((2, 3, 4), (), (0, 1, 2), (), 'C', False)
-        finally:
-            cupy.core._cub_reduction._set_nvcc_path(old_path)
-
-    def test_can_use_cub_no_cub(self):
-        # cannot use CUB if CUB headers are not found
-        old_path = cupy.core._cub_reduction._get_cub_path()
-        try:
-            cupy.core._cub_reduction._set_cub_path(None)
-            self._test_can_use((2, 3, 4), (), (0, 1, 2), (), 'C', False)
-        finally:
-            cupy.core._cub_reduction._set_cub_path(old_path)
-
     def test_can_use_cub_zero_size_input(self):
         self._test_can_use((2, 0, 3), (), (0, 1, 2), (), 'C', False)
 
@@ -151,7 +136,7 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
             a.sum()
         with testing.AssertFunctionIsCalled(func):
             a.sum(axis=1)
-        with testing.AssertFunctionIsCalled(func, is_called=False):
+        with testing.AssertFunctionIsCalled(func, times_called=0):
             a.sum(axis=0)
 
         _accelerator.set_routine_accelerators(old_routine_accelerators)

@@ -150,11 +150,11 @@ class TestOptimizeBackends(unittest.TestCase):
     def test_optimize1(self):
         # Ensure the optimizer is run 3 times for all backends.
         func = 'cupyx.optimizing._optimize._optimize'
-        is_called = 3
+        times_called = 3
 
         # Setting "wraps" is necessary to avoid compilation errors.
         with testing.AssertFunctionIsCalled(
-                func, is_called=is_called,
+                func, times_called=times_called,
                 wraps=cupyx.optimizing._optimize._optimize):
             with cupyx.optimizing.optimize():
                 self.x.sum()
@@ -166,11 +166,11 @@ class TestOptimizeBackends(unittest.TestCase):
     def test_optimize2(self):
         # Ensure the CUB optimizer is not run when the CUB kernel is not used.
         func = 'cupy.core._cub_reduction._get_cub_optimized_params'
-        is_called = 2 if ('cub' in self.backend) else 0
+        times_called = 2 if ('cub' in self.backend) else 0
 
         # Setting "wraps" is necessary to avoid errors being silently ignored.
         with testing.AssertFunctionIsCalled(
-                func, is_called=is_called,
+                func, times_called=times_called,
                 wraps=cupy.core._cub_reduction._get_cub_optimized_params):
             with cupyx.optimizing.optimize():
                 self.x.sum()

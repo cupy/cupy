@@ -642,22 +642,3 @@ cdef bint _try_to_call_cub_reduction(
         stream, params, cub_params)
 
     return True
-
-
-# only for testing
-def _get_cub_path():
-    return _cub_path
-
-
-def _set_cub_path(str path):
-    global _cub_path
-    _cub_path = path
-
-
-def _get_nvcc_path():
-    return _nvcc_path
-
-
-def _set_nvcc_path(str path):
-    global _nvcc_path
-    _nvcc_path = path
