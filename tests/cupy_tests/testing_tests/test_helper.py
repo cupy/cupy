@@ -114,7 +114,7 @@ class TestNumPyCuPyEqual(unittest.TestCase, NumPyCuPyDecoratorBase,
 
 
 @testing.parameterize(
-    {'decorator': 'numpy_cupy_array_list_equal'}
+    {'decorator': 'numpy_cupy_array_equal'}
 )
 @testing.gpu
 class TestNumPyCuPyListEqual(unittest.TestCase, NumPyCuPyDecoratorBase):
@@ -244,12 +244,6 @@ class TestSkip(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_array_equal(self, xp):
         raise unittest.SkipTest('Test for skip with @numpy_cupy_array_equal')
-        assert False
-
-    @testing.numpy_cupy_array_list_equal()
-    def test_array_list_equal(self, xp):
-        raise unittest.SkipTest(
-            'Test for skip with @numpy_cupy_array_list_equal')
         assert False
 
     @testing.numpy_cupy_array_less()

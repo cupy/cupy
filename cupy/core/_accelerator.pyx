@@ -9,8 +9,8 @@ cdef int _get_accelerator(accelerator) except -1:
         return accelerator
     if accelerator == 'cub':
         return ACCELERATOR_CUB
-    # if accelerator == 'cutensor':
-    #     return ACCELERATOR_CUTENSOR
+    if accelerator == 'cutensor':
+        return ACCELERATOR_CUTENSOR
     raise ValueError('Unknown accelerator: {}'.format(accelerator))
 
 

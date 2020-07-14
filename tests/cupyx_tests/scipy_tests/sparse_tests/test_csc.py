@@ -806,10 +806,127 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(TypeError):
                 None * m
 
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_canonical_format(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.has_canonical_format
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_canonical_format2(self, xp, sp):
+        # this test is adopted from SciPy's
+        M = sp.csc_matrix((xp.array([2], dtype=self.dtype),
+                           xp.array([0]), xp.array([0, 1])))
+        assert M.has_canonical_format
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_canonical_format3(self, xp, sp):
+        # this test is adopted from SciPy's
+        indices = xp.array([0, 0])  # contains duplicate
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+
+        M = sp.csc_matrix((data, indices, indptr))
+        assert not M.has_canonical_format
+
+        # set by deduplicating
+        M.sum_duplicates()
+        assert M.has_canonical_format
+        assert 1 == len(M.indices)
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_canonical_format4(self, xp, sp):
+        # this test is adopted from SciPy's
+        indices = xp.array([0, 0])  # contains duplicate
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+
+        M = sp.csc_matrix((data, indices, indptr))
+        # set manually (although underlyingly duplicated)
+        M.has_canonical_format = True
+        assert M.has_canonical_format
+        assert 2 == len(M.indices)  # unaffected content
+
+        # ensure deduplication bypassed when has_canonical_format == True
+        M.sum_duplicates()
+        assert 2 == len(M.indices)  # unaffected content
+        return M
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_sorted_indices(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.has_sorted_indices
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_sorted_indices2(self, xp, sp):
+        # this test is adopted from SciPy's
+        sorted_inds = xp.array([0, 1])
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+        M = sp.csc_matrix((data, sorted_inds, indptr))
+        assert M.has_sorted_indices
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_sorted_indices3(self, xp, sp):
+        # this test is adopted from SciPy's
+        sorted_inds = xp.array([0, 1])
+        unsorted_inds = xp.array([1, 0])
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+        M = sp.csc_matrix((data, unsorted_inds, indptr))
+        assert not M.has_sorted_indices
+
+        # set by sorting
+        M.sort_indices()
+        assert M.has_sorted_indices
+        assert (M.indices == sorted_inds).all()
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_sorted_indices4(self, xp, sp):
+        # this test is adopted from SciPy's
+        unsorted_inds = xp.array([1, 0])
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+        M = sp.csc_matrix((data, unsorted_inds, indptr))
+
+        # set manually (although underlyingly unsorted)
+        M.has_sorted_indices = True
+        assert M.has_sorted_indices
+        assert (M.indices == unsorted_inds).all()
+
+        # ensure sort bypassed when has_sorted_indices == True
+        M.sort_indices()
+        assert (M.indices == unsorted_inds).all()
+        return M
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sort_indices(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         m.sort_indices()
+        assert m.has_sorted_indices
+        return m
+
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
+    def test_sort_indices2(self, xp, sp):
+        # 1. this test is adopted from SciPy's.
+        # 2. we don't check the contiguity flag because SciPy and CuPy handle
+        #    the underlying data differently
+        data = xp.arange(5).astype(xp.float32)
+        indices = xp.array([7, 2, 1, 5, 4])
+        indptr = xp.array([0, 3, 5])
+        asp = sp.csc_matrix((data, indices, indptr), shape=(10, 2))
+        asp.sort_indices()
+        assert (asp.indices == xp.array([1, 2, 7, 4, 5])).all()
+        return asp.todense()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sorted_indices(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        m = m.sorted_indices()
+        assert m.has_sorted_indices
         return m
 
     def test_sum_tuple_axis(self):

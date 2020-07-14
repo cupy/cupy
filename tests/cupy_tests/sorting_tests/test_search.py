@@ -274,7 +274,7 @@ class TestWhereTwoArrays(unittest.TestCase):
 class TestWhereCond(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_where_cond(self, xp, dtype):
         m = testing.shaped_random(self.cond_shape, xp, xp.bool_)
         cond = testing.shaped_random(self.cond_shape, xp, dtype) * m
@@ -303,7 +303,7 @@ class TestWhereError(unittest.TestCase):
 class TestNonzero(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_nonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
         return xp.nonzero(array)
@@ -577,7 +577,7 @@ class TestNanArgMax(unittest.TestCase):
 class TestSearchSorted(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_searchsorted(self, xp, dtype):
         x = testing.shaped_arange(self.shape, xp, dtype)
         bins = xp.array(self.bins)
@@ -591,14 +591,14 @@ class TestSearchSorted(unittest.TestCase):
     {'side': 'right'})
 class TestSearchSortedNanInf(unittest.TestCase):
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_searchsorted_nanbins(self, xp):
         x = testing.shaped_arange((10,), xp, xp.float64)
         bins = xp.array([0, 1, 2, 4, 10, float('nan')])
         y = xp.searchsorted(bins, x, side=self.side)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_searchsorted_nan(self, xp):
         x = testing.shaped_arange((10,), xp, xp.float64)
         x[5] = float('nan')
@@ -606,7 +606,7 @@ class TestSearchSortedNanInf(unittest.TestCase):
         y = xp.searchsorted(bins, x, side=self.side)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_searchsorted_nan_last(self, xp):
         x = testing.shaped_arange((10,), xp, xp.float64)
         x[-1] = float('nan')
@@ -614,7 +614,7 @@ class TestSearchSortedNanInf(unittest.TestCase):
         y = xp.searchsorted(bins, x, side=self.side)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_searchsorted_nan_last_repeat(self, xp):
         x = testing.shaped_arange((10,), xp, xp.float64)
         x[-1] = float('nan')
@@ -622,7 +622,7 @@ class TestSearchSortedNanInf(unittest.TestCase):
         y = xp.searchsorted(bins, x, side=self.side)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_searchsorted_all_nans(self, xp):
         x = testing.shaped_arange((10,), xp, xp.float64)
         x[-1] = float('nan')
@@ -631,7 +631,7 @@ class TestSearchSortedNanInf(unittest.TestCase):
         y = xp.searchsorted(bins, x, side=self.side)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_searchsorted_inf(self, xp):
         x = testing.shaped_arange((10,), xp, xp.float64)
         x[5] = float('inf')
@@ -639,7 +639,7 @@ class TestSearchSortedNanInf(unittest.TestCase):
         y = xp.searchsorted(bins, x, side=self.side)
         return y,
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_searchsorted_minf(self, xp):
         x = testing.shaped_arange((10,), xp, xp.float64)
         x[5] = float('-inf')
@@ -665,7 +665,7 @@ class TestSearchSortedInvalid(unittest.TestCase):
 @testing.gpu
 class TestSearchSortedWithSorter(unittest.TestCase):
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_sorter(self, xp):
         x = testing.shaped_arange((12,), xp, xp.float64)
         bins = xp.array([10, 4, 2, 1, 8])

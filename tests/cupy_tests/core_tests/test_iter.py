@@ -14,7 +14,7 @@ from cupy import testing
 class TestIter(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_list(self, xp, dtype):
         x = testing.shaped_arange(self.shape, xp, dtype)
         return list(x)
