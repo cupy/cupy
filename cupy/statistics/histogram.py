@@ -130,7 +130,7 @@ def _get_bin_edges(a, bins, range):
             "only integer and array bins are implemented")
     elif isinstance(bins, cupy.ndarray) or numpy.ndim(bins) == 1:
         # TODO(okuta): After #3060 is merged, `if cupy.ndim(bins) == 1:`.
-        if bins.ndim == 1:  # cupy.ndim(bins) == 1:
+        if isinstance(bins, cupy.ndarray):
             bin_edges = cupy.asarray(bins)
         else:
             bin_edges = numpy.asarray(bins)
