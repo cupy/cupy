@@ -89,17 +89,21 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
 
     def test_can_use_cub_no_nvcc(self):
         # cannot use CUB if nvcc is not found
-        func = 'cupy._environment.get_nvcc_path'
-        with testing.AssertFunctionIsCalled(func) as get_path:
-            get_path.return_value = None
+        old_path = cupy.core._cub_reduction._get_nvcc_path()
+        try:
+            cupy.core._cub_reduction._set_nvcc_path(None)
             self._test_can_use((2, 3, 4), (), (0, 1, 2), (), 'C', False)
+        finally:
+            cupy.core._cub_reduction._set_nvcc_path(old_path)
 
     def test_can_use_cub_no_cub(self):
         # cannot use CUB if CUB headers are not found
-        func = 'cupy._environment.get_cub_path'
-        with testing.AssertFunctionIsCalled(func) as get_path:
-            get_path.return_value = None
+        old_path = cupy.core._cub_reduction._get_cub_path()
+        try:
+            cupy.core._cub_reduction._set_cub_path(None)
             self._test_can_use((2, 3, 4), (), (0, 1, 2), (), 'C', False)
+        finally:
+            cupy.core._cub_reduction._set_cub_path(old_path)
 
     def test_can_use_cub_zero_size_input(self):
         self._test_can_use((2, 0, 3), (), (0, 1, 2), (), 'C', False)

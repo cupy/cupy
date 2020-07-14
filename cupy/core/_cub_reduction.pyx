@@ -212,6 +212,8 @@ def _SimpleCubReductionKernel_get_cached_function(
         type_map, _preamble, options)
 
 
+cdef str _cub_path = _environment.get_cub_path()
+cdef str _nvcc_path = _environment.get_nvcc_path()
 cdef str _cub_header = None
 
 
@@ -220,7 +222,7 @@ cdef str _get_cub_header_include():
     if _cub_header is not None:
         return _cub_header
 
-    cdef str _cub_path = _environment.get_cub_path()
+    assert _cub_path is not None
     if _cub_path == '<bundle>':
         _cub_header = '''
 #include <cupy/cub/cub/block/block_reduce.cuh>
@@ -252,7 +254,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
     cdef Py_ssize_t contiguous_size = 1
 
     # detect whether CUB headers exists somewhere:
-    if _environment.get_cub_path() is None:
+    if _cub_path is None:
         import warnings
         warnings.warn('cupy.core.cub_block_reduction_enabled is set to True, '
                       'but the CUB headers are not found, please set the '
@@ -308,7 +310,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
             return None
 
     # rare event (mainly for conda-forge users): nvcc is not found!
-    if _environment.get_nvcc_path() is None:
+    if _nvcc_path is None:
         return None
 
     return (axis_permutes_cub, contiguous_size, full_reduction)
@@ -640,3 +642,22 @@ cdef bint _try_to_call_cub_reduction(
         stream, params, cub_params)
 
     return True
+
+
+# only for testing
+def _get_cub_path():
+    return _cub_path
+
+
+def _set_cub_path(str path):
+    global _cub_path
+    _cub_path = path
+
+
+def _get_nvcc_path():
+    return _nvcc_path
+
+
+def _set_nvcc_path(str path):
+    global _nvcc_path
+    _nvcc_path = path
