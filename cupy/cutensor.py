@@ -518,6 +518,8 @@ def _try_reduction_routine(x, axis, dtype, out, keepdims, op, alpha, beta):
     if dtype != x.dtype:
         return None
 
+    if x.size == 0:
+        return None
     if not x._c_contiguous:
         # TODO(asi1024): Support also for F-contiguous array
         return None
@@ -543,6 +545,10 @@ def _try_reduction_routine(x, axis, dtype, out, keepdims, op, alpha, beta):
             _reduction._get_out_shape(x.shape, reduce_axis, out_axis, False))
     else:
         out_arg = out
+
+    # TODO(asi1024): Remove temporary fix
+    in_arg._set_contiguous_strides(in_arg.itemsize, True)
+    out_arg._set_contiguous_strides(out_arg.itemsize, True)
 
     desc_in = create_tensor_descriptor(in_arg)
     desc_out = create_tensor_descriptor(out_arg)
