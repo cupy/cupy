@@ -995,6 +995,8 @@ cdef class ndarray:
         if _should_use_rop(x, y):
             return y.__radd__(x)
         else:
+            if isinstance(y, cupy.poly1d):
+                y = y._coeffs
             return _math._add(x, y)
 
     def __sub__(x, y):
