@@ -131,14 +131,15 @@ def _get_bin_edges(a, bins, range):
     elif isinstance(bins, cupy.ndarray) or numpy.ndim(bins) == 1:
         # TODO(okuta): After #3060 is merged, `if cupy.ndim(bins) == 1:`.
         if isinstance(bins, cupy.ndarray):
-            bin_edges = cupy.asarray(bins)
+            bin_edges = bins
         else:
             bin_edges = numpy.asarray(bins)
 
         if (bin_edges[:-1] > bin_edges[1:]).any():  # synchronize! when CuPy
             raise ValueError(
                 '`bins` must increase monotonically, when an array')
-        bin_edges = cupy.asarray(bin_edges)
+        if isinstance(bin_edges, numpy.ndarray):
+            bin_edges = cupy.asarray(bin_edges)
     elif numpy.ndim(bins) == 0:
         try:
             n_equal_bins = operator.index(bins)
