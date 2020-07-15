@@ -197,8 +197,6 @@ def _get_csr_submatrix(Ap, Aj, Ax,
     Aj = Aj[Bp[0]:Bp[-1]]
     Ax = Ax[Bp[0]:Bp[-1]]
 
-    Bp -= Bp[0]
-
     Aj_copy = cupy.zeros(Aj.size+1, dtype=Aj.dtype)
     Aj_copy[:-1] = Aj
 
@@ -212,7 +210,7 @@ def _get_csr_submatrix(Ap, Aj, Ax,
     Aj_copy[0] = 0
 
     cupy.cumsum(Aj_copy, out=Aj_copy)
-    Bp = Aj_copy[Bp]
+    Bp = Aj_copy[Bp-Bp[0]]
 
     Bj = Aj[mask[:-1]] - start_min
     Bx = Ax[mask[:-1]]
@@ -336,16 +334,14 @@ def _csr_row_slice(start, step, Ap, Aj, Ax, Bp):
         Bx : data array of output sparse matrix
     """
 
-    print("Inside row slice. start=%s, step=%s" % (start, step))
-
     in_rows = cupy.arange(Bp.size-1, dtype=Bp.dtype) * step + start
     start_offsets = Ap[in_rows]
     stop_offsets = Ap[in_rows+1]
 
     Aj_mask = cupy.zeros_like(Aj, dtype='bool')
 
-    _set_boolean_mask_for_offsets(start_offsets, stop_offsets,
-                                  Aj_mask, size=start_offsets.size)
+    _set_boolean_mask_for_offsets(
+        start_offsets, stop_offsets, Aj_mask, size=start_offsets.size)
 
     Bj = Aj[Aj_mask]
     Bx = Ax[Aj_mask]
