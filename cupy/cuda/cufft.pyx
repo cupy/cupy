@@ -723,6 +723,7 @@ class PlanNd(object):
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
         check_result(result)
+        self.plan = plan
 
         if batch == 0:
             work_size = 0
