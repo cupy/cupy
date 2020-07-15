@@ -1,6 +1,12 @@
 import cupy
 
 
+from cupyx.scipy.ndimage._filters_core import (
+    _convert_1d_args, _check_nd_args, _check_size_footprint_structure,
+    _fix_sequence_arg, _check_mode, _get_output, _check_origin, _get_inttype,
+    _run_1d_filters, _generate_nd_kernel, _call_kernel)
+
+
 def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
     """Multi-dimensional correlate.
 
@@ -162,6 +168,24 @@ def _get_correlate_kernel(mode, wshape, int_type, origins, cval):
         'sum += cast<W>({value}) * wval;',
         'y = cast<Y>(sum);',
         mode, wshape, int_type, origins, cval, ctype='W')
+
+
+def _run_1d_correlates(input, params, get_weights, output, mode, cval,
+                       origin=0):
+    """
+    Enhanced version of _run_1d_filters that uses correlate1d as the filter
+    function. The params are a list of values to pass to the get_weights
+    callable given. If duplicate param values are found, the weights are
+    reused from the first invocation of get_weights. The get_weights callable
+    must return a 1D array of weights to give to correlate1d.
+    """
+    wghts = {}
+    for param in params:
+        if param not in wghts:
+            wghts[param] = get_weights(param)
+    wghts = [wghts[param] for param in params]
+    return _run_1d_filters([None if w is None else correlate1d for w in wghts],
+                           input, wghts, output, mode, cval, origin)
 
 
 def uniform_filter1d(input, size, axis=-1, output=None, mode="reflect",
@@ -969,381 +993,147 @@ def _get_rank_kernel(filter_size, rank, mode, wshape, origins, cval, int_type):
         mode, wshape, int_type, origins, cval, preamble=sorter)
 
 
-def _get_output(output, input, shape=None):
-    if shape is None:
-        shape = input.shape
-    if isinstance(output, cupy.ndarray):
-        if output.shape != tuple(shape):
-            raise ValueError('output shape is not correct')
-    else:
-        dtype = output
-        if dtype is None:
-            dtype = input.dtype
-        output = cupy.zeros(shape, dtype)
-    return output
+def generic_filter(input, function, size=None, footprint=None,
+                   output=None, mode="reflect", cval=0.0, origin=0):
+    """Compute a multi-dimensional filter using the provided raw kernel,
+    reduction kernel, or a fused function that performs a reduction (or a
+    function that can be fused).
+
+    Unlike the scipy.ndimage function, this does not support the
+    ``extra_arguments`` or ``extra_keywordsdict`` arguments and has significant
+    restrictions on the ``function`` provided.
+
+    Args:
+        input (cupy.ndarray): The input array.
+        function (cupy.ReductionKernel, cupy.RawKernel,
+            cupy.core.fusion.Fusion, or callable):
+            The kernel or function to apply to each region.
+        size (int or sequence of int): One of ``size`` or ``footprint`` must be
+            provided. If ``footprint`` is given, ``size`` is ignored. Otherwise
+            ``footprint = cupy.ones(size)`` with ``size`` automatically made to
+            match the number of dimensions in ``input``.
+        footprint (cupy.ndarray): a boolean array which specifies which of the
+            elements within this shape will get passed to the filter function.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+        origin (scalar or tuple of scalar): The origin parameter controls the
+            placement of the filter, relative to the center of the current
+            element of the input. Default of 0 is equivalent to
+            ``(0,)*input.ndim``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
+
+    .. notes::
+        If the `function` is a :class:`cupy.RawKernel` then it must be for a
+        function that has the following signature. Unlike most functions, this
+        should not utilize `blockDim`/`blockIdx`/`threadIdx`.
+
+            __global__ void func(double *buffer, int filter_size,
+                                 double *return_value)
+
+        If the `function` is a :class:`cupy.ReductionKernel` then it must be
+        for a kernel that takes 1 array input and produces 1 'scalar' output.
+
+        If the `function` is a callable, it must be fuseable. If it is a fused
+        function it must either:
+
+          * resolve to a :class:`cupy.ReductionKernel` that meets the
+            requirements above
+          * resolve to a `FusedKernel` that takes 1 array input argument and
+            returns 1 'scalar' output
+
+    .. seealso:: :func:`scipy.ndimage.generic_filter`
+    """
+    from cupyx.scipy.ndimage._filters_generic import (
+        _get_sub_kernel, _get_generic_filter_raw, _get_generic_filter_red,
+        _get_generic_filter_fused)
+    _, footprint, _ = _check_size_footprint_structure(input.ndim, size,
+                                                      footprint, None, 2, True)
+    filter_size = int(footprint.sum())
+    origins, int_type = \
+        _check_nd_args(input, footprint, mode, origin, 'footprint')
+    in_dtype = input.dtype
+    sub = _get_sub_kernel(function, filter_size, in_dtype)
+    if footprint.size == 0:
+        return cupy.zeros_like(input)
+    output = _get_output(output, input)
+    args = (filter_size, mode, footprint.shape, origins, float(cval), int_type)
+    if isinstance(sub, cupy.RawKernel):
+        kernel = _get_generic_filter_raw(sub, *args)
+    elif isinstance(sub, cupy.ReductionKernel):
+        kernel = _get_generic_filter_red(sub, in_dtype, output.dtype, *args)
+    else:  # isinstance(sub, cupy.core._fusion_kernel.FusedKernel):
+        kernel = _get_generic_filter_fused(sub, in_dtype, output.dtype, *args)
+    return _call_kernel(kernel, input, footprint, output, weights_dtype=bool)
 
 
-def _fix_sequence_arg(arg, ndim, name, conv=lambda x: x):
-    if isinstance(arg, str):
-        return [conv(arg)] * ndim
-    try:
-        arg = iter(arg)
-    except TypeError:
-        return [conv(arg)] * ndim
-    lst = [conv(x) for x in arg]
-    if len(lst) != ndim:
-        msg = "{} must have length equal to input rank".format(name)
-        raise RuntimeError(msg)
-    return lst
+def generic_filter1d(input, function, filter_size, axis=-1, output=None,
+                     mode="reflect", cval=0.0, origin=0):
+    """Compute a 1D filter along the given axis using the provided raw kernel.
 
+    Unlike the scipy.ndimage function, this does not support the
+    ``extra_arguments`` or ``extra_keywordsdict`` arguments and has significant
+    restrictions on the ``function`` provided.
 
-def _check_origin(origin, width):
-    origin = int(origin)
-    if (width // 2 + origin < 0) or (width // 2 + origin >= width):
-        raise ValueError('invalid origin')
-    return origin
+    Args:
+        input (cupy.ndarray): The input array.
+        function (cupy.RawKernel): The kernel to apply along each axis.
+        filter_size (int): Length of the filter.
+        axis (int): The axis of input along which to calculate. Default is -1.
+        output (cupy.ndarray, dtype or None): The array in which to place the
+            output. Default is is same dtype as the input.
+        mode (str): The array borders are handled according to the given mode
+            (``'reflect'``, ``'constant'``, ``'nearest'``, ``'mirror'``,
+            ``'wrap'``). Default is ``'reflect'``.
+        cval (scalar): Value to fill past edges of input if mode is
+            ``'constant'``. Default is ``0.0``.
+        origin (int): The origin parameter controls the placement of the
+            filter, relative to the center of the current element of the
+            input. Default is ``0``.
+    Returns:
+        cupy.ndarray: The result of the filtering.
 
+    .. notes::
+        The provided function (as a RawKernel) must have the following
+        signature. Unlike most functions, this should not utilize
+        `blockDim`/`blockIdx`/`threadIdx`.
 
-def _check_mode(mode):
-    if mode not in ('reflect', 'constant', 'nearest', 'mirror', 'wrap'):
-        msg = 'boundary mode not supported (actual: {})'.format(mode)
-        raise RuntimeError(msg)
-    return mode
+            __global__ void func(double *input_line, ptrdiff_t input_length,
+                                 double *output_line, ptrdiff_t output_length)
 
+    .. seealso:: :func:`scipy.ndimage.generic_filter1d`
+    """
+    # This filter is very different than all other filters (including
+    # generic_filter and all 1d filters) and it has a customized solution.
+    # It is also likely fairly terrible, but only so much can be done when
+    # matching the scipy interface of having the sub-kernel work on entire
+    # lines of data.
+    from cupyx.scipy.ndimage._filters_generic import _get_generic_filter1d
 
-def _check_size_footprint_structure(ndim, size, footprint, structure,
-                                    stacklevel=3, force_footprint=False):
-    if structure is None and footprint is None:
-        if size is None:
-            raise RuntimeError("no footprint or filter size provided")
-        sizes = _fix_sequence_arg(size, ndim, 'size', int)
-        if force_footprint:
-            return None, cupy.ones(sizes, bool), None
-        return sizes, None, None
-    if size is not None:
-        import warnings
-        warnings.warn("ignoring size because {} is set".format(
-            'structure' if footprint is None else 'footprint'),
-            UserWarning, stacklevel=stacklevel+1)
-
-    if footprint is not None:
-        footprint = cupy.array(footprint, bool, True, 'C')
-        if not footprint.any():
-            raise ValueError("all-zero footprint is not supported")
-
-    if structure is None:
-        if not force_footprint and footprint.all():
-            if footprint.ndim != ndim:
-                raise RuntimeError("size must have length equal to input rank")
-            return footprint.shape, None, None
-        return None, footprint, None
-
-    structure = cupy.ascontiguousarray(structure)
-    if footprint is None:
-        footprint = cupy.ones(structure.shape, bool)
-    return None, footprint, structure
-
-
-def _convert_1d_args(ndim, weights, origin, axis):
-    if weights.ndim != 1 or weights.size < 1:
-        raise RuntimeError('incorrect filter size')
-    axis = cupy.util._normalize_axis_index(axis, ndim)
-    wshape = [1]*ndim
-    wshape[axis] = weights.size
-    weights = weights.reshape(wshape)
-    origins = [0]*ndim
-    origins[axis] = _check_origin(origin, weights.size)
-    return weights, tuple(origins)
-
-
-def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights'):
     if input.dtype.kind == 'c':
         raise TypeError('Complex type not supported')
+    if not isinstance(function, cupy.RawKernel):
+        raise TypeError('bad function type')
+    if filter_size < 1:
+        raise RuntimeError('invalid filter size')
+    axis = cupy.util._normalize_axis_index(axis, input.ndim)
+    origin = _check_origin(origin, filter_size)
     _check_mode(mode)
-    # The integer type to use for indices in the input array
-    # The indices actually use byte positions and we can't just use
-    # input.nbytes since that won't tell us the number of bytes between the
-    # first and last elements when the array is non-contiguous
-    nbytes = sum((x-1)*abs(stride) for x, stride in
-                 zip(input.shape, input.strides)) + input.dtype.itemsize
-    int_type = 'int' if nbytes < (1 << 31) else 'ptrdiff_t'
-    # However, weights must always be 2 GiB or less
-    if weights.nbytes > (1 << 31):
-        raise RuntimeError('weights must be 2 GiB or less, use FFTs instead')
-    weight_dims = [x for x in weights.shape if x != 0]
-    if len(weight_dims) != input.ndim:
-        raise RuntimeError('{} array has incorrect shape'.format(wghts_name))
-    origins = _fix_sequence_arg(origin, len(weight_dims), 'origin', int)
-    for origin, width in zip(origins, weight_dims):
-        _check_origin(origin, width)
-    return tuple(origins), int_type
-
-
-def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
-    """
-    Runs a series of 1D filters forming an nd filter. The filters must be a
-    list of callables that take input, arg, axis, output, mode, cval, origin.
-    The args is a list of values that are passed for the arg value to the
-    filter. Individual filters can be None causing that axis to be skipped.
-    """
-    output_orig = output
     output = _get_output(output, input)
-    modes = _fix_sequence_arg(mode, input.ndim, 'mode', _check_mode)
-    origins = _fix_sequence_arg(origin, input.ndim, 'origin', int)
-    n_filters = sum(filter is not None for filter in filters)
-    if n_filters == 0:
-        output[...] = input[...]
-        return output
-    # We can't operate in-place efficiently, so use a 2-buffer system
-    temp = _get_output(output.dtype, input) if n_filters > 1 else None
-    first = True
-    iterator = zip(filters, args, modes, origins)
-    for axis, (fltr, arg, mode, origin) in enumerate(iterator):
-        if fltr is None:
-            continue
-        fltr(input, arg, axis, output, mode, cval, origin)
-        input, output = output, temp if first else input
-    if isinstance(output_orig, cupy.ndarray) and input is not output_orig:
-        output_orig[...] = input
-        input = output_orig
-    return input
-
-
-def _run_1d_correlates(input, params, get_weights, output, mode, cval,
-                       origin=0):
-    """
-    Enhanced version of _run_1d_filters that uses correlate1d as the filter
-    function. The params are a list of values to pass to the get_weights
-    callable given. If duplicate param values are found, the weights are
-    reused from the first invocation of get_weights. The get_weights callable
-    must return a 1D array of weights to give to correlate1d.
-    """
-    wghts = {}
-    for param in params:
-        if param not in wghts:
-            wghts[param] = get_weights(param)
-    wghts = [wghts[param] for param in params]
-    return _run_1d_filters([None if w is None else correlate1d for w in wghts],
-                           input, wghts, output, mode, cval, origin)
-
-
-def _call_kernel(kernel, input, weights, output, structure=None,
-                 weights_dtype=cupy.float64, structure_dtype=cupy.float64):
-    """
-    Calls a constructed ElementwiseKernel. The kernel must take an input image,
-    an optional array of weights, an optional array for the structure, and an
-    output array.
-
-    weights and structure can be given as None (structure defaults to None) in
-    which case they are not passed to the kernel at all. If the output is given
-    as None then it will be allocated in this function.
-
-    This function deals with making sure that the weights and structure are
-    contiguous and float64 (or bool for weights that are footprints)*, that the
-    output is allocated and appriopately shaped. This also deals with the
-    situation that the input and output arrays overlap in memory.
-
-    * weights is always cast to float64 or bool in order to get an output
-    compatible with SciPy, though float32 might be sufficient when input dtype
-    is low precision. If weights_dtype is passed as weights.dtype then no
-    dtype conversion will occur. The input and output are never converted.
-    """
-    args = [input]
-    if weights is not None:
-        weights = cupy.ascontiguousarray(weights, weights_dtype)
-        args.append(weights)
-    if structure is not None:
-        structure = cupy.ascontiguousarray(structure, structure_dtype)
-        args.append(structure)
-    output = _get_output(output, input)
-    needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
-    if needs_temp:
-        output, temp = _get_output(output.dtype, input), output
-    args.append(output)
-    kernel(*args)
-    if needs_temp:
-        temp[...] = output[...]
-        output = temp
+    in_ctype = cupy.core._scalar.get_typename(input.dtype)
+    out_ctype = cupy.core._scalar.get_typename(output.dtype)
+    int_type = _get_inttype(input)
+    n_lines = input.size // input.shape[axis]
+    kernel = _get_generic_filter1d(function, input.shape[axis], n_lines,
+                                   filter_size, origin, mode, float(cval),
+                                   in_ctype, out_ctype, int_type)
+    data = cupy.array(
+        (axis, input.ndim) + input.shape + input.strides + output.strides,
+        dtype=cupy.int32 if int_type == 'int' else cupy.int64)
+    kernel(((n_lines+128-1) // 128,), (128,), (input, output, data))
     return output
-
-
-def _generate_boundary_condition_ops(mode, ix, xsize):
-    if mode == 'reflect':
-        ops = '''
-        if ({ix} < 0) {{
-            {ix} = - 1 - {ix};
-        }}
-        {ix} %= {xsize} * 2;
-        {ix} = min({ix}, 2 * {xsize} - 1 - {ix});'''.format(ix=ix, xsize=xsize)
-    elif mode == 'mirror':
-        ops = '''
-        if ({ix} < 0) {{
-            {ix} = - {ix};
-        }}
-        if ({xsize} == 1) {{
-            {ix} = 0;
-        }} else {{
-            {ix} = 1 + ({ix} - 1) % (({xsize} - 1) * 2);
-            {ix} = min({ix}, 2 * {xsize} - 2 - {ix});
-        }}'''.format(ix=ix, xsize=xsize)
-    elif mode == 'nearest':
-        ops = '''
-        {ix} = min(max({ix}, 0), {xsize} - 1);'''.format(ix=ix, xsize=xsize)
-    elif mode == 'wrap':
-        ops = '''
-        if ({ix} < 0) {{
-            {ix} += (1 - ({ix} / {xsize})) * {xsize};
-        }}
-        {ix} %= {xsize};'''.format(ix=ix, xsize=xsize)
-    elif mode == 'constant':
-        ops = '''
-        if ({ix} >= {xsize}) {{
-            {ix} = -1;
-        }}'''.format(ix=ix, xsize=xsize)
-    return ops
-
-
-_CAST_FUNCTION = """
-// Implements a casting function to make it compatible with scipy
-// Use like cast<to_type>(value)
-// It's actually really simple - most of this is <type_traits>
-
-// Small bit of <type_traits> which cannot be imported in NVRTC
-// Requires compiling with --std=c++11 or higher
-template<bool B, class T=void> struct enable_if {};
-template<class T> struct enable_if<true, T> { typedef T type; };
-template<class T> struct remove_const          { typedef T type; };
-template<class T> struct remove_const<const T> { typedef T type; };
-template<class T> struct remove_volatile             { typedef T type; };
-template<class T> struct remove_volatile<volatile T> { typedef T type; };
-template<class T> struct remove_cv {
-  typedef typename remove_volatile<typename remove_const<T>::type>::type type;
-};
-template<class T, T v>
-struct integral_constant { static constexpr T value = v; };
-//struct true_type { static constexpr bool value = true; };
-//struct false_type { static constexpr bool value = false; };
-typedef integral_constant<bool, true> true_type;
-typedef integral_constant<bool, false> false_type;
-template<class T> struct __is_fp : public false_type {};
-template<>        struct __is_fp<float> : public true_type {};
-template<>        struct __is_fp<double> : public true_type {};
-template<>        struct __is_fp<long double> : public true_type {};
-template<class T> struct is_floating_point
-    : public __is_fp<typename remove_cv<T>::type> {};
-template<class T> struct is_signed : integral_constant<bool, (T)(-1)<0> {};
-
-template <typename B, typename A>
-__device__
-typename enable_if<!is_floating_point<A>::value||is_signed<B>::value, B>::type
-cast(A a) { return (B)a; }
-
-template <typename B, typename A>
-__device__
-typename enable_if<is_floating_point<A>::value&&!is_signed<B>::value, B>::type
-cast(A a) { return (a >= 0) ? (B)a : -(B)(-a); }
-
-
-"""
-
-
-def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
-                        origins, cval, ctype='X', preamble='', options=(),
-                        has_weights=True, has_structure=False):
-    # Currently this code uses CArray for weights but avoids using CArray for
-    # the input data and instead does the indexing itself since it is faster.
-    # If CArray becomes faster than follow the comments that start with
-    # CArray: to switch over to using CArray for the input data as well.
-
-    ndim = len(wshape)
-    in_params = 'raw X x'
-    if has_weights:
-        in_params += ', raw W w'
-    if has_structure:
-        in_params += ', raw S s'
-    out_params = 'Y y'
-
-    # CArray: remove xstride_{j}=... from string
-    sizes = ['{type} xsize_{j}=x.shape()[{j}], xstride_{j}=x.strides()[{j}];'.
-             format(j=j, type=int_type) for j in range(ndim)]
-    inds = _generate_indices_ops(ndim, int_type,
-                                 [x//2 + o for x, o in zip(wshape, origins)])
-    # CArray: remove expr entirely
-    expr = ' + '.join(['ix_{}'.format(j) for j in range(ndim)])
-
-    ws_init = ws_pre = ws_post = ''
-    if has_weights or has_structure:
-        ws_init = 'int iws = 0;'
-        if has_structure:
-            ws_pre = 'S sval = s[iws];\n'
-        if has_weights:
-            ws_pre += 'W wval = w[iws];\nif (wval)'
-        ws_post = 'iws++;'
-
-    loops = []
-    for j in range(ndim):
-        if wshape[j] == 1:
-            # CArray: string becomes 'inds[{j}] = ind_{j};', remove (int_)type
-            loops.append('{{ {type} ix_{j} = ind_{j} * xstride_{j};'.
-                         format(j=j, type=int_type))
-        else:
-            boundary = _generate_boundary_condition_ops(
-                mode, 'ix_{}'.format(j), 'xsize_{}'.format(j))
-            # CArray: last line of string becomes inds[{j}] = ix_{j};
-            loops.append('''
-    for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)
-    {{
-        {type} ix_{j} = ind_{j} + iw_{j};
-        {boundary}
-        ix_{j} *= xstride_{j};
-        '''.format(j=j, wsize=wshape[j], boundary=boundary, type=int_type))
-
-    # CArray: string becomes 'x[inds]', no format call needed
-    value = '(*(X*)&data[{expr}])'.format(expr=expr)
-    if mode == 'constant':
-        cond = ' || '.join(['(ix_{} < 0)'.format(j) for j in range(ndim)])
-        value = '(({cond}) ? cast<{ctype}>({cval}) : {value})'.format(
-            cond=cond, ctype=ctype, cval=cval, value=value)
-    found = found.format(value=value)
-
-    # CArray: replace comment and next line in string with
-    #   {type} inds[{ndim}] = {{0}};
-    # and add ndim=ndim, type=int_type to format call
-    operation = '''
-    {sizes}
-    {inds}
-    // don't use a CArray for indexing (faster to deal with indexing ourselves)
-    const unsigned char* data = (const unsigned char*)&x[0];
-    {ws_init}
-    {pre}
-    {loops}
-        // inner-most loop
-        {ws_pre} {{
-            {found}
-        }}
-        {ws_post}
-    {end_loops}
-    {post}
-    '''.format(sizes='\n'.join(sizes), inds=inds, pre=pre, post=post,
-               ws_init=ws_init, ws_pre=ws_pre, ws_post=ws_post,
-               loops='\n'.join(loops), found=found, end_loops='}'*ndim)
-
-    name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
-        name, ndim, mode, '_'.join(['{}'.format(x) for x in wshape]))
-    if int_type == 'ptrdiff_t':
-        name += '_i64'
-    if has_structure:
-        name += '_with_structure'
-    preamble = _CAST_FUNCTION + preamble
-    options += ('--std=c++11',)
-    return cupy.ElementwiseKernel(in_params, out_params, operation, name,
-                                  reduce_dims=False, preamble=preamble,
-                                  options=options)
-
-
-def _generate_indices_ops(ndim, int_type, offsets):
-    code = '{type} ind_{j} = _i % xsize_{j} - {offset}; _i /= xsize_{j};'
-    body = [code.format(type=int_type, j=j, offset=offsets[j])
-            for j in range(ndim-1, 0, -1)]
-    return '{type} _i = i;\n{body}\n{type} ind_0 = _i - {offset};'.format(
-        type=int_type, body='\n'.join(body), offset=offsets[0])
