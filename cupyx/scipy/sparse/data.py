@@ -161,7 +161,7 @@ class _minmax_mixin(object):
             if 0 in self.shape:
                 raise ValueError("zero-size array to reduction operation")
 
-            zero = self.dtype.type(0)
+            zero = cupy.zeros((), dtype=self.dtype)
             if self.nnz == 0:
                 return zero
             if sum_duplicates:
