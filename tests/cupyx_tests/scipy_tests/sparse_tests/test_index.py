@@ -8,10 +8,10 @@ import pytest
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.1, 0.5, 0.9],
+    'density': [0.1, 0.4, 0.9],
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'n_rows': [25, 100],
-    'n_cols': [25, 100]
+    'n_rows': [150],
+    'n_cols': [150]
 }))
 @testing.with_requires('scipy')
 class TestIndexing(unittest.TestCase):
@@ -36,11 +36,16 @@ class TestIndexing(unittest.TestCase):
             min_h = min
 
         if min is not None:
-            expected = a.get()[maj_h, min_h]
+
+            expected = a.get()
+            expected = expected[maj_h, min_h]
+
             actual = a[maj, min]
             cupy.cuda.Stream.null.synchronize()
         else:
-            expected = a.get()[maj_h]
+            expected = a.get()
+            expected = expected[maj_h]
+
             actual = a[maj]
             cupy.cuda.Stream.null.synchronize()
 
@@ -73,6 +78,10 @@ class TestIndexing(unittest.TestCase):
         self._run([1, 5, 4])
         self._run([10, 2])
         self._run([2])
+
+    def test_major_bool_fancy(self):
+        rand_bool = cupy.random.random(self.n_rows).astype(cupy.bool)
+        self._run(rand_bool)
 
     def test_major_slice_minor_slice(self):
         self._run(slice(1, 5), slice(1, 5))
