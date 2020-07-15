@@ -104,7 +104,7 @@ def _get_generic_filter_fused(fk, in_dtype, out_dtype, filter_size, mode,
     setup = 'int iv = 0;\n' + '\n'.join(vars)
     sub_call = 'fused_kernel::{}({});\ny = cast<Y>(val_out[0]);'.format(
         fk._name, ', '.join(args + ['1']*len(fk._block_strides)))
-    sub_kernel = 'namespace fused_kernel {{{}}}'.format(_fused_kernel_code(fk))
+    sub_kernel = 'namespace fused_kernel {{\n{}\n}}'.format(_fused_kernel_code(fk))
 
     # Get the final kernel
     return _generate_nd_kernel(
@@ -132,7 +132,7 @@ def _fused_kernel_code(fk):
     code = re.sub(r'\b(thread|block|grid)Idx\s*\.\s*[xyz]\b', '0', code)
     code = re.sub(r'\b(thread|block|grid)Dim\s*\.\s*[xyz]\b', '1', code)
     code = re.sub(r'\bCUPY_FOR\(', 'CUPY_FOR_ST(', code)
-    code = '#define CUPY_FOR_ST(i, n) for (int i = 0; i < (n); ++i)\n' + code
+    code = '\n#define CUPY_FOR_ST(i, n) for (int i = 0; i < (n); ++i)\n' + code
 
     return code
 
@@ -428,7 +428,7 @@ def _get_generic_filter_raw(rk, filter_size, mode, wshape, origins, cval,
         'generic_{}_{}'.format(filter_size, rk.name),
         setup, 'values[iv++] = cast<double>({value});', sub_call,
         mode, wshape, int_type, origins, cval,
-        preamble='namespace raw_kernel {{{}}}'.format(rk.code),
+        preamble='namespace raw_kernel {{\n{}\n}}'.format(rk.code),
         options=rk.options)
 
 
@@ -479,7 +479,7 @@ def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
                     loop.format(end, in_length, b))
 
     name = 'generic1d_{}_{}_{}'.format(length, filter_size, rk.name)
-    code = '''namespace raw_kernel {{{rk_code}}}
+    code = '''namespace raw_kernel {{\n{rk_code}\n}}
 
 {CAST}
 
