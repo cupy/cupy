@@ -21,7 +21,7 @@ cdef class poly1d:
 
     """
     __hash__ = None
-    __array_priority__ = -1000000
+    __array_priority__ = -10000000
 
     cdef:
         readonly ndarray _coeffs
