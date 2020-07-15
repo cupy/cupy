@@ -5,7 +5,7 @@
 
 #if CUPY_USE_HIP
 
-#include "cupy_hiprnad.h"
+#include "cupy_hiprand.h"
 
 #elif !defined(CUPY_NO_CUDA)
 
