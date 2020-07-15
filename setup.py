@@ -174,11 +174,11 @@ setup(
     long_description=long_description,
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
-    url='https://cupy.chainer.org/',
+    url='https://cupy.dev/',
     license='MIT License',
     project_urls={
         "Bug Tracker": "https://github.com/cupy/cupy/issues",
-        "Documentation": "https://docs-cupy.chainer.org/",
+        "Documentation": "https://docs.cupy.dev/",
         "Source Code": "https://github.com/cupy/cupy",
     },
     classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],

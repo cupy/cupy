@@ -1355,7 +1355,7 @@ cdef class ndarray:
         # Don't use for now, interface uncertain
         # elif method =='at' and name == 'add':
             # the only ufunc attribute currently
-            # http://docs-cupy.chainer.org/en/stable/reference/ufunc.html#ufunc-at
+            # http://docs.cupy.dev/en/stable/reference/ufunc.html#ufunc-at
             # self.scatter_add(*inputs, **kwargs)
         else:
             return NotImplemented
