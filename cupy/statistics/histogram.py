@@ -217,29 +217,24 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                     and x.size <= 0x7fffffff and bin_edges.size <= 0x7fffffff):
                 # Need to ensure the dtype of bin_edges as it's needed for both
                 # the CUB call and the correction later
-                if isinstance(bins, cupy.ndarray):
-                    bin_type = cupy.result_type(bin_edges, x)
-                    if cupy.issubdtype(bin_type, cupy.integer):
-                        bin_type = cupy.result_type(bin_type, float)
-                    bin_edges = bin_edges.astype(bin_type, copy=False)
+                assert isinstance(bin_edges, cupy.ndarray)
+                bin_type = numpy.result_type(bin_edges.dtype, x.dtype)
+                if numpy.issubdtype(x.dtype, numpy.integer):
+                    bin_type = numpy.float
+                else:
+                    # TODO(okuta): support float16
+                    if bin_type == numpy.float16:
+                        bin_type = numpy.float32
+                    x = x.astype(bin_type, copy=False)
+                acc_bin_edge = bin_edges.astype(bin_type, copy=True)
                 # CUB's upper bin boundary is exclusive for all bins, including
                 # the last bin, so we must shift it to comply with NumPy
                 if x.dtype.kind in 'ui':
-                    bin_edges[-1] += 1
+                    acc_bin_edge[-1] += 1
                 elif x.dtype.kind == 'f':
-                    old_edge = bin_edges[-1].copy()
-                    bin_edges[-1] = cupy.nextafter(bin_edges[-1],
-                                                   bin_edges[-1] + 1)
-                y = cub.device_histogram(x, bin_edges, y)
-                # shift the uppermost edge back
-                if x.dtype.kind in 'ui':
-                    bin_edges[-1] -= 1
-                elif x.dtype.kind == 'f':
-                    bin_edges[-1] = old_edge
-
-                # TODO(asi1024): Refactor temporary fix for dtype compatibility
-                if isinstance(bins, cupy.ndarray):
-                    bin_edges = bin_edges.astype(bins.dtype, copy=False)
+                    last = acc_bin_edge[-1]
+                    acc_bin_edge[-1] = cupy.nextafter(last, last + 1)
+                y = cub.device_histogram(x, acc_bin_edge, y)
                 break
         else:
             _histogram_kernel(x, bin_edges, bin_edges.size, y)
