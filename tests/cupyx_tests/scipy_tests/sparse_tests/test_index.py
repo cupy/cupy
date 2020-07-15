@@ -3,8 +3,6 @@ import unittest
 import cupy
 from cupy import testing
 
-import pytest
-
 import scipy
 import scipy.sparse
 
@@ -21,8 +19,8 @@ class TestSetitemIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None, data=5):
         a = scipy.sparse.random(self.n_rows, self.n_cols,
-                               format=self.format,
-                               density=self.density)
+                                format=self.format,
+                                density=self.density)
 
         # sparse.random doesn't support complex types
         # so we need to cast

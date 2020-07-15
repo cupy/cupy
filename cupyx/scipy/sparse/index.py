@@ -381,68 +381,46 @@ def _csr_row_slice(start, step, Ap, Aj, Ax, Bp):
  */
 """
 
-_csr_sample_offsets_ker_types = {
-    (_int32_dtype): 'csr_sample_offsets<int>',
-    (_int64_dtype): 'csr_sample_offsets<long long>',
-}
-_csr_sample_offsets_ker = core.RawModule(code="""
-template <typename I>
-__global__
-void csr_sample_offsets(const I n_row,
-                        const I n_col,
-                        const I *Ap,
-                        const I *Aj,
-                        const I n_samples,
-                        const I *Bi,
-                        const I *Bj,
-                              I *Bp,
-                        bool *dupl) {
-    int n = blockIdx.x * blockDim.x + threadIdx.x;
+_csr_sample_offsets_ker = core.ElementwiseKernel(
+    '''I n_row, I n_col, raw I Ap, raw I Aj, raw I Bi, raw I Bj''',
+    'raw I Bp, raw bool dupl', '''
+    const I Bi_i = Bi[i];
+    const I Bj_i = Bj[i];
+    const I j = Bi_i < 0 ? Bi_i + n_row : Bi_i; // sample row
+    const I k = Bj_i < 0 ? Bj_i + n_col : Bj_i; // sample column
 
-    if(n < n_samples)
+    const I row_start = Ap[j];
+    const I row_end   = Ap[j+1];
+
+    I offset = -1;
+
+    for(I jj = row_start; jj < row_end; jj++)
     {
-        const I Bi_n = Bi[n];
-        const I Bj_n = Bj[n];
-        const I i = Bi_n < 0 ? Bi_n + n_row : Bi_n; // sample row
-        const I j = Bj_n < 0 ? Bj_n + n_col : Bj_n; // sample column
-        
-        const I row_start = Ap[i];
-        const I row_end   = Ap[i+1];
-        
-        I offset = -1;
-
-        for(I jj = row_start; jj < row_end; jj++)
-        {
-            if (Aj[jj] == j) {
-                offset = jj;
-                for (jj++; jj < row_end; jj++) {
-                    if (Aj[jj] == j) {
-                        offset = -2;
-                        dupl[0] = true;
-                    }
+        if (Aj[jj] == k) {
+            offset = jj;
+            for (jj++; jj < row_end; jj++) {
+                if (Aj[jj] == k) {
+                    offset = -2;
+                    dupl[0] = true;
                 }
             }
         }
-        Bp[n] = offset;
     }
-}
-""", options=_module_options, name_expressions=tuple(
-    _csr_sample_offsets_ker_types.values()))
+    Bp[i] = offset;
+''', 'csr_sample_offsets_ker', no_return=True)
 
 
 def _csr_sample_offsets(n_row, n_col,
-                       Ap, Aj, n_samples,
-                       Bi, Bj, tpb=1024):
-    grid = math.ceil(n_samples / tpb)
-    kernel = _csr_sample_offsets_ker.get_function(
-        _csr_sample_offsets_ker_types[Ap.dtype]
-    )
+                        Ap, Aj, n_samples,
+                        Bi, Bj):
 
     offsets = cupy.zeros(n_samples, dtype=Aj.dtype)
 
     dupl = cupy.array([False], dtype='bool')
-    kernel((grid,), (tpb,),
-           (n_row, n_col, Ap, Aj, n_samples, Bi, Bj, offsets, dupl))
+    _csr_sample_offsets_ker(n_row, n_col,
+                            Ap, Aj, Bi, Bj,
+                            offsets, dupl,
+                            size=n_samples)
 
     return offsets, dupl.item()
 
@@ -754,7 +732,6 @@ def _maybe_bool_ndarray(idx):
     """
     idx = cupy.asanyarray(idx)
     if idx.dtype.kind == 'b':
-        print("It's bool!")
         return idx
     return None
 
@@ -780,13 +757,11 @@ def _compatible_boolean_index(idx):
     """
     # Presence of attribute `ndim` indicates a compatible array type.
     if hasattr(idx, 'ndim') or _first_element_bool(idx):
-        print("Returning maybe bool index array")
         return _maybe_bool_ndarray(idx)
     return None
 
 
 def _boolean_index_to_array(idx):
-    print("INside boolean index to array")
     if idx.ndim > 1:
         raise IndexError('invalid index shape')
     return cupy.where(idx)[0]

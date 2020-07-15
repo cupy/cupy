@@ -779,7 +779,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return i, j, M, N
 
     def _set_many(self, i, j, x):
-
         """Sets value at each (i, j) to x
         Here (i,j) index major and minor respectively, and must not contain
         duplicate entries.
@@ -859,7 +858,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # Update index data type
         idx_dtype = sputils.get_index_dtype(
             (self.indices, self.indptr), maxval=(
-                    self.indptr[-1].item() + x.size))
+                self.indptr[-1].item() + x.size))
         self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
         self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
         i = cupy.asarray(i, dtype=idx_dtype)
@@ -878,30 +877,26 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         new_nnzs = cupy.diff(ui_indptr)
 
-        with cupy.prof.time_range(message="computing placement", color_id=4):
+        prev = 0
+        for c, (ii, js, je) in enumerate(zip(ui, ui_indptr, ui_indptr[1:])):
 
-            prev = 0
-            for c, (ii, js, je) in enumerate(zip(ui, ui_indptr, ui_indptr[1:])):
-                # append old entries for each row
+            # append old entries for each row
+            start = self.indptr[prev]
+            stop = self.indptr[ii]
+            indices_parts.append(self.indices[start:stop])
+            data_parts.append(self.data[start:stop])
 
-                # @TODO: This part could be done in complete parallel
-                start = self.indptr[prev]
-                stop = self.indptr[ii]
-                indices_parts.append(self.indices[start:stop])
-                data_parts.append(self.data[start:stop])
+            # handle duplicate j: keep last setting
+            uj, uj_indptr = cupy.unique(j[js:je][::-1], return_index=True)
+            if len(uj) == je - js:
+                indices_parts.append(j[js:je])
+                data_parts.append(x[js:je])
+            else:
+                indices_parts.append(j[js:je][::-1][uj_indptr])
+                data_parts.append(x[js:je][::-1][uj_indptr])
+                new_nnzs[c] = len(uj)
 
-                # @TODO(cjnolet): This is where most of the time in this function is spent
-                # handle duplicate j: keep last setting
-                uj, uj_indptr = cupy.unique(j[js:je][::-1], return_index=True)
-                if len(uj) == je - js:
-                    indices_parts.append(j[js:je])
-                    data_parts.append(x[js:je])
-                else:
-                    indices_parts.append([uj_indptr])
-                    data_parts.append(x[js:je][::-1][uj_indptr])
-                    new_nnzs[c] = len(uj)
-
-                prev = ii
+            prev = ii
 
         # remaining old entries
         start = self.indptr[ii]
@@ -1069,7 +1064,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         """
         return self._shape
-
 
     has_sorted_indices = property(fget=__get_sorted, fset=__set_sorted)
 
