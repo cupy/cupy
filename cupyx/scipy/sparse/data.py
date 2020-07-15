@@ -166,7 +166,7 @@ class _minmax_mixin(object):
                 return zero
             if sum_duplicates:
                 self.sum_duplicates()
-            m = min_or_max(self.data.ravel())
+            m = min_or_max(self.data)
             if non_zero:
                 return m
             if self.nnz != internal.prod(self.shape):
