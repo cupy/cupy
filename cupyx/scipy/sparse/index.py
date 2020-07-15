@@ -1,10 +1,8 @@
 """Indexing mixin for sparse matrix classes.
 """
-import math
 from .sputils import isintlike
 
 from numpy import integer
-from numpy import dtype
 
 import cupy
 import cupyx
@@ -12,35 +10,6 @@ from cupy import core
 
 
 INT_TYPES = (int, integer)
-
-_int32_dtype = dtype('int32')
-_int64_dtype = dtype('int64')
-_float32_dtype = dtype('float32')
-_float64_dtype = dtype('float64')
-_complex64_dtype = dtype('complex64')
-_complex128_dtype = dtype('complex128')
-
-_supported_types = {
-    _int32_dtype: 'int',
-    _int64_dtype: 'long long',
-    _float32_dtype: 'float',
-    _float64_dtype: 'double',
-    _complex64_dtype: 'complex<float>',
-    _complex128_dtype: 'complex<double>'
-}
-
-_module_options = ('--std=c++11',)
-
-
-def _build_name_expressions(types, kernel_name):
-
-    def parse_types(t):
-        if isinstance(types[0], tuple):
-            return ','.join([_supported_types[tu] for tu in t])
-        else:
-            return _supported_types[t]
-
-    return {t: '%s<%s>' % (kernel_name, parse_types(t)) for t in types}
 
 
 def _csr_column_index1_indptr(unique_idxs, sort_idxs, col_counts,
@@ -118,53 +87,29 @@ def _csr_column_index1(col_idxs, Ap, Aj):
     return Bp, Aj_mask, col_counts, sort_idxs
 
 
-_get_csr_index2_ker_types = _build_name_expressions(
-    [(_int32_dtype, _float32_dtype), (_int32_dtype, _float64_dtype),
-     (_int32_dtype, _complex64_dtype), (_int32_dtype, _complex128_dtype),
-     (_int64_dtype, _float32_dtype), (_int64_dtype, _float64_dtype),
-     (_int64_dtype, _complex64_dtype), (_int64_dtype, _complex128_dtype)],
-    'csr_index2_ker')
-_get_csr_index2_ker = core.RawModule(code="""
-    #include <cupy/complex.cuh>
-    template<typename I, typename T>
-    __global__
-    void csr_index2_ker(I *idxs,
-                        I *col_counts,
-                        I *col_order,
-                        const I *Ap,
-                        const I *Aj,
-                        const T *Ax,
-                        I n_row,
-                        I *Bp,
-                        I *Bj,
-                        T *Bx) {
+_csr_column_index2_ker = core.ElementwiseKernel(
+    '''raw I idxs, raw I col_counts, raw I col_order,
+       raw I Ap, raw I Aj_mask, raw T Ax, raw I Bp''',
+    'raw I Bj, raw T Bx', '''
+    I n = Bp[i];
 
-    // Get the index of the thread
-    I i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if(i < n_row) {
-
-        I n = Bp[i];
-
-        // loop through columns in current row
-        for(int jj = Ap[i]; jj < Ap[i+1]; jj++) {
-            I col = Aj[jj];  // current column
-            if(col != -1) {
-                const T v = Ax[jj];
-                const I counts = col_counts[idxs[col]];
-                for(int l = 0; l < counts; l++) {
-                    if(l > 0)
-                        col = col_order[col];
-                    Bj[n] = col;
-                    Bx[n] = v;
-                    n++;
-                }
+    // loop through columns in current row
+    for(int jj = Ap[i]; jj < Ap[i+1]; jj++) {
+        I col = Aj_mask[jj];  // current column
+        if(col != -1) {
+            T v = Ax[jj];
+            I counts = col_counts[idxs[col]];
+            for(int l = 0; l < counts; l++) {
+                if(l > 0)
+                    col = col_order[col];
+                Bj[n] = col;
+                Bx[n] = v;
+                n++;
             }
         }
     }
-}
-""", options=_module_options, name_expressions=tuple(
-    _get_csr_index2_ker_types.values()))
+
+''', 'csr_index2_ker', no_return=True)
 
 
 def _csr_column_inv_idx(idxs):
@@ -173,6 +118,7 @@ def _csr_column_inv_idx(idxs):
 
     Args
         idxs : array of indices to invert
+        tpb : threads per block for underlying kernel
 
     Returns
         idxs_adj : inverted indices where idxs_adj[idxs[i]] = i
@@ -188,7 +134,7 @@ def _csr_column_index2(col_order,
                        col_counts,
                        sort_idxs,
                        Ap, Aj_mask, Ax,
-                       Bp, tpb=1024):
+                       Bp):
     """Populate indices and data arrays from column index
 
     Args
@@ -215,16 +161,12 @@ def _csr_column_index2(col_order,
 
     col_order[col_order[:-1]] = col_order[1:]
 
-    idxs_adj = _csr_column_inv_idx(sort_idxs)
+    idxs = _csr_column_inv_idx(sort_idxs)
 
-    grid = math.ceil((Bp.size-1) / tpb)
-    func = _get_csr_index2_ker_types[(Ap.dtype, Bx.dtype)]
-    kernel = _get_csr_index2_ker.get_function(func)
-    kernel((grid,), (tpb,),
-           (idxs_adj,
-            col_counts,
-            col_order,
-            Ap, Aj_mask, Ax, Ap.size - 1, Bp, Bj, Bx))
+    _csr_column_index2_ker(
+        idxs, col_counts, col_order,
+        Ap, Aj_mask, Ax, Bp, Bj, Bx,
+        size=Ap.size-1)
 
     return Bj, Bx
 
@@ -280,52 +222,27 @@ def _get_csr_submatrix(Ap, Aj, Ax,
     return Bp, Bj, Bx
 
 
-_csr_row_index_ker_types = _build_name_expressions(
-    [(_int32_dtype, _float32_dtype), (_int32_dtype, _float64_dtype),
-     (_int32_dtype, _complex64_dtype), (_int32_dtype, _complex128_dtype),
-     (_int64_dtype, _float32_dtype), (_int64_dtype, _float64_dtype),
-     (_int64_dtype, _complex64_dtype), (_int64_dtype, _complex128_dtype)],
-    'csr_row_index_ker')
-_csr_row_index_ker = core.RawModule(code="""
-    #include <cupy/complex.cuh>
-    template<typename I, typename T>
-    __global__
-    void csr_row_index_ker(const I n_row_idx,
-                           const I *rows,
-                           const I *Ap,
-                           const I *Aj,
-                           const T *Ax,
-                           const I *Bp,
-                           I *Bj,
-                           T *Bx) {
+_csr_row_index_ker = core.ElementwiseKernel(
+    '''raw I rows, raw I Ap, raw I Aj, raw T Ax, raw I Bp''',
+    '''raw I Bj, raw T Bx''', '''
+    const I row = rows[i];
+    const I row_start = Ap[row];
+    const I row_end = Ap[row+1];
 
-        // Get the index of the thread
-        I i = blockIdx.x * blockDim.x + threadIdx.x;
+    I out_row_idx = Bp[i];
 
-        if(i < n_row_idx) {
-
-            I row = rows[i];
-            I row_start = Ap[row];
-            I row_end = Ap[row+1];
-
-            I out_row_idx = Bp[i];
-
-            // Copy columns
-            for(I j = row_start; j < row_end; j++) {
-                Bj[out_row_idx] = Aj[j];
-                Bx[out_row_idx] = Ax[j];
-                out_row_idx++;
-            }
-        }
+    // Copy columns
+    for(I j = row_start; j < row_end; j++) {
+        Bj[out_row_idx] = Aj[j];
+        Bx[out_row_idx] = Ax[j];
+        out_row_idx++;
     }
-
-""", options=_module_options, name_expressions=tuple(
-    _csr_row_index_ker_types.values()))
+''', 'csr_row_index_ker', no_return=True)
 
 
 def _csr_row_index(rows,
                    Ap, Aj, Ax,
-                   Bp, tpb=1024):
+                   Bp):
     """Populate indices and data arrays from the given row index
 
     Args
@@ -341,26 +258,18 @@ def _csr_row_index(rows,
         Bx : data array of output sparse matrix
     """
 
-    grid = math.ceil(rows.size / tpb)
-
     nnz = Bp[-1].item()
     Bj = cupy.empty(nnz, dtype=Aj.dtype)
     Bx = cupy.empty(nnz, dtype=Ax.dtype)
 
-    kernel = _csr_row_index_ker.get_function(
-        _csr_row_index_ker_types[(Ap.dtype, Ax.dtype)]
-    )
-    kernel((grid,), (tpb,),
-           (rows.size, rows,
-            Ap, Aj, Ax,
-            Bp, Bj, Bx))
+    _csr_row_index_ker(rows, Ap, Aj, Ax, Bp, Bj, Bx, size=rows.size)
 
     return Bj, Bx
 
 
 def _csr_sample_values(n_row, n_col,
                        Ap, Aj, Ax,
-                       Bi, Bj, tpb=1024):
+                       Bi, Bj):
     """Populate data array for a set of rows and columns
 
     Args
@@ -376,63 +285,31 @@ def _csr_sample_values(n_row, n_col,
     Returns
         Bx : data array for output sparse matrix
     """
-
-    n_samples = Bi.size
-
-    grid = math.ceil(n_samples / tpb)
-
     Bx = cupy.empty(Bi.size, dtype=Ax.dtype)
-
-    kernel = _csr_sample_values_kern.get_function(
-        _csr_sample_values_kern_types[(Ap.dtype, Ax.dtype)]
-    )
-    kernel((grid,), (tpb,),
-           (n_row, n_col, Ap, Aj, Ax,
-            n_samples, Bi, Bj, Bx))
+    _csr_sample_values_kern(n_row, n_col,
+                            Ap, Aj, Ax,
+                            Bi, Bj, Bx, size=Bi.size)
 
     return Bx
 
 
-_csr_sample_values_kern_types = _build_name_expressions(
-    [(_int32_dtype, _float32_dtype), (_int32_dtype, _float64_dtype),
-     (_int32_dtype, _complex64_dtype), (_int32_dtype, _complex128_dtype)],
-    'csr_sample_values_kern')
-_csr_sample_values_kern = core.RawModule(code="""
-    #include <cupy/complex.cuh>
-    template<typename I, typename T>
-    __global__
-    void csr_sample_values_kern(const I n_row,
-                                const I n_col,
-                                const I *Ap,
-                                const I *Aj,
-                                const T *Ax,
-                                const I n_samples,
-                                const I *Bi,
-                                const I *Bj,
-                                T *Bx) {
+_csr_sample_values_kern = core.ElementwiseKernel(
+    '''I n_row, I n_col, raw I Ap, raw I Aj, raw T Ax, raw I Bi, raw I Bj''',
+    'raw T Bx', '''
+    const I j = Bi[i] < 0 ? Bi[i] + n_row : Bi[i]; // sample row
+    const I k = Bj[i] < 0 ? Bj[i] + n_col : Bj[i]; // sample column
 
-        // Get the index of the thread
-        int n = blockIdx.x * blockDim.x + threadIdx.x;
+    const I row_start = Ap[j];
+    const I row_end   = Ap[j+1];
 
-        if(n < n_samples) {
-            const I i = Bi[n] < 0 ? Bi[n] + n_row : Bi[n]; // sample row
-            const I j = Bj[n] < 0 ? Bj[n] + n_col : Bj[n]; // sample column
-
-            const I row_start = Ap[i];
-            const I row_end   = Ap[i+1];
-
-            T x = 0;
-
-            for(I jj = row_start; jj < row_end; jj++) {
-                if (Aj[jj] == j)
-                    x += Ax[jj];
-            }
-
-            Bx[n] = x;
-        }
+    T x = 0;
+    for(I jj = row_start; jj < row_end; jj++) {
+        if (Aj[jj] == k)
+            x += Ax[jj];
     }
-""", options=_module_options, name_expressions=tuple(
-    _csr_sample_values_kern_types.values()))
+
+    Bx[i] = x;
+''', 'csr_sample_values_kern', no_return=True)
 
 
 _set_boolean_mask_for_offsets = core.ElementwiseKernel(
