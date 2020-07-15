@@ -756,7 +756,6 @@ class PlanNd(object):
 
         self.shape = tuple(shape)
         self.fft_type = fft_type
-        self.plan = plan
         self.work_area = work_area
         self.order = order  # either 'C' or 'F'
         self.last_axis = last_axis  # ignored for C2C
