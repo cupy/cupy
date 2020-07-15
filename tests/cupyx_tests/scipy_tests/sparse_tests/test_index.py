@@ -14,6 +14,7 @@ import pytest
     'n_cols': [25, 150]
 }))
 @testing.with_requires('scipy')
+@testing.gpu
 class TestIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None):
