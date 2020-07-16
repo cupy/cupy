@@ -99,7 +99,7 @@ _available_cusparse_version = {
     'csrilu02_analysis': (8000, None),
     'csrsv2_solve': (8000, None),
     'csrsv2_analysis': (8000, None),
-    'spmv': (10200, None),
+    'spmv': (10200, None),  # accuracy bugs in cuSparse 10.3.0
     'spmm': (10301, None),
     'csr2dense': (8000, None),
     'csc2dense': (8000, None),
@@ -114,7 +114,7 @@ _available_cusparse_version = {
     'csc2csrEx2': (10200, None),  # the entity is csr2cscEx2
     'dense2csc': (8000, None),
     'dense2csr': (8000, None),
-    'csr2csr_compress': (8000, None)
+    'csr2csr_compress': (8000, None),
 }
 
 

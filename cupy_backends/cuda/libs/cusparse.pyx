@@ -53,87 +53,6 @@ cdef extern from 'cupy_cusparse.h' nogil:
 
     # cuSPARSE Level2 Function
 
-    cusparseStatus_t cusparseCreateCsrsv2Info(csrsv2Info_t *info)
-    cusparseStatus_t cusparseDestroyCsrsv2Info(csrsv2Info_t info)
-
-    Status cusparseScsrsv2_bufferSize(
-        Handle handle, Operation transA, int m, int nnz,
-        MatDescr descrA, const float *csrValA,
-        const int *csrRowPtrA, const int *csrColIndA,
-        const csrsv2Info_t info, int *pBufferSizeInBytes)
-
-    Status cusparseDcsrsv2_bufferSize(
-        Handle handle, Operation transA, int m, int nnz,
-        MatDescr descrA, const double *csrValA,
-        const int *csrRowPtrA, const int *csrColIndA,
-        const csrsv2Info_t info, int *pBufferSizeInBytes)
-
-    Status cusparseCcsrsv2_bufferSize(
-        Handle handle, Operation transA, int m, int nnz,
-        MatDescr descrA, const cuComplex *csrValA,
-        const int *csrRowPtrA, const int *csrColIndA,
-        const csrsv2Info_t info, int *pBufferSizeInBytes)
-
-    Status cusparseZcsrsv2_bufferSize(
-        Handle handle, Operation transA, int m, int nnz,
-        MatDescr descrA, const cuDoubleComplex *csrValA,
-        const int *csrRowPtrA, const int *csrColIndA,
-        const csrsv2Info_t info, int *pBufferSizeInBytes)
-
-    Status cusparseScsrsv2_analysis(
-        Handle handle, Operation transA, int m, int nnz,
-        MatDescr descrA, const float *csrValA,
-        const int *csrRowPtrA, const int *csrColIndA,
-        const csrsv2Info_t info, cusparseSolvePolicy_t policy, void *pBuffer)
-
-    Status cusparseDcsrsv2_analysis(
-        Handle handle, Operation transA, int m, int nnz,
-        MatDescr descrA, const double *csrValA,
-        const int *csrRowPtrA, const int *csrColIndA,
-        const csrsv2Info_t info, cusparseSolvePolicy_t policy, void *pBuffer)
-
-    Status cusparseCcsrsv2_analysis(
-        Handle handle, Operation transA, int m, int nnz,
-        MatDescr descrA, const cuComplex *csrValA,
-        const int *csrRowPtrA, const int *csrColIndA,
-        const csrsv2Info_t info, cusparseSolvePolicy_t policy, void *pBuffer)
-
-    Status cusparseZcsrsv2_analysis(
-        Handle handle, Operation transA, int m, int nnz,
-        MatDescr descrA, const cuDoubleComplex *csrValA,
-        const int *csrRowPtrA, const int *csrColIndA,
-        const csrsv2Info_t info, cusparseSolvePolicy_t policy, void *pBuffer)
-
-    Status cusparseScsrsv2_solve(
-        Handle handle, Operation transA, int m, int nnz,
-        const float *alpha, MatDescr descrA, const float *csrValA,
-        const int *csrRowPtrA, const int *csrColIndA, const csrsv2Info_t info,
-        const float *x, float *y,
-        cusparseSolvePolicy_t policy, void *pBuffer)
-
-    Status cusparseDcsrsv2_solve(
-        Handle handle, Operation transA, int m, int nnz,
-        const double *alpha, MatDescr descrA, const double *csrValA,
-        const int *csrRowPtrA, const int *csrColIndA, const csrsv2Info_t info,
-        const double *x, double *y,
-        cusparseSolvePolicy_t policy, void *pBuffer)
-
-    Status cusparseCcsrsv2_solve(
-        Handle handle, Operation transA, int m, int nnz,
-        const cuComplex *alpha, MatDescr descrA,
-        const cuComplex *csrValA, const int *csrRowPtrA,
-        const int *csrColIndA, const csrsv2Info_t info,
-        const cuComplex *x, cuComplex *y,
-        cusparseSolvePolicy_t policy, void *pBuffer)
-
-    Status cusparseZcsrsv2_solve(
-        Handle handle, Operation transA, int m, int nnz,
-        const cuDoubleComplex *alpha, MatDescr descrA,
-        const cuDoubleComplex *csrValA, const int *csrRowPtrA,
-        const int *csrColIndA, const csrsv2Info_t info,
-        const cuDoubleComplex *x, cuDoubleComplex *y,
-        cusparseSolvePolicy_t policy, void *pBuffer)
-
     Status cusparseScsrmv(
         Handle handle, Operation transA, int m, int n, int nnz,
         const float *alpha, MatDescr descrA, const float *csrSortedValA,
@@ -235,6 +154,88 @@ cdef extern from 'cupy_cusparse.h' nogil:
         const int *csrRowPtrA, const int *csrColIndA,
         const cuDoubleComplex *B, int ldb, const cuDoubleComplex *beta,
         cuDoubleComplex *C, int ldc)
+
+
+    cusparseStatus_t cusparseCreateCsrsv2Info(csrsv2Info_t *info)
+    cusparseStatus_t cusparseDestroyCsrsv2Info(csrsv2Info_t info)
+
+    Status cusparseScsrsv2_bufferSize(
+        Handle handle, Operation transA, int m, int nnz,
+        MatDescr descrA, const float *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const csrsv2Info_t info, int *pBufferSizeInBytes)
+
+    Status cusparseDcsrsv2_bufferSize(
+        Handle handle, Operation transA, int m, int nnz,
+        MatDescr descrA, const double *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const csrsv2Info_t info, int *pBufferSizeInBytes)
+
+    Status cusparseCcsrsv2_bufferSize(
+        Handle handle, Operation transA, int m, int nnz,
+        MatDescr descrA, const cuComplex *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const csrsv2Info_t info, int *pBufferSizeInBytes)
+
+    Status cusparseZcsrsv2_bufferSize(
+        Handle handle, Operation transA, int m, int nnz,
+        MatDescr descrA, const cuDoubleComplex *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const csrsv2Info_t info, int *pBufferSizeInBytes)
+
+    Status cusparseScsrsv2_analysis(
+        Handle handle, Operation transA, int m, int nnz,
+        MatDescr descrA, const float *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const csrsv2Info_t info, cusparseSolvePolicy_t policy, void *pBuffer)
+
+    Status cusparseDcsrsv2_analysis(
+        Handle handle, Operation transA, int m, int nnz,
+        MatDescr descrA, const double *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const csrsv2Info_t info, cusparseSolvePolicy_t policy, void *pBuffer)
+
+    Status cusparseCcsrsv2_analysis(
+        Handle handle, Operation transA, int m, int nnz,
+        MatDescr descrA, const cuComplex *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const csrsv2Info_t info, cusparseSolvePolicy_t policy, void *pBuffer)
+
+    Status cusparseZcsrsv2_analysis(
+        Handle handle, Operation transA, int m, int nnz,
+        MatDescr descrA, const cuDoubleComplex *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const csrsv2Info_t info, cusparseSolvePolicy_t policy, void *pBuffer)
+
+    Status cusparseScsrsv2_solve(
+        Handle handle, Operation transA, int m, int nnz,
+        const float *alpha, MatDescr descrA, const float *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA, const csrsv2Info_t info,
+        const float *x, float *y,
+        cusparseSolvePolicy_t policy, void *pBuffer)
+
+    Status cusparseDcsrsv2_solve(
+        Handle handle, Operation transA, int m, int nnz,
+        const double *alpha, MatDescr descrA, const double *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA, const csrsv2Info_t info,
+        const double *x, double *y,
+        cusparseSolvePolicy_t policy, void *pBuffer)
+
+    Status cusparseCcsrsv2_solve(
+        Handle handle, Operation transA, int m, int nnz,
+        const cuComplex *alpha, MatDescr descrA,
+        const cuComplex *csrValA, const int *csrRowPtrA,
+        const int *csrColIndA, const csrsv2Info_t info,
+        const cuComplex *x, cuComplex *y,
+        cusparseSolvePolicy_t policy, void *pBuffer)
+
+    Status cusparseZcsrsv2_solve(
+        Handle handle, Operation transA, int m, int nnz,
+        const cuDoubleComplex *alpha, MatDescr descrA,
+        const cuDoubleComplex *csrValA, const int *csrRowPtrA,
+        const int *csrColIndA, const csrsv2Info_t info,
+        const cuDoubleComplex *x, cuDoubleComplex *y,
+        cusparseSolvePolicy_t policy, void *pBuffer)
 
     # cuSPARSE Extra Function
     Status cusparseXcsrgeamNnz(
