@@ -1,4 +1,5 @@
 import cupy
+from cupy.core import internal
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import util
 
@@ -155,6 +156,27 @@ class _minmax_mixin(object):
                               "an 'out' parameter."))
 
         util.validateaxis(axis)
+
+        if axis is None:
+            if 0 in self.shape:
+                raise ValueError("zero-size array to reduction operation")
+
+            zero = cupy.zeros((), dtype=self.dtype)
+            if self.nnz == 0:
+                return zero
+            if sum_duplicates:
+                self.sum_duplicates()
+            m = min_or_max(self.data)
+            if non_zero:
+                return m
+            if self.nnz != internal.prod(self.shape):
+                if min_or_max is cupy.min:
+                    m = cupy.minimum(zero, m)
+                elif min_or_max is cupy.max:
+                    m = cupy.maximum(zero, m)
+                else:
+                    assert False
+            return m
 
         if axis == 0 or axis == 1:
             return self._min_or_max_axis(axis, min_or_max, sum_duplicates,
