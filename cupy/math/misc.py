@@ -8,6 +8,7 @@ from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
 from cupy.cuda import cufft
+from cupy.fft.fft import _output_dtype
 from cupy.lib import stride_tricks
 
 
@@ -64,6 +65,7 @@ def _fft_convolve(a1, a2, mode):
         a1, a2 = a2, a1
         offset = 1 - a2.size % 2
 
+    # if either of them is complex, the dtype after multiplication will also be
     if a1.dtype.kind == 'c' or a2.dtype.kind == 'c':
         fft, ifft = cupy.fft.fft, cupy.fft.ifft
         is_c2c = True
@@ -71,13 +73,13 @@ def _fft_convolve(a1, a2, mode):
         fft, ifft = cupy.fft.rfft, cupy.fft.irfft
         is_c2c = False
 
+    # hack to work around NumPy/CuPy FFT dtype incompatibility:
+    # CuPy internally converts fp16 to fp32 before doing FFT (whereas Numpy
+    # converts both fp16 and fp32 to fp64), so here we do the cast early and
+    # explicitly, and make sure a correct cuFFT plan can be generated. After
+    # the fft-ifft round trip, we cast the output dtype to the correct one.
     out_dtype = cupy.result_type(a1, a2)
-
-    # hack to work around NumPy/CuPy FFT dtype incompatibility
-    if out_dtype == cupy.float16:
-        dtype = cupy.float32
-    else:
-        dtype = out_dtype
+    dtype = _output_dtype(out_dtype, 'C2C' if is_c2c else 'R2C')
     a1 = a1.astype(dtype, copy=False)
     a2 = a2.astype(dtype, copy=False)
 
