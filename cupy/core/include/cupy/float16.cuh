@@ -65,9 +65,6 @@ public:
   __device__ operator complex<float>() const {
       return complex<float>(float(data_), 0);
   }
-  __device__ operator complex<double>() const {
-      return complex<double>(double(data_), 0);
-  }
 
   static const unsigned short nan = 0x7e00u;
 
