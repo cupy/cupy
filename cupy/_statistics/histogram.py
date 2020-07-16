@@ -224,7 +224,8 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                 # Need to ensure the dtype of bin_edges as it's needed for both
                 # the CUB call and the correction later
                 assert isinstance(bin_edges, cupy.ndarray)
-                if numpy.issubdtype(x.dtype, numpy.integer):
+                if (isinstance(bins, int)
+                        or numpy.issubdtype(x.dtype, numpy.integer)):
                     bin_type = numpy.float
                 else:
                     bin_type = numpy.result_type(bin_edges.dtype, x.dtype)
@@ -233,6 +234,7 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                         bin_type = numpy.float32
                     x = x.astype(bin_type, copy=False)
                 acc_bin_edge = bin_edges.astype(bin_type, copy=True)
+
                 # CUB's upper bin boundary is exclusive for all bins, including
                 # the last bin, so we must shift it to comply with NumPy
                 if x.dtype.kind in 'ui':
