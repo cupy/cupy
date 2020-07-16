@@ -1379,7 +1379,7 @@ class TestCsrMatrixData(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mean_axis_negative_2(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        return m.mean(axis=-1)
+        return m.mean(axis=-2)
 
 
 @testing.parameterize(*testing.product({
