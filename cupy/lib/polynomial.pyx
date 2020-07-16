@@ -21,7 +21,7 @@ cdef class poly1d:
 
     """
     __hash__ = None
-    __array_priority__ = -10000000
+    __array_priority__ = 90
 
     cdef:
         readonly ndarray _coeffs
@@ -127,6 +127,9 @@ cdef class poly1d:
         raise NotImplementedError
 
     def __add__(self, other):
+        if isinstance(self, numpy.generic):
+            # for the case: numpy scalar + poly1d
+            return self + other._coeffs
         return _routines_poly.polyadd(self, other)
 
     # TODO(Dahlia-Chehata): implement using polymul
