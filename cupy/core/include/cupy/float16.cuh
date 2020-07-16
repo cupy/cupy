@@ -1,7 +1,5 @@
 #pragma once
-#ifdef CUPY_CUB_BLOCK_REDUCTION
 #include <cupy/complex.cuh>
-#endif
 
 
 // math
@@ -64,16 +62,12 @@ public:
   explicit __device__ float16(const __half_raw &v): data_(v) {}
 
   __device__ operator float() const {return float(data_);}
-#ifdef CUPY_CUB_BLOCK_REDUCTION
-  // these type conversion functions are needed for CUB load to be able
-  // to do an implicit conversion
   __device__ operator complex<float>() const {
       return complex<float>(float(data_), 0);
   }
   __device__ operator complex<double>() const {
       return complex<double>(double(data_), 0);
   }
-#endif
 
   static const unsigned short nan = 0x7e00u;
 
