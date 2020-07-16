@@ -369,7 +369,7 @@ class TestCubHistogram(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_histogram_with_bins(self, xp, dtype_a, dtype_b):
         x = testing.shaped_arange((10,), xp, dtype_a)
-        bins = testing.shaped_arange((10,), xp, dtype_a)
+        bins = testing.shaped_arange((4,), xp, dtype_a)
 
         if xp is numpy:
             return xp.histogram(x, bins)[0]
