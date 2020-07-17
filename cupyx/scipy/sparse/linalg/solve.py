@@ -68,7 +68,7 @@ def lsqr(A, b):
     return ret
 
 
-def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxit=numpy.inf, callback=None):
+def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf, callback=None, atol='legacy'):
     """Solves linear system using an iterative solver BiCGSTAB.
 
     See https://docs.nvidia.com/cuda/cusparse/#csrilu02_solve and
@@ -82,13 +82,16 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxit=numpy.inf, callback=None):
             with dimension ``(N, N)``
         b (cupy.ndarray): Right-hand side vector.
         x0 (cupy.ndarray): Initial guess (defaults to zeros)
-        M (cupy.ndarray, str, callable): preconditioner (diagonal if ndarray, or specified by string)
-        maxit (int): maximum number of iterations (defaults to `numpy.inf`)
+        M (callable, str): GPU preconditioner function or str to indicate preconditioner choice, can also specify
+                            preconditioner as a string (e.g., 'ilu', 'jacobi')
+        maxiter (int): maximum number of iterations (defaults to `numpy.inf`)
         callback (callable): a callback function to call at each iteration
+        (unlike scipy, it accepts iteration and residual as well as current vector `x`)
+        atol (str): Currently a dummy parameter to be used in a future release
 
     Returns:
         tuple:
-            A tuple of result x and info (always 0)
+            A tuple of result x and info (as in scipy, 0 if successful, 1 if no convergence, <0 if rho or omega breakdown)
 
     .. seealso:: :func:`scipy.sparse.linalg.bicgstab`
     """
@@ -107,69 +110,59 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxit=numpy.inf, callback=None):
     else:
         dtype = numpy.promote_types(A.dtype.char, 'f').char
 
-    handle = device.get_cusolver_sp_handle()
-
     # Calculate initial residual
     x0 = x0 if x0 is not None else cupy.zeros(n, dtype=dtype)
-    r = cusparse.spmv(A, x0, b, 1, -1)
+    r = cusparse.spmv(A, x0, b, -1, 1)
     p, q = cupy.zeros_like(r), cupy.zeros_like(r)
     r_tilde = r.copy()
-
-    if isinstance(M, cupy.ndarray):
-        if not M.ndim == 1 and M.shape[0] == n:
-            raise ValueError(f'Expected M.ndim == 1 and M.shape[0] == {n},'
-                             f'but got M.ndim == {M.ndim} and M.shape[0] == {M.shape[0]}')
-        msolve = lambda vec: vec / M
-    elif M == 'ilu':
-        msolve, info_M, info_L, info_U = _get_msolve_ilu(A.copy(), handle)
-    elif M == 'jacobi':
-        raise NotImplementedError('A.diagonal() still needs to be implemented...')
-        # msolve = lambda vec: vec / A.diagonal()
-    elif M is None:
-        msolve = lambda vec: vec
-    else:
-        raise AttributeError('Expected M to be ilu, jacobi or cupy.ndarray')
 
     # Main BiCGSTAB loop
 
     i = 0
-    phat, shat = cupy.empty_like(r), cupy.empty_like(r)
-    rho, alpha, omega = 1, 1, 1
+    rho = alpha = omega = info = 1
 
     x = x0.copy()
+    tol = cupy.linalg.norm(b) * tol
+    atol = 0 if atol == 'legacy' else atol
 
-    while i < maxit:
+    # preconditioner
+    M, info_M, info_L, info_U = get_M(A, M)
+
+    while i < maxiter:
         i += 1
         prev_rho = rho
-        rho = cupy.dot(cupy.conj(r_tilde), r)
+        rho = cupy.dot(r_tilde.conj(), r)
         if rho == 0:
-            raise RuntimeError('rho = 0, you should probably chance your preconditioner.')
+            info = -10
+            break
+            # warning??
+            # raise RuntimeError('rho = 0, you should probably chance your preconditioner.')
         beta = rho / prev_rho * alpha / omega
         p = r + beta * (p - omega * q)
 
         # Alpha step
-        if isinstance(M, str) and M == 'ilu':
-            msolve(p, phat)
-        else:
-            phat = msolve(p)
+        phat = M(p)  # apply preconditioner
 
         q = cusparse.spmv(A, phat)
-        alpha = rho / cupy.dot(cupy.conj(r_tilde), q)
+        alpha = rho / cupy.dot(r_tilde.conj(), q)
         s = r - alpha * q
 
         residual = cupy.linalg.norm(s)
-        if residual < tol:
+        if residual < tol or residual < atol:
             x += alpha * phat
+            info = 0
             break
 
         # Omega step
-        if isinstance(M, str) and M == 'ilu':
-            msolve(s, shat)
-        else:
-            shat = msolve(s)
+        shat = M(s)  # apply preconditioner
 
         t = cusparse.spmv(A, shat)
         omega = cupy.dot(cupy.conj(t), s) / cupy.square(cupy.linalg.norm(t))
+        if omega == 0:
+            info = -11
+            break
+            # warning??
+            # raise RuntimeError('omega = 0, you should probably chance your preconditioner.')
 
         x += alpha * phat + omega * shat
         r = s - omega * t
@@ -177,22 +170,42 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxit=numpy.inf, callback=None):
         residual = cupy.linalg.norm(r)
         if callback is not None:
             callback(x, i, r)
-        if residual < tol:
+        if residual < tol or residual < atol:
+            info = 0
             break
 
-    if M == 'ilu':
-        cusparse.destroyCsrilu02Info(info_M)
-        cusparse.destroyCsrilu02Info(info_L)
-        cusparse.destroyCsrilu02Info(info_U)
+    _destroy_ilu(info_M, info_L, info_U)
 
-    return x, i
+    return x, info
 
 
-def _get_msolve_ilu(A, handle):
+def get_M(A, preconditioner=None):
+    if hasattr(preconditioner, '__call__'):
+        return preconditioner, None, None, None
+    elif isinstance(preconditioner, cupy.ndarray):
+        if not preconditioner.ndim == 1 and preconditioner.shape[0] == A.n:
+            raise ValueError(f'Expected M.ndim == 1 and M.shape[0] == {A.n},'
+                             f'but got M.ndim == {preconditioner.ndim} and M.shape[0] == {preconditioner.shape[0]}')
+        M = (lambda vec: vec / M), None, None, None
+    elif preconditioner == 'ilu':
+        return _get_M_ilu(A.copy())
+
+    elif preconditioner == 'jacobi':
+        raise NotImplementedError('A.diagonal() still needs to be implemented...')
+        # M = lambda vec: vec / A.diagonal(), None, None, None
+    elif preconditioner is None:
+        return (lambda vec: vec), None, None, None
+    else:
+        raise AttributeError('Expected M to be ilu, jacobi or cupy.ndarray')
+
+
+def _get_M_ilu(A):
     # Setup M, the Incomplete LU factorization of A
     # See https://docs.nvidia.com/cuda/cusparse/#csrilu02_solve
 
     # support float32, float64, complex64, and complex128
+    handle = device.get_cusolver_sp_handle()
+
     if A.dtype.char in 'fdFD':
         dtype = A.dtype.char
     else:
@@ -246,10 +259,19 @@ def _get_msolve_ilu(A, handle):
 
     y = cupy.empty(n, dtype=dtype)
 
-    def msolve(vec, out):
+    def msolve(vec):
+        out = cupy.empty(n, dtype=dtype)
         cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_L, *A_tuple_a(descr_L),
                                 info_L, vec.data.ptr, y.data.ptr, info_L, policy_L, buff.data.ptr)
         cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_U, *A_tuple_a(descr_U),
                                 info_U, y.data.ptr, out.data.ptr, info_U, policy_U, buff.data.ptr)
+        return out
 
     return msolve, info_M, info_L, info_U
+
+
+def _destroy_ilu(info_M, info_L, info_U):
+    if info_M is not None:
+        cupy.cuda.cusparse.destroyCsrilu02Info(info_M)
+        cupy.cuda.cusparse.destroyCsrilu02Info(info_L)
+        cupy.cuda.cusparse.destroyCsrilu02Info(info_U)
