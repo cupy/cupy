@@ -236,10 +236,10 @@ class coo_matrix(sparse_data._data_matrix):
                 >>> a.sum_duplicates()  # a is scipy.sparse.coo_matrix
                 >>> A.row
                 array([0, 1, 1, 2, 2, 2], dtype=int32)
-                >>> A.col
-                array([0, 0, 1, 0, 1, 2], dtype=int32)
                 >>> a.row
                 array([0, 1, 2, 1, 2, 2], dtype=int32)
+                >>> A.col
+                array([0, 0, 1, 0, 1, 2], dtype=int32)
                 >>> a.col
                 array([0, 0, 0, 1, 1, 2], dtype=int32)
 
