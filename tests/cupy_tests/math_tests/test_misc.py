@@ -232,8 +232,6 @@ class TestConvolveShapeCombination(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full']
 }))
-@unittest.skipIf(
-    cupy.cuda.cufft.getVersion() == 10000, 'Causes large precision errors')
 class TestConvolve(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
