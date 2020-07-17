@@ -13,7 +13,6 @@ import cupy
 from cupy import testing
 from cupy.testing import condition
 from cupyx.scipy import sparse
-from cupy import cusparse
 
 
 @testing.parameterize(*testing.product({

@@ -428,53 +428,6 @@ cusparseStatus_t cusparseZcsrmv(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-cusparseStatus_t cusparseScsrsv2_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDcsrsv2_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseCcsrsv2_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseZcsrsv2_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseScsrsv2_analysis(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDcsrsv2_analysis(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseCcsrsv2_analysis(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseZcsrsv2_analysis(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseScsrsv2_solve(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDcsrsv2_solve(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseCcsrsv2_solve(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseZcsrsv2_solve(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
 
 // cuSPARSE Level3 Function
 cusparseStatus_t cusparseScsrmm(...) {
@@ -730,6 +683,62 @@ cusparseStatus_t cusparseCcsrmm2(...) {
 }
 
 cusparseStatus_t cusparseZcsrmm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCreateCsrsv2Info(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDestroyCsrsv2Info(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsv2_solve(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 

@@ -68,7 +68,8 @@ def lsqr(A, b):
     return ret
 
 
-def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf, callback=None, atol='legacy'):
+def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
+             callback=None, atol='legacy'):
     """Solves linear system using an iterative solver BiCGSTAB.
 
     See https://docs.nvidia.com/cuda/cusparse/#csrilu02_solve and
@@ -82,16 +83,21 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf, callback=None, 
             with dimension ``(N, N)``
         b (cupy.ndarray): Right-hand side vector.
         x0 (cupy.ndarray): Initial guess (defaults to zeros)
-        M (callable, str): GPU preconditioner function or str to indicate preconditioner choice, can also specify
-                            preconditioner as a string (e.g., 'ilu', 'jacobi')
+        M (callable, str): GPU preconditioner function or str to indicate
+                            preconditioner choice, can also specify
+                            preconditioner as a string (e.g., 'ilu', 'jacobi').
+        tol (float): Tolerance for convergence, exits when
+                     residual norm(r) < tol * norm(b)
         maxiter (int): maximum number of iterations (defaults to `numpy.inf`)
         callback (callable): a callback function to call at each iteration
-        (unlike scipy, it accepts iteration and residual as well as current vector `x`)
+                            (unlike scipy, it accepts iteration and
+                            residual as well as current vector `x`)
         atol (str): Currently a dummy parameter to be used in a future release
 
     Returns:
         tuple:
-            A tuple of result x and info (as in scipy, 0 if successful, 1 if no convergence, <0 if rho or omega breakdown)
+            A tuple of result x and info (as in scipy, 0 if successful,
+            1 if no convergence, <0 if rho or omega breakdown)
 
     .. seealso:: :func:`scipy.sparse.linalg.bicgstab`
     """
@@ -126,7 +132,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf, callback=None, 
     atol = 0 if atol == 'legacy' else atol
 
     # preconditioner
-    M, info_M, info_L, info_U = get_M(A, M)
+    M, info = get_M(A, M)
 
     while i < maxiter:
         i += 1
@@ -135,8 +141,6 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf, callback=None, 
         if rho == 0:
             info = -10
             break
-            # warning??
-            # raise RuntimeError('rho = 0, you should probably chance your preconditioner.')
         beta = rho / prev_rho * alpha / omega
         p = r + beta * (p - omega * q)
 
@@ -161,8 +165,6 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf, callback=None, 
         if omega == 0:
             info = -11
             break
-            # warning??
-            # raise RuntimeError('omega = 0, you should probably chance your preconditioner.')
 
         x += alpha * phat + omega * shat
         r = s - omega * t
@@ -174,27 +176,39 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf, callback=None, 
             info = 0
             break
 
-    _destroy_ilu(info_M, info_L, info_U)
+    _destroy_ilu(info)
 
     return x, info
 
 
 def get_M(A, preconditioner=None):
+    """
+
+    Args:
+        A: Matrix to be preconditioned
+        preconditioner: callable, nparray, or str to specify preconditioner method
+
+    Returns:
+
+    """
     if hasattr(preconditioner, '__call__'):
-        return preconditioner, None, None, None
+        return preconditioner, None
     elif isinstance(preconditioner, cupy.ndarray):
-        if not preconditioner.ndim == 1 and preconditioner.shape[0] == A.n:
-            raise ValueError(f'Expected M.ndim == 1 and M.shape[0] == {A.n},'
-                             f'but got M.ndim == {preconditioner.ndim} and M.shape[0] == {preconditioner.shape[0]}')
-        M = (lambda vec: vec / M), None, None, None
+        ndim = preconditioner.ndim
+        n = preconditioner.shape[0]
+        if not ndim == 1 and n == A.n:
+            expect_msg = 'Expected M.ndim == 1 and M.shape[0] == {}, '.format(A.n)
+            actual_msg = 'got M.ndim == {} and M.shape[0] == {}'.format(n, ndim)
+            raise ValueError(expect_msg, actual_msg)
+        M = (lambda vec: vec / M), None
     elif preconditioner == 'ilu':
         return _get_M_ilu(A.copy())
-
     elif preconditioner == 'jacobi':
-        raise NotImplementedError('A.diagonal() still needs to be implemented...')
+        raise NotImplementedError(
+            'A.diagonal() still needs to be implemented...')
         # M = lambda vec: vec / A.diagonal(), None, None, None
     elif preconditioner is None:
-        return (lambda vec: vec), None, None, None
+        return (lambda vec: vec), None
     else:
         raise AttributeError('Expected M to be ilu, jacobi or cupy.ndarray')
 
@@ -211,25 +225,35 @@ def _get_M_ilu(A):
     else:
         dtype = numpy.promote_types(A.dtype.char, 'f').char
     alpha = numpy.array(1, dtype).ctypes
-    A_tuple = lambda descr: (A.shape[0], A.nnz, descr.descriptor, A.data.data.ptr,
-                             A.indptr.data.ptr, A.indices.data.ptr)
-    A_tuple_a = lambda descr: (A.shape[0], A.nnz, alpha.data, descr.descriptor, A.data.data.ptr,
-                               A.indptr.data.ptr, A.indices.data.ptr)
+
+    def A_tuple(descr):
+        return (A.shape[0], A.nnz, descr.descriptor, A.data.data.ptr,
+                A.indptr.data.ptr, A.indices.data.ptr)
+
+    def A_tuple_a(descr):
+        return (A.shape[0], A.nnz, alpha.data, descr.descriptor,
+                A.data.data.ptr, A.indptr.data.ptr, A.indices.data.ptr)
+
     n = A.shape[0]
 
     # create info objects
     info_M = cupy.cuda.cusparse.createCsrilu02Info()
-    info_L, info_U = cupy.cuda.cusparse.createCsrsv2Info(), cupy.cuda.cusparse.createCsrsv2Info()
+    info_L, info_U = cupy.cuda.cusparse.createCsrsv2Info(
+    ), cupy.cuda.cusparse.createCsrsv2Info()
 
     # create solve policies
-    policy_M, policy_L = cupy.cuda.cusparse.CUSPARSE_SOLVE_POLICY_NO_LEVEL, cupy.cuda.cusparse.CUSPARSE_SOLVE_POLICY_NO_LEVEL
+    policy_M = cupy.cuda.cusparse.CUSPARSE_SOLVE_POLICY_NO_LEVEL
+    policy_L = cupy.cuda.cusparse.CUSPARSE_SOLVE_POLICY_NO_LEVEL
     policy_U = cupy.cuda.cusparse.CUSPARSE_SOLVE_POLICY_USE_LEVEL
 
     # define trans
-    trans_L, trans_U = cupy.cuda.cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE, cupy.cuda.cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+    trans_L = cupy.cuda.cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+    trans_U = cupy.cuda.cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
 
     # create descriptions
-    descr_M, descr_L, descr_U = cusparse.MatDescriptor.create(), cusparse.MatDescriptor.create(), cusparse.MatDescriptor.create()
+    descr_M = cusparse.MatDescriptor.create()
+    descr_L = cusparse.MatDescriptor.create()
+    descr_U = cusparse.MatDescriptor.create()
     descr_M.set_mat_index_base(cupy.cuda.cusparse.CUSPARSE_INDEX_BASE_ONE)
     descr_M.set_mat_type(cupy.cuda.cusparse.CUSPARSE_MATRIX_TYPE_GENERAL)
     descr_L.set_mat_index_base(cupy.cuda.cusparse.CUSPARSE_INDEX_BASE_ONE)
@@ -242,36 +266,44 @@ def _get_M_ilu(A):
     descr_U.set_mat_diag_type(cupy.cuda.cusparse.CUSPARSE_DIAG_TYPE_NON_UNIT)
 
     # get required buffer size and allocate corresponding memory
-    buff_size_M = cusparse._call_cusparse('csrilu02_bufferSize', dtype, handle, *A_tuple(descr_M), info_M)
-    buff_size_L = cusparse._call_cusparse('csrsv2_bufferSize', dtype, handle, trans_L, *A_tuple(descr_L), info_L)
-    buff_size_U = cusparse._call_cusparse('csrsv2_bufferSize', dtype, handle, trans_U, *A_tuple(descr_U), info_U)
+    buff_size_M = cusparse._call_cusparse(
+        'csrilu02_bufferSize', dtype, handle, *A_tuple(descr_M), info_M)
+    buff_size_L = cusparse._call_cusparse(
+        'csrsv2_bufferSize', dtype, handle, trans_L, *A_tuple(descr_L), info_L)
+    buff_size_U = cusparse._call_cusparse(
+        'csrsv2_bufferSize', dtype, handle, trans_U, *A_tuple(descr_U), info_U)
     buff_size = numpy.max((buff_size_M, buff_size_L, buff_size_U))
     buff = cupy.empty(int(buff_size), dtype=cupy.int8)
     assert buff.data.ptr % 128 == 0
 
     # Analysis (setup) of M = LU, the Incomplete LU factorization of A
-    cusparse._call_cusparse('csrilu02_analysis', dtype, handle, *A_tuple(descr_M), info_M, policy_M, buff.data.ptr)
-    cusparse._call_cusparse('csrsv2_analysis', dtype, handle, trans_L, *A_tuple(descr_L), info_L, policy_L, buff.data.ptr)
-    cusparse._call_cusparse('csrsv2_analysis', dtype, handle, trans_U, *A_tuple(descr_U), info_U, policy_U, buff.data.ptr)
+    cusparse._call_cusparse('csrilu02_analysis', dtype, handle,
+                            *A_tuple(descr_M), info_M, policy_M, buff.data.ptr)
+    cusparse._call_cusparse('csrsv2_analysis', dtype, handle, trans_L,
+                            *A_tuple(descr_L), info_L, policy_L, buff.data.ptr)
+    cusparse._call_cusparse('csrsv2_analysis', dtype, handle, trans_U,
+                            *A_tuple(descr_U), info_U, policy_U, buff.data.ptr)
 
     # Perform M = L * U incomplete decomposition
-    cusparse._call_cusparse('csrilu02', dtype, handle, *A_tuple(descr_M), info_M, policy_M, buff.data.ptr)
+    cusparse._call_cusparse('csrilu02', dtype, handle,
+                            *A_tuple(descr_M), info_M, policy_M, buff.data.ptr)
 
     y = cupy.empty(n, dtype=dtype)
 
-    def msolve(vec):
+    def M(x):
         out = cupy.empty(n, dtype=dtype)
-        cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_L, *A_tuple_a(descr_L),
-                                info_L, vec.data.ptr, y.data.ptr, info_L, policy_L, buff.data.ptr)
-        cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_U, *A_tuple_a(descr_U),
-                                info_U, y.data.ptr, out.data.ptr, info_U, policy_U, buff.data.ptr)
+        cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_L,
+                                *A_tuple_a(descr_L), info_L, x.data.ptr,
+                                y.data.ptr, info_L, policy_L, buff.data.ptr)
+        cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_U,
+                                *A_tuple_a(descr_U), info_U, y.data.ptr,
+                                out.data.ptr, info_U, policy_U, buff.data.ptr)
         return out
 
-    return msolve, info_M, info_L, info_U
+    return M, (info_M, info_U, info_L)
 
 
-def _destroy_ilu(info_M, info_L, info_U):
-    if info_M is not None:
-        cupy.cuda.cusparse.destroyCsrilu02Info(info_M)
-        cupy.cuda.cusparse.destroyCsrilu02Info(info_L)
-        cupy.cuda.cusparse.destroyCsrilu02Info(info_U)
+def _destroy_ilu(info_list):
+    if info_list is not None:
+        for info in info_list:
+            cupy.cuda.cusparse.destroyCsrilu02Info(info)

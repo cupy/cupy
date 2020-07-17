@@ -98,64 +98,6 @@ cdef extern from 'cupy_cusparse.h' nogil:
         DataType betatype, void *y, DataType ytype,
         DataType executiontype, void* buffer)
 
-    # cuSPARSE Level3 Function
-    Status cusparseScsrmm(
-        Handle handle, Operation transA, int m, int n, int k, int nnz,
-        const float *alpha, const MatDescr descrA, const float *csrSortedValA,
-        const int *csrSortedRowPtrA, const int *csrSortedColIndA,
-        const float *B, int ldb, const float *beta, float *C, int ldc)
-
-    Status cusparseDcsrmm(
-        Handle handle, Operation transA, int m, int n, int k, int nnz,
-        const double *alpha, const MatDescr descrA,
-        const double *csrSortedValA,
-        const int *csrSortedRowPtrA, const int *csrSortedColIndA,
-        const double *B, int ldb, const double *beta, double *C, int ldc)
-
-    Status cusparseCcsrmm(
-        Handle handle, Operation transA, int m, int n, int k, int nnz,
-        const cuComplex *alpha, const MatDescr descrA,
-        const cuComplex *csrSortedValA,
-        const int *csrSortedRowPtrA, const int *csrSortedColIndA,
-        const cuComplex *B, int ldb, const cuComplex *beta,
-        cuComplex *C, int ldc)
-
-    Status cusparseZcsrmm(
-        Handle handle, Operation transA, int m, int n, int k, int nnz,
-        const cuDoubleComplex *alpha, const MatDescr descrA,
-        const cuDoubleComplex *csrSortedValA,
-        const int *csrSortedRowPtrA, const int *csrSortedColIndA,
-        const cuDoubleComplex *B, int ldb,
-        const cuDoubleComplex *beta, cuDoubleComplex *C, int ldc)
-
-    Status cusparseScsrmm2(
-        Handle handle, Operation transA, Operation transB, int m, int n, int k,
-        int nnz, const float *alpha, const MatDescr descrA,
-        const float *csrValA, const int *csrRowPtrA, const int *csrColIndA,
-        const float *B, int ldb, const float *beta, float *C, int ldc)
-
-    Status cusparseDcsrmm2(
-        Handle handle, Operation transA, Operation transB, int m, int n, int k,
-        int nnz, const double *alpha, const MatDescr descrA,
-        const double *csrValA, const int *csrRowPtrA, const int *csrColIndA,
-        const double *B, int ldb, const double *beta, double *C, int ldc)
-
-    Status cusparseCcsrmm2(
-        Handle handle, Operation transA, Operation transB, int m, int n, int k,
-        int nnz, const cuComplex *alpha, const MatDescr descrA,
-        const cuComplex *csrValA, const int *csrRowPtrA, const int *csrColIndA,
-        const cuComplex *B, int ldb, const cuComplex *beta,
-        cuComplex *C, int ldc)
-
-    Status cusparseZcsrmm2(
-        Handle handle, Operation transA, Operation transB, int m, int n, int k,
-        int nnz, const cuDoubleComplex *alpha, const MatDescr descrA,
-        const cuDoubleComplex *csrValA,
-        const int *csrRowPtrA, const int *csrColIndA,
-        const cuDoubleComplex *B, int ldb, const cuDoubleComplex *beta,
-        cuDoubleComplex *C, int ldc)
-
-
     cusparseStatus_t cusparseCreateCsrsv2Info(csrsv2Info_t *info)
     cusparseStatus_t cusparseDestroyCsrsv2Info(csrsv2Info_t info)
 
@@ -236,6 +178,63 @@ cdef extern from 'cupy_cusparse.h' nogil:
         const int *csrColIndA, const csrsv2Info_t info,
         const cuDoubleComplex *x, cuDoubleComplex *y,
         cusparseSolvePolicy_t policy, void *pBuffer)
+
+    # cuSPARSE Level3 Function
+    Status cusparseScsrmm(
+        Handle handle, Operation transA, int m, int n, int k, int nnz,
+        const float *alpha, const MatDescr descrA, const float *csrSortedValA,
+        const int *csrSortedRowPtrA, const int *csrSortedColIndA,
+        const float *B, int ldb, const float *beta, float *C, int ldc)
+
+    Status cusparseDcsrmm(
+        Handle handle, Operation transA, int m, int n, int k, int nnz,
+        const double *alpha, const MatDescr descrA,
+        const double *csrSortedValA,
+        const int *csrSortedRowPtrA, const int *csrSortedColIndA,
+        const double *B, int ldb, const double *beta, double *C, int ldc)
+
+    Status cusparseCcsrmm(
+        Handle handle, Operation transA, int m, int n, int k, int nnz,
+        const cuComplex *alpha, const MatDescr descrA,
+        const cuComplex *csrSortedValA,
+        const int *csrSortedRowPtrA, const int *csrSortedColIndA,
+        const cuComplex *B, int ldb, const cuComplex *beta,
+        cuComplex *C, int ldc)
+
+    Status cusparseZcsrmm(
+        Handle handle, Operation transA, int m, int n, int k, int nnz,
+        const cuDoubleComplex *alpha, const MatDescr descrA,
+        const cuDoubleComplex *csrSortedValA,
+        const int *csrSortedRowPtrA, const int *csrSortedColIndA,
+        const cuDoubleComplex *B, int ldb,
+        const cuDoubleComplex *beta, cuDoubleComplex *C, int ldc)
+
+    Status cusparseScsrmm2(
+        Handle handle, Operation transA, Operation transB, int m, int n, int k,
+        int nnz, const float *alpha, const MatDescr descrA,
+        const float *csrValA, const int *csrRowPtrA, const int *csrColIndA,
+        const float *B, int ldb, const float *beta, float *C, int ldc)
+
+    Status cusparseDcsrmm2(
+        Handle handle, Operation transA, Operation transB, int m, int n, int k,
+        int nnz, const double *alpha, const MatDescr descrA,
+        const double *csrValA, const int *csrRowPtrA, const int *csrColIndA,
+        const double *B, int ldb, const double *beta, double *C, int ldc)
+
+    Status cusparseCcsrmm2(
+        Handle handle, Operation transA, Operation transB, int m, int n, int k,
+        int nnz, const cuComplex *alpha, const MatDescr descrA,
+        const cuComplex *csrValA, const int *csrRowPtrA, const int *csrColIndA,
+        const cuComplex *B, int ldb, const cuComplex *beta,
+        cuComplex *C, int ldc)
+
+    Status cusparseZcsrmm2(
+        Handle handle, Operation transA, Operation transB, int m, int n, int k,
+        int nnz, const cuDoubleComplex *alpha, const MatDescr descrA,
+        const cuDoubleComplex *csrValA,
+        const int *csrRowPtrA, const int *csrColIndA,
+        const cuDoubleComplex *B, int ldb, const cuDoubleComplex *beta,
+        cuDoubleComplex *C, int ldc)
 
     # cuSPARSE Extra Function
     Status cusparseXcsrgeamNnz(
