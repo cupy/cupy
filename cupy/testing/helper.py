@@ -255,6 +255,28 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
     return decorator
 
 
+def _convert_output_to_ndarray(c_out, n_out, sp_name):
+    if sp_name is not None:
+        import scipy.sparse
+        if cupyx.scipy.sparse.issparse(c_out):
+            # Sparse output case.
+            if scipy.sparse.issparse(n_out):
+                return c_out.A, n_out.A
+            if isinstance(n_out, numpy.generic):
+                return c_out.A, n_out
+    if (isinstance(c_out, cupy.ndarray)
+            and isinstance(n_out, (numpy.ndarray, numpy.generic))):
+        # ndarray output case.
+        return c_out, n_out
+    if isinstance(c_out, numpy.generic) and isinstance(n_out, numpy.generic):
+        # scalar output case.
+        return c_out, n_out
+    raise AssertionError(
+        'numpy and cupy returns different type of return value:\n'
+        'cupy: {}\nnumpy: {}'.format(
+            type(c_out), type(n_out)))
+
+
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
                         name='xp', type_check=True, accept_error=False,
                         sp_name=None, scipy_name=None, contiguous_check=True):
@@ -306,14 +328,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     .. seealso:: :func:`cupy.testing.assert_allclose`
     """
     def check_func(c, n):
-        c_array = c
-        n_array = n
-        if sp_name is not None:
-            import scipy.sparse
-            if cupyx.scipy.sparse.issparse(c):
-                c_array = c.A
-            if scipy.sparse.issparse(n):
-                n_array = n.A
+        c_array, n_array = _convert_output_to_ndarray(c, n, sp_name)
         array.assert_allclose(c_array, n_array, rtol, atol, err_msg, verbose)
         if contiguous_check and isinstance(n, numpy.ndarray):
             if n.flags.c_contiguous and not c.flags.c_contiguous:
@@ -478,13 +493,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     .. seealso:: :func:`cupy.testing.assert_array_equal`
     """
     def check_func(x, y):
-        if sp_name is not None:
-            import scipy.sparse
-            if cupyx.scipy.sparse.issparse(x):
-                x = x.A
-            if scipy.sparse.issparse(y):
-                y = y.A
-
+        x, y = _convert_output_to_ndarray(x, y, sp_name)
         array.assert_array_equal(x, y, err_msg, verbose, strides_check)
 
     return _make_decorator(check_func, name, type_check, accept_error, sp_name,
