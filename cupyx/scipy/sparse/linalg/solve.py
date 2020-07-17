@@ -3,9 +3,9 @@ import numpy
 import cupy
 from cupy.cuda import cusolver, device
 from cupy.linalg import util
-from cupy import cusparse
+import cupy.cusparse
 import cupyx.scipy.sparse
-import cupy.cuda.cusparse
+from cupy_backends.cuda.libs import cusparse
 
 
 def lsqr(A, b):
@@ -118,7 +118,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
 
     # Calculate initial residual
     x0 = x0 if x0 is not None else cupy.zeros(n, dtype=dtype)
-    r = cusparse.spmv(A, x0, b, -1, 1)
+    r = cupy.cusparse.spmv(A, x0, b, -1, 1)
     p, q = cupy.zeros_like(r), cupy.zeros_like(r)
     r_tilde = r.copy()
 
@@ -132,7 +132,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
     atol = 0 if atol == 'legacy' else atol
 
     # preconditioner
-    M, info = get_M(A, M)
+    M, M_info = get_M(A, M)
 
     while i < maxiter:
         i += 1
@@ -147,7 +147,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
         # Alpha step
         phat = M(p)  # apply preconditioner
 
-        q = cusparse.spmv(A, phat)
+        q = cupy.cusparse.spmv(A, phat)
         alpha = rho / cupy.dot(r_tilde.conj(), q)
         s = r - alpha * q
 
@@ -160,7 +160,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
         # Omega step
         shat = M(s)  # apply preconditioner
 
-        t = cusparse.spmv(A, shat)
+        t = cupy.cusparse.spmv(A, shat)
         omega = cupy.dot(cupy.conj(t), s) / cupy.square(cupy.linalg.norm(t))
         if omega == 0:
             info = -11
@@ -176,7 +176,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
             info = 0
             break
 
-    _destroy_ilu(info)
+    _destroy_ilu(M_info)
 
     return x, info
 
@@ -237,65 +237,65 @@ def _get_M_ilu(A):
     n = A.shape[0]
 
     # create info objects
-    info_M = cupy.cuda.cusparse.createCsrilu02Info()
-    info_L, info_U = cupy.cuda.cusparse.createCsrsv2Info(
-    ), cupy.cuda.cusparse.createCsrsv2Info()
+    info_M = cusparse.createCsrilu02Info()
+    info_L, info_U = cusparse.createCsrsv2Info(
+    ), cusparse.createCsrsv2Info()
 
     # create solve policies
-    policy_M = cupy.cuda.cusparse.CUSPARSE_SOLVE_POLICY_NO_LEVEL
-    policy_L = cupy.cuda.cusparse.CUSPARSE_SOLVE_POLICY_NO_LEVEL
-    policy_U = cupy.cuda.cusparse.CUSPARSE_SOLVE_POLICY_USE_LEVEL
+    policy_M = cusparse.CUSPARSE_SOLVE_POLICY_NO_LEVEL
+    policy_L = cusparse.CUSPARSE_SOLVE_POLICY_NO_LEVEL
+    policy_U = cusparse.CUSPARSE_SOLVE_POLICY_USE_LEVEL
 
     # define trans
-    trans_L = cupy.cuda.cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
-    trans_U = cupy.cuda.cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+    trans_L = cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+    trans_U = cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
 
     # create descriptions
-    descr_M = cusparse.MatDescriptor.create()
-    descr_L = cusparse.MatDescriptor.create()
-    descr_U = cusparse.MatDescriptor.create()
-    descr_M.set_mat_index_base(cupy.cuda.cusparse.CUSPARSE_INDEX_BASE_ONE)
-    descr_M.set_mat_type(cupy.cuda.cusparse.CUSPARSE_MATRIX_TYPE_GENERAL)
-    descr_L.set_mat_index_base(cupy.cuda.cusparse.CUSPARSE_INDEX_BASE_ONE)
-    descr_L.set_mat_type(cupy.cuda.cusparse.CUSPARSE_MATRIX_TYPE_GENERAL)
-    descr_L.set_mat_fill_mode(cupy.cuda.cusparse.CUSPARSE_FILL_MODE_LOWER)
-    descr_L.set_mat_diag_type(cupy.cuda.cusparse.CUSPARSE_DIAG_TYPE_UNIT)
-    descr_U.set_mat_index_base(cupy.cuda.cusparse.CUSPARSE_INDEX_BASE_ONE)
-    descr_U.set_mat_type(cupy.cuda.cusparse.CUSPARSE_MATRIX_TYPE_GENERAL)
-    descr_U.set_mat_fill_mode(cupy.cuda.cusparse.CUSPARSE_FILL_MODE_UPPER)
-    descr_U.set_mat_diag_type(cupy.cuda.cusparse.CUSPARSE_DIAG_TYPE_NON_UNIT)
+    descr_M = cupy.cusparse.MatDescriptor.create()
+    descr_L = cupy.cusparse.MatDescriptor.create()
+    descr_U = cupy.cusparse.MatDescriptor.create()
+    descr_M.set_mat_index_base(cusparse.CUSPARSE_INDEX_BASE_ONE)
+    descr_M.set_mat_type(cusparse.CUSPARSE_MATRIX_TYPE_GENERAL)
+    descr_L.set_mat_index_base(cusparse.CUSPARSE_INDEX_BASE_ONE)
+    descr_L.set_mat_type(cusparse.CUSPARSE_MATRIX_TYPE_GENERAL)
+    descr_L.set_mat_fill_mode(cusparse.CUSPARSE_FILL_MODE_LOWER)
+    descr_L.set_mat_diag_type(cusparse.CUSPARSE_DIAG_TYPE_UNIT)
+    descr_U.set_mat_index_base(cusparse.CUSPARSE_INDEX_BASE_ONE)
+    descr_U.set_mat_type(cusparse.CUSPARSE_MATRIX_TYPE_GENERAL)
+    descr_U.set_mat_fill_mode(cusparse.CUSPARSE_FILL_MODE_UPPER)
+    descr_U.set_mat_diag_type(cusparse.CUSPARSE_DIAG_TYPE_NON_UNIT)
 
     # get required buffer size and allocate corresponding memory
-    buff_size_M = cusparse._call_cusparse(
+    buff_size_M = cupy.cusparse._call_cusparse(
         'csrilu02_bufferSize', dtype, handle, *A_tuple(descr_M), info_M)
-    buff_size_L = cusparse._call_cusparse(
+    buff_size_L = cupy.cusparse._call_cusparse(
         'csrsv2_bufferSize', dtype, handle, trans_L, *A_tuple(descr_L), info_L)
-    buff_size_U = cusparse._call_cusparse(
+    buff_size_U = cupy.cusparse._call_cusparse(
         'csrsv2_bufferSize', dtype, handle, trans_U, *A_tuple(descr_U), info_U)
     buff_size = numpy.max((buff_size_M, buff_size_L, buff_size_U))
     buff = cupy.empty(int(buff_size), dtype=cupy.int8)
     assert buff.data.ptr % 128 == 0
 
     # Analysis (setup) of M = LU, the Incomplete LU factorization of A
-    cusparse._call_cusparse('csrilu02_analysis', dtype, handle,
+    cupy.cusparse._call_cusparse('csrilu02_analysis', dtype, handle,
                             *A_tuple(descr_M), info_M, policy_M, buff.data.ptr)
-    cusparse._call_cusparse('csrsv2_analysis', dtype, handle, trans_L,
+    cupy.cusparse._call_cusparse('csrsv2_analysis', dtype, handle, trans_L,
                             *A_tuple(descr_L), info_L, policy_L, buff.data.ptr)
-    cusparse._call_cusparse('csrsv2_analysis', dtype, handle, trans_U,
+    cupy.cusparse._call_cusparse('csrsv2_analysis', dtype, handle, trans_U,
                             *A_tuple(descr_U), info_U, policy_U, buff.data.ptr)
 
     # Perform M = L * U incomplete decomposition
-    cusparse._call_cusparse('csrilu02', dtype, handle,
+    cupy.cusparse._call_cusparse('csrilu02', dtype, handle,
                             *A_tuple(descr_M), info_M, policy_M, buff.data.ptr)
 
     y = cupy.empty(n, dtype=dtype)
 
     def M(x):
         out = cupy.empty(n, dtype=dtype)
-        cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_L,
+        cupy.cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_L,
                                 *A_tuple_a(descr_L), info_L, x.data.ptr,
                                 y.data.ptr, info_L, policy_L, buff.data.ptr)
-        cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_U,
+        cupy.cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_U,
                                 *A_tuple_a(descr_U), info_U, y.data.ptr,
                                 out.data.ptr, info_U, policy_U, buff.data.ptr)
         return out
@@ -306,4 +306,4 @@ def _get_M_ilu(A):
 def _destroy_ilu(info_list):
     if info_list is not None:
         for info in info_list:
-            cupy.cuda.cusparse.destroyCsrilu02Info(info)
+            cusparse.destroyCsrilu02Info(info)
