@@ -8,10 +8,10 @@ import pytest
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.4],
+    'density': [0.8],
     'dtype': ['float32', 'float64'], #, 'complex64', 'complex128'],
-    'n_rows': [25, 150],
-    'n_cols': [25, 150]
+    'n_rows': [15000],
+    'n_cols': [15000]
 }))
 @testing.with_requires('scipy')
 class TestSetitemIndexing(unittest.TestCase):
@@ -35,20 +35,36 @@ class TestSetitemIndexing(unittest.TestCase):
         else:
             min_h = min
 
+        import time
+
         if min is not None:
             expected = a.get()
+
+            cpu_time = time.time()
             expected[maj_h, min_h] = data
+            cpu_stop = time.time() - cpu_time
+
             actual = a
+
+            gpu_time = time.time()
             actual[maj, min] = data
             cupy.cuda.Stream.null.synchronize()
+            gpu_stop = time.time() - gpu_time
         else:
             expected = a.get()
 
+            cpu_time = time.time()
             expected[maj_h] = data
+            cpu_stop = time.time() - cpu_time
+
             actual = a
 
+            gpu_time = time.time()
             actual[maj] = data
             cupy.cuda.Stream.null.synchronize()
+            gpu_stop = time.time() - gpu_time
+
+        print("cpu_time=%s, gpu_time=%s" % (cpu_stop, gpu_stop))
 
         if cupy.sparse.isspmatrix(actual):
             actual.sort_indices()

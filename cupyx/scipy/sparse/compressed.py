@@ -865,9 +865,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
         i = cupy.asarray(i, dtype=idx_dtype)
         j = cupy.asarray(j, dtype=idx_dtype)
-
-        print("i=%s, j=%s, x=%s, %s" % (i, j, x, len(i)))
         # Collate old and new in chunks by major index
+
         indices_parts = []
         data_parts = []
         ui, ui_indptr = cupy.unique(i, return_index=True)
@@ -893,7 +892,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         inds = cupy.arange(inv.size)
         cupyx.scatter_max(b, inv, inds)
 
-        indptr_insert = cupy.right_shift(ordered_ij.copy(), 32).astype("int32")
+        indptr_insert = cupy.right_shift(ordered_ij, 32).astype("int32")
 
         sc = cupy.zeros(ui_indptr.size)
         cupyx.scatter_add(sc[1:], cupy.searchsorted(ui, indptr_insert), 1)
@@ -901,12 +900,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         cupy.cumsum(sc, out=sc)
 
         indices_inserts = cupy.bitwise_and(ordered_ij, 2**32-1)
-        indices_inserts = indices_inserts.copy()
 
-        data_inserts = x[cupy.searchsorted(uij, ordered_ij)].copy()
+        data_inserts = x[cupy.searchsorted(uij, ordered_ij)]
 
         new_nnzs = cupy.diff(ui_indptr)
 
+        # TODO(cjnolet): Remove this loop
         # Kernel to populate existing cols
         prev = 0
         for c, (ii, js, je) in enumerate(zip(ui, sc, sc[1:])):
