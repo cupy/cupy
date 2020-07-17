@@ -881,74 +881,98 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         ij = cupy.left_shift(i.astype("uint64"), 32)
         ij = cupy.bitwise_or(ij, j.astype("uint32"))
 
-        uij, uij_indptr, inv, uij_counts = cupy.unique(ij, return_index=True,
-                                                  return_counts=True,
-                                                  return_inverse=True)
+        uij, uij_indptr, inv, uij_counts = cupy.unique(ij[::-1], return_index=True,
+                                           return_counts=True,
+                                           return_inverse=True)
 
-        print("UIJ_COUNTS: %s" % uij_counts[inv])
+        ordered_ij = ij[::-1][uij_indptr]
+
+        print("ijidx: %s" % ordered_ij)
+
+        print("ui_indptr: %s" % ui_indptr)
+
+
         import cupyx
+
+
+
+
+
+        #
+        #
+        print("UIJ_COUNTS: %s" % uij_counts[uij])
+        # import cupyx
         b = cupy.zeros(inv.max().item() + 1, dtype=cupy.int32)
         inds = cupy.arange(inv.size)
         cupyx.scatter_max(b, inv, inds)
+        #
+        # print("TYpe: %s" % uij.dtype)
+        #
+        indptr_insert = cupy.right_shift(ordered_ij.copy(), 32).astype("int32")
 
-        print("TYpe: %s" % uij.dtype)
+        print("ind: %s" % cupy.searchsorted(ui, indptr_insert))
 
-        indptr_insert = cupy.right_shift(ij[uij_indptr].copy(), 32).astype("int32")
+        sc = cupy.zeros(ui_indptr.size)
+        cupyx.scatter_add(sc[1:], cupy.searchsorted(ui, indptr_insert), 1)
 
+        cupy.cumsum(sc, out=sc)
+
+        print("sc=%s" % sc)
+
+        #
         print("indptr_insert %s" % indptr_insert)
+        #
+        # counts2_diff = indptr_diff[:-1].copy()
+        #
+        # indptr_diff[1:] = indptr_diff[:-1]
+        # indptr_diff[0] = 0
 
-        indptr_diff = cupy.zeros(ui_indptr.size)
-        cupyx.scatter_add(indptr_diff, indptr_insert, 1)
+        # uij_counts2 = cupy.cumsum(indptr_diff)
 
-        print("After scatter: %s" % indptr_diff)
-
-        counts2_diff = indptr_diff[:-1].copy()
-
-        indptr_diff[1:] = indptr_diff[:-1]
-        indptr_diff[0] = 0
-
-        uij_counts2 = cupy.cumsum(indptr_diff)
-
-        print("uij_counts2: %s" % uij_counts2)
-
-        indices_inserts = cupy.bitwise_and(ij[uij_indptr], 2**32-1)
+        # print("uij_counts2: %s" % uij_counts2)
+        #
+        indices_inserts = cupy.bitwise_and(ordered_ij, 2**32-1)
         indices_inserts = indices_inserts.copy()
-
+        #
         print("Indices_inserts %s" % indices_inserts)
 
-        ordered_ij = ij[uij_indptr]
+        #
         data_inserts = x[b[cupy.searchsorted(ordered_ij, ordered_ij)]].copy()
+        #
+        print("data_inserts: %s, indices_inserts %s, indptr_inserts: %s" %
+              (data_inserts, len(indices_inserts), len(indptr_insert)))
+        #
+        # nnzs = cupy.empty(self.indptr.shape, dtype=idx_dtype)
+        # nnzs[0] = idx_dtype(0)
+        # indptr_diff = cupy.diff(self.indptr)
 
-        print("uij_counts: %s" % uij_counts)
-
-        nnzs = cupy.empty(self.indptr.shape, dtype=idx_dtype)
-        nnzs[0] = idx_dtype(0)
-        indptr_diff = cupy.diff(self.indptr)
-
-        print("prescattered: %s" % indptr_diff)
 
         # counts2_diff = cupy.diff(uij_counts2)
 
         print("ui: %s" % ui)
 
-        print("counts2_diff %s" % counts2_diff)
+        # print("counts2_diff %s" % counts2_diff)
         #
-        cupyx.scatter_add(indptr_diff, ui, counts2_diff)
+        # cupyx.scatter_add(indptr_diff, ui, counts2_diff)
 
-        print("scattered: %s" % indptr_diff)
 
-        nnzs[1:] = indptr_diff
+        # nnzs[1:] = indptr_diff
+        #
+        # cupy.cumsum(nnzs, out=nnzs)
+        #
+        # new_indptr = nnzs.copy()
 
-        cupy.cumsum(nnzs, out=nnzs)
-
-        new_indptr = nnzs.copy()
-
-        print("new_indptr: %s" % new_indptr)
+        # print("new_indptr: %s" % new_indptr)
         # print("Adjusted indptr: %s" % new_indptr)
+
+        new_nnzs = cupy.diff(ui_indptr)
+
+
+        # print("uij_counts2: %s" % uij_counts2)
 
         # Kernel to populate existing cols
         prev = 0
-        for c, (ii, js, je) in enumerate(zip(ui, uij_counts2, uij_counts2[1:])):
+        for c, (ii, js, je) in enumerate(zip(ui, sc, sc[1:])):
 
             # append old entries for each row
 
@@ -965,6 +989,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             indices_parts.append(indices_inserts[js:je].copy().astype('int32'))
             data_parts.append(data_inserts[js:je].copy())
 
+            print("Setting new_nnzs[%s] to %s" % (c, je-js))
+            new_nnzs[c] = je-js
+
             prev = ii
 
 
@@ -974,17 +1001,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         data_parts.append(self.data[start:])
 
         # update attributes
-        self.indptr = new_indptr
         self.indices = cupy.concatenate(indices_parts)
         self.data = cupy.concatenate(data_parts)
 
-        # nnzs = cupy.empty(self.indptr.shape, dtype=idx_dtype)
-        # nnzs[0] = idx_dtype(0)
-        # indptr_diff = cupy.diff(self.indptr)
-        #
-        # indptr_diff[ui] += new_nnzs
-        #
-        # nnzs[1:] = indptr_diff
+        nnzs = cupy.empty(self.indptr.shape, dtype=idx_dtype)
+        nnzs[0] = idx_dtype(0)
+        indptr_diff = cupy.diff(self.indptr)
+
+        indptr_diff[ui] += new_nnzs
+
+        nnzs[1:] = indptr_diff
+        self.indptr = cupy.cumsum(nnzs, out=nnzs)
 
         with cupy.prof.time_range(message="sorting", color_id=2):
             if do_sort:
