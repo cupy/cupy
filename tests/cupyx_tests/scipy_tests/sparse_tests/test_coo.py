@@ -98,6 +98,16 @@ def _make_shape(xp, sp, dtype):
     return sp.coo_matrix((3, 4))
 
 
+def _make_sum_dup(xp, sp, dtype):
+    # 1 0 0
+    # 1 1 0
+    # 1 1 1
+    data = xp.array([1, 1, 1, 1, 1, 1], dtype)
+    row = xp.array([0, 1, 1, 2, 2, 2], 'i')
+    col = xp.array([0, 0, 1, 0, 1, 2], 'i')
+    return sp.coo_matrix((data, (row, col)), shape=(3, 3))
+
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
@@ -915,6 +925,28 @@ class TestCooMatrixSumDuplicates(unittest.TestCase):
         m.sum_duplicates()
         self.assertTrue(m.has_canonical_format)
         self.assertEqual(m.nnz, 0)
+        return m
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates_incompatibility(self, xp, sp):
+        # See #3620 and #3624. CuPy's and SciPy's COO indices could mismatch
+        # due to the order of lexsort, but the matrix is correct.
+        m = _make_sum_dup(xp, sp, self.dtype)
+        if xp is cupy:
+            sorted_first = m.row.copy()
+        else:
+            sorted_first = m.col.copy()
+        assert not m.has_canonical_format
+        m.sum_duplicates()
+        assert m.has_canonical_format
+        # Here we ensure this sorting order is not altered by future PRs...
+        sorted_first.sort()
+        if xp is cupy:
+            assert (m.row == sorted_first).all()
+        else:
+            assert (m.col == sorted_first).all()
+        assert m.has_canonical_format
+        # ...and now we make sure the dense matrix is the same
         return m
 
 
