@@ -1148,7 +1148,6 @@ class TestCsrMatrixScipyCompressed(unittest.TestCase):
 }))
 @testing.with_requires('scipy>=0.19.0')
 class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
-
     def _make_data_min(self, xp, sp, dense=False):
         dm_data = testing.shaped_random((10, 20), xp=xp, scale=1.0)
         if not dense:
@@ -1158,14 +1157,15 @@ class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
     def _make_data_max(self, xp, sp, dense=False):
         return -self._make_data_min(xp, sp, dense=dense)
 
-    def _make_data_min_nonzero(self, xp, sp, axis):
+    def _make_data_min_explicit(self, xp, sp, axis):
         dm_data = testing.shaped_random((10, 20), xp=xp, scale=1.0)
         if xp is cupy:
             dm_data[dm_data < 0.95] = 0
         else:
-            # As SciPy sparse matrix does not have `nonzero` parameter, we make
-            # SciPy inputs such that SciPy's spmatrix.min(axis=axis) returns
-            # the same value as CuPy's spmatrix.min(axis=axis, nonzero=True).
+            # As SciPy sparse matrix does not have `explicit` parameter, we
+            # make SciPy inputs such that SciPy's spmatrix.min(axis=axis)
+            # returns the same value as CuPy's spmatrix.min(axis=axis,
+            # explicit=True).
 
             # Put infinity instead of zeros so spmatrix.min(axis=axis) returns
             # the smallest numbers except for zero.
@@ -1193,8 +1193,8 @@ class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
 
         return sp.csr_matrix(xp.array(dm_data))
 
-    def _make_data_max_nonzero(self, xp, sp, axis):
-        return -self._make_data_min_nonzero(xp, sp, axis=axis)
+    def _make_data_max_explicit(self, xp, sp, axis):
+        return -self._make_data_min_explicit(xp, sp, axis=axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_min(self, xp, sp):
@@ -1202,10 +1202,10 @@ class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
         return data.min(axis=self.axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_min_nonzero(self, xp, sp):
-        data = self._make_data_min_nonzero(xp, sp, axis=self.axis)
+    def test_min_explicit(self, xp, sp):
+        data = self._make_data_min_explicit(xp, sp, axis=self.axis)
         if xp is cupy:
-            return data.min(axis=self.axis, nonzero=True)
+            return data.min(axis=self.axis, explicit=True)
         else:
             return data.min(axis=self.axis)
 
@@ -1215,10 +1215,10 @@ class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
         return data.max(axis=self.axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_max_nonzero(self, xp, sp):
-        data = self._make_data_max_nonzero(xp, sp, axis=self.axis)
+    def test_max_explicit(self, xp, sp):
+        data = self._make_data_max_explicit(xp, sp, axis=self.axis)
         if xp is cupy:
-            return data.max(axis=self.axis, nonzero=True)
+            return data.max(axis=self.axis, explicit=True)
         else:
             return data.max(axis=self.axis)
 

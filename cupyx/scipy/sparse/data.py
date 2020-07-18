@@ -137,18 +137,17 @@ class _minmax_mixin(object):
 
     """
 
-    def _min_or_max_axis(self, axis, min_or_max, sum_duplicates, nonzero):
+    def _min_or_max_axis(self, axis, min_or_max, explicit):
         N = self.shape[axis]
         if N == 0:
             raise ValueError("zero-size array to reduction operation")
         M = self.shape[1 - axis]
 
         mat = self.tocsc() if axis == 0 else self.tocsr()
-        if sum_duplicates:
-            mat.sum_duplicates()
+        mat.sum_duplicates()
 
         # Do the reudction
-        value = mat._minor_reduce(min_or_max, axis, nonzero)
+        value = mat._minor_reduce(min_or_max, axis, explicit)
         major_index = cupy.arange(M)
 
         mask = value != 0
@@ -164,7 +163,7 @@ class _minmax_mixin(object):
                 (value, (major_index, cupy.zeros(len(value)))),
                 dtype=self.dtype, shape=(M, 1))
 
-    def _min_or_max(self, axis, out, min_or_max, sum_duplicates, non_zero):
+    def _min_or_max(self, axis, out, min_or_max, explicit):
         if out is not None:
             raise ValueError(("Sparse matrices do not support "
                               "an 'out' parameter."))
@@ -193,20 +192,17 @@ class _minmax_mixin(object):
             return m
 
         if axis == 0 or axis == 1:
-            return self._min_or_max_axis(axis, min_or_max, sum_duplicates,
-                                         non_zero)
+            return self._min_or_max_axis(axis, min_or_max, explicit)
         else:
             raise ValueError("axis out of range")
 
-    def _arg_min_or_max_axis(self, axis, op, sum_duplicates):
+    def _arg_min_or_max_axis(self, axis, op):
         if self.shape[axis] == 0:
             raise ValueError("Can't apply the operation along a zero-sized "
                              "dimension.")
 
         mat = self.tocsc() if axis == 0 else self.tocsr()
-
-        if sum_duplicates:
-            mat.sum_duplicates()
+        mat.sum_duplicates()
 
         # Do the reudction
         value = mat._arg_minor_reduce(op, axis)
@@ -216,7 +212,7 @@ class _minmax_mixin(object):
         else:
             return value[:, None]
 
-    def _arg_min_or_max(self, axis, out, op, compare, sum_duplicates):
+    def _arg_min_or_max(self, axis, out, op, compare):
         if out is not None:
             raise ValueError("Sparse matrices do not support "
                              "an 'out' parameter.")
@@ -234,8 +230,7 @@ class _minmax_mixin(object):
                 zero = self.dtype.type(0)
                 mat = self.tocoo()
 
-                if sum_duplicates:
-                    mat.sum_duplicates()
+                mat.sum_duplicates()
 
                 am = op(mat.data)
                 m = mat.data[am]
@@ -254,9 +249,9 @@ class _minmax_mixin(object):
                         else:
                             return zero_ind
 
-        return self._arg_min_or_max_axis(axis, op, sum_duplicates)
+        return self._arg_min_or_max_axis(axis, op)
 
-    def max(self, axis=None, out=None, *, sum_duplicates=False, nonzero=False):
+    def max(self, axis=None, out=None, *, explicit=False):
         """Returns the maximum of the matrix or maximum along an axis.
 
         Args:
@@ -268,11 +263,10 @@ class _minmax_mixin(object):
                 This argument is in the signature *solely* for NumPy
                 compatibility reasons. Do not pass in anything except
                 for the default value, as this argument is not used.
-            sum_duplicates (bool): Flag to indicate that duplicate elements
-                should be combined prior to the operation
-            nonzero (bool): Return the maximum nonzero value and ignore all
-                zero entries. If the dimension has no nonzero values, a zero is
-                then returned to indicate that it is the only available value.
+            explicit (bool): Return the maximum value explicitly specified and ignore
+                all implicit zero entries. If the dimension has no explicit values,
+                a zero is then returned to indicate that it is the only implicit
+                value.
 
         Returns:
             (cupy.ndarray or float): Maximum of ``a``. If ``axis`` is
@@ -286,17 +280,13 @@ class _minmax_mixin(object):
           matrices
 
         """
-        if sum_duplicates:
-            api_name = 'sum_duplicates of cupyx.scipy.sparse.{}.max'.format(
+        if explicit:
+            api_name = 'explicit of cupyx.scipy.sparse.{}.max'.format(
                 self.__class__.__name__)
             cupy.util.experimental(api_name)
-        if nonzero:
-            api_name = 'nonzero of cupyx.scipy.sparse.{}.max'.format(
-                self.__class__.__name__)
-            cupy.util.experimental(api_name)
-        return self._min_or_max(axis, out, cupy.max, sum_duplicates, nonzero)
+        return self._min_or_max(axis, out, cupy.max, explicit)
 
-    def min(self, axis=None, out=None, *, sum_duplicates=False, nonzero=False):
+    def min(self, axis=None, out=None, *, explicit=False):
         """Returns the minimum of the matrix or maximum along an axis.
 
         Args:
@@ -308,11 +298,10 @@ class _minmax_mixin(object):
                 This argument is in the signature *solely* for NumPy
                 compatibility reasons. Do not pass in anything except for
                 the default value, as this argument is not used.
-            sum_duplicates (bool): Flag to indicate that duplicate elements
-                should be combined prior to the operation
-            nonzero (bool): Return the minimum nonzero value and ignore all
-                zero entries. If the dimension has no nonzero values, a zero is
-                then returned to indicate that it is the only available value.
+            explicit (bool): Return the minimum value explicitly specified and ignore
+                all implicit zero entries. If the dimension has no explicit values,
+                a zero is then returned to indicate that it is the only implicit
+                value.
 
         Returns:
             (cupy.ndarray or float): Minimum of ``a``. If ``axis`` is
@@ -326,17 +315,13 @@ class _minmax_mixin(object):
           matrices
 
         """
-        if sum_duplicates:
-            api_name = 'sum_duplicates of cupyx.scipy.sparse.{}.min'.format(
+        if explicit:
+            api_name = 'explicit of cupyx.scipy.sparse.{}.min'.format(
                 self.__class__.__name__)
             cupy.util.experimental(api_name)
-        if nonzero:
-            api_name = 'nonzero of cupyx.scipy.sparse.{}.min'.format(
-                self.__class__.__name__)
-            cupy.util.experimental(api_name)
-        return self._min_or_max(axis, out, cupy.min, sum_duplicates, nonzero)
+        return self._min_or_max(axis, out, cupy.min, explicit)
 
-    def argmax(self, axis=None, out=None, *, sum_duplicates=False):
+    def argmax(self, axis=None, out=None):
         """Returns indices of maximum elements along an axis.
 
         Implicit zero elements are taken into account. If there are several
@@ -352,22 +337,15 @@ class _minmax_mixin(object):
                 This argument is in the signature *solely* for NumPy
                 compatibility reasons. Do not pass in anything except for
                 the default value, as this argument is not used.
-            sum_duplicates (bool): Flag to indicate that duplicate elements
-                should be combined prior to the operation
 
         Returns:
             (cupy.narray or int): Indices of maximum elements. If array,
                 its size along ``axis`` is 1.
 
         """
-        if sum_duplicates:
-            api_name = 'sum_duplicates of cupyx.scipy.sparse.{}.argmax'.format(
-                self.__class__.__name__)
-            cupy.util.experimental(api_name)
-        return self._arg_min_or_max(axis, out, cupy.argmax, cupy.greater,
-                                    sum_duplicates)
+        return self._arg_min_or_max(axis, out, cupy.argmax, cupy.greater)
 
-    def argmin(self, axis=None, out=None, *, sum_duplicates=False):
+    def argmin(self, axis=None, out=None):
         """
         Returns indices of minimum elements along an axis.
 
@@ -384,20 +362,13 @@ class _minmax_mixin(object):
                 This argument is in the signature *solely* for NumPy
                 compatibility reasons. Do not pass in anything except for
                 the default value, as this argument is not used.
-            sum_duplicates (bool): Flag to indicate that duplicate elements
-                should be combined prior to the operation
 
         Returns:
             (cupy.narray or int): Indices of minimum elements. If matrix,
                 its size along ``axis`` is 1.
 
         """
-        if sum_duplicates:
-            api_name = 'sum_duplicates of cupyx.scipy.sparse.{}.argmin'.format(
-                self.__class__.__name__)
-            cupy.util.experimental(api_name)
-        return self._arg_min_or_max(axis, out, cupy.argmin, cupy.less,
-                                    sum_duplicates)
+        return self._arg_min_or_max(axis, out, cupy.argmin, cupy.less)
 
 
 def _install_ufunc(func_name):
