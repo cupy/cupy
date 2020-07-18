@@ -2,4 +2,4 @@
 # https://docs.scipy.org/doc/scipy/reference/sparse.linalg.html
 
 # "NOQA" to suppress flake8 warning
-from cupyx.scipy.sparse.linalg.solve import lsqr, bicgstab  # NOQA
+from cupyx.scipy.sparse.linalg.solve import lsqr, bicgstab, spilu  # NOQA

@@ -223,8 +223,8 @@ def spilu(A, drop_tol=1e-4):
 
     # create info objects
     info_M = cusparse.createCsrilu02Info()
-    info_L, info_U = cusparse.createCsrsv2Info(
-    ), cusparse.createCsrsv2Info()
+    info_L = cusparse.createCsrsv2Info()
+    info_U = cusparse.createCsrsv2Info()
 
     # create solve policies
     policy_M = cusparse.CUSPARSE_SOLVE_POLICY_NO_LEVEL
@@ -278,17 +278,15 @@ def spilu(A, drop_tol=1e-4):
                                  buff.data.ptr)
 
     y = cupy.empty(n, dtype=dtype)
+    out = cupy.empty(n, dtype=dtype)
 
     def M(x):
-        out = cupy.empty(n, dtype=dtype)
         cupy.cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_L,
                                      *A_tuple_a(descr_L), info_L, x.data.ptr,
-                                     y.data.ptr, info_L, policy_L,
-                                     buff.data.ptr)
+                                     y.data.ptr, policy_L, buff.data.ptr)
         cupy.cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_U,
                                      *A_tuple_a(descr_U), info_U, y.data.ptr,
-                                     out.data.ptr, info_U, policy_U,
-                                     buff.data.ptr)
+                                     out.data.ptr, policy_U, buff.data.ptr)
         return out
 
     return M, (info_M, info_U, info_L)
