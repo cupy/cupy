@@ -256,7 +256,7 @@ class _minmax_mixin(object):
 
         return self._arg_min_or_max_axis(axis, op, sum_duplicates)
 
-    def max(self, axis=None, out=None, sum_duplicates=False, nonzero=False):
+    def max(self, axis=None, out=None, *, sum_duplicates=False, nonzero=False):
         """Returns the maximum of the matrix or maximum along an axis.
 
         Args:
@@ -286,10 +286,17 @@ class _minmax_mixin(object):
           matrices
 
         """
-
+        if sum_duplicates:
+            api_name = 'sum_duplicates of cupyx.scipy.sparse.{}.max'.format(
+                self.__class__.__name__)
+            cupy.util.experimental(api_name)
+        if nonzero:
+            api_name = 'nonzero of cupyx.scipy.sparse.{}.max'.format(
+                self.__class__.__name__)
+            cupy.util.experimental(api_name)
         return self._min_or_max(axis, out, cupy.max, sum_duplicates, nonzero)
 
-    def min(self, axis=None, out=None, sum_duplicates=False, nonzero=False):
+    def min(self, axis=None, out=None, *, sum_duplicates=False, nonzero=False):
         """Returns the minimum of the matrix or maximum along an axis.
 
         Args:
@@ -319,10 +326,17 @@ class _minmax_mixin(object):
           matrices
 
         """
-
+        if sum_duplicates:
+            api_name = 'sum_duplicates of cupyx.scipy.sparse.{}.min'.format(
+                self.__class__.__name__)
+            cupy.util.experimental(api_name)
+        if nonzero:
+            api_name = 'nonzero of cupyx.scipy.sparse.{}.min'.format(
+                self.__class__.__name__)
+            cupy.util.experimental(api_name)
         return self._min_or_max(axis, out, cupy.min, sum_duplicates, nonzero)
 
-    def argmax(self, axis=None, out=None, sum_duplicates=False):
+    def argmax(self, axis=None, out=None, *, sum_duplicates=False):
         """Returns indices of maximum elements along an axis.
 
         Implicit zero elements are taken into account. If there are several
@@ -346,11 +360,14 @@ class _minmax_mixin(object):
                 its size along ``axis`` is 1.
 
         """
-
+        if sum_duplicates:
+            api_name = 'sum_duplicates of cupyx.scipy.sparse.{}.argmax'.format(
+                self.__class__.__name__)
+            cupy.util.experimental(api_name)
         return self._arg_min_or_max(axis, out, cupy.argmax, cupy.greater,
                                     sum_duplicates)
 
-    def argmin(self, axis=None, out=None, sum_duplicates=False):
+    def argmin(self, axis=None, out=None, *, sum_duplicates=False):
         """
         Returns indices of minimum elements along an axis.
 
@@ -375,7 +392,10 @@ class _minmax_mixin(object):
                 its size along ``axis`` is 1.
 
         """
-
+        if sum_duplicates:
+            api_name = 'sum_duplicates of cupyx.scipy.sparse.{}.argmin'.format(
+                self.__class__.__name__)
+            cupy.util.experimental(api_name)
         return self._arg_min_or_max(axis, out, cupy.argmin, cupy.less,
                                     sum_duplicates)
 
