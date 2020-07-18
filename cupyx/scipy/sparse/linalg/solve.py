@@ -83,7 +83,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
             with dimension ``(N, N)``
         b (cupy.ndarray): Right-hand side vector.
         x0 (cupy.ndarray): Initial guess (defaults to zeros)
-        M (callable, str): GPU preconditioner function or str to indicate
+        M (callable): GPU preconditioner function or str to indicate
                             preconditioner choice, can also specify
                             preconditioner as a string (e.g., 'ilu', 'jacobi').
         tol (float): Tolerance for convergence, exits when
@@ -92,7 +92,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
         callback (callable): a callback function to call at each iteration
                             (unlike scipy, it accepts iteration and
                             residual as well as current vector `x`)
-        atol (str): Currently a dummy parameter to be used in a future release
+        atol (float): Default to 0 (use tol instead of atol for convergence)
 
     Returns:
         tuple:
@@ -132,7 +132,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
     atol = 0 if atol == 'legacy' else atol
 
     # preconditioner
-    M, M_info = get_M(A, M)
+    M, M_info = (_identity, None) if M is None else M
 
     while i < maxiter:
         i += 1
@@ -181,42 +181,27 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
     return x, info
 
 
-def get_M(A, preconditioner=None):
-    """
+def spilu(A, drop_tol=1e-4):
+    """Compute an incomplete LU decomposition for a sparse, square matrix.
+
+    The resulting object is an approximation to the inverse of A.
+    See https://docs.nvidia.com/cuda/cusparse/#csrilu02_solve.
 
     Args:
-        A: Matrix to be preconditioned
-        preconditioner: callable, nparray, or str to specify preconditioner method
+        A (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): The input matrix
+            with dimension ``(N, N)``
+        drop_tol (float, optional): Drop tolerance (0 <= tol <= 1) for an
+            incomplete LU decomposition. (default: 1e-4)
+            [Currently a dummy param]
 
     Returns:
+        callable:
+            A function x = M(b) that approximates a linear solution for Ax = b
+        tuple:
+            the info objects that need to be
 
+    .. seealso:: :func:`scipy.sparse.linalg.spilu`
     """
-    if hasattr(preconditioner, '__call__'):
-        return preconditioner, None
-    elif isinstance(preconditioner, cupy.ndarray):
-        ndim = preconditioner.ndim
-        n = preconditioner.shape[0]
-        if not ndim == 1 and n == A.n:
-            expect_msg = 'Expected M.ndim == 1 and M.shape[0] == {}, '.format(A.n)
-            actual_msg = 'got M.ndim == {} and M.shape[0] == {}'.format(n, ndim)
-            raise ValueError(expect_msg, actual_msg)
-        M = (lambda vec: vec / M), None
-    elif preconditioner == 'ilu':
-        return _get_M_ilu(A.copy())
-    elif preconditioner == 'jacobi':
-        raise NotImplementedError(
-            'A.diagonal() still needs to be implemented...')
-        # M = lambda vec: vec / A.diagonal(), None, None, None
-    elif preconditioner is None:
-        return (lambda vec: vec), None
-    else:
-        raise AttributeError('Expected M to be ilu, jacobi or cupy.ndarray')
-
-
-def _get_M_ilu(A):
-    # Setup M, the Incomplete LU factorization of A
-    # See https://docs.nvidia.com/cuda/cusparse/#csrilu02_solve
-
     # support float32, float64, complex64, and complex128
     handle = device.get_cusolver_sp_handle()
 
@@ -278,26 +263,32 @@ def _get_M_ilu(A):
 
     # Analysis (setup) of M = LU, the Incomplete LU factorization of A
     cupy.cusparse._call_cusparse('csrilu02_analysis', dtype, handle,
-                            *A_tuple(descr_M), info_M, policy_M, buff.data.ptr)
+                                 *A_tuple(descr_M), info_M, policy_M,
+                                 buff.data.ptr)
     cupy.cusparse._call_cusparse('csrsv2_analysis', dtype, handle, trans_L,
-                            *A_tuple(descr_L), info_L, policy_L, buff.data.ptr)
+                                 *A_tuple(descr_L), info_L, policy_L,
+                                 buff.data.ptr)
     cupy.cusparse._call_cusparse('csrsv2_analysis', dtype, handle, trans_U,
-                            *A_tuple(descr_U), info_U, policy_U, buff.data.ptr)
+                                 *A_tuple(descr_U), info_U, policy_U,
+                                 buff.data.ptr)
 
     # Perform M = L * U incomplete decomposition
     cupy.cusparse._call_cusparse('csrilu02', dtype, handle,
-                            *A_tuple(descr_M), info_M, policy_M, buff.data.ptr)
+                                 *A_tuple(descr_M), info_M, policy_M,
+                                 buff.data.ptr)
 
     y = cupy.empty(n, dtype=dtype)
 
     def M(x):
         out = cupy.empty(n, dtype=dtype)
         cupy.cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_L,
-                                *A_tuple_a(descr_L), info_L, x.data.ptr,
-                                y.data.ptr, info_L, policy_L, buff.data.ptr)
+                                     *A_tuple_a(descr_L), info_L, x.data.ptr,
+                                     y.data.ptr, info_L, policy_L,
+                                     buff.data.ptr)
         cupy.cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_U,
-                                *A_tuple_a(descr_U), info_U, y.data.ptr,
-                                out.data.ptr, info_U, policy_U, buff.data.ptr)
+                                     *A_tuple_a(descr_U), info_U, y.data.ptr,
+                                     out.data.ptr, info_U, policy_U,
+                                     buff.data.ptr)
         return out
 
     return M, (info_M, info_U, info_L)
@@ -307,3 +298,7 @@ def _destroy_ilu(info_list):
     if info_list is not None:
         for info in info_list:
             cusparse.destroyCsrilu02Info(info)
+
+
+def _identity(x):
+    return x

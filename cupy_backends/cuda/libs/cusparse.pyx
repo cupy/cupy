@@ -1542,8 +1542,8 @@ cpdef size_t dcsrsv2_bufferSize(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseDcsrsv2_bufferSize(
         <Handle>handle, <Operation>transA, m, nnz,
-        <MatDescr>descrA, <double*> csrValA, <int*>csrRowPtrA, <int*>csrColIndA,
-        <csrsv2Info_t>info, &bufferSizeInBytes)
+        <MatDescr>descrA, <double*> csrValA, <int*>csrRowPtrA,
+        <int*>csrColIndA, <csrsv2Info_t>info, &bufferSizeInBytes)
     check_status(status)
     return bufferSizeInBytes
 
@@ -1555,8 +1555,8 @@ cpdef size_t ccsrsv2_bufferSize(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCcsrsv2_bufferSize(
         <Handle>handle, <Operation>transA, m, nnz,
-        <MatDescr>descrA, <cuComplex*> csrValA, <int*>csrRowPtrA, <int*>csrColIndA,
-        <csrsv2Info_t>info, &bufferSizeInBytes)
+        <MatDescr>descrA, <cuComplex*> csrValA, <int*>csrRowPtrA,
+        <int*>csrColIndA, <csrsv2Info_t>info, &bufferSizeInBytes)
     check_status(status)
     return bufferSizeInBytes
 
@@ -1568,8 +1568,8 @@ cpdef size_t zcsrsv2_bufferSize(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZcsrsv2_bufferSize(
         <Handle>handle, <Operation>transA, m, nnz,
-        <MatDescr>descrA, <cuDoubleComplex*> csrValA, <int*>csrRowPtrA, <int*>csrColIndA,
-        <csrsv2Info_t>info, &bufferSizeInBytes)
+        <MatDescr>descrA, <cuDoubleComplex*> csrValA, <int*>csrRowPtrA,
+        <int*>csrColIndA, <csrsv2Info_t>info, &bufferSizeInBytes)
     check_status(status)
     return bufferSizeInBytes
 
@@ -1591,8 +1591,9 @@ cpdef dcsrsv2_analysis(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseDcsrsv2_analysis(
         <Handle>handle, <Operation>transA, m, nnz,
-        <MatDescr>descrA, <double*> csrValA, <int*>csrRowPtrA, <int*>csrColIndA,
-        <csrsv2Info_t>info, <cusparseSolvePolicy_t>policy, <void *>pBuffer)
+        <MatDescr>descrA, <double*> csrValA, <int*>csrRowPtrA,
+        <int*>csrColIndA, <csrsv2Info_t>info, <cusparseSolvePolicy_t>policy,
+        <void *>pBuffer)
     check_status(status)
 
 cpdef ccsrsv2_analysis(
@@ -1602,8 +1603,9 @@ cpdef ccsrsv2_analysis(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCcsrsv2_analysis(
         <Handle>handle, <Operation>transA, m, nnz,
-        <MatDescr>descrA, <cuComplex*> csrValA, <int*>csrRowPtrA, <int*>csrColIndA,
-        <csrsv2Info_t>info, <cusparseSolvePolicy_t>policy, <void *>pBuffer)
+        <MatDescr>descrA, <cuComplex*> csrValA, <int*>csrRowPtrA,
+        <int*>csrColIndA, <csrsv2Info_t>info, <cusparseSolvePolicy_t>policy,
+        <void *>pBuffer)
     check_status(status)
 
 cpdef zcsrsv2_analysis(
@@ -1613,8 +1615,9 @@ cpdef zcsrsv2_analysis(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZcsrsv2_analysis(
         <Handle>handle, <Operation>transA, m, nnz,
-        <MatDescr>descrA, <cuDoubleComplex*> csrValA, <int*>csrRowPtrA, <int*>csrColIndA,
-        <csrsv2Info_t>info, <cusparseSolvePolicy_t>policy, <void *>pBuffer)
+        <MatDescr>descrA, <cuDoubleComplex*> csrValA, <int*>csrRowPtrA,
+        <int*>csrColIndA, <csrsv2Info_t>info, <cusparseSolvePolicy_t>policy,
+        <void *>pBuffer)
     check_status(status)
 
 cpdef scsrsv2_solve(
@@ -1636,8 +1639,8 @@ cpdef dcsrsv2_solve(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseDcsrsv2_solve(
         <Handle>handle, <Operation>transA, m, nnz, <const double*> alpha,
-        <MatDescr>descrA, <double*> csrValA, <int*>csrRowPtrA, <int*>csrColIndA,
-        <csrsv2Info_t>info, <const double*> x, <double *> y,
+        <MatDescr>descrA, <double*> csrValA, <int*>csrRowPtrA,
+        <int*>csrColIndA, <csrsv2Info_t>info, <const double*> x, <double *> y,
         <cusparseSolvePolicy_t>policy, <void *>pBuffer)
     check_status(status)
 
@@ -1648,9 +1651,9 @@ cpdef ccsrsv2_solve(
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCcsrsv2_solve(
         <Handle>handle, <Operation>transA, m, nnz, <const cuComplex*> alpha,
-        <MatDescr>descrA, <cuComplex*> csrValA, <int*>csrRowPtrA, <int*>csrColIndA,
-        <csrsv2Info_t>info, <const cuComplex*> x, <cuComplex *> y,
-        <cusparseSolvePolicy_t>policy, <void *>pBuffer)
+        <MatDescr>descrA, <cuComplex*> csrValA, <int*>csrRowPtrA,
+        <int*>csrColIndA, <csrsv2Info_t>info, <const cuComplex*> x,
+        <cuComplex *> y, <cusparseSolvePolicy_t>policy, <void *>pBuffer)
     check_status(status)
 
 cpdef zcsrsv2_solve(
@@ -1659,10 +1662,11 @@ cpdef zcsrsv2_solve(
         size_t info, size_t x, size_t y, int policy, size_t pBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZcsrsv2_solve(
-        <Handle>handle, <Operation>transA, m, nnz, <const cuDoubleComplex*> alpha,
-        <MatDescr>descrA, <cuDoubleComplex*> csrValA, <int*>csrRowPtrA, <int*>csrColIndA,
-        <csrsv2Info_t>info, <const cuDoubleComplex*> x, <cuDoubleComplex *> y,
-        <cusparseSolvePolicy_t>policy, <void *>pBuffer)
+        <Handle>handle, <Operation>transA, m, nnz,
+        <const cuDoubleComplex*> alpha, <MatDescr>descrA,
+        <cuDoubleComplex*> csrValA, <int*>csrRowPtrA,
+        <int*>csrColIndA, <csrsv2Info_t>info, <const cuDoubleComplex*> x,
+        <cuDoubleComplex *> y, <cusparseSolvePolicy_t>policy, <void *>pBuffer)
     check_status(status)
 
 cpdef scsrmv(
