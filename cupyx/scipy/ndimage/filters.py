@@ -161,13 +161,14 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_correlate_kernel(mode, wshape, int_type, origins, cval):
+def _get_correlate_kernel(mode, w_shape, int_type, origins, cval,
+                          y_shape='same'):
     return _generate_nd_kernel(
         'correlate',
         'W sum = (W)0;',
         'sum += cast<W>({value}) * wval;',
         'y = cast<Y>(sum);',
-        mode, wshape, int_type, origins, cval, ctype='W')
+        mode, w_shape, int_type, origins, cval, ctype='W', y_shape=y_shape)
 
 
 def _run_1d_correlates(input, params, get_weights, output, mode, cval,
@@ -771,7 +772,7 @@ def _min_or_max_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type,
+def _get_min_or_max_kernel(mode, w_shape, func, origins, cval, int_type,
                            has_weights=True, has_structure=False,
                            has_central_value=True):
     # When there are no 'weights' (the footprint, for the 1D variants) then
@@ -799,7 +800,7 @@ def _get_min_or_max_kernel(mode, wshape, func, origins, cval, int_type,
     return _generate_nd_kernel(
         func, pre.format(ctype),
         found.format(func=func, value=value), 'y = cast<Y>(value);',
-        mode, wshape, int_type, origins, cval, ctype=ctype,
+        mode, w_shape, int_type, origins, cval, ctype=ctype,
         has_weights=has_weights, has_structure=has_structure)
 
 
@@ -979,7 +980,7 @@ def _get_shell_gap(filter_size):
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_rank_kernel(filter_size, rank, mode, wshape, origins, cval, int_type):
+def _get_rank_kernel(filter_size, rank, mode, w_shape, origins, cval, int_type):
     # Below 225 (15x15 median filter) selection sort is 1.5-2.5x faster
     # Above, shell sort does progressively better (by 3025 (55x55) it is 9x)
     # Also tried insertion sort, which is always slower than either one
@@ -990,7 +991,7 @@ def _get_rank_kernel(filter_size, rank, mode, wshape, origins, cval, int_type):
         'int iv = 0;\nX values[{}];'.format(filter_size),
         'values[iv++] = {value};',
         'sort(values,{});\ny=cast<Y>(values[{}]);'.format(filter_size, rank),
-        mode, wshape, int_type, origins, cval, preamble=sorter)
+        mode, w_shape, int_type, origins, cval, preamble=sorter)
 
 
 def generic_filter(input, function, size=None, footprint=None,

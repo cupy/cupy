@@ -37,7 +37,7 @@ def _check_origin(origin, width):
 
 
 def _check_mode(mode):
-    if mode not in ('reflect', 'constant', 'nearest', 'mirror', 'wrap'):
+    if mode not in {'reflect', 'constant', 'nearest', 'mirror', 'wrap'}:
         msg = 'boundary mode not supported (actual: {})'.format(mode)
         raise RuntimeError(msg)
     return mode
@@ -90,9 +90,9 @@ def _convert_1d_args(ndim, weights, origin, axis):
     if weights.ndim != 1 or weights.size < 1:
         raise RuntimeError('incorrect filter size')
     axis = cupy.util._normalize_axis_index(axis, ndim)
-    wshape = [1]*ndim
-    wshape[axis] = weights.size
-    weights = weights.reshape(wshape)
+    w_shape = [1]*ndim
+    w_shape[axis] = weights.size
+    weights = weights.reshape(w_shape)
     origins = [0]*ndim
     origins[axis] = _check_origin(origin, weights.size)
     return weights, tuple(origins)
@@ -263,15 +263,15 @@ cast(A a) { return (a >= 0) ? (B)a : -(B)(-a); }
 """
 
 
-def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
+def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                         origins, cval, ctype='X', preamble='', options=(),
-                        has_weights=True, has_structure=False):
+                        has_weights=True, has_structure=False, y_shape='same'):
     # Currently this code uses CArray for weights but avoids using CArray for
     # the input data and instead does the indexing itself since it is faster.
     # If CArray becomes faster than follow the comments that start with
     # CArray: to switch over to using CArray for the input data as well.
 
-    ndim = len(wshape)
+    ndim = len(w_shape)
     in_params = 'raw X x'
     if has_weights:
         in_params += ', raw W w'
@@ -279,11 +279,26 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
         in_params += ', raw S s'
     out_params = 'Y y'
 
+    # Handle the output shape
+    if y_shape == 'full':
+        offsets = [x-1+o for x, o in zip(w_shape, origins)]
+        deltas = [x-1 for x in w_shape]
+    elif y_shape == 'valid':
+        offsets = origins
+        deltas = [-x+1 for x in w_shape]
+    else:  # y_shape == 'same':
+        offsets = [x//2+o for x, o in zip(w_shape, origins)]
+        # deltas = (0,) * ndim
+
     # CArray: remove xstride_{j}=... from string
     sizes = ['{type} xsize_{j}=x.shape()[{j}], xstride_{j}=x.strides()[{j}];'.
              format(j=j, type=int_type) for j in range(ndim)]
-    inds = _generate_indices_ops(ndim, int_type,
-                                 [x//2 + o for x, o in zip(wshape, origins)])
+    if y_shape != 'same':
+        sizes.extend('{type} ysize_{j} = xsize_{j} + {delta};'.
+                    format(j=j, type=int_type, delta=delta)
+                    for j, delta in enumerate(deltas))
+    inds = _generate_indices_ops(ndim, int_type, offsets,
+                                 'ysize' if y_shape != 'same' else 'xsize')
     # CArray: remove expr entirely
     expr = ' + '.join(['ix_{}'.format(j) for j in range(ndim)])
 
@@ -298,7 +313,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
 
     loops = []
     for j in range(ndim):
-        if wshape[j] == 1:
+        if w_shape[j] == 1:
             # CArray: string becomes 'inds[{j}] = ind_{j};', remove (int_)type
             loops.append('{{ {type} ix_{j} = ind_{j} * xstride_{j};'.
                          format(j=j, type=int_type))
@@ -312,7 +327,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
         {type} ix_{j} = ind_{j} + iw_{j};
         {boundary}
         ix_{j} *= xstride_{j};
-        '''.format(j=j, wsize=wshape[j], boundary=boundary, type=int_type))
+        '''.format(j=j, wsize=w_shape[j], boundary=boundary, type=int_type))
 
     # CArray: string becomes 'x[inds]', no format call needed
     value = '(*(X*)&data[{expr}])'.format(expr=expr)
@@ -345,7 +360,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
                loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
     name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
-        name, ndim, mode, '_'.join(['{}'.format(x) for x in wshape]))
+        name, ndim, mode, '_'.join(['{}'.format(x) for x in w_shape]))
     if int_type == 'ptrdiff_t':
         name += '_i64'
     if has_structure:
@@ -358,9 +373,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, wshape, int_type,
                                   options=options)
 
 
-def _generate_indices_ops(ndim, int_type, offsets):
-    code = '{type} ind_{j} = _i % xsize_{j} - {offset}; _i /= xsize_{j};'
-    body = [code.format(type=int_type, j=j, offset=offsets[j])
+def _generate_indices_ops(ndim, int_type, offsets, xsize='xsize'):
+    code = '{type} ind_{j} = _i % {xsize}_{j} - {offset}; _i /= {xsize}_{j};'
+    body = [code.format(type=int_type, j=j, offset=offsets[j], xsize=xsize)
             for j in range(ndim-1, 0, -1)]
     return '{type} _i = i;\n{body}\n{type} ind_0 = _i - {offset};'.format(
         type=int_type, body='\n'.join(body), offset=offsets[0])
