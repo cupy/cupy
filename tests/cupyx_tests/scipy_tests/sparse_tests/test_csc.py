@@ -917,7 +917,7 @@ class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
 
         da_cupy_values = cp_matrix.min(axis=0)
         da_scipy_values = dm_data.min(axis=0)
-        testing.assert_array_equal(da_scipy_values.A, da_scipy_values.A)
+        testing.assert_array_equal(da_cupy_values.A, da_scipy_values.A)
 
     def test_min_dense_axis_0(self):
         dm_data = numpy.random.random((10, 20))
