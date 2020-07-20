@@ -1047,7 +1047,7 @@ class TestIsspmatrixCsr(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy<=1.2')
 class TestCsrMatrixGetitem(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
