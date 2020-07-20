@@ -4,6 +4,8 @@ import cupy
 from cupy import sparse
 from cupy import testing
 
+import numpy
+
 import pytest
 
 
@@ -27,15 +29,8 @@ class TestIndexing(unittest.TestCase):
         # so we need to cast
         a = a.astype(self.dtype)
 
-        if isinstance(maj, cupy.ndarray):
-            maj_h = maj.get()
-        else:
-            maj_h = maj
-
-        if isinstance(min, cupy.ndarray):
-            min_h = min.get()
-        else:
-            min_h = min
+        maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
+        min_h = min.get() if isinstance(min, cupy.ndarray) else min
 
         expected = a.get()
 
@@ -58,7 +53,7 @@ class TestIndexing(unittest.TestCase):
                 actual.data, expected.data)
         else:
             cupy.testing.assert_array_equal(
-                actual.ravel(), cupy.array(expected).ravel())
+                actual.ravel(), numpy.array(expected).ravel())
 
     def test_major_slice(self):
         self._run(slice(5, 9))
