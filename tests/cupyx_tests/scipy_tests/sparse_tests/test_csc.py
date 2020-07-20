@@ -1493,7 +1493,7 @@ class TestCsrMatrixGetitem(unittest.TestCase):
         # This test is adapted from Scipy's CSC tests
         sp_data = scipy.sparse.csc_matrix([[0, 1, 2], [3, 4, 5], [6, 7, 8]],
                                           dtype=self.dtype)
-        data = cupy.sparse.csc_matrix(sp_data)
+        data = sparse.csc_matrix(sp_data)
         list_indices1 = [False, True, False]
         array_indices1 = cupy.array(list_indices1)
         list_indices2 = [[False, True, False], [
@@ -1517,31 +1517,31 @@ class TestCsrMatrixGetitem(unittest.TestCase):
         # This test is adapted from Scipy's CSC tests
         N = 10
         cupy.random.seed(0)
-        X = cupy.random.random((N, N))
+        X = testing.shaped_random((N, N), cupy)
         X[X > 0.7] = 0
-        Xcsc = cupy.sparse.csc_matrix(X)
+        Xcsc = sparse.csc_matrix(X)
 
         for i in range(N):
             arr_row = X[i:i + 1, :]
             csc_row = Xcsc.getrow(i)
 
-            cupy.testing.assert_array_almost_equal(arr_row, csc_row.toarray())
-            numpy.testing.assert_(type(csc_row) is cupy.sparse.csr_matrix)
+            assert sparse.isspmatrix_csr(csc_row)
+            assert (arr_row == csc_row.toarray()).all()
 
     def test_getcol(self):
         # This test is adapted from Scipy's CSC tests
         N = 10
         cupy.random.seed(0)
-        X = cupy.random.random((N, N))
+        X = testing.shaped_random((N, N), cupy)
         X[X > 0.7] = 0
-        Xcsc = cupy.sparse.csc_matrix(X)
+        Xcsc = sparse.csc_matrix(X)
 
         for i in range(N):
             arr_col = X[:, i:i + 1]
             csc_col = Xcsc.getcol(i)
 
-            cupy.testing.assert_array_almost_equal(arr_col, csc_col.toarray())
-            numpy.testing.assert_(type(csc_col) is cupy.sparse.csc_matrix)
+            assert sparse.isspmatrix_csc(csc_col)
+            assert (arr_col == csc_col.toarray()).all()
 
 
 @testing.parameterize(*testing.product({

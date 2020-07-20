@@ -37,18 +37,15 @@ class TestIndexing(unittest.TestCase):
             min_h = min
 
         if min is not None:
-
             expected = a.get()
             expected = expected[maj_h, min_h]
 
             actual = a[maj, min]
-            cupy.cuda.Stream.null.synchronize()
         else:
             expected = a.get()
             expected = expected[maj_h]
 
             actual = a[maj]
-            cupy.cuda.Stream.null.synchronize()
 
         if cupy.sparse.isspmatrix(actual):
             actual.sort_indices()
@@ -61,7 +58,6 @@ class TestIndexing(unittest.TestCase):
             cupy.testing.assert_array_equal(
                 actual.data, expected.data)
         else:
-
             cupy.testing.assert_array_equal(
                 actual.ravel(), cupy.array(expected).ravel())
 

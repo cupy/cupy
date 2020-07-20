@@ -275,8 +275,6 @@ class TestCsrMatrix(unittest.TestCase):
     def test_pickle_roundtrip(self):
         s = _make(cupy, sparse, self.dtype)
 
-        print(str(pickle.dumps(s)))
-
         s2 = pickle.loads(pickle.dumps(s))
         assert s._descr.descriptor != s2._descr.descriptor
         assert s.shape == s2.shape
@@ -1642,7 +1640,7 @@ class TestCsrMatrixGetitem(unittest.TestCase):
         # This test is adapted from Scipy's CSR tests
         sp_data = scipy.sparse.csr_matrix([[0, 1, 2], [3, 4, 5], [6, 7, 8]],
                                           dtype=self.dtype)
-        data = cupy.sparse.csr_matrix(sp_data)
+        data = sparse.csr_matrix(sp_data)
         list_indices1 = [False, True, False]
         array_indices1 = cupy.array(list_indices1)
         list_indices2 = [[False, True, False], [
@@ -1665,32 +1663,30 @@ class TestCsrMatrixGetitem(unittest.TestCase):
 
         # This test is adapted from Scipy's CSR tests
         N = 10
-        cupy.random.seed(0)
-        X = cupy.random.random((N, N))
+        X = testing.shaped_random((N, N), cupy)
         X[X > 0.7] = 0
-        Xcsr = cupy.sparse.csr_matrix(X)
+        Xcsr = sparse.csr_matrix(X)
 
         for i in range(N):
             arr_row = X[i:i + 1, :]
             csr_row = Xcsr.getrow(i)
-
-            cupy.testing.assert_array_almost_equal(arr_row, csr_row.toarray())
-            numpy.testing.assert_(type(csr_row) is cupy.sparse.csr_matrix)
+            assert sparse.isspmatrix_csr(csr_row)
+            assert (arr_row == csr_row.toarray()).all()
 
     def test_getcol(self):
         # This test is adapted from Scipy's CSR tests
         N = 10
         cupy.random.seed(0)
-        X = cupy.random.random((N, N))
+        X = testing.shaped_random((N, N), cupy)
         X[X > 0.7] = 0
-        Xcsr = cupy.sparse.csr_matrix(X)
+        Xcsr = sparse.csr_matrix(X)
 
         for i in range(N):
             arr_col = X[:, i:i + 1]
             csr_col = Xcsr.getcol(i)
 
-            cupy.testing.assert_array_almost_equal(arr_col, csr_col.toarray())
-            numpy.testing.assert_(type(csr_col) is cupy.sparse.csr_matrix)
+            assert sparse.isspmatrix_csr(csr_col)
+            assert (arr_col == csr_col.toarray()).all()
 
 
 @testing.parameterize(*testing.product({
