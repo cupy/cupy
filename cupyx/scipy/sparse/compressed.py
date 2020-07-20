@@ -840,6 +840,34 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         self.data[offsets[offsets > -1]] = 0
 
     import cupy.prof
+    #
+    # _csr_copy_existing_indices_kern = core.ElementwiseKernel(
+    #     '''I n_row, raw I Ap, raw I Aj, raw Ax, raw I Bp''',
+    #     ', raw I Bj, raw I Bx', '''
+    #     const I input_row_start = Ap[i];
+    #     const I Bj_i = Bj[i];
+    #     const I j = Bi_i < 0 ? Bi_i + n_row : Bi_i; // sample row
+    #     const I k = Bj_i < 0 ? Bj_i + n_col : Bj_i; // sample column
+    #
+    #     const I row_start = Ap[j];
+    #     const I row_end   = Ap[j+1];
+    #
+    #     I offset = -1;
+    #
+    #     for(I jj = row_start; jj < row_end; jj++)
+    #     {
+    #         if (Aj[jj] == k) {
+    #             offset = jj;
+    #             for (jj++; jj < row_end; jj++) {
+    #                 if (Aj[jj] == k) {
+    #                     offset = -2;
+    #                     dupl[0] = true;
+    #                 }
+    #             }
+    #         }
+    #     }
+    #     Bp[i] = offset;
+    # ''', 'csr_copy_existing_indices_kern', no_return=True)
 
     @cupy.prof.TimeRangeDecorator(message="_insert_many", color_id=1)
     def _insert_many(self, i, j, x):
@@ -854,6 +882,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         i = i.take(order)
         j = j.take(order)
         x = x.take(order)
+
+        print("i=%s, j=%s, x=%s" % (i, j, x))
 
         do_sort = self.has_sorted_indices
 
@@ -877,7 +907,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         to_add = cupy.array([j.size], ui_indptr.dtype)
         ui_indptr = cupy.hstack([ui_indptr, to_add])
 
-        # Zip i and j together into a single int64. This effectively creates
+        # Zip i and j together into a single array so they can be sorted
+        # and indexed together. This effectively creates
         # a coo, where the row and column can stay together.
         ij = cupy.left_shift(i.astype("uint64"), 32)
         ij = cupy.bitwise_or(ij, j.astype("uint32"))
@@ -888,22 +919,33 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         ordered_ij = ij[::-1][uij_indptr]
 
-        b = cupy.zeros(inv.max().item() + 1, dtype=cupy.int32)
-        inds = cupy.arange(inv.size)
-        cupyx.scatter_max(b, inv, inds)
-
-        indptr_insert = cupy.right_shift(ordered_ij, 32).astype("int32")
-
-        sc = cupy.zeros(ui_indptr.size)
-        cupyx.scatter_add(sc[1:], cupy.searchsorted(ui, indptr_insert), 1)
-
-        cupy.cumsum(sc, out=sc)
-
+        # Insertion arrays in COO format
+        indptr_insert = cupy.right_shift(ordered_ij, 32).astype(idx_dtype)
         indices_inserts = cupy.bitwise_and(ordered_ij, 2**32-1)
-
         data_inserts = x[cupy.searchsorted(uij, ordered_ij)]
 
-        new_nnzs = cupy.diff(ui_indptr)
+        sc = cupy.zeros(ui_indptr.size, dtype=idx_dtype)
+        cupyx.scatter_add(sc[1:], cupy.searchsorted(ui, indptr_insert), 1)
+        cupy.cumsum(sc, out=sc)
+
+        print("ui=%s, sc=%s" % (ui, sc))
+
+        # Build output indptr diff
+        indptr_diff = cupy.diff(self.indptr)
+        indptr_diff[ui] += cupy.diff(sc)
+        nnzs = cupy.empty(self.indptr.shape, dtype=idx_dtype)
+        nnzs[0] = idx_dtype(0)
+        nnzs[1:] = indptr_diff
+
+        new_indptr = cupy.cumsum(nnzs, out=nnzs)
+        new_indices = cupy.zeros(new_indptr[-1].item(), dtype=idx_dtype)
+        new_data = cupy.zeros(new_indptr[-1].item(), dtype=idx_dtype)
+
+
+        # Need a kernel that takes self.indptr, self.indices, self.data,
+        # new_indptr, new_indices, and new_data and performs the following:
+        # - populates the
+
 
         # TODO(cjnolet): Remove this loop
         # Kernel to populate existing cols
@@ -922,7 +964,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             indices_parts.append(indices_inserts[js:je].copy().astype('int32'))
             data_parts.append(data_inserts[js:je].copy())
-            new_nnzs[c] = je-js
 
             prev = ii
 
@@ -935,14 +976,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         self.indices = cupy.concatenate(indices_parts)
         self.data = cupy.concatenate(data_parts)
 
-        nnzs = cupy.empty(self.indptr.shape, dtype=idx_dtype)
-        nnzs[0] = idx_dtype(0)
-        indptr_diff = cupy.diff(self.indptr)
-
-        indptr_diff[ui] += new_nnzs
-
-        nnzs[1:] = indptr_diff
-        self.indptr = cupy.cumsum(nnzs, out=nnzs)
+        self.indptr = new_indptr
 
         with cupy.prof.time_range(message="sorting", color_id=2):
             if do_sort:
