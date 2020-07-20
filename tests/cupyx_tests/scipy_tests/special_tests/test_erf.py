@@ -38,7 +38,7 @@ class _TestBase(object):
 
 
 @testing.gpu
-@testing.with_requires('scipy')
+@testing.with_requires('scipy<=1.2')
 class TestSpecial(unittest.TestCase, _TestBase):
 
     @testing.for_dtypes(['e', 'f', 'd'])
@@ -68,7 +68,7 @@ class TestSpecial(unittest.TestCase, _TestBase):
 
 
 @testing.gpu
-@testing.with_requires('scipy')
+@testing.with_requires('scipy<=1.2')
 class TestFusionSpecial(unittest.TestCase, _TestBase):
 
     @testing.for_dtypes(['e', 'f', 'd'])
