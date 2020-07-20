@@ -226,9 +226,6 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
 
             assert len(cupy_result) == len(numpy_result)
 
-            cupy_result, numpy_result = _convert_output_to_ndarrays(
-                cupy_result, numpy_result, sp_name)
-
             if type_check:
                 for cupy_r, numpy_r in zip(cupy_result, numpy_result):
                     assert cupy_r.dtype == numpy_r.dtype
@@ -257,6 +254,9 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
                 # nVidia GPUs and Intel CPUs behave differently.
                 # To avoid this difference, we need to ignore dimensions whose
                 # values are negative.
+                cupy_r, numpy_r = _convert_output_to_ndarray(
+                    cupy_r, numpy_r, sp_name)
+
                 skip = False
                 if (_contains_signed_and_unsigned(kw)
                         and cupy_r.dtype in _unsigned_dtypes):
@@ -294,16 +294,6 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name):
         'numpy and cupy returns different type of return value:\n'
         'cupy: {}\nnumpy: {}'.format(
             type(c_out), type(n_out)))
-
-
-def _convert_output_to_ndarrays(cupy_result, numpy_result, sp_name):
-    new_cupy_result = []
-    new_numpy_result = []
-    for cupy_r, numpy_r in zip(cupy_result, numpy_result):
-        c, n = _convert_output_to_ndarray(cupy_r, numpy_r, sp_name)
-        new_cupy_result.append(c)
-        new_numpy_result.append(n)
-    return new_cupy_result, new_numpy_result
 
 
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
