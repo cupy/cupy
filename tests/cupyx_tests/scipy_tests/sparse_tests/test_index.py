@@ -1,6 +1,7 @@
 import unittest
 
 import cupy
+from cupy import sparse
 from cupy import testing
 
 import pytest
@@ -18,9 +19,9 @@ import pytest
 class TestIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None):
-        a = cupy.sparse.random(self.n_rows, self.n_cols,
-                               format=self.format,
-                               density=self.density)
+        a = sparse.random(self.n_rows, self.n_cols,
+                          format=self.format,
+                          density=self.density)
 
         # sparse.random doesn't support complex types
         # so we need to cast
@@ -36,18 +37,16 @@ class TestIndexing(unittest.TestCase):
         else:
             min_h = min
 
-        if min is not None:
-            expected = a.get()
-            expected = expected[maj_h, min_h]
+        expected = a.get()
 
+        if min is not None:
+            expected = expected[maj_h, min_h]
             actual = a[maj, min]
         else:
-            expected = a.get()
             expected = expected[maj_h]
-
             actual = a[maj]
 
-        if cupy.sparse.isspmatrix(actual):
+        if sparse.isspmatrix(actual):
             actual.sort_indices()
             expected.sort_indices()
 
