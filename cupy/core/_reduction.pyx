@@ -276,6 +276,8 @@ cdef class _AbstractReductionKernel:
         self.in_params = in_params_
         self.out_params = out_params_
         self._params = params
+        # This is for profiling mechanisms to auto infer a name
+        self.__name__ = name
 
     cpdef ndarray _call(
             self,

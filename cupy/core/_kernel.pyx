@@ -684,7 +684,8 @@ cdef class ElementwiseKernel:
         readonly Py_ssize_t nargs
         readonly tuple params
         readonly object operation
-        readonly object name
+        readonly str name
+        readonly str __name__
         readonly bint reduce_dims
         readonly object preamble
         readonly bint no_return
@@ -719,6 +720,8 @@ cdef class ElementwiseKernel:
         if 'i' in names:
             raise ValueError('Can not use \'i\' as a parameter name')
         self._elementwise_kernel_memo = {}
+        # This is for profiling mechanisms to auto infer a name
+        self.__name__ = name
 
     def __call__(self, *args, **kwargs):
         """Compiles and invokes the elementwise kernel.
