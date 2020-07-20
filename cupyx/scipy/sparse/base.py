@@ -334,6 +334,7 @@ class spmatrix(object):
     def mean(self, axis=None, dtype=None, out=None):
         """
         Compute the arithmetic mean along the specified axis.
+
         Returns the average of the matrix elements. The average is taken
         over all elements in the matrix by default, otherwise over the
         specified axis. `float64` intermediate and return values are used
@@ -348,13 +349,13 @@ class spmatrix(object):
                 Type to use in computing the mean. For integer inputs, the
                 default is `float64`; for floating point inputs, it is the same
                 as the input dtype.
-            out (cupy.core.ndarray): optional
+            out (cupy.ndarray): optional
                 Alternative output matrix in which to place the result. It must
                 have the same shape as the expected output, but the type of the
                 output values will be cast if necessary.
 
         Returns:
-            m  (cupy.core.ndarray) : Output array of means
+            m (cupy.ndarray) : Output array of means
 
         .. seealso::
             :meth:`scipy.sparse.spmatrix.mean`
