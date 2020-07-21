@@ -30,7 +30,8 @@ def _new_like_order_and_strides(a, dtype, order, shape=None):
     """
     order = order.upper()
     if order not in ['C', 'F', 'K', 'A']:
-        raise TypeError('order not understood: {}'.format(order))
+        raise ValueError('order not understood: {}'.format(order))
+
     if numpy.isscalar(shape):
         shape = (shape,)
 

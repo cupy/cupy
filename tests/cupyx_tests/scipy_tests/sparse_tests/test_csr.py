@@ -10,6 +10,7 @@ except ImportError:
     scipy_available = False
 
 import cupy
+from cupy.core import _accelerator
 from cupy import testing
 from cupyx.scipy import sparse
 
@@ -480,10 +481,11 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         self.assertTrue(a.flags.f_contiguous)
         return a
 
+    @testing.with_requires('numpy>=1.19')
     def test_toarray_unknown_order(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 m.toarray(order='#')
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -847,10 +849,125 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(TypeError):
                 None * m
 
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_canonical_format(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.has_canonical_format
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_canonical_format2(self, xp, sp):
+        # this test is adopted from SciPy's
+        M = sp.csr_matrix((xp.array([2], dtype=self.dtype),
+                           xp.array([0]), xp.array([0, 1])))
+        assert M.has_canonical_format
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_canonical_format3(self, xp, sp):
+        # this test is adopted from SciPy's
+        indices = xp.array([0, 0])  # contains duplicate
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+
+        M = sp.csr_matrix((data, indices, indptr))
+        assert not M.has_canonical_format
+
+        # set by deduplicating
+        M.sum_duplicates()
+        assert M.has_canonical_format
+        assert 1 == len(M.indices)
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_canonical_format4(self, xp, sp):
+        # this test is adopted from SciPy's
+        indices = xp.array([0, 0])  # contains duplicate
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+
+        M = sp.csr_matrix((data, indices, indptr))
+        # set manually (although underlyingly duplicated)
+        M.has_canonical_format = True
+        assert M.has_canonical_format
+        assert 2 == len(M.indices)  # unaffected content
+
+        # ensure deduplication bypassed when has_canonical_format == True
+        M.sum_duplicates()
+        assert 2 == len(M.indices)  # unaffected content
+        return M
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_sorted_indices(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.has_sorted_indices
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_sorted_indices2(self, xp, sp):
+        # this test is adopted from SciPy's
+        sorted_inds = xp.array([0, 1])
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+        M = sp.csr_matrix((data, sorted_inds, indptr))
+        assert M.has_sorted_indices
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_sorted_indices3(self, xp, sp):
+        # this test is adopted from SciPy's
+        sorted_inds = xp.array([0, 1])
+        unsorted_inds = xp.array([1, 0])
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+        M = sp.csr_matrix((data, unsorted_inds, indptr))
+        assert not M.has_sorted_indices
+
+        # set by sorting
+        M.sort_indices()
+        assert M.has_sorted_indices
+        assert (M.indices == sorted_inds).all()
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_sorted_indices4(self, xp, sp):
+        # this test is adopted from SciPy's
+        unsorted_inds = xp.array([1, 0])
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+        M = sp.csr_matrix((data, unsorted_inds, indptr))
+
+        # set manually (although underlyingly unsorted)
+        M.has_sorted_indices = True
+        assert M.has_sorted_indices
+        assert (M.indices == unsorted_inds).all()
+
+        # ensure sort bypassed when has_sorted_indices == True
+        M.sort_indices()
+        assert (M.indices == unsorted_inds).all()
+        return M
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sort_indices(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         m.sort_indices()
+        assert m.has_sorted_indices
+        return m
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sort_indices2(self, xp, sp):
+        # this test is adopted from SciPy's
+        data = xp.arange(5).astype(xp.float32)
+        indices = xp.array([7, 2, 1, 5, 4])
+        indptr = xp.array([0, 3, 5])
+        asp = sp.csr_matrix((data, indices, indptr), shape=(2, 10))
+        asp.sort_indices()
+        assert (asp.indices == xp.array([1, 2, 7, 4, 5])).all()
+        return asp.todense()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sorted_indices(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        m = m.sorted_indices()
+        assert m.has_sorted_indices
         return m
 
     def test_sum_tuple_axis(self):
@@ -1025,6 +1142,33 @@ class TestCsrMatrixScipyCompressed(unittest.TestCase):
 
 @testing.with_requires('scipy>=0.19.0')
 class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
+
+    def test_min_sparse_axis_none(self):
+        dm_data = numpy.random.random((10, 20))
+        dm_data[dm_data < 0.95] = 0
+
+        dm_data = scipy.sparse.csr_matrix(dm_data)
+        cp_matrix = sparse.csr_matrix((cupy.array(dm_data.data),
+                                       cupy.array(dm_data.indices),
+                                       cupy.array(dm_data.indptr)),
+                                      shape=(10, 20))
+
+        da_cupy_values = cp_matrix.min()
+        da_scipy_values = dm_data.min()
+        testing.assert_array_equal(da_cupy_values, da_scipy_values)
+
+    def test_min_sparse_axis_none_nonzero(self):
+        dm_data = numpy.arange(0, 100, 1).reshape((10, 10)).astype(float)
+
+        dm_sparse = scipy.sparse.csr_matrix(dm_data)
+        cp_matrix = sparse.csr_matrix((cupy.array(dm_sparse.data),
+                                       cupy.array(dm_sparse.indices),
+                                       cupy.array(dm_sparse.indptr)),
+                                      shape=(10, 10))
+
+        da_cupy_values = cp_matrix.min(nonzero=True)
+        da_numpy_values = numpy.array(1).astype(float)
+        testing.assert_array_equal(da_cupy_values, da_numpy_values)
 
     def _make_data_min(self, xp, sp, dense=False):
         dm_data = testing.shaped_random((10, 20), xp=xp, scale=1.0)
@@ -1473,23 +1617,29 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
 }))
 @testing.with_requires('scipy')
 @testing.gpu
-@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
-class TestCUBspmv(unittest.TestCase):
+@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+class TestCubSpmv(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators(['cub'])
+
+    def tearDown(self):
+        _accelerator.set_routine_accelerators(self.old_accelerators)
+
     @property
     def make(self):
         return globals()[self.make_method]
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_dense_vector(self, xp, sp):
-        assert cupy.cuda.cub_enabled
-
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(4).astype(self.dtype)
         if xp is numpy:
             return m * x
 
         # xp is cupy, first ensure we really use CUB
-        func = 'cupyx.scipy.sparse.csr.device_csrmv'
+        func = 'cupyx.scipy.sparse.csr.cub.device_csrmv'
         with testing.AssertFunctionIsCalled(func):
             m * x
         # ...then perform the actual computation

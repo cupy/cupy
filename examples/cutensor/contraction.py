@@ -4,7 +4,8 @@
 import numpy
 import cupy
 from cupy import cutensor
-from cupy.cuda import stream
+import cupyx.time
+
 
 dtype = numpy.float32
 
@@ -25,27 +26,20 @@ desc_a = cutensor.create_tensor_descriptor(a)
 desc_b = cutensor.create_tensor_descriptor(b)
 desc_c = cutensor.create_tensor_descriptor(c)
 
-alpha = 1.1
-beta = 1.0
+mode_a = cutensor.create_mode(*mode_a)
+mode_b = cutensor.create_mode(*mode_b)
+mode_c = cutensor.create_mode(*mode_c)
+alpha = numpy.array(1.1, dtype)
+beta = numpy.array(1.0, dtype)
 
-# rehearsal
-c = cutensor.contraction(alpha, a, desc_a, mode_a, b, desc_b, mode_b,
-                         beta, c, desc_c, mode_c)
+perf = cupyx.time.repeat(
+    cutensor.contraction,
+    (alpha, a, desc_a, mode_a, b, desc_b, mode_b, beta, c, desc_c, mode_c),
+    n_warmup=1, n_repeat=5)
 
-ev_start = stream.Event()
-ev_end = stream.Event()
-st = stream.Stream()
-with st:
-    # measurement
-    ev_start.record()
-    c = cutensor.contraction(alpha, a, desc_a, mode_a, b, desc_b, mode_b,
-                             beta, c, desc_c, mode_c)
-    ev_end.record()
-st.synchronize()
-
-elapsed_ms = stream.get_elapsed_time(ev_start, ev_end)
 total_flops = 2 * numpy.prod(numpy.array(list(extent.values())))
+elapsed = perf.gpu_times.mean()
 
 print('dtype: {}'.format(numpy.dtype(dtype).name))
-print('time (ms): {}'.format(elapsed_ms))
-print('GFLOPS: {}'.format(total_flops / elapsed_ms / 1e6))
+print(perf)
+print('GFLOPS: {}'.format(total_flops / elapsed / 1e9))

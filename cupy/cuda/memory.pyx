@@ -10,7 +10,7 @@ import threading
 import warnings
 import weakref
 
-from cupy.cuda import runtime
+from cupy_backends.cuda.api import runtime
 from cupy.core import syncdetect
 
 from fastrlock cimport rlock
@@ -21,8 +21,8 @@ from libcpp cimport algorithm
 from cupy.cuda cimport device
 from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport memory_hook
-from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
+from cupy_backends.cuda.api cimport runtime
 
 
 cdef bint _exit_mode = False
@@ -501,7 +501,7 @@ cdef class MemoryPointer:
             runtime.deviceEnablePeerAccess(peer)
         # peer access could already be set by external libraries at this point
         except runtime.CUDARuntimeError as e:
-            if e.status != runtime.cudaErrorPeerAccessAlreadyEnabled:
+            if e.status != runtime.errorPeerAccessAlreadyEnabled:
                 raise
         finally:
             runtime.setDevice(current)
@@ -1177,20 +1177,20 @@ cdef class SingleDeviceMemoryPool:
         try:
             mem = self._alloc(size).mem
         except runtime.CUDARuntimeError as e:
-            if e.status != runtime.cudaErrorMemoryAllocation:
+            if e.status != runtime.errorMemoryAllocation:
                 raise
             self.free_all_blocks()
             try:
                 mem = self._alloc(size).mem
             except runtime.CUDARuntimeError as e:
-                if e.status != runtime.cudaErrorMemoryAllocation:
+                if e.status != runtime.errorMemoryAllocation:
                     raise
                 gc.collect()
                 self.free_all_blocks()
                 try:
                     mem = self._alloc(size).mem
                 except runtime.CUDARuntimeError as e:
-                    if e.status != runtime.cudaErrorMemoryAllocation:
+                    if e.status != runtime.errorMemoryAllocation:
                         raise
                     oom_error = True
         finally:

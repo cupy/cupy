@@ -227,11 +227,13 @@ class TestChoose(unittest.TestCase):
         c = testing.shaped_arange((3, 4), xp, dtype)
         return a.choose(c, mode='clip')
 
+    @testing.with_requires('numpy>=1.19')
     def test_unknown_clip(self):
-        a = cupy.array([0, 3, -1, 5])
-        c = testing.shaped_arange((3, 4), cupy, cupy.float32)
-        with self.assertRaises(TypeError):
-            a.choose(c, mode='unknow')
+        for xp in (numpy, cupy):
+            a = xp.array([0, 3, -1, 5])
+            c = testing.shaped_arange((3, 4), xp, numpy.float32)
+            with pytest.raises(ValueError):
+                a.choose(c, mode='unknow')
 
     def test_raise(self):
         a = cupy.array([2])

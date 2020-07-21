@@ -513,6 +513,11 @@ def numpy_cupy_array_list_equal(
 
     .. seealso:: :func:`cupy.testing.assert_array_list_equal`
     """  # NOQA
+    warnings.warn(
+        'numpy_cupy_array_list_equal is deprecated.'
+        ' Use numpy_cupy_array_equal instead.',
+        DeprecationWarning)
+
     def check_func(x, y):
         array.assert_array_equal(x, y, err_msg, verbose)
     return _make_decorator(check_func, name, False, False, sp_name, scipy_name)
@@ -1046,7 +1051,6 @@ def for_contiguous_axes(name='axis'):
                 else:
                     raise ValueError('Please specify the array order.')
                 try:
-                    print(order, ', testing', a)
                     kw[name] = a
                     impl(self, *args, **kw)
                 except Exception:
@@ -1263,7 +1267,21 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
 class AssertFunctionIsCalled:
 
     def __init__(self, mock_mod, **kwargs):
+        """A handy wrapper for unittest.mock to check if a function is called.
+
+        This class should be used as a context manager.
+
+        Args:
+            mock_mod (str): the function to be mocked.
+            times_called (int): the number of times the function should be
+                called. Default is ``1``.
+
+        """
+
         self.patch = mock.patch(mock_mod, **kwargs)
+
+        times_called = kwargs.get('times_called')
+        self.times_called = times_called if times_called is not None else 1
 
     def __enter__(self):
         self.handle = self.patch.__enter__()
@@ -1271,6 +1289,6 @@ class AssertFunctionIsCalled:
         return self.handle
 
     def __exit__(self, exc_type, exc_value, traceback):
-        assert self.handle.call_count == 1
+        assert self.handle.call_count == int(self.times_called)
         del self.handle
         return self.patch.__exit__(exc_type, exc_value, traceback)

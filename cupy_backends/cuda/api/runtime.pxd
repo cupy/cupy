@@ -291,11 +291,10 @@ cpdef enum:
 ###############################################################################
 # Error codes
 ###############################################################################
+cdef int errorMemoryAllocation
+cdef int errorInvalidValue
+cdef int errorPeerAccessAlreadyEnabled
 
-cdef extern from '../cuda/cupy_cuda.h':  # thru parent to import in core
-    int cudaErrorMemoryAllocation
-    int cudaErrorInvalidValue
-    int cudaErrorPeerAccessAlreadyEnabled
 
 ###############################################################################
 # Const value

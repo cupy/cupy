@@ -7,9 +7,9 @@ import numpy
 import threading
 
 import cupy
-from cupy.cuda cimport driver
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport memory
-from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
 from cupy.cuda.device import Device
 from cupy.cuda.stream import Event, Stream
