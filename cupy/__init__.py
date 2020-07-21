@@ -33,7 +33,7 @@ If you are building CuPy from source, please check your environment, uninstall C
   $ pip install cupy --no-cache-dir -vvvv
 
 Check the Installation Guide for details:
-  https://docs-cupy.chainer.org/en/latest/install.html
+  https://docs.cupy.dev/en/latest/install.html
 
 original error: {}'''.format(exc_info[1]))  # NOQA
 
@@ -546,6 +546,11 @@ from cupy.logic.comparison import not_equal  # NOQA
 from cupy.logic.truth import all  # NOQA
 from cupy.logic.truth import any  # NOQA
 
+# ------------------------------------------------------------------------------
+# Polynomial functions
+# ------------------------------------------------------------------------------
+from cupy.lib.polynomial import poly1d  # NOQA
+
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
@@ -646,6 +651,7 @@ from cupy.math.misc import nan_to_num  # NOQA
 from cupy.math.misc import sign  # NOQA
 from cupy.math.misc import sqrt  # NOQA
 from cupy.math.misc import square  # NOQA
+from cupy.math.misc import convolve  # NOQA
 
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
@@ -689,6 +695,7 @@ from cupy._sorting.sort import sort  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.statistics.correlation import corrcoef  # NOQA
 from cupy.statistics.correlation import cov  # NOQA
+from cupy.statistics.correlation import correlate  # NOQA
 
 from cupy.statistics.order import amax  # NOQA
 from cupy.statistics.order import amax as max  # NOQA

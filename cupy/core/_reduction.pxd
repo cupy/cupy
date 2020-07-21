@@ -15,6 +15,7 @@ cdef class _AbstractReductionKernel:
         readonly tuple in_params
         readonly tuple out_params
         readonly tuple _params
+        readonly str __name__
 
     cpdef ndarray _call(
         self,

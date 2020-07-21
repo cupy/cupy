@@ -131,33 +131,29 @@ class TestArrayCopyAndView(unittest.TestCase):
         self.assertTrue(b is a)
 
     @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_equal()
     def test_astype_strides(self, xp, src_dtype, dst_dtype):
         src = xp.empty((1, 2, 3), dtype=src_dtype)
-        return numpy.array(
-            astype_without_warning(src, dst_dtype, order='K').strides)
+        return astype_without_warning(src, dst_dtype, order='K').strides
 
     @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_equal()
     def test_astype_strides_negative(self, xp, src_dtype, dst_dtype):
         src = xp.empty((2, 3), dtype=src_dtype)[::-1, :]
-        return numpy.array(
-            astype_without_warning(src, dst_dtype, order='K').strides)
+        return astype_without_warning(src, dst_dtype, order='K').strides
 
     @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_equal()
     def test_astype_strides_swapped(self, xp, src_dtype, dst_dtype):
         src = xp.swapaxes(xp.empty((2, 3, 4), dtype=src_dtype), 1, 0)
-        return numpy.array(
-            astype_without_warning(src, dst_dtype, order='K').strides)
+        return astype_without_warning(src, dst_dtype, order='K').strides
 
     @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_equal()
     def test_astype_strides_broadcast(self, xp, src_dtype, dst_dtype):
         src, _ = xp.broadcast_arrays(xp.empty((2,), dtype=src_dtype),
                                      xp.empty((2, 3, 2), dtype=src_dtype))
-        return numpy.array(
-            astype_without_warning(src, dst_dtype, order='K').strides)
+        return astype_without_warning(src, dst_dtype, order='K').strides
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

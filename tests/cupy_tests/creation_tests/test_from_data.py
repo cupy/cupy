@@ -105,14 +105,16 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_orders('CFAK', name='src_order')
     @testing.for_orders('CFAK', name='dst_order')
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_array_equal(strides_check=True)
-    def test_array_from_list_of_cupy(self, xp, dtype, src_order, dst_order):
+    def test_array_from_list_of_cupy(
+            self, xp, dtype1, dtype2, src_order, dst_order):
         # compares numpy.array(<list of numpy.ndarray>) with
         # cupy.array(<list of cupy.ndarray>)
         a = [
-            testing.shaped_arange((3, 4), xp, dtype, src_order) + (12 * i)
-            for i in range(2)]
+            testing.shaped_arange((3, 4), xp, dtype1, src_order),
+            testing.shaped_arange((3, 4), xp, dtype2, src_order),
+        ]
         return xp.array(a, order=dst_order)
 
     @testing.for_orders('CFAK', name='src_order')

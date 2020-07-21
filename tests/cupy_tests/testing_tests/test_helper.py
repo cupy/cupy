@@ -114,7 +114,7 @@ class TestNumPyCuPyEqual(unittest.TestCase, NumPyCuPyDecoratorBase,
 
 
 @testing.parameterize(
-    {'decorator': 'numpy_cupy_array_list_equal'}
+    {'decorator': 'numpy_cupy_array_equal'}
 )
 @testing.gpu
 class TestNumPyCuPyListEqual(unittest.TestCase, NumPyCuPyDecoratorBase):
@@ -147,18 +147,18 @@ class TestNumPyCuPyLess(unittest.TestCase, NumPyCuPyDecoratorBase,
 
 class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
 
-    @helper.for_unsigned_dtypes('dtype1')
-    @helper.for_signed_dtypes('dtype2')
     @helper.numpy_cupy_allclose()
-    def correct_failure(self, xp, dtype1, dtype2):
+    def correct_failure(self, dtype1, dtype2, xp):
         if xp == numpy:
             return xp.array(-1, dtype=numpy.float32)
         else:
             return xp.array(-2, dtype=numpy.float32)
 
-    def test_correct_failure(self):
+    @helper.for_unsigned_dtypes('dtype1')
+    @helper.for_signed_dtypes('dtype2')
+    def test_correct_failure(self, dtype1, dtype2):
         with pytest.raises(AssertionError):
-            self.correct_failure()
+            self.correct_failure(dtype1, dtype2)
 
     @helper.for_unsigned_dtypes('dtype1')
     @helper.for_signed_dtypes('dtype2')
@@ -244,12 +244,6 @@ class TestSkip(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_array_equal(self, xp):
         raise unittest.SkipTest('Test for skip with @numpy_cupy_array_equal')
-        assert False
-
-    @testing.numpy_cupy_array_list_equal()
-    def test_array_list_equal(self, xp):
-        raise unittest.SkipTest(
-            'Test for skip with @numpy_cupy_array_list_equal')
         assert False
 
     @testing.numpy_cupy_array_less()

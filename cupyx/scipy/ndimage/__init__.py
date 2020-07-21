@@ -2,6 +2,17 @@ from cupyx.scipy.ndimage.filters import correlate  # NOQA
 from cupyx.scipy.ndimage.filters import convolve  # NOQA
 from cupyx.scipy.ndimage.filters import correlate1d  # NOQA
 from cupyx.scipy.ndimage.filters import convolve1d  # NOQA
+from cupyx.scipy.ndimage.filters import uniform_filter1d  # NOQA
+from cupyx.scipy.ndimage.filters import uniform_filter  # NOQA
+from cupyx.scipy.ndimage.filters import gaussian_filter1d  # NOQA
+from cupyx.scipy.ndimage.filters import gaussian_filter  # NOQA
+from cupyx.scipy.ndimage.filters import prewitt  # NOQA
+from cupyx.scipy.ndimage.filters import sobel  # NOQA
+from cupyx.scipy.ndimage.filters import generic_laplace  # NOQA
+from cupyx.scipy.ndimage.filters import laplace  # NOQA
+from cupyx.scipy.ndimage.filters import gaussian_laplace  # NOQA
+from cupyx.scipy.ndimage.filters import generic_gradient_magnitude  # NOQA
+from cupyx.scipy.ndimage.filters import gaussian_gradient_magnitude  # NOQA
 from cupyx.scipy.ndimage.filters import minimum_filter  # NOQA
 from cupyx.scipy.ndimage.filters import maximum_filter  # NOQA
 from cupyx.scipy.ndimage.filters import minimum_filter1d  # NOQA
