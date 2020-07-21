@@ -1152,6 +1152,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         .. warning::
             Calling this function might synchronize the device.
+
+        .. seealso::
+           :meth:`scipy.sparse.csr_matrix.sum_duplicates`,
+           :meth:`scipy.sparse.csc_matrix.sum_duplicates`
         """
         if self.has_canonical_format:
             return

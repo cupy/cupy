@@ -33,7 +33,7 @@ If you are building CuPy from source, please check your environment, uninstall C
   $ pip install cupy --no-cache-dir -vvvv
 
 Check the Installation Guide for details:
-  https://docs-cupy.chainer.org/en/latest/install.html
+  https://docs.cupy.dev/en/latest/install.html
 
 original error: {}'''.format(exc_info[1]))  # NOQA
 
