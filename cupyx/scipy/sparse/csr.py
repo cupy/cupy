@@ -181,8 +181,6 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     def __rtruediv__(self, other):
         raise NotImplementedError
 
-    # TODO(unno): Implement check_format
-
     def diagonal(self, k=0):
         # TODO(unno): Implement diagonal
         raise NotImplementedError
@@ -206,7 +204,6 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         # TODO(unno): Implement multiply
         raise NotImplementedError
 
-    # TODO(unno): Implement prune
     # TODO(unno): Implement reshape
 
     def sort_indices(self):
@@ -216,6 +213,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             Calling this function might synchronize the device.
 
         """
+        print("Sorting indices!")
         if not self.has_sorted_indices:
             cusparse.csrsort(self)
             self.has_sorted_indices = True

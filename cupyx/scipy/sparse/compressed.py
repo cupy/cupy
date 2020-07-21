@@ -5,6 +5,7 @@ try:
 except ImportError:
     scipy_available = False
 
+import cupy.prof
 import warnings
 
 import cupy
@@ -737,10 +738,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         i, j = self._swap(*(row, col))
         self._set_many(i, j, x)
 
+    @cupy.prof.TimeRangeDecorator(message="_set_arrayXarray", color_id=11)
     def _set_arrayXarray(self, row, col, x):
         i, j = self._swap(*(row, col))
         self._set_many(i, j, x)
 
+    @cupy.prof.TimeRangeDecorator(message="_set_arrayXarray_sparse", color_id=10)
     def _set_arrayXarray_sparse(self, row, col, x):
         # clear entries that will be overwritten
         self._zero_many(*self._swap(*(row, col)))
@@ -751,12 +754,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         r, c = x.row, x.col
         x = cupy.asarray(x.data, dtype=self.dtype)
         if broadcast_row:
-            r = cupy.repeat(cupy.arange(M), len(r))
+            r = cupy.repeat(cupy.arange(M), r.size)
             c = cupy.tile(c, M)
             x = cupy.tile(x, M)
         if broadcast_col:
             r = cupy.repeat(r, N)
-            c = cupy.tile(cupy.arange(N), len(c))
+            c = cupy.tile(cupy.arange(N), c.size)
             x = cupy.repeat(x, N)
         # only assign entries in the new sparsity structure
         i, j = self._swap(*(row[r, c], col[r, c]))
@@ -773,7 +776,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if broadcast:
                 max_index = min(M + k, N)
             else:
-                max_index = min(M + k, N, len(values))
+                max_index = min(M + k, N, values.size)
             i = cupy.arange(max_index, dtype=self.indices.dtype)
             j = cupy.arange(max_index, dtype=self.indices.dtype)
             i -= k
@@ -782,13 +785,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if broadcast:
                 max_index = min(M, N - k)
             else:
-                max_index = min(M, N - k, len(values))
+                max_index = min(M, N - k, values.size)
             i = cupy.arange(max_index, dtype=self.indices.dtype)
             j = cupy.arange(max_index, dtype=self.indices.dtype)
             j += k
 
         if not broadcast:
-            values = values[:len(i)]
+            values = values[:i.size]
 
         self[i, j] = values
 
@@ -813,6 +816,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         check_bounds(j, N)
         return i, j, M, N
 
+    @cupy.prof.TimeRangeDecorator(message="_set_many", color_id=9)
     def _set_many(self, i, j, x):
         """Sets value at each (i, j) to x
         Here (i,j) index major and minor respectively, and must not contain
@@ -858,7 +862,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """
         i, j, M, N = self._prepare_indices(i, j)
 
-        n_samples = len(i)
+        n_samples = i.size
         offsets, ret = index._csr_sample_offsets(M, N, self.indptr,
                                                  self.indices,
                                                  n_samples, i, j)
@@ -874,6 +878,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     import cupy.prof
 
+    def cupy_unique_axis0(self, arr):
+        sortarr = arr[cupy.lexsort(arr.T[::-1])]
+        mask = cupy.empty(arr.shape[0], type=cupy.bool_)
+
+        mask[0] = True
+        mask[1:] = cupy.any(sortarr[1:] != sortarr[:-1], axis=1)
+
+        return sortarr[mask]
+
     @cupy.prof.TimeRangeDecorator(message="_insert_many", color_id=1)
     def _insert_many(self, i, j, x):
         """Inserts new nonzero at each (i, j) with value x
@@ -883,6 +896,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         Maintains has_sorted_indices property.
         Modifies i, j, x in place.
         """
+        import time
+        start_time = time.time()
         order = cupy.argsort(i)  # stable for duplicates
         i = i.take(order)
         j = j.take(order)
@@ -894,16 +909,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         idx_dtype = sputils.get_index_dtype(
             (self.indices, self.indptr), maxval=(
                 self.nnz + x.size))
+
+        # @TODO(cjnolet) Find way to remove this constraint
+        if idx_dtype.itemsize == 8:
+            raise ValueError("Insertion not supported for sparse matrices with "
+                             "64-bit index")
+
         self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
         self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
         i = cupy.asarray(i, dtype=idx_dtype)
         j = cupy.asarray(j, dtype=idx_dtype)
-        # Collate old and new in chunks by major index
 
+        # Collate old and new in chunks by major index
         ui, ui_indptr = cupy.unique(i, return_index=True)
 
         # This part is modified slightly from the Scipy counterpart
-        # because Cupy doesn't not have an `append` function for
+        # because Cupy doesn't have an `append` function for
         # ndarrays.
         to_add = cupy.array([j.size], ui_indptr.dtype)
         ui_indptr = cupy.hstack([ui_indptr, to_add])
@@ -911,26 +932,21 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # Zip i and j together into a single array so they can be sorted
         # and indexed together. This effectively creates
         # a coo, where the row and column can stay together.
-        # @ TODO(cjnolet): Improve this without the use of 64-bit integers
+        # @TODO(cjnolet): Improve this without the use of 64-bit integers
+        ij = cupy.left_shift(i.astype("uint64"), 32)
+        ij = cupy.bitwise_or(ij, j.astype("uint32"))
 
-        with cupy.prof.time_range(message="single coo op", color_id=4):
-            ij = cupy.left_shift(i.astype("uint64"), 32)
-            ij = cupy.bitwise_or(ij, j.astype("uint32"))
-
-        with cupy.prof.time_range(message="reverse sorting", color_id=5):
-            ij_rev = ij[::-1]
-
-        with cupy.prof.time_range(message="unique", color_id=6):
-            uij, uij_indptr = cupy.unique(ij_rev, return_index=True)
+        ij_rev = ij[::-1]
+        uij, uij_indptr = cupy.unique(ij_rev, return_index=True)
 
         ordered_ij = ij_rev[uij_indptr]
 
         # Insertion arrays in COO format
-        with cupy.prof.time_range(message="creating new inserts", color_id=7):
-            indptr_inserts = cupy.right_shift(ordered_ij, 32).astype(idx_dtype)
-            indices_inserts = cupy.bitwise_and(
-                ordered_ij, 2**32-1).astype(idx_dtype)
-            data_inserts = x[cupy.searchsorted(uij, ordered_ij)]
+        indptr_inserts = cupy.right_shift(ordered_ij, 32).astype(idx_dtype)
+        indices_inserts = cupy.bitwise_and(
+            ordered_ij, 2**32-1).astype(idx_dtype)
+
+        data_inserts = x[uij_indptr.max()-uij_indptr]
 
         sc = cupy.zeros(ui_indptr.size, dtype=idx_dtype)
         cupyx.scatter_add(sc[1:], cupy.searchsorted(ui, indptr_inserts), 1)
@@ -950,27 +966,40 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         new_indices = cupy.zeros(s, dtype=idx_dtype)
         new_data = cupy.zeros(s, dtype=self.data.dtype)
 
-        with cupy.prof.time_range(message="populating outputs", color_id=3):
-            self._csr_copy_existing_indices_kern(
-                self.indptr, self.indices, self.data, new_indptr, new_indices,
-                new_data, size=self.indptr.size-1)
+        self._csr_copy_existing_indices_kern(
+            self.indptr, self.indices, self.data, new_indptr, new_indices,
+            new_data, size=self.indptr.size-1)
 
-            self._csr_populate_inserts_kern(
-                self.indptr, ui, sc, indices_inserts, data_inserts,
-                new_indptr, new_indices, new_data, size=len(ui))
+        self._csr_populate_inserts_kern(
+            self.indptr, ui, sc, indices_inserts, data_inserts,
+            new_indptr, new_indices, new_data, size=len(ui))
 
         # update attributes
         self.indptr = new_indptr
         self.indices = new_indices
         self.data = new_data
 
-        # with cupy.prof.time_range(message="sorting", color_id=2):
+        print("self.indptr: %s" % self.indptr)
+        print("self.indices: %s" % self.indices)
+        print("self.data: %s" % self.data)
+
+        stop_time = time.time() - start_time
+        print("_insert_many_prc_time=%s" % stop_time)
+
+        sort_time = time.time()
+
         if do_sort:
             self.has_sorted_indices = False
             self.sort_indices()
 
+        print("sort_time: %s" % str(time.time() - sort_time))
+
+        check_time = time.time()
         self.check_format(full_check=False)
 
+        print("check_format: %s" % str(time.time() - check_time))
+
+    @cupy.prof.TimeRangeDecorator(message="check_format", color_id=12)
     def check_format(self, full_check=True):
         """check whether the matrix format is valid
 
@@ -979,6 +1008,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 rigorous check, O(N) operations. Otherwise
                 basic check, O(1) operations (default True).
         """
+
         # use _swap to determine proper bounds
         major_name, minor_name = self._swap(*('row', 'column'))
         major_dim, minor_dim = self._swap(*self.shape)
@@ -1004,16 +1034,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 raise ValueError('data, indices, and indptr should be 1-D')
 
         # check index pointer
-        if (len(self.indptr) != major_dim + 1):
+        if (self.indptr.size != major_dim + 1):
             raise ValueError("index pointer size ({}) should be ({})"
-                             "".format(len(self.indptr), major_dim + 1))
-        if (self.indptr[0] != 0):
+                             "".format(self.indptr.size, major_dim + 1))
+        if (self.indptr[0].item() != 0):
             raise ValueError("index pointer should start with 0")
 
         # check index and data arrays
-        if (len(self.indices) != len(self.data)):
+        if (self.indices.size != self.data.size):
             raise ValueError("indices and data should have the same size")
-        if (self.indptr[-1] > len(self.indices)):
+        if (self.indptr[-1].item() > self.indices.size):
             raise ValueError("Last value of index pointer should be less than "
                              "the size of index and data arrays")
 
@@ -1113,8 +1143,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """
         return self._shape
 
-    has_sorted_indices = property(fget=__get_sorted, fset=__set_sorted)
-
     def getnnz(self, axis=None):
         """Returns the number of stored values, including explicit zeros.
 
@@ -1155,7 +1183,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         .. warning::
             Calling this function might synchronize the device.
-
         """
         if self.has_canonical_format:
             return
