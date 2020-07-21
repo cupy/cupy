@@ -254,12 +254,11 @@ class TestPoly1dArithmetic(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             return dtype(5) + a
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_add_numpy_scalar_poly1d(self, xp, dtype):
-        a = testing.shaped_arange((5,), xp, dtype)
-        with cupyx.allow_synchronize(False):
-            return dtype(5) + xp.poly1d(a)
+        a = xp.array([0, 1, 2, 9], dtype)
+        return dtype(5) + xp.poly1d(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
