@@ -11,6 +11,7 @@ cdef class RawKernel:
         tuple name_expressions
         bint translate_cucomplex
         list _kernel_cache
+        readonly str __name__
 
 
 cdef class RawModule:

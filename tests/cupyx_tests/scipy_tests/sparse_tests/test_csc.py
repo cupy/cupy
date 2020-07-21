@@ -1347,7 +1347,7 @@ class TestUfunc(unittest.TestCase):
                 self.ufunc in complex_unsupported):
             with self.assertRaises(TypeError):
                 func()
-            return numpy.array(0)
+            return xp.array(0)
         else:
             return func()
 

@@ -217,6 +217,33 @@ class coo_matrix(sparse_data._data_matrix):
         """Eliminate duplicate matrix entries by adding them together.
 
         .. warning::
+            When sorting the indices, CuPy follows the convention of cuSPARSE,
+            which is different from that of SciPy. Therefore, the order of the
+            output indices may differ:
+
+            .. code-block:: python
+
+                >>> #     1 0 0
+                >>> # A = 1 1 0
+                >>> #     1 1 1
+                >>> data = cupy.array([1, 1, 1, 1, 1, 1], 'f')
+                >>> row = cupy.array([0, 1, 1, 2, 2, 2], 'i')
+                >>> col = cupy.array([0, 0, 1, 0, 1, 2], 'i')
+                >>> A = cupyx.scipy.sparse.coo_matrix((data, (row, col)),
+                ...                                   shape=(3, 3))
+                >>> a = A.get()
+                >>> A.sum_duplicates()
+                >>> a.sum_duplicates()  # a is scipy.sparse.coo_matrix
+                >>> A.row
+                array([0, 1, 1, 2, 2, 2], dtype=int32)
+                >>> a.row
+                array([0, 1, 2, 1, 2, 2], dtype=int32)
+                >>> A.col
+                array([0, 0, 1, 0, 1, 2], dtype=int32)
+                >>> a.col
+                array([0, 0, 0, 1, 1, 2], dtype=int32)
+
+        .. warning::
             Calling this function might synchronize the device.
 
         .. seealso::
@@ -225,11 +252,12 @@ class coo_matrix(sparse_data._data_matrix):
         """
         if self.has_canonical_format:
             return
-        # Note: it is unclear how the sorting order would matter. However, this
-        # is what SciPy performs in sum_duplicates(). Although this order is
-        # different from cuSPARSE convention (first row then col), we are not
-        # calling coosort here so it should be alright.
-        keys = cupy.stack([self.row, self.col])
+        # Note: The sorting order below follows the cuSPARSE convention (first
+        # row then col, so-called row-major) and differs from that of SciPy, as
+        # the cuSPARSE functions such as cusparseSpMV() assume this sorting
+        # order.
+        # See https://docs.nvidia.com/cuda/cusparse/index.html#coo-format
+        keys = cupy.stack([self.col, self.row])
         order = cupy.lexsort(keys)
         src_data = self.data[order]
         src_row = self.row[order]

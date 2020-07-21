@@ -192,8 +192,8 @@ def _contains_signed_and_unsigned(kw):
         any(d in vs for d in _float_dtypes + _signed_dtypes)
 
 
-def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
-                    scipy_name=None):
+def _make_decorator(check_func, name, type_check, contiguous_check,
+                    accept_error, sp_name=None, scipy_name=None):
     assert isinstance(name, str)
     assert sp_name is None or isinstance(sp_name, str)
     assert scipy_name is None or isinstance(scipy_name, str)
@@ -230,6 +230,22 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
                 for cupy_r, numpy_r in zip(cupy_result, numpy_result):
                     assert cupy_r.dtype == numpy_r.dtype
 
+            if contiguous_check:
+                for c, n in zip(cupy_result, numpy_result):
+                    if isinstance(n, numpy.ndarray):
+                        if n.flags.c_contiguous and not c.flags.c_contiguous:
+                            raise AssertionError(
+                                'The state of c_contiguous flag is false. '
+                                '(cupy_result:{} numpy_result:{})'.format(
+                                    c.flags.c_contiguous,
+                                    n.flags.c_contiguous))
+                        if n.flags.f_contiguous and not c.flags.f_contiguous:
+                            raise AssertionError(
+                                'The state of f_contiguous flag is false. '
+                                '(cupy_result:{} numpy_result:{})'.format(
+                                    c.flags.f_contiguous,
+                                    n.flags.f_contiguous))
+
             for cupy_r, numpy_r in zip(cupy_result, numpy_result):
                 assert cupy_r.shape == numpy_r.shape
 
@@ -238,6 +254,9 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
                 # nVidia GPUs and Intel CPUs behave differently.
                 # To avoid this difference, we need to ignore dimensions whose
                 # values are negative.
+                cupy_r, numpy_r = _convert_output_to_ndarray(
+                    cupy_r, numpy_r, sp_name)
+
                 skip = False
                 if (_contains_signed_and_unsigned(kw)
                         and cupy_r.dtype in _unsigned_dtypes):
@@ -246,13 +265,35 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
                     if cupy_r.shape == ():
                         skip = (mask == 0).all()
                     else:
-                        cupy_r = cupy.asnumpy(cupy_r[mask])
-                        numpy_r = cupy.asnumpy(numpy_r[mask])
+                        cupy_r = cupy_r[mask].get()
+                        numpy_r = numpy_r[mask]
 
                 if not skip:
                     check_func(cupy_r, numpy_r)
         return test_func
     return decorator
+
+
+def _convert_output_to_ndarray(c_out, n_out, sp_name):
+    if sp_name is not None:
+        import scipy.sparse
+        if cupyx.scipy.sparse.issparse(c_out):
+            # Sparse output case.
+            if scipy.sparse.issparse(n_out):
+                return c_out.A, n_out.A
+            if isinstance(n_out, numpy.generic):
+                return c_out.A, n_out
+    if (isinstance(c_out, cupy.ndarray)
+            and isinstance(n_out, (numpy.ndarray, numpy.generic))):
+        # ndarray output case.
+        return c_out, n_out
+    if isinstance(c_out, numpy.generic) and isinstance(n_out, numpy.generic):
+        # scalar output case.
+        return c_out, n_out
+    raise AssertionError(
+        'numpy and cupy returns different type of return value:\n'
+        'cupy: {}\nnumpy: {}'.format(
+            type(c_out), type(n_out)))
 
 
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
@@ -306,28 +347,9 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     .. seealso:: :func:`cupy.testing.assert_allclose`
     """
     def check_func(c, n):
-        c_array = c
-        n_array = n
-        if sp_name is not None:
-            import scipy.sparse
-            if cupyx.scipy.sparse.issparse(c):
-                c_array = c.A
-            if scipy.sparse.issparse(n):
-                n_array = n.A
-        array.assert_allclose(c_array, n_array, rtol, atol, err_msg, verbose)
-        if contiguous_check and isinstance(n, numpy.ndarray):
-            if n.flags.c_contiguous and not c.flags.c_contiguous:
-                raise AssertionError(
-                    'The state of c_contiguous flag is false. '
-                    '(cupy_result:{} numpy_result:{})'.format(
-                        c.flags.c_contiguous, n.flags.c_contiguous))
-            if n.flags.f_contiguous and not c.flags.f_contiguous:
-                raise AssertionError(
-                    'The state of f_contiguous flag is false. '
-                    '(cupy_result:{} numpy_result:{})'.format(
-                        c.flags.f_contiguous, n.flags.f_contiguous))
-    return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+        array.assert_allclose(c, n, rtol, atol, err_msg, verbose)
+    return _make_decorator(check_func, name, type_check, contiguous_check,
+                           accept_error, sp_name, scipy_name)
 
 
 def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
@@ -364,10 +386,9 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
     .. seealso:: :func:`cupy.testing.assert_array_almost_equal`
     """
     def check_func(x, y):
-        array.assert_array_almost_equal(
-            x, y, decimal, err_msg, verbose)
-    return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+        array.assert_array_almost_equal(x, y, decimal, err_msg, verbose)
+    return _make_decorator(check_func, name, type_check, False,
+                           accept_error, sp_name, scipy_name)
 
 
 def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
@@ -401,8 +422,8 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
     """  # NOQA
     def check_func(x, y):
         array.assert_array_almost_equal_nulp(x, y, nulp)
-    return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name=None)
+    return _make_decorator(check_func, name, type_check, False,
+                           accept_error, sp_name, scipy_name=None)
 
 
 def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
@@ -440,8 +461,8 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
     """  # NOQA
     def check_func(x, y):
         array.assert_array_max_ulp(x, y, maxulp, dtype)
-    return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+    return _make_decorator(check_func, name, type_check, False,
+                           accept_error, sp_name, scipy_name)
 
 
 def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
@@ -478,17 +499,9 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     .. seealso:: :func:`cupy.testing.assert_array_equal`
     """
     def check_func(x, y):
-        if sp_name is not None:
-            import scipy.sparse
-            if cupyx.scipy.sparse.issparse(x):
-                x = x.A
-            if scipy.sparse.issparse(y):
-                y = y.A
-
         array.assert_array_equal(x, y, err_msg, verbose, strides_check)
-
-    return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+    return _make_decorator(check_func, name, type_check, False,
+                           accept_error, sp_name, scipy_name)
 
 
 def numpy_cupy_array_list_equal(
@@ -520,7 +533,8 @@ def numpy_cupy_array_list_equal(
 
     def check_func(x, y):
         array.assert_array_equal(x, y, err_msg, verbose)
-    return _make_decorator(check_func, name, False, False, sp_name, scipy_name)
+    return _make_decorator(check_func, name, False, False,
+                           False, sp_name, scipy_name)
 
 
 def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
@@ -555,8 +569,8 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
     """
     def check_func(x, y):
         array.assert_array_less(x, y, err_msg, verbose)
-    return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+    return _make_decorator(check_func, name, type_check, False,
+                           accept_error, sp_name, scipy_name)
 
 
 def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
