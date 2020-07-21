@@ -104,7 +104,8 @@ def _get_generic_filter_fused(fk, in_dtype, out_dtype, filter_size, mode,
     setup = 'int iv = 0;\n' + '\n'.join(vars)
     sub_call = 'fused_kernel::{}({});\ny = cast<Y>(val_out[0]);'.format(
         fk._name, ', '.join(args + ['1']*len(fk._block_strides)))
-    sub_kernel = 'namespace fused_kernel {{\n{}\n}}'.format(_fused_kernel_code(fk))
+    sub_kernel = 'namespace fused_kernel {{\n{}\n}}'.format(
+        _fused_kernel_code(fk))
 
     # Get the final kernel
     return _generate_nd_kernel(

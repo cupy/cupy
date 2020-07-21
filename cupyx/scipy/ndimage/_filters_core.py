@@ -295,8 +295,8 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
              format(j=j, type=int_type) for j in range(ndim)]
     if y_shape != 'same':
         sizes.extend('{type} ysize_{j} = xsize_{j} + {delta};'.
-                    format(j=j, type=int_type, delta=delta)
-                    for j, delta in enumerate(deltas))
+                     format(j=j, type=int_type, delta=delta)
+                     for j, delta in enumerate(deltas))
     inds = _generate_indices_ops(ndim, int_type, offsets,
                                  'ysize' if y_shape != 'same' else 'xsize')
     # CArray: remove expr entirely

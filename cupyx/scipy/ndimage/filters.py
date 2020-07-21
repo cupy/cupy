@@ -980,7 +980,8 @@ def _get_shell_gap(filter_size):
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_rank_kernel(filter_size, rank, mode, w_shape, origins, cval, int_type):
+def _get_rank_kernel(filter_size, rank, mode, w_shape, origins, cval,
+                     int_type):
     # Below 225 (15x15 median filter) selection sort is 1.5-2.5x faster
     # Above, shell sort does progressively better (by 3025 (55x55) it is 9x)
     # Also tried insertion sort, which is always slower than either one
