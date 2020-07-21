@@ -18,8 +18,8 @@ class TestSetitemIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None, data=5):
         a = cupy.sparse.random(self.n_rows, self.n_cols,
-                                format=self.format,
-                                density=self.density)
+                               format=self.format,
+                               density=self.density)
 
         # sparse.random doesn't support complex types
         # so we need to cast
@@ -67,9 +67,6 @@ class TestSetitemIndexing(unittest.TestCase):
         if cupy.sparse.isspmatrix(actual):
             actual.sort_indices()
             expected.sort_indices()
-            #
-            # print("diff: %s " % str(actual.indices[actual.indices.get() != expected.indices]))
-
 
             cupy.testing.assert_array_equal(
                 actual.indptr, expected.indptr)
@@ -77,7 +74,6 @@ class TestSetitemIndexing(unittest.TestCase):
                 actual.indices, expected.indices)
             cupy.testing.assert_array_equal(
                 actual.data, expected.data)
-
 
         else:
 

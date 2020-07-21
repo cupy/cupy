@@ -350,14 +350,14 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     _csr_populate_inserts_kern = core.ElementwiseKernel(
         '''raw I Ap, raw I x, raw I sc, raw I Aj, raw T Ax, raw I Bp''',
         'raw I Bj, raw T Bx', '''
-        
+
         const I r = x[i];
         const I input_start = sc[i];
         const I input_stop = sc[i+1];
-        
+
         const I offset = Ap[r+1] - Ap[r];
         I output_start = Bp[r] + offset;
-        
+
         for(I jj = input_start; jj < input_stop; jj++) {
             Bj[output_start] = Aj[jj];
             Bx[output_start] = Ax[jj];
@@ -738,12 +738,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         i, j = self._swap(*(row, col))
         self._set_many(i, j, x)
 
-    @cupy.prof.TimeRangeDecorator(message="_set_arrayXarray", color_id=11)
     def _set_arrayXarray(self, row, col, x):
         i, j = self._swap(*(row, col))
         self._set_many(i, j, x)
 
-    @cupy.prof.TimeRangeDecorator(message="_set_arrayXarray_sparse", color_id=10)
     def _set_arrayXarray_sparse(self, row, col, x):
         # clear entries that will be overwritten
         self._zero_many(*self._swap(*(row, col)))
@@ -898,8 +896,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         # @TODO(cjnolet) Find way to remove this constraint
         if idx_dtype.itemsize == 8:
-            raise ValueError("Insertion not supported for sparse matrices with "
-                             "64-bit index")
+            raise ValueError("Insertion not supported for sparse matrices "
+                             "with 64-bit index")
 
         self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
         self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
