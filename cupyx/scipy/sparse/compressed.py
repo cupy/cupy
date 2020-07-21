@@ -332,6 +332,39 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         diff = diff_out;
         ''', 'has_canonical_format')
 
+    _csr_copy_existing_indices_kern = core.ElementwiseKernel(
+        '''raw I Ap, raw I Aj, raw T Ax, raw I Bp''',
+        'raw I Bj, raw T Bx', '''
+        const I input_row_start = Ap[i];
+        const I input_row_end = Ap[i+1];
+        I output_n = Bp[i];
+
+        for(I jj = input_row_start; jj < input_row_end; jj++) {
+            Bj[output_n] = Aj[jj];
+            Bx[output_n] = Ax[jj];
+            output_n++;
+        }
+    ''', 'csr_copy_existing_indices_kern', no_return=True)
+
+    _csr_populate_inserts_kern = core.ElementwiseKernel(
+        '''raw I Ap, raw I x, raw I sc, raw I Aj, raw T Ax, raw I Bp''',
+        'raw I Bj, raw T Bx', '''
+        
+        const I r = x[i];
+        const I input_start = sc[i];
+        const I input_stop = sc[i+1];
+        
+        const I offset = Ap[r+1] - Ap[r];
+        I output_start = Bp[r] + offset;
+        
+        for(I jj = input_start; jj < input_stop; jj++) {
+            Bj[output_start] = Aj[jj];
+            Bx[output_start] = Ax[jj];
+            output_start++;
+        }
+
+    ''', 'csr_populate_inserts_kern', no_return=True)
+
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None:
             if not util.isshape(shape):
@@ -840,34 +873,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         self.data[offsets[offsets > -1]] = 0
 
     import cupy.prof
-    #
-    # _csr_copy_existing_indices_kern = core.ElementwiseKernel(
-    #     '''I n_row, raw I Ap, raw I Aj, raw Ax, raw I Bp''',
-    #     ', raw I Bj, raw I Bx', '''
-    #     const I input_row_start = Ap[i];
-    #     const I Bj_i = Bj[i];
-    #     const I j = Bi_i < 0 ? Bi_i + n_row : Bi_i; // sample row
-    #     const I k = Bj_i < 0 ? Bj_i + n_col : Bj_i; // sample column
-    #
-    #     const I row_start = Ap[j];
-    #     const I row_end   = Ap[j+1];
-    #
-    #     I offset = -1;
-    #
-    #     for(I jj = row_start; jj < row_end; jj++)
-    #     {
-    #         if (Aj[jj] == k) {
-    #             offset = jj;
-    #             for (jj++; jj < row_end; jj++) {
-    #                 if (Aj[jj] == k) {
-    #                     offset = -2;
-    #                     dupl[0] = true;
-    #                 }
-    #             }
-    #         }
-    #     }
-    #     Bp[i] = offset;
-    # ''', 'csr_copy_existing_indices_kern', no_return=True)
 
     @cupy.prof.TimeRangeDecorator(message="_insert_many", color_id=1)
     def _insert_many(self, i, j, x):
@@ -883,22 +888,18 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         j = j.take(order)
         x = x.take(order)
 
-        print("i=%s, j=%s, x=%s" % (i, j, x))
-
         do_sort = self.has_sorted_indices
 
         # Update index data type
         idx_dtype = sputils.get_index_dtype(
             (self.indices, self.indptr), maxval=(
-                self.indptr[-1].item() + x.size))
+                self.nnz + x.size))
         self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
         self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
         i = cupy.asarray(i, dtype=idx_dtype)
         j = cupy.asarray(j, dtype=idx_dtype)
         # Collate old and new in chunks by major index
 
-        indices_parts = []
-        data_parts = []
         ui, ui_indptr = cupy.unique(i, return_index=True)
 
         # This part is modified slightly from the Scipy counterpart
@@ -910,25 +911,30 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # Zip i and j together into a single array so they can be sorted
         # and indexed together. This effectively creates
         # a coo, where the row and column can stay together.
-        ij = cupy.left_shift(i.astype("uint64"), 32)
-        ij = cupy.bitwise_or(ij, j.astype("uint32"))
+        # @ TODO(cjnolet): Improve this without the use of 64-bit integers
 
-        uij, uij_indptr, inv, uij_counts = cupy.unique(
-            ij[::-1], return_index=True, return_counts=True,
-            return_inverse=True)
+        with cupy.prof.time_range(message="single coo op", color_id=4):
+            ij = cupy.left_shift(i.astype("uint64"), 32)
+            ij = cupy.bitwise_or(ij, j.astype("uint32"))
 
-        ordered_ij = ij[::-1][uij_indptr]
+        with cupy.prof.time_range(message="reverse sorting", color_id=5):
+            ij_rev = ij[::-1]
+
+        with cupy.prof.time_range(message="unique", color_id=6):
+            uij, uij_indptr = cupy.unique(ij_rev, return_index=True)
+
+        ordered_ij = ij_rev[uij_indptr]
 
         # Insertion arrays in COO format
-        indptr_insert = cupy.right_shift(ordered_ij, 32).astype(idx_dtype)
-        indices_inserts = cupy.bitwise_and(ordered_ij, 2**32-1)
-        data_inserts = x[cupy.searchsorted(uij, ordered_ij)]
+        with cupy.prof.time_range(message="creating new inserts", color_id=7):
+            indptr_inserts = cupy.right_shift(ordered_ij, 32).astype(idx_dtype)
+            indices_inserts = cupy.bitwise_and(
+                ordered_ij, 2**32-1).astype(idx_dtype)
+            data_inserts = x[cupy.searchsorted(uij, ordered_ij)]
 
         sc = cupy.zeros(ui_indptr.size, dtype=idx_dtype)
-        cupyx.scatter_add(sc[1:], cupy.searchsorted(ui, indptr_insert), 1)
+        cupyx.scatter_add(sc[1:], cupy.searchsorted(ui, indptr_inserts), 1)
         cupy.cumsum(sc, out=sc)
-
-        print("ui=%s, sc=%s" % (ui, sc))
 
         # Build output indptr diff
         indptr_diff = cupy.diff(self.indptr)
@@ -937,51 +943,31 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         nnzs[0] = idx_dtype(0)
         nnzs[1:] = indptr_diff
 
-        new_indptr = cupy.cumsum(nnzs, out=nnzs)
-        new_indices = cupy.zeros(new_indptr[-1].item(), dtype=idx_dtype)
-        new_data = cupy.zeros(new_indptr[-1].item(), dtype=idx_dtype)
+        new_indptr = cupy.cumsum(nnzs, out=nnzs).astype(idx_dtype)
 
+        s = new_indptr[-1].item()
 
-        # Need a kernel that takes self.indptr, self.indices, self.data,
-        # new_indptr, new_indices, and new_data and performs the following:
-        # - populates the
+        new_indices = cupy.zeros(s, dtype=idx_dtype)
+        new_data = cupy.zeros(s, dtype=self.data.dtype)
 
+        with cupy.prof.time_range(message="populating outputs", color_id=3):
+            self._csr_copy_existing_indices_kern(
+                self.indptr, self.indices, self.data, new_indptr, new_indices,
+                new_data, size=self.indptr.size-1)
 
-        # TODO(cjnolet): Remove this loop
-        # Kernel to populate existing cols
-        prev = 0
-        for c, (ii, js, je) in enumerate(zip(ui, sc, sc[1:])):
-
-            # append old entries for each row
-
-            # We can use existing indptr to figure this out
-            start = self.indptr[prev]
-            stop = self.indptr[ii]
-            indices_parts.append(self.indices[start:stop])
-            data_parts.append(self.data[start:stop])
-
-            # handle duplicate j: keep last setting
-
-            indices_parts.append(indices_inserts[js:je].copy().astype('int32'))
-            data_parts.append(data_inserts[js:je].copy())
-
-            prev = ii
-
-        # remaining old entries
-        start = self.indptr[ii]
-        indices_parts.append(self.indices[start:])
-        data_parts.append(self.data[start:])
+            self._csr_populate_inserts_kern(
+                self.indptr, ui, sc, indices_inserts, data_inserts,
+                new_indptr, new_indices, new_data, size=len(ui))
 
         # update attributes
-        self.indices = cupy.concatenate(indices_parts)
-        self.data = cupy.concatenate(data_parts)
-
         self.indptr = new_indptr
+        self.indices = new_indices
+        self.data = new_data
 
-        with cupy.prof.time_range(message="sorting", color_id=2):
-            if do_sort:
-                self.has_sorted_indices = False
-                self.sort_indices()
+        # with cupy.prof.time_range(message="sorting", color_id=2):
+        if do_sort:
+            self.has_sorted_indices = False
+            self.sort_indices()
 
         self.check_format(full_check=False)
 
