@@ -435,7 +435,7 @@ class spmatrix(object):
            :meth:`scipy.sparse.spmatrix.sum`
 
         """
-        util.validateaxis(axis)
+        sputils.validateaxis(axis)
 
         # This implementation uses multiplication, though it is not efficient
         # for some matrix types. These should override this function.

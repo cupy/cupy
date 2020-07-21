@@ -1,6 +1,6 @@
 import cupy
 from cupyx.scipy.sparse import base
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import sputils
 
 
 _ufuncs = [
@@ -88,7 +88,7 @@ class _data_matrix(base.spmatrix):
            :meth:`scipy.sparse.spmatrix.mean`
 
         """
-        util.validateaxis(axis)
+        sputils.validateaxis(axis)
         nRow, nCol = self.shape
         data = self.data.copy()
 
@@ -154,7 +154,7 @@ class _minmax_mixin(object):
             raise ValueError(("Sparse matrices do not support "
                               "an 'out' parameter."))
 
-        util.validateaxis(axis)
+        sputils.validateaxis(axis)
 
         if axis == 0 or axis == 1:
             return self._min_or_max_axis(axis, min_or_max, sum_duplicates,
@@ -182,7 +182,7 @@ class _minmax_mixin(object):
             raise ValueError("Sparse matrices do not support "
                              "an 'out' parameter.")
 
-        util.validateaxis(axis)
+        sputils.validateaxis(axis)
 
         if axis is None:
             if 0 in self.shape:
