@@ -366,11 +366,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     if has_structure:
         name += '_with_structure'
     preamble = _CAST_FUNCTION + preamble
-    options += ('--std=c++11',)
-
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
-                                  options=options)
+                                  options=('--std=c++11',) + options)
 
 
 def _generate_indices_ops(ndim, int_type, offsets, xsize='xsize'):

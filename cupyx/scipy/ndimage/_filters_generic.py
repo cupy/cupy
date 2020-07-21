@@ -480,7 +480,9 @@ def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
                     loop.format(end, in_length, b))
 
     name = 'generic1d_{}_{}_{}'.format(length, filter_size, rk.name)
-    code = '''namespace raw_kernel {{\n{rk_code}\n}}
+    code = '''#include "cupy/carray.cuh"
+
+namespace raw_kernel {{\n{rk_code}\n}}
 
 {CAST}
 
@@ -534,4 +536,4 @@ void {name}(const byte* input, byte* output, const idx_t* x) {{
              in_ctype=in_ctype, out_ctype=out_ctype, int_type=int_type,
              boundary_early=boundary_early, boundary=boundary,
              name=name, rk_name=rk.name, rk_code=rk.code, CAST=_CAST_FUNCTION)
-    return cupy.RawKernel(code, name, rk.options)
+    return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options)
