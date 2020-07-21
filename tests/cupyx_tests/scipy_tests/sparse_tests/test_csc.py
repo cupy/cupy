@@ -1023,33 +1023,6 @@ class TestCscMatrixScipyCompressed(unittest.TestCase):
 @testing.with_requires('scipy>=0.19.0')
 class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
 
-    def test_min_sparse_axis_none(self):
-        dm_data = numpy.random.random((10, 20))
-        dm_data[dm_data < 0.95] = 0
-
-        dm_data = scipy.sparse.csc_matrix(dm_data)
-        cp_matrix = sparse.csc_matrix((cupy.array(dm_data.data),
-                                       cupy.array(dm_data.indices),
-                                       cupy.array(dm_data.indptr)),
-                                      shape=(10, 20))
-
-        da_cupy_values = cp_matrix.min()
-        da_scipy_values = dm_data.min()
-        testing.assert_array_equal(da_cupy_values, da_scipy_values)
-
-    def test_min_sparse_axis_none_nonzero(self):
-        dm_data = numpy.arange(0, 100, 1).reshape((10, 10)).astype(float)
-
-        dm_sparse = scipy.sparse.csc_matrix(dm_data)
-        cp_matrix = sparse.csc_matrix((cupy.array(dm_sparse.data),
-                                       cupy.array(dm_sparse.indices),
-                                       cupy.array(dm_sparse.indptr)),
-                                      shape=(10, 10))
-
-        da_cupy_values = cp_matrix.min(nonzero=True)
-        da_numpy_values = numpy.array(1).astype(float)
-        testing.assert_array_equal(da_cupy_values, da_numpy_values)
-
     def _make_data_min(self, xp, sp, dense=False):
         dm_data = testing.shaped_random((10, 20), xp=xp, scale=1.0)
         if not dense:
@@ -1089,6 +1062,19 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
 
     def _make_data_max_nonzero(self, xp, sp, axis):
         return -self._make_data_min_nonzero(xp, sp, axis=axis)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_min_sparse_axis_none(self, xp, sp):
+        data = self._make_data_min(xp, sp)
+        return data.min(axis=None)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_min_sparse_axis_none_nonzero(self, xp, sp):
+        data = self._make_data_min_nonzero(xp, sp, axis=0)
+        if xp is cupy:
+            return data.min(axis=None, nonzero=True)
+        else:
+            return data.min(axis=None)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_min_sparse_axis_0(self, xp, sp):
