@@ -9,11 +9,20 @@ except ImportError:
     pass
 
 
+class TestSpecialMatricesBase(unittest.TestCase):
+    def _get_arg(self, xp, arg):
+        if isinstance(arg, tuple):
+            # Allocate array with the given shape
+            return testing.shaped_random(arg, xp)
+
+        # Otherwise just pass the arg back
+        return arg
+
+
 @testing.parameterize(*(
     testing.product({
         # 1 argument: 1D array
-        'function': ['circulant', 'toeplitz', 'hankel', 'companion',
-                     'fiedler', 'fiedler_companion'],
+        'function': ['circulant', 'toeplitz', 'hankel', 'companion'],
         'args': [((1,),), ((2,),), ((4,),), ((10,),), ((25,),)],
     }) + testing.product({
         # 2 arguments: both 1D arrays
@@ -21,11 +30,6 @@ except ImportError:
         'function': ['toeplitz', 'hankel', 'leslie'],
         'args': [((1,), (1,)), ((2,), (1,)), ((4,), (5,)),
                  ((10,), (9,)), ((25,), (24,))],
-    }) + testing.product({
-        # 2-3 arguments: 1D array, 1 int, 1 optional str
-        'function': ['convolution_matrix'],
-        'args': [((1,), 5), ((2,), 3), ((4,), 10), ((10,), 15), ((25,), 25),
-                 ((4,), 6, 'full'), ((10,), 8, 'same'), ((25,), 25, 'valid')],
     }) + testing.product({
         # 1 argument: int
         'function': ['tri', 'hadamard', 'helmert', 'hilbert', 'dft'],
@@ -67,7 +71,24 @@ except ImportError:
 ))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestSpecialMatrices(unittest.TestCase):
+class TestSpecialMatrices(TestSpecialMatricesBase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_special_matrix(self, xp, scp):
+        function = getattr(scp.linalg, self.function)
+        return function(*[self._get_arg(xp, arg) for arg in self.args])
+
+
+@testing.parameterize(*(
+    testing.product({
+        # 1 argument: 1D array
+        'function': ['fiedler', 'fiedler_companion'],
+        'args': [((1,),), ((2,),), ((4,),), ((10,),), ((25,),)],
+    })
+))
+@testing.gpu
+@testing.with_requires('scipy>=1.3.0')
+class TestSpecialMatrices_1_3_0(TestSpecialMatricesBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
                                  accept_error=ValueError)
     def test_special_matrix(self, xp, scp):
@@ -81,3 +102,21 @@ class TestSpecialMatrices(unittest.TestCase):
 
         # Otherwise just pass the arg back
         return arg
+
+
+@testing.parameterize(*(
+    testing.product({
+        # 2-3 arguments: 1D array, 1 int, 1 optional str
+        'function': ['convolution_matrix'],
+        'args': [((1,), 5), ((2,), 3), ((4,), 10), ((10,), 15), ((25,), 25),
+                 ((4,), 6, 'full'), ((10,), 8, 'same'), ((25,), 25, 'valid')],
+    })
+))
+@testing.gpu
+@testing.with_requires('scipy>=1.5.0')
+class TestSpecialMatrices_1_5_0(TestSpecialMatricesBase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_special_matrix(self, xp, scp):
+        function = getattr(scp.linalg, self.function)
+        return function(*[self._get_arg(xp, arg) for arg in self.args])
