@@ -1165,7 +1165,7 @@ class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
             # the smallest numbers except for zero.
             dm_data[dm_data < 0.95] = numpy.inf
 
-            if axis == None:
+            if axis is None:
                 # If all elements in the array are set to infinity, we make it
                 # have at least a zero so SciPy's spmatrix.min(axis=None)
                 # returns zero.
