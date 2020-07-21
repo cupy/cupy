@@ -1045,18 +1045,25 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
             # the smallest numbers except for zero.
             dm_data[dm_data < 0.95] = numpy.inf
 
-            # If all elements in a row/column are set to infinity, we make it
-            # have at least a zero so spmatrix.min(axis=axis) returns zero for
-            # the row/column.
-            mask = numpy.zeros_like(dm_data, dtype=numpy.bool)
-            if axis == 0:
-                rows = dm_data.argmin(axis=0)
-                cols = numpy.arange(20)
+            if axis == None:
+                # If all elements in the array are set to infinity, we make it
+                # have at least a zero so SciPy's spmatrix.min(axis=None)
+                # returns zero.
+                if numpy.isinf(dm_data).all():
+                    dm_data[0, 0] = 0
             else:
-                rows = numpy.arange(10)
-                cols = dm_data.argmin(axis=1)
-            mask[rows, cols] = numpy.isinf(dm_data[rows, cols])
-            dm_data[mask] = 0
+                # If all elements in a row/column are set to infinity, we make
+                # it have at least a zero so spmatrix.min(axis=axis) returns
+                # zero for the row/column.
+                mask = numpy.zeros_like(dm_data, dtype=numpy.bool)
+                if axis == 0:
+                    rows = dm_data.argmin(axis=0)
+                    cols = numpy.arange(20)
+                else:
+                    rows = numpy.arange(10)
+                    cols = dm_data.argmin(axis=1)
+                mask[rows, cols] = numpy.isinf(dm_data[rows, cols])
+                dm_data[mask] = 0
 
         return sp.csc_matrix(xp.array(dm_data))
 
@@ -1070,7 +1077,7 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_min_sparse_axis_none_nonzero(self, xp, sp):
-        data = self._make_data_min_nonzero(xp, sp, axis=0)
+        data = self._make_data_min_nonzero(xp, sp, axis=None)
         if xp is cupy:
             return data.min(axis=None, nonzero=True)
         else:
