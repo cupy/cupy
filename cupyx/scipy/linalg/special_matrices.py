@@ -7,6 +7,7 @@ __all__ = ['tri', 'tril', 'triu', 'toeplitz', 'circulant', 'hankel',
            'helmert', 'hilbert', 'dft',
            'fiedler', 'fiedler_companion', 'convolution_matrix']
 
+
 def tri(N, M=None, k=0, dtype=None):
     """ Construct (N, M) matrix filled with ones at and below the kth diagonal.
     The matrix has A[i,j] == 1 for i <= j + k
@@ -16,13 +17,13 @@ def tri(N, M=None, k=0, dtype=None):
         M (int, optional): The size of the second dimension of the matrix. If
             `M` is None, `M = N` is assumed.
         k (int, optional):  Number of subdiagonal below which matrix is filled
-            with ones. `k` = 0 is the main diagonal, `k` < 0 subdiagonal and 
+            with ones. `k` = 0 is the main diagonal, `k` < 0 subdiagonal and
             `k` > 0 superdiagonal.
         dtype (dtype, optional): Data type of the matrix.
 
     Returns:
         cupy.ndarray: Tri matrix.
-    
+
     .. seealso:: :func:`scipy.linalg.tri`
     """
     if M is None:
@@ -31,14 +32,14 @@ def tri(N, M=None, k=0, dtype=None):
         # handle legacy interface
         M, dtype = N, M
     # TODO: no outer function
-    #m = cupy.greater_equal.outer(cupy.arange(k, N+k), cupy.arange(M))
-    #return m if dtype is None else m.astype(dtype, copy=False)
-    return cupy.tri(N, M, k, dtype)
+    # m = cupy.greater_equal.outer(cupy.arange(k, N+k), cupy.arange(M))
+    # return m if dtype is None else m.astype(dtype, copy=False)
+    return cupy.tri(N, M, k, bool if dtype is None else dtype)
 
 
 def tril(m, k=0):
     """Make a copy of a matrix with elements above the kth diagonal zeroed.
-    
+
     Args:
         m (cupy.ndarray): Matrix whose elements to return
         k (int, optional): Diagonal above which to zero elements.
@@ -58,7 +59,7 @@ def tril(m, k=0):
 
 def triu(m, k=0):
     """Make a copy of a matrix with elements below the kth diagonal zeroed.
-    
+
     Args:
         m (cupy.ndarray): Matrix whose elements to return
         k (int, optional): Diagonal above which to zero elements.
@@ -116,7 +117,7 @@ def toeplitz(c, r=None):
 
 def circulant(c):
     """ Construct a circulant matrix.
-    
+
     Args:
         c (cupy.ndarray): 1-D array, the first column of the matrix.
 
@@ -143,7 +144,7 @@ def hankel(c, r=None):
     The Hankel matrix has constant anti-diagonals, with `c` as its first column
     and `r` as its last row. If `r` is not given, then `r = zeros_like(c)` is
     assumed.
-    
+
     Args:
         c (cupy.ndarray): First column of the matrix. Whatever the actual shape
             of `c`, it will be converted to a 1-D array.
@@ -172,7 +173,7 @@ def hankel(c, r=None):
 
 def hadamard(n, dtype=int):
     """Construct an Hadamard matrix.
-    
+
     Constructs an n-by-n Hadamard matrix, using Sylvester's construction. `n`
     must be a power of 2.
 
@@ -194,7 +195,7 @@ def hadamard(n, dtype=int):
     for _ in range(0, lg2):
         n = H.shape[0]
         H = cupy.tile(H, (2, 2))
-        H[n:,n:] *= -1
+        H[n:, n:] *= -1
 
     return H
 
@@ -275,14 +276,18 @@ def block_diag(*arrs):
 
     .. seealso:: :func:`scipy.linalg.block_diag`
     """
-    if arrs == ():
-        return cupy.empty((0, 0))
+    if not arrs:
+        return cupy.empty((1, 0))
 
-    arrs = cupy.atleast_2d(*arrs)
+    # Convert to 2D and check
+    if len(arrs) == 1:
+        arrs = (cupy.atleast_2d(*arrs),)
+    else:
+        arrs = cupy.atleast_2d(*arrs)
     if any(a.ndim != 2 for a in arrs):
+        bad = [k for k in range(len(arrs)) if arrs[k].ndim != 2]
         raise ValueError("arguments in the following positions have dimension "
-                         "greater than 2: {}".format(
-            [k for k in range(len(arrs)) if arrs[k].ndim != 2]))
+                         "greater than 2: {}".format(bad))
 
     shapes = tuple(a.shape for a in arrs)
     shape = tuple(sum(x) for x in zip(*shapes))
@@ -299,7 +304,7 @@ def block_diag(*arrs):
 
 def companion(a):
     """Create a companion matrix.
-    
+
     Create the companion matrix associated with the polynomial whose
     coefficients are given in `a`.
 
@@ -340,11 +345,11 @@ def helmert(n, full=False):
         full (bool, optional): If True the (n, n) ndarray will be returned.
             Otherwise, the default, the submatrix that does not include the
             first row will be returned.
-            
+
     Returns:
         cupy.ndarray: The Helmert matrix. The shape is (n, n) or (n-1, n)
             depending on the `full` argument.
-    
+
     .. seealso:: :func:`scipy.linalg.helmert`
     """
     d = cupy.arange(n)
@@ -359,9 +364,9 @@ def helmert(n, full=False):
 
 def hilbert(n):
     """Create a Hilbert matrix of order `n`.
-    
+
     Returns the `n` by `n` array with entries `h[i,j] = 1 / (i + j + 1)`.
-    
+
     Args:
         n (int): The size of the array to create.
 
@@ -370,9 +375,8 @@ def hilbert(n):
 
     .. seealso:: :func:`scipy.linalg.hilbert`
     """
-    values = cupy.arange(2*n-1, dtype=float)
-    values += 1
-    cupy.divide(1, values)
+    values = cupy.arange(1, 2*n, dtype=float)
+    cupy.divide(1.0, values, values)
     return hankel(values[:n], r=values[n-1:])
 
 
@@ -393,8 +397,9 @@ def dft(n, scale=None):
         scale (str, optional): Must be None, 'sqrtn', or 'n'.
             If `scale` is 'sqrtn', the matrix is divided by `sqrt(n)`.
             If `scale` is 'n', the matrix is divided by `n`.
-            If `scale` is None (the default), the matrix is not normalized, and the
-            return value is simply the Vandermonde matrix of the roots of unity.
+            If `scale` is None (default), the matrix is not normalized, and the
+            return value is simply the Vandermonde matrix of the roots of
+            unity.
 
     Returns:
         (cupy.ndarray): The DFT matrix.
@@ -474,20 +479,20 @@ def fiedler_companion(a):
     if a.ndim != 1:
         raise ValueError("Input 'a' must be a 1-D array.")
     if a.size < 2:
-        return cupy.zeros((), a.dtype)
+        return cupy.zeros((0,), a.dtype)
     if a.size == 2:
-        return cupy.array([[ -a[1]/a[0] ]])
+        return (-a[1]/a[0])[None, None]
     if a[0] == 0.:
         raise ValueError('Leading coefficient is zero.')
     a = a/a[0]
     n = a.size - 1
     c = cupy.zeros((n, n), dtype=a.dtype)
     # subdiagonals
-    cupy.fill_diagonal(c[3::2,1::2], 1)
-    cupy.fill_diagonal(c[2::2,1::2], -a[3::2])
+    cupy.fill_diagonal(c[3::2, 1::2], 1)
+    cupy.fill_diagonal(c[2::2, 1::2], -a[3::2])
     # superdiagonals
-    cupy.fill_diagonal(c[::2,2::2], 1)
-    cupy.fill_diagonal(c[::2,1::2], -a[2::2])
+    cupy.fill_diagonal(c[::2, 2::2], 1)
+    cupy.fill_diagonal(c[::2, 1::2], -a[2::2])
     c[0, 0] = -a[1]
     c[1, 0] = 1
     return c
@@ -495,7 +500,7 @@ def fiedler_companion(a):
 
 def convolution_matrix(a, n, mode='full'):
     """Construct a convolution matrix.
-    
+
     Constructs the Toeplitz matrix representing one-dimensional convolution.
 
     Args:
