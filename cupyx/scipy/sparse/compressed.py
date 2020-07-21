@@ -876,18 +876,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # only assign zeros to the existing sparsity structure
         self.data[offsets[offsets > -1]] = 0
 
-    import cupy.prof
-
-    def cupy_unique_axis0(self, arr):
-        sortarr = arr[cupy.lexsort(arr.T[::-1])]
-        mask = cupy.empty(arr.shape[0], type=cupy.bool_)
-
-        mask[0] = True
-        mask[1:] = cupy.any(sortarr[1:] != sortarr[:-1], axis=1)
-
-        return sortarr[mask]
-
-    @cupy.prof.TimeRangeDecorator(message="_insert_many", color_id=1)
     def _insert_many(self, i, j, x):
         """Inserts new nonzero at each (i, j) with value x
         Here (i,j) index major and minor respectively.
@@ -896,8 +884,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         Maintains has_sorted_indices property.
         Modifies i, j, x in place.
         """
-        import time
-        start_time = time.time()
         order = cupy.argsort(i)  # stable for duplicates
         i = i.take(order)
         j = j.take(order)
@@ -979,27 +965,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         self.indices = new_indices
         self.data = new_data
 
-        print("self.indptr: %s" % self.indptr)
-        print("self.indices: %s" % self.indices)
-        print("self.data: %s" % self.data)
-
-        stop_time = time.time() - start_time
-        print("_insert_many_prc_time=%s" % stop_time)
-
-        sort_time = time.time()
-
         if do_sort:
             self.has_sorted_indices = False
             self.sort_indices()
 
-        print("sort_time: %s" % str(time.time() - sort_time))
-
-        check_time = time.time()
         self.check_format(full_check=False)
 
-        print("check_format: %s" % str(time.time() - check_time))
-
-    @cupy.prof.TimeRangeDecorator(message="check_format", color_id=12)
     def check_format(self, full_check=True):
         """check whether the matrix format is valid
 
