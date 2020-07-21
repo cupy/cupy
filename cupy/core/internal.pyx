@@ -36,8 +36,8 @@ cpdef inline Py_ssize_t prod_sequence(object args):
 
 @cython.profile(False)
 cpdef inline bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x):
-    cdef int i
-    for i in range(args.size()):
+    cdef Py_ssize_t i
+    for i in range(<Py_ssize_t>args.size()):
         if args[i] == x:
             return True
     return False
@@ -295,7 +295,7 @@ cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     elif order_char == b'F' or order_char == b'f':
         order_char = b'F'
     else:
-        raise TypeError('order not understood')
+        raise ValueError('order not understood')
     return order_char
 
 

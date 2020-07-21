@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.core import _accelerator
 from cupy import testing
 
 
@@ -198,14 +199,21 @@ class TestSumprod(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipIf(cupy.cuda.cub_enabled is False, 'The CUB module is not built')
-class TestCUBreduction(unittest.TestCase):
+@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+class TestCubReduction(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators(['cub'])
+
+    def tearDown(self):
+        _accelerator.set_routine_accelerators(self.old_accelerators)
+
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?
     @testing.for_dtypes('lLfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_sum(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
@@ -231,7 +239,6 @@ class TestCUBreduction(unittest.TestCase):
     @testing.for_dtypes('lLfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_prod(self, xp, dtype, axis):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
@@ -257,7 +264,6 @@ class TestCUBreduction(unittest.TestCase):
     @testing.for_dtypes('bhilBHILfdF')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumsum(self, xp, dtype):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
@@ -280,7 +286,6 @@ class TestCUBreduction(unittest.TestCase):
     @testing.for_dtypes('bhilBHILfdF')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumprod(self, xp, dtype):
-        assert cupy.cuda.cub_enabled
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)

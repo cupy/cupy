@@ -1,8 +1,8 @@
 import numpy
 
 import cupy
-from cupy.cuda import cublas
-from cupy.cuda import cusolver
+from cupy_backends.cuda.libs import cublas
+from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.cusolver import check_availability
 from cupy.linalg import util
@@ -74,9 +74,11 @@ def _lu_factor(a_t, dtype):
             getrf_bufferSize = cusolver.dgetrf_bufferSize
             getrf = cusolver.dgetrf
         elif dtype == numpy.complex64:
-            getrfBatched = cupy.cuda.cublas.cgetrfBatched
+            getrf_bufferSize = cusolver.cgetrf_bufferSize
+            getrf = cusolver.cgetrf
         elif dtype == numpy.complex128:
-            getrfBatched = cupy.cuda.cublas.zgetrfBatched
+            getrf_bufferSize = cusolver.zgetrf_bufferSize
+            getrf = cusolver.zgetrf
         else:
             assert False
 

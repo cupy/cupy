@@ -491,3 +491,55 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
             raise
 
     return dia.dia_matrix((data_arr, offsets), shape=(m, n)).asformat(format)
+
+
+def kron(A, B, format=None):
+    """Kronecker product of sparse matrices A and B.
+
+    Args:
+        A (cupyx.scipy.sparse.spmatrix): a sparse matrix.
+        B (cupyx.scipy.sparse.spmatrix): a sparse matrix.
+        format (str): the format of the returned sparse matrix.
+
+    Returns:
+        cupyx.scipy.sparse.spmatrix:
+            Generated sparse matrix with the specified ``format``.
+
+    .. seealso:: :func:`scipy.sparse.kron`
+
+    """
+    # TODO(leofang): support BSR format when it's added to CuPy
+    # TODO(leofang): investigate if possible to optimize performance by
+    #                starting with CSR instead of COO matrices
+
+    A = coo.coo_matrix(A)
+    B = coo.coo_matrix(B)
+    out_shape = (A.shape[0] * B.shape[0], A.shape[1] * B.shape[1])
+
+    if A.nnz == 0 or B.nnz == 0:
+        # kronecker product is the zero matrix
+        return coo.coo_matrix(out_shape)
+
+    if max(out_shape[0], out_shape[1]) > cupy.iinfo('int32').max:
+        dtype = cupy.int64
+    else:
+        dtype = cupy.int32
+
+    # expand entries of A into blocks
+    row = A.row.astype(dtype, copy=True) * B.shape[0]
+    row = row.repeat(B.nnz)
+    col = A.col.astype(dtype, copy=True) * B.shape[1]
+    col = col.repeat(B.nnz)
+    data = A.data.repeat(B.nnz)  # data's dtype follows that of A in SciPy
+
+    # increment block indices
+    row, col = row.reshape(-1, B.nnz), col.reshape(-1, B.nnz)
+    row += B.row
+    col += B.col
+    row, col = row.ravel(), col.ravel()
+
+    # compute block entries
+    data = data.reshape(-1, B.nnz) * B.data
+    data = data.ravel()
+
+    return coo.coo_matrix((data, (row, col)), shape=out_shape).asformat(format)

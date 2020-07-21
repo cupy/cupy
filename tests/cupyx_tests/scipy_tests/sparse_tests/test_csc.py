@@ -459,10 +459,11 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         self.assertTrue(a.flags.f_contiguous)
         return a
 
+    @testing.with_requires('numpy>=1.19')
     def test_toarray_unknown_order(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 m.toarray(order='#')
 
     @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
@@ -805,10 +806,127 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(TypeError):
                 None * m
 
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_canonical_format(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.has_canonical_format
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_canonical_format2(self, xp, sp):
+        # this test is adopted from SciPy's
+        M = sp.csc_matrix((xp.array([2], dtype=self.dtype),
+                           xp.array([0]), xp.array([0, 1])))
+        assert M.has_canonical_format
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_canonical_format3(self, xp, sp):
+        # this test is adopted from SciPy's
+        indices = xp.array([0, 0])  # contains duplicate
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+
+        M = sp.csc_matrix((data, indices, indptr))
+        assert not M.has_canonical_format
+
+        # set by deduplicating
+        M.sum_duplicates()
+        assert M.has_canonical_format
+        assert 1 == len(M.indices)
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_canonical_format4(self, xp, sp):
+        # this test is adopted from SciPy's
+        indices = xp.array([0, 0])  # contains duplicate
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+
+        M = sp.csc_matrix((data, indices, indptr))
+        # set manually (although underlyingly duplicated)
+        M.has_canonical_format = True
+        assert M.has_canonical_format
+        assert 2 == len(M.indices)  # unaffected content
+
+        # ensure deduplication bypassed when has_canonical_format == True
+        M.sum_duplicates()
+        assert 2 == len(M.indices)  # unaffected content
+        return M
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_sorted_indices(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.has_sorted_indices
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_sorted_indices2(self, xp, sp):
+        # this test is adopted from SciPy's
+        sorted_inds = xp.array([0, 1])
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+        M = sp.csc_matrix((data, sorted_inds, indptr))
+        assert M.has_sorted_indices
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_sorted_indices3(self, xp, sp):
+        # this test is adopted from SciPy's
+        sorted_inds = xp.array([0, 1])
+        unsorted_inds = xp.array([1, 0])
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+        M = sp.csc_matrix((data, unsorted_inds, indptr))
+        assert not M.has_sorted_indices
+
+        # set by sorting
+        M.sort_indices()
+        assert M.has_sorted_indices
+        assert (M.indices == sorted_inds).all()
+        return M
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_has_sorted_indices4(self, xp, sp):
+        # this test is adopted from SciPy's
+        unsorted_inds = xp.array([1, 0])
+        data = xp.array([1, 1], dtype=self.dtype)
+        indptr = xp.array([0, 2])
+        M = sp.csc_matrix((data, unsorted_inds, indptr))
+
+        # set manually (although underlyingly unsorted)
+        M.has_sorted_indices = True
+        assert M.has_sorted_indices
+        assert (M.indices == unsorted_inds).all()
+
+        # ensure sort bypassed when has_sorted_indices == True
+        M.sort_indices()
+        assert (M.indices == unsorted_inds).all()
+        return M
+
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sort_indices(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         m.sort_indices()
+        assert m.has_sorted_indices
+        return m
+
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
+    def test_sort_indices2(self, xp, sp):
+        # 1. this test is adopted from SciPy's.
+        # 2. we don't check the contiguity flag because SciPy and CuPy handle
+        #    the underlying data differently
+        data = xp.arange(5).astype(xp.float32)
+        indices = xp.array([7, 2, 1, 5, 4])
+        indptr = xp.array([0, 3, 5])
+        asp = sp.csc_matrix((data, indices, indptr), shape=(10, 2))
+        asp.sort_indices()
+        assert (asp.indices == xp.array([1, 2, 7, 4, 5])).all()
+        return asp.todense()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sorted_indices(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        m = m.sorted_indices()
+        assert m.has_sorted_indices
         return m
 
     def test_sum_tuple_axis(self):
@@ -904,12 +1022,12 @@ class TestCscMatrixScipyCompressed(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     # TODO(takagi) Test dtypes
-    # TODO(takagi) Test None, -2 and -1 axis
-    'axis': [0, 1],
+    # TODO(takagi) Test -2 and -1 axis
+    'axis': [None, 0, 1],
     'dense': [False, True],
 }))
 @testing.with_requires('scipy>=0.19.0')
-class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
+class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
 
     def _make_data_min(self, xp, sp, dense=False):
         dm_data = testing.shaped_random((10, 20), xp=xp, scale=1.0)
@@ -933,18 +1051,25 @@ class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
             # the smallest numbers except for zero.
             dm_data[dm_data < 0.95] = numpy.inf
 
-            # If all elements in a row/column are set to infinity, we make it
-            # have at least a zero so spmatrix.min(axis=axis) returns zero for
-            # the row/column.
-            mask = numpy.zeros_like(dm_data, dtype=numpy.bool)
-            if axis == 0:
-                rows = dm_data.argmin(axis=0)
-                cols = numpy.arange(20)
+            if axis is None:
+                # If all elements in the array are set to infinity, we make it
+                # have at least a zero so SciPy's spmatrix.min(axis=None)
+                # returns zero.
+                if numpy.isinf(dm_data).all():
+                    dm_data[0, 0] = 0
             else:
-                rows = numpy.arange(10)
-                cols = dm_data.argmin(axis=1)
-            mask[rows, cols] = numpy.isinf(dm_data[rows, cols])
-            dm_data[mask] = 0
+                # If all elements in a row/column are set to infinity, we make
+                # it have at least a zero so spmatrix.min(axis=axis) returns
+                # zero for the row/column.
+                mask = numpy.zeros_like(dm_data, dtype=numpy.bool)
+                if axis == 0:
+                    rows = dm_data.argmin(axis=0)
+                    cols = numpy.arange(20)
+                else:
+                    rows = numpy.arange(10)
+                    cols = dm_data.argmin(axis=1)
+                mask[rows, cols] = numpy.isinf(dm_data[rows, cols])
+                dm_data[mask] = 0
 
         return sp.csc_matrix(xp.array(dm_data))
 
@@ -1058,7 +1183,7 @@ class TestUfunc(unittest.TestCase):
                 self.ufunc in complex_unsupported):
             with self.assertRaises(TypeError):
                 func()
-            return numpy.array(0)
+            return xp.array(0)
         else:
             return func()
 

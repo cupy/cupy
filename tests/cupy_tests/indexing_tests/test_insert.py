@@ -131,13 +131,14 @@ class TestPutRaises(unittest.TestCase):
             with pytest.raises(IndexError):
                 xp.put(a, inds, vals, mode='raise')
 
+    @testing.with_requires('numpy>=1.19')
     @testing.for_all_dtypes()
     def test_put_mode_error(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange(self.shape, xp, dtype)
             inds = xp.array([2, -1, 3, 0])
             vals = testing.shaped_random((4,), xp, dtype)
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 xp.put(a, inds, vals, mode='unknown')
 
 

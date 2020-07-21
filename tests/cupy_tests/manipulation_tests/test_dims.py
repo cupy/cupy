@@ -19,7 +19,7 @@ class TestDims(unittest.TestCase):
         f = numpy.float32(1)
         return func(a, b, c, d, e, f)
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_atleast_1d1(self, xp):
         return self.check_atleast(xp.atleast_1d, xp)
 
@@ -28,7 +28,7 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((1, 3, 2), xp)
         return xp.atleast_1d(a)
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_atleast_2d1(self, xp):
         return self.check_atleast(xp.atleast_2d, xp)
 
@@ -37,7 +37,7 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((1, 3, 2), xp)
         return xp.atleast_2d(a)
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_atleast_3d1(self, xp):
         return self.check_atleast(xp.atleast_3d, xp)
 
@@ -126,7 +126,7 @@ class TestDims(unittest.TestCase):
                 xp.expand_dims(a, -4)
 
     @testing.with_requires('numpy>=1.18')
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_expand_dims_tuple_axis(self, xp):
         a = testing.shaped_arange((2, 2, 2), xp)
         return [xp.expand_dims(a, axis) for axis in [
@@ -299,7 +299,7 @@ class TestBroadcast(unittest.TestCase):
         self.assertEqual(broadcast_np.nd, broadcast_cp.nd)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_broadcast_arrays(self, xp, dtype):
         arrays = [
             testing.shaped_arange(s, xp, dtype) for s in self.shapes]
