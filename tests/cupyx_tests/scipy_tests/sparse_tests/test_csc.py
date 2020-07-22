@@ -1120,6 +1120,19 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
             return data.min(axis=1)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_max_sparse_axis_none(self, xp, sp):
+        data = self._make_data_max(xp, sp)
+        return data.max(axis=None)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_max_sparse_axis_none_nonzero(self, xp, sp):
+        data = self._make_data_max_nonzero(xp, sp, axis=None)
+        if xp is cupy:
+            return data.max(axis=None, nonzero=True)
+        else:
+            return data.max(axis=None)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_max_sparse_axis_0(self, xp, sp):
         data = self._make_data_max(xp, sp)
         return data.max(axis=0)
