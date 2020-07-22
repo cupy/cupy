@@ -452,19 +452,18 @@ def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
         for (idx_t j = {end}; j<{in_length}; ++j) {{ input_line[j] = {cval}; }}
         '''.format(start=start, end=end, in_length=in_length, cval=cval)
     else:
-        if mode == 'reflect':
+        if length == 1:
+            a = b = 'j_ = 0;'
+        elif mode == 'reflect':
             j = ('j_ = ({j}) % ({length} * 2);\n'
                  'j_ = min(j_, 2 * {length} - 1 - j_);')
             a = j.format(j='-1 - j_', length=length)
             b = j.format(j='j_', length=length)
         elif mode == 'mirror':
-            if length == 1:
-                a = b = 'j_ = 0;'
-            else:
-                j = ('j_ = 1 + (({j}) - 1) % (({length} - 1) * 2);\n'
-                     'j_ = min(j_, 2 * {length} - 2 - j_);')
-                a = j.format('-j_', length=length)
-                b = j.format('j_', length=length)
+            j = ('j_ = 1 + (({j}) - 1) % (({length} - 1) * 2);\n'
+                 'j_ = min(j_, 2 * {length} - 2 - j_);')
+            a = j.format(j='-j_', length=length)
+            b = j.format(j='j_', length=length)
         elif mode == 'nearest':
             a, b = 'j_ = 0;', 'j_ = {length}-1;'.format(length=length)
         elif mode == 'wrap':
