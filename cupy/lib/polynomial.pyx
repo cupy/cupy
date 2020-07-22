@@ -127,6 +127,9 @@ cdef class poly1d:
         raise NotImplementedError
 
     def __add__(self, other):
+        if isinstance(self, numpy.generic):
+            # for the case: numpy scalar + poly1d
+            raise TypeError('Invalid inputs')
         return _routines_poly.polyadd(self, other)
 
     # TODO(Dahlia-Chehata): implement using polymul
