@@ -123,7 +123,6 @@ def _remove_rdc_option(options):
     return tuple(o for o in options if o not in _rdc_flags)
 
 
-@util.memoize()
 def _get_bool_env_variable(name, default):
     val = os.environ.get(name)
     if val is None or len(val) == 0:
@@ -135,7 +134,8 @@ def _get_bool_env_variable(name, default):
 
 
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
-                        name_expressions=None, log_stream=None):
+                        name_expressions=None, log_stream=None,
+                        cache_in_memory=False):
     if not arch:
         arch = _get_arch()
 
@@ -154,7 +154,6 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
             raise
         return ptx, mapping
 
-    cache_in_memory = _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
     if not cache_in_memory:
         with tempfile.TemporaryDirectory() as root_dir:
             cu_path = os.path.join(root_dir, filename)
@@ -313,19 +312,26 @@ def compile_with_cache(
         if runtime.is_hip or backend != 'nvrtc':
             raise NotImplementedError
 
+    # TODO(leofang): check if hiprtc can avoid disk access
+    cache_in_memory = _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
+    if cache_in_memory and backend != 'nvrtc':
+        raise ValueError('CUPY_CACHE_IN_MEMORY is set, but it does not '
+                         'support nvcc')
+
     if runtime.is_hip:
         return _compile_with_cache_hipcc(
             source, options, arch, cache_dir, extra_source)
     else:
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
-            enable_cooperative_groups, name_expressions, log_stream)
+            enable_cooperative_groups, name_expressions, log_stream,
+            cache_in_memory)
 
 
 def _compile_with_cache_cuda(
         source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None):
+        log_stream=None, cache_in_memory=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -356,7 +362,6 @@ def _compile_with_cache_cuda(
     name = '%s_2.cubin' % hashlib.md5(key_src).hexdigest()
 
     mod = function.Module()
-    cache_in_memory = _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
 
     if not cache_in_memory:
         # Read from disk cache
@@ -388,11 +393,10 @@ def _compile_with_cache_cuda(
         pass
 
     if backend == 'nvrtc':
-        # TODO: WHY CAN'T THIS WORK?
-        # cu_name = '' if cache_in_memory else name + '.cu'
-        cu_name = name + '.cu'
+        cu_name = '' if cache_in_memory else name + '.cu'
         ptx, mapping = compile_using_nvrtc(
-            source, options, arch, cu_name, name_expressions, log_stream)
+            source, options, arch, cu_name, name_expressions,
+            log_stream, cache_in_memory)
         ls = function.LinkState()
         ls.add_ptr_data(ptx, 'cupy.ptx')
         # for separate compilation
@@ -410,8 +414,9 @@ def _compile_with_cache_cuda(
     else:
         raise ValueError('Invalid backend %s' % backend)
 
-    # Write to cache
     if not cache_in_memory:
+        # Write to disk cache
+
         cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
 
         # shutil.move is not atomic operation, so it could result in a
@@ -429,8 +434,7 @@ def _compile_with_cache_cuda(
             with open(path + '.cu', 'w') as f:
                 f.write(source)
     else:
-        # Enforce compiling -- the resulting kernel will be cached elsewhere,
-        # so we do nothing
+        # we don't do any disk I/O
         pass
 
     mod.load(cubin)

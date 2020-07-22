@@ -346,7 +346,7 @@ class TestRaw(unittest.TestCase):
 
     def setUp(self):
         if self.backend == 'nvcc' and self.in_memory == '1':
-            self.skipTest('NVCC does not support in-memory cache')
+            self.skipTest('nvcc does not support in-memory cache')
         os.environ['CUPY_CACHE_IN_MEMORY'] = self.in_memory
 
         self.dev = cupy.cuda.runtime.getDevice()
