@@ -251,18 +251,26 @@ template<>        struct __is_fp<double> : public true_type {};
 template<>        struct __is_fp<long double> : public true_type {};
 template<class T> struct is_floating_point
     : public __is_fp<typename remove_cv<T>::type> {};
-template<class T> struct is_signed : integral_constant<bool, (T)(-1)<0> {};
+template<class T> struct is_signed
+    : public integral_constant<bool, (T)(-1)<0> {};
+template<> struct is_signed<float16> : public true_type {};
+template<class T> struct is_signed<complex<T>> : public is_signed<T> {};
 
-template <typename B, typename A>
+template <class B, class A>
 __device__
 typename enable_if<!is_floating_point<A>::value||is_signed<B>::value, B>::type
 cast(A a) { return (B)a; }
 
-template <typename B, typename A>
+template <class B, class A>
 __device__
 typename enable_if<is_floating_point<A>::value&&!is_signed<B>::value, B>::type
 cast(A a) { return (a >= 0) ? (B)a : -(B)(-a); }
 
+template <class T>
+__device__ bool nonzero(T x) { return (bool)x; }
+
+template <typename T>
+__device__ bool nonzero(complex<T> x) { return x.real() || x.imag(); }
 
 """
 
@@ -297,7 +305,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         if has_structure:
             ws_pre = 'S sval = s[iws];\n'
         if has_weights:
-            ws_pre += 'W wval = w[iws];\nif (wval)'
+            ws_pre += 'W wval = w[iws];\nif (nonzero(wval))'
         ws_post = 'iws++;'
 
     loops = []
