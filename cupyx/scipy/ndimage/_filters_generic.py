@@ -95,7 +95,7 @@ def _get_new_fused_kernel(func, filter_size, in_dtype):
 
 @cupy.util.memoize(for_each_device=True)
 def _get_generic_filter_fused(fk, in_dtype, out_dtype, filter_size, mode,
-                              wshape, origins, cval, int_type):
+                              wshape, offsets, cval, int_type):
     """Generic filter implementation based on a fused kernel."""
     # The CArray/CIndexers for calling the sub-kernel
     vars, args = _fused_kernel_arrays(fk, filter_size)
@@ -111,7 +111,7 @@ def _get_generic_filter_fused(fk, in_dtype, out_dtype, filter_size, mode,
     return _generate_nd_kernel(
         'generic_{}_{}'.format(filter_size, fk._name),
         setup, 'values[iv++] = {value};', sub_call,
-        mode, wshape, int_type, origins, cval, preamble=sub_kernel)
+        mode, wshape, int_type, offsets, cval, preamble=sub_kernel)
 
 
 def _fused_kernel_code(fk):
@@ -258,7 +258,7 @@ def _transpose(strides, axes):
 
 @cupy.util.memoize(for_each_device=True)
 def _get_generic_filter_red(rk, in_dtype, out_dtype, filter_size, mode,
-                            wshape, origins, cval, int_type):
+                            wshape, offsets, cval, int_type):
     """Generic filter implementation based on a reduction kernel."""
     # Get the temporary output c type
     in_param, out_param = rk.in_params[0], rk.out_params[0]
@@ -284,7 +284,7 @@ def _get_generic_filter_red(rk, in_dtype, out_dtype, filter_size, mode,
     return _generate_nd_kernel(
         'generic_{}_{}'.format(filter_size, rk.name),
         setup, 'values[iv++] = {value};', sub_call,
-        mode, wshape, int_type, origins, cval, preamble=sub_kernel,
+        mode, wshape, int_type, offsets, cval, preamble=sub_kernel,
         options=getattr(rk, 'options', ()))
 
 
@@ -414,7 +414,7 @@ def _get_type_info(param, dtype, types):
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_generic_filter_raw(rk, filter_size, mode, wshape, origins, cval,
+def _get_generic_filter_raw(rk, filter_size, mode, wshape, offsets, cval,
                             int_type):
     """Generic filter implementation based on a raw kernel."""
     setup = '''
@@ -428,7 +428,7 @@ def _get_generic_filter_raw(rk, filter_size, mode, wshape, origins, cval,
     return _generate_nd_kernel(
         'generic_{}_{}'.format(filter_size, rk.name),
         setup, 'values[iv++] = cast<double>({value});', sub_call,
-        mode, wshape, int_type, origins, cval,
+        mode, wshape, int_type, offsets, cval,
         preamble='namespace raw_kernel {{\n{}\n}}'.format(rk.code),
         options=rk.options)
 

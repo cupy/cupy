@@ -36,6 +36,10 @@ def _check_origin(origin, width):
     return origin
 
 
+def _origins_to_offsets(origins, w_shape):
+    return tuple(x//2+o for x, o in zip(w_shape, origins))
+
+
 def _check_mode(mode):
     if mode not in {'reflect', 'constant', 'nearest', 'mirror', 'wrap'}:
         msg = 'boundary mode not supported (actual: {})'.format(mode)
@@ -102,8 +106,8 @@ def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights'):
     if input.dtype.kind == 'c':
         raise TypeError('Complex type not supported')
     _check_mode(mode)
-    # Weights must always be 2 GiB or less
-    if weights.nbytes > (1 << 31):
+    # Weights must always be less than 2 GiB
+    if weights.nbytes >= (1 << 31):
         raise RuntimeError('weights must be 2 GiB or less, use FFTs instead')
     weight_dims = [x for x in weights.shape if x != 0]
     if len(weight_dims) != input.ndim:
@@ -264,8 +268,8 @@ cast(A a) { return (a >= 0) ? (B)a : -(B)(-a); }
 
 
 def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
-                        origins, cval, ctype='X', preamble='', options=(),
-                        has_weights=True, has_structure=False, y_shape='same'):
+                        offsets, cval, ctype='X', preamble='', options=(),
+                        has_weights=True, has_structure=False):
     # Currently this code uses CArray for weights but avoids using CArray for
     # the input data and instead does the indexing itself since it is faster.
     # If CArray becomes faster than follow the comments that start with
@@ -279,26 +283,11 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         in_params += ', raw S s'
     out_params = 'Y y'
 
-    # Handle the output shape
-    if y_shape == 'full':
-        offsets = [x-1+o for x, o in zip(w_shape, origins)]
-        deltas = [x-1 for x in w_shape]
-    elif y_shape == 'valid':
-        offsets = origins
-        deltas = [-x+1 for x in w_shape]
-    else:  # y_shape == 'same':
-        offsets = [x//2+o for x, o in zip(w_shape, origins)]
-        # deltas = (0,) * ndim
-
     # CArray: remove xstride_{j}=... from string
-    sizes = ['{type} xsize_{j}=x.shape()[{j}], xstride_{j}=x.strides()[{j}];'.
-             format(j=j, type=int_type) for j in range(ndim)]
-    if y_shape != 'same':
-        sizes.extend('{type} ysize_{j} = xsize_{j} + {delta};'.
-                     format(j=j, type=int_type, delta=delta)
-                     for j, delta in enumerate(deltas))
-    inds = _generate_indices_ops(ndim, int_type, offsets,
-                                 'ysize' if y_shape != 'same' else 'xsize')
+    size = ('%s xsize_{j}=x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
+            ', xstride_{j}=x.strides()[{j}];' % int_type)
+    sizes = [size.format(j=j) for j in range(ndim)]
+    inds = _generate_indices_ops(ndim, int_type, offsets)
     # CArray: remove expr entirely
     expr = ' + '.join(['ix_{}'.format(j) for j in range(ndim)])
 
@@ -371,9 +360,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                                   options=('--std=c++11',) + options)
 
 
-def _generate_indices_ops(ndim, int_type, offsets, xsize='xsize'):
-    code = '{type} ind_{j} = _i % {xsize}_{j} - {offset}; _i /= {xsize}_{j};'
-    body = [code.format(type=int_type, j=j, offset=offsets[j], xsize=xsize)
+def _generate_indices_ops(ndim, int_type, offsets):
+    code = '{type} ind_{j} = _i % ysize_{j} - {offset}; _i /= ysize_{j};'
+    body = [code.format(type=int_type, j=j, offset=offsets[j])
             for j in range(ndim-1, 0, -1)]
     return '{type} _i = i;\n{body}\n{type} ind_0 = _i - {offset};'.format(
         type=int_type, body='\n'.join(body), offset=offsets[0])

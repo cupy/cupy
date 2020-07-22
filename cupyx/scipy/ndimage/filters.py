@@ -4,7 +4,7 @@ import cupy
 from cupyx.scipy.ndimage._filters_core import (
     _convert_1d_args, _check_nd_args, _check_size_footprint_structure,
     _fix_sequence_arg, _check_mode, _get_output, _check_origin, _get_inttype,
-    _run_1d_filters, _generate_nd_kernel, _call_kernel)
+    _origins_to_offsets, _run_1d_filters, _generate_nd_kernel, _call_kernel)
 
 
 def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
@@ -155,20 +155,20 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
             if wsize % 2 == 0:
                 origins[i] -= 1
         origins = tuple(origins)
+    offsets = _origins_to_offsets(origins, weights.shape)
     kernel = _get_correlate_kernel(mode, weights.shape, int_type,
-                                   origins, cval)
+                                   offsets, cval)
     return _call_kernel(kernel, input, weights, output)
 
 
-@cupy.util.memoize(for_each_device=True)
-def _get_correlate_kernel(mode, w_shape, int_type, origins, cval,
-                          y_shape='same'):
+#@cupy.util.memoize(for_each_device=True)
+def _get_correlate_kernel(mode, w_shape, int_type, offsets, cval):
     return _generate_nd_kernel(
         'correlate',
         'W sum = (W)0;',
         'sum += cast<W>({value}) * wval;',
         'y = cast<Y>(sum);',
-        mode, w_shape, int_type, origins, cval, ctype='W', y_shape=y_shape)
+        mode, w_shape, int_type, offsets, cval, ctype='W')
 
 
 def _run_1d_correlates(input, params, get_weights, output, mode, cval,
@@ -700,12 +700,11 @@ def _min_or_max_filter(input, size, footprint, structure, output, mode, cval,
 
     if footprint.size == 0:
         return cupy.zeros_like(input)
-    center = tuple(x//2 + origin
-                   for x, origin in zip(footprint.shape, origins))
+    offsets = _origins_to_offsets(origins, footprint.shape)
     kernel = _get_min_or_max_kernel(mode, footprint.shape, func,
-                                    origins, float(cval), int_type,
+                                    offsets, float(cval), int_type,
                                     has_structure=structure is not None,
-                                    has_central_value=bool(footprint[center]))
+                                    has_central_value=bool(footprint[offsets]))
     return _call_kernel(kernel, input, footprint, output, structure,
                         weights_dtype=bool)
 
@@ -766,13 +765,14 @@ def _min_or_max_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
     ftprnt, origins = _convert_1d_args(input.ndim, ftprnt, origin, axis)
     origins, int_type = _check_nd_args(input, ftprnt, mode, origins,
                                        'footprint')
-    kernel = _get_min_or_max_kernel(mode, ftprnt.shape, func, origins,
+    offsets = _origins_to_offsets(origins, ftprnt.shape)
+    kernel = _get_min_or_max_kernel(mode, ftprnt.shape, func, offsets,
                                     float(cval), int_type, has_weights=False)
     return _call_kernel(kernel, input, None, output, weights_dtype=bool)
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_min_or_max_kernel(mode, w_shape, func, origins, cval, int_type,
+def _get_min_or_max_kernel(mode, w_shape, func, offsets, cval, int_type,
                            has_weights=True, has_structure=False,
                            has_central_value=True):
     # When there are no 'weights' (the footprint, for the 1D variants) then
@@ -800,7 +800,7 @@ def _get_min_or_max_kernel(mode, w_shape, func, origins, cval, int_type,
     return _generate_nd_kernel(
         func, pre.format(ctype),
         found.format(func=func, value=value), 'y = cast<Y>(value);',
-        mode, w_shape, int_type, origins, cval, ctype=ctype,
+        mode, w_shape, int_type, offsets, cval, ctype=ctype,
         has_weights=has_weights, has_structure=has_structure)
 
 
@@ -928,8 +928,9 @@ def _rank_filter(input, get_rank, size=None, footprint=None, output=None,
     if rank == filter_size - 1:
         return _min_or_max_filter(input, None, footprint, None, output, mode,
                                   cval, origins, 'max')
+    offsets = _origins_to_offsets(origins, footprint.shape)
     kernel = _get_rank_kernel(filter_size, rank, mode, footprint.shape,
-                              origins, float(cval), int_type)
+                              offsets, float(cval), int_type)
     return _call_kernel(kernel, input, footprint, output, None, bool)
 
 
@@ -980,7 +981,7 @@ def _get_shell_gap(filter_size):
 
 
 @cupy.util.memoize(for_each_device=True)
-def _get_rank_kernel(filter_size, rank, mode, w_shape, origins, cval,
+def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
                      int_type):
     # Below 225 (15x15 median filter) selection sort is 1.5-2.5x faster
     # Above, shell sort does progressively better (by 3025 (55x55) it is 9x)
@@ -992,7 +993,7 @@ def _get_rank_kernel(filter_size, rank, mode, w_shape, origins, cval,
         'int iv = 0;\nX values[{}];'.format(filter_size),
         'values[iv++] = {value};',
         'sort(values,{});\ny=cast<Y>(values[{}]);'.format(filter_size, rank),
-        mode, w_shape, int_type, origins, cval, preamble=sorter)
+        mode, w_shape, int_type, offsets, cval, preamble=sorter)
 
 
 def generic_filter(input, function, size=None, footprint=None,
@@ -1064,7 +1065,8 @@ def generic_filter(input, function, size=None, footprint=None,
     if footprint.size == 0:
         return cupy.zeros_like(input)
     output = _get_output(output, input)
-    args = (filter_size, mode, footprint.shape, origins, float(cval), int_type)
+    offsets = _origins_to_offsets(origins, footprint.shape)
+    args = (filter_size, mode, footprint.shape, offsets, float(cval), int_type)
     if isinstance(sub, cupy.RawKernel):
         kernel = _get_generic_filter_raw(sub, *args)
     elif isinstance(sub, cupy.ReductionKernel):
