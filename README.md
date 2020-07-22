@@ -6,13 +6,14 @@
 [![GitHub license](https://img.shields.io/github/license/cupy/cupy.svg)](https://github.com/cupy/cupy)
 [![travis](https://img.shields.io/travis/cupy/cupy.svg)](https://travis-ci.org/cupy/cupy)
 [![coveralls](https://img.shields.io/coveralls/cupy/cupy.svg)](https://coveralls.io/github/cupy/cupy)
-[![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](https://docs-cupy.chainer.org/en/stable/)
+[![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](https://docs.cupy.dev/en/stable/)
+[![Twitter](https://img.shields.io/twitter/follow/CuPy_Team?label=%40CuPy_Team)](https://twitter.com/CuPy_Team)
 
-[**Website**](https://cupy.chainer.org/)
-| [**Docs**](https://docs-cupy.chainer.org/en/stable/)
-| [**Install Guide**](https://docs-cupy.chainer.org/en/stable/install.html)
-| [**Tutorial**](https://docs-cupy.chainer.org/en/stable/tutorial/)
-| **Examples** ([Official](https://github.com/cupy/cupy/tree/master/examples))
+[**Website**](https://cupy.dev/)
+| [**Docs**](https://docs.cupy.dev/en/stable/)
+| [**Install Guide**](https://docs.cupy.dev/en/stable/install.html)
+| [**Tutorial**](https://docs.cupy.dev/en/stable/tutorial/)
+| [**Examples**](https://github.com/cupy/cupy/tree/master/examples)
 | **Forum** ([en](https://groups.google.com/forum/#!forum/cupy), [ja](https://groups.google.com/forum/#!forum/cupy-ja))
 
 *CuPy* is an implementation of NumPy-compatible multi-dimensional array on CUDA.
@@ -21,7 +22,7 @@ It supports a subset of `numpy.ndarray` interface.
 
 ## Installation
 
-For detailed instructions on installing CuPy, see [the installation guide](https://docs-cupy.chainer.org/en/stable/install.html).
+For detailed instructions on installing CuPy, see [the installation guide](https://docs.cupy.dev/en/stable/install.html).
 
 You can install CuPy using `pip`:
 
@@ -66,7 +67,7 @@ $ nvidia-docker run -it cupy/cupy /bin/bash
 
 ## Development
 
-Please see [the contribution guide](https://docs-cupy.chainer.org/en/stable/contribution.html).
+Please see [the contribution guide](https://docs.cupy.dev/en/stable/contribution.html).
 
 ## More information
 
@@ -78,6 +79,8 @@ Please see [the contribution guide](https://docs-cupy.chainer.org/en/stable/cont
 MIT License (see `LICENSE` file).
 
 CuPy is designed based on NumPy's API and SciPy's API (see `docs/LICENSE_THIRD_PARTY` file).
+
+CuPy is being maintained and developed by [Preferred Networks Inc.](https://preferred.jp/en/) and [community contributors](https://github.com/cupy/cupy/graphs/contributors).
 
 ## Reference
 

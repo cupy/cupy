@@ -12,19 +12,22 @@ cdef class Function:
         public intptr_t ptr
 
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=*,
-                        size_t block_max_size=*, stream=*)
+                        size_t block_max_size=*, stream=*,
+                        bint enable_cooperative_groups=*)
 
 
 cdef class Module:
 
     cdef:
         public intptr_t ptr
+        readonly dict mapping
 
     cpdef load_file(self, filename)
     cpdef load(self, bytes cubin)
     cpdef get_global_var(self, name)
     cpdef get_function(self, name)
     cpdef get_texref(self, name)
+    cpdef _set_mapping(self, dict mapping)
 
 
 cdef class LinkState:

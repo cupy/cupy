@@ -7,15 +7,14 @@ import subprocess
 import sys
 import tempfile
 
-from cupy.cuda import _environment
 from cupy.cuda import device
 from cupy.cuda import function
-from cupy.cuda import nvrtc
-from cupy.cuda import runtime
+from cupy_backends.cuda.api import runtime
+from cupy_backends.cuda.libs import nvrtc
 from cupy import util
 
+
 _nvrtc_version = None
-_nvrtc_max_compute_capability = None
 _win32 = sys.platform.startswith('win32')
 _rdc_flags = ('--device-c', '-dc', '-rdc=true',
               '--relocatable-device-code=true')
@@ -26,9 +25,14 @@ class NVCCException(Exception):
     pass
 
 
-def _run_nvcc(cmd, cwd):
+def _run_nvcc(cmd, cwd, log_stream=None):
     try:
-        return subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT)
+        log = subprocess.check_output(cmd, cwd=cwd,
+                                      stderr=subprocess.STDOUT,
+                                      universal_newlines=True)
+        if log_stream is not None:
+            log_stream.write(log)
+        return log
     except subprocess.CalledProcessError as e:
         msg = ('`nvcc` command returns non-zero exit status. \n'
                'command: {0}\n'
@@ -36,8 +40,7 @@ def _run_nvcc(cmd, cwd):
                'stdout/stderr: \n'
                '{2}'.format(e.cmd,
                             e.returncode,
-                            e.output.decode(encoding='UTF-8',
-                                            errors='replace')))
+                            e.output))
         raise NVCCException(msg)
     except OSError as e:
         msg = 'Failed to run `nvcc` command. ' \
@@ -54,21 +57,33 @@ def _get_nvrtc_version():
     return _nvrtc_version
 
 
-def _get_arch():
-    global _nvrtc_max_compute_capability
-    if _nvrtc_max_compute_capability is None:
-        # See Supported Compile Options section of NVRTC User Guide for
-        # the maximum value allowed for `--gpu-architecture`.
-        major, minor = _get_nvrtc_version()
-        if major < 9:
-            # CUDA 7.0 / 7.5 / 8.0
-            _nvrtc_max_compute_capability = '50'
-        else:
-            # CUDA 9.0 / 9.1
-            _nvrtc_max_compute_capability = '70'
+# Known archs for Tegra/Jetson/Xavier/etc
+_tegra_archs = ('53', '62', '72')
 
-    return min(device.Device().compute_capability,
-               _nvrtc_max_compute_capability)
+
+@util.memoize(for_each_device=True)
+def _get_arch():
+    # See Supported Compile Options section of NVRTC User Guide for
+    # the maximum value allowed for `--gpu-architecture`.
+    major, minor = _get_nvrtc_version()
+    if major < 9:
+        # CUDA 8.0
+        _nvrtc_max_compute_capability = '52'
+    elif major < 10 or (major == 10 and minor == 0):
+        # CUDA 9.x / 10.0
+        _nvrtc_max_compute_capability = '70'
+    elif major < 11:
+        # CUDA 10.1 / 10.2
+        _nvrtc_max_compute_capability = '75'
+    else:
+        # CUDA 11.0
+        _nvrtc_max_compute_capability = '80'
+
+    arch = device.Device().compute_capability
+    if arch in _tegra_archs:
+        return arch
+    else:
+        return min(arch, _nvrtc_max_compute_capability)
 
 
 def _is_cudadevrt_needed(options):
@@ -76,6 +91,10 @@ def _is_cudadevrt_needed(options):
 
 
 def _get_cudadevrt_path():
+    global _cudadevrt
+    if _cudadevrt is not None:
+        return _cudadevrt
+
     # defer import to here to avoid circular dependency
     from cupy.cuda import get_cuda_path
     global _win32
@@ -115,38 +134,46 @@ def _get_bool_env_variable(name, default):
         return False
 
 
-def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu'):
+def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
+                        name_expressions=None, log_stream=None):
     if not arch:
         arch = _get_arch()
 
     options += ('-arch=compute_{}'.format(arch),)
 
-    def _compile(source, options, cu_path):
-        prog = _NVRTCProgram(source, cu_path)
+    def _compile(source, options, cu_path, name_expressions, log_stream):
+        prog = _NVRTCProgram(source, cu_path,
+                             name_expressions=name_expressions)
         try:
-            ptx = prog.compile(options)
+            ptx, mapping = prog.compile(options, log_stream)
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
             if dump:
                 e.dump(sys.stderr)
             raise
-        return ptx
+        return ptx, mapping
 
     cache_in_memory = _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
     if not cache_in_memory:
         with tempfile.TemporaryDirectory() as root_dir:
             cu_path = os.path.join(root_dir, filename)
+
             with open(cu_path, 'w') as cu_file:
                 cu_file.write(source)
-            return _compile(source, options, cu_path)
+
+            return _compile(source, options, cu_path,
+                            name_expressions, log_stream)
     else:
-        return _compile(source, options, '')
+        return _compile(source, options, '', name_expressions, log_stream)
 
 
 def compile_using_nvcc(source, options=(), arch=None,
                        filename='kern.cu', code_type='cubin',
-                       separate_compilation=False):
+                       separate_compilation=False, log_stream=None):
+    # defer import to here to avoid circular dependency
+    from cupy.cuda import get_nvcc_path
+
     if not arch:
         arch = _get_arch()
 
@@ -156,7 +183,10 @@ def compile_using_nvcc(source, options=(), arch=None,
         assert not separate_compilation
 
     arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
-    cmd = [_environment.get_nvcc_path(), arch_str]
+    _nvcc = get_nvcc_path()
+    # split() is needed because _nvcc could come from the env var NVCC
+    cmd = _nvcc.split()
+    cmd.append(arch_str)
 
     with tempfile.TemporaryDirectory() as root_dir:
         first_part = filename.split('.')[0]
@@ -174,7 +204,7 @@ def compile_using_nvcc(source, options=(), arch=None,
             cmd.append(cu_path)
 
             try:
-                _run_nvcc(cmd, root_dir)
+                _run_nvcc(cmd, root_dir, log_stream)
             except NVCCException as e:
                 cex = CompileException(str(e), source, cu_path, options,
                                        'nvcc')
@@ -194,7 +224,7 @@ def compile_using_nvcc(source, options=(), arch=None,
             cmd.append(cu_path)
 
             try:
-                _run_nvcc(cmd, root_dir)
+                _run_nvcc(cmd, root_dir, log_stream)
             except NVCCException as e:
                 cex = CompileException(str(e), source, cu_path, options,
                                        'nvcc')
@@ -211,7 +241,7 @@ def compile_using_nvcc(source, options=(), arch=None,
             cmd = cmd_partial + list(options)
 
             try:
-                _run_nvcc(cmd, root_dir)
+                _run_nvcc(cmd, root_dir, log_stream)
             except NVCCException as e:
                 cex = CompileException(str(e), '', '', options, 'nvcc')
                 raise cex
@@ -232,7 +262,7 @@ def _preprocess(source, options, arch, backend):
 
         prog = _NVRTCProgram(source, '')
         try:
-            result = prog.compile(options)
+            result, _ = prog.compile(options)
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -264,12 +294,12 @@ def get_cache_dir():
 
 
 _empty_file_preprocess_cache = {}
-_in_memory_cubin_cache = {}
 
 
 def compile_with_cache(
         source, options=(), arch=None, cache_dir=None, extra_source=None,
-        backend='nvrtc', *, enable_cooperative_groups=False):
+        backend='nvrtc', *, enable_cooperative_groups=False,
+        name_expressions=None, log_stream=None):
 
     if enable_cooperative_groups:
         if backend != 'nvcc':
@@ -279,18 +309,23 @@ def compile_with_cache(
             raise ValueError(
                 'Cooperative groups is not supported in HIP.')
 
+    if name_expressions is not None:
+        if runtime.is_hip or backend != 'nvrtc':
+            raise NotImplementedError
+
     if runtime.is_hip:
         return _compile_with_cache_hipcc(
             source, options, arch, cache_dir, extra_source)
     else:
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
-            enable_cooperative_groups)
+            enable_cooperative_groups, name_expressions, log_stream)
 
 
 def _compile_with_cache_cuda(
         source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
-        enable_cooperative_groups=False):
+        enable_cooperative_groups=False, name_expressions=None,
+        log_stream=None):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -318,14 +353,14 @@ def _compile_with_cache_cuda(
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
-    key_src = hashlib.md5(key_src).hexdigest()
-    name = '%s_2.cubin' % key_src
+    name = '%s_2.cubin' % hashlib.md5(key_src).hexdigest()
 
     mod = function.Module()
     cache_in_memory = _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
 
-    # Read from cache
     if not cache_in_memory:
+        # Read from disk cache
+
         if not os.path.isdir(cache_dir):
             try:
                 os.makedirs(cache_dir)
@@ -335,8 +370,9 @@ def _compile_with_cache_cuda(
 
         # To handle conflicts in concurrent situation, we adopt lock-free
         # method to avoid performance degradation.
+        # We force recompiling to retrieve C++ mangled names if so desired.
         path = os.path.join(cache_dir, name)
-        if os.path.exists(path):
+        if os.path.exists(path) and not name_expressions:
             with open(path, 'rb') as file:
                 data = file.read()
             if len(data) >= 32:
@@ -347,29 +383,30 @@ def _compile_with_cache_cuda(
                     mod.load(cubin)
                     return mod
     else:
-        cubin = _in_memory_cubin_cache.get(key_src, None)
-        if cubin is not None:
-            mod.load(cubin)
-            return mod
+        # Enforce compiling -- the resulting kernel will be cached elsewhere,
+        # so we do nothing
+        pass
 
     if backend == 'nvrtc':
         # TODO: WHY CAN'T THIS WORK?
         # cu_name = '' if cache_in_memory else name + '.cu'
         cu_name = name + '.cu'
-        ptx = compile_using_nvrtc(source, options, arch, cu_name)
+        ptx, mapping = compile_using_nvrtc(
+            source, options, arch, cu_name, name_expressions, log_stream)
         ls = function.LinkState()
         ls.add_ptr_data(ptx, 'cupy.ptx')
         # for separate compilation
         if _is_cudadevrt_needed(options):
-            global _cudadevrt
-            if _cudadevrt is None:
-                _cudadevrt = _get_cudadevrt_path()
+            _cudadevrt = _get_cudadevrt_path()
             ls.add_ptr_file(_cudadevrt)
         cubin = ls.complete()
+        mod._set_mapping(mapping)
     elif backend == 'nvcc':
         rdc = _is_cudadevrt_needed(options)
-        cubin = compile_using_nvcc(source, options, arch, name + '.cu',
-                                   code_type='cubin', separate_compilation=rdc)
+        cubin = compile_using_nvcc(source, options, arch,
+                                   name + '.cu', code_type='cubin',
+                                   separate_compilation=rdc,
+                                   log_stream=log_stream)
     else:
         raise ValueError('Invalid backend %s' % backend)
 
@@ -392,7 +429,9 @@ def _compile_with_cache_cuda(
             with open(path + '.cu', 'w') as f:
                 f.write(source)
     else:
-        _in_memory_cubin_cache[key_src] = cubin
+        # Enforce compiling -- the resulting kernel will be cached elsewhere,
+        # so we do nothing
+        pass
 
     mod.load(cubin)
     return mod
@@ -440,7 +479,7 @@ class CompileException(Exception):
 class _NVRTCProgram(object):
 
     def __init__(self, src, name='default_program', headers=(),
-                 include_names=()):
+                 include_names=(), name_expressions=None):
         self.ptr = None
 
         if isinstance(src, bytes):
@@ -451,6 +490,7 @@ class _NVRTCProgram(object):
         self.src = src
         self.name = name
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
+        self.name_expressions = name_expressions
 
     def __del__(self, is_shutting_down=util.is_shutting_down):
         if is_shutting_down():
@@ -458,10 +498,20 @@ class _NVRTCProgram(object):
         if self.ptr:
             nvrtc.destroyProgram(self.ptr)
 
-    def compile(self, options=()):
+    def compile(self, options=(), log_stream=None):
         try:
+            if self.name_expressions:
+                for ker in self.name_expressions:
+                    nvrtc.addAddNameExpression(self.ptr, ker)
             nvrtc.compileProgram(self.ptr, options)
-            return nvrtc.getPTX(self.ptr)
+            mapping = None
+            if self.name_expressions:
+                mapping = {}
+                for ker in self.name_expressions:
+                    mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
+            if log_stream is not None:
+                log_stream.write(nvrtc.getProgramLog(self.ptr))
+            return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
             raise CompileException(log, self.src, self.name, options, 'nvrtc')
@@ -501,8 +551,9 @@ def _run_hipcc(cmd, cwd='.', env=None):
 
 
 def _hipcc(source, options, arch):
-    cmd = ['hipcc', '--genco', '--targets=' + arch,
-           '--flags="%s"' % ' '.join(options)]
+    assert len(arch) > 0
+    # pass HCC_AMDGPU_TARGET same as arch
+    cmd = ['hipcc', '--genco'] + list(options)
 
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')

@@ -1,3 +1,25 @@
+import numpy
+
+import cupy
+
+
+def shape(a):
+    """Returns the shape of an array
+
+    Args:
+        a (array_like): Input array
+
+    Returns:
+        tuple of ints: The elements of the shape tuple give the lengths of the
+        corresponding array dimensions.
+
+    """
+    if isinstance(a, cupy.ndarray):
+        return a.shape
+    else:
+        return numpy.shape(a)
+
+
 def reshape(a, newshape, order='C'):
     """Returns an array with new shape and same elements.
 

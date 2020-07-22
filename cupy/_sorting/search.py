@@ -3,7 +3,10 @@ from cupy import core
 from cupy.core import fusion
 from cupy import util
 
+from cupy.core import _routines_indexing as _indexing
 from cupy.core import _routines_statistics as _statistics
+
+import warnings
 
 
 def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -210,6 +213,30 @@ def where(condition, x=None, y=None):
     if fusion._is_fusing():
         return fusion._call_ufunc(_where_ufunc, condition, x, y)
     return _where_ufunc(condition.astype('?'), x, y)
+
+
+def argwhere(a):
+    """Return the indices of the elements that are non-zero.
+
+    Returns a (N, ndim) dimantional array containing the
+    indices of the non-zero elements. Where `N` is number of
+    non-zero elements and `ndim` is dimention of the given array.
+
+    Args:
+        a (cupy.ndarray): array
+
+    Returns:
+        cupy.ndarray: Indices of elements that are non-zero.
+
+    .. seealso:: :func:`numpy.argwhere`
+
+    """
+    util.check_array(a, arg_name='a')
+    if a.ndim == 0:
+        warnings.warn(
+            'calling argwhere on 0d arrays is deprecated',
+            DeprecationWarning)
+    return _indexing._ndarray_argwhere(a)
 
 
 # This is to allow using the same kernels for all dtypes, ints & floats

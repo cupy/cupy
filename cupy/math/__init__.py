@@ -11,3 +11,4 @@ from cupy.math import rounding  # NOQA
 from cupy.math import special  # NOQA
 from cupy.math import sumprod  # NOQA
 from cupy.math import trigonometric  # NOQA
+from cupy.math import rational  # NOQA

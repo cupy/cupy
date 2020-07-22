@@ -22,7 +22,10 @@ Indexing Routines
    cupy.diag
    cupy.diagonal
    cupy.extract
+   cupy.select
    cupy.lib.stride_tricks.as_strided
    cupy.place
    cupy.put
+   cupy.putmask
    cupy.fill_diagonal
+   cupy.flatiter

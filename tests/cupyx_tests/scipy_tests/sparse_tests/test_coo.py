@@ -1,3 +1,4 @@
+import pickle
 import unittest
 
 import numpy
@@ -97,6 +98,16 @@ def _make_shape(xp, sp, dtype):
     return sp.coo_matrix((3, 4))
 
 
+def _make_sum_dup(xp, sp, dtype):
+    # 1 0 0
+    # 1 1 0
+    # 1 1 1
+    data = xp.array([1, 1, 1, 1, 1, 1], dtype)
+    row = xp.array([0, 1, 1, 2, 2, 2], 'i')
+    col = xp.array([0, 0, 1, 0, 1, 2], 'i')
+    return sp.coo_matrix((data, (row, col)), shape=(3, 3))
+
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
@@ -154,6 +165,14 @@ class TestCooMatrix(unittest.TestCase):
         assert len(n.col) == len(m.col)
         assert n.shape == m.shape
         return n
+
+    def test_pickle_roundtrip(self):
+        s = _make(cupy, sparse, self.dtype)
+        s2 = pickle.loads(pickle.dumps(s))
+        assert s.shape == s2.shape
+        assert s.dtype == s2.dtype
+        if scipy_available:
+            assert (s.get() != s2.get()).count_nonzero() == 0
 
     def test_shape(self):
         self.assertEqual(self.m.shape, (3, 4))
@@ -440,25 +459,31 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.tocsc()
+        out = m.tocsc()
+        assert out.has_canonical_format
+        return out
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsc_copy(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         n = m.tocsc(copy=True)
         self.assertIsNot(m.data, n.data)
+        assert n.has_canonical_format
         return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        return m.tocsr()
+        out = m.tocsr()
+        assert out.has_canonical_format
+        return out
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocsr_copy(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         n = m.tocsr(copy=True)
         self.assertIsNot(m.data, n.data)
+        assert n.has_canonical_format
         return n
 
     # dot
@@ -902,6 +927,28 @@ class TestCooMatrixSumDuplicates(unittest.TestCase):
         self.assertEqual(m.nnz, 0)
         return m
 
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates_incompatibility(self, xp, sp):
+        # See #3620 and #3624. CuPy's and SciPy's COO indices could mismatch
+        # due to the order of lexsort, but the matrix is correct.
+        m = _make_sum_dup(xp, sp, self.dtype)
+        if xp is cupy:
+            sorted_first = m.row.copy()
+        else:
+            sorted_first = m.col.copy()
+        assert not m.has_canonical_format
+        m.sum_duplicates()
+        assert m.has_canonical_format
+        # Here we ensure this sorting order is not altered by future PRs...
+        sorted_first.sort()
+        if xp is cupy:
+            assert (m.row == sorted_first).all()
+        else:
+            assert (m.col == sorted_first).all()
+        assert m.has_canonical_format
+        # ...and now we make sure the dense matrix is the same
+        return m
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
@@ -924,7 +971,7 @@ class TestUfunc(unittest.TestCase):
                 self.ufunc in complex_unsupported):
             with self.assertRaises(TypeError):
                 func()
-            return numpy.array(0)
+            return xp.array(0)
         else:
             return func()
 

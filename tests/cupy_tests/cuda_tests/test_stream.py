@@ -19,9 +19,8 @@ class TestStream(unittest.TestCase):
         self.assertEqual(null1, null2)
         self.assertNotEqual(null2, null3)
 
-    @attr.gpu
-    def test_del(self):
-        stream = cuda.Stream().use()
+    def check_del(self, null):
+        stream = cuda.Stream(null=null).use()
         stream_ptr = stream.ptr
         x = from_data.array([1, 2, 3])
         del stream
@@ -30,6 +29,14 @@ class TestStream(unittest.TestCase):
         # runtime.streamQuery(stream_ptr) causes SEGV. We cannot test...
         del stream_ptr
         del x
+
+    @attr.gpu
+    def test_del(self):
+        self.check_del(null=False)
+
+    @attr.gpu
+    def test_del_null(self):
+        self.check_del(null=True)
 
     @attr.gpu
     def test_get_and_add_callback(self):

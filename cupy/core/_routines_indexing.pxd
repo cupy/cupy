@@ -1,6 +1,7 @@
 from cupy.core.core cimport ndarray
 
 
+cpdef ndarray _ndarray_argwhere(ndarray self)
 cdef ndarray _ndarray_getitem(ndarray self, slices)
 cdef _ndarray_setitem(ndarray self, slices, value)
 cdef tuple _ndarray_nonzero(ndarray self)

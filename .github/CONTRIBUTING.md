@@ -1,2 +1,2 @@
-Please refer to [our Contribution Guide](https://docs-cupy.chainer.org/en/stable/contribution.html).
+Please refer to [our Contribution Guide](https://docs.cupy.dev/en/stable/contribution.html).
 

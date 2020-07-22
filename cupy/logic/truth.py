@@ -1,6 +1,6 @@
 import cupy
 from cupy.core import _routines_logic as _logic
-from cupy.core import fusion
+from cupy.core import _fusion_thread_local
 from cupy import util
 
 
@@ -21,11 +21,11 @@ def all(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.all`
 
     """
-    if fusion._is_fusing():
+    if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
                 'cupy.all does not support `keepdims` in fusion yet.')
-        return fusion._call_reduction(
+        return _fusion_thread_local.call_reduction(
             _logic.all, a, axis=axis, out=out)
 
     util.check_array(a, arg_name='a')
@@ -50,11 +50,11 @@ def any(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.any`
 
     """
-    if fusion._is_fusing():
+    if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
                 'cupy.any does not support `keepdims` in fusion yet.')
-        return fusion._call_reduction(
+        return _fusion_thread_local.call_reduction(
             _logic.any, a, axis=axis, out=out)
 
     util.check_array(a, arg_name='a')

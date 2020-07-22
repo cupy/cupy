@@ -17,3 +17,4 @@ These functions cover a subset of
    ndimage
    sparse
    special
+   signal

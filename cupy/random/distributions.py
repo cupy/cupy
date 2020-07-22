@@ -438,9 +438,9 @@ def negative_binomial(n, p, size=None, dtype=int):
     return rs.negative_binomial(n, p, size=size, dtype=dtype)
 
 
-def multivariate_normal(mean, cov, size=None, check_valid='ignore', tol=1e-8,
-                        dtype=float):
-    """(experimental) Multivariate normal distribution.
+def multivariate_normal(mean, cov, size=None, check_valid='ignore',
+                        tol=1e-08, method='cholesky', dtype=float):
+    """Multivariate normal distribution.
 
     Returns an array of samples drawn from the multivariate normal
     distribution. Its probability density function is defined as
@@ -462,11 +462,30 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore', tol=1e-8,
             matrix is not positive semidefinite.
         tol (float): Tolerance when checking the singular values in
             covariance matrix.
+        method : { 'cholesky', 'eigh', 'svd'}, optional
+            The cov input is used to compute a factor matrix A such that
+            ``A @ A.T = cov``. This argument is used to select the method
+            used to compute the factor matrix A. The default method 'cholesky'
+            is the fastest, while 'svd' is the slowest but more robust than
+            the fastest method. The method `eigh` uses eigen decomposition to
+            compute A and is faster than svd but slower than cholesky.
         dtype: Data type specifier. Only :class:`numpy.float32` and
             :class:`numpy.float64` types are allowed.
 
     Returns:
         cupy.ndarray: Samples drawn from the multivariate normal distribution.
+
+    .. note:: Default `method` is set to fastest, 'cholesky', unlike numpy
+        which defaults to 'svd'. Cholesky decomposition in CuPy will fail
+        silently if the input covariance matrix is not positive definite and
+        give invalid results, unlike in numpy, where an invalid covariance
+        matrix will raise an exception. Setting `check_valid` to 'raise' will
+        replicate numpy behavior by checking the input, but will also force
+        device synchronization. If validity of input is unknown, setting
+        `method` to 'einh' or 'svd' and `check_valid` to 'warn' will use
+        cholesky decomposition for positive definite matrices, and fallback to
+        the specified `method` for other matrices (i.e., not positive
+        semi-definite), and will warn if decomposition is suspect.
 
     .. seealso:: :meth:`numpy.random.multivariate_normal
                  <numpy.random.mtrand.RandomState.multivariate_normal>`
@@ -474,7 +493,8 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore', tol=1e-8,
     """
     util.experimental('cupy.random.multivariate_normal')
     rs = generator.get_random_state()
-    x = rs.multivariate_normal(mean, cov, size, check_valid, tol, dtype)
+    x = rs.multivariate_normal(mean, cov, size, check_valid, tol, method,
+                               dtype)
     return x
 
 

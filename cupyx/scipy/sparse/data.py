@@ -1,6 +1,8 @@
 import cupy
+from cupy.core import internal
 from cupyx.scipy.sparse import base
-from .util import validateaxis
+from cupyx.scipy.sparse import coo
+from cupyx.scipy.sparse import sputils
 
 
 _ufuncs = [
@@ -73,6 +75,34 @@ class _data_matrix(base.spmatrix):
         """
         return cupy.count_nonzero(self.data)
 
+    def mean(self, axis=None, dtype=None, out=None):
+        """Compute the arithmetic mean along the specified axis.
+
+        Args:
+            axis (int or ``None``): Axis along which the sum is computed.
+                If it is ``None``, it computes the average of all the elements.
+                Select from ``{None, 0, 1, -2, -1}``.
+
+        Returns:
+            cupy.ndarray: Summed array.
+
+        .. seealso::
+           :meth:`scipy.sparse.spmatrix.mean`
+
+        """
+        sputils.validateaxis(axis)
+        nRow, nCol = self.shape
+        data = self.data.copy()
+
+        if axis is None:
+            n = nRow * nCol
+        elif axis in (0, -2):
+            n = nRow
+        else:
+            n = nCol
+
+        return self._with_data(data / n).sum(axis, dtype, out)
+
     def power(self, n, dtype=None):
         """Elementwise power function.
 
@@ -111,6 +141,7 @@ class _minmax_mixin(object):
         N = self.shape[axis]
         if N == 0:
             raise ValueError("zero-size array to reduction operation")
+        M = self.shape[1 - axis]
 
         mat = self.tocsc() if axis == 0 else self.tocsr()
         if sum_duplicates:
@@ -118,15 +149,48 @@ class _minmax_mixin(object):
 
         # Do the reudction
         value = mat._minor_reduce(min_or_max, axis, nonzero)
+        major_index = cupy.arange(M)
 
-        return value
+        mask = value != 0
+        major_index = cupy.compress(mask, major_index)
+        value = cupy.compress(mask, value)
+
+        if axis == 0:
+            return coo.coo_matrix(
+                (value, (cupy.zeros(len(value)), major_index)),
+                dtype=self.dtype, shape=(1, M))
+        else:
+            return coo.coo_matrix(
+                (value, (major_index, cupy.zeros(len(value)))),
+                dtype=self.dtype, shape=(M, 1))
 
     def _min_or_max(self, axis, out, min_or_max, sum_duplicates, non_zero):
         if out is not None:
             raise ValueError(("Sparse matrices do not support "
                               "an 'out' parameter."))
 
-        validateaxis(axis)
+        sputils.validateaxis(axis)
+
+        if axis is None:
+            if 0 in self.shape:
+                raise ValueError("zero-size array to reduction operation")
+
+            zero = cupy.zeros((), dtype=self.dtype)
+            if self.nnz == 0:
+                return zero
+            if sum_duplicates:
+                self.sum_duplicates()
+            m = min_or_max(self.data)
+            if non_zero:
+                return m
+            if self.nnz != internal.prod(self.shape):
+                if min_or_max is cupy.min:
+                    m = cupy.minimum(zero, m)
+                elif min_or_max is cupy.max:
+                    m = cupy.maximum(zero, m)
+                else:
+                    assert False
+            return m
 
         if axis == 0 or axis == 1:
             return self._min_or_max_axis(axis, min_or_max, sum_duplicates,
@@ -154,7 +218,7 @@ class _minmax_mixin(object):
             raise ValueError("Sparse matrices do not support "
                              "an 'out' parameter.")
 
-        validateaxis(axis)
+        sputils.validateaxis(axis)
 
         if axis is None:
             if 0 in self.shape:
