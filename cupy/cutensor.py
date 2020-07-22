@@ -527,8 +527,8 @@ def _try_reduction_routine(x, axis, dtype, out, keepdims, op, alpha, beta):
     in_arg = x
 
     reduce_axis, out_axis = _reduction._get_axis(axis, x.ndim)
-    out_shape = _reduction._get_out_shape(
-        x.shape, reduce_axis, out_axis, keepdims)
+    out_shape = tuple(
+        _reduction._get_out_shape(x.shape, reduce_axis, out_axis, keepdims))
     if out is None:
         out = cupy.empty(out_shape, dtype)
     elif out.shape != out_shape:
