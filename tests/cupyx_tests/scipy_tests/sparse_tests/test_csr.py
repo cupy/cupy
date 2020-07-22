@@ -1445,6 +1445,31 @@ class TestCsrMatrixData(unittest.TestCase):
             t = 'd'
         return m.power(2, t)
 
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_axis_None(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=None)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_axis_0(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=0)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_axis_1(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=1)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_axis_negative_1(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=-1)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_axis_negative_2(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=-2)
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
