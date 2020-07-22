@@ -83,9 +83,8 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
             with dimension ``(N, N)``
         b (cupy.ndarray): Right-hand side vector.
         x0 (cupy.ndarray): Initial guess (defaults to zeros)
-        M (callable): GPU preconditioner function or str to indicate
-                            preconditioner choice, can also specify
-                            preconditioner as a string (e.g., 'ilu', 'jacobi').
+        M (tuple(callable, optional(info))): GPU preconditioner function
+            and info object for preconditioner (to destroy after running)
         tol (float): Tolerance for convergence, exits when
                      residual norm(r) < tol * norm(b)
         maxiter (int): maximum number of iterations (defaults to `numpy.inf`)
@@ -125,11 +124,13 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
     # Main BiCGSTAB loop
 
     i = 0
-    rho = alpha = omega = info = 1
+    rho = alpha = omega = cupy.linalg.norm(r)
+
+    info = 1
 
     x = x0.copy()
     tol = cupy.linalg.norm(b) * tol
-    atol = 0 if atol == 'legacy' else atol
+    atol = 0.0 if atol == 'legacy' else atol
 
     # preconditioner
     M, M_info = (_identity, None) if M is None else M
@@ -137,7 +138,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
     while i < maxiter:
         i += 1
         prev_rho = rho
-        rho = cupy.dot(r_tilde.conj(), r)
+        rho = cupy.vdot(r_tilde, r)
         if rho == 0:
             info = -10
             break
@@ -148,7 +149,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
         phat = M(p)  # apply preconditioner
 
         q = cupy.cusparse.spmv(A, phat)
-        alpha = rho / cupy.dot(r_tilde.conj(), q)
+        alpha = rho / cupy.vdot(r_tilde, q)
         s = r - alpha * q
 
         residual = cupy.linalg.norm(s)
@@ -161,7 +162,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
         shat = M(s)  # apply preconditioner
 
         t = cupy.cusparse.spmv(A, shat)
-        omega = cupy.dot(cupy.conj(t), s) / cupy.square(cupy.linalg.norm(t))
+        omega = cupy.vdot(t, s) / cupy.square(cupy.linalg.norm(t))
         if omega == 0:
             info = -11
             break
@@ -181,43 +182,52 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
     return x, info
 
 
-def spilu(A, drop_tol=1e-4):
-    """Compute an incomplete LU decomposition for a sparse, square matrix.
+def spilu(A, enable_boost: bool = True, tol=None, boost_val=None):
+    """Compute an incomplete LU decomposition level 0
+    for a sparse, square matrix (abbreviated ILU(0)).
 
     The resulting object is an approximation to the inverse of A.
     See https://docs.nvidia.com/cuda/cusparse/#csrilu02_solve.
 
+    NOTE: The algorithm used by SuperLU and cuSPARSE are not
+    the same. Options like `drop_tol`, `fill_factor`, and
+    `diag_pivot_thresh` are not provided as they are in `scipy`'s
+    version.
+
     Args:
         A (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): The input matrix
             with dimension ``(N, N)``
-        drop_tol (float, optional): Drop tolerance (0 <= tol <= 1) for an
-            incomplete LU decomposition. (default: 1e-4)
-            [Currently a dummy param]
+        enable_boost (bool): Enable numeric boost in cuSPARSE ILU(0) algorithm
+        tol (float, optional): Tolerance for a numerical zero.
+        (default: 1e-4)
+        boost_val (float, optional): Boost value to replace a numerical zero.
+            (default: 0).
 
     Returns:
         callable:
             A function x = M(b) that approximates a linear solution for Ax = b
         tuple:
-            the info objects that need to be
+            the info objects that need to be destroyed later
 
     .. seealso:: :func:`scipy.sparse.linalg.spilu`
     """
-    # support float32, float64, complex64, and complex128
-    handle = device.get_cusolver_sp_handle()
+    handle = device.get_cusparse_handle()
+    A_copy = A.copy()
 
-    if A.dtype.char in 'fdFD':
-        dtype = A.dtype.char
+    # support float32, float64, complex64, and complex128
+    if A_copy.dtype.char in 'fdFD':
+        dtype = A_copy.dtype.char
     else:
-        dtype = numpy.promote_types(A.dtype.char, 'f').char
+        dtype = numpy.promote_types(A_copy.dtype.char, 'f').char
     alpha = numpy.array(1, dtype).ctypes
 
     def A_tuple(descr):
-        return (A.shape[0], A.nnz, descr.descriptor, A.data.data.ptr,
-                A.indptr.data.ptr, A.indices.data.ptr)
+        return (A_copy.shape[0], A_copy.nnz, descr.descriptor, A_copy.data.data.ptr,
+                A_copy.indptr.data.ptr, A_copy.indices.data.ptr)
 
     def A_tuple_a(descr):
-        return (A.shape[0], A.nnz, alpha.data, descr.descriptor,
-                A.data.data.ptr, A.indptr.data.ptr, A.indices.data.ptr)
+        return (A_copy.shape[0], A_copy.nnz, alpha.data, descr.descriptor,
+                A_copy.data.data.ptr, A_copy.indptr.data.ptr, A_copy.indices.data.ptr)
 
     n = A.shape[0]
 
@@ -239,16 +249,25 @@ def spilu(A, drop_tol=1e-4):
     descr_M = cupy.cusparse.MatDescriptor.create()
     descr_L = cupy.cusparse.MatDescriptor.create()
     descr_U = cupy.cusparse.MatDescriptor.create()
-    descr_M.set_mat_index_base(cusparse.CUSPARSE_INDEX_BASE_ONE)
+    descr_M.set_mat_index_base(cusparse.CUSPARSE_INDEX_BASE_ZERO)
     descr_M.set_mat_type(cusparse.CUSPARSE_MATRIX_TYPE_GENERAL)
-    descr_L.set_mat_index_base(cusparse.CUSPARSE_INDEX_BASE_ONE)
+    descr_L.set_mat_index_base(cusparse.CUSPARSE_INDEX_BASE_ZERO)
     descr_L.set_mat_type(cusparse.CUSPARSE_MATRIX_TYPE_GENERAL)
     descr_L.set_mat_fill_mode(cusparse.CUSPARSE_FILL_MODE_LOWER)
     descr_L.set_mat_diag_type(cusparse.CUSPARSE_DIAG_TYPE_UNIT)
-    descr_U.set_mat_index_base(cusparse.CUSPARSE_INDEX_BASE_ONE)
+    descr_U.set_mat_index_base(cusparse.CUSPARSE_INDEX_BASE_ZERO)
     descr_U.set_mat_type(cusparse.CUSPARSE_MATRIX_TYPE_GENERAL)
     descr_U.set_mat_fill_mode(cusparse.CUSPARSE_FILL_MODE_UPPER)
     descr_U.set_mat_diag_type(cusparse.CUSPARSE_DIAG_TYPE_NON_UNIT)
+
+    # Numeric boost for csrilu02
+    if enable_boost:
+        enable_boost = int(enable_boost)
+        tol = numpy.array(tol, numpy.float64).ctypes
+        boost_val = numpy.array(boost_val, dtype).ctypes
+        cupy.cusparse._call_cusparse('csrilu02_numericBoost', dtype, handle,
+                                     info_M, enable_boost,
+                                     tol.data, boost_val.data)
 
     # get required buffer size and allocate corresponding memory
     buff_size_M = cupy.cusparse._call_cusparse(
@@ -292,10 +311,11 @@ def spilu(A, drop_tol=1e-4):
     return M, (info_M, info_U, info_L)
 
 
-def _destroy_ilu(info_list):
-    if info_list is not None:
-        for info in info_list:
-            cusparse.destroyCsrilu02Info(info)
+def _destroy_ilu(info):
+    if info is not None:
+        cusparse.destroyCsrilu02Info(info[0])
+        cusparse.destroyCsrsv2Info(info[1])
+        cusparse.destroyCsrsv2Info(info[2])
 
 
 def _identity(x):

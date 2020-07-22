@@ -99,8 +99,8 @@ _available_cusparse_version = {
     'csrilu02_analysis': (8000, None),
     'csrsv2_solve': (8000, None),
     'csrsv2_analysis': (8000, None),
-    'spmv': (10200, None),  # accuracy bugs in cuSparse 10.3.0
-    'spmm': (10301, None),
+    'spmv': (10200, None),
+    'spmm': (10301, None),  # accuracy bugs in cuSparse 10.3.0
     'csr2dense': (8000, None),
     'csc2dense': (8000, None),
     'csrsort': (8000, None),
