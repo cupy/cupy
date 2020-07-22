@@ -161,7 +161,7 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
     return _call_kernel(kernel, input, weights, output)
 
 
-#@cupy.util.memoize(for_each_device=True)
+@cupy.util.memoize(for_each_device=True)
 def _get_correlate_kernel(mode, w_shape, int_type, offsets, cval):
     return _generate_nd_kernel(
         'correlate',
