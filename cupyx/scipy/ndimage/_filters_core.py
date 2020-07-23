@@ -1,3 +1,5 @@
+import warnings
+
 import cupy
 
 
@@ -41,7 +43,7 @@ def _origins_to_offsets(origins, w_shape):
 
 
 def _check_mode(mode):
-    if mode not in {'reflect', 'constant', 'nearest', 'mirror', 'wrap'}:
+    if mode not in ('reflect', 'constant', 'nearest', 'mirror', 'wrap'):
         msg = 'boundary mode not supported (actual: {})'.format(mode)
         raise RuntimeError(msg)
     return mode
@@ -67,7 +69,6 @@ def _check_size_footprint_structure(ndim, size, footprint, structure,
             return None, cupy.ones(sizes, bool), None
         return sizes, None, None
     if size is not None:
-        import warnings
         warnings.warn("ignoring size because {} is set".format(
             'structure' if footprint is None else 'footprint'),
             UserWarning, stacklevel=stacklevel+1)
@@ -131,7 +132,7 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     origins = _fix_sequence_arg(origin, input.ndim, 'origin', int)
     n_filters = sum(filter is not None for filter in filters)
     if n_filters == 0:
-        output[...] = input[...]
+        output[...] = input
         return output
     # We can't operate in-place efficiently, so use a 2-buffer system
     temp = _get_output(output.dtype, input) if n_filters > 1 else None
@@ -142,6 +143,7 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
             continue
         fltr(input, arg, axis, output, mode, cval, origin)
         input, output = output, temp if first else input
+        first = False
     if isinstance(output_orig, cupy.ndarray) and input is not output_orig:
         output_orig[...] = input
         input = output_orig

@@ -1,7 +1,9 @@
+import re
+import types
+
 import cupy
 
-
-from cupyx.scipy.ndimage._filters_core import _generate_nd_kernel
+from cupyx.scipy.ndimage import _filters_core
 
 
 def _get_sub_kernel(f, filter_size=0, in_dtype=cupy.dtype(float)):
@@ -37,10 +39,10 @@ def _get_sub_kernel(f, filter_size=0, in_dtype=cupy.dtype(float)):
         # special error message for ElementwiseKernels
         raise TypeError('only ReductionKernel allowed (not ElementwiseKernel)')
     elif isinstance(f, cupy.core._fusion_kernel.FusedKernel):
-        from cupy.core._fusion_variable import _TraceArray
         out = f._params[f._out_params[0]] if f._return_size == -2 else None
         if (sum(i >= 0 for i in f._input_index) != 1 or
-                not isinstance(out, _TraceArray) or out.ndim != 0):
+                not isinstance(out, cupy.core._fusion_variable._TraceArray) or
+                out.ndim != 0):
             raise TypeError('fused function take must take 1 array argument '
                             'and output 1 scalar')
         return f
@@ -108,14 +110,13 @@ def _get_generic_filter_fused(fk, in_dtype, out_dtype, filter_size, mode,
         _fused_kernel_code(fk))
 
     # Get the final kernel
-    return _generate_nd_kernel(
+    return _filters_core._generate_nd_kernel(
         'generic_{}_{}'.format(filter_size, fk._name),
         setup, 'values[iv++] = {value};', sub_call,
         mode, wshape, int_type, offsets, cval, preamble=sub_kernel)
 
 
 def _fused_kernel_code(fk):
-    import re
     code = ('{code}\n__device__ void {name}({params}) {cuda_body}'
             .format(name=fk._name, params=fk._cuda_params_memo[()],
                     code=fk._submodule_code, cuda_body=fk._cuda_body))
@@ -168,7 +169,8 @@ def _fused_kernel_arrays(fk, filter_size):
 
         if param.is_base:
             # Allocate a new variable
-            decl = '{} {}[{}];'.format(ctype, var_name, _prod(shape))
+            decl = '{} {}[{}];'.format(ctype, var_name,
+                                       cupy.core.internal.prod(shape))
             strides = _contig_strides(shape, param.dtype.itemsize)
         else:
             # Reuse variable
@@ -201,9 +203,8 @@ def _fused_kernel_arrays(fk, filter_size):
 
 def _get_fused_kernel_shapes(fk, filter_size):
     # The get_shapes_of_kernel_params() function only uses the shape attribute
-    # of the ndarray objects, so instead of allocated actual arrays, just make
+    # of the ndarray objects, so instead of allocating actual arrays, just make
     # a dummy array with the shape
-    import types
     dummy_ndarray = types.SimpleNamespace(size=filter_size,
                                           shape=(filter_size,))
     return fk.get_shapes_of_kernel_params((dummy_ndarray,))
@@ -281,7 +282,7 @@ def _get_generic_filter_red(rk, in_dtype, out_dtype, filter_size, mode,
     sub_kernel = _reduction_kernel_code(rk, filter_size, out_dtype, in_dtype)
 
     # Get the final kernel
-    return _generate_nd_kernel(
+    return _filters_core._generate_nd_kernel(
         'generic_{}_{}'.format(filter_size, rk.name),
         setup, 'values[iv++] = {value};', sub_call,
         mode, wshape, int_type, offsets, cval, preamble=sub_kernel,
@@ -355,7 +356,7 @@ def _cindexer_ctor(name, shape):
     return ('CIndexer<{ndim}> {name}; {{ '
             'ptrdiff_t* _raw = (ptrdiff_t*)&{name}; '
             '_raw[0] = {size}; {shape} }}').format(
-        name=name, ndim=len(shape), size=_prod(shape),
+        name=name, ndim=len(shape), size=cupy.core.internal.prod(shape),
         shape=_assign_array(shape, 1))
 
 
@@ -377,7 +378,8 @@ def _carray_ctor(name, ctype, ptr, shape, strides=None, c_contig=None):
             'ptrdiff_t* _raw = (ptrdiff_t*)&{name}; '
             '(({ctype}**)_raw)[0] = {ptr}; '
             '_raw[1] = {size}; {shape} {strides} }}'
-            ).format(name=name, ctype=ctype, ptr=ptr, size=_prod(shape),
+            ).format(name=name, ctype=ctype, ptr=ptr,
+                     size=cupy.core.internal.prod(shape),
                      c_contig=c_contig, shape=_assign_array(shape, 2),
                      strides=_assign_array(strides, 2+len(shape)))
 
@@ -390,13 +392,6 @@ def _contig_strides(shape, itemsize):
                        '{}*{}'.format(prod, itemsize))
         prod *= x
     return tuple(strides[::-1])
-
-
-def _prod(array):
-    prod = 1
-    for x in array:
-        prod *= x
-    return prod
 
 
 def _assign_array(array, offset):
@@ -425,7 +420,7 @@ def _get_generic_filter_raw(rk, filter_size, mode, wshape, offsets, cval,
     sub_call = '''raw_kernel::{}(values, {}, &val_out);
     y = cast<Y>(val_out);'''.format(rk.name, filter_size)
 
-    return _generate_nd_kernel(
+    return _filters_core._generate_nd_kernel(
         'generic_{}_{}'.format(filter_size, rk.name),
         setup, 'values[iv++] = cast<double>({value});', sub_call,
         mode, wshape, int_type, offsets, cval,
@@ -441,7 +436,6 @@ def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
     only filter that doesn't use _generate_nd_kernel() and has a completely
     custom raw kernel.
     """
-    from cupyx.scipy.ndimage._filters_core import _CAST_FUNCTION
     in_length = length + filter_size - 1
     start = filter_size // 2 + origin
     end = start + length
@@ -534,5 +528,6 @@ void {name}(const byte* input, byte* output, const idx_t* x) {{
 }}'''.format(n_lines=n_lines, length=length, in_length=in_length, start=start,
              in_ctype=in_ctype, out_ctype=out_ctype, int_type=int_type,
              boundary_early=boundary_early, boundary=boundary,
-             name=name, rk_name=rk.name, rk_code=rk.code, CAST=_CAST_FUNCTION)
+             name=name, rk_name=rk.name, rk_code=rk.code,
+             CAST=_filters_core._CAST_FUNCTION)
     return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options)
