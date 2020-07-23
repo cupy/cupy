@@ -149,7 +149,11 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
         phat = M(p)  # apply preconditioner
 
         q = cupy.cusparse.spmv(A, phat)
-        alpha = rho / cupy.vdot(r_tilde, q)
+        a = cupy.vdot(r_tilde, q)
+        if a == 0:
+            info = -11
+            break
+        alpha = rho / a
         s = r - alpha * q
 
         residual = cupy.linalg.norm(s)
@@ -212,7 +216,8 @@ def spilu(A, enable_boost: bool = True, tol=None, boost_val=None):
     .. seealso:: :func:`scipy.sparse.linalg.spilu`
     """
     handle = device.get_cusparse_handle()
-    A_copy = A.copy()
+    A_copy = A.copy()  # A is modified due to csrilu02 call...
+    n = A.shape[0]
 
     # support float32, float64, complex64, and complex128
     if A_copy.dtype.char in 'fdFD':
@@ -222,14 +227,14 @@ def spilu(A, enable_boost: bool = True, tol=None, boost_val=None):
     alpha = numpy.array(1, dtype).ctypes
 
     def A_tuple(descr):
-        return (A_copy.shape[0], A_copy.nnz, descr.descriptor, A_copy.data.data.ptr,
-                A_copy.indptr.data.ptr, A_copy.indices.data.ptr)
+        return (A_copy.shape[0], A_copy.nnz, descr.descriptor,
+                A_copy.data.data.ptr, A_copy.indptr.data.ptr,
+                A_copy.indices.data.ptr)
 
     def A_tuple_a(descr):
         return (A_copy.shape[0], A_copy.nnz, alpha.data, descr.descriptor,
-                A_copy.data.data.ptr, A_copy.indptr.data.ptr, A_copy.indices.data.ptr)
-
-    n = A.shape[0]
+                A_copy.data.data.ptr, A_copy.indptr.data.ptr,
+                A_copy.indices.data.ptr)
 
     # create info objects
     info_M = cusparse.createCsrilu02Info()
