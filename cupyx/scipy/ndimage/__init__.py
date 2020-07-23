@@ -23,6 +23,8 @@ from cupyx.scipy.ndimage.filters import percentile_filter  # NOQA
 from cupyx.scipy.ndimage.filters import generic_filter  # NOQA
 from cupyx.scipy.ndimage.filters import generic_filter1d  # NOQA
 
+from cupyx.scipy.ndimage.fourier import fourier_shift  # NOQA
+
 from cupyx.scipy.ndimage.interpolation import affine_transform  # NOQA
 from cupyx.scipy.ndimage.interpolation import map_coordinates  # NOQA
 from cupyx.scipy.ndimage.interpolation import rotate  # NOQA
