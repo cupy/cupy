@@ -58,6 +58,16 @@ def _make3(xp, sp, dtype):
     return sp.csr_matrix((data, indices, indptr), shape=(4, 3))
 
 
+def _make4(xp, sp, dtype):
+    data = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype)
+    indices = xp.array([0, 2, 3, 0, 1, 3, 0, 1, 2], 'i')
+    indptr = xp.array([0, 3, 6, 9], 'i')
+    # 1, 0, 2, 3
+    # 4, 5, 0, 6
+    # 7, 8, 9, 0
+    return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
+
+
 def _make_unordered(xp, sp, dtype):
     data = xp.array([1, 2, 3, 4], dtype)
     indices = xp.array([1, 0, 1, 2], 'i')
@@ -93,6 +103,24 @@ def _make_square(xp, sp, dtype):
     # 2, 0, 0
     # 0, 0, 3
     return sp.csr_matrix((data, indices, indptr), shape=(3, 3))
+
+
+def _make_row(xp, sp, dtype):
+    data = xp.array([1, 2, 3], dtype)
+    indices = xp.array([0, 2, 3], 'i')
+    indptr = xp.array([0, 3], 'i')
+    # 1, 0, 2, 3
+    return sp.csr_matrix((data, indices, indptr), shape=(1, 4))
+
+
+def _make_col(xp, sp, dtype):
+    data = xp.array([1, 2], dtype)
+    indices = xp.array([0, 0], 'i')
+    indptr = xp.array([0, 1, 1, 2], 'i')
+    # 1
+    # 0
+    # 2
+    return sp.csr_matrix((data, indices, indptr), shape=(3, 1))
 
 
 def _make_shape(xp, sp, dtype):
@@ -1020,6 +1048,48 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         m.eliminate_zeros()
         return m.nnz
+
+    # multiply
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_scalar(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.multiply(2).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_dense_row(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(4, dtype=self.dtype)
+        return m.multiply(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_dense_col(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(3, dtype=self.dtype).reshape(3, 1)
+        return m.multiply(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_dense_matrix(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(12, dtype=self.dtype).reshape(3, 4)
+        return m.multiply(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_csr_matrix(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = _make4(xp, sp, self.dtype)
+        return m.multiply(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_csr_row(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = _make_row(xp, sp, self.dtype)
+        return m.multiply(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_csr_col(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = _make_col(xp, sp, self.dtype)
+        return m.multiply(x).toarray()
 
 
 @testing.parameterize(*testing.product({
