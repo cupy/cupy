@@ -208,10 +208,11 @@ class TestBasic(unittest.TestCase):
         with pytest.raises(TypeError):
             cupy.zeros_like(a, subok=True)
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_ones(self, xp, dtype):
-        return xp.ones((2, 3, 4), dtype=dtype)
+    def test_ones(self, xp, dtype, order):
+        return xp.ones((2, 3, 4), dtype=dtype, order=order)
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
@@ -225,15 +226,17 @@ class TestBasic(unittest.TestCase):
         with pytest.raises(TypeError):
             cupy.ones_like(a, subok=True)
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_full(self, xp, dtype):
-        return xp.full((2, 3, 4), 1, dtype=dtype)
+    def test_full(self, xp, dtype, order):
+        return xp.full((2, 3, 4), 1, dtype=dtype, order=order)
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_full_default_dtype(self, xp, dtype):
-        return xp.full((2, 3, 4), xp.array(1, dtype=dtype))
+    def test_full_default_dtype(self, xp, dtype, order):
+        return xp.full((2, 3, 4), xp.array(1, dtype=dtype), order=order)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

@@ -130,7 +130,7 @@ def identity(n, dtype=float):
     return eye(n, dtype=dtype)
 
 
-def ones(shape, dtype=float):
+def ones(shape, dtype=float, order='C'):
     """Returns a new array of given shape and dtype, filled with ones.
 
     This function currently does not support ``order`` option.
@@ -145,8 +145,7 @@ def ones(shape, dtype=float):
     .. seealso:: :func:`numpy.ones`
 
     """
-    # TODO(beam2d): Support ordering option
-    a = cupy.ndarray(shape, dtype)
+    a = cupy.ndarray(shape, dtype, order=order)
     a.fill(1)
     return a
 
@@ -243,7 +242,7 @@ def zeros_like(a, dtype=None, order='K', subok=None, shape=None):
     return a
 
 
-def full(shape, fill_value, dtype=None):
+def full(shape, fill_value, dtype=None, order='C'):
     """Returns a new array of given shape and dtype, filled with a given value.
 
     This function currently does not support ``order`` option.
@@ -259,13 +258,12 @@ def full(shape, fill_value, dtype=None):
     .. seealso:: :func:`numpy.full`
 
     """
-    # TODO(beam2d): Support ordering option
     if dtype is None:
         if isinstance(fill_value, cupy.ndarray):
             dtype = fill_value.dtype
         else:
             dtype = numpy.array(fill_value).dtype
-    a = cupy.ndarray(shape, dtype)
+    a = cupy.ndarray(shape, dtype, order=order)
     a.fill(fill_value)
     return a
 
