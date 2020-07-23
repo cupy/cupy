@@ -129,8 +129,8 @@ cdef class poly1d:
     def __add__(self, other):
         if isinstance(self, numpy.generic):
             # for the case: numpy scalar + poly1d
-            raise TypeError(
-                  'Numpy scalar and poly1d addition is not supported')
+            raise TypeError('Numpy scalar and poly1d '
+                            'addition is not supported')
         return _routines_poly.polyadd(self, other)
 
     # TODO(Dahlia-Chehata): implement using polymul
