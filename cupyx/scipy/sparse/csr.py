@@ -409,12 +409,12 @@ def multiply_by_dense(sp, dn):
         if n > sp_n:
             indptr *= n
     # out = sp * dn
-    csr_multiply_by_dense()(sp.data, sp.indptr, sp.indices, sp_m, sp_n,
-                            dn, dn_m, dn_n, indptr, m, n, data, indices)
+    cupy_multiply_by_dense()(sp.data, sp.indptr, sp.indices, sp_m, sp_n,
+                             dn, dn_m, dn_n, indptr, m, n, data, indices)
     return csr_matrix((data, indices, indptr), shape=(m, n))
 
 
-def csr_multiply_by_dense():
+def cupy_multiply_by_dense():
     return cupy.ElementwiseKernel(
         '''
         raw S SP_DATA, raw I SP_INDPTR, raw I SP_INDICES,
@@ -462,7 +462,7 @@ def csr_multiply_by_dense():
         OUT_DATA = (O)(SP_DATA[i_sp] * DN_DATA[n_dn + (DN_N * m_dn)]);
         OUT_INDICES = n_out;
         ''',
-        'cupy_csr_multiply_by_dense'
+        'cupy_multiply_by_dense'
     )
 
 
@@ -496,7 +496,7 @@ def multiply_by_csr(a, b):
     nnz_each_row = cupy.zeros(m+1, dtype=a.indptr.dtype)
 
     # compute c = a * b where necessary and get sparsity pattern of matrix d
-    csr_multiply_by_csr_step1()(
+    cupy_multiply_by_csr_step1()(
         a.data, a.indptr, a.indices, a_m, a_n,
         b.data, b.indptr, b.indices, b_m, b_n,
         c_indptr, m, n,
@@ -509,13 +509,13 @@ def multiply_by_csr(a, b):
     d_indices = cupy.empty(d_nnz, dtype=a.indices.dtype)
 
     # remove zero elements in matric c
-    csr_multiply_by_csr_step2()(c_data, c_indices, flags,
-                                d_data, d_indices)
+    cupy_multiply_by_csr_step2()(c_data, c_indices, flags,
+                                 d_data, d_indices)
 
     return csr_matrix((d_data, d_indices, d_indptr), shape=(m, n))
 
 
-def csr_multiply_by_csr_step1():
+def cupy_multiply_by_csr_step1():
     return cupy.ElementwiseKernel(
         '''
         raw A A_DATA, raw I A_INDPTR, raw I A_INDICES, int32 A_M, int32 A_N,
@@ -527,8 +527,9 @@ def csr_multiply_by_csr_step1():
         int i_c = i;
         int _min = 0;
         int _max = C_M - 1;
-        int m_c = (_min + _max) / 2;
-        while (_min < _max) {
+        int m_c;
+        while (_min <= _max) {
+            m_c = (_min + _max) / 2;
             if (i_c < C_INDPTR[m_c]) {
                 _max = m_c - 1;
             }
@@ -538,7 +539,6 @@ def csr_multiply_by_csr_step1():
             else {
                 break;
             }
-            m_c = (_min + _max) / 2;
         }
         int i_a = i;
         if (C_M > A_M && A_M == 1) {
@@ -560,26 +560,33 @@ def csr_multiply_by_csr_step1():
             n_b = 0;
         }
         int i_b = -1;
-        for (int j = B_INDPTR[m_b]; j < B_INDPTR[m_b+1]; j++) {
-            if (B_INDICES[j] != n_b) continue;
-            i_b = j;
-            break;
+        int j_min = B_INDPTR[m_b];
+        int j_max = B_INDPTR[m_b+1] - 1;
+        while (j_min <= j_max) {
+            int j = (j_min + j_max) / 2;
+            if (n_b < B_INDICES[j]) {
+                j_max = j - 1;
+            }
+            else if (n_b > B_INDICES[j]) {
+                j_min = j + 1;
+            }
+            else {
+                i_b = j;
+                break;
+            }
         }
         if (i_b >= 0) {
             atomicAdd(&(NNZ_EACH_ROW[m_c+1]), 1);
             FLAGS[i+1] = 1;
             C_DATA = (O)(A_DATA[i_a] * B_DATA[i_b]);
             C_INDICES = n_c;
-        } else {
-            C_DATA = 0.0;
-            C_INDICES = -1;
         }
         ''',
-        'cupy_csr_multiply_by_csr_step1'
+        'cupy_multiply_by_csr_step1'
     )
 
 
-def csr_multiply_by_csr_step2():
+def cupy_multiply_by_csr_step2():
     return cupy.ElementwiseKernel(
         'T C_DATA, I C_INDICES, raw I FLAGS',
         'raw O D_DATA, raw I D_INDICES',
@@ -590,5 +597,5 @@ def csr_multiply_by_csr_step2():
             D_INDICES[j] = C_INDICES;
         }
         ''',
-        'cupy_csr_multiply_by_csr_step2'
+        'cupy_multiply_by_csr_step2'
     )
