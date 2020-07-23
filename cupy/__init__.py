@@ -226,13 +226,13 @@ from numpy import complex128  # NOQA
 # Built-in Python types
 # -----------------------------------------------------------------------------
 
-from numpy import int  # NOQA
+int = __builtins__['int']  # NOQA
 
-from numpy import bool  # NOQA
+bool = __builtins__['bool']  # NOQA
 
-from numpy import float  # NOQA
+float = __builtins__['float']  # NOQA
 
-from numpy import complex  # NOQA
+complex = __builtins__['complex']  # NOQA
 
 # Not supported by CuPy:
 # from numpy import object
