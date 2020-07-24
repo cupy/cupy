@@ -66,8 +66,9 @@ def wiener(im, mysize=None, noise=None):
     """
     if mysize is None:
         mysize = 3
-    mysize = cupyx.scipy.ndimage._filters_core._fix_sequence_arg(
+    mysize = cupyx.scipy.ndimage.filters._fix_sequence_arg(
         mysize, im.ndim, 'mysize', int)
+    im = im.astype(float, copy=False)
 
     # Estimate the local mean
     local_mean = cupyx.scipy.ndimage.uniform_filter(im, mysize,
@@ -116,7 +117,7 @@ def order_filter(a, domain, rank):
         raise ValueError("Each dimension of domain argument "
                          " should have an odd number of elements.")
     return cupyx.scipy.ndimage.rank_filter(a, rank, footprint=domain,
-                                           output=float, mode='constant')
+                                           mode='constant')
 
 
 def medfilt(volume, kernel_size=None):
@@ -139,14 +140,13 @@ def medfilt(volume, kernel_size=None):
     .. seealso:: :func:`cupyx.scipy.ndimage.median_filter`
     .. seealso:: :func:`scipy.signal.medfilt`
     """
+    # output is forced to float64 to match scipy
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)
     if any(k > s for k, s in zip(kernel_size, volume.shape)):
         warnings.warn('kernel_size exceeds volume extent: '
                       'volume will be zero-padded')
 
-    size = 1
-    for ks in kernel_size:
-        size *= ks
+    size = cupy.core.internal.prod(kernel_size)
     return cupyx.scipy.ndimage.rank_filter(volume, size // 2, size=kernel_size,
                                            output=float, mode='constant')
 
@@ -175,6 +175,8 @@ def medfilt2d(input, kernel_size=3):
     .. seealso:: :func:`scipy.signal.medfilt2d`
     """
     # Scipy's version only supports uint8, float32, and float64
+    if input.ndim != 2:
+        raise ValueError('input must be 2d')
     kernel_size = _get_kernel_size(kernel_size, input.ndim)
     order = kernel_size[0] * kernel_size[1] // 2
     return cupyx.scipy.ndimage.rank_filter(input, order, size=kernel_size,
@@ -184,10 +186,8 @@ def medfilt2d(input, kernel_size=3):
 def _get_kernel_size(kernel_size, ndim):
     if kernel_size is None:
         kernel_size = (3,) * ndim
-    try:
-        kernel_size = tuple(int(x) for x in kernel_size)
-    except TypeError:
-        kernel_size = (int(kernel_size),)*ndim
+    kernel_size = cupyx.scipy.ndimage.filters._fix_sequence_arg(
+        kernel_size, ndim, 'kernel_size', int)
     if any((k % 2) != 1 for k in kernel_size):
         raise ValueError("Each element of kernel_size should be odd")
     return kernel_size

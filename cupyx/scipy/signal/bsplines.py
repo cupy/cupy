@@ -19,6 +19,11 @@ def sepfir2d(input, hrow, hcol):
 
     .. seealso:: :func:`scipy.signal.sepfir2d`
     """
+    if input.dtype.kind != 'f':
+        input = input.astype(float)
+    hrow = hrow.astype(input.dtype, copy=False)
+    hcol = hcol.astype(input.dtype, copy=False)
     filters = (hcol[::-1], hrow[::-1])
+    origins = (0 if x.size % 2 else -1 for x in filters)
     return cupyx.scipy.ndimage.filters._run_1d_correlates(
-        input, (0, 1), lambda i: filters[i], None, 'reflect', 0.0)
+        input, (0, 1), lambda i: filters[i], None, 'reflect', 0.0, origins)
