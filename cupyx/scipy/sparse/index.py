@@ -5,7 +5,6 @@ from .sputils import isintlike
 from numpy import integer
 
 import cupy
-import cupyx
 from cupy import core
 
 
@@ -75,6 +74,7 @@ def _get_csr_submatrix(Ap, Aj, Ax,
     Bx = Ax[mask[:-1]]
 
     return Bp, Bj, Bx
+
 
 _set_boolean_mask_for_offsets = core.ElementwiseKernel(
     'raw T start_offsets, raw T stop_offsets', 'raw bool mask',
