@@ -12,106 +12,6 @@ from cupy import core
 INT_TYPES = (int, integer)
 
 
-def _csr_column_index1_indptr(unique_idxs, sort_idxs, col_counts,
-                              Ap, Aj):
-    """Construct output indptr by counting column indices
-    in input matrix for each row.
-
-    Args
-        unique_idxs : Unique set of indices sorted in ascending order
-        sort_idxs : Indices sorted to preserve original order of unique_idxs
-        col_counts : Number of times each unique index occurs in Aj
-        Ap : indptr array of input sparse matrix
-        Aj : indices array of input sparse matrix
-
-    Returns
-        Bp : Output indptr
-        Aj_mask : Input indices array with all cols not matching the
-                  index masked out with -1.
-    """
-    out_col_sum = cupy.zeros((Aj.size+1,), dtype=col_counts.dtype)
-
-    index = cupy.argsort(unique_idxs)
-    sorted_index = cupy.searchsorted(unique_idxs, Aj)
-
-    yindex = cupy.take(index, sorted_index)
-    mask = unique_idxs[yindex] == Aj
-
-    idxs_adj = _csr_column_inv_idx(unique_idxs)
-    out_col_sum[1:][mask] = col_counts[idxs_adj[Aj[mask]]]
-
-    Aj_mask = out_col_sum[1:].copy()
-    Aj_mask[Aj_mask == 0] = -1
-
-    Aj_mask[Aj_mask > 0] = Aj[Aj_mask > 0]
-    Aj_mask[Aj_mask > 0] = cupy.searchsorted(
-        unique_idxs, Aj_mask[Aj_mask > 0])
-
-    Aj_mask[Aj_mask >= 0] = sort_idxs[Aj_mask[Aj_mask >= 0]]
-
-    cupy.cumsum(out_col_sum, out=out_col_sum)
-    Bp = out_col_sum[Ap]
-    Bp[1:] -= Bp[:-1]
-    cupy.cumsum(Bp, out=Bp)
-
-    return Bp, Aj_mask
-
-
-def _csr_column_index1(col_idxs, Ap, Aj):
-    """Construct indptr and components for populating indices and data of
-    output sparse array
-
-    Args
-        col_idxs : column indices to index from input indices
-        Ap : indptr of input sparse matrix
-        Aj : indices of input sparse matrix
-
-    Returns
-        Bp : indptr of output sparse matrix
-        Aj_mask : Input indices array with all cols not matching the index
-                  index masked out with -1.
-        col_counts : Number of times each unique index occurs in Aj
-        sort_idxs : Indices sorted to preserve original order of idxs
-    """
-
-    idx_map, sort_idxs = cupy.unique(col_idxs, return_index=True)
-    sort_idxs = sort_idxs.astype(idx_map.dtype)
-    idxs = cupy.searchsorted(idx_map, col_idxs)
-
-    col_counts = cupy.zeros(idx_map.size, dtype=col_idxs.dtype)
-    cupyx.scatter_add(col_counts, idxs, 1)
-
-    Bp, Aj_mask = _csr_column_index1_indptr(
-        idx_map, sort_idxs, col_counts, Ap, Aj)
-
-    return Bp, Aj_mask, col_counts, sort_idxs
-
-
-_csr_column_index2_ker = core.ElementwiseKernel(
-    '''raw I idxs, raw I col_counts, raw I col_order,
-       raw I Ap, raw I Aj_mask, raw T Ax, raw I Bp''',
-    'raw I Bj, raw T Bx', '''
-    I n = Bp[i];
-
-    // loop through columns in current row
-    for(int jj = Ap[i]; jj < Ap[i+1]; jj++) {
-        I col = Aj_mask[jj];  // current column
-        if(col != -1) {
-            T v = Ax[jj];
-            I counts = col_counts[idxs[col]];
-            for(int l = 0; l < counts; l++) {
-                if(l > 0)
-                    col = col_order[col];
-                Bj[n] = col;
-                Bx[n] = v;
-                n++;
-            }
-        }
-    }
-
-''', 'csr_index2_ker', no_return=True)
-
-
 def _csr_column_inv_idx(idxs):
     """Construct an inverted index, mapping the indices
     of the given array to the their values
@@ -128,47 +28,6 @@ def _csr_column_inv_idx(idxs):
     idxs_adj[idxs] = cupy.arange(idxs.size)
 
     return idxs_adj
-
-
-def _csr_column_index2(col_order,
-                       col_counts,
-                       sort_idxs,
-                       Ap, Aj_mask, Ax,
-                       Bp):
-    """Populate indices and data arrays from column index
-
-    Args
-        col_order : argsort order of column index
-        col_counts : counts of each unique index item from Aj_mask
-        sort_idxs : Indices of unique index columns sorted to preserve
-                    original order
-        Ap : indptr array of input sparse array
-        Aj_mask : Input indices array with all cols not matching the
-                  index masked out with -1.
-        Ax : data array of input sparse matrix
-        Bp : indptr array of output sparse matrix
-        tpb : Threads per block for populating indices and data
-
-    Returns
-        Bj : indices array of output sparse matrix
-        Bx : data array of output sparse matrix
-    """
-
-    new_nnz = Bp[-1].item()
-
-    Bj = cupy.zeros(new_nnz, dtype=Aj_mask.dtype)
-    Bx = cupy.zeros(new_nnz, dtype=Ax.dtype)
-
-    col_order[col_order[:-1]] = col_order[1:]
-
-    idxs = _csr_column_inv_idx(sort_idxs)
-
-    _csr_column_index2_ker(
-        idxs, col_counts, col_order,
-        Ap, Aj_mask, Ax, Bp, Bj, Bx,
-        size=Ap.size-1)
-
-    return Bj, Bx
 
 
 def _get_csr_submatrix(Ap, Aj, Ax,
@@ -261,51 +120,6 @@ def _csr_row_index(rows,
     _csr_row_index_ker(rows, Ap, Aj, Ax, Bp, Bj, Bx, size=rows.size)
 
     return Bj, Bx
-
-
-def _csr_sample_values(n_row, n_col,
-                       Ap, Aj, Ax,
-                       Bi, Bj):
-    """Populate data array for a set of rows and columns
-
-    Args
-        n_row : total number of rows in input array
-        n_col : total number of columns in input array
-        Ap : indptr array for input sparse matrix
-        Aj : indices array for input sparse matrix
-        Ax : data array for input sparse matrix
-        Bi : array of rows to extract from input sparse matrix
-        Bj : array of columns to extract from input sparse matrix
-        tpb : threads per block for kernel
-
-    Returns
-        Bx : data array for output sparse matrix
-    """
-    Bx = cupy.empty(Bi.size, dtype=Ax.dtype)
-    _csr_sample_values_kern(n_row, n_col,
-                            Ap, Aj, Ax,
-                            Bi, Bj, Bx, size=Bi.size)
-
-    return Bx
-
-
-_csr_sample_values_kern = core.ElementwiseKernel(
-    '''I n_row, I n_col, raw I Ap, raw I Aj, raw T Ax, raw I Bi, raw I Bj''',
-    'raw T Bx', '''
-    const I j = Bi[i] < 0 ? Bi[i] + n_row : Bi[i]; // sample row
-    const I k = Bj[i] < 0 ? Bj[i] + n_col : Bj[i]; // sample column
-
-    const I row_start = Ap[j];
-    const I row_end   = Ap[j+1];
-
-    T x = 0;
-    for(I jj = row_start; jj < row_end; jj++) {
-        if (Aj[jj] == k)
-            x += Ax[jj];
-    }
-
-    Bx[i] = x;
-''', 'csr_sample_values_kern', no_return=True)
 
 
 _set_boolean_mask_for_offsets = core.ElementwiseKernel(
