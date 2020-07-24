@@ -1,5 +1,7 @@
-import cupy
 import numpy as np
+
+import cupy
+from cupyx.scipy.ndimage import filters
 
 
 def _get_output_fourier_complex(output, input):
@@ -19,13 +21,6 @@ def _get_output_fourier_complex(output, input):
 
 def _reshape_nd(arr, ndim, axis):
     """Promote a 1d array to ndim with non-singleton size along axis."""
-    if arr.ndim != 1:
-        raise ValueError("expected a 1d array")
-    if axis < -ndim or axis > ndim - 1:
-        raise ValueError("invalid axis")
-    if ndim < 1:
-        raise ValueError("ndim must be >= 1")
-    axis = axis % ndim
     nd_shape = (1,) * axis + (arr.size,) + (1,) * (ndim - axis - 1)
     return arr.reshape(nd_shape)
 
@@ -60,25 +55,16 @@ def fourier_shift(input, shift, n=-1, axis=-1, output=None):
         The shifted input.
 
     """
+    ndim = input.ndim
     output = _get_output_fourier_complex(output, input)
+    axis = cupy.util._normalize_axis_index(axis, ndim)
+    shifts = filters._fix_sequence_arg(shift, ndim, 'shift')
+
     output[...] = input
-
-    ndim = output.ndim
-    if axis < -ndim or axis >= ndim:
-        raise ValueError("invalid axis")
-    axis = axis % ndim
-
-    if np.isscalar(shift):
-        shift = (shift,) * ndim
-    elif len(shift) != ndim:
-        raise ValueError("number of shifts must match input.ndim")
-
-    for kk in range(ndim):
-        ax_size = output.shape[kk]
-        shiftk = shift[kk]
+    for ax, (shiftk, ax_size) in enumerate(zip(shifts, output.shape)):
         if shiftk == 0:
             continue
-        if kk == axis and n > 0:
+        if ax == axis and n > 0:
             # cp.fft.rfftfreq(ax_size) * (-2j * np.pi * shiftk *  ax_size / n)
             arr = cupy.arange(ax_size, dtype=output.dtype)
             arr *= -2j * np.pi * shiftk / n
@@ -88,7 +74,7 @@ def fourier_shift(input, shift, n=-1, axis=-1, output=None):
         cupy.exp(arr, out=arr)
 
         # reshape for broadcasting
-        arr = _reshape_nd(arr, ndim=ndim, axis=kk)
+        arr = _reshape_nd(arr, ndim=ndim, axis=ax)
         output *= arr
 
     return output
