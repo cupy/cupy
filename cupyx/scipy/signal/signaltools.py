@@ -1,4 +1,7 @@
+import warnings
+
 import cupy
+import cupyx
 
 
 def choose_conv_method(in1, in2, mode='full'):
@@ -61,18 +64,18 @@ def wiener(im, mysize=None, noise=None):
 
     .. seealso:: :func:`scipy.signal.wiener`
     """
-    from cupyx.scipy.ndimage import uniform_filter
-    from cupyx.scipy.ndimage._filters_core import _fix_sequence_arg
-
     if mysize is None:
         mysize = 3
-    mysize = _fix_sequence_arg(mysize, im.ndim, 'mysize', int)
+    mysize = cupyx.scipy.ndimage._filters_core._fix_sequence_arg(
+        mysize, im.ndim, 'mysize', int)
 
     # Estimate the local mean
-    local_mean = uniform_filter(im, mysize, mode='constant')
+    local_mean = cupyx.scipy.ndimage.uniform_filter(im, mysize,
+                                                    mode='constant')
 
     # Estimate the local variance
-    local_var = uniform_filter(im*im, mysize, mode='constant')
+    local_var = cupyx.scipy.ndimage.uniform_filter(im*im, mysize,
+                                                   mode='constant')
     local_var -= local_mean*local_mean
 
     # Estimate the noise power if needed.
@@ -109,14 +112,11 @@ def order_filter(a, domain, rank):
     .. seealso:: :func:`cupyx.scipy.ndimage.rank_filter`
     .. seealso:: :func:`scipy.signal.order_filter`
     """
-    from cupyx.scipy.ndimage import rank_filter
-    size = domain.shape
-    for k in range(len(size)):
-        if (size[k] % 2) != 1:
-            raise ValueError("Each dimension of domain argument "
-                             " should have an odd number of elements.")
-    return rank_filter(a, rank, footprint=domain,
-                       output=float, mode='constant')
+    if any(x % 2 != 1 for x in domain.shape):
+        raise ValueError("Each dimension of domain argument "
+                         " should have an odd number of elements.")
+    return cupyx.scipy.ndimage.rank_filter(a, rank, footprint=domain,
+                                           output=float, mode='constant')
 
 
 def medfilt(volume, kernel_size=None):
@@ -139,18 +139,16 @@ def medfilt(volume, kernel_size=None):
     .. seealso:: :func:`cupyx.scipy.ndimage.median_filter`
     .. seealso:: :func:`scipy.signal.medfilt`
     """
-    from cupyx.scipy.ndimage import rank_filter
-    from warnings import warn
-
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)
     if any(k > s for k, s in zip(kernel_size, volume.shape)):
-        warn('kernel_size exceeds volume extent: volume will be zero-padded')
+        warnings.warn('kernel_size exceeds volume extent: '
+                      'volume will be zero-padded')
 
     size = 1
     for ks in kernel_size:
         size *= ks
-    return rank_filter(volume, size // 2, size=kernel_size,
-                       output=float, mode='constant')
+    return cupyx.scipy.ndimage.rank_filter(volume, size // 2, size=kernel_size,
+                                           output=float, mode='constant')
 
 
 def medfilt2d(input, kernel_size=3):
@@ -177,10 +175,10 @@ def medfilt2d(input, kernel_size=3):
     .. seealso:: :func:`scipy.signal.medfilt2d`
     """
     # Scipy's version only supports uint8, float32, and float64
-    from cupyx.scipy.ndimage import rank_filter
     kernel_size = _get_kernel_size(kernel_size, input.ndim)
     order = kernel_size[0] * kernel_size[1] // 2
-    return rank_filter(input, order, size=kernel_size, mode='constant')
+    return cupyx.scipy.ndimage.rank_filter(input, order, size=kernel_size,
+                                           mode='constant')
 
 
 def _get_kernel_size(kernel_size, ndim):

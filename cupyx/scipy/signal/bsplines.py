@@ -1,3 +1,6 @@
+import cupyx.scipy.ndimage
+
+
 def sepfir2d(input, hrow, hcol):
     """Convolve with a 2-D separable FIR filter.
 
@@ -16,7 +19,6 @@ def sepfir2d(input, hrow, hcol):
 
     .. seealso:: :func:`scipy.signal.sepfir2d`
     """
-    from cupyx.scipy.ndimage.filters import _run_1d_correlates
     filters = (hcol[::-1], hrow[::-1])
-    return _run_1d_correlates(input, (0, 1), lambda i: filters[i],
-                              None, 'reflect', 0.0)
+    return cupyx.scipy.ndimage.filters._run_1d_correlates(
+        input, (0, 1), lambda i: filters[i], None, 'reflect', 0.0)
