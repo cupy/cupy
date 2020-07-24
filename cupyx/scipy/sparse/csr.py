@@ -388,14 +388,8 @@ def multiply_by_dense(sp, dn):
         raise ValueError('inconsistent shape')
     if not (sp_n == dn_n or sp_n == 1 or dn_n == 1):
         raise ValueError('inconsistent shape')
-    m, n = sp.shape
-    nnz = sp.nnz
-    if m < dn_m:
-        m = dn_m
-        nnz *= dn_m
-    if n < dn_n:
-        n = dn_n
-        nnz *= dn_n
+    m, n = max(sp_m, dn_m), max(sp_n, dn_n)
+    nnz = sp.nnz * (m // sp_m) * (n // sp_n)
     dtype = functools.reduce(numpy.promote_types, (sp.dtype, dn.dtype))
     data = cupy.empty(nnz, dtype=dtype)
     indices = cupy.empty(nnz, dtype=sp.indices.dtype)
@@ -408,9 +402,11 @@ def multiply_by_dense(sp, dn):
         indptr = sp.indptr.copy()
         if n > sp_n:
             indptr *= n
+
     # out = sp * dn
     cupy_multiply_by_dense()(sp.data, sp.indptr, sp.indices, sp_m, sp_n,
                              dn, dn_m, dn_n, indptr, m, n, data, indices)
+
     return csr_matrix((data, indices, indptr), shape=(m, n))
 
 
@@ -473,13 +469,15 @@ def multiply_by_csr(a, b):
         raise ValueError('inconsistent shape')
     if not (a_n == b_n or a_n == 1 or b_n == 1):
         raise ValueError('inconsistent shape')
-    m = max(a_m, b_m)
-    n = max(a_n, b_n)
+    m, n = max(a_m, b_m), max(a_n, b_n)
     a_nnz = a.nnz * (m // a_m) * (n // a_n)
     b_nnz = b.nnz * (m // b_m) * (n // b_n)
     if a_nnz > b_nnz:
         return multiply_by_csr(b, a)
     c_nnz = a_nnz
+    dtype = functools.reduce(numpy.promote_types, (a.dtype, b.dtype))
+    c_data = cupy.empty(c_nnz, dtype=dtype)
+    c_indices = cupy.empty(c_nnz, dtype=a.indices.dtype)
     if m > a_m:
         if n > a_n:
             c_indptr = cupy.arange(0, c_nnz+1, n, dtype=a.indptr.dtype)
@@ -489,9 +487,6 @@ def multiply_by_csr(a, b):
         c_indptr = a.indptr.copy()
         if n > a_n:
             c_indptr *= n
-    dtype = functools.reduce(numpy.promote_types, (a.dtype, b.dtype))
-    c_data = cupy.empty(c_nnz, dtype=dtype)
-    c_indices = cupy.empty(c_nnz, dtype=a.indices.dtype)
     flags = cupy.zeros(c_nnz+1, dtype=a.indices.dtype)
     nnz_each_row = cupy.zeros(m+1, dtype=a.indptr.dtype)
 
@@ -499,8 +494,7 @@ def multiply_by_csr(a, b):
     cupy_multiply_by_csr_step1()(
         a.data, a.indptr, a.indices, a_m, a_n,
         b.data, b.indptr, b.indices, b_m, b_n,
-        c_indptr, m, n,
-        c_data, c_indices, flags, nnz_each_row)
+        c_indptr, m, n, c_data, c_indices, flags, nnz_each_row)
 
     flags = cupy.cumsum(flags, dtype=a.indptr.dtype)
     d_indptr = cupy.cumsum(nnz_each_row, dtype=a.indptr.dtype)
@@ -509,8 +503,7 @@ def multiply_by_csr(a, b):
     d_indices = cupy.empty(d_nnz, dtype=a.indices.dtype)
 
     # remove zero elements in matric c
-    cupy_multiply_by_csr_step2()(c_data, c_indices, flags,
-                                 d_data, d_indices)
+    cupy_multiply_by_csr_step2()(c_data, c_indices, flags, d_data, d_indices)
 
     return csr_matrix((d_data, d_indices, d_indptr), shape=(m, n))
 
@@ -522,7 +515,7 @@ def cupy_multiply_by_csr_step1():
         raw B B_DATA, raw I B_INDPTR, raw I B_INDICES, int32 B_M, int32 B_N,
         raw I C_INDPTR, int32 C_M, int32 C_N
         ''',
-        'O C_DATA, I C_INDICES, raw I FLAGS, raw I NNZ_EACH_ROW',
+        'C C_DATA, I C_INDICES, raw I FLAGS, raw I NNZ_EACH_ROW',
         '''
         int i_c = i;
         int _min = 0;
@@ -578,7 +571,7 @@ def cupy_multiply_by_csr_step1():
         if (i_b >= 0) {
             atomicAdd(&(NNZ_EACH_ROW[m_c+1]), 1);
             FLAGS[i+1] = 1;
-            C_DATA = (O)(A_DATA[i_a] * B_DATA[i_b]);
+            C_DATA = (C)(A_DATA[i_a] * B_DATA[i_b]);
             C_INDICES = n_c;
         }
         ''',
@@ -589,11 +582,11 @@ def cupy_multiply_by_csr_step1():
 def cupy_multiply_by_csr_step2():
     return cupy.ElementwiseKernel(
         'T C_DATA, I C_INDICES, raw I FLAGS',
-        'raw O D_DATA, raw I D_INDICES',
+        'raw D D_DATA, raw I D_INDICES',
         '''
         int j = FLAGS[i];
         if (j < FLAGS[i+1]) {
-            D_DATA[j] = (O)(C_DATA);
+            D_DATA[j] = (D)(C_DATA);
             D_INDICES[j] = C_INDICES;
         }
         ''',
