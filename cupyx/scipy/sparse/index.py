@@ -5,7 +5,6 @@ from .sputils import isintlike
 from numpy import integer
 
 import cupy
-import cupyx
 from cupy import core
 
 
