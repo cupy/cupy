@@ -502,75 +502,21 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_arrayXarray(self, row, col):
         # inner indexing
-        idx_dtype = self.indices.dtype
-        M, N = self._swap(*self.shape)
-        major, minor = self._swap(*(row, col))
-        major = cupy.asarray(major, dtype=idx_dtype)
-        minor = cupy.asarray(minor, dtype=idx_dtype)
-
-        val = index._csr_sample_values(
-            M, N, self.indptr, self.indices, self.data,
-            major.ravel(), minor.ravel())
-
-        if major.ndim == 1:
-            # Scipy returns `matrix` here
-            return val
-        return self.__class__(val.reshape(major.shape))
+        raise NotImplementedError()
 
     def _get_columnXarray(self, row, col):
         # outer indexing
-        major, minor = self._swap(*(row, col))
-        return self._major_index_fancy(major)._minor_index_fancy(minor)
+        raise NotImplementedError()
 
     def _major_index_fancy(self, idx):
         """Index along the major axis where idx is an array of ints.
         """
-
-        _, N = self._swap(*self.shape)
-        M = len(idx)
-        new_shape = self._swap(*(M, N))
-        if M == 0:
-            return self.__class__(new_shape)
-
-        row_nnz = cupy.diff(self.indptr)
-        idx_dtype = self.indices.dtype
-        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
-        cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
-
-        res_indices, res_data = index._csr_row_index(
-            idx, self.indptr,
-            self.indices, self.data, res_indptr)
-
-        return self.__class__((res_data, res_indices, res_indptr),
-                              shape=new_shape, copy=False)
+        raise NotImplementedError()
 
     def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.
         """
-
-        idx_dtype = self.indices.dtype
-        idx = cupy.asarray(idx, dtype=idx_dtype).ravel()
-
-        M, N = self._swap(*self.shape)
-        k = len(idx)
-        new_shape = self._swap(*(M, k))
-        if k == 0:
-            return self.__class__(new_shape)
-
-        # pass 1: count idx entries and compute new indptr
-        col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
-
-        index1_outs = index._csr_column_index1(idx, self.indptr, self.indices)
-        res_indptr, indices_mask, col_counts, sort_idxs = index1_outs
-
-        # pass 2: copy indices/data for selected idxs
-
-        res_indices, res_data = index._csr_column_index2(
-            col_order, col_counts, sort_idxs, self.indptr, indices_mask,
-            self.data, res_indptr)
-
-        return self.__class__((res_data, res_indices, res_indptr),
-                              shape=new_shape, copy=False)
+        raise NotImplementedError()
 
     def _minor_slice(self, idx, copy=False):
         """Index along the minor axis where idx is a slice object.
@@ -586,7 +532,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             return self.__class__(self._swap(*(M, N)))
         if step == 1:
             return self._get_submatrix(minor=idx, copy=copy)
-        # TODO: don't fall back to fancy indexing here
         return self._minor_index_fancy(cupy.arange(start, stop, step))
 
     @staticmethod
