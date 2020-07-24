@@ -162,10 +162,11 @@ class TestBasic(unittest.TestCase):
         b = cupy.empty((1, 0, 2), dtype='d', order=order)
         self.assertEqual(b.strides, a.strides)
 
+    @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_eye(self, xp, dtype):
-        return xp.eye(5, 4, 1, dtype)
+    def test_eye(self, xp, dtype, order):
+        return xp.eye(5, 4, 1, dtype, order=order)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

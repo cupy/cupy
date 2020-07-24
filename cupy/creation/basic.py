@@ -87,7 +87,7 @@ def empty_like(a, dtype=None, order='K', subok=None, shape=None):
     return cupy.ndarray(shape, dtype, memptr, strides, order)
 
 
-def eye(N, M=None, k=0, dtype=float):
+def eye(N, M=None, k=0, dtype=float, order='C'):
     """Returns a 2-D array with ones on the diagonals and zeros elsewhere.
 
     Args:
@@ -97,6 +97,8 @@ def eye(N, M=None, k=0, dtype=float):
             a positive index an upper diagonal, and a negative index a lower
             diagonal.
         dtype: Data type specifier.
+        order ({'C', 'F'}): Row-major (C-style) or column-major
+            (Fortran-style) order.
 
     Returns:
         cupy.ndarray: A 2-D array with given diagonals filled with ones and
@@ -107,7 +109,7 @@ def eye(N, M=None, k=0, dtype=float):
     """
     if M is None:
         M = N
-    ret = zeros((N, M), dtype)
+    ret = zeros((N, M), dtype, order=order)
     ret.diagonal(k)[:] = 1
     return ret
 
@@ -138,6 +140,8 @@ def ones(shape, dtype=float, order='C'):
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
         dtype: Data type specifier.
+        order ({'C', 'F'}): Row-major (C-style) or column-major
+            (Fortran-style) order.
 
     Returns:
         cupy.ndarray: An array filled with ones.
@@ -251,6 +255,8 @@ def full(shape, fill_value, dtype=None, order='C'):
         shape (int or tuple of ints): Dimensionalities of the array.
         fill_value: A scalar value to fill a new array.
         dtype: Data type specifier.
+        order ({'C', 'F'}): Row-major (C-style) or column-major
+            (Fortran-style) order.
 
     Returns:
         cupy.ndarray: An array filled with ``fill_value``.
