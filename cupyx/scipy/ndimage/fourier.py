@@ -47,13 +47,7 @@ def fourier_shift(input, shift, n=-1, axis=-1, output=None):
             If given, the result of shifting the input is placed in this array.
 
     Returns:
-        output (ndarray or None): The shifted output (in the Fourier domain).
-
-    Returns
-    -------
-    fourier_shift : ndarray
-        The shifted input.
-
+        output (ndarray): The shifted output (in the Fourier domain).
     """
     ndim = input.ndim
     output = _get_output_fourier_complex(output, input)
