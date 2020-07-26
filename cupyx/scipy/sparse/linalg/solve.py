@@ -135,8 +135,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
     # preconditioner
     M, M_info = (_identity, None) if M is None else M
 
-    while i < maxiter:
-        i += 1
+    while info <= maxiter:
         prev_rho = rho
         rho = cupy.vdot(r_tilde, r)
         if rho == 0:
@@ -180,6 +179,7 @@ def bicgstab(A, b, x0=None, M=None, tol=1e-5, maxiter=numpy.inf,
         if residual < tol or residual < atol:
             info = 0
             break
+        info += 1
 
     _destroy_ilu(M_info)
 
@@ -196,16 +196,18 @@ def spilu(A, enable_boost: bool = True, tol=None, boost_val=None):
     NOTE: The algorithm used by SuperLU and cuSPARSE are not
     the same. Options like `drop_tol`, `fill_factor`, and
     `diag_pivot_thresh` are not provided as they are in `scipy`'s
-    version.
+    version. In this version `enable_boost`, `tol`, and `boost_val`
+    may be provided.
+
+    Refer to cuSPARSE's documentation for more info:
+    https://docs.nvidia.com/cuda/cusparse/#csrilu02_numericBoost.
 
     Args:
         A (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): The input matrix
             with dimension ``(N, N)``
         enable_boost (bool): Enable numeric boost in cuSPARSE ILU(0) algorithm
         tol (float, optional): Tolerance for a numerical zero.
-        (default: 1e-4)
         boost_val (float, optional): Boost value to replace a numerical zero.
-            (default: 0).
 
     Returns:
         callable:
