@@ -5,3 +5,7 @@
 from cupy._sorting import count  # NOQA
 from cupy._sorting import search  # NOQA
 from cupy._sorting import sort  # NOQA
+
+from cupy._sorting.count import *  # NOQA
+from cupy._sorting.search import *  # NOQA
+from cupy._sorting.sort import *  # NOQA

@@ -1,3 +1,7 @@
+__all__ = ['argmax', 'nanargmax', 'argmin', 'nanargmin', 'argwhere', 'nonzero',
+           'flatnonzero', 'where', 'searchsorted']
+
+
 import cupy
 from cupy import core
 from cupy.core import fusion
