@@ -307,6 +307,8 @@ def spilu(A, enable_boost: bool = True, tol=None, boost_val=None):
     out = cupy.empty(n, dtype=dtype)
 
     def M(x):
+        if x.ndim != 1 or len(x) != n:
+            raise ValueError('b must be 1-d array whose size is same as A')
         cupy.cusparse._call_cusparse('csrsv2_solve', dtype, handle, trans_L,
                                      *A_tuple_a(descr_L), info_L, x.data.ptr,
                                      y.data.ptr, policy_L, buff.data.ptr)

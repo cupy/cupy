@@ -74,30 +74,30 @@ class TestSpilu(unittest.TestCase):
         self.A_poisson.sort_indices()
         self.b_poisson = numpy.random.randn(N)
 
-        N = 5
-        self.A_rand = numpy.randn((N, N))
+        N = 16
+        self.A_rand = scipy.sparse.csr_matrix(numpy.random.randn(N, N))
         self.A_rand.sort_indices()
         self.b_rand = numpy.random.randn(N)
 
     def test_size(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            A = sp.csr_matrix(self.A, dtype=self.dtype)
-            b = xp.array(numpy.append(self.b, [1]), dtype=self.dtype)
+            A = sp.csr_matrix(self.A_rand, dtype=self.dtype)
+            b = xp.array(numpy.append(self.b_rand, [1]), dtype=self.dtype)
             with pytest.raises(ValueError):
                 if sp == scipy.sparse:
                     sp.linalg.spilu(A).solve(b)
                 else:
-                    sp.linalg.spilu(A)(b)
+                    sp.linalg.spilu(A)[0](b)
 
     def test_shape(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            A = sp.csr_matrix(self.A, dtype=self.dtype)
-            b = xp.array(numpy.tile(self.b, (2, 1)), dtype=self.dtype)
+            A = sp.csr_matrix(self.A_rand, dtype=self.dtype)
+            b = xp.array(numpy.tile(self.b_rand, (2, 1)), dtype=self.dtype)
             with pytest.raises(ValueError):
                 if sp == scipy.sparse:
                     sp.linalg.spilu(A).solve(b)
                 else:
-                    sp.linalg.spilu(A)(b)
+                    sp.linalg.spilu(A)[0](b)
 
     @condition.retry(10)
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
@@ -107,8 +107,8 @@ class TestSpilu(unittest.TestCase):
         if sp == scipy.sparse:
             x = sp.linalg.spilu(A).solve(b)
         else:
-            x = sp.linalg.spilu(A)(b)
-        return x[0]
+            x = sp.linalg.spilu(A)[0](b)
+        return x
 
     @condition.retry(10)
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
@@ -118,30 +118,8 @@ class TestSpilu(unittest.TestCase):
         if sp == scipy.sparse:
             x = sp.linalg.spilu(A).solve(b)
         else:
-            x = sp.linalg.spilu(A)(b)
-        return x[0]
-
-    @condition.retry(10)
-    @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
-    def test_ndarray_poisson(self, xp, sp):
-        A = xp.array(self.A_poisson.A, dtype=self.dtype)
-        b = xp.array(self.b_poisson, dtype=self.dtype)
-        if sp == scipy.sparse:
-            x = sp.linalg.spilu(A).solve(b)
-        else:
-            x = sp.linalg.spilu(A)(b)
-        return x[0]
-
-    @condition.retry(10)
-    @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
-    def test_ndarray_rand(self, xp, sp):
-        A = xp.array(self.A_rand.A, dtype=self.dtype)
-        b = xp.array(self.b_rand, dtype=self.dtype)
-        if sp == scipy.sparse:
-            x = sp.linalg.spilu(A).solve(b)
-        else:
-            x = sp.linalg.spilu(A)(b)
-        return x[0]
+            x = sp.linalg.spilu(A)[0](b)
+        return x
 
 
 @testing.parameterize(*testing.product({
@@ -164,7 +142,7 @@ class TestBicgstab(unittest.TestCase):
         self.b_poisson = numpy.random.randn(N)
 
         N = 5
-        self.A_rand = numpy.randn((N, N))
+        self.A_rand = scipy.sparse.csr_matrix(numpy.random.randn(N, N))
         self.A_rand.sort_indices()
         self.b_rand = numpy.random.randn(N)
 
