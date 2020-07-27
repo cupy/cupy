@@ -4,16 +4,10 @@ import cupy
 
 
 def _get_output(output, input, shape=None):
-    if shape is None:
-        shape = input.shape
-    if isinstance(output, cupy.ndarray):
-        if output.shape != tuple(shape):
-            raise ValueError('output shape is not correct')
-    else:
-        dtype = output
-        if dtype is None:
-            dtype = input.dtype
-        output = cupy.zeros(shape, dtype)
+    if not isinstance(output, cupy.ndarray):
+        return cupy.zeros_like(input, shape=shape, dtype=output, order='C')
+    if output.shape != (input.shape if shape is None else tuple(shape)):
+        raise ValueError('output shape is not correct')
     return output
 
 

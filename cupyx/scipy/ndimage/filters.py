@@ -1008,9 +1008,8 @@ def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
 
 def generic_filter(input, function, size=None, footprint=None,
                    output=None, mode="reflect", cval=0.0, origin=0):
-    """Compute a multi-dimensional filter using the provided raw kernel,
-    reduction kernel, or a fused function that performs a reduction (or a
-    function that can be fused).
+    """Compute a multi-dimensional filter using the provided raw kernel or
+    reduction kernel.
 
     Unlike the scipy.ndimage function, this does not support the
     ``extra_arguments`` or ``extra_keywordsdict`` arguments and has significant
@@ -1018,8 +1017,7 @@ def generic_filter(input, function, size=None, footprint=None,
 
     Args:
         input (cupy.ndarray): The input array.
-        function (cupy.ReductionKernel, cupy.RawKernel,
-            cupy.core.fusion.Fusion, or callable):
+        function (cupy.ReductionKernel or cupy.RawKernel):
             The kernel or function to apply to each region.
         size (int or sequence of int): One of ``size`` or ``footprint`` must be
             provided. If ``footprint`` is given, ``size`` is ignored. Otherwise
@@ -1052,14 +1050,6 @@ def generic_filter(input, function, size=None, footprint=None,
         If the `function` is a :class:`cupy.ReductionKernel` then it must be
         for a kernel that takes 1 array input and produces 1 'scalar' output.
 
-        If the `function` is a callable, it must be fuseable. If it is a fused
-        function it must either:
-
-          * resolve to a :class:`cupy.ReductionKernel` that meets the
-            requirements above
-          * resolve to a `FusedKernel` that takes 1 array input argument and
-            returns 1 'scalar' output
-
     .. seealso:: :func:`scipy.ndimage.generic_filter`
     """
     _, footprint, _ = _filters_core._check_size_footprint_structure(
@@ -1068,7 +1058,7 @@ def generic_filter(input, function, size=None, footprint=None,
     origins, int_type = _filters_core._check_nd_args(input, footprint,
                                                      mode, origin, 'footprint')
     in_dtype = input.dtype
-    sub = _filters_generic._get_sub_kernel(function, filter_size, in_dtype)
+    sub = _filters_generic._get_sub_kernel(function)
     if footprint.size == 0:
         return cupy.zeros_like(input)
     output = _filters_core._get_output(output, input)
@@ -1078,9 +1068,6 @@ def generic_filter(input, function, size=None, footprint=None,
         kernel = _filters_generic._get_generic_filter_raw(sub, *args)
     elif isinstance(sub, cupy.ReductionKernel):
         kernel = _filters_generic._get_generic_filter_red(
-            sub, in_dtype, output.dtype, *args)
-    else:  # isinstance(sub, cupy.core._fusion_kernel.FusedKernel):
-        kernel = _filters_generic._get_generic_filter_fused(
             sub, in_dtype, output.dtype, *args)
     return _filters_core._call_kernel(kernel, input, footprint, output,
                                       weights_dtype=bool)

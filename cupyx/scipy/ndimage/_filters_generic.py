@@ -1,32 +1,18 @@
-import re
-import types
-
 import cupy
 
 from cupyx.scipy.ndimage import _filters_core
 
 
-def _get_sub_kernel(f, filter_size=0, in_dtype=cupy.dtype(float)):
+def _get_sub_kernel(f):
     """
     Takes the "function" given to generic_filter and returns the "sub-kernel"
-    that will be called, one of RawKernel, ReductionKernel, or FusedKernel.
+    that will be called, one of RawKernel or ReductionKernel.
 
     This supports:
      * cupy.RawKernel
        no checks are possible
      * cupy.ReductionKernel
        checks that there is a single input and output
-     * cupy.core._fusion_kernel.FusedKernel
-       checks that there is a single input and output and some of the
-       properties of those arguments
-     * cupy.core.fusion.Fusion and cupy.core.new_fusion.Fusion
-       retrieves underlying kernel and sends it back through this function
-     * any callable
-       attempts to fuse it then and sends it back through this function
-
-    The filter_size and in_dtype arguments are the size and data type used for
-    function fusions which requires calling the fused function with an array of
-    the appropriate size and data type to create the underlying kernel.
     """
     if isinstance(f, cupy.RawKernel):
         # We will assume that it has the correct API
@@ -38,223 +24,8 @@ def _get_sub_kernel(f, filter_size=0, in_dtype=cupy.dtype(float)):
     elif isinstance(f, cupy.ElementwiseKernel):
         # special error message for ElementwiseKernels
         raise TypeError('only ReductionKernel allowed (not ElementwiseKernel)')
-    elif isinstance(f, cupy.core._fusion_kernel.FusedKernel):
-        out = f._params[f._out_params[0]] if f._return_size == -2 else None
-        if (sum(i >= 0 for i in f._input_index) != 1 or
-                not isinstance(out, cupy.core._fusion_variable._TraceArray) or
-                out.ndim != 0):
-            raise TypeError('fused function take must take 1 array argument '
-                            'and output 1 scalar')
-        return f
-
-    # The remaining ones need additional (recursive) processing
-    elif isinstance(f, cupy.core.new_fusion.Fusion):
-        kernel = _get_new_fused_kernel(f, filter_size, in_dtype)
-    elif isinstance(f, cupy.core.fusion.Fusion):
-        kernel = getattr(f, 'new_fusion', None)
-        if kernel is None:
-            kernel = _get_fused_kernel(f, filter_size, in_dtype)
-    elif callable(f):
-        kernel = cupy.fuse(f)
     else:
         raise TypeError('bad function type')
-    return _get_sub_kernel(kernel, filter_size, in_dtype)
-
-
-def _get_fused_kernel(func, filter_size, in_dtype):
-    # This may have to call the fused function so that it generates the
-    # reduction kernel for our datatype
-    key = (in_dtype.char, 1)
-    if key not in func._memo:
-        try:
-            func(cupy.zeros(filter_size, dtype=in_dtype))
-        except TypeError:
-            raise TypeError('fused function takes more >1 argument')
-    if key not in func._memo:
-        func = getattr(func, 'new_fusion', None)
-        if func is not None:
-            return _get_new_fused_kernel(func, filter_size, in_dtype)
-    kernel, kwargs = func._memo[key]
-    if kwargs:
-        # The only two kwargs don't make sense: axis and out
-        raise TypeError('fused reduction functions with axis or out')
-    return kernel
-
-
-def _get_new_fused_kernel(func, filter_size, in_dtype):
-    # This may have to call the fused function so that it generates the
-    # reduction kernel for our datatype and size
-    key = (in_dtype.char, 1, True)
-    shape_key = ((filter_size,),)
-    if key not in func._cache or shape_key not in func._cache[key][0]:
-        try:
-            func(cupy.zeros(filter_size, dtype=in_dtype))
-        except TypeError:
-            raise TypeError('fused function take must take 1 array argument '
-                            'and output 1 scalar')
-    return func._cache[key][0][shape_key][0]
-
-
-@cupy.util.memoize(for_each_device=True)
-def _get_generic_filter_fused(fk, in_dtype, out_dtype, filter_size, mode,
-                              wshape, offsets, cval, int_type):
-    """Generic filter implementation based on a fused kernel."""
-    # The CArray/CIndexers for calling the sub-kernel
-    vars, args = _fused_kernel_arrays(fk, filter_size)
-
-    # Get code chunks
-    setup = 'int iv = 0;\n' + '\n'.join(vars)
-    sub_call = 'fused_kernel::{}({});\ny = cast<Y>(val_out[0]);'.format(
-        fk._name, ', '.join(args + ['1']*len(fk._block_strides)))
-    sub_kernel = 'namespace fused_kernel {{\n{}\n}}'.format(
-        _fused_kernel_code(fk))
-
-    # Get the final kernel
-    return _filters_core._generate_nd_kernel(
-        'generic_{}_{}'.format(filter_size, fk._name),
-        setup, 'values[iv++] = {value};', sub_call,
-        mode, wshape, int_type, offsets, cval, preamble=sub_kernel)
-
-
-def _fused_kernel_code(fk):
-    code = ('{code}\n__device__ void {name}({params}) {cuda_body}'
-            .format(name=fk._name, params=fk._cuda_params_memo[()],
-                    code=fk._submodule_code, cuda_body=fk._cuda_body))
-
-    # We need to change the code a bit to make it "single threaded":
-    #   disable synchronization (cg and syncthreads)
-    #   disable shared data (sdata)
-    #   change all id's to 0 (all the same thread/block/grid)
-    #   change all dim's to 1 (all one thread/block/grid)
-    #   change CUPY_FOR to use a regular for loop
-    code = re.sub(r'^(\s*)(_cg::|namespace _cg = |__syncthreads\(\);)',
-                  r'\1//\2', code, flags=re.MULTILINE)
-    code = re.sub(r'^(\s*)(.*?\b(sdata|_sdata_raw)\b)',
-                  r'\1//\2', code, flags=re.MULTILINE)
-    code = re.sub(r'\b(thread|block|grid)Idx\s*\.\s*[xyz]\b', '0', code)
-    code = re.sub(r'\b(thread|block|grid)Dim\s*\.\s*[xyz]\b', '1', code)
-    code = re.sub(r'\bCUPY_FOR\(', 'CUPY_FOR_ST(', code)
-    code = '\n#define CUPY_FOR_ST(i, n) for (int i = 0; i < (n); ++i)\n' + code
-
-    return code
-
-
-def _fused_kernel_arrays(fk, filter_size):
-    carrays = []
-    cindexers = []
-    var_names = []
-    carr_args = []
-    cind_args = []
-    shapes = _get_fused_kernel_shapes(fk, filter_size)
-    all_strides = []
-    for i, (param, shape) in enumerate(zip(fk._params, shapes)):
-        # Skip constants
-        is_scalar = isinstance(param, cupy.core._fusion_variable._TraceScalar)
-        if is_scalar and param.const_value is not None:
-            continue
-
-        # Get basics about the variable
-        ctype = cupy.core._scalar.get_typename(param.dtype)
-        var_name, ca_name, ind_name = ('_fk_{}{}'.format(s, i) for s in 'pai')
-        if param.is_input:
-            var_name, ctype = 'values', 'X'
-        elif param.is_output:
-            var_name = 'val_out'
-        var_names.append(var_name)
-        carr_args.append(ca_name)
-        cind_args.append(ind_name)
-
-        if not is_scalar:
-            cindexers.append(_cindexer_ctor(ind_name, shape))
-
-        if param.is_base:
-            # Allocate a new variable
-            decl = '{} {}[{}];'.format(ctype, var_name,
-                                       cupy.core.internal.prod(shape))
-            strides = _contig_strides(shape, param.dtype.itemsize)
-        else:
-            # Reuse variable
-            base_i = fk._view_of[i]
-            strides_base = all_strides[base_i]
-            shape_base = shapes[base_i]
-            offset = 0
-            if param.is_broadcast:
-                strides = _broadcast_to(shape_base, strides_base, shape)
-            elif param.slice_key is not None:
-                offset, strides = _indexing(shape_base, strides_base,
-                                            param.slice_key)
-                offset //= param.dtype.itemsize
-            elif param.rotate_axis is not None:
-                axes = list(param.rotate_axis)
-                axes.extend(i for i in range(param.ndim) if i not in axes)
-                strides = _transpose(strides_base, axes)
-            else:
-                raise ValueError()
-            decl = '{} *{} = &({}[{}]);'.format(
-                ctype, var_name, var_names[base_i], offset)
-
-        ca = _carray_ctor(ca_name, ctype, var_name,
-                          shape, strides, param.is_base)
-        carrays.append('{} {}'.format(decl, ca))
-        all_strides.append(strides)
-
-    return carrays + cindexers, carr_args + cind_args
-
-
-def _get_fused_kernel_shapes(fk, filter_size):
-    # The get_shapes_of_kernel_params() function only uses the shape attribute
-    # of the ndarray objects, so instead of allocating actual arrays, just make
-    # a dummy array with the shape
-    dummy_ndarray = types.SimpleNamespace(size=filter_size,
-                                          shape=(filter_size,))
-    return fk.get_shapes_of_kernel_params((dummy_ndarray,))
-
-
-def _indexing(shape_in, strides_in, indices):
-    # Takes the source shape and strides and the indices (ints, slices, None,
-    # Ellipsis) and the itemsize. This assumes the indexing is completely valid
-    if not isinstance(indices, tuple):
-        indices = (indices,)
-
-    i, offset, strides = 0, 0, []
-    for index in indices:
-        if isinstance(index, int):
-            offset += index*strides_in[i]
-            i += 1
-        elif isinstance(index, slice):
-            offset += index.start*strides_in[i]
-            strides.append(strides_in[i] * index.step)
-            i += 1
-        elif index is None:
-            strides.append(0)
-        elif index is Ellipsis:
-            skip = (len(strides_in) -
-                    sum(isinstance(ind, (int, slice)) for ind in indices))
-            strides.extend(strides_in[i:i+skip])
-            i += skip
-    strides.extend(strides_in[i:])
-
-    return offset, tuple(strides)
-
-
-def _broadcast_to(shape_in, strides_in, shape_out):
-    # Takes the source shape and strides and the destination shape and returns
-    # the destination strides. This assumes the broadcast is completely valid.
-    strides = [0] * len(shape_out)
-    offset = len(shape_out) - len(shape_in)
-    for i, (shape, stride) in enumerate(zip(shape_in, strides_in), offset):
-        if shape == shape_out[i]:
-            strides[i] = stride
-    return tuple(strides)
-
-
-def _transpose(strides, axes):
-    # Takes the source strides and the axes to transpose over and returns the
-    # destination strides. This assumes the transpose is completely valid.
-    if len(axes) == 0:
-        return strides[::-1]
-    ndim = len(strides)
-    return tuple(strides[axis % ndim] for axis in axes)
 
 
 @cupy.util.memoize(for_each_device=True)
@@ -474,6 +245,7 @@ def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
 
     name = 'generic1d_{}_{}_{}'.format(length, filter_size, rk.name)
     code = '''#include "cupy/carray.cuh"
+#include "cupy/complex.cuh"
 
 namespace raw_kernel {{\n{rk_code}\n}}
 
