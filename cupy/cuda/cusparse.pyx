@@ -1487,7 +1487,7 @@ cpdef zcsrgeam(
     check_status(status)
 
 cpdef size_t scsrgeam2_bufferSizeExt(
-        intptr_t handle, int m, int n, size_t alpha, size_t descrA,
+        size_t handle, int m, int n, size_t alpha, size_t descrA,
         int nnzA, size_t csrValA, size_t csrRowPtrA,
         size_t csrColIndA, size_t beta, size_t descrB,
         int nnzB, size_t csrValB, size_t csrRowPtrB,
@@ -1507,7 +1507,7 @@ cpdef size_t scsrgeam2_bufferSizeExt(
     return bufferSize
 
 cpdef size_t dcsrgeam2_bufferSizeExt(
-        intptr_t handle, int m, int n, size_t alpha, size_t descrA,
+        size_t handle, int m, int n, size_t alpha, size_t descrA,
         int nnzA, size_t csrValA, size_t csrRowPtrA,
         size_t csrColIndA, size_t beta, size_t descrB,
         int nnzB, size_t csrValB, size_t csrRowPtrB,
@@ -1527,7 +1527,7 @@ cpdef size_t dcsrgeam2_bufferSizeExt(
     return bufferSize
 
 cpdef size_t ccsrgeam2_bufferSizeExt(
-        intptr_t handle, int m, int n, size_t alpha, size_t descrA,
+        size_t handle, int m, int n, size_t alpha, size_t descrA,
         int nnzA, size_t csrValA, size_t csrRowPtrA,
         size_t csrColIndA, size_t beta, size_t descrB,
         int nnzB, size_t csrValB, size_t csrRowPtrB,
@@ -1548,7 +1548,7 @@ cpdef size_t ccsrgeam2_bufferSizeExt(
     return bufferSize
 
 cpdef size_t zcsrgeam2_bufferSizeExt(
-        intptr_t handle, int m, int n, size_t alpha, size_t descrA,
+        size_t handle, int m, int n, size_t alpha, size_t descrA,
         int nnzA, size_t csrValA, size_t csrRowPtrA,
         size_t csrColIndA, size_t beta, size_t descrB,
         int nnzB, size_t csrValB, size_t csrRowPtrB,
@@ -1569,7 +1569,7 @@ cpdef size_t zcsrgeam2_bufferSizeExt(
     return bufferSize
 
 cpdef xcsrgeam2Nnz(
-        intptr_t handle, int m, int n, size_t descrA, int nnzA,
+        size_t handle, int m, int n, size_t descrA, int nnzA,
         size_t csrRowPtrA, size_t csrColIndA, size_t descrB,
         int nnzB, size_t csrRowPtrB, size_t csrColIndB,
         size_t descrC, size_t csrRowPtrC, size_t nnzTotalDevHostPtr,
@@ -1584,7 +1584,7 @@ cpdef xcsrgeam2Nnz(
     check_status(status)
 
 cpdef size_t scsrgeam2(
-        intptr_t handle, int m, int n, size_t alpha, size_t descrA,
+        size_t handle, int m, int n, size_t alpha, size_t descrA,
         int nnzA, size_t csrValA, size_t csrRowPtrA,
         size_t csrColIndA, size_t beta, size_t descrB,
         int nnzB, size_t csrValB, size_t csrRowPtrB,
@@ -1602,7 +1602,7 @@ cpdef size_t scsrgeam2(
     check_status(status)
 
 cpdef size_t dcsrgeam2(
-        intptr_t handle, int m, int n, size_t alpha, size_t descrA,
+        size_t handle, int m, int n, size_t alpha, size_t descrA,
         int nnzA, size_t csrValA, size_t csrRowPtrA,
         size_t csrColIndA, size_t beta, size_t descrB,
         int nnzB, size_t csrValB, size_t csrRowPtrB,
@@ -1620,7 +1620,7 @@ cpdef size_t dcsrgeam2(
     check_status(status)
 
 cpdef size_t ccsrgeam2(
-        intptr_t handle, int m, int n, size_t alpha, size_t descrA,
+        size_t handle, int m, int n, size_t alpha, size_t descrA,
         int nnzA, size_t csrValA, size_t csrRowPtrA,
         size_t csrColIndA, size_t beta, size_t descrB,
         int nnzB, size_t csrValB, size_t csrRowPtrB,
@@ -1639,7 +1639,7 @@ cpdef size_t ccsrgeam2(
     check_status(status)
 
 cpdef size_t zcsrgeam2(
-        intptr_t handle, int m, int n, size_t alpha, size_t descrA,
+        size_t handle, int m, int n, size_t alpha, size_t descrA,
         int nnzA, size_t csrValA, size_t csrRowPtrA,
         size_t csrColIndA, size_t beta, size_t descrB,
         int nnzB, size_t csrValB, size_t csrRowPtrB,
@@ -1759,7 +1759,7 @@ cpdef destroyCsrgemm2Info(size_t info):
     check_status(status)
 
 cpdef size_t scsrgemm2_bufferSizeExt(
-        intptr_t handle, int m, int n, int k,
+        size_t handle, int m, int n, int k,
         size_t alpha,
         size_t descrA, int nnzA, size_t csrRowPtrA, size_t csrColIndA,
         size_t descrB, int nnzB, size_t csrRowPtrB, size_t csrColIndB,
@@ -1779,7 +1779,7 @@ cpdef size_t scsrgemm2_bufferSizeExt(
     return bufferSize
 
 cpdef size_t dcsrgemm2_bufferSizeExt(
-        intptr_t handle, int m, int n, int k,
+        size_t handle, int m, int n, int k,
         size_t alpha,
         size_t descrA, int nnzA, size_t csrRowPtrA, size_t csrColIndA,
         size_t descrB, int nnzB, size_t csrRowPtrB, size_t csrColIndB,
@@ -1799,7 +1799,7 @@ cpdef size_t dcsrgemm2_bufferSizeExt(
     return bufferSize
 
 cpdef size_t ccsrgemm2_bufferSizeExt(
-        intptr_t handle, int m, int n, int k,
+        size_t handle, int m, int n, int k,
         size_t alpha,
         size_t descrA, int nnzA, size_t csrRowPtrA, size_t csrColIndA,
         size_t descrB, int nnzB, size_t csrRowPtrB, size_t csrColIndB,
@@ -1819,7 +1819,7 @@ cpdef size_t ccsrgemm2_bufferSizeExt(
     return bufferSize
 
 cpdef size_t zcsrgemm2_bufferSizeExt(
-        intptr_t handle, int m, int n, int k,
+        size_t handle, int m, int n, int k,
         size_t alpha,
         size_t descrA, int nnzA, size_t csrRowPtrA, size_t csrColIndA,
         size_t descrB, int nnzB, size_t csrRowPtrB, size_t csrColIndB,
@@ -1839,12 +1839,12 @@ cpdef size_t zcsrgemm2_bufferSizeExt(
     return bufferSize
 
 cpdef xcsrgemm2Nnz(
-        intptr_t handle, int m, int n, int k,
+        size_t handle, int m, int n, int k,
         size_t descrA, int nnzA, size_t csrRowPtrA, size_t csrColIndA,
         size_t descrB, int nnzB, size_t csrRowPtrB, size_t csrColIndB,
         size_t descrD, int nnzD, size_t csrRowPtrD, size_t csrColIndD,
         size_t descrC, size_t csrRowPtrC,
-        intptr_t nnzTotalDevHostPtr, size_t info, intptr_t pBuffer):
+        size_t nnzTotalDevHostPtr, size_t info, size_t pBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseXcsrgemm2Nnz(
         <Handle>handle, m, n, k,
@@ -1856,13 +1856,13 @@ cpdef xcsrgemm2Nnz(
     check_status(status)
 
 cpdef scsrgemm2(
-        intptr_t handle, int m, int n, int k, size_t alpha, size_t descrA,
+        size_t handle, int m, int n, int k, size_t alpha, size_t descrA,
         int nnzA, size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
         size_t descrB, int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t beta, size_t descrD, int nnzD,
         size_t csrValD, size_t csrRowPtrD, size_t csrColIndD, size_t descrC,
         size_t csrValC, size_t csrRowPtrC, size_t csrColIndC, size_t info,
-        intptr_t pBuffer):
+        size_t pBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseScsrgemm2(
         <Handle>handle, m, n, k, <float*>alpha, <MatDescr>descrA, nnzA,
@@ -1875,13 +1875,13 @@ cpdef scsrgemm2(
     check_status(status)
 
 cpdef dcsrgemm2(
-        intptr_t handle, int m, int n, int k, size_t alpha, size_t descrA,
+        size_t handle, int m, int n, int k, size_t alpha, size_t descrA,
         int nnzA, size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
         size_t descrB, int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t beta, size_t descrD, int nnzD,
         size_t csrValD, size_t csrRowPtrD, size_t csrColIndD, size_t descrC,
         size_t csrValC, size_t csrRowPtrC, size_t csrColIndC, size_t info,
-        intptr_t pBuffer):
+        size_t pBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseDcsrgemm2(
         <Handle>handle, m, n, k, <double*>alpha, <MatDescr>descrA, nnzA,
@@ -1894,13 +1894,13 @@ cpdef dcsrgemm2(
     check_status(status)
 
 cpdef ccsrgemm2(
-        intptr_t handle, int m, int n, int k, size_t alpha, size_t descrA,
+        size_t handle, int m, int n, int k, size_t alpha, size_t descrA,
         int nnzA, size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
         size_t descrB, int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t beta, size_t descrD, int nnzD,
         size_t csrValD, size_t csrRowPtrD, size_t csrColIndD, size_t descrC,
         size_t csrValC, size_t csrRowPtrC, size_t csrColIndC, size_t info,
-        intptr_t pBuffer):
+        size_t pBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCcsrgemm2(
         <Handle>handle, m, n, k, <cuComplex*>alpha, <MatDescr>descrA, nnzA,
@@ -1913,13 +1913,13 @@ cpdef ccsrgemm2(
     check_status(status)
 
 cpdef zcsrgemm2(
-        intptr_t handle, int m, int n, int k, size_t alpha, size_t descrA,
+        size_t handle, int m, int n, int k, size_t alpha, size_t descrA,
         int nnzA, size_t csrValA, size_t csrRowPtrA, size_t csrColIndA,
         size_t descrB, int nnzB, size_t csrValB, size_t csrRowPtrB,
         size_t csrColIndB, size_t beta, size_t descrD, int nnzD,
         size_t csrValD, size_t csrRowPtrD, size_t csrColIndD, size_t descrC,
         size_t csrValC, size_t csrRowPtrC, size_t csrColIndC, size_t info,
-        intptr_t pBuffer):
+        size_t pBuffer):
     setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZcsrgemm2(
         <Handle>handle, m, n, k, <cuDoubleComplex*>alpha, <MatDescr>descrA,
