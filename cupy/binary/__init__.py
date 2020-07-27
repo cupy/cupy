@@ -4,3 +4,6 @@
 # "NOQA" to suppress flake8 warning
 from cupy.binary import elementwise  # NOQA
 from cupy.binary import packing  # NOQA
+
+from cupy.binary.elementwise import *  # NOQA
+from cupy.binary.packing import *  # NOQA

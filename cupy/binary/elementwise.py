@@ -1,3 +1,7 @@
+__all__ = ['bitwise_and', 'bitwise_or', 'bitwise_xor', 'invert', 'left_shift',
+           'right_shift']
+
+
 from cupy import core
 
 
