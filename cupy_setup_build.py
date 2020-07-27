@@ -40,6 +40,15 @@ use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 MODULES = []
 
 cuda_files = [
+    'cupy_backends.cuda.api.driver',
+    'cupy_backends.cuda.api.runtime',
+    'cupy_backends.cuda.libs.cublas',
+    'cupy_backends.cuda.libs.curand',
+    'cupy_backends.cuda.libs.cusparse',
+    'cupy_backends.cuda.libs.nvrtc',
+    'cupy_backends.cuda.libs.profiler',
+    'cupy_backends.cuda.stream',
+    'cupy.core._accelerator',
     'cupy.core._carray',
     'cupy.core._cub_reduction',
     'cupy.core._dtype',
@@ -65,20 +74,14 @@ cuda_files = [
     'cupy.core.fusion',
     'cupy.core.new_fusion',
     'cupy.core.raw',
-    'cupy.cuda.cublas',
+    'cupy.cuda.common',
     'cupy.cuda.cufft',
-    'cupy.cuda.curand',
-    'cupy.cuda.cusparse',
     'cupy.cuda.device',
-    'cupy.cuda.driver',
     'cupy.cuda.memory',
     'cupy.cuda.memory_hook',
-    'cupy.cuda.nvrtc',
     'cupy.cuda.pinned_memory',
-    'cupy.cuda.profiler',
     'cupy.cuda.function',
     'cupy.cuda.stream',
-    'cupy.cuda.runtime',
     'cupy.cuda.texture',
     'cupy.lib.polynomial',
     'cupy.util'
@@ -132,7 +135,7 @@ if use_hip:
     MODULES.append({
         'name': 'cusolver',
         'file': [
-            'cupy.cuda.cusolver',
+            'cupy_backends.cuda.libs.cusolver',
         ],
         'include': [],
         'libraries': [],
@@ -141,7 +144,7 @@ else:
     MODULES.append({
         'name': 'cusolver',
         'file': [
-            'cupy.cuda.cusolver',
+            'cupy_backends.cuda.libs.cusolver',
         ],
         'include': [
             'cusolverDn.h',
@@ -156,7 +159,7 @@ if not use_hip:
     MODULES.append({
         'name': 'cudnn',
         'file': [
-            'cupy.cuda.cudnn',
+            'cupy_backends.cuda.libs.cudnn',
             'cupy.cudnn',
         ],
         'include': [
@@ -201,7 +204,7 @@ if not use_hip:
     MODULES.append({
         'name': 'cutensor',
         'file': [
-            'cupy.cuda.cutensor',
+            'cupy_backends.cuda.libs.cutensor',
         ],
         'include': [
             'cutensor.h',
@@ -444,7 +447,7 @@ def preconfigure_modules(compiler, settings):
             '',
         ] + lines + [
             'Please refer to the Installation Guide for details:',
-            'https://docs-cupy.chainer.org/en/stable/install.html',
+            'https://docs.cupy.dev/en/stable/install.html',
             '',
         ]
 
@@ -746,7 +749,7 @@ def check_extensions(extensions):
                 raise RuntimeError('''\
 Missing file: {}
 Please install Cython {} or later. Please also check the version of Cython.
-See https://docs-cupy.chainer.org/en/stable/install.html for details.
+See https://docs.cupy.dev/en/stable/install.html for details.
 '''.format(f, required_cython_version))
 
 
@@ -802,31 +805,35 @@ def _nvcc_gencode_options(cuda_version):
     #
     #     arch_list = [('compute_61', 'sm_61')]
 
-    arch_list = ['compute_30',
-                 'compute_50']
-
     if cuda_version >= 11000:
-        arch_list += [('compute_60', 'sm_60'),
-                      ('compute_61', 'sm_61'),
-                      ('compute_70', 'sm_70'),
-                      ('compute_75', 'sm_75'),
-                      ('compute_80', 'sm_80'),
-                      'compute_80']
+        arch_list = ['compute_50',
+                     ('compute_60', 'sm_60'),
+                     ('compute_61', 'sm_61'),
+                     ('compute_70', 'sm_70'),
+                     ('compute_75', 'sm_75'),
+                     ('compute_80', 'sm_80'),
+                     'compute_80']
     elif cuda_version >= 10000:
-        arch_list += [('compute_60', 'sm_60'),
-                      ('compute_61', 'sm_61'),
-                      ('compute_70', 'sm_70'),
-                      ('compute_75', 'sm_75'),
-                      'compute_70']
+        arch_list = ['compute_30',
+                     'compute_50',
+                     ('compute_60', 'sm_60'),
+                     ('compute_61', 'sm_61'),
+                     ('compute_70', 'sm_70'),
+                     ('compute_75', 'sm_75'),
+                     'compute_70']
     elif cuda_version >= 9000:
-        arch_list += [('compute_60', 'sm_60'),
-                      ('compute_61', 'sm_61'),
-                      ('compute_70', 'sm_70'),
-                      'compute_70']
+        arch_list = ['compute_30',
+                     'compute_50',
+                     ('compute_60', 'sm_60'),
+                     ('compute_61', 'sm_61'),
+                     ('compute_70', 'sm_70'),
+                     'compute_70']
     elif cuda_version >= 8000:
-        arch_list += [('compute_60', 'sm_60'),
-                      ('compute_61', 'sm_61'),
-                      'compute_60']
+        arch_list = ['compute_30',
+                     'compute_50',
+                     ('compute_60', 'sm_60'),
+                     ('compute_61', 'sm_61'),
+                     'compute_60']
 
     options = []
     for arch in arch_list:

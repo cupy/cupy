@@ -7,6 +7,7 @@ import unittest
 import cupy
 from cupy import testing
 from cupy.cuda import compiler
+from cupy.cuda import memory
 
 
 _test_source1 = r'''
@@ -316,6 +317,16 @@ __global__ void my_func(double* input, int N) {
 }
 '''
 
+test_cast = r'''
+extern "C" __global__ void my_func(void* input, int N) {
+  double* arr = (double*)(input);
+  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+  if (x < N) {
+    arr[x] = 3.0 * arr[x] - 8.0;
+  }
+}
+'''
+
 if 'CUPY_CACHE_DIR' in os.environ:
     _old_cache_dir = os.environ['CUPY_CACHE_DIR']
     _is_cache_env_var_set = True
@@ -547,7 +558,7 @@ class TestRaw(unittest.TestCase):
 
         ker = mod.get_function('test_mulf')
         ker((grid,), (block,), (a, b, out))
-        assert (out == a * b).all()
+        assert cupy.allclose(out, a * b)
 
         ker = mod.get_function('test_divf')
         ker((grid,), (block,), (a, b, out))
@@ -563,7 +574,7 @@ class TestRaw(unittest.TestCase):
 
         ker = mod.get_function('test_fmaf')
         ker((grid,), (block,), (a, b, c, out))
-        assert (out == a * b + c).all()
+        assert cupy.allclose(out, a * b + c)
 
         ker = mod.get_function('test_makef')
         ker((grid,), (block,), (out,))
@@ -609,7 +620,7 @@ class TestRaw(unittest.TestCase):
 
         ker = mod.get_function('test_mul')
         ker((grid,), (block,), (a, b, out))
-        assert (out == a * b).all()
+        assert cupy.allclose(out, a * b)
 
         ker = mod.get_function('test_div')
         ker((grid,), (block,), (a, b, out))
@@ -625,7 +636,7 @@ class TestRaw(unittest.TestCase):
 
         ker = mod.get_function('test_fma')
         ker((grid,), (block,), (a, b, c, out))
-        assert (out == a * b + c).all()
+        assert cupy.allclose(out, a * b + c)
 
         ker = mod.get_function('test_make')
         ker((grid,), (block,), (out,))
@@ -713,6 +724,19 @@ class TestRaw(unittest.TestCase):
         with pytest.raises(cupy.cuda.driver.CUDADriverError,
                            match='named symbol not found'):
             mod.get_function('my_sqrt<double>')
+
+    def test_raw_pointer(self):
+        mod = cupy.RawModule(code=test_cast, backend=self.backend)
+        ker = mod.get_function('my_func')
+
+        a = cupy.ones((100,), dtype=cupy.float64)
+        memptr = memory.alloc(100 * a.dtype.itemsize)
+        memptr.copy_from(a.data, 100 * a.dtype.itemsize)  # one-initialize
+        b = cupy.ndarray((100,), cupy.float64, memptr=memptr)
+
+        ker((1,), (100,), (memptr, 100))
+        a = 3. * a - 8.
+        assert (a == b).all()
 
     @testing.multi_gpu(2)
     def test_context_switch_RawKernel(self):

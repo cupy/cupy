@@ -22,12 +22,28 @@
 namespace thrust {
 
 /* --- Constructors --- */
-// TODO(leofang): support more kinds of constructors from upstream
+template <typename T>
+inline __host__ __device__ complex<T>::complex(const T& re) {
+  real(re);
+  imag(T());
+}
 
 template <typename T>
 inline __host__ __device__ complex<T>::complex(const T& re, const T& im) {
   real(re);
   imag(im);
+}
+
+template <typename T>
+inline __host__ __device__ complex<T>::complex() {
+  real(T());
+  imag(T());
+}
+
+template <typename T>
+inline __host__ __device__ complex<T>::complex(const complex<T>& z) {
+  real(z.real());
+  imag(z.imag());
 }
 
 template <typename T>
@@ -37,6 +53,30 @@ inline __host__ __device__ complex<T>::complex(const complex<X>& z) {
   // about potential loss of precision
   real(T(z.real()));
   imag(T(z.imag()));
+}
+
+/* --- Assignment Operators --- */
+
+template <typename T>
+inline __host__ __device__ complex<T>& complex<T>::operator=(const T& re) {
+  real(re);
+  imag(T());
+  return *this;
+}
+
+template <typename T>
+inline __host__ __device__ complex<T>& complex<T>::operator=(const complex<T>& z) {
+  real(z.real());
+  imag(z.imag());
+  return *this;
+}
+
+template <typename T>
+template <typename U>
+inline __host__ __device__ complex<T>& complex<T>::operator=(const complex<U>& z) {
+  real(T(z.real()));
+  imag(T(z.imag()));
+  return *this;
 }
 
 /* --- Compound Assignment Operators --- */
