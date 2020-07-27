@@ -1,3 +1,6 @@
+__all__ = ['set_reduction_accelerators', 'set_routine_accelerators']
+
+
 import os
 
 cdef list _reduction_accelerators = []
