@@ -1,4 +1,3 @@
-import functools
 import numpy
 
 try:
@@ -220,7 +219,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             other.sum_duplicates()
             return multiply_by_csr(self, other)
         else:
-            raise NotImplementedError
+            msg = 'expected scalar, dense matrix/vector or csr matrixr'
+            raise TypeError(msg)
 
     # TODO(unno): Implement prune
     # TODO(unno): Implement reshape
@@ -390,7 +390,7 @@ def multiply_by_dense(sp, dn):
         raise ValueError('inconsistent shape')
     m, n = max(sp_m, dn_m), max(sp_n, dn_n)
     nnz = sp.nnz * (m // sp_m) * (n // sp_n)
-    dtype = functools.reduce(numpy.promote_types, (sp.dtype, dn.dtype))
+    dtype = numpy.promote_types(sp.dtype, dn.dtype)
     data = cupy.empty(nnz, dtype=dtype)
     indices = cupy.empty(nnz, dtype=sp.indices.dtype)
     if m > sp_m:
@@ -410,6 +410,7 @@ def multiply_by_dense(sp, dn):
     return csr_matrix((data, indices, indptr), shape=(m, n))
 
 
+@cupy.util.memoize(for_each_device=True)
 def cupy_multiply_by_dense():
     return cupy.ElementwiseKernel(
         '''
@@ -475,7 +476,7 @@ def multiply_by_csr(a, b):
     if a_nnz > b_nnz:
         return multiply_by_csr(b, a)
     c_nnz = a_nnz
-    dtype = functools.reduce(numpy.promote_types, (a.dtype, b.dtype))
+    dtype = numpy.promote_types(a.dtype, b.dtype)
     c_data = cupy.empty(c_nnz, dtype=dtype)
     c_indices = cupy.empty(c_nnz, dtype=a.indices.dtype)
     if m > a_m:
@@ -508,6 +509,7 @@ def multiply_by_csr(a, b):
     return csr_matrix((d_data, d_indices, d_indptr), shape=(m, n))
 
 
+@cupy.util.memoize(for_each_device=True)
 def cupy_multiply_by_csr_step1():
     return cupy.ElementwiseKernel(
         '''
@@ -579,6 +581,7 @@ def cupy_multiply_by_csr_step1():
     )
 
 
+@cupy.util.memoize(for_each_device=True)
 def cupy_multiply_by_csr_step2():
     return cupy.ElementwiseKernel(
         'T C_DATA, I C_INDICES, raw I FLAGS',
