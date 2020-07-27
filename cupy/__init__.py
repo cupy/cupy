@@ -226,13 +226,16 @@ from numpy import complex128  # NOQA
 # Built-in Python types
 # -----------------------------------------------------------------------------
 
-int = __builtins__['int']  # NOQA
+# After NumPy 1.20 is released, CuPy should mimic the DeprecationWarning
+# behavior for these types
 
-bool = __builtins__['bool']  # NOQA
+from builtins import int  # NOQA
 
-float = __builtins__['float']  # NOQA
+from builtins import bool  # NOQA
 
-complex = __builtins__['complex']  # NOQA
+from builtins import float  # NOQA
+
+from builtins import complex  # NOQA
 
 # Not supported by CuPy:
 # from numpy import object
