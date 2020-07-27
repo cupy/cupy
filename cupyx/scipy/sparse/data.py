@@ -177,10 +177,9 @@ class _minmax_mixin(object):
             zero = cupy.zeros((), dtype=self.dtype)
             if self.nnz == 0:
                 return zero
-            if sum_duplicates:
-                self.sum_duplicates()
+            self.sum_duplicates()
             m = min_or_max(self.data)
-            if non_zero:
+            if explicit:
                 return m
             if self.nnz != internal.prod(self.shape):
                 if min_or_max is cupy.min:
@@ -263,10 +262,10 @@ class _minmax_mixin(object):
                 This argument is in the signature *solely* for NumPy
                 compatibility reasons. Do not pass in anything except
                 for the default value, as this argument is not used.
-            explicit (bool): Return the maximum value explicitly specified and ignore
-                all implicit zero entries. If the dimension has no explicit values,
-                a zero is then returned to indicate that it is the only implicit
-                value.
+            explicit (bool): Return the maximum value explicitly specified and
+                ignore all implicit zero entries. If the dimension has no
+                explicit values, a zero is then returned to indicate that it is
+                the only implicit value.
 
         Returns:
             (cupy.ndarray or float): Maximum of ``a``. If ``axis`` is
@@ -298,10 +297,10 @@ class _minmax_mixin(object):
                 This argument is in the signature *solely* for NumPy
                 compatibility reasons. Do not pass in anything except for
                 the default value, as this argument is not used.
-            explicit (bool): Return the minimum value explicitly specified and ignore
-                all implicit zero entries. If the dimension has no explicit values,
-                a zero is then returned to indicate that it is the only implicit
-                value.
+            explicit (bool): Return the minimum value explicitly specified and
+                ignore all implicit zero entries. If the dimension has no
+                explicit values, a zero is then returned to indicate that it is
+                the only implicit value.
 
         Returns:
             (cupy.ndarray or float): Minimum of ``a``. If ``axis`` is
