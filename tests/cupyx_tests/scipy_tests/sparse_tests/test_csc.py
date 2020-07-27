@@ -1038,7 +1038,7 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
     def _make_data_max(self, xp, sp, dense=False):
         return -self._make_data_min(xp, sp, dense=dense)
 
-    def _make_data_min_explisit(self, xp, sp, axis):
+    def _make_data_min_explicit(self, xp, sp, axis):
         dm_data = testing.shaped_random((10, 20), xp=xp, scale=1.0)
         if xp is cupy:
             dm_data[dm_data < 0.95] = 0
