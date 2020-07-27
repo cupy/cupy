@@ -15,7 +15,7 @@ cdef inline _should_use_rop(x, y):
         return False
     xp = getattr(x, '__array_priority__', 0)
     yp = getattr(y, '__array_priority__', 0)
-    return xp < yp and not isinstance(y, cupy.ndarray)
+    return xp < yp and not isinstance(y, poly1d)
 
 
 cdef class poly1d:
@@ -33,7 +33,7 @@ cdef class poly1d:
 
     """
     __hash__ = None
-    __array_priority__ = 90
+    __array_priority__ = 100
 
     cdef:
         readonly ndarray _coeffs
@@ -139,14 +139,13 @@ cdef class poly1d:
         raise NotImplementedError
 
     def __add__(self, other):
+        if _should_use_rop(self, other):
+            return other.__radd__(self)
         if isinstance(self, numpy.generic):
             # for the case: numpy scalar + poly1d
             raise TypeError('Numpy scalar and poly1d '
                             'addition is not supported')
-        if _should_use_rop(self, other):
-            return other.__radd__(self)
-        else:
-            return _routines_poly.polyadd(self, other)
+        return _routines_poly.polyadd(self, other)
 
     # TODO(Dahlia-Chehata): implement using polymul
     def __pow__(self, val, modulo):

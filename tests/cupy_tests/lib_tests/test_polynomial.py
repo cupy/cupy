@@ -264,10 +264,16 @@ class TestPoly1dArithmeticInvalid(Poly1dTestBase):
 
     @testing.for_all_dtypes()
     def test_poly1d_arithmetic_invalid(self, dtype):
-        a1 = self._get_input(cupy, self.type_l, dtype)
-        a2 = self._get_input(cupy, self.type_r, dtype)
+        # CuPy does not support them because device-to-host synchronization is
+        # needed to convert the return value to cupy.ndarray type.
+        n1 = self._get_input(numpy, self.type_l, dtype)
+        n2 = self._get_input(numpy, self.type_r, dtype)
+        assert type(self.func(n1, n2)) is numpy.ndarray
+
+        c1 = self._get_input(cupy, self.type_l, dtype)
+        c2 = self._get_input(cupy, self.type_r, dtype)
         with pytest.raises(TypeError):
-            self.func(a1, a2)
+            self.func(c1, c2)
 
 
 @testing.gpu
@@ -378,8 +384,7 @@ class TestPolyaddShapeCombination(unittest.TestCase):
 @testing.gpu
 class TestPolyadd(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal()
     def test_polyadd_diff_types_array(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((10,), xp, dtype1)
@@ -387,8 +392,7 @@ class TestPolyadd(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             return xp.polyadd(a, b)
 
-    @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal()
     def test_polyadd_diff_types_poly1d(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((10,), xp, dtype1)
@@ -396,6 +400,6 @@ class TestPolyadd(unittest.TestCase):
         a = xp.poly1d(a, variable='z')
         b = xp.poly1d(b, variable='y')
         with cupyx.allow_synchronize(False):
-            c = xp.polyadd(a, b)
-        assert c.variable == 'x'
-        return c.coeffs
+            out = xp.polyadd(a, b)
+        assert out.variable == 'x'
+        return out
