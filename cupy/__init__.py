@@ -226,8 +226,8 @@ from numpy import complex128  # NOQA
 # Built-in Python types
 # -----------------------------------------------------------------------------
 
-# After NumPy 1.20 is released, CuPy should mimic the DeprecationWarning
-# behavior for these types
+# Note: these builtin types are imported just for compatibility with NumPy.
+# Use of these types are discouraged and will be deprecated in NumPy 1.20.
 
 from builtins import int  # NOQA
 
