@@ -33,8 +33,11 @@ def _get_csr_submatrix(Ap, Aj, Ax,
 
     Bp = Ap[start_maj:stop_maj+1]
 
-    Aj = Aj[Bp[0]:Bp[-1]]
-    Ax = Ax[Bp[0]:Bp[-1]]
+    start_offset = Bp[0]
+    stop_offset = Bp[-1]
+
+    Aj = Aj[start_offset:stop_offset]
+    Ax = Ax[start_offset:stop_offset]
 
     Aj_copy = cupy.empty(Aj.size+1, dtype=Aj.dtype)
     Aj_copy[:-1] = Aj
@@ -49,7 +52,7 @@ def _get_csr_submatrix(Ap, Aj, Ax,
     Aj_copy[0] = 0
 
     cupy.cumsum(Aj_copy, out=Aj_copy)
-    Bp = Aj_copy[Bp-Bp[0]]
+    Bp = Aj_copy[Bp-start_offset]
 
     Bj = Aj[mask[:-1]] - start_min
     Bx = Ax[mask[:-1]]

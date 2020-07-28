@@ -494,8 +494,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_sliceXslice(self, row, col):
 
-        major, minor = self._swap(*(row, col))
-        if major.step in (1, None) and minor.step in (1, None):
+        major, minor = self._swap(row, col)
+        if major.step in {1, None} and minor.step in {1, None}:
             return self._get_submatrix(major, minor, copy=True)
         return self._major_slice(major)._minor_slice(minor)
 
@@ -585,7 +585,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         indptr, indices, data = _index._get_csr_submatrix(
             self.indptr, self.indices, self.data, i0, i1, j0, j1)
 
-        shape = self._swap(*(i1 - i0, j1 - j0))
+        shape = self._swap(i1 - i0, j1 - j0)
         return self.__class__((data, indices, indptr), shape=shape,
                               dtype=self.dtype, copy=False)
 
@@ -609,9 +609,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
 
         if step == 1:
-            all_idx = slice(self.indptr[start], self.indptr[stop])
-            res_indices = cupy.array(self.indices[all_idx], copy=copy)
-            res_data = cupy.array(self.data[all_idx], copy=copy)
+            idx_start = self.indptr[start]
+            idx_stop = self.indptr[stop]
+            res_indices = cupy.array(self.indices[idx_start:idx_stop], copy=copy)
+            res_data = cupy.array(self.data[idx_start:idx_stop], copy=copy)
         else:
             res_indices, res_data = _index._csr_row_slice(
                 start, step, self.indptr, self.indices, self.data, res_indptr)

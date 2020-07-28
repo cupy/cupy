@@ -373,11 +373,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.csr_matrix: Sparse matrix with single row
         """
         M, N = self.shape
-        i = int(i)
-        if i < 0:
-            i += M
-        if i < 0 or i >= M:
-            raise IndexError('index (%d) out of range' % i)
+        i = _index._normalize_index(i, M, 'index')
         indptr, indices, data = _index._get_csr_submatrix(
             self.indptr, self.indices, self.data, i, i + 1, 0, N)
         return csr_matrix((data, indices, indptr), shape=(1, N),
@@ -394,11 +390,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.csr_matrix: Sparse matrix with single column
         """
         M, N = self.shape
-        i = int(i)
-        if i < 0:
-            i += N
-        if i < 0 or i >= N:
-            raise IndexError('index (%d) out of range' % i)
+        i = _index._normalize_index(i, N, 'index')
         indptr, indices, data = _index._get_csr_submatrix(
             self.indptr, self.indices, self.data, 0, M, i, i + 1)
         return csr_matrix((data, indices, indptr), shape=(M, 1),
@@ -408,7 +400,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         raise NotImplementedError()
 
     def _get_intXslice(self, row, col):
-        if col.step in (1, None):
+        if col.step in {1, None}:
             return self._get_submatrix(row, col, copy=True)
 
         M, N = self.shape
@@ -428,7 +420,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
         row_indices = (row_indices[ind] - start) // stride
         row_data = row_data[ind]
-        row_indptr = cupy.array([0, len(row_indices)])
+        row_indptr = cupy.array([0, row_indices.size])
 
         if stride < 0:
             row_data = row_data[::-1]
@@ -439,7 +431,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                           dtype=self.dtype, copy=False)
 
     def _get_sliceXint(self, row, col):
-        if row.step in (1, None):
+        if row.step in {1, None}:
             return self._get_submatrix(row, col, copy=True)
         return self._major_slice(row)._get_submatrix(minor=col)
 
