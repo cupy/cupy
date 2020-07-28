@@ -558,7 +558,7 @@ class TestRaw(unittest.TestCase):
 
         ker = mod.get_function('test_mulf')
         ker((grid,), (block,), (a, b, out))
-        assert (out == a * b).all()
+        assert cupy.allclose(out, a * b)
 
         ker = mod.get_function('test_divf')
         ker((grid,), (block,), (a, b, out))
@@ -574,7 +574,7 @@ class TestRaw(unittest.TestCase):
 
         ker = mod.get_function('test_fmaf')
         ker((grid,), (block,), (a, b, c, out))
-        assert (out == a * b + c).all()
+        assert cupy.allclose(out, a * b + c)
 
         ker = mod.get_function('test_makef')
         ker((grid,), (block,), (out,))
@@ -620,7 +620,7 @@ class TestRaw(unittest.TestCase):
 
         ker = mod.get_function('test_mul')
         ker((grid,), (block,), (a, b, out))
-        assert (out == a * b).all()
+        assert cupy.allclose(out, a * b)
 
         ker = mod.get_function('test_div')
         ker((grid,), (block,), (a, b, out))
@@ -636,7 +636,7 @@ class TestRaw(unittest.TestCase):
 
         ker = mod.get_function('test_fma')
         ker((grid,), (block,), (a, b, c, out))
-        assert (out == a * b + c).all()
+        assert cupy.allclose(out, a * b + c)
 
         ker = mod.get_function('test_make')
         ker((grid,), (block,), (out,))

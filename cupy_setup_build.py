@@ -828,12 +828,9 @@ def _nvcc_gencode_options(cuda_version):
                      ('compute_61', 'sm_61'),
                      ('compute_70', 'sm_70'),
                      'compute_70']
-    elif cuda_version >= 8000:
-        arch_list = ['compute_30',
-                     'compute_50',
-                     ('compute_60', 'sm_60'),
-                     ('compute_61', 'sm_61'),
-                     'compute_60']
+    else:
+        # This should not happen.
+        assert False
 
     options = []
     for arch in arch_list:
