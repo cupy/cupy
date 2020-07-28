@@ -226,13 +226,16 @@ from numpy import complex128  # NOQA
 # Built-in Python types
 # -----------------------------------------------------------------------------
 
-from numpy import int  # NOQA
+# Note: these builtin types are imported just for compatibility with NumPy.
+# Use of these types are discouraged and will be deprecated in NumPy 1.20.
 
-from numpy import bool  # NOQA
+from builtins import int  # NOQA
 
-from numpy import float  # NOQA
+from builtins import bool  # NOQA
 
-from numpy import complex  # NOQA
+from builtins import float  # NOQA
+
+from builtins import complex  # NOQA
 
 # Not supported by CuPy:
 # from numpy import object
