@@ -2,6 +2,7 @@ import numpy
 
 import cupy
 
+from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters_core
 from cupyx.scipy.ndimage import _filters_generic
 
@@ -249,7 +250,7 @@ def uniform_filter(input, size=3, output=None, mode="reflect", cval=0.0,
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
-    sizes = _filters_core._fix_sequence_arg(size, input.ndim, 'size', int)
+    sizes = _util._fix_sequence_arg(size, input.ndim, 'size', int)
 
     def get(size):
         return None if size <= 1 else cupy.ones(size) / size
@@ -319,8 +320,8 @@ def gaussian_filter(input, sigma, order=0, output=None, mode="reflect",
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
-    sigmas = _filters_core._fix_sequence_arg(sigma, input.ndim, 'sigma', float)
-    orders = _filters_core._fix_sequence_arg(order, input.ndim, 'order', int)
+    sigmas = _util._fix_sequence_arg(sigma, input.ndim, 'sigma', float)
+    orders = _util._fix_sequence_arg(order, input.ndim, 'order', int)
     truncate = float(truncate)
 
     def get(param):
@@ -458,16 +459,16 @@ def generic_laplace(input, derivative2, output=None, mode="reflect",
     if extra_keywords is None:
         extra_keywords = {}
     ndim = input.ndim
-    modes = _filters_core._fix_sequence_arg(mode, ndim, 'mode',
-                                            _filters_core._check_mode)
-    output = _filters_core._get_output(output, input)
+    modes = _util._fix_sequence_arg(mode, ndim, 'mode',
+                                    _util._check_mode)
+    output = _util._get_output(output, input)
     if ndim == 0:
         output[...] = input
         return output
     derivative2(input, 0, output, modes[0], cval,
                 *extra_arguments, **extra_keywords)
     if ndim > 1:
-        tmp = _filters_core._get_output(output.dtype, input)
+        tmp = _util._get_output(output.dtype, input)
         for i in range(1, ndim):
             derivative2(input, i, tmp, modes[i], cval,
                         *extra_arguments, **extra_keywords)
@@ -572,9 +573,9 @@ def generic_gradient_magnitude(input, derivative, output=None,
     if extra_keywords is None:
         extra_keywords = {}
     ndim = input.ndim
-    modes = _filters_core._fix_sequence_arg(mode, ndim, 'mode',
-                                            _filters_core._check_mode)
-    output = _filters_core._get_output(output, input)
+    modes = _util._fix_sequence_arg(mode, ndim, 'mode',
+                                    _util._check_mode)
+    output = _util._get_output(output, input)
     if ndim == 0:
         output[...] = input
         return output
@@ -582,7 +583,7 @@ def generic_gradient_magnitude(input, derivative, output=None,
                *extra_arguments, **extra_keywords)
     output *= output
     if ndim > 1:
-        tmp = _filters_core._get_output(output.dtype, input)
+        tmp = _util._get_output(output.dtype, input)
         for i in range(1, ndim):
             derivative(input, i, tmp, modes[i], cval,
                        *extra_arguments, **extra_keywords)
@@ -1061,7 +1062,7 @@ def generic_filter(input, function, size=None, footprint=None,
     sub = _filters_generic._get_sub_kernel(function)
     if footprint.size == 0:
         return cupy.zeros_like(input)
-    output = _filters_core._get_output(output, input)
+    output = _util._get_output(output, input)
     offsets = _filters_core._origins_to_offsets(origins, footprint.shape)
     args = (filter_size, mode, footprint.shape, offsets, float(cval), int_type)
     if isinstance(sub, cupy.RawKernel):
@@ -1121,12 +1122,12 @@ def generic_filter1d(input, function, filter_size, axis=-1, output=None,
     if filter_size < 1:
         raise RuntimeError('invalid filter size')
     axis = cupy.util._normalize_axis_index(axis, input.ndim)
-    origin = _filters_core._check_origin(origin, filter_size)
-    _filters_core._check_mode(mode)
-    output = _filters_core._get_output(output, input)
+    origin = _util._check_origin(origin, filter_size)
+    _util._check_mode(mode)
+    output = _util._get_output(output, input)
     in_ctype = cupy.core._scalar.get_typename(input.dtype)
     out_ctype = cupy.core._scalar.get_typename(output.dtype)
-    int_type = _filters_core._get_inttype(input)
+    int_type = _util._get_inttype(input)
     n_lines = input.size // input.shape[axis]
     kernel = _filters_generic._get_generic_filter1d(
         function, input.shape[axis], n_lines, filter_size,

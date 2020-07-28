@@ -2,55 +2,11 @@ import warnings
 
 import cupy
 
-
-def _get_output(output, input, shape=None):
-    if not isinstance(output, cupy.ndarray):
-        return cupy.zeros_like(input, shape=shape, dtype=output, order='C')
-    if output.shape != (input.shape if shape is None else tuple(shape)):
-        raise ValueError('output shape is not correct')
-    return output
-
-
-def _fix_sequence_arg(arg, ndim, name, conv=lambda x: x):
-    if isinstance(arg, str):
-        return [conv(arg)] * ndim
-    try:
-        arg = iter(arg)
-    except TypeError:
-        return [conv(arg)] * ndim
-    lst = [conv(x) for x in arg]
-    if len(lst) != ndim:
-        msg = "{} must have length equal to input rank".format(name)
-        raise RuntimeError(msg)
-    return lst
-
-
-def _check_origin(origin, width):
-    origin = int(origin)
-    if (width // 2 + origin < 0) or (width // 2 + origin >= width):
-        raise ValueError('invalid origin')
-    return origin
+from cupyx.scipy.ndimage import _util
 
 
 def _origins_to_offsets(origins, w_shape):
     return tuple(x//2+o for x, o in zip(w_shape, origins))
-
-
-def _check_mode(mode):
-    if mode not in ('reflect', 'constant', 'nearest', 'mirror', 'wrap'):
-        msg = 'boundary mode not supported (actual: {})'.format(mode)
-        raise RuntimeError(msg)
-    return mode
-
-
-def _get_inttype(input):
-    # The integer type to use for indices in the input array
-    # The indices actually use byte positions and we can't just use
-    # input.nbytes since that won't tell us the number of bytes between the
-    # first and last elements when the array is non-contiguous
-    nbytes = sum((x-1)*abs(stride) for x, stride in
-                 zip(input.shape, input.strides)) + input.dtype.itemsize
-    return 'int' if nbytes < (1 << 31) else 'ptrdiff_t'
 
 
 def _check_size_footprint_structure(ndim, size, footprint, structure,
@@ -58,7 +14,7 @@ def _check_size_footprint_structure(ndim, size, footprint, structure,
     if structure is None and footprint is None:
         if size is None:
             raise RuntimeError("no footprint or filter size provided")
-        sizes = _fix_sequence_arg(size, ndim, 'size', int)
+        sizes = _util._fix_sequence_arg(size, ndim, 'size', int)
         if force_footprint:
             return None, cupy.ones(sizes, bool), None
         return sizes, None, None
@@ -93,24 +49,24 @@ def _convert_1d_args(ndim, weights, origin, axis):
     w_shape[axis] = weights.size
     weights = weights.reshape(w_shape)
     origins = [0]*ndim
-    origins[axis] = _check_origin(origin, weights.size)
+    origins[axis] = _util._check_origin(origin, weights.size)
     return weights, tuple(origins)
 
 
 def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights'):
     if input.dtype.kind == 'c':
         raise TypeError('Complex type not supported')
-    _check_mode(mode)
+    _util._check_mode(mode)
     # Weights must always be less than 2 GiB
     if weights.nbytes >= (1 << 31):
         raise RuntimeError('weights must be 2 GiB or less, use FFTs instead')
     weight_dims = [x for x in weights.shape if x != 0]
     if len(weight_dims) != input.ndim:
         raise RuntimeError('{} array has incorrect shape'.format(wghts_name))
-    origins = _fix_sequence_arg(origin, len(weight_dims), 'origin', int)
+    origins = _util._fix_sequence_arg(origin, len(weight_dims), 'origin', int)
     for origin, width in zip(origins, weight_dims):
-        _check_origin(origin, width)
-    return tuple(origins), _get_inttype(input)
+        _util._check_origin(origin, width)
+    return tuple(origins), _util._get_inttype(input)
 
 
 def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
@@ -121,15 +77,16 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     filter. Individual filters can be None causing that axis to be skipped.
     """
     output_orig = output
-    output = _get_output(output, input)
-    modes = _fix_sequence_arg(mode, input.ndim, 'mode', _check_mode)
-    origins = _fix_sequence_arg(origin, input.ndim, 'origin', int)
+    output = _util._get_output(output, input)
+    modes = _util._fix_sequence_arg(mode, input.ndim, 'mode',
+                                    _util._check_mode)
+    origins = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
     n_filters = sum(filter is not None for filter in filters)
     if n_filters == 0:
         output[...] = input
         return output
     # We can't operate in-place efficiently, so use a 2-buffer system
-    temp = _get_output(output.dtype, input) if n_filters > 1 else None
+    temp = _util._get_output(output.dtype, input) if n_filters > 1 else None
     first = True
     iterator = zip(filters, args, modes, origins)
     for axis, (fltr, arg, mode, origin) in enumerate(iterator):
@@ -172,52 +129,16 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     if structure is not None:
         structure = cupy.ascontiguousarray(structure, structure_dtype)
         args.append(structure)
-    output = _get_output(output, input)
+    output = _util._get_output(output, input)
     needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
     if needs_temp:
-        output, temp = _get_output(output.dtype, input), output
+        output, temp = _util._get_output(output.dtype, input), output
     args.append(output)
     kernel(*args)
     if needs_temp:
         temp[...] = output[...]
         output = temp
     return output
-
-
-def _generate_boundary_condition_ops(mode, ix, xsize):
-    if mode == 'reflect':
-        ops = '''
-        if ({ix} < 0) {{
-            {ix} = - 1 -{ix};
-        }}
-        {ix} %= {xsize} * 2;
-        {ix} = min({ix}, 2 * {xsize} - 1 - {ix});'''.format(ix=ix, xsize=xsize)
-    elif mode == 'mirror':
-        ops = '''
-        if ({xsize} == 1) {{
-            {ix} = 0;
-        }} else {{
-            if ({ix} < 0) {{
-                {ix} = -{ix};
-            }}
-            {ix} = 1 + ({ix} - 1) % (({xsize} - 1) * 2);
-            {ix} = min({ix}, 2 * {xsize} - 2 - {ix});
-        }}'''.format(ix=ix, xsize=xsize)
-    elif mode == 'nearest':
-        ops = '''
-        {ix} = min(max({ix}, 0), {xsize} - 1);'''.format(ix=ix, xsize=xsize)
-    elif mode == 'wrap':
-        ops = '''
-        {ix} %= {xsize};
-        if ({ix} < 0) {{
-            {ix} += {xsize};
-        }}'''.format(ix=ix, xsize=xsize)
-    elif mode == 'constant':
-        ops = '''
-        if ({ix} >= {xsize}) {{
-            {ix} = -1;
-        }}'''.format(ix=ix, xsize=xsize)
-    return ops
 
 
 _CAST_FUNCTION = """
@@ -291,7 +212,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     size = ('%s xsize_{j}=x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
             ', xstride_{j}=x.strides()[{j}];' % int_type)
     sizes = [size.format(j=j) for j in range(ndim)]
-    inds = _generate_indices_ops(ndim, int_type, offsets)
+    inds = _util._generate_indices_ops(ndim, int_type, offsets)
     # CArray: remove expr entirely
     expr = ' + '.join(['ix_{}'.format(j) for j in range(ndim)])
 
@@ -311,7 +232,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
             loops.append('{{ {type} ix_{j} = ind_{j} * xstride_{j};'.
                          format(j=j, type=int_type))
         else:
-            boundary = _generate_boundary_condition_ops(
+            boundary = _util._generate_boundary_condition_ops(
                 mode, 'ix_{}'.format(j), 'xsize_{}'.format(j))
             # CArray: last line of string becomes inds[{j}] = ix_{j};
             loops.append('''
@@ -362,11 +283,3 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
                                   options=('--std=c++11',) + options)
-
-
-def _generate_indices_ops(ndim, int_type, offsets):
-    code = '{type} ind_{j} = _i % ysize_{j} - {offset}; _i /= ysize_{j};'
-    body = [code.format(type=int_type, j=j, offset=offsets[j])
-            for j in range(ndim-1, 0, -1)]
-    return '{type} _i = i;\n{body}\n{type} ind_0 = _i - {offset};'.format(
-        type=int_type, body='\n'.join(body), offset=offsets[0])
