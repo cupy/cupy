@@ -1,7 +1,6 @@
 import warnings
 
 import cupy
-import cupyx
 
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import filters
