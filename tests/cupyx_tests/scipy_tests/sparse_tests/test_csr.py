@@ -1745,3 +1745,66 @@ class TestCubSpmv(unittest.TestCase):
             m * x
         # ...then perform the actual computation
         return m * x
+
+
+# It is strange that a known CUB bug is not reproducible in CuPy, see:
+#   - NVlabs/cub#139
+#   - NVlabs/cub#190
+# Let us keep it this way!
+@testing.with_requires('scipy')
+@testing.gpu
+@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+class TestCubSpmvBug(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators(['cub'])
+
+    def tearDown(self):
+        _accelerator.set_routine_accelerators(self.old_accelerators)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_dense_vector_139(self, xp, sp):
+        indices = xp.arange(5, dtype=cupy.int32)
+        indptr = xp.arange(6, dtype=cupy.int32)
+        data = xp.ones((indices.size,), dtype=cupy.float64)
+        m = sp.csr_matrix((data, indices, indptr), shape=(5, 5))
+        x = xp.ones((5,), dtype=cupy.float64)
+
+        if xp is numpy:
+            result = m * x
+            return result
+
+        # xp is cupy, first ensure we really use CUB
+        func = 'cupyx.scipy.sparse.csr.cub.device_csrmv'
+        with testing.AssertFunctionIsCalled(func):
+            m * x
+        # ...then perform the actual computation
+        result = m * x
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_dense_vector_190(self, xp, sp):
+        indptr = xp.array([0, 2, 5, 7, 10, 14, 17, 19, 22, 24],
+                          dtype=cupy.int32)
+        indices = xp.array([1, 3, 0, 2, 4, 1, 5, 0,
+                            4, 6, 1, 3, 5, 7, 2, 4,
+                            8, 3, 7, 4, 6, 8, 5, 7], dtype=cupy.int32)
+        data = xp.ones((indices.size,), dtype=cupy.float64)
+        m = sp.csr_matrix((data, indices, indptr), shape=(9, 9))
+        x = xp.ones((9,), dtype=cupy.float64)
+        expect = xp.array([2, 3, 2, 3, 4, 3, 2, 3, 2], dtype=cupy.float64)
+
+        if xp is numpy:
+            result = m * x
+            assert (result == expect).all()
+            return result
+
+        # xp is cupy, first ensure we really use CUB
+        func = 'cupyx.scipy.sparse.csr.cub.device_csrmv'
+        with testing.AssertFunctionIsCalled(func):
+            m * x
+        # ...then perform the actual computation
+        result = m * x
+        assert (result == expect).all()
+        return result
