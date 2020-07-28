@@ -180,6 +180,20 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def __truediv__(self, other):
+        """Point-wise division by scalar"""
+        if util.isscalarlike(other):
+            if self.dtype == numpy.complex64:
+                # Note: This is a work-around to make the output dtype the same
+                # as SciPy. It might be SciPy version dependent.
+                dtype = numpy.float32
+            else:
+                if cupy.isscalar(other):
+                    dtype = numpy.float64
+                else:
+                    dtype = numpy.promote_types(numpy.float64, other.dtype)
+            d = cupy.array(1. / other, dtype=dtype)
+            return multiply_by_scalar(self, d)
+        # TODO(anaruse): Implement divide by dense or sparse matrix
         raise NotImplementedError
 
     def __rtruediv__(self, other):
