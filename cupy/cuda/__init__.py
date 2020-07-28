@@ -52,12 +52,6 @@ except ImportError:
     nccl_enabled = False
 
 try:
-    from cupy_backends.cuda.libs import cudnn  # NOQA
-    cudnn_enabled = True
-except ImportError:
-    cudnn_enabled = False
-
-try:
     from cupy_backends.cuda.libs import cutensor  # NOQA
     cutensor_enabled = True
 except ImportError:
