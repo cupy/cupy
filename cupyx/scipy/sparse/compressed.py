@@ -12,7 +12,6 @@ from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import data as sparse_data
 from cupyx.scipy.sparse import util
-from cupyx.scipy.sparse import sputils
 
 from cupyx.scipy.sparse import _index
 
@@ -543,7 +542,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if stride != 1:
                 raise ValueError('slicing with step != 1 not supported')
             i0 = min(i0, i1)  # give an empty slice when i0 > i1
-        elif sputils.isintlike(sl):
+
+        # Scipy calls sputils.isintlike(). Comparing directly to int
+        # here to minimize the impact of nested exception catching
+        elif isinstance(sl, _index._int_scalar_types):
             if sl < 0:
                 sl += num
             i0, i1 = sl, sl + 1

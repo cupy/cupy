@@ -6,28 +6,8 @@ from cupy import core
 
 import numpy
 
-from cupyx.scipy.sparse import sputils
-
 
 _int_scalar_types = (int, numpy.integer)
-
-
-def _csr_column_inv_idx(idxs):
-    """Construct an inverted index, mapping the indices
-    of the given array to the their values
-
-    Args
-        idxs : array of indices to invert
-        tpb : threads per block for underlying kernel
-
-    Returns
-        idxs_adj : inverted indices where idxs_adj[idxs[i]] = i
-    """
-    max_idx = idxs.max().item()
-    idxs_adj = cupy.empty(max_idx + 1, dtype=idxs.dtype)
-    idxs_adj[idxs] = cupy.arange(idxs.size, dtype=idxs_adj.dtype)
-
-    return idxs_adj
 
 
 def _get_csr_submatrix(Ap, Aj, Ax,
@@ -174,12 +154,16 @@ class IndexMixin(object):
         M, N = self.shape
         row, col = _unpack_index(key)
 
-        if sputils.isintlike(row):
+        # Scipy calls sputils.isintlike() rather than
+        # isinstance(x, _int_scalar_types). Comparing directly to int
+        # here to minimize the impact of nested exception catching
+
+        if isinstance(row, _int_scalar_types):
             row = _normalize_index(row, M, 'row')
         elif not isinstance(row, slice):
             row = self._asindices(row, M)
 
-        if sputils.isintlike(col):
+        if isinstance(col, _int_scalar_types):
             col = _normalize_index(col, N, 'column')
         elif not isinstance(col, slice):
             col = self._asindices(col, N)
