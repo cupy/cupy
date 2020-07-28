@@ -1120,6 +1120,19 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
             return data.min(axis=1)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_max_sparse_axis_none(self, xp, sp):
+        data = self._make_data_max(xp, sp)
+        return data.max(axis=None)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_max_sparse_axis_none_nonzero(self, xp, sp):
+        data = self._make_data_max_nonzero(xp, sp, axis=None)
+        if xp is cupy:
+            return data.max(axis=None, nonzero=True)
+        else:
+            return data.max(axis=None)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_max_sparse_axis_0(self, xp, sp):
         data = self._make_data_max(xp, sp)
         return data.max(axis=0)
@@ -1311,6 +1324,31 @@ class TestCscMatrixData(unittest.TestCase):
         else:
             t = 'd'
         return m.power(2, t)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_axis_None(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=None)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_axis_0(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=0)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_axis_1(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=1)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_axis_negative_1(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=-1)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_axis_negative_2(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.mean(axis=-2)
 
 
 @testing.parameterize(*testing.product({
