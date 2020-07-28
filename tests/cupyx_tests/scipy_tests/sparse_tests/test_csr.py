@@ -58,6 +58,16 @@ def _make3(xp, sp, dtype):
     return sp.csr_matrix((data, indices, indptr), shape=(4, 3))
 
 
+def _make4(xp, sp, dtype):
+    data = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype)
+    indices = xp.array([0, 2, 3, 0, 1, 3, 0, 1, 2], 'i')
+    indptr = xp.array([0, 3, 6, 9], 'i')
+    # 1, 0, 2, 3
+    # 4, 5, 0, 6
+    # 7, 8, 9, 0
+    return sp.csr_matrix((data, indices, indptr), shape=(3, 4))
+
+
 def _make_unordered(xp, sp, dtype):
     data = xp.array([1, 2, 3, 4], dtype)
     indices = xp.array([1, 0, 1, 2], 'i')
@@ -93,6 +103,24 @@ def _make_square(xp, sp, dtype):
     # 2, 0, 0
     # 0, 0, 3
     return sp.csr_matrix((data, indices, indptr), shape=(3, 3))
+
+
+def _make_row(xp, sp, dtype):
+    data = xp.array([1, 2, 3], dtype)
+    indices = xp.array([0, 2, 3], 'i')
+    indptr = xp.array([0, 3], 'i')
+    # 1, 0, 2, 3
+    return sp.csr_matrix((data, indices, indptr), shape=(1, 4))
+
+
+def _make_col(xp, sp, dtype):
+    data = xp.array([1, 2], dtype)
+    indices = xp.array([0, 0], 'i')
+    indptr = xp.array([0, 1, 1, 2], 'i')
+    # 1
+    # 0
+    # 2
+    return sp.csr_matrix((data, indices, indptr), shape=(3, 1))
 
 
 def _make_shape(xp, sp, dtype):
@@ -1021,6 +1049,61 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m.eliminate_zeros()
         return m.nnz
 
+    # multiply
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_scalar(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return m.multiply(2).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_dense_row(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(4, dtype=self.dtype)
+        return m.multiply(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_dense_col(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(3, dtype=self.dtype).reshape(3, 1)
+        return m.multiply(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_dense_matrix(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(12, dtype=self.dtype).reshape(3, 4)
+        return m.multiply(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_csr_matrix(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = _make4(xp, sp, self.dtype)
+        return m.multiply(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_csr_row(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = _make_row(xp, sp, self.dtype)
+        return m.multiply(x).toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_multiply_csr_col(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = _make_col(xp, sp, self.dtype)
+        return m.multiply(x).toarray()
+
+    # divide
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_divide_scalar(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        y = m / 2
+        return y.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_divide_scalarlike(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        y = m / xp.array(2)
+        return y.toarray()
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
@@ -1140,6 +1223,12 @@ class TestCsrMatrixScipyCompressed(unittest.TestCase):
         return _make(xp, sp, self.dtype).getnnz()
 
 
+@testing.parameterize(*testing.product({
+    # TODO(takagi) Test dtypes
+    # TODO(takagi) Test negative axis
+    'axis': [None, 0, 1],
+    'dense': [False, True],  # means a sparse matrix but all elements filled
+}))
 @testing.with_requires('scipy>=0.19.0')
 class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
 
@@ -1191,210 +1280,46 @@ class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
         return -self._make_data_min_nonzero(xp, sp, axis=axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_min_sparse_axis_none(self, xp, sp):
-        data = self._make_data_min(xp, sp)
-        return data.min(axis=None)
+    def test_min(self, xp, sp):
+        data = self._make_data_min(xp, sp, dense=self.dense)
+        return data.min(axis=self.axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_min_sparse_axis_none_nonzero(self, xp, sp):
-        data = self._make_data_min_nonzero(xp, sp, axis=None)
+    def test_min_nonzero(self, xp, sp):
+        data = self._make_data_min_nonzero(xp, sp, axis=self.axis)
         if xp is cupy:
-            return data.min(axis=None, nonzero=True)
+            return data.min(axis=self.axis, nonzero=True)
         else:
-            return data.min(axis=None)
+            return data.min(axis=self.axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_min_sparse_axis_0(self, xp, sp):
-        data = self._make_data_min(xp, sp)
-        return data.min(axis=0)
+    def test_max(self, xp, sp):
+        data = self._make_data_max(xp, sp, dense=self.dense)
+        return data.max(axis=self.axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_min_dense_axis_0(self, xp, sp):
-        data = self._make_data_min(xp, sp, dense=True)
-        return data.min(axis=0)
-
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_min_axis_0_nonzero(self, xp, sp):
-        data = self._make_data_min_nonzero(xp, sp, axis=0)
+    def test_max_nonzero(self, xp, sp):
+        data = self._make_data_max_nonzero(xp, sp, axis=self.axis)
         if xp is cupy:
-            return data.min(axis=0, nonzero=True)
+            return data.max(axis=self.axis, nonzero=True)
         else:
-            return data.min(axis=0)
+            return data.max(axis=self.axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_min_sparse_axis_1(self, xp, sp):
-        data = self._make_data_min(xp, sp)
-        return data.min(axis=1)
+    def test_argmin(self, xp, sp):
+        # TODO(takagi) Fix axis=None
+        if self.axis is None:
+            pytest.skip()
+        data = self._make_data_min(xp, sp, dense=self.dense)
+        return data.argmin(axis=self.axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_min_dense_axis_1(self, xp, sp):
-        data = self._make_data_min(xp, sp, dense=True)
-        return data.min(axis=1)
-
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_min_axis_1_nonzero(self, xp, sp):
-        data = self._make_data_min_nonzero(xp, sp, axis=1)
-        if xp is cupy:
-            return data.min(axis=1, nonzero=True)
-        else:
-            return data.min(axis=1)
-
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_max_sparse_axis_none(self, xp, sp):
-        data = self._make_data_max(xp, sp)
-        return data.max(axis=None)
-
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_max_sparse_axis_none_nonzero(self, xp, sp):
-        data = self._make_data_max_nonzero(xp, sp, axis=None)
-        if xp is cupy:
-            return data.max(axis=None, nonzero=True)
-        else:
-            return data.max(axis=None)
-
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_max_sparse_axis_0(self, xp, sp):
-        data = self._make_data_max(xp, sp)
-        return data.max(axis=0)
-
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_max_dense_axis_0(self, xp, sp):
-        data = self._make_data_max(xp, sp, dense=True)
-        return data.max(axis=0)
-
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_max_axis_0_nonzero(self, xp, sp):
-        data = self._make_data_max_nonzero(xp, sp, axis=0)
-        if xp is cupy:
-            return data.max(axis=0, nonzero=True)
-        else:
-            return data.max(axis=0)
-
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_max_sparse_axis_1(self, xp, sp):
-        data = self._make_data_max(xp, sp)
-        return data.max(axis=1)
-
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_max_dense_axis_1(self, xp, sp):
-        data = self._make_data_max(xp, sp, dense=True)
-        return data.max(axis=1)
-
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_max_axis_1_nonzero(self, xp, sp):
-        data = self._make_data_max_nonzero(xp, sp, axis=1)
-        if xp is cupy:
-            return data.max(axis=1, nonzero=True)
-        else:
-            return data.max(axis=1)
-
-    def test_argmin_sparse_axis_0(self):
-        dm_data = numpy.random.random((10, 20))
-        dm_data[dm_data < 0.95] = 0
-
-        dm_data = scipy.sparse.csr_matrix(dm_data)
-        cp_matrix = sparse.csr_matrix((cupy.array(dm_data.data),
-                                       cupy.array(dm_data.indices),
-                                       cupy.array(dm_data.indptr)),
-                                      shape=(10, 20))
-
-        da_cupy_values = cupy.asnumpy(cp_matrix.argmin(axis=0))
-        da_scipy_values = numpy.array(dm_data.argmin(axis=0))[0, :]
-        assert numpy.array_equal(da_cupy_values, da_scipy_values)
-
-    def test_argmin_dense_axis_0(self):
-        dm_data = numpy.random.random((10, 20))
-
-        dm_data = scipy.sparse.csr_matrix(dm_data)
-        cp_matrix = sparse.csr_matrix((cupy.array(dm_data.data),
-                                       cupy.array(dm_data.indices),
-                                       cupy.array(dm_data.indptr)),
-                                      shape=(10, 20))
-
-        da_cupy_values = cupy.asnumpy(cp_matrix.argmin(axis=0))
-        da_scipy_values = numpy.array(dm_data.argmin(axis=0))[0, :]
-        assert numpy.array_equal(da_cupy_values, da_scipy_values)
-
-    def test_argmin_sparse_axis_1(self):
-        dm_data = numpy.random.random((10, 20))
-        dm_data[dm_data < 0.95] = 0
-
-        dm_data = scipy.sparse.csr_matrix(dm_data)
-        cp_matrix = sparse.csr_matrix((cupy.array(dm_data.data),
-                                       cupy.array(dm_data.indices),
-                                       cupy.array(dm_data.indptr)),
-                                      shape=(10, 20))
-
-        da_cupy_values = cupy.asnumpy(cp_matrix.argmin(axis=1))
-        da_scipy_values = numpy.array(dm_data.argmin(axis=1))[:, 0]
-        assert numpy.array_equal(da_cupy_values, da_scipy_values)
-
-    def test_argmin_dense_axis_1(self):
-        dm_data = numpy.random.random((10, 20))
-
-        dm_data = scipy.sparse.csr_matrix(dm_data)
-        cp_matrix = sparse.csr_matrix((cupy.array(dm_data.data),
-                                       cupy.array(dm_data.indices),
-                                       cupy.array(dm_data.indptr)),
-                                      shape=(10, 20))
-
-        da_cupy_values = cupy.asnumpy(cp_matrix.argmin(axis=1))
-        da_scipy_values = numpy.array(dm_data.argmin(axis=1))[:, 0]
-        assert numpy.array_equal(da_cupy_values, da_scipy_values)
-
-    def test_argmax_sparse_axis_0(self):
-        dm_data = numpy.random.random((10, 20))
-        dm_data[dm_data < 0.95] = 0
-
-        dm_data = scipy.sparse.csr_matrix(dm_data)
-        cp_matrix = sparse.csr_matrix((cupy.array(dm_data.data),
-                                       cupy.array(dm_data.indices),
-                                       cupy.array(dm_data.indptr)),
-                                      shape=(10, 20))
-
-        da_cupy_values = cupy.asnumpy(cp_matrix.argmax(axis=0))
-        da_scipy_values = numpy.array(dm_data.argmax(axis=0))[0, :]
-        assert numpy.array_equal(da_cupy_values, da_scipy_values)
-
-    def test_argmax_dense_axis_0(self):
-        dm_data = numpy.random.random((10, 20))
-
-        dm_data = scipy.sparse.csr_matrix(dm_data)
-        cp_matrix = sparse.csr_matrix((cupy.array(dm_data.data),
-                                       cupy.array(dm_data.indices),
-                                       cupy.array(dm_data.indptr)),
-                                      shape=(10, 20))
-
-        da_cupy_values = cupy.asnumpy(cp_matrix.argmax(axis=0))
-        da_scipy_values = numpy.array(dm_data.argmax(axis=0))[0, :]
-        assert numpy.array_equal(da_cupy_values, da_scipy_values)
-
-    def test_argmax_sparse_axis_1(self):
-        dm_data = numpy.random.random((10, 20))
-        dm_data[dm_data < 0.95] = 0
-
-        dm_data = scipy.sparse.csr_matrix(dm_data)
-        cp_matrix = sparse.csr_matrix((cupy.array(dm_data.data),
-                                       cupy.array(dm_data.indices),
-                                       cupy.array(dm_data.indptr)),
-                                      shape=(10, 20))
-
-        da_cupy_values = cupy.asnumpy(cp_matrix.argmax(axis=1))
-        da_scipy_values = numpy.array(dm_data.argmax(axis=1))[:, 0]
-        assert numpy.array_equal(da_cupy_values, da_scipy_values)
-
-    def test_argmax_dense_axis_1(self):
-        dm_data = numpy.random.random((10, 20))
-
-        dm_data = scipy.sparse.csr_matrix(dm_data)
-        cp_matrix = sparse.csr_matrix((cupy.array(dm_data.data),
-                                       cupy.array(dm_data.indices),
-                                       cupy.array(dm_data.indptr)),
-                                      shape=(10, 20))
-
-        da_cupy_values = cupy.asnumpy(cp_matrix.argmax(axis=1))
-        da_scipy_values = numpy.array(dm_data.argmax(axis=1))[:, 0]
-        assert numpy.array_equal(da_cupy_values, da_scipy_values)
+    def test_argmax(self, xp, sp):
+        # TODO(takagi) Fix axis=None
+        if self.axis is None:
+            pytest.skip()
+        data = self._make_data_max(xp, sp, dense=self.dense)
+        return data.argmax(axis=self.axis)
 
 
 @testing.parameterize(*testing.product({

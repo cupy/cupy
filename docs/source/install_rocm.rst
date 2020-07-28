@@ -95,12 +95,6 @@ Use pip to uninstall CuPy::
 
   $ pip uninstall cupy
 
-.. note::
-
-   When you upgrade Chainer, ``pip`` sometimes installs the new version without removing the old one in ``site-packages``.
-   In this case, ``pip uninstall`` only removes the latest one.
-   To ensure that CuPy is completely removed, run the above command repeatedly until ``pip`` returns an error.
-
 Upgrade CuPy
 ------------
 

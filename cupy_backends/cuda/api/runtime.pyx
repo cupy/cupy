@@ -95,6 +95,14 @@ cdef extern from '../cupy_cuda.h' nogil:
     int cudaDeviceGetLimit(size_t* value, Limit limit)
     int cudaDeviceSetLimit(Limit limit, size_t value)
 
+    # IPC
+    int cudaIpcCloseMemHandle(void* devPtr)
+    int cudaIpcGetEventHandle(IpcEventHandle* handle, driver.Event event)
+    int cudaIpcGetMemHandle(IpcMemHandle*, void* devPtr)
+    int cudaIpcOpenEventHandle(driver.Event* event, IpcEventHandle handle)
+    int cudaIpcOpenMemHandle(void** devPtr, IpcMemHandle handle,
+                             unsigned int  flags)
+
     # Memory management
     int cudaMalloc(void** devPtr, size_t size)
     int cudaMallocManaged(void** devPtr, size_t size, unsigned int flags)
@@ -325,6 +333,57 @@ cpdef size_t deviceGetLimit(int limit) except? -1:
 cpdef deviceSetLimit(int limit, size_t value):
     status = cudaDeviceSetLimit(<Limit>limit, value)
     check_status(status)
+
+
+###############################################################################
+# IPC operations
+###############################################################################
+cpdef ipcCloseMemHandle(intptr_t devPtr):
+    status = cudaIpcCloseMemHandle(<void*>devPtr)
+    check_status(status)
+
+
+cpdef ipcGetEventHandle(intptr_t event):
+    cdef IpcEventHandle handle
+    status = cudaIpcGetEventHandle(&handle, <driver.Event>event)
+    check_status(status)
+    # We need to do this due to a bug in Cython that
+    # cuts out the 0 bytes in an array of chars when
+    # constructing the python object
+    # resulting in different sizes assignment errors
+    # when recreating the struct from the python
+    # array of bytes
+    reserved = [<unsigned char>handle.reserved[i] for i in range(64)]
+    return bytes(reserved)
+
+cpdef ipcGetMemHandle(intptr_t devPtr):
+    cdef IpcMemHandle handle
+    status = cudaIpcGetMemHandle(&handle, <void*>devPtr)
+    check_status(status)
+    # We need to do this due to a bug in Cython that
+    # when converting an array of chars in C to a python object
+    # it discards the data after the first 0 value
+    # resulting in a loss of data, as this is not a string
+    # but a buffer of bytes
+    reserved = [<unsigned char>handle.reserved[i] for i in range(64)]
+    return bytes(reserved)
+
+cpdef ipcOpenEventHandle(bytes handle):
+    cdef driver.Event event
+    cdef IpcEventHandle handle_
+    handle_.reserved = handle
+    status = cudaIpcOpenEventHandle(&event, handle_)
+    check_status(status)
+    return <intptr_t>event
+
+cpdef ipcOpenMemHandle(bytes handle,
+                       unsigned int flags=cudaIpcMemLazyEnablePeerAccess):
+    cdef void* devPtr
+    cdef IpcMemHandle handle_
+    handle_.reserved = handle
+    status = cudaIpcOpenMemHandle(&devPtr, handle_, flags)
+    check_status(status)
+    return <intptr_t>devPtr
 
 
 ###############################################################################

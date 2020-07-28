@@ -112,7 +112,8 @@ def _get_version(x):
     if isinstance(x, dict):
         os_name = platform.system()
         if os_name not in x:
-            msg = 'No version information specified for the OS {}'.os_name
+            msg = 'No version information specified for the OS: {}'.format(
+                os_name)
             raise ValueError(msg)
         return x[os_name]
     return x
