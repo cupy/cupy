@@ -3,6 +3,9 @@ import warnings
 import cupy
 import cupyx
 
+from cupyx.scipy.ndimage import _util
+from cupyx.scipy.ndimage import filters
+
 
 def choose_conv_method(in1, in2, mode='full'):
     """Find the fastest convolution/correlation method.
@@ -66,17 +69,14 @@ def wiener(im, mysize=None, noise=None):
     """
     if mysize is None:
         mysize = 3
-    mysize = cupyx.scipy.ndimage.filters._fix_sequence_arg(
-        mysize, im.ndim, 'mysize', int)
+    mysize = _util._fix_sequence_arg(mysize, im.ndim, 'mysize', int)
     im = im.astype(float, copy=False)
 
     # Estimate the local mean
-    local_mean = cupyx.scipy.ndimage.uniform_filter(im, mysize,
-                                                    mode='constant')
+    local_mean = filters.uniform_filter(im, mysize, mode='constant')
 
     # Estimate the local variance
-    local_var = cupyx.scipy.ndimage.uniform_filter(im*im, mysize,
-                                                   mode='constant')
+    local_var = filters.uniform_filter(im*im, mysize, mode='constant')
     local_var -= local_mean*local_mean
 
     # Estimate the noise power if needed.
@@ -116,8 +116,7 @@ def order_filter(a, domain, rank):
     if any(x % 2 != 1 for x in domain.shape):
         raise ValueError("Each dimension of domain argument "
                          " should have an odd number of elements.")
-    return cupyx.scipy.ndimage.rank_filter(a, rank, footprint=domain,
-                                           mode='constant')
+    return filters.rank_filter(a, rank, footprint=domain, mode='constant')
 
 
 def medfilt(volume, kernel_size=None):
@@ -147,8 +146,8 @@ def medfilt(volume, kernel_size=None):
                       'volume will be zero-padded')
 
     size = cupy.core.internal.prod(kernel_size)
-    return cupyx.scipy.ndimage.rank_filter(volume, size // 2, size=kernel_size,
-                                           output=float, mode='constant')
+    return filters.rank_filter(volume, size // 2, size=kernel_size,
+                               output=float, mode='constant')
 
 
 def medfilt2d(input, kernel_size=3):
@@ -179,15 +178,14 @@ def medfilt2d(input, kernel_size=3):
         raise ValueError('input must be 2d')
     kernel_size = _get_kernel_size(kernel_size, input.ndim)
     order = kernel_size[0] * kernel_size[1] // 2
-    return cupyx.scipy.ndimage.rank_filter(input, order, size=kernel_size,
-                                           mode='constant')
+    return filters.rank_filter(input, order, size=kernel_size, mode='constant')
 
 
 def _get_kernel_size(kernel_size, ndim):
     if kernel_size is None:
         kernel_size = (3,) * ndim
-    kernel_size = cupyx.scipy.ndimage.filters._fix_sequence_arg(
-        kernel_size, ndim, 'kernel_size', int)
+    kernel_size = ._util._fix_sequence_arg(kernel_size, ndim,
+                                           'kernel_size', int)
     if any((k % 2) != 1 for k in kernel_size):
         raise ValueError("Each element of kernel_size should be odd")
     return kernel_size
