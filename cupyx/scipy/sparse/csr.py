@@ -10,7 +10,7 @@ from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
 from cupyx.scipy.sparse import csc
-from cupyx.scipy.sparse import index
+from cupyx.scipy.sparse import _index
 
 # TODO(leofang): always import cub when hipCUB is supported
 if not cupy.cuda.runtime.is_hip:
@@ -363,7 +363,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             i += M
         if i < 0 or i >= M:
             raise IndexError('index (%d) out of range' % i)
-        indptr, indices, data = index._get_csr_submatrix(
+        indptr, indices, data = _index._get_csr_submatrix(
             self.indptr, self.indices, self.data, i, i + 1, 0, N)
         return csr_matrix((data, indices, indptr), shape=(1, N),
                           dtype=self.dtype, copy=False)
@@ -384,7 +384,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             i += N
         if i < 0 or i >= N:
             raise IndexError('index (%d) out of range' % i)
-        indptr, indices, data = index._get_csr_submatrix(
+        indptr, indices, data = _index._get_csr_submatrix(
             self.indptr, self.indices, self.data, 0, M, i, i + 1)
         return csr_matrix((data, indices, indptr), shape=(M, 1),
                           dtype=self.dtype, copy=False)
@@ -417,9 +417,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
         if stride < 0:
             row_data = row_data[::-1]
-            row_indices = abs(row_indices[::-1])
+            row_indices = cupy.abs(row_indices[::-1])
 
-        shape = (1, int(cupy.ceil(float(stop - start) / stride)))
+        shape = (1, (stop - start + stride - 1) // stride)
         return csr_matrix((row_data, row_indices, row_indptr), shape=shape,
                           dtype=self.dtype, copy=False)
 
