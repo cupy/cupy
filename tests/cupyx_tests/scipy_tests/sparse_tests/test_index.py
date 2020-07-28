@@ -2,17 +2,16 @@ import unittest
 
 from cupy import sparse
 from cupy import testing
-import cupy
 
 import pytest
 
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.5],
+    'density': [0.1, 0.4, 0.9],
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'n_rows': [15000],
-    'n_cols': [15000]
+    'n_rows': [25, 150],
+    'n_cols': [25, 150]
 }))
 @testing.with_requires('scipy')
 @testing.gpu
@@ -27,65 +26,32 @@ class TestIndexing(unittest.TestCase):
         # so we need to cast
         a = a.astype(self.dtype)
 
-        for i in range(2):
+        expected = a.get()
 
-            expected = a.get()
+        if min is not None:
+            expected = expected[maj, min]
+            actual = a[maj, min]
+        else:
+            expected = expected[maj]
+            actual = a[maj]
 
-            import time
-            if min is not None:
+        if sparse.isspmatrix(actual):
+            actual.sort_indices()
+            expected.sort_indices()
 
-                cpu_time = time.time()
-                expected = expected[maj, min]
-                cpu_end = time.time() - cpu_time
-
-                gpu_time = time.time()
-                actual = a[maj, min]
-                cupy.cuda.Stream.null.synchronize()
-                gpu_end = time.time() - gpu_time
-
-                d = a.toarray()
-                cupy.cuda.Stream.null.synchronize()
-                gpu_dense_time = time.time()
-                d[maj, min]
-                cupy.cuda.Stream.null.synchronize()
-                gpu_dense_end = time.time() - gpu_dense_time
-            else:
-                cpu_time = time.time()
-                expected = expected[maj]
-                cpu_end = time.time() - cpu_time
-
-                gpu_time = time.time()
-                actual = a[maj]
-                cupy.cuda.Stream.null.synchronize()
-                gpu_end = time.time() - gpu_time
-
-                d = a.toarray()
-                cupy.cuda.Stream.null.synchronize()
-                gpu_dense_time = time.time()
-                d[maj]
-                cupy.cuda.Stream.null.synchronize()
-                gpu_dense_end = time.time() - gpu_dense_time
-
-        print("format=%s, maj=%s, min=%s, dtype=%s, rows=%s, cols=%s, density=%s, cpu_time=%s, gpu_time=%s, gpu_dense_time=%s" %
-              (self.format, maj, min, self.dtype, self.n_rows, self.n_cols, self.density, cpu_end, gpu_end, gpu_dense_end))
-
-        # if sparse.isspmatrix(actual):
-        #     actual.sort_indices()
-        #     expected.sort_indices()
-        #
-        #     testing.assert_array_equal(
-        #         actual.indptr, expected.indptr)
-        #     testing.assert_array_equal(
-        #         actual.indices, expected.indices)
-        #     testing.assert_array_equal(
-        #         actual.data, expected.data)
-        # else:
-        #     testing.assert_array_equal(
-        #         actual, expected)
+            testing.assert_array_equal(
+                actual.indptr, expected.indptr)
+            testing.assert_array_equal(
+                actual.indices, expected.indices)
+            testing.assert_array_equal(
+                actual.data, expected.data)
+        else:
+            testing.assert_array_equal(
+                actual, expected)
 
     def test_major_slice(self):
-        self._run(slice(5, 900))
-        self._run(slice(9, 500))
+        self._run(slice(5, 9))
+        self._run(slice(9, 5))
 
     def test_major_all(self):
         self._run(slice(None))
@@ -94,14 +60,14 @@ class TestIndexing(unittest.TestCase):
         self._run(10)
 
     def test_major_slice_minor_slice(self):
-        self._run(slice(1, 500), slice(1, 500))
+        self._run(slice(1, 5), slice(1, 5))
 
     def test_major_slice_minor_all(self):
-        self._run(slice(1, 500), slice(None))
-        self._run(slice(500, 1), slice(None))
+        self._run(slice(1, 5), slice(None))
+        self._run(slice(5, 1), slice(None))
 
     def test_major_scalar_minor_slice(self):
-        self._run(5, slice(1, 500))
+        self._run(5, slice(1, 5))
 
     def test_major_scalar_minor_all(self):
         self._run(5, slice(None))
@@ -113,7 +79,7 @@ class TestIndexing(unittest.TestCase):
         self._run(slice(None), 5)
 
     def test_major_all_minor_slice(self):
-        self._run(slice(None), slice(5, 1000))
+        self._run(slice(None), slice(5, 10))
 
     def test_major_all_minor_all(self):
         self._run(slice(None), slice(None))
