@@ -267,6 +267,14 @@ rms_red = cupy.ReductionKernel('X x', 'Y y', 'x*x',
                                'a + b', 'y = a/_in_ind.size()', '0', 'rms')
 
 
+def rms_fuse_wrapper(filter_size):
+    # NOTE: this is written this way since currently fused functions
+    # don't support cupy.size(x) or x.size in place of filter_size
+    def rms_fuse(x):
+        return (x * x).sum()/filter_size
+    return rms_fuse
+
+
 def rms_pyfunc(x):
     return (x * x).sum()/len(x)
 
@@ -282,8 +290,20 @@ lt_red = cupy.ReductionKernel('X x', 'Y y', '_raw_x[_in_ind.size()/2]>x',
                               'a + b', 'y = a', '0', 'lt', reduce_type='int')
 
 
+def lt_fuse_wrapper(filter_size):
+    # NOTE: this is written this way since currently fused functions
+    # don't support cupy.size(x) or x.size in place of filter_size
+    def lt_fuse(x):
+        return (x[filter_size//2] > x).sum()
+    return lt_fuse
+
+
 def lt_pyfunc(x):
     return (x[len(x)//2] > x).sum()
+
+
+def _is_fuse_wrapper(f):
+    return f == rms_fuse_wrapper or f == lt_fuse_wrapper
 
 
 # This tests generic_filter.
@@ -315,7 +335,10 @@ def lt_pyfunc(x):
         })
     ]) + testing.product({
         'filter': ['generic_filter'],
-        'func_or_kernel': [(rms_red, rms_pyfunc), (lt_raw, lt_pyfunc)],
+        'func_or_kernel': [(rms_red, rms_pyfunc),
+                           (rms_fuse_wrapper, rms_pyfunc),
+                           (lt_raw, lt_pyfunc),
+                           (lt_fuse_wrapper, lt_pyfunc)],
         'footprint': [False, True],
         **COMMON_PARAMS,
         'dtype': [numpy.float64],
@@ -328,7 +351,11 @@ class TestGenericFilter(FilterTestCaseBase):
     def test_filter(self, xp, scp):
         # Need to deal with the different versions of the functions given to
         # numpy vs cupy
+        if _is_fuse_wrapper(self.func_or_kernel[0]) and self.footprint:
+            raise unittest.SkipTest("don't know size for fused function")
         self.function = self.func_or_kernel[int(xp == numpy)]
+        if _is_fuse_wrapper(self.function):
+            self.function = self.function(self.ksize**len(self.shape))
         return self._filter(xp, scp)
 
 
