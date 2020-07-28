@@ -2760,10 +2760,11 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
 
 cdef int _cuda_runtime_version = -1
-cdef _tensordot_core_mul_sum = ReductionKernel(
-    'S x, T y', 'U out',
-    'static_cast<U>(x) * static_cast<U>(y)',
-    'a + b', 'out = a', '0', '_tensordot_core_mul_sum')
+# TODO(leofang): revive this when ReductionKernel supports CUB block reduction
+# cdef _tensordot_core_mul_sum = ReductionKernel(
+#     'S x, T y', 'U out',
+#     'static_cast<U>(x) * static_cast<U>(y)',
+#     'a + b', 'out = a', '0', '_tensordot_core_mul_sum')
 
 
 cpdef ndarray tensordot_core(
@@ -2774,7 +2775,7 @@ cpdef ndarray tensordot_core(
     cdef Py_ssize_t mode, handle
     cdef bint use_sgemmEx
     cdef float one_fp32, zero_fp32
-    ret_dtype = a.dtype.char
+    cdef str ret_dtype = a.dtype.char
     if ret_dtype != b.dtype.char:
         ret_dtype = numpy.promote_types(ret_dtype, b.dtype).char
 
@@ -2811,8 +2812,9 @@ cpdef ndarray tensordot_core(
             out = _ndarray_init(ret_shape, dtype)
 
     if m == 1 and n == 1:
-        _tensordot_core_mul_sum(
-            a.ravel(), b.ravel(), _manipulation._reshape(out, ()))
+        # TODO(leofang): switch back to _tensordot_core_mul_sum when
+        # ReductionKernel supports CUB block reduction
+        out = (a.ravel() * b.ravel()).sum(out=_manipulation._reshape(out, ()))
         if out is not ret:
             elementwise_copy(out, ret)
         return ret
