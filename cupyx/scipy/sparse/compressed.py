@@ -611,7 +611,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if step == 1:
             idx_start = self.indptr[start]
             idx_stop = self.indptr[stop]
-            res_indices = cupy.array(self.indices[idx_start:idx_stop], copy=copy)
+            res_indices = cupy.array(self.indices[idx_start:idx_stop],
+                                     copy=copy)
             res_data = cupy.array(self.data[idx_start:idx_stop], copy=copy)
         else:
             res_indices, res_data = _index._csr_row_slice(
