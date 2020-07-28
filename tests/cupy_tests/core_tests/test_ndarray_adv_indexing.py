@@ -609,7 +609,7 @@ class TestArrayAdvancedIndexingSetitemCupyIndices(unittest.TestCase):
 
 
 @testing.gpu
-class TestArrayAdvancedIndexingSetitemDifferetnDtypes(unittest.TestCase):
+class TestArrayAdvancedIndexingSetitemDifferentDtypes(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'],
                                         no_complex=True)

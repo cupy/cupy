@@ -74,6 +74,7 @@ cuda_files = [
     'cupy.core.fusion',
     'cupy.core.new_fusion',
     'cupy.core.raw',
+    'cupy.cuda.common',
     'cupy.cuda.cufft',
     'cupy.cuda.device',
     'cupy.cuda.memory',
@@ -446,7 +447,7 @@ def preconfigure_modules(compiler, settings):
             '',
         ] + lines + [
             'Please refer to the Installation Guide for details:',
-            'https://docs-cupy.chainer.org/en/stable/install.html',
+            'https://docs.cupy.dev/en/stable/install.html',
             '',
         ]
 
@@ -748,7 +749,7 @@ def check_extensions(extensions):
                 raise RuntimeError('''\
 Missing file: {}
 Please install Cython {} or later. Please also check the version of Cython.
-See https://docs-cupy.chainer.org/en/stable/install.html for details.
+See https://docs.cupy.dev/en/stable/install.html for details.
 '''.format(f, required_cython_version))
 
 

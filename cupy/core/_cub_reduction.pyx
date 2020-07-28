@@ -213,6 +213,7 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 
 cdef str _cub_path = _environment.get_cub_path()
+cdef str _nvcc_path = _environment.get_nvcc_path()
 cdef str _cub_header = None
 
 
@@ -242,7 +243,7 @@ cdef str _get_cub_header_include():
 
 
 # make it cpdef'd for unit tests
-cdef inline tuple _can_use_cub_block_reduction(
+cpdef inline tuple _can_use_cub_block_reduction(
         list in_args, list out_args, tuple reduce_axis, tuple out_axis):
     '''
     If CUB BlockReduce can be used, this function returns a tuple of the needed
@@ -309,7 +310,7 @@ cdef inline tuple _can_use_cub_block_reduction(
             return None
 
     # rare event (mainly for conda-forge users): nvcc is not found!
-    if _environment.get_nvcc_path() is None:
+    if _nvcc_path is None:
         return None
 
     return (axis_permutes_cub, contiguous_size, full_reduction)

@@ -6,6 +6,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.core import _accelerator
 
 
 try:
@@ -120,3 +121,60 @@ class TestOptimize(unittest.TestCase):
             with cupyx.optimizing.optimize(key='other_key') as context:
                 with pytest.raises(ValueError):
                     context.load(filepath)
+
+
+# TODO(leofang): check the optimizer is not applicable to the cutensor backend?
+@testing.parameterize(*testing.product({
+    'backend': ([], ['cub'])
+}))
+@testing.gpu
+@testing.with_requires('optuna')
+class TestOptimizeBackends(unittest.TestCase):
+    """This class tests if optuna is in effect for create_reduction_func()"""
+
+    def setUp(self):
+        cupy.core._optimize_config._clear_all_contexts_cache()
+        self.old_reductions = _accelerator.get_reduction_accelerators()
+        _accelerator.set_reduction_accelerators(self.backend)
+
+        # avoid shadowed by the cub module
+        self.old_routines = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators([])
+
+        self.x = testing.shaped_arange((3, 4), cupy, dtype=cupy.float32)
+
+    def tearDown(self):
+        _accelerator.set_routine_accelerators(self.old_routines)
+        _accelerator.set_reduction_accelerators(self.old_reductions)
+
+    def test_optimize1(self):
+        # Ensure the optimizer is run 3 times for all backends.
+        func = 'cupyx.optimizing._optimize._optimize'
+        times_called = 3
+
+        # Setting "wraps" is necessary to avoid compilation errors.
+        with testing.AssertFunctionIsCalled(
+                func, times_called=times_called,
+                wraps=cupyx.optimizing._optimize._optimize):
+            with cupyx.optimizing.optimize():
+                self.x.sum()
+            with cupyx.optimizing.optimize():
+                self.x.sum(axis=1)
+            with cupyx.optimizing.optimize():
+                self.x.sum(axis=0)  # CUB falls back to the simple reduction
+
+    def test_optimize2(self):
+        # Ensure the CUB optimizer is not run when the CUB kernel is not used.
+        func = 'cupy.core._cub_reduction._get_cub_optimized_params'
+        times_called = 2 if ('cub' in self.backend) else 0
+
+        # Setting "wraps" is necessary to avoid errors being silently ignored.
+        with testing.AssertFunctionIsCalled(
+                func, times_called=times_called,
+                wraps=cupy.core._cub_reduction._get_cub_optimized_params):
+            with cupyx.optimizing.optimize():
+                self.x.sum()
+            with cupyx.optimizing.optimize():
+                self.x.sum(axis=1)
+            with cupyx.optimizing.optimize():
+                self.x.sum(axis=0)  # CUB optimizer not used
