@@ -1,3 +1,5 @@
+import numpy
+
 try:
     import scipy.sparse
     _scipy_available = True
@@ -10,6 +12,7 @@ from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
 from cupyx.scipy.sparse import csc
+from cupyx.scipy.sparse import util
 
 # TODO(leofang): always import cub when hipCUB is supported
 if not cupy.cuda.runtime.is_hip:
@@ -204,8 +207,20 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def multiply(self, other):
-        # TODO(unno): Implement multiply
-        raise NotImplementedError
+        """Point-wise multiplication by another matrix, vector or scalar"""
+        if cupy.isscalar(other):
+            return multiply_by_scalar(self, other)
+        elif util.isdense(other):
+            self.sum_duplicates()
+            other = cupy.atleast_2d(other)
+            return multiply_by_dense(self, other)
+        elif isspmatrix_csr(other):
+            self.sum_duplicates()
+            other.sum_duplicates()
+            return multiply_by_csr(self, other)
+        else:
+            msg = 'expected scalar, dense matrix/vector or csr matrixr'
+            raise TypeError(msg)
 
     # TODO(unno): Implement prune
     # TODO(unno): Implement reshape
@@ -357,3 +372,226 @@ def isspmatrix_csr(x):
 
     """
     return isinstance(x, csr_matrix)
+
+
+def multiply_by_scalar(sp, a):
+    data = sp.data * a
+    indices = sp.indices.copy()
+    indptr = sp.indptr.copy()
+    return csr_matrix((data, indices, indptr), shape=sp.shape)
+
+
+def multiply_by_dense(sp, dn):
+    sp_m, sp_n = sp.shape
+    dn_m, dn_n = dn.shape
+    if not (sp_m == dn_m or sp_m == 1 or dn_m == 1):
+        raise ValueError('inconsistent shape')
+    if not (sp_n == dn_n or sp_n == 1 or dn_n == 1):
+        raise ValueError('inconsistent shape')
+    m, n = max(sp_m, dn_m), max(sp_n, dn_n)
+    nnz = sp.nnz * (m // sp_m) * (n // sp_n)
+    dtype = numpy.promote_types(sp.dtype, dn.dtype)
+    data = cupy.empty(nnz, dtype=dtype)
+    indices = cupy.empty(nnz, dtype=sp.indices.dtype)
+    if m > sp_m:
+        if n > sp_n:
+            indptr = cupy.arange(0, nnz+1, n, dtype=sp.indptr.dtype)
+        else:
+            indptr = cupy.arange(0, nnz+1, sp.nnz, dtype=sp.indptr.dtype)
+    else:
+        indptr = sp.indptr.copy()
+        if n > sp_n:
+            indptr *= n
+
+    # out = sp * dn
+    cupy_multiply_by_dense()(sp.data, sp.indptr, sp.indices, sp_m, sp_n,
+                             dn, dn_m, dn_n, indptr, m, n, data, indices)
+
+    return csr_matrix((data, indices, indptr), shape=(m, n))
+
+
+@cupy.util.memoize(for_each_device=True)
+def cupy_multiply_by_dense():
+    return cupy.ElementwiseKernel(
+        '''
+        raw S SP_DATA, raw I SP_INDPTR, raw I SP_INDICES,
+        int32 SP_M, int32 SP_N,
+        raw D DN_DATA, int32 DN_M, int32 DN_N,
+        raw I OUT_INDPTR, int32 OUT_M, int32 OUT_N
+        ''',
+        'O OUT_DATA, I OUT_INDICES',
+        '''
+        int i_out = i;
+        int _min = 0;
+        int _max = OUT_M - 1;
+        int m_out = (_min + _max) / 2;
+        while (_min < _max) {
+            if (i_out < OUT_INDPTR[m_out]) {
+                _max = m_out - 1;
+            }
+            else if (i_out >= OUT_INDPTR[m_out+1]) {
+                _min = m_out + 1;
+            }
+            else {
+                break;
+            }
+            m_out = (_min + _max) / 2;
+        }
+        int i_sp = i_out;
+        if (OUT_M > SP_M && SP_M == 1) {
+            i_sp -= OUT_INDPTR[m_out];
+        }
+        if (OUT_N > SP_N && SP_N == 1) {
+            i_sp /= OUT_N;
+        }
+        int n_out = SP_INDICES[i_sp];
+        if (OUT_N > SP_N && SP_N == 1) {
+            n_out = i_out - OUT_INDPTR[m_out];
+        }
+        int m_dn = m_out;
+        if (OUT_M > DN_M && DN_M == 1) {
+            m_dn = 0;
+        }
+        int n_dn = n_out;
+        if (OUT_N > DN_N && DN_N == 1) {
+            n_dn = 0;
+        }
+        OUT_DATA = (O)(SP_DATA[i_sp] * DN_DATA[n_dn + (DN_N * m_dn)]);
+        OUT_INDICES = n_out;
+        ''',
+        'cupy_multiply_by_dense'
+    )
+
+
+def multiply_by_csr(a, b):
+    a_m, a_n = a.shape
+    b_m, b_n = b.shape
+    if not (a_m == b_m or a_m == 1 or b_m == 1):
+        raise ValueError('inconsistent shape')
+    if not (a_n == b_n or a_n == 1 or b_n == 1):
+        raise ValueError('inconsistent shape')
+    m, n = max(a_m, b_m), max(a_n, b_n)
+    a_nnz = a.nnz * (m // a_m) * (n // a_n)
+    b_nnz = b.nnz * (m // b_m) * (n // b_n)
+    if a_nnz > b_nnz:
+        return multiply_by_csr(b, a)
+    c_nnz = a_nnz
+    dtype = numpy.promote_types(a.dtype, b.dtype)
+    c_data = cupy.empty(c_nnz, dtype=dtype)
+    c_indices = cupy.empty(c_nnz, dtype=a.indices.dtype)
+    if m > a_m:
+        if n > a_n:
+            c_indptr = cupy.arange(0, c_nnz+1, n, dtype=a.indptr.dtype)
+        else:
+            c_indptr = cupy.arange(0, c_nnz+1, a.nnz, dtype=a.indptr.dtype)
+    else:
+        c_indptr = a.indptr.copy()
+        if n > a_n:
+            c_indptr *= n
+    flags = cupy.zeros(c_nnz+1, dtype=a.indices.dtype)
+    nnz_each_row = cupy.zeros(m+1, dtype=a.indptr.dtype)
+
+    # compute c = a * b where necessary and get sparsity pattern of matrix d
+    cupy_multiply_by_csr_step1()(
+        a.data, a.indptr, a.indices, a_m, a_n,
+        b.data, b.indptr, b.indices, b_m, b_n,
+        c_indptr, m, n, c_data, c_indices, flags, nnz_each_row)
+
+    flags = cupy.cumsum(flags, dtype=a.indptr.dtype)
+    d_indptr = cupy.cumsum(nnz_each_row, dtype=a.indptr.dtype)
+    d_nnz = int(d_indptr[-1])
+    d_data = cupy.empty(d_nnz, dtype=dtype)
+    d_indices = cupy.empty(d_nnz, dtype=a.indices.dtype)
+
+    # remove zero elements in matric c
+    cupy_multiply_by_csr_step2()(c_data, c_indices, flags, d_data, d_indices)
+
+    return csr_matrix((d_data, d_indices, d_indptr), shape=(m, n))
+
+
+@cupy.util.memoize(for_each_device=True)
+def cupy_multiply_by_csr_step1():
+    return cupy.ElementwiseKernel(
+        '''
+        raw A A_DATA, raw I A_INDPTR, raw I A_INDICES, int32 A_M, int32 A_N,
+        raw B B_DATA, raw I B_INDPTR, raw I B_INDICES, int32 B_M, int32 B_N,
+        raw I C_INDPTR, int32 C_M, int32 C_N
+        ''',
+        'C C_DATA, I C_INDICES, raw I FLAGS, raw I NNZ_EACH_ROW',
+        '''
+        int i_c = i;
+        int _min = 0;
+        int _max = C_M - 1;
+        int m_c;
+        while (_min <= _max) {
+            m_c = (_min + _max) / 2;
+            if (i_c < C_INDPTR[m_c]) {
+                _max = m_c - 1;
+            }
+            else if (i_c >= C_INDPTR[m_c+1]) {
+                _min = m_c + 1;
+            }
+            else {
+                break;
+            }
+        }
+        int i_a = i;
+        if (C_M > A_M && A_M == 1) {
+            i_a -= C_INDPTR[m_c];
+        }
+        if (C_N > A_N && A_N == 1) {
+            i_a /= C_N;
+        }
+        int n_c = A_INDICES[i_a];
+        if (C_N > A_N && A_N == 1) {
+            n_c = i % C_N;
+        }
+        int m_b = m_c;
+        if (C_M > B_M && B_M == 1) {
+            m_b = 0;
+        }
+        int n_b = n_c;
+        if (C_N > B_N && B_N == 1) {
+            n_b = 0;
+        }
+        int i_b = -1;
+        int j_min = B_INDPTR[m_b];
+        int j_max = B_INDPTR[m_b+1] - 1;
+        while (j_min <= j_max) {
+            int j = (j_min + j_max) / 2;
+            if (n_b < B_INDICES[j]) {
+                j_max = j - 1;
+            }
+            else if (n_b > B_INDICES[j]) {
+                j_min = j + 1;
+            }
+            else {
+                i_b = j;
+                break;
+            }
+        }
+        if (i_b >= 0) {
+            atomicAdd(&(NNZ_EACH_ROW[m_c+1]), 1);
+            FLAGS[i+1] = 1;
+            C_DATA = (C)(A_DATA[i_a] * B_DATA[i_b]);
+            C_INDICES = n_c;
+        }
+        ''',
+        'cupy_multiply_by_csr_step1'
+    )
+
+
+@cupy.util.memoize(for_each_device=True)
+def cupy_multiply_by_csr_step2():
+    return cupy.ElementwiseKernel(
+        'T C_DATA, I C_INDICES, raw I FLAGS',
+        'raw D D_DATA, raw I D_INDICES',
+        '''
+        int j = FLAGS[i];
+        if (j < FLAGS[i+1]) {
+            D_DATA[j] = (D)(C_DATA);
+            D_INDICES[j] = C_INDICES;
+        }
+        ''',
+        'cupy_multiply_by_csr_step2'
+    )

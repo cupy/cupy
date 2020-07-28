@@ -14,8 +14,8 @@ PLATFORM_DARWIN = sys.platform.startswith('darwin')
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
-minimum_cuda_version = 8000
-minimum_cudnn_version = 5000
+minimum_cuda_version = 9000
+minimum_cudnn_version = 7000
 maximum_cudnn_version = 8099
 
 _cuda_path = 'NOT_INITIALIZED'
@@ -302,7 +302,7 @@ def check_cuda_version(compiler, settings):
     if _cuda_version < minimum_cuda_version:
         utils.print_warning(
             'CUDA version is too old: %d' % _cuda_version,
-            'CUDA v7.0 or newer is required')
+            'CUDA 9.0 or newer is required')
         return False
 
     return True

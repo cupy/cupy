@@ -10,7 +10,7 @@ except ImportError:
     thrust = None
 
 try:
-    import cupy.cuda.cudnn as cudnn
+    import cupy_backends.cuda.libs.cudnn as cudnn
 except ImportError:
     cudnn = None
 
@@ -25,7 +25,7 @@ except ImportError:
     cub = None
 
 try:
-    import cupy.cuda.cutensor as cutensor
+    import cupy_backends.cuda.libs.cutensor as cutensor
 except ImportError:
     cutensor = None
 

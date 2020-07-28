@@ -6,6 +6,7 @@ import cupy
 from cupy import _environment
 from cupy import testing
 from cupy.core import _accelerator
+from cupy.core import _cub_reduction
 from cupy.cuda import memory
 
 
@@ -130,13 +131,17 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
 
         a = cupy.random.random((10, 10))
         # this is the only function we can mock; the rest is cdef'd
-        func = ''.join(('cupy.core._cub_reduction.',
-                        '_SimpleCubReductionKernel_get_cached_function'))
-        with testing.AssertFunctionIsCalled(func):
+        func_name = ''.join(('cupy.core._cub_reduction.',
+                             '_SimpleCubReductionKernel_get_cached_function'))
+        func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
+        with testing.AssertFunctionIsCalled(
+                func_name, wraps=func, times_called=2):  # two passes
             a.sum()
-        with testing.AssertFunctionIsCalled(func):
+        with testing.AssertFunctionIsCalled(
+                func_name, wraps=func, times_called=1):  # one pass
             a.sum(axis=1)
-        with testing.AssertFunctionIsCalled(func, times_called=0):
+        with testing.AssertFunctionIsCalled(
+                func_name, wraps=func, times_called=0):  # not used
             a.sum(axis=0)
 
         _accelerator.set_routine_accelerators(old_routine_accelerators)
