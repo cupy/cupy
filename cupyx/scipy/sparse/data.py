@@ -320,7 +320,6 @@ class _minmax_mixin(object):
             cupy.util.experimental(api_name)
         return self._min_or_max(axis, out, cupy.min, explicit)
 
-
     def argmax(self, axis=None, out=None):
         """Returns indices of maximum elements along an axis.
 
@@ -344,7 +343,6 @@ class _minmax_mixin(object):
 
         """
         return self._arg_min_or_max(axis, out, cupy.argmax, cupy.greater)
-
 
     def argmin(self, axis=None, out=None):
         """
