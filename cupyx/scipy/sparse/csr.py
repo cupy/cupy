@@ -149,7 +149,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                         cusparse.csrmvExIsAligned(self, other)):
                     # csrmvEx does not work if nnz == 0
                     csrmv = cusparse.csrmvEx
-                if cusparse.check_availability('csrmv'):
+                elif cusparse.check_availability('csrmv'):
                     csrmv = cusparse.csrmv
                 elif cusparse.check_availability('spmv'):
                     csrmv = cusparse.spmv
