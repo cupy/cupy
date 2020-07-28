@@ -1450,7 +1450,6 @@ class TestGetRandomState2(unittest.TestCase):
         self.rs_dict = generator._random_states
         generator._random_states = {}
         self.cupy_seed = os.getenv('CUPY_SEED')
-        self.chainer_seed = os.getenv('CHAINER_SEED')
 
     def tearDown(self, *args):
         generator._random_states = self.rs_dict
@@ -1458,42 +1457,18 @@ class TestGetRandomState2(unittest.TestCase):
             os.environ.pop('CUPY_SEED', None)
         else:
             os.environ['CUPY_SEED'] = self.cupy_seed
-        if self.chainer_seed is None:
-            os.environ.pop('CHAINER_SEED', None)
-        else:
-            os.environ['CHAINER_SEED'] = self.chainer_seed
 
-    def test_get_random_state_no_cupy_no_chainer_seed(self):
+    def test_get_random_state_no_cupy(self):
         os.environ.pop('CUPY_SEED', None)
-        os.environ.pop('CHAINER_SEED', None)
         rvs0 = self._get_rvs_reset()
         rvs1 = self._get_rvs_reset()
 
         self._check_different(rvs0, rvs1)
 
-    def test_get_random_state_no_cupy_with_chainer_seed(self):
-        rvs0 = self._get_rvs(generator.RandomState(5))
-
-        os.environ.pop('CUPY_SEED', None)
-        os.environ['CHAINER_SEED'] = '5'
-        rvs1 = self._get_rvs_reset()
-
-        self._check_same(rvs0, rvs1)
-
-    def test_get_random_state_with_cupy_no_chainer_seed(self):
+    def test_get_random_state_with_cupy(self):
         rvs0 = self._get_rvs(generator.RandomState(6))
 
         os.environ['CUPY_SEED'] = '6'
-        os.environ.pop('CHAINER_SEED', None)
-        rvs1 = self._get_rvs_reset()
-
-        self._check_same(rvs0, rvs1)
-
-    def test_get_random_state_with_cupy_with_chainer_seed(self):
-        rvs0 = self._get_rvs(generator.RandomState(7))
-
-        os.environ['CUPY_SEED'] = '7'
-        os.environ['CHAINER_SEED'] = '8'
         rvs1 = self._get_rvs_reset()
 
         self._check_same(rvs0, rvs1)

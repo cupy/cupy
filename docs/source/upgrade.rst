@@ -7,6 +7,16 @@ Upgrade Guide
 This is a list of changes introduced in each release that users should be aware of when migrating from older versions.
 Most changes are carefully designed not to break existing code; however changes that may possibly break them are highlighted with a box.
 
+CuPy v8
+=======
+
+Dropping Support of CUDA 8.0 and 9.1
+------------------------------------
+
+Starting from CuPy v8, CUDA 8.0 and 9.1 are no longer supported.
+Use CUDA 9.0, 9.2, 10.0 or later.
+
+
 CuPy v7
 =======
 
