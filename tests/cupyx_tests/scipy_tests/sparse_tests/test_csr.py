@@ -1765,8 +1765,8 @@ class TestCubSpmvBug(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_dense_vector_139(self, xp, sp):
-        indices = xp.arange(5, dtype=cupy.int32)
         indptr = xp.arange(6, dtype=cupy.int32)
+        indices = xp.arange(5, dtype=cupy.int32)
         data = xp.ones((indices.size,), dtype=cupy.float64)
         m = sp.csr_matrix((data, indices, indptr), shape=(5, 5))
         x = xp.ones((5,), dtype=cupy.float64)
@@ -1807,4 +1807,31 @@ class TestCubSpmvBug(unittest.TestCase):
         # ...then perform the actual computation
         result = m * x
         assert (result == expect).all()
+        return result
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mul_dense_vector_alignment(self, xp, sp):
+        # need to allocate unpadded memory to show this
+        if xp is cupy:
+            old_pool = cupy.cuda.get_allocator()
+            cupy.cuda.set_allocator(None)
+
+        N = 31
+        indptr = xp.arange(N+1, dtype=xp.int32)
+        indices = xp.arange(N, dtype=xp.int32)
+        data = testing.shaped_random((N,), xp, dtype=xp.float64)
+        m = sp.csr_matrix((data, indices, indptr), shape=(N, N))
+        x = xp.ones((N,), dtype=cupy.float64)
+
+        if xp is numpy:
+            result = m * x
+            return result
+
+        # xp is cupy, first ensure we really use CUB
+        func = 'cupyx.scipy.sparse.csr.cub.device_csrmv'
+        with testing.AssertFunctionIsCalled(func):
+            m * x
+        # ...then perform the actual computation
+        result = m * x
+        cupy.cuda.set_allocator(old_pool)
         return result
