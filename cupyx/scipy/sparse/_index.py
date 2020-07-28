@@ -42,7 +42,10 @@ def _get_csr_submatrix(Ap, Aj, Ax,
     Aj_copy = cupy.empty(Aj.size+1, dtype=Aj.dtype)
     Aj_copy[:-1] = Aj
 
-    Aj_copy[cupy.where((Aj < start_min) | (Aj >= stop_min))] = -1
+    # Aj_copy[cupy.where((Aj < start_min) | (Aj >= stop_min))] = -1
+
+    Aj_copy[Aj_copy < start_min] = -1
+    Aj_copy[Aj_copy >= stop_min] = -1
 
     mask = Aj_copy > -1
 
