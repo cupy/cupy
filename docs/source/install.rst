@@ -185,12 +185,6 @@ Use pip to uninstall CuPy::
 
 .. note::
 
-   When you upgrade Chainer, ``pip`` sometimes installs the new version without removing the old one in ``site-packages``.
-   In this case, ``pip uninstall`` only removes the latest one.
-   To ensure that CuPy is completely removed, run the above command repeatedly until ``pip`` returns an error.
-
-.. note::
-
    If you are using a wheel, ``cupy`` shall be replaced with ``cupy-cudaXX`` (where XX is a CUDA version number).
 
 .. note::
@@ -242,15 +236,6 @@ Or run the interpreter directly::
 
 FAQ
 ---
-
-Warning message "cuDNN is not enabled" appears when using Chainer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You failed to build CuPy with cuDNN.
-If you don't need cuDNN, ignore this message.
-Otherwise, retry to install CuPy with cuDNN.
-
-See :ref:`install_cudnn` and :ref:`install_error` for details.
 
 .. _install_error:
 
