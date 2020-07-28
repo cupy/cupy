@@ -354,7 +354,7 @@ def preconfigure_modules(compiler, settings):
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
                 'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC',
-                'ROCM_HOME', 'CUPY_CUB_PATH']:
+                'ROCM_HOME']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [
@@ -405,11 +405,7 @@ def preconfigure_modules(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']
-        elif module['name'] == 'thrust' and nvcc_path is None:
-            installed = True
-            errmsg = ['nvcc command could not be found in PATH.',
-                      'Check your PATH environment variable.']
-        elif module['name'] == 'cub' and nvcc_path is None:
+        elif module['name'] in ('thrust', 'cub') and nvcc_path is None:
             installed = True
             errmsg = ['nvcc command could not be found in PATH.',
                       'Check your PATH environment variable.']
