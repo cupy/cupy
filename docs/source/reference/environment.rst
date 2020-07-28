@@ -40,9 +40,7 @@ Here are the environment variables CuPy uses.
 |                                    | See :doc:`memory` for details.                     |
 |                                    | ``0`` (unlimited) is used by default.              |
 +------------------------------------+----------------------------------------------------+
-| ``CUPY_SEED``                      | Set the seed for random number generators. For     |
-|                                    | historical reasons ``CHAINER_SEED`` is used if     |
-|                                    | ``CUPY_SEED`` is unspecified.                      |
+| ``CUPY_SEED``                      | Set the seed for random number generators.         |
 +------------------------------------+----------------------------------------------------+
 | ``CUPY_EXPERIMENTAL_SLICE_COPY``   | If set to 1, the following syntax is enabled:      |
 |                                    | ``cupy_ndarray[:] = numpy_ndarray``.               |
