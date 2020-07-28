@@ -1091,6 +1091,19 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = _make_col(xp, sp, self.dtype)
         return m.multiply(x).toarray()
 
+    # divide
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_divide_scalar(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        y = m / 2
+        return y.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_divide_scalarlike(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        y = m / xp.array(2)
+        return y.toarray()
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
