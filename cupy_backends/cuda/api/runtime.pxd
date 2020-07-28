@@ -95,6 +95,13 @@ cdef extern from *:
         # TODO(leofang): support mipmap?
 
 
+    ctypedef struct IpcMemHandle 'cudaIpcMemHandle_t':
+        unsigned char[64] reserved
+
+    ctypedef struct IpcEventHandle 'cudaIpcEventHandle_t':
+        unsigned char[64] reserved
+
+
 ###############################################################################
 # Enum
 ###############################################################################
@@ -108,6 +115,8 @@ cpdef enum:
 
     cudaMemoryTypeHost = 1
     cudaMemoryTypeDevice = 2
+
+    cudaIpcMemLazyEnablePeerAccess = 1
 
     cudaMemAttachGlobal = 1
     cudaMemAttachHost = 2
