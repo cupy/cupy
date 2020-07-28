@@ -142,23 +142,23 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             elif other.ndim == 1:
                 self.sum_duplicates()
                 other = cupy.asfortranarray(other)
-                # csrmvEx does not work if nnz == 0
-                if self.nnz > 0 and cusparse.csrmvExIsAligned(self, other):
-                    for accelerator in _accelerator.get_routine_accelerators():
-                        if (accelerator == _accelerator.ACCELERATOR_CUB
-                                and other.flags.c_contiguous):
-                            return cub.device_csrmv(
-                                self.shape[0], self.shape[1], self.nnz,
-                                self.data, self.indptr, self.indices, other)
-                    return cusparse.csrmvEx(self, other)
+                for accelerator in _accelerator.get_routine_accelerators():
+                    if (accelerator == _accelerator.ACCELERATOR_CUB
+                            and other.flags.c_contiguous):
+                        return cub.device_csrmv(
+                            self.shape[0], self.shape[1], self.nnz,
+                            self.data, self.indptr, self.indices, other)
+                if (cusparse.check_availability('csrmvEx') and self.nnz > 0 and
+                        cusparse.csrmvExIsAligned(self, other)):
+                    # csrmvEx does not work if nnz == 0
+                    csrmv = cusparse.csrmvEx
+                elif cusparse.check_availability('csrmv'):
+                    csrmv = cusparse.csrmv
+                elif cusparse.check_availability('spmv'):
+                    csrmv = cusparse.spmv
                 else:
-                    if cusparse.check_availability('csrmv'):
-                        csrmv = cusparse.csrmv
-                    elif cusparse.check_availability('spmv'):
-                        csrmv = cusparse.spmv
-                    else:
-                        raise NotImplementedError
-                    return csrmv(self, other)
+                    raise NotImplementedError
+                return csrmv(self, other)
             elif other.ndim == 2:
                 self.sum_duplicates()
                 if cusparse.check_availability('csrmm2'):
