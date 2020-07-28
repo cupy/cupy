@@ -27,30 +27,27 @@ class TestIndexing(unittest.TestCase):
         # so we need to cast
         a = a.astype(self.dtype)
 
-        maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
-        min_h = min.get() if isinstance(min, cupy.ndarray) else min
-
         expected = a.get()
 
         if min is not None:
-            expected = expected[maj_h, min_h]
+            expected = expected[maj, min]
             actual = a[maj, min]
         else:
-            expected = expected[maj_h]
+            expected = expected[maj]
             actual = a[maj]
 
         if sparse.isspmatrix(actual):
             actual.sort_indices()
             expected.sort_indices()
 
-            cupy.testing.assert_array_equal(
+            testing.assert_array_equal(
                 actual.indptr, expected.indptr)
-            cupy.testing.assert_array_equal(
+            testing.assert_array_equal(
                 actual.indices, expected.indices)
-            cupy.testing.assert_array_equal(
+            testing.assert_array_equal(
                 actual.data, expected.data)
         else:
-            cupy.testing.assert_array_equal(
+            testing.assert_array_equal(
                 actual, expected)
 
     def test_major_slice(self):

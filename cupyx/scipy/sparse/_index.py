@@ -375,7 +375,7 @@ def _first_element_bool(idx, max_dim=2):
     if max_dim < 1:
         return None
     try:
-        first = next(iter(idx), None)
+        first = idx[0] if len(idx) > 0 else None
     except TypeError:
         return None
     if isinstance(first, bool):
