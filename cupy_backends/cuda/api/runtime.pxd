@@ -94,7 +94,6 @@ cdef extern from *:
         unsigned int maxAnisotropy
         # TODO(leofang): support mipmap?
 
-
     ctypedef struct IpcMemHandle 'cudaIpcMemHandle_t':
         unsigned char[64] reserved
 
