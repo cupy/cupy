@@ -92,6 +92,15 @@ class TestIndexing(unittest.TestCase):
     def test_major_all_minor_all(self):
         self._run(slice(None), slice(None))
 
+    def test_ellipsis(self):
+        self._run(Ellipsis)
+        self._run(Ellipsis, 1)
+        self._run(1, Ellipsis)
+        self._run(Ellipsis, slice(None))
+        self._run(slice(None), Ellipsis)
+        self._run(Ellipsis, slice(1, None))
+        self._run(slice(1, None), Ellipsis)
+
     # Major Indexing
 
     def test_major_bool_fancy(self):
@@ -108,14 +117,13 @@ class TestIndexing(unittest.TestCase):
         self._run([1, 5, 4, 5, 1], slice(1, 5))
         self._run([1, 5, 4, 5, 1], slice(5, 1, 1))
 
-    def test_ellipsis(self):
-        self._run(Ellipsis)
-        self._run(Ellipsis, 1)
-        self._run(1, Ellipsis)
-        self._run(Ellipsis, slice(None))
-        self._run(slice(None), Ellipsis)
-        self._run(Ellipsis, slice(1, None))
-        self._run(slice(1, None), Ellipsis)
+    # Minor Indexing
+
+    def test_major_slice_minor_fancy(self):
+        self._run(slice(1, 10, 2), [1, 5, 4, 5, 2, 4, 1])
+
+    def test_major_scalar_minor_fancy(self):
+        self._run(5, [1, 5, 4])
 
     def test_bad_indexing(self):
         with pytest.raises(IndexError):
