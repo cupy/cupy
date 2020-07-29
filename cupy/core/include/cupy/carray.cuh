@@ -1,5 +1,20 @@
 #pragma once
 
+#if __cplusplus >= 201103
+#ifdef __CUDACC_RTC__
+// in NVRTC std:initializer_list is pre-defined (no need to include it) and
+// <type_traits> are not available, but we only need enable_if from there
+namespace std {
+template<bool B, class T=void> struct enable_if {};
+template<class T> struct enable_if<true, T> { typedef T type; };
+}
+#else
+// in NVCC we need to include both of these
+#include <type_traits>
+#include <initializer_list>
+#endif
+#endif
+
 // math
 #ifndef M_PI
 #define M_PI 3.1415926535897932384626433832795
@@ -186,6 +201,67 @@ private:
   ptrdiff_t strides_[ndim];
 
 public:
+  // Constructor supports pointers or initializer lists and strides is optional
+  // as long as _c_contiguous=true.
+  //    CArray<T, 3> ca(data, shape, strides);
+  //    CArray<T, 3, true> ca(data, shape);
+  //    CArray<T, 3> ca(data, {1, 2, 3}, {48, 24, 8});
+  //    CArray<T, 3, true> ca(data, {1, 2, 3});
+  // Initializer lists and optional strides are only supported with -std=c++11
+  // or higher.
+
+  template <typename Int1, typename Int2>
+  __device__ CArray(T* data, const Int1* shape, const Int2* strides)
+      : data_(data), size_(1)
+  {
+    if (_c_contiguous) {
+      assert(strides[_ndim-1] == sizeof(T));
+      for (int i = _ndim-1; i > 0; i--) {
+        assert(strides[i-1] == shape[i] * strides[i]);
+      }
+    }
+    for (int i = 0; i < _ndim; i++) {
+      this->size_ *= shape[i];
+      this->shape_[i] = shape[i];
+      this->strides_[i] = strides[i];
+    }
+  }
+
+#if __cplusplus >= 201103
+  template <typename Int, typename U=T>
+  __device__ CArray(typename std::enable_if<_c_contiguous, U>::type* data,
+                    const Int* shape)
+      : data_(data), size_(1)
+  {
+    for (int i = 0; i < _ndim; i++) {
+      this->size_ *= shape[i];
+      this->shape_[i] = shape[i];
+    }
+    this->strides_[_ndim-1] = sizeof(T);
+    for (int i = _ndim-1; i > 0; i--) {
+      this->strides_[i-1] = shape[i] * this->strides_[i];
+    }
+  }
+
+  template <typename Int, typename U=T>
+  __device__ CArray(typename std::enable_if<_c_contiguous, U>::type* data,
+                    const std::initializer_list<Int> shape)
+      : CArray(data, shape.begin())
+  {
+    assert(shape.size() == _ndim);
+  }
+
+  template <typename Int1, typename Int2>
+  __device__ CArray(T* data,
+                    const std::initializer_list<Int1> shape,
+                    const std::initializer_list<Int2> strides)
+      : CArray(data, shape.begin(), strides.begin())
+  {
+    assert(shape.size() == _ndim);
+    assert(strides.size() == _ndim);
+  }
+#endif
+
   __device__ ptrdiff_t size() const {
     return size_;
   }
@@ -197,6 +273,24 @@ public:
   __device__ const ptrdiff_t* strides() const {
     return strides_;
   }
+
+#if __cplusplus >= 201103
+  template <typename Int>
+  __device__ T& operator[](const std::initializer_list<Int> idx_) {
+    assert(idx_.size() == _ndim);
+    Int idx[ndim];
+    memcpy(idx, idx_.begin(), ndim*sizeof(Int));
+    return this->operator[](idx);
+  }
+
+  template <typename Int>
+  __device__ const T& operator[](const std::initializer_list<Int> idx_) const {
+    assert(idx_.size() == _ndim);
+    Int idx[ndim];
+    memcpy(idx, idx_.begin(), ndim*sizeof(Int));
+    return this->operator[](idx);
+  }
+#endif
 
   template <typename Int>
   __device__ T& operator[](const Int (&idx)[ndim]) {
@@ -267,6 +361,27 @@ private:
 public:
   static const int ndim = 0;
 
+  __device__ explicit CArray(T* data) : data_(data), size_(1) { }
+
+  template <typename Int>
+  __device__ CArray(T* data, Int size) : data_(data), size_(size) { }
+
+  // These constructors are just to match the non-0-dim constructors
+  template <typename Int1, typename Int2>
+  __device__ CArray(T* data, const Int1* shape, const Int2* strides)
+      : data_(data), size_(1) { }
+
+#if __cplusplus >= 201103
+  __device__ CArray(T* data,
+                    const std::initializer_list<int> shape,
+                    const std::initializer_list<int> strides)
+      : data_(data), size_(1)
+  {
+    assert(shape.size() == 0);
+    assert(strides.size() == 0);
+  }
+#endif
+
   __device__ ptrdiff_t size() const {
     return size_;
   }
@@ -302,6 +417,50 @@ private:
   typedef ptrdiff_t index_t[ndim];
 
 public:
+  // Constructor supports pointers or initializer lists and index is optional
+  //    CIndexer<3> ca(shape, index);
+  //    CIndexer<3> ca({1, 2, 3}, {0, 1, 1});
+  //    CIndexer<3> ca = {1, 2, 3};
+  // Initializer lists are only supported with -std=c++11 or higher.
+
+  template <typename Int>
+  __device__ explicit CIndexer(const Int* shape)
+      : size_(1) {
+    for (int i = 0; i < _ndim; i++) {
+      this->size_ *= shape[i];
+      this->shape_[i] = shape[i];
+      this->index_[i] = 0;
+    }
+  }
+
+  template <typename Int1, typename Int2>
+  __device__ CIndexer(const Int1* shape, const Int2* index)
+      : size_(1) {
+    for (int i = 0; i < _ndim; i++) {
+      this->size_ *= shape[i];
+      this->shape_[i] = shape[i];
+      this->index_[i] = index[i];
+    }
+  }
+
+#if __cplusplus >= 201103
+  template <typename Int>
+  __device__ CIndexer(const std::initializer_list<Int> shape)
+      : CIndexer(shape.begin())
+  {
+    assert(shape.size() == _ndim);
+  }
+
+  template <typename Int1, typename Int2>
+  __device__ CIndexer(const std::initializer_list<Int1> shape,
+                      const std::initializer_list<Int2> index)
+      : CIndexer(shape.begin(), index.begin())
+  {
+    assert(shape.size() == _ndim);
+    assert(index.size() == _ndim);
+  }
+#endif
+
   __device__ ptrdiff_t size() const {
     return size_;
   }
@@ -356,6 +515,35 @@ private:
 
 public:
   static const int ndim = 0;
+
+  __device__ CIndexer() : size_(1) { }
+
+  template <typename Int>
+  __device__ explicit CIndexer(Int size) : size_(size) { }
+
+  // These constructors are just to match the non-0-dim constructors
+  template <typename Int>
+  __device__ explicit CIndexer(const Int* shape) : size_(1) { }
+
+  template <typename Int1, typename Int2>
+  __device__ CIndexer(const Int1* shape, const Int2* strides)
+      : size_(1) { }
+
+#if __cplusplus >= 201103
+  __device__ CIndexer(const std::initializer_list<int> shape)
+      : size_(1)
+  {
+    assert(shape.size() == 0);
+  }
+
+  __device__ CIndexer(const std::initializer_list<int> shape,
+                      const std::initializer_list<int> index)
+      : size_(1)
+  {
+    assert(shape.size() == 0);
+    assert(index.size() == 0);
+  }
+#endif
 
   __device__ ptrdiff_t size() const {
     return size_;
