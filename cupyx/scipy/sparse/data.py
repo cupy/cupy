@@ -265,7 +265,8 @@ class _minmax_mixin(object):
             explicit (bool): Return the maximum value explicitly specified and
                 ignore all implicit zero entries. If the dimension has no
                 explicit values, a zero is then returned to indicate that it is
-                the only implicit value.
+                the only implicit value. This parameter is experimental and may
+                change in the future.
 
         Returns:
             (cupy.ndarray or float): Maximum of ``a``. If ``axis`` is
@@ -300,7 +301,8 @@ class _minmax_mixin(object):
             explicit (bool): Return the minimum value explicitly specified and
                 ignore all implicit zero entries. If the dimension has no
                 explicit values, a zero is then returned to indicate that it is
-                the only implicit value.
+                the only implicit value. This parameter is experimental and may
+                change in the future.
 
         Returns:
             (cupy.ndarray or float): Minimum of ``a``. If ``axis`` is
