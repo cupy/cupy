@@ -297,7 +297,7 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name):
         return c_out, n_out
     if numpy.isscalar(c_out) and numpy.isscalar(n_out):
         # python scalar output case.
-        return cupy.array(c_out), numpy.array(c_out)
+        return cupy.array(c_out), numpy.array(n_out)
     raise AssertionError(
         'numpy and cupy returns different type of return value:\n'
         'cupy: {}\nnumpy: {}'.format(
