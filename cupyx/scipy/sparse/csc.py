@@ -9,6 +9,7 @@ from cupy import cusparse
 import cupyx.scipy.sparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
+from cupyx.scipy.sparse import _index
 
 
 class csc_matrix(compressed._compressed_sparse_matrix):
@@ -301,11 +302,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.csc_matrix: Sparse matrix with single row
         """
         M, N = self.shape
-        i = int(i)
-        if i < 0:
-            i += M
-        if i < 0 or i >= M:
-            raise IndexError('index (%d) out of range' % i)
+        i = _index._normalize_index(i, M, 'index')
         return self._get_submatrix(minor=i).tocsr()
 
     def getcol(self, i):
@@ -319,23 +316,19 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.csc_matrix: Sparse matrix with single column
         """
         M, N = self.shape
-        i = int(i)
-        if i < 0:
-            i += N
-        if i < 0 or i >= N:
-            raise IndexError('index (%d) out of range' % i)
+        i = _index._normalize_index(i, N, 'index')
         return self._get_submatrix(major=i, copy=True)
 
     def _get_intXarray(self, row, col):
         return self._major_index_fancy(col)._get_submatrix(minor=row)
 
     def _get_intXslice(self, row, col):
-        if col.step in (1, None):
+        if col.step in {1, None}:
             return self._get_submatrix(major=col, minor=row, copy=True)
         return self._major_slice(col)._get_submatrix(minor=row)
 
     def _get_sliceXint(self, row, col):
-        if row.step in (1, None):
+        if row.step in {1, None}:
             return self._get_submatrix(major=col, minor=row, copy=True)
         return self._get_submatrix(major=col)._minor_slice(row)
 

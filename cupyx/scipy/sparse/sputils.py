@@ -1,6 +1,4 @@
 import cupy
-import operator
-import warnings
 
 from cupy.core._dtype import get_dtype
 
@@ -17,29 +15,6 @@ def isdense(x):
 def isscalarlike(x):
     """Is x either a scalar, an array scalar, or a 0-dim array?"""
     return cupy.isscalar(x) or (isdense(x) and x.ndim == 0)
-
-
-def isintlike(x):
-    """Is x appropriate as an index into a sparse matrix? Returns True
-    if it can be cast safely to a machine int.
-    """
-    # Fast-path check to eliminate non-scalar values. operator.index would
-    # catch this case too, but the exception catching is slow.
-    # if cupy.ndim(x) != 0:
-    if isinstance(x, cupy.core.ndarray) and x.ndim != 0:
-        return False
-    try:
-        operator.index(x)
-    except (TypeError, ValueError):
-        try:
-            loose_int = bool(int(x) == x)
-        except (TypeError, ValueError):
-            return False
-        if loose_int:
-            warnings.warn("Inexact indices into sparse matrices are "
-                          "deprecated", DeprecationWarning)
-        return loose_int
-    return True
 
 
 def get_index_dtype(arrays=(), maxval=None, check_contents=False):
@@ -88,6 +63,29 @@ def get_index_dtype(arrays=(), maxval=None, check_contents=False):
             break
 
     return dtype
+
+
+def validateaxis(axis):
+    if axis is not None:
+        axis_type = type(axis)
+
+        # In NumPy, you can pass in tuples for 'axis', but they are
+        # not very useful for sparse matrices given their limited
+        # dimensions, so let's make it explicit that they are not
+        # allowed to be passed in
+        if axis_type == tuple:
+            raise TypeError(("Tuples are not accepted for the 'axis' "
+                             "parameter. Please pass in one of the "
+                             "following: {-2, -1, 0, 1, None}."))
+
+        # If not a tuple, check that the provided axis is actually
+        # an integer and raise a TypeError similar to NumPy's
+        if not cupy.issubdtype(cupy.dtype(axis_type), cupy.integer):
+            raise TypeError("axis must be an integer, not {name}"
+                            .format(name=axis_type.__name__))
+
+        if not (-2 <= axis <= 1):
+            raise ValueError("axis out of range")
 
 
 def upcast(*args):

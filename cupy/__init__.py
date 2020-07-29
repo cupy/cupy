@@ -33,7 +33,7 @@ If you are building CuPy from source, please check your environment, uninstall C
   $ pip install cupy --no-cache-dir -vvvv
 
 Check the Installation Guide for details:
-  https://docs-cupy.chainer.org/en/latest/install.html
+  https://docs.cupy.dev/en/latest/install.html
 
 original error: {}'''.format(exc_info[1]))  # NOQA
 
@@ -226,13 +226,16 @@ from numpy import complex128  # NOQA
 # Built-in Python types
 # -----------------------------------------------------------------------------
 
-from numpy import int  # NOQA
+# After NumPy 1.20 is released, CuPy should mimic the DeprecationWarning
+# behavior for these types
 
-from numpy import bool  # NOQA
+from builtins import int  # NOQA
 
-from numpy import float  # NOQA
+from builtins import bool  # NOQA
 
-from numpy import complex  # NOQA
+from builtins import float  # NOQA
+
+from builtins import complex  # NOQA
 
 # Not supported by CuPy:
 # from numpy import object

@@ -111,8 +111,6 @@ class TestCorrelateShapeCombination(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'full', 'same']
 }))
-@unittest.skipIf(
-    cupy.cuda.cufft.getVersion() == 10000, 'Causes large precision errors')
 class TestCorrelate(unittest.TestCase):
 
     @testing.for_all_dtypes()
