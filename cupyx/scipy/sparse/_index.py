@@ -179,8 +179,7 @@ class IndexMixin(object):
         Subclasses that need special validation can override this method.
         """
         try:
-            dtype = 'int32' if idx.dtype.itemsize < 8 else 'int64'
-            x = cupy.asarray(idx, dtype=dtype)
+            x = cupy.asarray(idx, dtype=self.indices.dtype)
         except (ValueError, TypeError, MemoryError):
             raise IndexError('invalid index')
 
