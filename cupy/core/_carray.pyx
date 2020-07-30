@@ -29,7 +29,7 @@ cdef class CIndexer(function.CPointer):
     cdef void init(self, Py_ssize_t size, const shape_t &shape):
         self.val.size = size
         cdef Py_ssize_t i
-        for i in range(shape.size()):
+        for i in range(<Py_ssize_t>shape.size()):
             self.val.shape_and_index[i] = shape[i]
         self.ptr = <void*>&self.val
 

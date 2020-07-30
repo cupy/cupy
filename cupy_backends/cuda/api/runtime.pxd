@@ -94,6 +94,12 @@ cdef extern from *:
         unsigned int maxAnisotropy
         # TODO(leofang): support mipmap?
 
+    ctypedef struct IpcMemHandle 'cudaIpcMemHandle_t':
+        unsigned char[64] reserved
+
+    ctypedef struct IpcEventHandle 'cudaIpcEventHandle_t':
+        unsigned char[64] reserved
+
 
 ###############################################################################
 # Enum
@@ -108,6 +114,8 @@ cpdef enum:
 
     cudaMemoryTypeHost = 1
     cudaMemoryTypeDevice = 2
+
+    cudaIpcMemLazyEnablePeerAccess = 1
 
     cudaMemAttachGlobal = 1
     cudaMemAttachHost = 2
@@ -291,11 +299,9 @@ cpdef enum:
 ###############################################################################
 # Error codes
 ###############################################################################
-
-cdef extern from '../cuda/cupy_cuda.h':  # thru parent to import in core
-    int cudaErrorMemoryAllocation
-    int cudaErrorInvalidValue
-    int cudaErrorPeerAccessAlreadyEnabled
+cdef int errorMemoryAllocation
+cdef int errorInvalidValue
+cdef int errorPeerAccessAlreadyEnabled
 
 
 ###############################################################################

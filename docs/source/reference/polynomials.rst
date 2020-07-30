@@ -48,4 +48,5 @@ Arithmetic
    :toctree: generated/
    :nosignatures:
 
+    cupy.polyadd
     cupy.polysub

@@ -38,7 +38,7 @@ While the major, minor, and revision numbers follow the rule of semantic version
 **Note that a major update basically does not contain compatibility-breaking changes from the last release candidate (RC).**
 This is not a strict rule, though; if there is a critical API bug that we have to fix for the major version, we may add breaking changes to the major version up.
 
-As for the backward compatibility, see :ref:`compatibility`.
+As for the backward compatibility, see :doc:`compatibility`.
 
 
 .. _contrib-release-cycle:

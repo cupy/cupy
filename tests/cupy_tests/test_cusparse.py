@@ -428,6 +428,8 @@ class TestCoosort(unittest.TestCase):
     def setUp(self):
         self.a = scipy.sparse.random(
             100, 100, density=0.9, dtype=numpy.float32, format='coo')
+        numpy.random.shuffle(self.a.row)
+        numpy.random.shuffle(self.a.col)
 
     def test_coosort(self):
         a = sparse.coo_matrix(self.a)

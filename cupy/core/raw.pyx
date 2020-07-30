@@ -1,7 +1,7 @@
 import cupy
-from cupy import util
-from cupy.cuda cimport driver
-from cupy.cuda cimport runtime
+
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda.function cimport Function, Module
 
 
@@ -57,6 +57,9 @@ cdef class RawKernel:
 
         # per-device, per-instance cache, to be initialized on first call
         self._kernel_cache = []
+
+        # This is for profiling mechanisms to auto infer a name
+        self.__name__ = name
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)

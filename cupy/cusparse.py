@@ -4,8 +4,8 @@ import numpy
 import platform
 
 import cupy
-from cupy.cuda import cusparse
-from cupy.cuda import runtime
+from cupy_backends.cuda.libs import cusparse
+from cupy_backends.cuda.api import runtime
 from cupy.cuda import device
 from cupy import util
 import cupyx.scipy.sparse
@@ -89,7 +89,7 @@ _available_cusparse_version = {
     'csrgeam2': (9020, None),
     'csrgemm': (8000, 11000),
     'csrgemm2': (8000, None),
-    'spmv': (10200, None),
+    'spmv': ({'Linux': 10200, 'Windows': 11000}, None),
     'spmm': (10301, None),  # accuracy bugs in cuSparse 10.3.0
     'csr2dense': (8000, None),
     'csc2dense': (8000, None),
@@ -112,7 +112,8 @@ def _get_version(x):
     if isinstance(x, dict):
         os_name = platform.system()
         if os_name not in x:
-            msg = 'No version information specified for the OS {}'.os_name
+            msg = 'No version information specified for the OS: {}'.format(
+                os_name)
             raise ValueError(msg)
         return x[os_name]
     return x

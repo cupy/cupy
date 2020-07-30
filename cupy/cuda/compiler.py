@@ -9,8 +9,8 @@ import tempfile
 
 from cupy.cuda import device
 from cupy.cuda import function
-from cupy.cuda import nvrtc
-from cupy.cuda import runtime
+from cupy_backends.cuda.api import runtime
+from cupy_backends.cuda.libs import nvrtc
 from cupy import util
 
 
@@ -66,10 +66,7 @@ def _get_arch():
     # See Supported Compile Options section of NVRTC User Guide for
     # the maximum value allowed for `--gpu-architecture`.
     major, minor = _get_nvrtc_version()
-    if major < 9:
-        # CUDA 8.0
-        _nvrtc_max_compute_capability = '52'
-    elif major < 10 or (major == 10 and minor == 0):
+    if major < 10 or (major == 10 and minor == 0):
         # CUDA 9.x / 10.0
         _nvrtc_max_compute_capability = '70'
     elif major < 11:
@@ -524,8 +521,9 @@ def _run_hipcc(cmd, cwd='.', env=None):
 
 
 def _hipcc(source, options, arch):
-    cmd = ['hipcc', '--genco', '--targets=' + arch,
-           '--flags="%s"' % ' '.join(options)]
+    assert len(arch) > 0
+    # pass HCC_AMDGPU_TARGET same as arch
+    cmd = ['hipcc', '--genco'] + list(options)
 
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')

@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+import cupy
 from cupy import testing
 import cupyx.scipy.ndimage  # NOQA
 
@@ -37,7 +38,8 @@ class FilterTestCaseBase(unittest.TestCase):
     KWARGS_PARAMS = ('output', 'axis', 'mode', 'cval', 'truncate')+DIMS_PARAMS
 
     # Params that need no processing go before weights in the arguments
-    ARGS_PARAMS = ('rank', 'percentile', 'derivative', 'derivative2')
+    ARGS_PARAMS = ('rank', 'percentile',
+                   'derivative', 'derivative2', 'function')
 
     def _filter(self, xp, scp):
         """
@@ -96,7 +98,8 @@ class FilterTestCaseBase(unittest.TestCase):
             return testing.shaped_random((self.ksize,), xp, self._dtype)
 
         if self.filter in ('minimum_filter', 'maximum_filter', 'median_filter',
-                           'rank_filter', 'percentile_filter'):
+                           'rank_filter', 'percentile_filter', 'generic_filter'
+                           ):
             if not self.footprint:
                 return self.ksize
             kshape = self._kshape
@@ -105,7 +108,7 @@ class FilterTestCaseBase(unittest.TestCase):
                 footprint = xp.ones(kshape)
             return None, footprint
 
-        if self.filter in ('uniform_filter1d',
+        if self.filter in ('uniform_filter1d', 'generic_filter1d',
                            'minimum_filter1d', 'maximum_filter1d'):
             return self.ksize
 
@@ -184,7 +187,7 @@ class TestFilter(FilterTestCaseBase):
 def dummy_deriv_func(input, axis, output, mode, cval, *args, **kwargs):
     # For testing generic_laplace and generic_gradient_magnitude. Doesn't test
     # mode, cval, or extra argument but those are tested indirectly with
-    # laplace, gaussian_laplace, & gaussian_gradient_magnitude.
+    # laplace, gaussian_laplace, and gaussian_gradient_magnitude.
     if output is not None and not isinstance(output, numpy.dtype):
         output[...] = input + axis
     else:
@@ -250,6 +253,134 @@ def dummy_deriv_func(input, axis, output, mode, cval, *args, **kwargs):
 class TestFilterFast(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
+        return self._filter(xp, scp)
+
+
+# Kernels and Functions for testing generic_filter
+rms_raw = cupy.RawKernel('''extern "C" __global__
+void rms(const double* x, int filter_size, double* y) {
+    double ss = 0;
+    for (int i = 0; i < filter_size; ++i) { ss += x[i]*x[i]; }
+    y[0] = ss/filter_size;
+}''', 'rms')
+rms_red = cupy.ReductionKernel('X x', 'Y y', 'x*x',
+                               'a + b', 'y = a/_in_ind.size()', '0', 'rms')
+
+
+def rms_pyfunc(x):
+    return (x * x).sum()/len(x)
+
+
+lt_raw = cupy.RawKernel('''extern "C" __global__
+void lt(const double* x, int filter_size, double* y) {
+    int n = 0;
+    double c = x[filter_size/2];
+    for (int i = 0; i < filter_size; ++i) { n += c>x[i]; }
+    y[0] = n;
+}''', 'lt')
+lt_red = cupy.ReductionKernel('X x', 'Y y', '_raw_x[_in_ind.size()/2]>x',
+                              'a + b', 'y = a', '0', 'lt', reduce_type='int')
+
+
+def lt_pyfunc(x):
+    return (x[len(x)//2] > x).sum()
+
+
+# This tests generic_filter.
+@testing.parameterize(*(
+    testing.product([
+        testing.product({
+            'filter': ['generic_filter'],
+            'func_or_kernel': [(rms_raw, rms_pyfunc), (lt_red, lt_pyfunc)],
+            'footprint': [False, True],
+        }),
+
+        # Mode-specific params
+        testing.product({
+            **COMMON_PARAMS,
+            'mode': ['reflect'],
+            # With reflect test some of the other parameters as well
+            'origin': [0, 1, (-1, 1, -1, 1)],
+            'output': [None, numpy.uint8, numpy.float64],
+        }) + testing.product({
+            **COMMON_PARAMS,
+            'mode': ['constant'], 'cval': [0.0, 1.0],
+        }) + testing.product({
+            **COMMON_PARAMS,
+            'mode': ['nearest', 'wrap'],
+        }) + testing.product({
+            **COMMON_PARAMS,
+            'shape': [(4, 5), (3, 4, 5)],
+            'mode': ['mirror'],
+        })
+    ]) + testing.product({
+        'filter': ['generic_filter'],
+        'func_or_kernel': [(rms_red, rms_pyfunc), (lt_raw, lt_pyfunc)],
+        'footprint': [False, True],
+        **COMMON_PARAMS,
+        'dtype': [numpy.float64],
+    })
+))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestGenericFilter(FilterTestCaseBase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
+        # Need to deal with the different versions of the functions given to
+        # numpy vs cupy
+        self.function = self.func_or_kernel[int(xp == numpy)]
+        return self._filter(xp, scp)
+
+
+# Kernels and functions for use with generic_filter1d
+def shift_pyfunc(src, dst):
+    dst[:] = src[:dst.size]
+
+
+shift_raw = cupy.RawKernel('''extern "C" __global__
+void shift(const double* in, ptrdiff_t in_length,
+          double* out, ptrdiff_t out_length) {
+    for (int i = 0; i < out_length; ++i) { out[i] = in[i]; }
+}''', 'shift')
+
+
+# This tests generic_filter1d.
+@testing.parameterize(*(
+    testing.product([
+        testing.product({
+            'filter': ['generic_filter1d'],
+            'func_or_kernel': [(shift_raw, shift_pyfunc)],
+            'axis': [0, 1, -1],
+        }),
+
+        # Mode-specific params
+        testing.product({
+            **COMMON_PARAMS,
+            'mode': ['reflect'],
+            # With reflect test some of the other parameters as well
+            'origin': [0, 1, (-1, 1, -1, 1)],
+            'output': [None, numpy.uint8, numpy.float64],
+        }) + testing.product({
+            **COMMON_PARAMS,
+            'mode': ['constant'], 'cval': [0.0, 1.0],
+        }) + testing.product({
+            **COMMON_PARAMS,
+            'mode': ['nearest', 'wrap'],
+        }) + testing.product({
+            **COMMON_PARAMS,
+            'shape': [(4, 5), (3, 4, 5)],
+            'mode': ['mirror'],
+        })
+    ])
+))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestGeneric1DFilter(FilterTestCaseBase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
+        # Need to deal with the different versions of the functions given to
+        # numpy vs cupy
+        self.function = self.func_or_kernel[int(xp == numpy)]
         return self._filter(xp, scp)
 
 
