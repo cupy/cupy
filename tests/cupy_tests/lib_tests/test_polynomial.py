@@ -243,7 +243,7 @@ class Poly1dTestBase(unittest.TestCase):
 }))
 class TestPoly1dArithmetic(Poly1dTestBase):
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_poly1d_arithmetic(self, xp, dtype):
         a1 = self._get_input(xp, self.type_l, dtype)
@@ -286,7 +286,7 @@ class TestPoly1dArithmeticInvalid(Poly1dTestBase):
 }))
 class TestPoly1dRoutines(Poly1dTestBase):
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_poly1d_routine(self, xp, dtype):
         func = getattr(xp, self.fname)
@@ -391,7 +391,7 @@ class TestPoly1dEquality(unittest.TestCase):
 }))
 class TestPolyArithmeticShapeCombination(unittest.TestCase):
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_polyroutine(self, xp, dtype):
         func = getattr(xp, self.fname)
@@ -407,7 +407,8 @@ class TestPolyArithmeticShapeCombination(unittest.TestCase):
 }))
 class TestPolyArithmeticDiffTypes(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'], no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_polyroutine_diff_types_array(self, xp, dtype1, dtype2):
         func = getattr(xp, self.fname)
@@ -416,7 +417,8 @@ class TestPolyArithmeticDiffTypes(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             return func(a, b)
 
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'], no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_polyroutine_diff_types_poly1d(self, xp, dtype1, dtype2):
         func = getattr(xp, self.fname)
