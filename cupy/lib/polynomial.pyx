@@ -1,7 +1,21 @@
 import numpy
 
-import cupy
 from cupy.core.core cimport ndarray
+
+import cupy
+from cupy.lib import _routines_poly
+
+cimport cython  # NOQA
+
+
+@cython.profile(False)
+cdef inline _should_use_rop(x, y):
+    # case: python scalar + poly1d
+    if cupy.isscalar(x) and isinstance(y, poly1d):
+        return False
+    xp = getattr(x, '__array_priority__', 0)
+    yp = getattr(y, '__array_priority__', 0)
+    return xp < yp and not isinstance(y, poly1d)
 
 
 cdef class poly1d:
@@ -19,6 +33,7 @@ cdef class poly1d:
 
     """
     __hash__ = None
+    __array_priority__ = 100
 
     cdef:
         readonly ndarray _coeffs
@@ -123,13 +138,14 @@ cdef class poly1d:
             return poly1d(self.coeffs * other)
         raise NotImplementedError
 
-    # TODO(Dahlia-Chehata): implement using polyadd
     def __add__(self, other):
-        raise NotImplementedError
-
-    # TODO(Dahlia-Chehata): implement using polyadd
-    def __radd__(self, other):
-        raise NotImplementedError
+        if _should_use_rop(self, other):
+            return other.__radd__(self)
+        if isinstance(self, numpy.generic):
+            # for the case: numpy scalar + poly1d
+            raise TypeError('Numpy scalar and poly1d '
+                            'addition is not supported')
+        return _routines_poly.polyadd(self, other)
 
     # TODO(Dahlia-Chehata): implement using polymul
     def __pow__(self, val, modulo):
