@@ -122,7 +122,7 @@ def _get_version(x):
 @util.memoize()
 def check_availability(name):
     if name not in _available_cusparse_version:
-        msg = 'No available version information specified for {}'.name
+        msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
     version_added, version_removed = _available_cusparse_version[name]
     version_added = _get_version(version_added)
