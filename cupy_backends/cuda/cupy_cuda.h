@@ -290,6 +290,26 @@ cudaError_t cudaDeviceSetLimit(...) {
     return cudaSuccess;
 }
 
+// IPC operations
+cudaError_t cudaIpcCloseMemHandle(...){
+    return cudaSuccess;
+}
+
+cudaError_t cudaIpcGetEventHandle(...){
+    return cudaSuccess;
+}
+
+cudaError_t cudaIpcGetMemHandle(...){
+    return cudaSuccess;
+}
+
+cudaError_t cudaIpcOpenEventHandle(...){
+    return cudaSuccess;
+}
+
+cudaError_t cudaIpcOpenMemHandle(...){
+    return cudaSuccess;
+}
 
 // Memory management
 cudaError_t cudaMalloc(...) {

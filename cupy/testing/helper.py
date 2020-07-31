@@ -226,27 +226,30 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
 
             assert len(cupy_result) == len(numpy_result)
 
-            if type_check:
-                for cupy_r, numpy_r in zip(cupy_result, numpy_result):
-                    assert cupy_r.dtype == numpy_r.dtype
-
-            if contiguous_check:
-                for c, n in zip(cupy_result, numpy_result):
-                    if isinstance(n, numpy.ndarray):
-                        if n.flags.c_contiguous and not c.flags.c_contiguous:
+            for cupy_r, numpy_r in zip(cupy_result, numpy_result):
+                if contiguous_check:
+                    if isinstance(numpy_r, numpy.ndarray):
+                        if (numpy_r.flags.c_contiguous
+                                and not cupy_r.flags.c_contiguous):
                             raise AssertionError(
                                 'The state of c_contiguous flag is false. '
                                 '(cupy_result:{} numpy_result:{})'.format(
-                                    c.flags.c_contiguous,
-                                    n.flags.c_contiguous))
-                        if n.flags.f_contiguous and not c.flags.f_contiguous:
+                                    cupy_r.flags.c_contiguous,
+                                    numpy_r.flags.c_contiguous))
+                        if (numpy_r.flags.f_contiguous
+                                and not cupy_r.flags.f_contiguous):
                             raise AssertionError(
                                 'The state of f_contiguous flag is false. '
                                 '(cupy_result:{} numpy_result:{})'.format(
-                                    c.flags.f_contiguous,
-                                    n.flags.f_contiguous))
+                                    cupy_r.flags.f_contiguous,
+                                    numpy_r.flags.f_contiguous))
 
-            for cupy_r, numpy_r in zip(cupy_result, numpy_result):
+                cupy_r, numpy_r = _convert_output_to_ndarray(
+                    cupy_r, numpy_r, sp_name)
+
+                if type_check:
+                    assert cupy_r.dtype == numpy_r.dtype
+
                 assert cupy_r.shape == numpy_r.shape
 
                 # Behavior of assigning a negative value to an unsigned integer
@@ -254,8 +257,6 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
                 # nVidia GPUs and Intel CPUs behave differently.
                 # To avoid this difference, we need to ignore dimensions whose
                 # values are negative.
-                cupy_r, numpy_r = _convert_output_to_ndarray(
-                    cupy_r, numpy_r, sp_name)
 
                 skip = False
                 if (_contains_signed_and_unsigned(kw)
@@ -287,9 +288,16 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name):
             and isinstance(n_out, (numpy.ndarray, numpy.generic))):
         # ndarray output case.
         return c_out, n_out
+    if isinstance(c_out, cupy.poly1d) and isinstance(n_out, numpy.poly1d):
+        # poly1d output case.
+        assert c_out.variable == n_out.variable
+        return c_out.coeffs, n_out.coeffs
     if isinstance(c_out, numpy.generic) and isinstance(n_out, numpy.generic):
-        # scalar output case.
+        # numpy scalar output case.
         return c_out, n_out
+    if numpy.isscalar(c_out) and numpy.isscalar(n_out):
+        # python scalar output case.
+        return cupy.array(c_out), numpy.array(n_out)
     raise AssertionError(
         'numpy and cupy returns different type of return value:\n'
         'cupy: {}\nnumpy: {}'.format(

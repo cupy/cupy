@@ -219,8 +219,9 @@ cusparseStatus_t cusparseZcsrgeam2(...) {
 
 #endif // #if CUSPARSE_VERSION < 9020
 
-#if CUSPARSE_VERSION < 10200
+#if (CUSPARSE_VERSION < 10200) || (CUSPARSE_VERSION < 11000 && defined(_WIN32))
 // Types, macro and functions added in cuSparse 10.2
+// Windows support added in cuSparse 11.0
 
 // cuSPARSE generic API
 typedef void* cusparseSpVecDescr_t;
