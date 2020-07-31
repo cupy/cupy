@@ -342,31 +342,30 @@ class UserDefinedArray:
         self.rop_count += 1
 
     def __sub__(self, other):
-        self.op_count -= 1
+        self.op_count += 1
 
     def __rsub__(self, other):
-        self.rop_count -= 1
+        self.rop_count += 1
 
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'op': [
-        (lambda x, y: x + y, 1),
-        (lambda x, y: x - y, -1)
+    'func': [
+        lambda x, y: x + y,
+        lambda x, y: x - y,
     ],
 }))
 class TestPoly1dArrayPriority(Poly1dTestBase):
 
     def test_poly1d_array_priority_greator(self):
-        func, out = self.op
         a1 = self._get_input(cupy, 'poly1d', 'int64')
         a2 = UserDefinedArray()
-        func(a1, a2)
+        self.func(a1, a2)
         assert a2.op_count == 0
-        assert a2.rop_count == out
-        func(a2, a1)
-        assert a2.op_count == out
-        assert a2.rop_count == out
+        assert a2.rop_count == 1
+        self.func(a2, a1)
+        assert a2.op_count == 1
+        assert a2.rop_count == 1
 
 
 @testing.gpu

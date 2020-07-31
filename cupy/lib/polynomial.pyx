@@ -10,9 +10,6 @@ cimport cython  # NOQA
 
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
-    # case: python scalar ± poly1d
-    if cupy.isscalar(x) and isinstance(y, poly1d):
-        return False
     xp = getattr(x, '__array_priority__', 0)
     yp = getattr(y, '__array_priority__', 0)
     return xp < yp and not isinstance(y, poly1d)
