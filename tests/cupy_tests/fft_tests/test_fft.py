@@ -86,7 +86,7 @@ def multi_gpu_config(gpu_configs=None):
 
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
-    'shape': [(10,), (10, 10)],
+    'shape': [(0,), (10, 0), (10,), (10, 10)],
     'norm': [None, 'ortho', ''],
 }))
 @testing.gpu
@@ -122,7 +122,7 @@ class TestFft(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(10, 10), (10, 5, 10)],
+    'shape': [(0, 10), (10, 0, 10), (10, 10), (10, 5, 10)],
     'data_order': ['F', 'C'],
     'axis': [0, 1, -1],
 }))
@@ -164,7 +164,7 @@ class TestFftOrder(unittest.TestCase):
 # 2. the tested parameter combinations are adjusted to meet the requirements
 @testing.parameterize(*testing.product({
     'n': [None, 0, 64],
-    'shape': [(64,), (4, 64)],
+    'shape': [(0,), (0, 10), (64,), (4, 64)],
     'norm': [None, 'ortho', ''],
 }))
 @testing.multi_gpu(2)
@@ -337,6 +337,11 @@ class TestFftAllocate(unittest.TestCase):
     {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
+    {'shape': (0, 5), 's': None, 'axes': None, 'norm': None},
+    {'shape': (2, 0, 5), 's': None, 'axes': None, 'norm': None},
+    {'shape': (0, 0, 5), 's': None, 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (0, 5), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, 0), 'axes': None, 'norm': None},
 )
 @testing.gpu
 class TestFft2(unittest.TestCase):
@@ -406,6 +411,9 @@ class TestFft2(unittest.TestCase):
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': (4, 3, 2), 'axes': (2, 0, 1), 'norm': 'ortho'},
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
+    {'shape': (0, 5), 's': None, 'axes': None, 'norm': None},
+    {'shape': (2, 0, 5), 's': None, 'axes': None, 'norm': None},
+    {'shape': (0, 0, 5), 's': None, 'axes': None, 'norm': None},
 )
 @testing.gpu
 class TestFftn(unittest.TestCase):
@@ -468,6 +476,9 @@ class TestFftn(unittest.TestCase):
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
+    {'shape': (0, 5), 's': None, 'axes': None, 'norm': None},
+    {'shape': (2, 0, 5), 's': None, 'axes': None, 'norm': None},
+    {'shape': (0, 0, 5), 's': None, 'axes': None, 'norm': None},
 )
 @testing.gpu
 class TestPlanCtxManagerFftn(unittest.TestCase):
@@ -515,6 +526,8 @@ class TestPlanCtxManagerFftn(unittest.TestCase):
     @nd_planning_states()
     @testing.for_complex_dtypes()
     def test_fftn_error_on_wrong_plan(self, dtype, enable_nd):
+        if 0 in self.shape:
+            raise unittest.SkipTest('0 in shape')
         # This test ensures the context manager plan is picked up
 
         from cupyx.scipy.fftpack import get_fft_plan

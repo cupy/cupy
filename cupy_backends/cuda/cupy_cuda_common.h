@@ -154,6 +154,16 @@ struct cudaTextureDesc {
     float maxMipmapLevelClamp;
 };
 
+// IPC operations
+typedef struct {
+    unsigned char reserved[64];
+} cudaIpcMemHandle_t;
+
+// IPC operations
+typedef struct {
+    unsigned char reserved[64];
+} cudaIpcEventHandle_t;
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // library_types.h
