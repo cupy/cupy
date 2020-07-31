@@ -47,6 +47,19 @@ CUresult cuLaunchCooperativeKernel(...) {
 
 #endif // #if CUDA_VERSION < 9000
 
+#if CUDA_VERSION >= 11000
+
+#define cublasGemmEx_v11 cublasGemmEx
+
+#else
+
+typedef enum{} cublasComputeType_t;
+cublasStatus_t cublasGemmEx_v11(...) {
+    return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+
+#endif // if CUDA_VERSION >= 11000
+
 } // extern "C"
 
 #else // #ifndef CUPY_NO_CUDA
@@ -715,6 +728,10 @@ cublasStatus_t cublasZtrsm(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+typedef enum{} cublasComputeType_t;
+cublasStatus_t cublasGemmEx_v11(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
 
 // BLAS extension
 cublasStatus_t cublasSgeam(...) {
