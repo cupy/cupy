@@ -90,7 +90,7 @@ _available_cuda_version = {
 
 def check_availability(name):
     if name not in _available_cuda_version:
-        msg = 'No available version information specified for {}'.name
+        msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
     version_added, version_removed = _available_cuda_version[name]
     cuda_version = runtime.runtimeGetVersion()
