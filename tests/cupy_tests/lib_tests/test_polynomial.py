@@ -9,6 +9,15 @@ import cupyx
 from cupy import testing
 
 
+def _wraps_root_test(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        out = func(*args, **kwargs)
+        out.sort()
+        return out
+    return wrapper
+
+
 @testing.parameterize(
     {'variable': None},
     {'variable': 'y'},
@@ -124,6 +133,19 @@ class TestPoly1d(unittest.TestCase):
     def test_poly1d_order_leading_zeros(self, xp, dtype):
         a = xp.array([0, 0, 1, 2, 3, 0], dtype)
         return xp.poly1d(a).order
+
+    @testing.for_signed_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @_wraps_root_test
+    def test_poly1d_roots1(self, xp, dtype):
+        a = xp.array([-3, -2.5, 3], dtype)
+        return xp.poly1d(a).roots
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_poly1d_roots2(self, dtype):
+        a = testing.shaped_arange((5,), cupy, dtype)
+        with pytest.raises(NotImplementedError):
+            cupy.poly1d(a).roots
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
@@ -405,15 +427,6 @@ class TestPolyadd(unittest.TestCase):
         return out
 
 
-def _wraps_root_test(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        out = func(*args, **kwargs)
-        out.sort()
-        return out
-    return wrapper
-
-
 @testing.gpu
 class TestRoots(unittest.TestCase):
 
@@ -455,7 +468,6 @@ class TestRoots(unittest.TestCase):
     def test_roots_two_sized3(self, xp, dtype):
         a = xp.array([5, 0], dtype)
         out = xp.roots(a)
-        print(out.dtype)
         return out
 
     @testing.for_all_dtypes()
