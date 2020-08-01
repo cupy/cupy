@@ -242,7 +242,6 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             Calling this function might synchronize the device.
 
         """
-        print("Sorting indices!")
         if not self.has_sorted_indices:
             cusparse.csrsort(self)
             self.has_sorted_indices = True

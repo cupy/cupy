@@ -899,7 +899,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         i = cupy.asarray(i, dtype=idx_dtype)
         j = cupy.asarray(j, dtype=idx_dtype)
 
-        order = cupy.lexsort(cupy.stack([j, i])).astype(idx_dtype)
+        stacked = cupy.stack([j, i])
+        order = cupy.lexsort(stacked).astype(idx_dtype)
 
         indptr_inserts = i[order]
         indices_inserts = j[order]
@@ -963,7 +964,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         self._csr_populate_inserts_kern(
             self.indptr, ui, sc, indices_inserts, data_inserts,
-            new_indptr, new_indices, new_data, size=len(ui))
+            new_indptr, new_indices, new_data, size=ui.size)
 
         # update attributes
         self.indptr = new_indptr
@@ -973,8 +974,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if do_sort:
             self.has_sorted_indices = False
             self.sort_indices()
-
-        self.check_format(full_check=False)
+        #
+        # self.check_format(full_check=False)
 
     def check_format(self, full_check=True):
         """check whether the matrix format is valid

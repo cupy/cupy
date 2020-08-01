@@ -1,0 +1,44 @@
+@import url('theme.css');
+
+/* Main background color modification */
+.btn-info, .wy-menu-vertical a:active, .wy-side-nav-search, .wy-side-nav-search img, .wy-nav .wy-menu-vertical a:hover, .wy-nav-top img, .wy-tray-item-info, .wy-side-nav-search, .wy-dropdown-menu > dd > a:hover, .wy-dropdown-menu a:hover, .wy-nav-top {
+    background-color: #70c162 !important;
+}
+
+.wy-side-nav-search input[type=text] {
+    border-color: #72a424 !important;
+}
+
+.rst-content .note .admonition-title {
+    background-color: #c9c9c9 !important;
+}
+
+.rst-content .note {
+    background-color: #e3e3e3 !important;
+}
+
+
+/* code style */
+.rst-content table.longtable.docutils code {
+    font-size: 100% !important;
+    background-color: transparent !important;
+    border: none !important;
+}
+
+.rst-content a.reference code {
+    color: #3399cc !important;
+}
+
+.rst-content a.reference code:hover {
+    text-decoration: underline !important;
+    color: #3366cc !important;
+}
+
+
+/* rubric */
+.rst-content .class .rubric {
+    color: #333333;
+    background-color: #aaeeaa;
+    padding: 0.2em 0 0.2em 1em;
+    border-top: solid 0.3em #66cc66;
+}

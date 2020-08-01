@@ -24,6 +24,7 @@ class TestSetitemIndexing(unittest.TestCase):
         # sparse.random doesn't support complex types
         # so we need to cast
         a = a.astype(self.dtype)
+        # cupy.cuda.Stream.null.synchronize()
 
         if isinstance(maj, cupy.ndarray):
             maj_h = maj.get()
@@ -48,6 +49,7 @@ class TestSetitemIndexing(unittest.TestCase):
 
             gpu_time = time.time()
             actual[maj, min] = data
+            cupy.cuda.Stream.null.synchronize()
             gpu_stop = time.time() - gpu_time
         else:
             expected = a.get()
@@ -60,6 +62,7 @@ class TestSetitemIndexing(unittest.TestCase):
 
             gpu_time = time.time()
             actual[maj] = data
+            cupy.cuda.Stream.null.synchronize()
             gpu_stop = time.time() - gpu_time
 
         print("cpu_time=%s, gpu_time=%s" % (cpu_stop, gpu_stop))
