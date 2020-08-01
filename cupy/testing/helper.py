@@ -215,7 +215,7 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
                 _check_cupy_numpy_error(self, cupy_error, cupy_tb,
                                         numpy_error, numpy_tb,
                                         accept_error=accept_error)
-                return
+                return False
 
             # Check returned arrays
 
@@ -271,6 +271,8 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
 
                 if not skip:
                     check_func(cupy_r, numpy_r)
+
+            return True
         return test_func
     return decorator
 
@@ -675,16 +677,23 @@ def for_dtypes(dtypes, name='dtype'):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
+            exists_true_case = False
             for dtype in dtypes:
                 try:
                     kw[name] = numpy.dtype(dtype).type
-                    impl(self, *args, **kw)
+                    ret = impl(self, *args, **kw)
+                    if ret in (True, None):
+                        exists_true_case = True
                 except unittest.SkipTest as e:
                     print('skipped: {} = {} ({})'.format(name, dtype, e))
                 except Exception:
                     print(name, 'is', dtype)
                     raise
 
+            if not exists_true_case:
+                raise AssertionError(
+                    'An accepted error was raised in all dtypes. '
+                    'Use `pytest.raises` instead of `accept_error` option.')
         return test_func
     return decorator
 
@@ -917,16 +926,23 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
+            exists_true_case = False
             for dtypes in combination:
                 kw_copy = kw.copy()
                 kw_copy.update(dtypes)
 
                 try:
-                    impl(self, *args, **kw_copy)
+                    ret = impl(self, *args, **kw_copy)
+                    if ret in (True, None):
+                        exists_true_case = True
                 except Exception:
                     print(dtypes)
                     raise
 
+            if not exists_true_case:
+                raise AssertionError(
+                    'An accepted error was raised in all dtype combinations. '
+                    'Use `pytest.raises` instead of `accept_error` option.')
         return test_func
     return decorator
 
@@ -1021,14 +1037,21 @@ def for_orders(orders, name='order'):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
+            exists_true_case = False
             for order in orders:
                 try:
                     kw[name] = order
-                    impl(self, *args, **kw)
+                    ret = impl(self, *args, **kw)
+                    if ret in (True, None):
+                        exists_true_case = True
                 except Exception:
                     print(name, 'is', order)
                     raise
 
+            if not exists_true_case:
+                raise AssertionError(
+                    'An accepted error was raised in all orders. '
+                    'Use `pytest.raises` instead of `accept_error` option.')
         return test_func
     return decorator
 

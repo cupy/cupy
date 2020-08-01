@@ -70,6 +70,10 @@ def cupy_error(_, xp):
         raise ValueError()
 
 
+def both_error(_, xp):
+    raise ValueError()
+
+
 @testing.gpu
 class NumPyCuPyDecoratorBase2(object):
 
@@ -84,6 +88,11 @@ class NumPyCuPyDecoratorBase2(object):
         decorated_func = decorator(cupy_error)
         with self.assertRaises(AssertionError):
             decorated_func(self)
+
+    def test_accept_error_both(self):
+        decorator = getattr(testing, self.decorator)(accept_error=True)
+        decorated_func = decorator(both_error)
+        decorated_func(self)
 
 
 def make_result(xp, np_result, cp_result):
@@ -282,3 +291,24 @@ class TestSkipFail(unittest.TestCase):
             return xp.array(True)
         else:
             raise unittest.SkipTest('skip')
+
+
+class TestAlwaysRaiseAcceptErrorForAllCombinations(unittest.TestCase):
+
+    @pytest.mark.xfail(strict=True)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_for_all_dtypeso(self, xp, dtype):
+        raise ValueError()
+
+    @pytest.mark.xfail(strict=True)
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_for_all_dtypes_combination(self, xp, dtype1, dtype):
+        raise ValueError()
+
+    @pytest.mark.xfail(strict=True)
+    @testing.for_orders('cf')
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_for_orders(self, xp, order):
+        raise ValueError()
