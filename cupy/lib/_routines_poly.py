@@ -46,3 +46,37 @@ def polyadd(a1, a2):
     out = out.astype(cupy.result_type(a1, a2), copy=False)
     out += a1
     return out
+
+
+def roots(p):
+    """Computes the roots of a polynomial with given coefficients.
+
+    Args:
+        p (cupy.ndarray): polynomial coefficients.
+
+    Returns:
+        cupy.ndarray: polynomial roots.
+
+    .. warning::
+
+        This function doesn't support currently polynomial coefficients
+        whose companion matrices are general 2d square arrays. Only those
+        with complex Hermitian or real symmetric 2d arrays are allowed.
+
+    .. seealso:: :func:`numpy.roots`
+
+    """
+    [p] = cupy.polynomial.polyutils.as_series([p[::-1]])
+    if p.size < 2:
+        return cupy.array([], p.dtype)
+    if p.size == 2:
+        return cupy.array([-p[0]/p[1]])
+    cmatrix = cupy.polynomial.polynomial.polycompanion(p)
+    if cupy.array_equal(cmatrix, cmatrix.conj().T):
+        out = cupy.linalg.eigvalsh(cmatrix)
+    else:
+        raise NotImplementedError('Only complex Hermitian and real '
+                                  'symmetric 2d arrays are supported '
+                                  'currently')
+    out.sort()
+    return out
