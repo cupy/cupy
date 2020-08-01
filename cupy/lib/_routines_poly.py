@@ -66,11 +66,18 @@ def roots(p):
     .. seealso:: :func:`numpy.roots`
 
     """
+    if p.ndim == 0:
+        raise TypeError('0-dimensional input is not allowed')
+    if p.size < 2 or (p.ndim == 1 and not cupy.any(p)):
+        return cupy.array([])
     [p] = cupy.polynomial.polyutils.as_series([p[::-1]])
     if p.size < 2:
-        return cupy.array([], p.dtype)
+        return cupy.array([])
     if p.size == 2:
-        return cupy.array([-p[0]/p[1]])
+        out = cupy.array([-p[0]/p[1]])
+        if p[0] == 0:
+            out = out.real.astype(float)
+        return out
     cmatrix = cupy.polynomial.polynomial.polycompanion(p)
     if cupy.array_equal(cmatrix, cmatrix.conj().T):
         out = cupy.linalg.eigvalsh(cmatrix)
@@ -78,5 +85,4 @@ def roots(p):
         raise NotImplementedError('Only complex Hermitian and real '
                                   'symmetric 2d arrays are supported '
                                   'currently')
-    out.sort()
-    return out
+    return out.astype(p.dtype)
