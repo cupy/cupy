@@ -894,43 +894,51 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             (self.indices, self.indptr), maxval=(
                 self.nnz + x.size))
 
-        # @TODO(cjnolet) Find way to remove this constraint
-        if idx_dtype.itemsize == 8:
-            raise ValueError("Insertion not supported for sparse matrices "
-                             "with 64-bit index")
-
         self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
         self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
         i = cupy.asarray(i, dtype=idx_dtype)
         j = cupy.asarray(j, dtype=idx_dtype)
 
-        # Collate old and new in chunks by major index
-        ui, ui_indptr = cupy.unique(i, return_index=True)
+        order = cupy.lexsort(cupy.stack([j, i])).astype(idx_dtype)
 
-        # This part is modified slightly from the Scipy counterpart
-        # because Cupy doesn't have an `append` function for
-        # ndarrays.
+        indptr_inserts = i[order]
+        indices_inserts = j[order]
+        data_inserts = x[order]
+
+        mask = cupy.ones(indptr_inserts.size, dtype='bool')
+
+        # Create a filter mask based on the lowest value of order
+        core.ElementwiseKernel(
+            '''raw I rows, raw I cols, raw I order''',
+            '''raw bool mask''',
+            """
+            I cur_row = rows[i];
+            I next_row = rows[i+1];
+
+            I cur_col = cols[i];
+            I next_col = cols[i+1];
+
+            I cur_order = order[i];
+            I next_order = order[i+1];
+
+            if(cur_row == next_row && cur_col == next_col) {
+                if(cur_order < next_order)
+                    mask[i] = false;
+                else
+                    mask[i+1] = false;
+            }
+            """, no_return=True
+        )(indptr_inserts, indices_inserts, order, mask,
+          size=indptr_inserts.size-1)
+
+        indptr_inserts = indptr_inserts[mask]
+        indices_inserts = indices_inserts[mask]
+        data_inserts = data_inserts[mask]
+
+        ui, ui_indptr = cupy.unique(indptr_inserts, return_index=True)
+
         to_add = cupy.array([j.size], ui_indptr.dtype)
         ui_indptr = cupy.hstack([ui_indptr, to_add])
-
-        # Zip i and j together into a single array so they can be sorted
-        # and indexed together. This effectively creates
-        # a coo, where the row and column can stay together.
-        # @TODO(cjnolet): Improve this without the use of 64-bit integers
-        ij = cupy.left_shift(i.astype("uint64"), 32)
-        ij = cupy.bitwise_or(ij, j.astype("uint32"))
-
-        ij_rev = ij[::-1]
-        uij, uij_indptr = cupy.unique(ij_rev, return_index=True)
-
-        ordered_ij = ij_rev[uij_indptr]
-
-        # Insertion arrays in COO format
-        indptr_inserts = cupy.right_shift(ordered_ij, 32).astype(idx_dtype)
-        indices_inserts = cupy.bitwise_and(
-            ordered_ij, 2**32-1).astype(idx_dtype)
-
-        data_inserts = x[uij_indptr.max()-uij_indptr]
 
         sc = cupy.zeros(ui_indptr.size, dtype=idx_dtype)
         cupyx.scatter_add(sc[1:], cupy.searchsorted(ui, indptr_inserts), 1)
@@ -944,7 +952,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         nnzs[1:] = indptr_diff
 
         new_indptr = cupy.cumsum(nnzs, out=nnzs).astype(idx_dtype)
-
         s = new_indptr[-1].item()
 
         new_indices = cupy.zeros(s, dtype=idx_dtype)
