@@ -2,9 +2,14 @@ from cupy.core import core  # NOQA
 from cupy.core import internal  # NOQA
 
 
-# import class and function
+# internal APIs for testing and developement
 from cupy.core._accelerator import set_reduction_accelerators  # NOQA
 from cupy.core._accelerator import set_routine_accelerators  # NOQA
+from cupy.core._accelerator import get_reduction_accelerators  # NOQA
+from cupy.core._accelerator import get_routine_accelerators  # NOQA
+
+
+# import class and function
 from cupy.core._kernel import create_ufunc  # NOQA
 from cupy.core._kernel import ElementwiseKernel  # NOQA
 from cupy.core._kernel import ufunc  # NOQA
