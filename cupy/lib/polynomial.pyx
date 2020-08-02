@@ -12,7 +12,6 @@ cimport cython  # NOQA
 cdef inline _should_use_rop(x, y):
     xp = getattr(x, '__array_priority__', 0)
     yp = getattr(y, '__array_priority__', 0)
-    print(xp, ',', yp)
     return xp < yp and not isinstance(y, poly1d)
 
 
@@ -134,7 +133,14 @@ cdef class poly1d:
         if _should_use_rop(self, other):
             return other.__rmul__(self)
         if cupy.isscalar(other):
+            # case: poly1d * python scalar
             return poly1d(self.coeffs * other)
+        if isinstance(self, numpy.generic):
+            # case: numpy scalar * poly1d
+            return self * other.coeffs
+        if cupy.isscalar(self) and isinstance(other, poly1d):
+            # case: python scalar * poly1d
+            self = other._coeffs.dtype.type(self)
         return _routines_poly.polymul(self, other)
 
     def __add__(self, other):

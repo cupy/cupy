@@ -1,7 +1,6 @@
 import functools
 
 import cupy
-import cupyx
 
 
 def _wraps_polyroutine(func):
@@ -16,11 +15,7 @@ def _wraps_polyroutine(func):
 
     def wrapper(*args):
         coeffs = [_get_coeffs(x) for x in args]
-        if func.__name__ == 'polymul':
-            out = func(*coeffs)
-        else:
-            with cupyx.allow_synchronize(False):
-                out = func(*coeffs)
+        out = func(*coeffs)
         if all([not isinstance(x, cupy.poly1d) for x in args]):
             return out
         if isinstance(out, cupy.ndarray):

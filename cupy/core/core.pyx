@@ -1005,6 +1005,8 @@ cdef class ndarray:
             return _math._subtract(x, y)
 
     def __mul__(x, y):
+        if isinstance(y, cupy.poly1d):
+            y = y.coeffs
         if _should_use_rop(x, y):
             return y.__rmul__(x)
         else:
