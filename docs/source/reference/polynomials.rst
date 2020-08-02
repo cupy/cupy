@@ -50,3 +50,4 @@ Arithmetic
    :nosignatures:
 
     cupy.polyadd
+    cupy.polysub
