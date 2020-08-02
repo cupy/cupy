@@ -10,9 +10,6 @@ cimport cython  # NOQA
 
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
-    # case: python scalar + poly1d
-    if cupy.isscalar(x) and isinstance(y, poly1d):
-        return False
     xp = getattr(x, '__array_priority__', 0)
     yp = getattr(y, '__array_priority__', 0)
     return xp < yp and not isinstance(y, poly1d)
@@ -153,13 +150,14 @@ cdef class poly1d:
             raise ValueError('Power to non-negative integers only.')
         raise NotImplementedError
 
-    # TODO(Dahlia-Chehata): implement using polysub
     def __sub__(self, other):
-        raise NotImplementedError
-
-    # TODO(Dahlia-Chehata): implement using polysub
-    def __rsub__(self, other):
-        raise NotImplementedError
+        if _should_use_rop(self, other):
+            return other.__rsub__(self)
+        if isinstance(self, numpy.generic):
+            # for the case: numpy scalar - poly1d
+            raise TypeError('Numpy scalar and poly1d '
+                            'subtraction is not supported')
+        return _routines_poly.polysub(self, other)
 
     # TODO(Dahlia-Chehata): use polydiv for non-scalars
     def __truediv__(self, other):
