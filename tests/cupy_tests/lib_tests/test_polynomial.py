@@ -130,6 +130,7 @@ class TestPoly1d(unittest.TestCase):
     def test_poly1d_roots1(self, xp, dtype):
         a = xp.array([-3, -2.5, 3], dtype)
         out = xp.poly1d(a).roots
+        # The current `cupy.roots` doesn't guarantee the order of results.
         return xp.sort(out)
 
     @testing.for_all_dtypes(no_bool=True)
@@ -478,8 +479,13 @@ class TestRoots(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_roots_two_sized3(self, xp, dtype):
         a = xp.array([5, 0], dtype)
-        out = xp.roots(a)
-        return out
+        return xp.roots(a)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_roots_two_sized_complex(self, xp, dtype):
+        a = xp.array([3 + 2j, 5], dtype)
+        return xp.roots(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
