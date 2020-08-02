@@ -49,4 +49,5 @@ Arithmetic
    :nosignatures:
 
     cupy.polyadd
+    cupy.polysub
     cupy.polymul

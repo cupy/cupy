@@ -237,6 +237,7 @@ class Poly1dTestBase(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'func': [
         lambda x, y: x + y,
+        lambda x, y: x - y,
     ],
     'type_l': ['poly1d', 'python_scalar'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
@@ -244,7 +245,7 @@ class Poly1dTestBase(unittest.TestCase):
 class TestPoly1dArithmetic(Poly1dTestBase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_array_equal(accept_error=TypeError)
     def test_poly1d_arithmetic(self, xp, dtype):
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
@@ -255,6 +256,7 @@ class TestPoly1dArithmetic(Poly1dTestBase):
 @testing.parameterize(*testing.product({
     'func': [
         lambda x, y: x + y,
+        lambda x, y: x - y,
     ],
     'type_l': ['ndarray', 'numpy_scalar'],
     'type_r': ['poly1d'],
@@ -284,53 +286,22 @@ class TestPoly1dMul(Poly1dTestBase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4)
-    def test_poly1d_arithmetic(self, xp, dtype):
+    def test_poly1d_mul(self, xp, dtype):
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
         return a1 * a2
 
-# @testing.gpu
-# class TestPoly1dPow():
-#
-#     @testing.for_all_dtypes(no_bool=True)
-#     @testing.numpy_cupy_allclose(rtol=1e-2)
-#     def test_poly1d_pow_scalar(self, xp, dtype):
-#         a = testing.shaped_arange((5,), xp, dtype)
-#         b = xp.poly1d(a) ** 5
-#         return b.coeffs
-#
-#     @testing.for_all_dtypes()
-#     def test_poly1d_pow_neg(self, dtype):
-#         for xp in (numpy, cupy):
-#             a = testing.shaped_arange((5,), xp, dtype)
-#             with pytest.raises(ValueError):
-#                 xp.poly1d(a) ** -10
-#
-#     @testing.for_all_dtypes()
-#     def test_poly1d_pow_float(self, dtype):
-#         for xp in (numpy, cupy):
-#             a = testing.shaped_arange((5,), xp, dtype)
-#             with pytest.raises(ValueError):
-#                 xp.poly1d(a) ** 3.5
-#
-#     @testing.for_all_dtypes()
-#     def test_poly1d_pow_array(self, dtype):
-#         for xp in (numpy, cupy):
-#             a = testing.shaped_arange((5,), xp, dtype)
-#             with pytest.raises(ValueError):
-#                 xp.poly1d(a) ** a
-
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'fname': ['polyadd', 'polymul'],
+    'fname': ['polyadd', 'polysub', 'polymul'],
     'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
 }))
 class TestPoly1dRoutines(Poly1dTestBase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4)
+    @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_routine(self, xp, dtype):
         func = getattr(xp, self.fname)
         a1 = self._get_input(xp, self.type_l, dtype)
@@ -343,46 +314,47 @@ class UserDefinedArray:
     __array_priority__ = cupy.poly1d.__array_priority__ + 10
 
     def __init__(self):
-        self.count = 0
-        self.rcount = 0
-
-        self.prod = 1
-        self.rprod = 1
+        self.op_count = 0
+        self.rop_count = 0
 
     def __add__(self, other):
-        self.count += 1
+        self.op_count += 1
 
     def __radd__(self, other):
-        self.rcount += 1
+        self.rop_count += 1
+
+    def __sub__(self, other):
+        self.op_count += 1
+
+    def __rsub__(self, other):
+        self.rop_count += 1
 
     def __mul__(self, other):
-        self.prod *= 2
+        self.op_count += 1
 
     def __rmul__(self, other):
-        self.rprod *= 2
+        self.rop_count += 1
 
 
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'func': [
+        lambda x, y: x + y,
+        lambda x, y: x - y,
+        lambda x, y: x * y,
+    ],
+}))
 class TestPoly1dArrayPriority(Poly1dTestBase):
 
-    def test_poly1d_add_array_priority_greator(self):
+    def test_poly1d_array_priority_greator(self):
         a1 = self._get_input(cupy, 'poly1d', 'int64')
         a2 = UserDefinedArray()
-        a1 + a2
-        assert a2.count == 0
-        assert a2.rcount == 1
-        a2 + a1
-        assert a2.count == 1
-        assert a2.rcount == 1
-
-    def test_poly1d_mul_array_priority_greator(self):
-        a1 = self._get_input(cupy, 'poly1d', 'int64')
-        a2 = UserDefinedArray()
-        a1 * a2
-        assert a2.prod == 1
-        assert a2.rprod == 2
-        a2 * a1
-        assert a2.prod == 2
-        assert a2.rprod == 2
+        self.func(a1, a2)
+        assert a2.op_count == 0
+        assert a2.rop_count == 1
+        self.func(a2, a1)
+        assert a2.op_count == 1
+        assert a2.rop_count == 1
 
 
 @testing.gpu
@@ -429,7 +401,7 @@ class TestPoly1dEquality(unittest.TestCase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'fname': ['polyadd', 'polymul'],
+    'fname': ['polyadd', 'polysub', 'polymul'],
     'shape1': [(), (0,), (3,), (5,)],
     'shape2': [(), (0,), (3,), (5,)],
 }))
@@ -446,22 +418,20 @@ class TestPolyArithmeticShapeCombination(unittest.TestCase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'fname': ['polyadd', 'polymul'],
+    'fname': ['polyadd', 'polysub', 'polymul'],
 }))
 class TestPolyArithmeticDiffTypes(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2'], no_bool=True)
-    @testing.numpy_cupy_allclose(rtol=1e-5)
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
     def test_polyroutine_diff_types_array(self, xp, dtype1, dtype2):
         func = getattr(xp, self.fname)
         a = testing.shaped_arange((10,), xp, dtype1)
         b = testing.shaped_arange((5,), xp, dtype2)
         return func(a, b)
 
-    @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2'], no_bool=True)
-    @testing.numpy_cupy_allclose(rtol=1e-5)
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
     def test_polyroutine_diff_types_poly1d(self, xp, dtype1, dtype2):
         func = getattr(xp, self.fname)
         a = testing.shaped_arange((10,), xp, dtype1)
