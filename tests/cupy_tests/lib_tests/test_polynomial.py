@@ -22,7 +22,7 @@ class TestPoly1dInit(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -31,14 +31,14 @@ class TestPoly1dInit(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
     @testing.numpy_cupy_array_equal()
     def test_poly1d_list(self, xp):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d([1, 2, 3, 4], variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -48,7 +48,7 @@ class TestPoly1dInit(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -58,7 +58,7 @@ class TestPoly1dInit(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'z')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -67,7 +67,7 @@ class TestPoly1dInit(unittest.TestCase):
         a = xp.poly1d(array)
         out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -76,7 +76,7 @@ class TestPoly1dInit(unittest.TestCase):
         a = xp.poly1d(array, variable='z')
         out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'z')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -85,7 +85,7 @@ class TestPoly1dInit(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -94,7 +94,7 @@ class TestPoly1dInit(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
 
 @testing.gpu
@@ -110,8 +110,7 @@ class TestPoly1d(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_poly1d_neg(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
-        b = -xp.poly1d(a)
-        return b.coeffs
+        return -xp.poly1d(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
@@ -160,7 +159,7 @@ class TestPoly1d(unittest.TestCase):
         b = xp.poly1d(a)
         with cupyx.allow_synchronize(False):
             b[100] = 20
-        return b.coeffs
+        return b
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -169,7 +168,7 @@ class TestPoly1d(unittest.TestCase):
         b = xp.poly1d(a)
         with cupyx.allow_synchronize(False):
             b[1] = 10
-        return b.coeffs
+        return b
 
     @testing.for_all_dtypes()
     def test_poly1d_setitem_neg(self, dtype):
