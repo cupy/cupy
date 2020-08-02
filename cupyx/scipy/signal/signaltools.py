@@ -16,7 +16,7 @@ def choose_conv_method(in1, in2, mode='full'):
 
     Returns:
         str: A string indicating which convolution method is fastest,
-        either ``direct`` or ``fft``.
+        either ``direct`` or ``fft1``.
 
     .. warning::
         This function currently doesn't support measure option,
@@ -66,6 +66,12 @@ def wiener(im, mysize=None, noise=None):
 
     .. seealso:: :func:`scipy.signal.wiener`
     """
+    if im.dtype.kind == 'c':
+        # TODO: adding support for complex types requires ndimage filters
+        # to support complex types (which they could easily if not for the
+        # scipy compatibility requirement of forbidding complex and using
+        # float64 intermediates)
+        raise TypeError("complex types not currently supported")
     if mysize is None:
         mysize = 3
     mysize = _util._fix_sequence_arg(mysize, im.ndim, 'mysize', int)
@@ -112,6 +118,9 @@ def order_filter(a, domain, rank):
     .. seealso:: :func:`cupyx.scipy.ndimage.rank_filter`
     .. seealso:: :func:`scipy.signal.order_filter`
     """
+    if a.dtype.kind in 'bc' or a.dtype == cupy.float16:
+        # scipy doesn't support these types
+        raise ValueError("data type not supported")
     if any(x % 2 != 1 for x in domain.shape):
         raise ValueError("Each dimension of domain argument "
                          " should have an odd number of elements.")
@@ -138,6 +147,10 @@ def medfilt(volume, kernel_size=None):
     .. seealso:: :func:`cupyx.scipy.ndimage.median_filter`
     .. seealso:: :func:`scipy.signal.medfilt`
     """
+    if volume.dtype.kind == 'c':
+        # scipy doesn't support complex
+        # (and filters.rank_filter raise TypeError)
+        raise ValueError("complex types not supported")
     # output is forced to float64 to match scipy
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)
     if any(k > s for k, s in zip(kernel_size, volume.shape)):
@@ -172,7 +185,9 @@ def medfilt2d(input, kernel_size=3):
     .. seealso:: :func:`cupyx.scipy.signal.medfilt`
     .. seealso:: :func:`scipy.signal.medfilt2d`
     """
-    # Scipy's version only supports uint8, float32, and float64
+    if input.dtype not in (cupy.uint8, cupy.float32, cupy.float64):
+        # Scipy's version only supports uint8, float32, and float64
+        raise ValueError("only supports uint8, float32, and float64")
     if input.ndim != 2:
         raise ValueError('input must be 2d')
     kernel_size = _get_kernel_size(kernel_size, input.ndim)

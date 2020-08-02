@@ -5,7 +5,7 @@ import pytest
 import cupy
 from cupy import testing
 
-import cupyx.scipy.signal  # NOQA
+import cupyx.scipy.signal
 
 try:
     import scipy.signal  # NOQA
@@ -59,18 +59,31 @@ class TestChooseConvMethod(unittest.TestCase):
     'im': [(10,), (5, 10), (10, 3), (3, 4, 10)],
     'mysize': [3, 4, (3, 4, 5)],
     'noise': [False, True],
-    'dtype': ['int32', 'float32', 'float64'],
 }))
 @testing.gpu
 @testing.with_requires('scipy')
 class TestWiener(unittest.TestCase):
+    # TODO: support complex
+    # Note: float16 is tested separately
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    def test_wiener(self, xp, scp):
-        im = testing.shaped_random(self.im, xp, self.dtype)
+    def test_wiener(self, xp, scp, dtype):
+        im = testing.shaped_random(self.im, xp, dtype)
         mysize = self.mysize
         if isinstance(mysize, tuple):
             mysize = mysize[:im.ndim]
-        noise = (testing.shaped_random(self.im, xp, self.dtype)
+        noise = (testing.shaped_random(self.im, xp, dtype)
+                 if self.noise else None)
+        return scp.signal.wiener(im, mysize, noise)
+
+    # float16 has significantly worse error tolerances
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    def test_wiener_float16(self, xp, scp, dtype=cupy.float16):
+        im = testing.shaped_random(self.im, xp, dtype)
+        mysize = self.mysize
+        if isinstance(mysize, tuple):
+            mysize = mysize[:im.ndim]
+        noise = (testing.shaped_random(self.im, xp, dtype)
                  if self.noise else None)
         return scp.signal.wiener(im, mysize, noise)
 
@@ -79,15 +92,15 @@ class TestWiener(unittest.TestCase):
     'a': [(10,), (5, 10), (10, 3), (3, 4, 10)],
     'domain': [3, 4, (3, 3, 5)],
     'rank': [0, 1, 2],
-    'dtype': ['int32', 'float32', 'float64'],
 }))
 @testing.gpu
 @testing.with_requires('scipy')
 class TestOrderFilter(unittest.TestCase):
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
-                                 accept_error=ValueError)
-    def test_order_filter(self, xp, scp):
-        a = testing.shaped_random(self.a, xp, self.dtype)
+                                 accept_error=ValueError) # for even kernels
+    def test_order_filter(self, xp, scp, dtype):
+        a = testing.shaped_random(self.a, xp, dtype)
         d = self.domain
         d = d[:a.ndim] if isinstance(d, tuple) else (d,)*a.ndim
         domain = testing.shaped_random(d, xp) > 0.25
@@ -98,15 +111,15 @@ class TestOrderFilter(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'volume': [(10,), (5, 10), (10, 5), (5, 6, 10)],
     'kernel_size': [3, 4, (3, 3, 5)],
-    'dtype': ['int32', 'float32', 'float64'],
 }))
 @testing.gpu
 @testing.with_requires('scipy')
 class TestMedFilt(unittest.TestCase):
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
-                                 accept_error=ValueError)
-    def test_medfilt(self, xp, scp):
-        volume = testing.shaped_random(self.volume, xp, self.dtype)
+                                 accept_error=ValueError) # for even kernels
+    def test_medfilt(self, xp, scp, dtype):
+        volume = testing.shaped_random(self.volume, xp, dtype)
         kernel_size = self.kernel_size
         if isinstance(kernel_size, tuple):
             kernel_size = kernel_size[:volume.ndim]
@@ -116,14 +129,14 @@ class TestMedFilt(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'input': [(5, 10), (10, 5)],
     'kernel_size': [3, 4, (3, 5)],
-    'dtype': ['uint8', 'float32', 'float64'],
 }))
 @testing.gpu
 @testing.with_requires('scipy')
 class TestMedFilt2d(unittest.TestCase):
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
-                                 accept_error=ValueError)
-    def test_medfilt2d(self, xp, scp):
-        input = testing.shaped_random(self.input, xp, self.dtype)
+                                 accept_error=ValueError) # for even kernels
+    def test_medfilt2d(self, xp, scp, dtype):
+        input = testing.shaped_random(self.input, xp, dtype)
         kernel_size = self.kernel_size
         return scp.signal.medfilt2d(input, kernel_size)
