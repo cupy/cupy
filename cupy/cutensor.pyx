@@ -132,9 +132,8 @@ cdef inline _set_compute_dtype(array_dtype, compute_dtype=None):
     return compute_dtype
 
 
-def create_tensor_descriptor(
-        ndarray a, int uop=cutensor.OP_IDENTITY, *,
-        Handle handle=None):
+cpdef TensorDescriptor create_tensor_descriptor(
+        ndarray a, int uop=cutensor.OP_IDENTITY, Handle handle=None):
     """Create a tensor descriptor
 
     Args:
@@ -584,7 +583,42 @@ _cutensor_dtypes = [
 ]
 
 
-def _try_reduction_routine(x, axis, dtype, out, keepdims, op, alpha, beta):
+cdef dict _modes = {}
+cdef dict _scalars = {}
+
+
+cdef inline Mode _create_mode_with_cache(axis_or_ndim):
+    cdef Mode mode
+    if axis_or_ndim in _modes:
+        mode = _modes[axis_or_ndim]
+    else:
+        if type(axis_or_ndim) is int:
+            mode = Mode(tuple(range(axis_or_ndim)))
+        else:
+            mode = Mode(axis_or_ndim)
+        _modes[axis_or_ndim] = mode
+    return mode
+
+
+cdef inline _Scalar _create_scalar_with_cache(scale, dtype):
+    cdef _Scalar scalar
+    key = (scale, dtype)
+    if key in _scalars:
+        scalar = _scalars[key]
+    else:
+        scalar = _Scalar(scale, dtype)
+        _scalars[key] = scalar
+    return scalar
+
+
+def _try_reduction_routine(
+        ndarray x, axis, dtype, out, keepdims, reduce_op, alpha, beta):
+    cdef Handle handle
+    cdef ndarray in_arg, out_arg
+    cdef shape_t out_shape
+    cdef tuple reduce_axis, out_axis
+    cdef TensorDescriptor desc_in, desc_out
+
     if dtype is None:
         dtype = x.dtype
 
@@ -605,7 +639,7 @@ def _try_reduction_routine(x, axis, dtype, out, keepdims, op, alpha, beta):
     out_shape = _reduction._get_out_shape(
         x._shape, reduce_axis, out_axis, keepdims)
     if out is None:
-        out = ndarray(out_shape, dtype=dtype)
+        out = core._ndarray_init(out_shape, dtype=dtype)
     elif out._shape != out_shape:
         # TODO(asi1024): Support broadcast
         return None
@@ -625,13 +659,23 @@ def _try_reduction_routine(x, axis, dtype, out, keepdims, op, alpha, beta):
     in_arg._set_contiguous_strides(in_arg.itemsize, True)
     out_arg._set_contiguous_strides(out_arg.itemsize, True)
 
-    desc_in = create_tensor_descriptor(in_arg)
-    desc_out = create_tensor_descriptor(out_arg)
-    mode_in = list(range(in_arg.ndim))
-    mode_out = [axis for axis in mode_in if (axis not in reduce_axis)]
+    handle = get_handle()
 
-    reduction(
-        alpha, in_arg, desc_in, mode_in, beta, out_arg, desc_out, mode_out,
-        op, dtype)
+    desc_in = create_tensor_descriptor(in_arg, handle=handle)
+    desc_out = create_tensor_descriptor(out_arg, handle=handle)
+
+    compute_dtype = _set_compute_dtype(in_arg.dtype, dtype)
+
+    return _reduction_impl(
+        handle,
+        _create_scalar_with_cache(alpha, compute_dtype),
+        in_arg,
+        desc_in,
+        _create_mode_with_cache(in_arg._shape.size()),
+        _create_scalar_with_cache(beta, compute_dtype),
+        out_arg,
+        desc_out,
+        _create_mode_with_cache(out_axis),
+        reduce_op, get_cutensor_dtype(compute_dtype))
 
     return out
