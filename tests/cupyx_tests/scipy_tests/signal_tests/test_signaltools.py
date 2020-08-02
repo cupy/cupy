@@ -98,7 +98,7 @@ class TestWiener(unittest.TestCase):
 class TestOrderFilter(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
-                                 accept_error=ValueError) # for even kernels
+                                 accept_error=ValueError)  # for even kernels
     def test_order_filter(self, xp, scp, dtype):
         a = testing.shaped_random(self.a, xp, dtype)
         d = self.domain
@@ -117,7 +117,7 @@ class TestOrderFilter(unittest.TestCase):
 class TestMedFilt(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
-                                 accept_error=ValueError) # for even kernels
+                                 accept_error=ValueError)  # for even kernels
     def test_medfilt(self, xp, scp, dtype):
         volume = testing.shaped_random(self.volume, xp, dtype)
         kernel_size = self.kernel_size
@@ -135,7 +135,7 @@ class TestMedFilt(unittest.TestCase):
 class TestMedFilt2d(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
-                                 accept_error=ValueError) # for even kernels
+                                 accept_error=ValueError)  # for even kernels
     def test_medfilt2d(self, xp, scp, dtype):
         input = testing.shaped_random(self.input, xp, dtype)
         kernel_size = self.kernel_size
