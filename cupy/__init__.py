@@ -54,7 +54,6 @@ __version__ = _version.__version__
 
 import cupy.core.fusion  # NOQA
 from cupy import fft  # NOQA
-from cupy import io  # NOQA
 from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import polynomial  # NOQA
@@ -464,13 +463,13 @@ from cupy._indexing.iterate import flatiter  # NOQA
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
-from cupy.io.npz import load  # NOQA
-from cupy.io.npz import save  # NOQA
-from cupy.io.npz import savez  # NOQA
-from cupy.io.npz import savez_compressed  # NOQA
+from cupy._io.npz import load  # NOQA
+from cupy._io.npz import save  # NOQA
+from cupy._io.npz import savez  # NOQA
+from cupy._io.npz import savez_compressed  # NOQA
 
-from cupy.io.formatting import array_repr  # NOQA
-from cupy.io.formatting import array_str  # NOQA
+from cupy._io.formatting import array_repr  # NOQA
+from cupy._io.formatting import array_str  # NOQA
 
 
 def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition of `number`)
