@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 from cupy import testing
-from cupy.lib import stride_tricks
+from cupy._lib import stride_tricks
 
 
 @testing.gpu
