@@ -136,8 +136,9 @@ cdef class poly1d:
             # case: poly1d * python scalar
             return poly1d(self.coeffs * other)
         if isinstance(self, numpy.generic):
-            # case: numpy scalar * poly1d
-            return self * other.coeffs
+            # for consistency: numpy scalar * poly1d
+            raise TypeError('Numpy scalar and poly1d multiplication'
+                            ' is not supported currently.')
         if cupy.isscalar(self) and isinstance(other, poly1d):
             # case: python scalar * poly1d
             self = other._coeffs.dtype.type(self)
@@ -152,6 +153,7 @@ cdef class poly1d:
                             'addition is not supported')
         return _routines_poly.polyadd(self, other)
 
+    # TODO(Dahlia-Chehata): implement using polymul
     def __pow__(self, val, modulo):
         if not cupy.isscalar(val) or int(val) != val or val < 0:
             raise ValueError('Power to non-negative integers only.')

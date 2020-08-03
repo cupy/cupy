@@ -16,6 +16,7 @@ def _wraps_polyroutine(func):
     def wrapper(*args):
         coeffs = [_get_coeffs(x) for x in args]
         out = func(*coeffs)
+
         if all([not isinstance(x, cupy.poly1d) for x in args]):
             return out
         if isinstance(out, cupy.ndarray):
@@ -41,6 +42,8 @@ def polyadd(a1, a2):
     .. seealso:: :func:`numpy.polyadd`
 
     """
+    if a1.ndim != 1 or a2.ndim != 1:
+        raise ValueError('Multidimensional inputs are not supported')
     if a1.size < a2.size:
         a1, a2 = a2, a1
     out = cupy.pad(a2, (a1.size - a2.size, 0))
@@ -63,6 +66,8 @@ def polysub(a1, a2):
     .. seealso:: :func:`numpy.polysub`
 
     """
+    if a1.ndim != 1 or a2.ndim != 1:
+        raise ValueError('Multidimensional inputs are not supported')
     if a1.shape[0] <= a2.shape[0]:
         out = cupy.pad(a1, (a2.shape[0] - a1.shape[0], 0))
         out = out.astype(cupy.result_type(a1, a2), copy=False)

@@ -237,6 +237,7 @@ class Poly1dTestBase(unittest.TestCase):
     'func': [
         lambda x, y: x + y,
         lambda x, y: x - y,
+        lambda x, y: x * y,
     ],
     'type_l': ['poly1d', 'python_scalar'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
@@ -244,7 +245,7 @@ class Poly1dTestBase(unittest.TestCase):
 class TestPoly1dArithmetic(Poly1dTestBase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_arithmetic(self, xp, dtype):
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
@@ -256,6 +257,7 @@ class TestPoly1dArithmetic(Poly1dTestBase):
     'func': [
         lambda x, y: x + y,
         lambda x, y: x - y,
+        lambda x, y: x * y,
     ],
     'type_l': ['ndarray', 'numpy_scalar'],
     'type_r': ['poly1d'],
@@ -274,21 +276,6 @@ class TestPoly1dArithmeticInvalid(Poly1dTestBase):
         c2 = self._get_input(cupy, self.type_r, dtype)
         with pytest.raises(TypeError):
             self.func(c1, c2)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
-    'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
-}))
-class TestPoly1dMul(Poly1dTestBase):
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4)
-    def test_poly1d_mul(self, xp, dtype):
-        a1 = self._get_input(xp, self.type_l, dtype)
-        a2 = self._get_input(xp, self.type_r, dtype)
-        return a1 * a2
 
 
 @testing.gpu
@@ -419,7 +406,7 @@ class TestPolyArithmeticShapeCombination(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'fname': ['polyadd', 'polysub', 'polymul'],
 }))
-class TestPolyArithmeticDiffTypes(unittest.TestCase):
+class TestPolyArithmetic(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
@@ -441,14 +428,11 @@ class TestPolyArithmeticDiffTypes(unittest.TestCase):
         assert out.variable == 'x'
         return out
 
-
-@testing.gpu
-class TestPolymul(unittest.TestCase):
-
     @testing.for_all_dtypes()
-    def test_polymul_ndim(self, dtype):
+    def test_polyroutine_ndim(self, dtype):
         for xp in (numpy, cupy):
+            func = getattr(xp, self.fname)
             a = testing.shaped_arange((2, 3, 4), xp, dtype)
             b = testing.shaped_arange((10, 5), xp, dtype)
             with pytest.raises(ValueError):
-                xp.polymul(a, b)
+                func(a, b)
