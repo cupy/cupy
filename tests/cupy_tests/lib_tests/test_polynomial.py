@@ -440,58 +440,47 @@ class TestPolyArithmeticDiffTypes(unittest.TestCase):
 
 
 @testing.gpu
-class TestRoots(unittest.TestCase):
+@testing.parameterize(*testing.product({
+    'input': [[2, -1, -2], [-4, 10, 4]],
+}))
+class TestRootsReal(unittest.TestCase):
 
     @testing.for_signed_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_roots1(self, xp, dtype):
-        a = xp.array([2, -1, -2], dtype)
+    def test_roots(self, xp, dtype):
+        a = xp.array(self.input, dtype)
         out = xp.poly1d(a).roots
         return xp.sort(out)
 
-    @testing.for_signed_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_roots2(self, xp, dtype):
-        a = xp.array([-4, 10, 4], dtype)
-        out = xp.poly1d(a).roots
-        return xp.sort(out)
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'input': [[3j, 1.5j, -3j], [3 + 2j, 5], [3j, 0], [0, 3j]],
+}))
+class TestRootsComplex(unittest.TestCase):
 
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_roots_complex(self, xp, dtype):
-        a = xp.array([3j, 1.5j, -3j], dtype)
+    def test_roots(self, xp, dtype):
+        a = xp.array(self.input, dtype)
         out = xp.poly1d(a).roots
         return xp.sort(out)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'input': [[5, 10], [5, 0], [0, 5], [0, 0], [5]],
+}))
+class TestRootsSpecialCases(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_array_equal()
-    def test_roots_two_sized1(self, xp, dtype):
-        a = xp.array([5, 10], dtype)
+    def test_roots(self, xp, dtype):
+        a = xp.array(self.input, dtype)
         return xp.roots(a)
 
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_equal()
-    def test_roots_two_sized2(self, xp, dtype):
-        a = xp.array([0, 5], dtype)
-        return xp.roots(a)
 
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_equal()
-    def test_roots_two_sized3(self, xp, dtype):
-        a = xp.array([5, 0], dtype)
-        return xp.roots(a)
-
-    @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_roots_two_sized_complex(self, xp, dtype):
-        a = xp.array([3 + 2j, 5], dtype)
-        return xp.roots(a)
-
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_equal()
-    def test_roots_one_sized(self, xp, dtype):
-        a = xp.array([5], dtype)
-        return xp.roots(a)
+class TestRoots(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()

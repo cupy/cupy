@@ -110,6 +110,7 @@ def roots(p):
             out = out.real.astype(numpy.float64)
         return out
     cmatrix = cupy.polynomial.polynomial.polycompanion(p)
+    # TODO(Dahlia-Chehata): Support after cupy.linalg.eigvals is supported
     if cupy.array_equal(cmatrix, cmatrix.conj().T):
         out = cupy.linalg.eigvalsh(cmatrix)
     else:
