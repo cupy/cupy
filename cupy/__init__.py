@@ -56,7 +56,6 @@ from cupy import binary  # NOQA
 import cupy.core.fusion  # NOQA
 from cupy import fft  # NOQA
 from cupy import functional  # NOQA
-from cupy import indexing  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
@@ -441,29 +440,29 @@ from numpy import typename  # NOQA
 # -----------------------------------------------------------------------------
 # Indexing routines
 # -----------------------------------------------------------------------------
-from cupy.indexing.generate import c_  # NOQA
-from cupy.indexing.generate import indices  # NOQA
-from cupy.indexing.generate import ix_  # NOQA
-from cupy.indexing.generate import r_  # NOQA
-from cupy.indexing.generate import ravel_multi_index  # NOQA
-from cupy.indexing.generate import unravel_index  # NOQA
+from cupy._indexing.generate import c_  # NOQA
+from cupy._indexing.generate import indices  # NOQA
+from cupy._indexing.generate import ix_  # NOQA
+from cupy._indexing.generate import r_  # NOQA
+from cupy._indexing.generate import ravel_multi_index  # NOQA
+from cupy._indexing.generate import unravel_index  # NOQA
 
-from cupy.indexing.indexing import choose  # NOQA
-from cupy.indexing.indexing import compress  # NOQA
-from cupy.indexing.indexing import diagonal  # NOQA
-from cupy.indexing.indexing import extract  # NOQA
-from cupy.indexing.indexing import select  # NOQA
-from cupy.indexing.indexing import take  # NOQA
-from cupy.indexing.indexing import take_along_axis  # NOQA
+from cupy._indexing.indexing import choose  # NOQA
+from cupy._indexing.indexing import compress  # NOQA
+from cupy._indexing.indexing import diagonal  # NOQA
+from cupy._indexing.indexing import extract  # NOQA
+from cupy._indexing.indexing import select  # NOQA
+from cupy._indexing.indexing import take  # NOQA
+from cupy._indexing.indexing import take_along_axis  # NOQA
 
-from cupy.indexing.insert import place  # NOQA
-from cupy.indexing.insert import put  # NOQA
-from cupy.indexing.insert import putmask  # NOQA
-from cupy.indexing.insert import fill_diagonal  # NOQA
-from cupy.indexing.insert import diag_indices  # NOQA
-from cupy.indexing.insert import diag_indices_from  # NOQA
+from cupy._indexing.insert import place  # NOQA
+from cupy._indexing.insert import put  # NOQA
+from cupy._indexing.insert import putmask  # NOQA
+from cupy._indexing.insert import fill_diagonal  # NOQA
+from cupy._indexing.insert import diag_indices  # NOQA
+from cupy._indexing.insert import diag_indices_from  # NOQA
 
-from cupy.indexing.iterate import flatiter  # NOQA
+from cupy._indexing.iterate import flatiter  # NOQA
 
 # -----------------------------------------------------------------------------
 # Input and output
