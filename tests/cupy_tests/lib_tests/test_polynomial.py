@@ -487,26 +487,26 @@ class TestRoots(unittest.TestCase):
         a = xp.array([3 + 2j, 5], dtype)
         return xp.roots(a)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_roots_one_sized(self, xp, dtype):
         a = xp.array([5], dtype)
         return xp.roots(a)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_roots_zero_sized(self, xp, dtype):
         a = xp.zeros((0,), dtype)
         return xp.roots(a)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     def test_roots_zero_dim(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_random((), xp, dtype)
             with pytest.raises(TypeError):
                 xp.roots(a)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     def test_roots_ndim(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((3, 1), xp, dtype)
@@ -519,15 +519,20 @@ class TestRoots(unittest.TestCase):
         with pytest.raises(NotImplementedError):
             cupy.roots(a)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_roots_zeros1(self, xp, dtype):
         a = xp.zeros((3,), dtype)
         return xp.roots(a)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     def test_roots_zeros2(self, dtype):
         for xp in (numpy, cupy):
             a = xp.zeros((2, 1), dtype)
             with pytest.raises(ValueError):
                 cupy.roots(a)
+
+    def test_roots_bool(self):
+        a = testing.shaped_arange((5,), cupy, bool)
+        with pytest.raises(NotImplementedError):
+            cupy.roots(a)
