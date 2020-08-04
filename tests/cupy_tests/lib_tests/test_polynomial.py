@@ -521,7 +521,12 @@ class TestRoots(unittest.TestCase):
             with pytest.raises(ValueError):
                 cupy.roots(a)
 
-    def test_roots_bool(self):
+    def test_roots_bool_general(self):
         a = testing.shaped_arange((5,), cupy, bool)
+        with pytest.raises(NotImplementedError):
+            cupy.roots(a)
+
+    def test_roots_bool_symmetric(self):
+        a = cupy.array([5, -1, -5], bool)
         with pytest.raises(NotImplementedError):
             cupy.roots(a)
