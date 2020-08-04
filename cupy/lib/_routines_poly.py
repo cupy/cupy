@@ -73,3 +73,38 @@ def polysub(a1, a2):
         out = out.astype(cupy.result_type(a1, a2), copy=False)
         out -= 2 * out - a1
     return out
+
+
+def polyval(p, x):
+    """Evaluates a polynomial at specific values.
+
+    Args:
+        p (cupy.ndarray or cupy.poly1d): input polynomial.
+        x (scalar, cupy.ndarray or cupy.poly1d): values at which the
+        polynomial is evaluated.
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: polynomial evaluated at x.
+
+    .. seealso:: :func:`numpy.polyval`
+
+    """
+    if cupy.isscalar(p):
+        raise TypeError('p can be ndarray or poly1d object only')
+    if isinstance(x, cupy.poly1d):
+        pass
+    else:
+        val = cupy.asarray(x)
+        dtype = cupy.result_type(p, val)
+        exp = cupy.tile(cupy.arange(p.size), (val.size, 1))
+        out = p[::-1] * cupy.power(val.reshape(-1, 1), exp)
+        out = out.sum(axis=1)
+        if cupy.isscalar(x):
+            return dtype.type(out.item())
+        if p.dtype.kind in 'c' or (issubclass(
+                val.dtype.type, numpy.integer) and issubclass(
+                p.dtype.type, numpy.floating)):
+            return out.astype(dtype, copy=False)
+        if val.dtype.kind in 'b':
+            return out.astype(p.dtype, copy=False)
+        return out.astype(val.dtype, copy=False)

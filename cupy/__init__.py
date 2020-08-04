@@ -555,6 +555,7 @@ from cupy.logic.truth import any  # NOQA
 from cupy.lib import poly1d  # NOQA
 from cupy.lib import polyadd  # NOQA
 from cupy.lib import polysub  # NOQA
+from cupy.lib import polyval  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions

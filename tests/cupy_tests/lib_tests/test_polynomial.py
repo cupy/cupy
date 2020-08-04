@@ -423,3 +423,45 @@ class TestPolyArithmeticDiffTypes(unittest.TestCase):
             out = func(a, b)
         assert out.variable == 'x'
         return out
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'type_l': ['ndarray'],
+    'type_r': ['ndarray', 'numpy_scalar', 'python_scalar'],
+}))
+class TestPolyval(Poly1dTestBase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_polyval(self, xp, dtype):
+        a1 = self._get_input(xp, self.type_l, dtype)
+        a2 = self._get_input(xp, self.type_r, dtype)
+        return xp.polyval(a1, a2)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'type_l': ['numpy_scalar', 'python_scalar'],
+    'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
+}))
+class TestPolyvalInvalid(Poly1dTestBase):
+
+    @testing.for_all_dtypes()
+    def test_polyval(self, dtype):
+        for xp in (numpy, cupy):
+            a1 = self._get_input(xp, self.type_l, dtype)
+            a2 = self._get_input(xp, self.type_r, dtype)
+            with pytest.raises(TypeError):
+                xp.polyval(a1, a2)
+
+
+@testing.gpu
+class TestPolyvalDifftypes(unittest.TestCase):
+
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_polyval_diff_types_array(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((10,), xp, dtype1)
+        b = testing.shaped_arange((5,), xp, dtype2)
+        return xp.polyval(a, b)
