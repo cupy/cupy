@@ -1,6 +1,6 @@
 from cupy import core
 from cupy.core import fusion
-from cupy.math import ufunc
+from cupy._math import ufunc
 
 
 def around(a, decimals=0, out=None):

@@ -1,4 +1,4 @@
-from cupy.math import ufunc
+from cupy._math import ufunc
 
 
 sinh = ufunc.create_math_ufunc(
