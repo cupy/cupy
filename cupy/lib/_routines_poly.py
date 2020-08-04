@@ -5,9 +5,6 @@ import cupy
 
 def _wraps_polyroutine(func):
     def _get_coeffs(x):
-        if func.__name__ == 'polymul':
-            return cupy.poly1d(x).coeffs
-
         if isinstance(x, cupy.poly1d):
             x = x._coeffs
         elif isinstance(x, cupy.ndarray) or cupy.isscalar(x):
@@ -95,4 +92,10 @@ def polymul(a1, a2):
     .. seealso:: :func:`numpy.polymul`
 
     """
-    return cupy.convolve(a1, a2)
+    if a1.size == 0:
+        a1 = cupy.array([0.])
+    if a2.size == 0:
+        a2 = cupy.array([0.])
+    a1 = cupy.polynomial.polyutils.trimseq(a1[::-1])
+    a2 = cupy.polynomial.polyutils.trimseq(a2[::-1])
+    return cupy.convolve(a1[::-1], a2[::-1])
