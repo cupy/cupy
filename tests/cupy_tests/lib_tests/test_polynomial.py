@@ -406,7 +406,7 @@ class TestPolyArithmeticShapeCombination(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'fname': ['polyadd', 'polysub', 'polymul'],
 }))
-class TestPolyArithmetic(unittest.TestCase):
+class TestPolyArithmeticDiffTypes(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
@@ -427,6 +427,13 @@ class TestPolyArithmetic(unittest.TestCase):
         out = func(a, b)
         assert out.variable == 'x'
         return out
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'fname': ['polyadd', 'polysub', 'polymul'],
+}))
+class TestPolyArithmeticNdim(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_polyroutine_ndim(self, dtype):

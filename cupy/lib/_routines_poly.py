@@ -6,15 +6,15 @@ import cupy
 def _wraps_polyroutine(func):
     def _get_coeffs(x):
         if isinstance(x, cupy.poly1d):
-            x = x._coeffs
-        elif isinstance(x, cupy.ndarray) or cupy.isscalar(x):
+            return x._coeffs
+        if cupy.isscalar(x):
+            return cupy.atleast_1d(x)
+        if isinstance(x, cupy.ndarray):
             x = cupy.atleast_1d(x)
-        else:
-            raise TypeError('Unsupported type')
-
-        if x.ndim != 1:
+            if x.ndim == 1:
+                return x
             raise ValueError('Multidimensional inputs are not supported')
-        return x
+        raise TypeError('Unsupported type')
 
     def wrapper(*args):
         coeffs = [_get_coeffs(x) for x in args]
