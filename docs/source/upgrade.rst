@@ -25,7 +25,7 @@ Dropping Support of Python 2.7 and 3.4
 
 Starting from CuPy v7, Python 2.7 and 3.4 are no longer supported as it reaches its end-of-life (EOL) in January 2020 (2.7) and March 2019 (3.4).
 Python 3.5.1 is the minimum Python version supported by CuPy v7.
-Please upgrade the Python version if you are using affected versions of Python to any later versions listed under :ref:`install-guide`.
+Please upgrade the Python version if you are using affected versions of Python to any later versions listed under :doc:`install`.
 
 
 CuPy v6
