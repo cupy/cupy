@@ -92,10 +92,10 @@ def polymul(a1, a2):
     .. seealso:: :func:`numpy.polymul`
 
     """
+    a1 = cupy.trim_zeros(a1, trim='f')
+    a2 = cupy.trim_zeros(a2, trim='f')
     if a1.size == 0:
         a1 = cupy.array([0.])
     if a2.size == 0:
         a2 = cupy.array([0.])
-    a1 = cupy.polynomial.polyutils.trimseq(a1[::-1])
-    a2 = cupy.polynomial.polyutils.trimseq(a2[::-1])
-    return cupy.convolve(a1[::-1], a2[::-1])
+    return cupy.convolve(a1, a2)
