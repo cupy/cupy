@@ -1,5 +1,5 @@
 from cupy import core
-from cupy.creation import basic
+from cupy._creation import basic
 from cupy.random import distributions
 from cupy.random import generator
 
