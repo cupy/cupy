@@ -1,7 +1,7 @@
 import numpy as np
 
 import cupy
-from cupyx.scipy.ndimage import filters
+from cupyx.scipy.ndimage import _util
 
 
 def _get_output_fourier(output, input):
@@ -69,7 +69,7 @@ def fourier_gaussian(input, sigma, n=-1, axis=-1, output=None):
     ndim = input.ndim
     output = _get_output_fourier(output, input)
     axis = cupy.util._normalize_axis_index(axis, ndim)
-    sigmas = filters._fix_sequence_arg(sigma, ndim, 'sigma')
+    sigmas = _util._fix_sequence_arg(sigma, ndim, 'sigma')
 
     output[...] = input
     for ax, (sigmak, ax_size) in enumerate(zip(sigmas, output.shape)):
@@ -121,7 +121,7 @@ def fourier_uniform(input, size, n=-1, axis=-1, output=None):
     ndim = input.ndim
     output = _get_output_fourier(output, input)
     axis = cupy.util._normalize_axis_index(axis, ndim)
-    sizes = filters._fix_sequence_arg(size, ndim, 'size')
+    sizes = _util._fix_sequence_arg(size, ndim, 'size')
 
     output[...] = input
     for ax, (size, ax_size) in enumerate(zip(sizes, output.shape)):
@@ -172,7 +172,7 @@ def fourier_shift(input, shift, n=-1, axis=-1, output=None):
     ndim = input.ndim
     output = _get_output_fourier_complex(output, input)
     axis = cupy.util._normalize_axis_index(axis, ndim)
-    shifts = filters._fix_sequence_arg(shift, ndim, 'shift')
+    shifts = _util._fix_sequence_arg(shift, ndim, 'shift')
 
     output[...] = input
     for ax, (shiftk, ax_size) in enumerate(zip(shifts, output.shape)):
