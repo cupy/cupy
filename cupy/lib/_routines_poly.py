@@ -99,7 +99,10 @@ def polyval(p, x):
     if cupy.isscalar(p) or p.ndim == 0:
         raise TypeError('p can be 1d ndarray or poly1d object only')
     if p.ndim != 1:
+        # to be consistent with polyarithmetic routines' behavior of
+        # not allowing multidimensional polynomial inputs.
         raise ValueError('p can be 1d ndarray or poly1d object only')
+    # TODO(Dahlia-Chehata): Support poly1d and multidimensional x
     if isinstance(x, cupy.poly1d) or (isinstance(x, cupy.ndarray)
                                       and x.ndim > 1):
         raise NotImplementedError('poly1d or non 1d values are not'
@@ -109,14 +112,20 @@ def polyval(p, x):
     out = p[::-1] * cupy.power(val, exp)
     out = out.sum(axis=1)
     dtype = cupy.result_type(p, val)
+    # For case: when p is of shape (0,) and x is (), output is
+    #  of single valued array to match NumPy's behavior
     if isinstance(x, cupy.ndarray) and x.ndim == 0 and p.size == 0:
         return out[0].astype(dtype, copy=False)
     if cupy.isscalar(x) or x.ndim == 0:
         return dtype.type(out.item())
+    # To handle mixed integer and float dtypes combinations for inputs,
+    # output should be cast according to NumPy's promotion rules.
     if p.dtype.kind in 'c' or (issubclass(
             val.dtype.type, numpy.integer) and issubclass(
             p.dtype.type, numpy.floating)):
         return out.astype(dtype, copy=False)
+    # To handle bool values used in evaluation, casting the output
+    # to polynomial dtype is required to match NumPy's results.
     if val.dtype.kind in 'b':
         return out.astype(p.dtype, copy=False)
     return out.astype(val.dtype, copy=False)
