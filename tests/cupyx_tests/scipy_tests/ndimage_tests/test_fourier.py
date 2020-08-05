@@ -185,7 +185,6 @@ class TestFourierGaussian(unittest.TestCase):
         return xp.ascontiguousarray(a)
 
 
-
 @testing.parameterize(
     *(
         testing.product(
