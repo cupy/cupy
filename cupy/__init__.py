@@ -663,7 +663,7 @@ from cupy.math.misc import convolve  # NOQA
 # -----------------------------------------------------------------------------
 from cupy._misc.memory_ranges import may_share_memory  # NOQA
 from cupy._misc.memory_ranges import shares_memory  # NOQA
-from cupy._misc import who  # NOQA
+from cupy._misc.who import who  # NOQA
 
 
 # -----------------------------------------------------------------------------
