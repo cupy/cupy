@@ -134,13 +134,21 @@ cdef class poly1d:
             return other.__rmul__(self)
         if cupy.isscalar(other):
             # case: poly1d * python scalar
+            # the return type of cupy.polymul output is
+            # inconsistent with NumPy's output for this case.
             return poly1d(self.coeffs * other)
         if isinstance(self, numpy.generic):
-            # for consistency: numpy scalar * poly1d
+            # case: numpy scalar * poly1d
+            # poly1d addition and subtraction don't support this case
+            # so it is not supported here for consistency purposes
+            # between polyarithmetic routines
             raise TypeError('Numpy scalar and poly1d multiplication'
                             ' is not supported currently.')
         if cupy.isscalar(self) and isinstance(other, poly1d):
             # case: python scalar * poly1d
+            # the return type of cupy.polymul output is
+            # inconsistent with NumPy's output for this case
+            # So casting python scalar is required.
             self = other._coeffs.dtype.type(self)
         return _routines_poly.polymul(self, other)
 
