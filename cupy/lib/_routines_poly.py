@@ -95,6 +95,8 @@ def roots(p):
     .. seealso:: :func:`numpy.roots`
 
     """
+    if isinstance(p, cupy.poly1d):
+        p = p.coeffs
     if p.dtype.kind == 'b':
         raise NotImplementedError('boolean inputs are not supported')
     if p.ndim == 0:

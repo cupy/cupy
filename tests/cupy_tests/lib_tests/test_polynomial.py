@@ -441,9 +441,16 @@ class TestRootsReal(unittest.TestCase):
 
     @testing.for_signed_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_roots(self, xp, dtype):
+    def test_roots_array(self, xp, dtype):
         a = xp.array(self.input, dtype)
-        out = xp.poly1d(a).roots
+        out = xp.roots(a)
+        return xp.sort(out)
+
+    @testing.for_signed_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_roots_poly1d(self, xp, dtype):
+        a = xp.array(self.input, dtype)
+        out = xp.roots(xp.poly1d(a))
         return xp.sort(out)
 
 
@@ -455,9 +462,16 @@ class TestRootsComplex(unittest.TestCase):
 
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_roots(self, xp, dtype):
+    def test_roots_array(self, xp, dtype):
         a = xp.array(self.input, dtype)
-        out = xp.poly1d(a).roots
+        out = xp.roots(a)
+        return xp.sort(out)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_roots_poly1d(self, xp, dtype):
+        a = xp.array(self.input, dtype)
+        out = xp.roots(xp.poly1d(a))
         return xp.sort(out)
 
 
@@ -469,9 +483,15 @@ class TestRootsSpecialCases(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_array_equal()
-    def test_roots(self, xp, dtype):
+    def test_roots_array(self, xp, dtype):
         a = xp.array(self.input, dtype)
         return xp.roots(a)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_roots_poly1d(self, xp, dtype):
+        a = xp.array(self.input, dtype)
+        return xp.roots(xp.poly1d(a))
 
 
 class TestRoots(unittest.TestCase):
