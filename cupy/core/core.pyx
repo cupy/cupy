@@ -35,6 +35,7 @@ from libc.stdint cimport int64_t
 from cupy.core cimport _carray
 from cupy.core cimport _dtype
 from cupy.core._dtype cimport get_dtype
+from cupy.core._dtype cimport dtype_to_cuda_dtype
 from cupy.core._kernel cimport create_ufunc
 from cupy.core cimport _routines_indexing as _indexing
 from cupy.core cimport _routines_logic as _logic
@@ -50,6 +51,14 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cublas
+
+
+cdef extern from '../../cupy_backends/cuda/cupy_cuComplex.h':
+    ctypedef struct cuComplex 'cuComplex':
+        float x, y
+
+    ctypedef struct cuDoubleComplex 'cuDoubleComplex':
+        double x, y
 
 
 @cython.profile(False)
@@ -2784,20 +2793,7 @@ cpdef ndarray tensordot_core(
         out.fill(0)
         return out
 
-    global _cuda_runtime_version
-    if _cuda_runtime_version < 0:
-        _cuda_runtime_version = runtime.runtimeGetVersion()
-
-    if _cuda_runtime_version >= 11000:
-        return tensordot_core_v11(a, b, out, n, m, k, ret_shape)
-
-    use_sgemmEx = (a.dtype == 'e' and b.dtype == 'e' and
-                   (ret_dtype == 'e' or ret_dtype == 'f'))
-    use_tensor_core = (use_sgemmEx and
-                       _cuda_runtime_version >= 9000 and
-                       int(device.get_compute_capability()) >= 70)
-
-    if use_sgemmEx or ret_dtype in 'fdFD':
+    if ret_dtype in 'efdFD':
         dtype = ret_dtype
     else:
         dtype = numpy.promote_types(ret_dtype, 'f').char
@@ -2836,19 +2832,30 @@ cpdef ndarray tensordot_core(
         c = c.view()
         c.shape = (n, m)
 
-    if not use_sgemmEx:
-        a = a.astype(dtype, copy=False)
-        b = b.astype(dtype, copy=False)
+    a = a.astype(dtype, copy=False)
+    b = b.astype(dtype, copy=False)
 
     # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
-    handle = device.get_cublas_handle()
     # Matrix-Matrix product A^T * B
     # c is C-contiguous while cuBLAS assumes F-contiguous inputs, so we
     # compute C^T = B^T * A here.
     a, transa, lda = _mat_to_cublas_contiguous(a, 0)
     b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
-    if use_sgemmEx:
-        Ctype = runtime.CUDA_R_16F if c.dtype == 'e' else runtime.CUDA_R_32F
+
+    global _cuda_runtime_version
+    if _cuda_runtime_version < 0:
+        _cuda_runtime_version = runtime.runtimeGetVersion()
+
+    if _cuda_runtime_version >= 11000:
+        tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
+        if out is not ret:
+            elementwise_copy(out, ret)
+        return ret
+
+    handle = device.get_cublas_handle()
+    if dtype == 'e':
+        use_tensor_core = (_cuda_runtime_version >= 9000 and
+                           int(device.get_compute_capability()) >= 70)
         if use_tensor_core:
             one_fp32 = 1
             zero_fp32 = 0
@@ -2859,14 +2866,15 @@ cpdef ndarray tensordot_core(
                 b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
                 a.data.ptr, runtime.CUDA_R_16F, <int>lda,
                 <size_t>&zero_fp32,
-                c.data.ptr, Ctype, <int>m,
+                c.data.ptr, runtime.CUDA_R_16F, <int>m,
                 runtime.CUDA_R_32F, cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP)
             cublas.setMathMode(handle, cublas.CUBLAS_DEFAULT_MATH)
         else:
             cublas.sgemmEx(
                 handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
-                b.data.ptr, runtime.CUDA_R_16F, <int>ldb, a.data.ptr,
-                runtime.CUDA_R_16F, <int>lda, 0, c.data.ptr, Ctype, <int>m)
+                b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
+                a.data.ptr, runtime.CUDA_R_16F, <int>lda, 0,
+                c.data.ptr, runtime.CUDA_R_16F, <int>m)
     elif dtype == 'f':
         cublas.sgemmEx(
             handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
@@ -2893,149 +2901,78 @@ cpdef ndarray tensordot_core(
     return ret
 
 
-cdef struct cuComplex:
-    float x, y
-
-
-cdef struct cuDoubleComplex:
-    double x, y
-
-
 cpdef ndarray tensordot_core_v11(
-        ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
-        Py_ssize_t k, const shape_t& ret_shape):
-    cdef shape_t shape
-    cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
-    cdef Py_ssize_t mode, handle
+        Py_ssize_t transa, Py_ssize_t transb, Py_ssize_t m, Py_ssize_t n,
+        Py_ssize_t k, ndarray a, Py_ssize_t lda, ndarray b, Py_ssize_t ldb,
+        ndarray c, Py_ssize_t ldc):
     cdef float one_f, zero_f
     cdef double one_d, zero_d
     cdef cuComplex one_F, zero_F
     cdef cuDoubleComplex one_D, zero_D
 
-    ret_dtype = numpy.promote_types(a.dtype, b.dtype).char
-    out_dtype = ret_dtype
-    if out_dtype not in 'efdFD':
-        out_dtype = numpy.promote_types(out_dtype, 'f').char
-
-    ret = out
-    if ret is None:
-        ret = _ndarray_init(ret_shape, ret_dtype)
-
-    if out_dtype == ret_dtype:
-        out = ret
-    else:
-        out = _ndarray_init(ret_shape, out_dtype)
-
-    if m == 1 and n == 1:
-        _tensordot_core_mul_sum(
-            a.ravel(), b.ravel(), _manipulation._reshape(out, ()))
-        if out is not ret:
-            elementwise_copy(out, ret)
-        return ret
-
-    # It copies the operands if needed
-    if a._shape.size() != 2 or a._shape[0] != k or a._shape[1] != n:
-        shape.clear()
-        shape.push_back(k)
-        shape.push_back(n)
-        a = _manipulation._reshape(a, shape)
-    if b._shape.size() != 2 or b._shape[0] != k or b._shape[1] != m:
-        shape.clear()
-        shape.push_back(k)
-        shape.push_back(m)
-        b = _manipulation._reshape(b, shape)
-    c = out
-    if c._shape.size() != 2 or c._shape[0] != n or c._shape[1] != m:
-        c = c.view()
-        c.shape = (n, m)
-
-    a = a.astype(out_dtype, copy=False)
-    b = b.astype(out_dtype, copy=False)
-    # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
-    # Matrix-Matrix product A^T * B
-    # c is C-contiguous while cuBLAS assumes F-contiguous inputs, so we
-    # compute C^T = B^T * A here.
-    a, transa, lda = _mat_to_cublas_contiguous(a, 0)
-    b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
-
-    if out_dtype in 'efF':
+    if c.dtype.char in 'efF':
         compute_type = cublas.CUBLAS_COMPUTE_32F
-    elif out_dtype in 'dD':
+    elif c.dtype.char in 'dD':
         compute_type = cublas.CUBLAS_COMPUTE_64F
 
     compute_capability = int(device.get_compute_capability())
     algo = cublas.CUBLAS_GEMM_DEFAULT
     if ((compute_capability >= 80) or
-            (compute_capability >= 70 and out_dtype == 'e')):
+            (compute_capability >= 70 and c.dtype == 'e')):
         algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
 
+    a_cuda_dtype = dtype_to_cuda_dtype(a.dtype, is_half_allowed=True)
+    b_cuda_dtype = dtype_to_cuda_dtype(b.dtype, is_half_allowed=True)
+    c_cuda_dtype = dtype_to_cuda_dtype(c.dtype, is_half_allowed=True)
     handle = device.get_cublas_handle()
-    a_cuda_dtype = _get_cuda_dtype(a)
-    b_cuda_dtype = _get_cuda_dtype(b)
-    c_cuda_dtype = _get_cuda_dtype(c)
-    if out_dtype in 'efd':
+    if c.dtype.char in 'efd':
         if compute_type == cublas.CUBLAS_COMPUTE_32F:
             one_f = 1
             zero_f = 0
             cublas.gemmEx(
-                handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
-                <size_t>&one_f, b.data.ptr, b_cuda_dtype, <int>ldb,
+                handle, <int>transa, <int>transb, <int>m, <int>n, <int>k,
+                <size_t>&one_f,
                 a.data.ptr, a_cuda_dtype, <int>lda,
-                <size_t>&zero_f, c.data.ptr, c_cuda_dtype, <int>m,
+                b.data.ptr, b_cuda_dtype, <int>ldb,
+                <size_t>&zero_f, c.data.ptr, c_cuda_dtype, <int>ldc,
                 compute_type, algo)
         elif compute_type == cublas.CUBLAS_COMPUTE_64F:
             one_d = 1
             zero_d = 0
             cublas.gemmEx(
-                handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
-                <size_t>&one_d, b.data.ptr, b_cuda_dtype, <int>ldb,
+                handle, <int>transa, <int>transb, <int>m, <int>n, <int>k,
+                <size_t>&one_d,
                 a.data.ptr, a_cuda_dtype, <int>lda,
+                b.data.ptr, b_cuda_dtype, <int>ldb,
                 <size_t>&zero_d, c.data.ptr, c_cuda_dtype, <int>m,
                 compute_type, algo)
         else:
             raise ValueError('Invalid compute type: {}'.format(compute_type))
-    elif out_dtype in 'FD':
+    elif c.dtype.char in 'FD':
         if compute_type == cublas.CUBLAS_COMPUTE_32F:
             one_F = cuComplex(1, 0)
             zero_F = cuComplex(0, 0)
             cublas.gemmEx(
-                handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
-                <size_t>&one_F, b.data.ptr, b_cuda_dtype, <int>ldb,
+                handle, <int>transa, <int>transb, <int>m, <int>n, <int>k,
+                <size_t>&one_F,
                 a.data.ptr, a_cuda_dtype, <int>lda,
+                b.data.ptr, b_cuda_dtype, <int>ldb,
                 <size_t>&zero_F, c.data.ptr, c_cuda_dtype, <int>m,
                 compute_type, algo)
         elif compute_type == cublas.CUBLAS_COMPUTE_64F:
             one_D = cuDoubleComplex(1, 0)
             zero_D = cuDoubleComplex(0, 0)
             cublas.gemmEx(
-                handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
-                <size_t>&one_D, b.data.ptr, b_cuda_dtype, <int>ldb,
+                handle, <int>transa, <int>transb, <int>m, <int>n, <int>k,
+                <size_t>&one_D,
                 a.data.ptr, a_cuda_dtype, <int>lda,
+                b.data.ptr, b_cuda_dtype, <int>ldb,
                 <size_t>&zero_D, c.data.ptr, c_cuda_dtype, <int>m,
                 compute_type, algo)
         else:
             raise ValueError('Invalid compute type: {}'.format(compute_type))
     else:
-        raise ValueError('Invalid dtype: %s' % str(out_dtype))
-
-    if out is not ret:
-        elementwise_copy(out, ret)
-    return ret
-
-
-cdef int _get_cuda_dtype(ndarray a):
-    if a.dtype == 'e':
-        return runtime.CUDA_R_16F
-    elif a.dtype == 'f':
-        return runtime.CUDA_R_32F
-    elif a.dtype == 'd':
-        return runtime.CUDA_R_64F
-    elif a.dtype == 'F':
-        return runtime.CUDA_C_32F
-    elif a.dtype == 'D':
-        return runtime.CUDA_C_64F
-    else:
-        raise ValueError('Invalid dtype: %s' % str(a.dtype))
+        raise ValueError('Invalid dtype: {}'.format(c.dtype))
 
 
 @cython.profile(False)
