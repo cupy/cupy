@@ -79,7 +79,7 @@ def roots(p):
     """Computes the roots of a polynomial with given coefficients.
 
     Args:
-        p (cupy.ndarray): polynomial coefficients.
+        p (cupy.ndarray or cupy.poly1d): polynomial coefficients.
 
     Returns:
         cupy.ndarray: polynomial roots.

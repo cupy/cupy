@@ -502,6 +502,7 @@ class TestRoots(unittest.TestCase):
         a = xp.zeros((0,), dtype)
         return xp.roots(a)
 
+    @testing.with_requires('numpy>1.17')
     @testing.for_all_dtypes(no_bool=True)
     def test_roots_zero_dim(self, dtype):
         for xp in (numpy, cupy):
