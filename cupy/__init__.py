@@ -61,7 +61,6 @@ from cupy import indexing  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
-from cupy import padding  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 from cupy import _sorting  # NOQA
@@ -669,7 +668,7 @@ from cupy.misc import who  # NOQA
 # -----------------------------------------------------------------------------
 # Padding
 # -----------------------------------------------------------------------------
-pad = padding.pad.pad
+from cupy._padding.pad import pad
 
 
 # -----------------------------------------------------------------------------
