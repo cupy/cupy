@@ -1,4 +1,4 @@
-import numpy as np
+import numpy
 
 import cupy
 from cupyx.scipy.ndimage import _util
@@ -72,7 +72,7 @@ def fourier_gaussian(input, sigma, n=-1, axis=-1, output=None):
         # compute the Gaussian weights
         arr *= arr
         scale = sigmak * sigmak / -2
-        arr *= (4 * np.pi * np.pi) * scale
+        arr *= (4 * numpy.pi * numpy.pi) * scale
         cupy.exp(arr, out=arr)
 
         # reshape for broadcasting
@@ -166,12 +166,12 @@ def fourier_shift(input, shift, n=-1, axis=-1, output=None):
         if shiftk == 0:
             continue
         if ax == axis and n > 0:
-            # cp.fft.rfftfreq(ax_size) * (-2j * np.pi * shiftk *  ax_size / n)
+            # cp.fft.rfftfreq(ax_size) * (-2j * numpy.pi * shiftk *  ax_size/n)
             arr = cupy.arange(ax_size, dtype=output.dtype)
-            arr *= -2j * np.pi * shiftk / n
+            arr *= -2j * numpy.pi * shiftk / n
         else:
             arr = cupy.fft.fftfreq(ax_size)
-            arr = arr * (-2j * np.pi * shiftk)
+            arr = arr * (-2j * numpy.pi * shiftk)
         cupy.exp(arr, out=arr)
 
         # reshape for broadcasting
