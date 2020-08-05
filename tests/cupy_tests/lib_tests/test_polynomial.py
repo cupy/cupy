@@ -127,17 +127,11 @@ class TestPoly1d(unittest.TestCase):
 
     @testing.for_signed_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_poly1d_roots1(self, xp, dtype):
+    def test_poly1d_roots(self, xp, dtype):
         a = xp.array([-3, -2.5, 3], dtype)
         out = xp.poly1d(a).roots
         # The current `cupy.roots` doesn't guarantee the order of results.
         return xp.sort(out)
-
-    @testing.for_all_dtypes(no_bool=True)
-    def test_poly1d_roots2(self, dtype):
-        a = testing.shaped_arange((5,), cupy, dtype)
-        with pytest.raises(NotImplementedError):
-            cupy.poly1d(a).roots
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
@@ -515,16 +509,11 @@ class TestRoots(unittest.TestCase):
         return xp.roots(a)
 
     @testing.for_all_dtypes(no_bool=True)
-    def test_roots_zeros2(self, dtype):
+    def test_roots_zeros_ndim(self, dtype):
         for xp in (numpy, cupy):
             a = xp.zeros((2, 1), dtype)
             with pytest.raises(ValueError):
-                cupy.roots(a)
-
-    def test_roots_bool_general(self):
-        a = testing.shaped_arange((5,), cupy, bool)
-        with pytest.raises(NotImplementedError):
-            cupy.roots(a)
+                xp.roots(a)
 
     def test_roots_bool_symmetric(self):
         a = cupy.array([5, -1, -5], bool)
