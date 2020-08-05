@@ -4,31 +4,18 @@ import cupy
 from cupyx.scipy.ndimage import _util
 
 
-def _get_output_fourier(output, input):
+def _get_output_fourier(output, input, complex_only=False):
+    types = [cupy.complex64, cupy.complex128]
+    if not complex_only:
+        types += [cupy.float32, cupy.float64]
+
     if output is None:
-        if input.dtype.type in [cupy.complex64, cupy.complex128,
-                                cupy.float32]:
+        if input.dtype in types:
             output = cupy.zeros(input.shape, dtype=input.dtype)
         else:
-            output = cupy.zeros(input.shape, dtype=cupy.float64)
+            output = cupy.zeros(input.shape, dtype=types[-1])
     elif type(output) is type:
-        if output not in [cupy.complex64, cupy.complex128,
-                          cupy.float32, cupy.float64]:
-            raise RuntimeError("output type not supported")
-        output = cupy.zeros(input.shape, dtype=output)
-    elif output.shape != input.shape:
-        raise RuntimeError("output shape not correct")
-    return output
-
-
-def _get_output_fourier_complex(output, input):
-    if output is None:
-        if input.dtype.type in [cupy.complex64, cupy.complex128]:
-            output = cupy.zeros(input.shape, dtype=input.dtype)
-        else:
-            output = cupy.zeros(input.shape, dtype=cupy.complex128)
-    elif type(output) is type:
-        if output not in [cupy.complex64, cupy.complex128]:
+        if output not in types:
             raise RuntimeError("output type not supported")
         output = cupy.zeros(input.shape, dtype=output)
     elif output.shape != input.shape:
@@ -170,7 +157,7 @@ def fourier_shift(input, shift, n=-1, axis=-1, output=None):
         output (cupy.ndarray): The shifted output (in the Fourier domain).
     """
     ndim = input.ndim
-    output = _get_output_fourier_complex(output, input)
+    output = _get_output_fourier(output, input, complex_only=True)
     axis = cupy.util._normalize_axis_index(axis, ndim)
     shifts = _util._fix_sequence_arg(shift, ndim, 'shift')
 
