@@ -45,7 +45,7 @@ cdef class _LinkedList:
     # link
     cdef _Node head
     cdef _Node tail
-    cdef size_t count
+    cdef readonly size_t count
 
     def __init__(self):
         """ A doubly linked list to be used as an LRU cache. """
@@ -105,9 +105,8 @@ cdef class PlanCache:
 
     def __init__(self, Py_ssize_t size=4, Py_ssize_t memsize=-1):
         self._validate_size_memsize(size, memsize)
+        self._set_size_memsize(size, memsize)
         self._reset()
-        self.size = size
-        self.memsize = memsize
 
     def __getitem__(self, tuple key):
         cdef _Node node = self.cache.get(key)
@@ -117,35 +116,33 @@ cdef class PlanCache:
             self.lru.append_node(node)
             return node.plan
         else:
-            raise KeyError
+            raise KeyError('plan not found')
 
     def __setitem__(self, tuple key, plan):
-        cdef _Node node, unwanted_node
-        cdef size_t i
+        cdef _Node node = _Node(key, plan)
+        cdef _Node unwanted_node
 
+        # First, check for the worst case: the plan is too large to fit in
+        # the cache. In this case, we leave the cache intact and return early.
+        if (self.size == 0 or self.memsize == 0
+                or (node.memsize > self.memsize > 0)):
+            raise RuntimeError('cannot insert the plan -- perhaps '
+                               'cache size/memsize too small?')
+
+        # Now we ensure we have room to insert, check if the key already exists
         unwanted_node = self.cache.get(key)
         if unwanted_node is not None:
             self._remove_plan(unwanted_node)
             # self.cache will be updated later, so don't del
 
-        node = _Node(key, plan)
-        while True:
-            if ((self.curr_size + 1 <= self.size or self.size == -1)
-                    and (self.curr_memsize + node.memsize <= self.memsize
-                         or self.memsize == -1)):
-                self._add_plan(node)
-                self.cache[key] = node
-                break
-            else:
-                # remove from the front to free up space
-                unwanted_node = self.lru.head.next
-                if unwanted_node is not self.lru.tail:
-                    self._remove_plan(unwanted_node)
-                    del self.cache[unwanted_node.key]
-                else:
-                    # the cache is empty and the plan is too large
-                    raise RuntimeError('cannot insert the plan -- '
-                                       'cache size/memsize too small?')
+        # See if the plan can fit in, if not we remove least used ones
+        self._eject_until_fit(
+            self.size - 1 if self.size != -1 else -1,
+            self.memsize - node.memsize if self.memsize != -1 else -1)
+
+        # At this point we ensure we have room to insert
+        self._add_plan(node)
+        self.cache[key] = node
 
     cdef void _validate_size_memsize(
             self, Py_ssize_t size, Py_ssize_t memsize) except*:
@@ -157,6 +154,14 @@ cdef class PlanCache:
                 or (memsize == 0 and size not in (-1, 0))):
             raise ValueError('to disable the cache, both size and memsize '
                              'need to be 0')
+
+    cdef void _set_size_memsize(self, Py_ssize_t size, Py_ssize_t memsize):
+        if size == 0:
+            memsize = 0
+        elif memsize == 0:
+            size = 0
+        self.size = size
+        self.memsize = memsize
 
     cdef void _remove_plan(self, _Node node):
         """ Remove the node corresponding to the given plan from the list. """
@@ -177,16 +182,34 @@ cdef class PlanCache:
         self.curr_memsize += node.memsize
 
     cpdef set_size(self, Py_ssize_t size):
-        raise NotImplementedError
+        self._validate_size_memsize(size, self.memsize)
+        self._eject_until_fit(size, self.memsize)
+        self._set_size_memsize(size, self.memsize)
 
     cpdef Py_ssize_t get_size(self):
         return self.size
 
     cpdef set_memsize(self, Py_ssize_t memsize):
-        raise NotImplementedError
+        self._validate_size_memsize(self.size, memsize)
+        self._eject_until_fit(self.size, memsize)
+        self._set_size_memsize(self.size, memsize)
 
     cpdef Py_ssize_t get_memsize(self):
         return self.memsize
+
+    cdef inline void _eject_until_fit(self, Py_ssize_t size, Py_ssize_t memsize):
+        cdef _Node unwanted_node
+        while True:
+            if (self.curr_size == 0
+                or ((self.curr_size <= size or size == -1)
+                    and (self.curr_memsize <= memsize or memsize == -1))):
+                break
+            else:
+                # remove from the front to free up space
+                unwanted_node = self.lru.head.next
+                if unwanted_node is not self.lru.tail:
+                    self._remove_plan(unwanted_node)
+                    del self.cache[unwanted_node.key]
 
     cpdef clear(self):
         self._reset()
@@ -200,13 +223,13 @@ cdef class PlanCache:
             assert self.curr_memsize <= self.memsize
 
         cdef str output = '-------------- cuFFT plan cache --------------\n'
-        output += 'max size: {0} (current size: {1})\n'.format(
-            '(unlimited)' if self.size == -1 else self.size,
-            self.curr_size)
-        output += 'max memsize: {0} (current memsize: {1})\n'.format(
-            '(unlimited)' if self.memsize == -1 else self.memsize,
-            self.curr_memsize)
-        output += '\ncached plans:\n'
+        output += 'current / max size: {0} / {1} (counts)\n'.format(
+            self.curr_size,
+            '(unlimited)' if self.size == -1 else self.size)
+        output += 'current / max memsize: {0} / {1} (bytes)\n'.format(
+            self.curr_memsize,
+            '(unlimited)' if self.memsize == -1 else self.memsize)
+        output += '\ncached plans (least used first):\n'
 
         cdef _Node node = self.lru.head
         cdef size_t count = 0
