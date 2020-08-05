@@ -41,6 +41,16 @@ Basics
     cupy.poly1d
 
 
+Fitting
+~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+    cupy.polyfit
+
+
 Arithmetic
 ~~~~~~~~~~
 
