@@ -80,11 +80,16 @@ def polyval(p, x):
 
     Args:
         p (cupy.ndarray or cupy.poly1d): input polynomial.
-        x (scalar, cupy.ndarray or cupy.poly1d): values at which the
-        polynomial is evaluated.
+        x (scalar, cupy.ndarray): values at which the polynomial
+        is evaluated.
 
     Returns:
         cupy.ndarray or cupy.poly1d: polynomial evaluated at x.
+
+    .. warning::
+
+        This function doesn't currently support poly1d objects nor
+        multidimensional ndarrays as values used in evaluation.
 
     .. seealso:: :func:`numpy.polyval`
 

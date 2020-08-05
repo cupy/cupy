@@ -119,9 +119,8 @@ cdef class poly1d:
     def __str__(self):
         return str(self.get())
 
-    # TODO(Dahlia-Chehata): implement using polyval
     def __call__(self, val):
-        raise NotImplementedError
+        return _routines_poly.polyval(self.coeffs, val)
 
     def __neg__(self):
         return poly1d(-self.coeffs)
