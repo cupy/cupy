@@ -1,9 +1,11 @@
 # distutils: language = c++
 
-from libcpp.list cimport list as cpplist
-from libcpp cimport vector
+import threading
 
 from cupy.cuda import cufft
+
+
+cdef object _thread_local = threading.local()
 
 
 cdef class _Node:
@@ -36,7 +38,7 @@ cdef class _Node:
             plan_type = 'PlanNd'
         else:
             raise TypeError('unrecognized plan type: {}'.format(type(self.plan)))
-        output = 'key: {0}, plan type: {1}, memory usage: {2}'.format( 
+        output = 'key: {0}, plan type: {1}, memory usage: {2}'.format(
             self.key, plan_type, self.memsize)
         return output
 
@@ -93,8 +95,8 @@ cdef class PlanCache:
     cdef dict cache
 
     # for keeping track of least recently used plans
-    # lru.head: most recent used
-    # lru.tail: least recent used
+    # lru.head: least recent used
+    # lru.tail: most recent used
     cdef _LinkedList lru
 
     cdef inline void _reset(self):
@@ -104,9 +106,16 @@ cdef class PlanCache:
         self.lru = _LinkedList()
 
     def __init__(self, Py_ssize_t size=4, Py_ssize_t memsize=-1):
+        # TODO(leofang): use stream as part of cache key?
         self._validate_size_memsize(size, memsize)
         self._set_size_memsize(size, memsize)
         self._reset()
+
+        if hasattr(_thread_local, '_current_plan_cache'):
+            import warnings
+            warnings.warn('invalidating the existing thread-local '
+                          'plan cache...')
+        _thread_local._current_plan_cache = self
 
     def __getitem__(self, tuple key):
         cdef _Node node = self.cache.get(key)
@@ -171,7 +180,7 @@ cdef class PlanCache:
         # update bookkeeping
         self.curr_size -= 1
         self.curr_memsize -= node.memsize
-    
+
     cdef void _add_plan(self, _Node node):
         """ Add a node corresponding to the given plan to the tail of the list. """
         # update linked list
@@ -231,6 +240,7 @@ cdef class PlanCache:
             '(unlimited)' if self.memsize == -1 else self.memsize)
         output += '\ncached plans (least used first):\n'
 
+        # TODO(leofang): maybe traverse from the end?
         cdef _Node node = self.lru.head
         cdef size_t count = 0
         while node.next is not self.lru.tail:
@@ -243,3 +253,42 @@ cdef class PlanCache:
 
     cpdef show_info(self):
         print(self)
+
+
+cpdef Py_ssize_t get_plan_cache_size(size):
+    if not hasattr(_thread_local, '_current_plan_cache'):
+        raise RuntimeError('cache not found')
+    cdef PlanCache cache = _thread_local._current_plan_cache
+    return cache.get_size()
+
+
+cpdef set_plan_cache_size(size):
+    if not hasattr(_thread_local, '_current_plan_cache'):
+        raise RuntimeError('cache not found')
+    cdef PlanCache cache = _thread_local._current_plan_cache
+    cache.set_size(size)
+
+
+cpdef Py_ssize_t get_plan_cache_max_memsize(size):
+    if not hasattr(_thread_local, '_current_plan_cache'):
+        raise RuntimeError('cache not found')
+    cdef PlanCache cache = _thread_local._current_plan_cache
+    return cache.get_memsize()
+
+
+cpdef set_plan_cache_max_memsize(size):
+    if not hasattr(_thread_local, '_current_plan_cache'):
+        raise RuntimeError('cache not found')
+    cdef PlanCache cache = _thread_local._current_plan_cache
+    cache.set_memsize(size)
+
+
+cpdef clear_plan_cache():
+    if not hasattr(_thread_local, '_current_plan_cache'):
+        raise RuntimeError('cache not found')
+    cdef PlanCache cache = _thread_local._current_plan_cache
+    cache.clear()
+
+
+# enable cache by default
+plan_cache = PlanCache(size=10)
