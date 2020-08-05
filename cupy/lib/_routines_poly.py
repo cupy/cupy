@@ -94,22 +94,29 @@ def polyval(p, x):
     .. seealso:: :func:`numpy.polyval`
 
     """
-    if cupy.isscalar(p):
-        raise TypeError('p can be ndarray or poly1d object only')
-    if isinstance(x, cupy.poly1d):
-        pass
-    else:
-        val = cupy.asarray(x)
-        dtype = cupy.result_type(p, val)
-        exp = cupy.tile(cupy.arange(p.size), (val.size, 1))
-        out = p[::-1] * cupy.power(val.reshape(-1, 1), exp)
-        out = out.sum(axis=1)
-        if cupy.isscalar(x):
-            return dtype.type(out.item())
-        if p.dtype.kind in 'c' or (issubclass(
-                val.dtype.type, numpy.integer) and issubclass(
-                p.dtype.type, numpy.floating)):
-            return out.astype(dtype, copy=False)
-        if val.dtype.kind in 'b':
-            return out.astype(p.dtype, copy=False)
-        return out.astype(val.dtype, copy=False)
+    if isinstance(p, cupy.poly1d):
+        p = p.coeffs
+    if cupy.isscalar(p) or p.ndim == 0:
+        raise TypeError('p can be 1d ndarray or poly1d object only')
+    if p.ndim != 1:
+        raise ValueError('p can be 1d ndarray or poly1d object only')
+    if isinstance(x, cupy.poly1d) or (isinstance(x, cupy.ndarray)
+                                      and x.ndim > 1):
+        raise NotImplementedError('poly1d or non 1d values are not'
+                                  ' currently supported')
+    val = cupy.asarray(x).reshape(-1, 1)
+    exp = cupy.tile(cupy.arange(p.size), (val.size, 1))
+    out = p[::-1] * cupy.power(val, exp)
+    out = out.sum(axis=1)
+    dtype = cupy.result_type(p, val)
+    if isinstance(x, cupy.ndarray) and x.ndim == 0 and p.size == 0:
+        return out[0].astype(dtype, copy=False)
+    if cupy.isscalar(x) or x.ndim == 0:
+        return dtype.type(out.item())
+    if p.dtype.kind in 'c' or (issubclass(
+            val.dtype.type, numpy.integer) and issubclass(
+            p.dtype.type, numpy.floating)):
+        return out.astype(dtype, copy=False)
+    if val.dtype.kind in 'b':
+        return out.astype(p.dtype, copy=False)
+    return out.astype(val.dtype, copy=False)

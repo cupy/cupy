@@ -399,8 +399,7 @@ class TestPolyArithmeticShapeCombination(unittest.TestCase):
         func = getattr(xp, self.fname)
         a = testing.shaped_arange(self.shape1, xp, dtype)
         b = testing.shaped_arange(self.shape2, xp, dtype)
-        with cupyx.allow_synchronize(False):
-            return func(a, b)
+        return func(a, b)
 
 
 @testing.gpu
