@@ -6,6 +6,7 @@ import cupy
 from libc.stdint cimport intptr_t, uint32_t, uint64_t
 from cupy.core._carray cimport shape_t
 from cupy.core.core cimport ndarray
+from cupy.core cimport internal
 from cupy_backends.cuda.libs.cutensor cimport Handle
 from cupy_backends.cuda.libs.cutensor cimport TensorDescriptor
 from cupy_backends.cuda.libs.cutensor cimport ContractionDescriptor
@@ -220,7 +221,7 @@ def elementwise_trinary(
         out = core._ndarray_init(C._shape, dtype=C.dtype)
     elif C.dtype != out.dtype:
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
-    elif C._shape != out._shape:
+    elif not internal.vector_equal(C._shape, out._shape):
         raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
     elif not out._c_contiguous:
         raise ValueError('`out` should be a contiguous array.')
@@ -279,7 +280,7 @@ def elementwise_binary(
         out = core._ndarray_init(C._shape, dtype=C.dtype)
     elif C.dtype != out.dtype:
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
-    elif C._shape != out._shape:
+    elif not internal.vector_equal(C._shape, out._shape):
         raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
     elif not out._c_contiguous:
         raise ValueError('`out` should be a contiguous array.')
@@ -612,7 +613,7 @@ cdef inline _Scalar _create_scalar_with_cache(scale, dtype):
 
 
 def _try_reduction_routine(
-        ndarray x, axis, dtype, out, keepdims, reduce_op, alpha, beta):
+        ndarray x, axis, dtype, ndarray out, keepdims, reduce_op, alpha, beta):
     cdef Handle handle
     cdef ndarray in_arg, out_arg
     cdef shape_t out_shape
@@ -640,7 +641,7 @@ def _try_reduction_routine(
         x._shape, reduce_axis, out_axis, keepdims)
     if out is None:
         out = core._ndarray_init(out_shape, dtype=dtype)
-    elif out._shape != out_shape:
+    elif not internal.vector_equal(out._shape, out_shape):
         # TODO(asi1024): Support broadcast
         return None
     elif out.dtype != dtype:
