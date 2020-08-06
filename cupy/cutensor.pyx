@@ -667,7 +667,7 @@ def _try_reduction_routine(
 
     compute_dtype = _set_compute_dtype(in_arg.dtype, dtype)
 
-    return _reduction_impl(
+    _reduction_impl(
         handle,
         _create_scalar_with_cache(alpha, compute_dtype),
         in_arg,
