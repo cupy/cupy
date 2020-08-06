@@ -7,8 +7,13 @@ def _wraps_polyroutine(func):
     def _get_coeffs(x):
         if isinstance(x, cupy.poly1d):
             return x._coeffs
-        if isinstance(x, cupy.ndarray) or cupy.isscalar(x):
+        if cupy.isscalar(x):
             return cupy.atleast_1d(x)
+        if isinstance(x, cupy.ndarray):
+            x = cupy.atleast_1d(x)
+            if x.ndim == 1:
+                return x
+            raise ValueError('Multidimensional inputs are not supported')
         raise TypeError('Unsupported type')
 
     def wrapper(*args):
@@ -71,3 +76,26 @@ def polysub(a1, a2):
         out = out.astype(cupy.result_type(a1, a2), copy=False)
         out -= 2 * out - a1
     return out
+
+
+@_wraps_polyroutine
+def polymul(a1, a2):
+    """Computes the product of two polynomials.
+
+    Args:
+        a1 (scalar, cupy.ndarray or cupy.poly1d): first input polynomial.
+        a2 (scalar, cupy.ndarray or cupy.poly1d): second input polynomial.
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: The product of the inputs.
+
+    .. seealso:: :func:`numpy.polymul`
+
+    """
+    a1 = cupy.trim_zeros(a1, trim='f')
+    a2 = cupy.trim_zeros(a2, trim='f')
+    if a1.size == 0:
+        a1 = cupy.array([0.])
+    if a2.size == 0:
+        a2 = cupy.array([0.])
+    return cupy.convolve(a1, a2)
