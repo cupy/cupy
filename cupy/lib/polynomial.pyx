@@ -105,6 +105,10 @@ cdef class poly1d:
             variable = 'x'
         self._variable = variable
 
+    @property
+    def __cuda_array_interface__(self):
+        return self.coeffs.__cuda_array_interface__
+
     def __array__(self, dtype=None):
         raise TypeError(
             'Implicit conversion to a NumPy array is not allowed. '
