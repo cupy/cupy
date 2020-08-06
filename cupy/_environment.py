@@ -238,3 +238,16 @@ def _preload_libraries():
 
 def _get_preload_logs():
     return '\n'.join(_preload_logs)
+
+
+def _preload_warning(lib, exc):
+    config = get_preload_config()
+    if config is not None and lib in config:
+        warnings.warn('''
+{lib} library could not be loaded.
+
+Reason: {exc_type} ({exc})
+
+You can install the library by:
+  $ python -m cupyx.tools.install_library --library {lib} --cuda {cuda}
+'''.format(lib=lib, exc_type=type(exc).__name__, exc=str(exc), cuda=config['cuda']))
