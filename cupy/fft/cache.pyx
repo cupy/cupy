@@ -67,28 +67,34 @@ cdef class _LinkedList:
 
     cdef void append_node(self, _Node node):
         """ Add a node to the tail of the linked list. """
-        cdef _Node p = self.tail.prev
+        cdef _Node t = self.tail
+        cdef _Node p = t.prev
         p.next = node
-        self.tail.prev = node
+        t.prev = node
         node.prev = p
-        node.next = self.tail
+        node.next = t
         self.count += 1
 
 
 cdef class PlanCache:
     # total number of plans, regardless of plan type
-    # -1: unlimited, cache size is restricted to "memsize"
+    # -1: unlimited/ignored, cache size is restricted by "memsize"
+    # 0: disable cache
     cdef Py_ssize_t size
 
     # current number of cached plans
     cdef Py_ssize_t curr_size
 
     # total amount of memory for all of the cached plans
-    # -1: unlimited, cache size is restricted to "size"
+    # -1: unlimited/ignored, cache size is restricted by "size"
+    # 0: disable cache
     cdef Py_ssize_t memsize
 
     # current amount of memory used by cached plans
     cdef Py_ssize_t curr_memsize
+
+    # whether the cache is enabled (True) or disabled (False)
+    cdef bint is_enabled
 
     # key: all arguments used to construct Plan1d or PlanNd
     # value: the node that holds the plan corresponding to the key
@@ -155,22 +161,13 @@ cdef class PlanCache:
 
     cdef void _validate_size_memsize(
             self, Py_ssize_t size, Py_ssize_t memsize) except*:
-        if size == memsize == -1:
-            raise ValueError('size and memsize cannot be -1 at the same time')
         if size < -1 or memsize < -1:
             raise ValueError('invalid input')
-        if ((size == 0 and memsize not in (-1, 0))
-                or (memsize == 0 and size not in (-1, 0))):
-            raise ValueError('to disable the cache, both size and memsize '
-                             'need to be 0')
 
     cdef void _set_size_memsize(self, Py_ssize_t size, Py_ssize_t memsize):
-        if size == 0:
-            memsize = 0
-        elif memsize == 0:
-            size = 0
         self.size = size
         self.memsize = memsize
+        self.is_enabled = (size != 0 and memsize != 0)
 
     cdef void _remove_plan(self, _Node node):
         """ Remove the node corresponding to the given plan from the list. """
@@ -232,6 +229,7 @@ cdef class PlanCache:
             assert self.curr_memsize <= self.memsize
 
         cdef str output = '-------------- cuFFT plan cache --------------\n'
+        output += 'cache enabled? {}\n'.format(self.is_enabled)
         output += 'current / max size: {0} / {1} (counts)\n'.format(
             self.curr_size,
             '(unlimited)' if self.size == -1 else self.size)
