@@ -10,9 +10,6 @@ cimport cython  # NOQA
 
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
-    # case: python scalar + poly1d
-    if cupy.isscalar(x) and isinstance(y, poly1d):
-        return False
     xp = getattr(x, '__array_priority__', 0)
     yp = getattr(y, '__array_priority__', 0)
     return xp < yp and not isinstance(y, poly1d)
@@ -132,11 +129,28 @@ cdef class poly1d:
     def __pos__(self):
         return self
 
-    # TODO(Dahlia-Chehata): use polymul for non-scalars
     def __mul__(self, other):
+        if _should_use_rop(self, other):
+            return other.__rmul__(self)
         if cupy.isscalar(other):
+            # case: poly1d * python scalar
+            # the return type of cupy.polymul output is
+            # inconsistent with NumPy's output for this case.
             return poly1d(self.coeffs * other)
-        raise NotImplementedError
+        if isinstance(self, numpy.generic):
+            # case: numpy scalar * poly1d
+            # poly1d addition and subtraction don't support this case
+            # so it is not supported here for consistency purposes
+            # between polyarithmetic routines
+            raise TypeError('Numpy scalar and poly1d multiplication'
+                            ' is not supported currently.')
+        if cupy.isscalar(self) and isinstance(other, poly1d):
+            # case: python scalar * poly1d
+            # the return type of cupy.polymul output is
+            # inconsistent with NumPy's output for this case
+            # So casting python scalar is required.
+            self = other._coeffs.dtype.type(self)
+        return _routines_poly.polymul(self, other)
 
     def __add__(self, other):
         if _should_use_rop(self, other):
@@ -153,13 +167,14 @@ cdef class poly1d:
             raise ValueError('Power to non-negative integers only.')
         raise NotImplementedError
 
-    # TODO(Dahlia-Chehata): implement using polysub
     def __sub__(self, other):
-        raise NotImplementedError
-
-    # TODO(Dahlia-Chehata): implement using polysub
-    def __rsub__(self, other):
-        raise NotImplementedError
+        if _should_use_rop(self, other):
+            return other.__rsub__(self)
+        if isinstance(self, numpy.generic):
+            # for the case: numpy scalar - poly1d
+            raise TypeError('Numpy scalar and poly1d '
+                            'subtraction is not supported')
+        return _routines_poly.polysub(self, other)
 
     # TODO(Dahlia-Chehata): use polydiv for non-scalars
     def __truediv__(self, other):

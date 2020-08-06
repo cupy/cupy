@@ -22,7 +22,7 @@ class TestPoly1dInit(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -31,14 +31,14 @@ class TestPoly1dInit(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
     @testing.numpy_cupy_array_equal()
     def test_poly1d_list(self, xp):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d([1, 2, 3, 4], variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -48,7 +48,7 @@ class TestPoly1dInit(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -58,7 +58,7 @@ class TestPoly1dInit(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'z')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -67,7 +67,7 @@ class TestPoly1dInit(unittest.TestCase):
         a = xp.poly1d(array)
         out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -76,7 +76,7 @@ class TestPoly1dInit(unittest.TestCase):
         a = xp.poly1d(array, variable='z')
         out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'z')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -85,7 +85,7 @@ class TestPoly1dInit(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -94,7 +94,7 @@ class TestPoly1dInit(unittest.TestCase):
         with cupyx.allow_synchronize(False):
             out = xp.poly1d(a, variable=self.variable)
         assert out.variable == (self.variable or 'x')
-        return out.coeffs
+        return out
 
 
 @testing.gpu
@@ -110,8 +110,7 @@ class TestPoly1d(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_poly1d_neg(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
-        b = -xp.poly1d(a)
-        return b.coeffs
+        return -xp.poly1d(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
@@ -160,7 +159,7 @@ class TestPoly1d(unittest.TestCase):
         b = xp.poly1d(a)
         with cupyx.allow_synchronize(False):
             b[100] = 20
-        return b.coeffs
+        return b
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -169,7 +168,7 @@ class TestPoly1d(unittest.TestCase):
         b = xp.poly1d(a)
         with cupyx.allow_synchronize(False):
             b[1] = 10
-        return b.coeffs
+        return b
 
     @testing.for_all_dtypes()
     def test_poly1d_setitem_neg(self, dtype):
@@ -236,6 +235,8 @@ class Poly1dTestBase(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'func': [
         lambda x, y: x + y,
+        lambda x, y: x - y,
+        lambda x, y: x * y,
     ],
     'type_l': ['poly1d', 'python_scalar'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
@@ -243,19 +244,19 @@ class Poly1dTestBase(unittest.TestCase):
 class TestPoly1dArithmetic(Poly1dTestBase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_arithmetic(self, xp, dtype):
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
-        with cupyx.allow_synchronize(False):
-            out = self.func(a1, a2)
-        return out
+        return self.func(a1, a2)
 
 
 @testing.gpu
 @testing.parameterize(*testing.product({
     'func': [
         lambda x, y: x + y,
+        lambda x, y: x - y,
+        lambda x, y: x * y,
     ],
     'type_l': ['ndarray', 'numpy_scalar'],
     'type_r': ['poly1d'],
@@ -278,21 +279,19 @@ class TestPoly1dArithmeticInvalid(Poly1dTestBase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'fname': ['polyadd'],
+    'fname': ['polyadd', 'polysub', 'polymul'],
     'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
 }))
 class TestPoly1dRoutines(Poly1dTestBase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_routine(self, xp, dtype):
         func = getattr(xp, self.fname)
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
-        with cupyx.allow_synchronize(False):
-            out = func(a1, a2)
-        return out
+        return func(a1, a2)
 
 
 class UserDefinedArray:
@@ -300,27 +299,47 @@ class UserDefinedArray:
     __array_priority__ = cupy.poly1d.__array_priority__ + 10
 
     def __init__(self):
-        self.add_count = 0
-        self.radd_count = 0
+        self.op_count = 0
+        self.rop_count = 0
 
     def __add__(self, other):
-        self.add_count += 1
+        self.op_count += 1
 
     def __radd__(self, other):
-        self.radd_count += 1
+        self.rop_count += 1
+
+    def __sub__(self, other):
+        self.op_count += 1
+
+    def __rsub__(self, other):
+        self.rop_count += 1
+
+    def __mul__(self, other):
+        self.op_count += 1
+
+    def __rmul__(self, other):
+        self.rop_count += 1
 
 
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'func': [
+        lambda x, y: x + y,
+        lambda x, y: x - y,
+        lambda x, y: x * y,
+    ],
+}))
 class TestPoly1dArrayPriority(Poly1dTestBase):
 
     def test_poly1d_array_priority_greator(self):
         a1 = self._get_input(cupy, 'poly1d', 'int64')
         a2 = UserDefinedArray()
-        a1 + a2
-        assert a2.add_count == 0
-        assert a2.radd_count == 1
-        a2 + a1
-        assert a2.add_count == 1
-        assert a2.radd_count == 1
+        self.func(a1, a2)
+        assert a2.op_count == 0
+        assert a2.rop_count == 1
+        self.func(a2, a1)
+        assert a2.op_count == 1
+        assert a2.rop_count == 1
 
 
 @testing.gpu
@@ -367,39 +386,59 @@ class TestPoly1dEquality(unittest.TestCase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
+    'fname': ['polyadd', 'polysub', 'polymul'],
     'shape1': [(), (0,), (3,), (5,)],
-    'shape2': [(), (0,), (3,), (5,)]
+    'shape2': [(), (0,), (3,), (5,)],
 }))
-class TestPolyaddShapeCombination(unittest.TestCase):
+class TestPolyArithmeticShapeCombination(unittest.TestCase):
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_polyadd(self, xp, dtype):
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_polyroutine(self, xp, dtype):
+        func = getattr(xp, self.fname)
         a = testing.shaped_arange(self.shape1, xp, dtype)
         b = testing.shaped_arange(self.shape2, xp, dtype)
-        with cupyx.allow_synchronize(False):
-            return xp.polyadd(a, b)
+        return func(a, b)
 
 
 @testing.gpu
-class TestPolyadd(unittest.TestCase):
+@testing.parameterize(*testing.product({
+    'fname': ['polyadd', 'polysub', 'polymul'],
+}))
+class TestPolyArithmeticDiffTypes(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
-    @testing.numpy_cupy_array_equal()
-    def test_polyadd_diff_types_array(self, xp, dtype1, dtype2):
+    @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
+    def test_polyroutine_diff_types_array(self, xp, dtype1, dtype2):
+        func = getattr(xp, self.fname)
         a = testing.shaped_arange((10,), xp, dtype1)
         b = testing.shaped_arange((5,), xp, dtype2)
-        with cupyx.allow_synchronize(False):
-            return xp.polyadd(a, b)
+        return func(a, b)
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
-    @testing.numpy_cupy_array_equal()
-    def test_polyadd_diff_types_poly1d(self, xp, dtype1, dtype2):
+    @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
+    def test_polyroutine_diff_types_poly1d(self, xp, dtype1, dtype2):
+        func = getattr(xp, self.fname)
         a = testing.shaped_arange((10,), xp, dtype1)
         b = testing.shaped_arange((5,), xp, dtype2)
         a = xp.poly1d(a, variable='z')
         b = xp.poly1d(b, variable='y')
-        with cupyx.allow_synchronize(False):
-            out = xp.polyadd(a, b)
+        out = func(a, b)
         assert out.variable == 'x'
         return out
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'fname': ['polyadd', 'polysub', 'polymul'],
+}))
+class TestPolyArithmeticNdim(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_polyroutine_ndim(self, dtype):
+        for xp in (numpy, cupy):
+            func = getattr(xp, self.fname)
+            a = testing.shaped_arange((2, 3, 4), xp, dtype)
+            b = testing.shaped_arange((10, 5), xp, dtype)
+            with pytest.raises(ValueError):
+                func(a, b)

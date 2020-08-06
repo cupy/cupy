@@ -142,9 +142,13 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             elif other.ndim == 1:
                 self.sum_duplicates()
                 other = cupy.asfortranarray(other)
+                # need extra padding to ensure not stepping on the CUB bug,
+                # see cupy/cupy#3679 for discussion
+                is_cub_safe = (self.indptr.data.mem.size
+                               > self.indptr.size * self.indptr.dtype.itemsize)
                 for accelerator in _accelerator.get_routine_accelerators():
                     if (accelerator == _accelerator.ACCELERATOR_CUB
-                            and other.flags.c_contiguous):
+                            and is_cub_safe and other.flags.c_contiguous):
                         return cub.device_csrmv(
                             self.shape[0], self.shape[1], self.nnz,
                             self.data, self.indptr, self.indices, other)

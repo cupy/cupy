@@ -83,7 +83,6 @@ cuda_files = [
     'cupy.cuda.function',
     'cupy.cuda.stream',
     'cupy.cuda.texture',
-    'cupy.cutensor',
     'cupy.lib.polynomial',
     'cupy.util'
 ]
@@ -206,6 +205,7 @@ if not use_hip:
         'name': 'cutensor',
         'file': [
             'cupy_backends.cuda.libs.cutensor',
+            'cupy.cutensor',
         ],
         'include': [
             'cutensor.h',
