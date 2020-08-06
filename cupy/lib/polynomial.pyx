@@ -161,11 +161,13 @@ cdef class poly1d:
                             'addition is not supported')
         return _routines_poly.polyadd(self, other)
 
-    # TODO(Dahlia-Chehata): implement using polymul
     def __pow__(self, val, modulo):
         if not cupy.isscalar(val) or int(val) != val or val < 0:
             raise ValueError('Power to non-negative integers only.')
-        raise NotImplementedError
+        out = 1
+        for _ in range(val):
+            out = _routines_poly.polymul(self, out)
+        return poly1d(out)
 
     def __sub__(self, other):
         if _should_use_rop(self, other):
