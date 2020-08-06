@@ -1,5 +1,7 @@
 # distutils: language = c++
 
+from cupy.cuda cimport memory
+
 import threading
 
 from cupy.cuda import cufft
@@ -24,7 +26,19 @@ cdef class _Node:
     def __init__(self, tuple key, plan=None):
         self.key = key
         self.plan = plan
-        self.memsize = <Py_ssize_t>plan.work_area.mem.size if plan is not None else 0
+        self.memsize = 0
+
+        cdef memory.MemoryPointer ptr
+        # work_area could be None for "empty" plans...
+        if plan is not None and plan.work_area is not None:
+            if isinstance(plan.work_area, list):
+                # multi-GPU plan, add up all memory usage as we don't do
+                # per-device cache (yet)
+                for ptr in plan.work_area:
+                    self.memsize += ptr.mem.size
+            else:
+                # single-GPU plan
+                self.memsize = <Py_ssize_t>plan.work_area.mem.size
 
         self.prev = None
         self.next = None
