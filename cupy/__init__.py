@@ -766,6 +766,8 @@ def asnumpy(a, stream=None, order='C'):
     """
     if isinstance(a, ndarray):
         return a.get(stream=stream, order=order)
+    elif hasattr(a, "__cuda_array_interface__"):
+        return array(a).get(stream=stream, order=order)
     else:
         return numpy.asarray(a, order=order)
 
