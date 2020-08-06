@@ -14,6 +14,9 @@ from cupy.cuda cimport stream
 from cupy_backends.cuda.api cimport runtime
 
 
+available = True
+
+
 ###############################################################################
 # Memory Management
 ###############################################################################

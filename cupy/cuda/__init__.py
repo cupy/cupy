@@ -14,6 +14,7 @@ from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
 from cupy_backends.cuda.libs import cublas  # NOQA
 from cupy_backends.cuda.libs import curand  # NOQA
+from cupy_backends.cuda.libs import cusolver  # NOQA
 from cupy_backends.cuda.libs import cusparse  # NOQA
 from cupy_backends.cuda.libs import nvrtc  # NOQA
 from cupy_backends.cuda.libs import profiler  # NOQA
@@ -21,41 +22,45 @@ from cupy_backends.cuda.libs import profiler  # NOQA
 
 _available = None
 
+
+class UnavailableModule():
+    available = False
+
+# All `*_enabled` flags are kept just for backward compatibility.
+
+# cuSOLVER is always available in CUDA 8.0+.
+cusolver_enabled = True
+
 # TODO(leofang): always import cub (but not enable it) when hipCUB is supported
 if not runtime.is_hip:
     from cupy.cuda import cub  # NOQA
-    cub_enabled = True
 else:
-    cub_enabled = False
-
-from cupy_backends.cuda.libs import cusolver  # NOQA
-# This flag is kept for backward compatibility.
-# It is always True as cuSOLVER library is always available in CUDA 8.0+.
-cusolver_enabled = True
+    cub = UnavailableModule()
 
 try:
     from cupy.cuda import nvtx  # NOQA
     nvtx_enabled = True
 except ImportError:
+    nvtx = UnavailableModule()
     nvtx_enabled = False
 
 try:
     from cupy.cuda import thrust  # NOQA
-    thrust_enabled = True
 except ImportError:
-    thrust_enabled = False
+    thrust = UnavailableModule()
 
 try:
     from cupy.cuda import nccl  # NOQA
     nccl_enabled = True
 except ImportError:
+    nccl = UnavailableModule()
     nccl_enabled = False
 
 try:
-    from cupy_backends.cuda.libs import cutensor  # NOQA
-    cutensor_enabled = True
+    from cupy_backends.cuda.libs import cutensor
 except ImportError:
-    cutensor_enabled = False
+    cutensor = UnavailableModule()
+
 
 
 def is_available():
