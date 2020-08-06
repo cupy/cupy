@@ -2944,7 +2944,7 @@ cpdef ndarray tensordot_core_v11(
                 <size_t>&one_d,
                 a.data.ptr, a_cuda_dtype, <int>lda,
                 b.data.ptr, b_cuda_dtype, <int>ldb,
-                <size_t>&zero_d, c.data.ptr, c_cuda_dtype, <int>m,
+                <size_t>&zero_d, c.data.ptr, c_cuda_dtype, <int>ldc,
                 compute_type, algo)
         else:
             raise ValueError('Invalid compute type: {}'.format(compute_type))
@@ -2957,7 +2957,7 @@ cpdef ndarray tensordot_core_v11(
                 <size_t>&one_F,
                 a.data.ptr, a_cuda_dtype, <int>lda,
                 b.data.ptr, b_cuda_dtype, <int>ldb,
-                <size_t>&zero_F, c.data.ptr, c_cuda_dtype, <int>m,
+                <size_t>&zero_F, c.data.ptr, c_cuda_dtype, <int>ldc,
                 compute_type, algo)
         elif compute_type == cublas.CUBLAS_COMPUTE_64F:
             one_D = cuDoubleComplex(1, 0)
@@ -2967,7 +2967,7 @@ cpdef ndarray tensordot_core_v11(
                 <size_t>&one_D,
                 a.data.ptr, a_cuda_dtype, <int>lda,
                 b.data.ptr, b_cuda_dtype, <int>ldb,
-                <size_t>&zero_D, c.data.ptr, c_cuda_dtype, <int>m,
+                <size_t>&zero_D, c.data.ptr, c_cuda_dtype, <int>ldc,
                 compute_type, algo)
         else:
             raise ValueError('Invalid compute type: {}'.format(compute_type))
