@@ -124,8 +124,9 @@ cdef class PlanCache:
         _thread_local._current_plan_cache = self
 
     def __getitem__(self, tuple key):
-        # TODO(leofang): do we really need this shortcut?
+        # no-op if cache is disabled
         if not self.is_enabled:
+            assert (self.size == 0 or self.memsize == 0)
             return
 
         cdef _Node node = self.cache.get(key)
@@ -141,10 +142,14 @@ cdef class PlanCache:
         cdef _Node node = _Node(key, plan)
         cdef _Node unwanted_node
 
+        # no-op if cache is disabled
+        if not self.is_enabled:
+            assert (self.size == 0 or self.memsize == 0)
+            return
+
         # First, check for the worst case: the plan is too large to fit in
         # the cache. In this case, we leave the cache intact and return early.
-        if (self.size == 0 or self.memsize == 0
-                or (node.memsize > self.memsize > 0)):
+        if (node.memsize > self.memsize > 0):
             raise RuntimeError('cannot insert the plan -- perhaps '
                                'cache size/memsize too small?')
 

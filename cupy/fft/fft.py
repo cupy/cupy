@@ -120,6 +120,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             plan = cached_plan
         else:
             plan = cufft.Plan1d(*keys[:3], devices=keys[3])
+            plan_cache[keys] = plan
     else:
         # check plan validity
         if not isinstance(plan, cufft.Plan1d):
@@ -394,6 +395,7 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
         plan = cached_plan
     else:
         plan = cufft.PlanNd(*keys)
+        plan_cache[keys] = plan
     return plan
 
 
