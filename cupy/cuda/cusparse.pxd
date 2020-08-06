@@ -167,5 +167,5 @@ cdef class DnMatBatchAttributes:
         public int count
         public int64_t stride
 
-cpdef intptr_t create() except? 0
-cpdef destroy(intptr_t handle)
+cpdef size_t create() except? 0
+cpdef destroy(size_t handle)
