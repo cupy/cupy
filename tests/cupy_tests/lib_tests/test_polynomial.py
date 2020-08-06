@@ -238,18 +238,34 @@ class Poly1dTestBase(unittest.TestCase):
         lambda x, y: x + y,
         lambda x, y: x - y,
     ],
-    'type_l': ['poly1d', 'python_scalar'],
+    'type_l': ['poly1d', 'python_scalar', 'ndarray'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
 }))
-class TestPoly1dArithmetic(Poly1dTestBase):
+class TestPoly1dArithmetic1(Poly1dTestBase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
     def test_poly1d_arithmetic(self, xp, dtype):
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
-        with cupyx.allow_synchronize(False):
-            return self.func(a1, a2)
+        return self.func(a1, a2)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'fname': ['add', 'subtract', 'multiply', 'divide', 'power'],
+    'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
+    'type_r': ['poly1d'],
+}))
+class TestPoly1dArithmetic2(Poly1dTestBase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_poly1d_arithmetic(self, xp, dtype):
+        func = getattr(xp, self.fname)
+        a1 = self._get_input(xp, self.type_l, dtype)
+        a2 = self._get_input(xp, self.type_r, dtype)
+        return func(a1, a2)
 
 
 @testing.gpu
@@ -258,7 +274,7 @@ class TestPoly1dArithmetic(Poly1dTestBase):
         lambda x, y: x + y,
         lambda x, y: x - y,
     ],
-    'type_l': ['ndarray', 'numpy_scalar'],
+    'type_l': ['numpy_scalar'],
     'type_r': ['poly1d'],
 }))
 class TestPoly1dArithmeticInvalid(Poly1dTestBase):

@@ -105,6 +105,23 @@ cdef class poly1d:
             variable = 'x'
         self._variable = variable
 
+    @property
+    def __cuda_array_interface__(self):
+        arr = self.coeffs
+        desc = {
+            'shape': arr.shape,
+            'typestr': arr.dtype.str,
+            'descr': arr.dtype.descr,
+            'version': 2,
+        }
+        desc['strides'] = None
+        if arr.size > 0:
+            desc['data'] = (arr.data.ptr, False)
+        else:
+            desc['data'] = (0, False)
+
+        return desc
+
     def __array__(self, dtype=None):
         raise TypeError(
             'Implicit conversion to a NumPy array is not allowed. '
