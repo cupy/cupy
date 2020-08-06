@@ -135,7 +135,7 @@ cdef class PlanCache:
             self.lru.append_node(node)
             return node.plan
         else:
-            raise KeyError('plan not found')
+            raise KeyError('plan not found for key: {}'.format(key))
 
     def __setitem__(self, tuple key, plan):
         cdef _Node node = _Node(key, plan)
@@ -206,6 +206,17 @@ cdef class PlanCache:
 
     cpdef Py_ssize_t get_memsize(self):
         return self.memsize
+
+    cpdef get(self, tuple key, default=None):
+        # behaves as if calling dict.get()
+        try:
+            plan = self[key]
+        except KeyError:
+            plan = default
+        else:
+            if plan is None:
+                plan = default
+        return plan
 
     cdef inline void _eject_until_fit(self, Py_ssize_t size, Py_ssize_t memsize):
         cdef _Node unwanted_node
@@ -300,4 +311,4 @@ cpdef clear_plan_cache():
 # enable cache by default
 # TODO(leofang): expose this handle to cupy.fft or cupy.fft.config,
 # since it's expected to work as a singleton?
-plan_cache = PlanCache(size=10)
+plan_cache = PlanCache(size=16)

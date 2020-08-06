@@ -7,6 +7,7 @@ import numpy as np
 import cupy
 from cupy.cuda import cufft
 from cupy.fft import config
+from cupy.fft.cache import plan_cache
 
 
 _reduce = functools.reduce
@@ -97,6 +98,11 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
 
     batch = a.size // n
 
+    # plan search precedence:
+    # 1. plan passed in as an argument
+    # 2. plan as context manager
+    # 3. cached plan
+    # 4. create a new one
     curr_plan = cufft.get_current_plan()
     if curr_plan is not None:
         if plan is None:
@@ -104,9 +110,16 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         else:
             raise RuntimeError('Use the cuFFT plan either as a context manager'
                                ' or as an argument.')
+
     if plan is None:
         devices = None if not config.use_multi_gpus else config._devices
-        plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
+        # TODO(leofang): do we need to add the current stream to keys?
+        keys = (out_size, fft_type, batch, devices)
+        cached_plan = plan_cache.get(keys)
+        if cached_plan is not None:
+            plan = cached_plan
+        else:
+            plan = cufft.Plan1d(*keys[:3], devices=keys[3])
     else:
         # check plan validity
         if not isinstance(plan, cufft.Plan1d):
@@ -373,18 +386,14 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
             raise ValueError(
                 'Invalid number of FFT data points specified.')
 
-    plan = cufft.PlanNd(shape=plan_dimensions,
-                        inembed=inembed,
-                        istride=istride,
-                        idist=idist,
-                        onembed=onembed,
-                        ostride=ostride,
-                        odist=odist,
-                        fft_type=fft_type,
-                        batch=nbatch,
-                        order=order,
-                        last_axis=fft_axes[-1],
-                        last_size=out_size)
+    keys = (plan_dimensions, inembed, istride,
+            idist, onembed, ostride, odist,
+            fft_type, nbatch, order, fft_axes[-1], out_size)
+    cached_plan = plan_cache.get(keys)
+    if cached_plan is not None:
+        plan = cached_plan
+    else:
+        plan = cufft.PlanNd(*keys)
     return plan
 
 
@@ -413,12 +422,17 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     else:
         raise ValueError('a must be contiguous')
 
+    # plan search precedence:
+    # 1. plan passed in as an argument
+    # 2. plan as context manager
+    # 3. cached plan
+    # 4. create a new one
     curr_plan = cufft.get_current_plan()
     if curr_plan is not None:
         plan = curr_plan
         # don't check repeated usage; it's done in _default_fft_func()
     if plan is None:
-        # generate a plan
+        # search from cache, and generate a plan if not found
         plan = _get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order,
                                   out_size=out_size)
     else:

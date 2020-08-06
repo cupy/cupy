@@ -327,7 +327,7 @@ class Plan1d(object):
         if fft_type != CUFFT_C2C and fft_type != CUFFT_Z2Z:
             raise ValueError('Currently for multiple GPUs only C2C and Z2Z are'
                              ' supported.')
-        if isinstance(devices, list):
+        if isinstance(devices, (tuple, list)):
             nGPUs = len(devices)
             for i in range(nGPUs):
                 gpus.push_back(devices[i])
@@ -336,7 +336,8 @@ class Plan1d(object):
             for i in range(nGPUs):
                 gpus.push_back(i)
         else:
-            raise ValueError('\"devices\" should be an int or a list of int.')
+            raise ValueError('\"devices\" should be an int or an iterable '
+                             'of int.')
         if batch == 1:
             if (nx & (nx - 1)) != 0:
                 raise ValueError('For multi-GPU FFT with batch = 1, the array '

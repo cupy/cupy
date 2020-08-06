@@ -35,4 +35,5 @@ def set_cufft_gpus(gpus):
     if len(devs) <= 1:
         raise ValueError("Must use at least 2 GPUs.")
 
-    _devices = devs
+    # make it hashable
+    _devices = tuple(devs)
