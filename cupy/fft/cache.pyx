@@ -124,6 +124,10 @@ cdef class PlanCache:
         _thread_local._current_plan_cache = self
 
     def __getitem__(self, tuple key):
+        # TODO(leofang): do we really need this shortcut?
+        if not self.is_enabled:
+            return
+
         cdef _Node node = self.cache.get(key)
         if node is not None:
             # hit, move the node to the end
@@ -253,6 +257,7 @@ cdef class PlanCache:
         print(self)
 
 
+# TODO(leofang): mark this API experimental until scipy/scipy#12512 is merged and released
 cpdef Py_ssize_t get_plan_cache_size(size):
     if not hasattr(_thread_local, '_current_plan_cache'):
         raise RuntimeError('cache not found')
@@ -260,6 +265,7 @@ cpdef Py_ssize_t get_plan_cache_size(size):
     return cache.get_size()
 
 
+# TODO(leofang): mark this API experimental until scipy/scipy#12512 is merged and released
 cpdef set_plan_cache_size(size):
     if not hasattr(_thread_local, '_current_plan_cache'):
         raise RuntimeError('cache not found')
@@ -267,6 +273,7 @@ cpdef set_plan_cache_size(size):
     cache.set_size(size)
 
 
+# TODO(leofang): mark this API experimental until scipy/scipy#12512 is merged and released
 cpdef Py_ssize_t get_plan_cache_max_memsize(size):
     if not hasattr(_thread_local, '_current_plan_cache'):
         raise RuntimeError('cache not found')
@@ -274,6 +281,7 @@ cpdef Py_ssize_t get_plan_cache_max_memsize(size):
     return cache.get_memsize()
 
 
+# TODO(leofang): mark this API experimental until scipy/scipy#12512 is merged and released
 cpdef set_plan_cache_max_memsize(size):
     if not hasattr(_thread_local, '_current_plan_cache'):
         raise RuntimeError('cache not found')
@@ -281,6 +289,7 @@ cpdef set_plan_cache_max_memsize(size):
     cache.set_memsize(size)
 
 
+# TODO(leofang): mark this API experimental until scipy/scipy#12512 is merged and released
 cpdef clear_plan_cache():
     if not hasattr(_thread_local, '_current_plan_cache'):
         raise RuntimeError('cache not found')
@@ -289,4 +298,6 @@ cpdef clear_plan_cache():
 
 
 # enable cache by default
+# TODO(leofang): expose this handle to cupy.fft or cupy.fft.config,
+# since it's expected to work as a singleton?
 plan_cache = PlanCache(size=10)
