@@ -59,6 +59,7 @@ from cupy import fft  # NOQA
 from cupy import functional  # NOQA
 from cupy import indexing  # NOQA
 from cupy import io  # NOQA
+from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import padding  # NOQA
 from cupy import polynomial  # NOQA
