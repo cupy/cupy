@@ -107,20 +107,7 @@ cdef class poly1d:
 
     @property
     def __cuda_array_interface__(self):
-        arr = self.coeffs
-        desc = {
-            'shape': arr.shape,
-            'typestr': arr.dtype.str,
-            'descr': arr.dtype.descr,
-            'version': 2,
-        }
-        desc['strides'] = None
-        if arr.size > 0:
-            desc['data'] = (arr.data.ptr, False)
-        else:
-            desc['data'] = (0, False)
-
-        return desc
+        return self.coeffs.__cuda_array_interface__
 
     def __array__(self, dtype=None):
         raise TypeError(
@@ -146,11 +133,28 @@ cdef class poly1d:
     def __pos__(self):
         return self
 
-    # TODO(Dahlia-Chehata): use polymul for non-scalars
     def __mul__(self, other):
+        if _should_use_rop(self, other):
+            return other.__rmul__(self)
         if cupy.isscalar(other):
+            # case: poly1d * python scalar
+            # the return type of cupy.polymul output is
+            # inconsistent with NumPy's output for this case.
             return poly1d(self.coeffs * other)
-        raise NotImplementedError
+        if isinstance(self, numpy.generic):
+            # case: numpy scalar * poly1d
+            # poly1d addition and subtraction don't support this case
+            # so it is not supported here for consistency purposes
+            # between polyarithmetic routines
+            raise TypeError('Numpy scalar and poly1d multiplication'
+                            ' is not supported currently.')
+        if cupy.isscalar(self) and isinstance(other, poly1d):
+            # case: python scalar * poly1d
+            # the return type of cupy.polymul output is
+            # inconsistent with NumPy's output for this case
+            # So casting python scalar is required.
+            self = other._coeffs.dtype.type(self)
+        return _routines_poly.polymul(self, other)
 
     def __add__(self, other):
         if _should_use_rop(self, other):
