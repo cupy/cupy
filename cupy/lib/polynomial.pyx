@@ -60,10 +60,9 @@ cdef class poly1d:
     def order(self):
         return self.coeffs.size - 1
 
-    # TODO(Dahlia-Chehata): implement using cupy.roots
     @property
     def roots(self):
-        raise NotImplementedError
+        return _routines_poly.roots(self._coeffs)
 
     @property
     def r(self):
