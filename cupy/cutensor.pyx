@@ -137,7 +137,7 @@ cdef inline _set_compute_dtype(array_dtype, compute_dtype=None):
     return compute_dtype
 
 
-cdef inline _Scalar _create_scalar_with_cache(scale, dtype):
+cdef inline _Scalar _create_scalar(scale, dtype):
     cdef _Scalar scalar
     key = (scale, dtype)
     if key in _scalars:
@@ -259,9 +259,12 @@ def elementwise_trinary(
 
     return _elementwise_trinary_impl(
         _get_handle(),
-        _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
-        _Scalar(beta, compute_dtype), B, desc_B, _auto_create_mode(B, mode_B),
-        _Scalar(gamma, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
+        _create_scalar(alpha, compute_dtype),
+        A, desc_A, _auto_create_mode(A, mode_A),
+        _create_scalar(beta, compute_dtype),
+        B, desc_B, _auto_create_mode(B, mode_B),
+        _create_scalar(gamma, compute_dtype),
+        C, desc_C, _auto_create_mode(C, mode_C),
         out, op_AB, op_ABC, _get_cuda_dtype(compute_dtype))
 
 
@@ -318,8 +321,10 @@ def elementwise_binary(
 
     return _elementwise_binary_impl(
         _get_handle(),
-        _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
-        _Scalar(gamma, compute_dtype), C, desc_C, _auto_create_mode(A, mode_C),
+        _create_scalar(alpha, compute_dtype),
+        A, desc_A, _auto_create_mode(A, mode_A),
+        _create_scalar(gamma, compute_dtype),
+        C, desc_C, _auto_create_mode(A, mode_C),
         out, op_AC, _get_cuda_dtype(compute_dtype)
     )
 
@@ -460,9 +465,11 @@ def contraction(
 
     return _contraction_impl(
         _get_handle(),
-        _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
+        _create_scalar(alpha, compute_dtype),
+        A, desc_A, _auto_create_mode(A, mode_A),
         B, desc_B, _auto_create_mode(B, mode_B),
-        _Scalar(beta, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
+        _create_scalar(beta, compute_dtype),
+        C, desc_C, _auto_create_mode(C, mode_C),
         _get_cutensor_dtype(compute_dtype), algo, ws_pref)
 
 
@@ -565,9 +572,12 @@ def reduction(
 
     return _reduction_impl(
         _get_handle(),
-        _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
-        _Scalar(beta, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
-        reduce_op, _get_cutensor_dtype(compute_dtype))
+        _create_scalar(alpha, compute_dtype),
+        A, desc_A, _auto_create_mode(A, mode_A),
+        _create_scalar(beta, compute_dtype),
+        C, desc_C, _auto_create_mode(C, mode_C),
+        reduce_op, _get_cutensor_dtype(compute_dtype)
+    )
 
 
 cdef inline ndarray _reduction_impl(
@@ -669,11 +679,11 @@ def _try_reduction_routine(
 
     _reduction_impl(
         handle,
-        _create_scalar_with_cache(alpha, compute_dtype),
+        _create_scalar(alpha, compute_dtype),
         in_arg,
         desc_in,
         _create_mode_with_cache(in_arg._shape.size()),
-        _create_scalar_with_cache(beta, compute_dtype),
+        _create_scalar(beta, compute_dtype),
         out_arg,
         desc_out,
         _create_mode_with_cache(out_axis),
