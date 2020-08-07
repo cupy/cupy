@@ -408,12 +408,14 @@ cpdef void add_multi_gpu_plan(tuple key, plan) except*:
                 cache[key] = plan
             insert_ok.append(dev)
     except Exception as e:
+        # clean up and raise
         for dev in insert_ok:
             with device.Device(dev):
                 cache = get_plan_cache()
                 del cache[key]
-        raise RuntimeError(
-            'Insert succeeded only on devices {0}:\n{1}'.format(insert_ok, e)).with_traceback(e.__traceback__)
+        x = RuntimeError('Insert succeeded only on devices {0}:\n'
+                         '{1}'.format(insert_ok, e))
+        raise x.with_traceback(e.__traceback__)
     assert len(insert_ok) == len(plan.gpus)
 
 
