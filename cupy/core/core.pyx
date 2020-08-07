@@ -2811,12 +2811,15 @@ cpdef ndarray tensordot_core(
         if out.dtype != dtype:
             out = _ndarray_init(ret_shape, dtype)
 
+    cdef int ace
     if m == 1 and n == 1:
-        if len(_accelerator._routine_accelerators) > 0:
-            # fast path using CUB or cuTENSOR; if not applicable, it'd fall
-            # back to CuPy's reduction kernel
-            out = (a.ravel() * b.ravel()).sum(
-                out=_manipulation._reshape(out, ()))
+        for ace in _accelerator._routine_accelerators:
+            # fast path using CUB or cuTENSOR
+            if ace in (_accelerator.ACCELERATOR_CUB,
+                       _accelerator.ACCELERATOR_CUTENSOR):
+                out = (a.ravel() * b.ravel()).sum(
+                    out=_manipulation._reshape(out, ()))
+                break
         else:
             _tensordot_core_mul_sum(
                 a.ravel(), b.ravel(),
