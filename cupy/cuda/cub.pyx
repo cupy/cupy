@@ -92,7 +92,7 @@ cdef tuple _get_output_shape(ndarray arr, tuple out_axis, bint keepdims):
 
 
 cpdef Py_ssize_t _preprocess_array(tuple arr_shape, tuple reduce_axis,
-                                   tuple out_axis, str order):
+                                   tuple out_axis, str order) except -1:
     '''
     This function more or less follows the logic of _get_permuted_args() in
     reduction.pxi. The input array arr is C- or F- contiguous along axis.
