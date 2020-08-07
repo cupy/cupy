@@ -147,12 +147,6 @@ cdef class PlanCache:
     # lru.tail: most recent used
     cdef _LinkedList lru
 
-    cdef inline void _reset(self):
-        self.curr_size = 0
-        self.curr_memsize = 0
-        self.cache = {}
-        self.lru = _LinkedList()
-
     def __init__(self, Py_ssize_t size=16, Py_ssize_t memsize=-1):
         # TODO(leofang): use stream as part of cache key?
         self._validate_size_memsize(size, memsize)
@@ -258,6 +252,12 @@ cdef class PlanCache:
             count += 1
         assert count == self.lru.count
         return output[:-1]
+
+    cdef inline void _reset(self):
+        self.curr_size = 0
+        self.curr_memsize = 0
+        self.cache = {}
+        self.lru = _LinkedList()
 
     cdef void _validate_size_memsize(
             self, Py_ssize_t size, Py_ssize_t memsize) except*:
