@@ -49,6 +49,8 @@ class TestSimpleCubReductionKernelContiguity(CubReductionTestBase):
     def test_can_use_cub_contiguous(self, axis):
         r_axis = axis
         i_shape = self.shape
+        dim = len(i_shape)
+        r_axis = tuple(ax % dim for ax in r_axis)
         o_axis = tuple(i for i in range(len(i_shape)) if i not in r_axis)
         o_shape = tuple(self.shape[i] for i in o_axis)
         self._test_can_use(i_shape, o_shape, r_axis, o_axis, self.order, True)
@@ -58,6 +60,7 @@ class TestSimpleCubReductionKernelContiguity(CubReductionTestBase):
         # array is contiguous, but reduce_axis is not
         dim = len(self.shape)
         r_dim = len(axis)
+        axis = tuple([ax % dim for ax in axis])
         non_contiguous_axes = [i for i in combinations(range(dim), r_dim)
                                if i != axis]
 
