@@ -1,5 +1,6 @@
 # distutils: language = c++
 
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport memory
 
 import threading
@@ -8,6 +9,24 @@ from cupy.cuda import cufft
 
 
 cdef object _thread_local = threading.local()
+
+
+cdef class _ThreadLocal:
+
+    cdef list per_device_cache
+
+    def __init__(self):
+        cdef int i
+        self.per_device_cache = [False for i in range(runtime.getDeviceCount())]
+
+    @staticmethod
+    cdef _ThreadLocal get():
+        cdef _ThreadLocal tls
+        try:
+            tls = _thread_local.tls
+        except AttributeError:
+            tls = _thread_local.tls = _ThreadLocal()
+        return tls
 
 
 cdef class _Node:
@@ -125,7 +144,7 @@ cdef class PlanCache:
         self.cache = {}
         self.lru = _LinkedList()
 
-    def __init__(self, Py_ssize_t size=4, Py_ssize_t memsize=-1):
+    def __init__(self, Py_ssize_t size=16, Py_ssize_t memsize=-1):
         # TODO(leofang): use stream as part of cache key?
         self._validate_size_memsize(size, memsize)
         self._set_size_memsize(size, memsize)
@@ -330,4 +349,21 @@ cpdef clear_plan_cache():
 # enable cache by default
 # TODO(leofang): expose this handle to cupy.fft or cupy.fft.config,
 # since it's expected to work as a singleton?
+# TODO(leofang): use per-thread, per-device cache instead
 plan_cache = PlanCache(size=16)
+
+
+cpdef PlanCache get_plan_cache():
+    cdef _ThreadLocal tls = _ThreadLocal.get()
+    cdef int dev = runtime.getDevice()
+    cdef PlanCache cache = tls.per_device_cache[dev]
+    return cache
+
+
+cpdef set_plan_cache():
+    """Default initialization"""
+    cdef _ThreadLocal tls = _ThreadLocal.get()
+    cdef int dev
+    cdef int counts = len(tls.per_device_cache)
+    cdef PlanCache cache
+    tls.per_device_cache = [PlanCache() for dev in range(counts)]
