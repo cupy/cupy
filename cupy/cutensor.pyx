@@ -25,6 +25,8 @@ cdef dict _tensor_descriptors = {}
 cdef dict _contraction_descriptors = {}
 cdef dict _contraction_finds = {}
 cdef dict _contraction_plans = {}
+cdef dict _modes = {}
+cdef dict _scalars = {}
 
 
 cdef class Mode(object):
@@ -133,6 +135,30 @@ cdef inline _set_compute_dtype(array_dtype, compute_dtype=None):
         else:
             compute_dtype = array_dtype
     return compute_dtype
+
+
+cdef inline _Scalar _create_scalar_with_cache(scale, dtype):
+    cdef _Scalar scalar
+    key = (scale, dtype)
+    if key in _scalars:
+        scalar = _scalars[key]
+    else:
+        scalar = _Scalar(scale, dtype)
+        _scalars[key] = scalar
+    return scalar
+
+
+cdef inline Mode _create_mode_with_cache(axis_or_ndim):
+    cdef Mode mode
+    if axis_or_ndim in _modes:
+        mode = _modes[axis_or_ndim]
+    else:
+        if type(axis_or_ndim) is int:
+            mode = Mode(tuple(range(axis_or_ndim)))
+        else:
+            mode = Mode(axis_or_ndim)
+        _modes[axis_or_ndim] = mode
+    return mode
 
 
 cpdef TensorDescriptor create_tensor_descriptor(
@@ -584,34 +610,6 @@ _cutensor_dtypes = [
     numpy.complex64,
     numpy.complex128,
 ]
-
-
-cdef dict _modes = {}
-cdef dict _scalars = {}
-
-
-cdef inline Mode _create_mode_with_cache(axis_or_ndim):
-    cdef Mode mode
-    if axis_or_ndim in _modes:
-        mode = _modes[axis_or_ndim]
-    else:
-        if type(axis_or_ndim) is int:
-            mode = Mode(tuple(range(axis_or_ndim)))
-        else:
-            mode = Mode(axis_or_ndim)
-        _modes[axis_or_ndim] = mode
-    return mode
-
-
-cdef inline _Scalar _create_scalar_with_cache(scale, dtype):
-    cdef _Scalar scalar
-    key = (scale, dtype)
-    if key in _scalars:
-        scalar = _scalars[key]
-    else:
-        scalar = _Scalar(scale, dtype)
-        _scalars[key] = scalar
-    return scalar
 
 
 def _try_reduction_routine(
