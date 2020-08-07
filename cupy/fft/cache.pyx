@@ -231,6 +231,35 @@ cdef class PlanCache:
         else:
             raise KeyError('plan not found for key: {}'.format(key))
 
+    def __repr__(self):
+        # we also validate data when the cache information is needed
+        assert len(self.cache) == int(self.lru.count) == self.curr_size
+        if self.size >= 0:
+            assert self.curr_size <= self.size
+        if self.memsize >= 0:
+            assert self.curr_memsize <= self.memsize
+
+        cdef str output = '-------------- cuFFT plan cache --------------\n'
+        output += 'cache enabled? {}\n'.format(self.is_enabled)
+        output += 'current / max size: {0} / {1} (counts)\n'.format(
+            self.curr_size,
+            '(unlimited)' if self.size == -1 else self.size)
+        output += 'current / max memsize: {0} / {1} (bytes)\n'.format(
+            self.curr_memsize,
+            '(unlimited)' if self.memsize == -1 else self.memsize)
+        output += '\ncached plans (least used first):\n'
+
+        # TODO(leofang): maybe traverse from the end?
+        cdef _Node node = self.lru.head
+        cdef size_t count = 0
+        while node.next is not self.lru.tail:
+            node = node.next
+            output += str(node) + '\n'
+            assert self.cache[node.key] is node
+            count += 1
+        assert count == self.lru.count
+        return output[:-1]
+
     cdef void _validate_size_memsize(
             self, Py_ssize_t size, Py_ssize_t memsize) except*:
         if size < -1 or memsize < -1:
@@ -270,6 +299,20 @@ cdef class PlanCache:
         self.curr_size += 1
         self.curr_memsize += node.memsize
 
+    cdef inline void _eject_until_fit(
+            self, Py_ssize_t size, Py_ssize_t memsize):
+        cdef _Node unwanted_node
+        while True:
+            if (self.curr_size == 0
+                or ((self.curr_size <= size or size == -1)
+                    and (self.curr_memsize <= memsize or memsize == -1))):
+                break
+            else:
+                # remove from the front to free up space
+                unwanted_node = self.lru.head.next
+                if unwanted_node is not self.lru.tail:
+                    self._remove_plan(unwanted_node)
+
     cpdef set_size(self, Py_ssize_t size):
         self._validate_size_memsize(size, self.memsize)
         self._eject_until_fit(size, self.memsize)
@@ -298,51 +341,8 @@ cdef class PlanCache:
                 plan = default
         return plan
 
-    cdef inline void _eject_until_fit(
-            self, Py_ssize_t size, Py_ssize_t memsize):
-        cdef _Node unwanted_node
-        while True:
-            if (self.curr_size == 0
-                or ((self.curr_size <= size or size == -1)
-                    and (self.curr_memsize <= memsize or memsize == -1))):
-                break
-            else:
-                # remove from the front to free up space
-                unwanted_node = self.lru.head.next
-                if unwanted_node is not self.lru.tail:
-                    self._remove_plan(unwanted_node)
-
     cpdef clear(self):
         self._reset()
-
-    def __repr__(self):
-        # we also validate data when the cache information is needed
-        assert len(self.cache) == int(self.lru.count) == self.curr_size
-        if self.size >= 0:
-            assert self.curr_size <= self.size
-        if self.memsize >= 0:
-            assert self.curr_memsize <= self.memsize
-
-        cdef str output = '-------------- cuFFT plan cache --------------\n'
-        output += 'cache enabled? {}\n'.format(self.is_enabled)
-        output += 'current / max size: {0} / {1} (counts)\n'.format(
-            self.curr_size,
-            '(unlimited)' if self.size == -1 else self.size)
-        output += 'current / max memsize: {0} / {1} (bytes)\n'.format(
-            self.curr_memsize,
-            '(unlimited)' if self.memsize == -1 else self.memsize)
-        output += '\ncached plans (least used first):\n'
-
-        # TODO(leofang): maybe traverse from the end?
-        cdef _Node node = self.lru.head
-        cdef size_t count = 0
-        while node.next is not self.lru.tail:
-            node = node.next
-            output += str(node) + '\n'
-            assert self.cache[node.key] is node
-            count += 1
-        assert count == self.lru.count
-        return output[:-1]
 
     cpdef show_info(self):
         print(self)
