@@ -212,17 +212,17 @@ def elementwise_trinary(
     See cupy/cuda/cutensor.elementwiseTrinary() for details.
 
     Args:
-        alpha (scalar or 0-dim numpy.ndarray): Scaling factor for tensor A.
+        alpha (scalar): Scaling factor for tensor A.
         A (cupy.ndarray): Input tensor.
         desc_A (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor A.
         mode_A (cutensor.Mode): A mode object created by `create_mode`.
-        beta (scalar or 0-dim numpy.ndarray): Scaling factor for tensor B.
+        beta (scalar): Scaling factor for tensor B.
         B (cupy.ndarray): Input tensor.
         desc_B (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor B.
         mode_B (cutensor.Mode): A mode object created by `create_mode`.
-        gamma (scalar or 0-dim numpy.ndarray): Scaling factor for tensor C.
+        gamma (scalar): Scaling factor for tensor C.
         C (cupy.ndarray): Input tensor.
         desc_C (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor C.
@@ -425,7 +425,7 @@ def contraction(
     See cupy/cuda/cutensor.contraction for details.
 
     Args:
-        alpha (scalar or 0-dim numpy.ndarray): Scaling factor for A * B.
+        alpha (scalar): Scaling factor for A * B.
         A (cupy.ndarray): Input tensor.
         desc_A (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor A.
@@ -434,7 +434,7 @@ def contraction(
         desc_B (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor B.
         mode_B (cutensor.Mode): A mode object created by `create_mode`.
-        beta (scalar or 0-dim numpy.ndarray): Scaling factor for C.
+        beta (scalar): Scaling factor for C.
         C (cupy.ndarray): Input/output tensor.
         desc_C (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor C.
@@ -539,13 +539,13 @@ def reduction(
     See :func:`cupy.cuda.cutensor.reduction` for details.
 
     Args:
-        alpha (scalar or 0-dim numpy.ndarray): Scaling factor for A.
+        alpha (scalar): Scaling factor for A.
         A (cupy.ndarray): Input tensor.
         desc_A (class Descriptor): A descriptor that holds the information
             about the data type, modes, strides and unary operator (uop_A) of
             tensor A.
         mode_A (cutensor.Mode): A mode object created by `create_mode`.
-        beta (scalar or 0-dim numpy.ndarray): Scaling factor for C.
+        beta (scalar): Scaling factor for C.
         C (cupy.ndarray): Input/output tensor.
         desc_C (class Descriptor): A descriptor that holds the information
             about the data type, modes, strides and unary operator (uop_C) of
