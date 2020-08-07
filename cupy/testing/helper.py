@@ -1077,8 +1077,10 @@ def for_contiguous_axes(name='axis'):
     .. note::
         1. Adapted from tests/cupy_tests/fft_tests/test_fft.py.
         2. Example: for ``shape = (1, 2, 3)``, the tested axes are
-            ``[(2,), (1, 2), (0, 1, 2)]`` for the C order, and
-            ``[(0,), (0, 1), (0, 1, 2)]`` for the F order.
+            ``[(0, 1, 2), (-3, -2, -1), (1, 2), (-2, -1), (2,), (-1,)]`` for
+            the C order, and
+            ``[(0,), (-3,), (0, 1), (-3, -2), (0, 1, 2), (-3, -2, -1)]`` for
+            the F order.
     '''
     def decorator(impl):
         @functools.wraps(impl)
@@ -1096,6 +1098,9 @@ def for_contiguous_axes(name='axis'):
                 else:
                     raise ValueError('Please specify the array order.')
                 try:
+                    kw[name] = a
+                    impl(self, *args, **kw)
+                    a = tuple(i - ndim for i in a)
                     kw[name] = a
                     impl(self, *args, **kw)
                 except Exception:
