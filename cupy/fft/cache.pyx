@@ -5,6 +5,7 @@ from cupy.cuda cimport memory
 
 import threading
 
+from cupy import util
 from cupy.cuda import cufft
 
 
@@ -13,19 +14,20 @@ cdef object _thread_local = threading.local()
 
 cdef class _ThreadLocal:
 
-    cdef list per_device_cache
+    cdef list per_device_cufft_cache
 
     def __init__(self):
         cdef int i
-        self.per_device_cache = [False for i in range(runtime.getDeviceCount())]
+        self.per_device_cufft_cache = [
+            None for i in range(runtime.getDeviceCount())]
 
     @staticmethod
     cdef _ThreadLocal get():
         cdef _ThreadLocal tls
-        try:
-            tls = _thread_local.tls
-        except AttributeError:
-            tls = _thread_local.tls = _ThreadLocal()
+        tls = getattr(_thread_local, 'tls', None)
+        if tls is None:
+            tls = _ThreadLocal()
+            setattr(_thread_local, 'tls', tls)
         return tls
 
 
@@ -149,12 +151,6 @@ cdef class PlanCache:
         self._validate_size_memsize(size, memsize)
         self._set_size_memsize(size, memsize)
         self._reset()
-
-        if hasattr(_thread_local, '_current_plan_cache'):
-            import warnings
-            warnings.warn('invalidating the existing thread-local '
-                          'plan cache...')
-        _thread_local._current_plan_cache = self
 
     def __getitem__(self, tuple key):
         # no-op if cache is disabled
@@ -306,64 +302,52 @@ cdef class PlanCache:
         print(self)
 
 
-# TODO(leofang): mark this API experimental until scipy/scipy#12512 is merged and released
-cpdef Py_ssize_t get_plan_cache_size(size):
-    if not hasattr(_thread_local, '_current_plan_cache'):
-        raise RuntimeError('cache not found')
-    cdef PlanCache cache = _thread_local._current_plan_cache
-    return cache.get_size()
-
-
-# TODO(leofang): mark this API experimental until scipy/scipy#12512 is merged and released
-cpdef set_plan_cache_size(size):
-    if not hasattr(_thread_local, '_current_plan_cache'):
-        raise RuntimeError('cache not found')
-    cdef PlanCache cache = _thread_local._current_plan_cache
-    cache.set_size(size)
-
-
-# TODO(leofang): mark this API experimental until scipy/scipy#12512 is merged and released
-cpdef Py_ssize_t get_plan_cache_max_memsize(size):
-    if not hasattr(_thread_local, '_current_plan_cache'):
-        raise RuntimeError('cache not found')
-    cdef PlanCache cache = _thread_local._current_plan_cache
-    return cache.get_memsize()
-
-
-# TODO(leofang): mark this API experimental until scipy/scipy#12512 is merged and released
-cpdef set_plan_cache_max_memsize(size):
-    if not hasattr(_thread_local, '_current_plan_cache'):
-        raise RuntimeError('cache not found')
-    cdef PlanCache cache = _thread_local._current_plan_cache
-    cache.set_memsize(size)
-
-
-# TODO(leofang): mark this API experimental until scipy/scipy#12512 is merged and released
-cpdef clear_plan_cache():
-    if not hasattr(_thread_local, '_current_plan_cache'):
-        raise RuntimeError('cache not found')
-    cdef PlanCache cache = _thread_local._current_plan_cache
-    cache.clear()
-
-
-# enable cache by default
-# TODO(leofang): expose this handle to cupy.fft or cupy.fft.config,
-# since it's expected to work as a singleton?
-# TODO(leofang): use per-thread, per-device cache instead
-plan_cache = PlanCache(size=16)
-
-
 cpdef PlanCache get_plan_cache():
+    """Get the per-thread, per-device plan cache, or create one if not found.
+    """
     cdef _ThreadLocal tls = _ThreadLocal.get()
     cdef int dev = runtime.getDevice()
-    cdef PlanCache cache = tls.per_device_cache[dev]
+    cdef PlanCache cache = tls.per_device_cufft_cache[dev]
+    if cache is None:
+        # not found, do a default initialization
+        cache = PlanCache()
+        tls.per_device_cufft_cache[dev] = cache
     return cache
 
 
-cpdef set_plan_cache():
-    """Default initialization"""
-    cdef _ThreadLocal tls = _ThreadLocal.get()
-    cdef int dev
-    cdef int counts = len(tls.per_device_cache)
-    cdef PlanCache cache
-    tls.per_device_cache = [PlanCache() for dev in range(counts)]
+# TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
+cpdef Py_ssize_t get_plan_cache_size(size):
+    util.experimental('cupy.fft.cache.get_plan_cache_size')
+    cdef PlanCache cache = get_plan_cache()
+    return cache.get_size()
+
+
+# TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
+cpdef set_plan_cache_size(size):
+    util.experimental('cupy.fft.cache.set_plan_cache_size')
+    cdef PlanCache cache = get_plan_cache()
+    cache.set_size(size)
+
+
+# TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
+cpdef Py_ssize_t get_plan_cache_max_memsize(size):
+    util.experimental('cupy.fft.cache.get_plan_cache_max_memsize')
+    cdef PlanCache cache = get_plan_cache()
+    return cache.get_memsize()
+
+
+# TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
+cpdef set_plan_cache_max_memsize(size):
+    util.experimental('cupy.fft.cache.set_plan_cache_max_memsize')
+    cdef PlanCache cache = get_plan_cache()
+    cache.set_memsize(size)
+
+
+# TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
+cpdef clear_plan_cache():
+    util.experimental('cupy.fft.cache.clear_plan_cache')
+    cdef PlanCache cache = get_plan_cache()
+    cache.clear()
+
+
+# TODO(leofang): expose the functions to cupy.fft or cupy.fft.config,

@@ -7,7 +7,7 @@ import numpy as np
 import cupy
 from cupy.cuda import cufft
 from cupy.fft import config
-from cupy.fft.cache import plan_cache
+from cupy.fft.cache import get_plan_cache
 
 
 _reduce = functools.reduce
@@ -115,12 +115,13 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         devices = None if not config.use_multi_gpus else config._devices
         # TODO(leofang): do we need to add the current stream to keys?
         keys = (out_size, fft_type, batch, devices)
-        cached_plan = plan_cache.get(keys)
+        cache = get_plan_cache()
+        cached_plan = cache.get(keys)
         if cached_plan is not None:
             plan = cached_plan
         else:
             plan = cufft.Plan1d(*keys[:3], devices=keys[3])
-            plan_cache[keys] = plan
+            cache[keys] = plan
     else:
         # check plan validity
         if not isinstance(plan, cufft.Plan1d):
@@ -390,12 +391,13 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
     keys = (plan_dimensions, inembed, istride,
             idist, onembed, ostride, odist,
             fft_type, nbatch, order, fft_axes[-1], out_size)
-    cached_plan = plan_cache.get(keys)
+    cache = get_plan_cache()
+    cached_plan = cache.get(keys)
     if cached_plan is not None:
         plan = cached_plan
     else:
         plan = cufft.PlanNd(*keys)
-        plan_cache[keys] = plan
+        cache[keys] = plan
     return plan
 
 
