@@ -236,7 +236,7 @@ class TestBasic(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     @testing.with_requires('numpy>=1.12.0')
-    def test_full_default_dtype(self, xp, dtype):
+    def test_full_default_dtype(self, xp, dtype, order):
         return xp.full((2, 3, 4), xp.array(1, dtype=dtype), order=order)
 
     @testing.for_all_dtypes()
