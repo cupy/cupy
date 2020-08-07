@@ -72,7 +72,8 @@ cdef class _Node:
         elif isinstance(self.plan, cufft.PlanNd):
             plan_type = 'PlanNd'
         else:
-            raise TypeError('unrecognized plan type: {}'.format(type(self.plan)))
+            raise TypeError('unrecognized plan type: {}'.format(
+                type(self.plan)))
         output = 'key: {0}, plan type: {1}, memory usage: {2}'.format(
             self.key, plan_type, self.memsize)
         return output
@@ -217,7 +218,9 @@ cdef class PlanCache:
         self.curr_memsize -= node.memsize
 
     cdef void _add_plan(self, _Node node):
-        """ Add a node corresponding to the given plan to the tail of the list. """
+        """ Add a node corresponding to the given plan to the tail of
+        the list.
+        """
         # update linked list
         self.lru.append_node(node)
 
@@ -252,7 +255,8 @@ cdef class PlanCache:
                 plan = default
         return plan
 
-    cdef inline void _eject_until_fit(self, Py_ssize_t size, Py_ssize_t memsize):
+    cdef inline void _eject_until_fit(
+            self, Py_ssize_t size, Py_ssize_t memsize):
         cdef _Node unwanted_node
         while True:
             if (self.curr_size == 0
@@ -316,7 +320,7 @@ cpdef PlanCache get_plan_cache():
 
 
 # TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
-cpdef Py_ssize_t get_plan_cache_size(size):
+cpdef Py_ssize_t get_plan_cache_size():
     util.experimental('cupy.fft.cache.get_plan_cache_size')
     cdef PlanCache cache = get_plan_cache()
     return cache.get_size()
@@ -330,7 +334,7 @@ cpdef set_plan_cache_size(size):
 
 
 # TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
-cpdef Py_ssize_t get_plan_cache_max_memsize(size):
+cpdef Py_ssize_t get_plan_cache_max_memsize():
     util.experimental('cupy.fft.cache.get_plan_cache_max_memsize')
     cdef PlanCache cache = get_plan_cache()
     return cache.get_memsize()
@@ -348,6 +352,3 @@ cpdef clear_plan_cache():
     util.experimental('cupy.fft.cache.clear_plan_cache')
     cdef PlanCache cache = get_plan_cache()
     cache.clear()
-
-
-# TODO(leofang): expose the functions to cupy.fft or cupy.fft.config,

@@ -1,4 +1,7 @@
 from cupy import util
+from cupy.fft.cache import (get_plan_cache, get_plan_cache_size,
+                            set_plan_cache_size, get_plan_cache_max_memsize,
+                            set_plan_cache_max_memsize, clear_plan_cache)
 
 
 enable_nd_planning = True
