@@ -180,7 +180,7 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
 def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
                             tuple out_axis, out=None, bint keepdims=False):
     # if import at the top level, a segfault would happen when import cupy!
-    from cupy.creation.ranges import arange
+    from cupy._creation.ranges import arange
 
     cdef ndarray y, offset
     cdef str order

@@ -9,8 +9,13 @@ def _wraps_polyroutine(func):
     def _get_coeffs(x):
         if isinstance(x, cupy.poly1d):
             return x._coeffs
-        if isinstance(x, cupy.ndarray) or cupy.isscalar(x):
+        if cupy.isscalar(x):
             return cupy.atleast_1d(x)
+        if isinstance(x, cupy.ndarray):
+            x = cupy.atleast_1d(x)
+            if x.ndim == 1:
+                return x
+            raise ValueError('Multidimensional inputs are not supported')
         raise TypeError('Unsupported type')
 
     def wrapper(*args):
@@ -75,6 +80,29 @@ def polysub(a1, a2):
     return out
 
 
+@_wraps_polyroutine
+def polymul(a1, a2):
+    """Computes the product of two polynomials.
+
+    Args:
+        a1 (scalar, cupy.ndarray or cupy.poly1d): first input polynomial.
+        a2 (scalar, cupy.ndarray or cupy.poly1d): second input polynomial.
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: The product of the inputs.
+
+    .. seealso:: :func:`numpy.polymul`
+
+    """
+    a1 = cupy.trim_zeros(a1, trim='f')
+    a2 = cupy.trim_zeros(a2, trim='f')
+    if a1.size == 0:
+        a1 = cupy.array([0.])
+    if a2.size == 0:
+        a2 = cupy.array([0.])
+    return cupy.convolve(a1, a2)
+
+
 def polyval(p, x):
     """Evaluates a polynomial at specific values.
 
@@ -94,15 +122,13 @@ def polyval(p, x):
     .. seealso:: :func:`numpy.polyval`
 
     """
-    if isinstance(p, cupy.poly1d):
-        p = p.coeffs
     if cupy.isscalar(p) or p.ndim == 0:
         raise TypeError('p can be 1d ndarray or poly1d object only')
     if p.ndim != 1:
         # to be consistent with polyarithmetic routines' behavior of
         # not allowing multidimensional polynomial inputs.
         raise ValueError('p can be 1d ndarray or poly1d object only')
-    # TODO(Dahlia-Chehata): Support poly1d and multidimensional x
+        # TODO(Dahlia-Chehata): Support poly1d and multidimensional x
     if isinstance(x, cupy.poly1d) or (isinstance(x, cupy.ndarray)
                                       and x.ndim > 1):
         raise NotImplementedError('poly1d or non 1d values are not'
@@ -129,3 +155,50 @@ def polyval(p, x):
     if val.dtype.kind in 'b':
         return out.astype(p.dtype, copy=False)
     return out.astype(val.dtype, copy=False)
+
+
+def roots(p):
+    """Computes the roots of a polynomial with given coefficients.
+
+    Args:
+        p (cupy.ndarray or cupy.poly1d): polynomial coefficients.
+
+    Returns:
+        cupy.ndarray: polynomial roots.
+
+    .. warning::
+
+        This function doesn't support currently polynomial coefficients
+        whose companion matrices are general 2d square arrays. Only those
+        with complex Hermitian or real symmetric 2d arrays are allowed.
+
+        The current `cupy.roots` doesn't guarantee the order of results.
+
+    .. seealso:: :func:`numpy.roots`
+
+    """
+    if isinstance(p, cupy.poly1d):
+        p = p.coeffs
+    if p.dtype.kind == 'b':
+        raise NotImplementedError('boolean inputs are not supported')
+    if p.ndim == 0:
+        raise TypeError('0-dimensional input is not allowed')
+    if p.size < 2:
+        return cupy.array([])
+    [p] = cupy.polynomial.polyutils.as_series([p[::-1]])
+    if p.size < 2:
+        return cupy.array([])
+    if p.size == 2:
+        out = (-p[0] / p[1])[None]
+        if p[0] == 0:
+            out = out.real.astype(numpy.float64)
+        return out
+    cmatrix = cupy.polynomial.polynomial.polycompanion(p)
+    # TODO(Dahlia-Chehata): Support after cupy.linalg.eigvals is supported
+    if cupy.array_equal(cmatrix, cmatrix.conj().T):
+        out = cupy.linalg.eigvalsh(cmatrix)
+    else:
+        raise NotImplementedError('Only complex Hermitian and real '
+                                  'symmetric 2d arrays are supported '
+                                  'currently')
+    return out.astype(p.dtype)
