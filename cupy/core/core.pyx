@@ -30,7 +30,7 @@ from cupy import util
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
-from libc.stdint cimport int64_t
+from libc.stdint cimport int64_t, intptr_t
 
 from cupy.core cimport _carray
 from cupy.core cimport _dtype
@@ -2244,6 +2244,7 @@ cpdef ndarray _internal_ascontiguousarray(ndarray a):
 cpdef ndarray _internal_asfortranarray(ndarray a):
     cdef ndarray newarray
     cdef int m, n
+    cdef intptr_t handle
 
     if a._f_contiguous:
         return a
@@ -2659,7 +2660,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    handle = device.get_cublas_handle()
+    cdef intptr_t handle = device.get_cublas_handle()
 
     # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
     if not use_broadcast:
@@ -2771,7 +2772,8 @@ cpdef ndarray tensordot_core(
         Py_ssize_t k, const shape_t& ret_shape):
     cdef shape_t shape
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
-    cdef Py_ssize_t mode, handle
+    cdef Py_ssize_t mode
+    cdef intptr_t handle
     cdef bint use_sgemmEx
     cdef float one_fp32, zero_fp32
     ret_dtype = a.dtype.char
