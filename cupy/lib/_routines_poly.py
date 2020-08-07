@@ -1,4 +1,7 @@
 import functools
+import warnings
+
+import numpy
 
 import cupy
 
@@ -7,8 +10,13 @@ def _wraps_polyroutine(func):
     def _get_coeffs(x):
         if isinstance(x, cupy.poly1d):
             return x._coeffs
-        if isinstance(x, cupy.ndarray) or cupy.isscalar(x):
+        if cupy.isscalar(x):
             return cupy.atleast_1d(x)
+        if isinstance(x, cupy.ndarray):
+            x = cupy.atleast_1d(x)
+            if x.ndim == 1:
+                return x
+            raise ValueError('Multidimensional inputs are not supported')
         raise TypeError('Unsupported type')
 
     def wrapper(*args):
@@ -73,6 +81,29 @@ def polysub(a1, a2):
     return out
 
 
+@_wraps_polyroutine
+def polymul(a1, a2):
+    """Computes the product of two polynomials.
+
+    Args:
+        a1 (scalar, cupy.ndarray or cupy.poly1d): first input polynomial.
+        a2 (scalar, cupy.ndarray or cupy.poly1d): second input polynomial.
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: The product of the inputs.
+
+    .. seealso:: :func:`numpy.polymul`
+
+    """
+    a1 = cupy.trim_zeros(a1, trim='f')
+    a2 = cupy.trim_zeros(a2, trim='f')
+    if a1.size == 0:
+        a1 = cupy.array([0.])
+    if a2.size == 0:
+        a2 = cupy.array([0.])
+    return cupy.convolve(a1, a2)
+
+
 def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     """Returns the least squares fit of polynomial of degree deg
     to the data y sampled at x.
@@ -89,7 +120,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
             When True, diagnostic information is also returned.
         w (cupy.ndarray, optional): weights applied to the y-coordinates
             of the sample points of shape (M, ).
-        cov (bool or str, optional): if given, returns tthe estimate with
+        cov (bool or str, optional): if given, returns the estimate with
             its covariance matrix.
 
     Returns:
@@ -111,4 +142,66 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     .. seealso:: :func:`numpy.polyfit`
 
     """
-    
+    deg = int(deg)
+    x = x.astype(float, copy=False)
+    y = y.astype(float, copy=False)
+
+    if deg < 0:
+        raise ValueError('expected deg >= 0')
+    if x.ndim != 1:
+        raise TypeError('expected 1D vector for x')
+    if x.size == 0:
+        raise TypeError('expected non-empty vector for x')
+    if y.ndim < 1 or y.ndim > 2:
+        raise TypeError('expected 1D or 2D array for y')
+    if x.shape[0] != y.shape[0]:
+        raise TypeError('expected x and y to have same length')
+
+    lhs = cupy.polynomial.polynomial.polyvander(x, deg)[:, ::-1]
+    rhs = y
+
+    if w is not None:
+        w = w.astype(float, copy=False)
+        if w.ndim != 1:
+            raise TypeError('expected a 1-d array for weights')
+        if w.shape[0] != y.shape[0]:
+            raise TypeError('expected w and y to have the same length')
+
+        if rhs.ndim == 2:
+            w = w[:, None]
+
+        lhs *= w[:, None]
+        rhs *= w
+
+    if rcond is None:
+        rcond = x.size * cupy.finfo(x.dtype).eps
+
+    scale = cupy.sqrt((cupy.square(lhs)).sum(axis=0))
+    lhs /= scale
+    c, resids, rank, s = cupy.linalg.lstsq(lhs, rhs, rcond)
+    c = (c.T / scale).T
+
+    order = deg + 1
+    if rank != order and not full:
+        msg = 'Polyfit may be poorly conditioned'
+        warnings.warn(msg, numpy.RankWarning, stacklevel=4)
+
+    if full:
+        return c, resids, rank, s, rcond
+    if cov:
+        base = cupy.linalg.inv(cupy.dot(lhs.T, lhs))
+        base /= cupy.outer(scale, scale)
+
+        if cov == 'unscaled':
+            factor = 1
+        elif x.size > order:
+            factor = resids / (x.size - order)
+        else:
+            raise ValueError('the number of data points must exceed order'
+                             ' to scale the covariance matrix')
+
+        if y.ndim == 1:
+            return c, base * factor
+        return c, base[..., None] * factor
+
+    return c
