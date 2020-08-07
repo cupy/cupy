@@ -1,7 +1,6 @@
 import contextlib
 
 import cupy
-import cupyx
 import cupyx.scipy.fft
 
 from cupy import core
@@ -21,6 +20,28 @@ _dot_kernel = core.ReductionKernel(
     '0',
     'dot_product'
 )
+
+
+def _choose_conv_method(in1, in2, mode):
+    if in1.ndim != 1 or in2.ndim != 1:
+        raise NotImplementedError('Only 1d inputs are supported currently')
+
+    if in1.dtype.kind in 'bui' or in2.dtype.kind in 'bui':
+        return 'direct'
+
+    if _fftconv_faster(in1, in2, mode):
+        return 'fft'
+
+    return 'direct'
+
+
+def _fftconv_faster(x, h, mode):
+    """
+    .. seealso:: :func: `scipy.signal.signaltools._fftconv_faster`
+
+    """
+    # TODO(Dahlia-Chehata): replace with GPU-based constants.
+    return True
 
 
 def convolve(a, v, mode='full'):
@@ -48,7 +69,7 @@ def convolve(a, v, mode='full'):
     a = a.ravel()
     v = v.ravel()
 
-    method = cupyx.scipy.signal.choose_conv_method(a, v, mode)
+    method = _choose_conv_method(a, v, mode)
     if method == 'direct':
         out = _dot_convolve(a, v, mode)
     elif method == 'fft':
