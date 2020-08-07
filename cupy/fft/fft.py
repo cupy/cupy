@@ -120,7 +120,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         if cached_plan is not None:
             plan = cached_plan
         else:
-            plan = cufft.Plan1d(*keys[:3], devices=keys[3])
+            plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
             cache[keys] = plan
     else:
         # check plan validity
