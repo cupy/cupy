@@ -247,13 +247,12 @@ cdef class PlanCache:
         output += 'current / max memsize: {0} / {1} (bytes)\n'.format(
             self.curr_memsize,
             '(unlimited)' if self.memsize == -1 else self.memsize)
-        output += '\ncached plans (least used first):\n'
+        output += '\ncached plans (most recently used first):\n'
 
-        # TODO(leofang): maybe traverse from the end?
-        cdef _Node node = self.lru.head
+        cdef _Node node = self.lru.tail
         cdef size_t count = 0
-        while node.next is not self.lru.tail:
-            node = node.next
+        while node.prev is not self.lru.head:
+            node = node.prev
             output += str(node) + '\n'
             assert self.cache[node.key] is node
             count += 1
