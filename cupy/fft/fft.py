@@ -7,7 +7,7 @@ import numpy as np
 import cupy
 from cupy.cuda import cufft
 from cupy.fft import config
-from cupy.fft.cache import get_plan_cache
+from cupy.fft.cache import get_plan_cache, add_multi_gpu_plan
 
 
 _reduce = functools.reduce
@@ -121,7 +121,10 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             plan = cached_plan
         else:
             plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
-            cache[keys] = plan
+            if devices is None:
+                cache[keys] = plan
+            else:
+                add_multi_gpu_plan(keys, plan)
     else:
         # check plan validity
         if not isinstance(plan, cufft.Plan1d):
@@ -396,6 +399,7 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
     if cached_plan is not None:
         plan = cached_plan
     else:
+        # TODO(leofang): call add_multi_gpu_plan() for multi-GPU PlanNd
         plan = cufft.PlanNd(*keys)
         cache[keys] = plan
     return plan

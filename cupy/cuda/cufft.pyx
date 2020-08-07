@@ -278,6 +278,17 @@ class Plan1d(object):
             else:
                 self._multi_gpu_get_plan(
                     plan, nx, fft_type, batch, devices, out)
+        else:
+            if use_multi_gpus:
+                # multi-GPU FFT cannot transform 0-size arrays, and attempting
+                # to create such a plan will error out, but we still need this
+                # for bookkeeping
+                if isinstance(devices, (tuple, list)):
+                    self.gpus = list(devices)
+                elif isinstance(devices, int) and devices > 0:
+                    self.gpus = [i for i in range(int)]
+                else:
+                    raise ValueError
 
         self.nx = nx
         self.fft_type = fft_type
@@ -725,6 +736,7 @@ class PlanNd(object):
                 result = cufftSetAutoAllocation(plan, 0)
         check_result(result)
         self.plan = plan
+        self.gpus = None  # TODO(leofang): support multi-GPU PlanNd
 
         if batch == 0:
             work_size = 0

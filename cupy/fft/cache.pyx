@@ -1,6 +1,7 @@
 # distutils: language = c++
 
 from cupy_backends.cuda.api cimport runtime
+from cupy.cuda cimport device
 from cupy.cuda cimport memory
 
 import threading
@@ -50,13 +51,18 @@ cdef class _Node:
         self.memsize = 0
 
         cdef memory.MemoryPointer ptr
+        cdef int dev, curr_dev
         # work_area could be None for "empty" plans...
         if plan is not None and plan.work_area is not None:
             if isinstance(plan.work_area, list):
-                # multi-GPU plan, add up all memory usage as we don't do
-                # per-device cache (yet)
-                for ptr in plan.work_area:
-                    self.memsize += ptr.mem.size
+                # multi-GPU plan
+                curr_dev = runtime.getDevice()
+                for dev, ptr in zip(plan.gpus, plan.work_area):
+                    if dev == curr_dev:
+                        self.memsize = ptr.mem.size
+                        break
+                else:
+                    raise RuntimeError('invalid multi-GPU plan')
             else:
                 # single-GPU plan
                 self.memsize = <Py_ssize_t>plan.work_area.mem.size
@@ -160,11 +166,27 @@ cdef class PlanCache:
             return
 
         cdef _Node node = self.cache.get(key)
+        cdef int dev
+        cdef PlanCache cache
+        cdef list plans
         if node is not None:
             # hit, move the node to the end
-            self.lru.remove_node(node)
-            self.lru.append_node(node)
-            return node.plan
+            plan = node.plan
+            if plan.gpus is None:
+                self.lru.remove_node(node)
+                self.lru.append_node(node)
+            else:
+                plans = []
+                for dev in plan.gpus:
+                    with device.Device(dev):
+                        cache = get_plan_cache()
+                        node = cache.cache.get(key)
+                        cache.lru.remove_node(node)
+                        cache.lru.append_node(node)
+                        plans.append(node.plan)
+                for item in plans:
+                    assert plan is item
+            return plan
         else:
             raise KeyError('plan not found for key: {}'.format(key))
 
@@ -187,7 +209,6 @@ cdef class PlanCache:
         unwanted_node = self.cache.get(key)
         if unwanted_node is not None:
             self._remove_plan(unwanted_node)
-            # self.cache will be updated later, so don't del
 
         # See if the plan can fit in, if not we remove least used ones
         self._eject_until_fit(
@@ -195,8 +216,20 @@ cdef class PlanCache:
             self.memsize - node.memsize if self.memsize != -1 else -1)
 
         # At this point we ensure we have room to insert
-        self._add_plan(node)
+        self._add_node(node)
         self.cache[key] = node
+
+    def __delitem__(self, tuple key):
+        # no-op if cache is disabled
+        if not self.is_enabled:
+            assert (self.size == 0 or self.memsize == 0)
+            return
+
+        cdef _Node node = self.cache.get(key)
+        if node is not None:
+            self._remove_plan(node)
+        else:
+            raise KeyError('plan not found for key: {}'.format(key))
 
     cdef void _validate_size_memsize(
             self, Py_ssize_t size, Py_ssize_t memsize) except*:
@@ -209,6 +242,15 @@ cdef class PlanCache:
         self.is_enabled = (size != 0 and memsize != 0)
 
     cdef void _remove_plan(self, _Node node):
+        cdef list gpus = node.plan.gpus
+        if gpus is None:
+            self._remove_node(node)
+            del self.cache[node.key]
+        else:
+            # collectively remove the plan from all devices' caches
+            _remove_multi_gpu_plan(gpus, node.key)
+
+    cdef void _remove_node(self, _Node node):
         """ Remove the node corresponding to the given plan from the list. """
         # update linked list
         self.lru.remove_node(node)
@@ -217,7 +259,7 @@ cdef class PlanCache:
         self.curr_size -= 1
         self.curr_memsize -= node.memsize
 
-    cdef void _add_plan(self, _Node node):
+    cdef void _add_node(self, _Node node):
         """ Add a node corresponding to the given plan to the tail of
         the list.
         """
@@ -251,6 +293,7 @@ cdef class PlanCache:
         except KeyError:
             plan = default
         else:
+            # if cache is disabled, plan can be None
             if plan is None:
                 plan = default
         return plan
@@ -268,7 +311,6 @@ cdef class PlanCache:
                 unwanted_node = self.lru.head.next
                 if unwanted_node is not self.lru.tail:
                     self._remove_plan(unwanted_node)
-                    del self.cache[unwanted_node.key]
 
     cpdef clear(self):
         self._reset()
@@ -352,3 +394,40 @@ cpdef clear_plan_cache():
     util.experimental('cupy.fft.cache.clear_plan_cache')
     cdef PlanCache cache = get_plan_cache()
     cache.clear()
+
+
+cpdef void add_multi_gpu_plan(tuple key, plan) except*:
+    cdef int dev
+    cdef PlanCache cache
+    cdef list insert_ok = []
+
+    try:
+        for dev in plan.gpus:
+            with device.Device(dev):
+                cache = get_plan_cache()
+                cache[key] = plan
+            insert_ok.append(dev)
+    except Exception as e:
+        for dev in insert_ok:
+            with device.Device(dev):
+                cache = get_plan_cache()
+                del cache[key]
+        raise RuntimeError(
+            'Insert succeeded only on devices {0}:\n{1}'.format(insert_ok, e)).with_traceback(e.__traceback__)
+    assert len(insert_ok) == len(plan.gpus)
+
+
+cdef void _remove_multi_gpu_plan(list gpus, tuple key) except*:
+    """ Removal of a multi-GPU plan is triggered when any of the participating
+    devices removes the plan from its cache.
+    """
+    cdef int dev
+    cdef _Node node
+    cdef PlanCache cache
+
+    for dev in gpus:
+        with device.Device(dev):
+            cache = get_plan_cache()
+            node = cache.cache[key]
+            cache._remove_node(node)
+            del cache.cache[key]

@@ -6,7 +6,7 @@ from cupy.fft import config
 from cupy.fft.fft import (_convert_fft_type, _default_fft_func, _fft,
                           _get_cufft_plan_nd, _get_fftn_out_size,
                           _output_dtype)
-from cupy.fft.cache import get_plan_cache
+from cupy.fft.cache import (get_plan_cache, add_multi_gpu_plan)
 
 
 def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
@@ -137,7 +137,10 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             plan = cached_plan
         else:
             plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
-            cache[keys] = plan
+            if devices is None:
+                cache[keys] = plan
+            else:
+                add_multi_gpu_plan(keys, plan)
 
     return plan
 
