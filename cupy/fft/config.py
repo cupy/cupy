@@ -1,7 +1,12 @@
 from cupy import util
-from cupy.fft.cache import (get_plan_cache, get_plan_cache_size,
-                            set_plan_cache_size, get_plan_cache_max_memsize,
-                            set_plan_cache_max_memsize, clear_plan_cache)
+
+# expose cache handles to this module
+from cupy.fft.cache import get_plan_cache  # NOQA
+from cupy.fft.cache import clear_plan_cache  # NOQA
+from cupy.fft.cache import get_plan_cache_size  # NOQA
+from cupy.fft.cache import set_plan_cache_size  # NOQA
+from cupy.fft.cache import get_plan_cache_max_memsize  # NOQA
+from cupy.fft.cache import set_plan_cache_max_memsize  # NOQA
 
 
 enable_nd_planning = True
