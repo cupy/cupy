@@ -122,6 +122,8 @@ def polyval(p, x):
     .. seealso:: :func:`numpy.polyval`
 
     """
+    if isinstance(p, cupy.poly1d):
+        p = p.coeffs
     if cupy.isscalar(p) or p.ndim == 0:
         raise TypeError('p can be 1d ndarray or poly1d object only')
     if p.ndim != 1:
