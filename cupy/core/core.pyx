@@ -2910,20 +2910,21 @@ cpdef ndarray tensordot_core_v11(
     cdef cuComplex one_F, zero_F
     cdef cuDoubleComplex one_D, zero_D
 
+    cdef int compute_type
     if c.dtype.char in 'efF':
         compute_type = cublas.CUBLAS_COMPUTE_32F
     elif c.dtype.char in 'dD':
         compute_type = cublas.CUBLAS_COMPUTE_64F
 
-    compute_capability = int(device.get_compute_capability())
-    algo = cublas.CUBLAS_GEMM_DEFAULT
+    cdef int compute_capability = int(device.get_compute_capability())
+    cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
     if ((compute_capability >= 80) or
             (compute_capability >= 70 and c.dtype == 'e')):
         algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
 
-    a_cuda_dtype = dtype_to_cuda_dtype(a.dtype, is_half_allowed=True)
-    b_cuda_dtype = dtype_to_cuda_dtype(b.dtype, is_half_allowed=True)
-    c_cuda_dtype = dtype_to_cuda_dtype(c.dtype, is_half_allowed=True)
+    cdef int a_cuda_dtype = dtype_to_cuda_dtype(a.dtype, is_half_allowed=True)
+    cdef int b_cuda_dtype = dtype_to_cuda_dtype(b.dtype, is_half_allowed=True)
+    cdef int c_cuda_dtype = dtype_to_cuda_dtype(c.dtype, is_half_allowed=True)
     handle = device.get_cublas_handle()
     if c.dtype.char in 'efd':
         if compute_type == cublas.CUBLAS_COMPUTE_32F:
