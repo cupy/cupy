@@ -104,7 +104,7 @@ class TestPoly1d(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_poly1d_leading_zeros(self, xp, dtype):
         a = xp.array([0, 0, 1, 2, 3], dtype)
-        return xp.poly1d(a).coeffs
+        return xp.poly1d(a)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
@@ -123,6 +123,14 @@ class TestPoly1d(unittest.TestCase):
     def test_poly1d_order_leading_zeros(self, xp, dtype):
         a = xp.array([0, 0, 1, 2, 3, 0], dtype)
         return xp.poly1d(a).order
+
+    @testing.for_signed_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_poly1d_roots(self, xp, dtype):
+        a = xp.array([-3, -2.5, 3], dtype)
+        out = xp.poly1d(a).roots
+        # The current `cupy.roots` doesn't guarantee the order of results.
+        return xp.sort(out)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
@@ -238,10 +246,10 @@ class Poly1dTestBase(unittest.TestCase):
         lambda x, y: x - y,
         lambda x, y: x * y,
     ],
-    'type_l': ['poly1d', 'python_scalar'],
+    'type_l': ['poly1d', 'python_scalar', 'ndarray'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
 }))
-class TestPoly1dArithmetic(Poly1dTestBase):
+class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
@@ -253,12 +261,29 @@ class TestPoly1dArithmetic(Poly1dTestBase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
+    'fname': ['add', 'subtract', 'multiply', 'divide', 'power'],
+    'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
+    'type_r': ['poly1d'],
+}))
+class TestPoly1dMathArithmetic(Poly1dTestBase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_poly1d_arithmetic(self, xp, dtype):
+        func = getattr(xp, self.fname)
+        a1 = self._get_input(xp, self.type_l, dtype)
+        a2 = self._get_input(xp, self.type_r, dtype)
+        return func(a1, a2)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
     'func': [
         lambda x, y: x + y,
         lambda x, y: x - y,
         lambda x, y: x * y,
     ],
-    'type_l': ['ndarray', 'numpy_scalar'],
+    'type_l': ['numpy_scalar'],
     'type_r': ['poly1d'],
 }))
 class TestPoly1dArithmeticInvalid(Poly1dTestBase):
@@ -612,3 +637,107 @@ class TestPolyfitDiffTypes(unittest.TestCase):
         y = testing.shaped_arange((5,), xp, dtype2)
         w = testing.shaped_arange((5,), xp, dtype3)
         return xp.polyfit(x, y, 5, w=w)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'input': [[2, -1, -2], [-4, 10, 4]],
+}))
+class TestRootsReal(unittest.TestCase):
+
+    @testing.for_signed_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_roots_array(self, xp, dtype):
+        a = xp.array(self.input, dtype)
+        out = xp.roots(a)
+        return xp.sort(out)
+
+    @testing.for_signed_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_roots_poly1d(self, xp, dtype):
+        a = xp.array(self.input, dtype)
+        out = xp.roots(xp.poly1d(a))
+        return xp.sort(out)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'input': [[3j, 1.5j, -3j], [3 + 2j, 5], [3j, 0], [0, 3j]],
+}))
+class TestRootsComplex(unittest.TestCase):
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_roots_array(self, xp, dtype):
+        a = xp.array(self.input, dtype)
+        out = xp.roots(a)
+        return xp.sort(out)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_roots_poly1d(self, xp, dtype):
+        a = xp.array(self.input, dtype)
+        out = xp.roots(xp.poly1d(a))
+        return xp.sort(out)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'input': [[5, 10], [5, 0], [0, 5], [0, 0], [5]],
+}))
+class TestRootsSpecialCases(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_roots_array(self, xp, dtype):
+        a = xp.array(self.input, dtype)
+        return xp.roots(a)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_roots_poly1d(self, xp, dtype):
+        a = xp.array(self.input, dtype)
+        return xp.roots(xp.poly1d(a))
+
+
+@testing.gpu
+class TestRoots(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_roots_zero_sized(self, xp, dtype):
+        a = xp.zeros((0,), dtype)
+        return xp.roots(a)
+
+    @testing.with_requires('numpy>1.17')
+    @testing.for_all_dtypes(no_bool=True)
+    def test_roots_zero_dim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((), xp, dtype)
+            with pytest.raises(TypeError):
+                xp.roots(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_roots_ndim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 1), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.roots(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_roots_zeros(self, xp, dtype):
+        a = xp.zeros((3,), dtype)
+        return xp.roots(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_roots_zeros_ndim(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.zeros((2, 1), dtype)
+            with pytest.raises(ValueError):
+                xp.roots(a)
+
+    def test_roots_bool_symmetric(self):
+        a = cupy.array([5, -1, -5], bool)
+        with pytest.raises(NotImplementedError):
+            cupy.roots(a)

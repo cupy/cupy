@@ -60,10 +60,9 @@ cdef class poly1d:
     def order(self):
         return self.coeffs.size - 1
 
-    # TODO(Dahlia-Chehata): implement using cupy.roots
     @property
     def roots(self):
-        raise NotImplementedError
+        return _routines_poly.roots(self._coeffs)
 
     @property
     def r(self):
@@ -104,6 +103,10 @@ cdef class poly1d:
         if variable is None:
             variable = 'x'
         self._variable = variable
+
+    @property
+    def __cuda_array_interface__(self):
+        return self.coeffs.__cuda_array_interface__
 
     def __array__(self, dtype=None):
         raise TypeError(

@@ -213,3 +213,50 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
         return c, base[..., None] * factor
 
     return c
+
+
+def roots(p):
+    """Computes the roots of a polynomial with given coefficients.
+
+    Args:
+        p (cupy.ndarray or cupy.poly1d): polynomial coefficients.
+
+    Returns:
+        cupy.ndarray: polynomial roots.
+
+    .. warning::
+
+        This function doesn't support currently polynomial coefficients
+        whose companion matrices are general 2d square arrays. Only those
+        with complex Hermitian or real symmetric 2d arrays are allowed.
+
+        The current `cupy.roots` doesn't guarantee the order of results.
+
+    .. seealso:: :func:`numpy.roots`
+
+    """
+    if isinstance(p, cupy.poly1d):
+        p = p.coeffs
+    if p.dtype.kind == 'b':
+        raise NotImplementedError('boolean inputs are not supported')
+    if p.ndim == 0:
+        raise TypeError('0-dimensional input is not allowed')
+    if p.size < 2:
+        return cupy.array([])
+    [p] = cupy.polynomial.polyutils.as_series([p[::-1]])
+    if p.size < 2:
+        return cupy.array([])
+    if p.size == 2:
+        out = (-p[0] / p[1])[None]
+        if p[0] == 0:
+            out = out.real.astype(numpy.float64)
+        return out
+    cmatrix = cupy.polynomial.polynomial.polycompanion(p)
+    # TODO(Dahlia-Chehata): Support after cupy.linalg.eigvals is supported
+    if cupy.array_equal(cmatrix, cmatrix.conj().T):
+        out = cupy.linalg.eigvalsh(cmatrix)
+    else:
+        raise NotImplementedError('Only complex Hermitian and real '
+                                  'symmetric 2d arrays are supported '
+                                  'currently')
+    return out.astype(p.dtype)
