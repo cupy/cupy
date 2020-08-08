@@ -66,7 +66,7 @@ cpdef tuple get_dtype_with_itemsize(t):
     return ret
 
 
-cpdef int dtype_to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
+cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
     cdef str dtype_char = dtype.char
     if dtype_char == 'e' and is_half_allowed:
         return runtime.CUDA_R_16F

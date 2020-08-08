@@ -35,7 +35,7 @@ from libc.stdint cimport int64_t
 from cupy.core cimport _carray
 from cupy.core cimport _dtype
 from cupy.core._dtype cimport get_dtype
-from cupy.core._dtype cimport dtype_to_cuda_dtype
+from cupy.core._dtype cimport to_cuda_dtype
 from cupy.core._kernel cimport create_ufunc
 from cupy.core cimport _routines_indexing as _indexing
 from cupy.core cimport _routines_logic as _logic
@@ -2909,6 +2909,7 @@ cpdef ndarray tensordot_core_v11(
     cdef double one_d, zero_d
     cdef cuComplex one_F, zero_F
     cdef cuDoubleComplex one_D, zero_D
+    cdef size_t one_ptr, zero_ptr
 
     cdef int compute_type
     if c.dtype.char in 'efF':
@@ -2922,58 +2923,43 @@ cpdef ndarray tensordot_core_v11(
             (compute_capability >= 70 and c.dtype == 'e')):
         algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
 
-    cdef int a_cuda_dtype = dtype_to_cuda_dtype(a.dtype, is_half_allowed=True)
-    cdef int b_cuda_dtype = dtype_to_cuda_dtype(b.dtype, is_half_allowed=True)
-    cdef int c_cuda_dtype = dtype_to_cuda_dtype(c.dtype, is_half_allowed=True)
-    handle = device.get_cublas_handle()
     if c.dtype.char in 'efd':
         if compute_type == cublas.CUBLAS_COMPUTE_32F:
             one_f = 1
             zero_f = 0
-            cublas.gemmEx(
-                handle, <int>transa, <int>transb, <int>m, <int>n, <int>k,
-                <size_t>&one_f,
-                a.data.ptr, a_cuda_dtype, <int>lda,
-                b.data.ptr, b_cuda_dtype, <int>ldb,
-                <size_t>&zero_f, c.data.ptr, c_cuda_dtype, <int>ldc,
-                compute_type, algo)
+            one_ptr = <size_t>&one_f
+            zero_ptr = <size_t>&zero_f
         elif compute_type == cublas.CUBLAS_COMPUTE_64F:
             one_d = 1
             zero_d = 0
-            cublas.gemmEx(
-                handle, <int>transa, <int>transb, <int>m, <int>n, <int>k,
-                <size_t>&one_d,
-                a.data.ptr, a_cuda_dtype, <int>lda,
-                b.data.ptr, b_cuda_dtype, <int>ldb,
-                <size_t>&zero_d, c.data.ptr, c_cuda_dtype, <int>ldc,
-                compute_type, algo)
+            one_ptr = <size_t>&one_d
+            zero_ptr = <size_t>&zero_d
         else:
             raise ValueError('Invalid compute type: {}'.format(compute_type))
     elif c.dtype.char in 'FD':
         if compute_type == cublas.CUBLAS_COMPUTE_32F:
             one_F = cuComplex(1, 0)
             zero_F = cuComplex(0, 0)
-            cublas.gemmEx(
-                handle, <int>transa, <int>transb, <int>m, <int>n, <int>k,
-                <size_t>&one_F,
-                a.data.ptr, a_cuda_dtype, <int>lda,
-                b.data.ptr, b_cuda_dtype, <int>ldb,
-                <size_t>&zero_F, c.data.ptr, c_cuda_dtype, <int>ldc,
-                compute_type, algo)
+            one_ptr = <size_t>&one_F
+            zero_ptr = <size_t>&zero_F
         elif compute_type == cublas.CUBLAS_COMPUTE_64F:
             one_D = cuDoubleComplex(1, 0)
             zero_D = cuDoubleComplex(0, 0)
-            cublas.gemmEx(
-                handle, <int>transa, <int>transb, <int>m, <int>n, <int>k,
-                <size_t>&one_D,
-                a.data.ptr, a_cuda_dtype, <int>lda,
-                b.data.ptr, b_cuda_dtype, <int>ldb,
-                <size_t>&zero_D, c.data.ptr, c_cuda_dtype, <int>ldc,
-                compute_type, algo)
+            one_ptr = <size_t>&one_D
+            zero_ptr = <size_t>&zero_D
         else:
             raise ValueError('Invalid compute type: {}'.format(compute_type))
     else:
         raise ValueError('Invalid dtype: {}'.format(c.dtype))
+
+    cdef int a_cuda_dtype = to_cuda_dtype(a.dtype, is_half_allowed=True)
+    cdef int b_cuda_dtype = to_cuda_dtype(b.dtype, is_half_allowed=True)
+    cdef int c_cuda_dtype = to_cuda_dtype(c.dtype, is_half_allowed=True)
+    handle = device.get_cublas_handle()
+    cublas.gemmEx(
+        handle, <int>transa, <int>transb, <int>m, <int>n, <int>k, one_ptr,
+        a.data.ptr, a_cuda_dtype, <int>lda, b.data.ptr, b_cuda_dtype, <int>ldb,
+        zero_ptr, c.data.ptr, c_cuda_dtype, <int>ldc, compute_type, algo)
 
 
 @cython.profile(False)
