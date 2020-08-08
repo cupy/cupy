@@ -52,3 +52,4 @@ Arithmetic
     cupy.polyadd
     cupy.polysub
     cupy.polymul
+    cupy.polydiv

@@ -103,6 +103,24 @@ def polymul(a1, a2):
     return cupy.convolve(a1, a2)
 
 
+@_wraps_polyroutine
+def polydiv(a1, a2):
+    """Computes the quotient and remainder of a polynomial division.
+
+    Args:
+        a1 (scalar, cupy.ndarray or cupy.poly1d): first input polynomial.
+        a2 (scalar, cupy.ndarray or cupy.poly1d): second input polynomial.
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: coefficients of the quotient.
+        cupy.ndarray or cupy.poly1d: coefficients of the remainder.
+
+    .. seealso:: :func:`numpy.polydiv`
+
+    """
+
+
+
 def roots(p):
     """Computes the roots of a polynomial with given coefficients.
 

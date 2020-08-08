@@ -555,6 +555,7 @@ from cupy.lib import poly1d  # NOQA
 from cupy.lib import polyadd  # NOQA
 from cupy.lib import polysub  # NOQA
 from cupy.lib import polymul  # NOQA
+from cupy.lib import polydiv  # NOQA
 from cupy.lib import roots  # NOQA
 
 # -----------------------------------------------------------------------------
