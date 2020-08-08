@@ -126,8 +126,8 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
             When True, diagnostic information is also returned.
         w (cupy.ndarray, optional): weights applied to the y-coordinates
             of the sample points of shape (M, ).
-        cov (bool or str, optional): if given, returns the estimate with
-            its covariance matrix.
+        cov (bool or str, optional): if given, returns the coefficients
+            along with the covariance matrix.
 
     Returns:
         cupy.ndarray: of shape (deg + 1,) or (deg + 1, K)

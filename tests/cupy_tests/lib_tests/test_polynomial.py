@@ -610,5 +610,5 @@ class TestPolyfitDiffTypes(unittest.TestCase):
     def test_polyfit_weighted_diff_types(self, xp, dtype1, dtype2, dtype3):
         x = testing.shaped_arange((5,), xp, dtype1)
         y = testing.shaped_arange((5,), xp, dtype2)
-        w = testing.shaped_arange((5,), xp, dtype3) / dtype3(5)
+        w = testing.shaped_arange((5,), xp, dtype3)
         return xp.polyfit(x, y, 5, w=w)
