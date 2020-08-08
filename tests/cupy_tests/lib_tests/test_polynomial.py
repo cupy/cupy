@@ -452,7 +452,7 @@ class TestPolyArithmeticNdim(unittest.TestCase):
     'rcond': [None, 0.5, 1e-15],
     'weighted': [True, False]
 }))
-class TestPolyfit(unittest.TestCase):
+class TestPolyfitParametersCombinations(unittest.TestCase):
 
     def _full_fit(self, xp, dtype):
         x = testing.shaped_arange(self.shape1, xp, dtype)
@@ -503,6 +503,18 @@ class TestPolyfitCovMode(unittest.TestCase):
         np_c, np_cov = self._cov_fit(numpy, dtype)
         testing.assert_allclose(cp_c, np_c, rtol=1e-5)
         testing.assert_allclose(cp_cov, np_cov, rtol=1e-3)
+
+
+@testing.gpu
+class TestPolyfit(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True)
+    def test_polyfit(self, dtype):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((5,), xp, dtype)
+            y = testing.shaped_arange((5,), xp, dtype)
+            with pytest.warns(numpy.RankWarning):
+                xp.polyfit(x, y, 6)
 
 
 @testing.gpu
