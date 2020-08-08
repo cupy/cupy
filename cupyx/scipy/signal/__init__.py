@@ -1,3 +1,5 @@
+from cupyx.scipy.signal.signaltools import convolve  # NOQA
+from cupyx.scipy.signal.signaltools import correlate  # NOQA
 from cupyx.scipy.signal.signaltools import choose_conv_method  # NOQA
 from cupyx.scipy.signal.signaltools import wiener  # NOQA
 from cupyx.scipy.signal.signaltools import order_filter  # NOQA
