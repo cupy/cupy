@@ -4,6 +4,112 @@ import cupy
 
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import filters
+from cupyx.scipy.signal import _signaltools_core as _st_core
+
+
+def convolve(in1, in2, mode='full', method='auto'):
+    """Convolve two N-dimensional arrays.
+
+    Convolve `in1` and `in2`, with the output size determined by the `mode`
+    argument.
+
+    Args:
+        in1 (cupy.ndarray): First input.
+        in2 (cupy.ndarray): Second input. Should have the same number of
+            dimensions as `in1`.
+        mode (str): Indicates the size of the output:
+            `'full'`: output is the full discrete linear convolution (default)
+            `'valid'`: output consists only of those elements that do not
+                       rely on the zero-padding. Either `in1` or `in2` must be
+                       at least as large as the other in every dimension.
+            `'same'`: output is the same size as `in1`, centered
+                       with respect to the 'full' output
+        method (str): Indicates which method to use for the computations:
+            `'direct'`: The convolution is determined directly from sums, the
+                        definition of convolution
+            `'fft'`: The Fourier Transform is used to perform the convolution
+                     by calling `fftconvolve`.
+            `'auto'`: Automatically choose direct of FFT based on an estimate
+                      of which is faster for the arguments (default).
+
+    Returns:
+        cupy.ndarray: the result of convolution.
+
+    .. seealso:: :func:`cupyx.scipy.signal.choose_conv_method`
+    .. seealso:: :func:`cupyx.scipy.signal.correlation`
+    .. seealso:: :func:`cupyx.scipy.signal.fftconvolve`
+    .. seealso:: :func:`cupyx.scipy.signal.oaconvolve`
+    .. seealso:: :func:`cupyx.scipy.ndimage.convolve`
+    .. seealso:: :func:`scipy.signal.convolve`
+    .. note::
+        By default, `convolve` and `correlate` use ``method='auto'``, which
+        calls `choose_conv_method` to choose the fastest method using
+        pre-computed values. CuPy may not choose the same method to compute
+        the convolution as SciPy does given the same inputs.
+    """
+    return _correlate(in1, in2, mode, method, True)
+
+
+def correlate(in1, in2, mode='full', method='auto'):
+    """Cross-correlate two N-dimensional arrays.
+
+    Convolve `in1` and `in2`, with the output size determined by the `mode`
+    argument.
+
+    Args:
+        in1 (cupy.ndarray): First input.
+        in2 (cupy.ndarray): Second input. Should have the same number of
+            dimensions as `in1`.
+        mode (str): Indicates the size of the output:
+            `'full'`: output is the full discrete linear cross-correlation
+                      (default)
+            `'valid'`: output consists only of those elements that do not
+                       rely on the zero-padding. Either `in1` or `in2` must be
+                       at least as large as the other in every dimension.
+            `'same'`: output is the same size as `in1`, centered
+                      with respect to the 'full' output
+        method (str): Indicates which method to use for the computations:
+            `'direct'`: The correlation is determined directly from sums, the
+                        definition of correlation
+            `'fft'`: The Fourier Transform is used to perform the correlation
+                     by calling `fftconvolve`.
+            `'auto'`: Automatically choose direct of FFT based on an estimate
+                      of which is faster for the arguments (default).
+
+    Returns:
+        cupy.ndarray: the result of correlation.
+
+    .. seealso:: :func:`cupyx.scipy.signal.choose_conv_method`
+    .. seealso:: :func:`cupyx.scipy.signal.convolve`
+    .. seealso:: :func:`cupyx.scipy.signal.fftconvolve`
+    .. seealso:: :func:`cupyx.scipy.signal.oaconvolve`
+    .. seealso:: :func:`cupyx.scipy.ndimage.correlation`
+    .. seealso:: :func:`scipy.signal.correlation`
+    .. note::
+        By default, `convolve` and `correlate` use ``method='auto'``, which
+        calls `choose_conv_method` to choose the fastest method using
+        pre-computed values. CuPy may not choose the same method to compute
+        the convolution as SciPy does given the same inputs.
+    """
+    return _correlate(in1, in2, mode, method, False)
+
+
+def _correlate(in1, in2, mode='full', method='auto', convolution=False):
+    quick_out = _st_core._check_conv_inputs(in1, in2, mode, convolution)
+    if quick_out is not None:
+        return quick_out
+    if method not in ('auto', 'direct', 'fft'):
+        raise ValueError("acceptable methods are 'auto', 'direct', or 'fft'")
+
+    if method == 'auto':
+        method = choose_conv_method(in1, in2, mode=mode)
+
+    if method == 'direct':
+        return _st_core._direct_correlate(in1, in2, mode, in1.dtype,
+                                          convolution)
+
+    # if method == 'fft':
+    raise ValueError('fftconvolve currently not supported')
 
 
 def choose_conv_method(in1, in2, mode='full'):
