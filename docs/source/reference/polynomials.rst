@@ -39,11 +39,8 @@ Basics
    :nosignatures:
 
     cupy.poly1d
-<<<<<<< HEAD
     cupy.polyval
-=======
     cupy.roots
->>>>>>> master
 
 
 Arithmetic
