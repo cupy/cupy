@@ -9,16 +9,16 @@ __all__ = ['tri', 'tril', 'triu', 'toeplitz', 'circulant', 'hankel',
 
 
 def tri(N, M=None, k=0, dtype=None):
-    """ Construct (N, M) matrix filled with ones at and below the kth diagonal.
-    The matrix has A[i,j] == 1 for i <= j + k
+    """ Construct (``N``, ``M``) matrix filled with ones at and below the
+    ``k``th diagonal. The matrix has ``A[i,j] == 1`` for ``i <= j + k``.
 
     Args:
         N (int): The size of the first dimension of the matrix.
         M (int, optional): The size of the second dimension of the matrix. If
-            `M` is None, `M = N` is assumed.
+            ``M`` is None, ``M = N`` is assumed.
         k (int, optional):  Number of subdiagonal below which matrix is filled
-            with ones. `k` = 0 is the main diagonal, `k` < 0 subdiagonal and
-            `k` > 0 superdiagonal.
+            with ones. ``k`` = 0 is the main diagonal, ``k`` < 0 subdiagonal
+            and ``k`` > 0 superdiagonal.
         dtype (dtype, optional): Data type of the matrix.
 
     Returns:
@@ -38,16 +38,16 @@ def tri(N, M=None, k=0, dtype=None):
 
 
 def tril(m, k=0):
-    """Make a copy of a matrix with elements above the kth diagonal zeroed.
+    """Make a copy of a matrix with elements above the ``k``th diagonal zeroed.
 
     Args:
         m (cupy.ndarray): Matrix whose elements to return
         k (int, optional): Diagonal above which to zero elements.
-            `k` == 0 is the main diagonal, `k` < 0 subdiagonal and
-            `k` > 0 superdiagonal.
+            ``k`` == 0 is the main diagonal, ``k`` < 0 subdiagonal and
+            ``k`` > 0 superdiagonal.
 
     Returns:
-        (cupy.ndarray): Return is the same shape and type as `m`.
+        (cupy.ndarray): Return is the same shape and type as ``m``.
 
     .. seealso:: :func:`scipy.linalg.tril`
     """
@@ -58,17 +58,17 @@ def tril(m, k=0):
 
 
 def triu(m, k=0):
-    """Make a copy of a matrix with elements below the kth diagonal zeroed.
+    """Make a copy of a matrix with elements below the ``k``th diagonal zeroed.
 
     Args:
         m (cupy.ndarray): Matrix whose elements to return
         k (int, optional): Diagonal above which to zero elements.
-            `k` == 0 is the main diagonal, `k` < 0 subdiagonal and
-            `k` > 0 superdiagonal.
+            ``k`` == 0 is the main diagonal, ``k`` < 0 subdiagonal and
+            ``k`` > 0 superdiagonal.
 
     Returns:
         (cupy.ndarray): Return matrix with zeroed elements below the kth
-        diagonal and has same shape and type as `m`.
+        diagonal and has same shape and type as ``m``.
 
     .. seealso:: :func:`scipy.linalg.triu`
     """
@@ -82,18 +82,18 @@ def triu(m, k=0):
 def toeplitz(c, r=None):
     """Construct a Toeplitz matrix.
 
-    The Toeplitz matrix has constant diagonals, with c as its first column
-    and r as its first row. If r is not given, ``r == conjugate(c)`` is
+    The Toeplitz matrix has constant diagonals, with ``c`` as its first column
+    and ``r`` as its first row. If ``r`` is not given, ``r == conjugate(c)`` is
     assumed.
 
     Args:
         c (cupy.ndarray): First column of the matrix. Whatever the actual shape
-            of `c`, it will be converted to a 1-D array.
+            of ``c``, it will be converted to a 1-D array.
         r (cupy.ndarray, optional): First row of the matrix. If None,
-            ``r = conjugate(c)`` is assumed; in this case, if c[0] is real, the
-            result is a Hermitian matrix. r[0] is ignored; the first row of the
-            returned matrix is ``[c[0], r[1:]]``.  Whatever the actual shape of
-            `r`, it will be converted to a 1-D array.
+            ``r = conjugate(c)`` is assumed; in this case, if ``c[0]`` is real,
+            the result is a Hermitian matrix. r[0] is ignored; the first row of
+            the returned matrix is ``[c[0], r[1:]]``. Whatever the actual shape
+            of ``r``, it will be converted to a 1-D array.
 
     Returns:
         cupy.ndarray: The Toeplitz matrix. Dtype is the same as
@@ -116,13 +116,13 @@ def toeplitz(c, r=None):
 
 
 def circulant(c):
-    """ Construct a circulant matrix.
+    """Construct a circulant matrix.
 
     Args:
         c (cupy.ndarray): 1-D array, the first column of the matrix.
 
     Returns:
-        cupy.ndarray: A circulant matrix whose first column is `c`.
+        cupy.ndarray: A circulant matrix whose first column is ``c``.
 
     .. seealso:: :func:`cupyx.scipy.linalg.toeplitz`
     .. seealso:: :func:`cupyx.scipy.linalg.hankel`
@@ -141,17 +141,17 @@ def circulant(c):
 def hankel(c, r=None):
     """Construct a Hankel matrix.
 
-    The Hankel matrix has constant anti-diagonals, with `c` as its first column
-    and `r` as its last row. If `r` is not given, then `r = zeros_like(c)` is
-    assumed.
+    The Hankel matrix has constant anti-diagonals, with ``c`` as its first
+    column and ``r`` as its last row. If ``r`` is not given, then
+    ``r = zeros_like(c)`` is assumed.
 
     Args:
         c (cupy.ndarray): First column of the matrix. Whatever the actual shape
-            of `c`, it will be converted to a 1-D array.
+            of ``c``, it will be converted to a 1-D array.
         r (cupy.ndarray, optionnal): Last row of the matrix. If None,
-            ``r = zeros_like(c)`` is assumed. r[0] is ignored; the last row of
-            the returned matrix is ``[c[-1], r[1:]]``. Whatever the actual
-            shape of `r`, it will be converted to a 1-D array.
+            ``r = zeros_like(c)`` is assumed. ``r[0]`` is ignored; the last row
+            of the returned matrix is ``[c[-1], r[1:]]``. Whatever the actual
+            shape of ``r``, it will be converted to a 1-D array.
 
     Returns:
         cupy.ndarray: The Hankel matrix. Dtype is the same as
@@ -174,11 +174,11 @@ def hankel(c, r=None):
 def hadamard(n, dtype=int):
     """Construct an Hadamard matrix.
 
-    Constructs an n-by-n Hadamard matrix, using Sylvester's construction. `n`
+    Constructs an n-by-n Hadamard matrix, using Sylvester's construction. ``n``
     must be a power of 2.
 
     Args:
-        n (int): The order of the matrix. `n` must be a power of 2.
+        n (int): The order of the matrix. ``n`` must be a power of 2.
         dtype (dtype, optional): The data type of the array to be constructed.
 
     Returns:
@@ -203,19 +203,19 @@ def hadamard(n, dtype=int):
 def leslie(f, s):
     """Create a Leslie matrix.
 
-    Given the length n array of fecundity coefficients `f` and the length n-1
-    array of survival coefficients `s`, return the associated Leslie matrix.
+    Given the length n array of fecundity coefficients ``f`` and the length n-1
+    array of survival coefficients ``s``, return the associated Leslie matrix.
 
     Args:
         f (cupy.ndarray): The "fecundity" coefficients.
         s (cupy.ndarray): The "survival" coefficients, has to be 1-D.  The
-            length of `s` must be one less than the length of `f`, and it must
-            be at least 1.
+            length of ``s`` must be one less than the length of ``f``, and it
+            must be at least 1.
 
     Returns:
-        cupy.ndarray: The array is zero except for the first row, which is `f`,
-            and the first sub-diagonal, which is `s`. The data-type of the
-            array will be the data-type of ``f[0]+s[0]``.
+        cupy.ndarray: The array is zero except for the first row, which is
+            ``f``, and the first sub-diagonal, which is ``s``. The data-type of
+            the array will be the data-type of ``f[0]+s[0]``.
 
     .. seealso:: :func:`scipy.linalg.leslie`
     """
@@ -248,7 +248,7 @@ def kron(a, b):
         b (cupy.ndarray): Input array
 
     Returns:
-        cupy.ndarray: Kronecker product of `a` and `b`.
+        cupy.ndarray: Kronecker product of ``a`` and ``b``.
 
     .. seealso:: :func:`scipy.linalg.kron`
     """
@@ -260,19 +260,19 @@ def kron(a, b):
 def block_diag(*arrs):
     """Create a block diagonal matrix from provided arrays.
 
-    Given the inputs `A`, `B` and `C`, the output will have these
+    Given the inputs ``A``, ``B`` and ``C``, the output will have these
     arrays arranged on the diagonal::
         [[A, 0, 0],
          [0, B, 0],
          [0, 0, C]]
 
     Args:
-        A, B, C, ... (cupy.ndarray): Input arrays. A 1-D array of length `n` is
-            treated as a 2-D array with shape ``(1,n)``.
+        A, B, C, ... (cupy.ndarray): Input arrays. A 1-D array of length ``n``
+            is treated as a 2-D array with shape ``(1,n)``.
 
     Returns:
-        (cupy.ndarray): Array with `A`, `B`, `C`, ... on the diagonal. Output
-            has the same dtype as `A`.
+        (cupy.ndarray): Array with ``A``, ``B``, ``C``, ... on the diagonal.
+            Output has the same dtype as ``A``.
 
     .. seealso:: :func:`scipy.linalg.block_diag`
     """
@@ -306,11 +306,11 @@ def companion(a):
     """Create a companion matrix.
 
     Create the companion matrix associated with the polynomial whose
-    coefficients are given in `a`.
+    coefficients are given in ``a``.
 
     Args:
         a (cupy.ndarray): 1-D array of polynomial coefficients. The length of
-            `a` must be at least two, and ``a[0]`` must not be zero.
+            ``a`` must be at least two, and ``a[0]`` must not be zero.
 
     Returns:
         (cupy.ndarray): The first row of the output is ``-a[1:]/a[0]``, and the
@@ -335,7 +335,7 @@ def companion(a):
 
 
 def helmert(n, full=False):
-    """Create an Helmert matrix of order `n`.
+    """Create an Helmert matrix of order ``n``.
 
     This has applications in statistics, compositional or simplicial analysis,
     and in Aitchison geometry.
@@ -348,7 +348,7 @@ def helmert(n, full=False):
 
     Returns:
         cupy.ndarray: The Helmert matrix. The shape is (n, n) or (n-1, n)
-            depending on the `full` argument.
+            depending on the ``full`` argument.
 
     .. seealso:: :func:`scipy.linalg.helmert`
     """
@@ -363,9 +363,9 @@ def helmert(n, full=False):
 
 
 def hilbert(n):
-    """Create a Hilbert matrix of order `n`.
+    """Create a Hilbert matrix of order ``n``.
 
-    Returns the `n` by `n` array with entries `h[i,j] = 1 / (i + j + 1)`.
+    Returns the ``n`` by ``n`` array with entries ``h[i,j] = 1 / (i + j + 1)``.
 
     Args:
         n (int): The size of the array to create.
@@ -395,19 +395,19 @@ def dft(n, scale=None):
     Args:
         n (int): Size the matrix to create.
         scale (str, optional): Must be None, 'sqrtn', or 'n'.
-            If `scale` is 'sqrtn', the matrix is divided by `sqrt(n)`.
-            If `scale` is 'n', the matrix is divided by `n`.
-            If `scale` is None (default), the matrix is not normalized, and the
-            return value is simply the Vandermonde matrix of the roots of
+            If ``scale`` is 'sqrtn', the matrix is divided by ``sqrt(n)``.
+            If ``scale`` is 'n', the matrix is divided by ``n``.
+            If ``scale`` is None (default), the matrix is not normalized, and
+            the return value is simply the Vandermonde matrix of the roots of
             unity.
 
     Returns:
         (cupy.ndarray): The DFT matrix.
 
     Notes:
-        When `scale` is None, multiplying a vector by the matrix returned by
-        `dft` is mathematically equivalent to (but much less efficient than)
-        the calculation performed by `scipy.fft.fft`.
+        When ``scale`` is None, multiplying a vector by the matrix returned by
+        ``dft`` is mathematically equivalent to (but much less efficient than)
+        the calculation performed by ``scipy.fft.fft``.
 
     .. seealso:: :func:`scipy.linalg.dft`
     """
@@ -426,7 +426,7 @@ def dft(n, scale=None):
 def fiedler(a):
     """Returns a symmetric Fiedler matrix
 
-    Given an sequence of numbers `a`, Fiedler matrices have the structure
+    Given an sequence of numbers ``a``, Fiedler matrices have the structure
     ``F[i, j] = np.abs(a[i] - a[j])``, and hence zero diagonals and nonnegative
     entries. A Fiedler matrix has a dominant positive eigenvalue and other
     eigenvalues are negative. Although not valid generally, for certain inputs,
@@ -468,7 +468,7 @@ def fiedler_companion(a):
         cupy.ndarray: Resulting companion matrix
 
     Notes:
-        Similar to `companion` the leading coefficient should be nonzero. In
+        Similar to ``companion`` the leading coefficient should be nonzero. In
         the case the leading coefficient is not 1, other coefficients are
         rescaled before the array generation. To avoid numerical issues, it is
         best to provide a monic polynomial.
@@ -506,16 +506,17 @@ def convolution_matrix(a, n, mode='full'):
     Args:
         a (cupy.ndarray): The 1-D array to convolve.
         n (int): The number of columns in the resulting matrix. It gives the
-            length of the input to be convolved with `a`. This is analogous to
-            the length of `v` in ``numpy.convolve(a, v)``.
-        mode (str): This must be one of ('full', 'valid', 'same'). This is
-            analogous to `mode` in ``numpy.convolve(v, a, mode)``.
+            length of the input to be convolved with ``a``. This is analogous
+            to the length of ``v`` in ``numpy.convolve(a, v)``.
+        mode (str): This must be one of (``'full'``, ``'valid'``, ``'same'``).
+            This is analogous to ``mode`` in ``numpy.convolve(v, a, mode)``.
 
     Returns:
-        cupy.ndarray: The convolution matrix whose row count depends on `mode`:
-            'full'   m + n -1
-            'same'   max(m, n)
-            'valid'  max(m, n) - min(m, n) + 1
+        cupy.ndarray: The convolution matrix whose row count depends on
+            ``mode``:
+                ``'full'   m + n -1``
+                ``'same'   max(m, n)``
+                ``'valid'  max(m, n) - min(m, n) + 1``
 
     .. seealso:: :func:`cupyx.scipy.linalg.toeplitz`
     .. seealso:: :func:`scipy.linalg.convolution_matrix`
