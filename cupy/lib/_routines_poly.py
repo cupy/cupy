@@ -104,6 +104,12 @@ def polymul(a1, a2):
     return cupy.convolve(a1, a2)
 
 
+def _astype(x):
+    if x.dtype.kind == 'c':
+        return x.astype(numpy.complex128, copy=False)
+    return x.astype(numpy.float64, copy=False)
+
+
 def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     """Returns the least squares fit of polynomial of degree deg
     to the data y sampled at x.
@@ -143,8 +149,8 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
 
     """
     deg = int(deg)
-    x = x.astype(float, copy=False)
-    y = y.astype(float, copy=False)
+    x = _astype(x)
+    y = _astype(y)
 
     if deg < 0:
         raise ValueError('expected deg >= 0')
@@ -161,16 +167,15 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     rhs = y
 
     if w is not None:
-        w = w.astype(float, copy=False)
+        w = _astype(w)
         if w.ndim != 1:
             raise TypeError('expected a 1-d array for weights')
-        if w.shape[0] != y.shape[0]:
+        if w.size != x.size:
             raise TypeError('expected w and y to have the same length')
 
+        lhs *= w[:, None]
         if rhs.ndim == 2:
             w = w[:, None]
-
-        lhs *= w[:, None]
         rhs *= w
 
     if rcond is None:
@@ -185,6 +190,9 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     if rank != order and not full:
         msg = 'Polyfit may be poorly conditioned'
         warnings.warn(msg, numpy.RankWarning, stacklevel=4)
+
+    if y.ndim != 1:
+        c = cupy.ascontiguousarray(c)
 
     if full:
         return c, resids, rank, s, rcond
