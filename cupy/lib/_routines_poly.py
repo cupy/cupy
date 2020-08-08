@@ -115,9 +115,10 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     to the data y sampled at x.
 
     Args:
-        x (cupy.ndarray): x-coordinates of the sample points of shape (M, ).
-        y (cupy.ndarray): y-coordinates of the sample points of shape
-            (M, ) or (M, K).
+        x (cupy.ndarray or cupy.poly1d): x-coordinates of the sample
+            points of shape (M, ).
+        y (cupy.ndarray or cupy.poly1d): y-coordinates of the sample
+            points of shape (M, ) or (M, K).
         deg (int): degree of the fitting polynomial.
         rcond (float, optional): relative condition number of the fit.
             The default value is len(x) * eps.
@@ -149,9 +150,14 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     .. seealso:: :func:`numpy.polyfit`
 
     """
-    deg = int(deg)
+    if isinstance(x, cupy.poly1d):
+        x = x.coeffs
+    if isinstance(y, cupy.poly1d):
+        y = y.coeffs
+
     x = _astype(x)
     y = _astype(y)
+    deg = int(deg)
 
     if deg < 0:
         raise ValueError('expected deg >= 0')
@@ -161,7 +167,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
         raise TypeError('expected non-empty vector for x')
     if y.ndim < 1 or y.ndim > 2:
         raise TypeError('expected 1D or 2D array for y')
-    if x.shape[0] != y.shape[0]:
+    if x.size != y.shape[0]:
         raise TypeError('expected x and y to have same length')
 
     lhs = cupy.polynomial.polynomial.polyvander(x, deg)[:, ::-1]
@@ -209,9 +215,9 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
             raise ValueError('the number of data points must exceed order'
                              ' to scale the covariance matrix')
 
-        if y.ndim == 1:
-            return c, base * factor
-        return c, base[..., None] * factor
+        if y.ndim != 1:
+            base = base[..., None]
+        return c, base * factor
 
     return c
 
