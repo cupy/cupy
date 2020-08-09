@@ -39,25 +39,47 @@ class TestPlanCache(unittest.TestCase):
         # test if plan is reused
         cache = config.get_plan_cache()
         assert cache.get_curr_size() == 0 <= cache.get_size()
+
+        # run once and fetch the cached plan
         a = testing.shaped_random((10,), cupy, cupy.float32)
         b = cupy.fft.fft(a)
         assert cache.get_curr_size() == 1 <= cache.get_size()
+        iterator = iter(cache)
+        plan0 = next(iterator)[1].plan
+
+        # repeat
         b = cupy.fft.fft(a)
         assert cache.get_curr_size() == 1 <= cache.get_size()
+        iterator = iter(cache)
+        plan1 = next(iterator)[1].plan
+
+        # we should get the same plan
+        assert plan0 is plan1
 
     def test_LRU_cache3(self):
         # test if cache size is limited
         cache = config.get_plan_cache()
         assert cache.get_curr_size() == 0 <= cache.get_size()
+
+        # run once and fetch the cached plan
         a = testing.shaped_random((10,), cupy, cupy.float32)
         b = cupy.fft.fft(a)
         assert cache.get_curr_size() == 1 <= cache.get_size()
+        iterator = iter(cache)
+        plan = next(iterator)[1].plan
+
+        # run another two FFTs with different sizes so that the first
+        # plan is discarded from the cache
         a = testing.shaped_random((20,), cupy, cupy.float32)
         b = cupy.fft.fft(a)
         assert cache.get_curr_size() == 2 <= cache.get_size()
         a = testing.shaped_random((30,), cupy, cupy.float32)
         b = cupy.fft.fft(a)
         assert cache.get_curr_size() == 2 <= cache.get_size()
+
+        # check if the first plan is indeed not cached
+        for _, node in cache:
+            assert plan is not node.plan
 
     def test_LRU_cache4(self):
         # test if fetching the plan will reorder it to the top
