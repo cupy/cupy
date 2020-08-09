@@ -1,6 +1,8 @@
+import contextlib
+import mock
 import os
 import pytest
-import shutil
+import sys
 import tempfile
 import unittest
 
@@ -327,12 +329,16 @@ extern "C" __global__ void my_func(void* input, int N) {
 }
 '''
 
-if 'CUPY_CACHE_DIR' in os.environ:
-    _old_cache_dir = os.environ['CUPY_CACHE_DIR']
-    _is_cache_env_var_set = True
-else:
-    _old_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')
-    _is_cache_env_var_set = False
+
+@contextlib.contextmanager
+def use_temporary_cache_dir():
+    target1 = 'cupy.cuda.compiler.get_cache_dir'
+    target2 = 'cupy.cuda.compiler._empty_file_preprocess_cache'
+    temp_cache = {}
+    with tempfile.TemporaryDirectory() as path:
+        with mock.patch(target1, lambda: path):
+            with mock.patch(target2, temp_cache):
+                yield path
 
 
 @testing.parameterize(*testing.product({
@@ -344,8 +350,8 @@ class TestRaw(unittest.TestCase):
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
 
-        self.cache_dir = tempfile.mkdtemp()
-        os.environ['CUPY_CACHE_DIR'] = self.cache_dir
+        self.temporary_cache_dir_context = use_temporary_cache_dir()
+        self.cache_dir = self.temporary_cache_dir_context.__enter__()
 
         self.kern = cupy.RawKernel(
             _test_source1, 'test_sum',
@@ -359,14 +365,7 @@ class TestRaw(unittest.TestCase):
             backend=self.backend)
 
     def tearDown(self):
-        # To avoid cache interference, we remove cached files after every test,
-        # and restore users' old setting
-        shutil.rmtree(self.cache_dir)
-        if _is_cache_env_var_set:
-            os.environ['CUPY_CACHE_DIR'] = _old_cache_dir
-        else:
-            os.environ.pop('CUPY_CACHE_DIR')
-        compiler._empty_file_preprocess_cache = {}
+        self.temporary_cache_dir_context.__exit__(*sys.exc_info())
 
     def _helper(self, kernel, dtype):
         N = 10
@@ -902,40 +901,27 @@ void test_grid_sync(const float* x1, const float* x2, float* y) {
     'Requires compute capability 6.0 or later')
 class TestRawGridSync(unittest.TestCase):
 
-    def setUp(self):
-        self.cache_dir = tempfile.mkdtemp()
-        os.environ['CUPY_CACHE_DIR'] = self.cache_dir
-
-        self.kern_grid_sync = cupy.RawKernel(
-            _test_grid_sync, 'test_grid_sync', backend='nvcc',
-            enable_cooperative_groups=True)
-        self.mod_grid_sync = cupy.RawModule(
-            code=_test_grid_sync, backend='nvcc',
-            enable_cooperative_groups=True)
-
-    def tearDown(self):
-        # To avoid cache interference, we remove cached files after every test,
-        # and restore users' old setting
-        shutil.rmtree(self.cache_dir)
-        if _is_cache_env_var_set:
-            os.environ['CUPY_CACHE_DIR'] = _old_cache_dir
-        else:
-            os.environ.pop('CUPY_CACHE_DIR')
-        compiler._empty_file_preprocess_cache = {}
-
     def test_grid_sync_rawkernel(self):
         n = self.n
-        x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
-        x2 = cupy.ones((n, n), dtype='float32')
-        y = cupy.zeros((n, n), dtype='float32')
-        self.kern_grid_sync((n,), (n,), (x1, x2, y, n ** 2))
-        assert cupy.allclose(y, x1 + x2)
+        with use_temporary_cache_dir():
+            kern_grid_sync = cupy.RawKernel(
+                _test_grid_sync, 'test_grid_sync', backend='nvcc',
+                enable_cooperative_groups=True)
+            x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
+            x2 = cupy.ones((n, n), dtype='float32')
+            y = cupy.zeros((n, n), dtype='float32')
+            kern_grid_sync((n,), (n,), (x1, x2, y, n ** 2))
+            assert cupy.allclose(y, x1 + x2)
 
     def test_grid_sync_rawmodule(self):
         n = self.n
-        x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
-        x2 = cupy.ones((n, n), dtype='float32')
-        y = cupy.zeros((n, n), dtype='float32')
-        kern = self.mod_grid_sync.get_function('test_grid_sync')
-        kern((n,), (n,), (x1, x2, y, n ** 2))
-        assert cupy.allclose(y, x1 + x2)
+        with use_temporary_cache_dir():
+            mod_grid_sync = cupy.RawModule(
+                code=_test_grid_sync, backend='nvcc',
+                enable_cooperative_groups=True)
+            x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
+            x2 = cupy.ones((n, n), dtype='float32')
+            y = cupy.zeros((n, n), dtype='float32')
+            kern = mod_grid_sync.get_function('test_grid_sync')
+            kern((n,), (n,), (x1, x2, y, n ** 2))
+            assert cupy.allclose(y, x1 + x2)
