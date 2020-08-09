@@ -36,14 +36,14 @@ cdef class _ThreadLocal:
         return tls
 
 
-cdef inline Py_ssize_t _get_plan_memsize(plan) except*:
+cdef inline Py_ssize_t _get_plan_memsize(plan) except -1:
     cdef Py_ssize_t memsize = 0
     cdef memory.MemoryPointer ptr
     cdef int dev, curr_dev
 
     # work_area could be None for "empty" plans...
     if plan is not None and plan.work_area is not None:
-        if isinstance(plan.work_area, list):
+        if plan.gpus is not None:
             # multi-GPU plan
             curr_dev = runtime.getDevice()
             for dev, ptr in zip(plan.gpus, plan.work_area):
@@ -260,15 +260,25 @@ cdef class PlanCache:
             '(unlimited)' if self.memsize == -1 else self.memsize)
         output += '\ncached plans (most recently used first):\n'
 
-        cdef _Node node = self.lru.tail
+        cdef tuple key
+        cdef _Node node
         cdef size_t count = 0
-        while node.prev is not self.lru.head:
-            node = node.prev
+        for key, node in self:
             output += str(node) + '\n'
-            assert self.cache[node.key] is node
             count += 1
         assert count == self.lru.count
         return output
+
+    def __iter__(self):
+        # Traverse from the end (LRU). Unlike dict and other map-like
+        # containers, we also return the node (value) here for inspecting
+        # and testing the data structure without accidentally changing the
+        # cache order.
+        cdef _Node node = self.lru.tail
+
+        while node.prev is not self.lru.head:
+            node = node.prev
+            yield (node.key, node)
 
     # --------------------- internal helpers --------------------- #
 
@@ -363,6 +373,9 @@ cdef class PlanCache:
     cpdef Py_ssize_t get_size(self):
         return self.size
 
+    cpdef Py_ssize_t get_curr_size(self):
+        return self.curr_size
+
     cpdef set_memsize(self, Py_ssize_t memsize):
         self._validate_size_memsize(self.size, memsize)
         self._eject_until_fit(self.size, memsize)
@@ -370,6 +383,9 @@ cdef class PlanCache:
 
     cpdef Py_ssize_t get_memsize(self):
         return self.memsize
+
+    cpdef Py_ssize_t get_curr_memsize(self):
+        return self.curr_memsize
 
     cpdef get(self, tuple key, default=None):
         # behaves as if calling dict.get()
@@ -503,6 +519,7 @@ cpdef clear_plan_cache():
     util.experimental('cupy.fft.cache.clear_plan_cache')
     cdef PlanCache cache = get_plan_cache()
     cache.clear()
+
 
 cpdef show_plan_cache_info():
     cdef _ThreadLocal tls = _ThreadLocal.get()
