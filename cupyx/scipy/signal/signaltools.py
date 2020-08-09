@@ -247,7 +247,8 @@ def _correlate2d(in1, in2, mode, boundary, fillvalue, convolution=False):
         'wrap': 'wrap', 'circular': 'wrap',
         'symm': 'reflect', 'symmetric': 'reflect',
     }
-    if boundary not in _boundaries:
+    boundary = _boundaries.get(boundary)
+    if boundary is None:
         raise ValueError("Acceptable boundary flags are 'fill' (or 'pad'), "
                          "'circular' (or 'wrap'), 'symmetric' (or 'symm'), "
                          "and 'reflect'.")
@@ -255,7 +256,7 @@ def _correlate2d(in1, in2, mode, boundary, fillvalue, convolution=False):
     if quick_out is not None:
         return quick_out
     return _st_core._direct_correlate(in1, in2, mode, in1.dtype, convolution,
-                                      _boundaries[boundary], fillvalue)
+                                      boundary, fillvalue, not convolution)
 
 
 def wiener(im, mysize=None, noise=None):

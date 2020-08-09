@@ -13,6 +13,94 @@ except ImportError:
     pass
 
 
+@testing.parameterize(*testing.product({
+    'in1': [(10,), (5, 10), (10, 3), (3, 4, 10)],
+    'in2': [3, 4, 5, 10],
+    'mode': ['full', 'same', 'valid'],
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestConvolveCorrelate(unittest.TestCase):
+    def _filter(self, func, dtype, xp, scp):
+        in1 = testing.shaped_random(self.in1, xp, dtype)
+        in2 = testing.shaped_random((self.in2,)*in1.ndim, xp, dtype)
+        return getattr(scp.signal, func)(in1, in2, self.mode, method='direct')
+
+    # TODO: support complex
+    # Note: float16 is tested separately
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_convolve(self, xp, scp, dtype):
+        return self._filter('convolve', dtype, xp, scp)
+
+    # TODO: support complex
+    # Note: float16 is tested separately
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_correlate(self, xp, scp, dtype):
+        return self._filter('correlate', dtype, xp, scp)
+
+    # float16 has significantly worse error tolerances
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_convolve_float16(self, xp, scp, dtype=cupy.float16):
+        return self._filter('convolve', dtype, xp, scp)
+
+    # float16 has significantly worse error tolerances
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_correlate_float16(self, xp, scp, dtype=cupy.float16):
+        return self._filter('correlate', dtype, xp, scp)
+
+
+@testing.parameterize(*testing.product({
+    'in1': [(5, 10), (10, 7)],
+    'in2': [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],
+    'mode': ['full', 'same', 'valid'],
+    'boundary': ['fill', 'wrap', 'symm'],
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestConvolveCorrelate2D(unittest.TestCase):
+    def _filter(self, func, dtype, xp, scp):
+        if self.mode == 'full' and self.boundary != 'constant':
+            # See https://github.com/scipy/scipy/issues/12685
+            raise unittest.SkipTest('broken in scipy')
+        in1 = testing.shaped_random(self.in1, xp, dtype)
+        in2 = testing.shaped_random(self.in2, xp, dtype)
+        return getattr(scp.signal, func)(in1, in2, self.mode, self.boundary)
+
+    # TODO: support complex
+    # Note: float16 is tested separately
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_convolve2d(self, xp, scp, dtype):
+        return self._filter('convolve2d', dtype, xp, scp)
+
+    # TODO: support complex
+    # Note: float16 is tested separately
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_correlate2d(self, xp, scp, dtype):
+        return self._filter('correlate2d', dtype, xp, scp)
+
+    # float16 has significantly worse error tolerances
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_convolve2d_float16(self, xp, scp, dtype=cupy.float16):
+        return self._filter('convolve2d', dtype, xp, scp)
+
+    # float16 has significantly worse error tolerances
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_correlate2d_float16(self, xp, scp, dtype=cupy.float16):
+        return self._filter('correlate2d', dtype, xp, scp)
+
+
 @testing.gpu
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full']
