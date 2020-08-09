@@ -333,7 +333,6 @@ if 'CUPY_CACHE_DIR' in os.environ:
 else:
     _old_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')
     _is_cache_env_var_set = False
-_test_cache_dir = None
 
 
 @testing.parameterize(*testing.product({
@@ -345,9 +344,8 @@ class TestRaw(unittest.TestCase):
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
 
-        global _test_cache_dir
-        _test_cache_dir = tempfile.mkdtemp()
-        os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
+        self.cache_dir = tempfile.mkdtemp()
+        os.environ['CUPY_CACHE_DIR'] = self.cache_dir
 
         self.kern = cupy.RawKernel(
             _test_source1, 'test_sum',
@@ -363,8 +361,7 @@ class TestRaw(unittest.TestCase):
     def tearDown(self):
         # To avoid cache interference, we remove cached files after every test,
         # and restore users' old setting
-        global _test_cache_dir
-        shutil.rmtree(_test_cache_dir)
+        shutil.rmtree(self.cache_dir)
         if _is_cache_env_var_set:
             os.environ['CUPY_CACHE_DIR'] = _old_cache_dir
         else:
@@ -432,15 +429,14 @@ class TestRaw(unittest.TestCase):
 
     def _generate_file(self, ext: str):
         # generate cubin/ptx by calling nvcc
-        global _test_cache_dir
 
         nvcc = cupy.cuda.get_nvcc_path()
         # split() is needed because nvcc could come from the env var NVCC
         cmd = nvcc.split()
         arch = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(
             cc=compiler._get_arch())
-        source = '{}/test_load_cubin.cu'.format(_test_cache_dir)
-        file_path = _test_cache_dir + 'test_load_cubin'
+        source = '{}/test_load_cubin.cu'.format(self.cache_dir)
+        file_path = self.cache_dir + 'test_load_cubin'
         with open(source, 'w') as f:
             f.write(_test_source5)
         if ext == 'cubin':
@@ -452,7 +448,7 @@ class TestRaw(unittest.TestCase):
         else:
             raise ValueError
         cmd += [arch, flag, source, '-o', file_path]
-        compiler._run_nvcc(cmd, _test_cache_dir)
+        compiler._run_nvcc(cmd, self.cache_dir)
 
         return file_path
 
@@ -907,9 +903,8 @@ void test_grid_sync(const float* x1, const float* x2, float* y) {
 class TestRawGridSync(unittest.TestCase):
 
     def setUp(self):
-        global _test_cache_dir
-        _test_cache_dir = tempfile.mkdtemp()
-        os.environ['CUPY_CACHE_DIR'] = _test_cache_dir
+        self.cache_dir = tempfile.mkdtemp()
+        os.environ['CUPY_CACHE_DIR'] = self.cache_dir
 
         self.kern_grid_sync = cupy.RawKernel(
             _test_grid_sync, 'test_grid_sync', backend='nvcc',
@@ -921,8 +916,7 @@ class TestRawGridSync(unittest.TestCase):
     def tearDown(self):
         # To avoid cache interference, we remove cached files after every test,
         # and restore users' old setting
-        global _test_cache_dir
-        shutil.rmtree(_test_cache_dir)
+        shutil.rmtree(self.cache_dir)
         if _is_cache_env_var_set:
             os.environ['CUPY_CACHE_DIR'] = _old_cache_dir
         else:
