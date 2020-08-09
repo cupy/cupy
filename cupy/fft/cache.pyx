@@ -248,9 +248,11 @@ cdef class PlanCache:
         if self.memsize >= 0:
             assert self.curr_memsize <= self.memsize
 
-        cdef str output = '-------------- cuFFT plan cache --------------\n'
+        cdef str output = ''
+        output += '------------------- cuFFT plan cache '
+        output += '(device {}) -------------------\n'.format(self.dev)
         output += 'cache enabled? {}\n'.format(self.is_enabled)
-        output += 'current / max size: {0} / {1} (counts)\n'.format(
+        output += 'current / max size   : {0} / {1} (counts)\n'.format(
             self.curr_size,
             '(unlimited)' if self.size == -1 else self.size)
         output += 'current / max memsize: {0} / {1} (bytes)\n'.format(
@@ -266,7 +268,7 @@ cdef class PlanCache:
             assert self.cache[node.key] is node
             count += 1
         assert count == self.lru.count
-        return output[:-1]
+        return output
 
     # --------------------- internal helpers --------------------- #
 
@@ -501,3 +503,19 @@ cpdef clear_plan_cache():
     util.experimental('cupy.fft.cache.clear_plan_cache')
     cdef PlanCache cache = get_plan_cache()
     cache.clear()
+
+cpdef show_plan_cache_info():
+    cdef _ThreadLocal tls = _ThreadLocal.get()
+    cdef list caches = tls.per_device_cufft_cache
+    cdef int dev
+    cdef PlanCache cache
+
+    print('=============== cuFFT plan cache info (all devices) '
+          '===============')
+    for dev, cache in enumerate(caches):
+        if cache is None:
+            print('------------------- cuFFT plan cache '
+                  '(device {}) -------------------'.format(dev))
+            print('(uninitialized)\n')
+        else:
+            cache.show_info()
