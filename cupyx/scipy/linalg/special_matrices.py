@@ -1,6 +1,5 @@
 import math
 import cupy
-from cupy.lib.stride_tricks import as_strided
 
 __all__ = ['tri', 'tril', 'triu', 'toeplitz', 'circulant', 'hankel',
            'hadamard', 'leslie', 'kron', 'block_diag', 'companion',
@@ -31,7 +30,7 @@ def tri(N, M=None, k=0, dtype=None):
     elif isinstance(M, str):
         # handle legacy interface
         M, dtype = N, M
-    # TODO: no outer function
+    # TODO: no outer method
     # m = cupy.greater_equal.outer(cupy.arange(k, N+k), cupy.arange(M))
     # return m if dtype is None else m.astype(dtype, copy=False)
     return cupy.tri(N, M, k, bool if dtype is None else dtype)
@@ -107,12 +106,7 @@ def toeplitz(c, r=None):
     """
     c = c.ravel()
     r = c.conjugate() if r is None else r.ravel()
-    # Form a 1-D array containing a reversed c followed by r[1:] that could be
-    # strided to give us toeplitz matrix.
-    vals = cupy.concatenate((c[::-1], r[1:]))
-    n = vals.strides[0]
-    return as_strided(vals[c.size-1:], shape=(c.size, r.size),
-                      strides=(-n, n)).copy()
+    return _create_toeplitz_matrix(c[::-1], r[1:])
 
 
 def circulant(c):
@@ -131,11 +125,7 @@ def circulant(c):
     .. seealso:: :func:`scipy.linalg.circulant`
     """
     c = c.ravel()
-    # Form an extended array that could be strided to give circulant version
-    c_ext = cupy.concatenate((c[::-1], c[:0:-1]))
-    L = c.size
-    n = c_ext.strides[0]
-    return as_strided(c_ext[L-1:], shape=(L, L), strides=(-n, n)).copy()
+    return _create_toeplitz_matrix(c[::-1], c[:0:-1])
 
 
 def hankel(c, r=None):
@@ -163,12 +153,16 @@ def hankel(c, r=None):
     """
     c = c.ravel()
     r = cupy.zeros_like(c) if r is None else r.ravel()
-    # Form a 1-D array of values to be used in the matrix, containing `c`
-    # followed by r[1:].
-    vals = cupy.concatenate((c, r[1:]))
-    # Stride on concatenated array to get hankel matrix
+    return _create_toeplitz_matrix(c, r[1:], True)
+
+
+def _create_toeplitz_matrix(c, r, hankel=False):
+    vals = cupy.concatenate((c, r))
     n = vals.strides[0]
-    return as_strided(vals, shape=(c.size, r.size), strides=(n, n)).copy()
+    return cupy.lib.stride_tricks.as_strided(
+        vals if hankel else vals[c.size-1:],
+        shape=(c.size, r.size+1),
+        strides=(n if hankel else -n, n)).copy()
 
 
 def hadamard(n, dtype=int):
@@ -188,7 +182,7 @@ def hadamard(n, dtype=int):
     """
     lg2 = 0 if n < 1 else (int(n).bit_length() - 1)
     if 2 ** lg2 != n:
-        raise ValueError("n must be an positive a power of 2 integer")
+        raise ValueError('n must be an positive a power of 2 integer')
 
     # Sylvester's construction
     H = cupy.ones((1, 1), dtype=dtype)
@@ -220,14 +214,14 @@ def leslie(f, s):
     .. seealso:: :func:`scipy.linalg.leslie`
     """
     if f.ndim != 1:
-        raise ValueError("Incorrect shape for f. f must be 1D")
+        raise ValueError('Incorrect shape for f. f must be 1D')
     if s.ndim != 1:
-        raise ValueError("Incorrect shape for s. s must be 1D")
+        raise ValueError('Incorrect shape for s. s must be 1D')
     n = f.size
     if n != s.size + 1:
-        raise ValueError("Length of s must be one less than length of f")
+        raise ValueError('Length of s must be one less than length of f')
     if s.size == 0:
-        raise ValueError("The length of s must be at least 1.")
+        raise ValueError('The length of s must be at least 1.')
     a = cupy.zeros((n, n), dtype=cupy.result_type(f, s))
     a[0] = f
     cupy.fill_diagonal(a[1:], s)
@@ -286,8 +280,8 @@ def block_diag(*arrs):
         arrs = cupy.atleast_2d(*arrs)
     if any(a.ndim != 2 for a in arrs):
         bad = [k for k in range(len(arrs)) if arrs[k].ndim != 2]
-        raise ValueError("arguments in the following positions have dimension "
-                         "greater than 2: {}".format(bad))
+        raise ValueError('arguments in the following positions have dimension '
+                         'greater than 2: {}'.format(bad))
 
     shapes = tuple(a.shape for a in arrs)
     shape = tuple(sum(x) for x in zip(*shapes))
@@ -317,16 +311,18 @@ def companion(a):
             first sub-diagonal is all ones. The data-type of the array is the
             same as the data-type of ``-a[1:]/a[0]``.
 
-    .. seealso:: :func:`cupyx.scipy.linalg.fielder_companion`
+    .. seealso:: :func:`cupyx.scipy.linalg.fiedler_companion`
     .. seealso:: :func:`scipy.linalg.companion`
     """
     n = a.size
     if a.ndim != 1:
-        raise ValueError("`a` must be one-dimensional.")
+        raise ValueError('`a` must be one-dimensional.')
     if n < 2:
-        raise ValueError("The length of `a` must be at least 2.")
-    if a[0] == 0:
-        raise ValueError("The first coefficient in `a` must not be zero.")
+        raise ValueError('The length of `a` must be at least 2.')
+    # Following check requires device-to-host synchronization so will we not
+    # raise an error this situation
+    # if a[0] == 0:
+    #     raise ValueError('The first coefficient in `a` must not be zero.')
     first_row = -a[1:] / a[0]
     c = cupy.zeros((n - 1, n - 1), dtype=first_row.dtype)
     c[0] = first_row
@@ -375,8 +371,8 @@ def hilbert(n):
 
     .. seealso:: :func:`scipy.linalg.hilbert`
     """
-    values = cupy.arange(1, 2*n, dtype=float)
-    cupy.divide(1.0, values, values)
+    values = cupy.arange(1, 2*n, dtype=cupy.float64)
+    cupy.reciprocal(values, values)
     return hankel(values[:n], r=values[n-1:])
 
 
@@ -412,8 +408,8 @@ def dft(n, scale=None):
     .. seealso:: :func:`scipy.linalg.dft`
     """
     if scale not in (None, 'sqrtn', 'n'):
-        raise ValueError("scale must be None, 'sqrtn', or 'n'; "
-                         "%r is not valid." % (scale,))
+        raise ValueError('scale must be None, \'sqrtn\', or \'n\'; '
+                         '%r is not valid.' % (scale,))
     r = cupy.arange(n, dtype='complex128')
     r *= -2j*cupy.pi/n
     omegas = cupy.exp(r, out=r)[:, None]
@@ -443,9 +439,9 @@ def fiedler(a):
     .. seealso:: :func:`scipy.linalg.fiedler`
     """
     if a.ndim != 1:
-        raise ValueError("Input 'a' must be a 1D array.")
+        raise ValueError('Input `a` must be a 1D array.')
     if a.size == 0:
-        return cupy.zeros(())
+        return cupy.zeros(0)
     if a.size == 1:
         return cupy.zeros((1, 1))
     a = a[:, None] - a
@@ -477,13 +473,15 @@ def fiedler_companion(a):
     .. seealso:: :func:`scipy.linalg.fiedler_companion`
     """
     if a.ndim != 1:
-        raise ValueError("Input 'a' must be a 1-D array.")
+        raise ValueError('Input `a` must be a 1-D array.')
     if a.size < 2:
         return cupy.zeros((0,), a.dtype)
     if a.size == 2:
         return (-a[1]/a[0])[None, None]
-    if a[0] == 0.:
-        raise ValueError('Leading coefficient is zero.')
+    # Following check requires device-to-host synchronization so will we not
+    # raise an error this situation
+    # if a[0] == 0.:
+    #     raise ValueError('Leading coefficient is zero.')
     a = a/a[0]
     n = a.size - 1
     c = cupy.zeros((n, n), dtype=a.dtype)
@@ -530,7 +528,7 @@ def convolution_matrix(a, n, mode='full'):
         raise ValueError('len(a) must be at least 1.')
     if mode not in ('full', 'valid', 'same'):
         raise ValueError(
-            "'mode' argument must be one of ('full', 'valid', 'same')")
+            '`mode` argument must be one of (\'full\', \'valid\', \'same\')')
 
     # create zero padded versions of the array
     az = cupy.pad(a, (0, n-1), 'constant')

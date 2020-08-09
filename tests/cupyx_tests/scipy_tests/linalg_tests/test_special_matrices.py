@@ -38,7 +38,7 @@ class TestSpecialMatricesBase(unittest.TestCase):
         # 2 arguments: int, dtype
         # NOTE: for tri this is an undocumented, legacy, call
         'function': ['tri', 'hadamard'],
-        'args': [(4, 'int32'), (8, 'float64')],
+        'args': [(4, 'int32'), (8, 'float64'), (6, 'float64')],
     }) + testing.product({
         # 2 arguments: int, bool
         'function': ['helmert'],
@@ -83,7 +83,7 @@ class TestSpecialMatrices(TestSpecialMatricesBase):
     testing.product({
         # 1 argument: 1D array
         'function': ['fiedler', 'fiedler_companion'],
-        'args': [((1,),), ((2,),), ((4,),), ((10,),), ((25,),)],
+        'args': [((0,),), ((1,),), ((2,),), ((4,),), ((10,),), ((25,),)],
     })
 ))
 @testing.gpu
