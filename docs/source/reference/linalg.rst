@@ -20,6 +20,8 @@ Matrix and vector products
    cupy.einsum
    cupy.linalg.matrix_power
    cupy.kron
+   
+   cupyx.scipy.linalg.kron
 
 Decompositions
 --------------
@@ -73,3 +75,32 @@ Solving linear equations
    cupyx.scipy.linalg.lu_factor
    cupyx.scipy.linalg.lu_solve
    cupyx.scipy.linalg.solve_triangular
+
+Special Matrices
+----------------
+
+.. autosummary::
+
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.tri
+   cupy.tril
+   cupy.triu
+
+   cupyx.scipy.linalg.tri
+   cupyx.scipy.linalg.tril
+   cupyx.scipy.linalg.triu
+   cupyx.scipy.linalg.toeplitz
+   cupyx.scipy.linalg.circulant
+   cupyx.scipy.linalg.hankel
+   cupyx.scipy.linalg.hadamard
+   cupyx.scipy.linalg.leslie
+   cupyx.scipy.linalg.block_diag
+   cupyx.scipy.linalg.companion
+   cupyx.scipy.linalg.helmert
+   cupyx.scipy.linalg.hilbert
+   cupyx.scipy.linalg.dft
+   cupyx.scipy.linalg.fiedler
+   cupyx.scipy.linalg.fiedler_companion
+   cupyx.scipy.linalg.convolution_matrix
