@@ -22,7 +22,7 @@ def _direct_correlate(in1, in2, mode='full', output=float, convolution=False,
         raise ValueError('unsupported type in SciPy')
 
     # Swaps inputs so smaller one is in2:
-    # NOTE: when mode is not 'valid' we can only swap with a constant-0 boundary
+    # NOTE: when mode != 'valid' we can only swap with a constant-0 boundary
     swapped_inputs = False
     orig_in1_shape = in1.shape
     if _inputs_swap_needed(mode, in1.shape, in2.shape) or (
