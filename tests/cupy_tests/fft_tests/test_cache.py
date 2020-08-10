@@ -162,7 +162,7 @@ class TestPlanCache(unittest.TestCase):
         thread.start()
         thread.join()
         stdout = q.get()
-        assert stdout.count('uninitialized') == 2
+        assert stdout.count('uninitialized') == n_devices
 
         def thread_init_caches(gpus, queue):
             init_caches(gpus)
@@ -174,7 +174,7 @@ class TestPlanCache(unittest.TestCase):
         thread.start()
         thread.join()
         stdout = q.get()
-        assert stdout.count('uninitialized') == 1
+        assert stdout.count('uninitialized') == n_devices - 1
 
         # ...and this time both devices
         thread = threading.Thread(target=thread_init_caches,
@@ -182,7 +182,7 @@ class TestPlanCache(unittest.TestCase):
         thread.start()
         thread.join()
         stdout = q.get()
-        assert stdout.count('uninitialized') == 0
+        assert stdout.count('uninitialized') == n_devices - 2
 
     @testing.multi_gpu(2)
     def test_LRU_cache6(self):
