@@ -183,15 +183,14 @@ def hadamard(n, dtype=int):
     lg2 = 0 if n < 1 else (int(n).bit_length() - 1)
     if 2 ** lg2 != n:
         raise ValueError('n must be an positive a power of 2 integer')
+    H = cupy.empty((n, n), dtype)
+    return _hadamard_kernel(H, H)
 
-    # Sylvester's construction
-    H = cupy.ones((1, 1), dtype=dtype)
-    for _ in range(0, lg2):
-        n = H.shape[0]
-        H = cupy.tile(H, (2, 2))
-        H[n:, n:] *= -1
 
-    return H
+_hadamard_kernel = cupy.ElementwiseKernel(
+    'T in', 'T out',
+    'out = (__popc(_ind.get()[0] & _ind.get()[1]) & 1) ? -1 : 1;',
+    'hadamard', reduce_dims=False)
 
 
 def leslie(f, s):
@@ -256,9 +255,9 @@ def block_diag(*arrs):
 
     Given the inputs ``A``, ``B`` and ``C``, the output will have these
     arrays arranged on the diagonal::
-        [[A, 0, 0],
-         [0, B, 0],
-         [0, 0, C]]
+        [A, 0, 0]
+        [0, B, 0]
+        [0, 0, C]
 
     Args:
         A, B, C, ... (cupy.ndarray): Input arrays. A 1-D array of length ``n``
